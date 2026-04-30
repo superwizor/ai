@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyCdnAx3_8v0lwLyuyHWDG_hcavm1NLWFT4</string>
+	<string>AIzaSyAHuHAzQ2btMDvzVIiP84DQaiM6xOzjnP8</string>
 	<key>GCM_SENDER_ID</key>
-	<string>37136378230</string>
+	<string>344724821207</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>ai.superwizor.superwizor</string>
 	<key>PROJECT_ID</key>
-	<string>superwizor-staging</string>
+	<string>superwizor-ai-25ecd</string>
 	<key>STORAGE_BUCKET</key>
-	<string>superwizor-staging.firebasestorage.app</string>
+	<string>superwizor-ai-25ecd.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:37136378230:ios:c9df576a2e815e531bb257</string>
+	<string>1:344724821207:ios:74fa7d1d312fcec9a98c92</string>
 </dict>
 </plist>

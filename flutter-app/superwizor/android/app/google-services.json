@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "37136378230",
-    "project_id": "superwizor-staging",
-    "storage_bucket": "superwizor-staging.firebasestorage.app"
+    "project_number": "344724821207",
+    "project_id": "superwizor-ai-25ecd",
+    "storage_bucket": "superwizor-ai-25ecd.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:37136378230:android:fb37ecc9ffbf73e61bb257",
+        "mobilesdk_app_id": "1:344724821207:android:6cf6ba9f8fe803eaa98c92",
         "android_client_info": {
           "package_name": "ai.superwizor.superwizor"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAuuzQs3FnU8J7saKXXCUXH7kV7pfRSiRE"
+          "current_key": "AIzaSyDEbwTIQY-2DyBAzCHvZ1uFN2mSB_GVc9w"
         }
       ],
       "services": {

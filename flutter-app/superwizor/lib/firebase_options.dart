@@ -41,46 +41,48 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDLkQ9rj_eMDx-b13bvBx-sNp3nupjRD0E',
-    appId: '1:37136378230:web:7c0090de4434bda91bb257',
-    messagingSenderId: '37136378230',
-    projectId: 'superwizor-staging',
-    authDomain: 'superwizor-staging.firebaseapp.com',
-    storageBucket: 'superwizor-staging.firebasestorage.app',
+    apiKey: 'AIzaSyAggOO0mf-HDhQBI8boIgUSlipjmha2p5w',
+    appId: '1:344724821207:web:3e2ca4d5fcfdc640a98c92',
+    messagingSenderId: '344724821207',
+    projectId: 'superwizor-ai-25ecd',
+    authDomain: 'superwizor-ai-25ecd.firebaseapp.com',
+    storageBucket: 'superwizor-ai-25ecd.firebasestorage.app',
+    measurementId: 'G-GVPJ7SJ8LT',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAuuzQs3FnU8J7saKXXCUXH7kV7pfRSiRE',
-    appId: '1:37136378230:android:fb37ecc9ffbf73e61bb257',
-    messagingSenderId: '37136378230',
-    projectId: 'superwizor-staging',
-    storageBucket: 'superwizor-staging.firebasestorage.app',
+    apiKey: 'AIzaSyDEbwTIQY-2DyBAzCHvZ1uFN2mSB_GVc9w',
+    appId: '1:344724821207:android:6cf6ba9f8fe803eaa98c92',
+    messagingSenderId: '344724821207',
+    projectId: 'superwizor-ai-25ecd',
+    storageBucket: 'superwizor-ai-25ecd.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCdnAx3_8v0lwLyuyHWDG_hcavm1NLWFT4',
-    appId: '1:37136378230:ios:c9df576a2e815e531bb257',
-    messagingSenderId: '37136378230',
-    projectId: 'superwizor-staging',
-    storageBucket: 'superwizor-staging.firebasestorage.app',
+    apiKey: 'AIzaSyAHuHAzQ2btMDvzVIiP84DQaiM6xOzjnP8',
+    appId: '1:344724821207:ios:74fa7d1d312fcec9a98c92',
+    messagingSenderId: '344724821207',
+    projectId: 'superwizor-ai-25ecd',
+    storageBucket: 'superwizor-ai-25ecd.firebasestorage.app',
     iosBundleId: 'ai.superwizor.superwizor',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCdnAx3_8v0lwLyuyHWDG_hcavm1NLWFT4',
-    appId: '1:37136378230:ios:c9df576a2e815e531bb257',
-    messagingSenderId: '37136378230',
-    projectId: 'superwizor-staging',
-    storageBucket: 'superwizor-staging.firebasestorage.app',
+    apiKey: 'AIzaSyAHuHAzQ2btMDvzVIiP84DQaiM6xOzjnP8',
+    appId: '1:344724821207:ios:74fa7d1d312fcec9a98c92',
+    messagingSenderId: '344724821207',
+    projectId: 'superwizor-ai-25ecd',
+    storageBucket: 'superwizor-ai-25ecd.firebasestorage.app',
     iosBundleId: 'ai.superwizor.superwizor',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDLkQ9rj_eMDx-b13bvBx-sNp3nupjRD0E',
-    appId: '1:37136378230:web:b2b83b5d5900a8f41bb257',
-    messagingSenderId: '37136378230',
-    projectId: 'superwizor-staging',
-    authDomain: 'superwizor-staging.firebaseapp.com',
-    storageBucket: 'superwizor-staging.firebasestorage.app',
+    apiKey: 'AIzaSyAggOO0mf-HDhQBI8boIgUSlipjmha2p5w',
+    appId: '1:344724821207:web:3e2ca4d5fcfdc640a98c92',
+    messagingSenderId: '344724821207',
+    projectId: 'superwizor-ai-25ecd',
+    authDomain: 'superwizor-ai-25ecd.firebaseapp.com',
+    storageBucket: 'superwizor-ai-25ecd.firebasestorage.app',
+    measurementId: 'G-GVPJ7SJ8LT',
   );
 }
