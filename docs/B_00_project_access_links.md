@@ -24,17 +24,14 @@ Wszystkie kluczowe konta oraz infrastruktura opierają się na dedykowanym adres
 ---
 
 ## 3. Baza Danych, Backend i Hosting (Firebase / Google Cloud)
-- **Konsola Google Cloud:** [Przejdź do GCP](https://console.cloud.google.com/)
 - **Konsola Firebase:** [Przejdź do panelu projektu](https://console.firebase.google.com/)
 - **Nazwa Projektu:** Superwizor AI
-- **Project ID (GCP & Firebase):** `superwizor-ai-25ecd`
-- **Region infrastruktury (Żelazna Lokalizacja):** `europe-central2` (Warszawa)
-- **Konto billingowe:** Podpięte do `kontakt@superwizor.ai` (Direct)
+- **Project ID:** `superwizor-ai-25ecd`
 - **Podpięte platformy (zarejestrowane aplikacje):**
   - Android (`1:344724821207:android:6cf6ba9f8fe803eaa98c92`)
   - iOS / macOS (`1:344724821207:ios:74fa7d1d312fcec9a98c92`)
   - Web / Windows (`1:344724821207:web:3e2ca4d5fcfdc640a98c92`)
-- **Status:** **ZAKOŃCZONO ✅**. Środowisko podłączone do aplikacji klienckiej (Flutter). Czeka na wdrożenie infrastruktury bazy danych.
+- **Status:** **ZAKOŃCZONO ✅**. Środowisko Firebase połączone z aplikacją.
 
 ---
 
