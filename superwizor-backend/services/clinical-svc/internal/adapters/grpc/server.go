@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -95,10 +96,10 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 		"alias":         req.WorkingAlias,
 	})
 	_ = s.queries.CreateAuditEvent(ctx, db.CreateAuditEventParams{
-		ActorUserID:  &therapistID,
+		ActorUserID:  pgtype.UUID{Bytes: therapistID, Valid: true},
 		Action:       "patient_file.create",
 		ResourceType: "patient_file",
-		ResourceID:   &pf.ID,
+		ResourceID:   pgtype.UUID{Bytes: pf.ID, Valid: true},
 		Metadata:     auditMeta,
 	})
 
@@ -157,8 +158,8 @@ func toProtoPatientFile(pf db.PatientFile, modalityCode string) *clinicalv1.Pati
 		CreatedAt:           timestamppb.New(pf.CreatedAt),
 		UpdatedAt:           timestamppb.New(pf.UpdatedAt),
 	}
-	if pf.PatientID != nil {
-		resp.PatientId = pf.PatientID.String()
+	if pf.PatientID.Valid {
+		resp.PatientId = uuid.UUID(pf.PatientID.Bytes).String()
 	}
 	if pf.InitialComplaint != nil {
 		resp.InitialComplaint = *pf.InitialComplaint

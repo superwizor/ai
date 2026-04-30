@@ -8,7 +8,7 @@ package db
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/google/uuid"
 )
 
 const getModalityByCode = `-- name: GetModalityByCode :one
@@ -18,10 +18,10 @@ WHERE system_code = $1 AND is_supported = TRUE
 `
 
 type GetModalityByCodeRow struct {
-	ID          pgtype.UUID `json:"id"`
-	SystemCode  string      `json:"system_code"`
-	DisplayName string      `json:"display_name"`
-	IsSupported bool        `json:"is_supported"`
+	ID          uuid.UUID `json:"id"`
+	SystemCode  string    `json:"system_code"`
+	DisplayName string    `json:"display_name"`
+	IsSupported bool      `json:"is_supported"`
 }
 
 func (q *Queries) GetModalityByCode(ctx context.Context, systemCode string) (GetModalityByCodeRow, error) {
@@ -44,10 +44,10 @@ ORDER BY display_name
 `
 
 type ListSupportedModalitiesRow struct {
-	ID          pgtype.UUID `json:"id"`
-	SystemCode  string      `json:"system_code"`
-	DisplayName string      `json:"display_name"`
-	IsSupported bool        `json:"is_supported"`
+	ID          uuid.UUID `json:"id"`
+	SystemCode  string    `json:"system_code"`
+	DisplayName string    `json:"display_name"`
+	IsSupported bool      `json:"is_supported"`
 }
 
 func (q *Queries) ListSupportedModalities(ctx context.Context) ([]ListSupportedModalitiesRow, error) {

@@ -8,7 +8,9 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"net/netip"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -545,62 +547,62 @@ func (ns NullUserRole) Value() (driver.Value, error) {
 }
 
 type Address struct {
-	ID             pgtype.UUID        `json:"id"`
-	CountryCode    string             `json:"country_code"`
-	Region         *string            `json:"region"`
-	City           string             `json:"city"`
-	PostalCode     string             `json:"postal_code"`
-	StreetLine     string             `json:"street_line"`
-	BuildingNumber string             `json:"building_number"`
-	UnitNumber     *string            `json:"unit_number"`
-	Directions     *string            `json:"directions"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	ID             uuid.UUID `json:"id"`
+	CountryCode    string    `json:"country_code"`
+	Region         *string   `json:"region"`
+	City           string    `json:"city"`
+	PostalCode     string    `json:"postal_code"`
+	StreetLine     string    `json:"street_line"`
+	BuildingNumber string    `json:"building_number"`
+	UnitNumber     *string   `json:"unit_number"`
+	Directions     *string   `json:"directions"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type AuditEvent struct {
-	ID             pgtype.UUID        `json:"id"`
-	ActorUserID    pgtype.UUID        `json:"actor_user_id"`
-	OrganizationID pgtype.UUID        `json:"organization_id"`
-	Action         string             `json:"action"`
-	ResourceType   string             `json:"resource_type"`
-	ResourceID     pgtype.UUID        `json:"resource_id"`
-	Metadata       []byte             `json:"metadata"`
-	IpAddress      *netip.Addr        `json:"ip_address"`
-	UserAgent      *string            `json:"user_agent"`
-	OccurredAt     pgtype.Timestamptz `json:"occurred_at"`
+	ID             uuid.UUID   `json:"id"`
+	ActorUserID    pgtype.UUID `json:"actor_user_id"`
+	OrganizationID pgtype.UUID `json:"organization_id"`
+	Action         string      `json:"action"`
+	ResourceType   string      `json:"resource_type"`
+	ResourceID     pgtype.UUID `json:"resource_id"`
+	Metadata       []byte      `json:"metadata"`
+	IpAddress      *netip.Addr `json:"ip_address"`
+	UserAgent      *string     `json:"user_agent"`
+	OccurredAt     time.Time   `json:"occurred_at"`
 }
 
 type Modality struct {
-	ID                        pgtype.UUID        `json:"id"`
-	SystemCode                string             `json:"system_code"`
-	DisplayName               string             `json:"display_name"`
-	TherapistAiGeneralPrompt  []byte             `json:"therapist_ai_general_prompt"`
-	TherapistAiSectionPrompts []byte             `json:"therapist_ai_section_prompts"`
-	PatientAiGeneralPrompt    []byte             `json:"patient_ai_general_prompt"`
-	PatientAiSectionPrompts   []byte             `json:"patient_ai_section_prompts"`
-	IsSupported               bool               `json:"is_supported"`
-	CreatedAt                 pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt                 pgtype.Timestamptz `json:"updated_at"`
+	ID                        uuid.UUID `json:"id"`
+	SystemCode                string    `json:"system_code"`
+	DisplayName               string    `json:"display_name"`
+	TherapistAiGeneralPrompt  []byte    `json:"therapist_ai_general_prompt"`
+	TherapistAiSectionPrompts []byte    `json:"therapist_ai_section_prompts"`
+	PatientAiGeneralPrompt    []byte    `json:"patient_ai_general_prompt"`
+	PatientAiSectionPrompts   []byte    `json:"patient_ai_section_prompts"`
+	IsSupported               bool      `json:"is_supported"`
+	CreatedAt                 time.Time `json:"created_at"`
+	UpdatedAt                 time.Time `json:"updated_at"`
 }
 
 type Organization struct {
-	ID                    pgtype.UUID        `json:"id"`
+	ID                    uuid.UUID          `json:"id"`
 	LegalName             string             `json:"legal_name"`
 	TaxID                 *string            `json:"tax_id"`
 	VatIDEu               *string            `json:"vat_id_eu"`
 	HeadquartersAddressID pgtype.UUID        `json:"headquarters_address_id"`
 	PrimaryAdminUserID    pgtype.UUID        `json:"primary_admin_user_id"`
 	Type                  OrganizationType   `json:"type"`
-	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	CreatedAt             time.Time          `json:"created_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type PatientFile struct {
-	ID                    pgtype.UUID        `json:"id"`
-	TherapistID           pgtype.UUID        `json:"therapist_id"`
+	ID                    uuid.UUID          `json:"id"`
+	TherapistID           uuid.UUID          `json:"therapist_id"`
 	PatientID             pgtype.UUID        `json:"patient_id"`
 	RelationID            pgtype.UUID        `json:"relation_id"`
-	ModalityID            pgtype.UUID        `json:"modality_id"`
+	ModalityID            uuid.UUID          `json:"modality_id"`
 	WorkingAlias          string             `json:"working_alias"`
 	ProcessType           ProcessType        `json:"process_type"`
 	InitialComplaint      *string            `json:"initial_complaint"`
@@ -609,23 +611,23 @@ type PatientFile struct {
 	ConsentGivenAt        pgtype.Timestamptz `json:"consent_given_at"`
 	FirstConsultationAt   pgtype.Timestamptz `json:"first_consultation_at"`
 	PrivateTherapistNotes *string            `json:"private_therapist_notes"`
-	CreatedAt             pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
+	CreatedAt             time.Time          `json:"created_at"`
+	UpdatedAt             time.Time          `json:"updated_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type TherapistPatientRelation struct {
-	ID           pgtype.UUID        `json:"id"`
-	TherapistID  pgtype.UUID        `json:"therapist_id"`
-	PatientID    pgtype.UUID        `json:"patient_id"`
+	ID           uuid.UUID          `json:"id"`
+	TherapistID  uuid.UUID          `json:"therapist_id"`
+	PatientID    uuid.UUID          `json:"patient_id"`
 	Status       RelationStatus     `json:"status"`
-	InvitedAt    pgtype.Timestamptz `json:"invited_at"`
+	InvitedAt    time.Time          `json:"invited_at"`
 	ActivatedAt  pgtype.Timestamptz `json:"activated_at"`
 	TerminatedAt pgtype.Timestamptz `json:"terminated_at"`
 }
 
 type User struct {
-	ID                  pgtype.UUID        `json:"id"`
+	ID                  uuid.UUID          `json:"id"`
 	Role                UserRole           `json:"role"`
 	OrganizationID      pgtype.UUID        `json:"organization_id"`
 	DefaultModalityID   pgtype.UUID        `json:"default_modality_id"`
@@ -644,6 +646,6 @@ type User struct {
 	Timezone            string             `json:"timezone"`
 	HasAcceptedTos      bool               `json:"has_accepted_tos"`
 	HasMarketingConsent bool               `json:"has_marketing_consent"`
-	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	CreatedAt           time.Time          `json:"created_at"`
 	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
 }

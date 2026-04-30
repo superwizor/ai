@@ -60,7 +60,7 @@ func main() {
 		slog.Error("identity dial failed", "error", err)
 		os.Exit(1)
 	}
-	defer identityConn.Close()
+	defer func() { _ = identityConn.Close() }()
 
 	identityClient := identityv1.NewIdentityServiceClient(identityConn)
 

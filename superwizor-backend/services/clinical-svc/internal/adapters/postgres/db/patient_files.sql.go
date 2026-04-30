@@ -8,7 +8,7 @@ package db
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/google/uuid"
 )
 
 const countPatientFilesByTherapist = `-- name: CountPatientFilesByTherapist :one
@@ -16,7 +16,7 @@ SELECT COUNT(*) FROM patient_files
 WHERE therapist_id = $1 AND deleted_at IS NULL
 `
 
-func (q *Queries) CountPatientFilesByTherapist(ctx context.Context, therapistID pgtype.UUID) (int64, error) {
+func (q *Queries) CountPatientFilesByTherapist(ctx context.Context, therapistID uuid.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, countPatientFilesByTherapist, therapistID)
 	var count int64
 	err := row.Scan(&count)
@@ -32,8 +32,8 @@ RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias,
 `
 
 type CreatePatientFileParams struct {
-	TherapistID         pgtype.UUID `json:"therapist_id"`
-	ModalityID          pgtype.UUID `json:"modality_id"`
+	TherapistID         uuid.UUID   `json:"therapist_id"`
+	ModalityID          uuid.UUID   `json:"modality_id"`
 	WorkingAlias        string      `json:"working_alias"`
 	ProcessType         ProcessType `json:"process_type"`
 	InitialComplaint    *string     `json:"initial_complaint"`
@@ -76,7 +76,7 @@ SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, pr
 WHERE id = $1 AND deleted_at IS NULL
 `
 
-func (q *Queries) GetPatientFile(ctx context.Context, id pgtype.UUID) (PatientFile, error) {
+func (q *Queries) GetPatientFile(ctx context.Context, id uuid.UUID) (PatientFile, error) {
 	row := q.db.QueryRow(ctx, getPatientFile, id)
 	var i PatientFile
 	err := row.Scan(
@@ -108,9 +108,9 @@ LIMIT $2 OFFSET $3
 `
 
 type ListPatientFilesByTherapistParams struct {
-	TherapistID pgtype.UUID `json:"therapist_id"`
-	Limit       int32       `json:"limit"`
-	Offset      int32       `json:"offset"`
+	TherapistID uuid.UUID `json:"therapist_id"`
+	Limit       int32     `json:"limit"`
+	Offset      int32     `json:"offset"`
 }
 
 func (q *Queries) ListPatientFilesByTherapist(ctx context.Context, arg ListPatientFilesByTherapistParams) ([]PatientFile, error) {
@@ -156,8 +156,8 @@ WHERE id = $1 AND therapist_id = $2
 `
 
 type SoftDeletePatientFileParams struct {
-	ID          pgtype.UUID `json:"id"`
-	TherapistID pgtype.UUID `json:"therapist_id"`
+	ID          uuid.UUID `json:"id"`
+	TherapistID uuid.UUID `json:"therapist_id"`
 }
 
 func (q *Queries) SoftDeletePatientFile(ctx context.Context, arg SoftDeletePatientFileParams) error {
@@ -177,7 +177,7 @@ RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias,
 `
 
 type UpdatePatientFileParams struct {
-	ID              pgtype.UUID `json:"id"`
+	ID              uuid.UUID   `json:"id"`
 	Column2         interface{} `json:"column_2"`
 	Column3         interface{} `json:"column_3"`
 	Column4         interface{} `json:"column_4"`
