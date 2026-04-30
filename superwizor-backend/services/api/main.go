@@ -15,11 +15,17 @@ func main() {
 
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = fmt.Fprint(w, "OK")
+		_, err := fmt.Fprint(w, "OK")
+		if err != nil {
+			log.Printf("error writing response: %v", err)
+		}
 	})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = fmt.Fprintf(w, "Hello World from SuperWizor API!")
+		_, err := fmt.Fprintf(w, "Hello World from SuperWizor API!")
+		if err != nil {
+			log.Printf("error writing response: %v", err)
+		}
 	})
 
 	log.Printf("Listening on port %s", port)
