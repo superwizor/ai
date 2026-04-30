@@ -9,7 +9,7 @@ on:
       - main
 
 env:
-  PROJECT_ID: superwizor-staging
+  PROJECT_ID: superwizor-ai-25ecd
   REGION: europe-central2
   REPOSITORY: services
   IMAGE_NAME: superwizor-api
@@ -63,8 +63,8 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/37136378230/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider'
-          service_account: 'github-actions-sa@superwizor-staging.iam.gserviceaccount.com'
+          workload_identity_provider: 'projects/344724821207/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider'
+          service_account: 'github-actions-sa@superwizor-ai-25ecd.iam.gserviceaccount.com'
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -92,7 +92,7 @@ jobs:
             --region ${{ env.REGION }} \
             --vpc-connector swvpc-connector \
             --set-secrets="DB_PASSWORD=superwizor-db-password:latest" \
-            --set-env-vars="DB_USER=superwizor_app,DB_HOST=10.17.0.3,DB_NAME=superwizor" \
+            --set-env-vars="DB_USER=superwizor_app,DB_HOST=10.158.0.3,DB_NAME=superwizor" \
             --command="migrate" \
             --args="-path,/migrations,-database,postgres://\$(DB_USER):\$(DB_PASSWORD)@\$(DB_HOST):5432/\$(DB_NAME)?sslmode=disable,up"
 
