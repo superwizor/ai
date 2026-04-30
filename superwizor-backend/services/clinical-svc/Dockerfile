@@ -3,8 +3,7 @@ WORKDIR /app
 
 # Copy workspace files
 COPY go.work go.work.sum ./
-COPY services/clinical-svc services/clinical-svc
-COPY services/identity-svc services/identity-svc
+COPY services/ services/
 COPY pkg/ pkg/
 COPY gen/ gen/
 
