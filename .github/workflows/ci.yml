@@ -68,6 +68,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'superwizor-backend/go.work'
+          cache-dependency-path: 'superwizor-backend/**/go.sum'
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+      - name: Install dependencies
+        run: |
+          go install github.com/bufbuild/buf/cmd/buf@latest
+
+      - name: Generate Protobuf
+        run: buf generate proto/
+
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
