@@ -9,7 +9,7 @@ on:
       - main
 
 env:
-  PROJECT_ID: superwizor-ai-25ecd
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: europe-central2
   REPOSITORY: services
   IMAGE_NAME: superwizor-api
@@ -87,8 +87,8 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/344724821207/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider'
-          service_account: 'github-actions-sa@superwizor-ai-25ecd.iam.gserviceaccount.com'
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
