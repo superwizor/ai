@@ -35,3 +35,7 @@ Thumbs.db
 # Logs
 *.log
 gen/
+!gen/go/
+gen/go/*
+!gen/go/go.mod
+!gen/go/go.sum
