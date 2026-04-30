@@ -93,6 +93,18 @@ jobs:
           docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/api/Dockerfile .
           docker push -a $IMAGE_PATH
 
+      - name: Build and Push Identity image
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-identity"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/identity-svc/Dockerfile .
+          docker push -a $IMAGE_PATH
+
+      - name: Build and Push Clinical image
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-clinical"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/clinical-svc/Dockerfile .
+          docker push -a $IMAGE_PATH
+
       - name: Deploy and Run Migration Job
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-migrator:${{ github.sha }}"
@@ -117,3 +129,34 @@ jobs:
             --allow-unauthenticated \
             --vpc-connector swvpc-connector \
             --set-env-vars="ENV=staging"
+
+      - name: Deploy Identity to Cloud Run
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-identity"
+          gcloud run deploy identity-svc \
+            --image $IMAGE_PATH:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --vpc-connector swvpc-connector \
+            --set-secrets="DB_PASSWORD=superwizor-db-password:latest" \
+            --set-env-vars="DB_USER=superwizor_app,DB_HOST=10.158.0.3,DB_NAME=superwizor,GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
+
+      - name: Deploy Clinical to Cloud Run
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-clinical"
+          # Get Identity SVC URL
+          IDENTITY_URL=$(gcloud run services describe identity-svc --region ${{ env.REGION }} --format 'value(status.url)' || echo "")
+          if [ -z "$IDENTITY_URL" ]; then
+            # If it's the first time and not deployed yet, we might have an empty string. The first deployment might fail if the URL check fails, but gcloud will output the newly created URL anyway. Let's just deploy and let identity start first.
+            echo "Identity URL not available yet, deploying without it or it will fail on start."
+          fi
+          
+          gcloud run deploy clinical-svc \
+            --image $IMAGE_PATH:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --vpc-connector swvpc-connector \
+            --set-secrets="DB_PASSWORD=superwizor-db-password:latest" \
+            --set-env-vars="DB_USER=superwizor_app,DB_HOST=10.158.0.3,DB_NAME=superwizor,IDENTITY_SVC_URL=${IDENTITY_URL},VERSION=${{ github.sha }}"

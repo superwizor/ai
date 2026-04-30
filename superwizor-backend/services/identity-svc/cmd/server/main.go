@@ -59,10 +59,19 @@ func main() {
 	port := getEnv("PORT", "8080")
 	projectID := getEnv("GCP_PROJECT_ID", "superwizor-staging")
 	dbDSN := os.Getenv("DATABASE_URL")
+	if dbDSN == "" {
+		dbUser := os.Getenv("DB_USER")
+		dbPass := os.Getenv("DB_PASSWORD")
+		dbHost := os.Getenv("DB_HOST")
+		dbName := os.Getenv("DB_NAME")
+		if dbUser != "" && dbPass != "" && dbHost != "" && dbName != "" {
+			dbDSN = fmt.Sprintf("postgres://%s:%s@%s:5432/%s?sslmode=disable", dbUser, dbPass, dbHost, dbName)
+		}
+	}
 	version := getEnv("VERSION", "dev")
 
 	if dbDSN == "" {
-		slog.Error("DATABASE_URL is required")
+		slog.Error("DATABASE_URL or DB_USER/PASSWORD/HOST/NAME is required")
 		os.Exit(1)
 	}
 
