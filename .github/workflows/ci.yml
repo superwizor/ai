@@ -100,8 +100,8 @@ jobs:
             --image $IMAGE_PATH \
             --region ${{ env.REGION }} \
             --vpc-connector swvpc-connector \
-            --clear-command \
-            --clear-args \
+            --command="" \
+            --args="" \
             --set-secrets="DB_PASSWORD=superwizor-db-password:latest" \
             --set-env-vars="DB_USER=superwizor_app,DB_HOST=10.158.0.3,DB_NAME=superwizor"
 
