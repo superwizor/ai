@@ -14,13 +14,17 @@ func main() {
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = fmt.Fprintf(w, "Hello from SuperWizor AI! version=%s\n", os.Getenv("K_REVISION"))
+		if _, err := fmt.Fprintf(w, "Hello from SuperWizor AI! version=%s\n", os.Getenv("K_REVISION")); err != nil {
+			log.Printf("Write failed: %v", err)
+		}
 	})
 
 	// Add healthcheck endpoint
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = fmt.Fprint(w, "OK")
+		if _, err := fmt.Fprint(w, "OK"); err != nil {
+			log.Printf("Write failed: %v", err)
+		}
 	})
 
 	log.Printf("Server listening on :%s", port)
