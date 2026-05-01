@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
 
+if [ -n "$DATABASE_URL" ]; then
+  echo "Using DATABASE_URL from environment..."
+  migrate -path /migrations -database "${DATABASE_URL}" up
+  exit 0
+fi
+
 if [ -z "$DB_PASSWORD" ]; then
   echo "Error: DB_PASSWORD environment variable is not set."
   exit 1
