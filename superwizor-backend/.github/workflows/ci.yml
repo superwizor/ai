@@ -132,8 +132,7 @@ jobs:
             --vpc-connector swvpc-connector \
             --command="" \
             --args="" \
-            --set-secrets="DB_PASSWORD=superwizor-db-password:latest" \
-            --set-env-vars="DB_USER=superwizor_app,DB_HOST=10.158.0.3,DB_NAME=superwizor"
+            --set-secrets="DATABASE_URL=postgres-database-url:latest"
 
           gcloud run jobs execute db-migrator --region ${{ env.REGION }} --wait
 
@@ -157,8 +156,8 @@ jobs:
             --platform managed \
             --no-allow-unauthenticated \
             --vpc-connector swvpc-connector \
-            --set-secrets="DB_PASSWORD=superwizor-db-password:latest" \
-            --set-env-vars="DB_USER=superwizor_app,DB_HOST=10.158.0.3,DB_NAME=superwizor,GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
+            --set-secrets="DATABASE_URL=postgres-database-url:latest" \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
 
       - name: Deploy Clinical to Cloud Run
         run: |
@@ -166,7 +165,6 @@ jobs:
           # Get Identity SVC URL
           IDENTITY_URL=$(gcloud run services describe identity-svc --region ${{ env.REGION }} --format 'value(status.url)' || echo "")
           if [ -z "$IDENTITY_URL" ]; then
-            # If it's the first time and not deployed yet, we might have an empty string. The first deployment might fail if the URL check fails, but gcloud will output the newly created URL anyway. Let's just deploy and let identity start first.
             echo "Identity URL not available yet, deploying without it or it will fail on start."
           fi
           
@@ -176,5 +174,5 @@ jobs:
             --platform managed \
             --no-allow-unauthenticated \
             --vpc-connector swvpc-connector \
-            --set-secrets="DB_PASSWORD=superwizor-db-password:latest" \
-            --set-env-vars="DB_USER=superwizor_app,DB_HOST=10.158.0.3,DB_NAME=superwizor,IDENTITY_SVC_URL=${IDENTITY_URL},VERSION=${{ github.sha }}"
+            --set-secrets="DATABASE_URL=postgres-database-url:latest" \
+            --set-env-vars="IDENTITY_SVC_URL=${IDENTITY_URL},VERSION=${{ github.sha }}"
