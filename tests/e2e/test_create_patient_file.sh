@@ -5,7 +5,7 @@ set -euo pipefail
 # - User created w Firebase Auth
 # - User row exists w PostgreSQL (CreateUser called)
 
-PROJECT_ID="superwizor-staging"
+PROJECT_ID="superwizor-ai-25ecd"
 REGION="europe-central2"
 
 # Get service URLs

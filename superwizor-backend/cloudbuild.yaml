@@ -1,0 +1,9 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-identity', '-f', 'services/identity-svc/Dockerfile', '.']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-identity']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-clinical', '-f', 'services/clinical-svc/Dockerfile', '.']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-clinical']

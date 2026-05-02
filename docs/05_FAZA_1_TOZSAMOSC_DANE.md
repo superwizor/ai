@@ -140,7 +140,7 @@ Sprint 1.1 (DDL)
 
 **Nowe rzeczy do dodania:**
 
-- **Firebase project** stworzony i podłączony do superwizor-staging
+- **Firebase project** stworzony i podłączony do superwizor-ai-25ecd
   (instrukcje w Sprint 1.2).
 
   **sqlc** zainstalowany lokalnie:
@@ -721,7 +721,7 @@ EOF
 
 POSTGRES_PASSWORD=$(gcloud secrets versions access latest \\
 
---secret=postgres-password --project=superwizor-staging)
+--secret=postgres-password --project=superwizor-ai-25ecd)
 
 CONNECTION_NAME=$(cd infra/environments/staging && terragrunt output
 -raw sql_connection_name)
@@ -821,16 +821,16 @@ mkdir -p infra/firebase
 
 cd infra/firebase
 
-firebase projects:create superwizor-staging --display-name "SuperWizor
+firebase projects:create superwizor-ai-25ecd --display-name "SuperWizor
 Staging"
 
 \# Linkuj z istniejącym GCP project
 
-firebase use --add superwizor-staging
+firebase use --add superwizor-ai-25ecd
 
 \# Włącz Email/Password authentication
 
-gcloud config set project superwizor-staging
+gcloud config set project superwizor-ai-25ecd
 
 gcloud identitytoolkit projects update
 --enabled-providers=password,phone
@@ -1730,7 +1730,7 @@ slog.SetDefault(logger)
 
 port := getEnv("PORT", "8080")
 
-projectID := getEnv("GCP_PROJECT_ID", "superwizor-staging")
+projectID := getEnv("GCP_PROJECT_ID", "superwizor-ai-25ecd")
 
 dbDSN := os.Getenv("DATABASE_URL")
 
@@ -2013,10 +2013,10 @@ cd ../..
 gcloud builds submit \\
 
 --tag
-europe-central2-docker.pkg.dev/superwizor-staging/services/identity-svc:v0.1.0
+europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/identity-svc:v0.1.0
 \\
 
---project=superwizor-staging \\
+--project=superwizor-ai-25ecd \\
 
 --region=europe-central2 \\
 
@@ -2026,12 +2026,12 @@ europe-central2-docker.pkg.dev/superwizor-staging/services/identity-svc:v0.1.0
 
 gcloud run deploy identity-svc \\
 
---image=europe-central2-docker.pkg.dev/superwizor-staging/services/identity-svc:v0.1.0
+--image=europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/identity-svc:v0.1.0
 \\
 
 --region=europe-central2 \\
 
---project=superwizor-staging \\
+--project=superwizor-ai-25ecd \\
 
 --no-allow-unauthenticated \\
 
@@ -2049,7 +2049,7 @@ gcloud run deploy identity-svc \\
 
 --use-http2 \\
 
---set-env-vars="GCP_PROJECT_ID=superwizor-staging,VERSION=v0.1.0" \\
+--set-env-vars="GCP_PROJECT_ID=superwizor-ai-25ecd,VERSION=v0.1.0" \\
 
 --set-secrets="DATABASE_URL=postgres-database-url:latest"
 
@@ -2061,7 +2061,7 @@ TOKEN=$(gcloud auth print-identity-token)
 
 SERVICE_URL=$(gcloud run services describe identity-svc \\
 
---region=europe-central2 --project=superwizor-staging \\
+--region=europe-central2 --project=superwizor-ai-25ecd \\
 
 --format="value(status.url)" \| sed 's\|https://\|\|')
 
@@ -2920,10 +2920,10 @@ EOF
 gcloud builds submit \\
 
 --tag
-europe-central2-docker.pkg.dev/superwizor-staging/services/clinical-svc:v0.1.0
+europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/clinical-svc:v0.1.0
 \\
 
---project=superwizor-staging \\
+--project=superwizor-ai-25ecd \\
 
 --region=europe-central2 \\
 
@@ -2933,18 +2933,18 @@ europe-central2-docker.pkg.dev/superwizor-staging/services/clinical-svc:v0.1.0
 
 IDENTITY_URL=$(gcloud run services describe identity-svc \\
 
---region=europe-central2 --project=superwizor-staging \\
+--region=europe-central2 --project=superwizor-ai-25ecd \\
 
 --format="value(status.url)")
 
 gcloud run deploy clinical-svc \\
 
---image=europe-central2-docker.pkg.dev/superwizor-staging/services/clinical-svc:v0.1.0
+--image=europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/clinical-svc:v0.1.0
 \\
 
 --region=europe-central2 \\
 
---project=superwizor-staging \\
+--project=superwizor-ai-25ecd \\
 
 --no-allow-unauthenticated \\
 
@@ -2966,9 +2966,9 @@ gcloud run services add-iam-policy-binding identity-svc \\
 
 --region=europe-central2 \\
 
---project=superwizor-staging \\
+--project=superwizor-ai-25ecd \\
 
---member="serviceAccount:clinical-svc@superwizor-staging.iam.gserviceaccount.com"
+--member="serviceAccount:clinical-svc@superwizor-ai-25ecd.iam.gserviceaccount.com"
 \\
 
 --role="roles/run.invoker"
@@ -3022,7 +3022,7 @@ dart pub global activate flutterfire_cli
 
 \# Configure (auto-creates lib/firebase_options.dart)
 
-flutterfire configure --project=superwizor-staging
+flutterfire configure --project=superwizor-ai-25ecd
 
 ### Task 1.4.3 --- Generate proto stubs dla Flutter
 
@@ -3394,7 +3394,7 @@ set -euo pipefail
 
 \# - User row exists w PostgreSQL (CreateUser called)
 
-PROJECT_ID="superwizor-staging"
+PROJECT_ID="superwizor-ai-25ecd"
 
 REGION="europe-central2"
 
@@ -3643,7 +3643,7 @@ EOF
 gcloud monitoring dashboards create
 --config-from-file=infra/monitoring/dashboard.json \\
 
---project=superwizor-staging
+--project=superwizor-ai-25ecd
 
 ### Task 1.5.4 --- Alerty
 
@@ -3671,7 +3671,7 @@ metric.label.\\"response_code_class\\"=\\"5xx\\"" \\
 
 --condition-threshold-duration=300s \\
 
---project=superwizor-staging
+--project=superwizor-ai-25ecd
 
 ### Definition of Done dla Sprint 1.5
 
@@ -3721,7 +3721,7 @@ identity-svc:443 identity.v1.IdentityService/CreateUser
 
 gcloud run services get-iam-policy identity-svc \\
 
---region=europe-central2 --project=superwizor-staging
+--region=europe-central2 --project=superwizor-ai-25ecd
 
 \# Should show clinical-svc@\... with run.invoker
 

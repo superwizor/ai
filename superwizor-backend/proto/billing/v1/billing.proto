@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package billing.v1;
+
+option go_package = "github.com/superwizor-ai/backend/gen/go/billing/v1;billingv1";
+
+service BillingService {
+  rpc CheckQuota(CheckQuotaRequest) returns (CheckQuotaResponse);
+}
+
+message CheckQuotaRequest {
+  string therapist_id = 1;
+  string quota_type = 2; // np. "AI_TRANSCRIPTION"
+}
+
+message CheckQuotaResponse {
+  bool allowed = 1;
+  string reason = 2; // optional reason why not allowed
+}

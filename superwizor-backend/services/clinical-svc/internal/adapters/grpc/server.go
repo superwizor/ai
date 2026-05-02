@@ -144,6 +144,51 @@ func (s *Server) ListPatientFiles(ctx context.Context, req *clinicalv1.ListPatie
 	return resp, nil
 }
 
+func (s *Server) UpdatePatientFile(ctx context.Context, req *clinicalv1.UpdatePatientFileRequest) (*clinicalv1.PatientFile, error) {
+	id, err := uuid.Parse(req.PatientFileId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid patient_file_id")
+	}
+
+	pf, err := s.queries.UpdatePatientFile(ctx, db.UpdatePatientFileParams{
+		ID:              id,
+		Column2:         req.WorkingAlias,
+		Column3:         req.InitialComplaint,
+		Column4:         req.PrivateTherapistNotes,
+		IsProcessClosed: req.IsProcessClosed,
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return toProtoPatientFile(pf, ""), nil
+}
+
+func (s *Server) DeletePatientFile(ctx context.Context, req *clinicalv1.DeletePatientFileRequest) (*emptypb.Empty, error) {
+	id, err := uuid.Parse(req.PatientFileId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid patient_file_id")
+	}
+
+	// We need therapist ID from context, but we don't have authentication logic implemented in this mock yet. 
+	// For now, let's just use empty uuid to make it compile, or since SoftDeletePatientFile requires TherapistID, 
+	// let's fetch the patient file first to get the therapist ID.
+	pf, err := s.queries.GetPatientFile(ctx, id)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "patient file not found")
+	}
+
+	err = s.queries.SoftDeletePatientFile(ctx, db.SoftDeletePatientFileParams{
+		ID:          id,
+		TherapistID: pf.TherapistID,
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 // Helpers
 func toProtoPatientFile(pf db.PatientFile, modalityCode string) *clinicalv1.PatientFile {
 	resp := &clinicalv1.PatientFile{

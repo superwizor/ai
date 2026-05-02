@@ -2,8 +2,8 @@
 set -e
 
 # Get password from Secret Manager
-POSTGRES_PASSWORD='P0p+VS8[Y[m4T4&u[J@YuG2gJnt?mw:$'
-CONNECTION_NAME="superwizor-staging:europe-central2:superwizor-db-54a7bbba"
+POSTGRES_PASSWORD=$(gcloud secrets versions access latest --secret=superwizor-db-password --project=superwizor-ai-25ecd)
+CONNECTION_NAME="superwizor-ai-25ecd:europe-central2:superwizor-db-4d61ad78"
 
 # Run proxy in background
 ./cloud-sql-proxy ${CONNECTION_NAME} --port=5432 &
@@ -21,3 +21,4 @@ DB_USER="superwizor_app" DB_PASSWORD="${ENCODED_PASSWORD}" make migrate-up || { 
 
 echo "Migration successful. Killing proxy..."
 kill ${PROXY_PID}
+

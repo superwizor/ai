@@ -123,6 +123,18 @@ jobs:
           docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/clinical-svc/Dockerfile .
           docker push -a $IMAGE_PATH
 
+      - name: Build and Push AI Pipeline image
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-ai-pipeline"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/ai-pipeline-svc/Dockerfile .
+          docker push -a $IMAGE_PATH
+
+      - name: Build and Push Billing image
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-billing"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/billing-svc/Dockerfile .
+          docker push -a $IMAGE_PATH
+
       - name: Deploy and Run Migration Job
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-migrator:${{ github.sha }}"
@@ -176,3 +188,28 @@ jobs:
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
             --set-env-vars="IDENTITY_SVC_URL=${IDENTITY_URL},VERSION=${{ github.sha }}"
+
+      - name: Deploy AI Pipeline to Cloud Run
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-ai-pipeline"
+          
+          gcloud run deploy ai-pipeline-svc \
+            --image $IMAGE_PATH:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --vpc-connector swvpc-connector \
+            --set-secrets="DATABASE_URL=postgres-database-url:latest" \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
+
+      - name: Deploy Billing to Cloud Run
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-billing"
+          
+          gcloud run deploy billing-svc \
+            --image $IMAGE_PATH:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --vpc-connector swvpc-connector \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"

@@ -38,3 +38,14 @@ module "audit_logs" {
   source     = "../../modules/audit-logs"
   project_id = var.project_id
 }
+
+module "storage" {
+  source          = "../../modules/storage"
+  project_id      = var.project_id
+  pubsub_topic_id = module.pubsub.topic_audio_uploaded
+}
+
+module "pubsub" {
+  source     = "../../modules/pubsub"
+  project_id = var.project_id
+}

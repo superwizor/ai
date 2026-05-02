@@ -53,7 +53,7 @@ Faza 2 jest "done" kiedy spełnione są WSZYSTKIE poniższe:
 - [ ] **billing-svc stub** deployowany; `CheckQuota` zwraca `allowed=true` zawsze (mock).
 - [ ] **ai-pipeline-svc** zawiera 2 Cloud Functions Gen2:
   - `stt-worker` reaguje na Pub/Sub topic `audio.uploaded`, używa Chirp 3 z diarization, generuje **neutralne lokalizowane labels** (`Osoba 1` / `Person 1` / itd.) na podstawie `language_code` z pakietu `pkg/i18n/speakerlabels`. Zapisuje kanoniczny blob w `transcripts` + statystyki w `transcript_segments`.
-  - `llm-worker` reaguje na `transcript.completed`, ładuje RAG context, wywołuje Gemini 2.5 PRO ze structured output, **deduces role per speaker_tag** (zapis w `reports.speaker_role_inference` JSONB), zapisuje `reports`, `hitop_measurements`, embeddings do `rag_memory`.
+  - `llm-worker` reaguje na `transcript.completed`, ładuje RAG context, wywołuje Gemini 3.1 FLASH ze structured output, **deduces role per speaker_tag** (zapis w `reports.speaker_role_inference` JSONB), zapisuje `reports`, `hitop_measurements`, embeddings do `rag_memory`.
 - [ ] **clinical-svc.UpdateSpeakerLabels** endpoint działa: terapeuta zmienia `Osoba 1 → Anna`, blob `transcripts.transcript_ciphertext` jest atomicznie regenerowany.
 - [ ] Flutter recording module:
   - Wakelock włączony podczas nagrywania.
@@ -124,16 +124,15 @@ Pełen słownik jest w pakiecie `pkg/i18n/speakerlabels`. Locale wykryty automat
 - Terapeuta może w UI ręcznie zmienić labels (`Osoba 1 → Anna`, `Osoba 2 → Marek`) — przez endpoint `UpdateSpeakerLabels`.
 - LLM raport zawiera explicit attribution z evidence (np. *"Osoba 1, prawdopodobnie terapeuta, zastosowała technikę socratic questioning w segmencie 02:15-03:40"*).
 
-### ADR-IMPL-003: Gemini 2.5 PRO przez Vertex AI
+### ADR-IMPL-003: Gemini 3.1 FLASH przez Vertex AI
 
 **Kontekst:** Decyzja modelu LLM dla pipeline'u.
 
-**Decyzja:** **Gemini 2.5 PRO przez Vertex AI** (nie public Gemini API):
+**Decyzja:** **Gemini 3.1 FLASH przez Vertex AI** (nie public Gemini API):
 - Region `europe-west4` (sąsiad europe-central2, dostępny w UE).
 - Structured output via `response_schema` (JSON Schema, supported od Gemini 2.0+).
 - Auth przez Workload Identity (zero JSON keys).
 
-**Pricing snapshot (kwiecień 2026):** ~$1.25/$5 per 1M tokens (input/output) dla Gemini 2.5 PRO. Per session ~$0.06 (input ~30k tokens, output ~5k tokens).
 
 ### ADR-IMPL-004: Cloud Functions Gen2 jako workery
 
