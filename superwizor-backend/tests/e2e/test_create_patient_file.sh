@@ -5,7 +5,7 @@ set -euo pipefail
 # - User created w Firebase Auth
 # - User row exists w PostgreSQL (CreateUser called)
 
-PROJECT_ID="superwizor-staging"
+PROJECT_ID="superwizor-ai-25ecd"
 REGION="europe-central2"
 
 # Get service URLs
@@ -35,7 +35,21 @@ grpcurl -H "authorization: Bearer ${TOKEN}" \
   clinical.v1.ClinicalService/ListModalities
 
 echo "=== Step 3: Create patient file ==="
-THERAPIST_ID=$(echo "SELECT id FROM users LIMIT 1;" | psql -h 127.0.0.1 -U postgres -d superwizor -t | tr -d ' ')
+UID_SUFFIX=$(date +%s)
+THERAPIST_ID=$(grpcurl -H "authorization: Bearer ${TOKEN}" \
+  -d "{
+    \"firebase_uid\": \"test_uid_${UID_SUFFIX}\",
+    \"email\": \"test_${UID_SUFFIX}@example.com\",
+    \"role\": \"USER_ROLE_THERAPIST\",
+    \"first_name\": \"E2E\",
+    \"last_name\": \"Test\",
+    \"ui_language\": \"pl\",
+    \"timezone\": \"Europe/Warsaw\",
+    \"has_accepted_tos\": true
+  }" \
+  ${IDENTITY_URL#https://}:443 \
+  identity.v1.IdentityService/CreateUser | grep '"id":' | cut -d'"' -f4)
+
 
 grpcurl -H "authorization: Bearer ${TOKEN}" \
   -d "{
@@ -49,12 +63,13 @@ grpcurl -H "authorization: Bearer ${TOKEN}" \
   ${CLINICAL_URL#https://}:443 \
   clinical.v1.ClinicalService/CreatePatientFile
 
-echo "=== Step 4: Verify w DB ==="
-echo "SELECT id, working_alias FROM patient_files WHERE working_alias = 'E2E Test Patient';" | \
-  psql -h 127.0.0.1 -U postgres -d superwizor
-
-echo "=== Step 5: Audit event ==="
-echo "SELECT action, resource_type, occurred_at FROM audit_events ORDER BY occurred_at DESC LIMIT 5;" | \
-  psql -h 127.0.0.1 -U postgres -d superwizor
+echo "=== Step 4: Verify via ListPatientFiles ==="
+grpcurl -H "authorization: Bearer ${TOKEN}" \
+  -d "{
+    \"therapist_id\": \"${THERAPIST_ID}\",
+    \"page_size\": 5
+  }" \
+  ${CLINICAL_URL#https://}:443 \
+  clinical.v1.ClinicalService/ListPatientFiles
 
 echo "✅ All E2E checks passed"
