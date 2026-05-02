@@ -4,6 +4,7 @@ import '../services/recording_service.dart';
 import '../services/upload_service.dart';
 import '../widgets/euphire_header.dart';
 import '../widgets/euphire_button.dart';
+import '../widgets/euphire_recording_indicator.dart';
 
 class RecordingScreen extends StatefulWidget {
   final String patientFileId;
@@ -74,6 +75,9 @@ class _RecordingScreenState extends State<RecordingScreen> {
       // 4. Notify ingestion-svc że upload się zakończył
       await _completeUpload();
 
+      // 5. Zniszczenie dowodów (Krematorium Danych) po HTTP 200 z ingestion-svc i GCS
+      await _recorder.cleanSession(_sessionId!);
+
       if (mounted) {
         Navigator.pop(context, _sessionId);
       }
@@ -118,42 +122,11 @@ class _RecordingScreenState extends State<RecordingScreen> {
               ),
               const SizedBox(height: 48),
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _recorder.state == RecordingState.recording
-                          ? Icons.fiber_manual_record
-                          : Icons.mic,
-                      color: theme.colorScheme.primary,
-                      size: 96,
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      _formatDuration(_elapsed),
-                      style: theme.textTheme.displayLarge?.copyWith(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Zapisane fragmenty: $_chunkCount.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    if (_errorMessage != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        _errorMessage!,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.error,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ],
+                child: EuphireRecordingIndicator(
+                  isRecording: _recorder.state == RecordingState.recording,
+                  formattedDuration: _formatDuration(_elapsed),
+                  chunkCount: _chunkCount,
+                  errorMessage: _errorMessage,
                 ),
               ),
               const SizedBox(height: 24),

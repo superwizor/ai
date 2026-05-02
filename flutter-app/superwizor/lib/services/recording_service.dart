@@ -44,7 +44,7 @@ class RecordingService {
       throw Exception('Microphone permission denied');
     }
 
-    final docs = await getApplicationDocumentsDirectory();
+    final docs = await getApplicationSupportDirectory();
     _sessionDir = p.join(docs.path, 'recordings', sessionId);
     await Directory(_sessionDir!).create(recursive: true);
 
@@ -143,6 +143,15 @@ class RecordingService {
 
     files.sort();
     return files;
+  }
+
+  Future<void> cleanSession(String sessionId) async {
+    final docs = await getApplicationSupportDirectory();
+    final targetDir = p.join(docs.path, 'recordings', sessionId);
+    final dir = Directory(targetDir);
+    if (await dir.exists()) {
+      await dir.delete(recursive: true);
+    }
   }
 
   void _setState(RecordingState newState) {
