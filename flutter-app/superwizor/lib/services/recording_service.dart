@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:encrypt/encrypt.dart' as enc;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -26,12 +27,17 @@ class RecordingService {
   int _chunkIndex = 0;
   DateTime? _chunkStartTime;
   RecordingState _state = RecordingState.idle;
+  
+  enc.Key? _sessionKey;
+  enc.IV? _sessionIV;
 
   static const _chunkDurationSeconds = 30;
 
   Stream<RecordingState> get stateStream => _stateController.stream;
   Stream<AudioChunk> get chunkStream => _chunkController.stream;
   RecordingState get state => _state;
+  enc.Key? get sessionKey => _sessionKey;
+  enc.IV? get sessionIV => _sessionIV;
 
   Future<bool> hasPermission() async {
     final status = await Permission.microphone.request();
@@ -43,6 +49,9 @@ class RecordingService {
       _setState(RecordingState.error);
       throw Exception('Microphone permission denied');
     }
+
+    _sessionKey = enc.Key.fromSecureRandom(32);
+    _sessionIV = enc.IV.fromSecureRandom(16);
 
     final docs = await getApplicationSupportDirectory();
     _sessionDir = p.join(docs.path, 'recordings', sessionId);
@@ -84,6 +93,7 @@ class RecordingService {
     final duration = DateTime.now().difference(_chunkStartTime!).inMilliseconds;
     
     if (oldPath != null) {
+      await _encryptChunk(oldPath);
       _chunkController.add(AudioChunk(
         filePath: oldPath,
         chunkIndex: _chunkIndex,
@@ -119,6 +129,7 @@ class RecordingService {
     
     final finalPath = await _recorder.stop();
     if (finalPath != null && _chunkStartTime != null) {
+      await _encryptChunk(finalPath);
       final duration = DateTime.now().difference(_chunkStartTime!).inMilliseconds;
       _chunkController.add(AudioChunk(
         filePath: finalPath,
@@ -157,6 +168,18 @@ class RecordingService {
   void _setState(RecordingState newState) {
     _state = newState;
     _stateController.add(newState);
+  }
+
+  Future<void> _encryptChunk(String path) async {
+    if (_sessionKey == null || _sessionIV == null) return;
+    final file = File(path);
+    if (!await file.exists()) return;
+
+    final bytes = await file.readAsBytes();
+    final encrypter = enc.Encrypter(enc.AES(_sessionKey!));
+    final encrypted = encrypter.encryptBytes(bytes, iv: _sessionIV!);
+
+    await file.writeAsBytes(encrypted.bytes);
   }
 
   void dispose() {

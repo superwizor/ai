@@ -56,19 +56,28 @@ class _RecordingScreenState extends State<RecordingScreen> {
     try {
       final chunkPaths = await _recorder.stopRecording();
 
-      // 1. Połącz chunki w jeden plik (w prod: native ffmpeg)
-      final combined = await _uploader.combineChunks(chunkPaths);
+      // 1. Odszyfruj i połącz chunki do pliku temp (omija RAM)
+      final tempFile = await _uploader.combineAndDecryptToTemp(
+        chunkPaths, 
+        _recorder.sessionKey!, 
+        _recorder.sessionIV!
+      );
 
       // 2. Pobierz signed URL z ingestion-svc (placeholder — gRPC call)
-      // TODO: prawdziwe gRPC wywołanie, dla przykładu hardcoded
-      final signedUrl = await _requestSignedUrl(combined.length);
+      final length = await tempFile.length();
+      final signedUrl = await _requestSignedUrl(length);
 
-      // 3. PUT do GCS
-      final ok = await _uploader.uploadToSignedUrl(
+      // 3. PUT do GCS (streamowane)
+      final ok = await _uploader.uploadFileToSignedUrl(
         signedUrl: signedUrl,
-        audioBytes: combined,
+        file: tempFile,
         contentType: 'audio/m4a',
       );
+
+      // Szybko usuwamy zdekodowany bufor z dysku
+      if (await tempFile.exists()) {
+        await tempFile.delete();
+      }
 
       if (!ok) throw Exception('Wystąpił błąd podczas wysyłania nagrania.');
 
