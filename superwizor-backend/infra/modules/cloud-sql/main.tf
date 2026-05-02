@@ -21,6 +21,7 @@ resource "google_sql_database_instance" "main" {
     ip_configuration {
       ipv4_enabled    = true
       private_network = var.network_id
+      ssl_mode        = "ENCRYPTED_ONLY"
 
       authorized_networks {
         name  = "local-machine"

@@ -7,5 +7,5 @@ terraform {
 }
 
 inputs = {
-  project_id = "superwizor-staging"
+  project_id = "superwizor-ai-25ecd"
 }

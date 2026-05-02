@@ -1,9 +1,9 @@
 remote_state {
   backend = "gcs"
   config = {
-    bucket   = "superwizor-tfstate-eu2"
+    bucket   = "superwizor-ai-tfstate"
     prefix   = "${path_relative_to_include()}"
-    project  = "superwizor-tfstate"
+    project  = "superwizor-ai-25ecd"
     location = "europe-central2"
   }
   generate = {
