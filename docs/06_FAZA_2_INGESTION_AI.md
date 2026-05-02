@@ -43,27 +43,45 @@ Nowy gRPC endpoint `clinical-svc.UpdateSpeakerLabels` aktualizuje `sessions.spea
 
 ---
 
+## 🎯 Status Wdrażania (Checklista Zadań)
+
+- [ ] **KROK 1: Uzupełnienie i aplikacja Migracji DDL (Sprint 2.1)**
+  - [ ] Dodanie tabel `audio_uploads` oraz `sessions` do istniejącego pliku migracji `000007_phase2_ingestion.up.sql`.
+  - [ ] Aplikacja migracji w środowisku chmurowym Cloud SQL.
+- [ ] **KROK 2: Cloud Storage + `ingestion-svc` (Sprint 2.2)**
+  - [ ] Utworzenie bucketa GCS `superwizor-audio-uploads` z regułami automatycznego usuwania (OLM 48h).
+  - [ ] Napisanie mikroserwisu w Go `ingestion-svc` generującego bezpieczne adresy URL do wysyłki (Signed URLs).
+- [ ] **KROK 3: Stub Billing Service (Sprint 2.3)**
+  - [ ] Postawienie stuba (zaślepki) `billing-svc` odpowiadającego `allowed=true` podczas sprawdzania limitów (integracja Stripe nastąpi w Fazie 3).
+- [ ] **KROK 4: Infrastruktura Zdarzeń - Pub/Sub (Sprint 2.4)**
+  - [ ] Konfiguracja tematów Pub/Sub (`audio.uploaded`, `transcript.completed`).
+- [ ] **KROK 5: AI Workers - Mózg Systemu (Sprinty 2.5 & 2.6)**
+  - [ ] Cloud Function Gen2 `stt-worker` integrująca Google Chirp 3 (z podziałem ról na Osoba 1, Osoba 2).
+  - [ ] Cloud Function Gen2 `llm-worker` integrująca Gemini 3.1 FLASH przez Vertex AI do generowania raportów zgodnych z EUPHIRE.
+- [ ] **KROK 6: Połączenie Fluttera z Prawdziwym Backendem**
+  - [ ] Wymiana hardcodowanych wartości gRPC w aplikacji mobilnej na żądania do działającego `ingestion-svc`.
+- [x] **KROK 7: Flutter recording module (Sprint 2.7) - UKOŃCZONY**
+  - [x] Architektura mikro-paczki (chunking) nagrywania i zrzutowanie AES-256 w locie.
+  - [x] Izolowana wysyłka strumieniowa bez buforowania w RAM.
+  - [x] Opracowany protokół destrukcji kryptograficznej (Krematorium Danych).
+- [ ] **KROK 8: E2E Test (Sprint 2.8)**
+  - [ ] Przetestowanie całego potoku od wypowiedzenia słowa do otrzymania analizy z AI w telefonie.
+
+---
+
 ## Definition of Done
 
 Faza 2 jest "done" kiedy spełnione są WSZYSTKIE poniższe:
 
-- [ ] Migracje DDL `000007_audio.up.sql`, `000008_sessions.up.sql`, `000009_ai_pipeline.up.sql`, `000010_rag_memory.up.sql` zaaplikowane.
-- [ ] Cloud Storage bucket `superwizor-audio-uploads` z OLM 48h, CMEK, uniform bucket-level access, public access prevention.
-- [ ] **ingestion-svc** deployowany; zwraca signed URL na request, weryfikuje `recording_consent` i kwotę miesięczną.
-- [ ] **billing-svc stub** deployowany; `CheckQuota` zwraca `allowed=true` zawsze (mock).
-- [ ] **ai-pipeline-svc** zawiera 2 Cloud Functions Gen2:
-  - `stt-worker` reaguje na Pub/Sub topic `audio.uploaded`, używa Chirp 3 z diarization, generuje **neutralne lokalizowane labels** (`Osoba 1` / `Person 1` / itd.) na podstawie `language_code` z pakietu `pkg/i18n/speakerlabels`. Zapisuje kanoniczny blob w `transcripts` + statystyki w `transcript_segments`.
-  - `llm-worker` reaguje na `transcript.completed`, ładuje RAG context, wywołuje Gemini 3.1 FLASH ze structured output, **deduces role per speaker_tag** (zapis w `reports.speaker_role_inference` JSONB), zapisuje `reports`, `hitop_measurements`, embeddings do `rag_memory`.
-- [ ] **clinical-svc.UpdateSpeakerLabels** endpoint działa: terapeuta zmienia `Osoba 1 → Anna`, blob `transcripts.transcript_ciphertext` jest atomicznie regenerowany.
-- [ ] Flutter recording module:
-  - Wakelock włączony podczas nagrywania.
-  - Audio chunking co 30s do plików `.m4a`.
-  - Upload przez signed URL (PUT request) z retry policy.
-  - Progress indicator i error handling.
-- [ ] **E2E test:** Flutter nagrywa 90s testowego dialogu → upload → STT → LLM → raport widoczny w aplikacji w < 4 min.
-- [ ] Pub/Sub Dead Letter Queue skonfigurowane dla wszystkich subscriptions.
-- [ ] Pipeline logs widoczne w Cloud Logging z `session_id` jako label.
-- [ ] Test coverage ≥ 70% dla wszystkich nowych serwisów.
+- [ ] Migracje DDL (m.in. `000007_phase2_ingestion.up.sql`) zaaplikowane w pełni.
+- [ ] Cloud Storage bucket `superwizor-audio-uploads` gotowy i zabezpieczony.
+- [ ] **ingestion-svc** deployowany i działający (signed URLs).
+- [ ] **billing-svc stub** deployowany i zintegrowany.
+- [ ] **ai-pipeline-svc** uruchomiony (Chirp 3 + Gemini 3.1 FLASH).
+- [ ] **clinical-svc.UpdateSpeakerLabels** endpoint umożliwiający edycję "Osoba 1" na "Jan Kowalski".
+- [x] Flutter recording module (UKOŃCZONY z pełnym wdrożeniem zabezpieczeń EUPHIRE Secure).
+- [ ] **E2E test** przechodzi bez zająknięcia (czas całej analizy poniżej 4 min).
+- [ ] Logi systemowe przepływają do Cloud Logging prawidłowo powiązane po `session_id`.
 
 ---
 
