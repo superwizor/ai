@@ -54,9 +54,13 @@ func (s *Server) ListModalities(ctx context.Context, _ *emptypb.Empty) (*clinica
 }
 
 func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePatientFileRequest) (*clinicalv1.PatientFile, error) {
-	therapistID, err := uuid.Parse(req.TherapistId)
+	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
+	if !ok || therapistIDStr == "" {
+		return nil, status.Error(codes.Unauthenticated, "missing user ID in context")
+	}
+	therapistID, err := uuid.Parse(therapistIDStr)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id")
+		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id in context")
 	}
 	if req.WorkingAlias == "" || req.ModalityCode == "" {
 		return nil, status.Error(codes.InvalidArgument, "working_alias and modality_code required")
@@ -122,9 +126,13 @@ func (s *Server) GetPatientFile(ctx context.Context, req *clinicalv1.GetPatientF
 }
 
 func (s *Server) ListPatientFiles(ctx context.Context, req *clinicalv1.ListPatientFilesRequest) (*clinicalv1.ListPatientFilesResponse, error) {
-	therapistID, err := uuid.Parse(req.TherapistId)
+	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
+	if !ok || therapistIDStr == "" {
+		return nil, status.Error(codes.Unauthenticated, "missing user ID in context")
+	}
+	therapistID, err := uuid.Parse(therapistIDStr)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id")
+		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id in context")
 	}
 	pageSize := req.PageSize
 	if pageSize <= 0 || pageSize > 100 {

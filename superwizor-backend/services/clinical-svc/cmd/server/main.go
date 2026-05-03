@@ -12,6 +12,7 @@ import (
 	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -87,29 +88,54 @@ func main() {
 	}
 	defer pool.Close()
 
-	// gRPC client → identity-svc with Cloud Run service-to-service auth
-	tokenSource, err := idtoken.NewTokenSource(ctx, identityURL)
-	if err != nil {
-		slog.Error("token source failed", "error", err)
-		os.Exit(1)
-	}
+	// gRPC client → identity-svc with Cloud Run service-to-service auth (if https)
+	var identityConn *grpc.ClientConn
+	
+	if len(identityURL) >= 5 && identityURL[:5] == "https" {
+		tokenSource, err := idtoken.NewTokenSource(ctx, identityURL)
+		if err != nil {
+			slog.Error("token source failed", "error", err)
+			os.Exit(1)
+		}
 
-	u, err := url.Parse(identityURL)
-	if err != nil {
-		slog.Error("invalid identity URL", "error", err)
-		os.Exit(1)
-	}
-	target := u.Host + ":443"
+		u, err := url.Parse(identityURL)
+		if err != nil {
+			slog.Error("invalid identity URL", "error", err)
+			os.Exit(1)
+		}
+		target := u.Host + ":443"
 
-	identityConn, err := grpc.NewClient(
-		target,
-		grpc.WithTransportCredentials(credentials.NewTLS(nil)),
-		grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
-		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
-	)
-	if err != nil {
-		slog.Error("identity dial failed", "error", err)
-		os.Exit(1)
+		identityConn, err = grpc.NewClient(
+			target,
+			grpc.WithTransportCredentials(credentials.NewTLS(nil)),
+			grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
+			grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+		)
+		if err != nil {
+			slog.Error("identity dial failed", "error", err)
+			os.Exit(1)
+		}
+	} else {
+		u, err := url.Parse(identityURL)
+		if err != nil {
+			slog.Error("invalid identity URL", "error", err)
+			os.Exit(1)
+		}
+		
+		target := u.Host
+		if target == "" {
+			target = identityURL // fallback if it's just host:port
+		}
+
+		identityConn, err = grpc.NewClient(
+			target,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+		)
+		if err != nil {
+			slog.Error("identity dial insecure failed", "error", err)
+			os.Exit(1)
+		}
 	}
 	defer func() { _ = identityConn.Close() }()
 
@@ -130,6 +156,7 @@ func main() {
 
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		grpc.UnaryInterceptor(grpcadapter.UnaryAuthInterceptor(identityClient)),
 	)
 	clinicalv1.RegisterClinicalServiceServer(grpcServer, srv)
 
