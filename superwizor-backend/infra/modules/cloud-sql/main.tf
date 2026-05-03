@@ -25,7 +25,7 @@ resource "google_sql_database_instance" "main" {
 
       authorized_networks {
         name  = "local-machine"
-        value = "37.47.79.164/32"
+        value = "91.226.22.63/32"
       }
     }
 

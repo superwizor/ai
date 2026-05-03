@@ -7,7 +7,9 @@ import '../widgets/euphire_list_tile.dart';
 import '../screens/recording_screen.dart';
 import '../providers/patient_provider.dart';
 import '../models/session.dart';
+import '../models/patient.dart';
 import '../constants/modalities.dart';
+import '../screens/session_details_screen.dart';
 
 class AddSessionModal extends ConsumerWidget {
   final String patientId;
@@ -50,7 +52,14 @@ class AddSessionModal extends ConsumerWidget {
                   child: EuphireCard(
                     child: EuphireListTile(
                       title: modality,
-                      onTap: () {
+                      onTap: () async {
+                        // Pobierz dane pacjenta przed zamknięciem modala
+                        final patientsState = ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? [];
+                        final patient = patientsState.firstWhere(
+                          (p) => p.id == patientId,
+                          orElse: () => Patient(id: patientId, firstName: 'Nie znaleziono', lastName: ''),
+                        );
+                        
                         // Zamknij bottom sheet
                         Navigator.pop(context);
                         
@@ -67,8 +76,8 @@ class AddSessionModal extends ConsumerWidget {
                         ref.read(sessionsProvider.notifier).addSession(session);
                         ref.read(patientsProvider.notifier).incrementSessionCount(patientId);
 
-                        // Przejdz do nagrywania
-                        Navigator.push(
+                        // Przejdz do nagrywania i czekaj na powrót
+                        final returnedSessionId = await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => RecordingScreen(
@@ -77,6 +86,23 @@ class AddSessionModal extends ConsumerWidget {
                             ),
                           ),
                         );
+
+                        // Jeśli wrócono z poprawnym id sesji, przejdź do szczegółów
+                        if (returnedSessionId != null && context.mounted) {
+                          final dateStr = '${session.date.day.toString().padLeft(2, '0')}.${session.date.month.toString().padLeft(2, '0')}.${session.date.year}';
+                          
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SessionDetailsScreen(
+                                sessionId: returnedSessionId as String,
+                                patientName: patient.firstName, // Używamy prawdziwego imienia
+                                date: dateStr,
+                                modality: modality,
+                              ),
+                            ),
+                          );
+                        }
                       },
                     ),
                   ),

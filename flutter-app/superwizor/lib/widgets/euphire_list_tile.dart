@@ -33,7 +33,10 @@ class EuphireListTile extends StatelessWidget {
               ),
             )
           : null,
-      trailing: Icon(trailingIcon, color: trailingIcon == Icons.arrow_forward_ios ? EuphireColors.ember : EuphireColors.mist, size: trailingIcon == Icons.arrow_forward_ios ? 16 : 24),
+      trailing: SizedBox(
+        width: trailingIcon == Icons.arrow_forward_ios ? 16 : 24,
+        child: Icon(trailingIcon, color: trailingIcon == Icons.arrow_forward_ios ? EuphireColors.ember : EuphireColors.mist, size: trailingIcon == Icons.arrow_forward_ios ? 16 : 24),
+      ),
       onTap: onTap,
     );
   }

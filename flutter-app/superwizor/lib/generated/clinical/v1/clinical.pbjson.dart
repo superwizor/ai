@@ -368,3 +368,205 @@ final $typed_data.Uint8List updateSpeakerLabelsResponseDescriptor = $convert.bas
     'lvbklkEiMKDXRyYW5zY3JpcHRfaWQYAiABKAlSDHRyYW5zY3JpcHRJZBIpChBzZWdtZW50c191'
     'cGRhdGVkGAMgASgFUg9zZWdtZW50c1VwZGF0ZWQSIQoMYmxvYl9yZWJ1aWx0GAQgASgIUgtibG'
     '9iUmVidWlsdA==');
+
+@$core.Deprecated('Use sessionDescriptor instead')
+const Session$json = {
+  '1': 'Session',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'therapist_id', '3': 2, '4': 1, '5': 9, '10': 'therapistId'},
+    {'1': 'patient_file_id', '3': 3, '4': 1, '5': 9, '10': 'patientFileId'},
+    {'1': 'audio_upload_id', '3': 4, '4': 1, '5': 9, '10': 'audioUploadId'},
+    {'1': 'session_date', '3': 5, '4': 1, '5': 9, '10': 'sessionDate'},
+    {'1': 'session_number', '3': 6, '4': 1, '5': 5, '10': 'sessionNumber'},
+    {'1': 'duration_seconds', '3': 7, '4': 1, '5': 5, '10': 'durationSeconds'},
+    {'1': 'contact_form', '3': 8, '4': 1, '5': 9, '10': 'contactForm'},
+    {
+      '1': 'speaker_label_mapping',
+      '3': 9,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.Session.SpeakerLabelMappingEntry',
+      '10': 'speakerLabelMapping'
+    },
+    {'1': 'status', '3': 10, '4': 1, '5': 9, '10': 'status'},
+    {
+      '1': 'created_at',
+      '3': 11,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+  ],
+  '3': [Session_SpeakerLabelMappingEntry$json],
+};
+
+@$core.Deprecated('Use sessionDescriptor instead')
+const Session_SpeakerLabelMappingEntry$json = {
+  '1': 'SpeakerLabelMappingEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `Session`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List sessionDescriptor = $convert.base64Decode(
+    'CgdTZXNzaW9uEg4KAmlkGAEgASgJUgJpZBIhCgx0aGVyYXBpc3RfaWQYAiABKAlSC3RoZXJhcG'
+    'lzdElkEiYKD3BhdGllbnRfZmlsZV9pZBgDIAEoCVINcGF0aWVudEZpbGVJZBImCg9hdWRpb191'
+    'cGxvYWRfaWQYBCABKAlSDWF1ZGlvVXBsb2FkSWQSIQoMc2Vzc2lvbl9kYXRlGAUgASgJUgtzZX'
+    'NzaW9uRGF0ZRIlCg5zZXNzaW9uX251bWJlchgGIAEoBVINc2Vzc2lvbk51bWJlchIpChBkdXJh'
+    'dGlvbl9zZWNvbmRzGAcgASgFUg9kdXJhdGlvblNlY29uZHMSIQoMY29udGFjdF9mb3JtGAggAS'
+    'gJUgtjb250YWN0Rm9ybRJhChVzcGVha2VyX2xhYmVsX21hcHBpbmcYCSADKAsyLS5jbGluaWNh'
+    'bC52MS5TZXNzaW9uLlNwZWFrZXJMYWJlbE1hcHBpbmdFbnRyeVITc3BlYWtlckxhYmVsTWFwcG'
+    'luZxIWCgZzdGF0dXMYCiABKAlSBnN0YXR1cxI5CgpjcmVhdGVkX2F0GAsgASgLMhouZ29vZ2xl'
+    'LnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYXRlZEF0GkYKGFNwZWFrZXJMYWJlbE1hcHBpbmdFbn'
+    'RyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
+
+@$core.Deprecated('Use listSessionsRequestDescriptor instead')
+const ListSessionsRequest$json = {
+  '1': 'ListSessionsRequest',
+  '2': [
+    {'1': 'patient_file_id', '3': 1, '4': 1, '5': 9, '10': 'patientFileId'},
+  ],
+};
+
+/// Descriptor for `ListSessionsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listSessionsRequestDescriptor = $convert.base64Decode(
+    'ChNMaXN0U2Vzc2lvbnNSZXF1ZXN0EiYKD3BhdGllbnRfZmlsZV9pZBgBIAEoCVINcGF0aWVudE'
+    'ZpbGVJZA==');
+
+@$core.Deprecated('Use listSessionsResponseDescriptor instead')
+const ListSessionsResponse$json = {
+  '1': 'ListSessionsResponse',
+  '2': [
+    {
+      '1': 'sessions',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.Session',
+      '10': 'sessions'
+    },
+  ],
+};
+
+/// Descriptor for `ListSessionsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listSessionsResponseDescriptor = $convert.base64Decode(
+    'ChRMaXN0U2Vzc2lvbnNSZXNwb25zZRIwCghzZXNzaW9ucxgBIAMoCzIULmNsaW5pY2FsLnYxLl'
+    'Nlc3Npb25SCHNlc3Npb25z');
+
+@$core.Deprecated('Use transcriptSegmentDescriptor instead')
+const TranscriptSegment$json = {
+  '1': 'TranscriptSegment',
+  '2': [
+    {'1': 'speaker_tag', '3': 1, '4': 1, '5': 5, '10': 'speakerTag'},
+    {'1': 'speaker_label', '3': 2, '4': 1, '5': 9, '10': 'speakerLabel'},
+    {'1': 'start_offset_ms', '3': 3, '4': 1, '5': 5, '10': 'startOffsetMs'},
+    {'1': 'end_offset_ms', '3': 4, '4': 1, '5': 5, '10': 'endOffsetMs'},
+    {'1': 'text', '3': 5, '4': 1, '5': 9, '10': 'text'},
+    {'1': 'confidence', '3': 6, '4': 1, '5': 2, '10': 'confidence'},
+  ],
+};
+
+/// Descriptor for `TranscriptSegment`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List transcriptSegmentDescriptor = $convert.base64Decode(
+    'ChFUcmFuc2NyaXB0U2VnbWVudBIfCgtzcGVha2VyX3RhZxgBIAEoBVIKc3BlYWtlclRhZxIjCg'
+    '1zcGVha2VyX2xhYmVsGAIgASgJUgxzcGVha2VyTGFiZWwSJgoPc3RhcnRfb2Zmc2V0X21zGAMg'
+    'ASgFUg1zdGFydE9mZnNldE1zEiIKDWVuZF9vZmZzZXRfbXMYBCABKAVSC2VuZE9mZnNldE1zEh'
+    'IKBHRleHQYBSABKAlSBHRleHQSHgoKY29uZmlkZW5jZRgGIAEoAlIKY29uZmlkZW5jZQ==');
+
+@$core.Deprecated('Use transcriptDescriptor instead')
+const Transcript$json = {
+  '1': 'Transcript',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {
+      '1': 'segments',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.TranscriptSegment',
+      '10': 'segments'
+    },
+  ],
+};
+
+/// Descriptor for `Transcript`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List transcriptDescriptor = $convert.base64Decode(
+    'CgpUcmFuc2NyaXB0Eg4KAmlkGAEgASgJUgJpZBI6CghzZWdtZW50cxgCIAMoCzIeLmNsaW5pY2'
+    'FsLnYxLlRyYW5zY3JpcHRTZWdtZW50UghzZWdtZW50cw==');
+
+@$core.Deprecated('Use reportDescriptor instead')
+const Report$json = {
+  '1': 'Report',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'summary_short', '3': 3, '4': 1, '5': 9, '10': 'summaryShort'},
+    {'1': 'content', '3': 4, '4': 1, '5': 9, '10': 'content'},
+    {'1': 'sentiment_label', '3': 5, '4': 1, '5': 9, '10': 'sentimentLabel'},
+    {'1': 'risk_level', '3': 6, '4': 1, '5': 9, '10': 'riskLevel'},
+  ],
+};
+
+/// Descriptor for `Report`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportDescriptor = $convert.base64Decode(
+    'CgZSZXBvcnQSDgoCaWQYASABKAlSAmlkEhQKBXRpdGxlGAIgASgJUgV0aXRsZRIjCg1zdW1tYX'
+    'J5X3Nob3J0GAMgASgJUgxzdW1tYXJ5U2hvcnQSGAoHY29udGVudBgEIAEoCVIHY29udGVudBIn'
+    'Cg9zZW50aW1lbnRfbGFiZWwYBSABKAlSDnNlbnRpbWVudExhYmVsEh0KCnJpc2tfbGV2ZWwYBi'
+    'ABKAlSCXJpc2tMZXZlbA==');
+
+@$core.Deprecated('Use getSessionDetailsRequestDescriptor instead')
+const GetSessionDetailsRequest$json = {
+  '1': 'GetSessionDetailsRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+  ],
+};
+
+/// Descriptor for `GetSessionDetailsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getSessionDetailsRequestDescriptor =
+    $convert.base64Decode(
+        'ChhHZXRTZXNzaW9uRGV0YWlsc1JlcXVlc3QSHQoKc2Vzc2lvbl9pZBgBIAEoCVIJc2Vzc2lvbk'
+        'lk');
+
+@$core.Deprecated('Use getSessionDetailsResponseDescriptor instead')
+const GetSessionDetailsResponse$json = {
+  '1': 'GetSessionDetailsResponse',
+  '2': [
+    {
+      '1': 'session',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.clinical.v1.Session',
+      '10': 'session'
+    },
+    {
+      '1': 'transcript',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.clinical.v1.Transcript',
+      '10': 'transcript'
+    },
+    {
+      '1': 'reports',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.Report',
+      '10': 'reports'
+    },
+  ],
+};
+
+/// Descriptor for `GetSessionDetailsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getSessionDetailsResponseDescriptor = $convert.base64Decode(
+    'ChlHZXRTZXNzaW9uRGV0YWlsc1Jlc3BvbnNlEi4KB3Nlc3Npb24YASABKAsyFC5jbGluaWNhbC'
+    '52MS5TZXNzaW9uUgdzZXNzaW9uEjcKCnRyYW5zY3JpcHQYAiABKAsyFy5jbGluaWNhbC52MS5U'
+    'cmFuc2NyaXB0Ugp0cmFuc2NyaXB0Ei0KB3JlcG9ydHMYAyADKAsyEy5jbGluaWNhbC52MS5SZX'
+    'BvcnRSB3JlcG9ydHM=');

@@ -89,6 +89,21 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$updateSpeakerLabels, request, options: options);
   }
 
+  /// Sessions and Analysis
+  $grpc.ResponseFuture<$0.ListSessionsResponse> listSessions(
+    $0.ListSessionsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$listSessions, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.GetSessionDetailsResponse> getSessionDetails(
+    $0.GetSessionDetailsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getSessionDetails, request, options: options);
+  }
+
   // method descriptors
 
   static final _$createPatientFile =
@@ -131,6 +146,16 @@ class ClinicalServiceClient extends $grpc.Client {
       '/clinical.v1.ClinicalService/UpdateSpeakerLabels',
       ($0.UpdateSpeakerLabelsRequest value) => value.writeToBuffer(),
       $0.UpdateSpeakerLabelsResponse.fromBuffer);
+  static final _$listSessions =
+      $grpc.ClientMethod<$0.ListSessionsRequest, $0.ListSessionsResponse>(
+          '/clinical.v1.ClinicalService/ListSessions',
+          ($0.ListSessionsRequest value) => value.writeToBuffer(),
+          $0.ListSessionsResponse.fromBuffer);
+  static final _$getSessionDetails = $grpc.ClientMethod<
+          $0.GetSessionDetailsRequest, $0.GetSessionDetailsResponse>(
+      '/clinical.v1.ClinicalService/GetSessionDetails',
+      ($0.GetSessionDetailsRequest value) => value.writeToBuffer(),
+      $0.GetSessionDetailsResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('clinical.v1.ClinicalService')
@@ -202,6 +227,24 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.UpdateSpeakerLabelsRequest.fromBuffer(value),
         ($0.UpdateSpeakerLabelsResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.ListSessionsRequest, $0.ListSessionsResponse>(
+            'ListSessions',
+            listSessions_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.ListSessionsRequest.fromBuffer(value),
+            ($0.ListSessionsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetSessionDetailsRequest,
+            $0.GetSessionDetailsResponse>(
+        'GetSessionDetails',
+        getSessionDetails_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetSessionDetailsRequest.fromBuffer(value),
+        ($0.GetSessionDetailsResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.PatientFile> createPatientFile_Pre($grpc.ServiceCall $call,
@@ -269,4 +312,22 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$0.UpdateSpeakerLabelsResponse> updateSpeakerLabels(
       $grpc.ServiceCall call, $0.UpdateSpeakerLabelsRequest request);
+
+  $async.Future<$0.ListSessionsResponse> listSessions_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ListSessionsRequest> $request) async {
+    return listSessions($call, await $request);
+  }
+
+  $async.Future<$0.ListSessionsResponse> listSessions(
+      $grpc.ServiceCall call, $0.ListSessionsRequest request);
+
+  $async.Future<$0.GetSessionDetailsResponse> getSessionDetails_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetSessionDetailsRequest> $request) async {
+    return getSessionDetails($call, await $request);
+  }
+
+  $async.Future<$0.GetSessionDetailsResponse> getSessionDetails(
+      $grpc.ServiceCall call, $0.GetSessionDetailsRequest request);
 }

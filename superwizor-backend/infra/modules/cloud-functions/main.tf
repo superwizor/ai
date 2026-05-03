@@ -88,14 +88,14 @@ resource "google_project_iam_member" "llm_worker_eventarc" {
 # 4. Secret Manager access for DB Password
 resource "google_secret_manager_secret_iam_member" "stt_worker_db_pwd" {
   project   = var.project_id
-  secret_id = var.db_password_secret_id
+  secret_id = var.db_url_secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${var.stt_worker_sa_email}"
 }
 
 resource "google_secret_manager_secret_iam_member" "llm_worker_db_pwd" {
   project   = var.project_id
-  secret_id = var.db_password_secret_id
+  secret_id = var.db_url_secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${var.llm_worker_sa_email}"
 }
@@ -128,15 +128,17 @@ resource "google_cloudfunctions2_function" "stt_worker" {
     environment_variables = {
       GCP_PROJECT_ID    = var.project_id
       AUDIO_BUCKET_NAME = var.audio_bucket_name
-      DATABASE_URL      = "user=superwizor_app password='$${DB_PASSWORD}' host=/cloudsql/${var.db_connection_name} port=5432 dbname=superwizor"
     }
 
     secret_environment_variables {
-      key        = "DB_PASSWORD"
+      key        = "DATABASE_URL"
       project_id = var.project_id
-      secret     = var.db_password_secret_id
+      secret     = var.db_url_secret_id
       version    = "latest"
     }
+
+    vpc_connector                 = var.vpc_connector_id
+    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
 
     # Cloud SQL configuration is handled by Cloud Run under the hood in Gen2 via volumes or vpc
     # Cloud SQL Auth Proxy automatically runs if we specify the connection annotation or use volumes?
@@ -191,15 +193,17 @@ resource "google_cloudfunctions2_function" "llm_worker" {
 
     environment_variables = {
       GCP_PROJECT_ID = var.project_id
-      DATABASE_URL   = "user=superwizor_app password='$${DB_PASSWORD}' host=/cloudsql/${var.db_connection_name} port=5432 dbname=superwizor"
     }
 
     secret_environment_variables {
-      key        = "DB_PASSWORD"
+      key        = "DATABASE_URL"
       project_id = var.project_id
-      secret     = var.db_password_secret_id
+      secret     = var.db_url_secret_id
       version    = "latest"
     }
+
+    vpc_connector                 = var.vpc_connector_id
+    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
   }
 
   event_trigger {

@@ -7,7 +7,7 @@ COPY services/ services/
 COPY pkg/ pkg/
 COPY gen/ gen/
 
-WORKDIR /app/services/ingestion-svc
+WORKDIR /app/services/clinical-svc
 RUN go mod download
 
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /server ./cmd/server

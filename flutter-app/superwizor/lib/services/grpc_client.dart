@@ -25,25 +25,25 @@ class GrpcClients {
     identityChannel = ClientChannel(
       identityUrl,
       port: identityPort,
-      options: const ChannelOptions(
-        credentials: ChannelCredentials.insecure(),
-        connectionTimeout: Duration(seconds: 5),
+      options: ChannelOptions(
+        credentials: identityPort == 443 ? const ChannelCredentials.secure() : const ChannelCredentials.insecure(),
+        connectionTimeout: const Duration(seconds: 5),
       ),
     );
     clinicalChannel = ClientChannel(
       clinicalUrl,
       port: clinicalPort,
-      options: const ChannelOptions(
-        credentials: ChannelCredentials.insecure(),
-        connectionTimeout: Duration(seconds: 5),
+      options: ChannelOptions(
+        credentials: clinicalPort == 443 ? const ChannelCredentials.secure() : const ChannelCredentials.insecure(),
+        connectionTimeout: const Duration(seconds: 5),
       ),
     );
     ingestionChannel = ClientChannel(
       ingestionUrl,
       port: ingestionPort,
-      options: const ChannelOptions(
-        credentials: ChannelCredentials.insecure(),
-        connectionTimeout: Duration(seconds: 5),
+      options: ChannelOptions(
+        credentials: ingestionPort == 443 ? const ChannelCredentials.secure() : const ChannelCredentials.insecure(),
+        connectionTimeout: const Duration(seconds: 5),
       ),
     );
 
@@ -69,7 +69,7 @@ class AuthInterceptor extends ClientInterceptor {
       request,
       options.mergedWith(CallOptions(
         providers: [_authProvider],
-        timeout: const Duration(seconds: 10),
+        timeout: const Duration(seconds: 30),
       )),
     );
   }
@@ -82,7 +82,7 @@ class AuthInterceptor extends ClientInterceptor {
       requests,
       options.mergedWith(CallOptions(
         providers: [_authProvider],
-        timeout: const Duration(seconds: 10),
+        timeout: const Duration(seconds: 30),
       )),
     );
   }

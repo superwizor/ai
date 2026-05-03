@@ -9,8 +9,11 @@ import '../widgets/euphire_list_tile.dart';
 import 'recording_screen.dart';
 import '../providers/patient_provider.dart';
 import '../models/session.dart';
+import '../models/patient.dart';
 import '../constants/modalities.dart';
 import '../widgets/add_session_modal.dart';
+import 'session_details_screen.dart';
+
 class ClientDetailsScreen extends ConsumerWidget {
   final String patientId;
   final String clientName;
@@ -30,11 +33,16 @@ class ClientDetailsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final patient = ref.watch(patientsProvider).firstWhere((p) => p.id == patientId);
-    final sessions = ref.watch(sessionsProvider.notifier).getSessionsForPatient(patientId);
-    
-    // Odwroc kolejnosc zeby najnowsze byly na gorze
-    final reversedSessions = sessions.reversed.toList();
+    final patientAsync = ref.watch(patientsProvider);
+    final sessionsAsync = ref.watch(sessionsProvider);
+
+    // Fetch sessions when screen builds (if needed, alternatively we can fetch on initState, but we can do it post frame)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final sessionsState = ref.read(sessionsProvider).whenOrNull(data: (d) => d);
+      if (sessionsState != null && !sessionsState.containsKey(patientId)) {
+        ref.read(sessionsProvider.notifier).fetchSessions(patientId);
+      }
+    });
 
     return Scaffold(
       backgroundColor: EuphireColors.obsidianBlack,
@@ -43,43 +51,75 @@ class ClientDetailsScreen extends ConsumerWidget {
         elevation: 0,
         iconTheme: const IconThemeData(color: EuphireColors.mist),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            EuphireHeader(
-              title: '${patient.firstName} ${patient.lastName}',
-              subtitle: '${patient.sessionCount} sesji',
+      body: patientAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: EuphireColors.ember)),
+        error: (e, st) => Center(child: Text('Błąd: $e', style: const TextStyle(color: EuphireColors.ember))),
+        data: (patients) {
+          final patient = patients.firstWhere(
+            (p) => p.id == patientId,
+            orElse: () => Patient(id: patientId, firstName: 'Nie znaleziono', lastName: ''),
+          );
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                EuphireHeader(
+                  title: '${patient.firstName} ${patient.lastName}'.trim(),
+                  subtitle: '${patient.sessionCount} sesji',
+                ),
+                const SizedBox(height: 32),
+                Expanded(
+                  child: sessionsAsync.when(
+                    loading: () => const Center(child: CircularProgressIndicator(color: EuphireColors.ember)),
+                    error: (e, st) => Center(child: Text('Błąd sesji: $e', style: const TextStyle(color: EuphireColors.ember))),
+                    data: (sessionsMap) {
+                      final sessions = sessionsMap[patientId] ?? [];
+                      final reversedSessions = sessions.reversed.toList();
+                      if (reversedSessions.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'Brak sesji. Rozpocznij nową.',
+                            style: TextStyle(color: EuphireColors.mist),
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        itemCount: reversedSessions.length,
+                        itemBuilder: (context, index) {
+                          final session = reversedSessions[index];
+                          final dateStr = '${session.date.day.toString().padLeft(2, '0')}.${session.date.month.toString().padLeft(2, '0')}.${session.date.year}';
+                          
+                          return EuphireCard(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SessionDetailsScreen(
+                                    sessionId: session.id,
+                                    patientName: patient.firstName,
+                                    date: dateStr,
+                                    modality: session.modality,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: EuphireListTile(
+                              title: session.modality,
+                              subtitle: dateStr,
+                              trailingIcon: Icons.more_vert,
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 32),
-            Expanded(
-              child: reversedSessions.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Brak sesji. Rozpocznij nową.',
-                      style: TextStyle(color: EuphireColors.mist),
-                    ),
-                  )
-                : ListView.builder(
-                itemCount: reversedSessions.length,
-                itemBuilder: (context, index) {
-                  final session = reversedSessions[index];
-                  // Formatowanie daty proste
-                  final dateStr = '${session.date.day.toString().padLeft(2, '0')}.${session.date.month.toString().padLeft(2, '0')}.${session.date.year}';
-                  
-                  return EuphireCard(
-                    child: EuphireListTile(
-                      title: session.modality,
-                      subtitle: dateStr,
-                      trailingIcon: Icons.more_vert,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddSessionModal(context, ref),

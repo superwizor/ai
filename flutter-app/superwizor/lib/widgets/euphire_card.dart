@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/euphire_theme.dart';
 
 class EuphireCard extends StatelessWidget {
   final Widget child;
@@ -14,7 +13,7 @@ class EuphireCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: EuphireColors.nocturne,
+      color: Theme.of(context).colorScheme.surface,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),

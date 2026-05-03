@@ -25,7 +25,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = FirebaseAuth.instance.currentUser;
-    final patients = ref.watch(patientsProvider);
+    final patientsAsync = ref.watch(patientsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -56,33 +56,40 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: patients.isEmpty 
-                ? const Center(
-                    child: Text(
-                      'Brak kartotek. Dodaj nowego klienta.',
-                      style: TextStyle(color: EuphireColors.mist),
-                    ),
-                  )
-                : ListView.builder(
-                itemCount: patients.length,
-                itemBuilder: (context, index) {
-                  final patient = patients[index];
-                  return EuphireCard(
-                    child: EuphireListTile(
-                      title: '${patient.firstName} ${patient.lastName}',
-                      subtitle: 'Liczba sesji: ${patient.sessionCount}',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ClientDetailsScreen(
-                              patientId: patient.id,
-                              clientName: '${patient.firstName} ${patient.lastName}',
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+              child: patientsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator(color: EuphireColors.ember)),
+                error: (err, stack) => Center(child: Text('Błąd: $err', style: const TextStyle(color: EuphireColors.ember))),
+                data: (patients) {
+                  if (patients.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Brak kartotek. Dodaj nowego klienta.',
+                        style: TextStyle(color: EuphireColors.mist),
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    itemCount: patients.length,
+                    itemBuilder: (context, index) {
+                      final patient = patients[index];
+                      return EuphireCard(
+                        child: EuphireListTile(
+                          title: '${patient.firstName} ${patient.lastName}'.trim(),
+                          subtitle: 'Liczba sesji: ${patient.sessionCount}',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ClientDetailsScreen(
+                                  patientId: patient.id,
+                                  clientName: '${patient.firstName} ${patient.lastName}'.trim(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
                   );
                 },
               ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
 import 'package:fixnum/fixnum.dart';
 import '../services/recording_service.dart';
@@ -31,10 +32,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   bool _uploading = false;
   String? _errorMessage;
   Timer? _timer;
+  late final Stream<Amplitude> _amplitudeStream;
 
   @override
   void initState() {
     super.initState();
+    _amplitudeStream = _recorder.amplitudeStream;
     _recorder.chunkStream.listen((chunk) {
       if (mounted) {
         setState(() => _chunkCount++);
@@ -175,38 +178,129 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                   formattedDuration: _formatDuration(_elapsed),
                   chunkCount: _chunkCount,
                   errorMessage: _errorMessage,
+                  amplitudeStream: _amplitudeStream,
                 ),
               ),
               const SizedBox(height: 24),
               if (_uploading)
-                const Center(child: CircularProgressIndicator())
-              else if (_recorder.state == RecordingState.idle)
-                EuphireButton(
-                  text: 'Rozpocznij nagrywanie.',
-                  onPressed: _start,
-                )
-              else
                 Column(
                   children: [
-                    if (_recorder.state == RecordingState.recording)
-                      EuphireButton(
-                        text: 'Wstrzymaj.',
-                        onPressed: _recorder.pauseRecording,
-                      )
-                    else
-                      EuphireButton(
-                        text: 'Wznów nagrywanie.',
-                        onPressed: _recorder.resumeRecording,
-                      ),
+                    CircularProgressIndicator(
+                      color: theme.colorScheme.primary,
+                      strokeWidth: 3,
+                    ),
                     const SizedBox(height: 16),
-                    EuphireButton(
-                      text: 'Zakończ i wyślij.',
-                      onPressed: _stop,
+                    Text(
+                      'Szyfrowanie i wysyłanie...',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.secondary.withValues(alpha: 0.7),
+                      ),
                     ),
                   ],
-                ),
+                )
+              else if (_recorder.state == RecordingState.idle)
+                EuphireButton(
+                  text: 'Rozpocznij nagrywanie',
+                  onPressed: _start,
+                  icon: Icons.mic,
+                )
+              else
+                _buildControlPanel(theme),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildControlPanel(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(
+          color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          if (_recorder.state == RecordingState.recording)
+            _buildIconButton(
+              icon: Icons.pause_rounded,
+              label: 'Wstrzymaj',
+              color: theme.colorScheme.secondary,
+              onPressed: _recorder.pauseRecording,
+            )
+          else
+            _buildIconButton(
+              icon: Icons.play_arrow_rounded,
+              label: 'Wznów',
+              color: theme.colorScheme.primary,
+              onPressed: _recorder.resumeRecording,
+            ),
+          
+          Container(
+            width: 1,
+            height: 40,
+            color: theme.colorScheme.secondary.withValues(alpha: 0.2),
+          ),
+
+          _buildIconButton(
+            icon: Icons.stop_rounded,
+            label: 'Zakończ',
+            color: theme.colorScheme.error,
+            onPressed: _stop,
+            isPrimary: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIconButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+    bool isPrimary = false,
+  }) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isPrimary ? color.withValues(alpha: 0.1) : Colors.transparent,
+                shape: BoxShape.circle,
+                border: isPrimary 
+                    ? null 
+                    : Border.all(color: color.withValues(alpha: 0.3), width: 2),
+              ),
+              child: Icon(icon, color: color, size: 32),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
+                fontSize: 12,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -21,6 +21,8 @@ class RecordingService {
   final _recorder = AudioRecorder();
   final _stateController = StreamController<RecordingState>.broadcast();
   final _chunkController = StreamController<AudioChunk>.broadcast();
+  final _amplitudeController = StreamController<Amplitude>.broadcast();
+  StreamSubscription<Amplitude>? _amplitudeSubscription;
 
   Timer? _chunkTimer;
   String? _sessionDir;
@@ -35,6 +37,7 @@ class RecordingService {
 
   Stream<RecordingState> get stateStream => _stateController.stream;
   Stream<AudioChunk> get chunkStream => _chunkController.stream;
+  Stream<Amplitude> get amplitudeStream => _amplitudeController.stream;
   RecordingState get state => _state;
   enc.Key? get sessionKey => _sessionKey;
   enc.IV? get sessionIV => _sessionIV;
@@ -68,6 +71,16 @@ class RecordingService {
     );
 
     _setState(RecordingState.recording);
+
+    // Start amplitude monitoring for waveform UI
+    _amplitudeSubscription?.cancel();
+    _amplitudeSubscription = _recorder
+        .onAmplitudeChanged(const Duration(milliseconds: 80))
+        .listen((amp) {
+      if (!_amplitudeController.isClosed) {
+        _amplitudeController.add(amp);
+      }
+    });
   }
 
   Future<void> _startNewChunk() async {
@@ -125,6 +138,8 @@ class RecordingService {
 
   Future<List<String>> stopRecording() async {
     _chunkTimer?.cancel();
+    _amplitudeSubscription?.cancel();
+    _amplitudeSubscription = null;
     
     final finalPath = await _recorder.stop();
     if (finalPath != null && _chunkStartTime != null) {
@@ -182,9 +197,11 @@ class RecordingService {
   }
 
   void dispose() {
+    _amplitudeSubscription?.cancel();
     _recorder.dispose();
     _stateController.close();
     _chunkController.close();
+    _amplitudeController.close();
     _chunkTimer?.cancel();
   }
 }

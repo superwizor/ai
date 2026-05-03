@@ -1110,6 +1110,708 @@ class UpdateSpeakerLabelsResponse extends $pb.GeneratedMessage {
   void clearBlobRebuilt() => $_clearField(4);
 }
 
+class Session extends $pb.GeneratedMessage {
+  factory Session({
+    $core.String? id,
+    $core.String? therapistId,
+    $core.String? patientFileId,
+    $core.String? audioUploadId,
+    $core.String? sessionDate,
+    $core.int? sessionNumber,
+    $core.int? durationSeconds,
+    $core.String? contactForm,
+    $core.Iterable<$core.MapEntry<$core.String, $core.String>>?
+        speakerLabelMapping,
+    $core.String? status,
+    $2.Timestamp? createdAt,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (therapistId != null) result.therapistId = therapistId;
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    if (audioUploadId != null) result.audioUploadId = audioUploadId;
+    if (sessionDate != null) result.sessionDate = sessionDate;
+    if (sessionNumber != null) result.sessionNumber = sessionNumber;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (contactForm != null) result.contactForm = contactForm;
+    if (speakerLabelMapping != null)
+      result.speakerLabelMapping.addEntries(speakerLabelMapping);
+    if (status != null) result.status = status;
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  Session._();
+
+  factory Session.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory Session.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Session',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'therapistId')
+    ..aOS(3, _omitFieldNames ? '' : 'patientFileId')
+    ..aOS(4, _omitFieldNames ? '' : 'audioUploadId')
+    ..aOS(5, _omitFieldNames ? '' : 'sessionDate')
+    ..aI(6, _omitFieldNames ? '' : 'sessionNumber')
+    ..aI(7, _omitFieldNames ? '' : 'durationSeconds')
+    ..aOS(8, _omitFieldNames ? '' : 'contactForm')
+    ..m<$core.String, $core.String>(
+        9, _omitFieldNames ? '' : 'speakerLabelMapping',
+        entryClassName: 'Session.SpeakerLabelMappingEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OS,
+        packageName: const $pb.PackageName('clinical.v1'))
+    ..aOS(10, _omitFieldNames ? '' : 'status')
+    ..aOM<$2.Timestamp>(11, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $2.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Session clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Session copyWith(void Function(Session) updates) =>
+      super.copyWith((message) => updates(message as Session)) as Session;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static Session create() => Session._();
+  @$core.override
+  Session createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static Session getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Session>(create);
+  static Session? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get therapistId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set therapistId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTherapistId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTherapistId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get patientFileId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set patientFileId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPatientFileId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPatientFileId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get audioUploadId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set audioUploadId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAudioUploadId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAudioUploadId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get sessionDate => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set sessionDate($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSessionDate() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSessionDate() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get sessionNumber => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set sessionNumber($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSessionNumber() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSessionNumber() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get durationSeconds => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set durationSeconds($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasDurationSeconds() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearDurationSeconds() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get contactForm => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set contactForm($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasContactForm() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearContactForm() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $pb.PbMap<$core.String, $core.String> get speakerLabelMapping => $_getMap(8);
+
+  @$pb.TagNumber(10)
+  $core.String get status => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set status($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasStatus() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearStatus() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $2.Timestamp get createdAt => $_getN(10);
+  @$pb.TagNumber(11)
+  set createdAt($2.Timestamp value) => $_setField(11, value);
+  @$pb.TagNumber(11)
+  $core.bool hasCreatedAt() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearCreatedAt() => $_clearField(11);
+  @$pb.TagNumber(11)
+  $2.Timestamp ensureCreatedAt() => $_ensure(10);
+}
+
+class ListSessionsRequest extends $pb.GeneratedMessage {
+  factory ListSessionsRequest({
+    $core.String? patientFileId,
+  }) {
+    final result = create();
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    return result;
+  }
+
+  ListSessionsRequest._();
+
+  factory ListSessionsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListSessionsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListSessionsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListSessionsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListSessionsRequest copyWith(void Function(ListSessionsRequest) updates) =>
+      super.copyWith((message) => updates(message as ListSessionsRequest))
+          as ListSessionsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListSessionsRequest create() => ListSessionsRequest._();
+  @$core.override
+  ListSessionsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListSessionsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListSessionsRequest>(create);
+  static ListSessionsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get patientFileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set patientFileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFileId() => $_clearField(1);
+}
+
+class ListSessionsResponse extends $pb.GeneratedMessage {
+  factory ListSessionsResponse({
+    $core.Iterable<Session>? sessions,
+  }) {
+    final result = create();
+    if (sessions != null) result.sessions.addAll(sessions);
+    return result;
+  }
+
+  ListSessionsResponse._();
+
+  factory ListSessionsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListSessionsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListSessionsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..pPM<Session>(1, _omitFieldNames ? '' : 'sessions',
+        subBuilder: Session.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListSessionsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListSessionsResponse copyWith(void Function(ListSessionsResponse) updates) =>
+      super.copyWith((message) => updates(message as ListSessionsResponse))
+          as ListSessionsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListSessionsResponse create() => ListSessionsResponse._();
+  @$core.override
+  ListSessionsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListSessionsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListSessionsResponse>(create);
+  static ListSessionsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<Session> get sessions => $_getList(0);
+}
+
+class TranscriptSegment extends $pb.GeneratedMessage {
+  factory TranscriptSegment({
+    $core.int? speakerTag,
+    $core.String? speakerLabel,
+    $core.int? startOffsetMs,
+    $core.int? endOffsetMs,
+    $core.String? text,
+    $core.double? confidence,
+  }) {
+    final result = create();
+    if (speakerTag != null) result.speakerTag = speakerTag;
+    if (speakerLabel != null) result.speakerLabel = speakerLabel;
+    if (startOffsetMs != null) result.startOffsetMs = startOffsetMs;
+    if (endOffsetMs != null) result.endOffsetMs = endOffsetMs;
+    if (text != null) result.text = text;
+    if (confidence != null) result.confidence = confidence;
+    return result;
+  }
+
+  TranscriptSegment._();
+
+  factory TranscriptSegment.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory TranscriptSegment.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TranscriptSegment',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'speakerTag')
+    ..aOS(2, _omitFieldNames ? '' : 'speakerLabel')
+    ..aI(3, _omitFieldNames ? '' : 'startOffsetMs')
+    ..aI(4, _omitFieldNames ? '' : 'endOffsetMs')
+    ..aOS(5, _omitFieldNames ? '' : 'text')
+    ..aD(6, _omitFieldNames ? '' : 'confidence', fieldType: $pb.PbFieldType.OF)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranscriptSegment clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TranscriptSegment copyWith(void Function(TranscriptSegment) updates) =>
+      super.copyWith((message) => updates(message as TranscriptSegment))
+          as TranscriptSegment;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static TranscriptSegment create() => TranscriptSegment._();
+  @$core.override
+  TranscriptSegment createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static TranscriptSegment getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TranscriptSegment>(create);
+  static TranscriptSegment? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get speakerTag => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set speakerTag($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSpeakerTag() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSpeakerTag() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get speakerLabel => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set speakerLabel($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSpeakerLabel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSpeakerLabel() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get startOffsetMs => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set startOffsetMs($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStartOffsetMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStartOffsetMs() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get endOffsetMs => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set endOffsetMs($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasEndOffsetMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearEndOffsetMs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get text => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set text($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasText() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearText() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.double get confidence => $_getN(5);
+  @$pb.TagNumber(6)
+  set confidence($core.double value) => $_setFloat(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasConfidence() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearConfidence() => $_clearField(6);
+}
+
+class Transcript extends $pb.GeneratedMessage {
+  factory Transcript({
+    $core.String? id,
+    $core.Iterable<TranscriptSegment>? segments,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (segments != null) result.segments.addAll(segments);
+    return result;
+  }
+
+  Transcript._();
+
+  factory Transcript.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory Transcript.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Transcript',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..pPM<TranscriptSegment>(2, _omitFieldNames ? '' : 'segments',
+        subBuilder: TranscriptSegment.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Transcript clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Transcript copyWith(void Function(Transcript) updates) =>
+      super.copyWith((message) => updates(message as Transcript)) as Transcript;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static Transcript create() => Transcript._();
+  @$core.override
+  Transcript createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static Transcript getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Transcript>(create);
+  static Transcript? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<TranscriptSegment> get segments => $_getList(1);
+}
+
+class Report extends $pb.GeneratedMessage {
+  factory Report({
+    $core.String? id,
+    $core.String? title,
+    $core.String? summaryShort,
+    $core.String? content,
+    $core.String? sentimentLabel,
+    $core.String? riskLevel,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (title != null) result.title = title;
+    if (summaryShort != null) result.summaryShort = summaryShort;
+    if (content != null) result.content = content;
+    if (sentimentLabel != null) result.sentimentLabel = sentimentLabel;
+    if (riskLevel != null) result.riskLevel = riskLevel;
+    return result;
+  }
+
+  Report._();
+
+  factory Report.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory Report.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Report',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'title')
+    ..aOS(3, _omitFieldNames ? '' : 'summaryShort')
+    ..aOS(4, _omitFieldNames ? '' : 'content')
+    ..aOS(5, _omitFieldNames ? '' : 'sentimentLabel')
+    ..aOS(6, _omitFieldNames ? '' : 'riskLevel')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Report clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Report copyWith(void Function(Report) updates) =>
+      super.copyWith((message) => updates(message as Report)) as Report;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static Report create() => Report._();
+  @$core.override
+  Report createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static Report getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Report>(create);
+  static Report? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get title => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set title($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTitle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTitle() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get summaryShort => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set summaryShort($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSummaryShort() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSummaryShort() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get content => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set content($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasContent() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearContent() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get sentimentLabel => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set sentimentLabel($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSentimentLabel() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSentimentLabel() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get riskLevel => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set riskLevel($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasRiskLevel() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearRiskLevel() => $_clearField(6);
+}
+
+class GetSessionDetailsRequest extends $pb.GeneratedMessage {
+  factory GetSessionDetailsRequest({
+    $core.String? sessionId,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    return result;
+  }
+
+  GetSessionDetailsRequest._();
+
+  factory GetSessionDetailsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetSessionDetailsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetSessionDetailsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetSessionDetailsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetSessionDetailsRequest copyWith(
+          void Function(GetSessionDetailsRequest) updates) =>
+      super.copyWith((message) => updates(message as GetSessionDetailsRequest))
+          as GetSessionDetailsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetSessionDetailsRequest create() => GetSessionDetailsRequest._();
+  @$core.override
+  GetSessionDetailsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetSessionDetailsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetSessionDetailsRequest>(create);
+  static GetSessionDetailsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+}
+
+class GetSessionDetailsResponse extends $pb.GeneratedMessage {
+  factory GetSessionDetailsResponse({
+    Session? session,
+    Transcript? transcript,
+    $core.Iterable<Report>? reports,
+  }) {
+    final result = create();
+    if (session != null) result.session = session;
+    if (transcript != null) result.transcript = transcript;
+    if (reports != null) result.reports.addAll(reports);
+    return result;
+  }
+
+  GetSessionDetailsResponse._();
+
+  factory GetSessionDetailsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetSessionDetailsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetSessionDetailsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOM<Session>(1, _omitFieldNames ? '' : 'session',
+        subBuilder: Session.create)
+    ..aOM<Transcript>(2, _omitFieldNames ? '' : 'transcript',
+        subBuilder: Transcript.create)
+    ..pPM<Report>(3, _omitFieldNames ? '' : 'reports',
+        subBuilder: Report.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetSessionDetailsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetSessionDetailsResponse copyWith(
+          void Function(GetSessionDetailsResponse) updates) =>
+      super.copyWith((message) => updates(message as GetSessionDetailsResponse))
+          as GetSessionDetailsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetSessionDetailsResponse create() => GetSessionDetailsResponse._();
+  @$core.override
+  GetSessionDetailsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetSessionDetailsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetSessionDetailsResponse>(create);
+  static GetSessionDetailsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  Session get session => $_getN(0);
+  @$pb.TagNumber(1)
+  set session(Session value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+  @$pb.TagNumber(1)
+  Session ensureSession() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  Transcript get transcript => $_getN(1);
+  @$pb.TagNumber(2)
+  set transcript(Transcript value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTranscript() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTranscript() => $_clearField(2);
+  @$pb.TagNumber(2)
+  Transcript ensureTranscript() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<Report> get reports => $_getList(2);
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

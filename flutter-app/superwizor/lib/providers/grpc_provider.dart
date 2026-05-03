@@ -6,12 +6,12 @@ final grpcClientsProvider = Provider<GrpcClients>((ref) {
   // Using localhost or local network IPs for development.
   // Note: For Android Emulator, localhost is usually 10.0.2.2.
   final clients = GrpcClients(
-    identityUrl: '127.0.0.1',
-    identityPort: 8080, // Zastąpić docelowym portem (lub Cloud Run url)
-    clinicalUrl: '127.0.0.1',
-    clinicalPort: 8081, // Zastąpić docelowym portem (lub Cloud Run url)
-    ingestionUrl: '127.0.0.1',
-    ingestionPort: 8082, // Zastąpić docelowym portem (lub Cloud Run url)
+    identityUrl: 'identity-svc-344724821207.europe-central2.run.app',
+    identityPort: 443,
+    clinicalUrl: 'clinical-svc-344724821207.europe-central2.run.app',
+    clinicalPort: 443,
+    ingestionUrl: 'ingestion-svc-344724821207.europe-central2.run.app', // dedicated ingestion-svc
+    ingestionPort: 443,
   );
 
   ref.onDispose(() {

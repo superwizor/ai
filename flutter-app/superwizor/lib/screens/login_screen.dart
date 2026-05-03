@@ -1,18 +1,21 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/grpc_provider.dart';
+import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import '../widgets/euphire_button.dart';
 import '../widgets/euphire_header.dart';
 import '../widgets/euphire_text_field.dart';
 import 'home_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _loading = false;
@@ -27,15 +30,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       if (_isLogin) {
+        // Login flow
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _email.text.trim(),
           password: _password.text,
         );
+
+        // After login, ensure user exists in identity-svc (auto-register if missing)
+        await _ensureUserRegistered();
       } else {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        // Registration flow
+        final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _email.text.trim(),
           password: _password.text,
         );
+
+        // Register user in identity-svc (PostgreSQL)
+        await _registerInIdentityService(cred.user!);
       }
     } on FirebaseAuthException catch (e) {
       print('FirebaseAuthException: $e');
@@ -47,6 +58,45 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         setState(() => _loading = false);
       }
+    }
+  }
+
+  /// Register the Firebase user in the identity-svc PostgreSQL database.
+  Future<void> _registerInIdentityService(User firebaseUser) async {
+    final identityClient = ref.read(grpcClientsProvider).identity;
+    try {
+      await identityClient.createUser(identity_pb.CreateUserRequest(
+        firebaseUid: firebaseUser.uid,
+        email: firebaseUser.email ?? _email.text.trim(),
+        role: identity_pb.UserRole.USER_ROLE_THERAPIST,
+        firstName: '',
+        lastName: '',
+        uiLanguage: 'pl',
+        timezone: 'Europe/Warsaw',
+        hasAcceptedTos: true,
+      ));
+      print('User registered in identity-svc successfully');
+    } catch (e) {
+      print('Error registering user in identity-svc: $e');
+      // Don't block login even if registration fails — user can retry
+    }
+  }
+
+  /// For existing Firebase users who might not be in identity-svc yet.
+  Future<void> _ensureUserRegistered() async {
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser == null) return;
+
+    final identityClient = ref.read(grpcClientsProvider).identity;
+    try {
+      // Try to fetch user — if they exist, do nothing
+      await identityClient.getUserByFirebaseUID(
+        identity_pb.GetUserByFirebaseUIDRequest(firebaseUid: firebaseUser.uid),
+      );
+    } catch (e) {
+      // User not found in identity-svc — auto-register them
+      print('User not found in identity-svc, auto-registering...');
+      await _registerInIdentityService(firebaseUser);
     }
   }
 

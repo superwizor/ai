@@ -17,6 +17,10 @@ service ClinicalService {
     rpc ListModalities(google.protobuf.Empty) returns (ListModalitiesResponse);
     rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
     rpc UpdateSpeakerLabels(UpdateSpeakerLabelsRequest) returns (UpdateSpeakerLabelsResponse);
+
+    // Sessions and Analysis
+    rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+    rpc GetSessionDetails(GetSessionDetailsRequest) returns (GetSessionDetailsResponse);
 }
 
 enum ProcessType {
@@ -110,4 +114,59 @@ message UpdateSpeakerLabelsResponse {
   string transcript_id = 2;
   int32 segments_updated = 3;
   bool blob_rebuilt = 4;
+}
+
+message Session {
+  string id = 1;
+  string therapist_id = 2;
+  string patient_file_id = 3;
+  string audio_upload_id = 4;
+  string session_date = 5;
+  int32 session_number = 6;
+  int32 duration_seconds = 7;
+  string contact_form = 8;
+  map<string, string> speaker_label_mapping = 9;
+  string status = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+message ListSessionsRequest {
+  string patient_file_id = 1;
+}
+
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+}
+
+message TranscriptSegment {
+  int32 speaker_tag = 1;
+  string speaker_label = 2;
+  int32 start_offset_ms = 3;
+  int32 end_offset_ms = 4;
+  string text = 5;
+  float confidence = 6;
+}
+
+message Transcript {
+  string id = 1;
+  repeated TranscriptSegment segments = 2;
+}
+
+message Report {
+  string id = 1;
+  string title = 2;
+  string summary_short = 3;
+  string content = 4;
+  string sentiment_label = 5;
+  string risk_level = 6;
+}
+
+message GetSessionDetailsRequest {
+  string session_id = 1;
+}
+
+message GetSessionDetailsResponse {
+  Session session = 1;
+  Transcript transcript = 2;
+  repeated Report reports = 3;
 }

@@ -56,7 +56,8 @@ module "cloud_functions" {
   region                     = "europe-central2"
   network_id                 = module.vpc.network_id
   db_connection_name         = module.cloud_sql.instance_connection_name
-  db_password_secret_id      = "superwizor-db-password"
+  db_url_secret_id           = "postgres-database-url"
+  vpc_connector_id           = module.vpc.vpc_connector_id
   audio_bucket_name          = module.storage.audio_uploads_bucket_name
   audio_uploaded_topic       = module.pubsub.audio_uploaded_topic
   transcript_completed_topic = module.pubsub.transcript_completed_topic
