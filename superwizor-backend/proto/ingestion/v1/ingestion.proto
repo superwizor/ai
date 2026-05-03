@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package ingestion.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/superwizor-ai/backend/gen/go/ingestion/v1;ingestionv1";
+
+service IngestionService {
+  // Inicjuje upload — zwraca signed URL i upload ID
+  rpc CreateAudioUpload(CreateAudioUploadRequest) returns (CreateAudioUploadResponse);
+
+  // Notyfikuje że upload się zakończył (Flutter wysyła po PUT do GCS)
+  rpc CompleteAudioUpload(CompleteAudioUploadRequest) returns (CompleteAudioUploadResponse);
+
+  // Stan uploadu
+  rpc GetAudioUploadStatus(GetAudioUploadStatusRequest) returns (AudioUploadStatus);
+}
+
+message CreateAudioUploadRequest {
+  string therapist_id = 1;
+  string patient_file_id = 2;
+  string content_type = 3;        // 'audio/m4a'
+  int64 estimated_size_bytes = 4;
+  int32 estimated_duration_seconds = 5;
+  string idempotency_key = 6;
+  string client_app_version = 7;
+  string client_platform = 8;
+}
+
+message CreateAudioUploadResponse {
+  string upload_id = 1;
+  string signed_url = 2;          // PUT URL z Cloud Storage
+  google.protobuf.Timestamp signed_url_expires_at = 3;
+  string object_path = 4;
+  map<string, string> required_headers = 5;  // x-goog-content-md5, etc.
+}
+
+message CompleteAudioUploadRequest {
+  string upload_id = 1;
+  int32 actual_duration_seconds = 2;
+  int64 actual_size_bytes = 3;
+  int32 chunk_count = 4;
+  string md5_hash = 5;
+}
+
+message CompleteAudioUploadResponse {
+  string upload_id = 1;
+  string session_id = 2;          // utworzona sesja
+  bool processing_started = 3;
+}
+
+message GetAudioUploadStatusRequest {
+  string upload_id = 1;
+}
+
+message AudioUploadStatus {
+  string upload_id = 1;
+  string status = 2;              // PENDING, UPLOADED, PROCESSING, FAILED, EXPIRED
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp expires_at = 4;
+  string error_message = 5;
+}

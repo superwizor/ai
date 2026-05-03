@@ -12,6 +12,9 @@ class UploadService {
   /// (Dzięki temu nie ładujemy całego 1h nagrania do RAMu!)
   Future<File> combineAndDecryptToTemp(List<String> chunkPaths, enc.Key key, enc.IV iv) async {
     final tempDir = await getTemporaryDirectory();
+    if (!await tempDir.exists()) {
+      await tempDir.create(recursive: true);
+    }
     final tempFile = File(p.join(tempDir.path, 'upload_buffer_${DateTime.now().millisecondsSinceEpoch}.m4a'));
     
     final sink = tempFile.openWrite();
@@ -28,12 +31,13 @@ class UploadService {
     return tempFile;
   }
 
-  /// Streamuje plik prosto do GCS, bez MD5 aby uniknąć czytania pliku do RAMu.
   Future<bool> uploadFileToSignedUrl({
     required String signedUrl,
     required File file,
     required String contentType,
   }) async {
+
+
     final length = await file.length();
 
     for (var attempt = 0; attempt < _maxRetries; attempt++) {

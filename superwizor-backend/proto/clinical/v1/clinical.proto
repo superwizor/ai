@@ -16,6 +16,7 @@ service ClinicalService {
 
     rpc ListModalities(google.protobuf.Empty) returns (ListModalitiesResponse);
     rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
+    rpc UpdateSpeakerLabels(UpdateSpeakerLabelsRequest) returns (UpdateSpeakerLabelsResponse);
 }
 
 enum ProcessType {
@@ -95,4 +96,18 @@ message ListModalitiesResponse {
 message HealthCheckResponse {
     string status = 1;
     string version = 2;
+}
+
+message UpdateSpeakerLabelsRequest {
+  string session_id = 1;
+  // Mapping: speaker_tag (jako string "1", "2", "3") → nowy label
+  // Przykład: {"1": "Anna Kowalska", "2": "Marek Kowalski"}
+  map<string, string> label_mapping = 2;
+}
+
+message UpdateSpeakerLabelsResponse {
+  string session_id = 1;
+  string transcript_id = 2;
+  int32 segments_updated = 3;
+  bool blob_rebuilt = 4;
 }

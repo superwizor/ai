@@ -316,3 +316,55 @@ const HealthCheckResponse$json = {
 final $typed_data.Uint8List healthCheckResponseDescriptor = $convert.base64Decode(
     'ChNIZWFsdGhDaGVja1Jlc3BvbnNlEhYKBnN0YXR1cxgBIAEoCVIGc3RhdHVzEhgKB3ZlcnNpb2'
     '4YAiABKAlSB3ZlcnNpb24=');
+
+@$core.Deprecated('Use updateSpeakerLabelsRequestDescriptor instead')
+const UpdateSpeakerLabelsRequest$json = {
+  '1': 'UpdateSpeakerLabelsRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+    {
+      '1': 'label_mapping',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.UpdateSpeakerLabelsRequest.LabelMappingEntry',
+      '10': 'labelMapping'
+    },
+  ],
+  '3': [UpdateSpeakerLabelsRequest_LabelMappingEntry$json],
+};
+
+@$core.Deprecated('Use updateSpeakerLabelsRequestDescriptor instead')
+const UpdateSpeakerLabelsRequest_LabelMappingEntry$json = {
+  '1': 'LabelMappingEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `UpdateSpeakerLabelsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List updateSpeakerLabelsRequestDescriptor = $convert.base64Decode(
+    'ChpVcGRhdGVTcGVha2VyTGFiZWxzUmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW'
+    '9uSWQSXgoNbGFiZWxfbWFwcGluZxgCIAMoCzI5LmNsaW5pY2FsLnYxLlVwZGF0ZVNwZWFrZXJM'
+    'YWJlbHNSZXF1ZXN0LkxhYmVsTWFwcGluZ0VudHJ5UgxsYWJlbE1hcHBpbmcaPwoRTGFiZWxNYX'
+    'BwaW5nRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAiABKAlSBXZhbHVlOgI4AQ==');
+
+@$core.Deprecated('Use updateSpeakerLabelsResponseDescriptor instead')
+const UpdateSpeakerLabelsResponse$json = {
+  '1': 'UpdateSpeakerLabelsResponse',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'transcript_id', '3': 2, '4': 1, '5': 9, '10': 'transcriptId'},
+    {'1': 'segments_updated', '3': 3, '4': 1, '5': 5, '10': 'segmentsUpdated'},
+    {'1': 'blob_rebuilt', '3': 4, '4': 1, '5': 8, '10': 'blobRebuilt'},
+  ],
+};
+
+/// Descriptor for `UpdateSpeakerLabelsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List updateSpeakerLabelsResponseDescriptor = $convert.base64Decode(
+    'ChtVcGRhdGVTcGVha2VyTGFiZWxzUmVzcG9uc2USHQoKc2Vzc2lvbl9pZBgBIAEoCVIJc2Vzc2'
+    'lvbklkEiMKDXRyYW5zY3JpcHRfaWQYAiABKAlSDHRyYW5zY3JpcHRJZBIpChBzZWdtZW50c191'
+    'cGRhdGVkGAMgASgFUg9zZWdtZW50c1VwZGF0ZWQSIQoMYmxvYl9yZWJ1aWx0GAQgASgIUgtibG'
+    '9iUmVidWlsdA==');

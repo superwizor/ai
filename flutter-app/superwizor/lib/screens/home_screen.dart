@@ -1,20 +1,31 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/euphire_header.dart';
+import '../widgets/euphire_text_field.dart';
+import '../widgets/euphire_button.dart';
+import '../widgets/euphire_bottom_sheet.dart';
+import '../widgets/euphire_card.dart';
+import '../widgets/euphire_list_tile.dart';
 import '../theme/euphire_theme.dart';
+import 'client_details_screen.dart';
+import '../providers/patient_provider.dart';
+import '../widgets/add_patient_modal.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
+  void _showAddPatientModal(BuildContext context, WidgetRef ref) {
+    showEuphireBottomSheet(
+      context: context,
+      builder: (context) => const AddPatientModal(),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final user = FirebaseAuth.instance.currentUser;
-    
-    // Stub data na Fazę 1
-    final stubFiles = [
-      {'alias': 'Pacjent Jan K.', 'process': 'Indywidualny'},
-      {'alias': 'Terapia Par: A & B', 'process': 'Para'},
-    ];
+    final patients = ref.watch(patientsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -45,33 +56,31 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: ListView.builder(
-                itemCount: stubFiles.length,
-                itemBuilder: (context, index) {
-                  final file = stubFiles[index];
-                  return Card(
-                    color: EuphireColors.nocturne,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              child: patients.isEmpty 
+                ? const Center(
+                    child: Text(
+                      'Brak kartotek. Dodaj nowego klienta.',
+                      style: TextStyle(color: EuphireColors.mist),
                     ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                      title: Text(
-                        file['alias']!,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: EuphireColors.frostWhite,
-                        ),
-                      ),
-                      subtitle: Text(
-                        file['process']!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: EuphireColors.mist,
-                        ),
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios, color: EuphireColors.ember, size: 16),
+                  )
+                : ListView.builder(
+                itemCount: patients.length,
+                itemBuilder: (context, index) {
+                  final patient = patients[index];
+                  return EuphireCard(
+                    child: EuphireListTile(
+                      title: '${patient.firstName} ${patient.lastName}',
+                      subtitle: 'Liczba sesji: ${patient.sessionCount}',
                       onTap: () {
-                        // TODO: Nawigacja do detali (Faza 2)
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ClientDetailsScreen(
+                              patientId: patient.id,
+                              clientName: '${patient.firstName} ${patient.lastName}',
+                            ),
+                          ),
+                        );
                       },
                     ),
                   );
@@ -82,9 +91,7 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Dodaj kartotekę (Faza 2)
-        },
+        onPressed: () => _showAddPatientModal(context, ref),
         backgroundColor: EuphireColors.ember,
         foregroundColor: EuphireColors.obsidianBlack,
         child: const Icon(Icons.add),

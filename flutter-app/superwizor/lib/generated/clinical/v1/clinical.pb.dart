@@ -949,6 +949,167 @@ class HealthCheckResponse extends $pb.GeneratedMessage {
   void clearVersion() => $_clearField(2);
 }
 
+class UpdateSpeakerLabelsRequest extends $pb.GeneratedMessage {
+  factory UpdateSpeakerLabelsRequest({
+    $core.String? sessionId,
+    $core.Iterable<$core.MapEntry<$core.String, $core.String>>? labelMapping,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    if (labelMapping != null) result.labelMapping.addEntries(labelMapping);
+    return result;
+  }
+
+  UpdateSpeakerLabelsRequest._();
+
+  factory UpdateSpeakerLabelsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdateSpeakerLabelsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateSpeakerLabelsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..m<$core.String, $core.String>(2, _omitFieldNames ? '' : 'labelMapping',
+        entryClassName: 'UpdateSpeakerLabelsRequest.LabelMappingEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OS,
+        packageName: const $pb.PackageName('clinical.v1'))
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateSpeakerLabelsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateSpeakerLabelsRequest copyWith(
+          void Function(UpdateSpeakerLabelsRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as UpdateSpeakerLabelsRequest))
+          as UpdateSpeakerLabelsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdateSpeakerLabelsRequest create() => UpdateSpeakerLabelsRequest._();
+  @$core.override
+  UpdateSpeakerLabelsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdateSpeakerLabelsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateSpeakerLabelsRequest>(create);
+  static UpdateSpeakerLabelsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+
+  /// Mapping: speaker_tag (jako string "1", "2", "3") → nowy label
+  /// Przykład: {"1": "Anna Kowalska", "2": "Marek Kowalski"}
+  @$pb.TagNumber(2)
+  $pb.PbMap<$core.String, $core.String> get labelMapping => $_getMap(1);
+}
+
+class UpdateSpeakerLabelsResponse extends $pb.GeneratedMessage {
+  factory UpdateSpeakerLabelsResponse({
+    $core.String? sessionId,
+    $core.String? transcriptId,
+    $core.int? segmentsUpdated,
+    $core.bool? blobRebuilt,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    if (transcriptId != null) result.transcriptId = transcriptId;
+    if (segmentsUpdated != null) result.segmentsUpdated = segmentsUpdated;
+    if (blobRebuilt != null) result.blobRebuilt = blobRebuilt;
+    return result;
+  }
+
+  UpdateSpeakerLabelsResponse._();
+
+  factory UpdateSpeakerLabelsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdateSpeakerLabelsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateSpeakerLabelsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..aOS(2, _omitFieldNames ? '' : 'transcriptId')
+    ..aI(3, _omitFieldNames ? '' : 'segmentsUpdated')
+    ..aOB(4, _omitFieldNames ? '' : 'blobRebuilt')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateSpeakerLabelsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateSpeakerLabelsResponse copyWith(
+          void Function(UpdateSpeakerLabelsResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as UpdateSpeakerLabelsResponse))
+          as UpdateSpeakerLabelsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdateSpeakerLabelsResponse create() =>
+      UpdateSpeakerLabelsResponse._();
+  @$core.override
+  UpdateSpeakerLabelsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdateSpeakerLabelsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateSpeakerLabelsResponse>(create);
+  static UpdateSpeakerLabelsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get transcriptId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set transcriptId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTranscriptId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTranscriptId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get segmentsUpdated => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set segmentsUpdated($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSegmentsUpdated() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSegmentsUpdated() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get blobRebuilt => $_getBF(3);
+  @$pb.TagNumber(4)
+  set blobRebuilt($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasBlobRebuilt() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearBlobRebuilt() => $_clearField(4);
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

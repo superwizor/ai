@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 type BillingCycle string
@@ -559,6 +560,29 @@ type Address struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type AudioUpload struct {
+	ID                uuid.UUID          `json:"id"`
+	TherapistID       uuid.UUID          `json:"therapist_id"`
+	PatientFileID     uuid.UUID          `json:"patient_file_id"`
+	SessionID         pgtype.UUID        `json:"session_id"`
+	BucketName        string             `json:"bucket_name"`
+	ObjectPath        string             `json:"object_path"`
+	ContentType       string             `json:"content_type"`
+	FileSizeBytes     *int64             `json:"file_size_bytes"`
+	DurationSeconds   *int32             `json:"duration_seconds"`
+	SampleRateHz      *int32             `json:"sample_rate_hz"`
+	ChunkCount        int32              `json:"chunk_count"`
+	Status            UploadStatus       `json:"status"`
+	UploadStartedAt   time.Time          `json:"upload_started_at"`
+	UploadCompletedAt pgtype.Timestamptz `json:"upload_completed_at"`
+	ExpiresAt         time.Time          `json:"expires_at"`
+	IdempotencyKey    *string            `json:"idempotency_key"`
+	ClientAppVersion  *string            `json:"client_app_version"`
+	ClientPlatform    *string            `json:"client_platform"`
+	ErrorMessage      *string            `json:"error_message"`
+	CreatedAt         time.Time          `json:"created_at"`
+}
+
 type AuditEvent struct {
 	ID             uuid.UUID   `json:"id"`
 	ActorUserID    pgtype.UUID `json:"actor_user_id"`
@@ -570,6 +594,28 @@ type AuditEvent struct {
 	IpAddress      *netip.Addr `json:"ip_address"`
 	UserAgent      *string     `json:"user_agent"`
 	OccurredAt     time.Time   `json:"occurred_at"`
+}
+
+type HitopDimension struct {
+	ID          uuid.UUID `json:"id"`
+	Code        string    `json:"code"`
+	DisplayName string    `json:"display_name"`
+	ParentCode  *string   `json:"parent_code"`
+	Description *string   `json:"description"`
+	Level       string    `json:"level"`
+	IsActive    bool      `json:"is_active"`
+}
+
+type HitopMeasurement struct {
+	ID                   uuid.UUID      `json:"id"`
+	SessionID            uuid.UUID      `json:"session_id"`
+	ReportID             uuid.UUID      `json:"report_id"`
+	DimensionID          uuid.UUID      `json:"dimension_id"`
+	Score                pgtype.Numeric `json:"score"`
+	Confidence           pgtype.Numeric `json:"confidence"`
+	EvidenceCiphertext   []byte         `json:"evidence_ciphertext"`
+	EvidenceEncryptedDek []byte         `json:"evidence_encrypted_dek"`
+	MeasuredAt           time.Time      `json:"measured_at"`
 }
 
 type Modality struct {
@@ -616,6 +662,65 @@ type PatientFile struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type RagMemory struct {
+	ID                  uuid.UUID        `json:"id"`
+	PatientFileID       uuid.UUID        `json:"patient_file_id"`
+	SourceSessionID     pgtype.UUID      `json:"source_session_id"`
+	SourceReportID      pgtype.UUID      `json:"source_report_id"`
+	SummaryCiphertext   []byte           `json:"summary_ciphertext"`
+	SummaryEncryptedDek []byte           `json:"summary_encrypted_dek"`
+	Embedding           *pgvector.Vector `json:"embedding"`
+	ChunkType           string           `json:"chunk_type"`
+	ImportanceScore     pgtype.Numeric   `json:"importance_score"`
+	IsCompacted         bool             `json:"is_compacted"`
+	CompactedIntoID     pgtype.UUID      `json:"compacted_into_id"`
+	CreatedAt           time.Time        `json:"created_at"`
+	LastAccessedAt      time.Time        `json:"last_accessed_at"`
+}
+
+type Report struct {
+	ID                   uuid.UUID      `json:"id"`
+	SessionID            uuid.UUID      `json:"session_id"`
+	TranscriptID         uuid.UUID      `json:"transcript_id"`
+	ModalityID           uuid.UUID      `json:"modality_id"`
+	ReportCiphertext     []byte         `json:"report_ciphertext"`
+	ReportEncryptedDek   []byte         `json:"report_encrypted_dek"`
+	Title                *string        `json:"title"`
+	SummaryShort         *string        `json:"summary_short"`
+	SentimentLabel       *string        `json:"sentiment_label"`
+	RiskLevel            *string        `json:"risk_level"`
+	SpeakerRoleInference []byte         `json:"speaker_role_inference"`
+	LlmModel             string         `json:"llm_model"`
+	LlmInputTokens       *int32         `json:"llm_input_tokens"`
+	LlmOutputTokens      *int32         `json:"llm_output_tokens"`
+	LlmProcessingSeconds *int32         `json:"llm_processing_seconds"`
+	LlmTotalCostUsd      pgtype.Numeric `json:"llm_total_cost_usd"`
+	ParentReportID       pgtype.UUID    `json:"parent_report_id"`
+	GenerationCount      int32          `json:"generation_count"`
+	CreatedAt            time.Time      `json:"created_at"`
+}
+
+type Session struct {
+	ID                    uuid.UUID          `json:"id"`
+	TherapistID           uuid.UUID          `json:"therapist_id"`
+	PatientFileID         uuid.UUID          `json:"patient_file_id"`
+	AudioUploadID         pgtype.UUID        `json:"audio_upload_id"`
+	SessionDate           pgtype.Date        `json:"session_date"`
+	SessionNumber         int32              `json:"session_number"`
+	DurationSeconds       *int32             `json:"duration_seconds"`
+	ContactForm           ContactForm        `json:"contact_form"`
+	SpeakerLabelMapping   []byte             `json:"speaker_label_mapping"`
+	LanguageCode          *string            `json:"language_code"`
+	TherapistObservations *string            `json:"therapist_observations"`
+	IsConsentConfirmed    bool               `json:"is_consent_confirmed"`
+	Status                SessionStatus      `json:"status"`
+	StatusUpdatedAt       time.Time          `json:"status_updated_at"`
+	ErrorMessage          *string            `json:"error_message"`
+	CreatedAt             time.Time          `json:"created_at"`
+	UpdatedAt             time.Time          `json:"updated_at"`
+	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type TherapistPatientRelation struct {
 	ID           uuid.UUID          `json:"id"`
 	TherapistID  uuid.UUID          `json:"therapist_id"`
@@ -624,6 +729,37 @@ type TherapistPatientRelation struct {
 	InvitedAt    time.Time          `json:"invited_at"`
 	ActivatedAt  pgtype.Timestamptz `json:"activated_at"`
 	TerminatedAt pgtype.Timestamptz `json:"terminated_at"`
+}
+
+type Transcript struct {
+	ID                     uuid.UUID          `json:"id"`
+	SessionID              uuid.UUID          `json:"session_id"`
+	TranscriptCiphertext   []byte             `json:"transcript_ciphertext"`
+	TranscriptEncryptedDek []byte             `json:"transcript_encrypted_dek"`
+	LanguageCode           string             `json:"language_code"`
+	WordCount              *int32             `json:"word_count"`
+	SpeakerCount           *int32             `json:"speaker_count"`
+	ConfidenceAvg          pgtype.Numeric     `json:"confidence_avg"`
+	SttModel               string             `json:"stt_model"`
+	SttProcessedAt         time.Time          `json:"stt_processed_at"`
+	SttProcessingSeconds   *int32             `json:"stt_processing_seconds"`
+	BlobRebuiltAt          pgtype.Timestamptz `json:"blob_rebuilt_at"`
+	BlobRebuildCount       int32              `json:"blob_rebuild_count"`
+	CreatedAt              time.Time          `json:"created_at"`
+}
+
+type TranscriptSegment struct {
+	ID               uuid.UUID      `json:"id"`
+	TranscriptID     uuid.UUID      `json:"transcript_id"`
+	SpeakerTag       int32          `json:"speaker_tag"`
+	SpeakerLabel     string         `json:"speaker_label"`
+	StartOffsetMs    int32          `json:"start_offset_ms"`
+	EndOffsetMs      int32          `json:"end_offset_ms"`
+	TextCiphertext   []byte         `json:"text_ciphertext"`
+	TextEncryptedDek []byte         `json:"text_encrypted_dek"`
+	TextWordCount    *int32         `json:"text_word_count"`
+	Confidence       pgtype.Numeric `json:"confidence"`
+	CreatedAt        time.Time      `json:"created_at"`
 }
 
 type User struct {

@@ -82,6 +82,13 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$healthCheck, request, options: options);
   }
 
+  $grpc.ResponseFuture<$0.UpdateSpeakerLabelsResponse> updateSpeakerLabels(
+    $0.UpdateSpeakerLabelsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$updateSpeakerLabels, request, options: options);
+  }
+
   // method descriptors
 
   static final _$createPatientFile =
@@ -119,6 +126,11 @@ class ClinicalServiceClient extends $grpc.Client {
           '/clinical.v1.ClinicalService/HealthCheck',
           ($1.Empty value) => value.writeToBuffer(),
           $0.HealthCheckResponse.fromBuffer);
+  static final _$updateSpeakerLabels = $grpc.ClientMethod<
+          $0.UpdateSpeakerLabelsRequest, $0.UpdateSpeakerLabelsResponse>(
+      '/clinical.v1.ClinicalService/UpdateSpeakerLabels',
+      ($0.UpdateSpeakerLabelsRequest value) => value.writeToBuffer(),
+      $0.UpdateSpeakerLabelsResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('clinical.v1.ClinicalService')
@@ -181,6 +193,15 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
         ($0.HealthCheckResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.UpdateSpeakerLabelsRequest,
+            $0.UpdateSpeakerLabelsResponse>(
+        'UpdateSpeakerLabels',
+        updateSpeakerLabels_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.UpdateSpeakerLabelsRequest.fromBuffer(value),
+        ($0.UpdateSpeakerLabelsResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.PatientFile> createPatientFile_Pre($grpc.ServiceCall $call,
@@ -239,4 +260,13 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$0.HealthCheckResponse> healthCheck(
       $grpc.ServiceCall call, $1.Empty request);
+
+  $async.Future<$0.UpdateSpeakerLabelsResponse> updateSpeakerLabels_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.UpdateSpeakerLabelsRequest> $request) async {
+    return updateSpeakerLabels($call, await $request);
+  }
+
+  $async.Future<$0.UpdateSpeakerLabelsResponse> updateSpeakerLabels(
+      $grpc.ServiceCall call, $0.UpdateSpeakerLabelsRequest request);
 }

@@ -117,7 +117,7 @@ func main() {
 
 	// Server
 	queries := db.New(pool)
-	srv := grpcadapter.NewServer(queries, identityClient, version)
+	srv := grpcadapter.NewServer(pool, queries, identityClient, version)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {

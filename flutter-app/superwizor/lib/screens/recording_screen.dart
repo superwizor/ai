@@ -1,22 +1,27 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:fixnum/fixnum.dart';
 import '../services/recording_service.dart';
 import '../services/upload_service.dart';
 import '../widgets/euphire_header.dart';
 import '../widgets/euphire_button.dart';
 import '../widgets/euphire_recording_indicator.dart';
+import '../providers/grpc_provider.dart';
+import '../generated/ingestion/v1/ingestion.pb.dart';
 
-class RecordingScreen extends StatefulWidget {
+class RecordingScreen extends ConsumerStatefulWidget {
   final String patientFileId;
   final String therapistId;
 
   const RecordingScreen({super.key, required this.patientFileId, required this.therapistId});
 
   @override
-  State<RecordingScreen> createState() => _RecordingScreenState();
+  ConsumerState<RecordingScreen> createState() => _RecordingScreenState();
 }
 
-class _RecordingScreenState extends State<RecordingScreen> {
+class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   final _recorder = RecordingService();
   final _uploader = UploadService();
 
@@ -25,6 +30,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
   int _chunkCount = 0;
   bool _uploading = false;
   String? _errorMessage;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -37,17 +43,23 @@ class _RecordingScreenState extends State<RecordingScreen> {
   }
 
   Future<void> _start() async {
-    _sessionId = const Uuid().v4();
-    await _recorder.startRecording(_sessionId!);
+    try {
+      _sessionId = const Uuid().v4();
+      await _recorder.startRecording(_sessionId!);
 
-    // Update timer co sekundę
-    Stream.periodic(const Duration(seconds: 1)).take(7200).listen((tick) {
-      if (mounted && _recorder.state == RecordingState.recording) {
-        setState(() => _elapsed = Duration(seconds: tick + 1));
-      }
-    });
+      _timer?.cancel();
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (mounted && _recorder.state == RecordingState.recording) {
+          setState(() {
+            _elapsed += const Duration(seconds: 1);
+          });
+        }
+      });
 
-    setState(() {});
+      setState(() => _errorMessage = null);
+    } catch (e) {
+      setState(() => _errorMessage = 'Błąd mikrofonu: ${e.toString()}');
+    }
   }
 
   Future<void> _stop() async {
@@ -82,12 +94,19 @@ class _RecordingScreenState extends State<RecordingScreen> {
       if (!ok) throw Exception('Wystąpił błąd podczas wysyłania nagrania.');
 
       // 4. Notify ingestion-svc że upload się zakończył
-      await _completeUpload();
+      await _completeUpload(length);
 
       // 5. Zniszczenie dowodów (Krematorium Danych) po HTTP 200 z ingestion-svc i GCS
       await _recorder.cleanSession(_sessionId!);
 
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sesja została pomyślnie zapisana i wysłana.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
         Navigator.pop(context, _sessionId);
       }
     } catch (e) {
@@ -99,13 +118,33 @@ class _RecordingScreenState extends State<RecordingScreen> {
     }
   }
 
+  String? _uploadId;
+
   Future<String> _requestSignedUrl(int sizeBytes) async {
-    // TODO: real gRPC call do ingestion-svc.CreateAudioUpload
-    throw UnimplementedError('Funkcja nie została zaimplementowana.');
+    final client = ref.read(grpcClientsProvider).ingestion;
+    final req = CreateAudioUploadRequest(
+      patientFileId: '67daa161-23dc-4613-b613-1067b7d94357', // valid DB id
+      therapistId: '6e8af866-08bc-41b9-89c2-2b5b15d2c665', // valid DB id
+      estimatedSizeBytes: Int64(sizeBytes),
+      contentType: 'audio/m4a',
+      clientPlatform: 'flutter',
+      idempotencyKey: _sessionId ?? const Uuid().v4(),
+    );
+    final res = await client.createAudioUpload(req);
+    _uploadId = res.uploadId;
+    return res.signedUrl;
   }
 
-  Future<void> _completeUpload() async {
-    // TODO: real gRPC call do ingestion-svc.CompleteAudioUpload
+  Future<void> _completeUpload(int sizeBytes) async {
+    if (_uploadId == null) return;
+    final client = ref.read(grpcClientsProvider).ingestion;
+    final res = await client.completeAudioUpload(CompleteAudioUploadRequest(
+      uploadId: _uploadId!,
+      actualDurationSeconds: _elapsed.inSeconds,
+      actualSizeBytes: Int64(sizeBytes),
+      chunkCount: _chunkCount,
+    ));
+    _sessionId = res.sessionId;
   }
 
   @override
@@ -182,6 +221,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
 
   @override
   void dispose() {
+    _timer?.cancel();
     _recorder.dispose();
     super.dispose();
   }

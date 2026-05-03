@@ -24,6 +24,13 @@ resource "google_storage_bucket" "audio_uploads" {
       type = "Delete"
     }
   }
+
+  cors {
+    origin          = ["*"]
+    method          = ["PUT", "OPTIONS"]
+    response_header = ["Content-Type", "x-goog-content-length-range"]
+    max_age_seconds = 3600
+  }
 }
 
 variable "pubsub_topic_id" {

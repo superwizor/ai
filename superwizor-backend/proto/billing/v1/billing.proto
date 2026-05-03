@@ -2,18 +2,52 @@ syntax = "proto3";
 
 package billing.v1;
 
+import "google/protobuf/empty.proto";
+
 option go_package = "github.com/superwizor-ai/backend/gen/go/billing/v1;billingv1";
 
 service BillingService {
-  rpc CheckQuota(CheckQuotaRequest) returns (CheckQuotaResponse);
+  // Sprawdza czy organizacja ma quotę na nową sesję
+  rpc CheckQuota(CheckQuotaRequest) returns (QuotaDecision);
+
+  // Inkrementuje usage po zakończonej analizie
+  rpc IncrementUsage(IncrementUsageRequest) returns (google.protobuf.Empty);
+
+  // Stan subskrypcji
+  rpc GetSubscription(GetSubscriptionRequest) returns (Subscription);
 }
 
 message CheckQuotaRequest {
-  string therapist_id = 1;
-  string quota_type = 2; // np. "AI_TRANSCRIPTION"
+  string organization_id = 1;
+  string therapist_id = 2;
+  string usage_type = 3;          // 'session_analysis', 'audio_minutes'
+  int32 amount = 4;
 }
 
-message CheckQuotaResponse {
+message QuotaDecision {
   bool allowed = 1;
-  string reason = 2; // optional reason why not allowed
+  string reason = 2;
+  int32 remaining = 3;
+  int32 limit = 4;
+}
+
+message IncrementUsageRequest {
+  string organization_id = 1;
+  string therapist_id = 2;
+  string usage_type = 3;
+  int32 amount = 4;
+  string session_id = 5;          // dla audit
+  string idempotency_key = 6;
+}
+
+message GetSubscriptionRequest {
+  string organization_id = 1;
+}
+
+message Subscription {
+  string id = 1;
+  string plan_tier = 2;            // 'SOLO', 'PRO', 'CLINIC'
+  string status = 3;
+  int32 sessions_per_month_limit = 4;
+  int32 sessions_used_this_period = 5;
 }

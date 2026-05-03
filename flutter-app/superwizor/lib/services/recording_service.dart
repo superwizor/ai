@@ -40,8 +40,7 @@ class RecordingService {
   enc.IV? get sessionIV => _sessionIV;
 
   Future<bool> hasPermission() async {
-    final status = await Permission.microphone.request();
-    return status.isGranted;
+    return await _recorder.hasPermission();
   }
 
   Future<void> startRecording(String sessionId) async {

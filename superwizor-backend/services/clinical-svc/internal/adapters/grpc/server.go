@@ -14,17 +14,19 @@ import (
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Server struct {
 	clinicalv1.UnimplementedClinicalServiceServer
+	dbPool   *pgxpool.Pool
 	queries  *db.Queries
 	identity identityv1.IdentityServiceClient
 	version  string
 }
 
-func NewServer(queries *db.Queries, identity identityv1.IdentityServiceClient, version string) *Server {
-	return &Server{queries: queries, identity: identity, version: version}
+func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, version string) *Server {
+	return &Server{dbPool: dbPool, queries: queries, identity: identity, version: version}
 }
 
 func (s *Server) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*clinicalv1.HealthCheckResponse, error) {

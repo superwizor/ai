@@ -42,7 +42,7 @@ module "audit_logs" {
 module "storage" {
   source          = "../../modules/storage"
   project_id      = var.project_id
-  pubsub_topic_id = module.pubsub.topic_audio_uploaded
+  pubsub_topic_id = module.pubsub.audio_uploaded_topic
 }
 
 module "pubsub" {

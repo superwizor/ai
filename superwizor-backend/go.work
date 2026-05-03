@@ -5,6 +5,7 @@ use (
 	./pkg/authz
 	./pkg/cryptobox
 	./pkg/errors
+	./pkg/i18n
 	./pkg/idempotency
 	./pkg/logging
 	./pkg/observability

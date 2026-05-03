@@ -28,5 +28,7 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Aplikacja wymaga dostępu do mikrofonu, aby nagrywać sesje terapeutyczne.</string>
 </dict>
 </plist>

@@ -1,17 +1,14 @@
-FROM golang:1.24-alpine AS builder
-
+FROM golang:1.23-alpine AS builder
 WORKDIR /app
+COPY go.work go.work.sum ./
+COPY services/billing-svc services/billing-svc
+COPY gen/ gen/
+WORKDIR /app/services/billing-svc
+RUN go mod download
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /server ./cmd/server
 
-# Copy the entire backend directory to resolve go.work dependencies
-COPY . .
-
-# Build the binary
-RUN go build -o billing-svc ./services/billing-svc/main.go
-
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates tzdata
-WORKDIR /root/
-COPY --from=builder /app/billing-svc .
-
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=builder /server /server
+USER nonroot:nonroot
 EXPOSE 8080
-CMD ["./billing-svc"]
+ENTRYPOINT ["/server"]
