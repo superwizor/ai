@@ -1,4 +1,4 @@
-package main
+package llmworker
 
 import (
 	"context"
@@ -67,7 +67,7 @@ func init() {
 		os.Exit(1)
 	}
 
-	funcframework.RegisterEventFunctionContext(ctx, "/", processTranscript)
+	funcframework.RegisterEventFunctionContext(ctx, "/", ProcessTranscript)
 }
 
 func main() {
@@ -81,7 +81,7 @@ func main() {
 	}
 }
 
-func processTranscript(ctx context.Context, e Event) error {
+func ProcessTranscript(ctx context.Context, e Event) error {
 	logger := slog.With("function", "llm-worker")
 
 	var event TranscriptCompletedEvent
@@ -179,14 +179,16 @@ type SessionContext struct {
 }
 
 type ReportPayload struct {
-	Title                   string                            `json:"title"`
-	SummaryShort            string                            `json:"summary_short"`
-	SpeakerRoleInference    map[string]SpeakerRoleInference   `json:"speaker_role_inference"`
-	MainThemes              []ThemeItem                       `json:"main_themes"`
-	HiTOPDimensions         []HiTOPItem                       `json:"hitop_dimensions"`
-	RiskAssessment          RiskAssessment                    `json:"risk_assessment"`
-	Sentiment               string                            `json:"sentiment"`
-	RAGSummaryChunk         string                            `json:"rag_summary_chunk"`
+	PodsumowanieSesji            string                          `json:"podsumowanie_sesji"`
+	WnikliweObserwacje           string                          `json:"wnikliwe_obserwacje"`
+	PlanDzialaniaKlienta         string                          `json:"plan_dzialania_klienta"`
+	PropozycjeInterwencji        string                          `json:"propozycje_interwencji"`
+	WatkiDoPoglebienia           string                          `json:"watki_do_poglebienia"`
+	WskazowkiSuperwizyjne        string                          `json:"wskazowki_superwizyjne"`
+	WstepneHipotezyDiagnostyczne string                          `json:"wstepne_hipotezy_diagnostyczne"`
+	SpeakerRoleInference         map[string]SpeakerRoleInference `json:"speaker_role_inference"`
+	HiTOPDimensions              []HiTOPItem                     `json:"hitop_dimensions"`
+	RAGSummaryChunk              string                          `json:"rag_summary_chunk"`
 }
 
 type SpeakerRoleInference struct {
@@ -195,22 +197,11 @@ type SpeakerRoleInference struct {
 	Evidence   string  `json:"evidence"`
 }
 
-type ThemeItem struct {
-	Theme    string   `json:"theme"`
-	Salience float64  `json:"salience"`
-	Evidence []string `json:"evidence_quotes"`
-}
-
 type HiTOPItem struct {
 	DimensionCode string  `json:"dimension_code"`
 	Score         float64 `json:"score"`
 	Confidence    float64 `json:"confidence"`
 	Evidence      string  `json:"evidence"`
-}
-
-type RiskAssessment struct {
-	Level    string   `json:"level"`
-	Concerns []string `json:"concerns"`
 }
 
 type TokenStats struct {
@@ -425,8 +416,8 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 			llm_output_tokens, llm_processing_seconds, llm_total_cost_usd)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
 		reportID, session.ID, transID, session.ModalityID,
-		ciphertext, encDEK, report.Title, report.SummaryShort,
-		report.Sentiment, report.RiskAssessment.Level, roleInferenceJSON,
+		ciphertext, encDEK, "", report.PodsumowanieSesji,
+		"", "", roleInferenceJSON,
 		geminiModel,
 		tokenStats.InputTokens, tokenStats.OutputTokens,
 		int(processingTime.Seconds()), costUSD)

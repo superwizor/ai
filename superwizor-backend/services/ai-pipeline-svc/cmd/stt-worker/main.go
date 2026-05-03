@@ -1,4 +1,4 @@
-package main
+package sttworker
 
 import (
 	"context"
@@ -79,7 +79,7 @@ func init() {
 		}
 	}
 
-	funcframework.RegisterEventFunctionContext(ctx, "/", processAudio)
+	funcframework.RegisterEventFunctionContext(ctx, "/", ProcessAudio)
 }
 
 func main() {
@@ -93,7 +93,7 @@ func main() {
 	}
 }
 
-func processAudio(ctx context.Context, e Event) error {
+func ProcessAudio(ctx context.Context, e Event) error {
 	logger := slog.With("function", "stt-worker")
 
 	var event AudioUploadedEvent
