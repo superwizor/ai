@@ -49,10 +49,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } on FirebaseAuthException catch (e) {
       debugPrint('FirebaseAuthException: $e');
-      setState(() => _error = e.message != null ? '${e.message}.' : 'Wystąpił błąd Firebase.');
+      if (mounted) setState(() => _error = e.message != null ? '${e.message}.' : 'Wystąpił błąd Firebase.');
     } catch (e) {
       debugPrint('General Exception: $e');
-      setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) {
         setState(() => _loading = false);

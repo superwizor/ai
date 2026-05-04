@@ -15,6 +15,7 @@ import (
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/superwizor-ai/backend/pkg/cryptobox"
 )
 
 type Server struct {
@@ -22,11 +23,12 @@ type Server struct {
 	dbPool   *pgxpool.Pool
 	queries  *db.Queries
 	identity identityv1.IdentityServiceClient
+	crypto   cryptobox.CryptoBox
 	version  string
 }
 
-func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, version string) *Server {
-	return &Server{dbPool: dbPool, queries: queries, identity: identity, version: version}
+func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, crypto cryptobox.CryptoBox, version string) *Server {
+	return &Server{dbPool: dbPool, queries: queries, identity: identity, crypto: crypto, version: version}
 }
 
 func (s *Server) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*clinicalv1.HealthCheckResponse, error) {

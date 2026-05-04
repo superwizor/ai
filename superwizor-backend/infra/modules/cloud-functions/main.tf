@@ -27,6 +27,11 @@ resource "google_storage_bucket_object" "stt_worker_zip" {
   depends_on = [null_resource.package_functions]
 }
 
+variable "app_data_key_id" {
+  type        = string
+  description = "KMS key ID for app data encryption"
+}
+
 resource "google_storage_bucket_object" "llm_worker_zip" {
   name   = "llm-worker-${null_resource.package_functions.id}.zip"
   bucket = google_storage_bucket.functions_source.name
@@ -58,6 +63,18 @@ resource "google_project_iam_member" "stt_worker_sql" {
   member  = "serviceAccount:${var.stt_worker_sa_email}"
 }
 
+resource "google_project_iam_member" "stt_worker_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${var.stt_worker_sa_email}"
+}
+
+resource "google_kms_crypto_key_iam_member" "stt_worker_kms" {
+  crypto_key_id = var.app_data_key_id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${var.stt_worker_sa_email}"
+}
+
 # llm-worker IAM
 resource "google_project_iam_member" "llm_worker_vertex" {
   project = var.project_id
@@ -69,6 +86,12 @@ resource "google_project_iam_member" "llm_worker_sql" {
   project = var.project_id
   role    = "roles/cloudsql.client"
   member  = "serviceAccount:${var.llm_worker_sa_email}"
+}
+
+resource "google_kms_crypto_key_iam_member" "llm_worker_kms" {
+  crypto_key_id = var.app_data_key_id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${var.llm_worker_sa_email}"
 }
 
 # To receive Pub/Sub events via Eventarc, the compute service account or the trigger SA needs permission to invoke Cloud Run. 
@@ -128,6 +151,7 @@ resource "google_cloudfunctions2_function" "stt_worker" {
     environment_variables = {
       GCP_PROJECT_ID    = var.project_id
       AUDIO_BUCKET_NAME = var.audio_bucket_name
+      KMS_KEY_URI       = var.app_data_key_id
     }
 
     secret_environment_variables {
@@ -139,17 +163,6 @@ resource "google_cloudfunctions2_function" "stt_worker" {
 
     vpc_connector                 = var.vpc_connector_id
     vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
-
-    # Cloud SQL configuration is handled by Cloud Run under the hood in Gen2 via volumes or vpc
-    # Cloud SQL Auth Proxy automatically runs if we specify the connection annotation or use volumes?
-    # No, for Gen2 (Cloud Run), we just need to specify the connection. But Terraform google_cloudfunctions2_function doesn't expose it directly.
-    # Actually, we can use the VPC connector or just TCP if the DB has public IP.
-    # Our DB has public IP, but it's better to use Private IP or the Cloud SQL Unix socket.
-    # Let's just use the public IP for staging since authorized networks are configured? 
-    # Wait, Cloud Functions IP is dynamic, so it wouldn't be allowed in authorized_networks.
-    # We must use VPC access or Cloud Run's native Cloud SQL integration.
-    # Cloud SQL native integration in TF google_cloudfunctions2_function is not directly supported, so VPC connector is the standard.
-    # But for simplicity, we can pass the DB IP and add a serverless VPC connector.
   }
 
   event_trigger {
@@ -163,7 +176,8 @@ resource "google_cloudfunctions2_function" "stt_worker" {
   depends_on = [
     google_project_iam_member.stt_worker_eventarc,
     google_project_iam_member.stt_worker_speech,
-    google_project_iam_member.stt_worker_sql
+    google_project_iam_member.stt_worker_sql,
+    google_kms_crypto_key_iam_member.stt_worker_kms
   ]
 }
 
@@ -193,6 +207,7 @@ resource "google_cloudfunctions2_function" "llm_worker" {
 
     environment_variables = {
       GCP_PROJECT_ID = var.project_id
+      KMS_KEY_URI    = var.app_data_key_id
     }
 
     secret_environment_variables {

@@ -4,6 +4,7 @@ go 1.26.2
 
 require (
 	cloud.google.com/go/aiplatform v1.122.0
+	cloud.google.com/go/kms v1.30.0
 	cloud.google.com/go/pubsub v1.50.2
 	cloud.google.com/go/speech v1.34.0
 	cloud.google.com/go/vertexai v0.19.0
@@ -60,6 +61,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.59.0 // indirect
+	github.com/superwizor-ai/backend/pkg/cryptobox v0.0.0-00010101000000-000000000000
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
@@ -94,3 +96,5 @@ require (
 replace github.com/superwizor-ai/backend/pkg/i18n => ../../pkg/i18n
 
 replace github.com/superwizor-ai/backend/gen/go => ../../gen/go
+
+replace github.com/superwizor-ai/backend/pkg/cryptobox => ../../pkg/cryptobox

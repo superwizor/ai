@@ -26,6 +26,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/superwizor-ai/backend/gen/go v0.0.0
+	github.com/superwizor-ai/backend/pkg/cryptobox v0.0.0-00010101000000-000000000000
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.43.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
@@ -40,3 +41,5 @@ require (
 )
 
 replace github.com/superwizor-ai/backend/gen/go => ../../gen/go
+
+replace github.com/superwizor-ai/backend/pkg/cryptobox => ../../pkg/cryptobox

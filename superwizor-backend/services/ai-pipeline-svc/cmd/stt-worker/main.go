@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/pubsub"
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
@@ -20,6 +21,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 )
 
@@ -44,6 +46,7 @@ var (
 	dbPool       *pgxpool.Pool
 	speechClient *speech.Client
 	pubsubClient *pubsub.Client
+	crypto       cryptobox.CryptoBox
 	bucketName   string
 	projectID    string
 )
@@ -56,6 +59,7 @@ func init() {
 	projectID = os.Getenv("GCP_PROJECT_ID")
 	bucketName = os.Getenv("AUDIO_BUCKET_NAME")
 	dbDSN := os.Getenv("DATABASE_URL")
+	kmsKeyURI := os.Getenv("KMS_KEY_URI")
 
 	var err error
 	if dbDSN != "" {
@@ -78,6 +82,19 @@ func init() {
 			slog.Error("pubsub client", "error", err)
 			os.Exit(1)
 		}
+		
+		if kmsKeyURI != "" {
+			kmsClient, err := kms.NewKeyManagementClient(ctx)
+			if err != nil {
+				slog.Error("kms client", "error", err)
+				os.Exit(1)
+			}
+			crypto = cryptobox.NewCloudKMSBox(kmsClient, kmsKeyURI)
+		} else {
+			crypto = cryptobox.NewMockBox()
+		}
+	} else {
+		crypto = cryptobox.NewMockBox()
 	}
 
 	functions.CloudEvent("ProcessAudio", ProcessAudio)
@@ -395,10 +412,11 @@ func persistTranscript(ctx context.Context, sessionID string, result *Transcript
 
 	blobJSON, _ := json.Marshal(blobLines)
 
-	// PRODUCTION: użyj envelope encryption (Cloud KMS).
-	// Faza 2 — placeholder bytes (do zastąpienia w hardening Faza 3).
-	blobCiphertext := []byte("ENCRYPT_PLACEHOLDER:" + string(blobJSON))
-	blobDEK := []byte("DEK_PLACEHOLDER")
+	blobCiphertext, blobDEK, err := crypto.Encrypt(ctx, blobJSON)
+	if err != nil {
+		slog.Error("encrypt blob", "error", err)
+		return "", err
+	}
 
 	if dbPool == nil { return transcriptID.String(), nil } // test
 	tx, err := dbPool.Begin(ctx)
@@ -426,9 +444,11 @@ func persistTranscript(ctx context.Context, sessionID string, result *Transcript
 		segID := uuid.New()
 		segText := strings.TrimSpace(seg.Text)
 
-		// Per-segment encryption (zachowane dla granularnego access pattern w przyszłości)
-		segCiphertext := []byte("ENCRYPT_PLACEHOLDER:" + segText)
-		segDEK := []byte("DEK_PLACEHOLDER")
+		segCiphertext, segDEK, err := crypto.Encrypt(ctx, []byte(segText))
+		if err != nil {
+			slog.Error("encrypt segment", "error", err)
+			return "", err
+		}
 
 		label := labels[seg.SpeakerTag]
 		if label == "" {

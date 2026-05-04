@@ -68,8 +68,11 @@ func (s *Server) UpdateSpeakerLabels(ctx context.Context, req *clinicalv1.Update
 
 	blobLines := make([]BlobLine, 0, len(segments))
 	for _, seg := range segments {
-		// Decrypt segment text (placeholder w Faza 2; KMS w Faza 3)
-		segText := strings.TrimPrefix(string(seg.TextCiphertext), "ENCRYPT_PLACEHOLDER:")
+		segTextBytes, err := s.crypto.Decrypt(ctx, seg.TextCiphertext, seg.TextEncryptedDek)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "failed to decrypt segment")
+		}
+		segText := string(segTextBytes)
 
 		// Apply nowy label (jeśli w mapping; inaczej zostaw obecny)
 		newLabel, hasUpdate := req.LabelMapping[fmt.Sprintf("%d", seg.SpeakerTag)]
@@ -93,9 +96,10 @@ func (s *Server) UpdateSpeakerLabels(ctx context.Context, req *clinicalv1.Update
 
 	blobJSON, _ := json.Marshal(blobLines)
 
-	// PRODUCTION: encrypt z Cloud KMS
-	newCiphertext := []byte("ENCRYPT_PLACEHOLDER:" + string(blobJSON))
-	newDEK := []byte("DEK_PLACEHOLDER")
+	newCiphertext, newDEK, err := s.crypto.Encrypt(ctx, blobJSON)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to encrypt blob")
+	}
 
 	// 4. Update transcripts (rebuild blob)
 	if err := qtx.UpdateTranscriptBlob(ctx, db.UpdateTranscriptBlobParams{

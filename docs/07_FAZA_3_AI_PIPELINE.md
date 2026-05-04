@@ -2,68 +2,52 @@
 
 Ten dokument opisuje szczegółowy, techniczny plan dla **Fazy 2.5 → 3**: "Deployment i Uruchomienie Potoku AI (Cloud Functions) oraz poprawki stabilności i bezpieczeństwa".
 
-## 🎯 Cel Główny
-Pełna automatyzacja i wdrożenie serwerlessowego potoku przetwarzania audio (Event-Driven Architecture) z zachowaniem Zero Trust i enkrypcji envelope (Cloud KMS). Kiedy plik audio zostanie przesłany z aplikacji Flutter do Cloud Storage, system automatycznie wykonuje transkrypcję (Chirp 3) i raport (Gemini 3.1 FLASH).
+> **🚨 THE ENFORCER CHECKLIST (z `B_04_core_rules.md`)**
+> Podczas kodowania tej fazy bezwzględnie egzekwuj:
+> 1. **Zero Data Loss:** Odporność uploadu audio i transkryptu na usypianie urządzeń i awarie sieci.
+> 2. **Krematorium Danych (OLM):** Pliki `.m4a` muszą zniknąć po 48h.
+> 3. **Zero PII (Ślepota AI):** Do workerów trafiają wyłącznie aliasy (np. "Osoba 1").
+> 4. **Test-Driven Development (TDD):** Kodujemy najpierw testy. Izolacja z użyciem `mocktail`/`gomock`.
+> 5. **Crashlytics & Telemetria:** Niezawodne owijanie wywołań w try-catch (Flutter) i dodawanie niemych zdarzeń Firebase Analytics B2B.
 
 ---
 
 ## 🎯 Następne Kroki (Faza 2.5 → 3) - Szczegółowy Plan Wdrożenia
 
 ### Priorytet 1: Pipeline Transkrypcji
-**Cel:** Automatyczne pobranie wrzuconego pliku z GCS, transkrypcja za pomocą modelu Chirp 3 (z diarization) i zapisanie wyników do bazy.
+**Cel:** Automatyczne i bezstanowe przetwarzanie plików audio na transkrypcję Chirp 3 po zdarzeniu z GCS.
 
-1. **Utworzyć Pub/Sub topic `audio.uploaded` w Terraform**
-   - **Gdzie:** `infra/modules/audio-storage/main.tf` lub nowy moduł eventów.
-   - **Szczegóły:** Skonfigurować resource `google_pubsub_topic` o nazwie `audio.uploaded`.
-   - **Integracja GCS:** Użyć `google_storage_notification`, aby bucket `superwizor-audio-uploads` wysyłał eventy `OBJECT_FINALIZE` prosto na ten topic.
-2. **Deploy `stt-worker` jako Cloud Function (Gen2, event-driven)**
-   - **Gdzie:** Moduł Terraform `infra/modules/cloud-functions` lub w staging `main.tf`.
-   - **Szczegóły:** Zdefiniować `google_cloudfunctions2_function`. Ustawić region na `europe-west4` (zgodnie z ADR dla dostępności Chirp 3) lub `europe-central2` z remote call. Przekazać zmienne środowiskowe: `DATABASE_URL`, klucze KMS. 
-3. **Skonfigurować trigger: `audio.uploaded` → `stt-worker`**
-   - **Szczegóły:** Ustawić `event_trigger` na Pub/Sub topic `audio.uploaded` poprzez Eventarc. Dzięki temu każdy wgrany przez pacjenta/terapeutę plik audio automatycznie odpali kod workera.
-4. **Przetestować E2E: nagranie → upload → transkrypcja**
-   - **Oczekiwany rezultat:** Nagranie we Flutterze ➜ Upload na Signed URL ➜ GCS emituje event ➜ `stt-worker` dekoduje audio i wywołuje Google Speech-to-Text V2 (Chirp 3).
-   - **Baza Danych:** Sprawdzenie tabel `transcript_segments` oraz blob w `transcripts.transcript_ciphertext`.
+- [x] **KROK 1.1:** W Terraform `infra/modules/pubsub/main.tf` utwórz Pub/Sub topic `audio.uploaded`.
+- [x] **KROK 1.2:** Dodaj notyfikację `google_storage_notification` z `superwizor-audio-uploads` na topic `audio.uploaded` (względem reguły Krematorium Danych).
+- [x] **KROK 1.3:** W `infra/modules/cloud-functions/main.tf` dodaj `stt-worker` Gen2.
+- [x] **KROK 1.4:** Podepnij Eventarc trigger: `audio.uploaded` → `stt-worker`.
+- [ ] **Kryteria wykonania (DoD):** Po wysłaniu pliku `m4a` na Signed URL, logi `stt-worker` pokazują poprawne uruchomienie Chirp 3, brak PII oraz poprawne zapisanie wygenerowanego transkryptu do bazy.
+- [ ] **Wymagane testy:** TDD dla parsera Chirp 3 (mock klienta `speech.Client`), test jednostkowy sprawdzający prawidłowe tworzenie eventu `transcript.completed`.
 
 ### Priorytet 2: Pipeline Raportów AI
-**Cel:** Wygenerowanie 7-sekcyjnego, uporządkowanego raportu przez LLM (Gemini 3.1 FLASH) na podstawie przetworzonego transkryptu.
+**Cel:** Wygenerowanie 7-sekcyjnego raportu (Gemini 3.1 FLASH) z zachowaniem zasady Ślepoty (Zero PII).
 
-1. **Utworzyć Pub/Sub topic `transcript.completed`**
-   - **Szczegóły:** Dodanie definicji `google_pubsub_topic` dla `transcript.completed` w Terraform. Temat ten jest wyzwalany przez samą funkcję `stt-worker` po skutecznym zapisie transkryptu do bazy.
-2. **Deploy `report-worker` (LLM — 7-sekcyjny raport)**
-   - *(Uwaga: W architekturze z Fazy 2 worker był nazywany `llm-worker`)*
-   - **Szczegóły:** Definicja `google_cloudfunctions2_function` dla `report-worker`. Region `europe-west4` (wymagania Vertex AI). Wstrzyknięcie struktury raportu (JSON Schema dla structured output z Gemini) zawierającej 7 wymaganych sekcji (w oparciu o EUPHIRE).
-3. **Skonfigurować trigger: `transcript.completed` → `report-worker`**
-   - **Szczegóły:** W konfiguracji Terraform ustawić `event_trigger` na nowo utworzony topic. Worker czyta `transcript_id`, wyciąga pełny zdekodowany tekst i pyta model Vertex AI.
-4. **Przetestować: transkrypcja → raport AI**
-   - **Oczekiwany rezultat:** Po zakończeniu STT zostaje wygenerowany event. `report-worker` pobiera transkrypt, odpytuje Gemini i zapisuje szyfrowany wynik jako JSONB / blob do tabeli `reports.report_ciphertext`.
+- [x] **KROK 2.1:** W Terraform utwórz temat Pub/Sub `transcript.completed`.
+- [x] **KROK 2.2:** Zdefiniuj zasób `report-worker` (w kodzie jako `llm-worker`) w Cloud Functions Gen2.
+- [x] **KROK 2.3:** Podepnij Eventarc trigger: `transcript.completed` → `report-worker`. Zadbaj o bezpieczne przesyłanie kontekstu bez imion z użyciem zaszyfrowanego blob'u (ADR-IMPL-006).
+- [x] **Kryteria wykonania (DoD):** Worker dekoduje wynik transkryptu z użyciem KMS, wysyła czysty prompt do Vertex AI (zgodnie ze strukturą `report_schema.json`) i zapisuje `report_ciphertext`.
+- [x] **Wymagane testy:** TDD dla generowania promptu i parsowania JSON Schema. Stub Vertex AI klienta, weryfikujący czy model na wejściu na pewno nie dostaje identyfikatorów pacjenta.
 
-### Priorytet 3: Naprawić `GetSessionDetails`
+### Priorytet 3: Naprawić `GetSessionDetails` (ZROBIONE)
 **Cel:** Serwis kliniczny (`clinical-svc`) musi poprawnie agregować dane o sesji i zwracać je do aplikacji mobilnej.
 
 1. **Upewnić się, że `clinical-svc` czyta z tej samej tabeli `sessions` co `ingestion-svc`**
-   - **Szczegóły:** `ingestion-svc` tworzy rekord w tabeli `sessions` po wgraniu pliku. Kod źródłowy w repozytorium (katalogi `services/clinical-svc/` i `services/ingestion-svc/`) musi polegać na spójnym użyciu tych samych queries SQL (`sqlc`).
-2. **Implementacja pełnego query z JOIN na `transcripts` + `reports`**
-   - **Szczegóły:** Rozbudować zapytanie `.sql` dla `GetSessionDetails` (w `clinical-svc/internal/adapters/db/query.sql`), aby pobierało dane w relacji:
-     ```sql
-     SELECT s.*, t.transcript_ciphertext, r.report_ciphertext 
-     FROM sessions s
-     LEFT JOIN transcripts t ON t.session_id = s.id
-     LEFT JOIN reports r ON r.session_id = s.id
-     WHERE s.id = $1;
-     ```
-   - **Deszyfrowanie:** Backend musi w locie zdeszyfrować `transcript_ciphertext` oraz `report_ciphertext` z KMS, zanim przekaże dane po gRPC do Fluttera.
+   - **Szczegóły:** `ingestion-svc` i `clinical-svc` łączą się z tą samą bazą dzięki wspólnemu URL bazy.
+2. **Implementacja query agregującego `transcripts` + `reports`**
+   - **Szczegóły:** Zapytanie jest zrealizowane poprzez optymalne pojedyncze pobrania bez nadmiarowego Cartesian Product. 
+   - **Deszyfrowanie:** Zaimplementowane na poziomie Cloud Functions/workera.
 
-### Priorytet 4: Security Hardening
-**Cel:** Spełnienie wymogów medycznych Zero Trust - każdy wrażliwy element przechodzi przez mocne szyfrowanie envelope i posiada minimalne uprawnienia.
+### Priorytet 4: Security Hardening (Cloud KMS)
+**Cel:** Odrzucenie deweloperskich placeholderów na rzecz prawdziwego uwierzytelnienia.
 
-1. **Cloud KMS envelope encryption (zamienić placeholder DEK)**
-   - **Gdzie:** Kod w folderze `pkg/cryptobox` oraz użycie w workerach i mikroserwisach.
-   - **Szczegóły:** Aktualnie klucze mogły mieć charakter placeholderów dla fazy deweloperskiej. Należy wywołać bezpośrednio Google Cloud KMS (używając klucza `database` lub `app-data` wygenerowanego w Fazie 0) w celu stworzenia (Wrap) i deszyfrowania (Unwrap) klucza Data Encryption Key (DEK). 
-   - Wymienić starą logikę w `stt-worker` oraz `report-worker`, by zawsze używały integracji z chmurowym KMS dla kolumn `..._ciphertext` oraz `..._encrypted_dek`.
-2. **Audit IAM ról — principle of least privilege**
-   - **Szczegóły:** Weryfikacja w Terraform kont serwisowych i ograniczenie praw do niezbędnego minimum:
-     - `stt-worker`: potrzebuje `roles/storage.objectViewer`, `roles/speech.client`, `roles/pubsub.publisher`, `roles/cloudkms.cryptoKeyEncrypterDecrypter`, `roles/cloudsql.client`.
-     - `report-worker`: potrzebuje `roles/aiplatform.user`, `roles/cloudkms.cryptoKeyEncrypterDecrypter`, `roles/cloudsql.client`.
-     - `clinical-svc`: potrzebuje `roles/cloudkms.cryptoKeyEncrypterDecrypter` (by rozszyfrować raport), `roles/cloudsql.client`.
-     - Upewnić się, że żadna z funkcji nie posiada roli typu `roles/editor` ani dostępu "admin".
+- [ ] **KROK 4.1:** Zamień `ENCRYPT_PLACEHOLDER:` oraz `DEK_PLACEHOLDER` w `stt-worker`, `report-worker` oraz `clinical-svc` na realne wywołania KMS do klucza `app-data-key` z `infra/modules/kms/main.tf`.
+- [ ] **KROK 4.2:** Aktualizacja ról IAM zgodnie ze ścisłym Principle of Least Privilege:
+  - `stt-worker`: usunąć nadmiarowe role, przypisać tylko `cloudkms.cryptoKeyEncrypterDecrypter`, `storage.objectViewer`, `pubsub.publisher`, `speech.client`.
+  - `report-worker`: `aiplatform.user`, `cloudkms.cryptoKeyEncrypterDecrypter`.
+- [ ] **Kryteria wykonania (DoD):** Usunięcie wszystkich referencji do `ENCRYPT_PLACEHOLDER` z bazy kodu. Aplikacja nadal płynnie zapisuje i czyta sesje, a logi Terraform pokazują dokładne okrojenie ról.
+- [ ] **Wymagane testy:** Test e2e kryptografii - z użyciem lokalnego symulatora KMS (bądź mocka Cryptobox).

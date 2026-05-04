@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/aiplatform/apiv1/aiplatformpb"
+	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/pubsub"
 	vertexai "cloud.google.com/go/vertexai/genai"
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
@@ -18,6 +19,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/superwizor-ai/backend/pkg/cryptobox"
 )
 
 type TranscriptCompletedEvent struct {
@@ -36,6 +39,7 @@ var (
 	dbPool       *pgxpool.Pool
 	vertexClient *vertexai.Client
 	pubsubClient *pubsub.Client
+	crypto       cryptobox.CryptoBox
 	projectID    string
 	geminiModel  string = "gemini-2.5-pro"
 	geminiRegion string = "europe-west4"
@@ -48,6 +52,7 @@ func init() {
 
 	projectID = os.Getenv("GCP_PROJECT_ID")
 	dbDSN := os.Getenv("DATABASE_URL")
+	kmsKeyURI := os.Getenv("KMS_KEY_URI")
 
 	var err error
 	dbPool, err = pgxpool.New(ctx, dbDSN)
@@ -66,6 +71,17 @@ func init() {
 	if err != nil {
 		slog.Error("pubsub", "error", err)
 		os.Exit(1)
+	}
+
+	if kmsKeyURI != "" {
+		kmsClient, err := kms.NewKeyManagementClient(ctx)
+		if err != nil {
+			slog.Error("kms client", "error", err)
+			os.Exit(1)
+		}
+		crypto = cryptobox.NewCloudKMSBox(kmsClient, kmsKeyURI)
+	} else {
+		crypto = cryptobox.NewMockBox()
 	}
 
 	functions.CloudEvent("ProcessTranscript", ProcessTranscript)
@@ -343,15 +359,18 @@ func loadTranscriptText(ctx context.Context, transcriptID string) (string, error
 	id, _ := uuid.Parse(transcriptID)
 
 	var ciphertext []byte
+	var encryptedDEK []byte
 	row := dbPool.QueryRow(ctx,
-		"SELECT transcript_ciphertext FROM transcripts WHERE id = $1", id)
-	if err := row.Scan(&ciphertext); err != nil {
+		"SELECT transcript_ciphertext, transcript_encrypted_dek FROM transcripts WHERE id = $1", id)
+	if err := row.Scan(&ciphertext, &encryptedDEK); err != nil {
 		return "", err
 	}
 
-	// PRODUCTION: decrypt z Cloud KMS (envelope encryption).
-	// Faza 2 — strip placeholder.
-	blobJSON := strings.TrimPrefix(string(ciphertext), "ENCRYPT_PLACEHOLDER:")
+	blobJSONBytes, err := crypto.Decrypt(ctx, ciphertext, encryptedDEK)
+	if err != nil {
+		return "", fmt.Errorf("decrypt transcript blob: %w", err)
+	}
+	blobJSON := string(blobJSONBytes)
 
 	type BlobLine struct {
 		SpeakerTag   int32  `json:"speaker_tag"`
@@ -397,8 +416,10 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 	transID, _ := uuid.Parse(transcriptID)
 	reportID := uuid.New()
 
-	ciphertext := []byte("ENCRYPT_PLACEHOLDER:" + fullJSON)
-	encDEK := []byte("DEK_PLACEHOLDER")
+	ciphertext, encDEK, err := crypto.Encrypt(ctx, []byte(fullJSON))
+	if err != nil {
+		return "", fmt.Errorf("encrypt report: %w", err)
+	}
 
 	tx, err := dbPool.Begin(ctx)
 	if err != nil {
@@ -443,8 +464,10 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 			continue
 		}
 
-		evidenceCipher := []byte("ENCRYPT_PLACEHOLDER:" + h.Evidence)
-		evidenceDEK := []byte("DEK_PLACEHOLDER")
+		evidenceCipher, evidenceDEK, eErr := crypto.Encrypt(ctx, []byte(h.Evidence))
+		if eErr != nil {
+			continue
+		}
 
 		_, err = tx.Exec(ctx, `
 			INSERT INTO hitop_measurements (session_id, report_id, dimension_id,
@@ -468,13 +491,15 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 func persistRAGMemory(ctx context.Context, session *SessionContext, reportID string, report *ReportPayload, embedding []float32) error {
 	repID, _ := uuid.Parse(reportID)
 
-	summaryCipher := []byte("ENCRYPT_PLACEHOLDER:" + report.RAGSummaryChunk)
-	summaryDEK := []byte("DEK_PLACEHOLDER")
+	summaryCipher, summaryDEK, err := crypto.Encrypt(ctx, []byte(report.RAGSummaryChunk))
+	if err != nil {
+		return fmt.Errorf("encrypt rag summary: %w", err)
+	}
 
 	// Convert embedding to pgvector format string
 	embeddingStr := vectorToString(embedding)
 
-	_, err := dbPool.Exec(ctx, `
+	_, err = dbPool.Exec(ctx, `
 		INSERT INTO rag_memories (patient_file_id, source_session_id, source_report_id,
 			summary_ciphertext, summary_encrypted_dek, embedding,
 			chunk_type, importance_score)

@@ -57,8 +57,11 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 		segments, err := s.queries.ListTranscriptSegments(ctx, transcript.ID)
 		if err == nil {
 			for _, seg := range segments {
-				// We don't decrypt here for MVP because KMS setup takes too long, we assume plaintext or mock
-				text := string(seg.TextCiphertext)
+				textBytes, err := s.crypto.Decrypt(ctx, seg.TextCiphertext, seg.TextEncryptedDek)
+				if err != nil {
+					continue // or return error
+				}
+				text := string(textBytes)
 				
 				var conf float32
 				if seg.Confidence.Valid {
@@ -99,14 +102,18 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 				risk = *rep.RiskLevel
 			}
 
-			// Decrypt or mock
-			content := string(rep.ReportCiphertext)
+			// Decrypt report
+			contentBytes, err := s.crypto.Decrypt(ctx, rep.ReportCiphertext, rep.ReportEncryptedDek)
+			if err != nil {
+				continue
+			}
+			content := string(contentBytes)
 
 			resp.Reports = append(resp.Reports, &clinicalv1.Report{
-				Id:           rep.ID.String(),
-				Title:        title,
-				SummaryShort: summary,
-				Content:      content,
+				Id:             rep.ID.String(),
+				Title:          title,
+				SummaryShort:   summary,
+				Content:        content,
 				SentimentLabel: sentiment,
 				RiskLevel:      risk,
 			})

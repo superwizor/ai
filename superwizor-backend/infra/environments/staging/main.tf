@@ -65,6 +65,7 @@ module "cloud_functions" {
   llm_worker_source_dir      = "${path.cwd}/../../../services/ai-pipeline-svc/cmd/llm-worker"
   stt_worker_sa_email        = google_service_account.stt_worker.email
   llm_worker_sa_email        = google_service_account.llm_worker.email
+  app_data_key_id            = module.kms.app_data_key_id
 
-  depends_on = [module.cloud_sql, module.storage, module.pubsub, google_service_account.stt_worker, google_service_account.llm_worker]
+  depends_on = [module.cloud_sql, module.storage, module.pubsub, google_service_account.stt_worker, google_service_account.llm_worker, module.kms]
 }

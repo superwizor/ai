@@ -12,6 +12,7 @@ STT_DIR="$AI_SVC_DIR/cmd/stt-worker"
 LLM_DIR="$AI_SVC_DIR/cmd/llm-worker"
 
 echo "Packaging STT worker..."
+rm -rf "$OUT_DIR/.tmp/stt-worker"
 mkdir -p "$OUT_DIR/.tmp/stt-worker"
 cp "$STT_DIR/main.go" "$OUT_DIR/.tmp/stt-worker/"
 cp "$AI_SVC_DIR/go.mod" "$OUT_DIR/.tmp/stt-worker/"
@@ -31,6 +32,7 @@ zip -r "../stt-worker-${RES_ID}.zip" .
 cd "$AI_SVC_DIR"
 
 echo "Packaging LLM worker..."
+rm -rf "$OUT_DIR/.tmp/llm-worker"
 mkdir -p "$OUT_DIR/.tmp/llm-worker"
 cp "$LLM_DIR/main.go" "$OUT_DIR/.tmp/llm-worker/"
 cp "$AI_SVC_DIR/go.mod" "$OUT_DIR/.tmp/llm-worker/"

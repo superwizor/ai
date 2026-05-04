@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 
+	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
@@ -20,6 +21,7 @@ import (
 
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	grpcadapter "github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 
@@ -141,9 +143,23 @@ func main() {
 
 	identityClient := identityv1.NewIdentityServiceClient(identityConn)
 
+	// Crypto
+	kmsKeyURI := os.Getenv("KMS_KEY_URI")
+	var crypto cryptobox.CryptoBox
+	if kmsKeyURI != "" {
+		kmsClient, err := kms.NewKeyManagementClient(ctx)
+		if err != nil {
+			slog.Error("kms client", "error", err)
+			os.Exit(1)
+		}
+		crypto = cryptobox.NewCloudKMSBox(kmsClient, kmsKeyURI)
+	} else {
+		crypto = cryptobox.NewMockBox()
+	}
+
 	// Server
 	queries := db.New(pool)
-	srv := grpcadapter.NewServer(pool, queries, identityClient, version)
+	srv := grpcadapter.NewServer(pool, queries, identityClient, crypto, version)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
