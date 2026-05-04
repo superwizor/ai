@@ -41,3 +41,28 @@ ORDER BY start_offset_ms ASC;
 SELECT * FROM reports
 WHERE session_id = $1
 ORDER BY created_at DESC;
+
+-- name: GetSessionWithDetails :one
+SELECT 
+    s.id,
+    s.therapist_id,
+    s.patient_file_id,
+    s.audio_upload_id,
+    s.session_date,
+    s.session_number,
+    s.duration_seconds,
+    s.contact_form,
+    s.speaker_label_mapping,
+    s.language_code,
+    s.status,
+    s.status_updated_at,
+    s.created_at,
+    s.deleted_at,
+    t.id AS transcript_id,
+    t.session_id AS transcript_session_id,
+    r.id AS report_id,
+    r.session_id AS report_session_id
+FROM sessions s
+LEFT JOIN transcripts t ON t.session_id = s.id
+LEFT JOIN reports r ON r.session_id = s.id
+WHERE s.id = $1 AND s.deleted_at IS NULL;

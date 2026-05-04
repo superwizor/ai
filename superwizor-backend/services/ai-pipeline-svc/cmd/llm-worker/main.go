@@ -2,7 +2,6 @@ package llmworker
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -14,6 +13,8 @@ import (
 	"cloud.google.com/go/pubsub"
 	vertexai "cloud.google.com/go/vertexai/genai"
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -24,7 +25,7 @@ type TranscriptCompletedEvent struct {
 	TranscriptID string `json:"transcript_id"`
 }
 
-type Event struct {
+type MessagePublishedData struct {
 	Message struct {
 		Data       []byte            `json:"data"`
 		Attributes map[string]string `json:"attributes"`
@@ -67,7 +68,7 @@ func init() {
 		os.Exit(1)
 	}
 
-	funcframework.RegisterEventFunctionContext(ctx, "/", ProcessTranscript)
+	functions.CloudEvent("ProcessTranscript", ProcessTranscript)
 }
 
 func main() {
@@ -81,15 +82,17 @@ func main() {
 	}
 }
 
-func ProcessTranscript(ctx context.Context, e Event) error {
+func ProcessTranscript(ctx context.Context, e event.Event) error {
 	logger := slog.With("function", "llm-worker")
 
-	var event TranscriptCompletedEvent
-	data := e.Message.Data
-	if decoded, err := base64.StdEncoding.DecodeString(string(data)); err == nil {
-		data = decoded
+	var msgData MessagePublishedData
+	if err := e.DataAs(&msgData); err != nil {
+		logger.Error("decode cloudevent", "error", err)
+		return err
 	}
-	if err := json.Unmarshal(data, &event); err != nil {
+
+	var event TranscriptCompletedEvent
+	if err := json.Unmarshal(msgData.Message.Data, &event); err != nil {
 		logger.Error("parse event", "error", err)
 		return err
 	}

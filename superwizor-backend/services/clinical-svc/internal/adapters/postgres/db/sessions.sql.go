@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -106,6 +107,79 @@ func (q *Queries) GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getSessionWithDetails = `-- name: GetSessionWithDetails :one
+SELECT 
+    s.id,
+    s.therapist_id,
+    s.patient_file_id,
+    s.audio_upload_id,
+    s.session_date,
+    s.session_number,
+    s.duration_seconds,
+    s.contact_form,
+    s.speaker_label_mapping,
+    s.language_code,
+    s.status,
+    s.status_updated_at,
+    s.created_at,
+    s.deleted_at,
+    t.id AS transcript_id,
+    t.session_id AS transcript_session_id,
+    r.id AS report_id,
+    r.session_id AS report_session_id
+FROM sessions s
+LEFT JOIN transcripts t ON t.session_id = s.id
+LEFT JOIN reports r ON r.session_id = s.id
+WHERE s.id = $1 AND s.deleted_at IS NULL
+`
+
+type GetSessionWithDetailsRow struct {
+	ID                  uuid.UUID          `json:"id"`
+	TherapistID         uuid.UUID          `json:"therapist_id"`
+	PatientFileID       uuid.UUID          `json:"patient_file_id"`
+	AudioUploadID       pgtype.UUID        `json:"audio_upload_id"`
+	SessionDate         pgtype.Date        `json:"session_date"`
+	SessionNumber       int32              `json:"session_number"`
+	DurationSeconds     *int32             `json:"duration_seconds"`
+	ContactForm         ContactForm        `json:"contact_form"`
+	SpeakerLabelMapping []byte             `json:"speaker_label_mapping"`
+	LanguageCode        *string            `json:"language_code"`
+	Status              SessionStatus      `json:"status"`
+	StatusUpdatedAt     time.Time          `json:"status_updated_at"`
+	CreatedAt           time.Time          `json:"created_at"`
+	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
+	TranscriptID        pgtype.UUID        `json:"transcript_id"`
+	TranscriptSessionID pgtype.UUID        `json:"transcript_session_id"`
+	ReportID            pgtype.UUID        `json:"report_id"`
+	ReportSessionID     pgtype.UUID        `json:"report_session_id"`
+}
+
+func (q *Queries) GetSessionWithDetails(ctx context.Context, id uuid.UUID) (GetSessionWithDetailsRow, error) {
+	row := q.db.QueryRow(ctx, getSessionWithDetails, id)
+	var i GetSessionWithDetailsRow
+	err := row.Scan(
+		&i.ID,
+		&i.TherapistID,
+		&i.PatientFileID,
+		&i.AudioUploadID,
+		&i.SessionDate,
+		&i.SessionNumber,
+		&i.DurationSeconds,
+		&i.ContactForm,
+		&i.SpeakerLabelMapping,
+		&i.LanguageCode,
+		&i.Status,
+		&i.StatusUpdatedAt,
+		&i.CreatedAt,
+		&i.DeletedAt,
+		&i.TranscriptID,
+		&i.TranscriptSessionID,
+		&i.ReportID,
+		&i.ReportSessionID,
 	)
 	return i, err
 }

@@ -41,10 +41,10 @@ data "google_storage_project_service_account" "gcs_account" {
   project = var.project_id
 }
 
-resource "google_pubsub_topic_iam_binding" "binding" {
+resource "google_pubsub_topic_iam_member" "binding" {
   topic   = var.pubsub_topic_id
   role    = "roles/pubsub.publisher"
-  members = ["serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"]
+  member  = "serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"
 }
 
 resource "google_storage_notification" "notification" {
@@ -52,7 +52,7 @@ resource "google_storage_notification" "notification" {
   payload_format = "JSON_API_V1"
   topic          = var.pubsub_topic_id
   event_types    = ["OBJECT_FINALIZE"]
-  depends_on     = [google_pubsub_topic_iam_binding.binding]
+  depends_on     = [google_pubsub_topic_iam_member.binding]
 }
 
 output "audio_uploads_bucket_name" {

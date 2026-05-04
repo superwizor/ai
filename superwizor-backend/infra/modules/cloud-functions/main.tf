@@ -220,3 +220,19 @@ resource "google_cloudfunctions2_function" "llm_worker" {
     google_project_iam_member.llm_worker_sql
   ]
 }
+
+resource "google_cloud_run_service_iam_member" "stt_invoker" {
+  location = var.region
+  project  = var.project_id
+  service  = google_cloudfunctions2_function.stt_worker.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.stt_worker_sa_email}"
+}
+
+resource "google_cloud_run_service_iam_member" "llm_invoker" {
+  location = var.region
+  project  = var.project_id
+  service  = google_cloudfunctions2_function.llm_worker.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.llm_worker_sa_email}"
+}

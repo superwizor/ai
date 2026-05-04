@@ -26,6 +26,7 @@ cd "$OUT_DIR/.tmp/stt-worker"
 sed -i.bak 's|=> ../../pkg|=> ./pkg|g' go.mod
 sed -i.bak 's|=> ../../gen|=> ./gen|g' go.mod
 rm -f go.mod.bak
+rm -rf vendor
 zip -r "../stt-worker-${RES_ID}.zip" .
 cd "$AI_SVC_DIR"
 
@@ -44,6 +45,7 @@ cd "$OUT_DIR/.tmp/llm-worker"
 sed -i.bak 's|=> ../../pkg|=> ./pkg|g' go.mod
 sed -i.bak 's|=> ../../gen|=> ./gen|g' go.mod
 rm -f go.mod.bak
+rm -rf vendor
 zip -r "../llm-worker-${RES_ID}.zip" .
 cd "$AI_SVC_DIR"
 

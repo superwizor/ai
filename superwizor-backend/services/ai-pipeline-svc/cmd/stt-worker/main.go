@@ -2,7 +2,6 @@ package sttworker
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -16,6 +15,8 @@ import (
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -29,14 +30,14 @@ type AudioUploadedEvent struct {
 	ObjectPath string `json:"object_path"`
 }
 
-// PubSubMessage from Eventarc trigger
+// MessagePublishedData matches the Pub/Sub CloudEvent payload data
+type MessagePublishedData struct {
+	Message PubSubMessage `json:"message"`
+}
+
 type PubSubMessage struct {
 	Data       []byte            `json:"data"`
 	Attributes map[string]string `json:"attributes"`
-}
-
-type Event struct {
-	Message PubSubMessage `json:"message"`
 }
 
 var (
@@ -79,7 +80,7 @@ func init() {
 		}
 	}
 
-	funcframework.RegisterEventFunctionContext(ctx, "/", ProcessAudio)
+	functions.CloudEvent("ProcessAudio", ProcessAudio)
 }
 
 func main() {
@@ -93,20 +94,24 @@ func main() {
 	}
 }
 
-func ProcessAudio(ctx context.Context, e Event) error {
+func ProcessAudio(ctx context.Context, e event.Event) error {
 	logger := slog.With("function", "stt-worker")
 
+	var msgData MessagePublishedData
+	if err := e.DataAs(&msgData); err != nil {
+		logger.Error("failed to decode cloudevent data", "error", err)
+		return err
+	}
+
 	var event AudioUploadedEvent
-	if err := json.Unmarshal(e.Message.Data, &event); err != nil {
-		// Try base64 decode (Pub/Sub envelope)
-		decoded, dErr := base64.StdEncoding.DecodeString(string(e.Message.Data))
-		if dErr != nil {
-			logger.Error("decode payload", "error", err)
-			return err
-		}
-		if err := json.Unmarshal(decoded, &event); err != nil {
-			return err
-		}
+	if err := json.Unmarshal(msgData.Message.Data, &event); err != nil {
+		logger.Warn("invalid event format, ignoring", "error", err, "data", string(msgData.Message.Data))
+		return nil
+	}
+
+	if event.SessionID == "" || event.ObjectPath == "" {
+		logger.Warn("missing session_id or object_path, ignoring event", "data", string(msgData.Message.Data))
+		return nil
 	}
 
 	logger = logger.With("session_id", event.SessionID, "upload_id", event.UploadID)
@@ -218,6 +223,11 @@ func transcribeWithDiarization(ctx context.Context, gcsURI string) (*TranscriptR
 		return nil, fmt.Errorf("await: %w", err)
 	}
 
+	return ParseChirp3Results(resp), nil
+}
+
+// ParseChirp3Results extracts transcript segments from the Speech API response.
+func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse) *TranscriptResult {
 	result := &TranscriptResult{LanguageCode: "pl-PL"}
 	speakerSet := make(map[int32]bool)
 	totalConfidence := float32(0)
@@ -273,7 +283,7 @@ func transcribeWithDiarization(ctx context.Context, gcsURI string) (*TranscriptR
 	}
 	result.SpeakerCount = len(speakerSet)
 
-	return result, nil
+	return result
 }
 
 func parseSpeakerLabel(label string) int32 {
