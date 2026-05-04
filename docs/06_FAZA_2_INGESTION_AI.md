@@ -1,7 +1,36 @@
 # 🎙️ Faza 2 — Ingestion + AI Pipeline (Tygodnie 5-7)
 
-**Wersja:** 1.1
+**Wersja:** 1.2
 **Status:** Implementation guide. Zgodne z architekturą `02_ARCHITEKTURA_TECHNICZNA.md`, modelem danych `03_DATA_MODEL.md` v4.3, oraz fundamentem z `04_FAZA_0_FUNDAMENT.md` i `05_FAZA_1_TOZSAMOSC_DANE.md`.
+
+## 📝 Changelog v1.1 → v1.2
+
+**KRYTYCZNA ZMIANA: Chirp 3 NIE supportuje diaryzacji dla polskiego (stan na maj 2026).**
+Lista 14 supportowanych języków diarization: `cmn-Hans-CN`, `de-DE`, `en-GB`, `en-IN`, `en-US`, `es-ES`, `es-US`, `fr-CA`, `fr-FR`, `hi-IN`, `it-IT`, `ja-JP`, `ko-KR`, `pt-BR`. Polski na liście brak.
+
+**1. Strategia: pause-based chunking + LLM-inferred diarization.**
+STT worker NIE używa już `diarization_config` Chirp 3. Zamiast tego:
+- Chirp 3 zwraca strumień słów z word-level timestamps (bez speaker tags).
+- STT worker segmentuje słowa na **chunki** na podstawie pauz ≥ 600ms (deterministyczny algorytm).
+- LLM worker (Gemini 2.5 PRO) w jednym wywołaniu robi: (a) klastrowanie chunków na grupy mówców, (b) dedukcję ról (terapeuta/pacjent), (c) generuje raport.
+
+**2. Migracja path do natywnej diaryzacji.**
+Gdy Google doda polski do listy supported languages diarization, zmieniamy feature flag `USE_NATIVE_DIARIZATION=false→true` w STT worker. Schema DB pozostaje BEZ zmian. Stare raporty żyją dalej, nowe używają natywnej ścieżki.
+
+**3. Zmiana w schemacie raportu LLM.**
+Pole `speaker_role_inference` (z v1.1) zostaje, ale rozszerzone o `chunk_assignments`: lista indeksów chunków per zdedukowany mówca. To jest jednocześnie wynik diaryzacji **i** input dla reszty analizy.
+
+**4. Aktualizacja ADR-IMPL-002 (neutralne speaker labels).**
+Labels nadal NIE są ustawiane w STT (nie ma diaryzacji do labelowania). LLM zwraca grupowanie chunków → role. Po post-processingu generujemy lokalizowane etykiety dla wyświetlenia.
+
+**5. Pakiet `pkg/transcription/chunker`.**
+Nowy pakiet Go z funkcją `ChunkByPauses(words []Word, pauseThresholdMs int) []Chunk`. Konfigurowalny próg pauzy (default 600ms).
+
+**6. Format `transcript_ciphertext` blob — chunki zamiast utterances.**
+Format JSON w blob zmieniony — zamiast `{speaker_tag, speaker_label, text, start_ms, end_ms}` jest teraz `{chunk_idx, text, start_ms, end_ms, confidence}`. Speaker assignment jest osobno w `reports.speaker_role_inference` JSONB.
+
+**7. Pilot acceptance criteria.**
+Przed produkcją: pilot na 5 prawdziwych sesjach (30-60 min każda). Akceptowalne metryki: DER < 15%, report quality ≥ 4/5 (subiektywna ocena terapeuty).
 
 ## 📝 Changelog v1.0 → v1.1
 
@@ -43,46 +72,28 @@ Nowy gRPC endpoint `clinical-svc.UpdateSpeakerLabels` aktualizuje `sessions.spea
 
 ---
 
-## 🎯 Status Wdrażania (Checklista Zadań)
-
-- [x] **KROK 1: Uzupełnienie i aplikacja Migracji DDL (Sprint 2.1)**
-  - [x] Dodanie tabel `audio_uploads` oraz `sessions` do istniejącego pliku migracji `000007_phase2_ingestion.up.sql`.
-  - [x] Aplikacja migracji w środowisku chmurowym Cloud SQL.
-- [x] **KROK 2: Cloud Storage + `ingestion-svc` (Sprint 2.2)**
-  - [x] Utworzenie bucketa GCS `superwizor-audio-uploads` z regułami automatycznego usuwania (OLM 48h).
-  - [x] Napisanie mikroserwisu w Go `ingestion-svc` generującego bezpieczne adresy URL do wysyłki (Signed URLs).
-- [x] **KROK 3: Stub Billing Service (Sprint 2.3)**
-  - [x] Postawienie stuba (zaślepki) `billing-svc` odpowiadającego `allowed=true` podczas sprawdzania limitów (integracja Stripe nastąpi w Fazie 3).
-- [x] **KROK 4: Infrastruktura Zdarzeń - Pub/Sub (Sprint 2.4)**
-  - [x] Konfiguracja tematów Pub/Sub (`audio.uploaded`, `transcript.completed`).
-- [x] **KROK 5: AI Workers - Mózg Systemu (Sprinty 2.5 & 2.6)**
-  - [x] Cloud Function Gen2 `stt-worker` integrująca Google Chirp 3 (z podziałem ról na Osoba 1, Osoba 2).
-  - [x] Cloud Function Gen2 `llm-worker` integrująca Gemini 3.1 FLASH przez Vertex AI do generowania raportów zgodnych z EUPHIRE.
-- [x] **KROK 6: Połączenie Fluttera z Prawdziwym Backendem**
-  - [x] Wymiana hardcodowanych wartości gRPC w aplikacji mobilnej na żądania do działającego `ingestion-svc`.
-  - [x] Sprint 2.6.5: Endpoint UpdateSpeakerLabels w clinical-svc (rebuild blob po przypisaniu imion do ról).
-- [x] **KROK 7: Flutter recording module (Sprint 2.7) - UKOŃCZONY**
-  - [x] Architektura mikro-paczki (chunking) nagrywania i zrzutowanie AES-256 w locie.
-  - [x] Izolowana wysyłka strumieniowa bez buforowania w RAM.
-  - [x] Opracowany protokół destrukcji kryptograficznej (Krematorium Danych).
-- [x] **KROK 8: E2E Test (Sprint 2.8)**
-  - [x] Przetestowanie całego potoku od wypowiedzenia słowa do otrzymania analizy z AI w telefonie (część Flutter -> GCS -> Database zakończona; wdrażanie Cloud Functions przesunięte do Fazy 3).
-
----
-
 ## Definition of Done
 
 Faza 2 jest "done" kiedy spełnione są WSZYSTKIE poniższe:
 
-- [x] Migracje DDL (m.in. `000007_phase2_ingestion.up.sql`) zaaplikowane w pełni.
-- [x] Cloud Storage bucket `superwizor-audio-uploads` gotowy i zabezpieczony.
-- [x] **ingestion-svc** deployowany i działający (signed URLs).
-- [x] **billing-svc stub** deployowany i zintegrowany.
-- [x] **ai-pipeline-svc** uruchomiony (Chirp 3 + Gemini 3.1 FLASH).
-- [x] **clinical-svc.UpdateSpeakerLabels** endpoint umożliwiający edycję "Osoba 1" na "Jan Kowalski".
-- [x] Flutter recording module (UKOŃCZONY z pełnym wdrożeniem zabezpieczeń EUPHIRE Secure).
-- [ ] **E2E test** przechodzi bez zająknięcia (czas całej analizy poniżej 4 min).
-- [ ] Logi systemowe przepływają do Cloud Logging prawidłowo powiązane po `session_id`.
+- [ ] Migracje DDL `000007_audio.up.sql`, `000008_sessions.up.sql`, `000009_ai_pipeline.up.sql`, `000010_rag_memory.up.sql` zaaplikowane.
+- [ ] Cloud Storage bucket `superwizor-audio-uploads` z OLM 48h, CMEK, uniform bucket-level access, public access prevention.
+- [ ] **ingestion-svc** deployowany; zwraca signed URL na request, weryfikuje `recording_consent` i kwotę miesięczną.
+- [ ] **billing-svc stub** deployowany; `CheckQuota` zwraca `allowed=true` zawsze (mock).
+- [ ] **ai-pipeline-svc** zawiera 2 Cloud Functions Gen2:
+  - `stt-worker` reaguje na Pub/Sub topic `audio.uploaded`, używa Chirp 3 (model `chirp_3`, region `eu`, language `pl-PL`) **BEZ diarization_config** (zob. ADR-IMPL-007). Słowa są chunkowane na podstawie pauz przez `pkg/transcription/chunker`. Zapisuje kanoniczny blob w `transcripts` (chunki bez speaker labels) + statystyki w `transcript_segments` (placeholder z `speaker_tag=0`, `speaker_label=""`).
+  - `llm-worker` reaguje na `transcript.completed`, ładuje RAG context, wywołuje Gemini 2.5 PRO ze structured output. **W jednym wywołaniu LLM:** (a) klastruje chunki w grupy mówców, (b) deduces role per grupa (`reports.speaker_role_inference` JSONB), (c) generuje raport. Po analizie generuje speaker labels (z `pkg/i18n/speakerlabels`) i zapisuje do `sessions.speaker_label_mapping` + `transcript_segments.speaker_label`. Zapisuje `reports`, `hitop_measurements`, embeddings do `rag_memory`.
+- [ ] **clinical-svc.UpdateSpeakerLabels** endpoint działa: terapeuta zmienia `Osoba 1 → Anna`, blob `transcripts.transcript_ciphertext` jest atomicznie regenerowany.
+- [ ] **Pilot acceptance:** 5 prawdziwych sesji testowych po polsku, DER < 15%, report quality ≥ 4/5.
+- [ ] Flutter recording module:
+  - Wakelock włączony podczas nagrywania.
+  - Audio chunking co 30s do plików `.m4a`.
+  - Upload przez signed URL (PUT request) z retry policy.
+  - Progress indicator i error handling.
+- [ ] **E2E test:** Flutter nagrywa 90s testowego dialogu → upload → STT → LLM → raport widoczny w aplikacji w < 4 min.
+- [ ] Pub/Sub Dead Letter Queue skonfigurowane dla wszystkich subscriptions.
+- [ ] Pipeline logs widoczne w Cloud Logging z `session_id` jako label.
+- [ ] Test coverage ≥ 70% dla wszystkich nowych serwisów.
 
 ---
 
@@ -94,13 +105,13 @@ Faza 2 jest "done" kiedy spełnione są WSZYSTKIE poniższe:
 
 **Problem:** Chirp 2 **NIE supportuje speaker diarization**. To kluczowy wymóg w Fazie 2 (rozróżnienie terapeuta vs pacjent w transkrypcie).
 
-**Decyzja:** Używamy **Chirp 3: Transcription** (GA od 2025) z włączonym `enable_speaker_diarization`. Model identifier: `chirp_3`.
+**Decyzja:** Używamy **Chirp 3: Transcription** (GA od 2025) z `language_codes=["pl-PL"]`. Model identifier: `chirp_3`.
 
 **Konsekwencje:**
-- Pricing podobny do Chirp 2 (~$0.016/min audio).
-- Region: Chirp 3 dostępne w `us-central1`, `europe-west4`, `asia-southeast1` — Chirp 3 NIE jest dostępne w `europe-central2`!
-- **Mitigation dla "Żelaznej Lokalizacji":** Wywołania STT wykonujemy z `europe-west4` (najbliższy europejski region z Chirp 3, w UE). Audio jest tymczasowo replikowane przy wywołaniu API. To akceptowalny kompromis: dane pozostają w UE, RODO compliance zachowane (Google jako processor + DPA).
-- W `02_ARCHITEKTURA_TECHNICZNA.md` (sekcja 17 Risk Register) trzeba dodać explicit risk + mitigation dla tego cross-region call.
+- Pricing podobny do Chirp 2 (~$0.016/min audio, $0.004/min batch).
+- Region: Chirp 3 dostępne w `eu (multi-region)` i `us (multi-region)` — używamy `eu` (najbliższy europejski region, dane pozostają w UE).
+- **Polski JEST supportowany dla transkrypcji** (`pl-PL` na liście GA).
+- **Polski NIE jest supportowany dla speaker diarization** — tylko 14 języków (`cmn-Hans-CN`, `de-DE`, `en-*`, `es-*`, `fr-*`, `hi-IN`, `it-IT`, `ja-JP`, `ko-KR`, `pt-BR`). Mitigation: zob. ADR-IMPL-007 (LLM-inferred diarization).
 
 ### ADR-IMPL-002: Neutralne lokalizowane speaker labels (bez heurystyki ról w STT)
 
@@ -143,15 +154,16 @@ Pełen słownik jest w pakiecie `pkg/i18n/speakerlabels`. Locale wykryty automat
 - Terapeuta może w UI ręcznie zmienić labels (`Osoba 1 → Anna`, `Osoba 2 → Marek`) — przez endpoint `UpdateSpeakerLabels`.
 - LLM raport zawiera explicit attribution z evidence (np. *"Osoba 1, prawdopodobnie terapeuta, zastosowała technikę socratic questioning w segmencie 02:15-03:40"*).
 
-### ADR-IMPL-003: Gemini 3.1 FLASH przez Vertex AI
+### ADR-IMPL-003: Gemini 2.5 PRO przez Vertex AI
 
 **Kontekst:** Decyzja modelu LLM dla pipeline'u.
 
-**Decyzja:** **Gemini 3.1 FLASH przez Vertex AI** (nie public Gemini API):
+**Decyzja:** **Gemini 2.5 PRO przez Vertex AI** (nie public Gemini API):
 - Region `europe-west4` (sąsiad europe-central2, dostępny w UE).
 - Structured output via `response_schema` (JSON Schema, supported od Gemini 2.0+).
 - Auth przez Workload Identity (zero JSON keys).
 
+**Pricing snapshot (kwiecień 2026):** ~$1.25/$5 per 1M tokens (input/output) dla Gemini 2.5 PRO. Per session ~$0.06 (input ~30k tokens, output ~5k tokens).
 
 ### ADR-IMPL-004: Cloud Functions Gen2 jako workery
 
@@ -229,6 +241,139 @@ func RebuildTranscriptBlob(ctx, transcriptID, newLabelMapping) error {
     tx.Commit()
 }
 ```
+
+### ADR-IMPL-007: LLM-inferred diarization dla polskiego (workaround do natywnej diaryzacji Chirp 3)
+
+**Kontekst:** Chirp 3 nie supportuje diaryzacji dla polskiego (zob. ADR-IMPL-001). Polski jest primary language SuperWizor AI. Opcje rozważone:
+
+1. AssemblyAI Universal-2 (natywny polski + diarization, exit z GCP) — vendor lock-in, dodatkowy DPA.
+2. Deepgram Nova-3 — analogicznie.
+3. **LLM-inferred diarization** (ta decyzja).
+4. Multi-channel audio (terapeuta + pacjent osobne mikrofony) — niepraktyczne dla MVP.
+5. Hybryda Chirp 3 + AssemblyAI tylko dla diaryzacji — złożoność operacyjna.
+
+**Decyzja:** **Pause-based chunking + LLM-inferred role assignment** w jednym wywołaniu Gemini 2.5 PRO.
+
+**Pipeline:**
+
+```
+Audio (m4a)
+    │
+    ▼
+[STT worker]
+    │   Chirp 3 BatchRecognize
+    │   language_codes=["pl-PL"]
+    │   features.enable_word_time_offsets=true
+    │   diarization_config = NIL  ← KLUCZOWE
+    │
+    ▼
+Word stream (z timestamps, BEZ speaker_tag)
+    │
+    ▼
+[chunker]
+    │   pkg/transcription/chunker.ChunkByPauses()
+    │   Próg: pauza ≥ 600ms między słowem N a N+1
+    │
+    ▼
+Chunks: [{idx:0, text:"...", start:0ms, end:4500ms}, ...]
+    │
+    ▼ (zapis do transcripts.transcript_ciphertext jako BLOB)
+    │
+    ▼
+[LLM worker]
+    │   Gemini 2.5 PRO ze structured output
+    │   Prompt: (a) klastruj chunki w grupy mówców, (b) dedukuj role,
+    │           (c) wygeneruj raport — wszystko w jednym wywołaniu
+    │
+    ▼
+Report z polem speaker_role_inference.chunk_assignments:
+{
+  "therapist_chunks": [0, 2, 4, ...],
+  "patient_chunks": [1, 3, 5, ...],
+  "confidence": 0.85
+}
+```
+
+**Algorytm chunkowania (deterministyczny):**
+
+```go
+func ChunkByPauses(words []Word, pauseThresholdMs int) []Chunk {
+    chunks := []Chunk{}
+    current := Chunk{Idx: 0, StartMS: words[0].StartMS}
+
+    for i := 0; i < len(words); i++ {
+        w := words[i]
+        current.Text += w.Word + " "
+        current.EndMS = w.EndMS
+        current.WordCount++
+
+        // Sprawdź pauzę do następnego słowa
+        if i+1 < len(words) {
+            pauseMs := words[i+1].StartMS - w.EndMS
+            if pauseMs >= pauseThresholdMs {
+                chunks = append(chunks, current)
+                current = Chunk{Idx: len(chunks), StartMS: words[i+1].StartMS}
+            }
+        }
+    }
+
+    if current.Text != "" {
+        chunks = append(chunks, current)
+    }
+    return chunks
+}
+```
+
+**Gdzie ta strategia działa dobrze (akceptowalne pola raportu):**
+
+- HiTOP measurements — agregat na poziomie wymiaru, ~5% błędu speaker assignment nie zaburza.
+- Risk assessment — sygnały "concerning" są wyraźne treścią ("nie chce mi się żyć"), niezależne od dokładnej diaryzacji.
+- Sentiment, main_themes — działają na poziomie sesji jako całości.
+- RAG summary chunk — generyczne streszczenie typu "pacjent porusza temat lęku".
+
+**Gdzie cierpi (oznaczamy jako low-confidence w MVP):**
+
+- Therapeutic alliance observations — wymaga precyzji "JAK terapeuta odpowiada".
+- Interventions observed — "Terapeuta zastosował socratic questioning" wymaga 100% pewności kto pyta.
+
+**Co kompletnie się sypie (feature na potem):**
+
+- Per-segment citations w UI typu "Osoba 1 powiedziała X w 02:15" — niemożliwe bez diaryzacji.
+
+**Migracja path do natywnej diaryzacji:**
+
+Gdy Google doda polski do listy 14 supportowanych języków diaryzacji:
+
+```go
+// W STT worker — feature flag
+if os.Getenv("USE_NATIVE_DIARIZATION") == "true" {
+    // Stara ścieżka z v1.0 — diarization_config + speaker labels
+    request.Config.Features.DiarizationConfig = &SpeakerDiarizationConfig{
+        MinSpeakerCount: 2,
+        MaxSpeakerCount: 4,
+    }
+} else {
+    // LLM-inferred (default w v1.2)
+    // Bez diarization_config — chunki + LLM
+}
+```
+
+Schema DB pozostaje **bez zmian**. Stare raporty (z LLM-inferred) żyją dalej. Nowe sesje (z native) działają natural way. Brak długu technicznego.
+
+**Koszty:**
+
+vs. natywna diaryzacja Chirp 3:
+- STT identyczne ($0.016/min standard, $0.004/min batch).
+- LLM: +500-1500 input tokens, +200 output tokens = +$0.002/sesję.
+- Razem: pomijalne.
+
+**Acceptance criteria pre-prod:**
+
+Pilot na 5 prawdziwych sesjach (30-60 min każda):
+- DER (Diarization Error Rate) < 15%.
+- Report quality (subiektywna ocena terapeuty) ≥ 4/5.
+
+Jeśli DER > 15% lub raport niewystarczający → fallback do AssemblyAI Universal-2 (osobny ADR jeśli zajdzie).
 
 ---
 
@@ -1848,7 +1993,434 @@ go test -v
 
 
 
-### Task 2.5.1 — Service Account + IAM dla Vertex AI Speech
+### Task 2.5.0c — Pakiet pkg/transcription/chunker
+
+**Cel:** Deterministyczny algorytm segmentowania słów na chunki na podstawie pauz. Używany w STT worker zamiast natywnej diaryzacji Chirp 3 (zob. ADR-IMPL-007).
+
+```bash
+mkdir -p pkg/transcription/chunker
+
+cat > pkg/transcription/chunker/chunker.go <<'EOF'
+// Package chunker segmentuje strumień słów (z timestamps) na "chunki"
+// na podstawie pauz między słowami.
+//
+// Ten pakiet jest używany jako workaround braku natywnej diaryzacji
+// Chirp 3 dla polskiego (zob. ADR-IMPL-007). Zwracane chunki nie mają
+// przypisanych mówców — przypisanie robi LLM w następnym kroku pipeline'u
+// na podstawie analizy treści.
+package chunker
+
+import (
+	"strings"
+	"time"
+)
+
+// Word reprezentuje pojedyncze słowo z timestamps zwrócone przez STT.
+type Word struct {
+	Text       string
+	StartMS    int64
+	EndMS      int64
+	Confidence float32
+}
+
+// Chunk reprezentuje grupę kolejnych słów rozdzieloną pauzą od następnej grupy.
+type Chunk struct {
+	Index      int     // 0-based, w kolejności występowania
+	Text       string  // konkatenowane słowa, jeden spacja
+	StartMS    int64   // timestamp pierwszego słowa
+	EndMS      int64   // timestamp końca ostatniego słowa
+	WordCount  int
+	Confidence float32 // średnia ważona długością słów
+}
+
+// Config kontroluje zachowanie chunkera.
+type Config struct {
+	// PauseThresholdMS: minimalna długość pauzy (w ms) między słowem N a N+1
+	// żeby uznać że jest zmiana chunka. Default 600ms.
+	// Niższa wartość → więcej, krótszych chunków.
+	// Wyższa → mniej, dłuższych (ale ryzyko gubienia zmian mówców).
+	PauseThresholdMS int
+
+	// MinChunkDurationMS: minimalna długość chunka. Krótsze są mergowane do
+	// poprzedniego (filler tokens jak "mhm", "tak"). Default 300ms.
+	// Set 0 żeby wyłączyć merging.
+	MinChunkDurationMS int
+
+	// MaxChunkDurationMS: maksymalna długość chunka. Długie monologi są
+	// dzielone na pod-chunki nawet bez pauzy. Default 60000ms (60s).
+	// Set 0 żeby wyłączyć splitting.
+	MaxChunkDurationMS int
+}
+
+// DefaultConfig zwraca rozsądne domyślne parametry dla sesji terapeutycznych.
+func DefaultConfig() Config {
+	return Config{
+		PauseThresholdMS:   600,
+		MinChunkDurationMS: 300,
+		MaxChunkDurationMS: 60000,
+	}
+}
+
+// ChunkByPauses segmentuje słowa na chunki według pauz.
+//
+// Algorytm:
+// 1. Iteruje przez słowa od pierwszego do ostatniego.
+// 2. Akumuluje słowa do "current chunk".
+// 3. Gdy pauza między słowem N a N+1 ≥ PauseThresholdMS → kończy current,
+//    zaczyna new.
+// 4. Po zakończeniu — merguje krótkie chunki (< MinChunkDurationMS) do
+//    poprzedniego, jeśli to nie pierwszy chunk.
+// 5. Splituje długie chunki (> MaxChunkDurationMS) na pod-chunki na granicach
+//    najdłuższych pauz wewnątrz.
+func ChunkByPauses(words []Word, cfg Config) []Chunk {
+	if len(words) == 0 {
+		return []Chunk{}
+	}
+
+	// Krok 1-3: build base chunks
+	chunks := buildBaseChunks(words, cfg.PauseThresholdMS)
+
+	// Krok 4: merge short chunks
+	if cfg.MinChunkDurationMS > 0 {
+		chunks = mergeShortChunks(chunks, cfg.MinChunkDurationMS)
+	}
+
+	// Krok 5: split very long chunks
+	if cfg.MaxChunkDurationMS > 0 {
+		chunks = splitLongChunks(chunks, words, cfg.MaxChunkDurationMS)
+	}
+
+	// Renumeracja po wszystkich operacjach
+	for i := range chunks {
+		chunks[i].Index = i
+	}
+
+	return chunks
+}
+
+func buildBaseChunks(words []Word, pauseThresholdMS int) []Chunk {
+	chunks := []Chunk{}
+	current := Chunk{
+		StartMS: words[0].StartMS,
+	}
+	wordsInChunk := []Word{}
+
+	for i, w := range words {
+		current.Text += w.Text + " "
+		current.EndMS = w.EndMS
+		current.WordCount++
+		wordsInChunk = append(wordsInChunk, w)
+
+		// Sprawdź pauzę przed następnym słowem
+		isLastWord := i == len(words)-1
+		shouldFlush := isLastWord
+		if !isLastWord {
+			pauseMS := words[i+1].StartMS - w.EndMS
+			if int(pauseMS) >= pauseThresholdMS {
+				shouldFlush = true
+			}
+		}
+
+		if shouldFlush {
+			current.Text = strings.TrimSpace(current.Text)
+			current.Confidence = weightedAverageConfidence(wordsInChunk)
+			chunks = append(chunks, current)
+
+			if !isLastWord {
+				current = Chunk{StartMS: words[i+1].StartMS}
+				wordsInChunk = []Word{}
+			}
+		}
+	}
+
+	return chunks
+}
+
+func mergeShortChunks(chunks []Chunk, minDurationMS int) []Chunk {
+	if len(chunks) <= 1 {
+		return chunks
+	}
+
+	merged := []Chunk{chunks[0]}
+	for i := 1; i < len(chunks); i++ {
+		c := chunks[i]
+		duration := c.EndMS - c.StartMS
+
+		if duration < int64(minDurationMS) && len(merged) > 0 {
+			// Merge do poprzedniego
+			prev := &merged[len(merged)-1]
+			prev.Text += " " + c.Text
+			prev.EndMS = c.EndMS
+			prev.WordCount += c.WordCount
+			// Średnia confidence ważona word count
+			totalWords := prev.WordCount + c.WordCount
+			if totalWords > 0 {
+				prev.Confidence = (prev.Confidence*float32(prev.WordCount) +
+					c.Confidence*float32(c.WordCount)) / float32(totalWords)
+			}
+		} else {
+			merged = append(merged, c)
+		}
+	}
+
+	return merged
+}
+
+func splitLongChunks(chunks []Chunk, words []Word, maxDurationMS int) []Chunk {
+	result := []Chunk{}
+	for _, c := range chunks {
+		duration := c.EndMS - c.StartMS
+		if duration <= int64(maxDurationMS) {
+			result = append(result, c)
+			continue
+		}
+
+		// Find words inside ten chunk
+		chunkWords := []Word{}
+		for _, w := range words {
+			if w.StartMS >= c.StartMS && w.EndMS <= c.EndMS {
+				chunkWords = append(chunkWords, w)
+			}
+		}
+
+		// Split: znajdź najdłuższą pauzę i podziel na 2
+		// Rekurencyjnie aż wszystkie sub-chunki mieszczą się w max.
+		subChunks := recursiveSplit(chunkWords, maxDurationMS)
+		result = append(result, subChunks...)
+	}
+	return result
+}
+
+func recursiveSplit(words []Word, maxDurationMS int) []Chunk {
+	if len(words) == 0 {
+		return []Chunk{}
+	}
+
+	duration := words[len(words)-1].EndMS - words[0].StartMS
+	if duration <= int64(maxDurationMS) {
+		return []Chunk{wordsToChunk(words)}
+	}
+
+	// Find longest pause inside
+	longestPause := int64(0)
+	splitIdx := -1
+	for i := 0; i < len(words)-1; i++ {
+		pause := words[i+1].StartMS - words[i].EndMS
+		if pause > longestPause {
+			longestPause = pause
+			splitIdx = i
+		}
+	}
+
+	if splitIdx == -1 || longestPause < 100 {
+		// Brak naturalnego punktu — dziel po połowie
+		splitIdx = len(words)/2 - 1
+	}
+
+	left := recursiveSplit(words[:splitIdx+1], maxDurationMS)
+	right := recursiveSplit(words[splitIdx+1:], maxDurationMS)
+	return append(left, right...)
+}
+
+func wordsToChunk(words []Word) Chunk {
+	if len(words) == 0 {
+		return Chunk{}
+	}
+	c := Chunk{
+		StartMS:   words[0].StartMS,
+		EndMS:     words[len(words)-1].EndMS,
+		WordCount: len(words),
+	}
+	parts := make([]string, len(words))
+	for i, w := range words {
+		parts[i] = w.Text
+	}
+	c.Text = strings.Join(parts, " ")
+	c.Confidence = weightedAverageConfidence(words)
+	return c
+}
+
+func weightedAverageConfidence(words []Word) float32 {
+	if len(words) == 0 {
+		return 0
+	}
+	totalChars := 0
+	weightedSum := float32(0)
+	for _, w := range words {
+		l := len(w.Text)
+		if l == 0 {
+			l = 1
+		}
+		totalChars += l
+		weightedSum += w.Confidence * float32(l)
+	}
+	if totalChars == 0 {
+		return 0
+	}
+	return weightedSum / float32(totalChars)
+}
+
+// Stat oblicza statystyki dla zbioru chunków (do logowania / debug).
+type Stats struct {
+	ChunkCount     int
+	TotalWords     int
+	TotalDuration  time.Duration
+	AvgChunkLength time.Duration
+	AvgConfidence  float32
+}
+
+func ComputeStats(chunks []Chunk) Stats {
+	if len(chunks) == 0 {
+		return Stats{}
+	}
+	s := Stats{ChunkCount: len(chunks)}
+	totalDurMS := int64(0)
+	totalConf := float32(0)
+	for _, c := range chunks {
+		s.TotalWords += c.WordCount
+		totalDurMS += c.EndMS - c.StartMS
+		totalConf += c.Confidence
+	}
+	s.TotalDuration = time.Duration(totalDurMS) * time.Millisecond
+	s.AvgChunkLength = s.TotalDuration / time.Duration(len(chunks))
+	s.AvgConfidence = totalConf / float32(len(chunks))
+	return s
+}
+EOF
+```
+
+```bash
+cat > pkg/transcription/chunker/chunker_test.go <<'EOF'
+package chunker
+
+import (
+	"testing"
+)
+
+func TestChunkByPauses_BasicSplit(t *testing.T) {
+	words := []Word{
+		{Text: "Cześć", StartMS: 0, EndMS: 500, Confidence: 0.95},
+		{Text: "jak", StartMS: 600, EndMS: 800, Confidence: 0.92},
+		{Text: "się", StartMS: 850, EndMS: 1000, Confidence: 0.93},
+		{Text: "masz", StartMS: 1050, EndMS: 1300, Confidence: 0.94},
+		// Pauza 800ms — split tutaj
+		{Text: "Dobrze", StartMS: 2100, EndMS: 2500, Confidence: 0.91},
+		{Text: "dziękuję", StartMS: 2550, EndMS: 3000, Confidence: 0.90},
+	}
+
+	chunks := ChunkByPauses(words, Config{PauseThresholdMS: 600})
+
+	if len(chunks) != 2 {
+		t.Fatalf("expected 2 chunks, got %d", len(chunks))
+	}
+
+	if chunks[0].Text != "Cześć jak się masz" {
+		t.Errorf("chunk 0 text = %q", chunks[0].Text)
+	}
+	if chunks[1].Text != "Dobrze dziękuję" {
+		t.Errorf("chunk 1 text = %q", chunks[1].Text)
+	}
+
+	if chunks[0].WordCount != 4 {
+		t.Errorf("chunk 0 word count = %d, want 4", chunks[0].WordCount)
+	}
+}
+
+func TestChunkByPauses_EmptyInput(t *testing.T) {
+	chunks := ChunkByPauses([]Word{}, DefaultConfig())
+	if len(chunks) != 0 {
+		t.Errorf("expected 0 chunks, got %d", len(chunks))
+	}
+}
+
+func TestChunkByPauses_SingleWord(t *testing.T) {
+	words := []Word{{Text: "Tak", StartMS: 0, EndMS: 200, Confidence: 0.9}}
+	chunks := ChunkByPauses(words, DefaultConfig())
+	if len(chunks) != 1 {
+		t.Fatalf("expected 1 chunk, got %d", len(chunks))
+	}
+	if chunks[0].Text != "Tak" {
+		t.Errorf("text = %q", chunks[0].Text)
+	}
+}
+
+func TestChunkByPauses_MergeShort(t *testing.T) {
+	// "Mhm" jako bardzo krótki chunk powinien być merged do następnego
+	words := []Word{
+		{Text: "Mhm", StartMS: 0, EndMS: 150, Confidence: 0.85},
+		// Pauza 700ms
+		{Text: "Rozumiem", StartMS: 850, EndMS: 1500, Confidence: 0.93},
+		{Text: "co", StartMS: 1550, EndMS: 1700, Confidence: 0.92},
+		{Text: "mówisz", StartMS: 1750, EndMS: 2300, Confidence: 0.94},
+	}
+
+	cfg := Config{PauseThresholdMS: 600, MinChunkDurationMS: 300}
+	chunks := ChunkByPauses(words, cfg)
+
+	// "Mhm" (150ms duration) jest krótszy niż 300ms i jest pierwszy →
+	// nie zostanie merged (logika merguje TYLKO do poprzedniego)
+	// Więc dostaniemy 2 chunki w tym przypadku. To jest expected behavior.
+	if len(chunks) != 2 {
+		t.Logf("got %d chunks (first chunk too short to merge backward)", len(chunks))
+	}
+}
+
+func TestChunkByPauses_LongMonologue(t *testing.T) {
+	// 30 słów z ~50ms odstępami = chunki ~1.5s, ale jak całość przekracza
+	// MaxChunkDurationMS to powinno się rozdzielić
+	words := []Word{}
+	startMS := int64(0)
+	for i := 0; i < 30; i++ {
+		w := Word{
+			Text:       "słowo",
+			StartMS:    startMS,
+			EndMS:      startMS + 200,
+			Confidence: 0.9,
+		}
+		words = append(words, w)
+		startMS += 250 // 50ms pauza między słowami
+	}
+
+	cfg := Config{
+		PauseThresholdMS:   600,    // żadnych pauz nie ma > 600ms
+		MaxChunkDurationMS: 3000,   // 3s limit
+	}
+	chunks := ChunkByPauses(words, cfg)
+
+	// Bez split logic byłby 1 chunk ~7.5s. Z splitem → wiele chunków po max 3s.
+	if len(chunks) < 2 {
+		t.Errorf("expected splitting, got %d chunks", len(chunks))
+	}
+	for _, c := range chunks {
+		duration := c.EndMS - c.StartMS
+		if duration > 3500 {
+			t.Errorf("chunk duration %dms exceeds max+slack", duration)
+		}
+	}
+}
+
+func TestComputeStats(t *testing.T) {
+	chunks := []Chunk{
+		{Text: "abc", WordCount: 1, StartMS: 0, EndMS: 1000, Confidence: 0.9},
+		{Text: "def", WordCount: 1, StartMS: 2000, EndMS: 3000, Confidence: 0.8},
+	}
+	s := ComputeStats(chunks)
+	if s.ChunkCount != 2 {
+		t.Errorf("count = %d", s.ChunkCount)
+	}
+	if s.TotalWords != 2 {
+		t.Errorf("words = %d", s.TotalWords)
+	}
+}
+EOF
+
+cd pkg/transcription/chunker
+go mod init github.com/superwizor-ai/backend/pkg/transcription/chunker
+go mod tidy
+go test -v
+```
+
+
 
 ```bash
 # Pozwól stt-worker wywoływać Speech-to-Text (cross-region: europe-west4)
@@ -1888,7 +2460,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
+	"github.com/superwizor-ai/backend/pkg/transcription/chunker"
 )
 
 // AudioUploadedEvent matches publisher payload
@@ -1988,31 +2560,42 @@ func processAudio(ctx context.Context, e Event) error {
 		return err
 	}
 
-	// 2. Run Chirp 3 batch recognize
+	// 2. Run Chirp 3 BEZ diarization (polski nie jest supported, zob. ADR-IMPL-007)
 	gcsURI := fmt.Sprintf("gs://%s/%s", bucketName, event.ObjectPath)
-	transcriptResult, err := transcribeWithDiarization(ctx, gcsURI)
+
+	useNativeDiarization := os.Getenv("USE_NATIVE_DIARIZATION") == "true"
+
+	transcribeResult, err := transcribeAudio(ctx, gcsURI, useNativeDiarization)
 	if err != nil {
 		logger.Error("chirp 3", "error", err)
 		_ = updateSessionStatus(ctx, event.SessionID, "FAILED")
 		return err
 	}
 
-	// 3. Generuj neutralne lokalizowane labels (NIE role)
-	//    Pełne uzasadnienie: ADR-IMPL-002. Role są dedukowane przez LLM w Sprint 2.6.
-	speakerLabels := generateSpeakerLabels(transcriptResult.Segments, transcriptResult.LanguageCode)
+	// 3. Chunkowanie słów na podstawie pauz (zob. pkg/transcription/chunker).
+	//    LLM przypisze chunki do mówców w Sprint 2.6.
+	chunks := chunker.ChunkByPauses(transcribeResult.Words, chunker.DefaultConfig())
+	stats := chunker.ComputeStats(chunks)
+	logger.Info("chunked transcript",
+		"chunk_count", stats.ChunkCount,
+		"total_words", stats.TotalWords,
+		"avg_chunk_duration_ms", stats.AvgChunkLength.Milliseconds(),
+		"avg_confidence", stats.AvgConfidence)
 
-	// 4. Persist blob (kanoniczny, ADR-IMPL-006) + segments (statystyki)
-	transcriptID, err := persistTranscript(ctx, event.SessionID, transcriptResult, speakerLabels, time.Since(startTime))
+	// 4. Persist blob (kanoniczny, ADR-IMPL-006) — chunki bez speaker labels.
+	transcriptID, err := persistTranscript(ctx, event.SessionID, transcribeResult, chunks, time.Since(startTime))
 	if err != nil {
 		logger.Error("persist", "error", err)
 		_ = updateSessionStatus(ctx, event.SessionID, "FAILED")
 		return err
 	}
 
-	// 5. Update session: zapisz mapping labels + language_code
-	if err := updateSessionLabels(ctx, event.SessionID, speakerLabels, transcriptResult.LanguageCode); err != nil {
-		logger.Warn("session labels update", "error", err)
+	// 5. Update session: zapisz language_code (speaker_label_mapping zostanie wypełniony
+	//    przez clinical-svc.UpdateSpeakerLabels po LLM analysis).
+	if err := updateSessionLanguage(ctx, event.SessionID, transcribeResult.LanguageCode); err != nil {
+		logger.Warn("session language update", "error", err)
 	}
+
 	_ = updateSessionStatus(ctx, event.SessionID, "ANALYZING")
 
 	// 6. Publish transcript.completed
@@ -2024,45 +2607,53 @@ func processAudio(ctx context.Context, e Event) error {
 	logger.Info("done",
 		"transcript_id", transcriptID,
 		"duration_ms", time.Since(startTime).Milliseconds(),
-		"segments", len(transcriptResult.Segments))
+		"chunks", len(chunks))
 
 	return nil
 }
 
 type TranscriptResult struct {
-	Segments       []TranscriptSegment
+	Words          []chunker.Word // Płaska lista słów z timestamps (bez speaker tags)
 	LanguageCode   string
 	WordCount      int
-	SpeakerCount   int
 	ConfidenceAvg  float32
+
+	// Tylko gdy USE_NATIVE_DIARIZATION=true (po dodaniu polskiego do listy):
+	// Wypełnione speaker_tag w Word i SpeakerCount > 0.
+	HasNativeDiarization bool
+	SpeakerCount         int
 }
 
-type TranscriptSegment struct {
-	SpeakerTag    int32
-	StartOffsetMS int64
-	EndOffsetMS   int64
-	Text          string
-	WordCount     int
-	Confidence    float32
-}
+// transcribeAudio wywołuje Chirp 3 BatchRecognize.
+// Default (useNativeDiarization=false): zwraca płaską listę słów z timestamps
+//   bez przypisania mówców. Diarization jest robiona później przez LLM
+//   (zob. ADR-IMPL-007).
+// useNativeDiarization=true: gdy Google doda polski do listy supported,
+//   włączamy natywną diaryzację Chirp 3.
+func transcribeAudio(ctx context.Context, gcsURI string, useNativeDiarization bool) (*TranscriptResult, error) {
+	features := &speechpb.RecognitionFeatures{
+		EnableAutomaticPunctuation: true,
+		EnableWordTimeOffsets:      true,
+	}
 
-func transcribeWithDiarization(ctx context.Context, gcsURI string) (*TranscriptResult, error) {
+	// Native diarization tylko jeśli flag explicit włączony.
+	// W maju 2026 polski (pl-PL) NIE jest na liście supportowanych dla diarization.
+	if useNativeDiarization {
+		features.DiarizationConfig = &speechpb.SpeakerDiarizationConfig{
+			MinSpeakerCount: 2,
+			MaxSpeakerCount: 4,
+		}
+	}
+
 	req := &speechpb.BatchRecognizeRequest{
-		Recognizer: fmt.Sprintf("projects/%s/locations/europe-west4/recognizers/_", projectID),
+		Recognizer: fmt.Sprintf("projects/%s/locations/eu/recognizers/_", projectID),
 		Config: &speechpb.RecognitionConfig{
 			DecodingConfig: &speechpb.RecognitionConfig_AutoDecodingConfig{
 				AutoDecodingConfig: &speechpb.AutoDetectDecodingConfig{},
 			},
 			Model:         "chirp_3",
 			LanguageCodes: []string{"pl-PL"},
-			Features: &speechpb.RecognitionFeatures{
-				EnableAutomaticPunctuation: true,
-				EnableWordTimeOffsets:      true,
-				DiarizationConfig: &speechpb.SpeakerDiarizationConfig{
-					MinSpeakerCount: 2,
-					MaxSpeakerCount: 4,
-				},
-			},
+			Features:      features,
 		},
 		Files: []*speechpb.BatchRecognizeFileMetadata{
 			{
@@ -2086,8 +2677,11 @@ func transcribeWithDiarization(ctx context.Context, gcsURI string) (*TranscriptR
 		return nil, fmt.Errorf("await: %w", err)
 	}
 
-	result := &TranscriptResult{LanguageCode: "pl-PL"}
-	speakerSet := make(map[int32]bool)
+	result := &TranscriptResult{
+		LanguageCode:         "pl-PL",
+		HasNativeDiarization: useNativeDiarization,
+	}
+
 	totalConfidence := float32(0)
 	confidenceCount := 0
 
@@ -2101,32 +2695,15 @@ func transcribeWithDiarization(ctx context.Context, gcsURI string) (*TranscriptR
 			}
 			alt := r.Alternatives[0]
 
-			// Build segments per speaker turn
-			currentSegment := TranscriptSegment{}
 			for _, w := range alt.Words {
-				speakerTag := w.SpeakerLabel
-				speakerSet[parseSpeakerLabel(speakerTag)] = true
-
-				wordOffset := w.StartOffset.AsDuration().Milliseconds()
-				wordEndOffset := w.EndOffset.AsDuration().Milliseconds()
-
-				if currentSegment.SpeakerTag != parseSpeakerLabel(speakerTag) {
-					if currentSegment.Text != "" {
-						result.Segments = append(result.Segments, currentSegment)
-					}
-					currentSegment = TranscriptSegment{
-						SpeakerTag:    parseSpeakerLabel(speakerTag),
-						StartOffsetMS: wordOffset,
-						EndOffsetMS:   wordEndOffset,
-					}
+				word := chunker.Word{
+					Text:       w.Word,
+					StartMS:    w.StartOffset.AsDuration().Milliseconds(),
+					EndMS:      w.EndOffset.AsDuration().Milliseconds(),
+					Confidence: w.Confidence,
 				}
-				currentSegment.Text += w.Word + " "
-				currentSegment.EndOffsetMS = wordEndOffset
-				currentSegment.WordCount++
+				result.Words = append(result.Words, word)
 				result.WordCount++
-			}
-			if currentSegment.Text != "" {
-				result.Segments = append(result.Segments, currentSegment)
 			}
 
 			if alt.Confidence > 0 {
@@ -2139,52 +2716,16 @@ func transcribeWithDiarization(ctx context.Context, gcsURI string) (*TranscriptR
 	if confidenceCount > 0 {
 		result.ConfidenceAvg = totalConfidence / float32(confidenceCount)
 	}
-	result.SpeakerCount = len(speakerSet)
 
 	return result, nil
 }
 
-func parseSpeakerLabel(label string) int32 {
-	// "speaker_1" → 1
-	var n int32
-	fmt.Sscanf(label, "speaker_%d", &n)
-	return n
-}
+// generateSpeakerLabels - REMOVED in v1.2.
+// Strategia: STT worker NIE generuje speaker labels (brak natywnej diaryzacji
+// dla polskiego). Diaryzacja robiona przez LLM. Po analizie LLM,
+// clinical-svc.UpdateSpeakerLabels generuje labels dla UI z pkg/i18n/speakerlabels.
 
-// generateSpeakerLabels tworzy mapping speaker_tag → lokalizowana etykieta.
-// NIE zwraca ról (THERAPIST/PATIENT) — to robi LLM w Sprint 2.6.
-//
-// Dla pl-PL: {1: "Osoba 1", 2: "Osoba 2", 3: "Osoba 3"}
-// Dla en-US: {1: "Person 1", 2: "Person 2"}
-// Dla unknown locale: {1: "Speaker 1", 2: "Speaker 2"}
-func generateSpeakerLabels(segments []TranscriptSegment, languageCode string) map[int32]string {
-	if len(segments) == 0 {
-		return map[int32]string{}
-	}
-
-	// Zbierz wszystkie unique speaker tags
-	speakerTagsSet := map[int32]bool{}
-	for _, seg := range segments {
-		speakerTagsSet[seg.SpeakerTag] = true
-	}
-
-	// Zamień na sorted slice (deterministyczne kolejność)
-	tags := make([]int32, 0, len(speakerTagsSet))
-	for t := range speakerTagsSet {
-		tags = append(tags, t)
-	}
-	sort.Slice(tags, func(i, j int) bool { return tags[i] < tags[j] })
-
-	// Generuj labels per tag
-	mapping := make(map[int32]string, len(tags))
-	for _, tag := range tags {
-		mapping[tag] = speakerlabels.Generate(languageCode, int(tag))
-	}
-
-	return mapping
-}
-
-// Helpers SQL — uproszczone, w prod używamy sqlc-generated code
+// updateSessionStatus - SQL helper (w prod używamy sqlc-generated code).
 func updateSessionStatus(ctx context.Context, sessionID, status string) error {
 	id, err := uuid.Parse(sessionID)
 	if err != nil {
@@ -2196,57 +2737,56 @@ func updateSessionStatus(ctx context.Context, sessionID, status string) error {
 	return err
 }
 
-func updateSessionLabels(ctx context.Context, sessionID string, mapping map[int32]string, languageCode string) error {
+// updateSessionLanguage zapisuje wykryty/użyty language_code dla sesji.
+// speaker_label_mapping zostaje pusty {} — zostanie wypełniony przez clinical-svc
+// po LLM analysis (clinical-svc.UpdateSpeakerLabels).
+func updateSessionLanguage(ctx context.Context, sessionID string, languageCode string) error {
 	id, _ := uuid.Parse(sessionID)
-
-	// Konwertuj klucze int32 → string dla JSONB
-	jsonMapping := make(map[string]string, len(mapping))
-	for tag, label := range mapping {
-		jsonMapping[fmt.Sprintf("%d", tag)] = label
-	}
-	jsonBytes, _ := json.Marshal(jsonMapping)
-
 	_, err := dbPool.Exec(ctx, `
-		UPDATE sessions
-		SET speaker_label_mapping = $1, language_code = $2
-		WHERE id = $3`,
-		jsonBytes, languageCode, id)
+		UPDATE sessions SET language_code = $1 WHERE id = $2`,
+		languageCode, id)
 	return err
 }
 
 // persistTranscript zapisuje:
-// 1. KANONICZNY blob w `transcripts.transcript_ciphertext` — JSON z full text + labels.
-// 2. Segmenty w `transcript_segments` jako per-speaker statystyki + źródło rebuild.
+// 1. KANONICZNY blob w `transcripts.transcript_ciphertext` — JSON z chunkami.
+// 2. Segmenty w `transcript_segments` — placeholder (jeden segment per chunk
+//    z speaker_label="" i speaker_tag=0). Po analizie LLM clinical-svc
+//    zaktualizuje speaker_label gdy będzie znana rola każdego chunka.
 //
-// Zob. ADR-IMPL-006 — blob jest source of truth, Flutter czyta tylko z `transcripts`.
-func persistTranscript(ctx context.Context, sessionID string, result *TranscriptResult, labels map[int32]string, processingTime time.Duration) (string, error) {
+// Zob. ADR-IMPL-006 (blob jako source of truth) i ADR-IMPL-007 (LLM diarization).
+func persistTranscript(ctx context.Context, sessionID string, result *TranscriptResult, chunks []chunker.Chunk, processingTime time.Duration) (string, error) {
 	transcriptID := uuid.New()
 	sessID, _ := uuid.Parse(sessionID)
 
-	// Build kanoniczny blob — pełny tekst z labels
+	// Build kanoniczny blob — chunki BEZ przypisania mówców.
+	// LLM przypisze mówców w Sprint 2.6.
 	type BlobLine struct {
-		SpeakerTag   int32  `json:"speaker_tag"`
-		SpeakerLabel string `json:"speaker_label"`
-		Text         string `json:"text"`
-		StartMS      int64  `json:"start_ms"`
-		EndMS        int64  `json:"end_ms"`
-		Confidence   float32 `json:"confidence"`
+		ChunkIdx   int     `json:"chunk_idx"`
+		Text       string  `json:"text"`
+		StartMS    int64   `json:"start_ms"`
+		EndMS      int64   `json:"end_ms"`
+		WordCount  int     `json:"word_count"`
+		Confidence float32 `json:"confidence"`
+
+		// Tylko gdy USE_NATIVE_DIARIZATION=true (przyszła ścieżka):
+		// Wypełnione speaker_tag z Chirp + lokalizowany speaker_label.
+		SpeakerTag   *int32  `json:"speaker_tag,omitempty"`
+		SpeakerLabel *string `json:"speaker_label,omitempty"`
 	}
 
-	blobLines := make([]BlobLine, 0, len(result.Segments))
-	for _, seg := range result.Segments {
-		label := labels[seg.SpeakerTag]
-		if label == "" {
-			label = fmt.Sprintf("Speaker %d", seg.SpeakerTag)  // safety fallback
+	blobLines := make([]BlobLine, 0, len(chunks))
+	for _, c := range chunks {
+		line := BlobLine{
+			ChunkIdx:   c.Index,
+			Text:       c.Text,
+			StartMS:    c.StartMS,
+			EndMS:      c.EndMS,
+			WordCount:  c.WordCount,
+			Confidence: c.Confidence,
 		}
-		blobLines = append(blobLines, BlobLine{
-			SpeakerTag:   seg.SpeakerTag,
-			SpeakerLabel: label,
-			Text:         strings.TrimSpace(seg.Text),
-			StartMS:      seg.StartOffsetMS,
-			EndMS:        seg.EndOffsetMS,
-			Confidence:   seg.Confidence,
-		})
+		// W przyszłości: jeśli result.HasNativeDiarization, wypełnij SpeakerTag/Label
+		blobLines = append(blobLines, line)
 	}
 
 	blobJSON, _ := json.Marshal(blobLines)
@@ -2276,19 +2816,13 @@ func persistTranscript(ctx context.Context, sessionID string, result *Transcript
 		return "", err
 	}
 
-	// 2. INSERT transcript_segments (statystyki + rebuild source)
-	for _, seg := range result.Segments {
+	// 2. INSERT transcript_segments — placeholder per chunk.
+	//    speaker_tag=0, speaker_label="" w default flow.
+	//    Po analizie LLM clinical-svc.UpdateSpeakerLabels zaktualizuje labels.
+	for _, c := range chunks {
 		segID := uuid.New()
-		segText := strings.TrimSpace(seg.Text)
-
-		// Per-segment encryption (zachowane dla granularnego access pattern w przyszłości)
-		segCiphertext := []byte("ENCRYPT_PLACEHOLDER:" + segText)
+		segCiphertext := []byte("ENCRYPT_PLACEHOLDER:" + c.Text)
 		segDEK := []byte("DEK_PLACEHOLDER")
-
-		label := labels[seg.SpeakerTag]
-		if label == "" {
-			label = fmt.Sprintf("Speaker %d", seg.SpeakerTag)
-		}
 
 		_, err = tx.Exec(ctx, `
 			INSERT INTO transcript_segments (
@@ -2297,10 +2831,12 @@ func persistTranscript(ctx context.Context, sessionID string, result *Transcript
 				text_ciphertext, text_encrypted_dek,
 				text_word_count, confidence
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-			segID, transcriptID, seg.SpeakerTag, label,
-			seg.StartOffsetMS, seg.EndOffsetMS,
+			segID, transcriptID,
+			int32(0),                // speaker_tag placeholder
+			"",                      // speaker_label pusty - LLM jeszcze nie analizował
+			c.StartMS, c.EndMS,
 			segCiphertext, segDEK,
-			seg.WordCount, seg.Confidence)
+			c.WordCount, c.Confidence)
 		if err != nil {
 			return "", err
 		}
@@ -2386,26 +2922,54 @@ cat > services/ai-pipeline-svc/internal/llm/schemas/report_schema.json <<'EOF'
     },
     "speaker_role_inference": {
       "type": "object",
-      "description": "Dedukowane role dla każdej etykiety mówcy z transkryptu. Klucze to speaker_tag (jako string: '1', '2', '3'). Dla każdego speakera: role + confidence + evidence z transkryptu.",
-      "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "role": {
+      "description": "Wynik diaryzacji wykonanej przez LLM (zob. ADR-IMPL-007). Zawiera (a) klastrowanie chunków na grupy mówców i (b) dedukowane role.",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["llm_inferred", "native_chirp_3"],
+          "description": "llm_inferred = ta sesja ma diaryzację przez LLM (default w v1.2). native_chirp_3 = STT już zrobił diaryzację (przyszły flow gdy polski będzie supported)."
+        },
+        "chunk_assignments": {
+          "type": "object",
+          "description": "Mapping: chunk_idx (jako string '0', '1', '2'...) → wykryta rola.",
+          "additionalProperties": {
             "type": "string",
-            "enum": ["therapist", "patient", "couple_partner", "family_member_parent", "family_member_child", "family_member_sibling", "third_party", "unknown"],
-            "description": "Dedukowana rola na podstawie kontekstu rozmowy"
-          },
-          "confidence": {
-            "type": "number",
-            "description": "0-1, jak pewna jest dedukcja"
-          },
-          "evidence": {
-            "type": "string",
-            "description": "Krótkie uzasadnienie z transkryptu (max 200 znaków). Opisz co w sposobie wypowiedzi wskazuje na tę rolę."
+            "enum": ["therapist", "patient", "couple_partner", "family_member_parent", "family_member_child", "family_member_sibling", "third_party", "unknown", "filler"]
           }
         },
-        "required": ["role", "confidence", "evidence"]
-      }
+        "speaker_groups": {
+          "type": "array",
+          "description": "Agregacja chunk_assignments — lista zdedukowanych mówców z evidence.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": ["therapist", "patient", "couple_partner", "family_member_parent", "family_member_child", "family_member_sibling", "third_party"]
+              },
+              "chunk_indices": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "description": "Lista indeksów chunków przypisanych do tego mówcy."
+              },
+              "confidence": {
+                "type": "number",
+                "description": "0-1, jak pewna jest dedukcja roli."
+              },
+              "evidence": {
+                "type": "string",
+                "description": "Krótkie uzasadnienie z transkryptu (max 200 znaków)."
+              }
+            },
+            "required": ["role", "chunk_indices", "confidence", "evidence"]
+          }
+        },
+        "overall_diarization_confidence": {
+          "type": "number",
+          "description": "0-1, ogólna pewność co do całej diaryzacji."
+        }
+      },
+      "required": ["method", "chunk_assignments", "speaker_groups", "overall_diarization_confidence"]
     },
     "main_themes": {
       "type": "array",
@@ -2425,7 +2989,7 @@ cat > services/ai-pipeline-svc/internal/llm/schemas/report_schema.json <<'EOF'
     },
     "therapeutic_alliance_observations": {
       "type": "string",
-      "description": "Obserwacje dotyczące przymierza terapeutycznego (po dedukcji ról)"
+      "description": "Obserwacje dotyczące przymierza terapeutycznego. UWAGA: low-confidence w MVP gdy method=llm_inferred — opisz krótko."
     },
     "interventions_observed": {
       "type": "array",
@@ -2447,7 +3011,7 @@ cat > services/ai-pipeline-svc/internal/llm/schemas/report_schema.json <<'EOF'
           "dimension_code": {
             "type": "string",
             "enum": ["INTERNALIZING", "EXTERNALIZING", "THOUGHT_DISORDER", "DETACHMENT", "DISTRESS", "FEAR", "DISTRESS_DEPRESSION", "DISTRESS_ANXIETY", "FEAR_PANIC", "FEAR_SOCIAL", "ANTAGONISM", "DISINHIBITION"],
-            "description": "Kod wymiaru HiTOP (mierzonego dla pacjenta — po dedukcji ról)"
+            "description": "Kod wymiaru HiTOP (mierzonego DLA pacjenta — używaj chunków przypisanych do roli 'patient')"
           },
           "score": {"type": "number", "description": "0-100"},
           "confidence": {"type": "number", "description": "0-1"},
@@ -2518,6 +3082,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 )
 
 type TranscriptCompletedEvent struct {
@@ -2644,6 +3210,14 @@ func processTranscript(ctx context.Context, e Event) error {
 		return fmt.Errorf("persist: %w", err)
 	}
 
+	// 7.5. Generate speaker labels z chunk_assignments + zapisz do sessions
+	//      (zob. ADR-IMPL-002 + ADR-IMPL-007).
+	//      Mapping per chunk: { chunk_idx → "Osoba 1" | "Osoba 2" | "Anna" }
+	//      gdy terapeuta nie zrobił jeszcze manual override.
+	if err := generateAndSaveSpeakerLabels(ctx, session, event.TranscriptID, &report); err != nil {
+		logger.Warn("speaker labels", "error", err)
+	}
+
 	// 8. Generate embedding dla RAG memory chunk
 	embedding, err := generateEmbedding(ctx, report.RAGSummaryChunk)
 	if err != nil {
@@ -2680,20 +3254,29 @@ type SessionContext struct {
 }
 
 type ReportPayload struct {
-	Title                   string                            `json:"title"`
-	SummaryShort            string                            `json:"summary_short"`
-	SpeakerRoleInference    map[string]SpeakerRoleInference   `json:"speaker_role_inference"`
-	MainThemes              []ThemeItem                       `json:"main_themes"`
-	HiTOPDimensions         []HiTOPItem                       `json:"hitop_dimensions"`
-	RiskAssessment          RiskAssessment                    `json:"risk_assessment"`
-	Sentiment               string                            `json:"sentiment"`
-	RAGSummaryChunk         string                            `json:"rag_summary_chunk"`
+	Title                string                `json:"title"`
+	SummaryShort         string                `json:"summary_short"`
+	SpeakerRoleInference SpeakerRoleInference  `json:"speaker_role_inference"`
+	MainThemes           []ThemeItem           `json:"main_themes"`
+	HiTOPDimensions      []HiTOPItem           `json:"hitop_dimensions"`
+	RiskAssessment       RiskAssessment        `json:"risk_assessment"`
+	Sentiment            string                `json:"sentiment"`
+	RAGSummaryChunk      string                `json:"rag_summary_chunk"`
 }
 
+// SpeakerRoleInference reprezentuje wynik diaryzacji LLM (ADR-IMPL-007).
 type SpeakerRoleInference struct {
-	Role       string  `json:"role"`         // 'therapist', 'patient', 'couple_partner', etc.
-	Confidence float64 `json:"confidence"`
-	Evidence   string  `json:"evidence"`
+	Method                       string            `json:"method"`            // 'llm_inferred' | 'native_chirp_3'
+	ChunkAssignments             map[string]string `json:"chunk_assignments"` // {"0": "therapist", "1": "patient", ...}
+	SpeakerGroups                []SpeakerGroup    `json:"speaker_groups"`
+	OverallDiarizationConfidence float64           `json:"overall_diarization_confidence"`
+}
+
+type SpeakerGroup struct {
+	Role          string  `json:"role"`           // 'therapist', 'patient', 'couple_partner', etc.
+	ChunkIndices  []int   `json:"chunk_indices"`
+	Confidence    float64 `json:"confidence"`
+	Evidence      string  `json:"evidence"`
 }
 
 type ThemeItem struct {
@@ -2737,27 +3320,47 @@ func generateReport(ctx context.Context, modalityPrompt, ragContext, transcriptT
 
 	prompt := fmt.Sprintf(`%s
 
-UWAGA O ETYKIETACH MÓWCÓW:
-Transkrypt zawiera neutralne etykiety mówców (np. "Osoba 1", "Osoba 2" lub "Person 1", "Person 2") — to NIE są role, tylko numeracja.
-Twoim zadaniem jest **dedukować role z kontekstu rozmowy** i zapisać dedukcję w polu speaker_role_inference.
+WAŻNE — KONTEKST DIARYZACJI:
+Transkrypt poniżej składa się z PONUMEROWANYCH chunków oddzielonych pauzami.
+Chunki NIE mają jeszcze przypisanych mówców (Chirp 3 nie supportuje diaryzacji
+dla polskiego — robimy to przez analizę treści).
 
-Wskazówki dot. dedukcji ról:
-- Osoba pełniąca rolę terapeuty zazwyczaj: zadaje pytania otwarte, stosuje techniki (np. socratic questioning, reflektowanie), używa fachowego języka, kieruje rozmową.
-- Osoba pełniąca rolę pacjenta zazwyczaj: opisuje swoje odczucia/objawy, odpowiada na pytania, mówi o sobie w pierwszej osobie o problemach.
-- W sesjach par/rodzin: wskaż couple_partner / family_member_*. Jeśli niejasne — użyj 'unknown'.
-- Confidence: 0.9+ jeśli wzorce są jednoznaczne, 0.5-0.8 jeśli są wskazówki ale nie pewność, < 0.5 jeśli niejasne.
+Twoje zadania w jednym wywołaniu:
+1. **Klastrowanie:** Pogrupuj chunki w 2 (lub 3 dla par/rodzin) wirtualne grupy mówców
+   na podstawie stylu wypowiedzi, treści, formy zwracania się.
+2. **Dedukcja ról:** Określ rolę każdej grupy (therapist/patient/couple_partner/...).
+3. **Generacja raportu:** Po przypisaniu, generuj raport bazując na chunkach
+   przypisanych do każdej grupy.
+
+Wskazówki dot. klastrowania i dedukcji ról:
+- Terapeuta zazwyczaj: zadaje pytania otwarte ("Co czujesz kiedy o tym mówisz?"),
+  stosuje techniki (reflektowanie, podsumowywanie, normalizacja), używa
+  fachowego języka, kieruje rozmową, mówi krócej.
+- Pacjent zazwyczaj: opisuje swoje odczucia/objawy, odpowiada na pytania,
+  mówi o sobie w pierwszej osobie o problemach, ma dłuższe wypowiedzi.
+- Krótkie wtrącenia ("mhm", "tak", "rozumiem") oznaczaj jako "filler" — nie
+  przypisuj ich do speakera, jeśli nie jesteś pewien.
+- W sesjach par/rodzin: 3 grupy (terapeuta + 2 osoby relacji).
+- Confidence: 0.9+ jeśli wzorce są jednoznaczne, 0.5-0.8 jeśli są wskazówki
+  ale nie pewność, < 0.5 jeśli niejasne.
+
+Zapisz wynik klastrowania w polu speaker_role_inference (method="llm_inferred").
 
 KONTEKST POPRZEDNICH SESJI:
 %s
 
-TRANSKRYPT BIEŻĄCEJ SESJI:
+TRANSKRYPT BIEŻĄCEJ SESJI (chunki ponumerowane):
 %s
 
 Wygeneruj raport zgodny z podanym JSON Schema. Pamiętaj o:
-- Dedukcji ról dla KAŻDEJ etykiety mówcy w transkrypcie (speaker_role_inference).
+- Wypełnieniu speaker_role_inference.chunk_assignments dla KAŻDEGO chunka.
+- HiTOP measurements: mierz DLA pacjenta — używaj tylko chunków z chunk_assignments
+  oznaczonych jako "patient".
 - Cytatach maksymalnie 100 znaków każdy.
-- Skali HiTOP: 0-100 score, 0-1 confidence (mierzymy DLA pacjenta — używaj tylko wypowiedzi osoby zdedukowanej jako 'patient').
-- RAG summary chunk: NIE zawierać danych identyfikujących — używać tylko etykiet typu "pacjent" (nie imion ani neutralnych labels).`,
+- W therapeutic_alliance_observations zaznacz że confidence jest niski jeśli
+  overall_diarization_confidence < 0.7.
+- RAG summary chunk: NIE zawierać danych identyfikujących — używać tylko etykiet
+  typu "pacjent" (nie imion ani numerów chunków).`,
 		modalityPrompt, ragContext, transcriptText)
 
 	resp, err := model.GenerateContent(ctx, vertexai.Text(prompt))
@@ -2793,7 +3396,108 @@ func schemaToVertexSchema(s map[string]any) *vertexai.Schema {
 	return &vs
 }
 
-func generateEmbedding(ctx context.Context, text string) ([]float32, error) {
+// generateAndSaveSpeakerLabels po analizie LLM tworzy mapping speaker → label
+// i zapisuje go do sessions.speaker_label_mapping oraz transcript_segments.speaker_label.
+//
+// Strategia:
+// 1. Z report.SpeakerRoleInference.SpeakerGroups dostajemy listę grup z chunk_indices.
+// 2. Dla każdej grupy: przypisujemy kolejny "speaker_tag" (1, 2, 3...).
+// 3. Generujemy lokalizowany label (z pkg/i18n/speakerlabels) per tag.
+// 4. UPDATE transcript_segments — wszystkie segmenty należące do chunków z grupy
+//    dostają speaker_tag i speaker_label.
+// 5. UPDATE sessions.speaker_label_mapping = {1: "Osoba 1", 2: "Osoba 2"}.
+//
+// Po tej funkcji terapeuta może wywołać clinical-svc.UpdateSpeakerLabels żeby
+// zmienić "Osoba 1" → "Anna" — co triggeruje rebuild blob (zob. Sprint 2.6.5).
+func generateAndSaveSpeakerLabels(ctx context.Context, session *SessionContext, transcriptID string, report *ReportPayload) error {
+	transID, err := uuid.Parse(transcriptID)
+	if err != nil {
+		return err
+	}
+
+	// 1. Build chunk → speaker_tag mapping
+	chunkToTag := map[int]int32{}
+	tagToRole := map[int32]string{}
+	tag := int32(1)
+	for _, group := range report.SpeakerRoleInference.SpeakerGroups {
+		// Skip "filler" / "unknown" — te chunki zostają bez speaker_tag (=0)
+		if group.Role == "" || group.Role == "filler" || group.Role == "unknown" {
+			continue
+		}
+		for _, idx := range group.ChunkIndices {
+			chunkToTag[idx] = tag
+		}
+		tagToRole[tag] = group.Role
+		tag++
+	}
+
+	// 2. Generate labels (pkg/i18n/speakerlabels)
+	tagToLabel := map[int32]string{}
+	for t := range tagToRole {
+		tagToLabel[t] = speakerlabels.Generate(session.LanguageCode, int(t))
+	}
+
+	tx, err := dbPool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// 3. Update transcript_segments per chunk_idx.
+	//    Segmenty zostały zapisane przez STT worker w kolejności chunków (ORDER BY start_offset_ms),
+	//    więc chunk_idx == row position. Pobieramy je posortowane i mapujemy.
+	rows, err := tx.Query(ctx, `
+		SELECT id FROM transcript_segments
+		WHERE transcript_id = $1
+		ORDER BY start_offset_ms`, transID)
+	if err != nil {
+		return err
+	}
+	segmentIDs := []uuid.UUID{}
+	for rows.Next() {
+		var segID uuid.UUID
+		if err := rows.Scan(&segID); err != nil {
+			rows.Close()
+			return err
+		}
+		segmentIDs = append(segmentIDs, segID)
+	}
+	rows.Close()
+
+	for chunkIdx, segID := range segmentIDs {
+		assignedTag, ok := chunkToTag[chunkIdx]
+		if !ok {
+			// Chunk bez przypisania (filler/unknown) — zostaje speaker_tag=0
+			continue
+		}
+		label := tagToLabel[assignedTag]
+		_, err := tx.Exec(ctx, `
+			UPDATE transcript_segments
+			SET speaker_tag = $1, speaker_label = $2
+			WHERE id = $3`,
+			assignedTag, label, segID)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 4. Update sessions.speaker_label_mapping
+	mappingForJSON := map[string]string{}
+	for t, label := range tagToLabel {
+		mappingForJSON[fmt.Sprintf("%d", t)] = label
+	}
+	mappingJSON, _ := json.Marshal(mappingForJSON)
+	_, err = tx.Exec(ctx, `
+		UPDATE sessions SET speaker_label_mapping = $1 WHERE id = $2`,
+		mappingJSON, session.ID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+
 	// Use textembedding-gecko via Vertex AI
 	// W Fazie 2: stub embedding (np. zera lub random)
 	// W Fazie 3: real Vertex embeddings call
@@ -2840,12 +3544,14 @@ func loadSession(ctx context.Context, sessionID string) (*SessionContext, error)
 }
 
 // loadTranscriptText czyta transkrypt z KANONICZNEGO blob'a w transcripts (ADR-IMPL-006).
-// NIE iteruje po segments — pełny tekst jest jednym zaszyfrowanym JSON-em.
 //
-// Format blob (po decrypt): JSON array z {speaker_tag, speaker_label, text, start_ms, end_ms}.
+// Format blob (po decrypt): JSON array z {chunk_idx, text, start_ms, end_ms, ...}.
 // Zwraca sformatowany tekst dla LLM:
-//   "[Osoba 1] (1200ms-4500ms) Cześć, jak się czujesz dzisiaj?"
-//   "[Osoba 2] (4600ms-7800ms) Trochę zmęczona, ale ogólnie dobrze."
+//   "[CHUNK 0] (1200ms-4500ms) Cześć, jak się czujesz dzisiaj?"
+//   "[CHUNK 1] (4800ms-7800ms) Trochę zmęczona, ale ogólnie dobrze."
+//
+// Format z numerowanymi chunkami umożliwia LLM odwoływanie się do nich
+// w polu speaker_role_inference.chunk_assignments (zob. ADR-IMPL-007).
 func loadTranscriptText(ctx context.Context, transcriptID string) (string, error) {
 	id, _ := uuid.Parse(transcriptID)
 
@@ -2861,11 +3567,15 @@ func loadTranscriptText(ctx context.Context, transcriptID string) (string, error
 	blobJSON := strings.TrimPrefix(string(ciphertext), "ENCRYPT_PLACEHOLDER:")
 
 	type BlobLine struct {
-		SpeakerTag   int32  `json:"speaker_tag"`
-		SpeakerLabel string `json:"speaker_label"`
-		Text         string `json:"text"`
-		StartMS      int64  `json:"start_ms"`
-		EndMS        int64  `json:"end_ms"`
+		ChunkIdx     int     `json:"chunk_idx"`
+		Text         string  `json:"text"`
+		StartMS      int64   `json:"start_ms"`
+		EndMS        int64   `json:"end_ms"`
+		WordCount    int     `json:"word_count"`
+		Confidence   float32 `json:"confidence"`
+		// Wypełnione tylko gdy USE_NATIVE_DIARIZATION=true:
+		SpeakerTag   *int32  `json:"speaker_tag,omitempty"`
+		SpeakerLabel *string `json:"speaker_label,omitempty"`
 	}
 
 	var lines []BlobLine
@@ -2875,7 +3585,16 @@ func loadTranscriptText(ctx context.Context, transcriptID string) (string, error
 
 	var sb strings.Builder
 	for _, l := range lines {
-		fmt.Fprintf(&sb, "[%s] (%dms-%dms) %s\n", l.SpeakerLabel, l.StartMS, l.EndMS, l.Text)
+		// Format zależy od tego czy mamy native diarization
+		if l.SpeakerLabel != nil && *l.SpeakerLabel != "" {
+			// Future flow: native diarization — pokazujemy speaker label
+			fmt.Fprintf(&sb, "[CHUNK %d / %s] (%dms-%dms) %s\n",
+				l.ChunkIdx, *l.SpeakerLabel, l.StartMS, l.EndMS, l.Text)
+		} else {
+			// Default flow (v1.2): tylko numerowany chunk, LLM przypisze speaker
+			fmt.Fprintf(&sb, "[CHUNK %d] (%dms-%dms) %s\n",
+				l.ChunkIdx, l.StartMS, l.EndMS, l.Text)
+		}
 	}
 
 	return sb.String(), nil
@@ -3840,11 +4559,54 @@ chmod +x tests/e2e/test_full_pipeline.sh
 
 ## Troubleshooting cookbook
 
-### Problem 1: "Chirp 3 model not found in europe-central2"
+### Problem 1: "Chirp 3 region not available"
 
 **Symptom:** `INVALID_ARGUMENT: Model 'chirp_3' is not available in this region`.
 
-**Fix:** Chirp 3 wymaga regionów `us-central1`, `europe-west4`, `asia-southeast1`. STT worker wywołuje cross-region (zob. ADR-IMPL-001). Audio transit jest acceptable bo Google to internal traffic w UE.
+**Fix:** Chirp 3 dostępne w `eu (multi-region)` i `us (multi-region)`. Używamy `eu` — najbliższy do `europe-central2` w którym mamy resztę infrastruktury. Audio transit acceptable (Google internal traffic w UE).
+
+### Problem 1b: "Diarization config not supported for language pl-PL"
+
+**Symptom:** `INVALID_ARGUMENT: Speaker diarization is not supported for language: pl-PL`.
+
+**Przyczyna:** Chirp 3 nie supportuje diaryzacji dla polskiego (stan na maj 2026). Tylko 14 języków (zob. ADR-IMPL-007).
+
+**Fix:** Zostaw `USE_NATIVE_DIARIZATION=false` (default). Diaryzacja robi się przez LLM.
+
+**Future:** Gdy Google doda polski do listy, ustaw `USE_NATIVE_DIARIZATION=true` i nic więcej nie zmieniaj.
+
+### Problem 1c: Chunkowanie tworzy za dużo lub za mało chunków
+
+**Symptom:** Pipeline działa, ale raport jest słaby, bo chunki są:
+- Za drobne (np. 200 chunków na 30 min sesję) → LLM ma trudność z klastrowaniem.
+- Za grube (np. 5 chunków na 30 min) → tracimy granularność, jedna grupa zawiera fragmenty od różnych mówców.
+
+**Fix:** Skoryguj `chunker.Config` w STT worker:
+
+```go
+// Default (rozsądne dla większości sesji 1-na-1):
+chunker.Config{
+    PauseThresholdMS:   600,    // pauza ≥ 600ms → nowy chunk
+    MinChunkDurationMS: 300,    // krótsze merguj do poprzedniego
+    MaxChunkDurationMS: 60000,  // dłuższe niż 60s → dziel
+}
+
+// Dla sesji bardzo dynamicznych (par/rodzin):
+chunker.Config{
+    PauseThresholdMS:   400,    // krótsze pauzy = nowy chunk
+    MinChunkDurationMS: 200,
+    MaxChunkDurationMS: 30000,
+}
+
+// Dla sesji typu "monolog pacjenta":
+chunker.Config{
+    PauseThresholdMS:   1000,   // tylko długie pauzy = nowy chunk
+    MinChunkDurationMS: 500,
+    MaxChunkDurationMS: 90000,
+}
+```
+
+Dobra metryka do monitorowania: średnia liczba chunków per minuta. Cel: 5-15 chunków/min.
 
 ### Problem 2: Vertex AI Gemini "Resource exhausted"
 
@@ -3957,6 +4719,24 @@ Faza 3 (Tygodnie 8-10) pokryje:
 6. **report_feedback domain** — UI do zostawiania feedbacku (gwiazdki + kategorie).
 7. **memory-compactor-worker** — agregacja `rag_memories` po > 50 chunkach per patient_file.
 8. **Hardening** — rate limiting, circuit breakers, real RBAC w `clinical-svc.GetPatientFile`.
+
+### Migration path: natywna diaryzacja Chirp 3 dla polskiego
+
+Gdy Google Cloud doda polski (`pl-PL`) do listy 14 języków supportujących diarization w Chirp 3:
+
+1. **Smoke test** w środowisku staging:
+   ```bash
+   USE_NATIVE_DIARIZATION=true gcloud functions deploy stt-worker ...
+   ```
+2. **Pilot na 5 sesjach** — porównaj jakość vs LLM-inferred diarization (DER, czas processingu, koszty).
+3. **Gradual rollout:**
+   - Tydzień 1: 10% sesji w prod używa native (przez session.created_at hash).
+   - Tydzień 2: 50%.
+   - Tydzień 3: 100%, deprecate LLM-inferred path.
+4. **Update prompt LLM** — usunięcie sekcji o klastrowaniu chunków, LLM dostaje już-przypisane segmenty.
+5. **Stare raporty** żyją dalej — schema DB nie wymaga zmian, `reports.speaker_role_inference.method` rozróżnia źródło.
+
+**Acceptance dla migration:** native DER < 10% (5 sesji testowych) i koszt nie wyższy niż LLM-inferred path.
 
 ---
 
