@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/adapters/pubsub"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/handlers"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/models"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/services"
@@ -45,11 +46,16 @@ func main() {
 
 	sttService, _ := services.NewSTTService(context.Background(), projectID)
 	llmService, _ := services.NewLLMService(context.Background(), projectID)
+	publisher, err := pubsub.NewPublisher(context.Background(), projectID)
+	if err != nil {
+		log.Printf("Publisher initialization error: %v", err)
+	}
 
 	workerCtx := &handlers.WorkerContext{
-		DB:  db,
-		STT: sttService,
-		LLM: llmService,
+		DB:        db,
+		STT:       sttService,
+		LLM:       llmService,
+		Publisher: publisher,
 	}
 
 	// Pub/Sub Push endpoints

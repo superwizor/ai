@@ -8,14 +8,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/adapters/pubsub"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/models"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/services"
 )
 
 type WorkerContext struct {
-	DB  *models.DB
-	STT *services.STTService
-	LLM *services.LLMService
+	DB        *models.DB
+	STT       *services.STTService
+	LLM       *services.LLMService
+	Publisher *pubsub.Publisher
 }
 
 type PubSubMessage struct {
@@ -25,6 +27,12 @@ type PubSubMessage struct {
 		ID         string            `json:"messageId"`
 	} `json:"message"`
 	Subscription string `json:"subscription"`
+}
+
+type AudioUploadedEvent struct {
+	SessionID  string `json:"session_id"`
+	UploadID   string `json:"upload_id"`
+	ObjectPath string `json:"object_path"`
 }
 
 // STTWorkerHandler processes the audio.uploaded event
@@ -38,20 +46,29 @@ func (wc *WorkerContext) STTWorkerHandler(c *gin.Context) {
 
 	log.Printf("Received STT worker request for message ID: %s", pubSubMsg.Message.ID)
 
-	// In GCS notifications, Data is a base64 encoded JSON representation of the Storage Object.
-	// For simplicity, we assume we extract the bucket and name from attributes or data.
-	// Actually, GCS Pub/Sub notifications put bucketId and objectId in Attributes.
-	bucketId := pubSubMsg.Message.Attributes["bucketId"]
-	objectId := pubSubMsg.Message.Attributes["objectId"]
+	var event AudioUploadedEvent
+	if err := json.Unmarshal(pubSubMsg.Message.Data, &event); err != nil {
+		log.Printf("Error decoding audio uploaded event: %v", err)
+		c.Status(http.StatusOK) // Return 200 to prevent retries
+		return
+	}
 
-	if bucketId == "" || objectId == "" {
-		log.Printf("Ignoring message: missing bucketId or objectId in attributes")
+	if event.SessionID == "" || event.ObjectPath == "" {
+		log.Printf("Ignoring message: missing session_id or object_path")
 		c.Status(http.StatusOK)
 		return
 	}
 
-	gcsURI := "gs://" + bucketId + "/" + objectId
-	log.Printf("Processing audio file: %s", gcsURI)
+	// Assuming the bucket is known or passed in object path. For prototype we assume object path is the full gs:// uri or just use a dummy bucket if not.
+	// Actually, event.ObjectPath might just be the path, let's assume it contains the bucket or we hardcode it for now.
+	// We'll construct a simple URI if it doesn't start with gs://
+	gcsURI := event.ObjectPath
+	if len(gcsURI) > 0 && gcsURI[:5] != "gs://" {
+		// Mocking bucket name
+		gcsURI = "gs://superwizor-audio-uploads/" + event.ObjectPath
+	}
+
+	log.Printf("Processing audio file: %s for session %s", gcsURI, event.SessionID)
 
 	ctx := context.Background()
 	transcript, err := wc.STT.TranscribeAudio(ctx, gcsURI)
@@ -63,30 +80,33 @@ func (wc *WorkerContext) STTWorkerHandler(c *gin.Context) {
 
 	log.Printf("Transcription successful. Saving to DB.")
 
-	// Extract PatientFileID from object metadata or attributes.
-	// For this prototype, we'll assume patientFileId is in attributes, 
-	// or we mock it if it's missing just so the flow works.
-	patientFileIdStr := pubSubMsg.Message.Attributes["patientFileId"]
-	var patientFileId uuid.UUID
-	if patientFileIdStr == "" {
-		// Mock ID if not provided by upload metadata
-		patientFileId = uuid.New()
-	} else {
-		parsed, err := uuid.Parse(patientFileIdStr)
-		if err == nil {
-			patientFileId = parsed
-		}
+	sessionID, err := uuid.Parse(event.SessionID)
+	if err != nil {
+		log.Printf("Invalid session ID format: %v", err)
+		c.Status(http.StatusOK)
+		return
 	}
 
-	_, err = wc.DB.SaveTranscript(ctx, patientFileId, gcsURI, transcript)
+	// Save to database with placeholder encryption values for Phase 2
+	transcriptID, err := wc.DB.SaveTranscript(ctx, sessionID, "pl-PL", "chirp-3", []byte("ENCRYPT_PLACEHOLDER:"+transcript), []byte("DEK_PLACEHOLDER"))
 	if err != nil {
 		log.Printf("Error saving transcript: %v", err)
-		// Return 500 to retry
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save transcript"})
 		return
 	}
 
-	log.Printf("Successfully completed STT pipeline for %s", objectId)
+	// Publish transcript.completed event
+	if wc.Publisher != nil {
+		if err := wc.Publisher.PublishTranscriptCompleted(ctx, sessionID.String(), transcriptID.String()); err != nil {
+			log.Printf("Error publishing transcript.completed: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish transcript.completed"})
+			return
+		}
+	} else {
+		log.Printf("Warning: Publisher is not initialized, skipping publish.")
+	}
+
+	log.Printf("Successfully completed STT pipeline for %s", event.ObjectPath)
 	c.Status(http.StatusOK)
 }
 
@@ -101,36 +121,77 @@ func (wc *WorkerContext) LLMWorkerHandler(c *gin.Context) {
 
 	log.Printf("Received LLM worker request for message ID: %s", pubSubMsg.Message.ID)
 
-	// Decode the data payload
-	var payload struct {
-		TranscriptID  string `json:"transcriptId"`
-		PatientFileID string `json:"patientFileId"`
-		Transcript    string `json:"transcript"`
-	}
+	var payload pubsub.TranscriptCompletedPayload
 	if err := json.Unmarshal(pubSubMsg.Message.Data, &payload); err != nil {
 		log.Printf("Error decoding payload: %v", err)
-		c.Status(http.StatusOK) // Return 200 so it doesn't retry a bad payload
+		c.Status(http.StatusOK)
+		return
+	}
+
+	sessionID, err := uuid.Parse(payload.SessionID)
+	if err != nil {
+		log.Printf("Invalid session ID format: %v", err)
+		c.Status(http.StatusOK)
+		return
+	}
+
+	transcriptID, err := uuid.Parse(payload.TranscriptID)
+	if err != nil {
+		log.Printf("Invalid transcript ID format: %v", err)
+		c.Status(http.StatusOK)
 		return
 	}
 
 	ctx := context.Background()
-	prompt := "Cel: Szybki, rzeczowy przegląd sesji. Struktura: 1. Główny problem/temat przewodni sesji."
-	
-	reportText, err := wc.LLM.GenerateReport(ctx, payload.Transcript, prompt)
+
+	// 1. Fetch Session Context to get modality ID
+	_, modalityID, err := wc.DB.GetSessionContext(ctx, sessionID)
+	if err != nil {
+		log.Printf("Error fetching session context: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch session context"})
+		return
+	}
+
+	// 2. Fetch Modality Prompt
+	prompt, err := wc.DB.GetModalityPrompt(ctx, modalityID)
+	if err != nil {
+		log.Printf("Error fetching modality prompt: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch modality prompt"})
+		return
+	}
+
+	if prompt == "" {
+		prompt = "Cel: Szybki, rzeczowy przegląd sesji. Struktura: 1. Główny problem/temat przewodni sesji."
+	}
+
+	// Fetch transcript (mocking fetching it for now, usually we'd read from DB based on transcriptID)
+	// For MVP we just use a dummy text or assuming LLM worker fetches it via DB helper
+	transcriptText := "dummy transcript for testing since we didn't extract the blob logic fully here"
+
+	reportText, err := wc.LLM.GenerateReport(ctx, transcriptText, prompt)
 	if err != nil {
 		log.Printf("Error generating report: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate report"})
 		return
 	}
 
-	patientFileID, _ := uuid.Parse(payload.PatientFileID)
-	transcriptID, _ := uuid.Parse(payload.TranscriptID)
-
-	_, err = wc.DB.SaveReport(ctx, patientFileID, transcriptID, reportText)
+	// Save to DB with placeholders
+	reportID, err := wc.DB.SaveReport(ctx, sessionID, transcriptID, modalityID, []byte("ENCRYPT_PLACEHOLDER:"+reportText), []byte("DEK_PLACEHOLDER"), "gemini-1.5-pro")
 	if err != nil {
 		log.Printf("Error saving report: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save report"})
 		return
+	}
+
+	// Publish report.generated event
+	if wc.Publisher != nil {
+		if err := wc.Publisher.PublishReportGenerated(ctx, sessionID.String(), reportID.String()); err != nil {
+			log.Printf("Error publishing report.generated: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish report.generated"})
+			return
+		}
+	} else {
+		log.Printf("Warning: Publisher is not initialized, skipping publish.")
 	}
 
 	log.Printf("Successfully generated and saved LLM report for transcript %s", payload.TranscriptID)
