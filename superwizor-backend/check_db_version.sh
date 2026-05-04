@@ -12,13 +12,12 @@ PROXY_PID=$!
 echo "Waiting for proxy to start..."
 sleep 5
 
-# Extract password from DB_URL
-# DB_URL format: postgres://user:password@host:port/dbname?sslmode=require
+# Extract password
 PASSWORD_ENCODED=$(echo $DB_URL | sed -E 's/postgres:\/\/[^:]+:([^@]+)@.*/\1/')
 
-# Run migration
-echo "Running migration..."
-DB_USER="superwizor_app" DB_PASSWORD="${PASSWORD_ENCODED}" make migrate-up || { echo "Migration failed"; kill ${PROXY_PID}; exit 1; }
+# Run migration version
+echo "Checking migration version..."
+migrate -path migrations -database "postgres://superwizor_app:${PASSWORD_ENCODED}@127.0.0.1:5432/superwizor?sslmode=disable" version
 
-echo "Migration successful. Killing proxy..."
+echo "Migration version check successful. Killing proxy..."
 kill ${PROXY_PID}

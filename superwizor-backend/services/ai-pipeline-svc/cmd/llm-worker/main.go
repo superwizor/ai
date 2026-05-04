@@ -2,6 +2,7 @@ package llmworker
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -228,16 +229,14 @@ type TokenStats struct {
 	OutputTokens int32
 }
 
+//go:embed schemas/report_schema.json
+var reportSchemaBytes []byte
+
 func generateReport(ctx context.Context, modalityPrompt, ragContext, transcriptText string) (string, TokenStats, error) {
 	model := vertexClient.GenerativeModel(geminiModel)
 
-	// Load schema
-	schemaBytes, err := os.ReadFile("schemas/report_schema.json")
-	if err != nil {
-		return "", TokenStats{}, fmt.Errorf("load schema file: %w", err)
-	}
 	var schema map[string]any
-	if err := json.Unmarshal(schemaBytes, &schema); err != nil {
+	if err := json.Unmarshal(reportSchemaBytes, &schema); err != nil {
 		return "", TokenStats{}, fmt.Errorf("parse schema: %w", err)
 	}
 

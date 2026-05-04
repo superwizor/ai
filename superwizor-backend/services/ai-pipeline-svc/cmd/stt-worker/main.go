@@ -211,11 +211,15 @@ func transcribeWithDiarization(ctx context.Context, gcsURI string) (*TranscriptR
 			DecodingConfig: &speechpb.RecognitionConfig_AutoDecodingConfig{
 				AutoDecodingConfig: &speechpb.AutoDetectDecodingConfig{},
 			},
-			Model:         "chirp_3",
+			Model:         "latest_long",
 			LanguageCodes: []string{"pl-PL"},
 			Features: &speechpb.RecognitionFeatures{
 				EnableAutomaticPunctuation: true,
 				EnableWordTimeOffsets:      true,
+				DiarizationConfig: &speechpb.SpeakerDiarizationConfig{
+					MinSpeakerCount: 2,
+					MaxSpeakerCount: 4,
+				},
 			},
 		},
 		Files: []*speechpb.BatchRecognizeFileMetadata{
@@ -434,7 +438,7 @@ func persistTranscript(ctx context.Context, sessionID string, result *Transcript
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		transcriptID, sessID, blobCiphertext, blobDEK,
 		result.LanguageCode, result.WordCount, result.SpeakerCount,
-		result.ConfidenceAvg, "chirp_3", int(processingTime.Seconds()))
+		result.ConfidenceAvg, "latest_long", int(processingTime.Seconds()))
 	if err != nil {
 		return "", err
 	}
