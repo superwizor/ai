@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 

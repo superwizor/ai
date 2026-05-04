@@ -6,7 +6,6 @@ import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import '../widgets/euphire_button.dart';
 import '../widgets/euphire_header.dart';
 import '../widgets/euphire_text_field.dart';
-import 'home_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -49,10 +48,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         await _registerInIdentityService(cred.user!);
       }
     } on FirebaseAuthException catch (e) {
-      print('FirebaseAuthException: $e');
+      debugPrint('FirebaseAuthException: $e');
       setState(() => _error = e.message != null ? '${e.message}.' : 'Wystąpił błąd Firebase.');
     } catch (e) {
-      print('General Exception: $e');
+      debugPrint('General Exception: $e');
       setState(() => _error = e.toString());
     } finally {
       if (mounted) {
@@ -75,9 +74,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         timezone: 'Europe/Warsaw',
         hasAcceptedTos: true,
       ));
-      print('User registered in identity-svc successfully');
+      debugPrint('User registered in identity-svc successfully');
     } catch (e) {
-      print('Error registering user in identity-svc: $e');
+      debugPrint('Error registering user in identity-svc: $e');
       // Don't block login even if registration fails — user can retry
     }
   }
@@ -95,7 +94,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
     } catch (e) {
       // User not found in identity-svc — auto-register them
-      print('User not found in identity-svc, auto-registering...');
+      debugPrint('User not found in identity-svc, auto-registering...');
       await _registerInIdentityService(firebaseUser);
     }
   }

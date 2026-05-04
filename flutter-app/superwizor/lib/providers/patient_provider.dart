@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/patient.dart';
 import '../models/session.dart';
@@ -33,7 +34,7 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
         );
       }).toList();
     } catch (e) {
-      print('Error fetching patients: $e');
+      debugPrint('Error fetching patients: $e');
       return [];
     }
   }
@@ -98,7 +99,7 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
       final current = state.whenOrNull(data: (d) => d) ?? {};
       state = AsyncValue.data({...current, patientId: fetched});
     } catch (e) {
-      print('Error fetching sessions: $e');
+      debugPrint('Error fetching sessions: $e');
     }
   }
 

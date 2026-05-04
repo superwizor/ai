@@ -1,62 +1,69 @@
 # 07_FAZA_3_AI_PIPELINE
 
-Ten dokument opisuje szczegółowy plan Fazy 3: "Deployment i Uruchomienie Potoku AI (Cloud Functions)". Kod aplikacji (`ai-pipeline-svc`) został już napisany w Fazie 2, jednak teraz musimy powołać do życia środowisko uruchomieniowe w Google Cloud, by połączyć nagrania z chmury z modelami sztucznej inteligencji.
+Ten dokument opisuje szczegółowy, techniczny plan dla **Fazy 2.5 → 3**: "Deployment i Uruchomienie Potoku AI (Cloud Functions) oraz poprawki stabilności i bezpieczeństwa".
 
-## 🎯 Cel Główy
-Pełna automatyzacja i wdrożenie serwerlessowego potoku przetwarzania audio (Event-Driven Architecture). Kiedy plik audio wpadnie do bucketu, system ma bez ingerencji człowieka wykonać kolejno transkrypcję (Chirp 3) oraz wygenerować raport analityczny (Gemini 3.1 FLASH).
-
----
-
-## 📋 Szczegółowy Plan Wdrożenia
-
-### [x] KROK 1: Aktywacja Wymaganych API w Google Cloud
-Zanim zdefiniujemy zasoby w Terraformie, upewnimy się, że wszystkie odpowiednie usługi na naszym projekcie (`superwizor-ai-25ecd`) są włączone.
-- [x] `cloudfunctions.googleapis.com` (Cloud Functions)
-- [x] `run.googleapis.com` (Cloud Run - wymagany dla Cloud Functions Gen2)
-- [x] `cloudbuild.googleapis.com` (Cloud Build - wymagany do budowania obrazów z kodu Go)
-- [x] `eventarc.googleapis.com` (Eventarc - do nasłuchiwania zdarzeń Pub/Sub)
-- [x] `speech.googleapis.com` (Cloud Speech-to-Text V2 - dla modelu Chirp 3)
-- [x] `aiplatform.googleapis.com` (Vertex AI API - dla modelu Gemini)
-
-### [x] KROK 2: Moduł Terraform (`cloud-functions`)
-W katalogu `superwizor-backend/infra/modules/cloud-functions` stworzymy od zera nowy moduł IaC. Będziemy korzystać z Cloud Functions Gen2 (pod spodem Cloud Run).
-- [x] Zdefiniowanie bucketu `superwizor-ai-25ecd-functions-source` do przechowywania spakowanego kodu źródłowego (`.zip`).
-- [x] Przygotowanie skryptu lub konfiguracji pakującej kod z folderów `cmd/stt-worker` oraz `cmd/llm-worker`.
-- [x] Zdefiniowanie zasobu `google_cloudfunctions2_function` dla **`stt-worker`**.
-- [x] Zdefiniowanie zasobu `google_cloudfunctions2_function` dla **`llm-worker`**.
-
-### [x] KROK 3: Konfiguracja Eventów i Pub/Sub (Eventarc)
-Zgodnie ze stworzoną wcześniej architekturą Event-Driven, musimy połączyć zdarzenia wyzwalające:
-- [x] **Trigger dla `stt-worker`**: Podpięcie do topicu `audio.uploaded`.
-  * *Mechanika:* Kiedy Cloud Storage wyśle powiadomienie, że nagranie się pojawiło, Pub/Sub obudzi `stt-worker`, który ściągnie audio, puści przez Chirp 3, i opublikuje sygnał do nowego topicu.
-- [x] Zdefiniowanie w Terraform nowego topicu Pub/Sub: `transcript.completed`.
-- [x] **Trigger dla `llm-worker`**: Podpięcie do topicu `transcript.completed`.
-  * *Mechanika:* Kiedy `stt-worker` poinformuje, że transkrypcja w bazie jest gotowa, `llm-worker` czyta ją z PostgreSQL i puszcza do Gemini w Vertex AI.
-
-### [x] KROK 4: Role IAM i Uprawnienia (Least Privilege)
-Architektura w oparciu o *Least Privilege*. Terraform stworzy konta `stt-worker@...` oraz `llm-worker@...`:
-- [x] `stt-worker` otrzyma role: `roles/storage.objectViewer` do plików audio, `roles/speech.client` do używania Chirp 3.
-- [x] `llm-worker` otrzyma rolę `roles/aiplatform.user` do wywołań Gemini.
-- [x] Obydwa konta otrzymają rolę `roles/cloudsql.client` do komunikacji z bazą.
-
-### [x] KROK 5: Połączenie z PostgreSQL
-Funkcje bezserwerowe operują w oddzielnych środowiskach sieciowych, dlatego:
-- [x] Konfiguracja połączenia funkcji do Cloud SQL w Gen2 (Direct VPC Egress lub mechanizm konektorów, wstrzyknięcie poprawnych URI bazy danych).
-- [x] Podpięcie zmiennych środowiskowych `DATABASE_URL`, `GCP_PROJECT_ID` itd. pod wdrożone instancje funkcji.
-
-### [ ] KROK 6: Rzeczywisty E2E Cloud Test (Finał)
-- [x] Wykonanie `terraform apply` z katalogu staging.
-- [ ] Nagranie sesji przez aplikację Flutter, bez udziału lokalnego środowiska deweloperskiego (komputer może być wyłączony, aplikacja działa "na czysto").
-- [ ] Obserwacja logów `stt-worker` oraz `llm-worker` w Cloud Logging.
-- [ ] Weryfikacja w bazie danych:
-  - Status sesji powinien zmienić się na `ANALYZING` i w końcu na `COMPLETED`.
-  - Tabela `transcripts` powinna zawierać pełną treść podzieloną na prelegentów.
-  - Tabela z analizą (lub kolumny) powinna zawierać odpowiedź wygenerowaną przez Gemini.
+## 🎯 Cel Główny
+Pełna automatyzacja i wdrożenie serwerlessowego potoku przetwarzania audio (Event-Driven Architecture) z zachowaniem Zero Trust i enkrypcji envelope (Cloud KMS). Kiedy plik audio zostanie przesłany z aplikacji Flutter do Cloud Storage, system automatycznie wykonuje transkrypcję (Chirp 3) i raport (Gemini 3.1 FLASH).
 
 ---
 
-## 📌 Kryteria Sukcesu (Definition of Done)
-1. Moduł `cloud-functions` jest poprawnie wdrożony i widoczny w stanie środowiska Terraform.
-2. Zdarzenia z GCS przechodzą z sukcesem do Cloud Functions.
-3. API Speech i Vertex AI nie rzucają błędów uwierzytelniania w logach.
-4. Wyniki lądują w bazie PostgreSQL bez manualnej interwencji inżyniera.
+## 🎯 Następne Kroki (Faza 2.5 → 3) - Szczegółowy Plan Wdrożenia
+
+### Priorytet 1: Pipeline Transkrypcji
+**Cel:** Automatyczne pobranie wrzuconego pliku z GCS, transkrypcja za pomocą modelu Chirp 3 (z diarization) i zapisanie wyników do bazy.
+
+1. **Utworzyć Pub/Sub topic `audio.uploaded` w Terraform**
+   - **Gdzie:** `infra/modules/audio-storage/main.tf` lub nowy moduł eventów.
+   - **Szczegóły:** Skonfigurować resource `google_pubsub_topic` o nazwie `audio.uploaded`.
+   - **Integracja GCS:** Użyć `google_storage_notification`, aby bucket `superwizor-audio-uploads` wysyłał eventy `OBJECT_FINALIZE` prosto na ten topic.
+2. **Deploy `stt-worker` jako Cloud Function (Gen2, event-driven)**
+   - **Gdzie:** Moduł Terraform `infra/modules/cloud-functions` lub w staging `main.tf`.
+   - **Szczegóły:** Zdefiniować `google_cloudfunctions2_function`. Ustawić region na `europe-west4` (zgodnie z ADR dla dostępności Chirp 3) lub `europe-central2` z remote call. Przekazać zmienne środowiskowe: `DATABASE_URL`, klucze KMS. 
+3. **Skonfigurować trigger: `audio.uploaded` → `stt-worker`**
+   - **Szczegóły:** Ustawić `event_trigger` na Pub/Sub topic `audio.uploaded` poprzez Eventarc. Dzięki temu każdy wgrany przez pacjenta/terapeutę plik audio automatycznie odpali kod workera.
+4. **Przetestować E2E: nagranie → upload → transkrypcja**
+   - **Oczekiwany rezultat:** Nagranie we Flutterze ➜ Upload na Signed URL ➜ GCS emituje event ➜ `stt-worker` dekoduje audio i wywołuje Google Speech-to-Text V2 (Chirp 3).
+   - **Baza Danych:** Sprawdzenie tabel `transcript_segments` oraz blob w `transcripts.transcript_ciphertext`.
+
+### Priorytet 2: Pipeline Raportów AI
+**Cel:** Wygenerowanie 7-sekcyjnego, uporządkowanego raportu przez LLM (Gemini 3.1 FLASH) na podstawie przetworzonego transkryptu.
+
+1. **Utworzyć Pub/Sub topic `transcript.completed`**
+   - **Szczegóły:** Dodanie definicji `google_pubsub_topic` dla `transcript.completed` w Terraform. Temat ten jest wyzwalany przez samą funkcję `stt-worker` po skutecznym zapisie transkryptu do bazy.
+2. **Deploy `report-worker` (LLM — 7-sekcyjny raport)**
+   - *(Uwaga: W architekturze z Fazy 2 worker był nazywany `llm-worker`)*
+   - **Szczegóły:** Definicja `google_cloudfunctions2_function` dla `report-worker`. Region `europe-west4` (wymagania Vertex AI). Wstrzyknięcie struktury raportu (JSON Schema dla structured output z Gemini) zawierającej 7 wymaganych sekcji (w oparciu o EUPHIRE).
+3. **Skonfigurować trigger: `transcript.completed` → `report-worker`**
+   - **Szczegóły:** W konfiguracji Terraform ustawić `event_trigger` na nowo utworzony topic. Worker czyta `transcript_id`, wyciąga pełny zdekodowany tekst i pyta model Vertex AI.
+4. **Przetestować: transkrypcja → raport AI**
+   - **Oczekiwany rezultat:** Po zakończeniu STT zostaje wygenerowany event. `report-worker` pobiera transkrypt, odpytuje Gemini i zapisuje szyfrowany wynik jako JSONB / blob do tabeli `reports.report_ciphertext`.
+
+### Priorytet 3: Naprawić `GetSessionDetails`
+**Cel:** Serwis kliniczny (`clinical-svc`) musi poprawnie agregować dane o sesji i zwracać je do aplikacji mobilnej.
+
+1. **Upewnić się, że `clinical-svc` czyta z tej samej tabeli `sessions` co `ingestion-svc`**
+   - **Szczegóły:** `ingestion-svc` tworzy rekord w tabeli `sessions` po wgraniu pliku. Kod źródłowy w repozytorium (katalogi `services/clinical-svc/` i `services/ingestion-svc/`) musi polegać na spójnym użyciu tych samych queries SQL (`sqlc`).
+2. **Implementacja pełnego query z JOIN na `transcripts` + `reports`**
+   - **Szczegóły:** Rozbudować zapytanie `.sql` dla `GetSessionDetails` (w `clinical-svc/internal/adapters/db/query.sql`), aby pobierało dane w relacji:
+     ```sql
+     SELECT s.*, t.transcript_ciphertext, r.report_ciphertext 
+     FROM sessions s
+     LEFT JOIN transcripts t ON t.session_id = s.id
+     LEFT JOIN reports r ON r.session_id = s.id
+     WHERE s.id = $1;
+     ```
+   - **Deszyfrowanie:** Backend musi w locie zdeszyfrować `transcript_ciphertext` oraz `report_ciphertext` z KMS, zanim przekaże dane po gRPC do Fluttera.
+
+### Priorytet 4: Security Hardening
+**Cel:** Spełnienie wymogów medycznych Zero Trust - każdy wrażliwy element przechodzi przez mocne szyfrowanie envelope i posiada minimalne uprawnienia.
+
+1. **Cloud KMS envelope encryption (zamienić placeholder DEK)**
+   - **Gdzie:** Kod w folderze `pkg/cryptobox` oraz użycie w workerach i mikroserwisach.
+   - **Szczegóły:** Aktualnie klucze mogły mieć charakter placeholderów dla fazy deweloperskiej. Należy wywołać bezpośrednio Google Cloud KMS (używając klucza `database` lub `app-data` wygenerowanego w Fazie 0) w celu stworzenia (Wrap) i deszyfrowania (Unwrap) klucza Data Encryption Key (DEK). 
+   - Wymienić starą logikę w `stt-worker` oraz `report-worker`, by zawsze używały integracji z chmurowym KMS dla kolumn `..._ciphertext` oraz `..._encrypted_dek`.
+2. **Audit IAM ról — principle of least privilege**
+   - **Szczegóły:** Weryfikacja w Terraform kont serwisowych i ograniczenie praw do niezbędnego minimum:
+     - `stt-worker`: potrzebuje `roles/storage.objectViewer`, `roles/speech.client`, `roles/pubsub.publisher`, `roles/cloudkms.cryptoKeyEncrypterDecrypter`, `roles/cloudsql.client`.
+     - `report-worker`: potrzebuje `roles/aiplatform.user`, `roles/cloudkms.cryptoKeyEncrypterDecrypter`, `roles/cloudsql.client`.
+     - `clinical-svc`: potrzebuje `roles/cloudkms.cryptoKeyEncrypterDecrypter` (by rozszyfrować raport), `roles/cloudsql.client`.
+     - Upewnić się, że żadna z funkcji nie posiada roli typu `roles/editor` ani dostępu "admin".

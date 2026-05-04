@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_header.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_card.dart';
 import '../widgets/euphire_list_tile.dart';
-import 'recording_screen.dart';
 import '../providers/patient_provider.dart';
-import '../models/session.dart';
 import '../models/patient.dart';
-import '../constants/modalities.dart';
 import '../widgets/add_session_modal.dart';
 import 'session_details_screen.dart';
 

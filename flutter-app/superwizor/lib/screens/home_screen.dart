@@ -2,8 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/euphire_header.dart';
-import '../widgets/euphire_text_field.dart';
-import '../widgets/euphire_button.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_card.dart';
 import '../widgets/euphire_list_tile.dart';
