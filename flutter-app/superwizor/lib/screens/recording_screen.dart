@@ -126,8 +126,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   Future<String> _requestSignedUrl(int sizeBytes) async {
     final client = ref.read(grpcClientsProvider).ingestion;
     final req = CreateAudioUploadRequest(
-      patientFileId: '67daa161-23dc-4613-b613-1067b7d94357', // valid DB id
-      therapistId: '6e8af866-08bc-41b9-89c2-2b5b15d2c665', // valid DB id
+      patientFileId: widget.patientFileId,
+      therapistId: widget.therapistId,
       estimatedSizeBytes: Int64(sizeBytes),
       contentType: 'audio/m4a',
       clientPlatform: 'flutter',
