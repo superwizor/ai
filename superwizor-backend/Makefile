@@ -15,13 +15,13 @@ proto:  ## Generate Go code from proto files
 	buf generate proto/
 
 lint:  ## Run golangci-lint on all services
-	@for dir in $$(find . -name "go.mod" -not -path "*/node_modules/*" -exec dirname {} \;); do \
+	@for dir in $$(find . -name "go.mod" -not -path "*/node_modules/*" -not -path "*/.tmp/*" -exec dirname {} \;); do \
 		echo "Linting $$dir"; \
 		(cd $$dir && golangci-lint run ./...) || exit 1; \
 	done
 
 test:  ## Run unit tests for all modules
-	@for dir in $$(find . -name "go.mod" -not -path "*/node_modules/*" -exec dirname {} \;); do \
+	@for dir in $$(find . -name "go.mod" -not -path "*/node_modules/*" -not -path "*/.tmp/*" -exec dirname {} \;); do \
 		echo "Testing $$dir"; \
 		(cd $$dir && go test -race -coverprofile=cov.out ./...) || exit 1; \
 	done
