@@ -23,12 +23,6 @@ Transkrypt to najważniejszy artefakt. Aplikacja Flutter jest pancerną "Czarną
 2. **Krematorium Danych:** OLM (Object Lifecycle Management) na Cloud Storage usuwa trwale każdy plik po upływie 48h (Dead Man's Switch). Logika w Cloud Functions wymusza skasowanie tuż po wygenerowaniu tekstowego JSON-a.
 3. **Izolacja B2B i RBAC:** Wprowadzone profile, rozróżnienie na `ROLE_THERAPIST` oraz `ROLE_PATIENT`. Dostęp uregulowany przez Reguły Bezpieczeństwa (Security Rules - zero dostępu do odczytów innych sesji bez własności `therapistId` / `patientId`). Zakaz zapisu raportów na Firebase bezpośrednio z urządzenia Fluttera!
 
-## 🧠 4. SILNIK KLINICZNY (DOUBLE RAG ARCHITECTURE)
-Chmura rozwiązuje "amnezję międzysesyjną" przy zachowaniu minimalizacji tokenów.
-1. **LIVING CASE FORMULATION (Pamięć Długotrwała):** Koncepcyjny zasób ukryty w instancji profilu pacjenta (aktualizowany po każdej sesji - mechanizmy obronne, schematy).
-2. **RECENT FACT VECTORS (Pamięć Krótkotrwała):** Gęste, faktograficzne wektory wyciągane z sesji N-1, N-2. Odpowiadają za ciągłość narracji historycznej i zadania domowe.
-3. **Diagnoza Wymiarowa (HiTOP):** Oparcie na zintegrowanej wiedzy (ontologia JSON Schema). Model wymuszony do korzystania z listy Enum cech dla zapewnienia czytelnych zapytań dla celów Enterprise Dashboard (Looker Studio).
-
 ---
 
 ## ⚙️ KODEKS INŻYNIERYJNY I TELEMETRIA

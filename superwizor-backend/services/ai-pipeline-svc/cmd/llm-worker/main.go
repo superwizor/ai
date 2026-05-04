@@ -232,9 +232,14 @@ func generateReport(ctx context.Context, modalityPrompt, ragContext, transcriptT
 	model := vertexClient.GenerativeModel(geminiModel)
 
 	// Load schema
-	schemaBytes, _ := os.ReadFile("schemas/report_schema.json")
+	schemaBytes, err := os.ReadFile("schemas/report_schema.json")
+	if err != nil {
+		return "", TokenStats{}, fmt.Errorf("load schema file: %w", err)
+	}
 	var schema map[string]any
-	json.Unmarshal(schemaBytes, &schema)
+	if err := json.Unmarshal(schemaBytes, &schema); err != nil {
+		return "", TokenStats{}, fmt.Errorf("parse schema: %w", err)
+	}
 
 	model.GenerationConfig = vertexai.GenerationConfig{
 		Temperature:      vertexai.Ptr[float32](0.2),

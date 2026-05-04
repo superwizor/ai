@@ -38,7 +38,6 @@ func (p *Publisher) PublishAudioUploaded(ctx context.Context, sessionID, uploadI
 	}
 
 	topic := p.client.Topic("audio.uploaded")
-	defer topic.Stop()
 
 	res := topic.Publish(ctx, &pubsub.Message{
 		Data: data,

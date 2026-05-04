@@ -21,8 +21,8 @@ Ten dokument opisuje szczegółowy, techniczny plan dla **Fazy 2.5 → 3**: "Dep
 - [x] **KROK 1.2:** Dodaj notyfikację `google_storage_notification` z `superwizor-audio-uploads` na topic `audio.uploaded` (względem reguły Krematorium Danych).
 - [x] **KROK 1.3:** W `infra/modules/cloud-functions/main.tf` dodaj `stt-worker` Gen2.
 - [x] **KROK 1.4:** Podepnij Eventarc trigger: `audio.uploaded` → `stt-worker`.
-- [ ] **Kryteria wykonania (DoD):** Po wysłaniu pliku `m4a` na Signed URL, logi `stt-worker` pokazują poprawne uruchomienie Chirp 3, brak PII oraz poprawne zapisanie wygenerowanego transkryptu do bazy.
-- [ ] **Wymagane testy:** TDD dla parsera Chirp 3 (mock klienta `speech.Client`), test jednostkowy sprawdzający prawidłowe tworzenie eventu `transcript.completed`.
+- [x] **Kryteria wykonania (DoD):** Po wysłaniu pliku `m4a` na Signed URL, logi `stt-worker` pokazują poprawne uruchomienie Chirp 3, brak PII oraz poprawne zapisanie wygenerowanego transkryptu do bazy.
+- [x] **Wymagane testy:** TDD dla parsera Chirp 3 (mock klienta `speech.Client`), test jednostkowy sprawdzający prawidłowe tworzenie eventu `transcript.completed`.
 
 ### Priorytet 2: Pipeline Raportów AI
 **Cel:** Wygenerowanie 7-sekcyjnego raportu (Gemini 3.1 FLASH) z zachowaniem zasady Ślepoty (Zero PII).
@@ -45,9 +45,9 @@ Ten dokument opisuje szczegółowy, techniczny plan dla **Fazy 2.5 → 3**: "Dep
 ### Priorytet 4: Security Hardening (Cloud KMS)
 **Cel:** Odrzucenie deweloperskich placeholderów na rzecz prawdziwego uwierzytelnienia.
 
-- [ ] **KROK 4.1:** Zamień `ENCRYPT_PLACEHOLDER:` oraz `DEK_PLACEHOLDER` w `stt-worker`, `report-worker` oraz `clinical-svc` na realne wywołania KMS do klucza `app-data-key` z `infra/modules/kms/main.tf`.
-- [ ] **KROK 4.2:** Aktualizacja ról IAM zgodnie ze ścisłym Principle of Least Privilege:
+- [x] **KROK 4.1:** Zamień `ENCRYPT_PLACEHOLDER:` oraz `DEK_PLACEHOLDER` w `stt-worker`, `report-worker` oraz `clinical-svc` na realne wywołania KMS do klucza `app-data-key` z `infra/modules/kms/main.tf`.
+- [x] **KROK 4.2:** Aktualizacja ról IAM zgodnie ze ścisłym Principle of Least Privilege:
   - `stt-worker`: usunąć nadmiarowe role, przypisać tylko `cloudkms.cryptoKeyEncrypterDecrypter`, `storage.objectViewer`, `pubsub.publisher`, `speech.client`.
   - `report-worker`: `aiplatform.user`, `cloudkms.cryptoKeyEncrypterDecrypter`.
-- [ ] **Kryteria wykonania (DoD):** Usunięcie wszystkich referencji do `ENCRYPT_PLACEHOLDER` z bazy kodu. Aplikacja nadal płynnie zapisuje i czyta sesje, a logi Terraform pokazują dokładne okrojenie ról.
-- [ ] **Wymagane testy:** Test e2e kryptografii - z użyciem lokalnego symulatora KMS (bądź mocka Cryptobox).
+- [x] **Kryteria wykonania (DoD):** Usunięcie wszystkich referencji do `ENCRYPT_PLACEHOLDER` z bazy kodu. Aplikacja nadal płynnie zapisuje i czyta sesje, a logi Terraform pokazują dokładne okrojenie ról.
+- [x] **Wymagane testy:** Test e2e kryptografii - z użyciem lokalnego symulatora KMS (bądź mocka Cryptobox).

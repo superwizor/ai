@@ -78,3 +78,23 @@ Przetwarzanie audio z sesji i generowanie notatek jest całkowicie oparte na zda
 ### C. Bezpieczeństwo i IAM
 - **KMS (Key Management Service):** Wykorzystujemy szyfrowanie envelope encryption do zabezpieczenia danych w Cloud SQL.
 - **Workload Identity Federation (WIF):** Zapewnia bezhasłowy dostęp i deployment z GitHub Actions do środowiska Google Cloud (`baciok91/superwizor-backend`).
+
+### D. Service Accounts & Least Privilege (Architektura IAM)
+Wdrożyliśmy rygorystyczne zasady "Least Privilege" dla każdego mikroserwisu. Zamiast domyślnych kont Compute Engine, każdy serwis i worker w Cloud Run / Cloud Functions działa na własnym koncie serwisowym (Service Account) z precyzyjnie dobranymi uprawnieniami (wykonane i zarządzane z poziomu Terraform):
+
+1. **`ingestion-svc`** (`ingestion-svc@superwizor-ai-25ecd.iam.gserviceaccount.com`):
+   - **Publikacja zdarzeń:** `roles/pubsub.publisher` (dla topicu `audio.uploaded`).
+   - **Szyfrowanie KMS:** `roles/iam.serviceAccountTokenCreator`, `roles/cloudkms.cryptoKeyEncrypterDecrypter`.
+   - **Baza danych:** `roles/cloudsql.client` oraz `roles/secretmanager.secretAccessor` (pobieranie hasła z Secret Managera).
+   - **Cloud Storage:** `roles/storage.objectAdmin` (dostęp zapisu/usuwania wyłącznie dla bucketu `audio_uploads`).
+
+2. **`stt-worker`** (`stt-worker@superwizor-ai-25ecd.iam.gserviceaccount.com`):
+   - **Publikacja zdarzeń:** `roles/pubsub.publisher` (dla topicu `transcript.completed`).
+   - **AI / Model:** `roles/speech.client` (wywoływanie modeli Chirp 3).
+   - **Storage & KMS:** `roles/cloudkms.cryptoKeyEncrypterDecrypter`, `roles/storage.objectViewer`.
+
+3. **`llm-worker`** (`llm-worker@superwizor-ai-25ecd.iam.gserviceaccount.com`):
+   - **Publikacja zdarzeń:** `roles/pubsub.publisher` (dla topicu `report.generated`).
+   - **AI / Model:** `roles/aiplatform.user` (wywoływanie Vertex AI / Gemini).
+   - **Szyfrowanie KMS:** `roles/cloudkms.cryptoKeyEncrypterDecrypter`.
+   - **Baza danych:** Wymaga analogicznych uprawnień jak `ingestion-svc` do zapisu wygenerowanych struktur JSON w głównej bazie.

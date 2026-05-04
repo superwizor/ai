@@ -67,6 +67,13 @@ resource "google_pubsub_topic_iam_member" "stt_publisher" {
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:stt-worker@${var.project_id}.iam.gserviceaccount.com"
 }
+# IAM: llm-worker może publishować report.generated
+resource "google_pubsub_topic_iam_member" "llm_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.report_generated.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:llm-worker@${var.project_id}.iam.gserviceaccount.com"
+}
 
 output "audio_uploaded_topic" { value = google_pubsub_topic.audio_uploaded.id }
 output "transcript_completed_topic" { value = google_pubsub_topic.transcript_completed.id }

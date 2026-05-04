@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -165,8 +166,7 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 	// Publish do Pub/Sub → trigger STT worker
 	if err := s.pubsub.PublishAudioUploaded(ctx, sessionIDStr, req.UploadId, upload.ObjectPath); err != nil {
 		// Log warning ale nie failuj request — workflow można retry'ować
-		// (real impl would log structured)
-		fmt.Printf("WARN: failed to publish audio.uploaded: %v\n", err)
+		slog.Warn("failed to publish audio.uploaded", "error", err, "session_id", sessionIDStr)
 	}
 
 	return &ingestionv1.CompleteAudioUploadResponse{

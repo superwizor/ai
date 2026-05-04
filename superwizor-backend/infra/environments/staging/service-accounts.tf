@@ -28,3 +28,16 @@ resource "google_storage_bucket_iam_member" "ingestion_storage" {
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.ingestion_svc.email}"
 }
+
+resource "google_secret_manager_secret_iam_member" "ingestion_db_pwd" {
+  project   = var.project_id
+  secret_id = "postgres-database-url"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.ingestion_svc.email}"
+}
+
+resource "google_project_iam_member" "ingestion_sql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.ingestion_svc.email}"
+}

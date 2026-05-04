@@ -6,7 +6,7 @@ class EuphireColors {
   static const Color evergreen = Color(0xFF004D54);
   static const Color obsidianBlack = Color(0xFF1F1F1F);
   static const Color frostWhite = Color(0xFFFAFAFA);
-  
+
   static const Color mist = Color(0xFFB2CACC);
   static const Color nocturne = Color(0xFF002E32);
   static const Color aurora = Color(0xFF6759FF);
@@ -19,7 +19,7 @@ class EuphireTheme {
       brightness: Brightness.dark,
       primaryColor: EuphireColors.ember,
       scaffoldBackgroundColor: EuphireColors.evergreen,
-      
+
       colorScheme: const ColorScheme.dark(
         primary: EuphireColors.ember,
         secondary: EuphireColors.mist,
@@ -109,18 +109,14 @@ class EuphireTheme {
             fontWeight: FontWeight.w600,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: EuphireColors.nocturne,
-        labelStyle: GoogleFonts.merriweather(
-          color: EuphireColors.mist,
-        ),
+        labelStyle: GoogleFonts.merriweather(color: EuphireColors.mist),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,

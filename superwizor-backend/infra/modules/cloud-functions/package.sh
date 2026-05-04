@@ -35,6 +35,7 @@ echo "Packaging LLM worker..."
 rm -rf "$OUT_DIR/.tmp/llm-worker"
 mkdir -p "$OUT_DIR/.tmp/llm-worker"
 cp "$LLM_DIR/main.go" "$OUT_DIR/.tmp/llm-worker/"
+cp -R "$LLM_DIR/schemas" "$OUT_DIR/.tmp/llm-worker/"
 cp "$AI_SVC_DIR/go.mod" "$OUT_DIR/.tmp/llm-worker/"
 cp "$AI_SVC_DIR/go.sum" "$OUT_DIR/.tmp/llm-worker/"
 

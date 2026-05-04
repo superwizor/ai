@@ -20,6 +20,7 @@ import (
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/api/option"
 
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
@@ -71,7 +72,10 @@ func init() {
 	}
 
 	if projectID != "" {
-		speechClient, err = speech.NewClient(ctx)
+		// EU-only endpoint: dane nie opuszczają UE (Konstytucja §3)
+		speechClient, err = speech.NewClient(ctx,
+			option.WithEndpoint("eu-speech.googleapis.com:443"),
+		)
 		if err != nil {
 			slog.Error("speech client", "error", err)
 			os.Exit(1)
@@ -202,7 +206,7 @@ type TranscriptSegment struct {
 
 func transcribeWithDiarization(ctx context.Context, gcsURI string) (*TranscriptResult, error) {
 	req := &speechpb.BatchRecognizeRequest{
-		Recognizer: fmt.Sprintf("projects/%s/locations/europe-west4/recognizers/_", projectID),
+		Recognizer: fmt.Sprintf("projects/%s/locations/eu/recognizers/_", projectID),
 		Config: &speechpb.RecognitionConfig{
 			DecodingConfig: &speechpb.RecognitionConfig_AutoDecodingConfig{
 				AutoDecodingConfig: &speechpb.AutoDetectDecodingConfig{},
@@ -212,10 +216,6 @@ func transcribeWithDiarization(ctx context.Context, gcsURI string) (*TranscriptR
 			Features: &speechpb.RecognitionFeatures{
 				EnableAutomaticPunctuation: true,
 				EnableWordTimeOffsets:      true,
-				DiarizationConfig: &speechpb.SpeakerDiarizationConfig{
-					MinSpeakerCount: 2,
-					MaxSpeakerCount: 4,
-				},
 			},
 		},
 		Files: []*speechpb.BatchRecognizeFileMetadata{

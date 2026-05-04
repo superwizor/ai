@@ -94,6 +94,7 @@ resource "google_kms_crypto_key_iam_member" "llm_worker_kms" {
   member        = "serviceAccount:${var.llm_worker_sa_email}"
 }
 
+
 # To receive Pub/Sub events via Eventarc, the compute service account or the trigger SA needs permission to invoke Cloud Run. 
 # In Gen2, the function's service account acts as the Eventarc trigger identity by default.
 resource "google_project_iam_member" "stt_worker_eventarc" {
@@ -131,7 +132,7 @@ resource "google_cloudfunctions2_function" "stt_worker" {
   description = "Speech-to-Text Worker (Chirp 3)"
 
   build_config {
-    runtime     = "go122"
+    runtime     = "go126"
     entry_point = "ProcessAudio"
     source {
       storage_source {
@@ -188,7 +189,7 @@ resource "google_cloudfunctions2_function" "llm_worker" {
   description = "LLM Worker (Gemini 3.1 FLASH)"
 
   build_config {
-    runtime     = "go122"
+    runtime     = "go126"
     entry_point = "ProcessTranscript"
     source {
       storage_source {
@@ -232,7 +233,8 @@ resource "google_cloudfunctions2_function" "llm_worker" {
   depends_on = [
     google_project_iam_member.llm_worker_eventarc,
     google_project_iam_member.llm_worker_vertex,
-    google_project_iam_member.llm_worker_sql
+    google_project_iam_member.llm_worker_sql,
+    google_kms_crypto_key_iam_member.llm_worker_kms
   ]
 }
 

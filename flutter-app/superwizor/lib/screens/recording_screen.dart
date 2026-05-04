@@ -59,9 +59,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         }
       });
 
-      setState(() => _errorMessage = null);
+      if (mounted) setState(() => _errorMessage = null);
     } catch (e) {
-      setState(() => _errorMessage = 'Błąd mikrofonu: ${e.toString()}');
+      if (mounted) setState(() => _errorMessage = 'Błąd mikrofonu: ${e.toString()}');
     }
   }
 
@@ -113,7 +113,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         Navigator.pop(context, _sessionId);
       }
     } catch (e) {
-      setState(() => _errorMessage = '${e.toString()}.');
+      if (mounted) setState(() => _errorMessage = '${e.toString()}.');
     } finally {
       if (mounted) {
         setState(() => _uploading = false);
