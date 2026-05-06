@@ -2,6 +2,21 @@
 bin/
 *.exe
 
+# Compiled service binaries (built locally; production uses Cloud Build).
+# Mirrors cmd/<name>/main.go output names that sometimes end up at the
+# service root when `go build` is run without -o.
+services/*/server
+services/*/main
+services/*/billing-svc
+services/*/llm-worker
+services/*/stt-worker
+services/*/identity-svc
+services/*/clinical-svc
+services/*/ingestion-svc
+services/*/analytics-svc
+services/*/notification-svc
+services/*/api
+
 # Test coverage
 cov.out
 coverage.html
