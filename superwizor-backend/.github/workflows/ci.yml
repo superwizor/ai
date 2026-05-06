@@ -123,6 +123,24 @@ jobs:
           docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/clinical-svc/Dockerfile .
           docker push -a $IMAGE_PATH
 
+      - name: Build and Push Billing image
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-billing"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/billing-svc/Dockerfile .
+          docker push -a $IMAGE_PATH
+
+      - name: Build and Push Ingestion image
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-ingestion"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/ingestion-svc/Dockerfile .
+          docker push -a $IMAGE_PATH
+
+      - name: Build and Push AI Pipeline image
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-ai-pipeline"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/ai-pipeline-svc/Dockerfile .
+          docker push -a $IMAGE_PATH
+
       - name: Deploy and Run Migration Job
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-migrator:${{ github.sha }}"
@@ -167,7 +185,7 @@ jobs:
           if [ -z "$IDENTITY_URL" ]; then
             echo "Identity URL not available yet, deploying without it or it will fail on start."
           fi
-          
+
           gcloud run deploy clinical-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
@@ -176,3 +194,49 @@ jobs:
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
             --set-env-vars="IDENTITY_SVC_URL=${IDENTITY_URL},VERSION=${{ github.sha }}"
+
+      - name: Deploy Billing to Cloud Run
+        # Internal gRPC service (called by clinical-svc). Stub in Phase 2.
+        # Preserves IAM policy (no --allow-unauthenticated / --no-allow-unauthenticated).
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-billing"
+          gcloud run deploy billing-svc \
+            --image $IMAGE_PATH:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --vpc-connector swvpc-connector \
+            --vpc-egress private-ranges-only \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}" \
+            --use-http2
+
+      - name: Deploy Ingestion to Cloud Run
+        # Public-facing audio upload API. Uses dedicated ingestion-svc SA so it
+        # can sign GCS upload URLs and publish to Pub/Sub.
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-ingestion"
+          gcloud run deploy ingestion-svc \
+            --image $IMAGE_PATH:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --service-account=ingestion-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+            --vpc-connector swvpc-connector \
+            --vpc-egress private-ranges-only \
+            --min-instances 1 \
+            --max-instances 20 \
+            --set-secrets="DATABASE_URL=postgres-database-url:latest" \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},AUDIO_BUCKET_NAME=${{ env.PROJECT_ID }}-audio-uploads,VERSION=${{ github.sha }}"
+
+      - name: Deploy AI Pipeline to Cloud Run
+        # gRPC server side of the AI pipeline. The actual stt-worker / llm-worker
+        # Cloud Functions are deployed by Terraform separately.
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-ai-pipeline"
+          gcloud run deploy ai-pipeline-svc \
+            --image $IMAGE_PATH:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --vpc-connector swvpc-connector \
+            --vpc-egress private-ranges-only \
+            --set-secrets="DATABASE_URL=postgres-database-url:latest" \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
