@@ -5,6 +5,7 @@ go 1.26.2
 replace github.com/superwizor-ai/backend/gen/go => ../../gen/go
 
 require (
+	github.com/superwizor-ai/backend/gen/go v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
 )
