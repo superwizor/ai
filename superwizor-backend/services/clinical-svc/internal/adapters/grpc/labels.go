@@ -40,7 +40,7 @@ func (s *Server) UpdateSpeakerLabels(ctx context.Context, req *clinicalv1.Update
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	qtx := s.queries.WithTx(tx)
 
@@ -77,11 +77,13 @@ func (s *Server) UpdateSpeakerLabels(ctx context.Context, req *clinicalv1.Update
 		// Apply nowy label (jeśli w mapping; inaczej zostaw obecny)
 		newLabel, hasUpdate := req.LabelMapping[fmt.Sprintf("%d", seg.SpeakerTag)]
 		if !hasUpdate {
-			// Zachowaj poprzedni label z DB — nie wszystkie speakers muszą być w mapping
+			// Zachowaj poprzedni label z DB — nie wszystkie speakers muszą być w mapping.
+			// Brak wiersza / błąd skanu zostawia newLabel jako "" — segment nadal trafi
+			// do nowego blobu i zostanie nadpisany jeśli kiedyś dotrze update.
 			row := tx.QueryRow(ctx,
 				"SELECT speaker_label FROM transcript_segments WHERE transcript_id = $1 AND speaker_tag = $2 LIMIT 1",
 				transcript.TranscriptID, seg.SpeakerTag)
-			row.Scan(&newLabel)
+			_ = row.Scan(&newLabel)
 		}
 
 		blobLines = append(blobLines, BlobLine{
@@ -113,7 +115,9 @@ func (s *Server) UpdateSpeakerLabels(ctx context.Context, req *clinicalv1.Update
 	// 5. Update transcript_segments.speaker_label per tag w mapping
 	for tagStr, newLabel := range req.LabelMapping {
 		var tag int32
-		fmt.Sscanf(tagStr, "%d", &tag)
+		if _, err := fmt.Sscanf(tagStr, "%d", &tag); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "speaker_tag %q is not an integer", tagStr)
+		}
 
 		if err := qtx.UpdateSegmentLabel(ctx, db.UpdateSegmentLabelParams{
 			TranscriptID: transcript.TranscriptID,
