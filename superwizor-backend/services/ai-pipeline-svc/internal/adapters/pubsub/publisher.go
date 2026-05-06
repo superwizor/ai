@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 )
 
 type Publisher struct {
@@ -20,10 +20,11 @@ func NewPublisher(ctx context.Context, projectID string) (*Publisher, error) {
 	return &Publisher{client: client}, nil
 }
 
-func (p *Publisher) Close() {
+func (p *Publisher) Close() error {
 	if p.client != nil {
-		p.client.Close()
+		return p.client.Close()
 	}
+	return nil
 }
 
 type TranscriptCompletedPayload struct {
@@ -32,7 +33,7 @@ type TranscriptCompletedPayload struct {
 }
 
 func (p *Publisher) PublishTranscriptCompleted(ctx context.Context, sessionID, transcriptID string) error {
-	topic := p.client.Topic("transcript.completed")
+	topic := p.client.Publisher("transcript.completed")
 	defer topic.Stop()
 
 	payload := TranscriptCompletedPayload{
@@ -62,7 +63,7 @@ type ReportGeneratedPayload struct {
 }
 
 func (p *Publisher) PublishReportGenerated(ctx context.Context, sessionID, reportID string) error {
-	topic := p.client.Topic("report.generated")
+	topic := p.client.Publisher("report.generated")
 	defer topic.Stop()
 
 	payload := ReportGeneratedPayload{

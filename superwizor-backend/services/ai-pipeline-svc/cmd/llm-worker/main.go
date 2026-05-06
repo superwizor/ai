@@ -12,9 +12,8 @@ import (
 
 	"cloud.google.com/go/aiplatform/apiv1/aiplatformpb"
 	kms "cloud.google.com/go/kms/apiv1"
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 	vertexai "cloud.google.com/go/vertexai/genai"
-	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/uuid"
@@ -91,17 +90,6 @@ func init() {
 	}
 
 	functions.CloudEvent("ProcessTranscript", ProcessTranscript)
-}
-
-func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	if err := funcframework.Start(port); err != nil {
-		slog.Error("framework", "error", err)
-		os.Exit(1)
-	}
 }
 
 func ProcessTranscript(ctx context.Context, e event.Event) error {
@@ -398,7 +386,7 @@ func generateAndSaveSpeakerLabels(ctx context.Context, session *SessionContext, 
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// transcript_segments są w kolejności chunków (ORDER BY start_offset_ms),
 	// więc chunk_idx == row position.
@@ -479,12 +467,19 @@ func loadSession(ctx context.Context, sessionID string) (*SessionContext, error)
 	}
 
 	mapping := map[string]string{}
-	json.Unmarshal(mappingJSON, &mapping)
+	if len(mappingJSON) > 0 {
+		if err := json.Unmarshal(mappingJSON, &mapping); err != nil {
+			return nil, fmt.Errorf("decode speaker_label_mapping: %w", err)
+		}
+	}
 
 	sc.SpeakerLabelMapping = make(map[int32]string)
 	for k, v := range mapping {
 		var tag int32
-		fmt.Sscanf(k, "%d", &tag)
+		if _, err := fmt.Sscanf(k, "%d", &tag); err != nil {
+			slog.Warn("skipping non-numeric speaker tag in mapping", "key", k, "error", err)
+			continue
+		}
 		sc.SpeakerLabelMapping[tag] = v
 	}
 
@@ -559,7 +554,9 @@ func loadModalityPrompt(ctx context.Context, modalityID uuid.UUID) (string, erro
 	}
 
 	var prompt map[string]string
-	json.Unmarshal(promptJSON, &prompt)
+	if err := json.Unmarshal(promptJSON, &prompt); err != nil {
+		return "", fmt.Errorf("decode therapist_ai_general_prompt: %w", err)
+	}
 	return prompt["system"], nil
 }
 
@@ -584,7 +581,7 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 	if err != nil {
 		return "", err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	costUSD := float64(tokenStats.InputTokens)*0.00000125 + float64(tokenStats.OutputTokens)*0.000005
 
@@ -697,7 +694,7 @@ func publishReportGenerated(ctx context.Context, sessionID, reportID string) err
 	if pubsubClient == nil {
 		return nil
 	}
-	topic := pubsubClient.Topic("report.generated")
+	topic := pubsubClient.Publisher("report.generated")
 	defer topic.Stop()
 
 	payload, _ := json.Marshal(map[string]string{

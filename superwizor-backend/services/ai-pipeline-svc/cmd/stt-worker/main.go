@@ -5,15 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
-	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/uuid"
@@ -100,17 +98,6 @@ func init() {
 	}
 
 	functions.CloudEvent("ProcessAudio", ProcessAudio)
-}
-
-func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	if err := funcframework.Start(port); err != nil {
-		slog.Error("framework start", "error", err)
-		os.Exit(1)
-	}
 }
 
 func ProcessAudio(ctx context.Context, e event.Event) error {
@@ -270,10 +257,11 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 	confidenceCount := 0
 
 	for _, fileResult := range resp.Results {
-		if fileResult.Transcript == nil {
+		inline := fileResult.GetInlineResult()
+		if inline == nil || inline.GetTranscript() == nil {
 			continue
 		}
-		for _, r := range fileResult.Transcript.Results {
+		for _, r := range inline.GetTranscript().Results {
 			if len(r.Alternatives) == 0 {
 				continue
 			}
@@ -397,7 +385,7 @@ func persistTranscript(ctx context.Context, sessionID string, result *Transcript
 	if err != nil {
 		return "", err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	_, err = tx.Exec(ctx, `
 		INSERT INTO transcripts (
@@ -450,7 +438,7 @@ func publishTranscriptCompleted(ctx context.Context, sessionID, transcriptID str
 	if pubsubClient == nil {
 		return nil
 	}
-	topic := pubsubClient.Topic("transcript.completed")
+	topic := pubsubClient.Publisher("transcript.completed")
 	defer topic.Stop()
 
 	payload, _ := json.Marshal(map[string]string{
@@ -468,5 +456,3 @@ func publishTranscriptCompleted(ctx context.Context, sessionID, transcriptID str
 	_, err := res.Get(ctx)
 	return err
 }
-
-var _ = http.HandlerFunc(nil)

@@ -5,7 +5,6 @@ go 1.26.2
 require (
 	cloud.google.com/go/aiplatform v1.122.0
 	cloud.google.com/go/kms v1.30.0
-	cloud.google.com/go/pubsub v1.50.2
 	cloud.google.com/go/speech v1.34.0
 	cloud.google.com/go/vertexai v0.19.0
 	github.com/GoogleCloudPlatform/functions-framework-go v1.9.2
@@ -19,17 +18,19 @@ require (
 	google.golang.org/protobuf v1.36.11
 )
 
-require github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
+require (
+	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
+	go.einride.tech/aip v0.83.0 // indirect
+)
 
 require (
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.20.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
-	cloud.google.com/go/functions v1.19.7 // indirect
 	cloud.google.com/go/iam v1.10.0 // indirect
 	cloud.google.com/go/longrunning v0.9.0 // indirect
-	cloud.google.com/go/pubsub/v2 v2.4.0 // indirect
+	cloud.google.com/go/pubsub/v2 v2.4.0
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.15.0 // indirect
 	github.com/bytedance/sonic/loader v0.5.0 // indirect

@@ -17,19 +17,23 @@ func TestParseChirp3Results(t *testing.T) {
 	resp := &speechpb.BatchRecognizeResponse{
 		Results: map[string]*speechpb.BatchRecognizeFileResult{
 			"file1": {
-				Transcript: &speechpb.BatchRecognizeResults{
-					Results: []*speechpb.SpeechRecognitionResult{
-						{
-							Alternatives: []*speechpb.SpeechRecognitionAlternative{
+				Result: &speechpb.BatchRecognizeFileResult_InlineResult{
+					InlineResult: &speechpb.InlineResult{
+						Transcript: &speechpb.BatchRecognizeResults{
+							Results: []*speechpb.SpeechRecognitionResult{
 								{
-									Transcript: "Hello world. How are you?",
-									Confidence: 0.9,
-									Words: []*speechpb.WordInfo{
-										{Word: "Hello", StartOffset: durationpb.New(100 * time.Millisecond), EndOffset: durationpb.New(500 * time.Millisecond)},
-										{Word: "world.", StartOffset: durationpb.New(500 * time.Millisecond), EndOffset: durationpb.New(1000 * time.Millisecond)},
-										{Word: "How", StartOffset: durationpb.New(1700 * time.Millisecond), EndOffset: durationpb.New(1800 * time.Millisecond)},
-										{Word: "are", StartOffset: durationpb.New(1800 * time.Millisecond), EndOffset: durationpb.New(1900 * time.Millisecond)},
-										{Word: "you?", StartOffset: durationpb.New(1900 * time.Millisecond), EndOffset: durationpb.New(2100 * time.Millisecond)},
+									Alternatives: []*speechpb.SpeechRecognitionAlternative{
+										{
+											Transcript: "Hello world. How are you?",
+											Confidence: 0.9,
+											Words: []*speechpb.WordInfo{
+												{Word: "Hello", StartOffset: durationpb.New(100 * time.Millisecond), EndOffset: durationpb.New(500 * time.Millisecond)},
+												{Word: "world.", StartOffset: durationpb.New(500 * time.Millisecond), EndOffset: durationpb.New(1000 * time.Millisecond)},
+												{Word: "How", StartOffset: durationpb.New(1700 * time.Millisecond), EndOffset: durationpb.New(1800 * time.Millisecond)},
+												{Word: "are", StartOffset: durationpb.New(1800 * time.Millisecond), EndOffset: durationpb.New(1900 * time.Millisecond)},
+												{Word: "you?", StartOffset: durationpb.New(1900 * time.Millisecond), EndOffset: durationpb.New(2100 * time.Millisecond)},
+											},
+										},
 									},
 								},
 							},
@@ -63,15 +67,19 @@ func TestParseChirp3Results_NativeDiarization(t *testing.T) {
 	resp := &speechpb.BatchRecognizeResponse{
 		Results: map[string]*speechpb.BatchRecognizeFileResult{
 			"file1": {
-				Transcript: &speechpb.BatchRecognizeResults{
-					Results: []*speechpb.SpeechRecognitionResult{
-						{
-							Alternatives: []*speechpb.SpeechRecognitionAlternative{
+				Result: &speechpb.BatchRecognizeFileResult_InlineResult{
+					InlineResult: &speechpb.InlineResult{
+						Transcript: &speechpb.BatchRecognizeResults{
+							Results: []*speechpb.SpeechRecognitionResult{
 								{
-									Confidence: 0.9,
-									Words: []*speechpb.WordInfo{
-										{Word: "Hi", StartOffset: durationpb.New(0), EndOffset: durationpb.New(200 * time.Millisecond), SpeakerLabel: "speaker_1"},
-										{Word: "Hello", StartOffset: durationpb.New(300 * time.Millisecond), EndOffset: durationpb.New(600 * time.Millisecond), SpeakerLabel: "speaker_2"},
+									Alternatives: []*speechpb.SpeechRecognitionAlternative{
+										{
+											Confidence: 0.9,
+											Words: []*speechpb.WordInfo{
+												{Word: "Hi", StartOffset: durationpb.New(0), EndOffset: durationpb.New(200 * time.Millisecond), SpeakerLabel: "speaker_1"},
+												{Word: "Hello", StartOffset: durationpb.New(300 * time.Millisecond), EndOffset: durationpb.New(600 * time.Millisecond), SpeakerLabel: "speaker_2"},
+											},
+										},
 									},
 								},
 							},
