@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 )
 
 type Publisher struct {
@@ -37,7 +37,8 @@ func (p *Publisher) PublishAudioUploaded(ctx context.Context, sessionID, uploadI
 		return err
 	}
 
-	topic := p.client.Topic("audio.uploaded")
+	topic := p.client.Publisher("audio.uploaded")
+	defer topic.Stop()
 
 	res := topic.Publish(ctx, &pubsub.Message{
 		Data: data,
