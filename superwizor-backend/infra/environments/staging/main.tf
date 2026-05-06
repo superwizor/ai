@@ -50,6 +50,20 @@ module "pubsub" {
   project_id = var.project_id
 }
 
+module "migrations" {
+  source = "../../modules/migrations"
+
+  project_id                  = var.project_id
+  db_instance_connection_name = module.cloud_sql.instance_connection_name
+  db_url_secret_id            = "postgres-database-url"
+  db_user                     = module.cloud_sql.db_user
+  db_name                     = module.cloud_sql.db_name
+  migrations_dir              = "${path.cwd}/../../../migrations"
+  cloud_sql_proxy_path        = "${path.cwd}/../../../cloud-sql-proxy"
+
+  depends_on = [module.cloud_sql]
+}
+
 module "cloud_functions" {
   source                     = "../../modules/cloud-functions"
   project_id                 = var.project_id
@@ -59,8 +73,10 @@ module "cloud_functions" {
   db_url_secret_id           = "postgres-database-url"
   vpc_connector_id           = module.vpc.vpc_connector_id
   audio_bucket_name          = module.storage.audio_uploads_bucket_name
-  audio_uploaded_topic       = module.pubsub.audio_uploaded_topic
-  transcript_completed_topic = module.pubsub.transcript_completed_topic
+  audio_uploaded_topic              = module.pubsub.audio_uploaded_topic
+  transcript_completed_topic        = module.pubsub.transcript_completed_topic
+  audio_uploaded_dlq_topic          = module.pubsub.audio_uploaded_dlq_topic
+  transcript_completed_dlq_topic    = module.pubsub.transcript_completed_dlq_topic
   stt_worker_source_dir      = "${path.cwd}/../../../services/ai-pipeline-svc/cmd/stt-worker"
   llm_worker_source_dir      = "${path.cwd}/../../../services/ai-pipeline-svc/cmd/llm-worker"
   stt_worker_sa_email        = google_service_account.stt_worker.email

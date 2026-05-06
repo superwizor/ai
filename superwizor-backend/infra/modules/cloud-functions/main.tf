@@ -145,8 +145,9 @@ resource "google_cloudfunctions2_function" "stt_worker" {
   service_config {
     max_instance_count    = 10
     min_instance_count    = 0
-    available_memory      = "512M"
-    timeout_seconds       = 300
+    available_memory      = "1Gi"
+    available_cpu         = "1"
+    timeout_seconds       = 540
     service_account_email = var.stt_worker_sa_email
 
     environment_variables = {
@@ -170,7 +171,7 @@ resource "google_cloudfunctions2_function" "stt_worker" {
     trigger_region = var.region
     event_type     = "google.cloud.pubsub.topic.v1.messagePublished"
     pubsub_topic   = var.audio_uploaded_topic
-    retry_policy   = "RETRY_POLICY_DO_NOT_RETRY" # Handle retries carefully
+    retry_policy   = "RETRY_POLICY_RETRY"
     service_account_email = var.stt_worker_sa_email
   }
 
@@ -186,7 +187,7 @@ resource "google_cloudfunctions2_function" "llm_worker" {
   name        = "llm-worker"
   location    = var.region
   project     = var.project_id
-  description = "LLM Worker (Gemini 3.1 FLASH)"
+  description = "LLM Worker (Gemini 2.5 PRO)"
 
   build_config {
     runtime     = "go126"
@@ -200,10 +201,11 @@ resource "google_cloudfunctions2_function" "llm_worker" {
   }
 
   service_config {
-    max_instance_count    = 10
+    max_instance_count    = 5
     min_instance_count    = 0
-    available_memory      = "512M"
-    timeout_seconds       = 300
+    available_memory      = "2Gi"
+    available_cpu         = "1"
+    timeout_seconds       = 540
     service_account_email = var.llm_worker_sa_email
 
     environment_variables = {
@@ -226,7 +228,7 @@ resource "google_cloudfunctions2_function" "llm_worker" {
     trigger_region = var.region
     event_type     = "google.cloud.pubsub.topic.v1.messagePublished"
     pubsub_topic   = var.transcript_completed_topic
-    retry_policy   = "RETRY_POLICY_DO_NOT_RETRY"
+    retry_policy   = "RETRY_POLICY_RETRY"
     service_account_email = var.llm_worker_sa_email
   }
 
@@ -252,4 +254,31 @@ resource "google_cloud_run_service_iam_member" "llm_invoker" {
   service  = google_cloudfunctions2_function.llm_worker.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${var.llm_worker_sa_email}"
+}
+
+# DLQ pull subscriptions — for monitoring and manual replay of dead-lettered messages
+resource "google_pubsub_subscription" "stt_worker_dlq_reader" {
+  name    = "stt-worker-dlq-reader"
+  project = var.project_id
+  topic   = var.audio_uploaded_dlq_topic
+
+  ack_deadline_seconds       = 60
+  message_retention_duration = "604800s" # 7 days
+
+  expiration_policy {
+    ttl = ""
+  }
+}
+
+resource "google_pubsub_subscription" "llm_worker_dlq_reader" {
+  name    = "llm-worker-dlq-reader"
+  project = var.project_id
+  topic   = var.transcript_completed_dlq_topic
+
+  ack_deadline_seconds       = 60
+  message_retention_duration = "604800s" # 7 days
+
+  expiration_policy {
+    ttl = ""
+  }
 }

@@ -7,8 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"sort"
-	"strings"
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -23,7 +21,7 @@ import (
 	"google.golang.org/api/option"
 
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
-	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
+	"github.com/superwizor-ai/backend/pkg/transcription/chunker"
 )
 
 // AudioUploadedEvent matches publisher payload
@@ -86,7 +84,7 @@ func init() {
 			slog.Error("pubsub client", "error", err)
 			os.Exit(1)
 		}
-		
+
 		if kmsKeyURI != "" {
 			kmsClient, err := kms.NewKeyManagementClient(ctx)
 			if err != nil {
@@ -140,40 +138,49 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 
 	startTime := time.Now()
 
-	// 1. Update session status
 	if err := updateSessionStatus(ctx, event.SessionID, "TRANSCRIBING"); err != nil {
 		logger.Error("status update", "error", err)
 		return err
 	}
 
-	// 2. Run Chirp 3 batch recognize
+	// 2. Run Chirp 3 — feature flag USE_NATIVE_DIARIZATION (ADR-IMPL-007).
+	//    Default false: polski nie jest na liście supported dla diarization,
+	//    więc słowa są zwracane bez speaker_tag i grupowane przez chunker.
 	gcsURI := fmt.Sprintf("gs://%s/%s", bucketName, event.ObjectPath)
-	transcriptResult, err := transcribeWithDiarization(ctx, gcsURI)
+	useNativeDiarization := os.Getenv("USE_NATIVE_DIARIZATION") == "true"
+
+	transcriptResult, err := transcribeAudio(ctx, gcsURI, useNativeDiarization)
 	if err != nil {
 		logger.Error("chirp 3", "error", err)
 		_ = updateSessionStatus(ctx, event.SessionID, "FAILED")
 		return err
 	}
 
-	// 3. Generuj neutralne lokalizowane labels (NIE role)
-	//    Pełne uzasadnienie: ADR-IMPL-002. Role są dedukowane przez LLM w Sprint 2.6.
-	speakerLabels := generateSpeakerLabels(transcriptResult.Segments, transcriptResult.LanguageCode)
+	// 3. Chunkowanie słów na podstawie pauz (zob. pkg/transcription/chunker).
+	//    LLM przypisze chunki do mówców w Sprint 2.6.
+	chunks := chunker.ChunkByPauses(transcriptResult.Words, chunker.DefaultConfig())
+	stats := chunker.ComputeStats(chunks)
+	logger.Info("chunked transcript",
+		"chunk_count", stats.ChunkCount,
+		"total_words", stats.TotalWords,
+		"avg_chunk_duration_ms", stats.AvgChunkLength.Milliseconds(),
+		"avg_confidence", stats.AvgConfidence)
 
-	// 4. Persist blob (kanoniczny, ADR-IMPL-006) + segments (statystyki)
-	transcriptID, err := persistTranscript(ctx, event.SessionID, transcriptResult, speakerLabels, time.Since(startTime))
+	// 4. Persist blob (kanoniczny, ADR-IMPL-006) — chunki bez speaker labels.
+	transcriptID, err := persistTranscript(ctx, event.SessionID, transcriptResult, chunks, time.Since(startTime))
 	if err != nil {
 		logger.Error("persist", "error", err)
 		_ = updateSessionStatus(ctx, event.SessionID, "FAILED")
 		return err
 	}
 
-	// 5. Update session: zapisz mapping labels + language_code
-	if err := updateSessionLabels(ctx, event.SessionID, speakerLabels, transcriptResult.LanguageCode); err != nil {
-		logger.Warn("session labels update", "error", err)
+	// 5. Update session: language_code (speaker_label_mapping zostanie wypełniony
+	//    przez llm-worker.generateAndSaveSpeakerLabels po analizie LLM).
+	if err := updateSessionLanguage(ctx, event.SessionID, transcriptResult.LanguageCode); err != nil {
+		logger.Warn("session language update", "error", err)
 	}
 	_ = updateSessionStatus(ctx, event.SessionID, "ANALYZING")
 
-	// 6. Publish transcript.completed
 	if err := publishTranscriptCompleted(ctx, event.SessionID, transcriptID); err != nil {
 		logger.Error("publish completed", "error", err)
 		return err
@@ -182,45 +189,49 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 	logger.Info("done",
 		"transcript_id", transcriptID,
 		"duration_ms", time.Since(startTime).Milliseconds(),
-		"segments", len(transcriptResult.Segments))
+		"chunks", len(chunks))
 
 	return nil
 }
 
+// TranscriptResult zawiera płaską listę słów (bez speaker_tag w default flow).
+// Gdy USE_NATIVE_DIARIZATION=true, Word.SpeakerTag wypełnione przez Chirp 3.
 type TranscriptResult struct {
-	Segments       []TranscriptSegment
-	LanguageCode   string
-	WordCount      int
-	SpeakerCount   int
-	ConfidenceAvg  float32
+	Words                []chunker.Word
+	LanguageCode         string
+	WordCount            int
+	ConfidenceAvg        float32
+	HasNativeDiarization bool
+	SpeakerCount         int
 }
 
-type TranscriptSegment struct {
-	SpeakerTag    int32
-	StartOffsetMS int64
-	EndOffsetMS   int64
-	Text          string
-	WordCount     int
-	Confidence    float32
-}
+// transcribeAudio wywołuje Chirp 3 BatchRecognize.
+// Default (useNativeDiarization=false): zwraca płaską listę słów z timestamps
+// bez przypisania mówców. Diarization jest robiona później przez LLM (ADR-IMPL-007).
+func transcribeAudio(ctx context.Context, gcsURI string, useNativeDiarization bool) (*TranscriptResult, error) {
+	features := &speechpb.RecognitionFeatures{
+		EnableAutomaticPunctuation: true,
+		EnableWordTimeOffsets:      true,
+	}
 
-func transcribeWithDiarization(ctx context.Context, gcsURI string) (*TranscriptResult, error) {
+	// Native diarization tylko jeśli flag explicit włączony.
+	// Polski (pl-PL) NIE jest na liście supportowanych dla diarization w v1.2.
+	if useNativeDiarization {
+		features.DiarizationConfig = &speechpb.SpeakerDiarizationConfig{
+			MinSpeakerCount: 2,
+			MaxSpeakerCount: 4,
+		}
+	}
+
 	req := &speechpb.BatchRecognizeRequest{
 		Recognizer: fmt.Sprintf("projects/%s/locations/eu/recognizers/_", projectID),
 		Config: &speechpb.RecognitionConfig{
 			DecodingConfig: &speechpb.RecognitionConfig_AutoDecodingConfig{
 				AutoDecodingConfig: &speechpb.AutoDetectDecodingConfig{},
 			},
-			Model:         "latest_long",
+			Model:         "chirp_3",
 			LanguageCodes: []string{"pl-PL"},
-			Features: &speechpb.RecognitionFeatures{
-				EnableAutomaticPunctuation: true,
-				EnableWordTimeOffsets:      true,
-				DiarizationConfig: &speechpb.SpeakerDiarizationConfig{
-					MinSpeakerCount: 2,
-					MaxSpeakerCount: 4,
-				},
-			},
+			Features:      features,
 		},
 		Files: []*speechpb.BatchRecognizeFileMetadata{
 			{
@@ -244,13 +255,17 @@ func transcribeWithDiarization(ctx context.Context, gcsURI string) (*TranscriptR
 		return nil, fmt.Errorf("await: %w", err)
 	}
 
-	return ParseChirp3Results(resp), nil
+	return ParseChirp3Results(resp, useNativeDiarization), nil
 }
 
-// ParseChirp3Results extracts transcript segments from the Speech API response.
-func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse) *TranscriptResult {
-	result := &TranscriptResult{LanguageCode: "pl-PL"}
-	speakerSet := make(map[int32]bool)
+// ParseChirp3Results extracts words and confidence from the Speech API response.
+// Słowa są zwracane bez speaker_tag (default flow) — chunker je zgrupuje.
+func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarization bool) *TranscriptResult {
+	result := &TranscriptResult{
+		LanguageCode:         "pl-PL",
+		HasNativeDiarization: useNativeDiarization,
+	}
+	speakerSet := map[string]bool{}
 	totalConfidence := float32(0)
 	confidenceCount := 0
 
@@ -264,32 +279,19 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse) *TranscriptResult
 			}
 			alt := r.Alternatives[0]
 
-			// Build segments per speaker turn
-			currentSegment := TranscriptSegment{}
 			for _, w := range alt.Words {
-				speakerTag := w.SpeakerLabel
-				speakerSet[parseSpeakerLabel(speakerTag)] = true
-
-				wordOffset := w.StartOffset.AsDuration().Milliseconds()
-				wordEndOffset := w.EndOffset.AsDuration().Milliseconds()
-
-				if currentSegment.SpeakerTag != parseSpeakerLabel(speakerTag) {
-					if currentSegment.Text != "" {
-						result.Segments = append(result.Segments, currentSegment)
-					}
-					currentSegment = TranscriptSegment{
-						SpeakerTag:    parseSpeakerLabel(speakerTag),
-						StartOffsetMS: wordOffset,
-						EndOffsetMS:   wordEndOffset,
-					}
+				word := chunker.Word{
+					Text:       w.Word,
+					StartMS:    w.StartOffset.AsDuration().Milliseconds(),
+					EndMS:      w.EndOffset.AsDuration().Milliseconds(),
+					Confidence: w.Confidence,
 				}
-				currentSegment.Text += w.Word + " "
-				currentSegment.EndOffsetMS = wordEndOffset
-				currentSegment.WordCount++
+				result.Words = append(result.Words, word)
 				result.WordCount++
-			}
-			if currentSegment.Text != "" {
-				result.Segments = append(result.Segments, currentSegment)
+
+				if useNativeDiarization && w.SpeakerLabel != "" {
+					speakerSet[w.SpeakerLabel] = true
+				}
 			}
 
 			if alt.Confidence > 0 {
@@ -307,49 +309,10 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse) *TranscriptResult
 	return result
 }
 
-func parseSpeakerLabel(label string) int32 {
-	// "speaker_1" → 1
-	var n int32
-	fmt.Sscanf(label, "speaker_%d", &n)
-	return n
-}
-
-// generateSpeakerLabels tworzy mapping speaker_tag → lokalizowana etykieta.
-// NIE zwraca ról (THERAPIST/PATIENT) — to robi LLM w Sprint 2.6.
-//
-// Dla pl-PL: {1: "Osoba 1", 2: "Osoba 2", 3: "Osoba 3"}
-// Dla en-US: {1: "Person 1", 2: "Person 2"}
-// Dla unknown locale: {1: "Speaker 1", 2: "Speaker 2"}
-func generateSpeakerLabels(segments []TranscriptSegment, languageCode string) map[int32]string {
-	if len(segments) == 0 {
-		return map[int32]string{}
-	}
-
-	// Zbierz wszystkie unique speaker tags
-	speakerTagsSet := map[int32]bool{}
-	for _, seg := range segments {
-		speakerTagsSet[seg.SpeakerTag] = true
-	}
-
-	// Zamień na sorted slice (deterministyczne kolejność)
-	tags := make([]int32, 0, len(speakerTagsSet))
-	for t := range speakerTagsSet {
-		tags = append(tags, t)
-	}
-	sort.Slice(tags, func(i, j int) bool { return tags[i] < tags[j] })
-
-	// Generuj labels per tag
-	mapping := make(map[int32]string, len(tags))
-	for _, tag := range tags {
-		mapping[tag] = speakerlabels.Generate(languageCode, int(tag))
-	}
-
-	return mapping
-}
-
-// Helpers SQL — uproszczone, w prod używamy sqlc-generated code
 func updateSessionStatus(ctx context.Context, sessionID, status string) error {
-	if dbPool == nil { return nil } // dla testów bez db
+	if dbPool == nil {
+		return nil
+	}
 	id, err := uuid.Parse(sessionID)
 	if err != nil {
 		return err
@@ -360,76 +323,82 @@ func updateSessionStatus(ctx context.Context, sessionID, status string) error {
 	return err
 }
 
-func updateSessionLabels(ctx context.Context, sessionID string, mapping map[int32]string, languageCode string) error {
-	if dbPool == nil { return nil } // dla testów bez db
-	id, _ := uuid.Parse(sessionID)
-
-	// Konwertuj klucze int32 → string dla JSONB
-	jsonMapping := make(map[string]string, len(mapping))
-	for tag, label := range mapping {
-		jsonMapping[fmt.Sprintf("%d", tag)] = label
+// updateSessionLanguage zapisuje wykryty/użyty language_code dla sesji.
+// speaker_label_mapping zostaje pusty {} — zostanie wypełniony przez
+// llm-worker.generateAndSaveSpeakerLabels po analizie LLM.
+func updateSessionLanguage(ctx context.Context, sessionID string, languageCode string) error {
+	if dbPool == nil {
+		return nil
 	}
-	jsonBytes, _ := json.Marshal(jsonMapping)
-
-	_, err := dbPool.Exec(ctx, `
-		UPDATE sessions
-		SET speaker_label_mapping = $1, language_code = $2
-		WHERE id = $3`,
-		jsonBytes, languageCode, id)
+	id, err := uuid.Parse(sessionID)
+	if err != nil {
+		return err
+	}
+	_, err = dbPool.Exec(ctx,
+		"UPDATE sessions SET language_code = $1 WHERE id = $2",
+		languageCode, id)
 	return err
 }
 
+// BlobLine to pojedynczy wpis w kanonicznym blob'ie transkryptu (ADR-IMPL-006).
+// W default flow (USE_NATIVE_DIARIZATION=false) chunki nie mają speaker_tag/label —
+// LLM przypisze je w Sprint 2.6. Pola speaker_* są wypełniane tylko gdy
+// native diarization jest aktywna (przyszła ścieżka).
+type BlobLine struct {
+	ChunkIdx     int     `json:"chunk_idx"`
+	Text         string  `json:"text"`
+	StartMS      int64   `json:"start_ms"`
+	EndMS        int64   `json:"end_ms"`
+	WordCount    int     `json:"word_count"`
+	Confidence   float32 `json:"confidence"`
+	SpeakerTag   *int32  `json:"speaker_tag,omitempty"`
+	SpeakerLabel *string `json:"speaker_label,omitempty"`
+}
+
 // persistTranscript zapisuje:
-// 1. KANONICZNY blob w `transcripts.transcript_ciphertext` — JSON z full text + labels.
-// 2. Segmenty w `transcript_segments` jako per-speaker statystyki + źródło rebuild.
+//  1. KANONICZNY blob w transcripts.transcript_ciphertext — JSON z chunkami.
+//  2. Per-chunk placeholder w transcript_segments (speaker_tag=0, speaker_label="")
+//     — llm-worker zaktualizuje labels po dedukcji ról.
 //
-// Zob. ADR-IMPL-006 — blob jest source of truth, Flutter czyta tylko z `transcripts`.
-func persistTranscript(ctx context.Context, sessionID string, result *TranscriptResult, labels map[int32]string, processingTime time.Duration) (string, error) {
+// Zob. ADR-IMPL-006 (blob jako source of truth) i ADR-IMPL-007 (LLM diarization).
+func persistTranscript(ctx context.Context, sessionID string, result *TranscriptResult, chunks []chunker.Chunk, processingTime time.Duration) (string, error) {
 	transcriptID := uuid.New()
-	sessID, _ := uuid.Parse(sessionID)
-
-	// Build kanoniczny blob — pełny tekst z labels
-	type BlobLine struct {
-		SpeakerTag   int32  `json:"speaker_tag"`
-		SpeakerLabel string `json:"speaker_label"`
-		Text         string `json:"text"`
-		StartMS      int64  `json:"start_ms"`
-		EndMS        int64  `json:"end_ms"`
-		Confidence   float32 `json:"confidence"`
-	}
-
-	blobLines := make([]BlobLine, 0, len(result.Segments))
-	for _, seg := range result.Segments {
-		label := labels[seg.SpeakerTag]
-		if label == "" {
-			label = fmt.Sprintf("Speaker %d", seg.SpeakerTag)  // safety fallback
-		}
-		blobLines = append(blobLines, BlobLine{
-			SpeakerTag:   seg.SpeakerTag,
-			SpeakerLabel: label,
-			Text:         strings.TrimSpace(seg.Text),
-			StartMS:      seg.StartOffsetMS,
-			EndMS:        seg.EndOffsetMS,
-			Confidence:   seg.Confidence,
-		})
-	}
-
-	blobJSON, _ := json.Marshal(blobLines)
-
-	blobCiphertext, blobDEK, err := crypto.Encrypt(ctx, blobJSON)
+	sessID, err := uuid.Parse(sessionID)
 	if err != nil {
-		slog.Error("encrypt blob", "error", err)
 		return "", err
 	}
 
-	if dbPool == nil { return transcriptID.String(), nil } // test
+	blobLines := make([]BlobLine, 0, len(chunks))
+	for _, c := range chunks {
+		blobLines = append(blobLines, BlobLine{
+			ChunkIdx:   c.Index,
+			Text:       c.Text,
+			StartMS:    c.StartMS,
+			EndMS:      c.EndMS,
+			WordCount:  c.WordCount,
+			Confidence: c.Confidence,
+		})
+	}
+
+	blobJSON, err := json.Marshal(blobLines)
+	if err != nil {
+		return "", fmt.Errorf("marshal blob: %w", err)
+	}
+
+	blobCiphertext, blobDEK, err := crypto.Encrypt(ctx, blobJSON)
+	if err != nil {
+		return "", fmt.Errorf("encrypt blob: %w", err)
+	}
+
+	if dbPool == nil {
+		return transcriptID.String(), nil
+	}
 	tx, err := dbPool.Begin(ctx)
 	if err != nil {
 		return "", err
 	}
 	defer tx.Rollback(ctx)
 
-	// 1. INSERT transcripts (kanoniczny blob)
 	_, err = tx.Exec(ctx, `
 		INSERT INTO transcripts (
 			id, session_id, transcript_ciphertext, transcript_encrypted_dek,
@@ -438,25 +407,19 @@ func persistTranscript(ctx context.Context, sessionID string, result *Transcript
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		transcriptID, sessID, blobCiphertext, blobDEK,
 		result.LanguageCode, result.WordCount, result.SpeakerCount,
-		result.ConfidenceAvg, "latest_long", int(processingTime.Seconds()))
+		result.ConfidenceAvg, "chirp_3", int(processingTime.Seconds()))
 	if err != nil {
 		return "", err
 	}
 
-	// 2. INSERT transcript_segments (statystyki + rebuild source)
-	for _, seg := range result.Segments {
+	// Per-chunk placeholder w transcript_segments.
+	// speaker_tag=0, speaker_label="" zostaną nadpisane przez llm-worker
+	// po analizie ról. Kolejność (ORDER BY start_offset_ms) odpowiada chunk_idx.
+	for _, c := range chunks {
 		segID := uuid.New()
-		segText := strings.TrimSpace(seg.Text)
-
-		segCiphertext, segDEK, err := crypto.Encrypt(ctx, []byte(segText))
+		segCiphertext, segDEK, err := crypto.Encrypt(ctx, []byte(c.Text))
 		if err != nil {
-			slog.Error("encrypt segment", "error", err)
-			return "", err
-		}
-
-		label := labels[seg.SpeakerTag]
-		if label == "" {
-			label = fmt.Sprintf("Speaker %d", seg.SpeakerTag)
+			return "", fmt.Errorf("encrypt segment: %w", err)
 		}
 
 		_, err = tx.Exec(ctx, `
@@ -466,10 +429,11 @@ func persistTranscript(ctx context.Context, sessionID string, result *Transcript
 				text_ciphertext, text_encrypted_dek,
 				text_word_count, confidence
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-			segID, transcriptID, seg.SpeakerTag, label,
-			seg.StartOffsetMS, seg.EndOffsetMS,
+			segID, transcriptID,
+			int32(0), "",
+			c.StartMS, c.EndMS,
 			segCiphertext, segDEK,
-			seg.WordCount, seg.Confidence)
+			c.WordCount, c.Confidence)
 		if err != nil {
 			return "", err
 		}
@@ -483,7 +447,9 @@ func persistTranscript(ctx context.Context, sessionID string, result *Transcript
 }
 
 func publishTranscriptCompleted(ctx context.Context, sessionID, transcriptID string) error {
-	if pubsubClient == nil { return nil } // test mode
+	if pubsubClient == nil {
+		return nil
+	}
 	topic := pubsubClient.Topic("transcript.completed")
 	defer topic.Stop()
 
@@ -503,5 +469,4 @@ func publishTranscriptCompleted(ctx context.Context, sessionID, transcriptID str
 	return err
 }
 
-// Defensywny stub — w prod struct nie jest używany jak http.Handler
 var _ = http.HandlerFunc(nil)

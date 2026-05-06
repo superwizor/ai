@@ -11,6 +11,7 @@ use (
 	./pkg/observability
 	./pkg/pubsubx
 	./pkg/testutil
+	./pkg/transcription
 	./services/ai-pipeline-svc
 	./services/analytics-svc
 	./services/api

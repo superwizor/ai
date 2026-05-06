@@ -2,7 +2,7 @@
 set -e
 
 DB_URL=$(gcloud secrets versions access latest --secret=postgres-database-url --project=superwizor-ai-25ecd)
-CONNECTION_NAME="superwizor-ai-25ecd:europe-central2:superwizor-db-4d61ad78"
+CONNECTION_NAME="superwizor-ai-25ecd:europe-central2:superwizor-db-bc4c27de"
 PASSWORD_ENCODED=$(echo $DB_URL | sed -E 's/postgres:\/\/[^:]+:([^@]+)@.*/\1/')
 PASSWORD=$(python3 -c "import urllib.parse; print(urllib.parse.unquote('${PASSWORD_ENCODED}'))")
 

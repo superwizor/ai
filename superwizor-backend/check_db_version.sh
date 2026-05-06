@@ -3,7 +3,7 @@ set -e
 
 # Get database URL from Secret Manager
 DB_URL=$(gcloud secrets versions access latest --secret=postgres-database-url --project=superwizor-ai-25ecd)
-CONNECTION_NAME="superwizor-ai-25ecd:europe-central2:superwizor-db-4d61ad78"
+CONNECTION_NAME="superwizor-ai-25ecd:europe-central2:superwizor-db-bc4c27de"
 
 # Run proxy in background
 ./cloud-sql-proxy ${CONNECTION_NAME} --port=5432 &

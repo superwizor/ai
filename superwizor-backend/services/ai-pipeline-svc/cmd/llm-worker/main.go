@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
+	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 )
 
 type TranscriptCompletedEvent struct {
@@ -56,22 +57,26 @@ func init() {
 	kmsKeyURI := os.Getenv("KMS_KEY_URI")
 
 	var err error
-	dbPool, err = pgxpool.New(ctx, dbDSN)
-	if err != nil {
-		slog.Error("db", "error", err)
-		os.Exit(1)
+	if dbDSN != "" {
+		dbPool, err = pgxpool.New(ctx, dbDSN)
+		if err != nil {
+			slog.Error("db", "error", err)
+			os.Exit(1)
+		}
 	}
 
-	vertexClient, err = vertexai.NewClient(ctx, projectID, geminiRegion)
-	if err != nil {
-		slog.Error("vertex", "error", err)
-		os.Exit(1)
-	}
+	if projectID != "" {
+		vertexClient, err = vertexai.NewClient(ctx, projectID, geminiRegion)
+		if err != nil {
+			slog.Error("vertex", "error", err)
+			os.Exit(1)
+		}
 
-	pubsubClient, err = pubsub.NewClient(ctx, projectID)
-	if err != nil {
-		slog.Error("pubsub", "error", err)
-		os.Exit(1)
+		pubsubClient, err = pubsub.NewClient(ctx, projectID)
+		if err != nil {
+			slog.Error("pubsub", "error", err)
+			os.Exit(1)
+		}
 	}
 
 	if kmsKeyURI != "" {
@@ -108,62 +113,61 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		return err
 	}
 
-	var event TranscriptCompletedEvent
-	if err := json.Unmarshal(msgData.Message.Data, &event); err != nil {
+	var ev TranscriptCompletedEvent
+	if err := json.Unmarshal(msgData.Message.Data, &ev); err != nil {
 		logger.Error("parse event", "error", err)
 		return err
 	}
 
-	logger = logger.With("session_id", event.SessionID, "transcript_id", event.TranscriptID)
+	logger = logger.With("session_id", ev.SessionID, "transcript_id", ev.TranscriptID)
 	logger.Info("processing transcript")
 
 	startTime := time.Now()
 
-	// 1. Load session context
-	session, err := loadSession(ctx, event.SessionID)
+	session, err := loadSession(ctx, ev.SessionID)
 	if err != nil {
 		return fmt.Errorf("load session: %w", err)
 	}
 
-	// 2. Load transcript z kanonicznego blob (ADR-IMPL-006)
-	transcriptText, err := loadTranscriptText(ctx, event.TranscriptID)
+	transcriptText, err := loadTranscriptText(ctx, ev.TranscriptID)
 	if err != nil {
 		return fmt.Errorf("load transcript: %w", err)
 	}
 
-	// 3. Load modality prompt
 	modalityPrompt, err := loadModalityPrompt(ctx, session.ModalityID)
 	if err != nil {
 		return fmt.Errorf("load prompt: %w", err)
 	}
 
-	// 4. Load RAG context (top 5 najbardziej relevantnych memories)
 	ragContext, err := loadRAGContext(ctx, session.PatientFileID, transcriptText)
 	if err != nil {
 		logger.Warn("rag context", "error", err)
 		ragContext = ""
 	}
 
-	// 5. Generate report z Gemini
 	reportJSON, tokenStats, err := generateReport(ctx, modalityPrompt, ragContext, transcriptText)
 	if err != nil {
-		_ = updateSessionStatus(ctx, event.SessionID, "FAILED")
+		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
 		return fmt.Errorf("generate: %w", err)
 	}
 
-	// 6. Parse + validate report
 	var report ReportPayload
 	if err := json.Unmarshal([]byte(reportJSON), &report); err != nil {
 		return fmt.Errorf("parse report: %w", err)
 	}
 
-	// 7. Persist report + HiTOP measurements
-	reportID, err := persistReport(ctx, session, event.TranscriptID, &report, reportJSON, tokenStats, time.Since(startTime))
+	reportID, err := persistReport(ctx, session, ev.TranscriptID, &report, reportJSON, tokenStats, time.Since(startTime))
 	if err != nil {
 		return fmt.Errorf("persist: %w", err)
 	}
 
-	// 8. Generate embedding dla RAG memory chunk
+	// Po analizie LLM: generate speaker labels z chunk_assignments + zapisz
+	// do sessions.speaker_label_mapping i transcript_segments.speaker_label
+	// (zob. ADR-IMPL-002 + ADR-IMPL-007).
+	if err := generateAndSaveSpeakerLabels(ctx, session, ev.TranscriptID, &report); err != nil {
+		logger.Warn("speaker labels", "error", err)
+	}
+
 	embedding, err := generateEmbedding(ctx, report.RAGSummaryChunk)
 	if err != nil {
 		logger.Warn("embedding", "error", err)
@@ -173,13 +177,11 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		}
 	}
 
-	// 9. Update status COMPLETED
-	if err := updateSessionStatus(ctx, event.SessionID, "COMPLETED"); err != nil {
+	if err := updateSessionStatus(ctx, ev.SessionID, "COMPLETED"); err != nil {
 		logger.Warn("status", "error", err)
 	}
 
-	// 10. Publish report.generated
-	_ = publishReportGenerated(ctx, event.SessionID, reportID)
+	_ = publishReportGenerated(ctx, ev.SessionID, reportID)
 
 	logger.Info("done",
 		"report_id", reportID,
@@ -195,26 +197,52 @@ type SessionContext struct {
 	PatientFileID       uuid.UUID
 	ModalityID          uuid.UUID
 	LanguageCode        string
-	SpeakerLabelMapping map[int32]string  // {1: "Osoba 1", 2: "Osoba 2"}
+	SpeakerLabelMapping map[int32]string
 }
 
+// ReportPayload odpowiada strukturze zwracanej przez Gemini wg report_schema.json
+// (zob. Sprint 2.6.1). Zawiera m.in. wynik diaryzacji LLM (SpeakerRoleInference).
 type ReportPayload struct {
-	PodsumowanieSesji            string                          `json:"podsumowanie_sesji"`
-	WnikliweObserwacje           string                          `json:"wnikliwe_obserwacje"`
-	PlanDzialaniaKlienta         string                          `json:"plan_dzialania_klienta"`
-	PropozycjeInterwencji        string                          `json:"propozycje_interwencji"`
-	WatkiDoPoglebienia           string                          `json:"watki_do_poglebienia"`
-	WskazowkiSuperwizyjne        string                          `json:"wskazowki_superwizyjne"`
-	WstepneHipotezyDiagnostyczne string                          `json:"wstepne_hipotezy_diagnostyczne"`
-	SpeakerRoleInference         map[string]SpeakerRoleInference `json:"speaker_role_inference"`
-	HiTOPDimensions              []HiTOPItem                     `json:"hitop_dimensions"`
-	RAGSummaryChunk              string                          `json:"rag_summary_chunk"`
+	Title                            string                `json:"title"`
+	SummaryShort                     string                `json:"summary_short"`
+	SpeakerRoleInference             SpeakerRoleInference  `json:"speaker_role_inference"`
+	MainThemes                       []ThemeItem           `json:"main_themes"`
+	TherapeuticAllianceObservations  string                `json:"therapeutic_alliance_observations"`
+	InterventionsObserved            []InterventionItem    `json:"interventions_observed"`
+	HiTOPDimensions                  []HiTOPItem           `json:"hitop_dimensions"`
+	RiskAssessment                   RiskAssessment        `json:"risk_assessment"`
+	Sentiment                        string                `json:"sentiment"`
+	RecommendationsForNextSession    []string              `json:"recommendations_for_next_session"`
+	RAGSummaryChunk                  string                `json:"rag_summary_chunk"`
 }
 
+// SpeakerRoleInference reprezentuje wynik diaryzacji wykonanej przez LLM
+// (ADR-IMPL-007). Zawiera (a) klastrowanie chunków na grupy mówców
+// i (b) dedukowane role per grupa.
 type SpeakerRoleInference struct {
-	Role       string  `json:"role"`         // 'therapist', 'patient', 'couple_partner', etc.
-	Confidence float64 `json:"confidence"`
-	Evidence   string  `json:"evidence"`
+	Method                       string            `json:"method"`            // 'llm_inferred' | 'native_chirp_3'
+	ChunkAssignments             map[string]string `json:"chunk_assignments"` // {"0": "therapist", "1": "patient", ...}
+	SpeakerGroups                []SpeakerGroup    `json:"speaker_groups"`
+	OverallDiarizationConfidence float64           `json:"overall_diarization_confidence"`
+}
+
+type SpeakerGroup struct {
+	Role         string  `json:"role"`
+	ChunkIndices []int   `json:"chunk_indices"`
+	Confidence   float64 `json:"confidence"`
+	Evidence     string  `json:"evidence"`
+}
+
+type ThemeItem struct {
+	Theme    string   `json:"theme"`
+	Salience float64  `json:"salience"`
+	Evidence []string `json:"evidence_quotes"`
+}
+
+type InterventionItem struct {
+	Type            string `json:"intervention_type"`
+	Description     string `json:"description"`
+	PatientResponse string `json:"patient_response"`
 }
 
 type HiTOPItem struct {
@@ -222,6 +250,12 @@ type HiTOPItem struct {
 	Score         float64 `json:"score"`
 	Confidence    float64 `json:"confidence"`
 	Evidence      string  `json:"evidence"`
+}
+
+type RiskAssessment struct {
+	Level              string   `json:"level"`
+	Concerns           []string `json:"concerns"`
+	RecommendedActions []string `json:"recommended_actions"`
 }
 
 type TokenStats struct {
@@ -250,27 +284,44 @@ func generateReport(ctx context.Context, modalityPrompt, ragContext, transcriptT
 
 	prompt := fmt.Sprintf(`%s
 
-UWAGA O ETYKIETACH MÓWCÓW:
-Transkrypt zawiera neutralne etykiety mówców (np. "Osoba 1", "Osoba 2" lub "Person 1", "Person 2") — to NIE są role, tylko numeracja.
-Twoim zadaniem jest **dedukować role z kontekstu rozmowy** i zapisać dedukcję w polu speaker_role_inference.
+WAŻNE — KONTEKST DIARYZACJI:
+Transkrypt poniżej składa się z PONUMEROWANYCH chunków oddzielonych pauzami.
+Chunki NIE mają jeszcze przypisanych mówców (Chirp 3 nie supportuje diaryzacji
+dla polskiego — robimy to przez analizę treści).
 
-Wskazówki dot. dedukcji ról:
-- Osoba pełniąca rolę terapeuty zazwyczaj: zadaje pytania otwarte, stosuje techniki (np. socratic questioning, reflektowanie), używa fachowego języka, kieruje rozmową.
-- Osoba pełniąca rolę pacjenta zazwyczaj: opisuje swoje odczucia/objawy, odpowiada na pytania, mówi o sobie w pierwszej osobie o problemach.
-- W sesjach par/rodzin: wskaż couple_partner / family_member_*. Jeśli niejasne — użyj 'unknown'.
-- Confidence: 0.9+ jeśli wzorce są jednoznaczne, 0.5-0.8 jeśli są wskazówki ale nie pewność, < 0.5 jeśli niejasne.
+Twoje zadania w jednym wywołaniu:
+1. Klastrowanie: Pogrupuj chunki w 2 (lub 3 dla par/rodzin) wirtualne grupy mówców
+   na podstawie stylu wypowiedzi, treści, formy zwracania się.
+2. Dedukcja ról: Określ rolę każdej grupy (therapist/patient/couple_partner/...).
+3. Generacja raportu: Po przypisaniu, generuj raport bazując na chunkach
+   przypisanych do każdej grupy.
+
+Wskazówki dot. klastrowania i dedukcji ról:
+- Terapeuta zazwyczaj: zadaje pytania otwarte, stosuje techniki (reflektowanie,
+  podsumowywanie, normalizacja), używa fachowego języka, mówi krócej.
+- Pacjent zazwyczaj: opisuje swoje odczucia/objawy, odpowiada na pytania,
+  mówi o sobie w pierwszej osobie o problemach, ma dłuższe wypowiedzi.
+- Krótkie wtrącenia ("mhm", "tak", "rozumiem") oznaczaj jako "filler".
+- W sesjach par/rodzin: 3 grupy (terapeuta + 2 osoby relacji).
+- Confidence: 0.9+ jednoznaczne, 0.5-0.8 wskazówki, < 0.5 niejasne.
+
+Zapisz wynik klastrowania w polu speaker_role_inference (method="llm_inferred").
 
 KONTEKST POPRZEDNICH SESJI:
 %s
 
-TRANSKRYPT BIEŻĄCEJ SESJI:
+TRANSKRYPT BIEŻĄCEJ SESJI (chunki ponumerowane):
 %s
 
 Wygeneruj raport zgodny z podanym JSON Schema. Pamiętaj o:
-- Dedukcji ról dla KAŻDEJ etykiety mówcy w transkrypcie (speaker_role_inference).
+- Wypełnieniu speaker_role_inference.chunk_assignments dla KAŻDEGO chunka.
+- HiTOP measurements: mierz DLA pacjenta — używaj tylko chunków z chunk_assignments
+  oznaczonych jako "patient".
 - Cytatach maksymalnie 100 znaków każdy.
-- Skali HiTOP: 0-100 score, 0-1 confidence (mierzymy DLA pacjenta — używaj tylko wypowiedzi osoby zdedukowanej jako 'patient').
-- RAG summary chunk: NIE zawierać danych identyfikujących — używać tylko etykiet typu "pacjent" (nie imion ani neutralnych labels).`,
+- W therapeutic_alliance_observations zaznacz że confidence jest niski jeśli
+  overall_diarization_confidence < 0.7.
+- RAG summary chunk: NIE zawierać danych identyfikujących — używać tylko etykiet
+  typu "pacjent" (nie imion ani numerów chunków).`,
 		modalityPrompt, ragContext, transcriptText)
 
 	resp, err := model.GenerateContent(ctx, vertexai.Text(prompt))
@@ -299,21 +350,109 @@ Wygeneruj raport zgodny z podanym JSON Schema. Pamiętaj o:
 }
 
 func schemaToVertexSchema(s map[string]any) *vertexai.Schema {
-	// Konwersja JSON Schema → Vertex AI Schema (uproszczone)
 	schemaJSON, _ := json.Marshal(s)
 	var vs vertexai.Schema
 	_ = json.Unmarshal(schemaJSON, &vs)
 	return &vs
 }
 
-func generateEmbedding(ctx context.Context, text string) ([]float32, error) {
-	// Use textembedding-gecko via Vertex AI
-	// W Fazie 2: stub embedding (np. zera lub random)
-	// W Fazie 3: real Vertex embeddings call
-	return make([]float32, 768), nil
+// generateAndSaveSpeakerLabels po analizie LLM tworzy mapping speaker → label
+// i zapisuje do sessions.speaker_label_mapping oraz transcript_segments.speaker_label.
+//
+// Strategia:
+//  1. Z report.SpeakerRoleInference.SpeakerGroups dostajemy listę grup z chunk_indices.
+//  2. Dla każdej grupy: przypisujemy kolejny speaker_tag (1, 2, 3...).
+//  3. Generujemy lokalizowany label (z pkg/i18n/speakerlabels) per tag.
+//  4. UPDATE transcript_segments — wszystkie segmenty należące do chunków z grupy.
+//  5. UPDATE sessions.speaker_label_mapping = {1: "Osoba 1", 2: "Osoba 2"}.
+func generateAndSaveSpeakerLabels(ctx context.Context, session *SessionContext, transcriptID string, report *ReportPayload) error {
+	if dbPool == nil {
+		return nil
+	}
+	transID, err := uuid.Parse(transcriptID)
+	if err != nil {
+		return err
+	}
+
+	chunkToTag := map[int]int32{}
+	tagToRole := map[int32]string{}
+	tag := int32(1)
+	for _, group := range report.SpeakerRoleInference.SpeakerGroups {
+		// Skip "filler" / "unknown" — chunki zostają z speaker_tag=0
+		if group.Role == "" || group.Role == "filler" || group.Role == "unknown" {
+			continue
+		}
+		for _, idx := range group.ChunkIndices {
+			chunkToTag[idx] = tag
+		}
+		tagToRole[tag] = group.Role
+		tag++
+	}
+
+	tagToLabel := map[int32]string{}
+	for t := range tagToRole {
+		tagToLabel[t] = speakerlabels.Generate(session.LanguageCode, int(t))
+	}
+
+	tx, err := dbPool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// transcript_segments są w kolejności chunków (ORDER BY start_offset_ms),
+	// więc chunk_idx == row position.
+	rows, err := tx.Query(ctx, `
+		SELECT id FROM transcript_segments
+		WHERE transcript_id = $1
+		ORDER BY start_offset_ms`, transID)
+	if err != nil {
+		return err
+	}
+	segmentIDs := []uuid.UUID{}
+	for rows.Next() {
+		var segID uuid.UUID
+		if err := rows.Scan(&segID); err != nil {
+			rows.Close()
+			return err
+		}
+		segmentIDs = append(segmentIDs, segID)
+	}
+	rows.Close()
+
+	for chunkIdx, segID := range segmentIDs {
+		assignedTag, ok := chunkToTag[chunkIdx]
+		if !ok {
+			continue
+		}
+		label := tagToLabel[assignedTag]
+		if _, err := tx.Exec(ctx, `
+			UPDATE transcript_segments
+			SET speaker_tag = $1, speaker_label = $2
+			WHERE id = $3`,
+			assignedTag, label, segID); err != nil {
+			return err
+		}
+	}
+
+	mappingForJSON := map[string]string{}
+	for t, label := range tagToLabel {
+		mappingForJSON[fmt.Sprintf("%d", t)] = label
+	}
+	mappingJSON, _ := json.Marshal(mappingForJSON)
+	if _, err := tx.Exec(ctx, `
+		UPDATE sessions SET speaker_label_mapping = $1 WHERE id = $2`,
+		mappingJSON, session.ID); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
-// SQL helpers (simplified)
+func generateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	// Faza 2: stub. Faza 3: real Vertex textembedding-gecko call.
+	return make([]float32, 768), nil
+}
 
 func loadSession(ctx context.Context, sessionID string) (*SessionContext, error) {
 	id, err := uuid.Parse(sessionID)
@@ -352,15 +491,19 @@ func loadSession(ctx context.Context, sessionID string) (*SessionContext, error)
 	return &sc, nil
 }
 
-// loadTranscriptText czyta transkrypt z KANONICZNEGO blob'a w transcripts (ADR-IMPL-006).
-// NIE iteruje po segments — pełny tekst jest jednym zaszyfrowanym JSON-em.
+// loadTranscriptText czyta KANONICZNY blob z transcripts (ADR-IMPL-006) i
+// formatuje go dla LLM jako numerowane chunki (ADR-IMPL-007):
 //
-// Format blob (po decrypt): JSON array z {speaker_tag, speaker_label, text, start_ms, end_ms}.
-// Zwraca sformatowany tekst dla LLM:
-//   "[Osoba 1] (1200ms-4500ms) Cześć, jak się czujesz dzisiaj?"
-//   "[Osoba 2] (4600ms-7800ms) Trochę zmęczona, ale ogólnie dobrze."
+//	"[CHUNK 0] (1200ms-4500ms) Cześć, jak się czujesz dzisiaj?"
+//	"[CHUNK 1] (4800ms-7800ms) Trochę zmęczona, ale ogólnie dobrze."
+//
+// Format umożliwia LLM odwołanie się do chunków po indeksie w polu
+// speaker_role_inference.chunk_assignments.
 func loadTranscriptText(ctx context.Context, transcriptID string) (string, error) {
-	id, _ := uuid.Parse(transcriptID)
+	id, err := uuid.Parse(transcriptID)
+	if err != nil {
+		return "", err
+	}
 
 	var ciphertext []byte
 	var encryptedDEK []byte
@@ -374,24 +517,34 @@ func loadTranscriptText(ctx context.Context, transcriptID string) (string, error
 	if err != nil {
 		return "", fmt.Errorf("decrypt transcript blob: %w", err)
 	}
-	blobJSON := string(blobJSONBytes)
 
 	type BlobLine struct {
-		SpeakerTag   int32  `json:"speaker_tag"`
-		SpeakerLabel string `json:"speaker_label"`
-		Text         string `json:"text"`
-		StartMS      int64  `json:"start_ms"`
-		EndMS        int64  `json:"end_ms"`
+		ChunkIdx     int     `json:"chunk_idx"`
+		Text         string  `json:"text"`
+		StartMS      int64   `json:"start_ms"`
+		EndMS        int64   `json:"end_ms"`
+		WordCount    int     `json:"word_count"`
+		Confidence   float32 `json:"confidence"`
+		SpeakerTag   *int32  `json:"speaker_tag,omitempty"`
+		SpeakerLabel *string `json:"speaker_label,omitempty"`
 	}
 
 	var lines []BlobLine
-	if err := json.Unmarshal([]byte(blobJSON), &lines); err != nil {
+	if err := json.Unmarshal(blobJSONBytes, &lines); err != nil {
 		return "", fmt.Errorf("unmarshal transcript blob: %w", err)
 	}
 
 	var sb strings.Builder
 	for _, l := range lines {
-		fmt.Fprintf(&sb, "[%s] (%dms-%dms) %s\n", l.SpeakerLabel, l.StartMS, l.EndMS, l.Text)
+		if l.SpeakerLabel != nil && *l.SpeakerLabel != "" {
+			// Native diarization: pokazujemy speaker label
+			fmt.Fprintf(&sb, "[CHUNK %d / %s] (%dms-%dms) %s\n",
+				l.ChunkIdx, *l.SpeakerLabel, l.StartMS, l.EndMS, l.Text)
+		} else {
+			// Default flow (v1.2): tylko numerowany chunk, LLM przypisze speaker
+			fmt.Fprintf(&sb, "[CHUNK %d] (%dms-%dms) %s\n",
+				l.ChunkIdx, l.StartMS, l.EndMS, l.Text)
+		}
 	}
 
 	return sb.String(), nil
@@ -411,13 +564,15 @@ func loadModalityPrompt(ctx context.Context, modalityID uuid.UUID) (string, erro
 }
 
 func loadRAGContext(ctx context.Context, patientFileID uuid.UUID, currentText string) (string, error) {
-	// W Fazie 2 stub — return empty.
-	// W Fazie 3 generate query embedding + similarity search via pgvector.
+	// Faza 2 stub. Faza 3: query embedding + similarity search via pgvector.
 	return "", nil
 }
 
 func persistReport(ctx context.Context, session *SessionContext, transcriptID string, report *ReportPayload, fullJSON string, tokenStats TokenStats, processingTime time.Duration) (string, error) {
-	transID, _ := uuid.Parse(transcriptID)
+	transID, err := uuid.Parse(transcriptID)
+	if err != nil {
+		return "", err
+	}
 	reportID := uuid.New()
 
 	ciphertext, encDEK, err := crypto.Encrypt(ctx, []byte(fullJSON))
@@ -433,7 +588,6 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 
 	costUSD := float64(tokenStats.InputTokens)*0.00000125 + float64(tokenStats.OutputTokens)*0.000005
 
-	// Marshal speaker_role_inference dla JSONB column
 	roleInferenceJSON, _ := json.Marshal(report.SpeakerRoleInference)
 
 	_, err = tx.Exec(ctx, `
@@ -444,8 +598,8 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 			llm_output_tokens, llm_processing_seconds, llm_total_cost_usd)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
 		reportID, session.ID, transID, session.ModalityID,
-		ciphertext, encDEK, "", report.PodsumowanieSesji,
-		"", "", roleInferenceJSON,
+		ciphertext, encDEK, report.Title, report.SummaryShort,
+		report.Sentiment, report.RiskAssessment.Level, roleInferenceJSON,
 		geminiModel,
 		tokenStats.InputTokens, tokenStats.OutputTokens,
 		int(processingTime.Seconds()), costUSD)
@@ -453,13 +607,11 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 		return "", err
 	}
 
-	// HiTOP measurements
 	for _, h := range report.HiTOPDimensions {
 		var dimID uuid.UUID
 		err := tx.QueryRow(ctx,
 			"SELECT id FROM hitop_dimensions WHERE code = $1", h.DimensionCode).Scan(&dimID)
 		if err == pgx.ErrNoRows {
-			// Auto-create dimension if not exists (Faza 2 quick-and-dirty; Faza 3 strict)
 			dimID = uuid.New()
 			_, _ = tx.Exec(ctx,
 				"INSERT INTO hitop_dimensions (id, code, display_name, level) VALUES ($1, $2, $2, 'syndrome')",
@@ -493,14 +645,16 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 }
 
 func persistRAGMemory(ctx context.Context, session *SessionContext, reportID string, report *ReportPayload, embedding []float32) error {
-	repID, _ := uuid.Parse(reportID)
+	repID, err := uuid.Parse(reportID)
+	if err != nil {
+		return err
+	}
 
 	summaryCipher, summaryDEK, err := crypto.Encrypt(ctx, []byte(report.RAGSummaryChunk))
 	if err != nil {
 		return fmt.Errorf("encrypt rag summary: %w", err)
 	}
 
-	// Convert embedding to pgvector format string
 	embeddingStr := vectorToString(embedding)
 
 	_, err = dbPool.Exec(ctx, `
@@ -526,14 +680,23 @@ func vectorToString(v []float32) string {
 }
 
 func updateSessionStatus(ctx context.Context, sessionID, status string) error {
-	id, _ := uuid.Parse(sessionID)
-	_, err := dbPool.Exec(ctx,
+	if dbPool == nil {
+		return nil
+	}
+	id, err := uuid.Parse(sessionID)
+	if err != nil {
+		return err
+	}
+	_, err = dbPool.Exec(ctx,
 		"UPDATE sessions SET status = $1, status_updated_at = now() WHERE id = $2",
 		status, id)
 	return err
 }
 
 func publishReportGenerated(ctx context.Context, sessionID, reportID string) error {
+	if pubsubClient == nil {
+		return nil
+	}
 	topic := pubsubClient.Topic("report.generated")
 	defer topic.Stop()
 
@@ -546,5 +709,4 @@ func publishReportGenerated(ctx context.Context, sessionID, reportID string) err
 	return err
 }
 
-// Stub for unused import
 var _ = aiplatformpb.PredictRequest{}

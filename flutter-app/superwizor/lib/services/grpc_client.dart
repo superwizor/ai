@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:grpc/grpc.dart';
+import 'package:grpc/grpc_or_grpcweb.dart';
 import '../generated/identity/v1/identity.pbgrpc.dart';
 import '../generated/clinical/v1/clinical.pbgrpc.dart';
 import '../generated/ingestion/v1/ingestion.pbgrpc.dart';
 
 class GrpcClients {
-  late final ClientChannel identityChannel;
-  late final ClientChannel clinicalChannel;
-  late final ClientChannel ingestionChannel;
+  late final GrpcOrGrpcWebClientChannel identityChannel;
+  late final GrpcOrGrpcWebClientChannel clinicalChannel;
+  late final GrpcOrGrpcWebClientChannel ingestionChannel;
 
   late final IdentityServiceClient identity;
   late final ClinicalServiceClient clinical;
@@ -22,29 +23,20 @@ class GrpcClients {
     required String ingestionUrl,
     required int ingestionPort,
   }) {
-    identityChannel = ClientChannel(
-      identityUrl,
+    identityChannel = GrpcOrGrpcWebClientChannel.toSingleEndpoint(
+      host: identityUrl,
       port: identityPort,
-      options: ChannelOptions(
-        credentials: identityPort == 443 ? const ChannelCredentials.secure() : const ChannelCredentials.insecure(),
-        connectionTimeout: const Duration(seconds: 5),
-      ),
+      transportSecure: identityPort == 443,
     );
-    clinicalChannel = ClientChannel(
-      clinicalUrl,
+    clinicalChannel = GrpcOrGrpcWebClientChannel.toSingleEndpoint(
+      host: clinicalUrl,
       port: clinicalPort,
-      options: ChannelOptions(
-        credentials: clinicalPort == 443 ? const ChannelCredentials.secure() : const ChannelCredentials.insecure(),
-        connectionTimeout: const Duration(seconds: 5),
-      ),
+      transportSecure: clinicalPort == 443,
     );
-    ingestionChannel = ClientChannel(
-      ingestionUrl,
+    ingestionChannel = GrpcOrGrpcWebClientChannel.toSingleEndpoint(
+      host: ingestionUrl,
       port: ingestionPort,
-      options: ChannelOptions(
-        credentials: ingestionPort == 443 ? const ChannelCredentials.secure() : const ChannelCredentials.insecure(),
-        connectionTimeout: const Duration(seconds: 5),
-      ),
+      transportSecure: ingestionPort == 443,
     );
 
     final interceptors = [AuthInterceptor()];

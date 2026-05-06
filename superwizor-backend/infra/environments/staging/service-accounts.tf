@@ -1,3 +1,7 @@
+data "google_project" "this" {
+  project_id = var.project_id
+}
+
 resource "google_service_account" "ingestion_svc" {
   account_id   = "ingestion-svc"
   display_name = "Ingestion Service SA"
@@ -40,4 +44,18 @@ resource "google_project_iam_member" "ingestion_sql_client" {
   project = var.project_id
   role    = "roles/cloudsql.client"
   member  = "serviceAccount:${google_service_account.ingestion_svc.email}"
+}
+
+# S3: Allow the Pub/Sub service agent to create tokens for worker SAs so Eventarc
+# can authenticate invocations with the correct service account identity.
+resource "google_service_account_iam_member" "pubsub_sa_stt_token_creator" {
+  service_account_id = google_service_account.stt_worker.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+resource "google_service_account_iam_member" "pubsub_sa_llm_token_creator" {
+  service_account_id = google_service_account.llm_worker.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }

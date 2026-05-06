@@ -78,3 +78,5 @@ resource "google_pubsub_topic_iam_member" "llm_publisher" {
 output "audio_uploaded_topic" { value = google_pubsub_topic.audio_uploaded.id }
 output "transcript_completed_topic" { value = google_pubsub_topic.transcript_completed.id }
 output "report_generated_topic" { value = google_pubsub_topic.report_generated.id }
+output "audio_uploaded_dlq_topic" { value = google_pubsub_topic.audio_uploaded_dlq.id }
+output "transcript_completed_dlq_topic" { value = google_pubsub_topic.transcript_completed_dlq.id }

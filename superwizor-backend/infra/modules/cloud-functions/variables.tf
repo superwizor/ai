@@ -18,3 +18,13 @@ variable "llm_worker_sa_email" {
   type        = string
   description = "The email of the LLM worker service account"
 }
+
+variable "audio_uploaded_dlq_topic" {
+  type        = string
+  description = "Pub/Sub topic ID for audio.uploaded dead-letter messages"
+}
+
+variable "transcript_completed_dlq_topic" {
+  type        = string
+  description = "Pub/Sub topic ID for transcript.completed dead-letter messages"
+}
