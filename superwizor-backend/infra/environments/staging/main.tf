@@ -31,7 +31,7 @@ module "cloud_sql" {
 module "wif" {
   source      = "../../modules/wif"
   project_id  = var.project_id
-  github_repo = "baciok91/superwizor-backend"
+  github_repo = "superwizor/ai"
 }
 
 module "audit_logs" {
