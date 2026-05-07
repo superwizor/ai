@@ -340,10 +340,11 @@ func TestFullSession_HappyPath(t *testing.T) {
 	t.Logf("  Ingestion URL: %s", cfg.ingestionURL)
 	t.Logf("══════════════════════════════════════════════════════════════")
 
-	audioStat, err := os.Stat(cfg.audioFile)
-	require.NoError(t, err, "audio file not accessible")
-	audioSize := audioStat.Size()
-	usingPlaceholder := audioSize < 1024 // 5-byte stub vs real audio
+	// Hard-fail before doing anything expensive (Firebase mint, gRPC dial,
+	// AI pipeline) if the audio file is obviously bad. The pipeline takes
+	// minutes and Vertex AI usage costs money; pre-flight validation in
+	// milliseconds is worth it.
+	audioSize := validateAudioFile(t, cfg.audioFile)
 
 	// ------------------------------------------------------------------------
 	// Step 0 — Mint a Firebase ID token (or use the pre-minted one)
@@ -578,17 +579,17 @@ func TestFullSession_HappyPath(t *testing.T) {
 
 	switch finalStatus {
 	case "COMPLETED":
-		// Real audio path → expect a populated report.
 		assertCompletedSessionShape(t, details)
 		t.Logf("✓ FULL HAPPY PATH PASSED")
 	case "ERRORED", "FAILED":
-		if usingPlaceholder {
-			t.Logf("⚠ Pipeline errored as expected with placeholder audio.")
-			t.Logf("  Setup steps 1-6 validated; STT correctly rejected fake audio.")
-			t.Logf("  To exercise the full pipeline, provide a real Polish m4a via AUDIO_FILE.")
-			t.SkipNow()
-		}
-		t.Fatalf("Pipeline errored with real audio. Session: %+v", details.Session)
+		// Pre-flight audio validation already rejected obviously-bad
+		// inputs, so a FAILED here is a real pipeline issue (Vertex AI
+		// rejection, schema bug, worker crash). Check llm-worker logs.
+		t.Fatalf("Pipeline errored with valid audio. Session: %+v\n"+
+			"Investigate via:\n"+
+			"  gcloud logging read 'resource.labels.service_name=\"llm-worker\" AND severity>=ERROR' \\\n"+
+			"    --project=%s --limit=10 --format=json | jq '.[].jsonPayload'",
+			details.Session, /* project */ "superwizor-ai-25ecd")
 	default:
 		t.Fatalf("Timed out before terminal state (last seen: %q). "+
 			"Vertex AI cold start may be slow; consider retrying or extending pollDeadline.",
@@ -598,6 +599,162 @@ func TestFullSession_HappyPath(t *testing.T) {
 
 // assertCompletedSessionShape verifies invariants that must hold for any
 // successful session, regardless of the specific audio content.
+// validateAudioFile pre-flights the audio file before any expensive
+// downstream work. Hard-fails the test on:
+//   - file missing or unreadable
+//   - size out of bounds (≤ 1 KB or > 300 MB)
+//   - not an MP4/M4A container (magic-byte check)
+//   - if ffprobe is on PATH: bad codec, sample-rate, duration
+//
+// Soft-warns (logs but doesn't fail) on:
+//   - non-mono audio (Chirp 3 prefers mono)
+//   - missing ffprobe (basic validation only)
+//
+// Returns the file size in bytes for downstream use.
+func validateAudioFile(t *testing.T, path string) int64 {
+	t.Helper()
+
+	const (
+		minSize = 1024              // 1 KB; the legacy test-audio.wav stub is 5 bytes
+		maxSize = 300 * 1024 * 1024 // 300 MB; matches the signed-URL constraint
+		minDur  = 1.0               // seconds
+		maxDur  = 90 * 60.0         // 90 minutes — generous session ceiling
+	)
+
+	// 1. File exists and is readable
+	fi, err := os.Stat(path)
+	require.NoErrorf(t, err, "audio file not accessible at %q", path)
+	require.Falsef(t, fi.IsDir(), "audio path %q is a directory", path)
+
+	// 2. Size bounds
+	size := fi.Size()
+	require.GreaterOrEqualf(t, size, int64(minSize),
+		"audio file is suspiciously small (%d bytes); likely a placeholder. "+
+			"Drop a real Polish-speech m4a at %s, or set AUDIO_FILE.", size, path)
+	require.LessOrEqualf(t, size, int64(maxSize),
+		"audio file is %d bytes (%d MB); the signed-URL contract caps at %d MB.",
+		size, size/1024/1024, maxSize/1024/1024)
+
+	// 3. Magic-byte sanity. M4A is an MP4 container; the first box should be
+	// `ftyp` at offset 4–8, brand at 8–12. We don't fully parse boxes — just
+	// reject things that aren't even MP4-shaped.
+	f, err := os.Open(path)
+	require.NoErrorf(t, err, "open %q", path)
+	defer func() { _ = f.Close() }()
+
+	head := make([]byte, 12)
+	_, err = io.ReadFull(f, head)
+	require.NoErrorf(t, err, "read header of %q", path)
+
+	require.Equalf(t, "ftyp", string(head[4:8]),
+		"file at %s is not an M4A/MP4 container. Got first 12 bytes: %x. "+
+			"Some encoders emit raw AAC (.aac) or MP3 (.mp3); rename and re-encode to .m4a.",
+		path, head)
+
+	brand := strings.TrimSpace(string(head[8:12]))
+	validBrands := map[string]bool{
+		"M4A": true, "M4B": true, "mp42": true, "mp41": true,
+		"isom": true, "iso2": true, "dash": true,
+	}
+	if !validBrands[brand] {
+		t.Logf("audio: unusual M4A brand %q — Chirp 3 may still accept it", brand)
+	}
+
+	t.Logf("audio: size=%d bytes (%.1f MB), M4A brand=%q", size, float64(size)/1024/1024, brand)
+
+	// 4. Optional rich validation via ffprobe. Fail-fast on bad codec /
+	// duration / sample rate; soft-warn on stereo (Chirp 3 still works on
+	// stereo, just with lower confidence in our experience).
+	ffprobe, err := exec.LookPath("ffprobe")
+	if err != nil {
+		t.Logf("audio: ffprobe not on PATH — skipping codec/duration/sample-rate checks. " +
+			"Install with `brew install ffmpeg` for stronger pre-flight validation.")
+		return size
+	}
+
+	out, err := exec.Command(ffprobe,
+		"-v", "error",
+		"-print_format", "json",
+		"-show_format",
+		"-show_streams",
+		path,
+	).Output()
+	require.NoErrorf(t, err, "ffprobe failed on %q", path)
+
+	var probe struct {
+		Streams []struct {
+			CodecType  string `json:"codec_type"`
+			CodecName  string `json:"codec_name"`
+			Channels   int    `json:"channels"`
+			SampleRate string `json:"sample_rate"`
+			Duration   string `json:"duration"`
+		} `json:"streams"`
+		Format struct {
+			FormatName string `json:"format_name"`
+			Duration   string `json:"duration"`
+		} `json:"format"`
+	}
+	require.NoError(t, json.Unmarshal(out, &probe), "parse ffprobe output")
+
+	// Container family check — m4a/mp4 share the same family name in ffprobe.
+	require.Containsf(t, probe.Format.FormatName, "mp4",
+		"ffprobe reports container format %q; expected mp4-family for .m4a", probe.Format.FormatName)
+
+	// Locate the audio stream
+	var audio *struct {
+		CodecType  string `json:"codec_type"`
+		CodecName  string `json:"codec_name"`
+		Channels   int    `json:"channels"`
+		SampleRate string `json:"sample_rate"`
+		Duration   string `json:"duration"`
+	}
+	for i := range probe.Streams {
+		if probe.Streams[i].CodecType == "audio" {
+			audio = &probe.Streams[i]
+			break
+		}
+	}
+	require.NotNilf(t, audio, "no audio stream found in %q", path)
+
+	// Codec — m4a typically holds AAC; ALAC is also valid.
+	validCodecs := map[string]bool{"aac": true, "mp4a": true, "alac": true}
+	require.Truef(t, validCodecs[audio.CodecName],
+		"audio codec is %q; Chirp 3 + .m4a expects aac / mp4a / alac. Re-encode the file.",
+		audio.CodecName)
+
+	// Sample rate — Chirp 3 spec is 8 kHz – 48 kHz.
+	sr, err := strconv.Atoi(audio.SampleRate)
+	require.NoErrorf(t, err, "parse sample_rate %q", audio.SampleRate)
+	require.GreaterOrEqualf(t, sr, 8000,
+		"sample rate is %d Hz; Chirp 3 minimum is 8000 Hz", sr)
+	require.LessOrEqualf(t, sr, 48000,
+		"sample rate is %d Hz; Chirp 3 maximum is 48000 Hz", sr)
+
+	// Channel count — soft-warn on stereo.
+	if audio.Channels != 1 {
+		t.Logf("audio: %d channels — Chirp 3 prefers mono (1ch). Test will continue, "+
+			"but expect lower transcription confidence. Re-encode with `-ac 1` for best results.",
+			audio.Channels)
+	}
+
+	// Duration. Use stream duration first, fall back to format duration.
+	durStr := audio.Duration
+	if durStr == "" {
+		durStr = probe.Format.Duration
+	}
+	dur, err := strconv.ParseFloat(durStr, 64)
+	require.NoErrorf(t, err, "parse duration %q", durStr)
+	require.GreaterOrEqualf(t, dur, minDur,
+		"audio is %.2fs — too short to be a meaningful test (minimum %.0fs)", dur, minDur)
+	require.LessOrEqualf(t, dur, maxDur,
+		"audio is %.2fs (%.1f min) — exceeds the %.0f-min ceiling for a single session", dur, dur/60, maxDur/60)
+
+	t.Logf("audio: codec=%s, %d ch, %d Hz, duration=%.2fs",
+		audio.CodecName, audio.Channels, sr, dur)
+
+	return size
+}
+
 func assertCompletedSessionShape(t *testing.T, d *clinicalv1.GetSessionDetailsResponse) {
 	t.Helper()
 	s := d.Session
