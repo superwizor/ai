@@ -154,6 +154,9 @@ resource "google_cloudfunctions2_function" "stt_worker" {
       GCP_PROJECT_ID    = var.project_id
       AUDIO_BUCKET_NAME = var.audio_bucket_name
       KMS_KEY_URI       = var.app_data_key_id
+      # PHI exposure: when "true", logs the full plaintext transcript
+      # to Cloud Logging. Staging-only debugging; never set on prod.
+      DEV_LOG_PLAINTEXT_TRANSCRIPT = var.dev_log_plaintext_transcript ? "true" : "false"
     }
 
     secret_environment_variables {

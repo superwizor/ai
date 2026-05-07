@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -147,11 +148,46 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 	//    LLM przypisze chunki do mówców w Sprint 2.6.
 	chunks := chunker.ChunkByPauses(transcriptResult.Words, chunker.DefaultConfig())
 	stats := chunker.ComputeStats(chunks)
+
+	// Always-on stats (no PHI). Surfaces silent / undecodable audio fast —
+	// total_words=0 means Chirp 3 returned nothing recognizable.
 	logger.Info("chunked transcript",
+		"session_id", event.SessionID,
+		"language", transcriptResult.LanguageCode,
+		"raw_word_count", transcriptResult.WordCount,
 		"chunk_count", stats.ChunkCount,
 		"total_words", stats.TotalWords,
 		"avg_chunk_duration_ms", stats.AvgChunkLength.Milliseconds(),
-		"avg_confidence", stats.AvgConfidence)
+		"avg_confidence", stats.AvgConfidence,
+		"speaker_count", transcriptResult.SpeakerCount,
+		"native_diarization", transcriptResult.HasNativeDiarization)
+
+	if transcriptResult.WordCount == 0 {
+		logger.Warn("empty transcript — Chirp 3 returned no words",
+			"session_id", event.SessionID,
+			"language", transcriptResult.LanguageCode,
+			"hint", "check audio quality (silent / non-Polish / unsupported codec) and Chirp 3 model availability")
+	}
+
+	// DEV MODE ONLY: log the plaintext transcript before encryption so a
+	// developer can verify what Chirp 3 actually returned.
+	//
+	// **PHI EXPOSURE** — this dumps the raw transcript text to Cloud
+	// Logging in cleartext. NEVER set this env var on a function instance
+	// that processes real patient sessions. Use only in staging with
+	// fixture audio. Cloud Logging entries land in
+	// `projects/<project>/logs/...stt-worker` and are visible to anyone
+	// with `roles/logging.viewer` on the project.
+	//
+	// Activate by deploying with:
+	//   environment_variables = {
+	//     ...
+	//     DEV_LOG_PLAINTEXT_TRANSCRIPT = "true"
+	//   }
+	// in module.cloud_functions, then `terragrunt apply`.
+	if os.Getenv("DEV_LOG_PLAINTEXT_TRANSCRIPT") == "true" {
+		logPlaintextTranscript(logger, event.SessionID, transcriptResult, chunks)
+	}
 
 	// 4. Persist blob (kanoniczny, ADR-IMPL-006) — chunki bez speaker labels.
 	transcriptID, err := persistTranscript(ctx, event.SessionID, transcriptResult, chunks, time.Since(startTime))
@@ -341,6 +377,56 @@ type BlobLine struct {
 	Confidence   float32 `json:"confidence"`
 	SpeakerTag   *int32  `json:"speaker_tag,omitempty"`
 	SpeakerLabel *string `json:"speaker_label,omitempty"`
+}
+
+// logPlaintextTranscript dumps the raw transcript text to the structured
+// log for development debugging. Output is split across multiple log
+// entries to stay under Cloud Logging's 256 KB per-entry limit.
+//
+// **PHI EXPOSURE WARNING** — gated by env var DEV_LOG_PLAINTEXT_TRANSCRIPT
+// in the caller. Never enable on a function instance that processes real
+// patient audio.
+func logPlaintextTranscript(logger *slog.Logger, sessionID string, result *TranscriptResult, chunks []chunker.Chunk) {
+	logger.Warn("DEV_LOG_PLAINTEXT_TRANSCRIPT=true — dumping plaintext transcript (PHI EXPOSURE)",
+		"session_id", sessionID,
+		"language", result.LanguageCode,
+		"word_count", result.WordCount,
+		"chunk_count", len(chunks))
+
+	if result.WordCount == 0 {
+		logger.Warn("dev-plaintext: Chirp 3 returned no words; nothing to dump",
+			"session_id", sessionID)
+		return
+	}
+
+	// Per-chunk lines — each chunk is its own log entry, so we get
+	// per-chunk timing + confidence in the structured payload.
+	for _, c := range chunks {
+		logger.Info("dev-plaintext-chunk",
+			"session_id", sessionID,
+			"chunk_idx", c.Index,
+			"start_ms", c.StartMS,
+			"end_ms", c.EndMS,
+			"word_count", c.WordCount,
+			"confidence", c.Confidence,
+			"text", c.Text)
+	}
+
+	// Compact summary on a single line so it's grep-friendly in
+	// `gcloud logging read`. Truncate at 8 KB to keep one entry small;
+	// per-chunk entries above carry the full content.
+	const maxSummary = 8 * 1024
+	var b strings.Builder
+	for _, c := range chunks {
+		fmt.Fprintf(&b, "[%d] %s ", c.Index, c.Text)
+		if b.Len() > maxSummary {
+			b.WriteString("…(truncated)")
+			break
+		}
+	}
+	logger.Info("dev-plaintext-summary",
+		"session_id", sessionID,
+		"text", b.String())
 }
 
 // persistTranscript zapisuje:
