@@ -72,3 +72,4 @@ You are working on **SuperWizor AI**, a clinical session co-pilot for psychother
 | Flutter therapist app | `docs/agents/06_flutter-therapist-app.md` |
 | CI/CD | `docs/agents/07_devops-cicd.md` |
 | Terraform / GCP | `docs/agents/08_infrastructure-terraform.md` |
+| Testing (E2E, integration, unit) | `docs/agents/09_testing.md` |
