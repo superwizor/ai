@@ -74,6 +74,9 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 			SignedUrl:          signedURL,
 			SignedUrlExpiresAt: timestamppb.New(expires),
 			ObjectPath:         existing.ObjectPath,
+			RequiredHeaders: map[string]string{
+				"x-goog-meta-source": "superwizor-mobile",
+			},
 		}, nil
 	}
 
@@ -113,6 +116,9 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		SignedUrl:          signedURL,
 		SignedUrlExpiresAt: timestamppb.New(expires),
 		ObjectPath:         objectPath,
+		RequiredHeaders: map[string]string{
+			"x-goog-meta-source": "superwizor-mobile",
+		},
 	}, nil
 }
 
