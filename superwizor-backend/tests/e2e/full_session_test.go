@@ -10,11 +10,20 @@
 //	go test -tags=e2e -timeout=10m -v ./e2e/... -run TestFullSession_HappyPath
 //
 // Required environment:
-//   - gcloud authenticated (`gcloud auth login`)
-//   - GCP_PROJECT_ID  (default: superwizor-ai-25ecd)
-//   - GCP_REGION      (default: europe-central2)
-//   - AUDIO_FILE      (default: tests/e2e/testdata/sample.m4a, then test-audio.wav)
-//   - GCP_AUTH_TOKEN  (optional; otherwise we shell out to `gcloud auth print-identity-token`)
+//   - gcloud authenticated (`gcloud auth login` AND `gcloud auth
+//     application-default login` — Firebase Admin SDK needs ADC)
+//   - GCP_PROJECT_ID    (default: superwizor-ai-25ecd)
+//   - GCP_REGION        (default: europe-central2)
+//   - AUDIO_FILE        (default: tests/e2e/testdata/sample.m4a, then test-audio.wav)
+//   - FIREBASE_API_KEY  (default: auto-extracted from
+//                        flutter-app/superwizor/lib/firebase_options.dart)
+//   - FIREBASE_ID_TOKEN (optional; if set, skip token minting entirely)
+//
+// Auth: services validate Firebase ID tokens via Firebase Admin SDK, so we
+// can't use `gcloud auth print-identity-token` (those are signed by Google
+// IAM, not Firebase, and the audience claim doesn't match). Instead this
+// test creates a Firebase user via Admin SDK, mints a custom token, and
+// exchanges it for an ID token via the Firebase REST API.
 //
 // What's verified end-to-end:
 //
@@ -37,17 +46,21 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	firebase "firebase.google.com/go/v4"
+	fbauth "firebase.google.com/go/v4/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -65,27 +78,30 @@ import (
 // ============================================================================
 
 type config struct {
-	projectID     string
-	region        string
-	identityURL   string
-	clinicalURL   string
-	ingestionURL  string
-	authToken     string
-	audioFile     string
-	pollDeadline  time.Duration
+	projectID      string
+	region         string
+	identityURL    string
+	clinicalURL    string
+	ingestionURL   string
+	firebaseAPIKey string
+	preMintedToken string
+	audioFile      string
+	pollDeadline   time.Duration
 }
 
 func loadConfig(t *testing.T) config {
 	t.Helper()
 
 	cfg := config{
-		projectID:    envOr("GCP_PROJECT_ID", "superwizor-ai-25ecd"),
-		region:       envOr("GCP_REGION", "europe-central2"),
-		identityURL:  os.Getenv("IDENTITY_SVC_URL"),
-		clinicalURL:  os.Getenv("CLINICAL_SVC_URL"),
-		ingestionURL: os.Getenv("INGESTION_SVC_URL"),
-		audioFile:    os.Getenv("AUDIO_FILE"),
-		pollDeadline: 5 * time.Minute,
+		projectID:      envOr("GCP_PROJECT_ID", "superwizor-ai-25ecd"),
+		region:         envOr("GCP_REGION", "europe-central2"),
+		identityURL:    os.Getenv("IDENTITY_SVC_URL"),
+		clinicalURL:    os.Getenv("CLINICAL_SVC_URL"),
+		ingestionURL:   os.Getenv("INGESTION_SVC_URL"),
+		firebaseAPIKey: os.Getenv("FIREBASE_API_KEY"),
+		preMintedToken: os.Getenv("FIREBASE_ID_TOKEN"),
+		audioFile:      os.Getenv("AUDIO_FILE"),
+		pollDeadline:   5 * time.Minute,
 	}
 
 	if cfg.identityURL == "" {
@@ -116,17 +132,35 @@ func loadConfig(t *testing.T) config {
 	}
 	require.NotEmpty(t, cfg.audioFile, "could not locate audio file; set AUDIO_FILE env var")
 
-	if cfg.authToken == "" {
-		cfg.authToken = os.Getenv("GCP_AUTH_TOKEN")
+	if cfg.firebaseAPIKey == "" {
+		cfg.firebaseAPIKey = autoDetectFirebaseAPIKey(t)
 	}
-	if cfg.authToken == "" {
-		out, err := exec.Command("gcloud", "auth", "print-identity-token").Output()
-		require.NoError(t, err, "gcloud auth print-identity-token failed; is gcloud authenticated?")
-		cfg.authToken = strings.TrimSpace(string(out))
-	}
-	require.NotEmpty(t, cfg.authToken, "auth token is empty")
 
 	return cfg
+}
+
+// autoDetectFirebaseAPIKey extracts the Web API key from firebase_options.dart
+// in the Flutter app — these keys are public (they ship with the app bundle).
+// Returns empty string if not found; caller can also pass FIREBASE_API_KEY env.
+func autoDetectFirebaseAPIKey(t *testing.T) string {
+	t.Helper()
+	candidates := []string{
+		"../../flutter-app/superwizor/lib/firebase_options.dart",
+		"../../../flutter-app/superwizor/lib/firebase_options.dart",
+		"../../../../flutter-app/superwizor/lib/firebase_options.dart",
+	}
+	rx := regexp.MustCompile(`apiKey:\s*'([^']+)'`)
+	for _, p := range candidates {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		if m := rx.FindSubmatch(data); len(m) >= 2 {
+			t.Logf("  Firebase API key auto-detected from %s", p)
+			return string(m[1])
+		}
+	}
+	return ""
 }
 
 func envOr(key, fallback string) string {
@@ -145,6 +179,106 @@ func describeServiceURL(t *testing.T, service, region, project string) string {
 	url := strings.TrimSpace(string(out))
 	require.NotEmptyf(t, url, "service URL for %s is empty", service)
 	return url
+}
+
+// ============================================================================
+// Firebase token minting
+// ============================================================================
+
+// firebaseSession holds a minted Firebase ID token + cleanup hook for the
+// underlying Firebase user.
+type firebaseSession struct {
+	UID     string
+	Email   string
+	IDToken string
+	cleanup func() error
+}
+
+// mintFirebaseSession creates a Firebase user (idempotent) and exchanges a
+// custom token for a real ID token. Requires:
+//   - Application Default Credentials (gcloud auth application-default login)
+//   - Firebase Admin role for the ADC principal
+//   - The Firebase Web API key (for the public REST exchange)
+//
+// The returned IDToken is what services validate via Firebase Admin SDK
+// downstream — `aud` claim equals the Firebase project ID.
+func mintFirebaseSession(ctx context.Context, projectID, apiKey, uid, email string) (*firebaseSession, error) {
+	if apiKey == "" {
+		return nil, errors.New("FIREBASE_API_KEY required (or place flutter-app/.../firebase_options.dart in repo)")
+	}
+
+	app, err := firebase.NewApp(ctx, &firebase.Config{ProjectID: projectID})
+	if err != nil {
+		return nil, fmt.Errorf("firebase init (is application-default-credentials set?): %w", err)
+	}
+	authClient, err := app.Auth(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("firebase auth client: %w", err)
+	}
+
+	// Create the user. Idempotent — if it already exists we proceed.
+	params := (&fbauth.UserToCreate{}).
+		UID(uid).
+		Email(email).
+		EmailVerified(true)
+	if _, err := authClient.CreateUser(ctx, params); err != nil &&
+		!fbauth.IsUIDAlreadyExists(err) &&
+		!fbauth.IsEmailAlreadyExists(err) {
+		return nil, fmt.Errorf("firebase create user: %w", err)
+	}
+
+	customToken, err := authClient.CustomToken(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("mint custom token: %w", err)
+	}
+
+	// Exchange the custom token for an ID token via the public REST endpoint.
+	exchangeBody, _ := json.Marshal(map[string]any{
+		"token":             customToken,
+		"returnSecureToken": true,
+	})
+	url := fmt.Sprintf(
+		"https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=%s",
+		apiKey)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(exchangeBody))
+	if err != nil {
+		return nil, fmt.Errorf("build exchange request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("custom token exchange: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("exchange returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	var exchanged struct {
+		IDToken      string `json:"idToken"`
+		RefreshToken string `json:"refreshToken"`
+		ExpiresIn    string `json:"expiresIn"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&exchanged); err != nil {
+		return nil, fmt.Errorf("decode exchange response: %w", err)
+	}
+	if exchanged.IDToken == "" {
+		return nil, errors.New("exchange response missing idToken")
+	}
+
+	return &firebaseSession{
+		UID:     uid,
+		Email:   email,
+		IDToken: exchanged.IDToken,
+		cleanup: func() error {
+			bg, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			return authClient.DeleteUser(bg, uid)
+		},
+	}, nil
 }
 
 // ============================================================================
@@ -189,6 +323,8 @@ func dial(t *testing.T, serviceURL, token string) *grpc.ClientConn {
 func TestFullSession_HappyPath(t *testing.T) {
 	cfg := loadConfig(t)
 	runID := time.Now().Unix()
+	firebaseUID := fmt.Sprintf("test_uid_%d", runID)
+	firebaseEmail := fmt.Sprintf("test_%d@example.com", runID)
 
 	t.Logf("══════════════════════════════════════════════════════════════")
 	t.Logf("  E2E full-session test")
@@ -205,12 +341,37 @@ func TestFullSession_HappyPath(t *testing.T) {
 	audioSize := audioStat.Size()
 	usingPlaceholder := audioSize < 1024 // 5-byte stub vs real audio
 
-	// Dial all three services.
-	identityConn := dial(t, cfg.identityURL, cfg.authToken)
+	// ------------------------------------------------------------------------
+	// Step 0 — Mint a Firebase ID token (or use the pre-minted one)
+	// ------------------------------------------------------------------------
+	tokenCtx, tokenCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer tokenCancel()
+
+	var idToken string
+	if cfg.preMintedToken != "" {
+		t.Logf("Using FIREBASE_ID_TOKEN from env (skipping mint)")
+		idToken = cfg.preMintedToken
+	} else {
+		t.Logf("Minting Firebase ID token for uid=%s ...", firebaseUID)
+		fbSession, err := mintFirebaseSession(tokenCtx, cfg.projectID, cfg.firebaseAPIKey, firebaseUID, firebaseEmail)
+		require.NoError(t, err, "Firebase token minting")
+		t.Logf("✓ Firebase user + ID token ready")
+		t.Cleanup(func() {
+			if err := fbSession.cleanup(); err != nil {
+				t.Logf("⚠ Firebase user cleanup failed for %s: %v", firebaseUID, err)
+			} else {
+				t.Logf("✓ cleanup: Firebase user %s deleted", firebaseUID)
+			}
+		})
+		idToken = fbSession.IDToken
+	}
+
+	// Dial all three services with the Firebase ID token.
+	identityConn := dial(t, cfg.identityURL, idToken)
 	defer identityConn.Close()
-	clinicalConn := dial(t, cfg.clinicalURL, cfg.authToken)
+	clinicalConn := dial(t, cfg.clinicalURL, idToken)
 	defer clinicalConn.Close()
-	ingestionConn := dial(t, cfg.ingestionURL, cfg.authToken)
+	ingestionConn := dial(t, cfg.ingestionURL, idToken)
 	defer ingestionConn.Close()
 
 	identityClient := identityv1.NewIdentityServiceClient(identityConn)
@@ -222,11 +383,13 @@ func TestFullSession_HappyPath(t *testing.T) {
 
 	// ------------------------------------------------------------------------
 	// Step 1 — Therapist registration
+	//   FirebaseUid MUST equal the token's `sub` claim — that's how
+	//   identity-svc links the Firebase identity to our `users` row.
 	// ------------------------------------------------------------------------
 	t.Log("\n═══ Step 1/8: CreateUser (therapist) ═══")
 	therapist, err := identityClient.CreateUser(ctx, &identityv1.CreateUserRequest{
-		FirebaseUid:    fmt.Sprintf("test_uid_%d", runID),
-		Email:          fmt.Sprintf("test_%d@example.com", runID),
+		FirebaseUid:    firebaseUID,
+		Email:          firebaseEmail,
 		Role:           identityv1.UserRole_USER_ROLE_THERAPIST,
 		FirstName:      "E2E",
 		LastName:       "Therapist",
@@ -236,7 +399,7 @@ func TestFullSession_HappyPath(t *testing.T) {
 	})
 	require.NoError(t, err, "CreateUser")
 	require.NotEmpty(t, therapist.Id, "therapist.id is empty")
-	t.Logf("✓ Therapist registered: id=%s", therapist.Id)
+	t.Logf("✓ Therapist registered: id=%s (firebase_uid=%s)", therapist.Id, firebaseUID)
 
 	// ------------------------------------------------------------------------
 	// Step 2 — Cross-service sanity: list modalities
