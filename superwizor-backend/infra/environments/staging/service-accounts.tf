@@ -61,6 +61,41 @@ resource "google_service_account_iam_member" "pubsub_sa_llm_token_creator" {
 }
 
 # ============================================================================
+# Cloud Run public-invocability for Flutter-facing services.
+#
+# These services are deployed by CI's `gcloud run deploy --allow-unauthenticated`
+# (the service revisions themselves are not yet terraform-managed), but we
+# pin the IAM policy here so manual `add-iam-policy-binding` / `remove-iam
+# -policy-binding` commands and accidental --no-allow-unauthenticated deploys
+# can't quietly break Flutter.
+#
+# Public at the Cloud Run frontend — the actual user identity is verified
+# at the application layer via Firebase ID token (see identity-svc's
+# Firebase Admin SDK call paths).
+#
+# Internal services (billing-svc, ai-pipeline-svc, llm-worker, stt-worker)
+# are NOT in this list — they remain SA-bound only.
+# ============================================================================
+locals {
+  public_cloud_run_services = [
+    "identity-svc",
+    "clinical-svc",
+    "ingestion-svc",
+    "api-service",
+  ]
+}
+
+resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
+  for_each = toset(local.public_cloud_run_services)
+
+  project  = var.project_id
+  location = "europe-central2"
+  name     = each.key
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+# ============================================================================
 # E2E test prerequisite: grant explicit principals the right to call
 # `signBlob` on the Firebase Admin SDK service account, which the Firebase
 # Admin Go SDK invokes when it falls back from key-based signing to API-based
