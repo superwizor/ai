@@ -59,3 +59,29 @@ resource "google_service_account_iam_member" "pubsub_sa_llm_token_creator" {
   role               = "roles/iam.serviceAccountTokenCreator"
   member             = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
+
+# ============================================================================
+# E2E test prerequisite: grant explicit principals the right to call
+# `signBlob` on the Firebase Admin SDK service account, which the Firebase
+# Admin Go SDK invokes when it falls back from key-based signing to API-based
+# signing (i.e., whenever credentials come from ADC rather than a JSON key).
+#
+# The Firebase Admin SDK SA `firebase-adminsdk-fbsvc@<project>` is auto-
+# created by Firebase when the project is provisioned; we only attach IAM
+# bindings here, we don't manage its lifecycle.
+#
+# Members live in `var.e2e_token_minters` (default: empty). Add via tfvars
+# or override file rather than editing this list inline:
+#
+#   e2e_token_minters = [
+#     "user:dev1@example.com",
+#     "serviceAccount:e2e-runner@${PROJECT_ID}.iam.gserviceaccount.com",
+#   ]
+# ============================================================================
+resource "google_service_account_iam_member" "e2e_firebase_token_creator" {
+  for_each = toset(var.e2e_token_minters)
+
+  service_account_id = "projects/${var.project_id}/serviceAccounts/firebase-adminsdk-fbsvc@${var.project_id}.iam.gserviceaccount.com"
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = each.key
+}

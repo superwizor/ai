@@ -207,7 +207,11 @@ func mintFirebaseSession(ctx context.Context, projectID, apiKey, uid, email stri
 		return nil, errors.New("FIREBASE_API_KEY required (or place flutter-app/.../firebase_options.dart in repo)")
 	}
 
-	app, err := firebase.NewApp(ctx, &firebase.Config{ProjectID: projectID})
+	config := &firebase.Config{
+		ProjectID:        projectID,
+		ServiceAccountID: fmt.Sprintf("firebase-adminsdk-fbsvc@%s.iam.gserviceaccount.com", projectID),
+	}
+	app, err := firebase.NewApp(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("firebase init (is application-default-credentials set?): %w", err)
 	}

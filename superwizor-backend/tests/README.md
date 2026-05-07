@@ -30,6 +30,37 @@ So this test mints a real Firebase ID token by:
 
 The test reuses that ID token for **all** gRPC calls (identity, clinical, ingestion). On cleanup, the Firebase user is deleted via Admin SDK regardless of test outcome.
 
+### One-time IAM grant for token minting
+
+The Firebase Admin SDK signs custom tokens by calling the **IAM `signBlob` API** on the Firebase Admin service account (`firebase-adminsdk-fbsvc@<project>`). It only signs in-process when given a service-account JSON key file — ADC users always go via `signBlob`. That requires `roles/iam.serviceAccountTokenCreator` on the Firebase Admin SA.
+
+**Preferred — terraform-managed** (one-time, declarative):
+
+```hcl
+# infra/environments/staging/terraform.tfvars (or override file)
+e2e_token_minters = [
+  "user:you@example.com",
+  "serviceAccount:e2e-runner@superwizor-ai-25ecd.iam.gserviceaccount.com",
+]
+```
+
+```bash
+cd infra/environments/staging
+terragrunt apply -target='google_service_account_iam_member.e2e_firebase_token_creator'
+```
+
+**Quick fix — gcloud one-liner** (skip terraform; works immediately):
+
+```bash
+gcloud iam service-accounts add-iam-policy-binding \
+  firebase-adminsdk-fbsvc@superwizor-ai-25ecd.iam.gserviceaccount.com \
+  --member="user:$(gcloud config get-value account)" \
+  --role="roles/iam.serviceAccountTokenCreator" \
+  --project=superwizor-ai-25ecd
+```
+
+Without this, the test fails on the first call to `auth().CustomToken()` with `Permission 'iam.serviceAccounts.signBlob' denied`.
+
 ## Environment
 
 | Variable | Default | Purpose |
