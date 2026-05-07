@@ -114,23 +114,30 @@ func loadConfig(t *testing.T) config {
 		cfg.ingestionURL = describeServiceURL(t, "ingestion-svc", cfg.region, cfg.projectID)
 	}
 
+	// Resolve audio path. Either AUDIO_FILE points at it explicitly, or
+	// we look for the conventional fixture at testdata/sample.m4a (path
+	// relative to this test package — Go test sets cwd to the package
+	// dir, so it lands at tests/e2e/testdata/sample.m4a).
 	if cfg.audioFile == "" {
-		// Default: testdata/sample.m4a (in tests module), then repo-root test-audio.wav.
-		for _, candidate := range []string{
-			"testdata/sample.m4a",
-			"e2e/testdata/sample.m4a",
-			"../tests/e2e/testdata/sample.m4a",
-			"../../test-audio.wav",
-			"../../../test-audio.wav",
-		} {
-			if _, err := os.Stat(candidate); err == nil {
-				abs, _ := filepath.Abs(candidate)
-				cfg.audioFile = abs
-				break
-			}
+		const defaultPath = "testdata/sample.m4a"
+		if _, err := os.Stat(defaultPath); err == nil {
+			abs, _ := filepath.Abs(defaultPath)
+			cfg.audioFile = abs
+		}
+	} else if !filepath.IsAbs(cfg.audioFile) {
+		// Make AUDIO_FILE absolute too — log entries downstream are
+		// clearer with full paths, and we're about to pass it to ffprobe
+		// which is happier with absolute paths anyway.
+		if abs, err := filepath.Abs(cfg.audioFile); err == nil {
+			cfg.audioFile = abs
 		}
 	}
-	require.NotEmpty(t, cfg.audioFile, "could not locate audio file; set AUDIO_FILE env var")
+
+	require.NotEmptyf(t, cfg.audioFile,
+		"audio file not located.\n"+
+			"  Either:\n"+
+			"    - drop a Polish-speech m4a at superwizor-backend/tests/e2e/testdata/sample.m4a, or\n"+
+			"    - set AUDIO_FILE=/absolute/path/to/your.m4a")
 
 	if cfg.firebaseAPIKey == "" {
 		cfg.firebaseAPIKey = autoDetectFirebaseAPIKey(t)
