@@ -1,11 +1,11 @@
 package services
 
 import (
+	speech "cloud.google.com/go/speech/apiv2"
+	"cloud.google.com/go/speech/apiv2/speechpb"
 	"context"
 	"fmt"
 	"log"
-	speech "cloud.google.com/go/speech/apiv2"
-	"cloud.google.com/go/speech/apiv2/speechpb"
 )
 
 type STTService struct {
@@ -26,17 +26,17 @@ func NewSTTService(ctx context.Context, projectID string) (*STTService, error) {
 
 func (s *STTService) TranscribeAudio(ctx context.Context, gcsURI string) (string, error) {
 	log.Printf("Starting transcription for %s", gcsURI)
-	
+
 	// Default to europe-west4 for Chirp / Gemini usage as per ADR
 	location := "europe-west4"
-	
+
 	req := &speechpb.RecognizeRequest{
 		Recognizer: fmt.Sprintf("projects/%s/locations/%s/recognizers/_", s.projectID, location),
 		Config: &speechpb.RecognitionConfig{
-			Model: "chirp", // Using Chirp model for STT
+			Model:         "chirp", // Using Chirp model for STT
 			LanguageCodes: []string{"pl-PL"},
 			Features: &speechpb.RecognitionFeatures{
-				EnableWordTimeOffsets: true,
+				EnableWordTimeOffsets:      true,
 				EnableAutomaticPunctuation: true,
 				DiarizationConfig: &speechpb.SpeakerDiarizationConfig{
 					MinSpeakerCount: 2,

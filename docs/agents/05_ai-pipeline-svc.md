@@ -179,6 +179,10 @@ Both worker triggers use `RETRY_POLICY_RETRY` (Eventarc retries on function erro
 
 **Careful:**
 - **JSON schema changes** — Gemini's structured output is strict. Adding required fields without updating the prompt → invalid responses. Adding optional fields with reasonable defaults is the safe path.
+Vertex Schema Type Mismatch: The Vertex AI Go SDK (genai.Schema) defines the Type field as an int32 enum (genai.TypeUnspecified = 0, genai.TypeString = 1, etc.). However, our report_schema.json correctly uses strings for types (e.g., "type": "object" or "type": "string").
+
+Silent Failure: json.Unmarshal cannot cast a string like "object" into an int32 (genai.Type). This unmarshaling step silently fails (and the error is ignored via _ =), leaving the Type field as 0 (TypeUnspecified) for every single property in the schema.
+API Rejection: When the payload is sent to Gemini, Vertex AI rejects the schema because all elements have a TypeUnspecified type. So use custom schema builder instead of json.Unmarshal.
 - **Idempotency:** the `FOR UPDATE SKIP LOCKED` pattern is non-negotiable. If you reorder steps (e.g., delete audio before persisting transcript), you must re-think the recovery path.
 - **`speaker_label_mapping` writes:** must include EVERY speaker in `transcript_segments`, otherwise UI shows blanks. The `generateAndSaveSpeakerLabels` function has the canonical logic — don't bypass it.
 

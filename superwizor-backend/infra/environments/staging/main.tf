@@ -82,6 +82,11 @@ module "cloud_functions" {
   stt_worker_sa_email        = google_service_account.stt_worker.email
   llm_worker_sa_email        = google_service_account.llm_worker.email
   app_data_key_id            = module.kms.app_data_key_id
+  # PHI exposure: only flip to true for hands-on debugging in staging,
+  # and turn back off the moment you're done. Each invocation logs a
+  # loud "DEV_LOG_PLAINTEXT_TRANSCRIPT=true" warning — handy as an audit
+  # tripwire if it gets left on.
+  dev_log_plaintext_transcript = false
 
   depends_on = [module.cloud_sql, module.storage, module.pubsub, google_service_account.stt_worker, google_service_account.llm_worker, module.kms]
 }

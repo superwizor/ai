@@ -15,7 +15,7 @@ class UploadService {
     if (!await tempDir.exists()) {
       await tempDir.create(recursive: true);
     }
-    final tempFile = File(p.join(tempDir.path, 'upload_buffer_${DateTime.now().millisecondsSinceEpoch}.m4a'));
+    final tempFile = File(p.join(tempDir.path, 'upload_buffer_${DateTime.now().millisecondsSinceEpoch}.flac'));
     
     final sink = tempFile.openWrite();
     final encrypter = enc.Encrypter(enc.AES(key));

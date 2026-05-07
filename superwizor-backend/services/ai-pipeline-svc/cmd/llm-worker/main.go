@@ -377,11 +377,64 @@ Wygeneruj raport zgodny z podanym JSON Schema. Pamiętaj o:
 	return output.String(), stats, nil
 }
 
+func mapSchemaType(t string) vertexai.Type {
+	switch t {
+	case "string":
+		return vertexai.TypeString
+	case "number":
+		return vertexai.TypeNumber
+	case "integer":
+		return vertexai.TypeInteger
+	case "boolean":
+		return vertexai.TypeBoolean
+	case "array":
+		return vertexai.TypeArray
+	case "object":
+		return vertexai.TypeObject
+	default:
+		return vertexai.TypeUnspecified
+	}
+}
+
 func schemaToVertexSchema(s map[string]any) *vertexai.Schema {
-	schemaJSON, _ := json.Marshal(s)
-	var vs vertexai.Schema
-	_ = json.Unmarshal(schemaJSON, &vs)
-	return &vs
+	if s == nil {
+		return nil
+	}
+	vs := &vertexai.Schema{}
+
+	if t, ok := s["type"].(string); ok {
+		vs.Type = mapSchemaType(t)
+	}
+	if d, ok := s["description"].(string); ok {
+		vs.Description = d
+	}
+	if e, ok := s["enum"].([]any); ok {
+		for _, val := range e {
+			if str, ok := val.(string); ok {
+				vs.Enum = append(vs.Enum, str)
+			}
+		}
+	}
+	if p, ok := s["properties"].(map[string]any); ok {
+		vs.Properties = make(map[string]*vertexai.Schema)
+		for k, v := range p {
+			if vMap, ok := v.(map[string]any); ok {
+				vs.Properties[k] = schemaToVertexSchema(vMap)
+			}
+		}
+	}
+	if i, ok := s["items"].(map[string]any); ok {
+		vs.Items = schemaToVertexSchema(i)
+	}
+	if req, ok := s["required"].([]any); ok {
+		for _, val := range req {
+			if str, ok := val.(string); ok {
+				vs.Required = append(vs.Required, str)
+			}
+		}
+	}
+
+	return vs
 }
 
 // generateAndSaveSpeakerLabels po analizie LLM tworzy mapping speaker → label

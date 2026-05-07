@@ -86,7 +86,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       final ok = await _uploader.uploadFileToSignedUrl(
         signedUrl: signedUrl,
         file: tempFile,
-        contentType: 'audio/m4a',
+        contentType: 'audio/flac',
       );
 
       // Szybko usuwamy zdekodowany bufor z dysku
@@ -129,7 +129,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       patientFileId: widget.patientFileId,
       therapistId: widget.therapistId,
       estimatedSizeBytes: Int64(sizeBytes),
-      contentType: 'audio/m4a',
+      contentType: 'audio/flac',
       clientPlatform: 'flutter',
       idempotencyKey: _sessionId ?? const Uuid().v4(),
     );
