@@ -21,5 +21,4 @@ use (
 	./services/identity-svc
 	./services/ingestion-svc
 	./services/notification-svc
-	./tests
 )

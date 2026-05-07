@@ -1,0 +1,12 @@
+// Pin this directory as its own workspace so `go test` from inside `tests/`
+// doesn't walk up and pick up `superwizor-backend/go.work`. The parent
+// workspace deliberately does NOT list `./tests` because including a test
+// module there forces every Dockerfile that copies go.work to also copy the
+// `tests/` tree — undesirable coupling.
+//
+// Run E2E from this directory:
+//   go test -tags=e2e -timeout=10m -v ./e2e/...
+
+go 1.26.2
+
+use .
