@@ -225,30 +225,30 @@ type SessionContext struct {
 // ReportPayload odpowiada strukturze zwracanej przez Gemini wg report_schema.json
 // (zob. Sprint 2.6.1). Zawiera m.in. wynik diaryzacji LLM (SpeakerRoleInference).
 type ReportPayload struct {
-	Title                            string                `json:"title"`
-	SummaryShort                     string                `json:"summary_short"`
-	SpeakerRoleInference             SpeakerRoleInference  `json:"speaker_role_inference"`
-	MainThemes                       []ThemeItem           `json:"main_themes"`
-	TherapeuticAllianceObservations  string                `json:"therapeutic_alliance_observations"`
-	InterventionsObserved            []InterventionItem    `json:"interventions_observed"`
-	HiTOPDimensions                  []HiTOPItem           `json:"hitop_dimensions"`
-	RiskAssessment                   RiskAssessment        `json:"risk_assessment"`
-	Sentiment                        string                `json:"sentiment"`
-	RecommendationsForNextSession    []string              `json:"recommendations_for_next_session"`
-	RAGSummaryChunk                  string                `json:"rag_summary_chunk"`
+	Title                           string               `json:"title"`
+	SummaryShort                    string               `json:"summary_short"`
+	SpeakerRoleInference            SpeakerRoleInference `json:"speaker_role_inference"`
+	MainThemes                      []ThemeItem          `json:"main_themes"`
+	TherapeuticAllianceObservations string               `json:"therapeutic_alliance_observations"`
+	InterventionsObserved           []InterventionItem   `json:"interventions_observed"`
+	HiTOPDimensions                 []HiTOPItem          `json:"hitop_dimensions"`
+	RiskAssessment                  RiskAssessment       `json:"risk_assessment"`
+	Sentiment                       string               `json:"sentiment"`
+	RecommendationsForNextSession   []string             `json:"recommendations_for_next_session"`
+	RAGSummaryChunk                 string               `json:"rag_summary_chunk"`
 }
 
 // SpeakerRoleInference reprezentuje wynik diaryzacji wykonanej przez LLM
 // (ADR-IMPL-007). Zawiera (a) klastrowanie chunków na grupy mówców
 // i (b) dedukowane role per grupa.
 type SpeakerRoleInference struct {
-	Method                       string            `json:"method"`            // 'llm_inferred' | 'native_chirp_3'
+	Method string `json:"method"` // 'llm_inferred' | 'native_chirp_3'
 	// chunk_assignments removed — Gemini's response_schema doesn't support
 	// `additionalProperties` (open string-keyed maps), and SpeakerGroups
 	// already carries the inverse mapping via .ChunkIndices. If a future
 	// caller needs per-chunk lookup, derive it from SpeakerGroups in code.
-	SpeakerGroups []SpeakerGroup `json:"speaker_groups"`
-	OverallDiarizationConfidence float64           `json:"overall_diarization_confidence"`
+	SpeakerGroups                []SpeakerGroup `json:"speaker_groups"`
+	OverallDiarizationConfidence float64        `json:"overall_diarization_confidence"`
 }
 
 type SpeakerGroup struct {

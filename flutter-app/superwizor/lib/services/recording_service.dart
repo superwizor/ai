@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 enum RecordingState { idle, recording, paused, stopped, error }
 
@@ -42,7 +43,8 @@ class RecordingService {
   enc.IV? get sessionIV => _sessionIV;
 
   Future<bool> hasPermission() async {
-    return await _recorder.hasPermission();
+    final status = await Permission.microphone.request();
+    return status.isGranted;
   }
 
   Future<void> startRecording(String sessionId) async {
@@ -83,13 +85,12 @@ class RecordingService {
   }
 
   Future<void> _startNewChunk() async {
-    final filePath = p.join(_sessionDir!, 'chunk_${_chunkIndex.toString().padLeft(4, '0')}.m4a');
+    final filePath = p.join(_sessionDir!, 'chunk_${_chunkIndex.toString().padLeft(4, '0')}.flac');
     _chunkStartTime = DateTime.now();
 
     await _recorder.start(
       const RecordConfig(
-        encoder: AudioEncoder.aacLc,
-        bitRate: 64000,
+        encoder: AudioEncoder.flac,
         sampleRate: 16000,
         numChannels: 1,
       ),
@@ -161,7 +162,7 @@ class RecordingService {
 
     final files = await dir
         .list()
-        .where((e) => e is File && e.path.endsWith('.m4a'))
+        .where((e) => e is File && e.path.endsWith('.flac'))
         .map((e) => e.path)
         .toList();
 

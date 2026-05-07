@@ -121,12 +121,17 @@ Firestore rules enforce read-only for clients; backend writes via Admin SDK (not
 
 ## Recording → upload flow
 
+We must switch the recording encoder to a format natively supported by chirp_3 (e.g., FLAC, WAV, or OPUS).
+
+[MODIFY] 
+recording_service.dart
+Change encoder: AudioEncoder.aacLc to encoder: AudioEncoder.flac (or .wav / .opus).
 ```
 User taps Record
-  → flutter_sound captures audio (m4a, 16kHz mono, ≤300MB)
+  → flutter_sound captures audio AudioEncoder.flac (FLAC, 16kHz mono, ≤300MB)
   → on stop: ingestion-svc.RequestUploadTicket(idempotency_key)
   → receive signed URL
-  → PUT audio to GCS (Content-Type: audio/m4a, x-goog-content-length-range)
+  → PUT audio to GCS (Content-Type: audio/flac, x-goog-content-length-range)
   → ingestion-svc.ConfirmUpload(upload_id) → emits to Pub/Sub
   → poll/subscribe for report via Firestore session_state OR
     clinical-svc.GetSessionDetails (status + transcript_id + report_id when ready)

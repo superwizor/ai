@@ -278,12 +278,21 @@ func transcribeAudio(ctx context.Context, gcsURI string, useNativeDiarization bo
 		return nil, fmt.Errorf("await: %w", err)
 	}
 
-	return ParseChirp3Results(resp, useNativeDiarization), nil
+	return ParseChirp3Results(resp, useNativeDiarization)
 }
 
 // ParseChirp3Results extracts words and confidence from the Speech API response.
 // Słowa są zwracane bez speaker_tag (default flow) — chunker je zgrupuje.
-func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarization bool) *TranscriptResult {
+//
+// Returns an error if any file-level result has a non-nil Error status. We
+// always submit a single file per BatchRecognize call (one audio upload per
+// session), so any file-level error means transcription failed and the
+// caller should not proceed with a "successful but empty" TranscriptResult.
+// This prevents the silent-failure path where Chirp 3 rejects the codec
+// (e.g. M4A/AAC), the response carries an INTERNAL/INVALID_ARGUMENT
+// per-file Error, and ProcessAudio would otherwise see WordCount=0 and
+// keep going.
+func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarization bool) (*TranscriptResult, error) {
 	result := &TranscriptResult{
 		LanguageCode:         "pl-PL",
 		HasNativeDiarization: useNativeDiarization,
@@ -292,7 +301,21 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 	totalConfidence := float32(0)
 	confidenceCount := 0
 
-	for _, fileResult := range resp.Results {
+	// Collect every file-level error so the message names all failing
+	// inputs at once (useful if/when we ever batch multiple files).
+	var fileErrors []string
+
+	for fileKey, fileResult := range resp.Results {
+		if errStatus := fileResult.GetError(); errStatus != nil {
+			fileErrors = append(fileErrors,
+				fmt.Sprintf("%s: code=%d %s", fileKey, errStatus.Code, errStatus.Message))
+			slog.Error("Speech-to-Text returned an error for file",
+				"file", fileKey,
+				"code", errStatus.Code,
+				"message", errStatus.Message)
+			continue
+		}
+
 		inline := fileResult.GetInlineResult()
 		if inline == nil || inline.GetTranscript() == nil {
 			continue
@@ -330,7 +353,18 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 	}
 	result.SpeakerCount = len(speakerSet)
 
-	return result
+	if len(fileErrors) > 0 {
+		// Common causes:
+		//   - Codec not supported by Chirp 3 (e.g. M4A/AAC; use FLAC, WAV-LINEAR16, OGG-OPUS).
+		//   - Sample rate outside [8000, 48000] Hz.
+		//   - Audio file fundamentally unreadable.
+		// Returning an error fails the session loud instead of silently
+		// producing an empty transcript that triggers downstream LLM noise.
+		return result, fmt.Errorf("chirp 3 returned %d file-level error(s): %s",
+			len(fileErrors), strings.Join(fileErrors, "; "))
+	}
+
+	return result, nil
 }
 
 func updateSessionStatus(ctx context.Context, sessionID, status string) error {

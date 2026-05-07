@@ -14,9 +14,9 @@
 //     application-default login` — Firebase Admin SDK needs ADC)
 //   - GCP_PROJECT_ID    (default: superwizor-ai-25ecd)
 //   - GCP_REGION        (default: europe-central2)
-//   - AUDIO_FILE        (default: tests/e2e/testdata/sample.m4a, then test-audio.wav)
+//   - AUDIO_FILE        (default: tests/e2e/testdata/sample.flac)
 //   - FIREBASE_API_KEY  (default: auto-extracted from
-//                        flutter-app/superwizor/lib/firebase_options.dart)
+//     flutter-app/superwizor/lib/firebase_options.dart)
 //   - FIREBASE_ID_TOKEN (optional; if set, skip token minting entirely)
 //
 // Auth: services validate Firebase ID tokens via Firebase Admin SDK, so we
@@ -27,18 +27,18 @@
 //
 // What's verified end-to-end:
 //
-//	1. CreateUser            (identity-svc)   — therapist registration
-//	2. ListModalities        (clinical-svc)   — cross-service auth check
-//	3. CreatePatientFile     (clinical-svc)   — first patient + idempotency
-//	4. CreateAudioUpload     (ingestion-svc)  — request signed URL
-//	5. PUT to GCS                              — direct upload
-//	6. CompleteAudioUpload   (ingestion-svc)  — implicitly creates session
-//	7. Poll GetSessionDetails until terminal — verify STT + LLM transitions
-//	   - speaker_label_mapping populated, keys are STRING-typed (gotcha!)
-//	   - transcript segments present and chronologically ordered
-//	   - reports[] non-empty
-//	   - canonical transcript blob hash CHANGED after generation
-//	8. Soft-delete patient file (cleanup)
+//  1. CreateUser            (identity-svc)   — therapist registration
+//  2. ListModalities        (clinical-svc)   — cross-service auth check
+//  3. CreatePatientFile     (clinical-svc)   — first patient + idempotency
+//  4. CreateAudioUpload     (ingestion-svc)  — request signed URL
+//  5. PUT to GCS                              — direct upload
+//  6. CompleteAudioUpload   (ingestion-svc)  — implicitly creates session
+//  7. Poll GetSessionDetails until terminal — verify STT + LLM transitions
+//     - speaker_label_mapping populated, keys are STRING-typed (gotcha!)
+//     - transcript segments present and chronologically ordered
+//     - reports[] non-empty
+//     - canonical transcript blob hash CHANGED after generation
+//  8. Soft-delete patient file (cleanup)
 package e2e_test
 
 import (
@@ -115,11 +115,9 @@ func loadConfig(t *testing.T) config {
 	}
 
 	// Resolve audio path. Either AUDIO_FILE points at it explicitly, or
-	// we look for the conventional fixture at testdata/sample.m4a (path
-	// relative to this test package — Go test sets cwd to the package
-	// dir, so it lands at tests/e2e/testdata/sample.m4a).
+	// we look for the conventional fixture at testdata/sample.flac
 	if cfg.audioFile == "" {
-		const defaultPath = "testdata/sample.m4a"
+		const defaultPath = "testdata/sample.flac"
 		if _, err := os.Stat(defaultPath); err == nil {
 			abs, _ := filepath.Abs(defaultPath)
 			cfg.audioFile = abs
@@ -136,8 +134,8 @@ func loadConfig(t *testing.T) config {
 	require.NotEmptyf(t, cfg.audioFile,
 		"audio file not located.\n"+
 			"  Either:\n"+
-			"    - drop a Polish-speech m4a at superwizor-backend/tests/e2e/testdata/sample.m4a, or\n"+
-			"    - set AUDIO_FILE=/absolute/path/to/your.m4a")
+			"    - drop a Polish-speech flac at superwizor-backend/tests/e2e/testdata/sample.flac, or\n"+
+			"    - set AUDIO_FILE=/absolute/path/to/your.flac")
 
 	if cfg.firebaseAPIKey == "" {
 		cfg.firebaseAPIKey = autoDetectFirebaseAPIKey(t)
@@ -347,11 +345,10 @@ func TestFullSession_HappyPath(t *testing.T) {
 	t.Logf("  Ingestion URL: %s", cfg.ingestionURL)
 	t.Logf("══════════════════════════════════════════════════════════════")
 
-	// Hard-fail before doing anything expensive (Firebase mint, gRPC dial,
-	// AI pipeline) if the audio file is obviously bad. The pipeline takes
-	// minutes and Vertex AI usage costs money; pre-flight validation in
-	// milliseconds is worth it.
-	audioSize := validateAudioFile(t, cfg.audioFile)
+	// 2. Validate fixture sanity
+	//    Many audio problems downstream stem from passing silent or 
+	//    non-audio files to the pipeline. We do a quick check here.
+	audioSize := assertValidAudio(t, cfg.audioFile)
 
 	// ------------------------------------------------------------------------
 	// Step 0 — Mint a Firebase ID token (or use the pre-minted one)
@@ -470,7 +467,7 @@ func TestFullSession_HappyPath(t *testing.T) {
 	upload, err := ingestionClient.CreateAudioUpload(ctx, &ingestionv1.CreateAudioUploadRequest{
 		TherapistId:              therapist.Id,
 		PatientFileId:            patient.Id,
-		ContentType:              "audio/m4a",
+		ContentType:              "audio/flac",
 		EstimatedSizeBytes:       audioSize,
 		EstimatedDurationSeconds: 600,
 		IdempotencyKey:           fmt.Sprintf("e2e-upload-%d", runID),
@@ -512,7 +509,7 @@ func TestFullSession_HappyPath(t *testing.T) {
 		req.Header.Set("x-goog-meta-source", "superwizor-mobile")
 	}
 	if req.Header.Get("Content-Type") == "" {
-		req.Header.Set("Content-Type", "audio/m4a")
+		req.Header.Set("Content-Type", "audio/flac")
 	}
 
 	resp, err := http.DefaultClient.Do(req)
@@ -596,7 +593,7 @@ func TestFullSession_HappyPath(t *testing.T) {
 			"Investigate via:\n"+
 			"  gcloud logging read 'resource.labels.service_name=\"llm-worker\" AND severity>=ERROR' \\\n"+
 			"    --project=%s --limit=10 --format=json | jq '.[].jsonPayload'",
-			details.Session, /* project */ "superwizor-ai-25ecd")
+			details.Session /* project */, "superwizor-ai-25ecd")
 	default:
 		t.Fatalf("Timed out before terminal state (last seen: %q). "+
 			"Vertex AI cold start may be slow; consider retrying or extending pollDeadline.",
@@ -606,19 +603,19 @@ func TestFullSession_HappyPath(t *testing.T) {
 
 // assertCompletedSessionShape verifies invariants that must hold for any
 // successful session, regardless of the specific audio content.
-// validateAudioFile pre-flights the audio file before any expensive
+// assertValidAudio pre-flights the audio file before any expensive
 // downstream work. Hard-fails the test on:
 //   - file missing or unreadable
 //   - size out of bounds (≤ 1 KB or > 300 MB)
-//   - not an MP4/M4A container (magic-byte check)
+//   - not a FLAC file (magic-byte check)
 //   - if ffprobe is on PATH: bad codec, sample-rate, duration
 //
 // Soft-warns (logs but doesn't fail) on:
 //   - non-mono audio (Chirp 3 prefers mono)
 //   - missing ffprobe (basic validation only)
 //
-// Returns the file size in bytes for downstream use.
-func validateAudioFile(t *testing.T, path string) int64 {
+// assertValidAudio does fail-fast sanity checks on the fixture.
+func assertValidAudio(t *testing.T, path string) int64 {
 	t.Helper()
 
 	const (
@@ -642,9 +639,8 @@ func validateAudioFile(t *testing.T, path string) int64 {
 		"audio file is %d bytes (%d MB); the signed-URL contract caps at %d MB.",
 		size, size/1024/1024, maxSize/1024/1024)
 
-	// 3. Magic-byte sanity. M4A is an MP4 container; the first box should be
-	// `ftyp` at offset 4–8, brand at 8–12. We don't fully parse boxes — just
-	// reject things that aren't even MP4-shaped.
+	// 3. Magic-byte sanity. FLAC files start with "fLaC".
+	//    We don't fully parse them — just reject things that aren't FLAC.
 	f, err := os.Open(path)
 	require.NoErrorf(t, err, "open %q", path)
 	defer func() { _ = f.Close() }()
@@ -653,21 +649,12 @@ func validateAudioFile(t *testing.T, path string) int64 {
 	_, err = io.ReadFull(f, head)
 	require.NoErrorf(t, err, "read header of %q", path)
 
-	require.Equalf(t, "ftyp", string(head[4:8]),
-		"file at %s is not an M4A/MP4 container. Got first 12 bytes: %x. "+
-			"Some encoders emit raw AAC (.aac) or MP3 (.mp3); rename and re-encode to .m4a.",
-		path, head)
+	require.Equalf(t, "fLaC", string(head[0:4]),
+		"file at %s is not a FLAC file. Got first 4 bytes: %x. "+
+			"The app currently uses FLAC; rename and re-encode to .flac.",
+		path, head[0:4])
 
-	brand := strings.TrimSpace(string(head[8:12]))
-	validBrands := map[string]bool{
-		"M4A": true, "M4B": true, "mp42": true, "mp41": true,
-		"isom": true, "iso2": true, "dash": true,
-	}
-	if !validBrands[brand] {
-		t.Logf("audio: unusual M4A brand %q — Chirp 3 may still accept it", brand)
-	}
-
-	t.Logf("audio: size=%d bytes (%.1f MB), M4A brand=%q", size, float64(size)/1024/1024, brand)
+	t.Logf("audio: size=%d bytes (%.1f MB), FLAC magic byte found", size, float64(size)/1024/1024)
 
 	// 4. Optional rich validation via ffprobe. Fail-fast on bad codec /
 	// duration / sample rate; soft-warn on stereo (Chirp 3 still works on
@@ -703,9 +690,10 @@ func validateAudioFile(t *testing.T, path string) int64 {
 	}
 	require.NoError(t, json.Unmarshal(out, &probe), "parse ffprobe output")
 
-	// Container family check — m4a/mp4 share the same family name in ffprobe.
-	require.Containsf(t, probe.Format.FormatName, "mp4",
-		"ffprobe reports container format %q; expected mp4-family for .m4a", probe.Format.FormatName)
+	// Container family check — ffprobe reports "flac" for native FLAC files.
+	require.Containsf(t, probe.Format.FormatName, "flac",
+		"ffprobe reports container format %q; expected flac. Re-encode with ffmpeg -c:a flac.",
+		probe.Format.FormatName)
 
 	// Locate the audio stream
 	var audio *struct {
@@ -723,10 +711,11 @@ func validateAudioFile(t *testing.T, path string) int64 {
 	}
 	require.NotNilf(t, audio, "no audio stream found in %q", path)
 
-	// Codec — m4a typically holds AAC; ALAC is also valid.
-	validCodecs := map[string]bool{"aac": true, "mp4a": true, "alac": true}
-	require.Truef(t, validCodecs[audio.CodecName],
-		"audio codec is %q; Chirp 3 + .m4a expects aac / mp4a / alac. Re-encode the file.",
+	// Codec — Chirp 3 supports FLAC natively; we standardised on it because
+	// M4A/AAC was returning INTERNAL errors from BatchRecognize on the
+	// europe-central2 endpoint.
+	require.Equalf(t, "flac", audio.CodecName,
+		"audio codec is %q; Chirp 3 + .flac expects codec=flac. Re-encode with `ffmpeg -i in.m4a -c:a flac -ac 1 -ar 16000 out.flac`.",
 		audio.CodecName)
 
 	// Sample rate — Chirp 3 spec is 8 kHz – 48 kHz.

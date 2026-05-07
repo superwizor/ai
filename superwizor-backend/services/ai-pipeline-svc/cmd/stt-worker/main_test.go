@@ -6,6 +6,8 @@ import (
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/superwizor-ai/backend/pkg/transcription/chunker"
@@ -44,7 +46,8 @@ func TestParseChirp3Results(t *testing.T) {
 		},
 	}
 
-	result := ParseChirp3Results(resp, false)
+	result, err := ParseChirp3Results(resp, false)
+	assert.NoError(t, err)
 
 	assert.NotNil(t, result)
 	assert.Equal(t, "pl-PL", result.LanguageCode)
@@ -90,8 +93,36 @@ func TestParseChirp3Results_NativeDiarization(t *testing.T) {
 		},
 	}
 
-	result := ParseChirp3Results(resp, true)
+	result, err := ParseChirp3Results(resp, true)
+	assert.NoError(t, err)
 
 	assert.True(t, result.HasNativeDiarization)
 	assert.Equal(t, 2, result.SpeakerCount)
+}
+
+// TestParseChirp3Results_FileError — the silent-failure regression that
+// produced WordCount=0 sessions when Chirp 3 rejected the codec (M4A/AAC).
+// We must propagate fileResult.Error so the caller fails the session
+// loudly instead of treating "empty transcript + INTERNAL error" as success.
+func TestParseChirp3Results_FileError(t *testing.T) {
+	resp := &speechpb.BatchRecognizeResponse{
+		Results: map[string]*speechpb.BatchRecognizeFileResult{
+			"gs://bucket/sample.m4a": {
+				Error: &status.Status{
+					Code:    13, // INTERNAL
+					Message: "Internal error encountered.",
+				},
+			},
+		},
+	}
+
+	result, err := ParseChirp3Results(resp, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "code=13")
+	assert.Contains(t, err.Error(), "Internal error encountered")
+	// We still return a (zero-valued) result so the caller has language /
+	// useNativeDiarization context for logging if it wants — but the error
+	// is the primary signal.
+	assert.NotNil(t, result)
+	assert.Equal(t, 0, result.WordCount)
 }
