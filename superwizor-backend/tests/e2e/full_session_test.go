@@ -486,9 +486,22 @@ func TestFullSession_HappyPath(t *testing.T) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut,
 		upload.SignedUrl, bytes.NewReader(audioBytes))
 	require.NoError(t, err)
-	// Apply required_headers from the signing response, plus Content-Type.
+
+	// Apply required_headers from the signing response. This is the *correct*
+	// path — every header the server included in the V4 canonical-signed-
+	// headers list MUST be sent on the PUT or GCS rejects with
+	// `MalformedSecurityHeader`.
 	for k, v := range upload.RequiredHeaders {
 		req.Header.Set(k, v)
+	}
+
+	// Belt-and-suspenders for known signed headers that older revisions of
+	// ingestion-svc forgot to surface in RequiredHeaders. signer.go hard-
+	// codes `x-goog-meta-source: superwizor-mobile` into every signature, so
+	// we always send it. If the server already populated this in
+	// RequiredHeaders the Set is a harmless no-op (same value).
+	if req.Header.Get("x-goog-meta-source") == "" {
+		req.Header.Set("x-goog-meta-source", "superwizor-mobile")
 	}
 	if req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "audio/m4a")
