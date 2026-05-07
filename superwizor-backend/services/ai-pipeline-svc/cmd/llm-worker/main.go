@@ -112,18 +112,31 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 
 	startTime := time.Now()
 
+	// Each fatal step logs the error explicitly before returning so the
+	// reason is visible in Cloud Logging — the Cloud Functions framework
+	// only surfaces a generic HTTP 500 to the request log otherwise, and
+	// we end up grepping audit logs for downstream API rejections (which
+	// happened with the chunk_assignments / Vertex schema bug). Mark the
+	// session FAILED on every fatal error so the polling clients see it.
+
 	session, err := loadSession(ctx, ev.SessionID)
 	if err != nil {
+		logger.Error("load session", "error", err)
+		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
 		return fmt.Errorf("load session: %w", err)
 	}
 
 	transcriptText, err := loadTranscriptText(ctx, ev.TranscriptID)
 	if err != nil {
+		logger.Error("load transcript", "error", err)
+		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
 		return fmt.Errorf("load transcript: %w", err)
 	}
 
 	modalityPrompt, err := loadModalityPrompt(ctx, session.ModalityID)
 	if err != nil {
+		logger.Error("load modality prompt", "error", err, "modality_id", session.ModalityID)
+		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
 		return fmt.Errorf("load prompt: %w", err)
 	}
 
@@ -135,17 +148,38 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 
 	reportJSON, tokenStats, err := generateReport(ctx, modalityPrompt, ragContext, transcriptText)
 	if err != nil {
+		// Vertex AI errors (quota, schema rejection, content filter,
+		// region availability) all land here. Log full error text so we
+		// don't have to dig through cloudaudit.googleapis.com for the
+		// reason.
+		logger.Error("generate report (Vertex AI)",
+			"error", err,
+			"prompt_len", len(modalityPrompt),
+			"transcript_len", len(transcriptText),
+			"rag_context_len", len(ragContext))
 		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
 		return fmt.Errorf("generate: %w", err)
 	}
 
 	var report ReportPayload
 	if err := json.Unmarshal([]byte(reportJSON), &report); err != nil {
+		// Surface the head of the response so we can see what Gemini
+		// returned vs what we expected (e.g. wrong shape, error JSON,
+		// truncation). Cap to keep the log entry small.
+		const peek = 1024
+		preview := reportJSON
+		if len(preview) > peek {
+			preview = preview[:peek] + "…(truncated)"
+		}
+		logger.Error("parse report JSON", "error", err, "response_preview", preview)
+		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
 		return fmt.Errorf("parse report: %w", err)
 	}
 
 	reportID, err := persistReport(ctx, session, ev.TranscriptID, &report, reportJSON, tokenStats, time.Since(startTime))
 	if err != nil {
+		logger.Error("persist report", "error", err)
+		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
 		return fmt.Errorf("persist: %w", err)
 	}
 
