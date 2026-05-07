@@ -149,7 +149,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("persist: %w", err)
 	}
 
-	// Po analizie LLM: generate speaker labels z chunk_assignments + zapisz
+	// Po analizie LLM: generate speaker labels z speaker_groups + zapisz
 	// do sessions.speaker_label_mapping i transcript_segments.speaker_label
 	// (zob. ADR-IMPL-002 + ADR-IMPL-007).
 	if err := generateAndSaveSpeakerLabels(ctx, session, ev.TranscriptID, &report); err != nil {
@@ -209,8 +209,11 @@ type ReportPayload struct {
 // i (b) dedukowane role per grupa.
 type SpeakerRoleInference struct {
 	Method                       string            `json:"method"`            // 'llm_inferred' | 'native_chirp_3'
-	ChunkAssignments             map[string]string `json:"chunk_assignments"` // {"0": "therapist", "1": "patient", ...}
-	SpeakerGroups                []SpeakerGroup    `json:"speaker_groups"`
+	// chunk_assignments removed — Gemini's response_schema doesn't support
+	// `additionalProperties` (open string-keyed maps), and SpeakerGroups
+	// already carries the inverse mapping via .ChunkIndices. If a future
+	// caller needs per-chunk lookup, derive it from SpeakerGroups in code.
+	SpeakerGroups []SpeakerGroup `json:"speaker_groups"`
 	OverallDiarizationConfidence float64           `json:"overall_diarization_confidence"`
 }
 
@@ -302,9 +305,12 @@ TRANSKRYPT BIEŻĄCEJ SESJI (chunki ponumerowane):
 %s
 
 Wygeneruj raport zgodny z podanym JSON Schema. Pamiętaj o:
-- Wypełnieniu speaker_role_inference.chunk_assignments dla KAŻDEGO chunka.
-- HiTOP measurements: mierz DLA pacjenta — używaj tylko chunków z chunk_assignments
-  oznaczonych jako "patient".
+- Wypełnieniu speaker_role_inference.speaker_groups: dla KAŻDEJ grupy mówców
+  podaj role + chunk_indices (lista indeksów chunków przypisanych do tej grupy)
+  + confidence + evidence. Każdy chunk MUSI należeć do dokładnie jednej grupy
+  (lub być oznaczony jako "filler" w odrębnej grupie).
+- HiTOP measurements: mierz DLA pacjenta — używaj tylko chunków, które należą
+  do grupy z role="patient".
 - Cytatach maksymalnie 100 znaków każdy.
 - W therapeutic_alliance_observations zaznacz że confidence jest niski jeśli
   overall_diarization_confidence < 0.7.
@@ -493,7 +499,7 @@ func loadSession(ctx context.Context, sessionID string) (*SessionContext, error)
 //	"[CHUNK 1] (4800ms-7800ms) Trochę zmęczona, ale ogólnie dobrze."
 //
 // Format umożliwia LLM odwołanie się do chunków po indeksie w polu
-// speaker_role_inference.chunk_assignments.
+// speaker_role_inference.speaker_groups[*].chunk_indices.
 func loadTranscriptText(ctx context.Context, transcriptID string) (string, error) {
 	id, err := uuid.Parse(transcriptID)
 	if err != nil {

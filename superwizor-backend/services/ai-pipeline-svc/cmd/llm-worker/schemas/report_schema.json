@@ -18,17 +18,9 @@
           "enum": ["llm_inferred", "native_chirp_3"],
           "description": "llm_inferred = ta sesja ma diaryzację przez LLM (default w v1.2). native_chirp_3 = STT już zrobił diaryzację (przyszły flow)."
         },
-        "chunk_assignments": {
-          "type": "object",
-          "description": "Mapping: chunk_idx (jako string '0', '1', '2'...) → wykryta rola.",
-          "additionalProperties": {
-            "type": "string",
-            "enum": ["therapist", "patient", "couple_partner", "family_member_parent", "family_member_child", "family_member_sibling", "third_party", "unknown", "filler"]
-          }
-        },
         "speaker_groups": {
           "type": "array",
-          "description": "Agregacja chunk_assignments — lista zdedukowanych mówców z evidence.",
+          "description": "Lista zdedukowanych mówców. Każdy chunk powinien należeć do dokładnie jednej grupy (lub do osobnej grupy 'filler' dla krótkich wtrąceń).",
           "items": {
             "type": "object",
             "properties": {
@@ -58,7 +50,7 @@
           "description": "0-1, ogólna pewność co do całej diaryzacji."
         }
       },
-      "required": ["method", "chunk_assignments", "speaker_groups", "overall_diarization_confidence"]
+      "required": ["method", "speaker_groups", "overall_diarization_confidence"]
     },
     "main_themes": {
       "type": "array",
