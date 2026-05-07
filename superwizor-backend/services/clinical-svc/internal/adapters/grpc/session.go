@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -56,10 +57,23 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 		// 2. Fetch transcript segments
 		segments, err := s.queries.ListTranscriptSegments(ctx, transcript.ID)
 		if err == nil {
+			var segDecryptErrs int
 			for _, seg := range segments {
 				textBytes, err := s.crypto.Decrypt(ctx, seg.TextCiphertext, seg.TextEncryptedDek)
 				if err != nil {
-					continue // or return error
+					// Log loudly — silently dropping segments was the bug
+					// behind "GetSessionDetails returns empty data" when
+					// KMS_KEY_URI was missing and cryptobox fell back to
+					// MockBox. The handler still returns a partial response
+					// rather than failing — caller can compare segment
+					// count to transcript_segments table to detect drift.
+					segDecryptErrs++
+					slog.Error("decrypt transcript segment",
+						"session_id", req.SessionId,
+						"transcript_id", transcript.ID.String(),
+						"segment_id", seg.ID.String(),
+						"error", err)
+					continue
 				}
 				text := string(textBytes)
 				
@@ -77,6 +91,20 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 					Confidence:    conf,
 				})
 			}
+			// If we couldn't decrypt ANY segment but had segments, that's
+			// almost certainly a KMS misconfig (missing KMS_KEY_URI env
+			// var, missing roles/cloudkms.cryptoKeyEncrypterDecrypter on
+			// the runtime SA). Fail loud rather than return an empty
+			// transcript that callers will report as an empty session.
+			if len(segments) > 0 && len(protoTranscript.Segments) == 0 {
+				slog.Error("all transcript segments failed to decrypt — likely KMS misconfig",
+					"session_id", req.SessionId,
+					"transcript_id", transcript.ID.String(),
+					"segment_count", len(segments),
+					"decrypt_errors", segDecryptErrs)
+				return nil, status.Error(codes.Internal,
+					"transcript present but no segments could be decrypted; check clinical-svc KMS config")
+			}
 		}
 		resp.Transcript = protoTranscript
 	}
@@ -84,6 +112,7 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 	// 3. Fetch reports
 	reports, err := s.queries.ListReportsBySession(ctx, sessionID)
 	if err == nil {
+		var reportDecryptErrs int
 		for _, rep := range reports {
 			title := ""
 			if rep.Title != nil {
@@ -102,9 +131,18 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 				risk = *rep.RiskLevel
 			}
 
-			// Decrypt report
+			// Decrypt report. Errors here are the same KMS-misconfig
+			// signal as for transcript segments above — log + count, then
+			// fail the response loudly if EVERY report failed (see end of
+			// loop). One failed report among many is still surfaced as an
+			// error log but doesn't fail the whole response.
 			contentBytes, err := s.crypto.Decrypt(ctx, rep.ReportCiphertext, rep.ReportEncryptedDek)
 			if err != nil {
+				reportDecryptErrs++
+				slog.Error("decrypt report",
+					"session_id", req.SessionId,
+					"report_id", rep.ID.String(),
+					"error", err)
 				continue
 			}
 			content := string(contentBytes)
@@ -117,6 +155,18 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 				SentimentLabel: sentiment,
 				RiskLevel:      risk,
 			})
+		}
+		// Same KMS-misconfig guard as for transcript segments: if reports
+		// existed in the DB but every single decrypt failed, returning
+		// an empty Reports slice misleads callers into thinking the AI
+		// pipeline never ran. Fail loud instead.
+		if len(reports) > 0 && len(resp.Reports) == 0 {
+			slog.Error("all reports failed to decrypt — likely KMS misconfig",
+				"session_id", req.SessionId,
+				"report_count", len(reports),
+				"decrypt_errors", reportDecryptErrs)
+			return nil, status.Error(codes.Internal,
+				"reports present but none could be decrypted; check clinical-svc KMS config")
 		}
 	}
 

@@ -8,6 +8,18 @@ resource "google_service_account" "ingestion_svc" {
   project      = var.project_id
 }
 
+# clinical-svc needs its own SA so it can:
+#   - read the postgres-database-url secret (cloudsql.client + secretAccessor)
+#   - decrypt the report_ciphertext / text_ciphertext columns written by
+#     ai-pipeline-svc (cloudkms.cryptoKeyEncrypterDecrypter on app-data-key)
+# Without these, GetSessionDetails silently returns an empty Reports list
+# because cryptobox.Decrypt errors out and the handler swallows the error.
+resource "google_service_account" "clinical_svc" {
+  account_id   = "clinical-svc"
+  display_name = "Clinical Service SA"
+  project      = var.project_id
+}
+
 resource "google_service_account" "stt_worker" {
   account_id   = "stt-worker"
   display_name = "STT Worker SA"
@@ -44,6 +56,26 @@ resource "google_project_iam_member" "ingestion_sql_client" {
   project = var.project_id
   role    = "roles/cloudsql.client"
   member  = "serviceAccount:${google_service_account.ingestion_svc.email}"
+}
+
+# clinical-svc IAM
+resource "google_project_iam_member" "clinical_sql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.clinical_svc.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "clinical_db_pwd" {
+  project   = var.project_id
+  secret_id = "postgres-database-url"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.clinical_svc.email}"
+}
+
+resource "google_kms_crypto_key_iam_member" "clinical_kms" {
+  crypto_key_id = module.kms.app_data_key_id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${google_service_account.clinical_svc.email}"
 }
 
 # S3: Allow the Pub/Sub service agent to create tokens for worker SAs so Eventarc

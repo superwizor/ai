@@ -214,14 +214,21 @@ jobs:
             echo "Identity URL not available yet, deploying without it or it will fail on start."
           fi
 
+          # Dedicated SA + KMS_KEY_URI: clinical-svc decrypts report_ciphertext
+          # and text_ciphertext columns. Without KMS_KEY_URI it silently falls
+          # back to cryptobox.NewMockBox(), which can't decrypt real KMS-wrapped
+          # DEKs — handler swallows the error and GetSessionDetails returns an
+          # empty Reports array.
+          KMS_KEY_URI="projects/${{ env.PROJECT_ID }}/locations/${{ env.REGION }}/keyRings/superwizor-keyring/cryptoKeys/app-data-key"
           gcloud run deploy clinical-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
+            --service-account=clinical-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
-            --set-env-vars="IDENTITY_SVC_URL=${IDENTITY_URL},VERSION=${{ github.sha }}"
+            --set-env-vars="IDENTITY_SVC_URL=${IDENTITY_URL},VERSION=${{ github.sha }},KMS_KEY_URI=${KMS_KEY_URI}"
           gcloud run services add-iam-policy-binding clinical-svc \
             --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
             --member=allUsers --role=roles/run.invoker
