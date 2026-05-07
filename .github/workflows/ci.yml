@@ -135,6 +135,12 @@ jobs:
           docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/billing-svc/Dockerfile .
           docker push -a $IMAGE_PATH
 
+      - name: Build and Push Ingestion image
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-ingestion"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/ingestion-svc/Dockerfile .
+          docker push -a $IMAGE_PATH
+
       - name: Deploy and Run Migration Job
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-migrator:${{ github.sha }}"
@@ -148,6 +154,28 @@ jobs:
 
           gcloud run jobs execute db-migrator --region ${{ env.REGION }} --wait
 
+      # ────────────────────────────────────────────────────────────────────
+      # Cloud Run deploys.
+      #
+      # PUBLIC services (api / identity / clinical / ingestion):
+      #   - --allow-unauthenticated implicitly binds allUsers→roles/run.invoker
+      #     at deploy time.
+      #   - We ALSO call `add-iam-policy-binding` explicitly after each deploy
+      #     as belt-and-suspenders. Idempotent — if the binding already
+      #     exists, gcloud returns 0 with no change. This caught regressions
+      #     where --allow-unauthenticated silently failed to set IAM and the
+      #     Flutter app started getting HTML 401s from the Cloud Run
+      #     frontend (see commit history).
+      #   - Terraform also pins the same binding in
+      #     infra/environments/staging/service-accounts.tf::public_invoker
+      #     so any drift from manual `gcloud run services remove-iam-policy
+      #     -binding` gets caught on next `terragrunt apply`.
+      #
+      # INTERNAL services (billing / ai-pipeline):
+      #   - --no-allow-unauthenticated; only specific calling SAs can invoke.
+      #   - Terraform manages those SA bindings in service-accounts.tf.
+      # ────────────────────────────────────────────────────────────────────
+
       - name: Deploy API to Cloud Run
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}"
@@ -158,6 +186,9 @@ jobs:
             --allow-unauthenticated \
             --vpc-connector swvpc-connector \
             --set-env-vars="ENV=staging"
+          gcloud run services add-iam-policy-binding api-service \
+            --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
+            --member=allUsers --role=roles/run.invoker
 
       - name: Deploy Identity to Cloud Run
         run: |
@@ -166,33 +197,58 @@ jobs:
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
             --platform managed \
-            --no-allow-unauthenticated \
+            --allow-unauthenticated \
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
             --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
+          gcloud run services add-iam-policy-binding identity-svc \
+            --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
+            --member=allUsers --role=roles/run.invoker
 
       - name: Deploy Clinical to Cloud Run
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-clinical"
-          # Get Identity SVC URL
+          # Identity SVC URL is needed by clinical-svc at startup for inter-service calls.
           IDENTITY_URL=$(gcloud run services describe identity-svc --region ${{ env.REGION }} --format 'value(status.url)' || echo "")
           if [ -z "$IDENTITY_URL" ]; then
             echo "Identity URL not available yet, deploying without it or it will fail on start."
           fi
-          
+
           gcloud run deploy clinical-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
             --platform managed \
-            --no-allow-unauthenticated \
+            --allow-unauthenticated \
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
             --set-env-vars="IDENTITY_SVC_URL=${IDENTITY_URL},VERSION=${{ github.sha }}"
+          gcloud run services add-iam-policy-binding clinical-svc \
+            --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
+            --member=allUsers --role=roles/run.invoker
+
+      - name: Deploy Ingestion to Cloud Run
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-ingestion"
+          gcloud run deploy ingestion-svc \
+            --image $IMAGE_PATH:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --service-account=ingestion-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+            --vpc-connector swvpc-connector \
+            --vpc-egress private-ranges-only \
+            --min-instances 1 \
+            --max-instances 20 \
+            --set-secrets="DATABASE_URL=postgres-database-url:latest" \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},AUDIO_BUCKET_NAME=${{ env.PROJECT_ID }}-audio-uploads,VERSION=${{ github.sha }}"
+          gcloud run services add-iam-policy-binding ingestion-svc \
+            --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
+            --member=allUsers --role=roles/run.invoker
 
       - name: Deploy AI Pipeline to Cloud Run
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-ai-pipeline"
-          
+
           gcloud run deploy ai-pipeline-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
@@ -205,11 +261,12 @@ jobs:
       - name: Deploy Billing to Cloud Run
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-billing"
-          
+
           gcloud run deploy billing-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
             --platform managed \
             --no-allow-unauthenticated \
             --vpc-connector swvpc-connector \
+            --use-http2 \
             --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
