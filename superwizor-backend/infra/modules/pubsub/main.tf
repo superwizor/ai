@@ -29,6 +29,41 @@ resource "google_pubsub_topic" "transcript_completed_dlq" {
   project = var.project_id
 }
 
+# DLQ for best-effort Firestore writes from notification-svc worker
+# (ADR-IMPL-009). Failed writes get published here so:
+#   - alerting policy can fire on undelivered_messages > 0
+#   - operators can replay via the pull subscription below
+# This NEVER blocks the clinical pipeline — the worker ACKs Pub/Sub even
+# when the Firestore write fails (and forwards the message here for
+# observability instead).
+resource "google_pubsub_topic" "firestore_sync_dlq" {
+  name    = "firestore-sync.dlq"
+  project = var.project_id
+}
+
+resource "google_pubsub_subscription" "firestore_sync_dlq_reader" {
+  name    = "firestore-sync-dlq-reader"
+  project = var.project_id
+  topic   = google_pubsub_topic.firestore_sync_dlq.id
+
+  ack_deadline_seconds       = 60
+  message_retention_duration = "604800s" # 7 days
+
+  expiration_policy {
+    ttl = ""
+  }
+}
+
+# notification-svc may publish to firestore-sync.dlq when a Firestore
+# write fails (Phase 4 wiring; for now the worker logs only — the
+# binding is here so it's ready when the publish-on-failure code lands).
+resource "google_pubsub_topic_iam_member" "notification_firestore_dlq_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.firestore_sync_dlq.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:notification-svc@${var.project_id}.iam.gserviceaccount.com"
+}
+
 # ============================================
 # SUBSCRIPTIONS — Eventarc/CloudFunctions używają własnych
 # (te są dla manual debugging i other consumers)
@@ -80,3 +115,6 @@ output "transcript_completed_topic" { value = google_pubsub_topic.transcript_com
 output "report_generated_topic" { value = google_pubsub_topic.report_generated.id }
 output "audio_uploaded_dlq_topic" { value = google_pubsub_topic.audio_uploaded_dlq.id }
 output "transcript_completed_dlq_topic" { value = google_pubsub_topic.transcript_completed_dlq.id }
+output "firestore_sync_dlq_topic" { value = google_pubsub_topic.firestore_sync_dlq.id }
+output "firestore_sync_dlq_subscription" { value = google_pubsub_subscription.firestore_sync_dlq_reader.id }
+output "firestore_sync_dlq_subscription_name" { value = google_pubsub_subscription.firestore_sync_dlq_reader.name }
