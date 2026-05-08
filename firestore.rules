@@ -1,18 +1,63 @@
-rules_version='2'
+rules_version = '2';
+
+// =============================================================================
+// SuperWizor AI — Firestore security rules
+// =============================================================================
+// Architecture §6: Firestore is a READ-ONLY mirror for the Flutter mobile
+// client. The only backend writer is notification-svc using Admin SDK
+// (which bypasses these rules). Every other service writes to PostgreSQL,
+// which is the source of truth.
+//
+// Two collections:
+//   - session_states/{sessionId}            — live session status mirror
+//   - user_notifications/{uid}/inbox/{id}   — per-user notification inbox
+//
+// Both deny client writes by default. The single exception: a user may set
+// `readAt` on their own inbox notification (and ONLY readAt — diff check
+// prevents tampering).
+// =============================================================================
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // -------------------------------------------------------------------------
+    // session_states/{sessionId}
+    // -------------------------------------------------------------------------
+    // Backend writes status transitions here as the AI pipeline progresses.
+    // Therapist's Flutter app subscribes for live "Transcribing... → Done"
+    // updates without polling clinical-svc.
+    //
+    // therapistFirebaseUid is the Firebase UID (NOT users.id PG UUID).
+    // Client auth principal is also a Firebase UID — they must match.
+    match /session_states/{sessionId} {
+      allow read: if request.auth != null
+                  && request.auth.uid == resource.data.therapistFirebaseUid;
+      allow write: if false;  // Admin SDK on backend bypasses this
+    }
+
+    // -------------------------------------------------------------------------
+    // user_notifications/{uid}/inbox/{notifId}
+    // -------------------------------------------------------------------------
+    // Per-user notification inbox. User can read their own; can only mark as
+    // read (set readAt). Cannot create, delete, or modify any other field.
+    match /user_notifications/{uid}/inbox/{notifId} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // Only readAt can change. diff().affectedKeys() returns the changed
+      // top-level keys; hasOnly enforces nothing else moved.
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt']);
+
+      allow create, delete: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Default deny — everything else.
+    // -------------------------------------------------------------------------
+    // Catches any documents we haven't explicitly allowed. Fails closed.
     match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2026, 5, 28);
+      allow read, write: if false;
     }
   }
 }

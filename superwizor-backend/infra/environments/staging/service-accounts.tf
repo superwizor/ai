@@ -26,6 +26,20 @@ resource "google_service_account" "stt_worker" {
   project      = var.project_id
 }
 
+# notification-svc needs:
+#   - cloudsql.client (read fcm_tokens, write notification_deliveries)
+#   - secretmanager.secretAccessor on postgres-database-url
+#   - datastore.user (Firestore — the ONLY backend service allowed to write)
+#   - firebasecloudmessaging.messagesSender (FCM push via Admin SDK)
+#   - eventarc.eventReceiver (Pub/Sub-triggered Cloud Function workers)
+# This SA is shared by both the Cloud Run server (cmd/server) and the
+# Cloud Functions Gen2 workers (cmd/worker/*).
+resource "google_service_account" "notification_svc" {
+  account_id   = "notification-svc"
+  display_name = "Notification Service SA"
+  project      = var.project_id
+}
+
 resource "google_service_account" "llm_worker" {
   account_id   = "llm-worker"
   display_name = "LLM Worker SA"
@@ -78,6 +92,52 @@ resource "google_kms_crypto_key_iam_member" "clinical_kms" {
   member        = "serviceAccount:${google_service_account.clinical_svc.email}"
 }
 
+# notification-svc IAM
+resource "google_project_iam_member" "notification_sql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.notification_svc.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "notification_db_pwd" {
+  project   = var.project_id
+  secret_id = "postgres-database-url"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.notification_svc.email}"
+}
+
+# Firestore writer — this SA is the ONLY backend service allowed
+# (architecture §6.3). Don't grant datastore.user to other services.
+resource "google_project_iam_member" "notification_firestore" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_service_account.notification_svc.email}"
+}
+
+# FCM via Firebase Admin SDK
+resource "google_project_iam_member" "notification_fcm" {
+  project = var.project_id
+  role    = "roles/firebasecloudmessaging.messagesSender"
+  member  = "serviceAccount:${google_service_account.notification_svc.email}"
+}
+
+# Eventarc trigger receiver — Cloud Functions Gen2 workers (3 of them in
+# Sprint 3.5: on-uploaded, on-transcribed, on-report)
+resource "google_project_iam_member" "notification_worker_eventarc" {
+  project = var.project_id
+  role    = "roles/eventarc.eventReceiver"
+  member  = "serviceAccount:${google_service_account.notification_svc.email}"
+}
+
+# Pub/Sub service agent → SA token creator on notification-svc, so Eventarc
+# can mint tokens as the worker SA when invoking the function (same pattern
+# as stt_worker / llm_worker above).
+resource "google_service_account_iam_member" "pubsub_sa_notification_token_creator" {
+  service_account_id = google_service_account.notification_svc.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
 # S3: Allow the Pub/Sub service agent to create tokens for worker SAs so Eventarc
 # can authenticate invocations with the correct service account identity.
 resource "google_service_account_iam_member" "pubsub_sa_stt_token_creator" {
@@ -114,6 +174,7 @@ locals {
     "clinical-svc",
     "ingestion-svc",
     "api-service",
+    "notification-svc", # Phase 3 — Flutter calls RegisterFCMToken etc.
   ]
 }
 

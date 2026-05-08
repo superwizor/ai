@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package notification.v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/superwizor-ai/backend/gen/go/notification/v1;notificationv1";
+
+// NotificationService is the Flutter-facing API for FCM token lifecycle and
+// inbox queries. The actual notification *delivery* happens out-of-band in the
+// Cloud Functions Gen2 worker (`cmd/worker/`) which subscribes to Pub/Sub.
+//
+// Inbox listing is NOT a gRPC call — Flutter subscribes directly to Firestore
+// `user_notifications/{uid}/inbox/` for live updates with offline cache.
+// Backend (this service) is the only writer of those Firestore docs.
+service NotificationService {
+  // FCM device token lifecycle.
+  rpc RegisterFCMToken(RegisterFCMTokenRequest) returns (RegisterFCMTokenResponse);
+  rpc RemoveFCMToken(RemoveFCMTokenRequest) returns (google.protobuf.Empty);
+
+  // Inbox count (badge support). Detail listing is Firestore-direct from Flutter.
+  rpc GetUnreadCount(google.protobuf.Empty) returns (GetUnreadCountResponse);
+
+  rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
+}
+
+// RegisterFCMToken upserts an FCM token for the authenticated user.
+//
+// user_id is resolved from the Firebase ID token in gRPC metadata server-side;
+// it is NEVER trusted from the client.
+//
+// Idempotent: re-registering an active (user_id, token) pair updates
+// last_used_at + app_version + device_model + locale and returns
+// already_registered=true. Token rotation handled by Firebase SDK on the
+// client; on rotation the client calls this with the new token.
+message RegisterFCMTokenRequest {
+  string token = 1;           // opaque FCM identifier (not PHI per ADR-IMPL-013)
+  Platform platform = 2;
+  string app_version = 3;     // semver string; informational
+  string device_model = 4;    // for support diagnostics
+  string locale = 5;          // BCP-47, e.g. "pl-PL"
+}
+
+message RegisterFCMTokenResponse {
+  string token_id = 1;        // UUID of the fcm_tokens row
+  bool already_registered = 2; // true if same (user, token) was already active
+}
+
+enum Platform {
+  PLATFORM_UNSPECIFIED = 0;
+  PLATFORM_IOS = 1;
+  PLATFORM_ANDROID = 2;
+  PLATFORM_WEB = 3;
+}
+
+// RemoveFCMToken soft-deletes a token (sets invalidated_at). Called on user
+// logout from a device. Idempotent: removing an already-removed token is a
+// no-op success.
+message RemoveFCMTokenRequest {
+  string token = 1;
+}
+
+message GetUnreadCountResponse {
+  int32 count = 1;
+}
+
+message HealthCheckResponse {
+  bool ok = 1;
+  string version = 2;
+}
