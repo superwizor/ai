@@ -42,3 +42,28 @@ variable "transcript_completed_dlq_topic" {
   type        = string
   description = "Pub/Sub topic ID for transcript.completed dead-letter messages"
 }
+
+# ----------------------------------------------------------------------------
+# notification-svc worker inputs (Phase 3 — Sprints 3.3 + 3.5)
+#
+# One source bundle (cmd/worker) is wrapped by THREE Cloud Functions, each
+# bound to its own Eventarc Pub/Sub trigger:
+#   - on-uploaded   → audio.uploaded       → ProcessAudioUploaded
+#   - on-transcribed→ transcript.completed → ProcessTranscriptCompleted
+#   - on-report     → report.generated     → ProcessReportGenerated
+# ----------------------------------------------------------------------------
+
+variable "notification_worker_source_dir" {
+  type        = string
+  description = "Path to services/notification-svc (cmd/worker is one of its packages)"
+}
+
+variable "notification_worker_sa_email" {
+  type        = string
+  description = "Email of the notification-svc service account (shared by Cloud Run server + 3 worker functions)"
+}
+
+variable "report_generated_topic" {
+  type        = string
+  description = "Pub/Sub topic ID for report.generated (final fan-out → FCM push + Firestore done)"
+}

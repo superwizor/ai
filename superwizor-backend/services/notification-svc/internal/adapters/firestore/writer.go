@@ -1,0 +1,108 @@
+// Package firestore wraps the per-collection writes the notification-svc
+// worker performs as the only backend writer to Firestore (architecture
+// §6.3). Two collections:
+//
+//   session_states/{sessionId}            — live session status mirror
+//   user_notifications/{uid}/inbox/{id}   — per-user notification inbox
+//
+// Both writes are best-effort (ADR-IMPL-009). Errors are logged and
+// returned, but callers MUST NOT block the FCM send or Pub/Sub ACK on a
+// Firestore failure — the clinical pipeline never waits.
+package firestore
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"time"
+
+	fs "cloud.google.com/go/firestore"
+)
+
+type Writer struct {
+	client *fs.Client
+}
+
+func NewWriter(client *fs.Client) *Writer {
+	return &Writer{client: client}
+}
+
+// SessionState is the document shape for session_states/{sessionId}.
+//
+// CRITICAL: TherapistFirebaseUID must be the Firebase UID (not users.id PG
+// UUID). Firestore rules match against request.auth.uid (Firebase UID), so
+// any mismatch silently breaks Flutter reads. This is troubleshooting
+// cookbook problem #2 in 08_FAZA_3_NOTIFICATIONS.md.
+type SessionState struct {
+	SessionID            string    `firestore:"sessionId"`
+	TherapistFirebaseUID string    `firestore:"therapistFirebaseUid"`
+	Status               string    `firestore:"status"`
+	ProgressPercent      int       `firestore:"progressPercent"`
+	UpdatedAt            time.Time `firestore:"updatedAt,serverTimestamp"`
+}
+
+// WriteSessionState merges the status field into session_states/{sessionId}.
+// MergeAll is intentional: status updates arrive incrementally (uploaded →
+// analyzing → done) and we only want to overwrite the fields we set.
+func (w *Writer) WriteSessionState(ctx context.Context, st SessionState) error {
+	if w == nil || w.client == nil {
+		return nil
+	}
+	_, err := w.client.Doc("session_states/" + st.SessionID).Set(ctx, map[string]any{
+		"sessionId":            st.SessionID,
+		"therapistFirebaseUid": st.TherapistFirebaseUID,
+		"status":               st.Status,
+		"progressPercent":      st.ProgressPercent,
+		"updatedAt":            fs.ServerTimestamp,
+	}, fs.MergeAll)
+	if err != nil {
+		// Log here, not just at the call site, so reader of Cloud Logging
+		// sees the doc path that failed without grep'ing call stacks.
+		slog.Warn("firestore session_states write failed",
+			"session_id", st.SessionID, "error", err)
+		return fmt.Errorf("firestore session_states: %w", err)
+	}
+	return nil
+}
+
+// InboxNotification is the document shape for
+// user_notifications/{uid}/inbox/{notifId}. The Flutter client subscribes
+// to this collection for the in-app notification tray and may set readAt
+// (only) — see firestore.rules.
+type InboxNotification struct {
+	NotificationID    string
+	FirebaseUID       string
+	NotificationType  string // "report_ready" | "session_uploaded" | ...
+	Title             string
+	Body              string
+	SessionID         string
+	CreatedAt         time.Time
+}
+
+// WriteInboxNotification creates a new doc under
+// user_notifications/{uid}/inbox/{notifId}. We use the
+// notification_deliveries.id as notifId so the Firestore doc is uniquely
+// keyed by the same primary key as the audit row in PG — easy cross-link
+// when debugging "why did this push happen?".
+func (w *Writer) WriteInboxNotification(ctx context.Context, n InboxNotification) error {
+	if w == nil || w.client == nil {
+		return nil
+	}
+	path := fmt.Sprintf("user_notifications/%s/inbox/%s", n.FirebaseUID, n.NotificationID)
+	_, err := w.client.Doc(path).Set(ctx, map[string]any{
+		"notificationId":   n.NotificationID,
+		"notificationType": n.NotificationType,
+		"title":            n.Title,
+		"body":             n.Body,
+		"sessionId":        n.SessionID,
+		"createdAt":        fs.ServerTimestamp,
+		// readAt intentionally omitted — Flutter sets it; rules permit
+		// only that field to be modified by the user.
+	})
+	if err != nil {
+		slog.Warn("firestore inbox notification write failed",
+			"firebase_uid", n.FirebaseUID, "notif_id", n.NotificationID, "error", err)
+		return fmt.Errorf("firestore inbox: %w", err)
+	}
+	return nil
+}
