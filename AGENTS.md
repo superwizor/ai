@@ -4,7 +4,7 @@ This file orients coding agents working on **SuperWizor AI**. It's a tool-agnost
 
 ## What this product is
 
-A clinical session co-pilot for psychotherapists in Poland. Therapist records a session in the Flutter app → audio uploaded to GCS via signed URL → STT (Chirp 3) → LLM (Gemini 2.5 PRO) generates a structured clinical report and HiTOP measurements. Polish-only, EU-resident infra, GDPR-strict.
+A clinical session co-pilot for psychotherapists. Therapist records a session in the Flutter app → audio uploaded to GCS via signed URL → STT (Chirp 3) → LLM (Gemini 2.5 PRO) generates a structured clinical report and HiTOP measurements. International product with Polish language as the first language for sessions, EU-resident infra, GDPR-strict.
 
 ## Required reading before any change
 
