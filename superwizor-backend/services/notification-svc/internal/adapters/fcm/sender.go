@@ -103,15 +103,16 @@ func (s *Sender) Send(ctx context.Context, p Push) ([]PerTokenResult, error) {
 }
 
 // isTokenInvalid centralises the "should we invalidate this token?"
-// decision. NotRegistered (app uninstalled) and Unregistered are the
-// canonical signals; InvalidArgument also typically means the token string
+// decision. Unregistered (app uninstalled / token rotated out) is the
+// canonical signal; InvalidArgument also typically means the token string
 // is malformed and won't ever work again.
+//
+// Note: the older `IsRegistrationTokenNotRegistered` helper is deprecated
+// in firebase.google.com/go/v4 in favour of `IsUnregistered` (same
+// underlying error code), so we only call the latter.
 func isTokenInvalid(err error) bool {
 	if err == nil {
 		return false
-	}
-	if fbmessaging.IsRegistrationTokenNotRegistered(err) {
-		return true
 	}
 	if fbmessaging.IsUnregistered(err) {
 		return true
