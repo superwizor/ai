@@ -141,6 +141,12 @@ jobs:
           docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/ingestion-svc/Dockerfile .
           docker push -a $IMAGE_PATH
 
+      - name: Build and Push Notification image
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-notification"
+          docker build -t $IMAGE_PATH:${{ github.sha }} -t $IMAGE_PATH:latest -f services/notification-svc/Dockerfile .
+          docker push -a $IMAGE_PATH
+
       - name: Deploy and Run Migration Job
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-migrator:${{ github.sha }}"
@@ -249,6 +255,30 @@ jobs:
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
             --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},AUDIO_BUCKET_NAME=${{ env.PROJECT_ID }}-audio-uploads,VERSION=${{ github.sha }}"
           gcloud run services add-iam-policy-binding ingestion-svc \
+            --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
+            --member=allUsers --role=roles/run.invoker
+
+      - name: Deploy Notification to Cloud Run
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-notification"
+          # Phase 3 Flutter-facing service: Cloud Run gRPC server for
+          # RegisterFCMToken / RemoveFCMToken / GetUnreadCount.
+          # GCP_PROJECT_ID is required for Firebase Admin Auth ID-token
+          # verification — without it, every authenticated RPC returns
+          # UNAUTHENTICATED ("auth client not configured"). The
+          # notification-svc SA owns the runtime IAM (datastore.user, fcm
+          # sender, sql client, secret accessor) — see
+          # infra/environments/staging/service-accounts.tf.
+          gcloud run deploy notification-svc \
+            --image $IMAGE_PATH:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --service-account=notification-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+            --vpc-connector swvpc-connector \
+            --set-secrets="DATABASE_URL=postgres-database-url:latest" \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
+          gcloud run services add-iam-policy-binding notification-svc \
             --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
             --member=allUsers --role=roles/run.invoker
 
