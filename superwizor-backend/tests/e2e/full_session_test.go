@@ -59,6 +59,7 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go/v4"
 	fbauth "firebase.google.com/go/v4/auth"
 	"github.com/stretchr/testify/assert"
@@ -584,7 +585,16 @@ func TestFullSession_HappyPath(t *testing.T) {
 	switch finalStatus {
 	case "COMPLETED":
 		assertCompletedSessionShape(t, details)
-		t.Logf("✓ FULL HAPPY PATH PASSED")
+
+		// --------------------------------------------------------------
+		// Step 8.5 — Firestore notification mirror (Sprint 3.6 / DoD §6.5)
+		// --------------------------------------------------------------
+		// notification-svc worker writes session_states/{sessionId} on
+		// `report.generated`. We give it a short window (the worker
+		// runs in parallel with our PG poll, so it's usually already
+		// there; cold start can take a few seconds).
+		assertFirestoreSessionStateDone(t, ctx, cfg.projectID, complete.SessionId, firebaseUID)
+		t.Logf("✓ FULL HAPPY PATH PASSED (incl. Firestore mirror)")
 	case "ERRORED", "FAILED":
 		// Pre-flight audio validation already rejected obviously-bad
 		// inputs, so a FAILED here is a real pipeline issue (Vertex AI
@@ -599,6 +609,98 @@ func TestFullSession_HappyPath(t *testing.T) {
 			"Vertex AI cold start may be slow; consider retrying or extending pollDeadline.",
 			finalStatus)
 	}
+}
+
+// assertFirestoreSessionStateDone polls session_states/{sessionId} for up
+// to 30 s and asserts the worker wrote status="done" with the correct
+// therapistFirebaseUid. Cleanup deletes the doc + the matching inbox
+// notification (best-effort — Firestore TTL would handle it eventually).
+//
+// We poll because the notification worker runs as a Cloud Function on a
+// separate Pub/Sub subscription and races with our `clinical-svc` poll —
+// usually it's already there by the time we're here, but on cold start it
+// can lag by a few seconds.
+func assertFirestoreSessionStateDone(
+	t *testing.T,
+	ctx context.Context,
+	projectID, sessionID, expectedFirebaseUID string,
+) {
+	t.Helper()
+
+	fsClient, err := firestore.NewClient(ctx, projectID)
+	require.NoError(t, err, "Firestore client init failed")
+	defer func() { _ = fsClient.Close() }()
+
+	docPath := "session_states/" + sessionID
+	deadline := time.Now().Add(30 * time.Second)
+	var doc *firestore.DocumentSnapshot
+	var lastErr error
+
+	for time.Now().Before(deadline) {
+		doc, lastErr = fsClient.Doc(docPath).Get(ctx)
+		if lastErr == nil && doc.Exists() {
+			data := doc.Data()
+			if data["status"] == "done" {
+				break
+			}
+			t.Logf("  Firestore status=%v (waiting for 'done')…", data["status"])
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("context canceled while polling Firestore: %v", ctx.Err())
+		case <-time.After(2 * time.Second):
+		}
+	}
+
+	require.NoErrorf(t, lastErr, "Firestore Get(%s) never succeeded", docPath)
+	require.NotNil(t, doc, "doc nil")
+	require.True(t, doc.Exists(),
+		"Firestore doc %s missing — notification-worker-on-report did not run "+
+			"(check Cloud Functions logs for the function with that name; common "+
+			"cause: SA missing roles/datastore.user)", docPath)
+
+	data := doc.Data()
+	assert.Equal(t, "done", data["status"],
+		"Firestore status not 'done' even after polling — worker started but failed mid-write")
+	assert.Equal(t, expectedFirebaseUID, data["therapistFirebaseUid"],
+		"therapistFirebaseUid mismatch — common cause: writer used users.id (PG UUID) "+
+			"instead of users.firebase_uid; Flutter rules will then deny reads")
+	assert.Equal(t, sessionID, data["sessionId"], "sessionId in doc != sessionId we wrote")
+
+	t.Logf("✓ Firestore session_states/%s status=done firebase_uid=%s",
+		sessionID, expectedFirebaseUID)
+
+	// Cleanup: delete the session_state doc and any inbox docs we created.
+	t.Cleanup(func() {
+		ctxClean, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		// session_state
+		if _, err := fsClient.Doc(docPath).Delete(ctxClean); err != nil {
+			t.Logf("⚠ Firestore session_states cleanup failed: %v", err)
+		} else {
+			t.Logf("✓ cleanup: Firestore %s deleted", docPath)
+		}
+
+		// inbox docs for this user — could be multiple if other tests ran;
+		// we only purge the ones referencing OUR sessionId.
+		inboxPath := fmt.Sprintf("user_notifications/%s/inbox", expectedFirebaseUID)
+		iter := fsClient.Collection(inboxPath).Where("sessionId", "==", sessionID).Documents(ctxClean)
+		defer iter.Stop()
+		var purged int
+		for {
+			d, err := iter.Next()
+			if err != nil {
+				break
+			}
+			if _, err := d.Ref.Delete(ctxClean); err == nil {
+				purged++
+			}
+		}
+		if purged > 0 {
+			t.Logf("✓ cleanup: %d inbox doc(s) deleted under %s", purged, inboxPath)
+		}
+	})
 }
 
 // assertCompletedSessionShape verifies invariants that must hold for any
