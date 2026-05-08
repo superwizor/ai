@@ -128,6 +128,9 @@ resource "google_monitoring_alert_policy" "notification_worker_on_report_errors"
   conditions {
     display_name = "Cloud Functions execution status != ok ratio > 10%"
     condition_monitoring_query_language {
+      # MQL note: `0.0` (not `0`) — MQL is strict about Int vs Double in
+      # if() branches. With `0` the API returns:
+      #   "Operands of 'if' do not have same type: 'Double' and 'Int'."
       query = <<-EOQ
         fetch cloud_function
         | metric 'cloudfunctions.googleapis.com/function/execution_count'
@@ -138,7 +141,7 @@ resource "google_monitoring_alert_policy" "notification_worker_on_report_errors"
             [row_count: row_count(),
              total: sum(value.execution_count)]
         | group_by 1m,
-            [error_ratio: sum(if(metric.status != 'ok', total, 0)) / sum(total)]
+            [error_ratio: sum(if(metric.status != 'ok', total, 0.0)) / sum(total)]
         | condition error_ratio > 0.1
       EOQ
       duration = "900s" # 15 min
@@ -196,7 +199,7 @@ resource "google_monitoring_alert_policy" "notification_svc_5xx" {
         | every 1m
         | group_by 1m,
             [err_ratio:
-              sum(if(metric.response_code_class == '5xx', value.request_count, 0))
+              sum(if(metric.response_code_class == '5xx', value.request_count, 0.0))
               /
               sum(value.request_count)]
         | condition err_ratio > 0.05

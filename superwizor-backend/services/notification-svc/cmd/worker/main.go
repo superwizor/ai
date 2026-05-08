@@ -48,22 +48,19 @@ type MessagePublishedData struct {
 	} `json:"message"`
 }
 
-// ReportGeneratedEvent — published by llm-worker on successful report
-// persistence. CamelCase per existing convention (see llm-worker source).
+// All three publishers (ingestion-svc, stt-worker, llm-worker) use
+// snake_case JSON keys — verified against their source. Stay consistent
+// with that convention here so the worker doesn't drop session_id.
 type ReportGeneratedEvent struct {
-	SessionID string `json:"sessionId"`
-	ReportID  string `json:"reportId"`
+	SessionID string `json:"session_id"`
+	ReportID  string `json:"report_id"`
 }
 
-// TranscriptCompletedEvent — published by stt-worker. CamelCase.
 type TranscriptCompletedEvent struct {
-	SessionID    string `json:"sessionId"`
-	TranscriptID string `json:"transcriptId"`
+	SessionID    string `json:"session_id"`
+	TranscriptID string `json:"transcript_id"`
 }
 
-// AudioUploadedEvent — published by ingestion-svc on
-// CompleteAudioUpload. snake_case (different convention — see
-// ingestion-svc/internal/adapters/pubsub).
 type AudioUploadedEvent struct {
 	SessionID  string `json:"session_id"`
 	UploadID   string `json:"upload_id"`
@@ -411,7 +408,7 @@ func parseTranscriptCompleted(b []byte) (string, error) {
 		return "", err
 	}
 	if ev.SessionID == "" {
-		return "", fmt.Errorf("transcript.completed missing sessionId")
+		return "", fmt.Errorf("transcript.completed missing session_id")
 	}
 	return ev.SessionID, nil
 }
