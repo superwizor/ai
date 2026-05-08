@@ -23,6 +23,7 @@ A clinical session co-pilot for psychotherapists in Poland. Therapist records a 
 | `.github/workflows/**`, Dockerfiles, Makefile | [`docs/agents/07_devops-cicd.md`](./docs/agents/07_devops-cicd.md) |
 | `superwizor-backend/infra/**` or any `*.tf` | [`docs/agents/08_infrastructure-terraform.md`](./docs/agents/08_infrastructure-terraform.md) |
 | `tests/**`, `**/*_test.go`, `**/testdata/**` | [`docs/agents/09_testing.md`](./docs/agents/09_testing.md) |
+| `superwizor-backend/services/notification-svc/**`, `proto/notification/**`, `firestore.rules` | [`docs/agents/10_notification-svc.md`](./docs/agents/10_notification-svc.md) |
 
 3. The actual code in the repo. **When docs and code disagree, code wins.** Agent docs may lag the codebase.
 

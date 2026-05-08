@@ -73,3 +73,4 @@ You are working on **SuperWizor AI**, a clinical session co-pilot for psychother
 | CI/CD | `docs/agents/07_devops-cicd.md` |
 | Terraform / GCP | `docs/agents/08_infrastructure-terraform.md` |
 | Testing (E2E, integration, unit) | `docs/agents/09_testing.md` |
+| Notification service (Phase 3) | `docs/agents/10_notification-svc.md` |

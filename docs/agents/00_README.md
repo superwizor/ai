@@ -18,6 +18,7 @@
 | [`07_devops-cicd.md`](./07_devops-cicd.md) | CI/CD | GitHub Actions workflow, Cloud Build, image tagging, deploy strategy |
 | [`08_infrastructure-terraform.md`](./08_infrastructure-terraform.md) | Infrastructure | Terragrunt + modules, state, drift, WIF, KMS, Cloud SQL, Pub/Sub |
 | [`09_testing.md`](./09_testing.md) | Testing (E2E + integration + unit) | Test pyramid, priority-ordered E2E scenarios, auth in tests, common gotchas |
+| [`10_notification-svc.md`](./10_notification-svc.md) | Notification service (Phase 3 — not yet built) | FCM push, Firestore mirror, multi-token-per-user, status events, no-PHI-in-FCM rule |
 
 3. **Source docs** (long-form, 1.7k–4.7k lines each) are at `docs/02_ARCHITEKTURA_TECHNICZNA.md`, `docs/03_DATA_MODEL.md`, `docs/05_FAZA_1_TOZSAMOSC_DANE.md`, `docs/06_FAZA_2_INGESTION_AI.md`. Each per-area file references the relevant sections by line number so you can drill into specifics.
 
