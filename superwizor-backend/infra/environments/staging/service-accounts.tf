@@ -114,10 +114,22 @@ resource "google_project_iam_member" "notification_firestore" {
   member  = "serviceAccount:${google_service_account.notification_svc.email}"
 }
 
-# FCM via Firebase Admin SDK
+# FCM via Firebase Admin SDK.
+#
+# We use `roles/firebasecloudmessaging.admin` because the narrower
+# `roles/firebasecloudmessaging.messagesSender` role doesn't exist in
+# this project's IAM catalog (it's a recent variant that hasn't
+# propagated to all projects). Admin grants full read/write to the FCM
+# API resources, which is broader than ideal — the worker only needs
+# `cloudmessaging.messages.create` — but it's the smallest pre-defined
+# role available right now.
+#
+# To narrow further, define a custom role with just
+# `cloudmessaging.messages.create` and swap this line. The CIS
+# security checklist (out of scope for Phase 3) calls this out.
 resource "google_project_iam_member" "notification_fcm" {
   project = var.project_id
-  role    = "roles/firebasecloudmessaging.messagesSender"
+  role    = "roles/firebasecloudmessaging.admin"
   member  = "serviceAccount:${google_service_account.notification_svc.email}"
 }
 
