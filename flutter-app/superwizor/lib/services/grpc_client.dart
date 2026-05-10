@@ -5,15 +5,18 @@ import 'package:grpc/grpc_or_grpcweb.dart';
 import '../generated/identity/v1/identity.pbgrpc.dart';
 import '../generated/clinical/v1/clinical.pbgrpc.dart';
 import '../generated/ingestion/v1/ingestion.pbgrpc.dart';
+import '../generated/notification/v1/notification.pbgrpc.dart';
 
 class GrpcClients {
   late final GrpcOrGrpcWebClientChannel identityChannel;
   late final GrpcOrGrpcWebClientChannel clinicalChannel;
   late final GrpcOrGrpcWebClientChannel ingestionChannel;
+  late final GrpcOrGrpcWebClientChannel notificationChannel;
 
   late final IdentityServiceClient identity;
   late final ClinicalServiceClient clinical;
   late final IngestionServiceClient ingestion;
+  late final NotificationServiceClient notification;
 
   GrpcClients({
     required String identityUrl,
@@ -22,6 +25,8 @@ class GrpcClients {
     required int clinicalPort,
     required String ingestionUrl,
     required int ingestionPort,
+    required String notificationUrl,
+    required int notificationPort,
   }) {
     identityChannel = GrpcOrGrpcWebClientChannel.toSingleEndpoint(
       host: identityUrl,
@@ -38,17 +43,24 @@ class GrpcClients {
       port: ingestionPort,
       transportSecure: ingestionPort == 443,
     );
+    notificationChannel = GrpcOrGrpcWebClientChannel.toSingleEndpoint(
+      host: notificationUrl,
+      port: notificationPort,
+      transportSecure: notificationPort == 443,
+    );
 
     final interceptors = [AuthInterceptor()];
     identity = IdentityServiceClient(identityChannel, interceptors: interceptors);
     clinical = ClinicalServiceClient(clinicalChannel, interceptors: interceptors);
     ingestion = IngestionServiceClient(ingestionChannel, interceptors: interceptors);
+    notification = NotificationServiceClient(notificationChannel, interceptors: interceptors);
   }
 
   void dispose() {
     identityChannel.shutdown();
     clinicalChannel.shutdown();
     ingestionChannel.shutdown();
+    notificationChannel.shutdown();
   }
 }
 

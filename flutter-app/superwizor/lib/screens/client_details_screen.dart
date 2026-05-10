@@ -5,10 +5,13 @@ import '../widgets/euphire_header.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_card.dart';
 import '../widgets/euphire_list_tile.dart';
-import '../providers/patient_provider.dart';
 import '../models/patient.dart';
+import '../models/session.dart';
+import '../providers/current_user_provider.dart';
+import '../providers/patient_provider.dart';
 import '../widgets/add_session_modal.dart';
-import 'session_details_screen.dart';
+import 'session_status_screen.dart';
+import 'transcript_screen.dart';
 
 class ClientDetailsScreen extends ConsumerWidget {
   final String patientId;
@@ -20,10 +23,35 @@ class ClientDetailsScreen extends ConsumerWidget {
     required this.clientName,
   });
 
-  void _showAddSessionModal(BuildContext context, WidgetRef ref) {
+  Future<void> _showAddSessionModal(BuildContext context, WidgetRef ref) async {
+    // First try the cached value.
+    var therapistId = ref.read(therapistIdProvider);
+    if (therapistId == null) {
+      // Provider not resolved yet — await the future once. Identity-svc
+      // round-trip is ~100-500ms, so we just block briefly. If it's
+      // still null after that, fall through to the snackbar.
+      try {
+        final user = await ref.read(currentUserProvider.future);
+        therapistId = user?.id;
+      } catch (e) {
+        // network / auth error — fall through with null
+      }
+    }
+    if (!context.mounted) return;
+    if (therapistId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Profil nie został jeszcze załadowany. Spróbuj za chwilę.',
+          ),
+        ),
+      );
+      return;
+    }
     showEuphireBottomSheet(
       context: context,
-      builder: (context) => AddSessionModal(patientId: patientId),
+      builder: (_) =>
+          AddSessionModal(patientId: patientId, therapistId: therapistId!),
     );
   }
 
@@ -32,12 +60,15 @@ class ClientDetailsScreen extends ConsumerWidget {
     final patientAsync = ref.watch(patientsProvider);
     final sessionsAsync = ref.watch(sessionsProvider);
 
-    // Fetch sessions when screen builds (if needed, alternatively we can fetch on initState, but we can do it post frame)
+    // Always re-fetch sessions on entry. Backend is the source of
+    // truth for session.status (CREATED → TRANSCRIBING → ANALYZING →
+    // COMPLETED), and we may be returning here from RecordingScreen
+    // /SessionStatusScreen where status just transitioned. The
+    // previous "only fetch if not cached" check kept stale state
+    // forever — caused the bug where finished sessions kept routing
+    // to SessionStatusScreen instead of TranscriptScreen.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final sessionsState = ref.read(sessionsProvider).whenOrNull(data: (d) => d);
-      if (sessionsState != null && !sessionsState.containsKey(patientId)) {
-        ref.read(sessionsProvider.notifier).fetchSessions(patientId);
-      }
+      ref.read(sessionsProvider.notifier).fetchSessions(patientId);
     });
 
     return Scaffold(
@@ -89,17 +120,18 @@ class ClientDetailsScreen extends ConsumerWidget {
                           
                           return EuphireCard(
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => SessionDetailsScreen(
-                                    sessionId: session.id,
-                                    patientName: patient.firstName,
-                                    date: dateStr,
-                                    modality: session.modality,
-                                  ),
-                                ),
-                              );
+                              // For completed sessions go straight to
+                              // the transcript view; in-progress ones
+                              // land on the stepper screen.
+                              final destination = session.status ==
+                                      SessionStatus.completed
+                                  ? MaterialPageRoute(
+                                      builder: (_) => TranscriptScreen(
+                                          sessionId: session.id))
+                                  : MaterialPageRoute(
+                                      builder: (_) => SessionStatusScreen(
+                                          sessionId: session.id));
+                              Navigator.push(context, destination);
                             },
                             child: EuphireListTile(
                               title: session.modality,

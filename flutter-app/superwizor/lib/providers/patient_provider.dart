@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/patient.dart';
 import '../models/session.dart';
+import 'current_user_provider.dart';
 import 'grpc_provider.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as grpc_clinical;
 
@@ -12,6 +13,13 @@ final patientsProvider = AsyncNotifierProvider<PatientsNotifier, List<Patient>>(
 class PatientsNotifier extends AsyncNotifier<List<Patient>> {
   @override
   Future<List<Patient>> build() async {
+    // Tie the patient list to the currently authenticated Firebase
+    // user. When the user logs out + a different therapist logs in,
+    // this watch sees the new uid and Riverpod rebuilds — the old
+    // therapist's cached patients vanish. Without this, the home
+    // screen showed stale data across login transitions.
+    final user = await ref.watch(firebaseUserProvider.future);
+    if (user == null) return const [];
     return _fetchPatients();
   }
 
@@ -20,19 +28,38 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     try {
       final req = grpc_clinical.ListPatientFilesRequest(therapistId: '', pageSize: 100);
       final res = await client.listPatientFiles(req);
-      
-      return res.patientFiles.map((pf) {
+
+      // Backend's PatientFile proto doesn't expose sessionCount, so we
+      // fan out one ListSessions per patient in parallel. Cheap for the
+      // tens-of-patients scale we expect; if this ever slows down we'll
+      // add a count to the proto / a dedicated GetPatientStats RPC.
+      final counts = await Future.wait(
+        res.patientFiles.map((pf) async {
+          try {
+            final sessRes = await client.listSessions(
+              grpc_clinical.ListSessionsRequest(patientFileId: pf.id),
+            );
+            return sessRes.sessions.length;
+          } catch (e) {
+            debugPrint('listSessions failed for ${pf.id}: $e');
+            return 0;
+          }
+        }),
+        eagerError: false,
+      );
+
+      return List.generate(res.patientFiles.length, (i) {
+        final pf = res.patientFiles[i];
         final names = pf.workingAlias.split(' ');
         final firstName = names.isNotEmpty ? names.first : 'Nieznany';
         final lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
-        
         return Patient(
           id: pf.id,
           firstName: firstName,
           lastName: lastName,
-          sessionCount: 0,
+          sessionCount: counts[i],
         );
-      }).toList();
+      });
     } catch (e) {
       debugPrint('Error fetching patients: $e');
       return [];
@@ -76,7 +103,11 @@ final sessionsProvider = AsyncNotifierProvider<SessionsNotifier, Map<String, Lis
 class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
   @override
   Future<Map<String, List<Session>>> build() async {
-    return {};
+    // Same auth-tie as PatientsNotifier — invalidate session cache
+    // on therapist switch so we don't show ex-user's sessions.
+    final user = await ref.watch(firebaseUserProvider.future);
+    if (user == null) return const {};
+    return const {};
   }
 
   Future<void> fetchSessions(String patientId) async {

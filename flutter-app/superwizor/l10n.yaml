@@ -1,0 +1,8 @@
+# i18n config (D7) — wszystkie widoczne dla użytkownika teksty żyją w
+# lib/l10n/app_pl.arb i są generowane do AppLocalizations przez `flutter gen-l10n`.
+# Reguła twarda: zero hardcoded stringów w kodzie UI.
+arb-dir: lib/l10n
+template-arb-file: app_pl.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false

@@ -1,15 +1,67 @@
-import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as cf;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
+
 import 'firebase_options.dart';
-import 'screens/login_screen.dart';
+import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 import 'theme/euphire_theme.dart';
+
+/// Top-level handler for FCM messages while the app is in the
+/// background or terminated. Must be a top-level function (or static)
+/// per Firebase docs — Dart spawns a new isolate.
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Background isolate: do minimal work; UI nav happens via
+  // onMessageOpenedApp when user taps the notification.
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  debugPrint('FCM bg msg: ${message.messageId}');
+}
+
+final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Hive — used by ConsentService (D9) and TranscriptCacheStore.
+  await Hive.initFlutter();
+
+  // Firestore offline persistence — keeps last seen session_states
+  // for offline-first reads.
+  cf.FirebaseFirestore.instance.settings = const cf.Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: cf.Settings.CACHE_SIZE_UNLIMITED,
+  );
+
+  // Date formatting (Polish month names in PDF + UI).
+  await initializeDateFormatting('pl_PL');
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // Foreground push: just log for MVP — toast UI hooks added later.
+  FirebaseMessaging.onMessage.listen((msg) {
+    debugPrint('FCM foreground: ${msg.notification?.title}');
+  });
+
+  // Tap-from-background routing to session details.
+  FirebaseMessaging.onMessageOpenedApp.listen((msg) {
+    final type = msg.data['notification_type'];
+    final sessionId = msg.data['session_id'];
+    if (type == 'report_ready' && sessionId is String && sessionId.isNotEmpty) {
+      // Routes via the global navigator; SessionStatusScreen will
+      // pick up `done` immediately and run the cascade.
+      navigatorKey.currentState?.pushNamed('/session', arguments: sessionId);
+    }
+  });
+
   runApp(const ProviderScope(child: SuperWizorApp()));
 }
 
@@ -19,19 +71,32 @@ class SuperWizorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SuperWizor AI',
+      navigatorKey: navigatorKey,
+      title: 'Superwizor AI',
       theme: EuphireTheme.themeData,
-      home: StreamBuilder(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-          return snapshot.hasData ? const HomeScreen() : const LoginScreen();
-        },
-      ),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: const [Locale('pl')],
+      locale: const Locale('pl'),
+      home: const _AuthGate(),
+    );
+  }
+}
+
+class _AuthGate extends StatelessWidget {
+  const _AuthGate();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        return snapshot.hasData ? const HomeScreen() : const LoginScreen();
+      },
     );
   }
 }

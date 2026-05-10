@@ -7,6 +7,8 @@ import '../widgets/euphire_card.dart';
 import '../widgets/euphire_list_tile.dart';
 import '../theme/euphire_theme.dart';
 import 'client_details_screen.dart';
+import '../l10n/app_localizations.dart';
+import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
 import '../widgets/add_patient_modal.dart';
 
@@ -24,6 +26,13 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = FirebaseAuth.instance.currentUser;
     final patientsAsync = ref.watch(patientsProvider);
+
+    // Eagerly fire identity-svc.GetUserByFirebaseUID so by the time
+    // the user taps "Add Session" (which needs the resolved users.id
+    // for the FK on audio_uploads.therapist_id), the value is cached.
+    // We don't render anything from this — just ensure the future
+    // is in flight. The result is consumed via therapistIdProvider.
+    ref.watch(currentUserProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -73,7 +82,8 @@ class HomeScreen extends ConsumerWidget {
                       return EuphireCard(
                         child: EuphireListTile(
                           title: '${patient.firstName} ${patient.lastName}'.trim(),
-                          subtitle: 'Liczba sesji: ${patient.sessionCount}',
+                          subtitle: AppLocalizations.of(context)
+                              .patient_session_count(patient.sessionCount),
                           onTap: () {
                             Navigator.push(
                               context,
