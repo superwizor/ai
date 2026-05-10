@@ -64,3 +64,6 @@ Przed dostarczeniem jakiegokolwiek kodu Flutterowego widoku, agent LLM musi auto
 4. [ ] Czy wyciąłem CAŁĄ stronę bierną ze słów kluczy i zamieniłem na czyny?
 5. [ ] Czy jest ZAWSZE KROPKA na końcu każdego nagłówka, powiadomienia oraz opisu na wyświetlaczu?
 6. [ ] Zaimki `Ty/Twój` - kapitalizacja?
+7. [ ] KONTRAST KART: Czy nie użyto `EuphireColors.nocturne` dla kart/pudełek na tle `evergreen`? (Należy użyć jaśniejszego tła np. `Colors.white.withValues(alpha: 0.05)` lub `0.1` by zbudować prawidłową elewację).
+8. [ ] OBSŁUGA BŁĘDÓW: Czy w `catch` do wyświetlania błędu użyto `showEuphireBottomSheet` i `EuphireActionSheet` zamiast domyślnego `ScaffoldMessenger.showSnackBar`?
+9. [ ] ZAKAZ HARDKODU: Czy absolutnie wszystkie teksty i komunikaty prowadzą przez plik `l10n/app_pl.arb` i `AppLocalizations.of(context)`?

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class EuphireColors {
   static const Color ember = Color(0xFFFCAE2F);
@@ -33,35 +32,40 @@ class EuphireTheme {
 
       textTheme: TextTheme(
         // Headings (Montserrat)
-        displayLarge: GoogleFonts.montserrat(
+        displayLarge: const TextStyle(
+          fontFamily: 'Montserrat',
           fontSize: 32,
           fontWeight: FontWeight.w600,
           color: EuphireColors.frostWhite,
           height: 1.2,
           letterSpacing: 0.5,
         ),
-        displayMedium: GoogleFonts.montserrat(
+        displayMedium: const TextStyle(
+          fontFamily: 'Montserrat',
           fontSize: 28,
           fontWeight: FontWeight.w600,
           color: EuphireColors.frostWhite,
           height: 1.2,
           letterSpacing: 0.5,
         ),
-        displaySmall: GoogleFonts.montserrat(
+        displaySmall: const TextStyle(
+          fontFamily: 'Montserrat',
           fontSize: 24,
           fontWeight: FontWeight.w600,
           color: EuphireColors.frostWhite,
           height: 1.2,
           letterSpacing: 0.5,
         ),
-        headlineMedium: GoogleFonts.montserrat(
+        headlineMedium: const TextStyle(
+          fontFamily: 'Montserrat',
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: EuphireColors.frostWhite,
           height: 1.2,
           letterSpacing: 0.5,
         ),
-        titleLarge: GoogleFonts.montserrat(
+        titleLarge: const TextStyle(
+          fontFamily: 'Montserrat',
           fontSize: 18,
           fontWeight: FontWeight.w500,
           color: EuphireColors.frostWhite,
@@ -70,13 +74,15 @@ class EuphireTheme {
         ),
 
         // Body Text (Merriweather)
-        bodyLarge: GoogleFonts.merriweather(
+        bodyLarge: const TextStyle(
+          fontFamily: 'Merriweather',
           fontSize: 16,
           fontWeight: FontWeight.w400,
           color: EuphireColors.frostWhite,
           height: 1.5,
         ),
-        bodyMedium: GoogleFonts.merriweather(
+        bodyMedium: const TextStyle(
+          fontFamily: 'Merriweather',
           fontSize: 14,
           fontWeight: FontWeight.w400,
           color: EuphireColors.frostWhite,
@@ -84,14 +90,16 @@ class EuphireTheme {
         ),
 
         // Labels, Tags, Stamps (Roboto Mono)
-        labelLarge: GoogleFonts.robotoMono(
+        labelLarge: const TextStyle(
+          fontFamily: 'RobotoMono',
           fontSize: 14,
           fontWeight: FontWeight.w500,
           color: EuphireColors.frostWhite,
           height: 1.5,
           letterSpacing: 1.0,
         ),
-        labelSmall: GoogleFonts.robotoMono(
+        labelSmall: const TextStyle(
+          fontFamily: 'RobotoMono',
           fontSize: 11,
           fontWeight: FontWeight.w400,
           color: EuphireColors.mist,
@@ -104,7 +112,8 @@ class EuphireTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: EuphireColors.ember,
           foregroundColor: EuphireColors.obsidianBlack,
-          textStyle: GoogleFonts.montserrat(
+          textStyle: const TextStyle(
+            fontFamily: 'Montserrat',
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -116,7 +125,7 @@ class EuphireTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: EuphireColors.nocturne,
-        labelStyle: GoogleFonts.merriweather(color: EuphireColors.mist),
+        labelStyle: const TextStyle(fontFamily: 'Merriweather', color: EuphireColors.mist),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
