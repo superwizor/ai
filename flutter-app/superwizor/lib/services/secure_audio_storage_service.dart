@@ -1,0 +1,277 @@
+// Per-user AES-256-GCM audio encryption service (D1).
+//
+// Responsibilities:
+//   - Generate one master key per user on first login on this device,
+//     stored in flutter_secure_storage (iOS Keychain, Android Keystore).
+//   - Encrypt-after-recording: take the OGG file from `record` package,
+//     stream-read it in 1 MB chunks, AES-GCM each chunk with a fresh IV,
+//     write encrypted .enc files to app documents directory.
+//   - Securely delete the raw recording (zero-overwrite + unlink).
+//   - Decrypt for upload: stream-read .enc files, GCM-verify, write to
+//     a single temp file ready for HTTP PUT.
+//
+// File format per chunk:
+//
+//   [1 byte  key_version (uint8)]
+//   [12 bytes GCM IV (random per chunk)]
+//   [N bytes ciphertext]
+//   [16 bytes GCM auth tag (appended by encrypter package)]
+//
+// Key rotation: bumping `key_version + 1` keeps old chunks decryptable
+// with the old key (still in keystore) until they're successfully
+// uploaded; only after all sessions are clear we purge older versions.
+
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:encrypt/encrypt.dart' as enc;
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
+/// Public-facing record describing a single encrypted chunk on disk.
+class EncryptedChunk {
+  final int seq;
+  final String path;
+  final int sizeBytes;
+
+  const EncryptedChunk({
+    required this.seq,
+    required this.path,
+    required this.sizeBytes,
+  });
+}
+
+class SecureAudioStorageService {
+  SecureAudioStorageService({FlutterSecureStorage? storage})
+      : _storage = storage ?? const FlutterSecureStorage();
+
+  static const _chunkSize = 1024 * 1024; // 1 MB
+  static const _ivLen = 12; // GCM standard 96-bit IV
+  static const _gcmTagLen = 16;
+  static const _headerLen = 1 + _ivLen; // 1 byte version + IV
+
+  static const _keyStoragePrefix = 'audio_master_key_v';
+  static const _keyVersionStorage = 'audio_master_key_current_version';
+
+  final FlutterSecureStorage _storage;
+
+  // ---------- key management ----------
+
+  /// Returns the current master key for the logged-in user, generating
+  /// one on first call. The keychain item is bound to this device only
+  /// (no iCloud sync), so logging in on a second device produces a
+  /// fresh key — that's fine since the second device only needs to
+  /// upload its own recordings.
+  Future<({enc.Key key, int version})> _currentKeyAndVersion() async {
+    final versionStr = await _storage.read(key: _keyVersionStorage);
+    final version = int.tryParse(versionStr ?? '') ?? 1;
+    final keyStorageKey = '$_keyStoragePrefix$version';
+    final stored = await _storage.read(key: keyStorageKey);
+
+    if (stored != null) {
+      return (key: enc.Key(base64Decode(stored)), version: version);
+    }
+
+    // First-time bootstrap on this device.
+    final fresh = enc.Key.fromSecureRandom(32); // 256 bits
+    await _storage.write(key: keyStorageKey, value: base64Encode(fresh.bytes));
+    await _storage.write(key: _keyVersionStorage, value: version.toString());
+    return (key: fresh, version: version);
+  }
+
+  /// Used by upload-time decryption. Reads the key matching the
+  /// version embedded in chunk headers.
+  Future<enc.Key?> _keyForVersion(int version) async {
+    final stored = await _storage.read(key: '$_keyStoragePrefix$version');
+    if (stored == null) return null;
+    return enc.Key(base64Decode(stored));
+  }
+
+  // ---------- write path: encrypt the recorded OGG ----------
+
+  /// Reads [rawPath] in 1 MB chunks, AES-GCM-encrypts each, writes
+  /// `chunk_NNNNN.enc` files to `<docs>/sessions/<sessionId>/`.
+  /// On success the source file is securely deleted (zero-overwrite
+  /// followed by unlink). Returns metadata about all written chunks.
+  Future<List<EncryptedChunk>> encryptRecording({
+    required String rawPath,
+    required String sessionId,
+  }) async {
+    final raw = File(rawPath);
+    if (!await raw.exists()) {
+      throw StateError('rawPath does not exist: $rawPath');
+    }
+
+    final keyInfo = await _currentKeyAndVersion();
+    final key = keyInfo.key;
+    final keyVersion = keyInfo.version;
+
+    final dir = await _sessionDir(sessionId);
+    await dir.create(recursive: true);
+
+    final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
+    final out = <EncryptedChunk>[];
+
+    final input = raw.openRead();
+    final buffer = BytesBuilder(copy: false);
+    int seq = 0;
+
+    Future<void> flushChunk(Uint8List data) async {
+      final iv = enc.IV.fromSecureRandom(_ivLen);
+      final encrypted = encrypter.encryptBytes(data, iv: iv);
+
+      final fileName = 'chunk_${seq.toString().padLeft(5, '0')}.enc';
+      final outFile = File(p.join(dir.path, fileName));
+
+      // header[0] = key_version, header[1..13] = iv
+      final header = Uint8List(_headerLen);
+      header[0] = keyVersion & 0xFF;
+      header.setRange(1, 1 + _ivLen, iv.bytes);
+
+      final sink = outFile.openWrite();
+      sink.add(header);
+      sink.add(encrypted.bytes);
+      await sink.flush();
+      await sink.close();
+
+      out.add(EncryptedChunk(
+        seq: seq,
+        path: outFile.path,
+        sizeBytes: await outFile.length(),
+      ));
+      seq++;
+    }
+
+    await for (final piece in input) {
+      buffer.add(piece);
+      while (buffer.length >= _chunkSize) {
+        final all = buffer.toBytes();
+        final taken = Uint8List.sublistView(all, 0, _chunkSize);
+        final remainder = Uint8List.sublistView(all, _chunkSize);
+        buffer.clear();
+        if (remainder.isNotEmpty) buffer.add(remainder);
+        await flushChunk(taken);
+      }
+    }
+    final tail = buffer.toBytes();
+    if (tail.isNotEmpty) {
+      await flushChunk(tail);
+    }
+
+    await _secureDelete(raw);
+    return out;
+  }
+
+  // ---------- read path: decrypt for upload ----------
+
+  /// Decrypts every `chunk_NNNNN.enc` in the session directory in seq
+  /// order and writes the joined plaintext to a single temp file
+  /// returned to the caller. Caller is responsible for deleting the
+  /// temp file once the upload completes.
+  Future<File> decryptToTempFile({required String sessionId}) async {
+    final dir = await _sessionDir(sessionId);
+    if (!await dir.exists()) {
+      throw StateError('no encrypted chunks for session $sessionId');
+    }
+
+    final chunks = (await dir
+            .list()
+            .where((e) => e is File && p.basename(e.path).startsWith('chunk_'))
+            .toList())
+        .cast<File>()
+      ..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
+
+    if (chunks.isEmpty) {
+      throw StateError('no encrypted chunks found in $dir');
+    }
+
+    final tempDir = await getTemporaryDirectory();
+    final out = File(p.join(tempDir.path, 'session_$sessionId.flac'));
+    final sink = out.openWrite();
+
+    try {
+      for (final chunkFile in chunks) {
+        final bytes = await chunkFile.readAsBytes();
+        if (bytes.length < _headerLen + _gcmTagLen) {
+          throw StateError('chunk too short: ${chunkFile.path}');
+        }
+        final keyVersion = bytes[0];
+        final iv = enc.IV(Uint8List.sublistView(bytes, 1, 1 + _ivLen));
+        final ciphertext = Uint8List.sublistView(bytes, _headerLen);
+
+        final key = await _keyForVersion(keyVersion);
+        if (key == null) {
+          throw StateError(
+              'no key for chunk version $keyVersion (was the keychain wiped?)');
+        }
+        final decrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
+        final plain =
+            decrypter.decryptBytes(enc.Encrypted(ciphertext), iv: iv);
+        sink.add(plain);
+      }
+      await sink.flush();
+    } finally {
+      await sink.close();
+    }
+    return out;
+  }
+
+  /// Called by UploadService after a successful PUT — wipes the
+  /// session directory.
+  Future<void> purgeSession(String sessionId) async {
+    final dir = await _sessionDir(sessionId);
+    if (!await dir.exists()) return;
+    await for (final entry in dir.list()) {
+      if (entry is File) {
+        await _secureDelete(entry);
+      }
+    }
+    if (await dir.exists()) await dir.delete(recursive: true);
+  }
+
+  // ---------- helpers ----------
+
+  Future<Directory> _sessionDir(String sessionId) async {
+    final base = await getApplicationDocumentsDirectory();
+    return Directory(p.join(base.path, 'sessions', sessionId));
+  }
+
+  /// Best-effort secure delete: overwrite with zeros once, fsync, unlink.
+  /// On modern flash storage this isn't perfect (wear-levelling), but
+  /// it's better than a plain delete if the device is later compromised.
+  /// iOS Data Protection encrypts at-rest anyway when the device is
+  /// locked — this is belt-and-braces.
+  Future<void> _secureDelete(File f) async {
+    try {
+      final size = await f.length();
+      if (size > 0) {
+        final raf = await f.open(mode: FileMode.write);
+        try {
+          const blockSize = 64 * 1024;
+          final zeros = Uint8List(blockSize);
+          int written = 0;
+          while (written < size) {
+            final remain = size - written;
+            await raf.writeFrom(
+                zeros, 0, remain >= blockSize ? blockSize : remain);
+            written += blockSize;
+          }
+          await raf.flush();
+        } finally {
+          await raf.close();
+        }
+      }
+      await f.delete();
+    } catch (e) {
+      // We tried — log and move on. On iOS the file is still
+      // protected by Data Protection until the user wipes the device.
+      debugPrint('secure delete failed for ${f.path}: $e');
+      try {
+        if (await f.exists()) await f.delete();
+      } catch (_) {}
+    }
+  }
+}

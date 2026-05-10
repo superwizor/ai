@@ -1,23 +1,56 @@
+// AddSessionModal — choose a modality and start recording.
+//
+// Updated for Etap 1-5b:
+//   - Uses kModalities (codes + i18n display keys)
+//   - Passes `patientAlias` to RecordingScreen (required by Etap 3)
+//   - Routes to SessionStatusScreen on RecordingScreen pop (Etap 4)
+//     instead of the legacy SessionDetailsScreen.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
-import '../theme/euphire_theme.dart';
-import '../widgets/euphire_card.dart';
-import '../widgets/euphire_list_tile.dart';
-import '../screens/recording_screen.dart';
-import '../providers/patient_provider.dart';
-import '../models/session.dart';
-import '../models/patient.dart';
+
 import '../constants/modalities.dart';
-import '../screens/session_details_screen.dart';
+import '../l10n/app_localizations.dart';
+import '../models/patient.dart';
+import '../providers/patient_provider.dart';
+import '../screens/recording_screen.dart';
+import '../theme/euphire_theme.dart';
+import 'euphire_card.dart';
+import 'euphire_list_tile.dart';
 
 class AddSessionModal extends ConsumerWidget {
   final String patientId;
+  final String therapistId;
 
   const AddSessionModal({
     super.key,
     required this.patientId,
+    required this.therapistId,
   });
+
+  String _modalityLabel(BuildContext context, String code) {
+    final t = AppLocalizations.of(context);
+    switch (code) {
+      case 'integrative':
+        return t.modality_integrative;
+      case 'cbt':
+        return t.modality_cbt;
+      case 'psychodynamic':
+        return t.modality_psychodynamic;
+      case 'positive':
+        return t.modality_positive;
+      case 'schema':
+        return t.modality_schema;
+      case 'systemic':
+        return t.modality_systemic;
+      case 'eft':
+        return t.modality_eft;
+      case 'coaching':
+        return t.modality_coaching;
+      default:
+        return code;
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,81 +61,68 @@ class AddSessionModal extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Nowa Sesja.',
+            'Nowa sesja.',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: EuphireColors.frostWhite,
-            ),
+                  color: EuphireColors.frostWhite,
+                ),
           ),
           const SizedBox(height: 16),
           Text(
-            'Wybierz modalność dla tej sesji:',
+            'Wybierz nurt dla tej sesji:',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: EuphireColors.mist,
-            ),
+                  color: EuphireColors.mist,
+                ),
           ),
           const SizedBox(height: 24),
           SizedBox(
-            height: 400, // Fixed height for scrollable list
+            height: 400,
             child: ListView.builder(
-              itemCount: clinicalModalities.length,
+              itemCount: kModalities.length,
               itemBuilder: (context, index) {
-                final modality = clinicalModalities[index];
+                final modality = kModalities[index];
+                final label = _modalityLabel(context, modality.code);
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: EuphireCard(
                     child: EuphireListTile(
-                      title: modality,
+                      title: label,
                       onTap: () async {
-                        // Pobierz dane pacjenta przed zamknięciem modala
-                        final patientsState = ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? [];
+                        final patientsState =
+                            ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? [];
                         final patient = patientsState.firstWhere(
                           (p) => p.id == patientId,
-                          orElse: () => Patient(id: patientId, firstName: 'Nie znaleziono', lastName: ''),
+                          orElse: () => Patient(
+                              id: patientId,
+                              firstName: 'Nie znaleziono',
+                              lastName: ''),
                         );
-                        
-                        // Zamknij bottom sheet
-                        Navigator.pop(context);
-                        
-                        // Utworz nową sesje
-                        final session = Session(
-                          id: const Uuid().v4(),
-                          patientId: patientId,
-                          modality: modality,
-                          date: DateTime.now(),
-                          duration: Duration.zero,
-                        );
-                        
-                        // Zapisz sesje i zaktualizuj licznik pacjenta
-                        ref.read(sessionsProvider.notifier).addSession(session);
-                        ref.read(patientsProvider.notifier).incrementSessionCount(patientId);
 
-                        // Przejdz do nagrywania i czekaj na powrót
-                        final returnedSessionId = await Navigator.push(
+                        Navigator.pop(context);
+
+                        // No local "fake session" insert here — the
+                        // session row is created by ingestion-svc on
+                        // CompleteAudioUpload, with a backend-assigned
+                        // UUID that's the only one we can use to look
+                        // up the session later. Inserting a local
+                        // Uuid().v4() session with `inProgress` status
+                        // produced stale cache entries that never got
+                        // overridden by fetchSessions, causing the
+                        // bug where re-entering the patient routed to
+                        // SessionStatusScreen instead of TranscriptScreen.
+
+                        if (!context.mounted) return;
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => RecordingScreen(
+                            builder: (_) => RecordingScreen(
                               patientFileId: patientId,
-                              therapistId: 'eecf479b-08f8-4751-82e0-482b54043793', // mock valid ID dla backendu
+                              therapistId: therapistId,
+                              patientAlias:
+                                  '${patient.firstName} ${patient.lastName}'
+                                      .trim(),
                             ),
                           ),
                         );
-
-                        // Jeśli wrócono z poprawnym id sesji, przejdź do szczegółów
-                        if (returnedSessionId != null && context.mounted) {
-                          final dateStr = '${session.date.day.toString().padLeft(2, '0')}.${session.date.month.toString().padLeft(2, '0')}.${session.date.year}';
-                          
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SessionDetailsScreen(
-                                sessionId: returnedSessionId as String,
-                                patientName: patient.firstName, // Używamy prawdziwego imienia
-                                date: dateStr,
-                                modality: modality,
-                              ),
-                            ),
-                          );
-                        }
                       },
                     ),
                   ),

@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import '../widgets/euphire_button.dart';
@@ -27,37 +28,98 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
 
+    // Diagnose silent input issues that look like wrong-password but are
+    // really iOS autofill artifacts (trailing whitespace, smart-quote
+    // substitution, hidden zero-width chars, etc.). We never log the
+    // password value itself — only its shape.
+    final emailRaw = _email.text;
+    final emailTrimmed = emailRaw.trim().toLowerCase();
+    final passRaw = _password.text;
+    final passTrimmed = passRaw.trim();
+    final hasEmailWhitespace = emailRaw != emailTrimmed;
+    final hasPassWhitespace = passRaw != passTrimmed;
+    final passHasNonAscii = passRaw.codeUnits.any((c) => c > 127);
+    debugPrint(
+        '[auth] mode=${_isLogin ? "login" : "register"} '
+        'email="$emailTrimmed" emailLen=${emailRaw.length} '
+        'passLen=${passRaw.length} '
+        'emailHadWhitespace=$hasEmailWhitespace '
+        'passHadWhitespace=$hasPassWhitespace '
+        'passHasNonAscii=$passHasNonAscii');
+
     try {
       if (_isLogin) {
-        // Login flow
+        // Login flow.
+        // - Email is lower-cased + trimmed (Firebase canonicalises emails
+        //   to lowercase internally; doing it here makes the local logs
+        //   accurate and avoids client/server mismatch noise).
+        // - Password is sent untrimmed: trimming would silently mangle
+        //   passwords that legitimately contain leading/trailing spaces
+        //   (rare but valid). If the user has a trailing-space artifact
+        //   from iOS autofill, the diagnostic above will surface it
+        //   so they can fix the input rather than us masking it.
         await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: _email.text.trim(),
-          password: _password.text,
+          email: emailTrimmed,
+          password: passRaw,
         );
-
-        // After login, ensure user exists in identity-svc (auto-register if missing)
         await _ensureUserRegistered();
       } else {
-        // Registration flow
         final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: _email.text.trim(),
-          password: _password.text,
+          email: emailTrimmed,
+          password: passRaw,
         );
-
-        // Register user in identity-svc (PostgreSQL)
         await _registerInIdentityService(cred.user!);
       }
     } on FirebaseAuthException catch (e) {
-      debugPrint('FirebaseAuthException: $e');
-      if (mounted) setState(() => _error = e.message != null ? '${e.message}.' : 'Wystąpił błąd Firebase.');
+      debugPrint('FirebaseAuthException code=${e.code} message=${e.message}');
+      if (mounted) {
+        setState(() => _error = _friendlyAuthError(context, e.code));
+      }
     } catch (e) {
       debugPrint('General Exception: $e');
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = AppLocalizations.of(context).auth_error_generic);
+      }
     } finally {
       if (mounted) {
         setState(() => _loading = false);
       }
     }
+  }
+
+  /// Sends a password-reset email via Firebase Auth. Used by the
+  /// "Forgot password" affordance. We always show the same success
+  /// message regardless of whether the email exists — this matches
+  /// Firebase's email-enumeration protection and avoids leaking which
+  /// emails are registered.
+  Future<void> _sendPasswordReset() async {
+    final emailTrimmed = _email.text.trim().toLowerCase();
+    if (emailTrimmed.isEmpty) {
+      setState(() => _error =
+          AppLocalizations.of(context).auth_error_invalid_email);
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: emailTrimmed);
+    } catch (e) {
+      debugPrint('sendPasswordResetEmail: $e');
+      // intentional — show the same success message even on failure
+    }
+    if (!mounted) return;
+    final t = AppLocalizations.of(context);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t.auth_password_reset_sent_title),
+        content: Text(t.auth_password_reset_sent_body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(t.common_understand),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Register the Firebase user in the identity-svc PostgreSQL database.
@@ -96,6 +158,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // User not found in identity-svc — auto-register them
       debugPrint('User not found in identity-svc, auto-registering...');
       await _registerInIdentityService(firebaseUser);
+    }
+  }
+
+  /// Maps Firebase Auth error codes to Polish user-friendly messages.
+  /// `invalid-credential` is the new generic code Firebase returns
+  /// for both "wrong password" and "user not found" — Email
+  /// Enumeration Protection is on by default (good for clinical PHI).
+  /// We can't tell which one happened, so we say "wrong email or
+  /// password" and trust the user to figure it out via Forgot Password.
+  String _friendlyAuthError(BuildContext context, String code) {
+    final t = AppLocalizations.of(context);
+    switch (code) {
+      case 'invalid-credential':
+      case 'wrong-password':
+      case 'user-not-found':
+        return t.auth_error_invalid_credential;
+      case 'email-already-in-use':
+        return t.auth_error_email_already_in_use;
+      case 'weak-password':
+        return t.auth_error_weak_password;
+      case 'invalid-email':
+        return t.auth_error_invalid_email;
+      case 'network-request-failed':
+        return t.auth_error_network;
+      case 'too-many-requests':
+        return t.auth_error_too_many_requests;
+      case 'user-disabled':
+        return t.auth_error_user_disabled;
+      default:
+        return t.auth_error_generic;
     }
   }
 
@@ -147,7 +239,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 isLoading: _loading,
                 onPressed: _submit,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
+              if (_isLogin)
+                TextButton(
+                  onPressed: _loading ? null : _sendPasswordReset,
+                  child: Text(AppLocalizations.of(context).auth_forgot_password),
+                ),
+              const SizedBox(height: 8),
               TextButton(
                 onPressed: _toggleAuthMode,
                 child: Text(

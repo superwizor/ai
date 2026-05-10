@@ -1,207 +1,227 @@
+// RecordingService — wraps the `record` package with our domain semantics.
+//
+// Per D10: native OGG-OPUS @ 64 kbps mono. Hardware-accelerated on
+// iOS (AudioToolbox 11+) and Android (MediaCodec API 21+). No
+// post-processing — `recorder.stop()` returns the path to a final
+// .ogg file ready for AES-GCM encryption by SecureAudioStorageService.
+//
+// State machine:
+//
+//   idle ─start()→ recording ─pause()→ paused ─resume()→ recording
+//                          \─stop()→ stopped (returns path, transitions to idle)
+//
+// Wakelock keeps the screen awake during recording so the OS doesn't
+// dim the device and confuse the therapist about whether the app is
+// still capturing. iOS BG audio mode (Info.plist UIBackgroundModes:
+// audio) keeps the recorder alive when the app goes to background.
+
 import 'dart:async';
 import 'dart:io';
-import 'package:encrypt/encrypt.dart' as enc;
+
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 enum RecordingState { idle, recording, paused, stopped, error }
 
-class AudioChunk {
-  final String filePath;
-  final int chunkIndex;
-  final int durationMs;
-
-  AudioChunk({required this.filePath, required this.chunkIndex, required this.durationMs});
-}
-
 class RecordingService {
-  final _recorder = AudioRecorder();
+  RecordingService();
+
+  final AudioRecorder _recorder = AudioRecorder();
+
   final _stateController = StreamController<RecordingState>.broadcast();
-  final _chunkController = StreamController<AudioChunk>.broadcast();
-  final _amplitudeController = StreamController<Amplitude>.broadcast();
-  StreamSubscription<Amplitude>? _amplitudeSubscription;
-
-  Timer? _chunkTimer;
-  String? _sessionDir;
-  int _chunkIndex = 0;
-  DateTime? _chunkStartTime;
-  RecordingState _state = RecordingState.idle;
-  
-  enc.Key? _sessionKey;
-  enc.IV? _sessionIV;
-
-  static const _chunkDurationSeconds = 30;
+  final _durationController = StreamController<Duration>.broadcast();
+  final _amplitudeController = StreamController<double>.broadcast();
 
   Stream<RecordingState> get stateStream => _stateController.stream;
-  Stream<AudioChunk> get chunkStream => _chunkController.stream;
-  Stream<Amplitude> get amplitudeStream => _amplitudeController.stream;
-  RecordingState get state => _state;
-  enc.Key? get sessionKey => _sessionKey;
-  enc.IV? get sessionIV => _sessionIV;
+  Stream<Duration> get durationStream => _durationController.stream;
+  Stream<double> get amplitudeStream => _amplitudeController.stream;
 
-  Future<bool> hasPermission() async {
-    final status = await Permission.microphone.request();
-    return status.isGranted;
+  RecordingState _state = RecordingState.idle;
+  RecordingState get state => _state;
+
+  String? _activeFilePath;
+  String? get activeFilePath => _activeFilePath;
+
+  Timer? _ticker;
+  DateTime? _segmentStart;
+  Duration _accumulated = Duration.zero;
+
+  Duration get currentDuration {
+    final base = _accumulated;
+    if (_state == RecordingState.recording && _segmentStart != null) {
+      return base + DateTime.now().difference(_segmentStart!);
+    }
+    return base;
   }
 
-  Future<void> startRecording(String sessionId) async {
-    if (!await hasPermission()) {
-      _setState(RecordingState.error);
-      throw Exception('Microphone permission denied');
+  /// Begins a fresh recording for [sessionId]. The OGG file lands at
+  /// `<docs>/sessions/<sessionId>/raw.ogg`. Throws if a recording is
+  /// already in progress.
+  Future<void> start(String sessionId) async {
+    if (_state != RecordingState.idle && _state != RecordingState.stopped) {
+      throw StateError('already recording (state=$_state)');
     }
 
-    _sessionKey = enc.Key.fromSecureRandom(32);
-    _sessionIV = enc.IV.fromSecureRandom(16);
-
-    final docs = await getApplicationSupportDirectory();
-    _sessionDir = p.join(docs.path, 'recordings', sessionId);
-    await Directory(_sessionDir!).create(recursive: true);
-
-    _chunkIndex = 0;
-    await WakelockPlus.enable();
-
-    await _startNewChunk();
-
-    // Schedule chunk rotation
-    _chunkTimer = Timer.periodic(
-      const Duration(seconds: _chunkDurationSeconds),
-      (_) => _rotateChunk(),
-    );
-
-    _setState(RecordingState.recording);
-
-    // Start amplitude monitoring for waveform UI
-    _amplitudeSubscription?.cancel();
-    _amplitudeSubscription = _recorder
-        .onAmplitudeChanged(const Duration(milliseconds: 80))
-        .listen((amp) {
-      if (!_amplitudeController.isClosed) {
-        _amplitudeController.add(amp);
+    // Two-step permission check — `record` package's native check fires
+    // the iOS prompt reliably (calls AVAudioApplication.requestRecordPermission
+    // directly). `permission_handler`'s wrapper sometimes returns stale
+    // `permanentlyDenied` on iOS 26+ before iOS even sees the request,
+    // which breaks first-time grants. We use the native path first;
+    // permission_handler is only consulted if the native call says no
+    // (so we still know whether to show "Open Settings").
+    final hasMic = await _recorder.hasPermission();
+    if (!hasMic) {
+      final fallback = await Permission.microphone.request();
+      if (!fallback.isGranted) {
+        _setState(RecordingState.error);
+        throw StateError('microphone permission not granted');
       }
-    });
-  }
+    }
 
-  Future<void> _startNewChunk() async {
-    final filePath = p.join(_sessionDir!, 'chunk_${_chunkIndex.toString().padLeft(4, '0')}.flac');
-    _chunkStartTime = DateTime.now();
+    final docs = await getApplicationDocumentsDirectory();
+    final dir = Directory(p.join(docs.path, 'sessions', sessionId));
+    await dir.create(recursive: true);
+    final outPath = p.join(dir.path, 'raw.flac');
 
+    // Plan C from D10: FLAC, NOT Opus. iOS does not ship a public Opus
+    // encoder, and the `record` package's iOS Opus path produces 0-byte
+    // files with `AudioFileObject.cpp:1170 write past end` warnings —
+    // verified on iPhone 15 / iOS 26.2.1. FLAC works natively and is
+    // also a Chirp 3-supported codec.
+    //
+    // 16 kHz mono is the STT sweet spot:
+    //   - smaller file (~16 MB / 60 min vs 270 MB at 48 kHz)
+    //   - matches Chirp 3's native sample rate; no upstream resampling
+    //   - voice content sits below 8 kHz, no quality loss
     await _recorder.start(
       const RecordConfig(
-        encoder: AudioEncoder.flac,
+        encoder: AudioEncoder.flac, // lossless; ignores bitRate
         sampleRate: 16000,
         numChannels: 1,
+        autoGain: true,
+        echoCancel: false,
+        noiseSuppress: false,
       ),
-      path: filePath,
+      path: outPath,
     );
+
+    await WakelockPlus.enable();
+
+    _activeFilePath = outPath;
+    _accumulated = Duration.zero;
+    _segmentStart = DateTime.now();
+    _setState(RecordingState.recording);
+    _startTicker();
   }
 
-  Future<void> _rotateChunk() async {
+  Future<void> pause() async {
     if (_state != RecordingState.recording) return;
-
-    final oldPath = await _recorder.stop();
-    final duration = DateTime.now().difference(_chunkStartTime!).inMilliseconds;
-    
-    if (oldPath != null) {
-      await _encryptChunk(oldPath);
-      _chunkController.add(AudioChunk(
-        filePath: oldPath,
-        chunkIndex: _chunkIndex,
-        durationMs: duration,
-      ));
+    await _recorder.pause();
+    if (_segmentStart != null) {
+      _accumulated += DateTime.now().difference(_segmentStart!);
+      _segmentStart = null;
     }
-
-    _chunkIndex++;
-    await _startNewChunk();
+    _setState(RecordingState.paused);
   }
 
-  Future<void> pauseRecording() async {
-    if (_state == RecordingState.recording) {
-      await _recorder.pause();
-      _chunkTimer?.cancel();
-      _setState(RecordingState.paused);
-    }
+  Future<void> resume() async {
+    if (_state != RecordingState.paused) return;
+    await _recorder.resume();
+    _segmentStart = DateTime.now();
+    _setState(RecordingState.recording);
   }
 
-  Future<void> resumeRecording() async {
+  /// Stops the recorder. Returns the path to the finished OGG file
+  /// (or null if recording never actually started). Caller hands the
+  /// file off to SecureAudioStorageService.encryptRecording().
+  ///
+  /// Resume-before-stop guard: on iOS, calling stop() while in paused
+  /// state has been observed to produce a 0-byte file (the OGG writer
+  /// loses the in-flight buffer because pause closes the file handle
+  /// without flushing the trailing OGG page). We force a brief resume
+  /// so the recorder can reach a clean stop point.
+  Future<String?> stop() async {
+    if (_state == RecordingState.idle || _state == RecordingState.stopped) {
+      return null;
+    }
     if (_state == RecordingState.paused) {
-      await _recorder.resume();
-      _chunkTimer = Timer.periodic(
-        const Duration(seconds: _chunkDurationSeconds),
-        (_) => _rotateChunk(),
-      );
-      _setState(RecordingState.recording);
+      try {
+        await _recorder.resume();
+        _segmentStart = DateTime.now();
+        // Tiny dwell so the encoder writes its trailing frames cleanly.
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      } catch (e) {
+        // ignore — best-effort
+      }
     }
-  }
-
-  Future<List<String>> stopRecording() async {
-    _chunkTimer?.cancel();
-    _amplitudeSubscription?.cancel();
-    _amplitudeSubscription = null;
-    
-    final finalPath = await _recorder.stop();
-    if (finalPath != null && _chunkStartTime != null) {
-      await _encryptChunk(finalPath);
-      final duration = DateTime.now().difference(_chunkStartTime!).inMilliseconds;
-      _chunkController.add(AudioChunk(
-        filePath: finalPath,
-        chunkIndex: _chunkIndex,
-        durationMs: duration,
-      ));
+    final returnedPath = await _recorder.stop();
+    if (_segmentStart != null) {
+      _accumulated += DateTime.now().difference(_segmentStart!);
+      _segmentStart = null;
     }
-
+    _ticker?.cancel();
+    _ticker = null;
     await WakelockPlus.disable();
     _setState(RecordingState.stopped);
-
-    if (_sessionDir == null) return [];
-
-    final dir = Directory(_sessionDir!);
-    if (!await dir.exists()) return [];
-
-    final files = await dir
-        .list()
-        .where((e) => e is File && e.path.endsWith('.flac'))
-        .map((e) => e.path)
-        .toList();
-
-    files.sort();
-    return files;
+    final out = returnedPath ?? _activeFilePath;
+    _activeFilePath = null;
+    return out;
   }
 
-  Future<void> cleanSession(String sessionId) async {
-    final docs = await getApplicationSupportDirectory();
-    final targetDir = p.join(docs.path, 'recordings', sessionId);
-    final dir = Directory(targetDir);
-    if (await dir.exists()) {
-      await dir.delete(recursive: true);
+  /// Cancels and deletes the in-progress recording (used by
+  /// "Zakończ bez zapisu" / "Usuń to nagranie bezpowrotnie").
+  Future<void> cancel() async {
+    final path = await _recorder.stop();
+    _ticker?.cancel();
+    _ticker = null;
+    _segmentStart = null;
+    _accumulated = Duration.zero;
+    await WakelockPlus.disable();
+    _setState(RecordingState.idle);
+
+    final target = path ?? _activeFilePath;
+    if (target != null) {
+      try {
+        final f = File(target);
+        if (await f.exists()) await f.delete();
+      } catch (_) {/* best-effort */}
     }
+    _activeFilePath = null;
   }
 
-  void _setState(RecordingState newState) {
-    _state = newState;
-    _stateController.add(newState);
+  Future<void> dispose() async {
+    _ticker?.cancel();
+    await _recorder.dispose();
+    if (!_stateController.isClosed) await _stateController.close();
+    if (!_durationController.isClosed) await _durationController.close();
+    if (!_amplitudeController.isClosed) await _amplitudeController.close();
   }
 
-  Future<void> _encryptChunk(String path) async {
-    if (_sessionKey == null || _sessionIV == null) return;
-    final file = File(path);
-    if (!await file.exists()) return;
+  // ---------- internals ----------
 
-    final bytes = await file.readAsBytes();
-    final encrypter = enc.Encrypter(enc.AES(_sessionKey!));
-    final encrypted = encrypter.encryptBytes(bytes, iv: _sessionIV!);
-
-    await file.writeAsBytes(encrypted.bytes);
+  void _setState(RecordingState s) {
+    _state = s;
+    if (!_stateController.isClosed) _stateController.add(s);
   }
 
-  void dispose() {
-    _amplitudeSubscription?.cancel();
-    _recorder.dispose();
-    _stateController.close();
-    _chunkController.close();
-    _amplitudeController.close();
-    _chunkTimer?.cancel();
+  void _startTicker() {
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(milliseconds: 200), (_) async {
+      if (_state != RecordingState.recording) return;
+      if (!_durationController.isClosed) {
+        _durationController.add(currentDuration);
+      }
+      try {
+        final amp = await _recorder.getAmplitude();
+        if (!_amplitudeController.isClosed) {
+          // amp.current is dBFS; map [-60..0] → [0..1] for waveform UI.
+          final clamped = amp.current.clamp(-60.0, 0.0);
+          _amplitudeController.add((clamped + 60.0) / 60.0);
+        }
+      } catch (_) {/* amplitude is best-effort */}
+    });
   }
 }
