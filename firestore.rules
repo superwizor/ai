@@ -30,8 +30,16 @@ service cloud.firestore {
     // therapistFirebaseUid is the Firebase UID (NOT users.id PG UUID).
     // Client auth principal is also a Firebase UID — they must match.
     match /session_states/{sessionId} {
+      // Two-clause read: (1) any authenticated user may listen for a
+      // non-existent doc — Firestore listener has to subscribe BEFORE
+      // notification-svc creates the doc, otherwise we get a race
+      // window of "permission denied" right after recording stops.
+      // (2) once the doc exists, the standard owner check applies.
+      // The non-existent branch is safe — Firestore returns null data
+      // for missing docs, no information leakage about other sessions.
       allow read: if request.auth != null
-                  && request.auth.uid == resource.data.therapistFirebaseUid;
+                  && (resource == null
+                      || request.auth.uid == resource.data.therapistFirebaseUid);
       allow write: if false;  // Admin SDK on backend bypasses this
     }
 
