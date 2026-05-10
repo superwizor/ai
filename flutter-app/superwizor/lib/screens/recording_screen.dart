@@ -37,6 +37,7 @@ import '../theme/euphire_theme.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_button.dart';
+import '../widgets/euphire_recording_indicator.dart';
 import 'session_status_screen.dart';
 
 // TODO(pre-prod): restore to Duration(minutes: 5) before TestFlight.
@@ -108,7 +109,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       if (mounted) Navigator.of(context).pop();
       return;
     }
-    await _start();
+    // Zatrzymujemy się w stanie 'idle' — użytkownik musi sam kliknąć Start.
   }
 
   /// Pre-flight permission check before kicking off the recorder.
@@ -202,10 +203,18 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       setState(() => _recState = _service.state);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+      await showEuphireBottomSheet<void>(
+        context: context,
+        builder: (ctx) => EuphireActionSheet(
+          header: 'Błąd mikrofonu',
+          body: e.toString(),
+          primary: EuphireSheetAction(
+            label: 'OK',
+            onPressed: () => Navigator.of(ctx).pop(),
+          ),
+        ),
       );
-      Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop();
     }
   }
 
@@ -363,10 +372,14 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
           '[recording] _finishAndUpload aborted: duration too short ($realDuration)');
       if (mounted) {
         setState(() => _uploading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Nagranie jest za krótkie ($realDuration). Anulowano wysyłkę.',
+        await showEuphireBottomSheet<void>(
+          context: context,
+          builder: (ctx) => EuphireActionSheet(
+            header: 'Nagranie jest za krótkie',
+            body: 'Nagranie trwało $realDuration. Anulowano wysyłkę.',
+            primary: EuphireSheetAction(
+              label: 'OK',
+              onPressed: () => Navigator.of(ctx).pop(),
             ),
           ),
         );
@@ -433,10 +446,18 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     } catch (e, st) {
       debugPrint('[recording] _finishAndUpload FAILED: $e\n$st');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
         setState(() => _uploading = false);
+        await showEuphireBottomSheet<void>(
+          context: context,
+          builder: (ctx) => EuphireActionSheet(
+            header: 'Błąd uploadu',
+            body: e.toString(),
+            primary: EuphireSheetAction(
+              label: 'OK',
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+          ),
+        );
       }
     }
   }
@@ -522,28 +543,16 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                 style: theme.textTheme.labelLarge,
               ),
               const SizedBox(height: 24),
-              Center(
-                child: Text(
-                  _formatDuration(_displayDuration),
-                  style: theme.textTheme.displayLarge?.copyWith(fontSize: 48),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  _recState == RecordingState.recording
-                      ? t.recording_status_recording
-                      : t.recording_status_paused,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: _recState == RecordingState.recording
-                        ? EuphireColors.ember
-                        : EuphireColors.mist,
-                  ),
-                ),
+              EuphireRecordingIndicator(
+                isRecording: _recState == RecordingState.recording,
+                formattedDuration: _formatDuration(_displayDuration),
+                chunkCount: _chunkCount,
+                amplitudeStream: _service.amplitudeStream,
               ),
               const SizedBox(height: 32),
               _ControlPanel(
                 state: _recState,
+                onStart: _start,
                 onPause: _service.pause,
                 onResume: _service.resume,
                 onStop: _onStopPressed,
@@ -572,12 +581,14 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
 
 class _ControlPanel extends StatelessWidget {
   final RecordingState state;
+  final Future<void> Function() onStart;
   final Future<void> Function() onPause;
   final Future<void> Function() onResume;
   final Future<void> Function() onStop;
 
   const _ControlPanel({
     required this.state,
+    required this.onStart,
     required this.onPause,
     required this.onResume,
     required this.onStop,
@@ -585,6 +596,19 @@ class _ControlPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (state == RecordingState.idle || state == RecordingState.error) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _CircleButton(
+            icon: Icons.mic_rounded,
+            color: EuphireColors.ember,
+            onPressed: onStart,
+            isPrimary: true,
+          ),
+        ],
+      );
+    }
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -656,7 +680,7 @@ class _InstructionsBlock extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: EuphireColors.nocturne,
+        color: theme.colorScheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: SingleChildScrollView(

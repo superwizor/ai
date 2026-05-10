@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:record/record.dart';
 import 'euphire_waveform_indicator.dart';
 
 class EuphireRecordingIndicator extends StatelessWidget {
@@ -7,7 +6,7 @@ class EuphireRecordingIndicator extends StatelessWidget {
   final String formattedDuration;
   final int chunkCount;
   final String? errorMessage;
-  final Stream<Amplitude>? amplitudeStream;
+  final Stream<double>? amplitudeStream;
 
   const EuphireRecordingIndicator({
     super.key,

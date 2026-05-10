@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:record/record.dart';
 
 /// Waveform indicator reagujący na prawdziwy dźwięk z mikrofonu.
 ///
@@ -13,7 +12,7 @@ import 'package:record/record.dart';
 /// - W ciszy paski minimalnie oddychają (idle noise).
 class EuphireWaveformIndicator extends StatefulWidget {
   final bool isRecording;
-  final Stream<Amplitude>? amplitudeStream;
+  final Stream<double>? amplitudeStream;
 
   const EuphireWaveformIndicator({
     super.key,
@@ -28,7 +27,7 @@ class EuphireWaveformIndicator extends StatefulWidget {
 
 class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
     with SingleTickerProviderStateMixin {
-  StreamSubscription<Amplitude>? _amplitudeSub;
+  StreamSubscription<double>? _amplitudeSub;
 
   static const int _barCount = 30;
 
@@ -99,16 +98,11 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
     final stream = widget.amplitudeStream;
     if (stream == null) return;
 
-    _amplitudeSub = stream.listen((amplitude) {
+    _amplitudeSub = stream.listen((amplitudeValue) {
       if (!mounted || !widget.isRecording) return;
 
-      // Mapowanie dB → 0.0..1.0
-      // Typowe wartości: cisza ~ -60..-45 dB, mowa ~ -30..-5 dB
-      double db = amplitude.current;
-      const double minDb = -50.0;
-      const double maxDb = -3.0;
-
-      double raw = ((db - minDb) / (maxDb - minDb)).clamp(0.0, 1.0);
+      // amplitudeValue is already mapped to 0.0..1.0 in RecordingService
+      double raw = amplitudeValue.clamp(0.0, 1.0);
 
       // Krzywa potęgowa — żeby ciche dźwięki były bardziej widoczne
       raw = math.pow(raw, 0.7).toDouble();

@@ -61,14 +61,14 @@ class AddSessionModal extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Nowa sesja.',
+            AppLocalizations.of(context).addSession_title,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   color: EuphireColors.frostWhite,
                 ),
           ),
           const SizedBox(height: 16),
           Text(
-            'Wybierz nurt dla tej sesji:',
+            AppLocalizations.of(context).addSession_subtitle,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: EuphireColors.mist,
                 ),

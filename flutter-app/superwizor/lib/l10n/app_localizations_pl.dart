@@ -177,6 +177,12 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addPatient_no_consent_primary => 'Rozumiem.';
 
   @override
+  String get addSession_title => 'Nowa sesja.';
+
+  @override
+  String get addSession_subtitle => 'Wybierz nurt dla tej sesji:';
+
+  @override
   String get home_title => 'Twoi pacjenci.';
 
   @override

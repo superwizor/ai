@@ -65,6 +65,9 @@
   "addPatient_no_consent_body": "Nie możemy rozpocząć sesji bez wyraźnej zgody pacjenta. Wymagają tego przepisy o ochronie danych.",
   "addPatient_no_consent_primary": "Rozumiem.",
 
+  "addSession_title": "Nowa sesja.",
+  "addSession_subtitle": "Wybierz nurt dla tej sesji:",
+
   "home_title": "Twoi pacjenci.",
   "home_empty_title": "Nie masz jeszcze żadnych pacjentów.",
   "home_empty_body": "Dodaj pacjenta, aby rozpocząć pierwszą sesję.",

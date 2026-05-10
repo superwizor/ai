@@ -406,6 +406,18 @@ abstract class AppLocalizations {
   /// **'Rozumiem.'**
   String get addPatient_no_consent_primary;
 
+  /// No description provided for @addSession_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowa sesja.'**
+  String get addSession_title;
+
+  /// No description provided for @addSession_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz nurt dla tej sesji:'**
+  String get addSession_subtitle;
+
   /// No description provided for @home_title.
   ///
   /// In pl, this message translates to:
