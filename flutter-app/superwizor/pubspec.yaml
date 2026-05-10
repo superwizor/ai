@@ -87,8 +87,16 @@ dev_dependencies:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
+  web:
+    generate: true
+    image_path: "assets/Ico/Logo_Superwizor_MVP.png"
+    background_color: "#004D54"
+    theme_color: "#004D54"
+  macos:
+    generate: true
+    image_path: "assets/Ico/Logo_Superwizor_MVP.png"
   remove_alpha_ios: true
-  image_path: "assets/Ico/app_icon_1024.png"
+  image_path: "assets/Ico/Logo_Superwizor_MVP.png"
   min_sdk_android: 23
 
 flutter:
