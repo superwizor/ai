@@ -211,7 +211,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
     return Column(
       children: [
         _buildFilterRow(t, data),
-        const Divider(height: 1, color: EuphireColors.nocturne),
+        Divider(height: 1, color: Colors.white.withValues(alpha: 0.1)),
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -231,8 +231,8 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
 
   Widget _buildLoading() {
     return Shimmer.fromColors(
-      baseColor: EuphireColors.nocturne,
-      highlightColor: EuphireColors.nocturne.withValues(alpha: 0.5),
+      baseColor: Colors.white.withValues(alpha: 0.05),
+      highlightColor: Colors.white.withValues(alpha: 0.1),
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: 6,
@@ -240,7 +240,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
         itemBuilder: (ctx, _) => Container(
           height: 80,
           decoration: BoxDecoration(
-            color: EuphireColors.nocturne,
+            color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(12),
           ),
         ),
@@ -301,7 +301,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
                         ? EuphireColors.obsidianBlack
                         : EuphireColors.frostWhite,
                   ),
-                  backgroundColor: EuphireColors.nocturne,
+                  backgroundColor: Colors.white.withValues(alpha: 0.05),
                 );
               },
               separatorBuilder: (ctx, _) => const SizedBox(width: 8),
@@ -411,7 +411,7 @@ class _SegmentTile extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 6),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: EuphireColors.nocturne,
+          color: Colors.white.withValues(alpha: 0.05),
           border: isPlaying
               ? const Border(
                   left: BorderSide(color: EuphireColors.ember, width: 3))
@@ -514,7 +514,7 @@ class _SegmentTile extends StatelessWidget {
     final t = AppLocalizations.of(context);
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: EuphireColors.nocturne,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -123,7 +123,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     _checkAnim.forward();
     final player = AudioPlayer();
     try {
-      await player.play(AssetSource('sounds/SFX_succes.wav'));
+      await player.play(AssetSource('sounds/SFX_succes.mp3'));
     } catch (_) {/* asset may be missing in dev — best-effort */}
     await Future<void>.delayed(const Duration(seconds: 2));
     if (!mounted) return;
@@ -180,12 +180,12 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
             children: [
               const SizedBox(height: 24),
               EuphireHeader(
-                title: t.recording_screen_title,
+                title: t.session_loading,
                 subtitle: _phase == SessionStepperPhase.done
                     ? t.stepper_step4_done
                     : null,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 48),
               EuphireSessionStatusStepper(phase: _phase),
               const Spacer(),
               if (_showCheck)

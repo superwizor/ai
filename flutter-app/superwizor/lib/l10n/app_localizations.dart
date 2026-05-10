@@ -142,6 +142,12 @@ abstract class AppLocalizations {
   /// **'Ładowanie…'**
   String get common_loading;
 
+  /// No description provided for @common_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wystąpił błąd.'**
+  String get common_error;
+
   /// No description provided for @connectivity_offline_banner.
   ///
   /// In pl, this message translates to:

@@ -55,34 +55,20 @@ class EuphireSessionStatusStepper extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (int i = 0; i < steps.length; i++) ...[
+        for (int i = 0; i < steps.length; i++)
           _StepRow(
             number: i + 1,
             text: steps[i].text,
             state: steps[i].state,
+            isLast: i == steps.length - 1,
+            nextState: i < steps.length - 1 ? steps[i + 1].state : null,
           ),
-          if (i < steps.length - 1)
-            Padding(
-              padding: const EdgeInsets.only(left: 14),
-              child: Container(
-                width: 2,
-                height: 24,
-                color: steps[i].state == _StepState.done
-                    ? EuphireColors.ember
-                    : EuphireColors.nocturne,
-              ),
-            ),
-        ],
       ],
     );
   }
 
   _StepState _stateForStep(int idx) {
     if (phase == SessionStepperPhase.failed) {
-      // 0..3 — first three should reflect last known good state; the
-      // last one becomes destructive. Treat as done up to whatever
-      // was reached (we don't know exactly), so mark first 3 as done
-      // and #4 as failed for clearer signal.
       if (idx < 3) return _StepState.done;
       return _StepState.failed;
     }
@@ -112,11 +98,15 @@ class _StepRow extends StatelessWidget {
   final int number;
   final String text;
   final _StepState state;
+  final bool isLast;
+  final _StepState? nextState;
 
   const _StepRow({
     required this.number,
     required this.text,
     required this.state,
+    required this.isLast,
+    this.nextState,
   });
 
   @override
@@ -128,11 +118,9 @@ class _StepRow extends StatelessWidget {
 
     final color = isFailed
         ? EuphireColors.magma
-        : isDone
+        : isDone || isActive
             ? EuphireColors.ember
-            : isActive
-                ? EuphireColors.ember
-                : EuphireColors.nocturne;
+            : Colors.white.withValues(alpha: 0.1);
 
     final icon = isFailed
         ? const Icon(Icons.close, size: 18, color: EuphireColors.frostWhite)
@@ -144,46 +132,67 @@ class _StepRow extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ));
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          width: 30,
-          height: 30,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: isActive
-                ? Border.all(color: EuphireColors.ember, width: 2)
-                : null,
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: isActive
+                      ? Border.all(color: EuphireColors.ember, width: 2)
+                      : null,
+                ),
+                child: icon,
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: (isDone && (nextState == _StepState.done || nextState == _StepState.active))
+                        ? EuphireColors.ember
+                        : Colors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+            ],
           ),
-          child: icon,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: isFailed
-                  ? EuphireColors.magma
-                  : (isDone || isActive)
-                      ? EuphireColors.frostWhite
-                      : EuphireColors.mist,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 32.0, top: 4.0),
+              child: Text(
+                text,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: isFailed
+                      ? EuphireColors.magma
+                      : (isDone || isActive)
+                          ? EuphireColors.frostWhite
+                          : EuphireColors.mist,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
             ),
           ),
-        ),
-        if (isActive)
-          const SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation(EuphireColors.ember),
+          if (isActive)
+            const Padding(
+              padding: EdgeInsets.only(top: 4.0),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(EuphireColors.ember),
+                ),
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

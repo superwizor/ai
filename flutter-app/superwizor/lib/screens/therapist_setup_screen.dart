@@ -156,8 +156,17 @@ class _TherapistSetupScreenState extends ConsumerState<TherapistSetupScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+        final t = AppLocalizations.of(context);
+        await showEuphireBottomSheet<void>(
+          context: context,
+          builder: (ctx) => EuphireActionSheet(
+            header: t.common_error,
+            body: e.toString(),
+            primary: EuphireSheetAction(
+              label: t.common_understand,
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+          ),
         );
       }
     } finally {
@@ -201,7 +210,7 @@ class _ModalityDropdown extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: EuphireColors.nocturne,
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
       ),
       child: DropdownButton<String>(
@@ -210,7 +219,7 @@ class _ModalityDropdown extends StatelessWidget {
         onChanged: onChanged,
         isExpanded: true,
         underline: const SizedBox.shrink(),
-        dropdownColor: EuphireColors.nocturne,
+        dropdownColor: Theme.of(context).scaffoldBackgroundColor,
         iconEnabledColor: EuphireColors.mist,
       ),
     );

@@ -187,7 +187,7 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: EuphireColors.nocturne,
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -238,7 +238,7 @@ class _Section extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(top: 8),
       decoration: BoxDecoration(
-        color: EuphireColors.nocturne,
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Theme(

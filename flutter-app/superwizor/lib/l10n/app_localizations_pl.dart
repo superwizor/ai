@@ -33,6 +33,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get common_loading => 'Ładowanie…';
 
   @override
+  String get common_error => 'Wystąpił błąd.';
+
+  @override
   String get connectivity_offline_banner =>
       'Brak połączenia. Niektóre funkcje są ograniczone.';
 
