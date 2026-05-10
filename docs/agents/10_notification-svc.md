@@ -11,12 +11,16 @@ Two responsibilities under one Go module:
 
 This is the **only** service allowed to write to Firestore from the backend (per architecture §6.3).
 
-## Status (2026-05-08)
+## Status (2026-05-09)
 
-- **NOT YET BUILT.** Today: bare stub at `services/notification-svc/` — `go.mod` (28 bytes) + `main.go` (`package main; func main() {}`).
-- Pub/Sub topics already exist (`report.generated` from `infra/modules/pubsub/main.tf`).
-- Firestore rules currently a wide-open placeholder that **expires 2026-05-28** — must be replaced regardless of this service's timeline.
-- Implementation plan: [`docs/08_FAZA_3_NOTIFICATIONS.md`](../08_FAZA_3_NOTIFICATIONS.md) — six sprints, ~3 weeks.
+- **Phase 3 — DONE.** Cloud Run gRPC server + Cloud Functions Gen2 worker fully implemented and deployed via CI.
+- **Server** (`cmd/server/main.go`, 108 lines): Firebase Auth + pgxpool + gRPC with `RegisterFCMToken`, `RemoveFCMToken`, `GetUnreadCount`, `HealthCheck`. Deployed with dedicated SA `notification-svc@` and `--allow-unauthenticated`.
+- **Worker** (`cmd/worker/main.go`, 451 lines): Three CloudEvent handlers — `ProcessReportGenerated` (FCM multicast + Firestore mirror `done` + inbox doc + idempotency), `ProcessTranscriptCompleted` (status mirror `analyzing`), `ProcessAudioUploaded` (status mirror `uploaded`).
+- **Adapters**: `internal/adapters/{fcm,firestore,grpc,postgres}` — all built.
+- Pub/Sub topics wired (`audio.uploaded`, `transcript.completed`, `report.generated`).
+- Firestore rules are **production-ready** (64 lines, per-user read, write denied, default deny). No expiration placeholder.
+- **Not yet mirrored to Firestore:** `transcribing` and `failed` statuses (per ADR-IMPL-012, deferred to Phase 4). Flutter uses fallback poll to `clinical-svc.GetSessionDetails` for these.
+- Implementation plan: [`docs/08_FAZA_3_NOTIFICATIONS.md`](../08_FAZA_3_NOTIFICATIONS.md).
 
 ## Repo paths (after Phase 3 build)
 
@@ -172,7 +176,7 @@ For the worker, simplest path: deploy to staging via `terragrunt apply -target=m
 - **Cloud Functions cold start with Firebase Admin SDK** — ~1.5s on first invocation. Acceptable for batch flow; if needs faster, set `min_instance_count = 1`.
 - **Multiple Eventarc triggers per function** — Cloud Functions Gen2 supports ONE trigger per function. To handle three topics: deploy three functions, same source bundle, three terraform resources.
 - **Firebase Admin SDK + ADC + signBlob** — when invoked from a Cloud Function with no key file, the SDK falls back to `signBlob` IAM API. The runtime SA needs `serviceAccountTokenCreator` on `firebase-adminsdk-fbsvc@<project>` (same E2E test gotcha from `09_testing.md`). Add to `var.e2e_token_minters` or extend that pattern.
-- **Firestore rules placeholder expires 2026-05-28.** If this service deploys without replacing the placeholder, the next day every Flutter listener returns "permission denied" — full app outage. Sprint 3.2 is non-negotiable before launch.
+- **Firestore rules are production-ready.** The placeholder was replaced with 64-line production rules in `firestore.rules` — `session_states` (read own only, write denied), `user_notifications` (read own + update `readAt` only), default deny. No expiration date.
 - **App in foreground vs background** — FCM iOS shows the system notification only if app is backgrounded; foreground app gets the message via `onMessage` callback and must show in-app UI. Document the FCM payload shape so Flutter's foreground handler renders correctly.
 
 ## Source-doc pointers
@@ -180,6 +184,6 @@ For the worker, simplest path: deploy to staging via `terragrunt apply -target=m
 - `docs/08_FAZA_3_NOTIFICATIONS.md` — full implementation sprint plan (Definition of Done, ADRs, 6 sprints, smoke tests, troubleshooting cookbook).
 - `docs/02_ARCHITEKTURA_TECHNICZNA.md` §4.2.7 (lines 466–475) — service responsibility spec.
 - `docs/02_ARCHITEKTURA_TECHNICZNA.md` §6 (lines 631–724) — Firestore as sync layer (philosophy, doc shapes, rules, cost).
-- `docs/03_DATA_MODEL.md` — no notifications domain yet; tables introduced in migration 000009.
-- `infra/modules/pubsub/main.tf` — existing topics (`report.generated` already deployed).
-- `firestore.rules` — placeholder, **expires 2026-05-28**; replace per Sprint 3.2.
+- `docs/03_DATA_MODEL.md` — notifications tables in migration 000009.
+- `infra/modules/pubsub/main.tf` — topics (`audio.uploaded`, `transcript.completed`, `report.generated`) deployed.
+- `firestore.rules` — production rules (64 lines, per-user read, default deny).
