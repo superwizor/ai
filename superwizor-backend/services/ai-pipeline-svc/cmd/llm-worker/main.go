@@ -43,6 +43,20 @@ var (
 	projectID    string
 	geminiModel  string = "gemini-3.1-flash-lite"
 	geminiRegion string = "europe-west4"
+	// debugLogPrompts controls whether we emit the full prompt sent to
+	// Vertex + the full raw response back, to Cloud Logging. Gated by
+	// the LLM_DEBUG_LOG_PROMPTS env var ("true" = on, anything else =
+	// off) so it's an explicit opt-in.
+	//
+	// PHI WARNING: every prompt embeds the full session transcript
+	// and every response is a clinical report. Turning this on writes
+	// PHI to Cloud Logging — only enable on staging / a dedicated
+	// debug deployment, NEVER on the production data path that
+	// serves real therapists. Audit logs are subject to a 30-day
+	// retention by default; the operator MUST verify their
+	// log-sink + retention policy is appropriate before flipping
+	// this flag.
+	debugLogPrompts bool
 )
 
 func init() {
@@ -53,6 +67,13 @@ func init() {
 	projectID = os.Getenv("GCP_PROJECT_ID")
 	dbDSN := os.Getenv("DATABASE_URL")
 	kmsKeyURI := os.Getenv("KMS_KEY_URI")
+	debugLogPrompts = os.Getenv("LLM_DEBUG_LOG_PROMPTS") == "true"
+	if debugLogPrompts {
+		// Log loudly at startup so the operator sees this is on the
+		// moment the instance comes up — easier to catch a debug
+		// flag accidentally left enabled in production.
+		slog.Warn("LLM_DEBUG_LOG_PROMPTS=true — every prompt + response will be written to Cloud Logging (includes PHI)")
+	}
 
 	var err error
 	if dbDSN != "" {
@@ -325,6 +346,8 @@ ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 - Pisz konkretami, NIE parafrazuj całych wypowiedzi.`,
 		reportLanguage, ragContext, transcriptText)
 
+	debugLogChunked(slog.Default(), "vertex_prompt", "step", "metadata", "content", metadataPrompt)
+
 	respMetadata, err := model.GenerateContent(ctx, vertexai.Text(metadataPrompt))
 	if err != nil {
 		return "", TokenStats{}, fmt.Errorf("generate metadata: %w", err)
@@ -339,6 +362,8 @@ ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 			metaOutput.WriteString(string(text))
 		}
 	}
+
+	debugLogChunked(slog.Default(), "vertex_response", "step", "metadata", "content", metaOutput.String())
 
 	var metadataPayload ReportPayload
 	if err := json.Unmarshal([]byte(metaOutput.String()), &metadataPayload); err != nil {
@@ -383,6 +408,8 @@ TRANSKRYPT BIEŻĄCEJ SESJI:
 %s`,
 		modalityPrompt, reportLanguage, ragContext, transcriptText)
 
+	debugLogChunked(slog.Default(), "vertex_prompt", "step", "markdown", "content", reportPrompt)
+
 	respReport, err := model.GenerateContent(ctx, vertexai.Text(reportPrompt))
 	if err != nil {
 		return "", TokenStats{}, fmt.Errorf("generate report markdown: %w", err)
@@ -398,6 +425,8 @@ TRANSKRYPT BIEŻĄCEJ SESJI:
 		}
 	}
 
+	debugLogChunked(slog.Default(), "vertex_response", "step", "markdown", "content", reportOutput.String())
+
 	if respReport.UsageMetadata != nil {
 		stats.InputTokens += respReport.UsageMetadata.PromptTokenCount
 		stats.OutputTokens += respReport.UsageMetadata.CandidatesTokenCount
@@ -405,7 +434,7 @@ TRANSKRYPT BIEŻĄCEJ SESJI:
 
 	// --- Połączenie wyników ---
 	metadataPayload.ReportMarkdown = reportOutput.String()
-	
+
 	finalJSON, err := json.Marshal(metadataPayload)
 	if err != nil {
 		return "", TokenStats{}, fmt.Errorf("marshal final payload: %w", err)
@@ -813,3 +842,66 @@ func publishReportGenerated(ctx context.Context, sessionID, reportID string) err
 }
 
 var _ = aiplatformpb.PredictRequest{}
+
+// debugLogChunked emits the prompt or response payload to Cloud
+// Logging in fixed-size chunks when `debugLogPrompts` is on. Gated
+// by env var LLM_DEBUG_LOG_PROMPTS=true — never enabled by default.
+//
+// Why chunked: Cloud Logging caps a single jsonPayload entry at
+// 256 KB, but a typical session prompt is ~10-30 KB and a 60-min
+// transcript can blow past that. We split into 60 KB chunks
+// (leaves headroom for the slog wrapper fields) and emit one log
+// line per chunk with a `chunk_seq` / `chunk_total` pair so the
+// reader can stitch them back together.
+//
+// Caller passes attributes as variadic key/value pairs after the
+// `content` arg — the function strips out `content` and adds it
+// last as its own field. Other attrs (e.g. session_id, step) are
+// preserved across every chunk so Cloud Logging filters work.
+//
+// PHI note: see the comment on debugLogPrompts. Every line written
+// here contains the full transcript and/or report. Audit + retain
+// accordingly.
+func debugLogChunked(logger *slog.Logger, msg string, kvs ...any) {
+	if !debugLogPrompts {
+		return
+	}
+	const chunkBytes = 60 * 1024 // 60 KB — well below Cloud Logging's 256 KB cap
+
+	// Extract `content` from the variadic args. If absent, just log
+	// the attrs and return (still useful as a marker).
+	var content string
+	rest := make([]any, 0, len(kvs))
+	for i := 0; i+1 < len(kvs); i += 2 {
+		k, _ := kvs[i].(string)
+		if k == "content" {
+			if s, ok := kvs[i+1].(string); ok {
+				content = s
+			}
+			continue
+		}
+		rest = append(rest, kvs[i], kvs[i+1])
+	}
+	if content == "" {
+		logger.Info(msg, rest...)
+		return
+	}
+
+	total := (len(content) + chunkBytes - 1) / chunkBytes
+	for i := 0; i < total; i++ {
+		start := i * chunkBytes
+		end := start + chunkBytes
+		if end > len(content) {
+			end = len(content)
+		}
+		fields := append([]any{}, rest...)
+		fields = append(fields,
+			"chunk_seq", i+1,
+			"chunk_total", total,
+			"chunk_bytes", end-start,
+			"content_total_bytes", len(content),
+			"content", content[start:end],
+		)
+		logger.Info(msg, fields...)
+	}
+}
