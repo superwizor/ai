@@ -230,78 +230,36 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                         ),
                         const SizedBox(height: 8),
                         Center(
-                          child: InkWell(
-                            onTap: () {
-                              showCupertinoModalPopup(
-                                context: context,
-                                builder: (BuildContext context) => CupertinoActionSheet(
-                                  title: const Text('Wybierz język', style: TextStyle(fontFamily: 'Montserrat')),
-                                  actions: <CupertinoActionSheetAction>[
-                                    CupertinoActionSheetAction(
-                                      onPressed: () {
-                                        setState(() => _reportLanguage = 'pl');
-                                        Navigator.pop(context);
-                                      },
-                                      child: const Text('Polski', style: TextStyle(color: Colors.black)),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.center,
+                            children: ['pl', 'en', 'de', 'uk'].map((lang) {
+                              final isSelected = _reportLanguage == lang;
+                              return InkWell(
+                                onTap: () => setState(() => _reportLanguage = lang),
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? EuphireColors.ember : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: isSelected ? EuphireColors.ember : EuphireColors.frostWhite.withValues(alpha: 0.2),
                                     ),
-                                    CupertinoActionSheetAction(
-                                      onPressed: () {
-                                        setState(() => _reportLanguage = 'en');
-                                        Navigator.pop(context);
-                                      },
-                                      child: const Text('English', style: TextStyle(color: Colors.black)),
+                                  ),
+                                  child: Text(
+                                    _getLanguageLabel(lang),
+                                    style: TextStyle(
+                                      fontFamily: 'Montserrat',
+                                      fontSize: 14,
+                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                      color: isSelected ? EuphireColors.obsidianBlack : EuphireColors.frostWhite,
                                     ),
-                                    CupertinoActionSheetAction(
-                                      onPressed: () {
-                                        setState(() => _reportLanguage = 'de');
-                                        Navigator.pop(context);
-                                      },
-                                      child: const Text('Deutsch', style: TextStyle(color: Colors.black)),
-                                    ),
-                                    CupertinoActionSheetAction(
-                                      onPressed: () {
-                                        setState(() => _reportLanguage = 'uk');
-                                        Navigator.pop(context);
-                                      },
-                                      child: const Text('Українська', style: TextStyle(color: Colors.black)),
-                                    ),
-                                  ],
-                                  cancelButton: CupertinoActionSheetAction(
-                                    isDefaultAction: true,
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                    },
-                                    child: const Text('Anuluj', style: TextStyle(color: Colors.black)),
                                   ),
                                 ),
                               );
-                            },
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: EuphireColors.frostWhite.withValues(alpha: 0.05),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: EuphireColors.frostWhite.withValues(alpha: 0.1),
-                                ),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    _getLanguageLabel(_reportLanguage),
-                                    style: const TextStyle(
-                                      fontFamily: 'Merriweather',
-                                      fontSize: 15,
-                                      color: EuphireColors.frostWhite,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.keyboard_arrow_down_rounded, color: EuphireColors.ember, size: 20),
-                                ],
-                              ),
-                            ),
+                            }).toList(),
                           ),
                         ),
                         const SizedBox(height: 32),

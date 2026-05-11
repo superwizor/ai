@@ -96,19 +96,35 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         await ref.read(consentServiceProvider).hasConsent(patientFileId: widget.patientFileId);
     if (!consent) {
       if (!mounted) return;
-      final t = AppLocalizations.of(context);
-      await showEuphireBottomSheet<void>(
+      final t = AppLocalizations.of(context)!;
+      final granted = await showEuphireBottomSheet<bool>(
         context: context,
         builder: (ctx) => EuphireActionSheet(
-          header: t.addPatient_no_consent_header,
-          body: t.addPatient_no_consent_body,
+          header: 'Brak zgody',
+          body: 'Nie odnotowano zgody pacjenta w systemie. Czy pacjent wyraził zgodę na nagrywanie i przetwarzanie danych?',
           primary: EuphireSheetAction(
-            label: t.addPatient_no_consent_primary,
-            onPressed: () => Navigator.of(ctx).pop(),
+            label: 'Tak, wyraził zgode',
+            onPressed: () async {
+              try {
+                await ref.read(consentServiceProvider).recordConsent(
+                  patientFileId: widget.patientFileId,
+                  documentVersion: 'v1.0',
+                );
+                Navigator.of(ctx).pop(true);
+              } catch (e) {
+                Navigator.of(ctx).pop(false);
+              }
+            },
+          ),
+          secondary: EuphireSheetAction(
+            label: t.common_cancel,
+            onPressed: () => Navigator.of(ctx).pop(false),
           ),
         ),
       );
-      if (mounted) Navigator.of(context).pop();
+      if (granted != true && mounted) {
+        Navigator.of(context).pop();
+      }
       return;
     }
     // Zatrzymujemy się w stanie 'idle' — użytkownik musi sam kliknąć Start.
