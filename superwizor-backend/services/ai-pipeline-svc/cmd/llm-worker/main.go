@@ -41,7 +41,7 @@ var (
 	pubsubClient *pubsub.Client
 	crypto       cryptobox.CryptoBox
 	projectID    string
-	geminiModel  string = "gemini-3.1-flash-lite"
+	geminiModel  string = "gemini-3.1-flash"
 	geminiRegion string = "europe-west4"
 )
 
@@ -53,6 +53,11 @@ func init() {
 	projectID = os.Getenv("GCP_PROJECT_ID")
 	dbDSN := os.Getenv("DATABASE_URL")
 	kmsKeyURI := os.Getenv("KMS_KEY_URI")
+
+	if envModel := os.Getenv("GEMINI_MODEL"); envModel != "" {
+		geminiModel = envModel
+	}
+	slog.Info("llm-worker config", "model", geminiModel, "region", geminiRegion)
 
 	var err error
 	if dbDSN != "" {
@@ -170,7 +175,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		if len(preview) > peek {
 			preview = preview[:peek] + "…(truncated)"
 		}
-		logger.Error("parse report JSON", "error", err, "response_preview", preview)
+		logger.Error("parse report JSON", "error", err, "response_len", len(reportJSON), "response_preview", preview)
 		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
 		return fmt.Errorf("parse report: %w", err)
 	}
@@ -272,7 +277,7 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 	model.GenerationConfig = vertexai.GenerationConfig{
 		Temperature:      vertexai.Ptr[float32](0.1),
 		TopP:             vertexai.Ptr[float32](0.95),
-		MaxOutputTokens:  vertexai.Ptr[int32](8192),
+		MaxOutputTokens:  vertexai.Ptr[int32](16384),
 		ResponseMIMEType: "application/json",
 		ResponseSchema:   schemaToVertexSchema(schema),
 	}

@@ -32,21 +32,21 @@ class AddSessionModal extends ConsumerWidget {
   String _modalityLabel(BuildContext context, String code) {
     final t = AppLocalizations.of(context);
     switch (code) {
-      case 'integrative':
+      case 'UNIV':
         return t.modality_integrative;
-      case 'cbt':
+      case 'CBT':
         return t.modality_cbt;
-      case 'psychodynamic':
+      case 'PSYCHO':
         return t.modality_psychodynamic;
-      case 'positive':
+      case 'PPT':
         return t.modality_positive;
-      case 'schema':
+      case 'ST':
         return t.modality_schema;
-      case 'systemic':
+      case 'SYS':
         return t.modality_systemic;
-      case 'eft':
+      case 'EFT':
         return t.modality_eft;
-      case 'coaching':
+      case 'COACH':
         return t.modality_coaching;
       default:
         return code;

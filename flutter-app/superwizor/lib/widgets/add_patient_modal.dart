@@ -25,6 +25,7 @@ import 'euphire_action_sheet.dart';
 import 'euphire_bottom_sheet.dart';
 import 'euphire_button.dart';
 import 'euphire_text_field.dart';
+import 'modality_sheet.dart';
 
 const String kCurrentDpaVersion = 'dpa-v1-2026-04';
 const String kDpaAssetPath = 'assets/legal/DPA Superwizor AI.md';
@@ -118,7 +119,8 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
       // accept consent_given_at yet; D9). The notifier currently
       // splits alias into firstName/lastName; pass alias as one piece.
       final notifier = ref.read(patientsProvider.notifier);
-      await notifier.addPatient(alias, '');
+      final modalityCode = ref.read(selectedModalityProvider);
+      await notifier.addPatient(alias, '', modalityCode: modalityCode);
 
       // Find the newly-created patient to get its ID. The notifier
       // refetches after addPatient, so the newest patient is at the

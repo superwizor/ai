@@ -24,6 +24,7 @@ import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_button.dart';
 import '../widgets/euphire_header.dart';
+import '../widgets/modality_sheet.dart';
 import 'home_screen.dart';
 
 class TherapistSetupScreen extends ConsumerStatefulWidget {
@@ -42,21 +43,21 @@ class _TherapistSetupScreenState extends ConsumerState<TherapistSetupScreen> {
   String _modalityDisplayName(BuildContext context, String code) {
     final t = AppLocalizations.of(context);
     switch (code) {
-      case 'integrative':
+      case 'UNIV':
         return t.modality_integrative;
-      case 'cbt':
+      case 'CBT':
         return t.modality_cbt;
-      case 'psychodynamic':
+      case 'PSYCHO':
         return t.modality_psychodynamic;
-      case 'positive':
+      case 'PPT':
         return t.modality_positive;
-      case 'schema':
+      case 'ST':
         return t.modality_schema;
-      case 'systemic':
+      case 'SYS':
         return t.modality_systemic;
-      case 'eft':
+      case 'EFT':
         return t.modality_eft;
-      case 'coaching':
+      case 'COACH':
         return t.modality_coaching;
       default:
         return code;
@@ -144,6 +145,8 @@ class _TherapistSetupScreenState extends ConsumerState<TherapistSetupScreen> {
   Future<void> _onContinue() async {
     setState(() => _saving = true);
     try {
+      // Persist selected modality in app-wide Riverpod provider
+      ref.read(selectedModalityProvider.notifier).select(_selectedModalityCode);
       await _persistProfile();
       // Best-effort FCM register — failures don't block setup.
       try {

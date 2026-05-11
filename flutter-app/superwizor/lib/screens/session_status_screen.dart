@@ -65,6 +65,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   void dispose() {
     _sub?.cancel();
     _fallbackTimer?.cancel();
+    _failureDelayTimer?.cancel();
     _checkAnim.dispose();
     super.dispose();
   }
@@ -84,10 +85,16 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
 
     if (phase == SessionStepperPhase.done && !_routedAway) {
       _routedAway = true;
+      // If a failure sheet is currently visible, dismiss it first
+      _dismissFailureSheet();
       _runSuccessCascade();
-    } else if (phase == SessionStepperPhase.failed && !_failureShown) {
+    } else if (phase == SessionStepperPhase.failed && !_failureShown && !_routedAway) {
+      // Delay showing failure to allow for pipeline retries.
+      // Pub/Sub can retry a failed message while a new (valid) upload
+      // is being processed — showing the error immediately would flash
+      // a false failure.
       _failureShown = true;
-      _showFailureSheet();
+      _scheduleFailureSheet();
     }
   }
 
@@ -105,10 +112,11 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       final status = res.session.status;
       if (status == 'COMPLETED' && !_routedAway) {
         _routedAway = true;
+        _dismissFailureSheet();
         _runSuccessCascade();
-      } else if (status == 'FAILED' && !_failureShown) {
+      } else if (status == 'FAILED' && !_failureShown && !_routedAway) {
         _failureShown = true;
-        _showFailureSheet();
+        _scheduleFailureSheet();
       } else {
         _resetFallbackTimer();
       }
@@ -135,12 +143,32 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     } catch (_) {}
   }
 
+  /// Wait 5 seconds before showing a failure sheet — gives time for
+  /// the pipeline to retry or for a newer upload to succeed.
+  Timer? _failureDelayTimer;
+
+  void _scheduleFailureSheet() {
+    _failureDelayTimer?.cancel();
+    _failureDelayTimer = Timer(const Duration(seconds: 5), () {
+      if (_routedAway) return; // success arrived in the meantime
+      _showFailureSheet();
+    });
+  }
+
+  void _dismissFailureSheet() {
+    _failureDelayTimer?.cancel();
+    // Pop the failure sheet if it's currently shown
+    if (_failureShown && mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
   Future<void> _showFailureSheet() async {
-    if (!mounted) return;
+    if (!mounted || _routedAway) return;
     final t = AppLocalizations.of(context);
     await showEuphireBottomSheet<void>(
       context: context,
-      isDismissible: false,
+      isDismissible: true, // Allow user to dismiss and wait
       builder: (ctx) => EuphireActionSheet(
         header: t.session_failed_header,
         body: t.session_failed_body,
