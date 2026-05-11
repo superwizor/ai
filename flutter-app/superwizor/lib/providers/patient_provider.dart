@@ -66,12 +66,12 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     }
   }
 
-  Future<void> addPatient(String firstName, String lastName) async {
+  Future<void> addPatient(String firstName, String lastName, {String modalityCode = 'UNIV'}) async {
     final client = ref.read(grpcClientsProvider).clinical;
     final req = grpc_clinical.CreatePatientFileRequest(
       therapistId: '', // zdekodowane na backendzie z tokenu
       workingAlias: '$firstName $lastName'.trim(),
-      modalityCode: 'CBT', // default
+      modalityCode: modalityCode,
       processType: grpc_clinical.ProcessType.PROCESS_TYPE_INDIVIDUAL,
       hasRecordingConsent: true,
     );
@@ -138,5 +138,30 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
     final current = state.whenOrNull(data: (d) => d) ?? {};
     final patientSessions = current[session.patientId] ?? [];
     state = AsyncValue.data({...current, session.patientId: [...patientSessions, session]});
+  }
+
+  void deleteSessionLocally(String patientId, String sessionId) {
+    final current = state.whenOrNull(data: (d) => d);
+    if (current == null) return;
+    
+    final sessions = current[patientId] ?? [];
+    final updatedSessions = sessions.where((s) => s.id != sessionId).toList();
+    
+    state = AsyncValue.data({...current, patientId: updatedSessions});
+  }
+
+  void renameSessionLocally(String patientId, String sessionId, String newModality) {
+    final current = state.whenOrNull(data: (d) => d);
+    if (current == null) return;
+    
+    final sessions = current[patientId] ?? [];
+    final updatedSessions = sessions.map((s) {
+      if (s.id == sessionId) {
+        return s.copyWith(modality: newModality);
+      }
+      return s;
+    }).toList();
+    
+    state = AsyncValue.data({...current, patientId: updatedSessions});
   }
 }

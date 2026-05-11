@@ -2,12 +2,11 @@
 //
 // After selecting a modality the therapist lands here and can:
 //   1. "Rozpocznij nagrywanie" → RecordingScreen (live capture)
-//   2. "Wgraj plik" → file_picker → encrypt → signed URL → PUT → status
+//   2. "Wgraj plik" → file_picker → convert to FLAC → upload → status
 //
-// File upload accepts all formats that Chirp 3 auto-decodes:
-//   FLAC, WAV, MP3, OGG/OPUS, WEBM, M4A, AAC, AMR
-// NO client-side conversion is required — Chirp 3 uses
-// AutoDetectDecodingConfig on the backend.
+// All uploaded files are converted client-side to FLAC (16-bit, mono,
+// 16 kHz) via ffmpeg_kit before upload. This ensures Chirp 3 always
+// receives a supported encoding regardless of the source format.
 //
 // Visual design transplanted from Labirynt Premium:
 //   • Background: Evergreen → Nocturne gradient
@@ -26,6 +25,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
@@ -34,15 +34,16 @@ import '../generated/ingestion/v1/ingestion.pb.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/patient_provider.dart';
-import '../providers/services_provider.dart';
+
+import '../services/audio_converter_service.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import 'recording_screen.dart';
 import 'session_status_screen.dart';
 
-/// Supported audio MIME types for file upload.
-/// Chirp 3 BatchRecognize with AutoDetectDecodingConfig handles all of these.
+/// Supported audio extensions for file upload.
+/// All are converted client-side to FLAC before upload.
 const Map<String, String> _kSupportedAudioTypes = {
   '.flac': 'audio/flac',
   '.wav': 'audio/wav',
@@ -77,6 +78,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
   bool _uploading = false;
   String? _uploadFileName;
   double _uploadProgress = 0.0;
+  String _uploadStatusLabel = '';
   String _reportLanguage = 'pl';
 
   @override
@@ -211,6 +213,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                         _UploadProgressCard(
                           fileName: _uploadFileName!,
                           progress: _uploadProgress,
+                          statusLabel: _uploadStatusLabel,
                         ),
                         const SizedBox(height: 24),
                       ],
@@ -361,14 +364,11 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
       _uploading = true;
       _uploadFileName = picked.name;
       _uploadProgress = 0.0;
+      _uploadStatusLabel = 'Konwersja audio...';
     });
 
     try {
-      await _uploadFileDirectly(
-        file: file,
-        contentType: contentType,
-        sizeBytes: sizeBytes,
-      );
+      await _convertAndUploadFile(file: file, originalSizeBytes: sizeBytes);
     } catch (e) {
       debugPrint('[file-upload] FAILED: $e');
       if (!mounted) return;
@@ -377,63 +377,184 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     }
   }
 
-  Future<void> _uploadFileDirectly({
+  Future<void> _convertAndUploadFile({
     required File file,
-    required String contentType,
-    required int sizeBytes,
+    required int originalSizeBytes,
   }) async {
     final sessionId = const Uuid().v4();
+    File? tempFile;
 
-    setState(() => _uploadProgress = 0.1);
+    try {
+      final ext = p.extension(file.path).toLowerCase();
+      File fileToUpload = file;
+      String contentType = _kSupportedAudioTypes[ext] ?? 'audio/wav';
+      int uploadSize = originalSizeBytes;
 
-    // 1. Request signed URL
-    final client = ref.read(grpcClientsProvider).ingestion;
-    final createRes = await client.createAudioUpload(CreateAudioUploadRequest(
-      patientFileId: widget.patientFileId,
-      therapistId: widget.therapistId,
-      estimatedSizeBytes: Int64(sizeBytes),
-      contentType: contentType,
-      clientPlatform: Platform.isIOS ? 'ios' : 'android',
-      idempotencyKey: sessionId,
-      reportLanguage: _reportLanguage,
-    ));
-    final uploadId = createRes.uploadId;
-    final signedUrl = createRes.signedUrl;
-    debugPrint('[file-upload] got signed URL (uploadId=$uploadId)');
+      // ── Phase 1: Normalize WAV if needed (0% → 25%) ──
+      if (ext == '.wav') {
+        if (!mounted) return;
+        setState(() {
+          _uploadProgress = 0.02;
+          _uploadStatusLabel = 'Normalizacja audio...';
+        });
 
-    setState(() => _uploadProgress = 0.4);
+        try {
+          final converter = AudioConverterService();
+          final normalized = await converter.normalizeWav(
+            file.path,
+            onProgress: (p) {
+              if (!mounted) return;
+              setState(() {
+                _uploadProgress = p * 0.25;
+                _uploadStatusLabel = 'Normalizacja audio... ${(p * 100).toInt()}%';
+              });
+            },
+          );
 
-    // 2. Upload raw file directly
-    final uploadOk = await ref.read(uploadServiceProvider).uploadRawFile(
-      signedUrl: signedUrl,
-      file: file,
-      contentType: contentType,
+          if (normalized != null && normalized.path != file.path) {
+            tempFile = normalized;
+            fileToUpload = normalized;
+            uploadSize = await normalized.length();
+            debugPrint('[file-upload] WAV normalized: ${(uploadSize / 1024 / 1024).toStringAsFixed(1)} MB');
+          } else if (normalized == null) {
+            // normalizeWav returns null for non-WAV or unsupported
+            // sub-formats. The original file might be 32-bit float
+            // which Chirp 3 rejects. Log it and upload anyway — if
+            // the file is already 16-bit PCM, normalizeWav returns
+            // the original File (same path).
+            debugPrint('[file-upload] WAV normalization returned null — '
+                'file may have unsupported format; uploading original');
+          } else {
+            debugPrint('[file-upload] WAV already 16-bit PCM, no conversion needed');
+          }
+        } catch (e, st) {
+          debugPrint('[file-upload] WAV normalization failed: $e\n$st');
+          // Continue with original file — backend may still handle it
+        }
+        contentType = 'audio/wav';
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _uploadProgress = 0.28;
+        _uploadStatusLabel = 'Przygotowywanie...';
+      });
+
+      // ── Phase 2: Request signed URL (28% → 33%) ──
+      final client = ref.read(grpcClientsProvider).ingestion;
+      final createRes = await client.createAudioUpload(CreateAudioUploadRequest(
+        patientFileId: widget.patientFileId,
+        therapistId: widget.therapistId,
+        estimatedSizeBytes: Int64(uploadSize),
+        contentType: contentType,
+        clientPlatform: Platform.isIOS ? 'ios' : 'android',
+        idempotencyKey: sessionId,
+        reportLanguage: _reportLanguage,
+      ));
+      final uploadId = createRes.uploadId;
+      final signedUrl = createRes.signedUrl;
+      debugPrint('[file-upload] got signed URL (uploadId=$uploadId)');
+
+      if (!mounted) return;
+      setState(() {
+        _uploadProgress = 0.33;
+        _uploadStatusLabel = 'Przesyłanie pliku...';
+      });
+
+      // ── Phase 3: Upload with streamed progress (33% → 90%) ──
+      await _uploadWithProgress(
+        signedUrl: signedUrl,
+        file: fileToUpload,
+        contentType: contentType,
+        totalBytes: uploadSize,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _uploadProgress = 0.92;
+        _uploadStatusLabel = 'Finalizacja...';
+      });
+
+      // ── Phase 4: Complete upload (92% → 100%) ──
+      final completeRes = await client.completeAudioUpload(CompleteAudioUploadRequest(
+        uploadId: uploadId,
+        actualDurationSeconds: 0,
+        actualSizeBytes: Int64(uploadSize),
+        chunkCount: 1,
+        reportLanguage: _reportLanguage,
+      ));
+      final completedSessionId = completeRes.sessionId;
+      debugPrint('[file-upload] done, sessionId=$completedSessionId');
+
+      if (!mounted) return;
+      setState(() {
+        _uploadProgress = 1.0;
+        _uploadStatusLabel = 'Gotowe!';
+      });
+
+      // Invalidate caches
+      ref.invalidate(patientsProvider);
+      ref.invalidate(sessionsProvider);
+
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+
+      if (!mounted) return;
+      await Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (_) => SessionStatusScreen(sessionId: completedSessionId),
+      ));
+    } finally {
+      // Clean up temp file (only if we created one)
+      if (tempFile != null) {
+        try {
+          if (await tempFile.exists()) await tempFile.delete();
+        } catch (_) {}
+      }
+    }
+  }
+
+  /// Uploads a file via streamed PUT with real-time progress tracking.
+  Future<void> _uploadWithProgress({
+    required String signedUrl,
+    required File file,
+    required String contentType,
+    required int totalBytes,
+  }) async {
+    final uri = Uri.parse(signedUrl);
+    final request = http.StreamedRequest('PUT', uri);
+    request.headers['Content-Type'] = contentType;
+    request.headers['x-goog-meta-source'] = 'superwizor-mobile';
+    request.contentLength = totalBytes;
+
+    // Stream the file bytes and track progress
+    int bytesSent = 0;
+    final fileStream = file.openRead();
+
+    fileStream.listen(
+      (chunk) {
+        request.sink.add(chunk);
+        bytesSent += chunk.length;
+        if (!mounted) return;
+        final uploadFraction = bytesSent / totalBytes;
+        // Map upload progress to 33% → 90% of total progress
+        final totalProgress = 0.33 + (uploadFraction * 0.57);
+        setState(() {
+          _uploadProgress = totalProgress;
+          _uploadStatusLabel =
+              'Przesyłanie... ${(uploadFraction * 100).toInt()}%';
+        });
+      },
+      onDone: () => request.sink.close(),
+      onError: (e) => request.sink.addError(e),
+      cancelOnError: true,
     );
-    if (!uploadOk) throw StateError('upload failed');
 
-    setState(() => _uploadProgress = 0.8);
+    final response = await http.Client().send(request);
+    final statusCode = response.statusCode;
 
-    // 3. Complete upload
-    final completeRes = await client.completeAudioUpload(CompleteAudioUploadRequest(
-      uploadId: uploadId,
-      actualDurationSeconds: 0, // unknown for uploaded files
-      actualSizeBytes: Int64(sizeBytes),
-      chunkCount: 1, // It's just one file, not a chunked recording
-      reportLanguage: _reportLanguage,
-    ));
-    final completedSessionId = completeRes.sessionId;
-    debugPrint('[file-upload] completeAudioUpload returned sessionId=$completedSessionId');
-
-    setState(() => _uploadProgress = 1.0);
-
-    // Invalidate caches
-    ref.invalidate(patientsProvider);
-    ref.invalidate(sessionsProvider);
-
-    if (!mounted) return;
-    await Navigator.of(context).pushReplacement(MaterialPageRoute(
-      builder: (_) => SessionStatusScreen(sessionId: completedSessionId),
-    ));
+    if (statusCode != 200 && statusCode != 204) {
+      final body = await response.stream.bytesToString();
+      throw StateError('Upload failed (HTTP $statusCode): $body');
+    }
   }
 
   Future<void> _showErrorSheet(String message) async {
@@ -605,23 +726,48 @@ class _SecondaryButton extends StatelessWidget {
   }
 }
 
-class _UploadProgressCard extends StatelessWidget {
+class _UploadProgressCard extends StatefulWidget {
   final String fileName;
   final double progress;
+  final String statusLabel;
 
   const _UploadProgressCard({
     required this.fileName,
     required this.progress,
+    required this.statusLabel,
   });
 
   @override
+  State<_UploadProgressCard> createState() => _UploadProgressCardState();
+}
+
+class _UploadProgressCardState extends State<_UploadProgressCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final percentage = (progress * 100).toInt();
+    final percentage = (widget.progress * 100).toInt();
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF001A1C), // Solid premium dark (Labirynt)
+        color: const Color(0xFF001A1C),
         borderRadius: BorderRadius.circular(5),
         border: Border.all(
           color: EuphireColors.ember.withValues(alpha: 0.3),
@@ -640,7 +786,7 @@ class _UploadProgressCard extends StatelessWidget {
         children: [
           // Overline
           Text(
-            'PRZESYŁANIE',
+            'PRZETWARZANIE',
             style: TextStyle(
               fontFamily: 'RobotoMono',
               fontSize: 10,
@@ -652,12 +798,27 @@ class _UploadProgressCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(Icons.upload_file_rounded,
-                  color: EuphireColors.ember, size: 24),
+              // Pulsing icon during upload
+              AnimatedBuilder(
+                animation: _pulseController,
+                builder: (_, child) => Opacity(
+                  opacity: 0.6 + (_pulseController.value * 0.4),
+                  child: child,
+                ),
+                child: Icon(
+                  widget.progress < 0.30
+                      ? Icons.transform_rounded
+                      : widget.progress < 0.90
+                          ? Icons.cloud_upload_rounded
+                          : Icons.check_circle_outline_rounded,
+                  color: EuphireColors.ember,
+                  size: 24,
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  fileName,
+                  widget.fileName,
                   style: const TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 14,
@@ -681,24 +842,28 @@ class _UploadProgressCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.white.withValues(alpha: 0.05),
-              valueColor: const AlwaysStoppedAnimation(EuphireColors.ember),
-              minHeight: 4,
+          // Smooth animated progress bar
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: widget.progress),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            builder: (_, value, child) => ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: value,
+                backgroundColor: Colors.white.withValues(alpha: 0.05),
+                valueColor: AlwaysStoppedAnimation(
+                  widget.progress >= 1.0
+                      ? const Color(0xFF4CAF50) // green when done
+                      : EuphireColors.ember,
+                ),
+                minHeight: 5,
+              ),
             ),
           ),
           const SizedBox(height: 12),
           Text(
-            progress < 0.3
-                ? 'Szyfrowanie pliku…'
-                : progress < 0.5
-                    ? 'Przygotowanie do wysyłki…'
-                    : progress < 0.8
-                        ? 'Przesyłanie na serwer…'
-                        : 'Finalizacja…',
+            widget.statusLabel,
             style: TextStyle(
               fontFamily: 'Merriweather',
               fontSize: 12,

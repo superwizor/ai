@@ -6,6 +6,7 @@ class EuphireListTile extends StatelessWidget {
   final String? subtitle;
   final VoidCallback? onTap;
   final IconData trailingIcon;
+  final Widget? trailingWidget;
 
   const EuphireListTile({
     super.key,
@@ -13,6 +14,7 @@ class EuphireListTile extends StatelessWidget {
     this.subtitle,
     this.onTap,
     this.trailingIcon = Icons.arrow_forward_ios,
+    this.trailingWidget,
   });
 
   @override
@@ -33,7 +35,7 @@ class EuphireListTile extends StatelessWidget {
               ),
             )
           : null,
-      trailing: SizedBox(
+      trailing: trailingWidget ?? SizedBox(
         width: trailingIcon == Icons.arrow_forward_ios ? 16 : 24,
         child: Icon(trailingIcon, color: trailingIcon == Icons.arrow_forward_ios ? EuphireColors.ember : EuphireColors.mist, size: trailingIcon == Icons.arrow_forward_ios ? 16 : 24),
       ),

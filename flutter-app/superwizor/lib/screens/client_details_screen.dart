@@ -136,7 +136,82 @@ class ClientDetailsScreen extends ConsumerWidget {
                             child: EuphireListTile(
                               title: session.modality,
                               subtitle: dateStr,
-                              trailingIcon: Icons.more_vert,
+                              trailingWidget: PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert, color: EuphireColors.mist),
+                                color: EuphireColors.nocturne,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                    value: 'rename',
+                                    child: Text('Zmień nazwę', style: TextStyle(color: EuphireColors.frostWhite)),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Text('Usuń sesję', style: TextStyle(color: EuphireColors.magma)),
+                                  ),
+                                ],
+                                onSelected: (value) {
+                                  if (value == 'delete') {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        backgroundColor: EuphireColors.nocturne,
+                                        title: const Text('Usuń sesję', style: TextStyle(color: EuphireColors.frostWhite)),
+                                        content: const Text('Czy na pewno chcesz usunąć tę sesję z widoku?', style: TextStyle(color: EuphireColors.mist)),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: const Text('Anuluj', style: TextStyle(color: EuphireColors.mist)),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              ref.read(sessionsProvider.notifier).deleteSessionLocally(patientId, session.id);
+                                              Navigator.pop(context);
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Sesja usunięta.')),
+                                              );
+                                            },
+                                            child: const Text('Usuń', style: TextStyle(color: EuphireColors.magma)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  } else if (value == 'rename') {
+                                    final controller = TextEditingController(text: session.modality);
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        backgroundColor: EuphireColors.nocturne,
+                                        title: const Text('Zmień nazwę sesji', style: TextStyle(color: EuphireColors.frostWhite)),
+                                        content: TextField(
+                                          controller: controller,
+                                          style: const TextStyle(color: EuphireColors.frostWhite),
+                                          decoration: const InputDecoration(
+                                            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: EuphireColors.mist)),
+                                            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: EuphireColors.ember)),
+                                          ),
+                                          autofocus: true,
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: const Text('Anuluj', style: TextStyle(color: EuphireColors.mist)),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              if (controller.text.trim().isNotEmpty) {
+                                                ref.read(sessionsProvider.notifier).renameSessionLocally(patientId, session.id, controller.text.trim());
+                                              }
+                                              Navigator.pop(context);
+                                            },
+                                            child: const Text('Zapisz', style: TextStyle(color: EuphireColors.ember)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
                             ),
                           );
                         },

@@ -1,8 +1,8 @@
 // Therapy modalities (8 — per Etap 2 plan).
 //
-// `code` is the stable backend identifier; `displayKey` references
-// the corresponding ARB key (D7 — i18n). Display names live in
-// AppLocalizations, never hardcoded here.
+// `code` is the stable backend identifier (system_code in DB);
+// `displayKey` references the corresponding ARB key (D7 — i18n).
+// Display names live in AppLocalizations, never hardcoded here.
 
 class Modality {
   final String code;
@@ -12,16 +12,23 @@ class Modality {
 }
 
 /// Source of truth for the 8 supported modalities.
+/// `code` matches `modalities.system_code` in PostgreSQL — used in
+/// CreatePatientFileRequest.modalityCode and returned in
+/// PatientFile.modalityCode.
 const List<Modality> kModalities = [
-  Modality(code: 'integrative', displayKey: 'modality_integrative'),
-  Modality(code: 'cbt', displayKey: 'modality_cbt'),
-  Modality(code: 'psychodynamic', displayKey: 'modality_psychodynamic'),
-  Modality(code: 'positive', displayKey: 'modality_positive'),
-  Modality(code: 'schema', displayKey: 'modality_schema'),
-  Modality(code: 'systemic', displayKey: 'modality_systemic'),
-  Modality(code: 'eft', displayKey: 'modality_eft'),
-  Modality(code: 'coaching', displayKey: 'modality_coaching'),
+  Modality(code: 'UNIV', displayKey: 'modality_integrative'),
+  Modality(code: 'CBT', displayKey: 'modality_cbt'),
+  Modality(code: 'PSYCHO', displayKey: 'modality_psychodynamic'),
+  Modality(code: 'PPT', displayKey: 'modality_positive'),
+  Modality(code: 'ST', displayKey: 'modality_schema'),
+  Modality(code: 'SYS', displayKey: 'modality_systemic'),
+  Modality(code: 'EFT', displayKey: 'modality_eft'),
+  Modality(code: 'COACH', displayKey: 'modality_coaching'),
 ];
+
+/// Default modality used when creating a new patient file and the
+/// therapist hasn't explicitly chosen one yet.
+const String kDefaultModalityCode = 'UNIV';
 
 /// Lookup helper for resolving a code → ARB key (UI uses
 /// `AppLocalizations.of(context).modality_<key>` after this).

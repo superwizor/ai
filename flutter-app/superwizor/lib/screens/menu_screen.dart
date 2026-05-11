@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/euphire_theme.dart';
 import '../screens/legal_markdown_screen.dart';
@@ -20,10 +22,28 @@ class MenuScreen extends StatefulWidget {
 class _MenuScreenState extends State<MenuScreen> {
 
   Future<void> _pickImage() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null) {
+        final file = File(pickedFile.path);
+        
+        // Pokazujemy informację o rozpoczęciu wgrywania
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Przesyłanie zdjęcia...')),
+          );
+        }
+
+        final ref = FirebaseStorage.instance.ref().child('users/${user.uid}/profile.jpg');
+        await ref.putFile(file);
+        final url = await ref.getDownloadURL();
+        await user.updatePhotoURL(url);
+        
+        setState(() {});
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Zaktualizowano zdjęcie profilowe.')),
@@ -33,7 +53,7 @@ class _MenuScreenState extends State<MenuScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nie można dodać zdjęcia na tym urządzeniu.')),
+          SnackBar(content: Text('Wystąpił błąd podczas dodawania zdjęcia: $e')),
         );
       }
     }
@@ -76,10 +96,13 @@ class _MenuScreenState extends State<MenuScreen> {
                             shape: BoxShape.circle,
                             boxShadow: EuphireColors.emberGlow,
                           ),
-                          child: const CircleAvatar(
+                          child: CircleAvatar(
                             radius: 36,
                             backgroundColor: EuphireColors.ember,
-                            child: Icon(Icons.person, size: 36, color: EuphireColors.obsidianBlack),
+                            backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                            child: user?.photoURL == null 
+                                ? const Icon(Icons.person, size: 36, color: EuphireColors.obsidianBlack) 
+                                : null,
                           ),
                         ),
                         GestureDetector(
