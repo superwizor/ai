@@ -352,6 +352,30 @@ abstract class AppLocalizations {
   /// **'Nowy pacjent.'**
   String get addPatient_title;
 
+  /// No description provided for @addSession_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozpocznij sesję.'**
+  String get addSession_title;
+
+  /// No description provided for @addSession_summary_patient.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pacjent: {alias}'**
+  String addSession_summary_patient(String alias);
+
+  /// No description provided for @addSession_summary_modality.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nurt: {modality}'**
+  String addSession_summary_modality(String modality);
+
+  /// No description provided for @addSession_start_primary.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozpocznij nagrywanie.'**
+  String get addSession_start_primary;
+
   /// No description provided for @addPatient_alias_label.
   ///
   /// In pl, this message translates to:
@@ -361,7 +385,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_modality_label.
   ///
   /// In pl, this message translates to:
-  /// **'Nurt sesji (dziedziczony z profilu)'**
+  /// **'Nurt sesji'**
   String get addPatient_modality_label;
 
   /// No description provided for @addPatient_language_label.

@@ -23,9 +23,13 @@ class UploadService {
 
   static const _maxRetries = 3;
   static const _retryBaseDelayMs = 1000;
-  // FLAC per D10 Plan C — iOS Opus encoder is broken in record 6.2.0
-  // on iPhone 15 / iOS 26 (produces 0-byte files). FLAC works.
-  static const _contentType = 'audio/flac';
+  // Plan D — LINEAR16 WAV @ 16 kHz mono. Switched from FLAC because
+  // record_darwin's FLAC path on iOS 26.2.1 silently produces 32-bit
+  // IEEE Float WAV which Chirp 3 rejects (`code=3 unsupported
+  // encoding`). AudioEncoder.wav is reliable: kAudioFormatLinearPCM
+  // with AVLinearPCMIsFloatKey=false → real LINEAR16. Backend STT
+  // auto-decode handles it natively.
+  static const _contentType = 'audio/wav';
 
   /// Decrypts chunks for [sessionId] and PUTs the result to [signedUrl].
   /// Returns true on success. Always cleans up the temp file; caller

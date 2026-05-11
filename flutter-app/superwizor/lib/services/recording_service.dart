@@ -45,7 +45,8 @@ class RecordingService {
   String? _activeFilePath;
   String? get activeFilePath => _activeFilePath;
 
-  Timer? _ticker;
+  Timer? _ticker; // duration / max-cap tick @ 200ms
+  Timer? _ampTicker; // amplitude tick @ 80ms — finer-grained for waveform smoothness
   DateTime? _segmentStart;
   Duration _accumulated = Duration.zero;
 
@@ -84,21 +85,31 @@ class RecordingService {
     final docs = await getApplicationDocumentsDirectory();
     final dir = Directory(p.join(docs.path, 'sessions', sessionId));
     await dir.create(recursive: true);
-    final outPath = p.join(dir.path, 'raw.flac');
+    final outPath = p.join(dir.path, 'raw.wav');
 
-    // Plan C from D10: FLAC, NOT Opus. iOS does not ship a public Opus
-    // encoder, and the `record` package's iOS Opus path produces 0-byte
-    // files with `AudioFileObject.cpp:1170 write past end` warnings —
-    // verified on iPhone 15 / iOS 26.2.1. FLAC works natively and is
-    // also a Chirp 3-supported codec.
+    // Plan D (iterative): switched from FLAC to LINEAR16 WAV.
     //
-    // 16 kHz mono is the STT sweet spot:
-    //   - smaller file (~16 MB / 60 min vs 270 MB at 48 kHz)
-    //   - matches Chirp 3's native sample rate; no upstream resampling
-    //   - voice content sits below 8 kHz, no quality loss
+    // Why: on iPhone 15 / iOS 26.2.1, the `record` package's
+    // AudioEncoder.flac path produces 48 kHz **IEEE Float 32-bit WAV**
+    // (despite the API contract claiming FLAC). The encoder init
+    // silently fails and the plugin writes the raw input format
+    // straight to a RIFF/WAVE container. Chirp 3 rejects these with
+    // `code=3 Audio data does not appear to be in a supported
+    // encoding` — verified by downloading the bucket object and
+    // inspecting magic bytes (RIFF...WAVE / IEEE Float).
+    //
+    // AudioEncoder.wav in `record_darwin` ≥ 1.x explicitly sets:
+    //   AVFormatIDKey         = kAudioFormatLinearPCM
+    //   AVLinearPCMIsFloatKey = false   ← LINEAR16, not float
+    //   AVLinearPCMBitDepthKey = 16
+    //   AVSampleRateKey       = configured (here 16000)
+    //
+    // Chirp 3 supports LINEAR16 mono 16 kHz natively. File size for a
+    // 60-min session: ~115 MB (16000 × 2B × 3600s). For testing
+    // sessions (30s-5min) we get 1-10 MB which is fine.
     await _recorder.start(
       const RecordConfig(
-        encoder: AudioEncoder.flac, // lossless; ignores bitRate
+        encoder: AudioEncoder.wav, // LINEAR16 PCM, Chirp 3-compatible
         sampleRate: 16000,
         numChannels: 1,
         autoGain: true,
@@ -164,6 +175,8 @@ class RecordingService {
     }
     _ticker?.cancel();
     _ticker = null;
+    _ampTicker?.cancel();
+    _ampTicker = null;
     await WakelockPlus.disable();
     _setState(RecordingState.stopped);
     final out = returnedPath ?? _activeFilePath;
@@ -177,6 +190,8 @@ class RecordingService {
     final path = await _recorder.stop();
     _ticker?.cancel();
     _ticker = null;
+    _ampTicker?.cancel();
+    _ampTicker = null;
     _segmentStart = null;
     _accumulated = Duration.zero;
     await WakelockPlus.disable();
@@ -194,6 +209,7 @@ class RecordingService {
 
   Future<void> dispose() async {
     _ticker?.cancel();
+    _ampTicker?.cancel();
     await _recorder.dispose();
     if (!_stateController.isClosed) await _stateController.close();
     if (!_durationController.isClosed) await _durationController.close();
@@ -209,18 +225,50 @@ class RecordingService {
 
   void _startTicker() {
     _ticker?.cancel();
-    _ticker = Timer.periodic(const Duration(milliseconds: 200), (_) async {
+    _ampTicker?.cancel();
+
+    // Coarse duration tick (200ms) — drives the on-screen counter
+    // and the 130-min max-duration sheet trigger. Doesn't need to
+    // be fast.
+    _ticker = Timer.periodic(const Duration(milliseconds: 200), (_) {
       if (_state != RecordingState.recording) return;
       if (!_durationController.isClosed) {
         _durationController.add(currentDuration);
       }
+    });
+
+    // Fast amplitude tick (80ms = 12.5 Hz) — drives the waveform
+    // bars. Decoupled from duration so the waveform can scroll
+    // smoothly. iPhone mic in a quiet room sits around -45 to -50
+    // dBFS noise floor — anything below the gate maps to 0.0 so
+    // the waveform DROPS to baseline during silence (the old
+    // [-60..0] mapping kept it visibly bouncing in silence).
+    //
+    // Calibration on iPhone 15:
+    //   silence (quiet room) : ~ -50 dBFS  → 0.0
+    //   whisper              : ~ -35 dBFS  → 0.29
+    //   normal speech        : ~ -22 dBFS  → 0.66
+    //   loud speech / clap   : ~ -8 dBFS   → 1.0
+    const noiseGateDb = -45.0;
+    const fullScaleDb = -10.0;
+    _ampTicker = Timer.periodic(const Duration(milliseconds: 80), (_) async {
+      if (_amplitudeController.isClosed) return;
+      // During pause we still emit, just always 0 — that way the
+      // UI buffer naturally drains and the waveform visibly drops
+      // to flat instead of freezing on the last live sample.
+      if (_state == RecordingState.paused) {
+        _amplitudeController.add(0.0);
+        return;
+      }
+      if (_state != RecordingState.recording) return;
       try {
         final amp = await _recorder.getAmplitude();
-        if (!_amplitudeController.isClosed) {
-          // amp.current is dBFS; map [-60..0] → [0..1] for waveform UI.
-          final clamped = amp.current.clamp(-60.0, 0.0);
-          _amplitudeController.add((clamped + 60.0) / 60.0);
-        }
+        final raw = amp.current;
+        final normalized = raw < noiseGateDb
+            ? 0.0
+            : ((raw - noiseGateDb) / (fullScaleDb - noiseGateDb))
+                .clamp(0.0, 1.0);
+        _amplitudeController.add(normalized);
       } catch (_) {/* amplitude is best-effort */}
     });
   }

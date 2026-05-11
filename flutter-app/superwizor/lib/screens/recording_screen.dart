@@ -68,10 +68,20 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   RecordingState _recState = RecordingState.idle;
   StreamSubscription<Duration>? _durSub;
   StreamSubscription<RecordingState>? _stateSub;
+  StreamSubscription<double>? _ampSub;
   bool _uploading = false;
   bool _maxLimitTriggered = false;
   String? _uploadId;
   int _chunkCount = 0;
+
+  /// Rolling buffer of recent amplitude samples (0.0-1.0). Each tick
+  /// from `RecordingService.amplitudeStream` (~200ms) pushes one
+  /// value; we cap at [_kWaveformSampleCount] so the waveform scrolls
+  /// left without unbounded growth. Newest sample at the end of the
+  /// list — rendered on the right edge of the bar chart.
+  static const int _kWaveformSampleCount = 60;
+  final List<double> _ampHistory =
+      List<double>.filled(_kWaveformSampleCount, 0.0, growable: false);
 
   RecordingService get _service => ref.read(recordingServiceProvider);
 
@@ -85,6 +95,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   void dispose() {
     _durSub?.cancel();
     _stateSub?.cancel();
+    _ampSub?.cancel();
     super.dispose();
   }
 
@@ -198,6 +209,17 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       _stateSub = _service.stateStream.listen((s) {
         if (!mounted) return;
         setState(() => _recState = s);
+      });
+      _ampSub = _service.amplitudeStream.listen((amp) {
+        if (!mounted) return;
+        setState(() {
+          // Shift left, append newest sample. Using a fixed-length
+          // list (List.filled) means no growth allocation per tick.
+          for (var i = 0; i < _ampHistory.length - 1; i++) {
+            _ampHistory[i] = _ampHistory[i + 1];
+          }
+          _ampHistory[_ampHistory.length - 1] = amp.clamp(0.0, 1.0);
+        });
       });
       setState(() => _recState = _service.state);
     } catch (e) {
@@ -447,7 +469,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       patientFileId: widget.patientFileId,
       therapistId: widget.therapistId,
       estimatedSizeBytes: Int64(sizeBytes),
-      contentType: 'audio/flac',
+      contentType: 'audio/wav',
       clientPlatform: Platform.isIOS ? 'ios' : 'android',
       idempotencyKey: _sessionId ?? const Uuid().v4(),
     ));
@@ -522,13 +544,25 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                 style: theme.textTheme.labelLarge,
               ),
               const SizedBox(height: 24),
+              // Live waveform replaces the big numeric counter. Gives
+              // immediate "is the mic actually capturing audio?"
+              // feedback (samples bounce in response to voice) that
+              // the static digit display can't communicate. Duration
+              // stays just below as a secondary metric.
+              _Waveform(
+                samples: _ampHistory,
+                active: _recState == RecordingState.recording,
+              ),
+              const SizedBox(height: 12),
               Center(
                 child: Text(
                   _formatDuration(_displayDuration),
-                  style: theme.textTheme.displayLarge?.copyWith(fontSize: 48),
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    color: EuphireColors.mist,
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Center(
                 child: Text(
                   _recState == RecordingState.recording
@@ -692,3 +726,86 @@ class _InstructionsBlock extends StatelessWidget {
 // CTA gets re-introduced.
 // ignore: unused_element
 const _kKeepImportEuphireButton = EuphireButton;
+
+/// Live bar-chart waveform driven by [RecordingService.amplitudeStream].
+/// Renders the rolling sample buffer as vertical pill-shaped bars
+/// centered around the mid-line. When [active] is false (paused) we
+/// tint the bars dimmer so it's visually obvious recording isn't
+/// capturing right now.
+class _Waveform extends StatelessWidget {
+  final List<double> samples;
+  final bool active;
+
+  const _Waveform({required this.samples, required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 96,
+      child: CustomPaint(
+        size: Size.infinite,
+        painter: _WaveformPainter(
+          samples: samples,
+          color: active
+              ? EuphireColors.ember
+              : EuphireColors.mist.withValues(alpha: 0.5),
+        ),
+      ),
+    );
+  }
+}
+
+class _WaveformPainter extends CustomPainter {
+  final List<double> samples;
+  final Color color;
+
+  _WaveformPainter({required this.samples, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (samples.isEmpty) return;
+
+    const spacing = 2.0;
+    const minBarHeight = 3.0;
+    final count = samples.length;
+    final barWidth = (size.width - (count - 1) * spacing) / count;
+    if (barWidth <= 0) return;
+
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    for (var i = 0; i < count; i++) {
+      final amp = samples[i].clamp(0.0, 1.0);
+      // Apply a gentle ease so quiet sections still register without
+      // making loud peaks indistinguishable. sqrt curve compresses
+      // the high end visually but keeps low values visible.
+      final eased = amp == 0 ? 0.0 : amp <= 1 ? _sqrt(amp) : 1.0;
+      final barHeight = (eased * size.height).clamp(minBarHeight, size.height);
+      final left = i * (barWidth + spacing);
+      final top = (size.height - barHeight) / 2;
+
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(left, top, barWidth, barHeight),
+          Radius.circular(barWidth / 2),
+        ),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WaveformPainter old) =>
+      old.samples != samples || old.color != color;
+
+  static double _sqrt(double v) {
+    // Newton iteration — avoid importing dart:math just for sqrt.
+    if (v == 0) return 0;
+    var x = v;
+    for (var i = 0; i < 6; i++) {
+      x = 0.5 * (x + v / x);
+    }
+    return x;
+  }
+}

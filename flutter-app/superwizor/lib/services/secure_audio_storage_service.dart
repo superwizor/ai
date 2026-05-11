@@ -189,7 +189,7 @@ class SecureAudioStorageService {
     }
 
     final tempDir = await getTemporaryDirectory();
-    final out = File(p.join(tempDir.path, 'session_$sessionId.flac'));
+    final out = File(p.join(tempDir.path, 'session_$sessionId.wav'));
     final sink = out.openWrite();
 
     try {

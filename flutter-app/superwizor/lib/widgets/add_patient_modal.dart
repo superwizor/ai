@@ -16,6 +16,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../constants/modalities.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
@@ -40,11 +41,38 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
   final _aliasController = TextEditingController();
   bool _consentGiven = false;
   bool _saving = false;
+  // Default to 'integrative' — the most common "I don't fit a single
+  // school" choice; therapist can change before submitting.
+  String _selectedModalityCode = 'integrative';
 
   @override
   void dispose() {
     _aliasController.dispose();
     super.dispose();
+  }
+
+  String _modalityLabel(BuildContext context, String code) {
+    final t = AppLocalizations.of(context);
+    switch (code) {
+      case 'integrative':
+        return t.modality_integrative;
+      case 'cbt':
+        return t.modality_cbt;
+      case 'psychodynamic':
+        return t.modality_psychodynamic;
+      case 'positive':
+        return t.modality_positive;
+      case 'schema':
+        return t.modality_schema;
+      case 'systemic':
+        return t.modality_systemic;
+      case 'eft':
+        return t.modality_eft;
+      case 'coaching':
+        return t.modality_coaching;
+      default:
+        return code;
+    }
   }
 
   @override
@@ -71,6 +99,44 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
             EuphireTextField(
               controller: _aliasController,
               labelText: t.addPatient_alias_label,
+            ),
+            const SizedBox(height: 20),
+            // Modality picker — moved here from AddSessionModal so the
+            // therapist picks once per kartoteka, and every session
+            // inherits the choice. Source: kModalities (8 options),
+            // mapped to UNIV/CBT/PSYCHO at addPatient() call site.
+            Text(
+              t.addPatient_modality_label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: EuphireColors.mist,
+              ),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedModalityCode,
+              isExpanded: true,
+              dropdownColor: EuphireColors.obsidianBlack,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: EuphireColors.frostWhite,
+              ),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              items: [
+                for (final m in kModalities)
+                  DropdownMenuItem<String>(
+                    value: m.code,
+                    child: Text(_modalityLabel(context, m.code)),
+                  ),
+              ],
+              onChanged: _saving
+                  ? null
+                  : (v) {
+                      if (v != null) {
+                        setState(() => _selectedModalityCode = v);
+                      }
+                    },
             ),
             const SizedBox(height: 24),
             _ConsentCheckbox(
@@ -118,7 +184,11 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
       // accept consent_given_at yet; D9). The notifier currently
       // splits alias into firstName/lastName; pass alias as one piece.
       final notifier = ref.read(patientsProvider.notifier);
-      await notifier.addPatient(alias, '');
+      await notifier.addPatient(
+        alias,
+        '',
+        modalityUiCode: _selectedModalityCode,
+      );
 
       // Find the newly-created patient to get its ID. The notifier
       // refetches after addPatient, so the newest patient is at the

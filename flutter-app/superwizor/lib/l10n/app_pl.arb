@@ -55,8 +55,18 @@
   "modality_coaching": "Coaching (ICF/GROW)",
 
   "addPatient_title": "Nowy pacjent.",
+  "addSession_title": "Rozpocznij sesję.",
+  "addSession_summary_patient": "Pacjent: {alias}",
+  "@addSession_summary_patient": {
+    "placeholders": {"alias": {"type": "String"}}
+  },
+  "addSession_summary_modality": "Nurt: {modality}",
+  "@addSession_summary_modality": {
+    "placeholders": {"modality": {"type": "String"}}
+  },
+  "addSession_start_primary": "Rozpocznij nagrywanie.",
   "addPatient_alias_label": "Imię lub pseudonim pacjenta",
-  "addPatient_modality_label": "Nurt sesji (dziedziczony z profilu)",
+  "addPatient_modality_label": "Nurt sesji",
   "addPatient_language_label": "Język sesji",
   "addPatient_consent_label": "Oświadczam, że pacjent wyraził zgodę na nagrywanie i przetwarzanie danych zgodnie z Polityką Prywatności i DPA Superwizor AI.",
   "addPatient_consent_link_label": "Zobacz dokument DPA.",

@@ -13,6 +13,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import 'transcript_cache_store.dart';
 
@@ -36,11 +37,20 @@ class TranscriptPdfExporter {
     required TranscriptPdfMeta meta,
     required PdfStrings strings,
   }) async {
+    // Default Helvetica doesn't cover Polish diacritics (ą ć ę ł ó
+    // ś ź ż) — attempts to render them throw PdfNoSuchFontError
+    // which Flutter surfaces as a generic PlatformException at the
+    // share-sheet call site. NotoSans is bundled by Google Fonts and
+    // covers Latin-Extended-A which is everything Polish needs.
+    final baseFont = await PdfGoogleFonts.notoSansRegular();
+    final boldFont = await PdfGoogleFonts.notoSansBold();
+
     final pdf = pw.Document(
       title: strings.title,
       author: 'Superwizor AI',
       creator: 'Superwizor AI Flutter app',
       subject: strings.title,
+      theme: pw.ThemeData.withFont(base: baseFont, bold: boldFont),
     );
 
     final dateFmt = DateFormat('dd.MM.yyyy', 'pl_PL');

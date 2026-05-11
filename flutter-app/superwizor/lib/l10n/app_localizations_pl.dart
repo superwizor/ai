@@ -148,10 +148,26 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addPatient_title => 'Nowy pacjent.';
 
   @override
+  String get addSession_title => 'Rozpocznij sesję.';
+
+  @override
+  String addSession_summary_patient(String alias) {
+    return 'Pacjent: $alias';
+  }
+
+  @override
+  String addSession_summary_modality(String modality) {
+    return 'Nurt: $modality';
+  }
+
+  @override
+  String get addSession_start_primary => 'Rozpocznij nagrywanie.';
+
+  @override
   String get addPatient_alias_label => 'Imię lub pseudonim pacjenta';
 
   @override
-  String get addPatient_modality_label => 'Nurt sesji (dziedziczony z profilu)';
+  String get addPatient_modality_label => 'Nurt sesji';
 
   @override
   String get addPatient_language_label => 'Język sesji';

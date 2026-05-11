@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../constants/modalities.dart';
 import '../models/patient.dart';
 import '../models/session.dart';
 import 'current_user_provider.dart';
 import 'grpc_provider.dart';
+import 'services_provider.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as grpc_clinical;
 
 final patientsProvider = AsyncNotifierProvider<PatientsNotifier, List<Patient>>(() {
@@ -48,16 +50,36 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
         eagerError: false,
       );
 
+      // Look up the local UI-modality cache for all patients at once.
+      // The cache fills in the user's original UI choice (one of 8
+      // modalities) that the backend collapsed into UNIV/CBT/PSYCHO.
+      final modalityCache = ref.read(patientModalityCacheProvider);
+      final cachedUiCodes = await modalityCache.lookupMany(
+        res.patientFiles.map((pf) => pf.id),
+      );
+
       return List.generate(res.patientFiles.length, (i) {
         final pf = res.patientFiles[i];
         final names = pf.workingAlias.split(' ');
         final firstName = names.isNotEmpty ? names.first : 'Nieznany';
         final lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
+        // Priority: local UI cache > backend modality_code > UNIV.
+        // The backend currently returns empty modality_code on
+        // ListPatientFiles (TODO in clinical-svc/server.go); even
+        // after that's fixed, the 6 collapsed UI modalities can't
+        // be recovered server-side, so this cache remains the
+        // authoritative source of the therapist's specific choice.
+        final cached = cachedUiCodes[pf.id];
+        final modalityCode = cached != null
+            ? uiToBackendModalityCode(cached)
+            : (pf.modalityCode.isNotEmpty ? pf.modalityCode : 'UNIV');
         return Patient(
           id: pf.id,
           firstName: firstName,
           lastName: lastName,
           sessionCount: counts[i],
+          modalityCode: modalityCode,
+          uiModalityCode: cached ?? backendToUiModalityCode(modalityCode),
         );
       });
     } catch (e) {
@@ -66,19 +88,33 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     }
   }
 
-  Future<void> addPatient(String firstName, String lastName) async {
+  /// Creates a new kartoteka. The [modalityUiCode] is the Flutter
+  /// UI code (e.g. 'cbt', 'integrative') — mapped to the backend's
+  /// system_code via [uiToBackendModalityCode] before the gRPC call.
+  Future<void> addPatient(
+    String firstName,
+    String lastName, {
+    required String modalityUiCode,
+  }) async {
     final client = ref.read(grpcClientsProvider).clinical;
     final req = grpc_clinical.CreatePatientFileRequest(
-      therapistId: '', // zdekodowane na backendzie z tokenu
+      therapistId: '', // resolved server-side from JWT
       workingAlias: '$firstName $lastName'.trim(),
-      modalityCode: 'CBT', // default
+      modalityCode: uiToBackendModalityCode(modalityUiCode),
       processType: grpc_clinical.ProcessType.PROCESS_TYPE_INDIVIDUAL,
       hasRecordingConsent: true,
     );
-    
+
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await client.createPatientFile(req);
+      final created = await client.createPatientFile(req);
+      // Persist the user's UI choice locally so subsequent fetches
+      // can display the specific picked modality (e.g. "Schema")
+      // rather than the backend-collapsed bucket ("Integratywne").
+      await ref.read(patientModalityCacheProvider).remember(
+            patientFileId: created.id,
+            uiCode: modalityUiCode,
+          );
       return _fetchPatients();
     });
   }

@@ -31,3 +31,37 @@ String? modalityDisplayKeyFor(String code) {
   }
   return null;
 }
+
+/// Maps a Flutter UI modality code to the backend `system_code` on
+/// the `modalities` table. The DB currently seeds three modalities:
+/// UNIV (modality-agnostic), CBT, PSYCHO — see migration
+/// 000006_seed_modalities. Any other UI choice falls back to UNIV
+/// (the universal supervision prompt). Backend rejects unknown
+/// codes with InvalidArgument, so the mapping must be exhaustive.
+String uiToBackendModalityCode(String uiCode) {
+  switch (uiCode) {
+    case 'cbt':
+      return 'CBT';
+    case 'psychodynamic':
+      return 'PSYCHO';
+    default:
+      return 'UNIV';
+  }
+}
+
+/// Inverse of [uiToBackendModalityCode], best-effort. When the
+/// backend has stored UNIV we can't recover the therapist's exact
+/// original UI choice (info loss — 6 modalities collapse into UNIV).
+/// Display 'integrative' for UNIV as it's the most representative
+/// non-CBT/non-PSYCHO option.
+String backendToUiModalityCode(String backendCode) {
+  switch (backendCode.toUpperCase()) {
+    case 'CBT':
+      return 'cbt';
+    case 'PSYCHO':
+      return 'psychodynamic';
+    case 'UNIV':
+    default:
+      return 'integrative';
+  }
+}

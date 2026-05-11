@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/consent_service.dart';
 import '../services/fcm_token_service.dart';
+import '../services/patient_modality_cache.dart';
 import '../services/recording_service.dart';
 import '../services/secure_audio_storage_service.dart';
 import '../services/session_state_listener.dart';
@@ -53,4 +54,8 @@ final transcriptCacheProvider = Provider<TranscriptCacheStore>(
 
 final transcriptPdfExporterProvider = Provider<TranscriptPdfExporter>(
   (ref) => TranscriptPdfExporter(),
+);
+
+final patientModalityCacheProvider = Provider<PatientModalityCache>(
+  (ref) => PatientModalityCache(),
 );

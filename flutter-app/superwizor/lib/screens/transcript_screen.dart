@@ -537,14 +537,10 @@ class _SegmentTile extends StatelessWidget {
                 Navigator.of(ctx).pop();
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.play_arrow),
-              title: Text(t.transcript_actions_play_from_here),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                onTap();
-              },
-            ),
+            // "Odtwórz od tego miejsca" intentionally removed — audio
+            // is purged from GCS after STT (privacy / cost), so playback
+            // is not supported in MVP. Re-introduce when the backend
+            // exposes a signed-URL audio source for completed sessions.
           ],
         ),
       ),
