@@ -43,6 +43,8 @@ import 'session_status_screen.dart';
 
 /// Supported audio MIME types for file upload.
 /// Chirp 3 BatchRecognize with AutoDetectDecodingConfig handles all of these.
+/// NOTE: M4A/AAC are explicitly disabled because Chirp 3 on europe-central2 
+/// returns INTERNAL errors for them.
 const Map<String, String> _kSupportedAudioTypes = {
   '.flac': 'audio/flac',
   '.wav': 'audio/wav',
@@ -50,11 +52,8 @@ const Map<String, String> _kSupportedAudioTypes = {
   '.ogg': 'audio/ogg',
   '.opus': 'audio/ogg',
   '.webm': 'audio/webm',
-  '.m4a': 'audio/mp4',
-  '.aac': 'audio/aac',
   '.amr': 'audio/amr',
   '.wma': 'audio/x-ms-wma',
-  '.mp4': 'audio/mp4',
 };
 
 class NewSessionScreen extends ConsumerStatefulWidget {
@@ -333,10 +332,12 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     final contentType = _kSupportedAudioTypes[ext];
     if (contentType == null) {
       if (!mounted) return;
-      _showErrorSheet(
-        'Format "$ext" nie jest obsługiwany.\n\n'
-        'Obsługiwane formaty: FLAC, WAV, MP3, OGG, OPUS, M4A, AAC, WEBM, AMR.',
-      );
+      
+      final msg = ext == '.m4a' || ext == '.mp4' || ext == '.aac' 
+          ? 'Format "$ext" (np. z systemowego Dyktafonu Apple) nie jest wspierany przez nasz silnik medyczny AI.\n\nProsimy o użycie aplikacji dyktafonu zapisującej w formacie WAV lub FLAC (np. "Voice Record Pro").'
+          : 'Format "$ext" nie jest obsługiwany.\n\nObsługiwane formaty: FLAC, WAV, MP3, OGG, OPUS, WEBM, AMR.';
+          
+      _showErrorSheet(msg);
       return;
     }
 
