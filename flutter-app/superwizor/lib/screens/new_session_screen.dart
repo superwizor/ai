@@ -364,7 +364,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     });
 
     try {
-      await _encryptAndUploadFile(
+      await _uploadFileDirectly(
         file: file,
         contentType: contentType,
         sizeBytes: sizeBytes,
@@ -377,7 +377,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     }
   }
 
-  Future<void> _encryptAndUploadFile({
+  Future<void> _uploadFileDirectly({
     required File file,
     required String contentType,
     required int sizeBytes,
@@ -386,28 +386,12 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
 
     setState(() => _uploadProgress = 0.1);
 
-    // 1. Encrypt the file using SecureAudioStorageService
-    final storage = ref.read(secureAudioStorageProvider);
-    final chunks = await storage.encryptRecording(
-      rawPath: file.path,
-      sessionId: sessionId,
-    );
-    debugPrint('[file-upload] encrypted: ${chunks.length} chunks');
-
-    setState(() => _uploadProgress = 0.3);
-
-    // 2. Decrypt to temp file for upload (same flow as recording)
-    final tempForUpload = await storage.decryptToTempFile(sessionId: sessionId);
-    final uploadSize = await tempForUpload.length();
-
-    setState(() => _uploadProgress = 0.4);
-
-    // 3. Request signed URL
+    // 1. Request signed URL
     final client = ref.read(grpcClientsProvider).ingestion;
     final createRes = await client.createAudioUpload(CreateAudioUploadRequest(
       patientFileId: widget.patientFileId,
       therapistId: widget.therapistId,
-      estimatedSizeBytes: Int64(uploadSize),
+      estimatedSizeBytes: Int64(sizeBytes),
       contentType: contentType,
       clientPlatform: Platform.isIOS ? 'ios' : 'android',
       idempotencyKey: sessionId,
@@ -417,41 +401,34 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     final signedUrl = createRes.signedUrl;
     debugPrint('[file-upload] got signed URL (uploadId=$uploadId)');
 
-    setState(() => _uploadProgress = 0.5);
+    setState(() => _uploadProgress = 0.4);
 
-    // 4. Upload
-    final uploadOk = await ref.read(uploadServiceProvider).uploadEncryptedSession(
-      sessionId: sessionId,
+    // 2. Upload raw file directly
+    final uploadOk = await ref.read(uploadServiceProvider).uploadRawFile(
       signedUrl: signedUrl,
+      file: file,
       contentType: contentType,
     );
     if (!uploadOk) throw StateError('upload failed');
 
     setState(() => _uploadProgress = 0.8);
 
-    // 5. Complete upload
+    // 3. Complete upload
     final completeRes = await client.completeAudioUpload(CompleteAudioUploadRequest(
       uploadId: uploadId,
       actualDurationSeconds: 0, // unknown for uploaded files
-      actualSizeBytes: Int64(uploadSize),
-      chunkCount: chunks.length,
+      actualSizeBytes: Int64(sizeBytes),
+      chunkCount: 1, // It's just one file, not a chunked recording
       reportLanguage: _reportLanguage,
     ));
     final completedSessionId = completeRes.sessionId;
     debugPrint('[file-upload] completeAudioUpload returned sessionId=$completedSessionId');
-
-    await storage.purgeSession(sessionId);
 
     setState(() => _uploadProgress = 1.0);
 
     // Invalidate caches
     ref.invalidate(patientsProvider);
     ref.invalidate(sessionsProvider);
-
-    // Clean up temp
-    try {
-      if (await tempForUpload.exists()) await tempForUpload.delete();
-    } catch (_) {}
 
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(MaterialPageRoute(

@@ -45,6 +45,16 @@ class UploadService {
     }
   }
 
+  /// Uploads a raw file directly without going through the SecureAudioStorage.
+  /// Used for files picked from the device disk to skip unnecessary local encryption overhead.
+  Future<bool> uploadRawFile({
+    required String signedUrl,
+    required File file,
+    required String contentType,
+  }) async {
+    return await _putWithRetry(signedUrl: signedUrl, file: file, contentType: contentType);
+  }
+
   Future<bool> _putWithRetry({
     required String signedUrl,
     required File file,

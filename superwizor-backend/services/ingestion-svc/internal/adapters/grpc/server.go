@@ -80,11 +80,33 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		}, nil
 	}
 
-	// New upload
-	objectPath := fmt.Sprintf("%s/%s/%d.flac",
+	ext := ".flac"
+	switch req.ContentType {
+	case "audio/flac":
+		ext = ".flac"
+	case "audio/wav":
+		ext = ".wav"
+	case "audio/mpeg":
+		ext = ".mp3"
+	case "audio/ogg", "audio/opus":
+		ext = ".ogg"
+	case "audio/webm":
+		ext = ".webm"
+	case "audio/mp4", "audio/m4a":
+		ext = ".m4a"
+	case "audio/aac":
+		ext = ".aac"
+	case "audio/amr":
+		ext = ".amr"
+	case "audio/x-ms-wma":
+		ext = ".wma"
+	}
+
+	objectPath := fmt.Sprintf("%s/%s/%d%s",
 		therapistID.String(),
 		patientFileID.String(),
 		time.Now().Unix(),
+		ext,
 	)
 
 	upload, err := s.queries.CreateAudioUpload(ctx, db.CreateAudioUploadParams{

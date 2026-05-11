@@ -1,0 +1,31 @@
+Analyzing lib...
+
+  error - providers/locale_provider.dart:5:24 - The function 'StateNotifierProvider' isn't defined. Try importing the library that defines 'StateNotifierProvider', correcting the name to the name of an existing function, or defining a function named 'StateNotifierProvider'. - undefined_function
+  error - providers/locale_provider.dart:9:30 - Classes can only extend other classes. Try specifying a different superclass, or removing the extends clause. - extends_non_class
+  error - providers/locale_provider.dart:10:28 - Too many positional arguments: 0 expected, but 1 found. Try removing the extra arguments. - extra_positional_arguments
+  error - providers/locale_provider.dart:18:7 - Undefined name 'state'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+  error - providers/locale_provider.dart:23:5 - Undefined name 'state'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+  error - screens/menu_screen.dart:11:8 - Target of URI doesn't exist: 'package:flutter_gen/gen_l10n/app_localizations.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist. - uri_does_not_exist
+  error - screens/menu_screen.dart:135:32 - Undefined name 'AppLocalizations'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+  error - screens/menu_screen.dart:146:32 - Undefined name 'AppLocalizations'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+  error - screens/menu_screen.dart:157:32 - Undefined name 'AppLocalizations'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+  error - widgets/language_sheet.dart:6:8 - Target of URI doesn't exist: 'package:flutter_gen/gen_l10n/app_localizations.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist. - uri_does_not_exist
+  error - widgets/language_sheet.dart:46:16 - Undefined name 'AppLocalizations'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+  error - widgets/main_drawer.dart:10:8 - Target of URI doesn't exist: 'package:flutter_gen/gen_l10n/app_localizations.dart'. Try creating the file referenced by the URI, or try using a URI for a file that does exist. - uri_does_not_exist
+  error - widgets/main_drawer.dart:85:24 - Undefined name 'AppLocalizations'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+  error - widgets/main_drawer.dart:96:24 - Undefined name 'AppLocalizations'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+  error - widgets/main_drawer.dart:107:24 - Undefined name 'AppLocalizations'. Try correcting the name to one that is defined, or defining the name. - undefined_identifier
+warning - screens/home_screen.dart:4:8 - Unused import: '../widgets/euphire_header.dart'. Try removing the import directive. - unused_import
+warning - screens/report_screen.dart:23:8 - Unused import: '../theme/euphire_theme.dart'. Try removing the import directive. - unused_import
+warning - screens/report_screen.dart:36:6 - The declaration '_RiskLevel' isn't referenced. Try removing the declaration of '_RiskLevel'. - unused_element
+warning - screens/report_screen.dart:36:19 - The value of the field 'high' isn't used. Try removing the field, or using it. - unused_field
+warning - screens/report_screen.dart:36:25 - The value of the field 'moderate' isn't used. Try removing the field, or using it. - unused_field
+warning - screens/report_screen.dart:36:35 - The value of the field 'low' isn't used. Try removing the field, or using it. - unused_field
+warning - screens/report_screen.dart:36:40 - The value of the field 'none' isn't used. Try removing the field, or using it. - unused_field
+warning - screens/report_screen.dart:36:46 - The value of the field 'unknown' isn't used. Try removing the field, or using it. - unused_field
+warning - widgets/add_session_modal.dart:19:8 - Unused import: 'euphire_card.dart'. Try removing the import directive. - unused_import
+warning - widgets/add_session_modal.dart:20:8 - Unused import: 'euphire_list_tile.dart'. Try removing the import directive. - unused_import
+warning - widgets/modality_sheet.dart:6:8 - Unused import: '../providers/grpc_provider.dart'. Try removing the import directive. - unused_import
+warning - widgets/modality_sheet.dart:7:8 - Unused import: '../generated/identity/v1/identity.pb.dart'. Try removing the import directive. - unused_import
+
+27 issues found.
