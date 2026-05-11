@@ -102,6 +102,50 @@ func (ns NullContactForm) Value() (driver.Value, error) {
 	return string(ns.ContactForm), nil
 }
 
+type NotificationStatus string
+
+const (
+	NotificationStatusQueued       NotificationStatus = "queued"
+	NotificationStatusSent         NotificationStatus = "sent"
+	NotificationStatusFailed       NotificationStatus = "failed"
+	NotificationStatusTokenInvalid NotificationStatus = "token_invalid"
+)
+
+func (e *NotificationStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = NotificationStatus(s)
+	case string:
+		*e = NotificationStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for NotificationStatus: %T", src)
+	}
+	return nil
+}
+
+type NullNotificationStatus struct {
+	NotificationStatus NotificationStatus `json:"notification_status"`
+	Valid              bool               `json:"valid"` // Valid is true if NotificationStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullNotificationStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.NotificationStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.NotificationStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullNotificationStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.NotificationStatus), nil
+}
+
 type OrganizationType string
 
 const (
@@ -596,6 +640,20 @@ type AuditEvent struct {
 	OccurredAt     time.Time   `json:"occurred_at"`
 }
 
+type FcmToken struct {
+	ID                uuid.UUID          `json:"id"`
+	UserID            uuid.UUID          `json:"user_id"`
+	Token             string             `json:"token"`
+	Platform          string             `json:"platform"`
+	AppVersion        *string            `json:"app_version"`
+	DeviceModel       *string            `json:"device_model"`
+	Locale            *string            `json:"locale"`
+	LastUsedAt        time.Time          `json:"last_used_at"`
+	CreatedAt         time.Time          `json:"created_at"`
+	InvalidatedAt     pgtype.Timestamptz `json:"invalidated_at"`
+	InvalidatedReason *string            `json:"invalidated_reason"`
+}
+
 type HitopDimension struct {
 	ID          uuid.UUID `json:"id"`
 	Code        string    `json:"code"`
@@ -629,6 +687,21 @@ type Modality struct {
 	IsSupported               bool      `json:"is_supported"`
 	CreatedAt                 time.Time `json:"created_at"`
 	UpdatedAt                 time.Time `json:"updated_at"`
+}
+
+type NotificationDelivery struct {
+	ID               uuid.UUID          `json:"id"`
+	UserID           uuid.UUID          `json:"user_id"`
+	SessionID        pgtype.UUID        `json:"session_id"`
+	NotificationType string             `json:"notification_type"`
+	FcmMessageID     *string            `json:"fcm_message_id"`
+	IdempotencyKey   string             `json:"idempotency_key"`
+	TargetTokenID    pgtype.UUID        `json:"target_token_id"`
+	Status           NotificationStatus `json:"status"`
+	ErrorCode        *string            `json:"error_code"`
+	ErrorMessage     *string            `json:"error_message"`
+	CreatedAt        time.Time          `json:"created_at"`
+	SentAt           pgtype.Timestamptz `json:"sent_at"`
 }
 
 type Organization struct {
@@ -719,6 +792,7 @@ type Session struct {
 	CreatedAt             time.Time          `json:"created_at"`
 	UpdatedAt             time.Time          `json:"updated_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
+	ReportLanguage        string             `json:"report_language"`
 }
 
 type TherapistPatientRelation struct {

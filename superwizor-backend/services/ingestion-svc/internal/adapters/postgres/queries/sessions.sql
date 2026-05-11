@@ -1,8 +1,8 @@
 -- name: CreateSession :one
 INSERT INTO sessions (
     therapist_id, patient_file_id, audio_upload_id,
-    session_date, session_number, duration_seconds, contact_form
-) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    session_date, session_number, duration_seconds, contact_form, report_language
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: GetNextSessionNumber :one

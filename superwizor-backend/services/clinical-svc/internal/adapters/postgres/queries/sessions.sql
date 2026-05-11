@@ -9,9 +9,10 @@ INSERT INTO sessions (
     contact_form,
     speaker_label_mapping,
     language_code,
+    report_language,
     status
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 ) RETURNING *;
 
 -- name: GetSession :one
@@ -54,6 +55,7 @@ SELECT
     s.contact_form,
     s.speaker_label_mapping,
     s.language_code,
+    s.report_language,
     s.status,
     s.status_updated_at,
     s.created_at,

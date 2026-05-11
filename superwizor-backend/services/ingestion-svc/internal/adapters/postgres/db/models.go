@@ -100,6 +100,50 @@ func (ns NullContactForm) Value() (driver.Value, error) {
 	return string(ns.ContactForm), nil
 }
 
+type NotificationStatus string
+
+const (
+	NotificationStatusQueued       NotificationStatus = "queued"
+	NotificationStatusSent         NotificationStatus = "sent"
+	NotificationStatusFailed       NotificationStatus = "failed"
+	NotificationStatusTokenInvalid NotificationStatus = "token_invalid"
+)
+
+func (e *NotificationStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = NotificationStatus(s)
+	case string:
+		*e = NotificationStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for NotificationStatus: %T", src)
+	}
+	return nil
+}
+
+type NullNotificationStatus struct {
+	NotificationStatus NotificationStatus
+	Valid              bool // Valid is true if NotificationStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullNotificationStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.NotificationStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.NotificationStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullNotificationStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.NotificationStatus), nil
+}
+
 type OrganizationType string
 
 const (
@@ -594,6 +638,20 @@ type AuditEvent struct {
 	OccurredAt     pgtype.Timestamptz
 }
 
+type FcmToken struct {
+	ID                pgtype.UUID
+	UserID            pgtype.UUID
+	Token             string
+	Platform          string
+	AppVersion        *string
+	DeviceModel       *string
+	Locale            *string
+	LastUsedAt        pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	InvalidatedAt     pgtype.Timestamptz
+	InvalidatedReason *string
+}
+
 type HitopDimension struct {
 	ID          pgtype.UUID
 	Code        string
@@ -627,6 +685,21 @@ type Modality struct {
 	IsSupported               bool
 	CreatedAt                 pgtype.Timestamptz
 	UpdatedAt                 pgtype.Timestamptz
+}
+
+type NotificationDelivery struct {
+	ID               pgtype.UUID
+	UserID           pgtype.UUID
+	SessionID        pgtype.UUID
+	NotificationType string
+	FcmMessageID     *string
+	IdempotencyKey   string
+	TargetTokenID    pgtype.UUID
+	Status           NotificationStatus
+	ErrorCode        *string
+	ErrorMessage     *string
+	CreatedAt        pgtype.Timestamptz
+	SentAt           pgtype.Timestamptz
 }
 
 type Organization struct {
@@ -717,6 +790,7 @@ type Session struct {
 	CreatedAt             pgtype.Timestamptz
 	UpdatedAt             pgtype.Timestamptz
 	DeletedAt             pgtype.Timestamptz
+	ReportLanguage        string
 }
 
 type TherapistPatientRelation struct {

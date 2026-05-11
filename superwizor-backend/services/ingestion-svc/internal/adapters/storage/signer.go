@@ -49,7 +49,7 @@ func (s *Signer) GenerateUploadURL(ctx context.Context, objectPath, contentType 
 			if err != nil {
 				return nil, err
 			}
-			defer c.Close()
+			defer func() { _ = c.Close() }()
 			req := &credentialspb.SignBlobRequest{
 				Name:    fmt.Sprintf("projects/-/serviceAccounts/%s", saEmail),
 				Payload: b,

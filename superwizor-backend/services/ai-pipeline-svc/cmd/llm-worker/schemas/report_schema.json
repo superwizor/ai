@@ -11,16 +11,15 @@
     },
     "speaker_role_inference": {
       "type": "object",
-      "description": "Wynik diaryzacji wykonanej przez LLM (zob. ADR-IMPL-007).",
+      "description": "Wynik diaryzacji wykonanej przez LLM.",
       "properties": {
         "method": {
           "type": "string",
-          "enum": ["llm_inferred", "native_chirp_3"],
-          "description": "llm_inferred = ta sesja ma diaryzację przez LLM (default w v1.2). native_chirp_3 = STT już zrobił diaryzację (przyszły flow)."
+          "enum": ["llm_inferred", "native_chirp_3"]
         },
         "speaker_groups": {
           "type": "array",
-          "description": "Lista zdedukowanych mówców. Każdy chunk powinien należeć do dokładnie jednej grupy (lub do osobnej grupy 'filler' dla krótkich wtrąceń).",
+          "description": "Lista zdedukowanych mówców. Każdy chunk powinien należeć do dokładnie jednej grupy.",
           "items": {
             "type": "object",
             "properties": {
@@ -30,99 +29,23 @@
               },
               "chunk_indices": {
                 "type": "array",
-                "items": {"type": "integer"},
-                "description": "Lista indeksów chunków przypisanych do tego mówcy."
+                "items": {"type": "integer"}
               },
               "confidence": {
-                "type": "number",
-                "description": "0-1, jak pewna jest dedukcja roli."
+                "type": "number"
               },
               "evidence": {
-                "type": "string",
-                "description": "Krótkie uzasadnienie z transkryptu (max 200 znaków)."
+                "type": "string"
               }
             },
             "required": ["role", "chunk_indices", "confidence", "evidence"]
           }
         },
         "overall_diarization_confidence": {
-          "type": "number",
-          "description": "0-1, ogólna pewność co do całej diaryzacji."
+          "type": "number"
         }
       },
       "required": ["method", "speaker_groups", "overall_diarization_confidence"]
-    },
-    "main_themes": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "theme": {"type": "string"},
-          "salience": {"type": "number", "description": "0-1 jak ważny był ten temat"},
-          "evidence_quotes": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Krótkie cytaty z transkryptu (max 3, każdy ≤ 100 znaków)"
-          }
-        },
-        "required": ["theme", "salience", "evidence_quotes"]
-      }
-    },
-    "therapeutic_alliance_observations": {
-      "type": "string",
-      "description": "Obserwacje dotyczące przymierza terapeutycznego. UWAGA: low-confidence w MVP gdy method=llm_inferred."
-    },
-    "interventions_observed": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "intervention_type": {"type": "string"},
-          "description": {"type": "string"},
-          "patient_response": {"type": "string"}
-        },
-        "required": ["intervention_type", "description", "patient_response"]
-      }
-    },
-    "hitop_dimensions": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "dimension_code": {
-            "type": "string",
-            "enum": ["INTERNALIZING", "EXTERNALIZING", "THOUGHT_DISORDER", "DETACHMENT", "DISTRESS", "FEAR", "DISTRESS_DEPRESSION", "DISTRESS_ANXIETY", "FEAR_PANIC", "FEAR_SOCIAL", "ANTAGONISM", "DISINHIBITION"],
-            "description": "Kod wymiaru HiTOP (mierzonego DLA pacjenta — używaj chunków przypisanych do roli 'patient')"
-          },
-          "score": {"type": "number", "description": "0-100"},
-          "confidence": {"type": "number", "description": "0-1"},
-          "evidence": {"type": "string", "description": "Krótkie uzasadnienie ≤ 200 znaków"}
-        },
-        "required": ["dimension_code", "score", "confidence", "evidence"]
-      }
-    },
-    "risk_assessment": {
-      "type": "object",
-      "properties": {
-        "level": {"type": "string", "enum": ["low", "medium", "high"]},
-        "concerns": {
-          "type": "array",
-          "items": {"type": "string"}
-        },
-        "recommended_actions": {
-          "type": "array",
-          "items": {"type": "string"}
-        }
-      },
-      "required": ["level", "concerns"]
-    },
-    "sentiment": {
-      "type": "string",
-      "enum": ["positive", "neutral", "concerning"]
-    },
-    "recommendations_for_next_session": {
-      "type": "array",
-      "items": {"type": "string"}
     },
     "rag_summary_chunk": {
       "type": "string",
@@ -130,8 +53,6 @@
     }
   },
   "required": [
-    "title", "summary_short", "speaker_role_inference", "main_themes",
-    "hitop_dimensions", "risk_assessment", "sentiment",
-    "rag_summary_chunk"
+    "title", "summary_short", "speaker_role_inference", "rag_summary_chunk"
   ]
 }

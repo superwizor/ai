@@ -42,7 +42,7 @@ var (
 	pubsubClient *pubsub.Client
 	crypto       cryptobox.CryptoBox
 	projectID    string
-	geminiModel  string = "gemini-2.5-pro"
+	geminiModel  string = "gemini-3.1-flash-lite"
 	geminiRegion string = "europe-west4"
 )
 
@@ -146,7 +146,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		ragContext = ""
 	}
 
-	reportJSON, tokenStats, err := generateReport(ctx, modalityPrompt, ragContext, transcriptText)
+	reportJSON, tokenStats, err := generateReport(ctx, session.ReportLanguage, modalityPrompt, ragContext, transcriptText)
 	if err != nil {
 		// Vertex AI errors (quota, schema rejection, content filter,
 		// region availability) all land here. Log full error text so we
@@ -220,22 +220,15 @@ type SessionContext struct {
 	ModalityID          uuid.UUID
 	LanguageCode        string
 	SpeakerLabelMapping map[int32]string
+	ReportLanguage      string
 }
 
-// ReportPayload odpowiada strukturze zwracanej przez Gemini wg report_schema.json
-// (zob. Sprint 2.6.1). Zawiera m.in. wynik diaryzacji LLM (SpeakerRoleInference).
 type ReportPayload struct {
-	Title                           string               `json:"title"`
-	SummaryShort                    string               `json:"summary_short"`
-	SpeakerRoleInference            SpeakerRoleInference `json:"speaker_role_inference"`
-	MainThemes                      []ThemeItem          `json:"main_themes"`
-	TherapeuticAllianceObservations string               `json:"therapeutic_alliance_observations"`
-	InterventionsObserved           []InterventionItem   `json:"interventions_observed"`
-	HiTOPDimensions                 []HiTOPItem          `json:"hitop_dimensions"`
-	RiskAssessment                  RiskAssessment       `json:"risk_assessment"`
-	Sentiment                       string               `json:"sentiment"`
-	RecommendationsForNextSession   []string             `json:"recommendations_for_next_session"`
-	RAGSummaryChunk                 string               `json:"rag_summary_chunk"`
+	Title                string               `json:"title"`
+	SummaryShort         string               `json:"summary_short"`
+	SpeakerRoleInference SpeakerRoleInference `json:"speaker_role_inference"`
+	ReportMarkdown       string               `json:"report_markdown"`
+	RAGSummaryChunk      string               `json:"rag_summary_chunk"`
 }
 
 // SpeakerRoleInference reprezentuje wynik diaryzacji wykonanej przez LLM
@@ -258,30 +251,7 @@ type SpeakerGroup struct {
 	Evidence     string  `json:"evidence"`
 }
 
-type ThemeItem struct {
-	Theme    string   `json:"theme"`
-	Salience float64  `json:"salience"`
-	Evidence []string `json:"evidence_quotes"`
-}
-
-type InterventionItem struct {
-	Type            string `json:"intervention_type"`
-	Description     string `json:"description"`
-	PatientResponse string `json:"patient_response"`
-}
-
-type HiTOPItem struct {
-	DimensionCode string  `json:"dimension_code"`
-	Score         float64 `json:"score"`
-	Confidence    float64 `json:"confidence"`
-	Evidence      string  `json:"evidence"`
-}
-
-type RiskAssessment struct {
-	Level              string   `json:"level"`
-	Concerns           []string `json:"concerns"`
-	RecommendedActions []string `json:"recommended_actions"`
-}
+// Removed HiTOPItem struct
 
 type TokenStats struct {
 	InputTokens  int32
@@ -291,90 +261,124 @@ type TokenStats struct {
 //go:embed schemas/report_schema.json
 var reportSchemaBytes []byte
 
-func generateReport(ctx context.Context, modalityPrompt, ragContext, transcriptText string) (string, TokenStats, error) {
+func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragContext, transcriptText string) (string, TokenStats, error) {
 	model := vertexClient.GenerativeModel(geminiModel)
-
+	
+	// --- Krok 1: Diaryzacja i Metadane (JSON Mode) ---
 	var schema map[string]any
 	if err := json.Unmarshal(reportSchemaBytes, &schema); err != nil {
 		return "", TokenStats{}, fmt.Errorf("parse schema: %w", err)
 	}
 
 	model.GenerationConfig = vertexai.GenerationConfig{
-		Temperature:      vertexai.Ptr[float32](0.2),
+		Temperature:      vertexai.Ptr[float32](0.1),
 		TopP:             vertexai.Ptr[float32](0.95),
 		MaxOutputTokens:  vertexai.Ptr[int32](8192),
 		ResponseMIMEType: "application/json",
 		ResponseSchema:   schemaToVertexSchema(schema),
 	}
 
-	prompt := fmt.Sprintf(`%s
-
-WAŻNE — KONTEKST DIARYZACJI:
+	metadataPrompt := fmt.Sprintf(`
+WAŻNE — KONTEKST DIARYZACJI I METADANYCH:
 Transkrypt poniżej składa się z PONUMEROWANYCH chunków oddzielonych pauzami.
-Chunki NIE mają jeszcze przypisanych mówców (Chirp 3 nie supportuje diaryzacji
-dla polskiego — robimy to przez analizę treści).
+Chunki NIE mają jeszcze przypisanych mówców.
 
-Twoje zadania w jednym wywołaniu:
-1. Klastrowanie: Pogrupuj chunki w 2 (lub 3 dla par/rodzin) wirtualne grupy mówców
-   na podstawie stylu wypowiedzi, treści, formy zwracania się.
-2. Dedukcja ról: Określ rolę każdej grupy (therapist/patient/couple_partner/...).
-3. Generacja raportu: Po przypisaniu, generuj raport bazując na chunkach
-   przypisanych do każdej grupy.
+Twoje zadania:
+1. Klastrowanie: Pogrupuj chunki w 2 (lub 3 dla par/rodzin) wirtualne grupy mówców.
+2. Dedukcja ról: Określ rolę każdej grupy (therapist/patient/...).
+3. Metadane: Wygeneruj krótki tytuł i streszczenie.
 
-Wskazówki dot. klastrowania i dedukcji ról:
-- Terapeuta zazwyczaj: zadaje pytania otwarte, stosuje techniki (reflektowanie,
-  podsumowywanie, normalizacja), używa fachowego języka, mówi krócej.
-- Pacjent zazwyczaj: opisuje swoje odczucia/objawy, odpowiada na pytania,
-  mówi o sobie w pierwszej osobie o problemach, ma dłuższe wypowiedzi.
-- Krótkie wtrącenia ("mhm", "tak", "rozumiem") oznaczaj jako "filler".
-- W sesjach par/rodzin: 3 grupy (terapeuta + 2 osoby relacji).
-- Confidence: 0.9+ jednoznaczne, 0.5-0.8 wskazówki, < 0.5 niejasne.
+Wskazówki dot. klastrowania:
+- Terapeuta: zadaje pytania, stosuje techniki, mówi krócej.
+- Pacjent: opisuje odczucia, odpowiada, ma dłuższe wypowiedzi.
 
-Zapisz wynik klastrowania w polu speaker_role_inference (method="llm_inferred").
+JĘZYK RAPORTU: %s
 
 KONTEKST POPRZEDNICH SESJI:
 %s
 
-TRANSKRYPT BIEŻĄCEJ SESJI (chunki ponumerowane):
+TRANSKRYPT BIEŻĄCEJ SESJI:
 %s
 
-Wygeneruj raport zgodny z podanym JSON Schema. Pamiętaj o:
-- Wypełnieniu speaker_role_inference.speaker_groups: dla KAŻDEJ grupy mówców
-  podaj role + chunk_indices (lista indeksów chunków przypisanych do tej grupy)
-  + confidence + evidence. Każdy chunk MUSI należeć do dokładnie jednej grupy
-  (lub być oznaczony jako "filler" w odrębnej grupie).
-- HiTOP measurements: mierz DLA pacjenta — używaj tylko chunków, które należą
-  do grupy z role="patient".
-- Cytatach maksymalnie 100 znaków każdy.
-- W therapeutic_alliance_observations zaznacz że confidence jest niski jeśli
-  overall_diarization_confidence < 0.7.
-- RAG summary chunk: NIE zawierać danych identyfikujących — używać tylko etykiet
-  typu "pacjent" (nie imion ani numerów chunków).`,
-		modalityPrompt, ragContext, transcriptText)
+Wygeneruj TYLKO metadane zgodnie z podanym JSON Schema.`,
+		reportLanguage, ragContext, transcriptText)
 
-	resp, err := model.GenerateContent(ctx, vertexai.Text(prompt))
+	respMetadata, err := model.GenerateContent(ctx, vertexai.Text(metadataPrompt))
 	if err != nil {
-		return "", TokenStats{}, err
+		return "", TokenStats{}, fmt.Errorf("generate metadata: %w", err)
+	}
+	if len(respMetadata.Candidates) == 0 || respMetadata.Candidates[0].Content == nil {
+		return "", TokenStats{}, fmt.Errorf("no candidates returned for metadata")
 	}
 
-	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil {
-		return "", TokenStats{}, fmt.Errorf("no candidates returned")
-	}
-
-	var output strings.Builder
-	for _, part := range resp.Candidates[0].Content.Parts {
+	var metaOutput strings.Builder
+	for _, part := range respMetadata.Candidates[0].Content.Parts {
 		if text, ok := part.(vertexai.Text); ok {
-			output.WriteString(string(text))
+			metaOutput.WriteString(string(text))
 		}
 	}
 
-	stats := TokenStats{}
-	if resp.UsageMetadata != nil {
-		stats.InputTokens = resp.UsageMetadata.PromptTokenCount
-		stats.OutputTokens = resp.UsageMetadata.CandidatesTokenCount
+	var metadataPayload ReportPayload
+	if err := json.Unmarshal([]byte(metaOutput.String()), &metadataPayload); err != nil {
+		return "", TokenStats{}, fmt.Errorf("parse metadata json: %w", err)
 	}
 
-	return output.String(), stats, nil
+	stats := TokenStats{}
+	if respMetadata.UsageMetadata != nil {
+		stats.InputTokens += respMetadata.UsageMetadata.PromptTokenCount
+		stats.OutputTokens += respMetadata.UsageMetadata.CandidatesTokenCount
+	}
+
+	// --- Krok 2: Pełny Raport Kliniczny (Raw Text Mode) ---
+	model.GenerationConfig = vertexai.GenerationConfig{
+		Temperature:      vertexai.Ptr[float32](0.3),
+		TopP:             vertexai.Ptr[float32](0.95),
+		MaxOutputTokens:  vertexai.Ptr[int32](65536),
+		ResponseMIMEType: "text/plain",
+	}
+
+	reportPrompt := fmt.Sprintf(`%s
+
+JĘZYK RAPORTU: %s
+Wygeneruj CAŁY raport w tym języku. Cytaty z transkryptu pozostaw w oryginale.
+Sformatuj raport używając czytelnego Markdown (nagłówki ##, pogrubienia, cytaty).
+
+KONTEKST POPRZEDNICH SESJI:
+%s
+
+TRANSKRYPT BIEŻĄCEJ SESJI:
+%s`,
+		modalityPrompt, reportLanguage, ragContext, transcriptText)
+
+	respReport, err := model.GenerateContent(ctx, vertexai.Text(reportPrompt))
+	if err != nil {
+		return "", TokenStats{}, fmt.Errorf("generate report markdown: %w", err)
+	}
+	if len(respReport.Candidates) == 0 || respReport.Candidates[0].Content == nil {
+		return "", TokenStats{}, fmt.Errorf("no candidates returned for report markdown")
+	}
+
+	var reportOutput strings.Builder
+	for _, part := range respReport.Candidates[0].Content.Parts {
+		if text, ok := part.(vertexai.Text); ok {
+			reportOutput.WriteString(string(text))
+		}
+	}
+
+	if respReport.UsageMetadata != nil {
+		stats.InputTokens += respReport.UsageMetadata.PromptTokenCount
+		stats.OutputTokens += respReport.UsageMetadata.CandidatesTokenCount
+	}
+
+	// --- Połączenie wyników ---
+	metadataPayload.ReportMarkdown = reportOutput.String()
+	
+	finalJSON, err := json.Marshal(metadataPayload)
+	if err != nil {
+		return "", TokenStats{}, fmt.Errorf("marshal final payload: %w", err)
+	}
+
+	return string(finalJSON), stats, nil
 }
 
 func mapSchemaType(t string) vertexai.Type {
@@ -546,17 +550,23 @@ func loadSession(ctx context.Context, sessionID string) (*SessionContext, error)
 
 	var mappingJSON []byte
 	var langCode *string
+	var reportLang *string
 	row := dbPool.QueryRow(ctx, `
-		SELECT s.patient_file_id, pf.modality_id, s.speaker_label_mapping, s.language_code
+		SELECT s.patient_file_id, pf.modality_id, s.speaker_label_mapping, s.language_code, s.report_language
 		FROM sessions s
 		JOIN patient_files pf ON pf.id = s.patient_file_id
 		WHERE s.id = $1`, id)
-	if err := row.Scan(&sc.PatientFileID, &sc.ModalityID, &mappingJSON, &langCode); err != nil {
+	if err := row.Scan(&sc.PatientFileID, &sc.ModalityID, &mappingJSON, &langCode, &reportLang); err != nil {
 		return nil, err
 	}
 
 	if langCode != nil {
 		sc.LanguageCode = *langCode
+	}
+	if reportLang != nil {
+		sc.ReportLanguage = *reportLang
+	} else {
+		sc.ReportLanguage = "pl" // fallback just in case
 	}
 
 	mapping := map[string]string{}
@@ -689,42 +699,12 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
 		reportID, session.ID, transID, session.ModalityID,
 		ciphertext, encDEK, report.Title, report.SummaryShort,
-		report.Sentiment, report.RiskAssessment.Level, roleInferenceJSON,
+		nil, nil, roleInferenceJSON,
 		geminiModel,
 		tokenStats.InputTokens, tokenStats.OutputTokens,
 		int(processingTime.Seconds()), costUSD)
 	if err != nil {
 		return "", err
-	}
-
-	for _, h := range report.HiTOPDimensions {
-		var dimID uuid.UUID
-		err := tx.QueryRow(ctx,
-			"SELECT id FROM hitop_dimensions WHERE code = $1", h.DimensionCode).Scan(&dimID)
-		if err == pgx.ErrNoRows {
-			dimID = uuid.New()
-			_, _ = tx.Exec(ctx,
-				"INSERT INTO hitop_dimensions (id, code, display_name, level) VALUES ($1, $2, $2, 'syndrome')",
-				dimID, h.DimensionCode)
-		} else if err != nil {
-			continue
-		}
-
-		evidenceCipher, evidenceDEK, eErr := crypto.Encrypt(ctx, []byte(h.Evidence))
-		if eErr != nil {
-			continue
-		}
-
-		_, err = tx.Exec(ctx, `
-			INSERT INTO hitop_measurements (session_id, report_id, dimension_id,
-				score, confidence, evidence_ciphertext, evidence_encrypted_dek)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-			ON CONFLICT (session_id, dimension_id) DO UPDATE
-			SET score = EXCLUDED.score, confidence = EXCLUDED.confidence`,
-			session.ID, reportID, dimID, h.Score, h.Confidence, evidenceCipher, evidenceDEK)
-		if err != nil {
-			continue
-		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {

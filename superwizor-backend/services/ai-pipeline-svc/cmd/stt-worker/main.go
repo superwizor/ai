@@ -253,7 +253,7 @@ func transcribeAudio(ctx context.Context, gcsURI string, useNativeDiarization bo
 				AutoDecodingConfig: &speechpb.AutoDetectDecodingConfig{},
 			},
 			Model:         "chirp_3",
-			LanguageCodes: []string{"pl-PL"},
+			LanguageCodes: []string{"pl-PL", "en-US", "de-DE", "uk-UA"},
 			Features:      features,
 		},
 		Files: []*speechpb.BatchRecognizeFileMetadata{

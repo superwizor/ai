@@ -26,6 +26,7 @@ message CreateAudioUploadRequest {
   string idempotency_key = 6;
   string client_app_version = 7;
   string client_platform = 8;
+  string report_language = 9;     // 'pl', 'en', 'de', etc.
 }
 
 message CreateAudioUploadResponse {
@@ -42,6 +43,7 @@ message CompleteAudioUploadRequest {
   int64 actual_size_bytes = 3;
   int32 chunk_count = 4;
   string md5_hash = 5;
+  string report_language = 6;
 }
 
 message CompleteAudioUploadResponse {

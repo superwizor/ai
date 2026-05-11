@@ -14,9 +14,9 @@ import (
 const createSession = `-- name: CreateSession :one
 INSERT INTO sessions (
     therapist_id, patient_file_id, audio_upload_id,
-    session_date, session_number, duration_seconds, contact_form
-) VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at
+    session_date, session_number, duration_seconds, contact_form, report_language
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language
 `
 
 type CreateSessionParams struct {
@@ -27,6 +27,7 @@ type CreateSessionParams struct {
 	SessionNumber   int32
 	DurationSeconds *int32
 	ContactForm     ContactForm
+	ReportLanguage  string
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
@@ -38,6 +39,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		arg.SessionNumber,
 		arg.DurationSeconds,
 		arg.ContactForm,
+		arg.ReportLanguage,
 	)
 	var i Session
 	err := row.Scan(
@@ -59,6 +61,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.ReportLanguage,
 	)
 	return i, err
 }

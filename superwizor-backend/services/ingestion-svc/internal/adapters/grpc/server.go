@@ -151,6 +151,11 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
     t := time.Now()
 	datePg := pgtype.Date{Time: t, Valid: true}
 
+	reportLang := req.ReportLanguage
+	if reportLang == "" {
+		reportLang = "pl"
+	}
+
 	session, err := s.queries.CreateSession(ctx, db.CreateSessionParams{
 		TherapistID:     upload.TherapistID,
 		PatientFileID:   upload.PatientFileID,
@@ -159,6 +164,7 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 		SessionNumber:   nextNum,
 		DurationSeconds: &req.ActualDurationSeconds,
 		ContactForm:     "OFFICE",
+		ReportLanguage:  reportLang,
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

@@ -24,10 +24,11 @@ INSERT INTO sessions (
     contact_form,
     speaker_label_mapping,
     language_code,
+    report_language,
     status
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-) RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+) RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language
 `
 
 type CreateSessionParams struct {
@@ -40,6 +41,7 @@ type CreateSessionParams struct {
 	ContactForm         ContactForm   `json:"contact_form"`
 	SpeakerLabelMapping []byte        `json:"speaker_label_mapping"`
 	LanguageCode        *string       `json:"language_code"`
+	ReportLanguage      string        `json:"report_language"`
 	Status              SessionStatus `json:"status"`
 }
 
@@ -54,6 +56,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		arg.ContactForm,
 		arg.SpeakerLabelMapping,
 		arg.LanguageCode,
+		arg.ReportLanguage,
 		arg.Status,
 	)
 	var i Session
@@ -76,12 +79,13 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.ReportLanguage,
 	)
 	return i, err
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at FROM sessions
+SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language FROM sessions
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -107,6 +111,7 @@ func (q *Queries) GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.ReportLanguage,
 	)
 	return i, err
 }
@@ -123,6 +128,7 @@ SELECT
     s.contact_form,
     s.speaker_label_mapping,
     s.language_code,
+    s.report_language,
     s.status,
     s.status_updated_at,
     s.created_at,
@@ -148,6 +154,7 @@ type GetSessionWithDetailsRow struct {
 	ContactForm         ContactForm        `json:"contact_form"`
 	SpeakerLabelMapping []byte             `json:"speaker_label_mapping"`
 	LanguageCode        *string            `json:"language_code"`
+	ReportLanguage      string             `json:"report_language"`
 	Status              SessionStatus      `json:"status"`
 	StatusUpdatedAt     time.Time          `json:"status_updated_at"`
 	CreatedAt           time.Time          `json:"created_at"`
@@ -172,6 +179,7 @@ func (q *Queries) GetSessionWithDetails(ctx context.Context, id uuid.UUID) (GetS
 		&i.ContactForm,
 		&i.SpeakerLabelMapping,
 		&i.LanguageCode,
+		&i.ReportLanguage,
 		&i.Status,
 		&i.StatusUpdatedAt,
 		&i.CreatedAt,
@@ -258,7 +266,7 @@ func (q *Queries) ListReportsBySession(ctx context.Context, sessionID uuid.UUID)
 }
 
 const listSessionsByPatient = `-- name: ListSessionsByPatient :many
-SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at FROM sessions
+SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language FROM sessions
 WHERE patient_file_id = $1 AND deleted_at IS NULL
 ORDER BY session_number DESC
 `
@@ -291,6 +299,7 @@ func (q *Queries) ListSessionsByPatient(ctx context.Context, patientFileID uuid.
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.ReportLanguage,
 		); err != nil {
 			return nil, err
 		}
