@@ -3,11 +3,13 @@
   "properties": {
     "title": {
       "type": "string",
-      "description": "Krótki, opisowy tytuł raportu (max 100 znaków)"
+      "maxLength": 100,
+      "description": "Krótki, opisowy tytuł raportu."
     },
     "summary_short": {
       "type": "string",
-      "description": "Streszczenie sesji w 2-3 zdaniach (max 500 znaków)"
+      "maxLength": 500,
+      "description": "Streszczenie sesji — 2-3 zdania."
     },
     "speaker_role_inference": {
       "type": "object",
@@ -39,7 +41,8 @@
               },
               "evidence": {
                 "type": "string",
-                "description": "Krótkie uzasadnienie z transkryptu (max 200 znaków)."
+                "maxLength": 200,
+                "description": "Krótkie uzasadnienie z transkryptu."
               }
             },
             "required": ["role", "chunk_indices", "confidence", "evidence"]
@@ -54,15 +57,17 @@
     },
     "main_themes": {
       "type": "array",
+      "maxItems": 6,
       "items": {
         "type": "object",
         "properties": {
-          "theme": {"type": "string"},
+          "theme": {"type": "string", "maxLength": 200},
           "salience": {"type": "number", "description": "0-1 jak ważny był ten temat"},
           "evidence_quotes": {
             "type": "array",
-            "items": {"type": "string"},
-            "description": "Krótkie cytaty z transkryptu (max 3, każdy ≤ 100 znaków)"
+            "maxItems": 3,
+            "items": {"type": "string", "maxLength": 200},
+            "description": "Krótkie cytaty z transkryptu."
           }
         },
         "required": ["theme", "salience", "evidence_quotes"]
@@ -70,22 +75,25 @@
     },
     "therapeutic_alliance_observations": {
       "type": "string",
+      "maxLength": 800,
       "description": "Obserwacje dotyczące przymierza terapeutycznego. UWAGA: low-confidence w MVP gdy method=llm_inferred."
     },
     "interventions_observed": {
       "type": "array",
+      "maxItems": 8,
       "items": {
         "type": "object",
         "properties": {
-          "intervention_type": {"type": "string"},
-          "description": {"type": "string"},
-          "patient_response": {"type": "string"}
+          "intervention_type": {"type": "string", "maxLength": 80},
+          "description": {"type": "string", "maxLength": 200},
+          "patient_response": {"type": "string", "maxLength": 200}
         },
         "required": ["intervention_type", "description", "patient_response"]
       }
     },
     "hitop_dimensions": {
       "type": "array",
+      "maxItems": 6,
       "items": {
         "type": "object",
         "properties": {
@@ -96,7 +104,7 @@
           },
           "score": {"type": "number", "description": "0-100"},
           "confidence": {"type": "number", "description": "0-1"},
-          "evidence": {"type": "string", "description": "Krótkie uzasadnienie ≤ 200 znaków"}
+          "evidence": {"type": "string", "maxLength": 200, "description": "Krótkie uzasadnienie."}
         },
         "required": ["dimension_code", "score", "confidence", "evidence"]
       }
@@ -107,11 +115,13 @@
         "level": {"type": "string", "enum": ["low", "medium", "high"]},
         "concerns": {
           "type": "array",
-          "items": {"type": "string"}
+          "maxItems": 5,
+          "items": {"type": "string", "maxLength": 200}
         },
         "recommended_actions": {
           "type": "array",
-          "items": {"type": "string"}
+          "maxItems": 5,
+          "items": {"type": "string", "maxLength": 200}
         }
       },
       "required": ["level", "concerns"]
@@ -122,11 +132,14 @@
     },
     "recommendations_for_next_session": {
       "type": "array",
-      "items": {"type": "string"}
+      "maxItems": 5,
+      "items": {"type": "string", "maxLength": 200},
+      "description": "3-5 punktów, każdy pojedyncze zdanie."
     },
     "rag_summary_chunk": {
       "type": "string",
-      "description": "Krótkie streszczenie kluczowych informacji do zapisu w RAG memory (max 1500 znaków). NIE zawierać danych identyfikujących."
+      "maxLength": 1500,
+      "description": "Krótkie streszczenie kluczowych informacji do zapisu w RAG memory. NIE zawierać danych identyfikujących."
     }
   },
   "required": [

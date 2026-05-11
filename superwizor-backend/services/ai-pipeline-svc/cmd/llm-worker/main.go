@@ -42,7 +42,17 @@ var (
 	pubsubClient *pubsub.Client
 	crypto       cryptobox.CryptoBox
 	projectID    string
-	geminiModel  string = "gemini-2.5-pro"
+	// Flash (3.1) is the right pick for supervision summaries — the
+	// task is "extract themes from a transcript and fit a fixed JSON
+	// schema", not deep clinical reasoning. Flash handles structured
+	// output + Polish reliably and costs an order of magnitude less
+	// than Pro on output tokens. For 100 sessions/day this is
+	// ~$4/mo vs ~$72/mo on Pro.
+	//
+	// If a specific section (e.g. risk assessment) needs Pro-grade
+	// reasoning in the future, route that ONE call to Pro while
+	// keeping the bulk of the report generation on Flash.
+	geminiModel  string = "gemini-3.1-flash"
 	geminiRegion string = "europe-west4"
 )
 
@@ -172,7 +182,16 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 			preview = preview[:peek] + "…(truncated)"
 		}
 		logger.Error("parse report JSON", "error", err, "response_preview", preview)
-		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
+		// Do NOT flip sessions.status to FAILED on a parse error —
+		// Gemini occasionally truncates output and Pub/Sub will
+		// redeliver. We saw cases where the first 2 attempts fail
+		// mid-JSON and the 3rd succeeds (output token nondeterminism).
+		// Mirroring "FAILED" to Firestore between retries produced a
+		// jarring UI flash. The Pub/Sub subscription's DLQ wiring
+		// + max-delivery-attempts will eventually mark genuine
+		// dead-letter sessions FAILED via the DLQ consumer; until
+		// then, status stays ANALYZING and the next redelivery has
+		// a fresh shot. Same pattern applies to persistReport below.
 		return fmt.Errorf("parse report: %w", err)
 	}
 
@@ -300,9 +319,15 @@ func generateReport(ctx context.Context, modalityPrompt, ragContext, transcriptT
 	}
 
 	model.GenerationConfig = vertexai.GenerationConfig{
-		Temperature:      vertexai.Ptr[float32](0.2),
-		TopP:             vertexai.Ptr[float32](0.95),
-		MaxOutputTokens:  vertexai.Ptr[int32](8192),
+		Temperature: vertexai.Ptr[float32](0.2),
+		TopP:        vertexai.Ptr[float32](0.95),
+		// 16384 cap is a safety margin, not a target. Observed
+		// successful runs land at ~2.5-3k tokens; with the brevity
+		// rules + schema maxLength constraints below, typical output
+		// drops to ~1.2-1.5k. The wider cap eliminates the truncation
+		// cliff we saw at 8k (cost is unchanged since you only pay
+		// for tokens actually generated). See investigation in PR.
+		MaxOutputTokens:  vertexai.Ptr[int32](16384),
 		ResponseMIMEType: "application/json",
 		ResponseSchema:   schemaToVertexSchema(schema),
 	}
@@ -349,7 +374,17 @@ Wygeneruj raport zgodny z podanym JSON Schema. Pamiętaj o:
 - W therapeutic_alliance_observations zaznacz że confidence jest niski jeśli
   overall_diarization_confidence < 0.7.
 - RAG summary chunk: NIE zawierać danych identyfikujących — używać tylko etykiet
-  typu "pacjent" (nie imion ani numerów chunków).`,
+  typu "pacjent" (nie imion ani numerów chunków).
+
+ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
+- title: max 100 znaków, jedno zdanie/fraza.
+- summary_short: 2-3 zdania, max 500 znaków.
+- każdy main_themes.theme: 1 zdanie, max 200 znaków.
+- evidence (cytaty): pojedynczy cytat, max 200 znaków.
+- recommendations: 3-5 punktów, każdy max 1 zdanie.
+- Pisz konkretami z transkryptu, NIE parafrazuj całych wypowiedzi.
+- UNIKAJ powtórzeń między sekcjami — każda informacja w raporcie max raz.
+- NIE rozwijaj sekcji o pola, których schemat nie wymaga.`,
 		modalityPrompt, ragContext, transcriptText)
 
 	resp, err := model.GenerateContent(ctx, vertexai.Text(prompt))
@@ -432,6 +467,23 @@ func schemaToVertexSchema(s map[string]any) *vertexai.Schema {
 				vs.Required = append(vs.Required, str)
 			}
 		}
+	}
+
+	// Length/count constraints — Vertex AI's structured-output mode
+	// enforces these at generation time, so they're the most reliable
+	// way to keep the report concise. JSON numbers come through as
+	// float64; coerce to int64 for the protobuf veneer.
+	if v, ok := s["maxLength"].(float64); ok {
+		vs.MaxLength = int64(v)
+	}
+	if v, ok := s["minLength"].(float64); ok {
+		vs.MinLength = int64(v)
+	}
+	if v, ok := s["maxItems"].(float64); ok {
+		vs.MaxItems = int64(v)
+	}
+	if v, ok := s["minItems"].(float64); ok {
+		vs.MinItems = int64(v)
 	}
 
 	return vs
