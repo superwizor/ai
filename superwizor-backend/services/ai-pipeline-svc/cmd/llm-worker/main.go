@@ -171,7 +171,16 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 			preview = preview[:peek] + "…(truncated)"
 		}
 		logger.Error("parse report JSON", "error", err, "response_preview", preview)
-		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
+		// Do NOT flip sessions.status to FAILED here — Gemini
+		// occasionally truncates output and Pub/Sub will redeliver.
+		// Observed in production: first 1-2 attempts fail mid-JSON,
+		// then a redelivery succeeds (output token nondeterminism).
+		// Mirroring "FAILED" to Firestore between retries produced
+		// a jarring UI flash. Status stays ANALYZING until the
+		// Pub/Sub subscription's max-delivery-attempts is exhausted
+		// and the message lands in audio.uploaded.dlq /
+		// transcript.completed.dlq — the DLQ consumer is what
+		// surfaces the genuine dead-letter as FAILED.
 		return fmt.Errorf("parse report: %w", err)
 	}
 
@@ -270,9 +279,16 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 	}
 
 	model.GenerationConfig = vertexai.GenerationConfig{
-		Temperature:      vertexai.Ptr[float32](0.1),
-		TopP:             vertexai.Ptr[float32](0.95),
-		MaxOutputTokens:  vertexai.Ptr[int32](8192),
+		Temperature: vertexai.Ptr[float32](0.1),
+		TopP:        vertexai.Ptr[float32](0.95),
+		// 16384 is a safety margin for the metadata JSON step.
+		// Typical successful output is ~1-2k tokens (title +
+		// summary_short + speaker_groups + rag_summary_chunk), but
+		// the 8192 cap occasionally truncated mid-`speaker_groups`
+		// array on long sessions with many chunks. The wider cap
+		// eliminates that truncation cliff — cost is unchanged
+		// because you only pay for tokens actually generated.
+		MaxOutputTokens:  vertexai.Ptr[int32](16384),
 		ResponseMIMEType: "application/json",
 		ResponseSchema:   schemaToVertexSchema(schema),
 	}
@@ -299,7 +315,14 @@ KONTEKST POPRZEDNICH SESJI:
 TRANSKRYPT BIEŻĄCEJ SESJI:
 %s
 
-Wygeneruj TYLKO metadane zgodnie z podanym JSON Schema.`,
+Wygeneruj TYLKO metadane zgodnie z podanym JSON Schema.
+
+ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
+- title: max 100 znaków, jedno zdanie/fraza.
+- summary_short: max 500 znaków, 2-3 zdania.
+- evidence (cytaty z transkryptu): pojedynczy cytat, max 200 znaków.
+- rag_summary_chunk: max 1500 znaków, kluczowe fakty dla pamięci długoterminowej.
+- Pisz konkretami, NIE parafrazuj całych wypowiedzi.`,
 		reportLanguage, ragContext, transcriptText)
 
 	respMetadata, err := model.GenerateContent(ctx, vertexai.Text(metadataPrompt))
@@ -341,6 +364,17 @@ Wygeneruj TYLKO metadane zgodnie z podanym JSON Schema.`,
 JĘZYK RAPORTU: %s
 Wygeneruj CAŁY raport w tym języku. Cytaty z transkryptu pozostaw w oryginale.
 Sformatuj raport używając czytelnego Markdown (nagłówki ##, pogrubienia, cytaty).
+
+ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
+- Raport powinien być WARTOŚCIOWY dla superwizora, NIE wielostronicowy.
+- Każda sekcja: 2-5 zdań, max 1 akapit. Wyjątek: studium przypadku / hipotezy
+  kliniczne — do 2 akapitów gdy uzasadnione.
+- Cytaty z transkryptu: krótkie (1-2 zdania), tylko gdy bezpośrednio
+  ilustrują obserwację. Nie cytuj dla samego cytowania.
+- UNIKAJ powtórzeń między sekcjami — każda informacja w raporcie max raz.
+- Pisz konkretami, używaj fachowego języka, ale nie nadużywaj żargonu.
+- NIE rozwijaj sekcji o pola, których szablon nie wymaga.
+- Pomijaj nagłówki sekcji jeśli ich treść byłaby pusta/spekulatywna.
 
 KONTEKST POPRZEDNICH SESJI:
 %s
