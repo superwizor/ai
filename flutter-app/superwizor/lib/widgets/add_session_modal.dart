@@ -82,51 +82,36 @@ class AddSessionModal extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final modality = kModalities[index];
                 final label = _modalityLabel(context, modality.code);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: EuphireCard(
-                    child: EuphireListTile(
-                      title: label,
-                      onTap: () async {
-                        final patientsState =
-                            ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? [];
-                        final patient = patientsState.firstWhere(
-                          (p) => p.id == patientId,
-                          orElse: () => Patient(
-                              id: patientId,
-                              firstName: 'Nie znaleziono',
-                              lastName: ''),
-                        );
+                return ListTile(
+                  title: Text(label, style: const TextStyle(color: EuphireColors.frostWhite)),
+                  trailing: const Icon(Icons.chevron_right, color: EuphireColors.mist),
+                  onTap: () async {
+                    final patientsState =
+                        ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? [];
+                    final patient = patientsState.firstWhere(
+                      (p) => p.id == patientId,
+                      orElse: () => Patient(
+                          id: patientId,
+                          firstName: 'Nie znaleziono',
+                          lastName: ''),
+                    );
 
-                        Navigator.pop(context);
+                    Navigator.pop(context);
 
-                        // No local "fake session" insert here — the
-                        // session row is created by ingestion-svc on
-                        // CompleteAudioUpload, with a backend-assigned
-                        // UUID that's the only one we can use to look
-                        // up the session later. Inserting a local
-                        // Uuid().v4() session with `inProgress` status
-                        // produced stale cache entries that never got
-                        // overridden by fetchSessions, causing the
-                        // bug where re-entering the patient routed to
-                        // SessionStatusScreen instead of TranscriptScreen.
-
-                        if (!context.mounted) return;
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => NewSessionScreen(
-                              patientFileId: patientId,
-                              therapistId: therapistId,
-                              patientAlias:
-                                  '${patient.firstName} ${patient.lastName}'
-                                      .trim(),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                    if (!context.mounted) return;
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NewSessionScreen(
+                          patientFileId: patientId,
+                          therapistId: therapistId,
+                          patientAlias:
+                              '${patient.firstName} ${patient.lastName}'
+                                  .trim(),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),

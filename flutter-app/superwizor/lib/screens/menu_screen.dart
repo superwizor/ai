@@ -7,6 +7,8 @@ import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/profile_edit_sheet.dart';
 import '../widgets/modality_sheet.dart';
 import '../widgets/hard_delete_sheet.dart';
+import '../widgets/language_sheet.dart';
+
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
 
@@ -15,7 +17,6 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  String _selectedLanguage = 'pl'; // Default language for UI demonstration
 
   Future<void> _pickImage() async {
     try {
@@ -139,44 +140,15 @@ class _MenuScreenState extends State<MenuScreen> {
                         },
                       ),
                       
-                      // Language Dropdown
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.language, color: EuphireColors.mist, size: 24),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: _selectedLanguage,
-                                  dropdownColor: EuphireColors.nocturne,
-                                  icon: const Icon(Icons.arrow_drop_down, color: EuphireColors.mist),
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                    color: EuphireColors.frostWhite,
-                                  ),
-                                  onChanged: (String? newValue) {
-                                    if (newValue != null) {
-                                      setState(() {
-                                        _selectedLanguage = newValue;
-                                      });
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Zmiana języka całej aplikacji będzie dostępna wkrótce.')),
-                                        );
-                                      }
-                                    }
-                                  },
-                                  items: const [
-                                    DropdownMenuItem(value: 'pl', child: Text('🇵🇱 Polski')),
-                                    DropdownMenuItem(value: 'en', child: Text('🇬🇧 English')),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      _MenuTile(
+                        icon: Icons.language,
+                        title: 'Język aplikacji',
+                        onTap: () {
+                          showEuphireBottomSheet(
+                            context: context,
+                            builder: (_) => const LanguageSheet(),
+                          );
+                        },
                       ),
 
                       _MenuTile(

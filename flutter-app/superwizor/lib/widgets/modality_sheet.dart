@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/euphire_theme.dart';
 import '../constants/modalities.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/grpc_provider.dart';
+import '../generated/identity/v1/identity.pb.dart';
 
-class ModalitySheet extends StatefulWidget {
+class ModalitySheet extends ConsumerStatefulWidget {
   const ModalitySheet({super.key});
 
   @override
-  State<ModalitySheet> createState() => _ModalitySheetState();
+  ConsumerState<ModalitySheet> createState() => _ModalitySheetState();
 }
 
-class _ModalitySheetState extends State<ModalitySheet> {
+class _ModalitySheetState extends ConsumerState<ModalitySheet> {
   // Temporary local state for MVP. Backend update would happen here.
   String _selectedModality = kModalities.first.code;
 
@@ -49,9 +52,17 @@ class _ModalitySheetState extends State<ModalitySheet> {
                 return ListTile(
                   title: Text(_modalityDisplayName(context, m.code)),
                   trailing: isSelected ? const Icon(Icons.check, color: EuphireColors.ember) : null,
-                  onTap: () {
+                  onTap: () async {
                     setState(() => _selectedModality = m.code);
-                    // TODO: call identityClient.updateProfile()
+                    
+                    try {
+                      await ref.read(grpcClientsProvider).identity.updateProfile(
+                        UpdateProfileRequest(
+                          defaultModality: m.code,
+                        )
+                      );
+                    } catch (_) {} // Ignore if not fully implemented in backend yet
+
                     Future.delayed(const Duration(milliseconds: 200), () {
                       if (context.mounted) Navigator.of(context).pop();
                     });

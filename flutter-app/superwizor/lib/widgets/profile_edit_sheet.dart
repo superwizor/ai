@@ -46,6 +46,10 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
           );
         } catch (_) {} // Ignore if not fully implemented in backend yet
 
+        // Force user reload so the UI updates
+        await user.reload();
+        ref.invalidate(currentUserProvider);
+
         if (!mounted) return;
         Navigator.of(context).pop();
       }

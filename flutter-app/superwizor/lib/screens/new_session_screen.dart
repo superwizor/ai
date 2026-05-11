@@ -18,10 +18,12 @@
 //   • Cards: Glassmorphism (White 5% bg + White 10% border)
 //   • Spacing: 8px grid
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:fixnum/fixnum.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -230,28 +232,48 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                         Center(
                           child: InkWell(
                             onTap: () {
-                              showEuphireBottomSheet(
+                              showCupertinoModalPopup(
                                 context: context,
-                                builder: (BuildContext context) {
-                                  return SafeArea(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'Wybierz język',
-                                          style: Theme.of(context).textTheme.titleMedium,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        _LanguageTile(label: 'Polski', value: 'pl', current: _reportLanguage, onSelect: (v) { setState(() => _reportLanguage = v); Navigator.pop(context); }),
-                                        _LanguageTile(label: 'English', value: 'en', current: _reportLanguage, onSelect: (v) { setState(() => _reportLanguage = v); Navigator.pop(context); }),
-                                        _LanguageTile(label: 'Deutsch', value: 'de', current: _reportLanguage, onSelect: (v) { setState(() => _reportLanguage = v); Navigator.pop(context); }),
-                                        _LanguageTile(label: 'Українська', value: 'uk', current: _reportLanguage, onSelect: (v) { setState(() => _reportLanguage = v); Navigator.pop(context); }),
-                                        const SizedBox(height: 16),
-                                      ],
+                                builder: (BuildContext context) => CupertinoActionSheet(
+                                  title: const Text('Wybierz język', style: TextStyle(fontFamily: 'Montserrat')),
+                                  actions: <CupertinoActionSheetAction>[
+                                    CupertinoActionSheetAction(
+                                      onPressed: () {
+                                        setState(() => _reportLanguage = 'pl');
+                                        Navigator.pop(context);
+                                      },
+                                      child: const Text('Polski', style: TextStyle(color: Colors.black)),
                                     ),
-                                  );
-                                },
+                                    CupertinoActionSheetAction(
+                                      onPressed: () {
+                                        setState(() => _reportLanguage = 'en');
+                                        Navigator.pop(context);
+                                      },
+                                      child: const Text('English', style: TextStyle(color: Colors.black)),
+                                    ),
+                                    CupertinoActionSheetAction(
+                                      onPressed: () {
+                                        setState(() => _reportLanguage = 'de');
+                                        Navigator.pop(context);
+                                      },
+                                      child: const Text('Deutsch', style: TextStyle(color: Colors.black)),
+                                    ),
+                                    CupertinoActionSheetAction(
+                                      onPressed: () {
+                                        setState(() => _reportLanguage = 'uk');
+                                        Navigator.pop(context);
+                                      },
+                                      child: const Text('Українська', style: TextStyle(color: Colors.black)),
+                                    ),
+                                  ],
+                                  cancelButton: CupertinoActionSheetAction(
+                                    isDefaultAction: true,
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                    },
+                                    child: const Text('Anuluj', style: TextStyle(color: Colors.black)),
+                                  ),
+                                ),
                               );
                             },
                             borderRadius: BorderRadius.circular(12),
@@ -503,44 +525,41 @@ class _SecurityBadge extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F5A56), // Nice vibrant green
+        color: const Color(0xFF1E392A), // Premium dark green
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: EuphireColors.frostWhite.withValues(alpha: 0.15),
+          color: const Color(0xFF34C759).withValues(alpha: 0.3), // Apple green border
         ),
       ),
       child: Row(
         children: [
-          // Icon circle (Labirynt lock-notice pattern)
+          // Icon circle
           Container(
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: EuphireColors.nocturne.withValues(alpha: 0.6),
+              color: const Color(0xFF34C759).withValues(alpha: 0.1),
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.05),
-              ),
             ),
-            child: Center(
+            child: const Center(
               child: Icon(
-                Icons.shield_outlined,
-                color: EuphireColors.ember.withValues(alpha: 0.6),
-                size: 22,
+                Icons.shield_rounded,
+                color: Color(0xFF34C759),
+                size: 24,
               ),
             ),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 16),
           Expanded(
             child: Text(
               'Twoje nagrania są chronione szyfrowaniem end-to-end i służą wyłącznie '
-              'do analizy AI. Nikt poza Tobą nie ma dostępu do danych Twoich sesji.',
-              style: TextStyle(
+              'do analizy AI. Nikt poza Tobą nie ma dostępu do danych.',
+              style: const TextStyle(
                 fontFamily: 'Montserrat',
                 fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: EuphireColors.frostWhite.withValues(alpha: 0.6),
-                height: 1.5,
+                fontWeight: FontWeight.w500,
+                color: EuphireColors.frostWhite,
+                height: 1.4,
               ),
             ),
           ),
