@@ -55,13 +55,14 @@ class _ModalitySheetState extends ConsumerState<ModalitySheet> {
                   onTap: () async {
                     setState(() => _selectedModality = m.code);
                     
-                    try {
-                      await ref.read(grpcClientsProvider).identity.updateProfile(
-                        UpdateProfileRequest(
-                          defaultModality: m.code,
-                        )
-                      );
-                    } catch (_) {} // Ignore if not fully implemented in backend yet
+                    // TODO: Implement backend update when identity-svc supports it
+                    // try {
+                    //   await ref.read(grpcClientsProvider).identity.updateProfile(
+                    //     UpdateProfileRequest(
+                    //       defaultModality: m.code,
+                    //     )
+                    //   );
+                    // } catch (_) {} // Ignore if not fully implemented in backend yet
 
                     Future.delayed(const Duration(milliseconds: 200), () {
                       if (context.mounted) Navigator.of(context).pop();

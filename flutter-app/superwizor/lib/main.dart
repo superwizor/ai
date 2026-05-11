@@ -1,3 +1,4 @@
+import 'providers/locale_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' as cf;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -65,18 +66,21 @@ void main() async {
   runApp(const ProviderScope(child: SuperWizorApp()));
 }
 
-class SuperWizorApp extends StatelessWidget {
+
+class SuperWizorApp extends ConsumerWidget {
   const SuperWizorApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
+
     return MaterialApp(
       navigatorKey: navigatorKey,
       title: 'Superwizor AI',
       theme: EuphireTheme.themeData,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: const [Locale('pl')],
-      locale: const Locale('pl'),
+      supportedLocales: const [Locale('pl'), Locale('en')],
+      locale: locale,
       home: const _AuthGate(),
     );
   }

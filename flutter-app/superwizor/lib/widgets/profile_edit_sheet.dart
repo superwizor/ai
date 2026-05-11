@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'euphire_button.dart';
 import 'euphire_text_field.dart';
 import '../providers/grpc_provider.dart';
+import '../providers/current_user_provider.dart';
 import '../generated/identity/v1/identity.pb.dart';
 
 class ProfileEditSheet extends ConsumerStatefulWidget {

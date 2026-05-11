@@ -81,7 +81,7 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 	}
 
 	// New upload
-	objectPath := fmt.Sprintf("%s/%s/%d.m4a",
+	objectPath := fmt.Sprintf("%s/%s/%d.flac",
 		therapistID.String(),
 		patientFileID.String(),
 		time.Now().Unix(),

@@ -8,6 +8,7 @@ import '../widgets/profile_edit_sheet.dart';
 import '../widgets/modality_sheet.dart';
 import '../widgets/hard_delete_sheet.dart';
 import '../widgets/language_sheet.dart';
+import '../l10n/app_localizations.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -131,7 +132,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
                       _MenuTile(
                         icon: Icons.person_outline,
-                        title: 'Mój profil',
+                        title: AppLocalizations.of(context)!.drawer_profile,
                         onTap: () {
                           showEuphireBottomSheet(
                             context: context,
@@ -142,7 +143,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       
                       _MenuTile(
                         icon: Icons.language,
-                        title: 'Język aplikacji',
+                        title: AppLocalizations.of(context)!.drawer_language,
                         onTap: () {
                           showEuphireBottomSheet(
                             context: context,
@@ -153,7 +154,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
                       _MenuTile(
                         icon: Icons.psychology_outlined,
-                        title: 'Nurty terapii',
+                        title: AppLocalizations.of(context)!.drawer_modalities,
                         onTap: () {
                           showEuphireBottomSheet(
                             context: context,
@@ -183,6 +184,15 @@ class _MenuScreenState extends State<MenuScreen> {
                         onTap: () {
                           Navigator.of(context).push(MaterialPageRoute(
                             builder: (_) => const LegalMarkdownScreen(assetPath: 'assets/legal/privacy_policy.md'),
+                          ));
+                        },
+                      ),
+                      _MenuTile(
+                        icon: Icons.handshake_outlined,
+                        title: 'Umowa DPA',
+                        onTap: () {
+                          Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => const LegalMarkdownScreen(assetPath: 'assets/legal/dpa.md'),
                           ));
                         },
                       ),
@@ -277,23 +287,3 @@ class _MenuTile extends StatelessWidget {
   }
 }
 
-class _PlaceholderSheet extends StatelessWidget {
-  final String title;
-  const _PlaceholderSheet({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 16),
-          const Text('Funkcja w przygotowaniu.', style: TextStyle(color: EuphireColors.mist)),
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-}

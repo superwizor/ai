@@ -787,34 +787,3 @@ String _getLanguageLabel(String code) {
   }
 }
 
-class _LanguageTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final String current;
-  final ValueChanged<String> onSelect;
-
-  const _LanguageTile({
-    required this.label,
-    required this.value,
-    required this.current,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isSelected = current == value;
-    return ListTile(
-      title: Text(
-        label,
-        style: TextStyle(
-          fontFamily: 'Merriweather',
-          fontSize: 16,
-          color: isSelected ? EuphireColors.ember : EuphireColors.frostWhite,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
-      trailing: isSelected ? const Icon(Icons.check, color: EuphireColors.ember) : null,
-      onTap: () => onSelect(value),
-    );
-  }
-}

@@ -488,6 +488,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       actualDurationSeconds: _displayDuration.inSeconds,
       actualSizeBytes: Int64(sizeBytes),
       chunkCount: _chunkCount,
+      reportLanguage: widget.reportLanguage,
     ));
     return res.sessionId;
   }
@@ -497,7 +498,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context);
+    final t = AppLocalizations.of(context)!;
     final dateLabel = DateFormat('d MMMM y', 'pl_PL').format(DateTime.now());
 
     return PopScope(
@@ -514,30 +515,40 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         if (!context.mounted) return;
         Navigator.of(context).pop();
       },
-      child: Scaffold(
-        backgroundColor: theme.colorScheme.surface,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          // Explicit leading so the back affordance is always visible —
-          // default auto-implied leading sometimes gets dropped depending
-          // on transitions / theme / navigator state. This is the user's
-          // escape hatch.
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            tooltip: t.common_back,
-            onPressed: () async {
-              final shouldPop = await _confirmDiscardOnBack();
-              if (!shouldPop) return;
-        if (!context.mounted) return;
-        Navigator.of(context).pop();
-            },
-          ),
-          title: Text(t.recording_screen_title,
-              style: theme.textTheme.titleLarge),
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: EuphireColors.backgroundGradient,
         ),
-        body: SafeArea(
-        child: Padding(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              tooltip: t.common_back,
+              onPressed: () async {
+                final shouldPop = await _confirmDiscardOnBack();
+                if (!shouldPop) return;
+                if (!context.mounted) return;
+                Navigator.of(context).pop();
+              },
+            ),
+            title: Text(t.recording_screen_title, style: theme.textTheme.titleLarge),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.info_outline, color: EuphireColors.mist),
+                onPressed: () {
+                  showEuphireBottomSheet<void>(
+                    context: context,
+                    builder: (_) => _InstructionsBlock(),
+                  );
+                },
+              ),
+            ],
+          ),
+          body: SafeArea(
+          child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -561,8 +572,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                 onResume: _service.resume,
                 onStop: _onStopPressed,
               ),
-              const SizedBox(height: 32),
-              Expanded(child: _InstructionsBlock()),
+              const Spacer(),
               if (_uploading) ...[
                 const SizedBox(height: 16),
                 const Center(child: CircularProgressIndicator()),
@@ -570,6 +580,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
             ],
           ),
         ),
+      ),
       ),
       ),
     );
@@ -672,7 +683,7 @@ class _InstructionsBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context);
+    final t = AppLocalizations.of(context)!;
     final items = [
       t.recording_instruction_1,
       t.recording_instruction_2,
@@ -681,19 +692,17 @@ class _InstructionsBlock extends StatelessWidget {
       t.recording_instruction_5,
     ];
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: SingleChildScrollView(
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(t.recording_instructions_title,
                 style: theme.textTheme.titleLarge),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             for (final line in items) ...[
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -707,8 +716,9 @@ class _InstructionsBlock extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
             ],
+            const SizedBox(height: 16),
           ],
         ),
       ),

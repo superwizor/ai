@@ -2,40 +2,37 @@ import 'package:flutter/material.dart';
 import 'euphire_action_sheet.dart';
 import 'euphire_bottom_sheet.dart';
 
-class LanguageSheet extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../l10n/app_localizations.dart';
+import '../providers/locale_provider.dart';
+
+class LanguageSheet extends ConsumerStatefulWidget {
   const LanguageSheet({super.key});
 
   @override
-  State<LanguageSheet> createState() => _LanguageSheetState();
+  ConsumerState<LanguageSheet> createState() => _LanguageSheetState();
 }
 
-class _LanguageSheetState extends State<LanguageSheet> {
+class _LanguageSheetState extends ConsumerState<LanguageSheet> {
   String _selectedLanguage = 'pl';
 
-  Future<void> _onLanguageChanged(String code) async {
-    if (code == 'pl') {
-      setState(() => _selectedLanguage = 'pl');
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (mounted) Navigator.of(context).pop();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _selectedLanguage = ref.read(localeProvider).languageCode;
       });
-      return;
-    }
+    });
+  }
+
+  Future<void> _onLanguageChanged(String code) async {
+    setState(() => _selectedLanguage = code);
+    await ref.read(localeProvider.notifier).setLocale(Locale(code));
     
-    // EN selected -> show popup, snap back to PL
-    await showEuphireBottomSheet<void>(
-      context: context,
-      builder: (ctx) => EuphireActionSheet(
-        header: 'Language unavailable',
-        body: 'English interface is currently disabled in the MVP version. Coming soon.',
-        primary: EuphireSheetAction(
-          label: 'Rozumiem',
-          onPressed: () => Navigator.of(ctx).pop(),
-        ),
-      ),
-    );
-    if (mounted) {
-      setState(() => _selectedLanguage = 'pl');
-    }
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) Navigator.of(context).pop();
+    });
   }
 
   @override
@@ -46,7 +43,7 @@ class _LanguageSheetState extends State<LanguageSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Język aplikacji', style: Theme.of(context).textTheme.headlineMedium),
+          Text(AppLocalizations.of(context)!.drawer_language, style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 24),
           SegmentedButton<String>(
             segments: const [

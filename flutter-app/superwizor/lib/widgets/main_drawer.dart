@@ -7,6 +7,7 @@ import 'hard_delete_sheet.dart';
 import 'language_sheet.dart';
 import 'modality_sheet.dart';
 import 'profile_edit_sheet.dart';
+import '../l10n/app_localizations.dart';
 
 class MainDrawer extends StatelessWidget {
   const MainDrawer({super.key});
@@ -81,7 +82,7 @@ class MainDrawer extends StatelessWidget {
               ),
               _DrawerTile(
                 icon: Icons.person_outline,
-                title: 'Mój profil',
+                title: AppLocalizations.of(context)!.drawer_profile,
                 onTap: () {
                   Navigator.of(context).pop(); // close drawer
                   showEuphireBottomSheet<void>(
@@ -92,7 +93,7 @@ class MainDrawer extends StatelessWidget {
               ),
               _DrawerTile(
                 icon: Icons.language,
-                title: 'Język aplikacji',
+                title: AppLocalizations.of(context)!.drawer_language,
                 onTap: () {
                   Navigator.of(context).pop();
                   showEuphireBottomSheet<void>(
@@ -103,7 +104,7 @@ class MainDrawer extends StatelessWidget {
               ),
               _DrawerTile(
                 icon: Icons.psychology_outlined,
-                title: 'Nurty terapii',
+                title: AppLocalizations.of(context)!.drawer_modalities,
                 onTap: () {
                   Navigator.of(context).pop();
                   showEuphireBottomSheet<void>(
