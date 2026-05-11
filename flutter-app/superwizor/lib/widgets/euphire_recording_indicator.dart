@@ -35,34 +35,7 @@ class EuphireRecordingIndicator extends StatelessWidget {
               letterSpacing: 2,
             ),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: theme.colorScheme.secondary.withValues(alpha: 0.1),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.memory,
-                  size: 16,
-                  color: theme.colorScheme.secondary.withValues(alpha: 0.7),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Zapisane fragmenty: $chunkCount',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.secondary.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
-            ),
-          ),
+
           if (errorMessage != null) ...[
             const SizedBox(height: 24),
             Container(

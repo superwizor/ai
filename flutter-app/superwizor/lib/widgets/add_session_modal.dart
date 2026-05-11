@@ -2,7 +2,8 @@
 //
 // Updated for Etap 1-5b:
 //   - Uses kModalities (codes + i18n display keys)
-//   - Passes `patientAlias` to RecordingScreen (required by Etap 3)
+//   - Passes `patientAlias` to NewSessionScreen (which offers
+//     both live recording and file upload paths)
 //   - Routes to SessionStatusScreen on RecordingScreen pop (Etap 4)
 //     instead of the legacy SessionDetailsScreen.
 
@@ -13,7 +14,7 @@ import '../constants/modalities.dart';
 import '../l10n/app_localizations.dart';
 import '../models/patient.dart';
 import '../providers/patient_provider.dart';
-import '../screens/recording_screen.dart';
+import '../screens/new_session_screen.dart';
 import '../theme/euphire_theme.dart';
 import 'euphire_card.dart';
 import 'euphire_list_tile.dart';
@@ -114,7 +115,7 @@ class AddSessionModal extends ConsumerWidget {
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => RecordingScreen(
+                            builder: (_) => NewSessionScreen(
                               patientFileId: patientId,
                               therapistId: therapistId,
                               patientAlias:

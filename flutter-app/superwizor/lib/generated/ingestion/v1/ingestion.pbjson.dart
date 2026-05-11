@@ -45,6 +45,7 @@ const CreateAudioUploadRequest$json = {
       '10': 'clientAppVersion'
     },
     {'1': 'client_platform', '3': 8, '4': 1, '5': 9, '10': 'clientPlatform'},
+    {'1': 'report_language', '3': 9, '4': 1, '5': 9, '10': 'reportLanguage'},
   ],
 };
 
@@ -56,7 +57,8 @@ final $typed_data.Uint8List createAudioUploadRequestDescriptor = $convert.base64
     'ISZXN0aW1hdGVkU2l6ZUJ5dGVzEjwKGmVzdGltYXRlZF9kdXJhdGlvbl9zZWNvbmRzGAUgASgF'
     'Uhhlc3RpbWF0ZWREdXJhdGlvblNlY29uZHMSJwoPaWRlbXBvdGVuY3lfa2V5GAYgASgJUg5pZG'
     'VtcG90ZW5jeUtleRIsChJjbGllbnRfYXBwX3ZlcnNpb24YByABKAlSEGNsaWVudEFwcFZlcnNp'
-    'b24SJwoPY2xpZW50X3BsYXRmb3JtGAggASgJUg5jbGllbnRQbGF0Zm9ybQ==');
+    'b24SJwoPY2xpZW50X3BsYXRmb3JtGAggASgJUg5jbGllbnRQbGF0Zm9ybRInCg9yZXBvcnRfbG'
+    'FuZ3VhZ2UYCSABKAlSDnJlcG9ydExhbmd1YWdl');
 
 @$core.Deprecated('Use createAudioUploadResponseDescriptor instead')
 const CreateAudioUploadResponse$json = {
@@ -120,6 +122,7 @@ const CompleteAudioUploadRequest$json = {
     {'1': 'actual_size_bytes', '3': 3, '4': 1, '5': 3, '10': 'actualSizeBytes'},
     {'1': 'chunk_count', '3': 4, '4': 1, '5': 5, '10': 'chunkCount'},
     {'1': 'md5_hash', '3': 5, '4': 1, '5': 9, '10': 'md5Hash'},
+    {'1': 'report_language', '3': 6, '4': 1, '5': 9, '10': 'reportLanguage'},
   ],
 };
 
@@ -128,7 +131,8 @@ final $typed_data.Uint8List completeAudioUploadRequestDescriptor = $convert.base
     'ChpDb21wbGV0ZUF1ZGlvVXBsb2FkUmVxdWVzdBIbCgl1cGxvYWRfaWQYASABKAlSCHVwbG9hZE'
     'lkEjYKF2FjdHVhbF9kdXJhdGlvbl9zZWNvbmRzGAIgASgFUhVhY3R1YWxEdXJhdGlvblNlY29u'
     'ZHMSKgoRYWN0dWFsX3NpemVfYnl0ZXMYAyABKANSD2FjdHVhbFNpemVCeXRlcxIfCgtjaHVua1'
-    '9jb3VudBgEIAEoBVIKY2h1bmtDb3VudBIZCghtZDVfaGFzaBgFIAEoCVIHbWQ1SGFzaA==');
+    '9jb3VudBgEIAEoBVIKY2h1bmtDb3VudBIZCghtZDVfaGFzaBgFIAEoCVIHbWQ1SGFzaBInCg9y'
+    'ZXBvcnRfbGFuZ3VhZ2UYBiABKAlSDnJlcG9ydExhbmd1YWdl');
 
 @$core.Deprecated('Use completeAudioUploadResponseDescriptor instead')
 const CompleteAudioUploadResponse$json = {

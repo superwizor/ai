@@ -5,6 +5,7 @@ class EuphireButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
   final IconData? icon;
+  final Color? backgroundColor;
 
   const EuphireButton({
     super.key,
@@ -12,6 +13,7 @@ class EuphireButton extends StatelessWidget {
     this.onPressed,
     this.isLoading = false,
     this.icon,
+    this.backgroundColor,
   });
 
   @override
@@ -39,6 +41,9 @@ class EuphireButton extends StatelessWidget {
 
     return ElevatedButton(
       onPressed: isLoading ? null : onPressed,
+      style: backgroundColor != null
+          ? ElevatedButton.styleFrom(backgroundColor: backgroundColor)
+          : null,
       child: content,
     );
   }

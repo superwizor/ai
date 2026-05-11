@@ -19,7 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
-import '../screens/legal_pdf_screen.dart';
+import '../screens/legal_markdown_screen.dart';
 import '../theme/euphire_theme.dart';
 import 'euphire_action_sheet.dart';
 import 'euphire_bottom_sheet.dart';
@@ -27,7 +27,7 @@ import 'euphire_button.dart';
 import 'euphire_text_field.dart';
 
 const String kCurrentDpaVersion = 'dpa-v1-2026-04';
-const String kDpaAssetPath = 'assets/legal/DPA Superwizor AI.pdf';
+const String kDpaAssetPath = 'assets/legal/DPA Superwizor AI.md';
 
 class AddPatientModal extends ConsumerStatefulWidget {
   const AddPatientModal({super.key});
@@ -99,7 +99,7 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
 
   void _openDpa() {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => const LegalPdfScreen(assetPath: kDpaAssetPath),
+      builder: (_) => const LegalMarkdownScreen(assetPath: kDpaAssetPath),
     ));
   }
 

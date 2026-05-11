@@ -30,5 +30,9 @@
 	<string>NSApplication</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Aplikacja wymaga dostępu do mikrofonu, aby nagrywać sesje terapeutyczne.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Aplikacja wymaga dostępu do galerii, aby dodać zdjęcie profilowe.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Aplikacja wymaga dostępu do aparatu, aby zrobić zdjęcie profilowe.</string>
 </dict>
 </plist>

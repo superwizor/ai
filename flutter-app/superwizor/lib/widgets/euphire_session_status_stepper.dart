@@ -166,31 +166,37 @@ class _StepRow extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 32.0, top: 4.0),
-              child: Text(
-                text,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: isFailed
-                      ? EuphireColors.magma
-                      : (isDone || isActive)
-                          ? EuphireColors.frostWhite
-                          : EuphireColors.mist,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    text,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: isFailed
+                          ? EuphireColors.magma
+                          : (isDone || isActive)
+                              ? EuphireColors.frostWhite
+                              : EuphireColors.mist,
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                  if (isActive)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12.0),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation(EuphireColors.ember),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
-          if (isActive)
-            const Padding(
-              padding: EdgeInsets.only(top: 4.0),
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(EuphireColors.ember),
-                ),
-              ),
-            ),
         ],
       ),
     );

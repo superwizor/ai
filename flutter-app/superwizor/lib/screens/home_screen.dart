@@ -11,6 +11,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
 import '../widgets/add_patient_modal.dart';
+import 'menu_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -35,33 +36,57 @@ class HomeScreen extends ConsumerWidget {
     ref.watch(currentUserProvider);
 
     return Scaffold(
+      backgroundColor: EuphireColors.evergreen,
       appBar: AppBar(
         title: const Text('Twoje kartoteki.'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: EuphireColors.mist),
-            onPressed: () => FirebaseAuth.instance.signOut(),
-            tooltip: 'Wyloguj się.',
-          ),
-        ],
+        leading: IconButton(
+          icon: const Icon(Icons.menu, color: EuphireColors.frostWhite),
+          onPressed: () {
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const MenuScreen(),
+            ));
+          },
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            EuphireHeader(
-              title: 'Cześć.',
-              subtitle: 'Twój email to ${user?.email ?? "Nieznany"}.',
-            ),
-            const SizedBox(height: 32),
-            Text(
-              'Ostatnie kartoteki.',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 16),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: EuphireColors.backgroundGradient,
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Cześć${user?.displayName != null && user!.displayName!.isNotEmpty ? ', ${user.displayName}' : '.'}",
+                  style: const TextStyle(
+                    fontFamily: 'Merriweather',
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                    color: EuphireColors.frostWhite,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Rozpocznij pracę z Superwizor AI.',
+                  style: TextStyle(
+                    fontFamily: 'Merriweather',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: EuphireColors.frostWhite.withValues(alpha: 0.7),
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Text(
+                  'Ostatnie kartoteki.',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 16),
             Expanded(
               child: patientsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator(color: EuphireColors.ember)),
@@ -102,9 +127,11 @@ class HomeScreen extends ConsumerWidget {
                 },
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
+    ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddPatientModal(context, ref),
         backgroundColor: EuphireColors.ember,

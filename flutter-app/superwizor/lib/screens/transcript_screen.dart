@@ -172,6 +172,11 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
         title: Text(t.transcript_tab, style: theme.textTheme.titleLarge),
         actions: [
           IconButton(
+            tooltip: 'Skopiuj transkrypcję',
+            icon: const Icon(Icons.copy),
+            onPressed: _data == null ? null : _onCopyPressed,
+          ),
+          IconButton(
             tooltip: t.transcript_actions_export,
             icon: const Icon(Icons.ios_share),
             onPressed: _data == null ? null : _onExportPressed,
@@ -377,6 +382,24 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
       }
     }
   }
+
+  Future<void> _onCopyPressed() async {
+    final data = _data;
+    if (data == null) return;
+    
+    final StringBuffer buffer = StringBuffer();
+    for (final s in data.segments) {
+      final speaker = s.speakerLabel.isNotEmpty ? s.speakerLabel : "Głos";
+      buffer.writeln('$speaker: ${s.text}');
+    }
+    
+    await Clipboard.setData(ClipboardData(text: buffer.toString()));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Skopiowano transkrypcję do schowka.')),
+      );
+    }
+  }
 }
 
 class _FilterOption {
@@ -512,9 +535,8 @@ class _SegmentTile extends StatelessWidget {
 
   void _showLongPressMenu(BuildContext context) {
     final t = AppLocalizations.of(context);
-    showModalBottomSheet<void>(
+    showEuphireBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,

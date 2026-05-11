@@ -29,6 +29,7 @@ class CreateAudioUploadRequest extends $pb.GeneratedMessage {
     $core.String? idempotencyKey,
     $core.String? clientAppVersion,
     $core.String? clientPlatform,
+    $core.String? reportLanguage,
   }) {
     final result = create();
     if (therapistId != null) result.therapistId = therapistId;
@@ -41,6 +42,7 @@ class CreateAudioUploadRequest extends $pb.GeneratedMessage {
     if (idempotencyKey != null) result.idempotencyKey = idempotencyKey;
     if (clientAppVersion != null) result.clientAppVersion = clientAppVersion;
     if (clientPlatform != null) result.clientPlatform = clientPlatform;
+    if (reportLanguage != null) result.reportLanguage = reportLanguage;
     return result;
   }
 
@@ -65,6 +67,7 @@ class CreateAudioUploadRequest extends $pb.GeneratedMessage {
     ..aOS(6, _omitFieldNames ? '' : 'idempotencyKey')
     ..aOS(7, _omitFieldNames ? '' : 'clientAppVersion')
     ..aOS(8, _omitFieldNames ? '' : 'clientPlatform')
+    ..aOS(9, _omitFieldNames ? '' : 'reportLanguage')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -158,6 +161,15 @@ class CreateAudioUploadRequest extends $pb.GeneratedMessage {
   $core.bool hasClientPlatform() => $_has(7);
   @$pb.TagNumber(8)
   void clearClientPlatform() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get reportLanguage => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set reportLanguage($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasReportLanguage() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearReportLanguage() => $_clearField(9);
 }
 
 class CreateAudioUploadResponse extends $pb.GeneratedMessage {
@@ -273,6 +285,7 @@ class CompleteAudioUploadRequest extends $pb.GeneratedMessage {
     $fixnum.Int64? actualSizeBytes,
     $core.int? chunkCount,
     $core.String? md5Hash,
+    $core.String? reportLanguage,
   }) {
     final result = create();
     if (uploadId != null) result.uploadId = uploadId;
@@ -281,6 +294,7 @@ class CompleteAudioUploadRequest extends $pb.GeneratedMessage {
     if (actualSizeBytes != null) result.actualSizeBytes = actualSizeBytes;
     if (chunkCount != null) result.chunkCount = chunkCount;
     if (md5Hash != null) result.md5Hash = md5Hash;
+    if (reportLanguage != null) result.reportLanguage = reportLanguage;
     return result;
   }
 
@@ -302,6 +316,7 @@ class CompleteAudioUploadRequest extends $pb.GeneratedMessage {
     ..aInt64(3, _omitFieldNames ? '' : 'actualSizeBytes')
     ..aI(4, _omitFieldNames ? '' : 'chunkCount')
     ..aOS(5, _omitFieldNames ? '' : 'md5Hash')
+    ..aOS(6, _omitFieldNames ? '' : 'reportLanguage')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -369,6 +384,15 @@ class CompleteAudioUploadRequest extends $pb.GeneratedMessage {
   $core.bool hasMd5Hash() => $_has(4);
   @$pb.TagNumber(5)
   void clearMd5Hash() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get reportLanguage => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set reportLanguage($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasReportLanguage() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearReportLanguage() => $_clearField(6);
 }
 
 class CompleteAudioUploadResponse extends $pb.GeneratedMessage {

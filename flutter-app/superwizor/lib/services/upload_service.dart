@@ -25,9 +25,7 @@ class UploadService {
   static const _retryBaseDelayMs = 1000;
   // FLAC per D10 Plan C — iOS Opus encoder is broken in record 6.2.0
   // on iPhone 15 / iOS 26 (produces 0-byte files). FLAC works.
-  static const _contentType = 'audio/flac';
-
-  /// Decrypts chunks for [sessionId] and PUTs the result to [signedUrl].
+  // on iPhone 15 / iOS 26 (produces 0-byte files). FLAC works.
   /// Returns true on success. Always cleans up the temp file; caller
   /// is responsible for purging encrypted chunks via
   /// [SecureAudioStorageService.purgeSession] only after backend
@@ -35,10 +33,11 @@ class UploadService {
   Future<bool> uploadEncryptedSession({
     required String sessionId,
     required String signedUrl,
+    required String contentType,
   }) async {
     final temp = await _storage.decryptToTempFile(sessionId: sessionId);
     try {
-      return await _putWithRetry(signedUrl: signedUrl, file: temp);
+      return await _putWithRetry(signedUrl: signedUrl, file: temp, contentType: contentType);
     } finally {
       try {
         if (await temp.exists()) await temp.delete();
@@ -49,6 +48,7 @@ class UploadService {
   Future<bool> _putWithRetry({
     required String signedUrl,
     required File file,
+    required String contentType,
   }) async {
     final bytes = await file.readAsBytes();
     debugPrint('[upload] PUT ${bytes.length} bytes → $signedUrl');
@@ -59,7 +59,7 @@ class UploadService {
         final response = await http.put(
           Uri.parse(signedUrl),
           headers: {
-            'Content-Type': _contentType,
+            'Content-Type': contentType,
             'x-goog-meta-source': 'superwizor-mobile',
           },
           body: bytes,

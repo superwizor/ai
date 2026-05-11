@@ -11,7 +11,8 @@ Future<T?> showEuphireBottomSheet<T>({
     isScrollControlled: true,
     isDismissible: isDismissible,
     enableDrag: enableDrag,
-    backgroundColor: Theme.of(context).colorScheme.surface,
+    backgroundColor: const Color(0xFF002E32), // EuphireColors.nocturne
+    constraints: const BoxConstraints(maxWidth: double.infinity),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),

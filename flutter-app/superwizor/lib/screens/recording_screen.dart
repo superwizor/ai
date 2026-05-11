@@ -51,12 +51,14 @@ class RecordingScreen extends ConsumerStatefulWidget {
   final String patientFileId;
   final String therapistId;
   final String patientAlias;
+  final String reportLanguage;
 
   const RecordingScreen({
     super.key,
     required this.patientFileId,
     required this.therapistId,
     required this.patientAlias,
+    required this.reportLanguage,
   });
 
   @override
@@ -422,6 +424,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       final uploadOk = await ref.read(uploadServiceProvider).uploadEncryptedSession(
             sessionId: sessionId,
             signedUrl: signedUrl,
+            contentType: 'audio/flac',
           );
       debugPrint('[recording] PUT result: uploadOk=$uploadOk');
       if (!uploadOk) throw StateError('upload failed');
@@ -471,6 +474,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       contentType: 'audio/flac',
       clientPlatform: Platform.isIOS ? 'ios' : 'android',
       idempotencyKey: _sessionId ?? const Uuid().v4(),
+      reportLanguage: widget.reportLanguage,
     ));
     _uploadId = res.uploadId;
     return res.signedUrl;
