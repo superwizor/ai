@@ -1,0 +1,220 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import '../theme/euphire_theme.dart';
+import '../screens/legal_markdown_screen.dart';
+import 'euphire_bottom_sheet.dart';
+import 'hard_delete_sheet.dart';
+import 'language_sheet.dart';
+import 'modality_sheet.dart';
+import 'profile_edit_sheet.dart';
+
+class MainDrawer extends StatelessWidget {
+  const MainDrawer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final theme = Theme.of(context);
+
+    return Drawer(
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: EuphireColors.deepGradient,
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // User Profile Section
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Container(
+                  padding: const EdgeInsets.all(20.0),
+                  decoration: EuphireColors.glassDecoration(
+                    surfaceOpacity: 0.05,
+                    borderOpacity: 0.1,
+                    borderRadius: 24,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: EuphireColors.emberGlow,
+                        ),
+                        child: const CircleAvatar(
+                          radius: 28,
+                          backgroundColor: EuphireColors.ember,
+                          child: Icon(Icons.person, size: 28, color: EuphireColors.obsidianBlack),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user?.displayName ?? 'Terapeuta',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: EuphireColors.frostWhite,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              user?.email ?? '',
+                              style: theme.textTheme.bodySmall?.copyWith(color: EuphireColors.mist),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Section: USTAWIENIA (RobotoMono Label)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Text('USTAWIENIA', style: theme.textTheme.labelMedium),
+              ),
+              _DrawerTile(
+                icon: Icons.person_outline,
+                title: 'Mój profil',
+                onTap: () {
+                  Navigator.of(context).pop(); // close drawer
+                  showEuphireBottomSheet<void>(
+                    context: context,
+                    builder: (_) => const ProfileEditSheet(),
+                  );
+                },
+              ),
+              _DrawerTile(
+                icon: Icons.language,
+                title: 'Język aplikacji',
+                onTap: () {
+                  Navigator.of(context).pop();
+                  showEuphireBottomSheet<void>(
+                    context: context,
+                    builder: (_) => const LanguageSheet(),
+                  );
+                },
+              ),
+              _DrawerTile(
+                icon: Icons.psychology_outlined,
+                title: 'Nurty terapii',
+                onTap: () {
+                  Navigator.of(context).pop();
+                  showEuphireBottomSheet<void>(
+                    context: context,
+                    builder: (_) => const ModalitySheet(),
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 16),
+              // Section: DOKUMENTY PRAWNE
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Text('DOKUMENTY PRAWNE', style: theme.textTheme.labelMedium),
+              ),
+              _DrawerTile(
+                icon: Icons.description_outlined,
+                title: 'Regulamin',
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const LegalMarkdownScreen(assetPath: 'assets/legal/Regulamin Świadczenia Usług Superwizor AI.md'),
+                  ));
+                },
+              ),
+              _DrawerTile(
+                icon: Icons.lock_outline,
+                title: 'Polityka prywatności',
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const LegalMarkdownScreen(assetPath: 'assets/legal/Polityka Prywatności Superwizor AI.md'),
+                  ));
+                },
+              ),
+              _DrawerTile(
+                icon: Icons.info_outline,
+                title: 'O aplikacji',
+                onTap: () {
+                  // TODO: Nawigacja do informacji o aplikacji
+                },
+              ),
+              
+              const Spacer(),
+              
+              // Bottom Actions
+              Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  children: [
+                    _DrawerTile(
+                      icon: Icons.logout,
+                      title: 'Wyloguj się',
+                      onTap: () => FirebaseAuth.instance.signOut(),
+                    ),
+                    _DrawerTile(
+                      icon: Icons.warning_amber_rounded,
+                      title: 'Usuń konto',
+                      color: EuphireColors.magma,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        showEuphireBottomSheet<void>(
+                          context: context,
+                          builder: (_) => const HardDeleteSheet(),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DrawerTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  final Color? color;
+
+  const _DrawerTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final finalColor = color ?? EuphireColors.mist;
+    
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+      leading: Icon(icon, color: finalColor, size: 24),
+      title: Text(
+        title,
+        style: theme.textTheme.titleMedium?.copyWith(
+          color: color ?? EuphireColors.frostWhite,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
+}
