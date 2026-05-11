@@ -41,7 +41,13 @@ var (
 	pubsubClient *pubsub.Client
 	crypto       cryptobox.CryptoBox
 	projectID    string
-	geminiModel  string = "gemini-3.1-flash-lite"
+	// gemini-2.5-flash-lite — verified available in europe-west4 for
+	// this project on 2026-05-11 by probing the publishers/google/models
+	// endpoint directly. The 3.1 line (which b52aab1 originally targeted)
+	// is NOT published in europe-west4 yet — calls return NotFound.
+	// When 3.1 lands in europe-west4 or production data residency
+	// requirements relax to allow us-central1, swap this in one line.
+	geminiModel  string = "gemini-2.5-flash-lite"
 	geminiRegion string = "europe-west4"
 	// debugLogPrompts controls whether we emit the full prompt sent to
 	// Vertex + the full raw response back, to Cloud Logging. Gated by
@@ -380,7 +386,11 @@ ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 	model.GenerationConfig = vertexai.GenerationConfig{
 		Temperature:      vertexai.Ptr[float32](0.3),
 		TopP:             vertexai.Ptr[float32](0.95),
-		MaxOutputTokens:  vertexai.Ptr[int32](65536),
+		// Vertex enforces this as an EXCLUSIVE upper bound on
+		// gemini-2.5-flash-lite — 65536 is rejected with
+		// "supported range is from 1 (inclusive) to 65536 (exclusive)".
+		// 65535 is the highest accepted value.
+		MaxOutputTokens:  vertexai.Ptr[int32](65535),
 		ResponseMIMEType: "text/plain",
 	}
 
