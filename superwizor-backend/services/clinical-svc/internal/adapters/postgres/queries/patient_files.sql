@@ -30,5 +30,24 @@ WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
 -- name: SoftDeletePatientFile :exec
+-- Kept for backwards compatibility — old gRPC handlers may still call
+-- it. New code (post-000012) uses HardDeletePatientFile to satisfy
+-- RODO right-to-erasure.
 UPDATE patient_files SET deleted_at = now()
 WHERE id = $1 AND therapist_id = $2;
+
+-- name: HardDeletePatientFile :execrows
+-- Permanent removal. Migration 000012 added ON DELETE CASCADE on
+-- sessions.patient_file_id and audio_uploads.patient_file_id, so all
+-- child sessions (and their transcripts/reports/hitop rows via the
+-- second-level cascade) get wiped in a single statement.
+-- therapist_id predicate is the authz guard at the SQL layer.
+-- Returns row count so caller can distinguish 404 from success.
+DELETE FROM patient_files WHERE id = $1 AND therapist_id = $2;
+
+-- name: ListSessionIDsForPatientFile :many
+-- Pre-fetched BEFORE HardDeletePatientFile runs, so the caller can
+-- publish one session.deleted Pub/Sub event per affected session for
+-- Firestore + inbox cleanup downstream. After the hard delete the
+-- rows are gone and we'd have nothing to publish.
+SELECT id FROM sessions WHERE patient_file_id = $1 AND deleted_at IS NULL;

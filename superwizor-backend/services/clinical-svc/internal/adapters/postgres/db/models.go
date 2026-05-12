@@ -793,6 +793,7 @@ type Session struct {
 	UpdatedAt             time.Time          `json:"updated_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	ReportLanguage        string             `json:"report_language"`
+	Name                  *string            `json:"name"`
 }
 
 type TherapistPatientRelation struct {

@@ -791,6 +791,7 @@ type Session struct {
 	UpdatedAt             pgtype.Timestamptz
 	DeletedAt             pgtype.Timestamptz
 	ReportLanguage        string
+	Name                  *string
 }
 
 type TherapistPatientRelation struct {

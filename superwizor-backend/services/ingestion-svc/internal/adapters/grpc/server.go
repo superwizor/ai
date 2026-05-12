@@ -178,6 +178,18 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 		reportLang = "pl"
 	}
 
+	// Compute the default session.name now while we have the
+	// patient_file_id handy. Formula matches migration 000011's
+	// backfill: "<modality display_name> <session_number>". Empty
+	// modality lookup → empty NameDefault → DB stores NULL → the
+	// proto mapper emits "" and Flutter falls back to its own
+	// rendering. That degradation path is benign.
+	modalityDisplay, lookupErr := s.queries.GetModalityDisplayNameForPatientFile(ctx, upload.PatientFileID)
+	var defaultName string
+	if lookupErr == nil && modalityDisplay != "" {
+		defaultName = fmt.Sprintf("%s %d", modalityDisplay, nextNum)
+	}
+
 	session, err := s.queries.CreateSession(ctx, db.CreateSessionParams{
 		TherapistID:     upload.TherapistID,
 		PatientFileID:   upload.PatientFileID,
@@ -187,6 +199,7 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 		DurationSeconds: &req.ActualDurationSeconds,
 		ContactForm:     "OFFICE",
 		ReportLanguage:  reportLang,
+		NameDefault:     defaultName,
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

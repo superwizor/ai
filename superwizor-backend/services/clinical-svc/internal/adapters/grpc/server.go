@@ -3,9 +3,11 @@ package grpc
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -13,10 +15,20 @@ import (
 
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
-	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
+	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 )
+
+// SessionEventPublisher is the publish-side dependency clinical-svc
+// uses to emit cross-service events (currently only session.deleted).
+// Kept as an interface so we don't hard-link to the Pub/Sub SDK in
+// the gRPC layer — production wires a concrete pubsub.Publisher, and
+// tests pass a stub that records calls. Nil is allowed; handlers
+// short-circuit the publish when it's not set (e.g. during local dev
+// without Pub/Sub creds).
+type SessionEventPublisher interface {
+	PublishSessionDeleted(ctx context.Context, sessionID, therapistID string) error
+}
 
 type Server struct {
 	clinicalv1.UnimplementedClinicalServiceServer
@@ -24,11 +36,12 @@ type Server struct {
 	queries  *db.Queries
 	identity identityv1.IdentityServiceClient
 	crypto   cryptobox.CryptoBox
+	pubsub   SessionEventPublisher
 	version  string
 }
 
-func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, crypto cryptobox.CryptoBox, version string) *Server {
-	return &Server{dbPool: dbPool, queries: queries, identity: identity, crypto: crypto, version: version}
+func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
+	return &Server{dbPool: dbPool, queries: queries, identity: identity, crypto: crypto, pubsub: pubsub, version: version}
 }
 
 func (s *Server) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*clinicalv1.HealthCheckResponse, error) {
@@ -176,26 +189,67 @@ func (s *Server) UpdatePatientFile(ctx context.Context, req *clinicalv1.UpdatePa
 	return toProtoPatientFile(pf, ""), nil
 }
 
+// DeletePatientFile hard-deletes a kartoteka (since migration 000012):
+// cascades through audio_uploads, sessions, transcripts, reports,
+// hitop_measurements. PHI gone permanently — backs RODO right-to-erasure.
+//
+// Authz happens at the SQL layer (HardDeletePatientFile predicate
+// `WHERE id = $1 AND therapist_id = $2`). We still resolve therapist_id
+// from the ctx auth interceptor first so we can list session_ids for
+// the Pub/Sub fan-out, and so we don't accidentally delete a row that
+// belongs to a different therapist via a misconfigured query.
+//
+// Fan-out: one session.deleted event per session that lived under this
+// patient_file. notification-svc picks them up and wipes the Firestore
+// session_states/{id} mirror + per-user inbox notifications.
+// Best-effort — a failed publish is logged but doesn't unwind the
+// hard delete (PG is the source of truth; the mirror eventually
+// reconciles via stale-doc TTL).
 func (s *Server) DeletePatientFile(ctx context.Context, req *clinicalv1.DeletePatientFileRequest) (*emptypb.Empty, error) {
+	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
+	if !ok || therapistIDStr == "" {
+		return nil, status.Error(codes.Unauthenticated, "missing user ID in context")
+	}
+	therapistID, err := uuid.Parse(therapistIDStr)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id in context")
+	}
+
 	id, err := uuid.Parse(req.PatientFileId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid patient_file_id")
 	}
 
-	// We need therapist ID from context, but we don't have authentication logic implemented in this mock yet. 
-	// For now, let's just use empty uuid to make it compile, or since SoftDeletePatientFile requires TherapistID, 
-	// let's fetch the patient file first to get the therapist ID.
-	pf, err := s.queries.GetPatientFile(ctx, id)
+	// List session IDs before the hard delete so we can fan out events.
+	// After HardDeletePatientFile runs, sessions for this kartoteka are
+	// gone — we'd have nothing to publish.
+	sessionIDs, err := s.queries.ListSessionIDsForPatientFile(ctx, id)
 	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list session ids: %v", err)
+	}
+
+	rows, err := s.queries.HardDeletePatientFile(ctx, db.HardDeletePatientFileParams{
+		ID:          id,
+		TherapistID: therapistID,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "hard delete patient_file: %v", err)
+	}
+	if rows == 0 {
 		return nil, status.Error(codes.NotFound, "patient file not found")
 	}
 
-	err = s.queries.SoftDeletePatientFile(ctx, db.SoftDeletePatientFileParams{
-		ID:          id,
-		TherapistID: pf.TherapistID,
-	})
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	// Fan out cleanup events. Per-session because notification-svc's
+	// handler is keyed on session_id (Firestore doc id). Each publish
+	// is best-effort and independent — a single failure doesn't block
+	// the rest.
+	if s.pubsub != nil {
+		for _, sid := range sessionIDs {
+			if err := s.pubsub.PublishSessionDeleted(ctx, sid.String(), therapistID.String()); err != nil {
+				slog.Warn("publish session.deleted (from patient_file delete) failed",
+					"session_id", sid, "patient_file_id", id, "error", err)
+			}
+		}
 	}
 
 	return &emptypb.Empty{}, nil

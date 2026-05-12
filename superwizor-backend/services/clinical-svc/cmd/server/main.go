@@ -24,6 +24,7 @@ import (
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	grpcadapter "github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
+	psadapter "github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/pubsub"
 
 	"go.opentelemetry.io/contrib/detectors/gcp"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -157,9 +158,31 @@ func main() {
 		crypto = cryptobox.NewMockBox()
 	}
 
+	// Pub/Sub publisher for cross-service events (currently only
+	// session.deleted). If GCP_PROJECT_ID isn't set (local dev),
+	// we pass nil and the handler short-circuits the publish.
+	var pubsubPublisher *psadapter.Publisher
+	if projectID := os.Getenv("GCP_PROJECT_ID"); projectID != "" {
+		var err error
+		pubsubPublisher, err = psadapter.NewPublisher(ctx, projectID)
+		if err != nil {
+			slog.Error("pubsub publisher init failed", "error", err)
+			os.Exit(1)
+		}
+	} else {
+		slog.Warn("GCP_PROJECT_ID unset — session.deleted events will NOT be published; Firestore mirror will drift")
+	}
+
 	// Server
 	queries := db.New(pool)
-	srv := grpcadapter.NewServer(pool, queries, identityClient, crypto, version)
+	// Compile-time nil-safe — psadapter.Publisher pointer satisfies
+	// the SessionEventPublisher interface; passing a typed nil here
+	// means the handler's `if s.pubsub != nil` check correctly skips.
+	var sessionEvents grpcadapter.SessionEventPublisher
+	if pubsubPublisher != nil {
+		sessionEvents = pubsubPublisher
+	}
+	srv := grpcadapter.NewServer(pool, queries, identityClient, crypto, sessionEvents, version)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {

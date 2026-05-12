@@ -461,6 +461,60 @@ resource "google_cloudfunctions2_function" "notification_worker_on_report" {
   }
 }
 
+# 4) on-deleted: hard-delete cleanup — wipes session_states/{id} and
+# inbox notifications referencing the gone session. Triggered by
+# clinical-svc's session.deleted Pub/Sub publishes. Light memory like
+# the status-mirror workers; the only heavy thing is the CollectionGroup
+# query for inbox cleanup, which Firestore evaluates server-side.
+resource "google_cloudfunctions2_function" "notification_worker_on_deleted" {
+  name        = "notification-worker-on-deleted"
+  location    = var.region
+  project     = var.project_id
+  description = "Cleans Firestore session_states + inbox notifications when a session is hard-deleted"
+
+  build_config {
+    runtime     = "go126"
+    entry_point = "ProcessSessionDeleted"
+    source {
+      storage_source {
+        bucket = google_storage_bucket.functions_source.name
+        object = google_storage_bucket_object.notification_worker_zip.name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count    = 5
+    min_instance_count    = 0
+    available_memory      = "256Mi"
+    available_cpu         = "1"
+    timeout_seconds       = 60
+    service_account_email = var.notification_worker_sa_email
+
+    environment_variables = {
+      GCP_PROJECT_ID = var.project_id
+    }
+
+    secret_environment_variables {
+      key        = "DATABASE_URL"
+      project_id = var.project_id
+      secret     = var.db_url_secret_id
+      version    = "latest"
+    }
+
+    vpc_connector                 = var.vpc_connector_id
+    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
+  }
+
+  event_trigger {
+    trigger_region        = var.region
+    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic          = var.session_deleted_topic
+    retry_policy          = "RETRY_POLICY_RETRY"
+    service_account_email = var.notification_worker_sa_email
+  }
+}
+
 # Cloud Run invoker bindings — Cloud Functions Gen2 == Cloud Run under the
 # hood; the trigger SA needs run.invoker on its own service.
 resource "google_cloud_run_service_iam_member" "notification_on_uploaded_invoker" {
@@ -483,6 +537,14 @@ resource "google_cloud_run_service_iam_member" "notification_on_report_invoker" 
   location = var.region
   project  = var.project_id
   service  = google_cloudfunctions2_function.notification_worker_on_report.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.notification_worker_sa_email}"
+}
+
+resource "google_cloud_run_service_iam_member" "notification_on_deleted_invoker" {
+  location = var.region
+  project  = var.project_id
+  service  = google_cloudfunctions2_function.notification_worker_on_deleted.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${var.notification_worker_sa_email}"
 }

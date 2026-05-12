@@ -100,6 +100,29 @@ func (q *Queries) GetPatientFile(ctx context.Context, id uuid.UUID) (PatientFile
 	return i, err
 }
 
+const hardDeletePatientFile = `-- name: HardDeletePatientFile :execrows
+DELETE FROM patient_files WHERE id = $1 AND therapist_id = $2
+`
+
+type HardDeletePatientFileParams struct {
+	ID          uuid.UUID `json:"id"`
+	TherapistID uuid.UUID `json:"therapist_id"`
+}
+
+// Permanent removal. Migration 000012 added ON DELETE CASCADE on
+// sessions.patient_file_id and audio_uploads.patient_file_id, so all
+// child sessions (and their transcripts/reports/hitop rows via the
+// second-level cascade) get wiped in a single statement.
+// therapist_id predicate is the authz guard at the SQL layer.
+// Returns row count so caller can distinguish 404 from success.
+func (q *Queries) HardDeletePatientFile(ctx context.Context, arg HardDeletePatientFileParams) (int64, error) {
+	result, err := q.db.Exec(ctx, hardDeletePatientFile, arg.ID, arg.TherapistID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listPatientFilesByTherapist = `-- name: ListPatientFilesByTherapist :many
 SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at FROM patient_files
 WHERE therapist_id = $1 AND deleted_at IS NULL
@@ -150,6 +173,34 @@ func (q *Queries) ListPatientFilesByTherapist(ctx context.Context, arg ListPatie
 	return items, nil
 }
 
+const listSessionIDsForPatientFile = `-- name: ListSessionIDsForPatientFile :many
+SELECT id FROM sessions WHERE patient_file_id = $1 AND deleted_at IS NULL
+`
+
+// Pre-fetched BEFORE HardDeletePatientFile runs, so the caller can
+// publish one session.deleted Pub/Sub event per affected session for
+// Firestore + inbox cleanup downstream. After the hard delete the
+// rows are gone and we'd have nothing to publish.
+func (q *Queries) ListSessionIDsForPatientFile(ctx context.Context, patientFileID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listSessionIDsForPatientFile, patientFileID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const softDeletePatientFile = `-- name: SoftDeletePatientFile :exec
 UPDATE patient_files SET deleted_at = now()
 WHERE id = $1 AND therapist_id = $2
@@ -160,6 +211,9 @@ type SoftDeletePatientFileParams struct {
 	TherapistID uuid.UUID `json:"therapist_id"`
 }
 
+// Kept for backwards compatibility — old gRPC handlers may still call
+// it. New code (post-000012) uses HardDeletePatientFile to satisfy
+// RODO right-to-erasure.
 func (q *Queries) SoftDeletePatientFile(ctx context.Context, arg SoftDeletePatientFileParams) error {
 	_, err := q.db.Exec(ctx, softDeletePatientFile, arg.ID, arg.TherapistID)
 	return err

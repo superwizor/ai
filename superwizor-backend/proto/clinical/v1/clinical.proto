@@ -12,6 +12,8 @@ service ClinicalService {
     rpc GetPatientFile(GetPatientFileRequest) returns (PatientFile);
     rpc ListPatientFiles(ListPatientFilesRequest) returns (ListPatientFilesResponse);
     rpc UpdatePatientFile(UpdatePatientFileRequest) returns (PatientFile);
+    // Hard delete since 000012 — cascades through all sessions / transcripts /
+    // reports / audio_uploads. PHI gone permanently (RODO right-to-erasure).
     rpc DeletePatientFile(DeletePatientFileRequest) returns (google.protobuf.Empty);
 
     rpc ListModalities(google.protobuf.Empty) returns (ListModalitiesResponse);
@@ -21,6 +23,12 @@ service ClinicalService {
     // Sessions and Analysis
     rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
     rpc GetSessionDetails(GetSessionDetailsRequest) returns (GetSessionDetailsResponse);
+    // Rename a single session — currently only `name` is mutable.
+    rpc UpdateSession(UpdateSessionRequest) returns (Session);
+    // Hard delete a single session — cascades transcripts/reports/hitop.
+    // Publishes session.deleted Pub/Sub event for downstream Firestore +
+    // inbox cleanup.
+    rpc DeleteSession(DeleteSessionRequest) returns (google.protobuf.Empty);
 }
 
 enum ProcessType {
@@ -128,10 +136,31 @@ message Session {
   map<string, string> speaker_label_mapping = 9;
   string status = 10;
   google.protobuf.Timestamp created_at = 11;
+  // Free-text label shown in the kartoteka list. Default at create-time:
+  // "<modality display_name> <session_number>". Therapist can rename via
+  // ClinicalService.UpdateSession. Migration 000011 added the column;
+  // ingestion-svc.CompleteAudioUpload populates it on new sessions.
+  string name = 12;
 }
 
 message ListSessionsRequest {
   string patient_file_id = 1;
+}
+
+// UpdateSession — rename a session. Currently `name` is the only
+// mutable field; add more here as edit needs surface (e.g. session_date
+// correction). Empty `name` is rejected by the handler.
+message UpdateSessionRequest {
+  string session_id = 1;
+  string name = 2;
+}
+
+// DeleteSession — hard delete via CASCADE (migration 000012).
+// Removes transcripts, reports, hitop_measurements, audio_uploads
+// rows referencing this session. Publishes session.deleted Pub/Sub
+// event so notification-svc can purge the Firestore mirror + inbox.
+message DeleteSessionRequest {
+  string session_id = 1;
 }
 
 message ListSessionsResponse {
