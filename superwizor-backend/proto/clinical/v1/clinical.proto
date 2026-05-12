@@ -244,7 +244,36 @@ message TranscriptSegment {
 
 message Transcript {
   string id = 1;
+  // Per-chunk segments — one row per pause-bounded utterance from STT.
+  // Kept for the speaker-label edit UI (UpdateSpeakerLabels) and any
+  // analysis that needs raw granularity. The read-only transcript view
+  // should bind to `turns` instead, which collapses consecutive
+  // same-speaker chunks into one block.
   repeated TranscriptSegment segments = 2;
+  // Speaker-grouped view derived from `segments`. Computed server-side
+  // (clinical-svc.GroupSegmentsIntoTurns) so every client renders the
+  // same shape: one entry per uninterrupted stretch of a single speaker.
+  // Joining/timestamping is policy that lives backend-side; clients
+  // only choose the timestamp display format from start_offset_ms.
+  repeated SpeakerTurn turns = 3;
+}
+
+// SpeakerTurn — a contiguous span of segments attributed to one
+// speaker. Display contract:
+//   "[<speaker_label> · <start_offset_ms formatted>] <text>"
+// `segment_count` exists so a future "expand to raw chunks" UI can
+// jump back to the underlying TranscriptSegments without an extra
+// fetch. `confidence_avg` is the word-count-weighted mean across the
+// underlying segments — fall back to plain mean if word counts are
+// zero (defensive; STT always emits them today).
+message SpeakerTurn {
+  int32 speaker_tag      = 1;
+  string speaker_label   = 2;
+  int32 start_offset_ms  = 3;
+  int32 end_offset_ms    = 4;
+  string text            = 5;
+  int32 segment_count    = 6;
+  float confidence_avg   = 7;
 }
 
 message Report {

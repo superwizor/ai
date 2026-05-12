@@ -14,6 +14,7 @@ import (
 
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
+	"github.com/superwizor-ai/backend/services/clinical-svc/internal/grouping"
 )
 
 func (s *Server) ListSessions(ctx context.Context, req *clinicalv1.ListSessionsRequest) (*clinicalv1.ListSessionsResponse, error) {
@@ -107,6 +108,11 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 				return nil, status.Error(codes.Internal,
 					"transcript present but no segments could be decrypted; check clinical-svc KMS config")
 			}
+			// Derive speaker-grouped view from the (decrypted) segments.
+			// Read-only views in Flutter bind to Turns; the per-chunk
+			// Segments slice stays for the speaker-label edit UI.
+			// O(n) over segments; trivial vs the decrypt loop above.
+			protoTranscript.Turns = grouping.GroupSegmentsIntoTurns(protoTranscript.Segments)
 		}
 		resp.Transcript = protoTranscript
 	}
