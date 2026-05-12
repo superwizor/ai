@@ -27,6 +27,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
@@ -85,13 +86,19 @@ func patientFileFixture(id, therapist uuid.UUID, patient *uuid.UUID) db.PatientF
 }
 
 // withUserRowFixture — non-empty row for refetch assertions.
+// consent_given_at is set to a fixed timestamp so tests can prove the
+// mapper emits it (vs. leaving the proto field zero). This mirrors the
+// real shape clinical-svc returns once 000005's CASE-based insert has
+// run with has_recording_consent=true.
 func withUserRowFixture(id, therapist uuid.UUID, patient *uuid.UUID) db.GetPatientFileWithUserRow {
 	row := db.GetPatientFileWithUserRow{
-		ID:           id,
-		TherapistID:  therapist,
-		WorkingAlias: "alias-after-update",
-		ProcessType:  db.ProcessType("INDIVIDUAL"),
-		ModalityCode: "CBT",
+		ID:                  id,
+		TherapistID:         therapist,
+		WorkingAlias:        "alias-after-update",
+		ProcessType:         db.ProcessType("INDIVIDUAL"),
+		HasRecordingConsent: true,
+		ConsentGivenAt:      pgtype.Timestamptz{Time: fixedConsentTime, Valid: true},
+		ModalityCode:        "CBT",
 	}
 	if patient != nil {
 		row.PatientID = pgtype.UUID{Bytes: *patient, Valid: true}
@@ -102,6 +109,11 @@ func withUserRowFixture(id, therapist uuid.UUID, patient *uuid.UUID) db.GetPatie
 	}
 	return row
 }
+
+// fixedConsentTime — deterministic timestamp used by withUserRowFixture
+// so assertions can compare exact-equal without timing flake. Year is
+// far enough in the past that it's obviously test data if it leaks.
+var fixedConsentTime = time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
 // =================================================================
 //   UpdatePatientFile
@@ -204,6 +216,14 @@ func TestUpdatePatientFile_HappyPath(t *testing.T) {
 	if resp.ModalityCode != "CBT" {
 		t.Errorf("modality_code: want CBT (from JOIN), got %q", resp.ModalityCode)
 	}
+	if resp.ConsentGivenAt == nil {
+		t.Errorf("consent_given_at must be emitted when the JOINed row has Valid=true")
+	} else if !resp.ConsentGivenAt.AsTime().Equal(fixedConsentTime) {
+		t.Errorf("consent_given_at: want %v, got %v", fixedConsentTime, resp.ConsentGivenAt.AsTime())
+	}
+	if !resp.HasRecordingConsent {
+		t.Errorf("has_recording_consent must come through as true")
+	}
 	if resp.PatientFirstName != "Anna" {
 		t.Errorf("patient_first_name: want Anna, got %q", resp.PatientFirstName)
 	}
@@ -212,6 +232,41 @@ func TestUpdatePatientFile_HappyPath(t *testing.T) {
 	}
 	if receivedParams.Column2 != "Marcus" || receivedParams.Column3 != "anxiety" || receivedParams.Column4 != "ok" {
 		t.Errorf("update params didn't propagate request strings; got %+v", receivedParams)
+	}
+}
+
+// Patient_file with consent=false stored at insert time → mapper must
+// leave the proto consent_given_at field nil rather than emitting a
+// zero-time. Mirrors what happens for a kartoteka created with
+// has_recording_consent=false (or a legacy row predating the CASE-fix).
+func TestUpdatePatientFile_NoConsentLeavesTimestampNil(t *testing.T) {
+	pfID := uuid.New()
+	therapistID := uuid.New()
+
+	q := &fakeQuerier{
+		updatePatientFileFn: func(ctx context.Context, arg db.UpdatePatientFileParams) (db.PatientFile, error) {
+			return db.PatientFile{ID: arg.ID}, nil
+		},
+		getPatientFileWithUserFn: func(ctx context.Context, id uuid.UUID) (db.GetPatientFileWithUserRow, error) {
+			row := withUserRowFixture(id, therapistID, nil)
+			// Override the fixture defaults — no consent given.
+			row.HasRecordingConsent = false
+			row.ConsentGivenAt = pgtype.Timestamptz{Valid: false}
+			return row, nil
+		},
+	}
+	srv := newTestServer(q, nil, nil)
+	resp, err := srv.UpdatePatientFile(context.Background(), &clinicalv1.UpdatePatientFileRequest{
+		PatientFileId: pfID.String(),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.HasRecordingConsent {
+		t.Errorf("has_recording_consent must reflect the row (false); got true")
+	}
+	if resp.ConsentGivenAt != nil {
+		t.Errorf("consent_given_at must stay nil when the DB row is NULL; got %v", resp.ConsentGivenAt.AsTime())
 	}
 }
 
