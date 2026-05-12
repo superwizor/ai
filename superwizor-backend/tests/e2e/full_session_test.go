@@ -901,5 +901,73 @@ func assertCompletedSessionShape(t *testing.T, d *clinicalv1.GetSessionDetailsRe
 
 	t.Logf("✓ %d transcript segments (chronologically ordered)", len(d.Transcript.Segments))
 	t.Logf("✓ %d speakers in label mapping: %v", len(s.SpeakerLabelMapping), s.SpeakerLabelMapping)
+
+	// Speaker-grouped view (added in feat/clinical-svc-update). The Turns
+	// field collapses consecutive same-speaker segments into one block —
+	// what Flutter's read-only transcript view renders. Validate four
+	// invariants:
+	//   1. turns are present whenever segments are present
+	//   2. turns are chronologically ordered (sorted by start_offset_ms)
+	//   3. adjacent turns have different speaker_tag OR speaker_label
+	//      (boundary trigger from grouping.GroupSegmentsIntoTurns)
+	//   4. each turn's speaker_tag is in the session's label mapping
+	//      (or 0 for the pre-diarization placeholder branch)
+	//   5. sum of segments across all turns equals total segment count
+	//      — proves the grouping doesn't drop or duplicate chunks
+	require.NotEmpty(t, d.Transcript.Turns,
+		"transcript.turns must be non-empty when segments are present (speaker-grouped view)")
+
+	var prevTurnEnd int32
+	var prevTag int32 = -1 // -1 is impossible for a real tag → first turn always passes the boundary check
+	var prevLabel = "\x00impossible-label\x00"
+	totalSegmentsInTurns := int32(0)
+	for i, turn := range d.Transcript.Turns {
+		assert.GreaterOrEqualf(t, turn.StartOffsetMs, prevTurnEnd,
+			"turn %d (start=%d) must not start before previous turn ended (%d)",
+			i, turn.StartOffsetMs, prevTurnEnd)
+		assert.GreaterOrEqualf(t, turn.EndOffsetMs, turn.StartOffsetMs,
+			"turn %d has end (%d) < start (%d)", i, turn.EndOffsetMs, turn.StartOffsetMs)
+
+		// Boundary invariant: adjacent turns differ on tag or label.
+		// If they don't, grouping logic merged something it shouldn't have.
+		if i > 0 {
+			sameTag := turn.SpeakerTag == prevTag
+			sameLabel := turn.SpeakerLabel == prevLabel
+			assert.Falsef(t, sameTag && sameLabel,
+				"turn %d has same speaker_tag=%d AND speaker_label=%q as previous turn — should have been merged by grouping",
+				i, turn.SpeakerTag, turn.SpeakerLabel)
+		}
+
+		// Each turn's tag must be resolvable (or 0 for pre-diarization).
+		_, ok := s.SpeakerLabelMapping[strconv.Itoa(int(turn.SpeakerTag))]
+		assert.Truef(t, ok || turn.SpeakerTag == 0,
+			"turn %d has speaker_tag=%d not present in speaker_label_mapping", i, turn.SpeakerTag)
+
+		// segment_count must be a positive int — a zero would mean
+		// an empty turn slipped through the builder.
+		assert.Greaterf(t, turn.SegmentCount, int32(0),
+			"turn %d has segment_count=0 — empty turn should never be emitted", i)
+		totalSegmentsInTurns += turn.SegmentCount
+
+		// Turn text shouldn't be wholly empty unless every underlying
+		// segment also was — defensive coverage for the join logic.
+		// Allowed to be empty when every contributing segment was empty
+		// (rare KMS-rotation case); not fatal, just logged.
+		if turn.Text == "" {
+			t.Logf("note: turn %d has empty text across %d segments (all underlying chunks were empty after decrypt)",
+				i, turn.SegmentCount)
+		}
+
+		prevTurnEnd = turn.EndOffsetMs
+		prevTag = turn.SpeakerTag
+		prevLabel = turn.SpeakerLabel
+	}
+
+	// Invariant 5: turns must cover every segment exactly once.
+	assert.Equalf(t, int32(len(d.Transcript.Segments)), totalSegmentsInTurns,
+		"sum of turn.segment_count (%d) must equal total transcript.segments (%d) — grouping must not drop or duplicate",
+		totalSegmentsInTurns, len(d.Transcript.Segments))
+
+	t.Logf("✓ %d speaker turns (grouped from %d segments)", len(d.Transcript.Turns), len(d.Transcript.Segments))
 	t.Logf("✓ %d report(s) generated", len(d.Reports))
 }
