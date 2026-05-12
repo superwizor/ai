@@ -115,9 +115,11 @@ SELECT
   pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at,
   u.first_name  AS patient_first_name,
   u.last_name   AS patient_last_name,
-  u.ui_language AS patient_language_code
+  u.ui_language AS patient_language_code,
+  m.system_code AS modality_code
 FROM patient_files pf
 LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
+INNER JOIN modalities m ON m.id = pf.modality_id
 WHERE pf.id = $1 AND pf.deleted_at IS NULL
 `
 
@@ -141,12 +143,21 @@ type GetPatientFileWithUserRow struct {
 	PatientFirstName      *string            `json:"patient_first_name"`
 	PatientLastName       *string            `json:"patient_last_name"`
 	PatientLanguageCode   *string            `json:"patient_language_code"`
+	ModalityCode          string             `json:"modality_code"`
 }
 
 // Returns the patient_file plus the JOINed user fields used in the
-// proto response. LEFT JOIN because patient_id may be NULL after
-// DeletePatientUser (FK SET NULL, see migration 000013). NULL user
-// columns are emitted as empty strings by the proto mapper.
+// proto response. LEFT JOIN on users because patient_id may be NULL
+// after DeletePatientUser left an orphan (only possible before
+// migration 000014's CASCADE flip; kept LEFT for defensiveness on
+// already-orphaned rows in production). NULL user columns are
+// emitted as empty strings by the proto mapper.
+//
+// INNER JOIN on modalities — patient_files.modality_id is NOT NULL
+// (migration 000005), so an INNER JOIN won't drop any rows but does
+// give us a non-null `modality_code` to populate the proto response
+// without a second round-trip. Closes the "modality empty after
+// create" gap surfaced by the previous Faza 2 TODO.
 func (q *Queries) GetPatientFileWithUser(ctx context.Context, id uuid.UUID) (GetPatientFileWithUserRow, error) {
 	row := q.db.QueryRow(ctx, getPatientFileWithUser, id)
 	var i GetPatientFileWithUserRow
@@ -170,6 +181,7 @@ func (q *Queries) GetPatientFileWithUser(ctx context.Context, id uuid.UUID) (Get
 		&i.PatientFirstName,
 		&i.PatientLastName,
 		&i.PatientLanguageCode,
+		&i.ModalityCode,
 	)
 	return i, err
 }
@@ -252,9 +264,11 @@ SELECT
   pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at,
   u.first_name  AS patient_first_name,
   u.last_name   AS patient_last_name,
-  u.ui_language AS patient_language_code
+  u.ui_language AS patient_language_code,
+  m.system_code AS modality_code
 FROM patient_files pf
 LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
+INNER JOIN modalities m ON m.id = pf.modality_id
 WHERE pf.therapist_id = $1 AND pf.deleted_at IS NULL
 ORDER BY pf.created_at DESC
 LIMIT $2 OFFSET $3
@@ -286,8 +300,11 @@ type ListPatientFilesByTherapistWithUserRow struct {
 	PatientFirstName      *string            `json:"patient_first_name"`
 	PatientLastName       *string            `json:"patient_last_name"`
 	PatientLanguageCode   *string            `json:"patient_language_code"`
+	ModalityCode          string             `json:"modality_code"`
 }
 
+// See GetPatientFileWithUser comment for the JOIN strategy. Same
+// shape, just the WHERE switches to therapist_id + paged.
 func (q *Queries) ListPatientFilesByTherapistWithUser(ctx context.Context, arg ListPatientFilesByTherapistWithUserParams) ([]ListPatientFilesByTherapistWithUserRow, error) {
 	rows, err := q.db.Query(ctx, listPatientFilesByTherapistWithUser, arg.TherapistID, arg.Limit, arg.Offset)
 	if err != nil {
@@ -317,6 +334,7 @@ func (q *Queries) ListPatientFilesByTherapistWithUser(ctx context.Context, arg L
 			&i.PatientFirstName,
 			&i.PatientLastName,
 			&i.PatientLanguageCode,
+			&i.ModalityCode,
 		); err != nil {
 			return nil, err
 		}

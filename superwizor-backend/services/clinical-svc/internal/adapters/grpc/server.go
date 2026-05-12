@@ -205,7 +205,6 @@ func (s *Server) GetPatientFile(ctx context.Context, req *clinicalv1.GetPatientF
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "patient file not found")
 	}
-	// TODO Faza 2: pobrać modality_code dla wyświetlenia
 	return toProtoPatientFileFromJoinRow(row, ""), nil
 }
 
@@ -525,7 +524,16 @@ func (s *Server) DeletePatientFile(ctx context.Context, req *clinicalv1.DeletePa
 // language_code from the LEFT JOINed nullable columns; empty strings
 // when the user row was deleted (FK SET NULL after DeletePatientUser).
 
-func toProtoPatientFileFromJoinRow(row db.GetPatientFileWithUserRow, modalityCode string) *clinicalv1.PatientFile {
+// toProtoPatientFileFromJoinRow emits a Modality system_code resolved
+// from the modalities JOIN. The `modalityCodeOverride` argument is
+// kept for backwards-compat with callers that already have a fresher
+// value to splice in (none today, but keeping the seam for future
+// transactional re-reads). Empty override means "use the JOINed value".
+func toProtoPatientFileFromJoinRow(row db.GetPatientFileWithUserRow, modalityCodeOverride string) *clinicalv1.PatientFile {
+	modalityCode := row.ModalityCode
+	if modalityCodeOverride != "" {
+		modalityCode = modalityCodeOverride
+	}
 	resp := &clinicalv1.PatientFile{
 		Id:                  row.ID.String(),
 		TherapistId:         row.TherapistID.String(),
@@ -559,7 +567,14 @@ func toProtoPatientFileFromJoinRow(row db.GetPatientFileWithUserRow, modalityCod
 	return resp
 }
 
-func toProtoPatientFileFromListJoinRow(row db.ListPatientFilesByTherapistWithUserRow, modalityCode string) *clinicalv1.PatientFile {
+// toProtoPatientFileFromListJoinRow — list-side analogue of
+// toProtoPatientFileFromJoinRow. modality_code comes from the JOIN;
+// override arg kept for symmetry.
+func toProtoPatientFileFromListJoinRow(row db.ListPatientFilesByTherapistWithUserRow, modalityCodeOverride string) *clinicalv1.PatientFile {
+	modalityCode := row.ModalityCode
+	if modalityCodeOverride != "" {
+		modalityCode = modalityCodeOverride
+	}
 	resp := &clinicalv1.PatientFile{
 		Id:                  row.ID.String(),
 		TherapistId:         row.TherapistID.String(),
