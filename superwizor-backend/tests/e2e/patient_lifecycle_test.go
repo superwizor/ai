@@ -166,10 +166,22 @@ func TestPatientLifecycle_CreateAndRead(t *testing.T) {
 	assert.Equal(t, "Nowak", created.PatientLastName, "patient_last_name from Create")
 	assert.Equal(t, "pl", created.PatientLanguageCode, "patient_language_code from Create")
 	assert.Equal(t, "CBT", created.ModalityCode, "modality_code from Create")
-	t.Logf("✓ Create response shape OK (id=%s)", created.Id)
+	assert.True(t, created.HasRecordingConsent, "has_recording_consent must round-trip from request")
+	// consent_given_at must be stamped server-side (CASE WHEN $7 THEN now() ELSE NULL).
+	// Sanity-check: timestamp is close to now (within 60s of the test starting),
+	// not zero, not far-future.
+	require.NotNil(t, created.ConsentGivenAt, "consent_given_at must be set when has_recording_consent=true (CASE-fix)")
+	now := time.Now()
+	consentTs := created.ConsentGivenAt.AsTime()
+	assert.WithinDurationf(t, now, consentTs, 60*time.Second,
+		"consent_given_at (%v) should be ~now (%v) — diff %v",
+		consentTs, now, now.Sub(consentTs))
+	t.Logf("✓ Create response shape OK (id=%s, consent_given_at=%s)", created.Id, consentTs.Format(time.RFC3339))
 
 	// Get goes through the With-User JOIN path — proves the JOIN actually
-	// resolves the patient_id to the right users row.
+	// resolves the patient_id to the right users row, AND that the nullable
+	// timestamps (consent_given_at + first_consultation_at) survive the
+	// pgtype.Timestamptz → timestamppb round-trip through the JOIN mapper.
 	t.Log("\n═══ Step 2: GetPatientFile returns the joined fields ═══")
 	got, err := env.clinical.GetPatientFile(env.ctx, &clinicalv1.GetPatientFileRequest{
 		PatientFileId: created.Id,
@@ -180,7 +192,11 @@ func TestPatientLifecycle_CreateAndRead(t *testing.T) {
 	assert.Equal(t, "Nowak", got.PatientLastName)
 	assert.Equal(t, "pl", got.PatientLanguageCode)
 	assert.Equal(t, "CBT", got.ModalityCode, "GetPatientFile must JOIN modalities (Faza 2 fix)")
-	t.Logf("✓ Get response carries JOINed user + modality fields")
+	require.NotNil(t, got.ConsentGivenAt, "GetPatientFile must surface consent_given_at on read")
+	assert.True(t, got.ConsentGivenAt.AsTime().Equal(consentTs),
+		"GetPatientFile consent_given_at (%v) must match Create response (%v)",
+		got.ConsentGivenAt.AsTime(), consentTs)
+	t.Logf("✓ Get response carries JOINed user + modality + consent fields")
 
 	// List should also hit the With-User JOIN path. The test therapist
 	// owns exactly one kartoteka so this is a deterministic check.
