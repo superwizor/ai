@@ -12,11 +12,13 @@ package firestore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	fs "cloud.google.com/go/firestore"
+	"google.golang.org/api/iterator"
 )
 
 type Writer struct {
@@ -63,6 +65,71 @@ func (w *Writer) WriteSessionState(ctx context.Context, st SessionState) error {
 		return fmt.Errorf("firestore session_states: %w", err)
 	}
 	return nil
+}
+
+// DeleteSessionState removes the live status mirror for a session.
+// Called from the notification-worker session.deleted handler so the
+// Flutter listener stops seeing the stale doc after the therapist
+// hard-deletes a session via clinical-svc.
+//
+// Idempotent: deleting a non-existent doc is a no-op in Firestore
+// (Set→Delete returns success), so Pub/Sub redeliveries are safe.
+func (w *Writer) DeleteSessionState(ctx context.Context, sessionID string) error {
+	if w == nil || w.client == nil {
+		return nil
+	}
+	_, err := w.client.Doc("session_states/" + sessionID).Delete(ctx)
+	if err != nil {
+		slog.Warn("firestore session_states delete failed",
+			"session_id", sessionID, "error", err)
+		return fmt.Errorf("firestore session_states delete: %w", err)
+	}
+	return nil
+}
+
+// DeleteInboxNotificationsBySession walks every per-user inbox under
+// user_notifications/*/inbox/* and deletes any doc whose sessionId
+// matches the deleted session. We don't know the firebase_uid ahead
+// of time (clinical-svc only publishes session_id + therapist users.id),
+// so the implementation falls back to a CollectionGroup query against
+// the "inbox" sub-collection — Firestore handles the cross-user
+// traversal server-side, so we don't have to scan users.
+//
+// Returns the count of deleted docs so the caller can log it; errors
+// don't fail the event handler — best-effort cleanup. Stale notifs
+// pointing at a deleted session are harmless to the user (tapping
+// produces a "session not found" sheet via the Flutter route gate).
+func (w *Writer) DeleteInboxNotificationsBySession(ctx context.Context, sessionID string) (int, error) {
+	if w == nil || w.client == nil {
+		return 0, nil
+	}
+	// CollectionGroup matches every collection named "inbox" anywhere
+	// in the document tree — i.e. all user_notifications/*/inbox in
+	// one query.
+	iter := w.client.CollectionGroup("inbox").
+		Where("sessionId", "==", sessionID).
+		Documents(ctx)
+	defer iter.Stop()
+
+	deleted := 0
+	for {
+		doc, err := iter.Next()
+		if errors.Is(err, iterator.Done) {
+			return deleted, nil
+		}
+		if err != nil {
+			slog.Warn("firestore inbox iterate failed",
+				"session_id", sessionID, "error", err, "deleted_so_far", deleted)
+			return deleted, fmt.Errorf("firestore inbox iter: %w", err)
+		}
+		if _, derr := doc.Ref.Delete(ctx); derr != nil {
+			slog.Warn("firestore inbox delete failed",
+				"session_id", sessionID, "doc_path", doc.Ref.Path, "error", derr)
+			// Continue — best effort, don't return early.
+			continue
+		}
+		deleted++
+	}
 }
 
 // InboxNotification is the document shape for

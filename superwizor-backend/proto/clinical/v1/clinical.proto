@@ -12,7 +12,22 @@ service ClinicalService {
     rpc GetPatientFile(GetPatientFileRequest) returns (PatientFile);
     rpc ListPatientFiles(ListPatientFilesRequest) returns (ListPatientFilesResponse);
     rpc UpdatePatientFile(UpdatePatientFileRequest) returns (PatientFile);
+    // Hard delete since 000012 — cascades through all sessions / transcripts /
+    // reports / audio_uploads. Since 000013 it ALSO drops the paired
+    // users(role='PATIENT') row in the same transaction. PHI gone
+    // permanently (RODO right-to-erasure).
     rpc DeletePatientFile(DeletePatientFileRequest) returns (google.protobuf.Empty);
+
+    // Patient-user CRUD (added with migration 000013). These are
+    // SEPARATE from working_alias / initial_complaint edits — therapist
+    // can update one without touching the other.
+    rpc UpdatePatientUser(UpdatePatientUserRequest) returns (PatientFile);
+    // RODO-style erasure on the patient axis. CASCADEs through every
+    // patient_file referencing this user (migration 000014), and from
+    // there through sessions / transcripts / reports / etc. Publishes
+    // one session.deleted Pub/Sub event per cascaded session for
+    // Firestore + inbox cleanup. Nothing left to return → Empty.
+    rpc DeletePatientUser(DeletePatientUserRequest) returns (google.protobuf.Empty);
 
     rpc ListModalities(google.protobuf.Empty) returns (ListModalitiesResponse);
     rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
@@ -21,6 +36,12 @@ service ClinicalService {
     // Sessions and Analysis
     rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
     rpc GetSessionDetails(GetSessionDetailsRequest) returns (GetSessionDetailsResponse);
+    // Rename a single session — currently only `name` is mutable.
+    rpc UpdateSession(UpdateSessionRequest) returns (Session);
+    // Hard delete a single session — cascades transcripts/reports/hitop.
+    // Publishes session.deleted Pub/Sub event for downstream Firestore +
+    // inbox cleanup.
+    rpc DeleteSession(DeleteSessionRequest) returns (google.protobuf.Empty);
 }
 
 enum ProcessType {
@@ -35,8 +56,14 @@ message PatientFile {
     string id = 1;
     string therapist_id = 2;
     string patient_id = 3;
+    // Modality is set at CreatePatientFile time and is intentionally
+    // immutable afterwards — sessions/reports attached to this kartoteka
+    // were analyzed under this modality's prompts and switching mid-process
+    // would silently re-frame past clinical work. Flutter should gray out
+    // the modality picker once the kartoteka exists. If a therapist picks
+    // wrong, the path is DeletePatientFile + recreate.
     string modality_id = 4;
-    string modality_code = 5; // resolved
+    string modality_code = 5; // resolved system_code from modalities table
     string working_alias = 6;
     ProcessType process_type = 7;
     string initial_complaint = 8;
@@ -47,6 +74,12 @@ message PatientFile {
     string private_therapist_notes = 13;
     google.protobuf.Timestamp created_at = 14;
     google.protobuf.Timestamp updated_at = 15;
+    // Patient-user fields — JOIN'd from users(role='PATIENT') via
+    // patient_id (migration 000013). Empty strings when the user row
+    // was deleted via DeletePatientUser (FK SET NULL).
+    string patient_first_name    = 16;
+    string patient_last_name     = 17;
+    string patient_language_code = 18;
 }
 
 message Modality {
@@ -64,6 +97,13 @@ message CreatePatientFileRequest {
     string initial_complaint = 5;
     bool has_recording_consent = 6;
     string idempotency_key = 7;
+    // Patient-user fields written to the paired users(role='PATIENT')
+    // row in the same transaction. patient_first_name is required;
+    // last_name optional; language_code optional (defaults to the
+    // therapist's ui_language when empty).
+    string patient_first_name    = 8;
+    string patient_last_name     = 9;
+    string patient_language_code = 10;
 }
 
 message GetPatientFileRequest {
@@ -81,6 +121,14 @@ message ListPatientFilesResponse {
     string next_page_token = 2;
 }
 
+// UpdatePatientFileRequest — therapist-editable fields on a kartoteka.
+// Deliberately excluded:
+//   - modality_id / modality_code: immutable after create (see PatientFile.modality_id)
+//   - therapist_id / patient_id: ownership is established at create time
+//   - has_recording_consent / consent_given_at: separate consent flow
+//   - process_type: structural decision, treated like modality
+// Patient-user fields (first_name, last_name, language_code) live on
+// UpdatePatientUserRequest — separate RPC.
 message UpdatePatientFileRequest {
     string patient_file_id = 1;
     string working_alias = 2;
@@ -90,6 +138,32 @@ message UpdatePatientFileRequest {
 }
 
 message DeletePatientFileRequest {
+    string patient_file_id = 1;
+}
+
+// UpdatePatientUser — mutates the paired users(role='PATIENT') row.
+// Identified by patient_file_id so the handler can do the standard
+// therapist-ownership authz on the parent kartoteka. Empty fields
+// mean "leave alone" (server-side COALESCE/NULLIF).
+message UpdatePatientUserRequest {
+    string patient_file_id = 1;
+    string first_name      = 2;
+    string last_name       = 3;
+    string language_code   = 4;
+}
+
+// DeletePatientUser — RODO-style erasure of a patient. The user row
+// is hard-deleted; every patient_file that references it cascades
+// (migration 000014 flipped the FK to ON DELETE CASCADE), taking
+// sessions / transcripts / reports / audio_uploads with them. The
+// handler pre-fetches session IDs and publishes session.deleted
+// Pub/Sub events so notification-svc can wipe Firestore mirrors +
+// inbox notifications.
+//
+// Identified by patient_file_id rather than patient_id so the handler
+// can do the existing therapist-ownership authz on the parent
+// kartoteka. patient_user rows have no auth metadata of their own.
+message DeletePatientUserRequest {
     string patient_file_id = 1;
 }
 
@@ -128,10 +202,31 @@ message Session {
   map<string, string> speaker_label_mapping = 9;
   string status = 10;
   google.protobuf.Timestamp created_at = 11;
+  // Free-text label shown in the kartoteka list. Default at create-time:
+  // "<modality display_name> <session_number>". Therapist can rename via
+  // ClinicalService.UpdateSession. Migration 000011 added the column;
+  // ingestion-svc.CompleteAudioUpload populates it on new sessions.
+  string name = 12;
 }
 
 message ListSessionsRequest {
   string patient_file_id = 1;
+}
+
+// UpdateSession — rename a session. Currently `name` is the only
+// mutable field; add more here as edit needs surface (e.g. session_date
+// correction). Empty `name` is rejected by the handler.
+message UpdateSessionRequest {
+  string session_id = 1;
+  string name = 2;
+}
+
+// DeleteSession — hard delete via CASCADE (migration 000012).
+// Removes transcripts, reports, hitop_measurements, audio_uploads
+// rows referencing this session. Publishes session.deleted Pub/Sub
+// event so notification-svc can purge the Firestore mirror + inbox.
+message DeleteSessionRequest {
+  string session_id = 1;
 }
 
 message ListSessionsResponse {
@@ -149,7 +244,36 @@ message TranscriptSegment {
 
 message Transcript {
   string id = 1;
+  // Per-chunk segments — one row per pause-bounded utterance from STT.
+  // Kept for the speaker-label edit UI (UpdateSpeakerLabels) and any
+  // analysis that needs raw granularity. The read-only transcript view
+  // should bind to `turns` instead, which collapses consecutive
+  // same-speaker chunks into one block.
   repeated TranscriptSegment segments = 2;
+  // Speaker-grouped view derived from `segments`. Computed server-side
+  // (clinical-svc.GroupSegmentsIntoTurns) so every client renders the
+  // same shape: one entry per uninterrupted stretch of a single speaker.
+  // Joining/timestamping is policy that lives backend-side; clients
+  // only choose the timestamp display format from start_offset_ms.
+  repeated SpeakerTurn turns = 3;
+}
+
+// SpeakerTurn — a contiguous span of segments attributed to one
+// speaker. Display contract:
+//   "[<speaker_label> · <start_offset_ms formatted>] <text>"
+// `segment_count` exists so a future "expand to raw chunks" UI can
+// jump back to the underlying TranscriptSegments without an extra
+// fetch. `confidence_avg` is the word-count-weighted mean across the
+// underlying segments — fall back to plain mean if word counts are
+// zero (defensive; STT always emits them today).
+message SpeakerTurn {
+  int32 speaker_tag      = 1;
+  string speaker_label   = 2;
+  int32 start_offset_ms  = 3;
+  int32 end_offset_ms    = 4;
+  string text            = 5;
+  int32 segment_count    = 6;
+  float confidence_avg   = 7;
 }
 
 message Report {

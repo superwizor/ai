@@ -793,6 +793,7 @@ type Session struct {
 	UpdatedAt             time.Time          `json:"updated_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	ReportLanguage        string             `json:"report_language"`
+	Name                  *string            `json:"name"`
 }
 
 type TherapistPatientRelation struct {
@@ -842,8 +843,8 @@ type User struct {
 	OrganizationID      pgtype.UUID        `json:"organization_id"`
 	DefaultModalityID   pgtype.UUID        `json:"default_modality_id"`
 	BillingAddressID    pgtype.UUID        `json:"billing_address_id"`
-	FirebaseUid         string             `json:"firebase_uid"`
-	Email               string             `json:"email"`
+	FirebaseUid         *string            `json:"firebase_uid"`
+	Email               *string            `json:"email"`
 	PhoneNumber         *string            `json:"phone_number"`
 	IsEmailVerified     bool               `json:"is_email_verified"`
 	FirstName           string             `json:"first_name"`

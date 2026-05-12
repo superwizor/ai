@@ -67,3 +67,8 @@ variable "report_generated_topic" {
   type        = string
   description = "Pub/Sub topic ID for report.generated (final fan-out → FCM push + Firestore done)"
 }
+
+variable "session_deleted_topic" {
+  type        = string
+  description = "Pub/Sub topic ID for session.deleted (clinical-svc → notification-worker-on-deleted cleanup of Firestore mirror + inbox)"
+}

@@ -28,7 +28,7 @@ INSERT INTO sessions (
     status
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-) RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language
+) RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name
 `
 
 type CreateSessionParams struct {
@@ -80,12 +80,37 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.ReportLanguage,
+		&i.Name,
 	)
 	return i, err
 }
 
+const getDefaultSessionName = `-- name: GetDefaultSessionName :one
+SELECT COALESCE(m.display_name, 'Sesja') || ' ' || $2::text AS default_name
+FROM patient_files pf
+LEFT JOIN modalities m ON m.id = pf.modality_id
+WHERE pf.id = $1
+`
+
+type GetDefaultSessionNameParams struct {
+	ID      uuid.UUID `json:"id"`
+	Column2 string    `json:"column_2"`
+}
+
+// Compute the default session.name as production would set it on
+// create. Used by ingestion-svc.CompleteAudioUpload when populating
+// the column for a brand-new session. The COALESCE guards against
+// a missing modality join (defensive — modality_id is NOT NULL on
+// patient_files so this should never fire, but cheap insurance).
+func (q *Queries) GetDefaultSessionName(ctx context.Context, arg GetDefaultSessionNameParams) (interface{}, error) {
+	row := q.db.QueryRow(ctx, getDefaultSessionName, arg.ID, arg.Column2)
+	var default_name interface{}
+	err := row.Scan(&default_name)
+	return default_name, err
+}
+
 const getSession = `-- name: GetSession :one
-SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language FROM sessions
+SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name FROM sessions
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -112,6 +137,7 @@ func (q *Queries) GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.ReportLanguage,
+		&i.Name,
 	)
 	return i, err
 }
@@ -219,6 +245,31 @@ func (q *Queries) GetTranscriptBySession(ctx context.Context, sessionID uuid.UUI
 	return i, err
 }
 
+const hardDeleteSession = `-- name: HardDeleteSession :execrows
+DELETE FROM sessions WHERE id = $1 AND therapist_id = $2
+`
+
+type HardDeleteSessionParams struct {
+	ID          uuid.UUID `json:"id"`
+	TherapistID uuid.UUID `json:"therapist_id"`
+}
+
+// Permanent delete. Migration 000012 added ON DELETE CASCADE on
+// transcripts.session_id, reports.session_id, hitop_measurements.session_id,
+// so dependent rows are removed automatically. notification_deliveries
+// gets SET NULL — delivery history survives, just unbound from session.
+// audio_uploads.session_id is already SET NULL since 000007.
+// The therapist_id predicate is the authz guard at the query level.
+// Returns affected rows so the handler can distinguish "not found /
+// not yours" (0 rows) from successful delete (1 row).
+func (q *Queries) HardDeleteSession(ctx context.Context, arg HardDeleteSessionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, hardDeleteSession, arg.ID, arg.TherapistID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listReportsBySession = `-- name: ListReportsBySession :many
 SELECT id, session_id, transcript_id, modality_id, report_ciphertext, report_encrypted_dek, title, summary_short, sentiment_label, risk_level, speaker_role_inference, llm_model, llm_input_tokens, llm_output_tokens, llm_processing_seconds, llm_total_cost_usd, parent_report_id, generation_count, created_at FROM reports
 WHERE session_id = $1
@@ -266,7 +317,7 @@ func (q *Queries) ListReportsBySession(ctx context.Context, sessionID uuid.UUID)
 }
 
 const listSessionsByPatient = `-- name: ListSessionsByPatient :many
-SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language FROM sessions
+SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name FROM sessions
 WHERE patient_file_id = $1 AND deleted_at IS NULL
 ORDER BY session_number DESC
 `
@@ -300,6 +351,7 @@ func (q *Queries) ListSessionsByPatient(ctx context.Context, patientFileID uuid.
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.ReportLanguage,
+			&i.Name,
 		); err != nil {
 			return nil, err
 		}
@@ -347,6 +399,49 @@ func (q *Queries) ListTranscriptSegments(ctx context.Context, transcriptID uuid.
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateSessionName = `-- name: UpdateSessionName :one
+UPDATE sessions
+SET name = $2, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name
+`
+
+type UpdateSessionNameParams struct {
+	ID   uuid.UUID `json:"id"`
+	Name *string   `json:"name"`
+}
+
+// Rename a session. Caller is responsible for the authz check
+// (session.therapist_id == ctx user). Returns the refreshed row so
+// the gRPC handler can re-emit the proto Session.
+func (q *Queries) UpdateSessionName(ctx context.Context, arg UpdateSessionNameParams) (Session, error) {
+	row := q.db.QueryRow(ctx, updateSessionName, arg.ID, arg.Name)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.TherapistID,
+		&i.PatientFileID,
+		&i.AudioUploadID,
+		&i.SessionDate,
+		&i.SessionNumber,
+		&i.DurationSeconds,
+		&i.ContactForm,
+		&i.SpeakerLabelMapping,
+		&i.LanguageCode,
+		&i.TherapistObservations,
+		&i.IsConsentConfirmed,
+		&i.Status,
+		&i.StatusUpdatedAt,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.ReportLanguage,
+		&i.Name,
+	)
+	return i, err
 }
 
 const updateSessionStatus = `-- name: UpdateSessionStatus :exec

@@ -76,6 +76,7 @@ module "cloud_functions" {
   audio_uploaded_topic              = module.pubsub.audio_uploaded_topic
   transcript_completed_topic        = module.pubsub.transcript_completed_topic
   report_generated_topic            = module.pubsub.report_generated_topic
+  session_deleted_topic             = module.pubsub.session_deleted_topic
   audio_uploaded_dlq_topic          = module.pubsub.audio_uploaded_dlq_topic
   transcript_completed_dlq_topic    = module.pubsub.transcript_completed_dlq_topic
   stt_worker_source_dir          = "${path.cwd}/../../../services/ai-pipeline-svc/cmd/stt-worker"

@@ -67,6 +67,15 @@ type AudioUploadedEvent struct {
 	ObjectPath string `json:"object_path"`
 }
 
+// SessionDeletedEvent matches the schema published by clinical-svc
+// (services/clinical-svc/internal/adapters/pubsub/publisher.go) when a
+// session is hard-deleted via DeleteSession or DeletePatientFile.
+// Keep in sync with that producer.
+type SessionDeletedEvent struct {
+	SessionID   string `json:"session_id"`
+	TherapistID string `json:"therapist_id"`
+}
+
 // Globals — populated by init() once per Cloud Function instance, reused
 // across invocations.
 var (
@@ -123,6 +132,7 @@ func init() {
 	functions.CloudEvent("ProcessReportGenerated", ProcessReportGenerated)
 	functions.CloudEvent("ProcessTranscriptCompleted", ProcessTranscriptCompleted)
 	functions.CloudEvent("ProcessAudioUploaded", ProcessAudioUploaded)
+	functions.CloudEvent("ProcessSessionDeleted", ProcessSessionDeleted)
 }
 
 // ---------------------------------------------------------------------------
@@ -448,3 +458,80 @@ func strPtr(s string) *string { return &s }
 // Compile-time assertion that we're holding the FCM messaging types we
 // expect (catches API drift on dependency upgrades).
 var _ = (*fbmessaging.Client)(nil)
+
+// ---------------------------------------------------------------------------
+// ProcessSessionDeleted — clean up Firestore mirrors when clinical-svc
+// hard-deletes a session.
+//
+// Triggered by Pub/Sub topic session.deleted. clinical-svc publishes one
+// event per session — both for single DeleteSession calls AND for the
+// fan-out from DeletePatientFile (which can fire N events in succession).
+//
+// Two cleanup actions, both best-effort:
+//   1. Delete session_states/{sessionId} doc so the Flutter listener
+//      stops showing the stale stepper.
+//   2. Delete every user_notifications/{uid}/inbox/{notif} doc that
+//      references this session, so the inbox tray doesn't keep showing
+//      "Report ready" entries for a session that no longer exists.
+//
+// Idempotent: deleting a missing doc is a no-op in Firestore, and the
+// inbox cleanup walks via CollectionGroup so re-running just finds zero
+// matching docs the second time. Pub/Sub retries on this topic are safe.
+//
+// We don't write a notification_deliveries audit row for this event —
+// it's a destructive action, not a delivery. PG history is what's left
+// after the cascade in clinical-svc (status SET NULL on the FK).
+func ProcessSessionDeleted(ctx context.Context, e event.Event) error {
+	logger := slog.With("function", "notification-worker", "trigger", "session.deleted")
+
+	var msgData MessagePublishedData
+	if err := e.DataAs(&msgData); err != nil {
+		logger.Error("decode cloudevent", "error", err)
+		return err
+	}
+
+	var ev SessionDeletedEvent
+	if err := json.Unmarshal(msgData.Message.Data, &ev); err != nil {
+		logger.Error("parse session.deleted payload", "error", err,
+			"raw", string(msgData.Message.Data))
+		return err
+	}
+	if ev.SessionID == "" {
+		// Same pattern as parseAudioUploaded: defend against stray
+		// raw GCS storage events accidentally routed to this topic.
+		// Without a session_id we have nothing to clean up — ACK and
+		// drop instead of dead-lettering forever.
+		logger.Warn("session.deleted missing session_id, dropping",
+			"raw", string(msgData.Message.Data))
+		return nil
+	}
+	logger = logger.With("session_id", ev.SessionID, "therapist_id", ev.TherapistID)
+	logger.Info("processing session.deleted")
+
+	if fsWriter == nil {
+		logger.Warn("no firestore writer — skipping (mock mode)")
+		return nil
+	}
+
+	// Step 1: drop the session_states mirror.
+	if err := fsWriter.DeleteSessionState(ctx, ev.SessionID); err != nil {
+		// Log + continue — we still want to attempt inbox cleanup
+		// even if the status doc delete fails (they're independent).
+		logger.Warn("session_states delete failed", "error", err)
+	}
+
+	// Step 2: scrub inbox notifications referencing this session.
+	deleted, err := fsWriter.DeleteInboxNotificationsBySession(ctx, ev.SessionID)
+	if err != nil {
+		logger.Warn("inbox cleanup partial failure",
+			"deleted_before_err", deleted, "error", err)
+	} else {
+		logger.Info("inbox notifications cleaned", "count", deleted)
+	}
+
+	// ACK by returning nil regardless — handler is best-effort by
+	// design. notification.deliveries is left as-is (the
+	// notification_deliveries.session_id FK gets SET NULL via migration
+	// 000012 when the PG cascade runs, so audit history survives).
+	return nil
+}

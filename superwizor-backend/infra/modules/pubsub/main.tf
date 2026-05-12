@@ -18,6 +18,17 @@ resource "google_pubsub_topic" "report_generated" {
   project = var.project_id
 }
 
+# session.deleted — emitted by clinical-svc.DeleteSession and (per-session)
+# by clinical-svc.DeletePatientFile. notification-svc-on-deleted handler
+# consumes these to wipe the Firestore session_states/{sessionId} doc and
+# any per-user inbox notifications referencing the gone session.
+# Best-effort fan-out: clinical-svc logs publish errors but doesn't block
+# the gRPC DELETE return. Idempotent consumer — replays are safe.
+resource "google_pubsub_topic" "session_deleted" {
+  name    = "session.deleted"
+  project = var.project_id
+}
+
 # DLQ topics
 resource "google_pubsub_topic" "audio_uploaded_dlq" {
   name    = "audio.uploaded.dlq"
@@ -26,6 +37,11 @@ resource "google_pubsub_topic" "audio_uploaded_dlq" {
 
 resource "google_pubsub_topic" "transcript_completed_dlq" {
   name    = "transcript.completed.dlq"
+  project = var.project_id
+}
+
+resource "google_pubsub_topic" "session_deleted_dlq" {
+  name    = "session.deleted.dlq"
   project = var.project_id
 }
 
@@ -110,11 +126,24 @@ resource "google_pubsub_topic_iam_member" "llm_publisher" {
   member  = "serviceAccount:llm-worker@${var.project_id}.iam.gserviceaccount.com"
 }
 
+# IAM: clinical-svc may publish session.deleted (one event per
+# DeleteSession + per session under DeletePatientFile fan-out).
+# Service account convention: clinical-svc@<project>.iam — created
+# elsewhere in the staging/service-accounts terraform.
+resource "google_pubsub_topic_iam_member" "clinical_session_deleted_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.session_deleted.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:clinical-svc@${var.project_id}.iam.gserviceaccount.com"
+}
+
 output "audio_uploaded_topic" { value = google_pubsub_topic.audio_uploaded.id }
 output "transcript_completed_topic" { value = google_pubsub_topic.transcript_completed.id }
 output "report_generated_topic" { value = google_pubsub_topic.report_generated.id }
+output "session_deleted_topic" { value = google_pubsub_topic.session_deleted.id }
 output "audio_uploaded_dlq_topic" { value = google_pubsub_topic.audio_uploaded_dlq.id }
 output "transcript_completed_dlq_topic" { value = google_pubsub_topic.transcript_completed_dlq.id }
+output "session_deleted_dlq_topic" { value = google_pubsub_topic.session_deleted_dlq.id }
 output "firestore_sync_dlq_topic" { value = google_pubsub_topic.firestore_sync_dlq.id }
 output "firestore_sync_dlq_subscription" { value = google_pubsub_subscription.firestore_sync_dlq_reader.id }
 output "firestore_sync_dlq_subscription_name" { value = google_pubsub_subscription.firestore_sync_dlq_reader.name }

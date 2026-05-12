@@ -4,14 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
+	"github.com/superwizor-ai/backend/services/clinical-svc/internal/grouping"
 )
 
 func (s *Server) ListSessions(ctx context.Context, req *clinicalv1.ListSessionsRequest) (*clinicalv1.ListSessionsResponse, error) {
@@ -105,6 +108,11 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 				return nil, status.Error(codes.Internal,
 					"transcript present but no segments could be decrypted; check clinical-svc KMS config")
 			}
+			// Derive speaker-grouped view from the (decrypted) segments.
+			// Read-only views in Flutter bind to Turns; the per-chunk
+			// Segments slice stays for the speaker-label edit UI.
+			// O(n) over segments; trivial vs the decrypt loop above.
+			protoTranscript.Turns = grouping.GroupSegmentsIntoTurns(protoTranscript.Segments)
 		}
 		resp.Transcript = protoTranscript
 	}
@@ -175,14 +183,14 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 
 func toProtoSession(s db.Session) *clinicalv1.Session {
 	resp := &clinicalv1.Session{
-		Id:              s.ID.String(),
-		TherapistId:     s.TherapistID.String(),
-		PatientFileId:   s.PatientFileID.String(),
-		SessionDate:     s.SessionDate.Time.Format("2006-01-02"),
-		SessionNumber:   s.SessionNumber,
-		ContactForm:     string(s.ContactForm),
-		Status:          string(s.Status),
-		CreatedAt:       timestamppb.New(s.CreatedAt),
+		Id:            s.ID.String(),
+		TherapistId:   s.TherapistID.String(),
+		PatientFileId: s.PatientFileID.String(),
+		SessionDate:   s.SessionDate.Time.Format("2006-01-02"),
+		SessionNumber: s.SessionNumber,
+		ContactForm:   string(s.ContactForm),
+		Status:        string(s.Status),
+		CreatedAt:     timestamppb.New(s.CreatedAt),
 	}
 	if s.AudioUploadID.Valid {
 		resp.AudioUploadId = uuid.UUID(s.AudioUploadID.Bytes).String()
@@ -190,7 +198,7 @@ func toProtoSession(s db.Session) *clinicalv1.Session {
 	if s.DurationSeconds != nil {
 		resp.DurationSeconds = *s.DurationSeconds
 	}
-	
+
 	// Map mapping
 	if len(s.SpeakerLabelMapping) > 0 {
 		var mapping map[string]string
@@ -198,6 +206,118 @@ func toProtoSession(s db.Session) *clinicalv1.Session {
 			resp.SpeakerLabelMapping = mapping
 		}
 	}
-	
+
+	// Name is nullable in DB to allow backfill leniency (migration
+	// 000011). Emit empty string if NULL — the Flutter side falls
+	// back to "<modality> <session_number>" rendering.
+	if s.Name != nil {
+		resp.Name = *s.Name
+	}
+
 	return resp
+}
+
+// UpdateSession renames a single session. Currently the only mutable
+// field is `name`; future patches (e.g. session_date correction) extend
+// this handler.
+//
+// Authz: the SQL UPDATE doesn't filter by therapist_id (sqlc-generated
+// UpdateSessionName returns the refreshed row by id alone), so we pre-
+// fetch the session and check ownership BEFORE the update. Cheap one
+// extra round-trip; clearer 403 vs 404 errors for the caller.
+func (s *Server) UpdateSession(ctx context.Context, req *clinicalv1.UpdateSessionRequest) (*clinicalv1.Session, error) {
+	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
+	if !ok || therapistIDStr == "" {
+		return nil, status.Error(codes.Unauthenticated, "missing user ID in context")
+	}
+	therapistID, err := uuid.Parse(therapistIDStr)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id in context")
+	}
+
+	sessionID, err := uuid.Parse(req.SessionId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid session_id")
+	}
+
+	newName := strings.TrimSpace(req.Name)
+	if newName == "" {
+		return nil, status.Error(codes.InvalidArgument, "name required")
+	}
+	// Cap at 255 to match VARCHAR(255). Failing here gives a friendlier
+	// error than PG's "value too long for type character varying(255)".
+	if len(newName) > 255 {
+		return nil, status.Error(codes.InvalidArgument, "name too long (max 255 chars)")
+	}
+
+	existing, err := s.queries.GetSession(ctx, sessionID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "session not found")
+	}
+	if existing.TherapistID != therapistID {
+		// Don't leak ownership info in the error string — same code
+		// path as "not found" to avoid session-ID enumeration.
+		return nil, status.Error(codes.NotFound, "session not found")
+	}
+
+	updated, err := s.queries.UpdateSessionName(ctx, db.UpdateSessionNameParams{
+		ID:   sessionID,
+		Name: &newName,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "update name: %v", err)
+	}
+
+	return toProtoSession(updated), nil
+}
+
+// DeleteSession hard-deletes a single session. Migration 000012 turned
+// transcripts/reports/hitop FK constraints to CASCADE, so dependent
+// rows go in the same statement.
+//
+// Side effect: publishes a session.deleted Pub/Sub event so
+// notification-svc can wipe the Firestore session_states/{sessionId}
+// doc + any inbox notifications. The Pub/Sub publish is best-effort —
+// if it fails we still report the deletion as successful (the PG side
+// is gone; the Firestore mirror cleanup will lag but not block).
+func (s *Server) DeleteSession(ctx context.Context, req *clinicalv1.DeleteSessionRequest) (*emptypb.Empty, error) {
+	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
+	if !ok || therapistIDStr == "" {
+		return nil, status.Error(codes.Unauthenticated, "missing user ID in context")
+	}
+	therapistID, err := uuid.Parse(therapistIDStr)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id in context")
+	}
+
+	sessionID, err := uuid.Parse(req.SessionId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid session_id")
+	}
+
+	rows, err := s.queries.HardDeleteSession(ctx, db.HardDeleteSessionParams{
+		ID:          sessionID,
+		TherapistID: therapistID,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "delete session: %v", err)
+	}
+	if rows == 0 {
+		// Either the session never existed or belongs to another
+		// therapist. Same 404 to avoid enumeration.
+		return nil, status.Error(codes.NotFound, "session not found")
+	}
+
+	// Fire-and-forget — publish the cleanup event. If pubsub is wired
+	// (s.pubsub != nil), we attempt the publish; failures are logged
+	// but don't unwind the PG delete. notification-svc may double-fire
+	// if Pub/Sub retries deliver after PG hard-delete completes — its
+	// handler is idempotent (no-op on missing Firestore doc).
+	if s.pubsub != nil {
+		if err := s.pubsub.PublishSessionDeleted(ctx, sessionID.String(), therapistID.String()); err != nil {
+			slog.Warn("publish session.deleted failed", "session_id", sessionID, "error", err)
+		}
+	}
+
+	return &emptypb.Empty{}, nil
 }

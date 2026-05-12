@@ -3,9 +3,15 @@ package grpc
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -13,22 +19,113 @@ import (
 
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
-	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
+	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 )
+
+// SessionEventPublisher is the publish-side dependency clinical-svc
+// uses to emit cross-service events (currently only session.deleted).
+// Kept as an interface so we don't hard-link to the Pub/Sub SDK in
+// the gRPC layer — production wires a concrete pubsub.Publisher, and
+// tests pass a stub that records calls. Nil is allowed; handlers
+// short-circuit the publish when it's not set (e.g. during local dev
+// without Pub/Sub creds).
+type SessionEventPublisher interface {
+	PublishSessionDeleted(ctx context.Context, sessionID, therapistID string) error
+}
+
+// TxOpener abstracts "start a transaction, give me a Querier scoped to
+// it." Production wires this to pgxpool+*db.Queries; tests pass a fake
+// that records the Commit/Rollback calls. Returning Querier (interface)
+// rather than *db.Queries keeps the seam fully mockable. Handlers that
+// don't open transactions (Update*, simple Delete*) don't touch this —
+// they go through Server.queries directly.
+type TxOpener interface {
+	Begin(ctx context.Context) (Tx, error)
+}
+
+// Tx is the transactional handle TxOpener.Begin returns. Queries()
+// gives the tx-scoped Querier; Commit/Rollback do exactly what they
+// say on the tin. Idiomatic pgx semantics — Rollback after a successful
+// Commit is a no-op error that callers ignore with a deferred call.
+//
+// Raw exposes the underlying pgx.Tx for the few places that still need
+// raw SQL (today: labels.go's transcript_segments speaker-label lookup
+// — no sqlc query exists for that one-off SELECT, and creating one
+// just to satisfy the abstraction would be ceremony). Tests that don't
+// exercise the labels handler can return nil from Raw.
+type Tx interface {
+	Queries() db.Querier
+	Raw() pgx.Tx
+	Commit(ctx context.Context) error
+	Rollback(ctx context.Context) error
+}
+
+// pgxTxOpener is the production wiring: open a pgx tx on the pool and
+// hand back a Querier scoped to it via sqlc's WithTx.
+type pgxTxOpener struct {
+	pool *pgxpool.Pool
+	base *db.Queries
+}
+
+func (p *pgxTxOpener) Begin(ctx context.Context) (Tx, error) {
+	tx, err := p.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &pgxTx{tx: tx, q: p.base.WithTx(tx)}, nil
+}
+
+type pgxTx struct {
+	tx pgx.Tx
+	q  *db.Queries
+}
+
+func (t *pgxTx) Queries() db.Querier              { return t.q }
+func (t *pgxTx) Raw() pgx.Tx                      { return t.tx }
+func (t *pgxTx) Commit(ctx context.Context) error { return t.tx.Commit(ctx) }
+func (t *pgxTx) Rollback(ctx context.Context) error {
+	return t.tx.Rollback(ctx)
+}
 
 type Server struct {
 	clinicalv1.UnimplementedClinicalServiceServer
-	dbPool   *pgxpool.Pool
-	queries  *db.Queries
+	queries  db.Querier
+	tx       TxOpener
 	identity identityv1.IdentityServiceClient
 	crypto   cryptobox.CryptoBox
+	pubsub   SessionEventPublisher
 	version  string
 }
 
-func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, crypto cryptobox.CryptoBox, version string) *Server {
-	return &Server{dbPool: dbPool, queries: queries, identity: identity, crypto: crypto, version: version}
+// NewServer wires the production gRPC server: pgxpool + concrete sqlc
+// Queries get wrapped behind the Querier+TxOpener interfaces so the
+// handler code never sees the pool directly. Tests construct Server
+// fields directly via NewServerWithDeps.
+func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
+	return &Server{
+		queries:  queries,
+		tx:       &pgxTxOpener{pool: dbPool, base: queries},
+		identity: identity,
+		crypto:   crypto,
+		pubsub:   pubsub,
+		version:  version,
+	}
+}
+
+// NewServerWithDeps is the test-friendly constructor — every interface
+// dependency is explicit so tests can inject fakes. Production code
+// uses NewServer; this exists purely to keep test files honest about
+// what they're stubbing.
+func NewServerWithDeps(queries db.Querier, tx TxOpener, identity identityv1.IdentityServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
+	return &Server{
+		queries:  queries,
+		tx:       tx,
+		identity: identity,
+		crypto:   crypto,
+		pubsub:   pubsub,
+		version:  version,
+	}
 }
 
 func (s *Server) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*clinicalv1.HealthCheckResponse, error) {
@@ -67,6 +164,9 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 	if req.WorkingAlias == "" || req.ModalityCode == "" {
 		return nil, status.Error(codes.InvalidArgument, "working_alias and modality_code required")
 	}
+	if req.PatientFirstName == "" {
+		return nil, status.Error(codes.InvalidArgument, "patient_first_name required")
+	}
 
 	// Resolve modality
 	modality, err := s.queries.GetModalityByCode(ctx, req.ModalityCode)
@@ -85,9 +185,41 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 		dbProcessType = "GROUP"
 	}
 
-	// Create
-	pf, err := s.queries.CreatePatientFile(ctx, db.CreatePatientFileParams{
+	// Resolve patient language: explicit request value, else inherit
+	// the therapist's ui_language (the kartoteka's "default world"
+	// language). Falls back to 'pl' if the therapist row somehow
+	// lacks one (defensive; should never fire because identity-svc
+	// seeds 'pl' on register).
+	patientLang := req.PatientLanguageCode
+	if patientLang == "" {
+		if ulang, err := s.queries.GetTherapistUILanguage(ctx, therapistID); err == nil && ulang != "" {
+			patientLang = ulang
+		} else {
+			patientLang = "pl"
+		}
+	}
+
+	// Run user-insert + patient_file-insert in one tx so we never end
+	// up with an orphan user (insert succeeded) without a kartoteka.
+	tx, err := s.tx.Begin(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "begin tx: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }() // no-op on commit
+	qtx := tx.Queries()
+
+	patientUserID, err := qtx.CreatePatientUser(ctx, db.CreatePatientUserParams{
+		FirstName:  req.PatientFirstName,
+		LastName:   req.PatientLastName,
+		UiLanguage: patientLang,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "create patient user: %v", err)
+	}
+
+	pf, err := qtx.CreatePatientFile(ctx, db.CreatePatientFileParams{
 		TherapistID:         therapistID,
+		PatientID:           pgtype.UUID{Bytes: patientUserID, Valid: true},
 		ModalityID:          modality.ID,
 		WorkingAlias:        req.WorkingAlias,
 		ProcessType:         dbProcessType,
@@ -95,7 +227,18 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 		HasRecordingConsent: req.HasRecordingConsent,
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		// Unique violation on (therapist_id, working_alias) means
+		// this therapist already has a kartoteka with the same alias.
+		// Surface as AlreadyExists so Flutter can show a clear message.
+		if isUniqueViolation(err) {
+			return nil, status.Errorf(codes.AlreadyExists,
+				"working_alias %q already used by another active kartoteka", req.WorkingAlias)
+		}
+		return nil, status.Errorf(codes.Internal, "create patient_file: %v", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, status.Errorf(codes.Internal, "commit: %v", err)
 	}
 
 	// Audit log (async w produkcji; synchroniczne w MVP)
@@ -111,7 +254,27 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 		Metadata:     auditMeta,
 	})
 
-	return toProtoPatientFile(pf, modality.SystemCode), nil
+	// We already have all the inputs needed to populate the response;
+	// no second SELECT required. ConsentGivenAt / FirstConsultationAt
+	// stay zero — the insert didn't set them and the standard mapper
+	// would also omit them via timestamppb.Valid checks.
+	resp := toProtoPatientFile(pf, modality.SystemCode)
+	resp.PatientFirstName = req.PatientFirstName
+	resp.PatientLastName = req.PatientLastName
+	resp.PatientLanguageCode = patientLang
+	return resp, nil
+}
+
+// isUniqueViolation returns true if err is a PG SQLSTATE 23505
+// (unique_violation). Used by Create/UpdatePatientFile to translate
+// the partial unique index ux_patient_files_therapist_alias trip
+// into AlreadyExists rather than a generic Internal.
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == pgerrcode.UniqueViolation
+	}
+	return false
 }
 
 func (s *Server) GetPatientFile(ctx context.Context, req *clinicalv1.GetPatientFileRequest) (*clinicalv1.PatientFile, error) {
@@ -119,12 +282,11 @@ func (s *Server) GetPatientFile(ctx context.Context, req *clinicalv1.GetPatientF
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid patient_file_id")
 	}
-	pf, err := s.queries.GetPatientFile(ctx, id)
+	row, err := s.queries.GetPatientFileWithUser(ctx, id)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "patient file not found")
 	}
-	// TODO Faza 2: pobrać modality_code dla wyświetlenia
-	return toProtoPatientFile(pf, ""), nil
+	return toProtoPatientFileFromJoinRow(row, ""), nil
 }
 
 func (s *Server) ListPatientFiles(ctx context.Context, req *clinicalv1.ListPatientFilesRequest) (*clinicalv1.ListPatientFilesResponse, error) {
@@ -140,7 +302,7 @@ func (s *Server) ListPatientFiles(ctx context.Context, req *clinicalv1.ListPatie
 	if pageSize <= 0 || pageSize > 100 {
 		pageSize = 25
 	}
-	files, err := s.queries.ListPatientFilesByTherapist(ctx, db.ListPatientFilesByTherapistParams{
+	files, err := s.queries.ListPatientFilesByTherapistWithUser(ctx, db.ListPatientFilesByTherapistWithUserParams{
 		TherapistID: therapistID,
 		Limit:       pageSize,
 		Offset:      0, // simple paging w MVP, page_token w Fazie 2
@@ -150,58 +312,383 @@ func (s *Server) ListPatientFiles(ctx context.Context, req *clinicalv1.ListPatie
 	}
 
 	resp := &clinicalv1.ListPatientFilesResponse{}
-	for _, pf := range files {
-		resp.PatientFiles = append(resp.PatientFiles, toProtoPatientFile(pf, ""))
+	for _, row := range files {
+		resp.PatientFiles = append(resp.PatientFiles,
+			toProtoPatientFileFromListJoinRow(row, ""))
 	}
 	return resp, nil
 }
 
+// UpdatePatientFile edits kartoteka-side fields (working_alias,
+// initial_complaint, private_therapist_notes, is_process_closed).
+// Patient-user fields are NOT touched here — therapist edits them
+// via UpdatePatientUser. The two surfaces are kept independent so
+// a rename of the kartoteka label doesn't accidentally rewrite the
+// patient's stored PII.
+//
+// Translates the partial unique index trip on (therapist_id,
+// working_alias) into AlreadyExists so Flutter can surface a clean
+// "alias already in use" error rather than a generic Internal.
 func (s *Server) UpdatePatientFile(ctx context.Context, req *clinicalv1.UpdatePatientFileRequest) (*clinicalv1.PatientFile, error) {
 	id, err := uuid.Parse(req.PatientFileId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid patient_file_id")
 	}
 
-	pf, err := s.queries.UpdatePatientFile(ctx, db.UpdatePatientFileParams{
+	if _, err := s.queries.UpdatePatientFile(ctx, db.UpdatePatientFileParams{
 		ID:              id,
 		Column2:         req.WorkingAlias,
 		Column3:         req.InitialComplaint,
 		Column4:         req.PrivateTherapistNotes,
 		IsProcessClosed: req.IsProcessClosed,
-	})
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	}); err != nil {
+		if isUniqueViolation(err) {
+			return nil, status.Errorf(codes.AlreadyExists,
+				"working_alias %q already used by another active kartoteka", req.WorkingAlias)
+		}
+		return nil, status.Errorf(codes.Internal, "update patient_file: %v", err)
 	}
 
-	return toProtoPatientFile(pf, ""), nil
+	// Re-read with user JOIN so the response carries fresh PII +
+	// the updated kartoteka fields together.
+	row, err := s.queries.GetPatientFileWithUser(ctx, id)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "refetch after update: %v", err)
+	}
+	return toProtoPatientFileFromJoinRow(row, ""), nil
 }
 
+// UpdatePatientUser edits the paired users(role='PATIENT') row.
+// Identified by patient_file_id (the kartoteka's id) so the ownership
+// check uses the standard therapist_id predicate — patient users
+// themselves have no auth metadata yet.
+//
+// Empty string in any field = no change (SQL-side COALESCE/NULLIF).
+// Returns the refreshed PatientFile with the new user fields so the
+// Flutter side can re-render in one hop.
+func (s *Server) UpdatePatientUser(ctx context.Context, req *clinicalv1.UpdatePatientUserRequest) (*clinicalv1.PatientFile, error) {
+	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
+	if !ok || therapistIDStr == "" {
+		return nil, status.Error(codes.Unauthenticated, "missing user ID in context")
+	}
+	therapistID, err := uuid.Parse(therapistIDStr)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id in context")
+	}
+
+	pfID, err := uuid.Parse(req.PatientFileId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid patient_file_id")
+	}
+
+	// Authz + resolve patient_id in one fetch. Treat a not-found OR
+	// a wrong-therapist row as 404 to avoid leaking ownership.
+	pf, err := s.queries.GetPatientFile(ctx, pfID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "patient file not found")
+	}
+	if pf.TherapistID != therapistID {
+		return nil, status.Error(codes.NotFound, "patient file not found")
+	}
+	if !pf.PatientID.Valid {
+		// No paired user exists (probably wiped via DeletePatientUser).
+		// Refuse rather than auto-recreate — caller should make a
+		// deliberate decision (e.g. recreate the kartoteka).
+		return nil, status.Error(codes.FailedPrecondition,
+			"this kartoteka has no patient user attached")
+	}
+
+	if _, err := s.queries.UpdatePatientUser(ctx, db.UpdatePatientUserParams{
+		ID:           uuid.UUID(pf.PatientID.Bytes),
+		FirstName:    req.FirstName,
+		LastName:     req.LastName,
+		LanguageCode: req.LanguageCode,
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "update patient user: %v", err)
+	}
+
+	// Re-read with JOIN so the response carries the now-current
+	// user fields alongside the unchanged kartoteka fields.
+	row, err := s.queries.GetPatientFileWithUser(ctx, pfID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "refetch after update: %v", err)
+	}
+	return toProtoPatientFileFromJoinRow(row, ""), nil
+}
+
+// DeletePatientUser performs RODO-style full erasure for a patient.
+// Deletes the users row; migration 000014 makes patient_files.patient_id
+// CASCADE, so every kartoteka under this patient — plus its sessions,
+// transcripts, reports, hitop measurements, audio_uploads,
+// rag_memories — goes away in one statement.
+//
+// Identified by patient_file_id (the entry point the therapist UI has).
+// Authz: standard therapist-ownership check on the kartoteka. Since one
+// patient can technically have multiple patient_files under different
+// therapists, we ONLY use the request's kartoteka to find the
+// patient_id; the cascade then takes out every patient_file under that
+// user, even those owned by other therapists. This is acceptable
+// because:
+//   - in MVP each patient has exactly one therapist (1:1 patient_file)
+//   - the action is gated by RODO right-to-erasure — once a patient
+//     asks to be forgotten, all their data goes, regardless of which
+//     therapist's kartoteka holds it
+//
+// Cleanup steps:
+//   1. Pre-fetch every session_id that will be cascade-deleted, so
+//      we can fan out session.deleted Pub/Sub events afterwards.
+//      The cascade itself emits no application signal.
+//   2. DELETE FROM users — cascade does the rest server-side.
+//   3. Publish session.deleted events (best-effort; failures don't
+//      block — PG is authoritative).
+func (s *Server) DeletePatientUser(ctx context.Context, req *clinicalv1.DeletePatientUserRequest) (*emptypb.Empty, error) {
+	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
+	if !ok || therapistIDStr == "" {
+		return nil, status.Error(codes.Unauthenticated, "missing user ID in context")
+	}
+	therapistID, err := uuid.Parse(therapistIDStr)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id in context")
+	}
+
+	pfID, err := uuid.Parse(req.PatientFileId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid patient_file_id")
+	}
+
+	pf, err := s.queries.GetPatientFile(ctx, pfID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "patient file not found")
+	}
+	if pf.TherapistID != therapistID {
+		return nil, status.Error(codes.NotFound, "patient file not found")
+	}
+	if !pf.PatientID.Valid {
+		// No user attached to wipe. Treat as no-op success — the
+		// kartoteka itself can still be removed via DeletePatientFile.
+		return &emptypb.Empty{}, nil
+	}
+	patientUserID := uuid.UUID(pf.PatientID.Bytes)
+
+	// Pre-fetch session IDs under this patient (across all their
+	// kartoteki) so we can fan out session.deleted events after the
+	// cascade fires.
+	sessionIDs, err := s.queries.ListSessionIDsForPatient(ctx, pf.PatientID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list patient sessions: %v", err)
+	}
+
+	// Single DELETE — FK CASCADE (000014) handles everything below.
+	if _, err := s.queries.DeletePatientUser(ctx, patientUserID); err != nil {
+		return nil, status.Errorf(codes.Internal, "delete patient user: %v", err)
+	}
+
+	// Fan out cleanup events for the cascaded sessions. Independent
+	// publish per session — one failure doesn't block the rest.
+	if s.pubsub != nil {
+		for _, sid := range sessionIDs {
+			if err := s.pubsub.PublishSessionDeleted(ctx, sid.String(), therapistID.String()); err != nil {
+				slog.Warn("publish session.deleted (from patient user delete) failed",
+					"session_id", sid, "patient_user_id", patientUserID, "error", err)
+			}
+		}
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+// DeletePatientFile hard-deletes a kartoteka (since migration 000012):
+// cascades through audio_uploads, sessions, transcripts, reports,
+// hitop_measurements. PHI gone permanently — backs RODO right-to-erasure.
+//
+// Authz happens at the SQL layer (HardDeletePatientFile predicate
+// `WHERE id = $1 AND therapist_id = $2`). We still resolve therapist_id
+// from the ctx auth interceptor first so we can list session_ids for
+// the Pub/Sub fan-out, and so we don't accidentally delete a row that
+// belongs to a different therapist via a misconfigured query.
+//
+// Fan-out: one session.deleted event per session that lived under this
+// patient_file. notification-svc picks them up and wipes the Firestore
+// session_states/{id} mirror + per-user inbox notifications.
+// Best-effort — a failed publish is logged but doesn't unwind the
+// hard delete (PG is the source of truth; the mirror eventually
+// reconciles via stale-doc TTL).
 func (s *Server) DeletePatientFile(ctx context.Context, req *clinicalv1.DeletePatientFileRequest) (*emptypb.Empty, error) {
+	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
+	if !ok || therapistIDStr == "" {
+		return nil, status.Error(codes.Unauthenticated, "missing user ID in context")
+	}
+	therapistID, err := uuid.Parse(therapistIDStr)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id in context")
+	}
+
 	id, err := uuid.Parse(req.PatientFileId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid patient_file_id")
 	}
 
-	// We need therapist ID from context, but we don't have authentication logic implemented in this mock yet. 
-	// For now, let's just use empty uuid to make it compile, or since SoftDeletePatientFile requires TherapistID, 
-	// let's fetch the patient file first to get the therapist ID.
+	// Pre-fetch: (a) session IDs for Pub/Sub fan-out (sessions go
+	// on cascade so we'd lose them after HardDelete), (b) patient_id
+	// so we can drop the paired users row in the same transaction.
+	sessionIDs, err := s.queries.ListSessionIDsForPatientFile(ctx, id)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list session ids: %v", err)
+	}
 	pf, err := s.queries.GetPatientFile(ctx, id)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "patient file not found")
 	}
+	if pf.TherapistID != therapistID {
+		return nil, status.Error(codes.NotFound, "patient file not found")
+	}
 
-	err = s.queries.SoftDeletePatientFile(ctx, db.SoftDeletePatientFileParams{
+	// Single transaction: kartoteka delete (cascades to sessions/
+	// transcripts/etc.) + paired user delete. Ordering matters:
+	// patient_files.patient_id is FK SET NULL since 000013, so
+	// deleting the user first would just blank the patient_id on
+	// the kartoteka. Deleting the kartoteka first then the user
+	// avoids that race entirely.
+	tx, err := s.tx.Begin(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "begin tx: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := tx.Queries()
+
+	rows, err := qtx.HardDeletePatientFile(ctx, db.HardDeletePatientFileParams{
 		ID:          id,
-		TherapistID: pf.TherapistID,
+		TherapistID: therapistID,
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "hard delete patient_file: %v", err)
+	}
+	if rows == 0 {
+		return nil, status.Error(codes.NotFound, "patient file not found")
+	}
+
+	if pf.PatientID.Valid {
+		// :execrows ignored — patient row may have been deleted by
+		// a concurrent DeletePatientUser; either way it's gone.
+		if _, err := qtx.DeletePatientUser(ctx, uuid.UUID(pf.PatientID.Bytes)); err != nil {
+			return nil, status.Errorf(codes.Internal, "delete patient user: %v", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, status.Errorf(codes.Internal, "commit: %v", err)
+	}
+
+	// Fan out cleanup events. Per-session because notification-svc's
+	// handler is keyed on session_id (Firestore doc id). Each publish
+	// is best-effort and independent — a single failure doesn't block
+	// the rest, and PG is already committed.
+	if s.pubsub != nil {
+		for _, sid := range sessionIDs {
+			if err := s.pubsub.PublishSessionDeleted(ctx, sid.String(), therapistID.String()); err != nil {
+				slog.Warn("publish session.deleted (from patient_file delete) failed",
+					"session_id", sid, "patient_file_id", id, "error", err)
+			}
+		}
 	}
 
 	return &emptypb.Empty{}, nil
 }
 
 // Helpers
+//
+// Three proto mappers share most of the field copies:
+//   - toProtoPatientFile           — from the bare db.PatientFile (no user JOIN)
+//   - toProtoPatientFileFromJoinRow      — from GetPatientFileWithUserRow
+//   - toProtoPatientFileFromListJoinRow  — from ListPatientFilesByTherapistWithUserRow
+// The two With-User variants extract patient_first_name / last_name /
+// language_code from the LEFT JOINed nullable columns; empty strings
+// when the user row was deleted (FK SET NULL after DeletePatientUser).
+
+// toProtoPatientFileFromJoinRow emits a Modality system_code resolved
+// from the modalities JOIN. The `modalityCodeOverride` argument is
+// kept for backwards-compat with callers that already have a fresher
+// value to splice in (none today, but keeping the seam for future
+// transactional re-reads). Empty override means "use the JOINed value".
+func toProtoPatientFileFromJoinRow(row db.GetPatientFileWithUserRow, modalityCodeOverride string) *clinicalv1.PatientFile {
+	modalityCode := row.ModalityCode
+	if modalityCodeOverride != "" {
+		modalityCode = modalityCodeOverride
+	}
+	resp := &clinicalv1.PatientFile{
+		Id:                  row.ID.String(),
+		TherapistId:         row.TherapistID.String(),
+		ModalityId:          row.ModalityID.String(),
+		ModalityCode:        modalityCode,
+		WorkingAlias:        row.WorkingAlias,
+		ProcessType:         toProtoProcessType(row.ProcessType),
+		IsProcessClosed:     row.IsProcessClosed,
+		HasRecordingConsent: row.HasRecordingConsent,
+		CreatedAt:           timestamppb.New(row.CreatedAt),
+		UpdatedAt:           timestamppb.New(row.UpdatedAt),
+	}
+	if row.PatientID.Valid {
+		resp.PatientId = uuid.UUID(row.PatientID.Bytes).String()
+	}
+	if row.InitialComplaint != nil {
+		resp.InitialComplaint = *row.InitialComplaint
+	}
+	if row.PrivateTherapistNotes != nil {
+		resp.PrivateTherapistNotes = *row.PrivateTherapistNotes
+	}
+	if row.PatientFirstName != nil {
+		resp.PatientFirstName = *row.PatientFirstName
+	}
+	if row.PatientLastName != nil {
+		resp.PatientLastName = *row.PatientLastName
+	}
+	if row.PatientLanguageCode != nil {
+		resp.PatientLanguageCode = *row.PatientLanguageCode
+	}
+	return resp
+}
+
+// toProtoPatientFileFromListJoinRow — list-side analogue of
+// toProtoPatientFileFromJoinRow. modality_code comes from the JOIN;
+// override arg kept for symmetry.
+func toProtoPatientFileFromListJoinRow(row db.ListPatientFilesByTherapistWithUserRow, modalityCodeOverride string) *clinicalv1.PatientFile {
+	modalityCode := row.ModalityCode
+	if modalityCodeOverride != "" {
+		modalityCode = modalityCodeOverride
+	}
+	resp := &clinicalv1.PatientFile{
+		Id:                  row.ID.String(),
+		TherapistId:         row.TherapistID.String(),
+		ModalityId:          row.ModalityID.String(),
+		ModalityCode:        modalityCode,
+		WorkingAlias:        row.WorkingAlias,
+		ProcessType:         toProtoProcessType(row.ProcessType),
+		IsProcessClosed:     row.IsProcessClosed,
+		HasRecordingConsent: row.HasRecordingConsent,
+		CreatedAt:           timestamppb.New(row.CreatedAt),
+		UpdatedAt:           timestamppb.New(row.UpdatedAt),
+	}
+	if row.PatientID.Valid {
+		resp.PatientId = uuid.UUID(row.PatientID.Bytes).String()
+	}
+	if row.InitialComplaint != nil {
+		resp.InitialComplaint = *row.InitialComplaint
+	}
+	if row.PrivateTherapistNotes != nil {
+		resp.PrivateTherapistNotes = *row.PrivateTherapistNotes
+	}
+	if row.PatientFirstName != nil {
+		resp.PatientFirstName = *row.PatientFirstName
+	}
+	if row.PatientLastName != nil {
+		resp.PatientLastName = *row.PatientLastName
+	}
+	if row.PatientLanguageCode != nil {
+		resp.PatientLanguageCode = *row.PatientLanguageCode
+	}
+	return resp
+}
+
 func toProtoPatientFile(pf db.PatientFile, modalityCode string) *clinicalv1.PatientFile {
 	resp := &clinicalv1.PatientFile{
 		Id:                  pf.ID.String(),
