@@ -66,6 +66,13 @@ SELECT COUNT(*) FROM patient_files
 WHERE therapist_id = $1 AND deleted_at IS NULL;
 
 -- name: UpdatePatientFile :one
+-- Mutates only the therapist-editable kartoteka fields. modality_id is
+-- intentionally NOT here: sessions/reports were analyzed under the
+-- modality picked at create time, and silently swapping it would
+-- re-frame past clinical work. See PatientFile.modality_id in
+-- clinical.proto. process_type follows the same logic.
+-- Patient-user fields (first_name/last_name/language_code) live in
+-- patient_users.sql::UpdatePatientUser.
 UPDATE patient_files SET
   working_alias = COALESCE(NULLIF($2, ''), working_alias),
   initial_complaint = NULLIF($3, ''),

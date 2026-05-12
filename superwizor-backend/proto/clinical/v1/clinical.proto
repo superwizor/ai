@@ -56,8 +56,14 @@ message PatientFile {
     string id = 1;
     string therapist_id = 2;
     string patient_id = 3;
+    // Modality is set at CreatePatientFile time and is intentionally
+    // immutable afterwards — sessions/reports attached to this kartoteka
+    // were analyzed under this modality's prompts and switching mid-process
+    // would silently re-frame past clinical work. Flutter should gray out
+    // the modality picker once the kartoteka exists. If a therapist picks
+    // wrong, the path is DeletePatientFile + recreate.
     string modality_id = 4;
-    string modality_code = 5; // resolved
+    string modality_code = 5; // resolved system_code from modalities table
     string working_alias = 6;
     ProcessType process_type = 7;
     string initial_complaint = 8;
@@ -115,6 +121,14 @@ message ListPatientFilesResponse {
     string next_page_token = 2;
 }
 
+// UpdatePatientFileRequest — therapist-editable fields on a kartoteka.
+// Deliberately excluded:
+//   - modality_id / modality_code: immutable after create (see PatientFile.modality_id)
+//   - therapist_id / patient_id: ownership is established at create time
+//   - has_recording_consent / consent_given_at: separate consent flow
+//   - process_type: structural decision, treated like modality
+// Patient-user fields (first_name, last_name, language_code) live on
+// UpdatePatientUserRequest — separate RPC.
 message UpdatePatientFileRequest {
     string patient_file_id = 1;
     string working_alias = 2;
