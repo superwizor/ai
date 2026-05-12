@@ -7,8 +7,10 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countPatientFilesByTherapist = `-- name: CountPatientFilesByTherapist :one
@@ -25,14 +27,15 @@ func (q *Queries) CountPatientFilesByTherapist(ctx context.Context, therapistID 
 
 const createPatientFile = `-- name: CreatePatientFile :one
 INSERT INTO patient_files (
-  therapist_id, modality_id, working_alias,
+  therapist_id, patient_id, modality_id, working_alias,
   process_type, initial_complaint, has_recording_consent
-) VALUES ($1, $2, $3, $4, $5, $6)
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at
 `
 
 type CreatePatientFileParams struct {
 	TherapistID         uuid.UUID   `json:"therapist_id"`
+	PatientID           pgtype.UUID `json:"patient_id"`
 	ModalityID          uuid.UUID   `json:"modality_id"`
 	WorkingAlias        string      `json:"working_alias"`
 	ProcessType         ProcessType `json:"process_type"`
@@ -40,9 +43,14 @@ type CreatePatientFileParams struct {
 	HasRecordingConsent bool        `json:"has_recording_consent"`
 }
 
+// patient_id is the FK to the paired users row (role='PATIENT'),
+// created by clinical-svc.CreatePatientFile handler immediately
+// before this insert. The handler runs both in one transaction so
+// patient_file never points at a missing user.
 func (q *Queries) CreatePatientFile(ctx context.Context, arg CreatePatientFileParams) (PatientFile, error) {
 	row := q.db.QueryRow(ctx, createPatientFile,
 		arg.TherapistID,
+		arg.PatientID,
 		arg.ModalityID,
 		arg.WorkingAlias,
 		arg.ProcessType,
@@ -76,6 +84,8 @@ SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, pr
 WHERE id = $1 AND deleted_at IS NULL
 `
 
+// Kept for code paths that don't need user fields (e.g. internal
+// authz/ownership checks). External callers use GetPatientFileWithUser.
 func (q *Queries) GetPatientFile(ctx context.Context, id uuid.UUID) (PatientFile, error) {
 	row := q.db.QueryRow(ctx, getPatientFile, id)
 	var i PatientFile
@@ -96,6 +106,70 @@ func (q *Queries) GetPatientFile(ctx context.Context, id uuid.UUID) (PatientFile
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getPatientFileWithUser = `-- name: GetPatientFileWithUser :one
+SELECT
+  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at,
+  u.first_name  AS patient_first_name,
+  u.last_name   AS patient_last_name,
+  u.ui_language AS patient_language_code
+FROM patient_files pf
+LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
+WHERE pf.id = $1 AND pf.deleted_at IS NULL
+`
+
+type GetPatientFileWithUserRow struct {
+	ID                    uuid.UUID          `json:"id"`
+	TherapistID           uuid.UUID          `json:"therapist_id"`
+	PatientID             pgtype.UUID        `json:"patient_id"`
+	RelationID            pgtype.UUID        `json:"relation_id"`
+	ModalityID            uuid.UUID          `json:"modality_id"`
+	WorkingAlias          string             `json:"working_alias"`
+	ProcessType           ProcessType        `json:"process_type"`
+	InitialComplaint      *string            `json:"initial_complaint"`
+	IsProcessClosed       bool               `json:"is_process_closed"`
+	HasRecordingConsent   bool               `json:"has_recording_consent"`
+	ConsentGivenAt        pgtype.Timestamptz `json:"consent_given_at"`
+	FirstConsultationAt   pgtype.Timestamptz `json:"first_consultation_at"`
+	PrivateTherapistNotes *string            `json:"private_therapist_notes"`
+	CreatedAt             time.Time          `json:"created_at"`
+	UpdatedAt             time.Time          `json:"updated_at"`
+	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
+	PatientFirstName      *string            `json:"patient_first_name"`
+	PatientLastName       *string            `json:"patient_last_name"`
+	PatientLanguageCode   *string            `json:"patient_language_code"`
+}
+
+// Returns the patient_file plus the JOINed user fields used in the
+// proto response. LEFT JOIN because patient_id may be NULL after
+// DeletePatientUser (FK SET NULL, see migration 000013). NULL user
+// columns are emitted as empty strings by the proto mapper.
+func (q *Queries) GetPatientFileWithUser(ctx context.Context, id uuid.UUID) (GetPatientFileWithUserRow, error) {
+	row := q.db.QueryRow(ctx, getPatientFileWithUser, id)
+	var i GetPatientFileWithUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.TherapistID,
+		&i.PatientID,
+		&i.RelationID,
+		&i.ModalityID,
+		&i.WorkingAlias,
+		&i.ProcessType,
+		&i.InitialComplaint,
+		&i.IsProcessClosed,
+		&i.HasRecordingConsent,
+		&i.ConsentGivenAt,
+		&i.FirstConsultationAt,
+		&i.PrivateTherapistNotes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.PatientFirstName,
+		&i.PatientLastName,
+		&i.PatientLanguageCode,
 	)
 	return i, err
 }
@@ -162,6 +236,87 @@ func (q *Queries) ListPatientFilesByTherapist(ctx context.Context, arg ListPatie
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPatientFilesByTherapistWithUser = `-- name: ListPatientFilesByTherapistWithUser :many
+SELECT
+  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at,
+  u.first_name  AS patient_first_name,
+  u.last_name   AS patient_last_name,
+  u.ui_language AS patient_language_code
+FROM patient_files pf
+LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
+WHERE pf.therapist_id = $1 AND pf.deleted_at IS NULL
+ORDER BY pf.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListPatientFilesByTherapistWithUserParams struct {
+	TherapistID uuid.UUID `json:"therapist_id"`
+	Limit       int32     `json:"limit"`
+	Offset      int32     `json:"offset"`
+}
+
+type ListPatientFilesByTherapistWithUserRow struct {
+	ID                    uuid.UUID          `json:"id"`
+	TherapistID           uuid.UUID          `json:"therapist_id"`
+	PatientID             pgtype.UUID        `json:"patient_id"`
+	RelationID            pgtype.UUID        `json:"relation_id"`
+	ModalityID            uuid.UUID          `json:"modality_id"`
+	WorkingAlias          string             `json:"working_alias"`
+	ProcessType           ProcessType        `json:"process_type"`
+	InitialComplaint      *string            `json:"initial_complaint"`
+	IsProcessClosed       bool               `json:"is_process_closed"`
+	HasRecordingConsent   bool               `json:"has_recording_consent"`
+	ConsentGivenAt        pgtype.Timestamptz `json:"consent_given_at"`
+	FirstConsultationAt   pgtype.Timestamptz `json:"first_consultation_at"`
+	PrivateTherapistNotes *string            `json:"private_therapist_notes"`
+	CreatedAt             time.Time          `json:"created_at"`
+	UpdatedAt             time.Time          `json:"updated_at"`
+	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
+	PatientFirstName      *string            `json:"patient_first_name"`
+	PatientLastName       *string            `json:"patient_last_name"`
+	PatientLanguageCode   *string            `json:"patient_language_code"`
+}
+
+func (q *Queries) ListPatientFilesByTherapistWithUser(ctx context.Context, arg ListPatientFilesByTherapistWithUserParams) ([]ListPatientFilesByTherapistWithUserRow, error) {
+	rows, err := q.db.Query(ctx, listPatientFilesByTherapistWithUser, arg.TherapistID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPatientFilesByTherapistWithUserRow
+	for rows.Next() {
+		var i ListPatientFilesByTherapistWithUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TherapistID,
+			&i.PatientID,
+			&i.RelationID,
+			&i.ModalityID,
+			&i.WorkingAlias,
+			&i.ProcessType,
+			&i.InitialComplaint,
+			&i.IsProcessClosed,
+			&i.HasRecordingConsent,
+			&i.ConsentGivenAt,
+			&i.FirstConsultationAt,
+			&i.PrivateTherapistNotes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.PatientFirstName,
+			&i.PatientLastName,
+			&i.PatientLanguageCode,
 		); err != nil {
 			return nil, err
 		}
