@@ -255,9 +255,9 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 	})
 
 	// We already have all the inputs needed to populate the response;
-	// no second SELECT required. ConsentGivenAt / FirstConsultationAt
-	// stay zero — the insert didn't set them and the standard mapper
-	// would also omit them via timestamppb.Valid checks.
+	// no second SELECT required. FirstConsultationAt stays zero —
+	// the insert didn't set it. ConsentGivenAt is set by the SQL CASE
+	// when has_recording_consent=true and emitted by the mapper.
 	resp := toProtoPatientFile(pf, modality.SystemCode)
 	resp.PatientFirstName = req.PatientFirstName
 	resp.PatientLastName = req.PatientLastName
@@ -645,6 +645,16 @@ func toProtoPatientFileFromJoinRow(row db.GetPatientFileWithUserRow, modalityCod
 	if row.PatientLanguageCode != nil {
 		resp.PatientLanguageCode = *row.PatientLanguageCode
 	}
+	// Nullable timestamps: pgtype.Timestamptz emits Valid=false when the
+	// DB column is NULL (consent never given, or consent_given_at not
+	// backfilled on a pre-fix row). Leave the proto field zero in that
+	// case so Flutter's timestamppb.Valid checks treat it as absent.
+	if row.ConsentGivenAt.Valid {
+		resp.ConsentGivenAt = timestamppb.New(row.ConsentGivenAt.Time)
+	}
+	if row.FirstConsultationAt.Valid {
+		resp.FirstConsultationAt = timestamppb.New(row.FirstConsultationAt.Time)
+	}
 	return resp
 }
 
@@ -686,6 +696,13 @@ func toProtoPatientFileFromListJoinRow(row db.ListPatientFilesByTherapistWithUse
 	if row.PatientLanguageCode != nil {
 		resp.PatientLanguageCode = *row.PatientLanguageCode
 	}
+	// See toProtoPatientFileFromJoinRow for the Valid-check rationale.
+	if row.ConsentGivenAt.Valid {
+		resp.ConsentGivenAt = timestamppb.New(row.ConsentGivenAt.Time)
+	}
+	if row.FirstConsultationAt.Valid {
+		resp.FirstConsultationAt = timestamppb.New(row.FirstConsultationAt.Time)
+	}
 	return resp
 }
 
@@ -710,6 +727,13 @@ func toProtoPatientFile(pf db.PatientFile, modalityCode string) *clinicalv1.Pati
 	}
 	if pf.PrivateTherapistNotes != nil {
 		resp.PrivateTherapistNotes = *pf.PrivateTherapistNotes
+	}
+	// See toProtoPatientFileFromJoinRow for the Valid-check rationale.
+	if pf.ConsentGivenAt.Valid {
+		resp.ConsentGivenAt = timestamppb.New(pf.ConsentGivenAt.Time)
+	}
+	if pf.FirstConsultationAt.Valid {
+		resp.FirstConsultationAt = timestamppb.New(pf.FirstConsultationAt.Time)
 	}
 	return resp
 }

@@ -28,8 +28,12 @@ func (q *Queries) CountPatientFilesByTherapist(ctx context.Context, therapistID 
 const createPatientFile = `-- name: CreatePatientFile :one
 INSERT INTO patient_files (
   therapist_id, patient_id, modality_id, working_alias,
-  process_type, initial_complaint, has_recording_consent
-) VALUES ($1, $2, $3, $4, $5, $6, $7)
+  process_type, initial_complaint, has_recording_consent,
+  consent_given_at
+) VALUES (
+  $1, $2, $3, $4, $5, $6, $7,
+  CASE WHEN $7::boolean THEN now() ELSE NULL END
+)
 RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at
 `
 
@@ -47,6 +51,13 @@ type CreatePatientFileParams struct {
 // created by clinical-svc.CreatePatientFile handler immediately
 // before this insert. The handler runs both in one transaction so
 // patient_file never points at a missing user.
+//
+// consent_given_at is set to now() at insert time iff has_recording_consent
+// is true. This stamps when the therapist confirmed consent in our system —
+// the boolean alone gives no audit trail, and RODO inspections / supervisor
+// audits routinely ask "when was consent given?". If consent is later
+// revoked (separate flow, not implemented yet), the timestamp stays as
+// the historical record of when it was originally granted.
 func (q *Queries) CreatePatientFile(ctx context.Context, arg CreatePatientFileParams) (PatientFile, error) {
 	row := q.db.QueryRow(ctx, createPatientFile,
 		arg.TherapistID,

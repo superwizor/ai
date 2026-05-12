@@ -3,10 +3,21 @@
 -- created by clinical-svc.CreatePatientFile handler immediately
 -- before this insert. The handler runs both in one transaction so
 -- patient_file never points at a missing user.
+--
+-- consent_given_at is set to now() at insert time iff has_recording_consent
+-- is true. This stamps when the therapist confirmed consent in our system —
+-- the boolean alone gives no audit trail, and RODO inspections / supervisor
+-- audits routinely ask "when was consent given?". If consent is later
+-- revoked (separate flow, not implemented yet), the timestamp stays as
+-- the historical record of when it was originally granted.
 INSERT INTO patient_files (
   therapist_id, patient_id, modality_id, working_alias,
-  process_type, initial_complaint, has_recording_consent
-) VALUES ($1, $2, $3, $4, $5, $6, $7)
+  process_type, initial_complaint, has_recording_consent,
+  consent_given_at
+) VALUES (
+  $1, $2, $3, $4, $5, $6, $7,
+  CASE WHEN $7::boolean THEN now() ELSE NULL END
+)
 RETURNING *;
 
 -- name: GetPatientFile :one

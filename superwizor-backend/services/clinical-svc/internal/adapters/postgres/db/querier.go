@@ -18,6 +18,13 @@ type Querier interface {
 	// created by clinical-svc.CreatePatientFile handler immediately
 	// before this insert. The handler runs both in one transaction so
 	// patient_file never points at a missing user.
+	//
+	// consent_given_at is set to now() at insert time iff has_recording_consent
+	// is true. This stamps when the therapist confirmed consent in our system —
+	// the boolean alone gives no audit trail, and RODO inspections / supervisor
+	// audits routinely ask "when was consent given?". If consent is later
+	// revoked (separate flow, not implemented yet), the timestamp stays as
+	// the historical record of when it was originally granted.
 	CreatePatientFile(ctx context.Context, arg CreatePatientFileParams) (PatientFile, error)
 	// Patient user CRUD — operates on rows in `users` with role='PATIENT'.
 	// Created/edited from clinical-svc.CreatePatientFile + UpdatePatientUser
