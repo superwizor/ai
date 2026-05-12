@@ -36,13 +36,13 @@ func (s *Server) UpdateSpeakerLabels(ctx context.Context, req *clinicalv1.Update
 		}
 	}
 
-	tx, err := s.dbPool.Begin(ctx)
+	tx, err := s.tx.Begin(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	qtx := s.queries.WithTx(tx)
+	qtx := tx.Queries()
 
 	// 1. Get latest transcript dla sesji
 	transcript, err := qtx.GetTranscriptForRebuild(ctx, sessionID)
@@ -80,7 +80,7 @@ func (s *Server) UpdateSpeakerLabels(ctx context.Context, req *clinicalv1.Update
 			// Zachowaj poprzedni label z DB — nie wszystkie speakers muszą być w mapping.
 			// Brak wiersza / błąd skanu zostawia newLabel jako "" — segment nadal trafi
 			// do nowego blobu i zostanie nadpisany jeśli kiedyś dotrze update.
-			row := tx.QueryRow(ctx,
+			row := tx.Raw().QueryRow(ctx,
 				"SELECT speaker_label FROM transcript_segments WHERE transcript_id = $1 AND speaker_tag = $2 LIMIT 1",
 				transcript.TranscriptID, seg.SpeakerTag)
 			_ = row.Scan(&newLabel)

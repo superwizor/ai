@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -33,18 +34,98 @@ type SessionEventPublisher interface {
 	PublishSessionDeleted(ctx context.Context, sessionID, therapistID string) error
 }
 
+// TxOpener abstracts "start a transaction, give me a Querier scoped to
+// it." Production wires this to pgxpool+*db.Queries; tests pass a fake
+// that records the Commit/Rollback calls. Returning Querier (interface)
+// rather than *db.Queries keeps the seam fully mockable. Handlers that
+// don't open transactions (Update*, simple Delete*) don't touch this —
+// they go through Server.queries directly.
+type TxOpener interface {
+	Begin(ctx context.Context) (Tx, error)
+}
+
+// Tx is the transactional handle TxOpener.Begin returns. Queries()
+// gives the tx-scoped Querier; Commit/Rollback do exactly what they
+// say on the tin. Idiomatic pgx semantics — Rollback after a successful
+// Commit is a no-op error that callers ignore with a deferred call.
+//
+// Raw exposes the underlying pgx.Tx for the few places that still need
+// raw SQL (today: labels.go's transcript_segments speaker-label lookup
+// — no sqlc query exists for that one-off SELECT, and creating one
+// just to satisfy the abstraction would be ceremony). Tests that don't
+// exercise the labels handler can return nil from Raw.
+type Tx interface {
+	Queries() db.Querier
+	Raw() pgx.Tx
+	Commit(ctx context.Context) error
+	Rollback(ctx context.Context) error
+}
+
+// pgxTxOpener is the production wiring: open a pgx tx on the pool and
+// hand back a Querier scoped to it via sqlc's WithTx.
+type pgxTxOpener struct {
+	pool *pgxpool.Pool
+	base *db.Queries
+}
+
+func (p *pgxTxOpener) Begin(ctx context.Context) (Tx, error) {
+	tx, err := p.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &pgxTx{tx: tx, q: p.base.WithTx(tx)}, nil
+}
+
+type pgxTx struct {
+	tx pgx.Tx
+	q  *db.Queries
+}
+
+func (t *pgxTx) Queries() db.Querier              { return t.q }
+func (t *pgxTx) Raw() pgx.Tx                      { return t.tx }
+func (t *pgxTx) Commit(ctx context.Context) error { return t.tx.Commit(ctx) }
+func (t *pgxTx) Rollback(ctx context.Context) error {
+	return t.tx.Rollback(ctx)
+}
+
 type Server struct {
 	clinicalv1.UnimplementedClinicalServiceServer
-	dbPool   *pgxpool.Pool
-	queries  *db.Queries
+	queries  db.Querier
+	tx       TxOpener
 	identity identityv1.IdentityServiceClient
 	crypto   cryptobox.CryptoBox
 	pubsub   SessionEventPublisher
 	version  string
 }
 
+// NewServer wires the production gRPC server: pgxpool + concrete sqlc
+// Queries get wrapped behind the Querier+TxOpener interfaces so the
+// handler code never sees the pool directly. Tests construct Server
+// fields directly via NewServerWithDeps.
 func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
-	return &Server{dbPool: dbPool, queries: queries, identity: identity, crypto: crypto, pubsub: pubsub, version: version}
+	return &Server{
+		queries:  queries,
+		tx:       &pgxTxOpener{pool: dbPool, base: queries},
+		identity: identity,
+		crypto:   crypto,
+		pubsub:   pubsub,
+		version:  version,
+	}
+}
+
+// NewServerWithDeps is the test-friendly constructor — every interface
+// dependency is explicit so tests can inject fakes. Production code
+// uses NewServer; this exists purely to keep test files honest about
+// what they're stubbing.
+func NewServerWithDeps(queries db.Querier, tx TxOpener, identity identityv1.IdentityServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
+	return &Server{
+		queries:  queries,
+		tx:       tx,
+		identity: identity,
+		crypto:   crypto,
+		pubsub:   pubsub,
+		version:  version,
+	}
 }
 
 func (s *Server) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*clinicalv1.HealthCheckResponse, error) {
@@ -120,12 +201,12 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 
 	// Run user-insert + patient_file-insert in one tx so we never end
 	// up with an orphan user (insert succeeded) without a kartoteka.
-	tx, err := s.dbPool.Begin(ctx)
+	tx, err := s.tx.Begin(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "begin tx: %v", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }() // no-op on commit
-	qtx := s.queries.WithTx(tx)
+	qtx := tx.Queries()
 
 	patientUserID, err := qtx.CreatePatientUser(ctx, db.CreatePatientUserParams{
 		FirstName:  req.PatientFirstName,
@@ -468,12 +549,12 @@ func (s *Server) DeletePatientFile(ctx context.Context, req *clinicalv1.DeletePa
 	// deleting the user first would just blank the patient_id on
 	// the kartoteka. Deleting the kartoteka first then the user
 	// avoids that race entirely.
-	tx, err := s.dbPool.Begin(ctx)
+	tx, err := s.tx.Begin(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "begin tx: %v", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := s.queries.WithTx(tx)
+	qtx := tx.Queries()
 
 	rows, err := qtx.HardDeletePatientFile(ctx, db.HardDeletePatientFileParams{
 		ID:          id,
