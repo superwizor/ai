@@ -434,6 +434,12 @@ func TestFullSession_HappyPath(t *testing.T) {
 		InitialComplaint:    "E2E test complaint",
 		HasRecordingConsent: true,
 		IdempotencyKey:      fmt.Sprintf("e2e-create-patient-%d", runID),
+		// Patient-user fields became required in c74fa9d (migration 000013).
+		// Without these clinical-svc returns InvalidArgument before even
+		// attempting the insert.
+		PatientFirstName:    "E2E",
+		PatientLastName:     "Patient",
+		PatientLanguageCode: "pl",
 	}
 	patient, err := clinicalClient.CreatePatientFile(ctx, patientReq)
 	require.NoError(t, err, "CreatePatientFile")
