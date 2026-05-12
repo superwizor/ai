@@ -65,8 +65,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
@@ -594,7 +596,54 @@ func TestFullSession_HappyPath(t *testing.T) {
 		// runs in parallel with our PG poll, so it's usually already
 		// there; cold start can take a few seconds).
 		assertFirestoreSessionStateDone(t, ctx, cfg.projectID, complete.SessionId, firebaseUID)
-		t.Logf("✓ FULL HAPPY PATH PASSED (incl. Firestore mirror)")
+
+		// --------------------------------------------------------------
+		// Step 9 — RODO cascade verification
+		// --------------------------------------------------------------
+		// Now that we have a real kartoteka with a real session + real
+		// transcript + real reports, exercise DeletePatientUser and
+		// verify the cascade chain (added in 3fd4f20):
+		//   patient_user → patient_files (000014 CASCADE) → sessions
+		//   → transcripts → reports → hitop_measurements
+		//
+		// After delete:
+		//   - GetPatientFile must return NotFound
+		//   - GetSessionDetails for the just-completed session must
+		//     also NotFound (proves the cascade reached sessions)
+		//
+		// This subsumes what the lifecycle suite tests at the RPC layer
+		// but with real downstream data — the only place we prove the
+		// cascade actually wipes a session that has STT/LLM artifacts.
+		t.Log("\n═══ Step 9/9: DeletePatientUser cascade verification ═══")
+		_, delErr := clinicalClient.DeletePatientUser(ctx, &clinicalv1.DeletePatientUserRequest{
+			PatientFileId: patient.Id,
+		})
+		require.NoError(t, delErr, "DeletePatientUser")
+		t.Logf("✓ DeletePatientUser returned OK (Empty)")
+
+		// patient_file: NotFound
+		_, gpfErr := clinicalClient.GetPatientFile(ctx, &clinicalv1.GetPatientFileRequest{
+			PatientFileId: patient.Id,
+		})
+		require.Error(t, gpfErr, "GetPatientFile must NotFound after cascade")
+		if st, ok := status.FromError(gpfErr); ok {
+			assert.Equal(t, codes.NotFound, st.Code(),
+				"kartoteka must be unreachable after DeletePatientUser cascade")
+		}
+
+		// session: NotFound (the real cascade test — sessions live
+		// behind patient_files; if the FK didn't cascade properly the
+		// session row would still be readable).
+		_, gsdErr := clinicalClient.GetSessionDetails(ctx, &clinicalv1.GetSessionDetailsRequest{
+			SessionId: complete.SessionId,
+		})
+		require.Error(t, gsdErr, "GetSessionDetails must NotFound after cascade")
+		if st, ok := status.FromError(gsdErr); ok {
+			assert.Equal(t, codes.NotFound, st.Code(),
+				"session must be unreachable after DeletePatientUser cascade")
+		}
+		t.Logf("✓ Cascade verified: kartoteka + session both gone")
+		t.Logf("✓ FULL HAPPY PATH PASSED (incl. Firestore mirror + RODO cascade)")
 	case "ERRORED", "FAILED":
 		// Pre-flight audio validation already rejected obviously-bad
 		// inputs, so a FAILED here is a real pipeline issue (Vertex AI
