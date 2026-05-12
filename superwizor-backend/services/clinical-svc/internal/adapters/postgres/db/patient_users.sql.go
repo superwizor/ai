@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createPatientUser = `-- name: CreatePatientUser :one
@@ -95,6 +96,40 @@ func (q *Queries) GetTherapistUILanguage(ctx context.Context, id uuid.UUID) (str
 	var ui_language string
 	err := row.Scan(&ui_language)
 	return ui_language, err
+}
+
+const listSessionIDsForPatient = `-- name: ListSessionIDsForPatient :many
+SELECT s.id
+FROM sessions s
+JOIN patient_files pf ON pf.id = s.patient_file_id
+WHERE pf.patient_id = $1 AND pf.deleted_at IS NULL AND s.deleted_at IS NULL
+`
+
+// Pre-fetched before DeletePatientUser runs so the handler can fan
+// out one session.deleted Pub/Sub event per session that will be
+// cascade-deleted by the user row going away (migration 000014).
+// JOIN-based because sessions don't reference users directly — they
+// hang off patient_files which hang off users.
+// After the cascade the rows are gone; we'd have nothing to publish
+// from a post-delete query.
+func (q *Queries) ListSessionIDsForPatient(ctx context.Context, patientID pgtype.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listSessionIDsForPatient, patientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updatePatientUser = `-- name: UpdatePatientUser :one

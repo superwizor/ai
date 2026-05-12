@@ -336,14 +336,32 @@ func (s *Server) UpdatePatientUser(ctx context.Context, req *clinicalv1.UpdatePa
 	return toProtoPatientFileFromJoinRow(row, ""), nil
 }
 
-// DeletePatientUser drops just the paired users row. The kartoteka
-// stays — its patient_id becomes NULL via the SET NULL FK constraint
-// added in migration 000013. Therapist may use this when scrubbing
-// PII while keeping clinical history.
+// DeletePatientUser performs RODO-style full erasure for a patient.
+// Deletes the users row; migration 000014 makes patient_files.patient_id
+// CASCADE, so every kartoteka under this patient — plus its sessions,
+// transcripts, reports, hitop measurements, audio_uploads,
+// rag_memories — goes away in one statement.
 //
-// Re-reads + returns the refreshed PatientFile with empty user
-// fields so Flutter can replace the displayed PII in one hop.
-func (s *Server) DeletePatientUser(ctx context.Context, req *clinicalv1.DeletePatientUserRequest) (*clinicalv1.PatientFile, error) {
+// Identified by patient_file_id (the entry point the therapist UI has).
+// Authz: standard therapist-ownership check on the kartoteka. Since one
+// patient can technically have multiple patient_files under different
+// therapists, we ONLY use the request's kartoteka to find the
+// patient_id; the cascade then takes out every patient_file under that
+// user, even those owned by other therapists. This is acceptable
+// because:
+//   - in MVP each patient has exactly one therapist (1:1 patient_file)
+//   - the action is gated by RODO right-to-erasure — once a patient
+//     asks to be forgotten, all their data goes, regardless of which
+//     therapist's kartoteka holds it
+//
+// Cleanup steps:
+//   1. Pre-fetch every session_id that will be cascade-deleted, so
+//      we can fan out session.deleted Pub/Sub events afterwards.
+//      The cascade itself emits no application signal.
+//   2. DELETE FROM users — cascade does the rest server-side.
+//   3. Publish session.deleted events (best-effort; failures don't
+//      block — PG is authoritative).
+func (s *Server) DeletePatientUser(ctx context.Context, req *clinicalv1.DeletePatientUserRequest) (*emptypb.Empty, error) {
 	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
 	if !ok || therapistIDStr == "" {
 		return nil, status.Error(codes.Unauthenticated, "missing user ID in context")
@@ -366,24 +384,37 @@ func (s *Server) DeletePatientUser(ctx context.Context, req *clinicalv1.DeletePa
 		return nil, status.Error(codes.NotFound, "patient file not found")
 	}
 	if !pf.PatientID.Valid {
-		// Already deleted (idempotent path) — re-emit current state
-		// without trying to delete again.
-		row, err := s.queries.GetPatientFileWithUser(ctx, pfID)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "refetch: %v", err)
-		}
-		return toProtoPatientFileFromJoinRow(row, ""), nil
+		// No user attached to wipe. Treat as no-op success — the
+		// kartoteka itself can still be removed via DeletePatientFile.
+		return &emptypb.Empty{}, nil
+	}
+	patientUserID := uuid.UUID(pf.PatientID.Bytes)
+
+	// Pre-fetch session IDs under this patient (across all their
+	// kartoteki) so we can fan out session.deleted events after the
+	// cascade fires.
+	sessionIDs, err := s.queries.ListSessionIDsForPatient(ctx, pf.PatientID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list patient sessions: %v", err)
 	}
 
-	if _, err := s.queries.DeletePatientUser(ctx, uuid.UUID(pf.PatientID.Bytes)); err != nil {
+	// Single DELETE — FK CASCADE (000014) handles everything below.
+	if _, err := s.queries.DeletePatientUser(ctx, patientUserID); err != nil {
 		return nil, status.Errorf(codes.Internal, "delete patient user: %v", err)
 	}
 
-	row, err := s.queries.GetPatientFileWithUser(ctx, pfID)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "refetch after delete: %v", err)
+	// Fan out cleanup events for the cascaded sessions. Independent
+	// publish per session — one failure doesn't block the rest.
+	if s.pubsub != nil {
+		for _, sid := range sessionIDs {
+			if err := s.pubsub.PublishSessionDeleted(ctx, sid.String(), therapistID.String()); err != nil {
+				slog.Warn("publish session.deleted (from patient user delete) failed",
+					"session_id", sid, "patient_user_id", patientUserID, "error", err)
+			}
+		}
 	}
-	return toProtoPatientFileFromJoinRow(row, ""), nil
+
+	return &emptypb.Empty{}, nil
 }
 
 // DeletePatientFile hard-deletes a kartoteka (since migration 000012):

@@ -44,3 +44,16 @@ DELETE FROM users WHERE id = $1 AND role = 'PATIENT';
 SELECT COALESCE(ui_language, '') AS ui_language
 FROM users
 WHERE id = $1;
+
+-- name: ListSessionIDsForPatient :many
+-- Pre-fetched before DeletePatientUser runs so the handler can fan
+-- out one session.deleted Pub/Sub event per session that will be
+-- cascade-deleted by the user row going away (migration 000014).
+-- JOIN-based because sessions don't reference users directly — they
+-- hang off patient_files which hang off users.
+-- After the cascade the rows are gone; we'd have nothing to publish
+-- from a post-delete query.
+SELECT s.id
+FROM sessions s
+JOIN patient_files pf ON pf.id = s.patient_file_id
+WHERE pf.patient_id = $1 AND pf.deleted_at IS NULL AND s.deleted_at IS NULL;

@@ -22,7 +22,12 @@ service ClinicalService {
     // SEPARATE from working_alias / initial_complaint edits — therapist
     // can update one without touching the other.
     rpc UpdatePatientUser(UpdatePatientUserRequest) returns (PatientFile);
-    rpc DeletePatientUser(DeletePatientUserRequest) returns (PatientFile);
+    // RODO-style erasure on the patient axis. CASCADEs through every
+    // patient_file referencing this user (migration 000014), and from
+    // there through sessions / transcripts / reports / etc. Publishes
+    // one session.deleted Pub/Sub event per cascaded session for
+    // Firestore + inbox cleanup. Nothing left to return → Empty.
+    rpc DeletePatientUser(DeletePatientUserRequest) returns (google.protobuf.Empty);
 
     rpc ListModalities(google.protobuf.Empty) returns (ListModalitiesResponse);
     rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
@@ -133,11 +138,17 @@ message UpdatePatientUserRequest {
     string language_code   = 4;
 }
 
-// DeletePatientUser — drops the paired users row but keeps the
-// patient_file (its patient_id FK is SET NULL via migration 000013).
-// Use this when the therapist wants to scrub PII without losing the
-// clinical record. Returns the refreshed PatientFile with empty
-// patient_first_name/last_name/language_code.
+// DeletePatientUser — RODO-style erasure of a patient. The user row
+// is hard-deleted; every patient_file that references it cascades
+// (migration 000014 flipped the FK to ON DELETE CASCADE), taking
+// sessions / transcripts / reports / audio_uploads with them. The
+// handler pre-fetches session IDs and publishes session.deleted
+// Pub/Sub events so notification-svc can wipe Firestore mirrors +
+// inbox notifications.
+//
+// Identified by patient_file_id rather than patient_id so the handler
+// can do the existing therapist-ownership authz on the parent
+// kartoteka. patient_user rows have no auth metadata of their own.
 message DeletePatientUserRequest {
     string patient_file_id = 1;
 }
