@@ -110,9 +110,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                   patientFileId: widget.patientFileId,
                   documentVersion: 'v1.0',
                 );
-                Navigator.of(ctx).pop(true);
+                if (ctx.mounted) Navigator.of(ctx).pop(true);
               } catch (e) {
-                Navigator.of(ctx).pop(false);
+                if (ctx.mounted) Navigator.of(ctx).pop(false);
               }
             },
           ),
@@ -124,10 +124,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       );
       if (granted != true && mounted) {
         Navigator.of(context).pop();
+      } else if (granted == true && mounted) {
+        await _start();
       }
       return;
     }
-    // Zatrzymujemy się w stanie 'idle' — użytkownik musi sam kliknąć Start.
+    // Auto-start recording
+    await _start();
   }
 
   /// Pre-flight permission check before kicking off the recorder.

@@ -25,17 +25,11 @@ class EuphireRecordingIndicator extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          EuphireWaveformIndicator(isRecording: isRecording, amplitudeStream: amplitudeStream),
-          const SizedBox(height: 48),
-          Text(
-            formattedDuration,
-            style: theme.textTheme.displayLarge?.copyWith(
-              color: theme.colorScheme.secondary,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 2,
-            ),
+          EuphireWaveformIndicator(
+            isRecording: isRecording,
+            amplitudeStream: amplitudeStream,
+            formattedDuration: formattedDuration,
           ),
-
           if (errorMessage != null) ...[
             const SizedBox(height: 24),
             Container(

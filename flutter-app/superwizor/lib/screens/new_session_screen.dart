@@ -254,7 +254,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
         patientFileId: widget.patientFileId,
         therapistId: widget.therapistId,
         patientAlias: widget.patientAlias,
-        reportLanguage: _reportLanguage,
+        reportLanguage: 'pl',
       ),
     ));
   }
@@ -533,7 +533,7 @@ class _SecurityBadge extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: const Color(0xFF004D54), // #004D54 per user request
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.1),
@@ -546,23 +546,23 @@ class _SecurityBadge extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+              color: Colors.white.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Center(
+            child: Center(
               child: Icon(
-                Icons.shield_rounded,
-                color: EuphireColors.mist,
-                size: 24,
+                Icons.security_outlined,
+                color: Colors.white.withValues(alpha: 0.85),
+                size: 26,
               ),
             ),
           ),
           const SizedBox(width: 16),
-          Expanded(
+          const Expanded(
             child: Text(
               'Twoje nagrania są chronione szyfrowaniem end-to-end i służą wyłącznie '
               'do analizy AI. Nikt poza Tobą nie ma dostępu do danych.',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Montserrat',
                 fontSize: 14,
                 fontWeight: FontWeight.w500,

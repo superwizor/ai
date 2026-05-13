@@ -138,14 +138,15 @@
 
   "stepper_step1_uploaded": "Audio bezpieczne na naszych serwerach.",
   "stepper_step2_transcribing": "Tworzymy transkrypcję.",
-  "stepper_step3_analyzing": "Sztuczna Inteligencja przygotowuje wnioski kliniczne.",
-  "stepper_step4_done": "Proces zakończony. Przygotowaliśmy Twój raport.",
+  "stepper_step3_analyzing": "Sztuczna Inteligencja przygotowuje wnioski.",
+  "stepper_step4_finalizing": "Składamy informacje w czytelny raport.",
+  "stepper_step5_done": "Gotowe! Wysyłamy wnioski do Ciebie.",
 
   "session_failed_header": "Nie udało się przygotować raportu.",
   "session_failed_body": "Coś poszło nie tak po stronie analizy. Spróbujemy ponownie automatycznie. Jeśli problem się utrzymuje, skontaktuj się z pomocą techniczną.",
   "session_failed_primary": "Skontaktuj się z pomocą.",
 
-  "session_loading": "Transkrypcja przygotowuje się. Możesz wrócić tutaj za chwilę.",
+  "session_loading": "Opracowujemy dla Ciebie raporty i transkrypcje. Możesz tutaj wrócić za chwilę.",
   "session_load_error_header": "Nie udało się pobrać sesji.",
   "session_load_error_body": "Coś nie zadziałało po naszej stronie. Spróbuj ponownie za chwilę.",
 

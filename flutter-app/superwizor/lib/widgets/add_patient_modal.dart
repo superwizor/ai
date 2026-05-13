@@ -83,23 +83,61 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
               labelText: t.addPatient_last_name_label,
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _languageCode,
-              decoration: const InputDecoration(
-                labelText: 'Język raportu AI',
-                labelStyle: TextStyle(color: EuphireColors.mist),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: EuphireColors.mist)),
-                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: EuphireColors.ember)),
+            const SizedBox(height: 16),
+            const Text(
+              'Język raportu AI',
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: EuphireColors.mist,
               ),
-              dropdownColor: EuphireColors.nocturne,
-              style: const TextStyle(fontFamily: 'Montserrat', color: EuphireColors.frostWhite),
-              items: const [
-                DropdownMenuItem(value: 'pl-PL', child: Text('Polski (Domyślny)')),
-                DropdownMenuItem(value: 'en-US', child: Text('Angielski (English)')),
-                DropdownMenuItem(value: 'de-DE', child: Text('Niemiecki (Deutsch)')),
-                DropdownMenuItem(value: 'es-ES', child: Text('Hiszpański (Español)')),
-              ],
-              onChanged: (v) => setState(() => _languageCode = v!),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: EuphireColors.obsidianBlack.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: EuphireColors.mist.withValues(alpha: 0.2)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _languageCode,
+                  isExpanded: true,
+                  dropdownColor: EuphireColors.nocturne,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 16,
+                    color: EuphireColors.frostWhite,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  icon: const Icon(Icons.keyboard_arrow_down, color: EuphireColors.ember),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'pl-PL',
+                      child: Row(
+                        children: [
+                          Text('🇵🇱', style: TextStyle(fontSize: 20)),
+                          SizedBox(width: 12),
+                          Text('Polski (PL)'),
+                        ],
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'en-US',
+                      child: Row(
+                        children: [
+                          Text('🇬🇧', style: TextStyle(fontSize: 20)),
+                          SizedBox(width: 12),
+                          Text('Angielski (ENG)'),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() => _languageCode = v!),
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             _ConsentCheckbox(
