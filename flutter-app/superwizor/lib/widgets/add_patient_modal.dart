@@ -27,6 +27,7 @@ import 'euphire_bottom_sheet.dart';
 import 'euphire_button.dart';
 import 'euphire_text_field.dart';
 import 'modality_sheet.dart';
+import '../constants/modalities.dart';
 
 const String kCurrentDpaVersion = 'dpa-v1-2026-04';
 const String kDpaAssetPath = 'assets/legal/DPA Superwizor AI.md';
@@ -44,12 +45,34 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
   bool _consentGiven = false;
   bool _saving = false;
   String _languageCode = 'pl-PL';
+  late String _modalityCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _modalityCode = ref.read(selectedModalityProvider);
+  }
 
   @override
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
     super.dispose();
+  }
+
+  String _modalityDisplayName(BuildContext context, String code) {
+    final t = AppLocalizations.of(context);
+    switch (code) {
+      case 'UNIV': return t.modality_integrative;
+      case 'CBT': return t.modality_cbt;
+      case 'PSYCHO': return t.modality_psychodynamic;
+      case 'PPT': return t.modality_positive;
+      case 'ST': return t.modality_schema;
+      case 'SYS': return t.modality_systemic;
+      case 'EFT': return t.modality_eft;
+      case 'COACH': return t.modality_coaching;
+      default: return code;
+    }
   }
 
   @override
@@ -83,6 +106,45 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
               labelText: t.addPatient_last_name_label,
             ),
             const SizedBox(height: 16),
+            const Text(
+              'Nurt terapeutyczny (Modalność)',
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: EuphireColors.mist,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: EuphireColors.obsidianBlack.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: EuphireColors.mist.withValues(alpha: 0.2)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _modalityCode,
+                  isExpanded: true,
+                  dropdownColor: EuphireColors.nocturne,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 16,
+                    color: EuphireColors.frostWhite,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  icon: const Icon(Icons.keyboard_arrow_down, color: EuphireColors.ember),
+                  items: kModalities.map((m) {
+                    return DropdownMenuItem(
+                      value: m.code,
+                      child: Text(_modalityDisplayName(context, m.code)),
+                    );
+                  }).toList(),
+                  onChanged: (v) => setState(() => _modalityCode = v!),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
             const Text(
               'Język raportu AI',
@@ -165,8 +227,9 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
   }
 
   void _openDpa() {
+    final title = AppLocalizations.of(context).settings_dpa;
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => const LegalMarkdownScreen(assetPath: kDpaAssetPath),
+      builder: (_) => LegalMarkdownScreen(assetPath: kDpaAssetPath, title: title),
     ));
   }
 
@@ -186,12 +249,11 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
       // Save patient via existing notifier (MVP — backend doesn't
       // accept consent_given_at yet; D9).
       final notifier = ref.read(patientsProvider.notifier);
-      final modalityCode = ref.read(selectedModalityProvider);
       await notifier.addPatient(
         alias: alias,
         firstName: firstName,
         lastName: lastName,
-        modalityCode: modalityCode,
+        modalityCode: _modalityCode,
         languageCode: _languageCode,
       );
 

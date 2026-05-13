@@ -375,11 +375,14 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get stepper_step3_analyzing =>
-      'Sztuczna Inteligencja przygotowuje wnioski kliniczne.';
+      'Sztuczna Inteligencja przygotowuje wnioski.';
 
   @override
-  String get stepper_step4_done =>
-      'Proces zakończony. Przygotowaliśmy Twój raport.';
+  String get stepper_step4_finalizing =>
+      'Składamy informacje w czytelny raport.';
+
+  @override
+  String get stepper_step5_done => 'Gotowe! Wysyłamy wnioski do Ciebie.';
 
   @override
   String get session_failed_header => 'Nie udało się przygotować raportu.';
@@ -393,7 +396,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get session_loading =>
-      'Transkrypcja przygotowuje się. Możesz wrócić tutaj za chwilę.';
+      'Opracowujemy dla Ciebie raporty i transkrypcje. Możesz tutaj wrócić za chwilę.';
 
   @override
   String get session_load_error_header => 'Nie udało się pobrać sesji.';
@@ -538,4 +541,144 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get drawer_delete_account => 'Usuń konto.';
+
+  @override
+  String get settings_title => 'Ustawienia';
+
+  @override
+  String get settings_subtitle => 'DOSTOSUJ SWOJE DOŚWIADCZENIE';
+
+  @override
+  String get settings_section_account => 'TWOJE KONTO';
+
+  @override
+  String settings_logged_in_as(String email) {
+    return 'Zalogowano jako: $email';
+  }
+
+  @override
+  String get settings_name => 'Nazwa';
+
+  @override
+  String get settings_email => 'Email';
+
+  @override
+  String get settings_avatar => 'Zdjęcie profilowe';
+
+  @override
+  String get settings_modality => 'Domyślny nurt terapii';
+
+  @override
+  String get settings_section_preferences => 'PREFERENCJE';
+
+  @override
+  String get settings_sounds => 'Dźwięki';
+
+  @override
+  String get settings_sounds_on => 'Dźwięki włączone';
+
+  @override
+  String get settings_sounds_off => 'Dźwięki wyłączone';
+
+  @override
+  String get settings_haptics => 'Wibracje';
+
+  @override
+  String get settings_haptics_on => 'Wibracje włączone';
+
+  @override
+  String get settings_haptics_off => 'Wibracje wyłączone';
+
+  @override
+  String get settings_language => 'Język aplikacji';
+
+  @override
+  String get settings_section_support => 'WSPARCIE';
+
+  @override
+  String get settings_contact => 'Napisz do nas';
+
+  @override
+  String get settings_waitlist => 'Lista oczekujących';
+
+  @override
+  String get settings_section_legal => 'INFORMACJE PRAWNE';
+
+  @override
+  String get settings_terms => 'Regulamin';
+
+  @override
+  String get settings_privacy => 'Polityka Prywatności';
+
+  @override
+  String get settings_dpa => 'DPA / RODO';
+
+  @override
+  String get settings_licenses => 'Licencje oprogramowania';
+
+  @override
+  String get settings_section_account_management => 'ZARZĄDZANIE KONTEM';
+
+  @override
+  String get settings_logout => 'Wyloguj się';
+
+  @override
+  String get settings_delete_account => 'Usuń konto bezpowrotnie';
+
+  @override
+  String get settings_logout_confirm_title => 'Wylogować się?';
+
+  @override
+  String get settings_logout_confirm_body =>
+      'Będziesz musiał zalogować się ponownie, aby uzyskać dostęp do swoich pacjentów.';
+
+  @override
+  String get settings_logout_confirm_cancel => 'Zostań';
+
+  @override
+  String get settings_logout_confirm_logout => 'Wyloguj się';
+
+  @override
+  String get modality_abbr_univ => 'Integr.';
+
+  @override
+  String get modality_abbr_cbt => 'CBT';
+
+  @override
+  String get modality_abbr_psycho => 'Psychod.';
+
+  @override
+  String get modality_abbr_ppt => 'PPT';
+
+  @override
+  String get modality_abbr_st => 'ST';
+
+  @override
+  String get modality_abbr_sys => 'System.';
+
+  @override
+  String get modality_abbr_eft => 'EFT';
+
+  @override
+  String get modality_abbr_coach => 'Coaching';
+
+  @override
+  String get settings_language_app => 'Język aplikacji';
+
+  @override
+  String get settings_delete_confirm_title =>
+      'Czy na pewno chcesz\nusunąć konto?';
+
+  @override
+  String get settings_delete_confirm_body =>
+      'Ta operacja jest NIEODWRACALNA.\nUstracisz całą dokumentację kliniczną i dane pacjentów.';
+
+  @override
+  String get settings_delete_confirm_proceed => 'Rozumiem — przejdź dalej.';
+
+  @override
+  String get settings_delete_confirm_cancel => 'Anuluj — zachowaj konto.';
+
+  @override
+  String get settings_choose_language => 'Wybierz język';
 }

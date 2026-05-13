@@ -18,3 +18,5 @@ Kronikarz (`/docs/kronikarz/SKILL.md`) automatycznie dodaje tutaj nowe wpisy pod
 | 2026-04-30 | [Zakończenie Fazy 1](2026-04-30-Faza-1-Zakonczona.md) | Zakończenie fazy 1, walidacja UI Flutter i testów, naprawa linterów |
 | 2026-04-29 | [Zakończenie Fazy 0](2026-04-29-faza-0-zakonczenie.md) | Migracja Cloud SQL, rozszerzenia pgvector i zamknięcie zadań z fundamentów |
 
+
+- [2026-05-13: Wyczesane UI - faza 2 z 3 (stabilna)](./2026-05-13-[Antigravity]-wyczesane-ui-faza-2-z-3-stabilne.md)

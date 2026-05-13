@@ -749,14 +749,20 @@ abstract class AppLocalizations {
   /// No description provided for @stepper_step3_analyzing.
   ///
   /// In pl, this message translates to:
-  /// **'Sztuczna Inteligencja przygotowuje wnioski kliniczne.'**
+  /// **'Sztuczna Inteligencja przygotowuje wnioski.'**
   String get stepper_step3_analyzing;
 
-  /// No description provided for @stepper_step4_done.
+  /// No description provided for @stepper_step4_finalizing.
   ///
   /// In pl, this message translates to:
-  /// **'Proces zakończony. Przygotowaliśmy Twój raport.'**
-  String get stepper_step4_done;
+  /// **'Składamy informacje w czytelny raport.'**
+  String get stepper_step4_finalizing;
+
+  /// No description provided for @stepper_step5_done.
+  ///
+  /// In pl, this message translates to:
+  /// **'Gotowe! Wysyłamy wnioski do Ciebie.'**
+  String get stepper_step5_done;
 
   /// No description provided for @session_failed_header.
   ///
@@ -779,7 +785,7 @@ abstract class AppLocalizations {
   /// No description provided for @session_loading.
   ///
   /// In pl, this message translates to:
-  /// **'Transkrypcja przygotowuje się. Możesz wrócić tutaj za chwilę.'**
+  /// **'Opracowujemy dla Ciebie raporty i transkrypcje. Możesz tutaj wrócić za chwilę.'**
   String get session_loading;
 
   /// No description provided for @session_load_error_header.
@@ -1045,6 +1051,276 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Usuń konto.'**
   String get drawer_delete_account;
+
+  /// No description provided for @settings_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ustawienia'**
+  String get settings_title;
+
+  /// No description provided for @settings_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'DOSTOSUJ SWOJE DOŚWIADCZENIE'**
+  String get settings_subtitle;
+
+  /// No description provided for @settings_section_account.
+  ///
+  /// In pl, this message translates to:
+  /// **'TWOJE KONTO'**
+  String get settings_section_account;
+
+  /// No description provided for @settings_logged_in_as.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zalogowano jako: {email}'**
+  String settings_logged_in_as(String email);
+
+  /// No description provided for @settings_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nazwa'**
+  String get settings_name;
+
+  /// No description provided for @settings_email.
+  ///
+  /// In pl, this message translates to:
+  /// **'Email'**
+  String get settings_email;
+
+  /// No description provided for @settings_avatar.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zdjęcie profilowe'**
+  String get settings_avatar;
+
+  /// No description provided for @settings_modality.
+  ///
+  /// In pl, this message translates to:
+  /// **'Domyślny nurt terapii'**
+  String get settings_modality;
+
+  /// No description provided for @settings_section_preferences.
+  ///
+  /// In pl, this message translates to:
+  /// **'PREFERENCJE'**
+  String get settings_section_preferences;
+
+  /// No description provided for @settings_sounds.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dźwięki'**
+  String get settings_sounds;
+
+  /// No description provided for @settings_sounds_on.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dźwięki włączone'**
+  String get settings_sounds_on;
+
+  /// No description provided for @settings_sounds_off.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dźwięki wyłączone'**
+  String get settings_sounds_off;
+
+  /// No description provided for @settings_haptics.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wibracje'**
+  String get settings_haptics;
+
+  /// No description provided for @settings_haptics_on.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wibracje włączone'**
+  String get settings_haptics_on;
+
+  /// No description provided for @settings_haptics_off.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wibracje wyłączone'**
+  String get settings_haptics_off;
+
+  /// No description provided for @settings_language.
+  ///
+  /// In pl, this message translates to:
+  /// **'Język aplikacji'**
+  String get settings_language;
+
+  /// No description provided for @settings_section_support.
+  ///
+  /// In pl, this message translates to:
+  /// **'WSPARCIE'**
+  String get settings_section_support;
+
+  /// No description provided for @settings_contact.
+  ///
+  /// In pl, this message translates to:
+  /// **'Napisz do nas'**
+  String get settings_contact;
+
+  /// No description provided for @settings_waitlist.
+  ///
+  /// In pl, this message translates to:
+  /// **'Lista oczekujących'**
+  String get settings_waitlist;
+
+  /// No description provided for @settings_section_legal.
+  ///
+  /// In pl, this message translates to:
+  /// **'INFORMACJE PRAWNE'**
+  String get settings_section_legal;
+
+  /// No description provided for @settings_terms.
+  ///
+  /// In pl, this message translates to:
+  /// **'Regulamin'**
+  String get settings_terms;
+
+  /// No description provided for @settings_privacy.
+  ///
+  /// In pl, this message translates to:
+  /// **'Polityka Prywatności'**
+  String get settings_privacy;
+
+  /// No description provided for @settings_dpa.
+  ///
+  /// In pl, this message translates to:
+  /// **'DPA / RODO'**
+  String get settings_dpa;
+
+  /// No description provided for @settings_licenses.
+  ///
+  /// In pl, this message translates to:
+  /// **'Licencje oprogramowania'**
+  String get settings_licenses;
+
+  /// No description provided for @settings_section_account_management.
+  ///
+  /// In pl, this message translates to:
+  /// **'ZARZĄDZANIE KONTEM'**
+  String get settings_section_account_management;
+
+  /// No description provided for @settings_logout.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyloguj się'**
+  String get settings_logout;
+
+  /// No description provided for @settings_delete_account.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń konto bezpowrotnie'**
+  String get settings_delete_account;
+
+  /// No description provided for @settings_logout_confirm_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wylogować się?'**
+  String get settings_logout_confirm_title;
+
+  /// No description provided for @settings_logout_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Będziesz musiał zalogować się ponownie, aby uzyskać dostęp do swoich pacjentów.'**
+  String get settings_logout_confirm_body;
+
+  /// No description provided for @settings_logout_confirm_cancel.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zostań'**
+  String get settings_logout_confirm_cancel;
+
+  /// No description provided for @settings_logout_confirm_logout.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyloguj się'**
+  String get settings_logout_confirm_logout;
+
+  /// No description provided for @modality_abbr_univ.
+  ///
+  /// In pl, this message translates to:
+  /// **'Integr.'**
+  String get modality_abbr_univ;
+
+  /// No description provided for @modality_abbr_cbt.
+  ///
+  /// In pl, this message translates to:
+  /// **'CBT'**
+  String get modality_abbr_cbt;
+
+  /// No description provided for @modality_abbr_psycho.
+  ///
+  /// In pl, this message translates to:
+  /// **'Psychod.'**
+  String get modality_abbr_psycho;
+
+  /// No description provided for @modality_abbr_ppt.
+  ///
+  /// In pl, this message translates to:
+  /// **'PPT'**
+  String get modality_abbr_ppt;
+
+  /// No description provided for @modality_abbr_st.
+  ///
+  /// In pl, this message translates to:
+  /// **'ST'**
+  String get modality_abbr_st;
+
+  /// No description provided for @modality_abbr_sys.
+  ///
+  /// In pl, this message translates to:
+  /// **'System.'**
+  String get modality_abbr_sys;
+
+  /// No description provided for @modality_abbr_eft.
+  ///
+  /// In pl, this message translates to:
+  /// **'EFT'**
+  String get modality_abbr_eft;
+
+  /// No description provided for @modality_abbr_coach.
+  ///
+  /// In pl, this message translates to:
+  /// **'Coaching'**
+  String get modality_abbr_coach;
+
+  /// No description provided for @settings_language_app.
+  ///
+  /// In pl, this message translates to:
+  /// **'Język aplikacji'**
+  String get settings_language_app;
+
+  /// No description provided for @settings_delete_confirm_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Czy na pewno chcesz\nusunąć konto?'**
+  String get settings_delete_confirm_title;
+
+  /// No description provided for @settings_delete_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ta operacja jest NIEODWRACALNA.\nUstracisz całą dokumentację kliniczną i dane pacjentów.'**
+  String get settings_delete_confirm_body;
+
+  /// No description provided for @settings_delete_confirm_proceed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozumiem — przejdź dalej.'**
+  String get settings_delete_confirm_proceed;
+
+  /// No description provided for @settings_delete_confirm_cancel.
+  ///
+  /// In pl, this message translates to:
+  /// **'Anuluj — zachowaj konto.'**
+  String get settings_delete_confirm_cancel;
+
+  /// No description provided for @settings_choose_language.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz język'**
+  String get settings_choose_language;
 }
 
 class _AppLocalizationsDelegate

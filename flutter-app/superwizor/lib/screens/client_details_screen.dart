@@ -11,6 +11,7 @@ import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
 import '../widgets/add_session_modal.dart';
 import '../widgets/edit_patient_modal.dart';
+import 'new_session_screen.dart';
 import 'session_status_screen.dart';
 import 'transcript_screen.dart';
 
@@ -407,7 +408,6 @@ class ClientDetailsScreen extends ConsumerWidget {
                         },
                       );
                     },
-                  ),
                   ),
                 ],
               ),

@@ -21,6 +21,7 @@ import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../theme/euphire_theme.dart';
+import '../widgets/euphire_segmented_control.dart';
 import 'transcript_screen.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
@@ -39,6 +40,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   bool _loading = true;
   String? _error;
   clinical_pb.GetSessionDetailsResponse? _data;
+  List<_ReportSection>? _sections;
 
   @override
   void initState() {
@@ -85,8 +87,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
-          child: _ReportTabToggle(
+          child: EuphireSegmentedControl(
             selected: 'report',
+            leftValue: 'transcript',
+            leftLabel: t.transcript_tab,
+            rightValue: 'report',
+            rightLabel: t.report_tab,
             onSelect: (v) {
               if (v == 'transcript') {
                 Navigator.of(context).pushReplacement(MaterialPageRoute(
@@ -140,26 +146,81 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
     final report = _data!.reports.first;
     final payload = _ReportPayload.parse(report);
+    
+    _sections ??= _parseSections(payload.reportMarkdown);
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    return Column(
       children: [
-        _SummaryCard(report: report, payload: payload),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
+        if (_sections!.length > 1)
+          SizedBox(
+            height: 48,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: _sections!.length,
+              separatorBuilder: (ctx, _) => const SizedBox(width: 8),
+              itemBuilder: (ctx, i) {
+                final s = _sections![i];
+                return Material(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(24),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () {
+                      if (s.key.currentContext != null) {
+                        Scrollable.ensureVisible(
+                          s.key.currentContext!,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      alignment: Alignment.center,
+                      child: Text(
+                        s.title,
+                        style: const TextStyle(
+                          color: EuphireColors.frostWhite,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-          child: MarkdownBody(
-            data: payload.reportMarkdown,
-            styleSheet: MarkdownStyleSheet(
-              p: theme.textTheme.bodyLarge,
-              h1: theme.textTheme.headlineLarge,
-              h2: theme.textTheme.headlineMedium,
-              h3: theme.textTheme.headlineSmall,
-              listBullet: theme.textTheme.bodyLarge,
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SummaryCard(report: report, payload: payload),
+                const SizedBox(height: 16),
+                ..._sections!.map((s) => Padding(
+                  key: s.key,
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: MarkdownBody(
+                      data: s.content,
+                      styleSheet: MarkdownStyleSheet(
+                        p: theme.textTheme.bodyLarge,
+                        h1: theme.textTheme.headlineLarge,
+                        h2: theme.textTheme.headlineMedium,
+                        h3: theme.textTheme.headlineSmall,
+                        listBullet: theme.textTheme.bodyLarge,
+                      ),
+                    ),
+                  ),
+                )),
+              ],
             ),
           ),
         ),
@@ -261,26 +322,48 @@ class _ReportPayload {
   }
 }
 
+class _ReportSection {
+  final String title;
+  final String content;
+  final GlobalKey key;
+  _ReportSection({required this.title, required this.content, required this.key});
+}
 
-class _ReportTabToggle extends StatelessWidget {
-  final String selected;
-  final ValueChanged<String> onSelect;
-  const _ReportTabToggle({required this.selected, required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: SegmentedButton<String>(
-        segments: [
-          ButtonSegment(value: 'transcript', label: Text(t.transcript_tab)),
-          ButtonSegment(value: 'report', label: Text(t.report_tab)),
-        ],
-        selected: {selected},
-        showSelectedIcon: false,
-        onSelectionChanged: (s) => onSelect(s.first),
-      ),
-    );
+List<_ReportSection> _parseSections(String md) {
+  final headerRegex = RegExp(r'^#+\s+(.*)');
+  if (!md.split('\n').any((l) => headerRegex.hasMatch(l))) {
+    return [_ReportSection(title: 'Raport', content: md, key: GlobalKey())];
   }
+  
+  final lines = md.split('\n');
+  final sections = <_ReportSection>[];
+  String currentTitle = 'Wstęp';
+  StringBuffer currentContent = StringBuffer();
+  
+  for (final line in lines) {
+    final match = headerRegex.firstMatch(line);
+    if (match != null) {
+      if (currentContent.toString().trim().isNotEmpty) {
+         sections.add(_ReportSection(
+           title: currentTitle, 
+           content: currentContent.toString().trim(), 
+           key: GlobalKey()
+         ));
+      }
+      currentTitle = match.group(1)!.replaceAll(RegExp(r'\*'), '').trim();
+      currentContent = StringBuffer();
+      currentContent.writeln(line);
+    } else {
+      currentContent.writeln(line);
+    }
+  }
+  if (currentContent.toString().trim().isNotEmpty) {
+    sections.add(_ReportSection(
+      title: currentTitle, 
+      content: currentContent.toString().trim(), 
+      key: GlobalKey()
+    ));
+  }
+  
+  return sections;
 }

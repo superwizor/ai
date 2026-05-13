@@ -551,8 +551,8 @@ class _SecurityBadge extends StatelessWidget {
             ),
             child: Center(
               child: Icon(
-                Icons.security_outlined,
-                color: Colors.white.withValues(alpha: 0.85),
+                Icons.gpp_good_rounded,
+                color: Colors.white.withValues(alpha: 0.75),
                 size: 26,
               ),
             ),

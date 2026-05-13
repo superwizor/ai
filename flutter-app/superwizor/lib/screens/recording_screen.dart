@@ -576,14 +576,14 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                 '${widget.patientAlias} · $dateLabel',
                 style: theme.textTheme.labelLarge,
               ),
-              const SizedBox(height: 24),
+              const Spacer(),
               EuphireRecordingIndicator(
                 isRecording: _recState == RecordingState.recording,
                 formattedDuration: _formatDuration(_displayDuration),
                 chunkCount: _chunkCount,
                 amplitudeStream: _service.amplitudeStream,
               ),
-              const SizedBox(height: 32),
+              const Spacer(flex: 2),
               _ControlPanel(
                 state: _recState,
                 onStart: _start,
@@ -591,7 +591,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                 onResume: _service.resume,
                 onStop: _onStopPressed,
               ),
-              const Spacer(),
+              const SizedBox(height: 16),
               if (_uploading) ...[
                 const SizedBox(height: 16),
                 const Center(child: CircularProgressIndicator()),

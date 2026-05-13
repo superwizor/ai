@@ -397,6 +397,21 @@ class EuphireTheme {
           ),
         ),
       ),
+      
+      // ── SnackBar ──
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: EuphireColors.evergreen,
+        contentTextStyle: const TextStyle(
+          fontFamily: 'Montserrat',
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: EuphireColors.frostWhite,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(5),
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 }

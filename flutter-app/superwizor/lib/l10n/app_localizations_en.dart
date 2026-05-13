@@ -373,7 +373,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stepper_step3_analyzing => 'AI is preparing clinical insights.';
 
   @override
-  String get stepper_step4_done =>
+  String get stepper_step4_finalizing =>
+      'Compiling insights into a readable report.';
+
+  @override
+  String get stepper_step5_done =>
       'Process complete. We have prepared your report.';
 
   @override
@@ -535,4 +539,144 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get drawer_delete_account => 'Delete Account.';
+
+  @override
+  String get settings_title => 'Settings';
+
+  @override
+  String get settings_subtitle => 'CUSTOMIZE YOUR EXPERIENCE';
+
+  @override
+  String get settings_section_account => 'YOUR ACCOUNT';
+
+  @override
+  String settings_logged_in_as(String email) {
+    return 'Logged in as: $email';
+  }
+
+  @override
+  String get settings_name => 'Name';
+
+  @override
+  String get settings_email => 'Email';
+
+  @override
+  String get settings_avatar => 'Profile picture';
+
+  @override
+  String get settings_modality => 'Default therapy modality';
+
+  @override
+  String get settings_section_preferences => 'PREFERENCES';
+
+  @override
+  String get settings_sounds => 'Sounds';
+
+  @override
+  String get settings_sounds_on => 'Sounds enabled';
+
+  @override
+  String get settings_sounds_off => 'Sounds disabled';
+
+  @override
+  String get settings_haptics => 'Haptics';
+
+  @override
+  String get settings_haptics_on => 'Haptics enabled';
+
+  @override
+  String get settings_haptics_off => 'Haptics disabled';
+
+  @override
+  String get settings_language => 'App language';
+
+  @override
+  String get settings_section_support => 'SUPPORT';
+
+  @override
+  String get settings_contact => 'Contact us';
+
+  @override
+  String get settings_waitlist => 'Waitlist';
+
+  @override
+  String get settings_section_legal => 'LEGAL INFORMATION';
+
+  @override
+  String get settings_terms => 'Terms of Service';
+
+  @override
+  String get settings_privacy => 'Privacy Policy';
+
+  @override
+  String get settings_dpa => 'DPA / GDPR';
+
+  @override
+  String get settings_licenses => 'Software licenses';
+
+  @override
+  String get settings_section_account_management => 'ACCOUNT MANAGEMENT';
+
+  @override
+  String get settings_logout => 'Sign out';
+
+  @override
+  String get settings_delete_account => 'Delete account permanently';
+
+  @override
+  String get settings_logout_confirm_title => 'Sign out?';
+
+  @override
+  String get settings_logout_confirm_body =>
+      'You will need to sign in again to access your patients.';
+
+  @override
+  String get settings_logout_confirm_cancel => 'Stay';
+
+  @override
+  String get settings_logout_confirm_logout => 'Sign out';
+
+  @override
+  String get modality_abbr_univ => 'Integr.';
+
+  @override
+  String get modality_abbr_cbt => 'CBT';
+
+  @override
+  String get modality_abbr_psycho => 'Psychod.';
+
+  @override
+  String get modality_abbr_ppt => 'PPT';
+
+  @override
+  String get modality_abbr_st => 'ST';
+
+  @override
+  String get modality_abbr_sys => 'System.';
+
+  @override
+  String get modality_abbr_eft => 'EFT';
+
+  @override
+  String get modality_abbr_coach => 'Coaching';
+
+  @override
+  String get settings_language_app => 'App language';
+
+  @override
+  String get settings_delete_confirm_title =>
+      'Are you sure you want\nto delete your account?';
+
+  @override
+  String get settings_delete_confirm_body =>
+      'This action is IRREVERSIBLE.\nYou will lose all clinical documentation and patient data.';
+
+  @override
+  String get settings_delete_confirm_proceed => 'I understand — proceed.';
+
+  @override
+  String get settings_delete_confirm_cancel => 'Cancel — keep my account.';
+
+  @override
+  String get settings_choose_language => 'Choose language';
 }
