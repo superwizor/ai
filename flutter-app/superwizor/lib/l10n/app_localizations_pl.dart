@@ -151,7 +151,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addPatient_title => 'Nowy pacjent.';
 
   @override
-  String get addPatient_alias_label => 'Imię lub pseudonim pacjenta';
+  String get addPatient_first_name_label => 'Imię pacjenta (wymagane)';
+
+  @override
+  String get addPatient_last_name_label => 'Nazwisko (opcjonalne)';
 
   @override
   String get addPatient_modality_label => 'Nurt sesji (dziedziczony z profilu)';
@@ -178,6 +181,23 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get addPatient_no_consent_primary => 'Rozumiem.';
+
+  @override
+  String get editPatient_title => 'Edycja danych pacjenta.';
+
+  @override
+  String get editPatient_save_primary => 'Zapisz zmiany.';
+
+  @override
+  String get editPatient_erase_destructive => 'Usuń pacjenta bezpowrotnie';
+
+  @override
+  String get editPatient_erase_confirm_header =>
+      'Całkowite usunięcie kartoteki';
+
+  @override
+  String get editPatient_erase_confirm_body =>
+      'To działanie trwale usunie pacjenta oraz WSZYSTKIE jego sesje i transkrypcje (wymóg RODO). Nie można tego cofnąć.';
 
   @override
   String get addSession_title => 'Nowa sesja.';

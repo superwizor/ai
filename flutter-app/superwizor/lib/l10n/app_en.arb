@@ -56,7 +56,8 @@
   "modality_coaching": "Coaching (ICF/GROW)",
 
   "addPatient_title": "New Patient.",
-  "addPatient_alias_label": "Patient name or alias",
+  "addPatient_first_name_label": "Patient's first name (required)",
+  "addPatient_last_name_label": "Patient's last name (optional)",
   "addPatient_modality_label": "Session modality (inherited from profile)",
   "addPatient_language_label": "Session language",
   "addPatient_consent_label": "I declare that the patient consented to recording and data processing according to the Privacy Policy and DPA of Superwizor AI.",
@@ -65,6 +66,12 @@
   "addPatient_no_consent_header": "No consent to record.",
   "addPatient_no_consent_body": "We cannot start a session without explicit patient consent. Data protection laws require this.",
   "addPatient_no_consent_primary": "I understand.",
+
+  "editPatient_title": "Edit patient details.",
+  "editPatient_save_primary": "Save changes.",
+  "editPatient_erase_destructive": "Erase patient permanently",
+  "editPatient_erase_confirm_header": "Permanent erasure",
+  "editPatient_erase_confirm_body": "This action permanently deletes the patient and ALL their sessions and transcripts (GDPR right to be forgotten). This cannot be undone.",
 
   "addSession_title": "New Session.",
   "addSession_subtitle": "Choose modality for this session:",

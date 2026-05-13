@@ -56,7 +56,8 @@
   "modality_coaching": "Coaching (ICF/GROW)",
 
   "addPatient_title": "Nowy pacjent.",
-  "addPatient_alias_label": "Imię lub pseudonim pacjenta",
+  "addPatient_first_name_label": "Imię pacjenta (wymagane)",
+  "addPatient_last_name_label": "Nazwisko (opcjonalne)",
   "addPatient_modality_label": "Nurt sesji (dziedziczony z profilu)",
   "addPatient_language_label": "Język sesji",
   "addPatient_consent_label": "Oświadczam, że pacjent wyraził zgodę na nagrywanie i przetwarzanie danych zgodnie z Polityką Prywatności i DPA Superwizor AI.",
@@ -65,6 +66,12 @@
   "addPatient_no_consent_header": "Brak zgody na nagrywanie.",
   "addPatient_no_consent_body": "Nie możemy rozpocząć sesji bez wyraźnej zgody pacjenta. Wymagają tego przepisy o ochronie danych.",
   "addPatient_no_consent_primary": "Rozumiem.",
+
+  "editPatient_title": "Edycja danych pacjenta.",
+  "editPatient_save_primary": "Zapisz zmiany.",
+  "editPatient_erase_destructive": "Usuń pacjenta bezpowrotnie",
+  "editPatient_erase_confirm_header": "Całkowite usunięcie kartoteki",
+  "editPatient_erase_confirm_body": "To działanie trwale usunie pacjenta oraz WSZYSTKIE jego sesje i transkrypcje (wymóg RODO). Nie można tego cofnąć.",
 
   "addSession_title": "Nowa sesja.",
   "addSession_subtitle": "Wybierz nurt dla tej sesji:",

@@ -108,7 +108,8 @@ class HomeScreen extends ConsumerWidget {
                         child: EuphireListTile(
                           title: '${patient.firstName} ${patient.lastName}'.trim(),
                           subtitle: AppLocalizations.of(context)
-                              .patient_session_count(patient.sessionCount),
+                                  .patient_session_count(patient.sessionCount) +
+                              (patient.modalityCode.isNotEmpty ? ' • ${patient.modalityCode}' : ''),
                           onTap: () {
                             Navigator.push(
                               context,

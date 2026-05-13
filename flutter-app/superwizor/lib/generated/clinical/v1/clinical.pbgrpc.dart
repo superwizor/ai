@@ -61,11 +61,37 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$updatePatientFile, request, options: options);
   }
 
+  /// Hard delete since 000012 — cascades through all sessions / transcripts /
+  /// reports / audio_uploads. Since 000013 it ALSO drops the paired
+  /// users(role='PATIENT') row in the same transaction. PHI gone
+  /// permanently (RODO right-to-erasure).
   $grpc.ResponseFuture<$1.Empty> deletePatientFile(
     $0.DeletePatientFileRequest request, {
     $grpc.CallOptions? options,
   }) {
     return $createUnaryCall(_$deletePatientFile, request, options: options);
+  }
+
+  /// Patient-user CRUD (added with migration 000013). These are
+  /// SEPARATE from working_alias / initial_complaint edits — therapist
+  /// can update one without touching the other.
+  $grpc.ResponseFuture<$0.PatientFile> updatePatientUser(
+    $0.UpdatePatientUserRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$updatePatientUser, request, options: options);
+  }
+
+  /// RODO-style erasure on the patient axis. CASCADEs through every
+  /// patient_file referencing this user (migration 000014), and from
+  /// there through sessions / transcripts / reports / etc. Publishes
+  /// one session.deleted Pub/Sub event per cascaded session for
+  /// Firestore + inbox cleanup. Nothing left to return → Empty.
+  $grpc.ResponseFuture<$1.Empty> deletePatientUser(
+    $0.DeletePatientUserRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$deletePatientUser, request, options: options);
   }
 
   $grpc.ResponseFuture<$0.ListModalitiesResponse> listModalities(
@@ -104,6 +130,24 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getSessionDetails, request, options: options);
   }
 
+  /// Rename a single session — currently only `name` is mutable.
+  $grpc.ResponseFuture<$0.Session> updateSession(
+    $0.UpdateSessionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$updateSession, request, options: options);
+  }
+
+  /// Hard delete a single session — cascades transcripts/reports/hitop.
+  /// Publishes session.deleted Pub/Sub event for downstream Firestore +
+  /// inbox cleanup.
+  $grpc.ResponseFuture<$1.Empty> deleteSession(
+    $0.DeleteSessionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$deleteSession, request, options: options);
+  }
+
   // method descriptors
 
   static final _$createPatientFile =
@@ -131,6 +175,16 @@ class ClinicalServiceClient extends $grpc.Client {
           '/clinical.v1.ClinicalService/DeletePatientFile',
           ($0.DeletePatientFileRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
+  static final _$updatePatientUser =
+      $grpc.ClientMethod<$0.UpdatePatientUserRequest, $0.PatientFile>(
+          '/clinical.v1.ClinicalService/UpdatePatientUser',
+          ($0.UpdatePatientUserRequest value) => value.writeToBuffer(),
+          $0.PatientFile.fromBuffer);
+  static final _$deletePatientUser =
+      $grpc.ClientMethod<$0.DeletePatientUserRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/DeletePatientUser',
+          ($0.DeletePatientUserRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
   static final _$listModalities =
       $grpc.ClientMethod<$1.Empty, $0.ListModalitiesResponse>(
           '/clinical.v1.ClinicalService/ListModalities',
@@ -156,6 +210,16 @@ class ClinicalServiceClient extends $grpc.Client {
       '/clinical.v1.ClinicalService/GetSessionDetails',
       ($0.GetSessionDetailsRequest value) => value.writeToBuffer(),
       $0.GetSessionDetailsResponse.fromBuffer);
+  static final _$updateSession =
+      $grpc.ClientMethod<$0.UpdateSessionRequest, $0.Session>(
+          '/clinical.v1.ClinicalService/UpdateSession',
+          ($0.UpdateSessionRequest value) => value.writeToBuffer(),
+          $0.Session.fromBuffer);
+  static final _$deleteSession =
+      $grpc.ClientMethod<$0.DeleteSessionRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/DeleteSession',
+          ($0.DeleteSessionRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
 }
 
 @$pb.GrpcServiceName('clinical.v1.ClinicalService')
@@ -204,6 +268,22 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.DeletePatientFileRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.UpdatePatientUserRequest, $0.PatientFile>(
+        'UpdatePatientUser',
+        updatePatientUser_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.UpdatePatientUserRequest.fromBuffer(value),
+        ($0.PatientFile value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DeletePatientUserRequest, $1.Empty>(
+        'DeletePatientUser',
+        deletePatientUser_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DeletePatientUserRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$1.Empty, $0.ListModalitiesResponse>(
         'ListModalities',
         listModalities_Pre,
@@ -245,6 +325,22 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.GetSessionDetailsRequest.fromBuffer(value),
         ($0.GetSessionDetailsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.UpdateSessionRequest, $0.Session>(
+        'UpdateSession',
+        updateSession_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.UpdateSessionRequest.fromBuffer(value),
+        ($0.Session value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DeleteSessionRequest, $1.Empty>(
+        'DeleteSession',
+        deleteSession_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DeleteSessionRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.PatientFile> createPatientFile_Pre($grpc.ServiceCall $call,
@@ -288,6 +384,22 @@ abstract class ClinicalServiceBase extends $grpc.Service {
   $async.Future<$1.Empty> deletePatientFile(
       $grpc.ServiceCall call, $0.DeletePatientFileRequest request);
 
+  $async.Future<$0.PatientFile> updatePatientUser_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.UpdatePatientUserRequest> $request) async {
+    return updatePatientUser($call, await $request);
+  }
+
+  $async.Future<$0.PatientFile> updatePatientUser(
+      $grpc.ServiceCall call, $0.UpdatePatientUserRequest request);
+
+  $async.Future<$1.Empty> deletePatientUser_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.DeletePatientUserRequest> $request) async {
+    return deletePatientUser($call, await $request);
+  }
+
+  $async.Future<$1.Empty> deletePatientUser(
+      $grpc.ServiceCall call, $0.DeletePatientUserRequest request);
+
   $async.Future<$0.ListModalitiesResponse> listModalities_Pre(
       $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {
     return listModalities($call, await $request);
@@ -330,4 +442,20 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$0.GetSessionDetailsResponse> getSessionDetails(
       $grpc.ServiceCall call, $0.GetSessionDetailsRequest request);
+
+  $async.Future<$0.Session> updateSession_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.UpdateSessionRequest> $request) async {
+    return updateSession($call, await $request);
+  }
+
+  $async.Future<$0.Session> updateSession(
+      $grpc.ServiceCall call, $0.UpdateSessionRequest request);
+
+  $async.Future<$1.Empty> deleteSession_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.DeleteSessionRequest> $request) async {
+    return deleteSession($call, await $request);
+  }
+
+  $async.Future<$1.Empty> deleteSession(
+      $grpc.ServiceCall call, $0.DeleteSessionRequest request);
 }

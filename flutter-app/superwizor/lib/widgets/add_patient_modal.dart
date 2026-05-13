@@ -15,6 +15,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:grpc/grpc.dart' as grpc;
 
 import '../l10n/app_localizations.dart';
 import '../providers/patient_provider.dart';
@@ -38,13 +39,15 @@ class AddPatientModal extends ConsumerStatefulWidget {
 }
 
 class _AddPatientModalState extends ConsumerState<AddPatientModal> {
-  final _aliasController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   bool _consentGiven = false;
   bool _saving = false;
 
   @override
   void dispose() {
-    _aliasController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     super.dispose();
   }
 
@@ -53,7 +56,7 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
     final canSave =
-        !_saving && _aliasController.text.trim().isNotEmpty && _consentGiven;
+        !_saving && _firstNameController.text.trim().isNotEmpty && _consentGiven;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -70,8 +73,13 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
             Text(t.addPatient_title, style: theme.textTheme.headlineMedium),
             const SizedBox(height: 24),
             EuphireTextField(
-              controller: _aliasController,
-              labelText: t.addPatient_alias_label,
+              controller: _firstNameController,
+              labelText: t.addPatient_first_name_label,
+            ),
+            const SizedBox(height: 16),
+            EuphireTextField(
+              controller: _lastNameController,
+              labelText: t.addPatient_last_name_label,
             ),
             const SizedBox(height: 24),
             _ConsentCheckbox(
@@ -110,17 +118,23 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
       _showNoConsentSheet(t);
       return;
     }
-    final alias = _aliasController.text.trim();
-    if (alias.isEmpty) return;
+    final firstName = _firstNameController.text.trim();
+    final lastName = _lastNameController.text.trim();
+    final alias = '$firstName $lastName'.trim();
+    if (firstName.isEmpty) return;
 
     setState(() => _saving = true);
     try {
       // Save patient via existing notifier (MVP — backend doesn't
-      // accept consent_given_at yet; D9). The notifier currently
-      // splits alias into firstName/lastName; pass alias as one piece.
+      // accept consent_given_at yet; D9).
       final notifier = ref.read(patientsProvider.notifier);
       final modalityCode = ref.read(selectedModalityProvider);
-      await notifier.addPatient(alias, '', modalityCode: modalityCode);
+      await notifier.addPatient(
+        alias: alias,
+        firstName: firstName,
+        lastName: lastName,
+        modalityCode: modalityCode,
+      );
 
       // Find the newly-created patient to get its ID. The notifier
       // refetches after addPatient, so the newest patient is at the
@@ -128,7 +142,7 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
       final list = ref.read(patientsProvider).whenOrNull(data: (d) => d) ??
           const [];
       final created = list.where(
-        (p) => '${p.firstName} ${p.lastName}'.trim() == alias.trim(),
+        (p) => '${p.firstName} ${p.lastName}'.trim() == alias,
       ).firstOrNull ?? (list.isNotEmpty ? list.first : null);
 
       if (created != null) {
@@ -140,6 +154,18 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
       }
 
       if (mounted) Navigator.of(context).pop();
+    } on grpc.GrpcError catch (e) {
+      if (mounted) {
+        if (e.code == grpc.StatusCode.alreadyExists) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Pacjent o nazwie "$alias" już istnieje. Wybierz inną.')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.message ?? 'Wystąpił błąd.')),
+          );
+        }
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

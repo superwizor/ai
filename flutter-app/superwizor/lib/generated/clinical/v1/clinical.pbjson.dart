@@ -105,6 +105,27 @@ const PatientFile$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'updatedAt'
     },
+    {
+      '1': 'patient_first_name',
+      '3': 16,
+      '4': 1,
+      '5': 9,
+      '10': 'patientFirstName'
+    },
+    {
+      '1': 'patient_last_name',
+      '3': 17,
+      '4': 1,
+      '5': 9,
+      '10': 'patientLastName'
+    },
+    {
+      '1': 'patient_language_code',
+      '3': 18,
+      '4': 1,
+      '5': 9,
+      '10': 'patientLanguageCode'
+    },
   ],
 };
 
@@ -123,7 +144,9 @@ final $typed_data.Uint8List patientFileDescriptor = $convert.base64Decode(
     'NgoXcHJpdmF0ZV90aGVyYXBpc3Rfbm90ZXMYDSABKAlSFXByaXZhdGVUaGVyYXBpc3ROb3Rlcx'
     'I5CgpjcmVhdGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYXRl'
     'ZEF0EjkKCnVwZGF0ZWRfYXQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgl1cG'
-    'RhdGVkQXQ=');
+    'RhdGVkQXQSLAoScGF0aWVudF9maXJzdF9uYW1lGBAgASgJUhBwYXRpZW50Rmlyc3ROYW1lEioK'
+    'EXBhdGllbnRfbGFzdF9uYW1lGBEgASgJUg9wYXRpZW50TGFzdE5hbWUSMgoVcGF0aWVudF9sYW'
+    '5ndWFnZV9jb2RlGBIgASgJUhNwYXRpZW50TGFuZ3VhZ2VDb2Rl');
 
 @$core.Deprecated('Use modalityDescriptor instead')
 const Modality$json = {
@@ -172,6 +195,21 @@ const CreatePatientFileRequest$json = {
       '10': 'hasRecordingConsent'
     },
     {'1': 'idempotency_key', '3': 7, '4': 1, '5': 9, '10': 'idempotencyKey'},
+    {
+      '1': 'patient_first_name',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'patientFirstName'
+    },
+    {'1': 'patient_last_name', '3': 9, '4': 1, '5': 9, '10': 'patientLastName'},
+    {
+      '1': 'patient_language_code',
+      '3': 10,
+      '4': 1,
+      '5': 9,
+      '10': 'patientLanguageCode'
+    },
   ],
 };
 
@@ -183,7 +221,9 @@ final $typed_data.Uint8List createPatientFileRequestDescriptor = $convert.base64
     'FsLnYxLlByb2Nlc3NUeXBlUgtwcm9jZXNzVHlwZRIrChFpbml0aWFsX2NvbXBsYWludBgFIAEo'
     'CVIQaW5pdGlhbENvbXBsYWludBIyChVoYXNfcmVjb3JkaW5nX2NvbnNlbnQYBiABKAhSE2hhc1'
     'JlY29yZGluZ0NvbnNlbnQSJwoPaWRlbXBvdGVuY3lfa2V5GAcgASgJUg5pZGVtcG90ZW5jeUtl'
-    'eQ==');
+    'eRIsChJwYXRpZW50X2ZpcnN0X25hbWUYCCABKAlSEHBhdGllbnRGaXJzdE5hbWUSKgoRcGF0aW'
+    'VudF9sYXN0X25hbWUYCSABKAlSD3BhdGllbnRMYXN0TmFtZRIyChVwYXRpZW50X2xhbmd1YWdl'
+    'X2NvZGUYCiABKAlSE3BhdGllbnRMYW5ndWFnZUNvZGU=');
 
 @$core.Deprecated('Use getPatientFileRequestDescriptor instead')
 const GetPatientFileRequest$json = {
@@ -280,6 +320,37 @@ const DeletePatientFileRequest$json = {
 final $typed_data.Uint8List deletePatientFileRequestDescriptor =
     $convert.base64Decode(
         'ChhEZWxldGVQYXRpZW50RmlsZVJlcXVlc3QSJgoPcGF0aWVudF9maWxlX2lkGAEgASgJUg1wYX'
+        'RpZW50RmlsZUlk');
+
+@$core.Deprecated('Use updatePatientUserRequestDescriptor instead')
+const UpdatePatientUserRequest$json = {
+  '1': 'UpdatePatientUserRequest',
+  '2': [
+    {'1': 'patient_file_id', '3': 1, '4': 1, '5': 9, '10': 'patientFileId'},
+    {'1': 'first_name', '3': 2, '4': 1, '5': 9, '10': 'firstName'},
+    {'1': 'last_name', '3': 3, '4': 1, '5': 9, '10': 'lastName'},
+    {'1': 'language_code', '3': 4, '4': 1, '5': 9, '10': 'languageCode'},
+  ],
+};
+
+/// Descriptor for `UpdatePatientUserRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List updatePatientUserRequestDescriptor = $convert.base64Decode(
+    'ChhVcGRhdGVQYXRpZW50VXNlclJlcXVlc3QSJgoPcGF0aWVudF9maWxlX2lkGAEgASgJUg1wYX'
+    'RpZW50RmlsZUlkEh0KCmZpcnN0X25hbWUYAiABKAlSCWZpcnN0TmFtZRIbCglsYXN0X25hbWUY'
+    'AyABKAlSCGxhc3ROYW1lEiMKDWxhbmd1YWdlX2NvZGUYBCABKAlSDGxhbmd1YWdlQ29kZQ==');
+
+@$core.Deprecated('Use deletePatientUserRequestDescriptor instead')
+const DeletePatientUserRequest$json = {
+  '1': 'DeletePatientUserRequest',
+  '2': [
+    {'1': 'patient_file_id', '3': 1, '4': 1, '5': 9, '10': 'patientFileId'},
+  ],
+};
+
+/// Descriptor for `DeletePatientUserRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deletePatientUserRequestDescriptor =
+    $convert.base64Decode(
+        'ChhEZWxldGVQYXRpZW50VXNlclJlcXVlc3QSJgoPcGF0aWVudF9maWxlX2lkGAEgASgJUg1wYX'
         'RpZW50RmlsZUlk');
 
 @$core.Deprecated('Use listModalitiesResponseDescriptor instead')
@@ -398,6 +469,7 @@ const Session$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'createdAt'
     },
+    {'1': 'name', '3': 12, '4': 1, '5': 9, '10': 'name'},
   ],
   '3': [Session_SpeakerLabelMappingEntry$json],
 };
@@ -422,8 +494,9 @@ final $typed_data.Uint8List sessionDescriptor = $convert.base64Decode(
     'gJUgtjb250YWN0Rm9ybRJhChVzcGVha2VyX2xhYmVsX21hcHBpbmcYCSADKAsyLS5jbGluaWNh'
     'bC52MS5TZXNzaW9uLlNwZWFrZXJMYWJlbE1hcHBpbmdFbnRyeVITc3BlYWtlckxhYmVsTWFwcG'
     'luZxIWCgZzdGF0dXMYCiABKAlSBnN0YXR1cxI5CgpjcmVhdGVkX2F0GAsgASgLMhouZ29vZ2xl'
-    'LnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYXRlZEF0GkYKGFNwZWFrZXJMYWJlbE1hcHBpbmdFbn'
-    'RyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
+    'LnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYXRlZEF0EhIKBG5hbWUYDCABKAlSBG5hbWUaRgoYU3'
+    'BlYWtlckxhYmVsTWFwcGluZ0VudHJ5EhAKA2tleRgBIAEoCVIDa2V5EhQKBXZhbHVlGAIgASgJ'
+    'UgV2YWx1ZToCOAE=');
 
 @$core.Deprecated('Use listSessionsRequestDescriptor instead')
 const ListSessionsRequest$json = {
@@ -437,6 +510,32 @@ const ListSessionsRequest$json = {
 final $typed_data.Uint8List listSessionsRequestDescriptor = $convert.base64Decode(
     'ChNMaXN0U2Vzc2lvbnNSZXF1ZXN0EiYKD3BhdGllbnRfZmlsZV9pZBgBIAEoCVINcGF0aWVudE'
     'ZpbGVJZA==');
+
+@$core.Deprecated('Use updateSessionRequestDescriptor instead')
+const UpdateSessionRequest$json = {
+  '1': 'UpdateSessionRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+  ],
+};
+
+/// Descriptor for `UpdateSessionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List updateSessionRequestDescriptor = $convert.base64Decode(
+    'ChRVcGRhdGVTZXNzaW9uUmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSWQSEg'
+    'oEbmFtZRgCIAEoCVIEbmFtZQ==');
+
+@$core.Deprecated('Use deleteSessionRequestDescriptor instead')
+const DeleteSessionRequest$json = {
+  '1': 'DeleteSessionRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+  ],
+};
+
+/// Descriptor for `DeleteSessionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteSessionRequestDescriptor = $convert.base64Decode(
+    'ChREZWxldGVTZXNzaW9uUmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSWQ=');
 
 @$core.Deprecated('Use listSessionsResponseDescriptor instead')
 const ListSessionsResponse$json = {
@@ -491,13 +590,44 @@ const Transcript$json = {
       '6': '.clinical.v1.TranscriptSegment',
       '10': 'segments'
     },
+    {
+      '1': 'turns',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.SpeakerTurn',
+      '10': 'turns'
+    },
   ],
 };
 
 /// Descriptor for `Transcript`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List transcriptDescriptor = $convert.base64Decode(
     'CgpUcmFuc2NyaXB0Eg4KAmlkGAEgASgJUgJpZBI6CghzZWdtZW50cxgCIAMoCzIeLmNsaW5pY2'
-    'FsLnYxLlRyYW5zY3JpcHRTZWdtZW50UghzZWdtZW50cw==');
+    'FsLnYxLlRyYW5zY3JpcHRTZWdtZW50UghzZWdtZW50cxIuCgV0dXJucxgDIAMoCzIYLmNsaW5p'
+    'Y2FsLnYxLlNwZWFrZXJUdXJuUgV0dXJucw==');
+
+@$core.Deprecated('Use speakerTurnDescriptor instead')
+const SpeakerTurn$json = {
+  '1': 'SpeakerTurn',
+  '2': [
+    {'1': 'speaker_tag', '3': 1, '4': 1, '5': 5, '10': 'speakerTag'},
+    {'1': 'speaker_label', '3': 2, '4': 1, '5': 9, '10': 'speakerLabel'},
+    {'1': 'start_offset_ms', '3': 3, '4': 1, '5': 5, '10': 'startOffsetMs'},
+    {'1': 'end_offset_ms', '3': 4, '4': 1, '5': 5, '10': 'endOffsetMs'},
+    {'1': 'text', '3': 5, '4': 1, '5': 9, '10': 'text'},
+    {'1': 'segment_count', '3': 6, '4': 1, '5': 5, '10': 'segmentCount'},
+    {'1': 'confidence_avg', '3': 7, '4': 1, '5': 2, '10': 'confidenceAvg'},
+  ],
+};
+
+/// Descriptor for `SpeakerTurn`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List speakerTurnDescriptor = $convert.base64Decode(
+    'CgtTcGVha2VyVHVybhIfCgtzcGVha2VyX3RhZxgBIAEoBVIKc3BlYWtlclRhZxIjCg1zcGVha2'
+    'VyX2xhYmVsGAIgASgJUgxzcGVha2VyTGFiZWwSJgoPc3RhcnRfb2Zmc2V0X21zGAMgASgFUg1z'
+    'dGFydE9mZnNldE1zEiIKDWVuZF9vZmZzZXRfbXMYBCABKAVSC2VuZE9mZnNldE1zEhIKBHRleH'
+    'QYBSABKAlSBHRleHQSIwoNc2VnbWVudF9jb3VudBgGIAEoBVIMc2VnbWVudENvdW50EiUKDmNv'
+    'bmZpZGVuY2VfYXZnGAcgASgCUg1jb25maWRlbmNlQXZn');
 
 @$core.Deprecated('Use reportDescriptor instead')
 const Report$json = {

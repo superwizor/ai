@@ -148,7 +148,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPatient_title => 'New Patient.';
 
   @override
-  String get addPatient_alias_label => 'Patient name or alias';
+  String get addPatient_first_name_label => 'Patient\'s first name (required)';
+
+  @override
+  String get addPatient_last_name_label => 'Patient\'s last name (optional)';
 
   @override
   String get addPatient_modality_label =>
@@ -176,6 +179,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addPatient_no_consent_primary => 'I understand.';
+
+  @override
+  String get editPatient_title => 'Edit patient details.';
+
+  @override
+  String get editPatient_save_primary => 'Save changes.';
+
+  @override
+  String get editPatient_erase_destructive => 'Erase patient permanently';
+
+  @override
+  String get editPatient_erase_confirm_header => 'Permanent erasure';
+
+  @override
+  String get editPatient_erase_confirm_body =>
+      'This action permanently deletes the patient and ALL their sessions and transcripts (GDPR right to be forgotten). This cannot be undone.';
 
   @override
   String get addSession_title => 'New Session.';

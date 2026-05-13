@@ -50,13 +50,23 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
 
       return List.generate(res.patientFiles.length, (i) {
         final pf = res.patientFiles[i];
-        final names = pf.workingAlias.split(' ');
-        final firstName = names.isNotEmpty ? names.first : 'Nieznany';
-        final lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
+        
+        String firstName = pf.patientFirstName;
+        String lastName = pf.patientLastName;
+        
+        if (firstName.isEmpty && lastName.isEmpty && pf.workingAlias.isNotEmpty) {
+          final names = pf.workingAlias.split(' ');
+          firstName = names.isNotEmpty ? names.first : 'Nieznany';
+          lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
+        } else if (firstName.isEmpty) {
+          firstName = 'Nieznany';
+        }
+
         return Patient(
           id: pf.id,
           firstName: firstName,
           lastName: lastName,
+          modalityCode: pf.modalityCode,
           sessionCount: counts[i],
         );
       });
@@ -66,21 +76,59 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     }
   }
 
-  Future<void> addPatient(String firstName, String lastName, {String modalityCode = 'UNIV'}) async {
+  Future<void> addPatient({
+    required String alias,
+    required String firstName,
+    String lastName = '',
+    String modalityCode = 'UNIV',
+  }) async {
     final client = ref.read(grpcClientsProvider).clinical;
     final req = grpc_clinical.CreatePatientFileRequest(
       therapistId: '', // zdekodowane na backendzie z tokenu
-      workingAlias: '$firstName $lastName'.trim(),
+      workingAlias: alias,
       modalityCode: modalityCode,
       processType: grpc_clinical.ProcessType.PROCESS_TYPE_INDIVIDUAL,
       hasRecordingConsent: true,
+      patientFirstName: firstName,
+      patientLastName: lastName,
     );
     
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
+    try {
       await client.createPatientFile(req);
-      return _fetchPatients();
-    });
+      state = AsyncValue.data(await _fetchPatients());
+    } catch (e) {
+      state = AsyncValue.data(await _fetchPatients());
+      rethrow;
+    }
+  }
+
+  Future<void> updatePatientUser(String patientFileId, String firstName, String lastName) async {
+    final client = ref.read(grpcClientsProvider).clinical;
+    try {
+      await client.updatePatientUser(grpc_clinical.UpdatePatientUserRequest(
+        patientFileId: patientFileId,
+        firstName: firstName,
+        lastName: lastName,
+      ));
+      state = AsyncValue.data(await _fetchPatients());
+    } catch (e) {
+      debugPrint('Error updating patient: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deletePatientUser(String patientFileId) async {
+    final client = ref.read(grpcClientsProvider).clinical;
+    try {
+      await client.deletePatientUser(grpc_clinical.DeletePatientUserRequest(
+        patientFileId: patientFileId,
+      ));
+      state = AsyncValue.data(await _fetchPatients());
+    } catch (e) {
+      debugPrint('Error deleting patient: $e');
+      rethrow;
+    }
   }
 
   void incrementSessionCount(String patientId) {
@@ -120,7 +168,7 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
         return Session(
           id: s.id,
           patientId: s.patientFileId,
-          modality: 'Rozmowa', // tymczasowy fallback, póki backend tego nie wydzieli
+          modality: s.name.isNotEmpty ? s.name : 'Rozmowa', // zaktualizowane z backendu
           date: s.createdAt.toDateTime().toLocal(),
           duration: Duration(seconds: s.durationSeconds),
           status: s.status == 'COMPLETED' ? SessionStatus.completed : SessionStatus.inProgress,
@@ -140,28 +188,47 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
     state = AsyncValue.data({...current, session.patientId: [...patientSessions, session]});
   }
 
-  void deleteSessionLocally(String patientId, String sessionId) {
-    final current = state.whenOrNull(data: (d) => d);
-    if (current == null) return;
-    
-    final sessions = current[patientId] ?? [];
-    final updatedSessions = sessions.where((s) => s.id != sessionId).toList();
-    
-    state = AsyncValue.data({...current, patientId: updatedSessions});
+  Future<void> deleteSession(String patientId, String sessionId) async {
+    final client = ref.read(grpcClientsProvider).clinical;
+    try {
+      await client.deleteSession(grpc_clinical.DeleteSessionRequest(sessionId: sessionId));
+      
+      final current = state.whenOrNull(data: (d) => d);
+      if (current == null) return;
+      
+      final sessions = current[patientId] ?? [];
+      final updatedSessions = sessions.where((s) => s.id != sessionId).toList();
+      
+      state = AsyncValue.data({...current, patientId: updatedSessions});
+    } catch (e) {
+      debugPrint('Error deleting session: $e');
+      rethrow;
+    }
   }
 
-  void renameSessionLocally(String patientId, String sessionId, String newModality) {
-    final current = state.whenOrNull(data: (d) => d);
-    if (current == null) return;
-    
-    final sessions = current[patientId] ?? [];
-    final updatedSessions = sessions.map((s) {
-      if (s.id == sessionId) {
-        return s.copyWith(modality: newModality);
-      }
-      return s;
-    }).toList();
-    
-    state = AsyncValue.data({...current, patientId: updatedSessions});
+  Future<void> renameSession(String patientId, String sessionId, String newName) async {
+    final client = ref.read(grpcClientsProvider).clinical;
+    try {
+      await client.updateSession(grpc_clinical.UpdateSessionRequest(
+        sessionId: sessionId,
+        name: newName,
+      ));
+
+      final current = state.whenOrNull(data: (d) => d);
+      if (current == null) return;
+      
+      final sessions = current[patientId] ?? [];
+      final updatedSessions = sessions.map((s) {
+        if (s.id == sessionId) {
+          return s.copyWith(modality: newName);
+        }
+        return s;
+      }).toList();
+      
+      state = AsyncValue.data({...current, patientId: updatedSessions});
+    } catch (e) {
+      debugPrint('Error renaming session: $e');
+      rethrow;
+    }
   }
 }

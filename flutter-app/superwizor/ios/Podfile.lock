@@ -1248,6 +1248,9 @@ PODS:
   - Firebase/Messaging (12.12.0):
     - Firebase/CoreOnly
     - FirebaseMessaging (~> 12.12.0)
+  - Firebase/Storage (12.12.0):
+    - Firebase/CoreOnly
+    - FirebaseStorage (~> 12.12.0)
   - firebase_auth (6.4.0):
     - Firebase/Auth (= 12.12.0)
     - firebase_core
@@ -1257,6 +1260,10 @@ PODS:
     - Flutter
   - firebase_messaging (16.2.0):
     - Firebase/Messaging (= 12.12.0)
+    - firebase_core
+    - Flutter
+  - firebase_storage (13.3.0):
+    - Firebase/Storage (= 12.12.0)
     - firebase_core
     - Flutter
   - FirebaseAppCheckInterop (12.12.0)
@@ -1313,6 +1320,13 @@ PODS:
     - GoogleUtilities/UserDefaults (~> 8.1)
     - nanopb (~> 3.30910.0)
   - FirebaseSharedSwift (12.12.0)
+  - FirebaseStorage (12.12.1):
+    - FirebaseAppCheckInterop (~> 12.12.0)
+    - FirebaseAuthInterop (~> 12.12.0)
+    - FirebaseCore (~> 12.12.0)
+    - FirebaseCoreExtension (~> 12.12.0)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GTMSessionFetcher/Core (< 6.0, >= 3.4)
   - Flutter (1.0.0)
   - flutter_secure_storage (6.0.0):
     - Flutter
@@ -1480,6 +1494,7 @@ DEPENDENCIES:
   - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
   - firebase_messaging (from `.symlinks/plugins/firebase_messaging/ios`)
+  - firebase_storage (from `.symlinks/plugins/firebase_storage/ios`)
   - Flutter (from `Flutter`)
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
@@ -1512,6 +1527,7 @@ SPEC REPOS:
     - FirebaseInstallations
     - FirebaseMessaging
     - FirebaseSharedSwift
+    - FirebaseStorage
     - GoogleDataTransport
     - GoogleUtilities
     - "gRPC-C++"
@@ -1539,6 +1555,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/firebase_core/ios"
   firebase_messaging:
     :path: ".symlinks/plugins/firebase_messaging/ios"
+  firebase_storage:
+    :path: ".symlinks/plugins/firebase_storage/ios"
   Flutter:
     :path: Flutter
   flutter_secure_storage:
@@ -1579,6 +1597,7 @@ SPEC CHECKSUMS:
   firebase_auth: b0aa0a5964e23fba1bf7f32603437edc33b889c4
   firebase_core: 9156a152117c843440b0b990c785aa0259bc5447
   firebase_messaging: 0d962ab44ff24ed36deb8fa2ee043c4671858269
+  firebase_storage: ef547439afc96fe8ee856de3878ed28e1c5a88e8
   FirebaseAppCheckInterop: c63ae0d003274f145174849c545ab861593beaf9
   FirebaseAuth: bcfebbc0ca055a6335f2252a90e57363d7ea5e65
   FirebaseAuthInterop: 917aa3a17ecf144d5f1823b51ef372da06909a4b
@@ -1590,6 +1609,7 @@ SPEC CHECKSUMS:
   FirebaseInstallations: 4e6e162aa4abaaeeeb01dd00179dfc5ad9c2194e
   FirebaseMessaging: 341004946fa7ffc741344b20f1b667514fc93e31
   FirebaseSharedSwift: bccaff90721d14bafc14be34f28b77fdd7c91dc9
+  FirebaseStorage: b3682c96ae7016420c1f6eb43d45057a0e909c9f
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7

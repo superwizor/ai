@@ -10,6 +10,7 @@ import '../models/session.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
 import '../widgets/add_session_modal.dart';
+import '../widgets/edit_patient_modal.dart';
 import 'session_status_screen.dart';
 import 'transcript_screen.dart';
 
@@ -77,6 +78,28 @@ class ClientDetailsScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: EuphireColors.mist),
+        actions: [
+          patientAsync.when(
+            data: (patients) {
+              final patient = patients.firstWhere(
+                (p) => p.id == patientId,
+                orElse: () => Patient(id: patientId, firstName: '', lastName: ''),
+              );
+              if (patient.firstName.isEmpty) return const SizedBox.shrink();
+              return IconButton(
+                icon: const Icon(Icons.edit, color: EuphireColors.mist),
+                onPressed: () {
+                  showEuphireBottomSheet(
+                    context: context,
+                    builder: (_) => EditPatientModal(patient: patient),
+                  );
+                },
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: patientAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: EuphireColors.ember)),
@@ -94,7 +117,8 @@ class ClientDetailsScreen extends ConsumerWidget {
               children: [
                 EuphireHeader(
                   title: '${patient.firstName} ${patient.lastName}'.trim(),
-                  subtitle: '${patient.sessionCount} sesji',
+                  subtitle: '${patient.sessionCount} sesji' +
+                      (patient.modalityCode.isNotEmpty ? ' • ${patient.modalityCode}' : ''),
                 ),
                 const SizedBox(height: 32),
                 Expanded(
@@ -156,22 +180,33 @@ class ClientDetailsScreen extends ConsumerWidget {
                                       context: context,
                                       builder: (context) => AlertDialog(
                                         backgroundColor: EuphireColors.nocturne,
-                                        title: const Text('Usuń sesję', style: TextStyle(color: EuphireColors.frostWhite)),
-                                        content: const Text('Czy na pewno chcesz usunąć tę sesję z widoku?', style: TextStyle(color: EuphireColors.mist)),
+                                        title: const Text('Bezpowrotne usunięcie sesji', style: TextStyle(color: EuphireColors.frostWhite)),
+                                        content: const Text('Czy na pewno chcesz BEZPOWROTNIE usunąć tę sesję, nagranie oraz transkrypcję? Tej operacji nie można cofnąć (wymóg RODO).', style: TextStyle(color: EuphireColors.mist)),
                                         actions: [
                                           TextButton(
                                             onPressed: () => Navigator.pop(context),
                                             child: const Text('Anuluj', style: TextStyle(color: EuphireColors.mist)),
                                           ),
                                           TextButton(
-                                            onPressed: () {
-                                              ref.read(sessionsProvider.notifier).deleteSessionLocally(patientId, session.id);
-                                              Navigator.pop(context);
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('Sesja usunięta.')),
-                                              );
+                                            onPressed: () async {
+                                              try {
+                                                await ref.read(sessionsProvider.notifier).deleteSession(patientId, session.id);
+                                                if (context.mounted) {
+                                                  Navigator.pop(context);
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    const SnackBar(content: Text('Sesja została usunięta.')),
+                                                  );
+                                                }
+                                              } catch (e) {
+                                                if (context.mounted) {
+                                                  Navigator.pop(context);
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(content: Text('Wystąpił błąd: $e')),
+                                                  );
+                                                }
+                                              }
                                             },
-                                            child: const Text('Usuń', style: TextStyle(color: EuphireColors.magma)),
+                                            child: const Text('Usuń bezpowrotnie', style: TextStyle(color: EuphireColors.magma)),
                                           ),
                                         ],
                                       ),
@@ -198,11 +233,24 @@ class ClientDetailsScreen extends ConsumerWidget {
                                             child: const Text('Anuluj', style: TextStyle(color: EuphireColors.mist)),
                                           ),
                                           TextButton(
-                                            onPressed: () {
+                                            onPressed: () async {
                                               if (controller.text.trim().isNotEmpty) {
-                                                ref.read(sessionsProvider.notifier).renameSessionLocally(patientId, session.id, controller.text.trim());
+                                                try {
+                                                  await ref.read(sessionsProvider.notifier).renameSession(patientId, session.id, controller.text.trim());
+                                                  if (context.mounted) {
+                                                    Navigator.pop(context);
+                                                  }
+                                                } catch (e) {
+                                                  if (context.mounted) {
+                                                    Navigator.pop(context);
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(content: Text('Wystąpił błąd: $e')),
+                                                    );
+                                                  }
+                                                }
+                                              } else {
+                                                Navigator.pop(context);
                                               }
-                                              Navigator.pop(context);
                                             },
                                             child: const Text('Zapisz', style: TextStyle(color: EuphireColors.ember)),
                                           ),

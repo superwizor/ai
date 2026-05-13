@@ -100,14 +100,14 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
         clinical_pb.GetSessionDetailsRequest(sessionId: widget.sessionId),
       );
 
-      final segments = res.transcript.segments
+      final segments = res.transcript.turns
           .map((s) => CachedSegment(
                 speakerTag: s.speakerTag,
                 speakerLabel: s.speakerLabel,
                 startOffsetMs: s.startOffsetMs,
                 endOffsetMs: s.endOffsetMs,
                 text: s.text,
-                confidence: s.confidence,
+                confidence: s.confidenceAvg,
               ))
           .toList();
       final speakerLabels = Map<String, String>.from(res.session.speakerLabelMapping);

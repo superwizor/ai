@@ -362,11 +362,17 @@ abstract class AppLocalizations {
   /// **'Nowy pacjent.'**
   String get addPatient_title;
 
-  /// No description provided for @addPatient_alias_label.
+  /// No description provided for @addPatient_first_name_label.
   ///
   /// In pl, this message translates to:
-  /// **'Imię lub pseudonim pacjenta'**
-  String get addPatient_alias_label;
+  /// **'Imię pacjenta (wymagane)'**
+  String get addPatient_first_name_label;
+
+  /// No description provided for @addPatient_last_name_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nazwisko (opcjonalne)'**
+  String get addPatient_last_name_label;
 
   /// No description provided for @addPatient_modality_label.
   ///
@@ -415,6 +421,36 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Rozumiem.'**
   String get addPatient_no_consent_primary;
+
+  /// No description provided for @editPatient_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Edycja danych pacjenta.'**
+  String get editPatient_title;
+
+  /// No description provided for @editPatient_save_primary.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisz zmiany.'**
+  String get editPatient_save_primary;
+
+  /// No description provided for @editPatient_erase_destructive.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń pacjenta bezpowrotnie'**
+  String get editPatient_erase_destructive;
+
+  /// No description provided for @editPatient_erase_confirm_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Całkowite usunięcie kartoteki'**
+  String get editPatient_erase_confirm_header;
+
+  /// No description provided for @editPatient_erase_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'To działanie trwale usunie pacjenta oraz WSZYSTKIE jego sesje i transkrypcje (wymóg RODO). Nie można tego cofnąć.'**
+  String get editPatient_erase_confirm_body;
 
   /// No description provided for @addSession_title.
   ///

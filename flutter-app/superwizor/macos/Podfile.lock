@@ -1219,6 +1219,9 @@ PODS:
   - Firebase/Messaging (12.12.1):
     - Firebase/CoreOnly
     - FirebaseMessaging (~> 12.12.0)
+  - Firebase/Storage (12.12.1):
+    - Firebase/CoreOnly
+    - FirebaseStorage (~> 12.12.0)
   - firebase_auth (6.4.0):
     - Firebase/Auth (~> 12.12.0)
     - Firebase/CoreOnly (~> 12.12.0)
@@ -1230,6 +1233,11 @@ PODS:
   - firebase_messaging (16.2.0):
     - Firebase/CoreOnly (~> 12.12.0)
     - Firebase/Messaging (~> 12.12.0)
+    - firebase_core
+    - FlutterMacOS
+  - firebase_storage (13.3.0):
+    - Firebase/CoreOnly (~> 12.12.0)
+    - Firebase/Storage (~> 12.12.0)
     - firebase_core
     - FlutterMacOS
   - FirebaseAppCheckInterop (12.12.0)
@@ -1286,6 +1294,13 @@ PODS:
     - GoogleUtilities/UserDefaults (~> 8.1)
     - nanopb (~> 3.30910.0)
   - FirebaseSharedSwift (12.12.0)
+  - FirebaseStorage (12.12.1):
+    - FirebaseAppCheckInterop (~> 12.12.0)
+    - FirebaseAuthInterop (~> 12.12.0)
+    - FirebaseCore (~> 12.12.0)
+    - FirebaseCoreExtension (~> 12.12.0)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GTMSessionFetcher/Core (< 6.0, >= 3.4)
   - flutter_secure_storage_macos (6.1.3):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
@@ -1443,6 +1458,7 @@ DEPENDENCIES:
   - firebase_auth (from `Flutter/ephemeral/.symlinks/plugins/firebase_auth/macos`)
   - firebase_core (from `Flutter/ephemeral/.symlinks/plugins/firebase_core/macos`)
   - firebase_messaging (from `Flutter/ephemeral/.symlinks/plugins/firebase_messaging/macos`)
+  - firebase_storage (from `Flutter/ephemeral/.symlinks/plugins/firebase_storage/macos`)
   - flutter_secure_storage_macos (from `Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_macos/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
@@ -1470,6 +1486,7 @@ SPEC REPOS:
     - FirebaseInstallations
     - FirebaseMessaging
     - FirebaseSharedSwift
+    - FirebaseStorage
     - GoogleDataTransport
     - GoogleUtilities
     - "gRPC-C++"
@@ -1496,6 +1513,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/firebase_core/macos
   firebase_messaging:
     :path: Flutter/ephemeral/.symlinks/plugins/firebase_messaging/macos
+  firebase_storage:
+    :path: Flutter/ephemeral/.symlinks/plugins/firebase_storage/macos
   flutter_secure_storage_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_macos/macos
   FlutterMacOS:
@@ -1529,6 +1548,7 @@ SPEC CHECKSUMS:
   firebase_auth: 889d00265b2789b54ad2bd7cefb62d9d4aec024a
   firebase_core: 8022171e82601bac2c79cfa04d69977f12595682
   firebase_messaging: 5044cedfca0133cd38db45fc16c0d312bab00f1b
+  firebase_storage: 1476b6f46905c45a4a4c943743e382503180afbc
   FirebaseAppCheckInterop: c63ae0d003274f145174849c545ab861593beaf9
   FirebaseAuth: bcfebbc0ca055a6335f2252a90e57363d7ea5e65
   FirebaseAuthInterop: 917aa3a17ecf144d5f1823b51ef372da06909a4b
@@ -1540,6 +1560,7 @@ SPEC CHECKSUMS:
   FirebaseInstallations: 4e6e162aa4abaaeeeb01dd00179dfc5ad9c2194e
   FirebaseMessaging: 341004946fa7ffc741344b20f1b667514fc93e31
   FirebaseSharedSwift: bccaff90721d14bafc14be34f28b77fdd7c91dc9
+  FirebaseStorage: b3682c96ae7016420c1f6eb43d45057a0e909c9f
   flutter_secure_storage_macos: 7f45e30f838cf2659862a4e4e3ee1c347c2b3b54
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7

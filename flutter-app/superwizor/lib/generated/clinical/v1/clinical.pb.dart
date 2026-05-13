@@ -39,6 +39,9 @@ class PatientFile extends $pb.GeneratedMessage {
     $core.String? privateTherapistNotes,
     $2.Timestamp? createdAt,
     $2.Timestamp? updatedAt,
+    $core.String? patientFirstName,
+    $core.String? patientLastName,
+    $core.String? patientLanguageCode,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -59,6 +62,10 @@ class PatientFile extends $pb.GeneratedMessage {
       result.privateTherapistNotes = privateTherapistNotes;
     if (createdAt != null) result.createdAt = createdAt;
     if (updatedAt != null) result.updatedAt = updatedAt;
+    if (patientFirstName != null) result.patientFirstName = patientFirstName;
+    if (patientLastName != null) result.patientLastName = patientLastName;
+    if (patientLanguageCode != null)
+      result.patientLanguageCode = patientLanguageCode;
     return result;
   }
 
@@ -95,6 +102,9 @@ class PatientFile extends $pb.GeneratedMessage {
         subBuilder: $2.Timestamp.create)
     ..aOM<$2.Timestamp>(15, _omitFieldNames ? '' : 'updatedAt',
         subBuilder: $2.Timestamp.create)
+    ..aOS(16, _omitFieldNames ? '' : 'patientFirstName')
+    ..aOS(17, _omitFieldNames ? '' : 'patientLastName')
+    ..aOS(18, _omitFieldNames ? '' : 'patientLanguageCode')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -143,6 +153,12 @@ class PatientFile extends $pb.GeneratedMessage {
   @$pb.TagNumber(3)
   void clearPatientId() => $_clearField(3);
 
+  /// Modality is set at CreatePatientFile time and is intentionally
+  /// immutable afterwards — sessions/reports attached to this kartoteka
+  /// were analyzed under this modality's prompts and switching mid-process
+  /// would silently re-frame past clinical work. Flutter should gray out
+  /// the modality picker once the kartoteka exists. If a therapist picks
+  /// wrong, the path is DeletePatientFile + recreate.
   @$pb.TagNumber(4)
   $core.String get modalityId => $_getSZ(3);
   @$pb.TagNumber(4)
@@ -258,6 +274,36 @@ class PatientFile extends $pb.GeneratedMessage {
   void clearUpdatedAt() => $_clearField(15);
   @$pb.TagNumber(15)
   $2.Timestamp ensureUpdatedAt() => $_ensure(14);
+
+  /// Patient-user fields — JOIN'd from users(role='PATIENT') via
+  /// patient_id (migration 000013). Empty strings when the user row
+  /// was deleted via DeletePatientUser (FK SET NULL).
+  @$pb.TagNumber(16)
+  $core.String get patientFirstName => $_getSZ(15);
+  @$pb.TagNumber(16)
+  set patientFirstName($core.String value) => $_setString(15, value);
+  @$pb.TagNumber(16)
+  $core.bool hasPatientFirstName() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearPatientFirstName() => $_clearField(16);
+
+  @$pb.TagNumber(17)
+  $core.String get patientLastName => $_getSZ(16);
+  @$pb.TagNumber(17)
+  set patientLastName($core.String value) => $_setString(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasPatientLastName() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearPatientLastName() => $_clearField(17);
+
+  @$pb.TagNumber(18)
+  $core.String get patientLanguageCode => $_getSZ(17);
+  @$pb.TagNumber(18)
+  set patientLanguageCode($core.String value) => $_setString(17, value);
+  @$pb.TagNumber(18)
+  $core.bool hasPatientLanguageCode() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearPatientLanguageCode() => $_clearField(18);
 }
 
 class Modality extends $pb.GeneratedMessage {
@@ -358,6 +404,9 @@ class CreatePatientFileRequest extends $pb.GeneratedMessage {
     $core.String? initialComplaint,
     $core.bool? hasRecordingConsent,
     $core.String? idempotencyKey,
+    $core.String? patientFirstName,
+    $core.String? patientLastName,
+    $core.String? patientLanguageCode,
   }) {
     final result = create();
     if (therapistId != null) result.therapistId = therapistId;
@@ -368,6 +417,10 @@ class CreatePatientFileRequest extends $pb.GeneratedMessage {
     if (hasRecordingConsent != null)
       result.hasRecordingConsent = hasRecordingConsent;
     if (idempotencyKey != null) result.idempotencyKey = idempotencyKey;
+    if (patientFirstName != null) result.patientFirstName = patientFirstName;
+    if (patientLastName != null) result.patientLastName = patientLastName;
+    if (patientLanguageCode != null)
+      result.patientLanguageCode = patientLanguageCode;
     return result;
   }
 
@@ -392,6 +445,9 @@ class CreatePatientFileRequest extends $pb.GeneratedMessage {
     ..aOS(5, _omitFieldNames ? '' : 'initialComplaint')
     ..aOB(6, _omitFieldNames ? '' : 'hasRecordingConsent')
     ..aOS(7, _omitFieldNames ? '' : 'idempotencyKey')
+    ..aOS(8, _omitFieldNames ? '' : 'patientFirstName')
+    ..aOS(9, _omitFieldNames ? '' : 'patientLastName')
+    ..aOS(10, _omitFieldNames ? '' : 'patientLanguageCode')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -476,6 +532,37 @@ class CreatePatientFileRequest extends $pb.GeneratedMessage {
   $core.bool hasIdempotencyKey() => $_has(6);
   @$pb.TagNumber(7)
   void clearIdempotencyKey() => $_clearField(7);
+
+  /// Patient-user fields written to the paired users(role='PATIENT')
+  /// row in the same transaction. patient_first_name is required;
+  /// last_name optional; language_code optional (defaults to the
+  /// therapist's ui_language when empty).
+  @$pb.TagNumber(8)
+  $core.String get patientFirstName => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set patientFirstName($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasPatientFirstName() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearPatientFirstName() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get patientLastName => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set patientLastName($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasPatientLastName() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearPatientLastName() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get patientLanguageCode => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set patientLanguageCode($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasPatientLanguageCode() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearPatientLanguageCode() => $_clearField(10);
 }
 
 class GetPatientFileRequest extends $pb.GeneratedMessage {
@@ -674,6 +761,14 @@ class ListPatientFilesResponse extends $pb.GeneratedMessage {
   void clearNextPageToken() => $_clearField(2);
 }
 
+/// UpdatePatientFileRequest — therapist-editable fields on a kartoteka.
+/// Deliberately excluded:
+///   - modality_id / modality_code: immutable after create (see PatientFile.modality_id)
+///   - therapist_id / patient_id: ownership is established at create time
+///   - has_recording_consent / consent_given_at: separate consent flow
+///   - process_type: structural decision, treated like modality
+/// Patient-user fields (first_name, last_name, language_code) live on
+/// UpdatePatientUserRequest — separate RPC.
 class UpdatePatientFileRequest extends $pb.GeneratedMessage {
   factory UpdatePatientFileRequest({
     $core.String? patientFileId,
@@ -822,6 +917,167 @@ class DeletePatientFileRequest extends $pb.GeneratedMessage {
   static DeletePatientFileRequest getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<DeletePatientFileRequest>(create);
   static DeletePatientFileRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get patientFileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set patientFileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFileId() => $_clearField(1);
+}
+
+/// UpdatePatientUser — mutates the paired users(role='PATIENT') row.
+/// Identified by patient_file_id so the handler can do the standard
+/// therapist-ownership authz on the parent kartoteka. Empty fields
+/// mean "leave alone" (server-side COALESCE/NULLIF).
+class UpdatePatientUserRequest extends $pb.GeneratedMessage {
+  factory UpdatePatientUserRequest({
+    $core.String? patientFileId,
+    $core.String? firstName,
+    $core.String? lastName,
+    $core.String? languageCode,
+  }) {
+    final result = create();
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    if (firstName != null) result.firstName = firstName;
+    if (lastName != null) result.lastName = lastName;
+    if (languageCode != null) result.languageCode = languageCode;
+    return result;
+  }
+
+  UpdatePatientUserRequest._();
+
+  factory UpdatePatientUserRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdatePatientUserRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdatePatientUserRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
+    ..aOS(2, _omitFieldNames ? '' : 'firstName')
+    ..aOS(3, _omitFieldNames ? '' : 'lastName')
+    ..aOS(4, _omitFieldNames ? '' : 'languageCode')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdatePatientUserRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdatePatientUserRequest copyWith(
+          void Function(UpdatePatientUserRequest) updates) =>
+      super.copyWith((message) => updates(message as UpdatePatientUserRequest))
+          as UpdatePatientUserRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdatePatientUserRequest create() => UpdatePatientUserRequest._();
+  @$core.override
+  UpdatePatientUserRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdatePatientUserRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdatePatientUserRequest>(create);
+  static UpdatePatientUserRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get patientFileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set patientFileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFileId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get firstName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set firstName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFirstName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFirstName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get lastName => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set lastName($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasLastName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearLastName() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get languageCode => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set languageCode($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLanguageCode() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLanguageCode() => $_clearField(4);
+}
+
+/// DeletePatientUser — RODO-style erasure of a patient. The user row
+/// is hard-deleted; every patient_file that references it cascades
+/// (migration 000014 flipped the FK to ON DELETE CASCADE), taking
+/// sessions / transcripts / reports / audio_uploads with them. The
+/// handler pre-fetches session IDs and publishes session.deleted
+/// Pub/Sub events so notification-svc can wipe Firestore mirrors +
+/// inbox notifications.
+///
+/// Identified by patient_file_id rather than patient_id so the handler
+/// can do the existing therapist-ownership authz on the parent
+/// kartoteka. patient_user rows have no auth metadata of their own.
+class DeletePatientUserRequest extends $pb.GeneratedMessage {
+  factory DeletePatientUserRequest({
+    $core.String? patientFileId,
+  }) {
+    final result = create();
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    return result;
+  }
+
+  DeletePatientUserRequest._();
+
+  factory DeletePatientUserRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DeletePatientUserRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeletePatientUserRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeletePatientUserRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeletePatientUserRequest copyWith(
+          void Function(DeletePatientUserRequest) updates) =>
+      super.copyWith((message) => updates(message as DeletePatientUserRequest))
+          as DeletePatientUserRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeletePatientUserRequest create() => DeletePatientUserRequest._();
+  @$core.override
+  DeletePatientUserRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DeletePatientUserRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeletePatientUserRequest>(create);
+  static DeletePatientUserRequest? _defaultInstance;
 
   @$pb.TagNumber(1)
   $core.String get patientFileId => $_getSZ(0);
@@ -1124,6 +1380,7 @@ class Session extends $pb.GeneratedMessage {
         speakerLabelMapping,
     $core.String? status,
     $2.Timestamp? createdAt,
+    $core.String? name,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -1138,6 +1395,7 @@ class Session extends $pb.GeneratedMessage {
       result.speakerLabelMapping.addEntries(speakerLabelMapping);
     if (status != null) result.status = status;
     if (createdAt != null) result.createdAt = createdAt;
+    if (name != null) result.name = name;
     return result;
   }
 
@@ -1171,6 +1429,7 @@ class Session extends $pb.GeneratedMessage {
     ..aOS(10, _omitFieldNames ? '' : 'status')
     ..aOM<$2.Timestamp>(11, _omitFieldNames ? '' : 'createdAt',
         subBuilder: $2.Timestamp.create)
+    ..aOS(12, _omitFieldNames ? '' : 'name')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1285,6 +1544,19 @@ class Session extends $pb.GeneratedMessage {
   void clearCreatedAt() => $_clearField(11);
   @$pb.TagNumber(11)
   $2.Timestamp ensureCreatedAt() => $_ensure(10);
+
+  /// Free-text label shown in the kartoteka list. Default at create-time:
+  /// "<modality display_name> <session_number>". Therapist can rename via
+  /// ClinicalService.UpdateSession. Migration 000011 added the column;
+  /// ingestion-svc.CompleteAudioUpload populates it on new sessions.
+  @$pb.TagNumber(12)
+  $core.String get name => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set name($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasName() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearName() => $_clearField(12);
 }
 
 class ListSessionsRequest extends $pb.GeneratedMessage {
@@ -1339,6 +1611,133 @@ class ListSessionsRequest extends $pb.GeneratedMessage {
   $core.bool hasPatientFileId() => $_has(0);
   @$pb.TagNumber(1)
   void clearPatientFileId() => $_clearField(1);
+}
+
+/// UpdateSession — rename a session. Currently `name` is the only
+/// mutable field; add more here as edit needs surface (e.g. session_date
+/// correction). Empty `name` is rejected by the handler.
+class UpdateSessionRequest extends $pb.GeneratedMessage {
+  factory UpdateSessionRequest({
+    $core.String? sessionId,
+    $core.String? name,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    if (name != null) result.name = name;
+    return result;
+  }
+
+  UpdateSessionRequest._();
+
+  factory UpdateSessionRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdateSessionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateSessionRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateSessionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateSessionRequest copyWith(void Function(UpdateSessionRequest) updates) =>
+      super.copyWith((message) => updates(message as UpdateSessionRequest))
+          as UpdateSessionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdateSessionRequest create() => UpdateSessionRequest._();
+  @$core.override
+  UpdateSessionRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdateSessionRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateSessionRequest>(create);
+  static UpdateSessionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+}
+
+/// DeleteSession — hard delete via CASCADE (migration 000012).
+/// Removes transcripts, reports, hitop_measurements, audio_uploads
+/// rows referencing this session. Publishes session.deleted Pub/Sub
+/// event so notification-svc can purge the Firestore mirror + inbox.
+class DeleteSessionRequest extends $pb.GeneratedMessage {
+  factory DeleteSessionRequest({
+    $core.String? sessionId,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    return result;
+  }
+
+  DeleteSessionRequest._();
+
+  factory DeleteSessionRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DeleteSessionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteSessionRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteSessionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteSessionRequest copyWith(void Function(DeleteSessionRequest) updates) =>
+      super.copyWith((message) => updates(message as DeleteSessionRequest))
+          as DeleteSessionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeleteSessionRequest create() => DeleteSessionRequest._();
+  @$core.override
+  DeleteSessionRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DeleteSessionRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteSessionRequest>(create);
+  static DeleteSessionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
 }
 
 class ListSessionsResponse extends $pb.GeneratedMessage {
@@ -1508,10 +1907,12 @@ class Transcript extends $pb.GeneratedMessage {
   factory Transcript({
     $core.String? id,
     $core.Iterable<TranscriptSegment>? segments,
+    $core.Iterable<SpeakerTurn>? turns,
   }) {
     final result = create();
     if (id != null) result.id = id;
     if (segments != null) result.segments.addAll(segments);
+    if (turns != null) result.turns.addAll(turns);
     return result;
   }
 
@@ -1531,6 +1932,8 @@ class Transcript extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'id')
     ..pPM<TranscriptSegment>(2, _omitFieldNames ? '' : 'segments',
         subBuilder: TranscriptSegment.create)
+    ..pPM<SpeakerTurn>(3, _omitFieldNames ? '' : 'turns',
+        subBuilder: SpeakerTurn.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1560,8 +1963,156 @@ class Transcript extends $pb.GeneratedMessage {
   @$pb.TagNumber(1)
   void clearId() => $_clearField(1);
 
+  /// Per-chunk segments — one row per pause-bounded utterance from STT.
+  /// Kept for the speaker-label edit UI (UpdateSpeakerLabels) and any
+  /// analysis that needs raw granularity. The read-only transcript view
+  /// should bind to `turns` instead, which collapses consecutive
+  /// same-speaker chunks into one block.
   @$pb.TagNumber(2)
   $pb.PbList<TranscriptSegment> get segments => $_getList(1);
+
+  /// Speaker-grouped view derived from `segments`. Computed server-side
+  /// (clinical-svc.GroupSegmentsIntoTurns) so every client renders the
+  /// same shape: one entry per uninterrupted stretch of a single speaker.
+  /// Joining/timestamping is policy that lives backend-side; clients
+  /// only choose the timestamp display format from start_offset_ms.
+  @$pb.TagNumber(3)
+  $pb.PbList<SpeakerTurn> get turns => $_getList(2);
+}
+
+/// SpeakerTurn — a contiguous span of segments attributed to one
+/// speaker. Display contract:
+///   "[<speaker_label> · <start_offset_ms formatted>] <text>"
+/// `segment_count` exists so a future "expand to raw chunks" UI can
+/// jump back to the underlying TranscriptSegments without an extra
+/// fetch. `confidence_avg` is the word-count-weighted mean across the
+/// underlying segments — fall back to plain mean if word counts are
+/// zero (defensive; STT always emits them today).
+class SpeakerTurn extends $pb.GeneratedMessage {
+  factory SpeakerTurn({
+    $core.int? speakerTag,
+    $core.String? speakerLabel,
+    $core.int? startOffsetMs,
+    $core.int? endOffsetMs,
+    $core.String? text,
+    $core.int? segmentCount,
+    $core.double? confidenceAvg,
+  }) {
+    final result = create();
+    if (speakerTag != null) result.speakerTag = speakerTag;
+    if (speakerLabel != null) result.speakerLabel = speakerLabel;
+    if (startOffsetMs != null) result.startOffsetMs = startOffsetMs;
+    if (endOffsetMs != null) result.endOffsetMs = endOffsetMs;
+    if (text != null) result.text = text;
+    if (segmentCount != null) result.segmentCount = segmentCount;
+    if (confidenceAvg != null) result.confidenceAvg = confidenceAvg;
+    return result;
+  }
+
+  SpeakerTurn._();
+
+  factory SpeakerTurn.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SpeakerTurn.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SpeakerTurn',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'speakerTag')
+    ..aOS(2, _omitFieldNames ? '' : 'speakerLabel')
+    ..aI(3, _omitFieldNames ? '' : 'startOffsetMs')
+    ..aI(4, _omitFieldNames ? '' : 'endOffsetMs')
+    ..aOS(5, _omitFieldNames ? '' : 'text')
+    ..aI(6, _omitFieldNames ? '' : 'segmentCount')
+    ..aD(7, _omitFieldNames ? '' : 'confidenceAvg',
+        fieldType: $pb.PbFieldType.OF)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SpeakerTurn clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SpeakerTurn copyWith(void Function(SpeakerTurn) updates) =>
+      super.copyWith((message) => updates(message as SpeakerTurn))
+          as SpeakerTurn;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SpeakerTurn create() => SpeakerTurn._();
+  @$core.override
+  SpeakerTurn createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SpeakerTurn getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SpeakerTurn>(create);
+  static SpeakerTurn? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get speakerTag => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set speakerTag($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSpeakerTag() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSpeakerTag() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get speakerLabel => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set speakerLabel($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSpeakerLabel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSpeakerLabel() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get startOffsetMs => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set startOffsetMs($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStartOffsetMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStartOffsetMs() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get endOffsetMs => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set endOffsetMs($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasEndOffsetMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearEndOffsetMs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get text => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set text($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasText() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearText() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get segmentCount => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set segmentCount($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSegmentCount() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSegmentCount() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.double get confidenceAvg => $_getN(6);
+  @$pb.TagNumber(7)
+  set confidenceAvg($core.double value) => $_setFloat(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasConfidenceAvg() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearConfidenceAvg() => $_clearField(7);
 }
 
 class Report extends $pb.GeneratedMessage {
