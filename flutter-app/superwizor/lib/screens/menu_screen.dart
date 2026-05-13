@@ -23,9 +23,11 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/locale_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/euphire_theme.dart';
+import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/modality_sheet.dart';
 import '../widgets/profile_edit_sheet.dart';
+import '../l10n/app_localizations.dart';
 import 'delete_account_screen.dart';
 import 'legal_markdown_screen.dart';
 
@@ -51,16 +53,63 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
   Future<void> _pickImage() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80);
+    
+    // Zrób zdjęcie czy wybierz z galerii?
+    final source = await showEuphireBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => EuphireActionSheet(
+        header: 'Zdjęcie profilowe',
+        body: 'Wybierz skąd chcesz dodać zdjęcie.',
+        primary: EuphireSheetAction(
+          label: 'Aparat',
+          onPressed: () => Navigator.of(ctx).pop(ImageSource.camera),
+        ),
+        secondary: EuphireSheetAction(
+          label: 'Galeria',
+          onPressed: () => Navigator.of(ctx).pop(ImageSource.gallery),
+        ),
+      ),
+    );
+    
+    if (source == null) return;
+
+    // Dobre praktyki: kompresja, zmiana rozmiaru (zapobiega gigabajtowym HEIC/JPG)
+    final picked = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 75,
+      maxWidth: 512,
+      maxHeight: 512,
+      preferredCameraDevice: CameraDevice.front,
+    );
+    
     if (picked == null) return;
     setState(() => _uploadingAvatar = true);
     try {
       final ref = FirebaseStorage.instance.ref('users/${user.uid}/profile.jpg');
-      await ref.putFile(File(picked.path));
-      await user.updatePhotoURL(await ref.getDownloadURL());
+      
+      // Metadane: poprawne ustawienie Content-Type
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+      );
+      
+      await ref.putFile(File(picked.path), metadata);
+      final downloadUrl = await ref.getDownloadURL();
+      
+      await user.updatePhotoURL(downloadUrl);
       await user.reload();
-      if (mounted) setState(() {});
-    } catch (_) {
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Zdjęcie profilowe zaktualizowane')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Avatar upload failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Wystąpił błąd podczas zapisu: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
     }
@@ -79,7 +128,9 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     if (context.mounted) Navigator.of(context).pop();
   }
 
-  void _openLegal(String path, String title) {
+  void _openLegal(String baseName, String title) {
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    final path = isEn ? 'assets/legal/${baseName}_en.md' : 'assets/legal/$baseName.md';
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => LegalMarkdownScreen(assetPath: path, title: title),
     ));
@@ -92,6 +143,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
     final settings = ref.watch(appSettingsProvider);
     final settingsNotifier = ref.read(appSettingsProvider.notifier);
     final locale = ref.watch(localeProvider);
@@ -120,7 +172,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            'Ustawienia',
+                            t.settings_title,
                             style: theme.textTheme.displayLarge?.copyWith(
                               color: EuphireColors.ember,
                               fontFamily: 'Merriweather',
@@ -140,7 +192,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                     child: Text(
-                      'DOSTOSUJ SWOJE DOŚWIADCZENIE',
+                      t.settings_subtitle,
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: EuphireColors.frostWhite.withValues(alpha: 0.6),
                         letterSpacing: 2,
@@ -155,7 +207,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                       children: [
 
                         // ── TWOJE KONTO ──────────────────────────────────
-                        _SectionLabel('TWOJE KONTO'),
+                        _SectionLabel(t.settings_section_account),
 
                         // Wiersz "Zalogowano jako:"
                         Padding(
@@ -167,7 +219,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  'Zalogowano jako: $email',
+                                  t.settings_logged_in_as(email),
                                   style: TextStyle(
                                     fontFamily: 'RobotoMono',
                                     fontSize: 11,
@@ -184,34 +236,43 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         _SettingsCard(children: [
                           _SettingsRow(
                             icon: Icons.person_outline,
-                            title: 'Nazwa',
-                            trailing: Text(
-                              displayName,
-                              style: TextStyle(fontFamily: 'Montserrat', fontSize: 14,
-                                  color: EuphireColors.frostWhite.withValues(alpha: 0.4)),
-                              overflow: TextOverflow.ellipsis,
+                            title: t.settings_name,
+                            trailing: Expanded(
+                              child: Text(
+                                displayName,
+                                textAlign: TextAlign.right,
+                                style: TextStyle(fontFamily: 'Montserrat', fontSize: 14,
+                                    color: EuphireColors.frostWhite.withValues(alpha: 0.4)),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            onTap: () => showEuphireBottomSheet(
-                              context: context,
-                              builder: (_) => ProfileEditSheet(onSaved: () => setState(() {})),
-                            ),
+                            onTap: () async {
+                              await showEuphireBottomSheet(
+                                context: context,
+                                builder: (_) => const ProfileEditSheet(),
+                              );
+                              setState(() {}); // refresh after sheet closes
+                            },
                           ),
                           _Divider(),
                           _SettingsRow(
                             icon: Icons.email_outlined,
-                            title: 'Email',
-                            trailing: Text(
-                              email,
-                              style: TextStyle(fontFamily: 'Montserrat', fontSize: 13,
-                                  color: EuphireColors.frostWhite.withValues(alpha: 0.4)),
-                              overflow: TextOverflow.ellipsis,
+                            title: t.settings_email,
+                            trailing: Expanded(
+                              child: Text(
+                                email,
+                                textAlign: TextAlign.right,
+                                style: TextStyle(fontFamily: 'Montserrat', fontSize: 13,
+                                    color: EuphireColors.frostWhite.withValues(alpha: 0.4)),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             onTap: null, // email read-only (zmiana przez Firebase)
                           ),
                           _Divider(),
                           _SettingsRow(
                             icon: Icons.camera_alt_outlined,
-                            title: 'Zdjęcie profilowe',
+                            title: t.settings_avatar,
                             trailing: _uploadingAvatar
                                 ? const SizedBox(width: 32, height: 32,
                                     child: CircularProgressIndicator(strokeWidth: 2, color: EuphireColors.ember))
@@ -225,10 +286,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                           Consumer(
                             builder: (ctx, ref, _) {
                               final code = ref.watch(selectedModalityProvider);
-                              final abbr = _modalityAbbr(code);
+                              final abbr = _modalityAbbr(context, code);
                               return _SettingsRow(
                                 icon: Icons.psychology_outlined,
-                                title: 'Domyślny nurt terapii',
+                                title: t.settings_modality,
                                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -260,14 +321,14 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         const SizedBox(height: 24),
 
                         // ── PREFERENCJE ──────────────────────────────────
-                        _SectionLabel('PREFERENCJE'),
+                        _SectionLabel(t.settings_section_preferences),
                         _SettingsCard(children: [
                           // Dźwięki
                           _ToggleRow(
                             icon: Icons.volume_up_outlined,
                             iconColor: EuphireColors.ember,
-                            title: 'Dźwięki',
-                            subtitle: settings.soundEnabled ? 'Dźwięki włączone' : 'Dźwięki wyłączone',
+                            title: t.settings_sounds,
+                            subtitle: settings.soundEnabled ? t.settings_sounds_on : t.settings_sounds_off,
                             value: settings.soundEnabled,
                             onChanged: settingsNotifier.toggleSound,
                           ),
@@ -276,8 +337,8 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                           _ToggleRow(
                             icon: Icons.vibration_outlined,
                             iconColor: EuphireColors.ember,
-                            title: 'Wibracje',
-                            subtitle: settings.hapticsEnabled ? 'Wibracje włączone' : 'Wibracje wyłączone',
+                            title: t.settings_haptics,
+                            subtitle: settings.hapticsEnabled ? t.settings_haptics_on : t.settings_haptics_off,
                             value: settings.hapticsEnabled,
                             onChanged: settingsNotifier.toggleHaptics,
                           ),
@@ -289,11 +350,11 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         const SizedBox(height: 24),
 
                         // ── WSPARCIE ─────────────────────────────────────
-                        _SectionLabel('WSPARCIE'),
+                        _SectionLabel(t.settings_section_support),
                         _SettingsCard(children: [
                           _SettingsRow(
                             icon: Icons.mail_outline,
-                            title: 'Napisz do nas',
+                            title: t.settings_contact,
                             subtitle: 'kontakt@superwizor.ai',
                             trailing: Icon(Icons.chevron_right,
                                 color: EuphireColors.mist.withValues(alpha: 0.4), size: 18),
@@ -302,7 +363,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                           _Divider(),
                           _SettingsRow(
                             icon: Icons.open_in_new,
-                            title: 'Lista oczekujących',
+                            title: t.settings_waitlist,
                             subtitle: 'euphire.pl',
                             trailing: Icon(Icons.chevron_right,
                                 color: EuphireColors.mist.withValues(alpha: 0.4), size: 18),
@@ -313,35 +374,35 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         const SizedBox(height: 24),
 
                         // ── INFORMACJE PRAWNE ────────────────────────────
-                        _SectionLabel('INFORMACJE PRAWNE'),
+                        _SectionLabel(t.settings_section_legal),
                         _SettingsCard(children: [
                           _SettingsRow(
                             icon: Icons.description_outlined,
-                            title: 'Regulamin',
+                            title: t.settings_terms,
                             trailing: Icon(Icons.chevron_right,
                                 color: EuphireColors.mist.withValues(alpha: 0.4), size: 18),
-                            onTap: () => _openLegal('assets/legal/terms.md', 'Regulamin'),
+                            onTap: () => _openLegal('terms', t.settings_terms),
                           ),
                           _Divider(),
                           _SettingsRow(
                             icon: Icons.lock_outline,
-                            title: 'Polityka Prywatności',
+                            title: t.settings_privacy,
                             trailing: Icon(Icons.chevron_right,
                                 color: EuphireColors.mist.withValues(alpha: 0.4), size: 18),
-                            onTap: () => _openLegal('assets/legal/privacy_policy.md', 'Polityka Prywatności'),
+                            onTap: () => _openLegal('privacy_policy', t.settings_privacy),
                           ),
                           _Divider(),
                           _SettingsRow(
                             icon: Icons.handshake_outlined,
-                            title: 'DPA / RODO',
+                            title: t.settings_dpa,
                             trailing: Icon(Icons.chevron_right,
                                 color: EuphireColors.mist.withValues(alpha: 0.4), size: 18),
-                            onTap: () => _openLegal('assets/legal/dpa.md', 'DPA / RODO'),
+                            onTap: () => _openLegal('dpa', t.settings_dpa),
                           ),
                           _Divider(),
                           _SettingsRow(
                             icon: Icons.info_outline,
-                            title: 'Licencje oprogramowania',
+                            title: t.settings_licenses,
                             trailing: Icon(Icons.chevron_right,
                                 color: EuphireColors.mist.withValues(alpha: 0.4), size: 18),
                             onTap: () => Navigator.of(context).push(
@@ -355,17 +416,27 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         const SizedBox(height: 24),
 
                         // ── ZARZĄDZANIE KONTEM ───────────────────────────
-                        _SectionLabel('ZARZĄDZANIE KONTEM'),
+                        _SectionLabel(t.settings_section_account_management),
                         _SettingsCard(children: [
                           _SettingsRow(
                             icon: Icons.logout,
-                            title: 'Wyloguj się',
+                            title: t.settings_logout,
                             trailing: Icon(Icons.chevron_right,
                                 color: EuphireColors.mist.withValues(alpha: 0.4), size: 18),
                             onTap: _logout,
                           ),
                           _Divider(),
-                          _DeleteAccountRow(),
+                          _SettingsRow(
+                            icon: Icons.warning_amber_rounded,
+                            iconColor: EuphireColors.magma,
+                            title: t.settings_delete_account,
+                            titleColor: EuphireColors.magma,
+                            trailing: Icon(Icons.chevron_right,
+                                color: EuphireColors.magma.withValues(alpha: 0.4), size: 18),
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const DeleteAccountScreen()),
+                            ),
+                          ),
                         ]),
 
                         // ── Stopka ───────────────────────────────────────
@@ -396,16 +467,17 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
 
 // ─── Helper: skróty modalności ───────────────────────────────
 
-String _modalityAbbr(String code) {
+String _modalityAbbr(BuildContext context, String code) {
+  final t = AppLocalizations.of(context)!;
   switch (code) {
-    case 'UNIV': return 'Integr.';
-    case 'CBT':  return 'CBT';
-    case 'PSYCHO': return 'Psychod.';
-    case 'PPT':  return 'PPT';
-    case 'ST':   return 'ST';
-    case 'SYS':  return 'System.';
-    case 'EFT':  return 'EFT';
-    case 'COACH': return 'Coaching';
+    case 'UNIV': return t.modality_abbr_univ;
+    case 'CBT':  return t.modality_abbr_cbt;
+    case 'PSYCHO': return t.modality_abbr_psycho;
+    case 'PPT':  return t.modality_abbr_ppt;
+    case 'ST':   return t.modality_abbr_st;
+    case 'SYS':  return t.modality_abbr_sys;
+    case 'EFT':  return t.modality_abbr_eft;
+    case 'COACH': return t.modality_abbr_coach;
     default:     return code;
   }
 }
@@ -477,6 +549,7 @@ class _SettingsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
     final fgColor = titleColor ?? EuphireColors.frostWhite;
     final icColor = iconColor ?? EuphireColors.mist;
 
@@ -535,6 +608,7 @@ class _ToggleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
@@ -581,13 +655,14 @@ class _LanguageRow extends ConsumerWidget {
     final flag = isPl ? '🇵🇱' : '🇬🇧';
     final langName = isPl ? 'Polski (PL)' : 'English (UK)';
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Język aplikacji',
+          Text(AppLocalizations.of(context)!.settings_language_app,
               style: theme.textTheme.titleMedium?.copyWith(
                   color: EuphireColors.frostWhite, fontWeight: FontWeight.w500, fontSize: 15)),
           const SizedBox(height: 10),
@@ -633,18 +708,20 @@ class _LanguageRow extends ConsumerWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _LanguagePickerSheet(currentCode: current, ref: ref),
+      builder: (_) => _LanguagePickerSheet(currentCode: current),
     );
   }
 }
 
-class _LanguagePickerSheet extends StatelessWidget {
+class _LanguagePickerSheet extends ConsumerWidget {
   final String currentCode;
-  final WidgetRef ref;
-  const _LanguagePickerSheet({required this.currentCode, required this.ref});
+  const _LanguagePickerSheet({required this.currentCode});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentLocale = ref.watch(localeProvider);
+    final activeCode = currentLocale.languageCode;
+    
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF0A2326),
@@ -663,21 +740,21 @@ class _LanguagePickerSheet extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.all(24),
-              child: Text('Wybierz język',
+              child: Text(AppLocalizations.of(context)!.settings_choose_language,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontFamily: 'Merriweather', fontWeight: FontWeight.w700,
                       color: EuphireColors.frostWhite)),
             ),
             const Divider(color: Colors.white10, height: 1),
             _LangTile(flag: '🇵🇱', name: 'Polski', sub: 'Polish',
-                selected: currentCode == 'pl',
+                selected: activeCode == 'pl',
                 onTap: () async {
                   await ref.read(localeProvider.notifier).setLocale(const Locale('pl'));
                   await Future.delayed(const Duration(milliseconds: 200));
                   if (context.mounted) Navigator.of(context).pop();
                 }),
             _LangTile(flag: '🇬🇧', name: 'English', sub: 'English (UK)',
-                selected: currentCode == 'en',
+                selected: activeCode == 'en',
                 onTap: () async {
                   await ref.read(localeProvider.notifier).setLocale(const Locale('en'));
                   await Future.delayed(const Duration(milliseconds: 200));
@@ -738,6 +815,7 @@ class _LogoutBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF0A2326),
@@ -782,7 +860,7 @@ class _LogoutBottomSheet extends StatelessWidget {
               const SizedBox(height: 20),
 
               Text(
-                'Wylogować się?',
+                AppLocalizations.of(context)!.settings_logout_confirm_title,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontFamily: 'Merriweather',
                   fontStyle: FontStyle.italic,
@@ -792,7 +870,7 @@ class _LogoutBottomSheet extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Twoje dane są bezpieczne.\nMożesz zalogować się ponownie w każdej chwili.',
+                AppLocalizations.of(context)!.settings_logout_confirm_body,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: EuphireColors.mist,
                   height: 1.5,
@@ -813,8 +891,8 @@ class _LogoutBottomSheet extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Wyloguj się.',
+                  child: Text(
+                    AppLocalizations.of(context)!.settings_logout_confirm_logout,
                     style: TextStyle(
                       fontFamily: 'Montserrat',
                       fontWeight: FontWeight.w700,
@@ -830,7 +908,7 @@ class _LogoutBottomSheet extends StatelessWidget {
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
                 child: Text(
-                  'Zostań zalogowany.',
+                  AppLocalizations.of(context)!.settings_logout_confirm_cancel,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     color: EuphireColors.mist.withValues(alpha: 0.7),
@@ -889,6 +967,7 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
@@ -901,7 +980,7 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Usuń konto bezpowrotnie',
+                  AppLocalizations.of(context)!.settings_delete_account,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: EuphireColors.magma,
                     fontWeight: FontWeight.w500,
@@ -939,6 +1018,7 @@ class _DeleteWarningSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF0A2326),
@@ -974,7 +1054,7 @@ class _DeleteWarningSheet extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                'Czy na pewno chcesz\nusunąć konto?',
+                AppLocalizations.of(context)!.settings_delete_confirm_title,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontFamily: 'Merriweather',
                   fontStyle: FontStyle.italic,
@@ -984,7 +1064,7 @@ class _DeleteWarningSheet extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Ta operacja jest NIEODWRACALNA.\nUstracisz całą dokumentację kliniczną i dane pacjentów.',
+                AppLocalizations.of(context)!.settings_delete_confirm_body,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: EuphireColors.mist,
                   height: 1.5,
@@ -1003,8 +1083,8 @@ class _DeleteWarningSheet extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Rozumiem — przejdź dalej.',
+                  child: Text(
+                    AppLocalizations.of(context)!.settings_delete_confirm_proceed,
                     style: TextStyle(
                       fontFamily: 'Montserrat',
                       fontWeight: FontWeight.w700,
@@ -1017,7 +1097,7 @@ class _DeleteWarningSheet extends StatelessWidget {
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
                 child: Text(
-                  'Anuluj — zachowaj konto.',
+                  AppLocalizations.of(context)!.settings_delete_confirm_cancel,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     color: EuphireColors.mist.withValues(alpha: 0.7),
@@ -1058,6 +1138,7 @@ class _LicensesScreenState extends State<_LicensesScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
     // Group by package name
     final Map<String, List<LicenseEntry>> byPkg = {};
     for (final e in _licenses) {
@@ -1133,6 +1214,7 @@ class _LicenseTileState extends State<_LicenseTile> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(

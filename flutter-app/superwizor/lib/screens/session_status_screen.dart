@@ -201,43 +201,50 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 24),
-              EuphireHeader(
-                title: t.session_loading,
-                subtitle: _phase == SessionStepperPhase.done
-                    ? t.stepper_step4_done
-                    : null,
-              ),
-              const SizedBox(height: 48),
-              EuphireSessionStatusStepper(phase: _phase),
-              const Spacer(),
-              if (_showCheck)
-                Center(
-                  child: ScaleTransition(
-                    scale: CurvedAnimation(
-                      parent: _checkAnim,
-                      curve: Curves.elasticOut,
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.all(24),
+              sliver: SliverFillRemaining(
+                hasScrollBody: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 24),
+                    EuphireHeader(
+                      title: t.session_loading,
+                      subtitle: _phase == SessionStepperPhase.done
+                          ? t.stepper_step5_done
+                          : null,
                     ),
-                    child: Container(
-                      width: 96,
-                      height: 96,
-                      decoration: const BoxDecoration(
-                        color: EuphireColors.ember,
-                        shape: BoxShape.circle,
+                    const SizedBox(height: 48),
+                    EuphireSessionStatusStepper(phase: _phase),
+                    const Spacer(),
+                    if (_showCheck)
+                      Center(
+                        child: ScaleTransition(
+                          scale: CurvedAnimation(
+                            parent: _checkAnim,
+                            curve: Curves.elasticOut,
+                          ),
+                          child: Container(
+                            width: 96,
+                            height: 96,
+                            decoration: const BoxDecoration(
+                              color: EuphireColors.ember,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.check,
+                                size: 64, color: EuphireColors.obsidianBlack),
+                          ),
+                        ),
                       ),
-                      child: const Icon(Icons.check,
-                          size: 64, color: EuphireColors.obsidianBlack),
-                    ),
-                  ),
+                    const SizedBox(height: 48),
+                  ],
                 ),
-              const SizedBox(height: 48),
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );

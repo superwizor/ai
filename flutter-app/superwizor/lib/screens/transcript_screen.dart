@@ -40,6 +40,7 @@ import '../services/transcript_pdf_exporter.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
+import '../widgets/euphire_segmented_control.dart';
 import 'report_screen.dart';
 
 class TranscriptScreen extends ConsumerStatefulWidget {
@@ -104,8 +105,8 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
           .map((s) => CachedSegment(
                 speakerTag: s.speakerTag,
                 speakerLabel: s.speakerLabel,
-                startOffsetMs: s.startOffsetMs,
-                endOffsetMs: s.endOffsetMs,
+                startOffsetMs: s.startOffsetMs.toInt(),
+                endOffsetMs: s.endOffsetMs.toInt(),
                 text: s.text,
                 confidence: s.confidenceAvg,
               ))
@@ -184,13 +185,21 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
-          child: _TabToggle(
+          child: EuphireSegmentedControl(
             selected: 'transcript',
+            leftValue: 'transcript',
+            leftLabel: t.transcript_tab,
+            rightValue: 'report',
+            rightLabel: t.report_tab,
             onSelect: (v) {
               if (v == 'report') {
-                Navigator.of(context).pushReplacement(MaterialPageRoute(
-                  builder: (_) => ReportScreen(sessionId: widget.sessionId),
-                ));
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation1, animation2) => ReportScreen(sessionId: widget.sessionId),
+                    transitionDuration: Duration.zero,
+                    reverseTransitionDuration: Duration.zero,
+                  ),
+                );
               }
             },
           ),
@@ -213,20 +222,28 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
         ),
       );
     }
-    return Column(
-      children: [
-        _buildFilterRow(t, data),
-        Divider(height: 1, color: Colors.white.withValues(alpha: 0.1)),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: _visibleSegments.length,
-            itemBuilder: (ctx, i) => _SegmentTile(
-              segment: _visibleSegments[i],
-              isPlaying: _currentlyPlayingSegment?.startOffsetMs ==
-                  _visibleSegments[i].startOffsetMs,
-              search: _search,
-              onTap: () => _onSegmentTap(_visibleSegments[i]),
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Column(
+            children: [
+              _buildFilterRow(t, data),
+              Divider(height: 1, color: Colors.white.withValues(alpha: 0.1)),
+            ],
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (ctx, i) => _SegmentTile(
+                segment: _visibleSegments[i],
+                isPlaying: _currentlyPlayingSegment?.startOffsetMs ==
+                    _visibleSegments[i].startOffsetMs,
+                search: _search,
+                onTap: () => _onSegmentTap(_visibleSegments[i]),
+              ),
+              childCount: _visibleSegments.length,
             ),
           ),
         ),
@@ -436,7 +453,7 @@ class _SegmentTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.05),
           border: isPlaying
-              ? const Border(
+              ? Border(
                   left: BorderSide(color: EuphireColors.ember, width: 3))
               : null,
           borderRadius: BorderRadius.circular(12),
@@ -445,38 +462,55 @@ class _SegmentTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  segment.speakerLabel.isNotEmpty
-                      ? segment.speakerLabel
-                      : t.transcript_segment_unknown_speaker,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: _speakerColor(segment.speakerTag),
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: SelectableText.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '${segment.speakerLabel.isNotEmpty ? segment.speakerLabel : t.transcript_segment_unknown_speaker} ',
+                          style: TextStyle(
+                            color: _speakerColor(segment.speakerTag),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                        TextSpan(
+                          text: '[${_formatRange(segment)}] -> ',
+                          style: TextStyle(
+                            color: EuphireColors.mist,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        ..._highlight(segment.text, search, theme).map((span) {
+                          // Copy style from highlight and apply simplifications
+                          return TextSpan(
+                            text: (span as TextSpan).text,
+                            style: TextStyle(
+                              color: EuphireColors.frostWhite,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w400,
+                              fontStyle: lowConf ? FontStyle.italic : FontStyle.normal,
+                              height: 1.5,
+                            ).merge(span.style),
+                          );
+                        }),
+                      ],
+                    ),
                   ),
                 ),
-                const Spacer(),
-                Text(_formatRange(segment),
-                    style: theme.textTheme.labelSmall),
                 if (lowConf)
                   Padding(
-                    padding: const EdgeInsets.only(left: 6),
+                    padding: const EdgeInsets.only(left: 6, top: 2),
                     child: Tooltip(
                       message: t.transcript_low_confidence_tooltip,
-                      child: const Icon(Icons.help_outline,
+                      child: Icon(Icons.help_outline,
                           size: 14, color: EuphireColors.mist),
                     ),
                   ),
               ],
-            ),
-            const SizedBox(height: 6),
-            SelectableText.rich(
-              TextSpan(
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontStyle: lowConf ? FontStyle.italic : FontStyle.normal,
-                ),
-                children: _highlight(segment.text, search, theme),
-              ),
             ),
           ],
         ),
@@ -574,26 +608,3 @@ class _SegmentTile extends StatelessWidget {
   }
 }
 
-class _TabToggle extends StatelessWidget {
-  final String selected;
-  final ValueChanged<String> onSelect;
-
-  const _TabToggle({required this.selected, required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: SegmentedButton<String>(
-        segments: [
-          ButtonSegment(value: 'transcript', label: Text(t.transcript_tab)),
-          ButtonSegment(value: 'report', label: Text(t.report_tab)),
-        ],
-        selected: {selected},
-        showSelectedIcon: false,
-        onSelectionChanged: (s) => onSelect(s.first),
-      ),
-    );
-  }
-}

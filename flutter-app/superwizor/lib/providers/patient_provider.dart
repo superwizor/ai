@@ -81,6 +81,7 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     required String firstName,
     String lastName = '',
     String modalityCode = 'UNIV',
+    String languageCode = 'pl-PL',
   }) async {
     final client = ref.read(grpcClientsProvider).clinical;
     final req = grpc_clinical.CreatePatientFileRequest(
@@ -91,6 +92,7 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
       hasRecordingConsent: true,
       patientFirstName: firstName,
       patientLastName: lastName,
+      patientLanguageCode: languageCode,
     );
     
     state = const AsyncValue.loading();

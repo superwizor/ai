@@ -49,7 +49,8 @@ class EuphireSessionStatusStepper extends StatelessWidget {
       _Step(t.stepper_step1_uploaded, _stateForStep(0)),
       _Step(t.stepper_step2_transcribing, _stateForStep(1)),
       _Step(t.stepper_step3_analyzing, _stateForStep(2)),
-      _Step(t.stepper_step4_done, _stateForStep(3)),
+      _Step(t.stepper_step4_finalizing, _stateForStep(3)),
+      _Step(t.stepper_step5_done, _stateForStep(4)),
     ];
 
     return Column(
@@ -69,14 +70,14 @@ class EuphireSessionStatusStepper extends StatelessWidget {
 
   _StepState _stateForStep(int idx) {
     if (phase == SessionStepperPhase.failed) {
-      if (idx < 3) return _StepState.done;
+      if (idx < 4) return _StepState.done;
       return _StepState.failed;
     }
     final reached = switch (phase) {
       SessionStepperPhase.pending => -1,
       SessionStepperPhase.uploaded => 0,
-      SessionStepperPhase.analyzing => 2, // backend skips 'transcribing'
-      SessionStepperPhase.done => 3,
+      SessionStepperPhase.analyzing => 2, // skips transcribing, marks analyzing as done, finalizing active
+      SessionStepperPhase.done => 4,
       SessionStepperPhase.failed => -1,
     };
     if (idx < reached) return _StepState.done;

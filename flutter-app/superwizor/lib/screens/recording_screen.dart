@@ -110,9 +110,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                   patientFileId: widget.patientFileId,
                   documentVersion: 'v1.0',
                 );
-                Navigator.of(ctx).pop(true);
+                if (ctx.mounted) Navigator.of(ctx).pop(true);
               } catch (e) {
-                Navigator.of(ctx).pop(false);
+                if (ctx.mounted) Navigator.of(ctx).pop(false);
               }
             },
           ),
@@ -124,10 +124,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       );
       if (granted != true && mounted) {
         Navigator.of(context).pop();
+      } else if (granted == true && mounted) {
+        await _start();
       }
       return;
     }
-    // Zatrzymujemy się w stanie 'idle' — użytkownik musi sam kliknąć Start.
+    // Auto-start recording
+    await _start();
   }
 
   /// Pre-flight permission check before kicking off the recorder.
@@ -308,6 +311,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       context: context,
       isDismissible: false,
       builder: (ctx) => EuphireActionSheet(
+        topIcon: Icons.cloud_upload_outlined,
         header: t.recording_confirm_end_header,
         body: t.recording_confirm_end_body,
         primary: EuphireSheetAction(
@@ -345,6 +349,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       context: context,
       isDismissible: false,
       builder: (ctx) => EuphireActionSheet(
+        topIcon: Icons.cloud_upload_outlined,
         header: t.recording_max_duration_header,
         body: t.recording_max_duration_body,
         primary: EuphireSheetAction(
@@ -550,7 +555,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                 Navigator.of(context).pop();
               },
             ),
-            title: Text(t.recording_screen_title, style: theme.textTheme.titleLarge),
+
             actions: [
               IconButton(
                 icon: const Icon(Icons.info_outline, color: EuphireColors.mist),
@@ -569,18 +574,59 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                '${widget.patientAlias} · $dateLabel',
-                style: theme.textTheme.labelLarge,
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    dateLabel.toUpperCase(),
+                    style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: EuphireColors.frostWhite.withValues(alpha: 0.5),
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.patientAlias,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.frostWhite,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final patients = ref.watch(patientsProvider).whenOrNull(data: (d) => d) ?? [];
+                      final patient = patients.where((p) => p.id == widget.patientFileId).firstOrNull;
+                      final sessionNumber = (patient?.sessionCount ?? 0) + 1;
+                      return Text(
+                        'Sesja #$sessionNumber',
+                        style: const TextStyle(
+                          fontFamily: 'Merriweather',
+                          fontSize: 18,
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w600,
+                          color: EuphireColors.ember,
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 24),
+              const Spacer(),
               EuphireRecordingIndicator(
                 isRecording: _recState == RecordingState.recording,
                 formattedDuration: _formatDuration(_displayDuration),
                 chunkCount: _chunkCount,
                 amplitudeStream: _service.amplitudeStream,
               ),
-              const SizedBox(height: 32),
+              const Spacer(flex: 2),
               _ControlPanel(
                 state: _recState,
                 onStart: _start,
@@ -588,7 +634,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                 onResume: _service.resume,
                 onStop: _onStopPressed,
               ),
-              const Spacer(),
+              const SizedBox(height: 16),
               if (_uploading) ...[
                 const SizedBox(height: 16),
                 const Center(child: CircularProgressIndicator()),

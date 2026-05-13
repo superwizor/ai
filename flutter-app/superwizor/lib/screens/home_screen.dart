@@ -1,16 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../widgets/euphire_header.dart';
-import '../widgets/euphire_bottom_sheet.dart';
-import '../widgets/euphire_card.dart';
-import '../widgets/euphire_list_tile.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/cupertino.dart';
+
 import '../theme/euphire_theme.dart';
-import 'client_details_screen.dart';
-import '../l10n/app_localizations.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
 import '../widgets/add_patient_modal.dart';
+import '../widgets/euphire_bottom_sheet.dart';
+import 'client_details_screen.dart';
 import 'menu_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -27,117 +26,676 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = FirebaseAuth.instance.currentUser;
     final patientsAsync = ref.watch(patientsProvider);
+    ref.watch(currentUserProvider); // fire backend lookup
 
-    // Eagerly fire identity-svc.GetUserByFirebaseUID so by the time
-    // the user taps "Add Session" (which needs the resolved users.id
-    // for the FK on audio_uploads.therapist_id), the value is cached.
-    // We don't render anything from this — just ensure the future
-    // is in flight. The result is consumed via therapistIdProvider.
-    ref.watch(currentUserProvider);
+    final userName = user?.displayName ?? 'Operatorze';
 
     return Scaffold(
-      backgroundColor: EuphireColors.evergreen,
-      appBar: AppBar(
-        title: const Text('Twoje kartoteki.'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: EuphireColors.frostWhite),
-          onPressed: () {
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const MenuScreen(),
-            ));
-          },
-        ),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: EuphireColors.backgroundGradient,
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
+      backgroundColor: EuphireColors.nocturne,
+      // Usunięty appBar, zrobimy customowy header dla lepszego UI
+      body: Stack(
+        children: [
+          Container(
+            color: const Color(0xFF173E43), // Tło: #173e43
+          ),
+          SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Cześć${user?.displayName != null && user!.displayName!.isNotEmpty ? ', ${user.displayName}' : '.'}",
-                  style: const TextStyle(
-                    fontFamily: 'Merriweather',
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    color: EuphireColors.frostWhite,
-                    height: 1.2,
-                  ),
+              // ── Header (w stylu Stitch) ──────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SvgPicture.asset(
+                          'assets/images/svg/Brandmark_whiteSam_sygnet_euphire.svg',
+                          height: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Superwizor AI',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                            letterSpacing: 1,
+                            color: EuphireColors.frostWhite,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.menu, color: EuphireColors.frostWhite),
+                      onPressed: () {
+                        Navigator.of(context).push(CupertinoPageRoute(
+                          builder: (_) => const MenuScreen(),
+                        ));
+                      },
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Rozpocznij pracę z Superwizor AI.',
-                  style: TextStyle(
-                    fontFamily: 'Merriweather',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    color: EuphireColors.frostWhite.withValues(alpha: 0.7),
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Text(
-                  'Ostatnie kartoteki.',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 16),
-            Expanded(
-              child: patientsAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator(color: EuphireColors.ember)),
-                error: (err, stack) => Center(child: Text('Błąd: $err', style: const TextStyle(color: EuphireColors.ember))),
-                data: (patients) {
-                  if (patients.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'Brak kartotek. Dodaj nowego klienta.',
-                        style: TextStyle(color: EuphireColors.mist),
+              ),
+
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Powitanie ───────────────────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text.rich(
+                              TextSpan(
+                                text: 'Witaj, ',
+                                style: const TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w700,
+                                  color: EuphireColors.frostWhite,
+                                  height: 1.2,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: userName,
+                                    style: const TextStyle(
+                                      fontStyle: FontStyle.italic,
+                                      color: EuphireColors.ember,
+                                    ),
+                                  ),
+                                  const TextSpan(text: '.'),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Oto Twoje kartoteki. Z czym dzisiaj pracujemy?',
+                              style: TextStyle(
+                                fontFamily: 'RobotoMono',
+                                fontSize: 13,
+                                color: EuphireColors.mist.withValues(alpha: 0.8),
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    );
-                  }
-                  return ListView.builder(
-                    itemCount: patients.length,
-                    itemBuilder: (context, index) {
-                      final patient = patients[index];
-                      return EuphireCard(
-                        child: EuphireListTile(
-                          title: '${patient.firstName} ${patient.lastName}'.trim(),
-                          subtitle: AppLocalizations.of(context)
-                                  .patient_session_count(patient.sessionCount) +
-                              (patient.modalityCode.isNotEmpty ? ' • ${patient.modalityCode}' : ''),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ClientDetailsScreen(
-                                  patientId: patient.id,
-                                  clientName: '${patient.firstName} ${patient.lastName}'.trim(),
+        
+                      // ── Lista Kartotek ──────────────────────────────────
+                      patientsAsync.when(
+                        loading: () => const Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Center(child: CircularProgressIndicator(color: EuphireColors.ember)),
+                        ),
+                        error: (err, stack) => Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Center(child: Text('Błąd: $err', style: const TextStyle(color: EuphireColors.ember))),
+                        ),
+                        data: (patients) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'AKTYWNE KARTOTEKI',
+                                      style: TextStyle(
+                                        fontFamily: 'Montserrat',
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1.5,
+                                        color: EuphireColors.mist.withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: EuphireColors.frostWhite.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        'Ilość: ${patients.length}',
+                                        style: TextStyle(
+                                          fontFamily: 'RobotoMono',
+                                          fontSize: 11,
+                                          color: EuphireColors.mist.withValues(alpha: 0.8),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  );
-                },
+                              const SizedBox(height: 8),
+                              if (patients.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.all(32),
+                                  child: Center(
+                                    child: Text(
+                                      'Brak kartotek. Dodaj nowego klienta.',
+                                      style: TextStyle(
+                                        fontFamily: 'Merriweather',
+                                        color: EuphireColors.mist.withValues(alpha: 0.6),
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                Consumer(
+                                  builder: (context, ref, child) {
+                                    final sessionsMap = ref.watch(sessionsProvider).value ?? {};
+                                    return ListView.separated(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                                      itemCount: patients.length,
+                                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                                      itemBuilder: (context, index) {
+                                        final patient = patients[index];
+                                        final patientSessions = sessionsMap[patient.id] ?? [];
+                                        final lastSessionDate = patientSessions.isNotEmpty ? patientSessions.last.date : null;
+                                        
+                                        return _PatientGlassCard(
+                                          patientId: patient.id,
+                                          name: '${patient.firstName} ${patient.lastName}'.trim(),
+                                          sessionCount: patient.sessionCount,
+                                          modalityCode: patient.modalityCode,
+                                          lastSessionDate: lastSessionDate,
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ),
+            ],
+          ),
+        ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddPatientModal(context, ref),
+        backgroundColor: EuphireColors.ember,
+        foregroundColor: EuphireColors.nocturne,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Icon(Icons.add, size: 28),
+      ),
+    );
+  }
+}
+
+class _PatientGlassCard extends ConsumerWidget {
+  final String patientId;
+  final String name;
+  final int sessionCount;
+  final String modalityCode;
+  final DateTime? lastSessionDate;
+
+  const _PatientGlassCard({
+    required this.patientId,
+    required this.name,
+    required this.sessionCount,
+    required this.modalityCode,
+    this.lastSessionDate,
+  });
+
+  void _showOptions(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _PatientOptionsMenu(
+        patientId: patientId,
+        patientName: name,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF2D6068), // Kontenery: #2d6068
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ClientDetailsScreen(
+                  patientId: patientId,
+                  clientName: name,
+                ),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Builder(
+                        builder: (context) {
+                          String modName = 'Uniwersalna';
+                          switch (modalityCode.toUpperCase()) {
+                            case 'UNIV': modName = 'Uniwersalna'; break;
+                            case 'CBT': modName = 'Beh-Pozn'; break;
+                            case 'PSYCHO': modName = 'Psychodynamiczna'; break;
+                            case 'PPT': modName = 'Pozytywna'; break;
+                            case 'ST': modName = 'Schematów'; break;
+                            case 'SYS': modName = 'Systemowa'; break;
+                            case 'EFT': modName = 'Skon. na emocjach'; break;
+                            case 'COACH': modName = 'Coaching'; break;
+                            default: if (modalityCode.isNotEmpty) modName = modalityCode;
+                          }
+                          return Text(
+                            'Ilość Sesji: $sessionCount  /  MOD: $modName',
+                            style: TextStyle(
+                              fontFamily: 'RobotoMono',
+                              fontSize: 11,
+                              color: EuphireColors.mist.withValues(alpha: 0.7),
+                            ),
+                          );
+                        }
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.only(top: 12),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            top: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.08)),
+                          ),
+                        ),
+                        child: Builder(
+                          builder: (context) {
+                            String dateText = 'Oczekuje na dane';
+                            if (lastSessionDate != null) {
+                              final months = ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'];
+                              dateText = '${lastSessionDate!.day} ${months[lastSessionDate!.month - 1]} ${lastSessionDate!.year}';
+                            } else if (sessionCount > 0) {
+                              dateText = 'Rozpocznij sesję, by dodać dane';
+                            }
+                            return Text(
+                              'OSTATNIA SESJA: $dateText',
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.2,
+                                color: (lastSessionDate != null || sessionCount > 0)
+                                    ? EuphireColors.mist.withValues(alpha: 0.9)
+                                    : EuphireColors.mist.withValues(alpha: 0.5),
+                              ),
+                            );
+                          }
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _showOptions(context, ref),
+                  icon: Icon(Icons.more_horiz,
+                      color: EuphireColors.frostWhite.withValues(alpha: 0.5)),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(), // minimize padding
+                  splashRadius: 24,
+                ),
+              ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── BOTTOM SHEET: OPCJE PACJENTA (EDYTUJ / USUŃ) ────────────────
+
+class _PatientOptionsMenu extends ConsumerStatefulWidget {
+  final String patientId;
+  final String patientName;
+  const _PatientOptionsMenu({required this.patientId, required this.patientName});
+
+  @override
+  ConsumerState<_PatientOptionsMenu> createState() => _PatientOptionsMenuState();
+}
+
+class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
+  // Funkcja edycji z formularzem do imienia i nazwiska
+  void _editName() {
+    Navigator.pop(context); // close options
+    // TODO: zaimplementować pełny dialog edycji updatePatientUser.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Edycja w przygotowaniu...')),
+    );
+  }
+
+  void _deleteWarning() {
+    Navigator.pop(context); // close options
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _DeletePatientWarningSheet(
+        patientId: widget.patientId,
+        patientName: widget.patientName,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A2326),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(top: BorderSide(color: Colors.white10)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Zarządzaj: ${widget.patientName}',
+                style: const TextStyle(
+                  fontFamily: 'Merriweather',
+                  fontStyle: FontStyle.italic,
+                  fontSize: 18,
+                  color: EuphireColors.frostWhite,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined, color: EuphireColors.mist),
+                title: const Text('Edytuj imię i nazwisko', style: TextStyle(color: EuphireColors.frostWhite)),
+                onTap: _editName,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: EuphireColors.magma),
+                title: const Text('Usuń kartotekę', style: TextStyle(color: EuphireColors.magma)),
+                onTap: _deleteWarning,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              const SizedBox(height: 8),
             ],
           ),
         ),
       ),
-    ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddPatientModal(context, ref),
-        backgroundColor: EuphireColors.ember,
-        foregroundColor: EuphireColors.obsidianBlack,
-        child: const Icon(Icons.add),
+    );
+  }
+}
+
+// ─── DELETE FLOW DLA PACJENTA: 1. WARNING SHEET Z TOGGLE ──────────
+
+class _DeletePatientWarningSheet extends StatefulWidget {
+  final String patientId;
+  final String patientName;
+  const _DeletePatientWarningSheet({required this.patientId, required this.patientName});
+
+  @override
+  State<_DeletePatientWarningSheet> createState() => _DeletePatientWarningSheetState();
+}
+
+class _DeletePatientWarningSheetState extends State<_DeletePatientWarningSheet> {
+  bool _understands = false;
+
+  void _onProceed() {
+    Navigator.pop(context); // zamyka warning sheet
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _DeletePatientConfirmSheet(
+        patientId: widget.patientId,
+        patientName: widget.patientName,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A2326),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(top: BorderSide(color: Colors.white10)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 24),
+              Container(
+                width: 64, height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: EuphireColors.magma.withValues(alpha: 0.12),
+                ),
+                child: const Icon(Icons.warning_amber_rounded, color: EuphireColors.magma, size: 32),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Usunięcie klienta: ${widget.patientName}',
+                style: const TextStyle(
+                  fontFamily: 'Merriweather', fontStyle: FontStyle.italic,
+                  fontSize: 20, color: EuphireColors.frostWhite,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Cała dokumentacja kliniczna — sesje, notatki AI oraz nagrania audio — zostanie trwale i bezpowrotnie usunięta z baz medycznych.\nZgodnie z RODO (prawo do zapomnienia).',
+                style: TextStyle(fontFamily: 'Montserrat', fontSize: 13, color: EuphireColors.mist.withValues(alpha: 0.8), height: 1.5),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('Rozumiem, to nieodwracalne.',
+                      style: TextStyle(fontFamily: 'Montserrat', fontSize: 14, fontWeight: FontWeight.w600, color: EuphireColors.magma)),
+                  ),
+                  Switch(
+                    value: _understands,
+                    onChanged: (v) => setState(() => _understands = v),
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: EuphireColors.magma,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              AnimatedOpacity(
+                opacity: _understands ? 1.0 : 0.35,
+                duration: const Duration(milliseconds: 200),
+                child: SizedBox(
+                  width: double.infinity, height: 54,
+                  child: ElevatedButton(
+                    onPressed: _understands ? _onProceed : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: EuphireColors.magma,
+                      disabledBackgroundColor: EuphireColors.magma,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: const Text('Kontynuuj kasowanie',
+                      style: TextStyle(color: Colors.white, fontFamily: 'Montserrat', fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── DELETE FLOW DLA PACJENTA: 2. CONFIRM SHEET (Wpisz USUWAM) ────
+
+class _DeletePatientConfirmSheet extends ConsumerStatefulWidget {
+  final String patientId;
+  final String patientName;
+  const _DeletePatientConfirmSheet({required this.patientId, required this.patientName});
+
+  @override
+  ConsumerState<_DeletePatientConfirmSheet> createState() => _DeletePatientConfirmSheetState();
+}
+
+class _DeletePatientConfirmSheetState extends ConsumerState<_DeletePatientConfirmSheet> {
+  final _ctrl = TextEditingController();
+  bool _confirmed = false;
+  bool _deleting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.addListener(() {
+      final ok = _ctrl.text.trim() == 'USUWAM';
+      if (ok != _confirmed) setState(() => _confirmed = ok);
+    });
+  }
+
+  Future<void> _delete() async {
+    if (!_confirmed) return;
+    setState(() => _deleting = true);
+    try {
+      await ref.read(patientsProvider.notifier).deletePatientUser(widget.patientId);
+      if (mounted) Navigator.of(context).pop(); // zamknij po sukcesie
+    } catch (e) {
+      if (mounted) {
+        setState(() => _deleting = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Błąd usunięcia: $e'), backgroundColor: EuphireColors.magma));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0A2326),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 24),
+                const Text(
+                  'Aby potwierdzić, wpisz:',
+                  style: TextStyle(fontFamily: 'Montserrat', color: EuphireColors.mist),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'USUWAM',
+                  style: TextStyle(fontFamily: 'RobotoMono', color: EuphireColors.magma, fontWeight: FontWeight.w800, letterSpacing: 4, fontSize: 20),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _ctrl,
+                  textAlign: TextAlign.center,
+                  autofocus: true,
+                  style: const TextStyle(fontFamily: 'RobotoMono', fontSize: 20, fontWeight: FontWeight.w700, color: EuphireColors.frostWhite, letterSpacing: 3),
+                  decoration: InputDecoration(
+                    hintText: 'wpisz tutaj…',
+                    filled: true, fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: _confirmed ? EuphireColors.magma : EuphireColors.mist.withValues(alpha: 0.3), width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                AnimatedOpacity(
+                  opacity: _confirmed ? 1.0 : 0.35,
+                  duration: const Duration(milliseconds: 200),
+                  child: SizedBox(
+                    width: double.infinity, height: 54,
+                    child: ElevatedButton(
+                      onPressed: _confirmed && !_deleting ? _delete : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: EuphireColors.magma, disabledBackgroundColor: EuphireColors.magma,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: _deleting
+                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('USUWAM PACJENTA', style: TextStyle(color: Colors.white, fontFamily: 'Montserrat', fontWeight: FontWeight.w800, letterSpacing: 1)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Anuluj.', style: TextStyle(fontFamily: 'Montserrat', color: EuphireColors.mist.withValues(alpha: 0.7))),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

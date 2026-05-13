@@ -1,96 +1,37 @@
-// delete_account_screen.dart — Pełnoekranowy flow usuwania konta
+// delete_account_screen.dart
 //
 // Flow:
-//   1. Strona ostrzeżenia (ikona + lista co użytkownik utraci)
-//   2. Pole tekstowe "wpisz USUWAM" aby aktywować przycisk
-//   3. Przycisk czerwony — wywołuje delete konta w Firebase
-//
-// Nawigacja: push jako fullscreenDialog (MaterialPageRoute z fullscreenDialog: true)
+//   1. Ekran (slide from right) — tytuł "Usuń konto" + lista konsekwencji
+//   2. Na dole sticky: wiersz "Rozumiem konsekwencje..." + toggle
+//      → gdy toggle ON → przycisk "Usuń moje konto" aktywny
+//   3. Kliknięcie aktywnego przycisku → bottom sheet z polem "USUWAM"
+//      → po wpisaniu "USUWAM" przycisk aktywny → firebase delete
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../theme/euphire_theme.dart';
 
-class DeleteAccountScreen extends ConsumerStatefulWidget {
+class DeleteAccountScreen extends StatefulWidget {
   const DeleteAccountScreen({super.key});
 
   @override
-  ConsumerState<DeleteAccountScreen> createState() => _DeleteAccountScreenState();
+  State<DeleteAccountScreen> createState() => _DeleteAccountScreenState();
 }
 
-class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
-  final _controller = TextEditingController();
-  bool _confirmed = false;
-  bool _deleting = false;
+class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
+  bool _understands = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(() {
-      final ok = _controller.text.trim() == 'USUWAM';
-      if (ok != _confirmed) setState(() => _confirmed = ok);
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _deleteAccount() async {
-    if (!_confirmed) return;
-    setState(() => _deleting = true);
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      await user?.delete();
-      // Konto usunięte — Firebase Auth wyloguje automatycznie
-      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      setState(() => _deleting = false);
-      if (e.code == 'requires-recent-login') {
-        _showReauthDialog();
-      } else {
-        _showError('Nie udało się usunąć konta: ${e.message}');
-      }
-    } catch (_) {
-      if (mounted) setState(() => _deleting = false);
-    }
-  }
-
-  void _showReauthDialog() {
-    showDialog(
+  Future<void> _onDeletePressed() async {
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: EuphireColors.nocturne,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Wymagane ponowne logowanie',
-            style: const TextStyle(fontFamily: 'Montserrat', color: EuphireColors.frostWhite)),
-        content: Text(
-          'Ze względów bezpieczeństwa musisz się wylogować i zalogować ponownie, aby usunąć konto.',
-          style: TextStyle(fontFamily: 'Merriweather', color: EuphireColors.mist, fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              FirebaseAuth.instance.signOut();
-            },
-            child: const Text('Wyloguj i zaloguj się ponownie',
-                style: TextStyle(color: EuphireColors.ember)),
-          ),
-        ],
-      ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => const _ConfirmDeleteSheet(),
     );
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: EuphireColors.magma),
-    );
+    if (confirmed == true && mounted) {
+      Navigator.of(context).popUntil((r) => r.isFirst);
+    }
   }
 
   @override
@@ -103,227 +44,122 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
         decoration: const BoxDecoration(gradient: EuphireColors.backgroundGradient),
         child: SafeArea(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // AppBar
+              // ── Back + Title ─────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.close, color: EuphireColors.frostWhite),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    const Spacer(),
-                  ],
+                padding: const EdgeInsets.fromLTRB(4, 8, 16, 0),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new,
+                      color: EuphireColors.frostWhite, size: 20),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
+                child: Text(
+                  'Usuń konto',
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    fontFamily: 'Merriweather',
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.w700,
+                    color: EuphireColors.frostWhite,
+                  ),
                 ),
               ),
 
+              // ── Lista konsekwencji ────────────────────────────────
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 16),
-
-                      // Ikona ostrzeżenia
-                      Container(
-                        width: 88,
-                        height: 88,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: EuphireColors.magma.withValues(alpha: 0.12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: EuphireColors.magma.withValues(alpha: 0.25),
-                              blurRadius: 32,
-                              spreadRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.warning_amber_rounded,
-                          color: EuphireColors.magma,
-                          size: 44,
-                        ),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      _ConsequenceItem(
+                        'Całą dokumentację kliniczną — wszystkich pacjentów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.',
                       ),
-
-                      const SizedBox(height: 28),
-
-                      Text(
-                        'Usuwasz konto bezpowrotnie.',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontFamily: 'Merriweather',
-                          fontStyle: FontStyle.italic,
-                          color: EuphireColors.frostWhite,
-                        ),
-                        textAlign: TextAlign.center,
+                      SizedBox(height: 20),
+                      _ConsequenceItem(
+                        'Twoja subskrypcja (jeśli ją posiadasz) nie zostanie automatycznie anulowana. Musisz ją anulować osobno w App Store lub Google Play.',
                       ),
-
-                      const SizedBox(height: 16),
-
-                      Text(
-                        'Ta operacja jest nieodwracalna. Nie można jej cofnąć.',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: EuphireColors.magma,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Lista co się stanie
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: EuphireColors.magma.withValues(alpha: 0.07),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                              color: EuphireColors.magma.withValues(alpha: 0.25)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Po usunięciu konta bezpowrotnie utracisz:',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                color: EuphireColors.frostWhite,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ..._lossItems.map((item) => _LossItem(
-                              icon: item.$1,
-                              text: item.$2,
-                            )),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Separator
-                      Divider(color: EuphireColors.mist.withValues(alpha: 0.2)),
-
-                      const SizedBox(height: 24),
-
-                      Text(
-                        'Aby potwierdzić, wpisz poniżej słowo:',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: EuphireColors.mist,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'USUWAM',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontFamily: 'RobotoMono',
-                          color: EuphireColors.magma,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 4,
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Pole tekstowe
-                      TextField(
-                        controller: _controller,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontFamily: 'RobotoMono',
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: EuphireColors.frostWhite,
-                          letterSpacing: 3,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'wpisz tutaj…',
-                          hintStyle: TextStyle(
-                            fontFamily: 'RobotoMono',
-                            fontSize: 14,
-                            color: EuphireColors.mist.withValues(alpha: 0.4),
-                            letterSpacing: 1,
-                          ),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.04),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(
-                              color: _confirmed
-                                  ? EuphireColors.magma
-                                  : EuphireColors.mist.withValues(alpha: 0.3),
-                              width: 2,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 18),
-                          suffixIcon: _confirmed
-                              ? const Icon(Icons.check_circle,
-                                  color: EuphireColors.magma, size: 22)
-                              : null,
-                        ),
-                        autocorrect: false,
-                        enableSuggestions: false,
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Przycisk Usuwam
-                      AnimatedOpacity(
-                        opacity: _confirmed ? 1.0 : 0.35,
-                        duration: const Duration(milliseconds: 200),
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _confirmed && !_deleting ? _deleteAccount : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: EuphireColors.magma,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: EuphireColors.magma.withValues(alpha: 0.5),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16)),
-                              elevation: 0,
-                            ),
-                            child: _deleting
-                                ? const SizedBox(width: 24, height: 24,
-                                    child: CircularProgressIndicator(
-                                        color: Colors.white, strokeWidth: 2))
-                                : const Text(
-                                    'USUWAM KONTO BEZPOWROTNIE',
-                                    style: TextStyle(
-                                      fontFamily: 'Montserrat',
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 13,
-                                      letterSpacing: 1.5,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: Text(
-                          'Anuluj — chcę zachować konto.',
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            color: EuphireColors.mist.withValues(alpha: 0.7),
-                            fontSize: 14,
-                          ),
-                        ),
+                      SizedBox(height: 20),
+                      _ConsequenceItem(
+                        'Nie będziesz mógł odzyskać danych po zakończeniu tego procesu. Operacja jest nieodwracalna.',
                       ),
                     ],
                   ),
+                ),
+              ),
+
+              // ── Stopka sticky: toggle + przycisk ─────────────────
+              Container(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Wiersz toggle
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Rozumiem konsekwencje\ni chcę usunąć konto',
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: EuphireColors.magma,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Switch(
+                          value: _understands,
+                          onChanged: (v) => setState(() => _understands = v),
+                          activeThumbColor: Colors.white,
+                          activeTrackColor: EuphireColors.magma,
+                          inactiveThumbColor: EuphireColors.mist,
+                          inactiveTrackColor: EuphireColors.mist.withValues(alpha: 0.2),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Przycisk — aktywny gdy toggle ON
+                    AnimatedOpacity(
+                      opacity: _understands ? 1.0 : 0.35,
+                      duration: const Duration(milliseconds: 200),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: _understands ? _onDeletePressed : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: EuphireColors.magma,
+                            disabledBackgroundColor: EuphireColors.magma,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Usuń moje konto',
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 17,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -334,40 +170,264 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   }
 }
 
-// ─── Lista strat ──────────────────────────────────────────────
+// ─── Wiersz z czerwoną ikonką check ──────────────────────────
 
-const _lossItems = [
-  (Icons.folder_off_outlined, 'Całą dokumentację kliniczną — wszystkich Twoich pacjentów i ich kartoteki'),
-  (Icons.mic_off_outlined, 'Wszystkie nagrania sesji i transkrypcje'),
-  (Icons.psychology_outlined, 'Wszystkie raporty AI i pomiary HiTOP'),
-  (Icons.cloud_off_outlined, 'Dostęp do konta i historii subskrypcji'),
-  (Icons.lock_clock_outlined, 'Dane są usuwane trwale i nie mogą zostać odtworzone'),
-];
-
-class _LossItem extends StatelessWidget {
-  final IconData icon;
+class _ConsequenceItem extends StatelessWidget {
   final String text;
-  const _LossItem({required this.icon, required this.text});
+  const _ConsequenceItem(this.text);
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: EuphireColors.magma, size: 18),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(text,
-                style: TextStyle(
-                  fontFamily: 'Merriweather',
-                  fontSize: 13,
-                  color: EuphireColors.frostWhite.withValues(alpha: 0.85),
-                  height: 1.5,
-                )),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          margin: const EdgeInsets.only(top: 2),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: EuphireColors.magma,
           ),
-        ],
+          child: const Icon(Icons.check, color: Colors.white, size: 16),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontFamily: 'Merriweather',
+              fontSize: 15,
+              color: EuphireColors.frostWhite,
+              height: 1.6,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Bottom Sheet — wpisz USUWAM ─────────────────────────────
+
+class _ConfirmDeleteSheet extends StatefulWidget {
+  const _ConfirmDeleteSheet();
+
+  @override
+  State<_ConfirmDeleteSheet> createState() => _ConfirmDeleteSheetState();
+}
+
+class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
+  final _ctrl = TextEditingController();
+  bool _confirmed = false;
+  bool _deleting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.addListener(() {
+      final ok = _ctrl.text.trim() == 'USUWAM';
+      if (ok != _confirmed) setState(() => _confirmed = ok);
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _delete() async {
+    if (!_confirmed) return;
+    setState(() => _deleting = true);
+    try {
+      await FirebaseAuth.instance.currentUser?.delete();
+      if (mounted) Navigator.of(context).pop(true);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _deleting = false);
+      if (e.code == 'requires-recent-login') {
+        Navigator.of(context).pop(false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Zaloguj się ponownie, by usunąć konto.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        await FirebaseAuth.instance.signOut();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      // Przesuwa sheet nad klawiaturę
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0A2326),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle
+                Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                ),
+                const SizedBox(height: 24),
+
+                // Ikona
+                Container(
+                  width: 68, height: 68,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: EuphireColors.magma.withValues(alpha: 0.12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: EuphireColors.magma.withValues(alpha: 0.3),
+                        blurRadius: 28, spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.warning_amber_rounded,
+                      color: EuphireColors.magma, size: 32),
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  'Ostatni krok.',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontFamily: 'Merriweather',
+                    fontStyle: FontStyle.italic,
+                    color: EuphireColors.frostWhite,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Aby potwierdzić, wpisz:',
+                  style: theme.textTheme.bodyMedium?.copyWith(color: EuphireColors.mist),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'USUWAM',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontFamily: 'RobotoMono',
+                    color: EuphireColors.magma,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Pole tekstowe
+                TextField(
+                  controller: _ctrl,
+                  textAlign: TextAlign.center,
+                  autofocus: true,
+                  style: const TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: EuphireColors.frostWhite,
+                    letterSpacing: 3,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'wpisz tutaj…',
+                    hintStyle: TextStyle(
+                      fontFamily: 'RobotoMono', fontSize: 14,
+                      color: EuphireColors.mist.withValues(alpha: 0.4),
+                      letterSpacing: 1,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: _confirmed
+                            ? EuphireColors.magma
+                            : EuphireColors.mist.withValues(alpha: 0.3),
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
+                    suffixIcon: _confirmed
+                        ? const Icon(Icons.check_circle,
+                            color: EuphireColors.magma, size: 22)
+                        : null,
+                  ),
+                  autocorrect: false,
+                  enableSuggestions: false,
+                ),
+                const SizedBox(height: 20),
+
+                // Przycisk
+                AnimatedOpacity(
+                  opacity: _confirmed ? 1.0 : 0.35,
+                  duration: const Duration(milliseconds: 200),
+                  child: SizedBox(
+                    width: double.infinity, height: 54,
+                    child: ElevatedButton(
+                      onPressed: _confirmed && !_deleting ? _delete : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: EuphireColors.magma,
+                        disabledBackgroundColor: EuphireColors.magma,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      child: _deleting
+                          ? const SizedBox(
+                              width: 22, height: 22,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                          : const Text(
+                              'USUWAM KONTO',
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(
+                    'Anuluj.',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      color: EuphireColors.mist.withValues(alpha: 0.7),
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

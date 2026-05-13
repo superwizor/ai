@@ -1,62 +1,36 @@
-// settings_provider.dart — Stan preferencji użytkownika (Superwizor AI)
-//
-// Riverpod 3 — używa Notifier + NotifierProvider
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-// ─── State ────────────────────────────────────────────────────
-
-class AppSettingsState {
+class AppSettings {
   final bool soundEnabled;
   final bool hapticsEnabled;
 
-  const AppSettingsState({
+  const AppSettings({
     this.soundEnabled = true,
     this.hapticsEnabled = true,
   });
 
-  AppSettingsState copyWith({bool? soundEnabled, bool? hapticsEnabled}) {
-    return AppSettingsState(
+  AppSettings copyWith({
+    bool? soundEnabled,
+    bool? hapticsEnabled,
+  }) {
+    return AppSettings(
       soundEnabled: soundEnabled ?? this.soundEnabled,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
     );
   }
 }
 
-// ─── Notifier ─────────────────────────────────────────────────
-
-class AppSettingsNotifier extends Notifier<AppSettingsState> {
+class AppSettingsNotifier extends Notifier<AppSettings> {
   @override
-  AppSettingsState build() {
-    _load();
-    return const AppSettingsState();
-  }
+  AppSettings build() => const AppSettings();
 
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = AppSettingsState(
-      soundEnabled: prefs.getBool('sw_soundEnabled') ?? true,
-      hapticsEnabled: prefs.getBool('sw_hapticsEnabled') ?? true,
-    );
-  }
-
-  Future<void> toggleSound(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('sw_soundEnabled', value);
+  void toggleSound(bool value) {
     state = state.copyWith(soundEnabled: value);
   }
 
-  Future<void> toggleHaptics(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('sw_hapticsEnabled', value);
+  void toggleHaptics(bool value) {
     state = state.copyWith(hapticsEnabled: value);
   }
 }
 
-// ─── Provider ─────────────────────────────────────────────────
-
-final appSettingsProvider =
-    NotifierProvider<AppSettingsNotifier, AppSettingsState>(
-  AppSettingsNotifier.new,
-);
+final appSettingsProvider = NotifierProvider<AppSettingsNotifier, AppSettings>(AppSettingsNotifier.new);

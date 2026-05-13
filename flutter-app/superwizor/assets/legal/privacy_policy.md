@@ -1,125 +1,94 @@
-# Polityka Prywatności aplikacji Superwizor AI
+# Polityka Prywatności Aplikacji
 
-*Data ostatniej aktualizacji: 21 lipca 2025 r.*
+**Data ostatniej aktualizacji: 21.07.2025**
 
----
+## Wstęp
 
-## W skrócie (TL;DR)
+### Cel i Zakres Polityki
+Niniejsza Polityka Prywatności („Polityka”) określa zasady przetwarzania danych osobowych Użytkowników Profesjonalnych oraz Pacjentów w związku z korzystaniem z aplikacji mobilnej i/lub webowej Superwizor AI („Aplikacja”), świadczonej przez Euphire sp. z o.o. („Usługodawca”, „My”).
 
-- Twoje dane i dane Twoich pacjentów są przechowywane **wyłącznie na serwerach w Unii Europejskiej** (region: `europe-central2`, Warszawa).
-- Nagrania audio i transkrypcje są szyfrowane end-to-end. Nikt z zespołu Superwizor AI nie ma dostępu do treści sesji.
-- **Nigdy** nie sprzedajemy Twoich danych ani danych Twoich pacjentów.
-- Przysługuje Ci pełne prawo do usunięcia konta i wszystkich danych.
+Celem Polityki jest zapewnienie transparentności oraz realizacja obowiązków informacyjnych wynikających z art. 13 i 14 Rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. („RODO”). Usługodawca jest zaangażowany w ochronę prywatności wszystkich osób, których dane przetwarza, oraz w zapewnienie zgodności swoich działań z przepisami RODO.
 
-Kontakt: **kontakt@superwizor.ai**
+### Definicje Kluczowych Terminów
+Dla celów niniejszej Polityki, poniższe terminy mają następujące znaczenie:
+* **Aplikacja:** Oprogramowanie Superwizor AI w wersji mobilnej i/lub webowej, służące jako narzędzie wspierające Użytkowników Profesjonalnych w analizie sesji terapeutycznych.
+* **Usługodawca:** Euphire sp. z o.o. z siedzibą w ul. Odrzańska 10a/48, Kraków, zarejestrowana pod numerem KRS 0000907254, NIP 6793219020.
+* **Użytkownik Profesjonalny (Profesjonalista):** Psychoanalityk, psycholog, psychiatra, terapeuta, coach, praktyka grupowa lub inna organizacja świadcząca usługi w zakresie zdrowia psychicznego.
+* **Pacjent:** Osoba fizyczna, której dane osobowe są przetwarzane przez Użytkownika Profesjonalnego w związku ze świadczonymi przez niego usługami, przy użyciu Aplikacji.
+* **Dane Osobowe:** Wszelkie informacje o zidentyfikowanej lub możliwej do zidentyfikowania osobie fizycznej.
+* **Dane Dotyczące Zdrowia:** Dane osobowe o zdrowiu fizycznym lub psychicznym ujawniające informacje o stanie zdrowia (Art. 4 pkt 15 RODO).
+* **Przetwarzanie:** Operacja lub zestaw operacji wykonywanych na danych osobowych.
+* **Administrator:** Podmiot, który samodzielnie lub wspólnie z innymi ustala cele i sposoby przetwarzania danych osobowych.
+* **Podmiot Przetwarzający (Procesor):** Podmiot, który przetwarza dane osobowe w imieniu administratora.
+* **Anonimizacja / Pseudonimizacja:** Procesy mające na celu ochronę tożsamości poprzez nieodwracalne lub odwracalne usunięcie powiązań z konkretną osobą.
 
----
+## Część I: Informacje dla Użytkowników Profesjonalnych
 
-## Część I — Dane Użytkowników Profesjonalnych
+### 1. Administrator Danych Osobowych Użytkowników Profesjonalnych
 
-### 1. Administrator danych
-
-Administratorem Twoich danych osobowych (jako terapeuty korzystającego z Aplikacji) jest:
-
+Administratorem danych osobowych Użytkowników Profesjonalnych, w zakresie danych podawanych podczas procesu rejestracji, zarządzania kontem i dokonywania płatności, jest:
 **Euphire sp. z o.o.**
-ul. Odrzańska 10a/48, 30-408 Kraków
-KRS: 0000907254 · NIP: 6793219020
-E-mail: kontakt@superwizor.ai
+ul. Odrzańska 10a/48, Kraków
+KRS: 0000907254, NIP: 6793219020
 
-### 2. Jakie dane zbieramy i po co?
+We wszelkich sprawach dotyczących przetwarzania Państwa danych prosimy o kontakt:
+* Adres e-mail: kontakt@euphire.pl
 
-| Cel przetwarzania | Kategorie danych | Podstawa prawna |
-|---|---|---|
-| Założenie i obsługa konta | E-mail, imię, nazwisko, zdjęcie profilowe | Wykonanie umowy (art. 6 ust. 1 lit. b RODO) |
-| Świadczenie usług AI | Nagrania audio, transkrypcje (per sesja) | Wykonanie umowy |
-| Rozliczenia i faktury | Dane płatnicze, dane firmy | Obowiązek prawny (art. 6 ust. 1 lit. c RODO) |
-| Bezpieczeństwo i zapobieganie nadużyciom | Logi dostępu, adres IP | Uzasadniony interes (art. 6 ust. 1 lit. f RODO) |
-| Marketing (za zgodą) | E-mail | Zgoda (art. 6 ust. 1 lit. a RODO) |
+### 2. Cele, Podstawy Prawne i Okres Przetwarzania
 
-### 3. Jak długo przechowujemy dane?
+Przetwarzamy następujące kategorie danych Użytkowników Profesjonalnych:
+* **Dane identyfikacyjne i kontaktowe** (imię, nazwisko, e-mail, nazwa praktyki).
+* **Dane rejestracyjne** (login, hash hasła).
+* **Dane płatnicze** (informacje do obsługi subskrypcji).
+* **Dane o korzystaniu z Aplikacji** (logi systemowe, adresy IP).
 
-- **Dane konta:** przez czas trwania umowy + 30 dni po jej rozwiązaniu (na potrzeby exportu)
-- **Nagrania i transkrypcje:** do momentu usunięcia przez Użytkownika lub rozwiązania umowy
-- **Dane płatnicze i faktury:** przez 5 lat zgodnie z przepisami podatkowymi
-- **Logi bezpieczeństwa:** 12 miesięcy
+**Cele Przetwarzania:**
+1. **Wykonanie umowy o świadczenie usług Aplikacji** (Art. 6 ust. 1 lit. b RODO) – do upływu terminu przedawnienia roszczeń.
+2. **Obsługa płatności i rozliczenia** (Art. 6 ust. 1 lit. b i c RODO) – przez okres wymagany przepisami podatkowymi (5 lat).
+3. **Wsparcie techniczne** (Art. 6 ust. 1 lit. f RODO) – do czasu rozwiązania zgłoszenia.
+4. **Zapewnienie bezpieczeństwa** (Art. 6 ust. 1 lit. f RODO).
 
-### 4. Gdzie przechowujemy dane?
+### 3. Rola Usługodawcy w Przetwarzaniu Danych Pacjentów
 
-Wszystkie dane przechowywane są **wyłącznie w Unii Europejskiej**, na infrastrukturze Google Cloud Platform w regionie `europe-central2` (Warszawa, Polska).
+W odniesieniu do danych osobowych Pacjentów, Użytkownik Profesjonalny jest Administratorem Danych Osobowych. Usługodawca jest wyłącznie Podmiotem Przetwarzającym (Procesorem) przetwarzającym dane na udokumentowane polecenie Administratora w ramach zawartej Umowy Powierzenia Przetwarzania Danych (DPA). 
 
-Nie przekazujemy danych do państw trzecich, z wyjątkiem usług AI (Vertex AI / Gemini), gdzie dane są przetwarzane w regionie `europe-west4` (Holandia) na podstawie standardowych klauzul umownych (SCC).
+### 4. Obowiązki Użytkownika Profesjonalnego jako Administratora
 
-### 5. Bezpieczeństwo danych
+Jako Administratorzy, ponoszą Państwo pełną odpowiedzialność za zgodność przetwarzania z przepisami, w tym za:
+* Zapewnienie odpowiedniej podstawy prawnej (np. Art. 9 ust. 2 lit. h lub lit. a RODO).
+* Spełnienie obowiązku informacyjnego (Art. 13 RODO).
+* Realizację praw Pacjentów.
+* Zapewnienie bezpieczeństwa danych.
 
-Stosujemy następujące środki techniczne i organizacyjne:
+### 5. Środki Techniczne i Organizacyjne
 
-- **Szyfrowanie w spoczynku:** AES-256 (Google Cloud KMS)
-- **Szyfrowanie w tranzycie:** TLS 1.3
-- **Szyfrowanie PHI (danych szczególnie wrażliwych):** envelope encryption z dedykowanymi kluczami per-terapeuta (Cloud KMS)
-- **Kontrola dostępu:** Zero Trust, dedykowane konta serwisowe z minimalnym zakresem uprawnień
-- **Audyt:** logi wszystkich operacji na danych wrażliwych
+Usługodawca zapewnia najwyższy standard bezpieczeństwa poprzez:
+* **Szyfrowanie danych w tranzycie i spoczynku**.
+* Ścisłą kontrolę dostępu i zasadę minimalnych uprawnień.
+* Regularne testy bezpieczeństwa i monitorowanie logów.
 
-### 6. Twoje prawa
+### 6. Transfer Danych i Sub-procesorzy
 
-Przysługuje Ci prawo do:
-- **Dostępu** do swoich danych
-- **Sprostowania** nieprawidłowych danych
-- **Usunięcia** danych (prawo do bycia zapomnianym)
-- **Przenoszenia** danych w formacie JSON/PDF
-- **Sprzeciwu** wobec przetwarzania na podstawie uzasadnionego interesu
-- **Wniesienia skargi** do Prezesa UODO (uodo.gov.pl)
+W ramach świadczenia usług korzystamy z zaufanych dostawców (m.in. Google Cloud, Firebase, Gemini API). Wszyscy sub-procesorzy zapewniają odpowiednie gwarancje ochrony danych i podlegają rygorystycznym umowom. W przypadku transferu poza EOG stosowane są mechanizmy legalizujące (Standardowe Klauzule Umowne).
 
-Aby skorzystać z praw, napisz na: **kontakt@superwizor.ai**
+## Część II: Informacje dla Pacjentów
 
-### 7. Sub-procesorzy (podmioty przetwarzające dane w naszym imieniu)
+### 1. Kto jest Odpowiedzialny za Twoje Dane?
+Administratorem Twoich danych w ramach sesji terapeutycznych jest Twój terapeuta/lekarz. To on decyduje, jakie dane są zbierane i w jakim celu używa Aplikacji.
 
-| Sub-procesor | Cel | Region |
-|---|---|---|
-| Google Cloud Platform | Hosting infrastruktury | EU (europe-central2) |
-| Firebase Authentication | Uwierzytelnianie użytkowników | EU |
-| Firebase Storage | Tymczasowe przechowywanie nagrań | EU |
-| Cloud Speech-to-Text (Chirp 3) | Transkrypcja audio | EU |
-| Vertex AI / Gemini | Analiza kliniczna AI | EU (europe-west4) |
-| Stripe | Obsługa płatności | EU |
+### 2. Kto Przetwarza Twoje Dane?
+Firma Euphire sp. z o.o. (Dostawca Aplikacji) przetwarza Twoje dane wyłącznie jako Podmiot Przetwarzający – w imieniu i na polecenie Twojego terapeuty/lekarza.
 
----
+### 3. Cel Przetwarzania
+Aplikacja pomaga Twojemu terapeucie poprzez transkrypcję i analizę audio z Waszych sesji. Celem jest zapewnienie Ci lepszej opieki, lepszego śledzenia postępów i dokładniejszej dokumentacji terapii.
 
-## Część II — Informacje dla Pacjentów
+### 4. Bezpieczeństwo
+Twoje dane są w pełni bezpieczne. Stosujemy zaawansowane metody szyfrowania zarówno podczas przesyłania, jak i przechowywania informacji. Nagrania audio są usuwane po przetworzeniu, chyba że wyrazisz zgodę na ich dłuższe zachowanie przez terapeutę.
 
-*Ta sekcja skierowana jest do pacjentów, których dane są przetwarzane przez Twoich terapeutów używających Superwizor AI.*
+### 5. Twoje Prawa
+Masz prawo do dostępu, poprawiania, usunięcia, czy też przenoszenia swoich danych. Aby skorzystać ze swoich praw, skontaktuj się ze swoim terapeutą/lekarzem, który jest bezpośrednio odpowiedzialny za ich realizację.
 
-### Kim jesteśmy w kontekście Twoich danych?
+## Postanowienia Końcowe
 
-**Twój terapeuta** (Użytkownik Profesjonalny Superwizor AI) jest **Administratorem** Twoich danych osobowych — to on/ona decyduje o celu i zakresie ich przetwarzania.
-
-**Euphire sp. z o.o.** jest **Podmiotem Przetwarzającym** — udostępniamy jedynie narzędzie techniczne i przetwarzamy Twoje dane wyłącznie na polecenie Twojego terapeuty, zgodnie z DPA.
-
-### Jakie dane mogą być przetwarzane?
-
-W zależności od tego, co nagrywane jest podczas sesji:
-- Głos (nagranie audio sesji terapeutycznej)
-- Transkrypcja wypowiedzi z etykietami mówców (bez imion — etykiety neutralne)
-- Dane dotyczące zdrowia psychicznego zawarte w treści rozmowy (dane szczególnej kategorii, art. 9 RODO)
-
-### Podstawa prawna i zgoda
-
-Twój terapeuta jest zobowiązany do uzyskania Twojej wyraźnej zgody na nagrywanie i przetwarzanie danych przy użyciu Superwizor AI, przed każdą nagraną sesją.
-
-### Twoje prawa jako pacjenta
-
-Masz prawo zwrócić się bezpośrednio do swojego terapeuty (Administratora) o:
-- Dostęp do danych z Twoich sesji
-- Usunięcie danych (trwałe usunięcie kartoteki)
-- Ograniczenie przetwarzania
-
-Możesz również skontaktować się z nami bezpośrednio: **kontakt@superwizor.ai**
-
----
-
-## Część III — Pliki cookie i analityka
-
-Aplikacja mobilna nie używa plików cookie. Może zbierać anonimowe dane analityczne (Firebase Analytics) w celu poprawy jakości działania aplikacji. Dane te nie zawierają żadnych danych osobowych ani treści sesji.
-
----
-
-*Polityka Prywatności wchodzi w życie z dniem 21 lipca 2025 r.*
+Strona internetowa Usługodawcy może wykorzystywać pliki cookie w celach funkcjonalnych i analitycznych. Usługodawca zastrzega sobie prawo do zmian w niniejszej Polityce w związku z ewolucją prawa lub technologii.
+Aktualna wersja jest zawsze dostępna w Menu Aplikacji.
