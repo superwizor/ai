@@ -8,6 +8,7 @@ Kronikarz (`/docs/kronikarz/SKILL.md`) automatycznie dodaje tutaj nowe wpisy pod
 
 | Data | Tytuł Sesji | Podsumowanie |
 |------|-------------|--------------|
+| 2026-05-13 | [Wyczesane UI Faza 2 z 3](2026-05-13-ui-polishing-phase-2.md) | Usunięto wybór języka na ekranie sesji, glassmorphism boksu prywatności, naprawa overflow w nazwie usera (menu) oraz mapowanie nazw nurtów na ładne nazwy. Nawigacja Swipe-to-go-back. |
 | 2026-05-13 | [EUPHIRE Home Screen & Add Patient Language](2026-05-13-ui-polishing-patients-screen.md) | Implementacja ekranu głównego EUPHIRE oraz dodanie języka pacjenta w profilu. |
 | 2026-05-13 | [Settings UI Polish — Labirynt Premium](2026-05-13-settings-ui-polish-labirynt.md) | Pełny refaktor MenuScreen: białe toggle, logout sheet, 3-warstwowy delete flow (chevron→ekran z toggle→sheet USUWAM), legal docs przebudowane, licencje w boksach. |
 | 2026-05-11 | [UI MVP, Lokalizacja, Pipeline Audio i Plan HiTOP](2026-05-11-UI-MVP-Lokalizacja-i-HiTOP.md) | Lokalizacja, konwersja audio WAV→16bit PCM, zarządzanie sesjami (rename/delete), upgrade LLM na gemini-3.1-flash (16k tokenów), modalności Riverpod. |

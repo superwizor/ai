@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../theme/euphire_theme.dart';
 import '../providers/current_user_provider.dart';
@@ -32,14 +33,15 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: EuphireColors.nocturne,
       // Usunięty appBar, zrobimy customowy header dla lepszego UI
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: EuphireColors.backgroundGradient,
-        ),
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      body: Stack(
+        children: [
+          Container(
+            color: const Color(0xFF173E43), // Tło: #173e43
+          ),
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // ── Header (w stylu Stitch) ──────────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -69,7 +71,7 @@ class HomeScreen extends ConsumerWidget {
                     IconButton(
                       icon: const Icon(Icons.menu, color: EuphireColors.frostWhite),
                       onPressed: () {
-                        Navigator.of(context).push(MaterialPageRoute(
+                        Navigator.of(context).push(CupertinoPageRoute(
                           builder: (_) => const MenuScreen(),
                         ));
                       },
@@ -78,133 +80,153 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              // ── Powitanie ───────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text.rich(
-                      TextSpan(
-                        text: 'Witaj, ',
-                        style: const TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 32,
-                          fontWeight: FontWeight.w700,
-                          color: EuphireColors.frostWhite,
-                          height: 1.2,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: userName,
-                            style: const TextStyle(
-                              fontStyle: FontStyle.italic,
-                              color: EuphireColors.ember,
-                            ),
-                          ),
-                          const TextSpan(text: '.'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Oto Twoje kartoteki. Z czym dzisiaj pracujemy?',
-                      style: TextStyle(
-                        fontFamily: 'RobotoMono',
-                        fontSize: 13,
-                        color: EuphireColors.mist.withValues(alpha: 0.8),
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Lista Kartotek ──────────────────────────────────
               Expanded(
-                child: patientsAsync.when(
-                  loading: () => const Center(
-                      child: CircularProgressIndicator(color: EuphireColors.ember)),
-                  error: (err, stack) => Center(
-                      child: Text('Błąd: $err',
-                          style: const TextStyle(color: EuphireColors.ember))),
-                  data: (patients) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'AKTYWNE KARTOTEKI',
-                                style: TextStyle(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Powitanie ───────────────────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text.rich(
+                              TextSpan(
+                                text: 'Witaj, ',
+                                style: const TextStyle(
                                   fontFamily: 'Montserrat',
-                                  fontSize: 12,
+                                  fontSize: 32,
                                   fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.5,
-                                  color: EuphireColors.mist.withValues(alpha: 0.6),
+                                  color: EuphireColors.frostWhite,
+                                  height: 1.2,
                                 ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: EuphireColors.frostWhite.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'Ilość: ${patients.length}',
-                                  style: TextStyle(
-                                    fontFamily: 'RobotoMono',
-                                    fontSize: 11,
-                                    color: EuphireColors.mist.withValues(alpha: 0.8),
+                                children: [
+                                  TextSpan(
+                                    text: userName,
+                                    style: const TextStyle(
+                                      fontStyle: FontStyle.italic,
+                                      color: EuphireColors.ember,
+                                    ),
                                   ),
-                                ),
+                                  const TextSpan(text: '.'),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Oto Twoje kartoteki. Z czym dzisiaj pracujemy?',
+                              style: TextStyle(
+                                fontFamily: 'RobotoMono',
+                                fontSize: 13,
+                                color: EuphireColors.mist.withValues(alpha: 0.8),
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 8),
-                        if (patients.isEmpty)
-                          Expanded(
-                            child: Center(
-                              child: Text(
-                                'Brak kartotek. Dodaj nowego klienta.',
-                                style: TextStyle(
-                                  fontFamily: 'Merriweather',
-                                  color: EuphireColors.mist.withValues(alpha: 0.6),
-                                  fontStyle: FontStyle.italic,
+                      ),
+        
+                      // ── Lista Kartotek ──────────────────────────────────
+                      patientsAsync.when(
+                        loading: () => const Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Center(child: CircularProgressIndicator(color: EuphireColors.ember)),
+                        ),
+                        error: (err, stack) => Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Center(child: Text('Błąd: $err', style: const TextStyle(color: EuphireColors.ember))),
+                        ),
+                        data: (patients) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'AKTYWNE KARTOTEKI',
+                                      style: TextStyle(
+                                        fontFamily: 'Montserrat',
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1.5,
+                                        color: EuphireColors.mist.withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: EuphireColors.frostWhite.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        'Ilość: ${patients.length}',
+                                        style: TextStyle(
+                                          fontFamily: 'RobotoMono',
+                                          fontSize: 11,
+                                          color: EuphireColors.mist.withValues(alpha: 0.8),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                          )
-                        else
-                          Expanded(
-                            child: ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                              itemCount: patients.length,
-                              separatorBuilder: (context, index) => const SizedBox(height: 12),
-                              itemBuilder: (context, index) {
-                                final patient = patients[index];
-                                return _PatientGlassCard(
-                                  patientId: patient.id,
-                                  name: '${patient.firstName} ${patient.lastName}'.trim(),
-                                  sessionCount: patient.sessionCount,
-                                  modalityCode: patient.modalityCode,
-                                );
-                              },
-                            ),
-                          ),
-                      ],
-                    );
-                  },
+                              const SizedBox(height: 8),
+                              if (patients.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.all(32),
+                                  child: Center(
+                                    child: Text(
+                                      'Brak kartotek. Dodaj nowego klienta.',
+                                      style: TextStyle(
+                                        fontFamily: 'Merriweather',
+                                        color: EuphireColors.mist.withValues(alpha: 0.6),
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                Consumer(
+                                  builder: (context, ref, child) {
+                                    final sessionsMap = ref.watch(sessionsProvider).value ?? {};
+                                    return ListView.separated(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                                      itemCount: patients.length,
+                                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                                      itemBuilder: (context, index) {
+                                        final patient = patients[index];
+                                        final patientSessions = sessionsMap[patient.id] ?? [];
+                                        final lastSessionDate = patientSessions.isNotEmpty ? patientSessions.last.date : null;
+                                        
+                                        return _PatientGlassCard(
+                                          patientId: patient.id,
+                                          name: '${patient.firstName} ${patient.lastName}'.trim(),
+                                          sessionCount: patient.sessionCount,
+                                          modalityCode: patient.modalityCode,
+                                          lastSessionDate: lastSessionDate,
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
         ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddPatientModal(context, ref),
@@ -222,12 +244,14 @@ class _PatientGlassCard extends ConsumerWidget {
   final String name;
   final int sessionCount;
   final String modalityCode;
+  final DateTime? lastSessionDate;
 
   const _PatientGlassCard({
     required this.patientId,
     required this.name,
     required this.sessionCount,
     required this.modalityCode,
+    this.lastSessionDate,
   });
 
   void _showOptions(BuildContext context, WidgetRef ref) {
@@ -246,13 +270,12 @@ class _PatientGlassCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04), // glass panel z Stitch
+        color: const Color(0xFF2D6068), // Kontenery: #2d6068
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 6,
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 8,
             offset: const Offset(0, 4),
           )
         ],
@@ -291,13 +314,29 @@ class _PatientGlassCard extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        'Ilość Sesji: $sessionCount  /  MOD: ${modalityCode.isEmpty ? 'UNIV' : modalityCode}',
-                        style: TextStyle(
-                          fontFamily: 'RobotoMono',
-                          fontSize: 11,
-                          color: EuphireColors.mist.withValues(alpha: 0.7),
-                        ),
+                      Builder(
+                        builder: (context) {
+                          String modName = 'Uniwersalna';
+                          switch (modalityCode.toUpperCase()) {
+                            case 'UNIV': modName = 'Uniwersalna'; break;
+                            case 'CBT': modName = 'Beh-Pozn'; break;
+                            case 'PSYCHO': modName = 'Psychodynamiczna'; break;
+                            case 'PPT': modName = 'Pozytywna'; break;
+                            case 'ST': modName = 'Schematów'; break;
+                            case 'SYS': modName = 'Systemowa'; break;
+                            case 'EFT': modName = 'Skon. na emocjach'; break;
+                            case 'COACH': modName = 'Coaching'; break;
+                            default: if (modalityCode.isNotEmpty) modName = modalityCode;
+                          }
+                          return Text(
+                            'Ilość Sesji: $sessionCount  /  MOD: $modName',
+                            style: TextStyle(
+                              fontFamily: 'RobotoMono',
+                              fontSize: 11,
+                              color: EuphireColors.mist.withValues(alpha: 0.7),
+                            ),
+                          );
+                        }
                       ),
                       const SizedBox(height: 12),
                       Container(
@@ -309,17 +348,28 @@ class _PatientGlassCard extends ConsumerWidget {
                                 color: Colors.white.withValues(alpha: 0.08)),
                           ),
                         ),
-                        child: Text(
-                          'OSTATNIA SESJA: ${sessionCount > 0 ? 'Zaktualizowano niedawno' : 'Oczekuje na dane'}',
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.2,
-                            color: sessionCount > 0
-                                ? EuphireColors.mist.withValues(alpha: 0.9)
-                                : EuphireColors.mist.withValues(alpha: 0.5),
-                          ),
+                        child: Builder(
+                          builder: (context) {
+                            String dateText = 'Oczekuje na dane';
+                            if (lastSessionDate != null) {
+                              final months = ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'];
+                              dateText = '${lastSessionDate!.day} ${months[lastSessionDate!.month - 1]} ${lastSessionDate!.year}';
+                            } else if (sessionCount > 0) {
+                              dateText = 'Rozpocznij sesję, by dodać dane';
+                            }
+                            return Text(
+                              'OSTATNIA SESJA: $dateText',
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.2,
+                                color: (lastSessionDate != null || sessionCount > 0)
+                                    ? EuphireColors.mist.withValues(alpha: 0.9)
+                                    : EuphireColors.mist.withValues(alpha: 0.5),
+                              ),
+                            );
+                          }
                         ),
                       ),
                     ],

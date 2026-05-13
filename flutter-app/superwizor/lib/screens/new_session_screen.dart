@@ -79,7 +79,6 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
   String? _uploadFileName;
   double _uploadProgress = 0.0;
   String _uploadStatusLabel = '';
-  String _reportLanguage = 'pl';
 
   @override
   Widget build(BuildContext context) {
@@ -218,55 +217,8 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                         const SizedBox(height: 24),
                       ],
 
-                      // Language selection
-                      if (!_uploading) ...[
-                        Text(
-                          'JĘZYK RAPORTU',
-                          style: TextStyle(
-                            fontFamily: 'RobotoMono',
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: EuphireColors.frostWhite.withValues(alpha: 0.5),
-                            letterSpacing: 2.0,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Center(
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            alignment: WrapAlignment.center,
-                            children: ['pl', 'en', 'de', 'uk'].map((lang) {
-                              final isSelected = _reportLanguage == lang;
-                              return InkWell(
-                                onTap: () => setState(() => _reportLanguage = lang),
-                                borderRadius: BorderRadius.circular(20),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? EuphireColors.ember : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: isSelected ? EuphireColors.ember : EuphireColors.frostWhite.withValues(alpha: 0.2),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    _getLanguageLabel(lang),
-                                    style: TextStyle(
-                                      fontFamily: 'Montserrat',
-                                      fontSize: 14,
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                      color: isSelected ? EuphireColors.obsidianBlack : EuphireColors.frostWhite,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                      ],
+                      // Usunięty wybór języka
+
 
                       // CTA buttons at the bottom
                       if (!_uploading) ...[
@@ -449,7 +401,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
         contentType: contentType,
         clientPlatform: Platform.isIOS ? 'ios' : 'android',
         idempotencyKey: sessionId,
-        reportLanguage: _reportLanguage,
+        reportLanguage: 'pl',
       ));
       final uploadId = createRes.uploadId;
       final signedUrl = createRes.signedUrl;
@@ -481,7 +433,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
         actualDurationSeconds: 0,
         actualSizeBytes: Int64(uploadSize),
         chunkCount: 1,
-        reportLanguage: _reportLanguage,
+        reportLanguage: 'pl',
       ));
       final completedSessionId = completeRes.sessionId;
       debugPrint('[file-upload] done, sessionId=$completedSessionId');
@@ -581,10 +533,10 @@ class _SecurityBadge extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E392A), // Premium dark green
+        color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFF34C759).withValues(alpha: 0.3), // Apple green border
+          color: Colors.white.withValues(alpha: 0.1),
         ),
       ),
       child: Row(
@@ -594,13 +546,13 @@ class _SecurityBadge extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFF34C759).withValues(alpha: 0.1),
+              color: Colors.white.withValues(alpha: 0.05),
               shape: BoxShape.circle,
             ),
             child: const Center(
               child: Icon(
                 Icons.shield_rounded,
-                color: Color(0xFF34C759),
+                color: EuphireColors.mist,
                 size: 24,
               ),
             ),
