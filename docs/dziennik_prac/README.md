@@ -8,6 +8,7 @@ Kronikarz (`/docs/kronikarz/SKILL.md`) automatycznie dodaje tutaj nowe wpisy pod
 
 | Data | Tytuł Sesji | Podsumowanie |
 |------|-------------|--------------|
+| 2026-05-13 | [Settings UI Polish — Labirynt Premium](2026-05-13-settings-ui-polish-labirynt.md) | Pełny refaktor MenuScreen: białe toggle, logout sheet, 3-warstwowy delete flow (chevron→ekran z toggle→sheet USUWAM), legal docs przebudowane, licencje w boksach. |
 | 2026-05-11 | [UI MVP, Lokalizacja, Pipeline Audio i Plan HiTOP](2026-05-11-UI-MVP-Lokalizacja-i-HiTOP.md) | Lokalizacja, konwersja audio WAV→16bit PCM, zarządzanie sesjami (rename/delete), upgrade LLM na gemini-3.1-flash (16k tokenów), modalności Riverpod. |
 | 2026-05-04 | [🎉 v0.2.0 — E2E Recording Pipeline](2026-05-04-v0.2.0-recording-pipeline.md) | Kamień milowy: pełny pipeline nagrywania, upload GCS, ingestion-svc na Cloud Run, graceful "coming soon" UI |
 | 2026-05-03 | [Zakończenie Fazy 2](2026-05-03-faza-2-zakonczenie.md) | E2E test pipeline ingestion + IAM integration |
