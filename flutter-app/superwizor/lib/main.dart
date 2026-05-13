@@ -75,6 +75,7 @@ class SuperWizorApp extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
 
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
       title: 'Superwizor AI',
       theme: EuphireTheme.themeData,

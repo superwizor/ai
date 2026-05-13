@@ -81,7 +81,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
 
   void _openLegal(String path, String title) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => LegalMarkdownScreen(assetPath: path, title: title),
+      builder: (_) => LegalMarkdownScreen(assetPath: path),
     ));
   }
 
@@ -191,10 +191,13 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                   color: EuphireColors.frostWhite.withValues(alpha: 0.4)),
                               overflow: TextOverflow.ellipsis,
                             ),
-                            onTap: () => showEuphireBottomSheet(
-                              context: context,
-                              builder: (_) => ProfileEditSheet(onSaved: () => setState(() {})),
-                            ),
+                            onTap: () async {
+                              await showEuphireBottomSheet(
+                                context: context,
+                                builder: (_) => const ProfileEditSheet(),
+                              );
+                              setState(() {}); // refresh after sheet closes
+                            },
                           ),
                           _Divider(),
                           _SettingsRow(

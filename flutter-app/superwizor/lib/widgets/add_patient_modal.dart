@@ -43,6 +43,7 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
   final _lastNameController = TextEditingController();
   bool _consentGiven = false;
   bool _saving = false;
+  String _languageCode = 'pl-PL';
 
   @override
   void dispose() {
@@ -80,6 +81,25 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
             EuphireTextField(
               controller: _lastNameController,
               labelText: t.addPatient_last_name_label,
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _languageCode,
+              decoration: const InputDecoration(
+                labelText: 'Język raportu AI',
+                labelStyle: TextStyle(color: EuphireColors.mist),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: EuphireColors.mist)),
+                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: EuphireColors.ember)),
+              ),
+              dropdownColor: EuphireColors.nocturne,
+              style: const TextStyle(fontFamily: 'Montserrat', color: EuphireColors.frostWhite),
+              items: const [
+                DropdownMenuItem(value: 'pl-PL', child: Text('Polski (Domyślny)')),
+                DropdownMenuItem(value: 'en-US', child: Text('Angielski (English)')),
+                DropdownMenuItem(value: 'de-DE', child: Text('Niemiecki (Deutsch)')),
+                DropdownMenuItem(value: 'es-ES', child: Text('Hiszpański (Español)')),
+              ],
+              onChanged: (v) => setState(() => _languageCode = v!),
             ),
             const SizedBox(height: 24),
             _ConsentCheckbox(
@@ -134,6 +154,7 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
         firstName: firstName,
         lastName: lastName,
         modalityCode: modalityCode,
+        languageCode: _languageCode,
       );
 
       // Find the newly-created patient to get its ID. The notifier
