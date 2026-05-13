@@ -42,10 +42,63 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   clinical_pb.GetSessionDetailsResponse? _data;
   List<_ReportSection>? _sections;
 
+  final ScrollController _mainScrollController = ScrollController();
+  int _activeSectionIndex = 0;
+
   @override
   void initState() {
     super.initState();
+    _mainScrollController.addListener(_onScroll);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _mainScrollController.removeListener(_onScroll);
+    _mainScrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_sections == null || _sections!.isEmpty) return;
+
+    int newActiveIndex = 0;
+
+    if (_mainScrollController.hasClients &&
+        _mainScrollController.position.pixels >= _mainScrollController.position.maxScrollExtent - 20) {
+      newActiveIndex = _sections!.length - 1;
+    } else {
+      for (int i = 0; i < _sections!.length; i++) {
+        final key = _sections![i].key;
+        if (key.currentContext != null) {
+          final RenderBox box = key.currentContext!.findRenderObject() as RenderBox;
+          final position = box.localToGlobal(Offset.zero).dy;
+          if (position <= 350) {
+            newActiveIndex = i;
+          }
+        }
+      }
+    }
+
+    if (newActiveIndex != _activeSectionIndex) {
+      setState(() {
+        _activeSectionIndex = newActiveIndex;
+      });
+      _scrollToTab(newActiveIndex);
+    }
+  }
+
+  void _scrollToTab(int index) {
+    if (_sections == null) return;
+    final tabKey = _sections![index].tabKey;
+    if (tabKey.currentContext != null) {
+      Scrollable.ensureVisible(
+        tabKey.currentContext!,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        alignment: 0.5,
+      );
+    }
   }
 
   Future<void> _load() async {
@@ -95,9 +148,13 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             rightLabel: t.report_tab,
             onSelect: (v) {
               if (v == 'transcript') {
-                Navigator.of(context).pushReplacement(MaterialPageRoute(
-                  builder: (_) => TranscriptScreen(sessionId: widget.sessionId),
-                ));
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation1, animation2) => TranscriptScreen(sessionId: widget.sessionId),
+                    transitionDuration: Duration.zero,
+                    reverseTransitionDuration: Duration.zero,
+                  ),
+                );
               }
             },
           ),
@@ -161,8 +218,12 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
               separatorBuilder: (ctx, _) => const SizedBox(width: 8),
               itemBuilder: (ctx, i) {
                 final s = _sections![i];
+                final isActive = i == _activeSectionIndex;
                 return Material(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  key: s.tabKey,
+                  color: isActive
+                      ? EuphireColors.ember.withValues(alpha: 0.15)
+                      : Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(24),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
@@ -180,9 +241,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                       alignment: Alignment.center,
                       child: Text(
                         s.title,
-                        style: const TextStyle(
-                          color: EuphireColors.frostWhite,
-                          fontWeight: FontWeight.w500,
+                        style: TextStyle(
+                          color: isActive ? EuphireColors.ember : EuphireColors.frostWhite,
+                          fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                         ),
                       ),
                     ),
@@ -193,6 +254,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           ),
         Expanded(
           child: SingleChildScrollView(
+            controller: _mainScrollController,
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -326,13 +388,19 @@ class _ReportSection {
   final String title;
   final String content;
   final GlobalKey key;
-  _ReportSection({required this.title, required this.content, required this.key});
+  final GlobalKey tabKey;
+  _ReportSection({
+    required this.title, 
+    required this.content, 
+    required this.key, 
+    required this.tabKey,
+  });
 }
 
 List<_ReportSection> _parseSections(String md) {
   final headerRegex = RegExp(r'^#+\s+(.*)');
   if (!md.split('\n').any((l) => headerRegex.hasMatch(l))) {
-    return [_ReportSection(title: 'Raport', content: md, key: GlobalKey())];
+    return [_ReportSection(title: 'Raport', content: md, key: GlobalKey(), tabKey: GlobalKey())];
   }
   
   final lines = md.split('\n');
@@ -347,7 +415,8 @@ List<_ReportSection> _parseSections(String md) {
          sections.add(_ReportSection(
            title: currentTitle, 
            content: currentContent.toString().trim(), 
-           key: GlobalKey()
+           key: GlobalKey(),
+           tabKey: GlobalKey()
          ));
       }
       currentTitle = match.group(1)!.replaceAll(RegExp(r'\*'), '').trim();
@@ -361,7 +430,8 @@ List<_ReportSection> _parseSections(String md) {
     sections.add(_ReportSection(
       title: currentTitle, 
       content: currentContent.toString().trim(), 
-      key: GlobalKey()
+      key: GlobalKey(),
+      tabKey: GlobalKey()
     ));
   }
   

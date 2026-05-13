@@ -37,7 +37,7 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
 
     _tickController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2), // Ring pulse duration
+      duration: const Duration(seconds: 6), // One wave per 2 seconds (3 waves total)
     )..addListener(_onTick);
 
     if (widget.isRecording) {

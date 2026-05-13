@@ -232,7 +232,7 @@
   "settings_section_account_management": "ZARZĄDZANIE KONTEM",
   "settings_logout": "Wyloguj się",
   "settings_delete_account": "Usuń konto bezpowrotnie",
-  "settings_logout_confirm_title": "Wylogować się?",
+  "settings_logout_confirm_title": "Czy chcesz się wylogować?",
   "settings_logout_confirm_body": "Będziesz musiał zalogować się ponownie, aby uzyskać dostęp do swoich pacjentów.",
   "settings_logout_confirm_cancel": "Zostań",
   "settings_logout_confirm_logout": "Wyloguj się",

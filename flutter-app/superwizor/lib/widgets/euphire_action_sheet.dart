@@ -20,6 +20,7 @@ class EuphireActionSheet extends StatelessWidget {
   final EuphireSheetAction primary;
   final EuphireSheetAction? secondary;
   final EuphireSheetAction? destructive;
+  final IconData? topIcon;
 
   const EuphireActionSheet({
     super.key,
@@ -28,6 +29,7 @@ class EuphireActionSheet extends StatelessWidget {
     required this.primary,
     this.secondary,
     this.destructive,
+    this.topIcon,
   });
 
   @override
@@ -36,42 +38,130 @@ class EuphireActionSheet extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(header, style: theme.textTheme.headlineMedium),
+            // Handle for bottom sheet
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+            if (topIcon != null) ...[
+              Center(
+                child: Container(
+                  width: 72, height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: EuphireColors.ember.withValues(alpha: 0.12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: EuphireColors.ember.withValues(alpha: 0.2),
+                        blurRadius: 28, spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    topIcon,
+                    color: EuphireColors.ember,
+                    size: 34,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+            Text(
+              header,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontFamily: 'Montserrat',
+                fontWeight: FontWeight.w700,
+                color: EuphireColors.frostWhite,
+              ),
+            ),
             const SizedBox(height: 12),
-            Text(body, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: primary.onPressed,
-              child: Text(primary.label),
+            Text(
+              body,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontFamily: 'Montserrat',
+                height: 1.5,
+                color: EuphireColors.mist,
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              height: 54,
+              child: ElevatedButton(
+                onPressed: primary.onPressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: EuphireColors.ember,
+                  foregroundColor: EuphireColors.obsidianBlack,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: Text(
+                  primary.label,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
             ),
             if (secondary != null) ...[
-              const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: secondary!.onPressed,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: EuphireColors.frostWhite,
-                  side: const BorderSide(color: EuphireColors.mist),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 54,
+                child: OutlinedButton(
+                  onPressed: secondary!.onPressed,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: EuphireColors.frostWhite,
+                    side: BorderSide(color: EuphireColors.mist.withValues(alpha: 0.5)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: Text(
+                    secondary!.label,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
-                child: Text(secondary!.label),
               ),
             ],
             if (destructive != null) ...[
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: destructive!.onPressed,
-                style: TextButton.styleFrom(
-                  foregroundColor: EuphireColors.magma,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 54,
+                child: TextButton(
+                  onPressed: destructive!.onPressed,
+                  style: TextButton.styleFrom(
+                    foregroundColor: EuphireColors.magma,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: Text(
+                    destructive!.label,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
-                child: Text(destructive!.label),
               ),
             ],
           ],

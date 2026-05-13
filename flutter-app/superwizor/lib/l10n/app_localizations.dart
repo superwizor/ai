@@ -1217,7 +1217,7 @@ abstract class AppLocalizations {
   /// No description provided for @settings_logout_confirm_title.
   ///
   /// In pl, this message translates to:
-  /// **'Wylogować się?'**
+  /// **'Czy chcesz się wylogować?'**
   String get settings_logout_confirm_title;
 
   /// No description provided for @settings_logout_confirm_body.

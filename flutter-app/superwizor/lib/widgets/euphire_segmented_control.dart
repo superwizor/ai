@@ -21,66 +21,88 @@ class EuphireSegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLeft = selected == leftValue;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Container(
         height: 36,
+        padding: const EdgeInsets.all(2), // Padding around the sliding thumb
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(5),
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _Segment(
-                label: leftLabel,
-                isSelected: selected == leftValue,
-                onTap: () => onSelect(leftValue),
-              ),
-            ),
-            Expanded(
-              child: _Segment(
-                label: rightLabel,
-                isSelected: selected == rightValue,
-                onTap: () => onSelect(rightValue),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Segment extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _Segment({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isSelected ? EuphireColors.ember : Colors.transparent,
-          borderRadius: BorderRadius.circular(5),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? EuphireColors.obsidianBlack : EuphireColors.frostWhite,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 14,
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final halfWidth = constraints.maxWidth / 2;
+            return Stack(
+              children: [
+                // Animated sliding thumb
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutCubic,
+                  top: 0,
+                  bottom: 0,
+                  left: isLeft ? 0 : halfWidth,
+                  width: halfWidth,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: EuphireColors.ember,
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Clickable text areas
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => onSelect(leftValue),
+                        behavior: HitTestBehavior.opaque,
+                        child: Center(
+                          child: AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 200),
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              color: isLeft ? EuphireColors.obsidianBlack : EuphireColors.frostWhite,
+                              fontWeight: isLeft ? FontWeight.w600 : FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                            child: Text(leftLabel),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => onSelect(rightValue),
+                        behavior: HitTestBehavior.opaque,
+                        child: Center(
+                          child: AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 200),
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              color: !isLeft ? EuphireColors.obsidianBlack : EuphireColors.frostWhite,
+                              fontWeight: !isLeft ? FontWeight.w600 : FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                            child: Text(rightLabel),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

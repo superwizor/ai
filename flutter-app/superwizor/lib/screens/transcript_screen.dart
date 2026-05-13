@@ -193,9 +193,13 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
             rightLabel: t.report_tab,
             onSelect: (v) {
               if (v == 'report') {
-                Navigator.of(context).pushReplacement(MaterialPageRoute(
-                  builder: (_) => ReportScreen(sessionId: widget.sessionId),
-                ));
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation1, animation2) => ReportScreen(sessionId: widget.sessionId),
+                    transitionDuration: Duration.zero,
+                    reverseTransitionDuration: Duration.zero,
+                  ),
+                );
               }
             },
           ),

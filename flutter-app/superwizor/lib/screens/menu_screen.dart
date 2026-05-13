@@ -23,6 +23,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/locale_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/euphire_theme.dart';
+import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/modality_sheet.dart';
 import '../widgets/profile_edit_sheet.dart';
@@ -52,16 +53,63 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
   Future<void> _pickImage() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80);
+    
+    // Zrób zdjęcie czy wybierz z galerii?
+    final source = await showEuphireBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => EuphireActionSheet(
+        header: 'Zdjęcie profilowe',
+        body: 'Wybierz skąd chcesz dodać zdjęcie.',
+        primary: EuphireSheetAction(
+          label: 'Aparat',
+          onPressed: () => Navigator.of(ctx).pop(ImageSource.camera),
+        ),
+        secondary: EuphireSheetAction(
+          label: 'Galeria',
+          onPressed: () => Navigator.of(ctx).pop(ImageSource.gallery),
+        ),
+      ),
+    );
+    
+    if (source == null) return;
+
+    // Dobre praktyki: kompresja, zmiana rozmiaru (zapobiega gigabajtowym HEIC/JPG)
+    final picked = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 75,
+      maxWidth: 512,
+      maxHeight: 512,
+      preferredCameraDevice: CameraDevice.front,
+    );
+    
     if (picked == null) return;
     setState(() => _uploadingAvatar = true);
     try {
       final ref = FirebaseStorage.instance.ref('users/${user.uid}/profile.jpg');
-      await ref.putFile(File(picked.path));
-      await user.updatePhotoURL(await ref.getDownloadURL());
+      
+      // Metadane: poprawne ustawienie Content-Type
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+      );
+      
+      await ref.putFile(File(picked.path), metadata);
+      final downloadUrl = await ref.getDownloadURL();
+      
+      await user.updatePhotoURL(downloadUrl);
       await user.reload();
-      if (mounted) setState(() {});
-    } catch (_) {
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Zdjęcie profilowe zaktualizowane')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Avatar upload failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Wystąpił błąd podczas zapisu: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
     }

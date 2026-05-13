@@ -626,7 +626,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settings_delete_account => 'Usuń konto bezpowrotnie';
 
   @override
-  String get settings_logout_confirm_title => 'Wylogować się?';
+  String get settings_logout_confirm_title => 'Czy chcesz się wylogować?';
 
   @override
   String get settings_logout_confirm_body =>
