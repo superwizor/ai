@@ -1,42 +1,138 @@
-Umowa Powierzenia Przetwarzania Danych Osobowych (DPA) Data wej ś cia w ż ycie: 21.07.2025 Niniejsza Umowa Powierzenia Przetwarzania Danych Osobowych („ DPA ” lub „ Umowa ”) zostaje zawarta pomiędzy: U ż ytkownikiem Profesjonalnym , który zaakceptowa ł Regulamin Ś wiadczenia Us ł ug aplikacji Superwizor AI, działającym jako: Administrator Danych Osobowych (zwany dalej „Administratorem”) a Euphire sp. z o.o. z siedzib ą przy ul. Odrza ń skiej 10a/48 w Krakowie, wpisan ą do rejestru przedsiębiorców Krajowego Rejestru Sądowego pod numerem KRS 0000907254, posiadającą NIP: 6793219020, działającą jako: Podmiot Przetwarzający (zwany dalej „Podmiotem Przetwarzającym” lub „Usługodawcą”) zwani dalej łą cznie „ Stronami ”. PREAMBU Ł A ● ZWA Ż YWSZY, Ż E Administrator zawar ł z Podmiotem Przetwarzaj ą cym umow ę o świadczenie usług drogą elektroniczną poprzez akceptację Regulaminu Świadczenia Usług aplikacji Superwizor AI (dalej jako „Regulamin” lub „Umowa Główna”), dostępnego pod adresem: [Strona Aplikacji/Menu/Regulamin Świadczenia Usług]; ● ZWA Ż YWSZY, Ż E w ramach ś wiadczenia us ł ug okre ś lonych w Umowie G ł ównej, Administrator będzie powierzał Podmiotowi Przetwarzającemu do przetwarzania dane osobowe swoich Pacjentów; ● ZWA Ż YWSZY, Ż E niniejsza DPA stanowi wype ł nienie obowi ą zku prawnego okre ś lonego w art. 28 ust. 3 Rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. („RODO”); ● ZWA Ż YWSZY, Ż E niniejsza DPA stanowi integraln ą cz ęść Umowy G ł ównej . Akceptacja Regulaminu poprzez zaznaczenie odpowiedniego pola wyboru (checkbox) podczas rejestracji w Aplikacji jest równoznaczna z akceptacją i zawarciem niniejszej DPA. Strony postanawiaj ą , co nast ę puje: 
+# Umowa Powierzenia Przetwarzania Danych Osobowych (DPA)
 
-§ 1. DEFINICJE 1. Terminy pisane wielk ą liter ą , niezdefiniowane w niniejszej DPA, maj ą znaczenie nadane im w Regulaminie. 2. Polityka Prywatno ś ci – dokument okre ś laj ą cy zasady przetwarzania danych przez
+*Data wejścia w życie: 21 lipca 2025 r.*
 
-Us ł ugodawc ę , dost ę pny pod adresem: [Strona Aplikacji/Menu/Polityka Prywatno ś ci]. 3. Dane Osobowe – wszelkie dane osobowe Pacjentów Administratora, w tym dane osobowe szczególnych kategorii (dane dotyczące zdrowia), przetwarzane przez Podmiot Przetwarzający w imieniu Administratora w związku z wykonywaniem Umowy Głównej. 4. Naruszenie Ochrony Danych Osobowych – naruszenie bezpiecze ń stwa prowadz ą ce do przypadkowego lub niezgodnego z prawem zniszczenia, utracenia, zmodyfikowania, nieuprawnionego ujawnienia lub nieuprawnionego dostępu do Danych Osobowych. 5. Pa ń stwo Trzecie – pa ń stwo nienale żą ce do Europejskiego Obszaru Gospodarczego (EOG). 
+---
 
-§ 2. PRZEDMIOT, ZAKRES I CEL PRZETWARZANIA 1. Administrator powierza Podmiotowi Przetwarzaj ą cemu Dane Osobowe do przetwarzania na zasadach i w celu określonym w niniejszej Umowie. 2. Przedmiot przetwarzania: Realizacja us ł ug ś wiadczonych przez Podmiot Przetwarzaj ą cy na podstawie Umowy Głównej. 3. Charakter i cel przetwarzania: Wykonywanie operacji na Danych Osobowych niezbędnych do świadczenia na rzecz Administratora usług Aplikacji, zgodnie z funkcjonalnościami opisanymi w 
+## W skrócie (TL;DR)
 
-§ 4 Regulaminu. 4. Rodzaj Danych Osobowych: Dane okre ś lone w Cz ęś ci II Polityki Prywatno ś ci („Informacje dla Pacjentów”), w szczególności: ○ Dane identyfikacyjne i kontaktowe, w zakresie w jakim pojawi ą si ę w nagraniu. ○ Dane Osobowe szczególnych kategorii, tj. dane dotycz ą ce zdrowia fizycznego lub psychicznego Pacjentów (art. 9 ust. 1 RODO). ○ Wszelkie inne Dane Osobowe zawarte w nagraniach audio i ich ewentualnych transkrypcjach. 5. Kategorie osób, których dane dotycz ą : Pacjenci Administratora, zgodnie z definicj ą w 
+Jako terapeuta używający Superwizor AI, przetwarzasz dane osobowe swoich pacjentów (nagrania, transkrypcje). Jesteś **Administratorem** tych danych. My — Euphire sp. z o.o. — jesteśmy **Podmiotem Przetwarzającym**, czyli wykonawcą Twoich poleceń.
 
-§ 2 pkt 9 Regulaminu. 6. Czas trwania przetwarzania: Dane Osobowe b ę d ą przetwarzane przez czas obowiązywania Umowy Głównej, zgodnie z 
+Niniejsza DPA reguluje te relacje zgodnie z wymogami **art. 28 RODO**.
 
-§ 12 Regulaminu. 
+---
 
-§ 3. OBOWI Ą ZKI PODMIOTU PRZETWARZAJ Ą CEGO Podmiot Przetwarzaj ą cy zobowi ą zuje si ę do: 1. Przetwarzania na polecenie: Przetwarza ć Dane Osobowe wy łą cznie na udokumentowane polecenie Administratora. Za udokumentowane polecenie uznaje się postanowienia Umowy Głównej i niniejszej DPA, a także bieżące działania i konfiguracje dokonywane przez Administratora w Aplikacji. 2. Poufno ś ci: Zapewni ć , aby osoby upowa ż nione do przetwarzania Danych Osobowych zobowiązały się do zachowania tajemnicy lub podlegały odpowiedniemu ustawowemu obowiązkowi zachowania tajemnicy. 3. Bezpiecze ń stwa przetwarzania (art. 32 RODO): Wdro ż y ć i stosowa ć odpowiednie
+## Strony Umowy
 
-ś rodki techniczne i organizacyjne, opisane m.in. w Cz ęś ci I, pkt 5 Polityki Prywatno ś ci, w celu zapewnienia stopnia bezpieczeństwa odpowiadającego ryzyku. 4. Pomocy Administratorowi: W miar ę mo ż liwo ś ci pomaga ć Administratorowi wywi ą za ć się z obowiązku odpowiadania na żądania osoby, której dane dotyczą, w zakresie wykonywania jej praw. 5. Wspierania Administratora: Uwzgl ę dniaj ą c charakter przetwarzania oraz dost ę pne mu informacje, pomagać Administratorowi wywiązać się z obowiązków określonych w art. 32–36 RODO. 6. Zg ł aszania narusze ń : Po stwierdzeniu Naruszenia Ochrony Danych Osobowych, bez zbędnej zwłoki zgłosić je Administratorowi, nie później niż w ciągu 48 godzin od stwierdzenia naruszenia. 7. Usuwania lub zwrotu danych: Po zako ń czeniu ś wiadczenia us ł ug (rozwi ą zaniu Umowy Głównej), w zależności od decyzji Administratora, usunąć lub zwrócić mu wszelkie Dane Osobowe oraz usunąć ich kopie, chyba że prawo nakazuje ich przechowywanie. Zasady usuwania danych po zakończeniu umowy precyzuje 
+**Administrator Danych:**
+Użytkownik Profesjonalny, który zaakceptował Regulamin Świadczenia Usług Superwizor AI.
 
-§ 12 ust. 6 Regulaminu. 8. Audytu: Udost ę pnia ć Administratorowi wszelkie informacje niezb ę dne do wykazania spełnienia obowiązków z art. 28 RODO oraz umożliwiać audyty. Szczegółowe zasady audytu, o których mowa również w Części I, pkt 10 Polityki Prywatności, są następujące: ○ Strony ustalaj ą , ż e w celu minimalizacji zak ł óce ń operacyjnych, Administrator akceptuje w pierwszej kolejności udostępnienie przez Podmiot Przetwarzający aktualnych certyfikatów, atestów lub raportów z audytu przeprowadzonych przez niezależne podmioty trzecie (np. ISO 27001, SOC 2). ○ W przypadku, gdy udost ę pnione informacje nie s ą wystarczaj ą ce, Administrator ma prawo przeprowadzić audyt, informując o tym Podmiot Przetwarzający z co najmniej 30-dniowym wyprzedzeniem. Audyt będzie przeprowadzany w godzinach pracy Podmiotu Przetwarzającego, w sposób jak najmniej zakłócający jego działalność. Administrator ponosi wszelkie koszty związane z przeprowadzeniem audytu, w tym koszty audytora. 
+**Podmiot Przetwarzający:**
+Euphire sp. z o.o., ul. Odrzańska 10a/48, 30-408 Kraków
+KRS: 0000907254 · NIP: 6793219020
+E-mail: kontakt@superwizor.ai
 
-§ 4. OBOWI Ą ZKI ADMINISTRATORA Administrator o ś wiadcza i gwarantuje, ż e: 1. Przetwarza Dane Osobowe zgodnie z przepisami prawa. 2. Posiada odpowiedni ą podstaw ę prawn ą do przetwarzania Danych Osobowych Pacjentów i powierzenia ich Podmiotowi Przetwarzającemu, zgodnie z obowiązkiem opisanym w 
+---
 
-§ 5 ust. 2 pkt 4 Regulaminu. 3. Wype ł ni ł obowi ą zek informacyjny wobec osób, których dane dotycz ą (zgodnie z art. 13 lub 14 RODO). Podmiot Przetwarzający udostępnia w Części II Polityki Prywatności wzorcowe informacje, które mogą być wykorzystane przez Administratora w celu wsparcia go w realizacji tego obowiązku.
+## § 1. Definicje
 
+| Pojęcie | Znaczenie |
+|---|---|
+| **Dane Osobowe** | Dane pacjentów Administratora, w tym dane szczególnych kategorii (dane dot. zdrowia), przetwarzane przez Podmiot Przetwarzający na podstawie niniejszej Umowy |
+| **Naruszenie Ochrony Danych** | Naruszenie bezpieczeństwa prowadzące do zniszczenia, utracenia, nieuprawnionego dostępu lub ujawnienia Danych Osobowych |
+| **Sub-procesor** | Podmiot trzeci, któremu Podmiot Przetwarzający powierza przetwarzanie Danych Osobowych |
+| **Umowa Główna** | Regulamin Świadczenia Usług Superwizor AI zaakceptowany przez Administratora |
 
+---
 
-4. B ę dzie wydawa ł Podmiotowi Przetwarzaj ą cemu wy łą cznie zgodne z prawem polecenia dotyczące przetwarzania Danych Osobowych. 
+## § 2. Przedmiot i zakres przetwarzania
 
-§ 5. PODPOWIERZENIE I TRANSFER DANYCH 1. Ogólna zgoda na podpowierzenie: Administrator wyra ż a ogóln ą pisemn ą zgod ę (art. 28 ust. 2 RODO) na korzystanie przez Podmiot Przetwarzający z usług Sub-procesorów. 2. Lista Sub-procesorów: Podmiot Przetwarzaj ą cy zobowi ą zuje si ę do utrzymywania aktualnej listy Sub-procesorów, o której mowa w Części I, pkt 7 Polityki Prywatności, i która jest tutaj udostępniona: [Google Cloud Platform, Firebase, Gemini API, Google AI Studio]. 3. Obowi ą zki przy podpowierzeniu: Podmiot Przetwarzaj ą cy zapewni, ż e umowa z ka ż dym Sub-procesorem nakłada na niego co najmniej takie same obowiązki w zakresie ochrony danych, jakie niniejsza DPA nakłada na Podmiot Przetwarzający. Podmiot Przetwarzający ponosi pełną odpowiedzialność wobec Administratora za niewywiązanie się przez Sub-procesora z jego obowiązków ochrony danych. 4. Prawo do sprzeciwu: Podmiot Przetwarzaj ą cy poinformuje Administratora (np. drog ą mailową lub poprzez komunikat w Aplikacji) o każdym zamierzonym dodaniu lub zastąpieniu Sub-procesora, dając Administratorowi możliwość wyrażenia sprzeciwu wobec takich zmian w terminie 14 dni od otrzymania informacji. W przypadku wniesienia uzasadnionego sprzeciwu, Strony podejmą próbę rozwiązania sytuacji. Jeśli rozwiązanie nie będzie możliwe, Administrator ma prawo wypowiedzieć Umowę Główną. 5. Transfer danych do Pa ń stw Trzecich: Administrator akceptuje, ż e Dane Osobowe mog ą być przekazywane do Państw Trzecich. Podmiot Przetwarzający gwarantuje, że transfer odbywa się z zachowaniem mechanizmów prawnych wymaganych przez RODO, co zostało opisane w Części I, pkt 8 Polityki Prywatności. 
+Administrator powierza Podmiotowi Przetwarzającemu dane osobowe swoich Pacjentów wyłącznie w celu świadczenia usług Aplikacji, obejmujących:
 
-§ 6. ODPOWIEDZIALNO ŚĆ 1. Odpowiedzialno ść Stron reguluj ą przepisy RODO, w szczególno ś ci art. 82. 2. Odpowiedzialno ść Podmiotu Przetwarzaj ą cego jest ograniczona do szkód wynikaj ą cych bezpośrednio z naruszenia przez niego obowiązków wynikających z niniejszej Umowy lub przepisów RODO. 3. Zgodnie z 
+- Przechowywanie nagrań audio sesji (szyfrowane, w EU)
+- Automatyczną transkrypcję i diaryzację mowy
+- Analizę kliniczną z wykorzystaniem modeli AI
+- Generowanie raportów klinicznych i pomiarów HiTOP
+- Zarządzanie kartotekami pacjentów w ramach Aplikacji
 
-§ 8 Regulaminu, ca ł kowita odpowiedzialno ść Podmiotu Przetwarzaj ą cego wobec Administratora z tytułu niniejszej Umowy jest ograniczona do wysokości Opłaty Abonamentowej uiszczonej przez Administratora za okres, w którym wystąpiło zdarzenie powodujące szkodę. 
+**Rodzaj przetwarzanych danych:**
+- Dane identyfikacyjne w zakresie, w jakim pojawią się w nagraniu
+- Dane dotyczące zdrowia psychicznego (art. 9 ust. 1 RODO)
+- Głos i inne dane biometryczne zawarte w nagraniu audio
 
-§ 7. POSTANOWIENIA KO Ń COWE 1. Niniejsza DPA stanowi integraln ą cz ęść Umowy G ł ównej. W przypadku sprzeczno ś ci pomiędzy postanowieniami DPA a Regulaminem w zakresie ochrony danych
+**Kategorie osób:** Pacjenci Administratora.
 
-osobowych, pierwsze ń stwo maj ą postanowienia DPA. 2. Umowa wchodzi w ż ycie z chwil ą akceptacji Umowy G ł ównej przez Administratora i obowiązuje przez cały okres jej trwania. 3. Zasady zmiany DPA s ą analogiczne do zasad zmiany Regulaminu, opisanych w 
+**Czas trwania:** Przez cały okres obowiązywania Umowy Głównej.
 
-§ 13 Regulaminu. O każdej zmianie Administrator zostanie poinformowany z co najmniej 14-dniowym wyprzedzeniem. 4. W sprawach nieuregulowanych niniejsz ą Umow ą zastosowanie maj ą postanowienia Regulaminu oraz Polityki Prywatności, a w dalszej kolejności przepisy prawa polskiego i RODO. 5. S ą dem w ł a ś ciwym do rozstrzygania sporów b ę dzie s ą d w ł a ś ciwy miejscowo dla siedziby Podmiotu Przetwarzającego, zgodnie z 
+---
 
-§ 14 ust. 3 Regulaminu.
+## § 3. Obowiązki Podmiotu Przetwarzającego
 
+Euphire sp. z o.o. zobowiązuje się do:
+
+1. **Przetwarzania wyłącznie na polecenie** Administratora, zgodnie z Umową Główną i niniejszą DPA.
+
+2. **Zapewnienia poufności** — osoby uprawnione do przetwarzania danych są zobowiązane do zachowania tajemnicy.
+
+3. **Bezpieczeństwa technicznego** (art. 32 RODO):
+   - Szyfrowanie danych w spoczynku (AES-256, Cloud KMS)
+   - Szyfrowanie w tranzycie (TLS 1.3)
+   - Envelope encryption dla PHI (danych szczególnie wrażliwych)
+   - Zero Trust, dedykowane konta serwisowe
+
+4. **Pomocy Administratorowi** w realizacji praw osób, których dane dotyczą.
+
+5. **Zgłaszania naruszeń** — w ciągu **48 godzin** od stwierdzenia naruszenia ochrony danych.
+
+6. **Usuwania lub zwrotu danych** po zakończeniu Umowy Głównej, zgodnie z decyzją Administratora.
+
+7. **Umożliwienia audytów** — Podmiot Przetwarzający udostępni certyfikaty i raporty bezpieczeństwa. W uzasadnionych przypadkach możliwy jest audyt bezpośredni z 30-dniowym wyprzedzeniem.
+
+---
+
+## § 4. Obowiązki Administratora
+
+Administrator oświadcza i gwarantuje, że:
+
+1. Przetwarza dane osobowe Pacjentów zgodnie z przepisami prawa.
+2. Posiada odpowiednią podstawę prawną do przetwarzania danych Pacjentów i powierzenia ich Podmiotowi Przetwarzającemu.
+3. Wypełnił obowiązek informacyjny wobec Pacjentów (art. 13 lub 14 RODO).
+4. Uzyskał wyraźną zgodę Pacjentów na nagrywanie sesji, przed każdym nagraniem.
+5. Będzie wydawał wyłącznie zgodne z prawem polecenia dotyczące przetwarzania danych.
+
+---
+
+## § 5. Sub-procesorzy
+
+Administrator wyraża ogólną, pisemną zgodę (art. 28 ust. 2 RODO) na korzystanie z Sub-procesorów. Aktualna lista:
+
+| Sub-procesor | Cel | Region |
+|---|---|---|
+| Google Cloud Platform | Hosting infrastruktury (Cloud SQL, GCS, Cloud Run) | EU (europe-central2) |
+| Firebase | Uwierzytelnianie i przechowywanie plików | EU |
+| Google Speech-to-Text | Transkrypcja audio (Chirp 3) | EU |
+| Vertex AI / Gemini | Analiza kliniczna AI | EU (europe-west4) |
+
+Podmiot Przetwarzający poinformuje Administratora o każdej zmianie w liście Sub-procesorów z **14-dniowym wyprzedzeniem**. Administrator ma prawo wyrazić sprzeciw w tym terminie.
+
+---
+
+## § 6. Transfer danych poza EOG
+
+Administrator akceptuje, że dane mogą być przetwarzane przez usługi AI zlokalizowane w Holandii (`europe-west4`), która jest krajem EOG. Nie dochodzi do transferu poza Europejski Obszar Gospodarczy.
+
+---
+
+## § 7. Odpowiedzialność
+
+Odpowiedzialność Stron regulują przepisy RODO, w szczególności art. 82.
+
+Całkowita odpowiedzialność Podmiotu Przetwarzającego wobec Administratora ograniczona jest do wysokości Opłaty Abonamentowej uiszczonej za Okres Abonamentowy, w którym wystąpiło zdarzenie powodujące szkodę.
+
+---
+
+## § 8. Postanowienia końcowe
+
+1. Niniejsza DPA stanowi integralną część Umowy Głównej. W przypadku sprzeczności, pierwszeństwo mają postanowienia DPA w zakresie ochrony danych.
+
+2. DPA wchodzi w życie z chwilą akceptacji Umowy Głównej i obowiązuje przez cały okres jej trwania.
+
+3. Zmiany DPA ogłaszane są z co najmniej 14-dniowym wyprzedzeniem.
+
+4. W sprawach nieuregulowanych stosuje się przepisy prawa polskiego i RODO.
+
+5. Sądem właściwym do rozstrzygania sporów jest sąd właściwy dla siedziby Podmiotu Przetwarzającego (Kraków).
+
+---
+
+*DPA wchodzi w życie z dniem 21 lipca 2025 r.*

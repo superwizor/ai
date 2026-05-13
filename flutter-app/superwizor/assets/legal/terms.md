@@ -1,64 +1,171 @@
- Regulamin ś wiadczenia us ł ug aplikacji Superwizor AI Data ostatniej aktualizacji: 21.07.2025 
+# Regulamin Świadczenia Usług aplikacji Superwizor AI
 
-§ 1. Postanowienia Wst ę pne 1. Niniejszy Regulamin („Regulamin”) okre ś la zasady i warunki ś wiadczenia us ł ug drog ą elektroniczną za pośrednictwem aplikacji mobilnej i/lub webowej Superwizor AI („Aplikacja”) przez Usługodawcę na rzecz Użytkowników Profesjonalnych. 2. Us ł ugodawc ą jest Euphire sp. z o.o. z siedzib ą w ul. Odrza ń ska 10a/48, Kraków, wpisana do rejestru przedsiębiorców Krajowego Rejestru Sądowego prowadzonego przez Sąd Rejonowy dla Krakowa-Śródmieście, XI Wydział Gospodarczy Krajowego Rejestru Sądowego pod numerem KRS 0000907254, posiadająca NIP: 6793219020 oraz REGON: 38929618600000, kapitał zakładowy w wysokości 5000 z ł op ł aconym w ca ł o ś ci („Us ł ugodawca”). 3. U ż ytkownikiem Profesjonalnym (dalej równie ż jako „U ż ytkownik” lub „Ty/Pa ń stwo”) jest psychoanalityk, psycholog, psychiatra, terapeuta, praktyka grupowa lub inna organizacja świadcząca profesjonalne usługi w zakresie zdrowia psychicznego, która posiada pełną zdolność do czynności prawnych i która korzysta z Aplikacji w ramach prowadzonej przez siebie działalności zawodowej lub gospodarczej, po zaakceptowaniu niniejszego Regulaminu i zawarciu Umowy z Usługodawcą. 4. Aplikacja jest narz ę dziem informatycznym przeznaczonym do wspierania U ż ytkowników Profesjonalnych w ich praktyce zawodowej, w szczególności poprzez umożliwienie analizy nagrań sesji terapeutycznych z Pacjentami z wykorzystaniem technologii sztucznej inteligencji. 5. Korzystanie z Aplikacji oznacza akceptacj ę niniejszego Regulaminu oraz Polityki Prywatno ś ci, która stanowi integralną część Regulaminu i jest dostępna pod adresem: [Strona Aplikacji/Menu/Polityka Prywatności]. W zakresie przetwarzania danych osobowych Pacjentów przez Usługodawcę na zlecenie Użytkownika Profesjonalnego, integralną część Umowy stanowi również Umowa Powierzenia Przetwarzania Danych („DPA”), dostępna pod adresem: [Strona Aplikacji/Menu/Umowa Przetwarzania Danych Osobowych]. 6. Regulamin jest udost ę pniany nieodp ł atnie przed zawarciem Umowy za po ś rednictwem strony internetowej Usługodawcy pod adresem: [Strona Aplikacji/Menu/Regulamin Świadczenia Usług] oraz w Aplikacji, w sposób umożliwiający jego pozyskanie, odtwarzanie i utrwalanie jego treści za pomocą systemu teleinformatycznego, którym posługuje się Użytkownik. 7. Kontakt z Us ł ugodawc ą jest mo ż liwy za po ś rednictwem: o Adresu e-mail: kontakt@euphire.pl o Adresu korespondencyjnego: ul. Odrza ń ska 10a/48, Kraków 
+*Data ostatniej aktualizacji: 21 lipca 2025 r.*
 
-§ 2. Definicje Terminy u ż yte w niniejszym Regulaminie, pisane wielk ą liter ą , maj ą nast ę puj ą ce znaczenie, o ile z kontekstu nie wynika inaczej: 1. Abonament (Okres Abonamentowy): Okres, na który U ż ytkownik uzyskuje dost ę p do płatnych funkcjonalności Aplikacji po uiszczeniu stosownej Opłaty Abonamentowej. 2. Aplikacja: Oprogramowanie Superwizor AI dostarczane przez Us ł ugodawc ę w modelu SaaS (Software as a Service), dostępne za pośrednictwem sieci Internet jako aplikacja webowa i/lub mobilna, służące celom opisanym w 
+---
 
-§ 1 ust. 4. 3. Dane Logowania: Unikalny identyfikator U ż ytkownika (login, zazwyczaj adres e-mail) oraz hasło, umożliwiające dostęp do Konta w Aplikacji.
+## W skrócie (TL;DR)
 
+Superwizor AI to narzędzie informatyczne wspierające pracę psychoterapeutów. **Nie stanowi porady medycznej, diagnozy ani narzędzia diagnostycznego.** Odpowiedzialność kliniczna spoczywa wyłącznie na Użytkowniku Profesjonalnym.
 
+Wydawcą aplikacji jest **Euphire sp. z o.o.** z siedzibą w Krakowie.
 
-4. DPA (Umowa Powierzenia Przetwarzania Danych): Umowa reguluj ą ca zasady powierzenia przetwarzania Danych Osobowych Pacjentów Usługodawcy przez Użytkownika Profesjonalnego, której akceptacja jest warunkiem korzystania z Aplikacji w zakresie przetwarzania danych Pacjentów. 5. Konto U ż ytkownika (Konto): Indywidualne konto U ż ytkownika w Aplikacji, tworzone podczas procesu Rejestracji, umożliwiające korzystanie z Usług. 6. Materia ł y U ż ytkownika: Wszelkie dane, informacje, nagrania audio, teksty, dokumenty i inne treści wprowadzane, przesyłane, przechowywane lub generowane przez Użytkownika Profesjonalnego w Aplikacji, w tym Dane Osobowe Pacjentów. 7. Okres Próbny: Okre ś lony przez Us ł ugodawc ę , nieodp ł atny okres, podczas którego Użytkownik może testować funkcjonalności Aplikacji na zasadach określonych w niniejszym Regulaminie lub odrębnych warunkach promocji. 8. Op ł ata Abonamentowa: Op ł ata za korzystanie z p ł atnych funkcjonalno ś ci Aplikacji w wybranym przez Użytkownika Okresie Abonamentowym, zgodnie z obowiązującym Cennikiem. 9. Pacjent: Osoba fizyczna, której Dane Osobowe, w szczególno ś ci dane dotycz ą ce zdrowia, s ą przetwarzane przez Użytkownika Profesjonalnego w związku ze świadczonymi przez niego usługami, przy użyciu Aplikacji jako narzędzia pomocniczego. 10. Polityka Prywatno ś ci: Dokument okre ś laj ą cy zasady przetwarzania danych osobowych Użytkowników Profesjonalnych oraz Pacjentów, dostępny pod adresem [Strona Aplikacji/Menu/Polityka Prywatności]. 11. Regulamin: Niniejszy regulamin ś wiadczenia us ł ug drog ą elektroniczn ą . 12. Rejestracja: Proces tworzenia Konta U ż ytkownika w Aplikacji. 13. Si ł a Wy ż sza: Zdarzenie zewn ę trzne, niemo ż liwe do przewidzenia i zapobie ż enia (np. katastrofy naturalne, wojny, zamieszki, awarie infrastruktury telekomunikacyjnej o szerokim zasięgu, ataki hakerskie na dużą skalę), które uniemożliwia lub utrudnia realizację Umowy. 14. Strona Internetowa Us ł ugodawcy: [euphire.pl] 15. Umowa: Umowa o ś wiadczenie us ł ug drog ą elektroniczn ą za po ś rednictwem Aplikacji, zawierana pomiędzy Usługodawcą a Użytkownikiem Profesjonalnym na zasadach określonych w niniejszym Regulaminie. Obejmuje ona postanowienia Regulaminu, Polityki Prywatności, DPA (jeśli dotyczy) oraz zaakceptowanego przez Użytkownika planu abonamentowego. 16. Us ł ugi: Wszelkie us ł ugi ś wiadczone drog ą elektroniczn ą przez Us ł ugodawc ę na rzecz Użytkownika za pośrednictwem Aplikacji, w tym udostępnianie funkcjonalności Aplikacji, wsparcie techniczne, przechowywanie danych. 17. Us ł ugodawca: Euphire sp. z o.o. 18. U ż ytkownik Profesjonalny (U ż ytkownik): Podmiot zdefiniowany w 
+Korzystanie z aplikacji wymaga akceptacji niniejszego Regulaminu oraz Polityki Prywatności i DPA.
 
-§ 1 ust. 3. 
+Kontakt: **kontakt@superwizor.ai**
 
-§ 3. Wymagania Techniczne i Rejestracja 1. Do korzystania z Aplikacji niezb ę dne jest posiadanie przez U ż ytkownika: o Urz ą dzenia (komputer, smartfon, tablet) z dost ę pem do sieci Internet. o Aktualnej wersji przegl ą darki internetowej (np. Chrome, Firefox, Safari, Edge) z włączoną obsługą JavaScript i plików cookies, lub – w przypadku aplikacji mobilnej – kompatybilnego urządzenia mobilnego z systemem operacyjnym Android lub iOS w odpowiedniej wersji. o Aktywnego konta poczty elektronicznej. o W przypadku funkcji nagrywania – odpowiedniego mikrofonu. 2. Us ł ugodawca dok ł ada stara ń , aby Aplikacja dzia ł a ł a poprawnie na popularnych konfiguracjach sprzętowych i programowych, jednak nie gwarantuje pełnej kompatybilności ze wszystkimi możliwymi konfiguracjami.
+---
 
+## § 1. Postanowienia ogólne
 
+Niniejszy Regulamin określa zasady i warunki świadczenia usług drogą elektroniczną za pośrednictwem aplikacji mobilnej i/lub webowej Superwizor AI przez Usługodawcę na rzecz Użytkowników Profesjonalnych.
 
-3. Utworzenie Konta i korzystanie z podstawowych funkcji Aplikacji (je ś li s ą oferowane bezpłatnie) lub funkcji w ramach Okresu Próbnego wymaga dokonania Rejestracji. 4. Rejestracja polega na wype ł nieniu formularza rejestracyjnego dost ę pnego w Aplikacji lub na Stronie Internetowej Usługodawcy, podaniu wymaganych danych (w tym co najmniej adresu e-mail oraz hasła) oraz zaakceptowaniu niniejszego Regulaminu i Polityki Prywatności. W przypadku konieczności zawarcia DPA, jej akceptacja jest również warunkiem ukończenia Rejestracji lub uzyskania dostępu do określonych funkcji. 5. U ż ytkownik zobowi ą zany jest do podania prawdziwych, kompletnych i aktualnych danych podczas Rejestracji oraz do ich aktualizowania w razie potrzeby. Usługodawca nie ponosi odpowiedzialności za skutki podania nieprawdziwych lub nieaktualnych danych. 6. Po poprawnym wype ł nieniu formularza rejestracyjnego i jego zatwierdzeniu, na podany przez Użytkownika adres e-mail może zostać wysłana wiadomość z linkiem aktywacyjnym. Aktywacja Konta następuje po kliknięciu w link aktywacyjny. Z tą chwilą dochodzi do zawarcia Umowy o świadczenie Usług na czas nieokreślony (w przypadku usług bezpłatnych) lub na Okres Próbny. 7. U ż ytkownik jest odpowiedzialny za zachowanie poufno ś ci swoich Danych Logowania i nieudostępnianie ich osobom trzecim. Wszelkie działania podejmowane przy użyciu Danych Logowania Użytkownika traktowane są jako działania samego Użytkownika. Użytkownik powinien niezwłocznie poinformować Usługodawcę o każdym nieuprawnionym użyciu jego Konta. 8. Jedno Konto jest przeznaczone dla jednego U ż ytkownika Profesjonalnego. W przypadku praktyk grupowych lub organizacji, mogą istnieć odrębne zasady dotyczące liczby użytkowników w ramach jednego Konta lub konieczność utworzenia subkont, zgodnie z wybranym planem abonamentowym. 
+**Usługodawcą** jest Euphire sp. z o.o. z siedzibą w Krakowie (ul. Odrzańska 10a/48, 30-408 Kraków), wpisana do rejestru przedsiębiorców KRS pod numerem **0000907254**, NIP: **6793219020**.
 
-§ 4. Zakres i Rodzaje Us ł ug 1. Us ł ugodawca ś wiadczy za po ś rednictwem Aplikacji Us ł ugi polegaj ą ce w szczególno ś ci na: o Umo ż liwieniu U ż ytkownikowi przesy ł ania nagra ń audio sesji z Pacjentami. o Umo ż liwieniu analizy analizy nagranej sesji przy u ż yciu technologii sztucznej inteligencji, dostarczającej Użytkownikowi sugestii, podsumowań lub innych form analizy. o Przechowywaniu Materia ł ów U ż ytkownika na serwerach Us ł ugodawcy zgodnie z zasadami określonymi w Polityce Prywatności i DPA. o Udost ę pnianiu U ż ytkownikowi narz ę dzi do zarz ą dzania jego Kontem i Materia ł ami Użytkownika. o Ś wiadczeniu wsparcia technicznego dotycz ą cego dzia ł ania Aplikacji. 2. Szczegó ł owy zakres funkcjonalno ś ci dost ę pnych w ramach poszczególnych planów abonamentowych lub Okresu Próbnego jest określony w Cenniku lub opisie tych planów na Stronie Internetowej Usługodawcy lub w Aplikacji. 3. Us ł ugodawca zastrzega sobie prawo do modyfikowania, dodawania lub usuwania poszczególnych funkcji Aplikacji. O istotnych zmianach wpływających na zakres świadczonych Usług, Usługodawca poinformuje Użytkowników z odpowiednim wyprzedzeniem. 4. Aplikacja jest narz ę dziem wspomagaj ą cym. Wyniki analizy dostarczane przez Aplikacj ę , w tym sugestie generowane przez AI, mają charakter wyłącznie pomocniczy i informacyjny. Nie stanowią one porady medycznej, psychologicznej, psychiatrycznej ani diagnozy. Ostateczna interpretacja wyników analizy, podjęcie decyzji terapeutycznych oraz odpowiedzialność za proces leczenia Pacjenta spoczywa wyłącznie na Użytkowniku Profesjonalnym. Usługodawca nie ponosi odpowiedzialności za kliniczne podjęte przez Użytkownika na podstawie informacji uzyskanych z Aplikacji. 5. U ż ytkownik przyjmuje do wiadomo ś ci, ż e technologie AI, w tym te wykorzystywane do transkrypcji (jeśli ta opcja jest dostępna) i analizy, mogą nie być w 100% dokładne i mogą
+**Użytkownikiem Profesjonalnym** jest psychoanalityk, psycholog, psychiatra, terapeuta lub inna osoba świadcząca profesjonalne usługi w zakresie zdrowia psychicznego, która korzysta z Aplikacji w ramach swojej działalności zawodowej.
 
-generowa ć b łę dy lub nieprecyzyjne wyniki. U ż ytkownik zobowi ą zuje si ę do krytycznej oceny wyników dostarczanych przez Aplikację. 
+Korzystanie z Aplikacji oznacza akceptację niniejszego Regulaminu, Polityki Prywatności oraz Umowy Powierzenia Przetwarzania Danych (DPA).
 
-§ 5. Warunki Korzystania z Aplikacji 1. U ż ytkownik zobowi ą zuje si ę do korzystania z Aplikacji w sposób zgodny z jej przeznaczeniem, niniejszym Regulaminem, obowiązującymi przepisami prawa oraz zasadami współżycia społecznego i dobrymi obyczajami. 2. U ż ytkownik zobowi ą zuje si ę w szczególno ś ci do: o Niepodejmowania dzia ł a ń , które mog ł yby zak ł óci ć prawid ł owe funkcjonowanie Aplikacji, w tym do niedostarczania treści o charakterze bezprawnym. o Niewykorzystywania Aplikacji do celów sprzecznych z prawem, w tym do naruszania praw osób trzecich, w szczególności praw autorskich, dóbr osobistych czy zasad ochrony danych osobowych. o Korzystania z Aplikacji w sposób nienaruszaj ą cy praw Us ł ugodawcy lub innych Użytkowników. o Posiadania wszelkich niezb ę dnych zgód i uprawnie ń do przetwarzania Danych Osobowych Pacjentów wprowadzanych do Aplikacji, w tym zgody Pacjentów na nagrywanie sesji i ich analizę za pomocą Aplikacji (jeśli jest wymagana zgodnie z obowiązującymi przepisami i standardami etycznymi), oraz do poinformowania Pacjentów o sposobie przetwarzania ich danych zgodnie z RODO. o Przestrzegania zasad tajemnicy zawodowej obowi ą zuj ą cej w jego profesji. o Zapewnienia, ż e Materia ł y U ż ytkownika wprowadzane do Aplikacji nie naruszaj ą prawa, praw osób trzecich ani dobrych obyczajów. o Niepodejmowania prób nieautoryzowanego dost ę pu do zasobów Aplikacji, do których nie ma uprawnień. o Niewykorzystywania Aplikacji do przesy ł ania niezamówionych informacji handlowych (spam). 3. U ż ytkownik ponosi pe ł n ą odpowiedzialno ść za tre ść Materia ł ów U ż ytkownika wprowadzanych do Aplikacji oraz za wszelkie działania podejmowane w Aplikacji przy użyciu jego Konta. 4. Us ł ugodawca zastrzega sobie prawo do zablokowania lub usuni ę cia Konta U ż ytkownika lub ograniczenia dostępu do Usług w przypadku naruszenia przez Użytkownika postanowień niniejszego Regulaminu, przepisów prawa lub w przypadku podejmowania działań na szkodę Usługodawcy lub innych Użytkowników, po uprzednim wezwaniu Użytkownika do zaprzestania naruszeń i wyznaczeniu odpowiedniego terminu (chyba że naruszenie ma charakter rażący i wymaga natychmiastowej reakcji). 
+Kontakt z Usługodawcą:
+- E-mail: **kontakt@superwizor.ai**
+- Adres: ul. Odrzańska 10a/48, 30-408 Kraków
 
-§ 6. P ł atno ś ci i Okres Abonamentowy 1. Korzystanie z pe ł nych funkcjonalno ś ci Aplikacji mo ż e by ć odp ł atne, zgodnie z Cennikiem dostępnym na Stronie Internetowej Usługodawcy lub w Aplikacji. Usługodawca może oferować różne plany abonamentowe, różniące się zakresem dostępnych funkcji, limitem zasobów (np. liczba godzin nagrań, liczba użytkowników) i ceną. 2. Us ł ugodawca mo ż e oferowa ć Okres Próbny, podczas którego U ż ytkownik mo ż e korzysta ć z Aplikacji nieodpłatnie przez ograniczony czas lub w ograniczonym zakresie funkcjonalności. Warunki Okresu Próbnego określa Usługodawca. Po zakończeniu Okresu Próbnego, dalsze korzystanie z płatnych funkcji Aplikacji wymaga uiszczenia Opłaty Abonamentowej. 3. Op ł aty Abonamentowe s ą pobierane z góry za wybrany Okres Abonamentowy (np. miesięczny, roczny). 4. P ł atno ś ci mog ą by ć realizowane za po ś rednictwem dost ę pnych w Aplikacji metod p ł atno ś ci, np. karty płatniczej, przelewu online, obsługiwanych przez zewnętrznych operatorów
+---
 
-p ł atno ś ci. Korzystanie z us ł ug tych operatorów podlega ich odr ę bnym regulaminom. Usługodawca nie jest stroną umowy pomiędzy Użytkownikiem a operatorem płatności i nie ponosi odpowiedzialności za ich usługi, z wyjątkiem prawidłowego przekierowania do systemu płatności i przetworzenia informacji o dokonanej płatności. 5. Po dokonaniu p ł atno ś ci, U ż ytkownik otrzyma potwierdzenie na podany adres e-mail. Na żądanie Użytkownika będącego przedsiębiorcą, Usługodawca wystawi fakturę VAT. Chęć otrzymania faktury VAT należy zgłosić Usługodawcy, podając niezbędne dane do jej wystawienia. Faktury będą przesyłane w formie elektronicznej na adres e-mail Użytkownika, na co Użytkownik wyraża zgodę. 6. Abonament jest automatycznie odnawiany na kolejny taki sam Okres Abonamentowy, chyba że Użytkownik zrezygnuje z subskrypcji przed końcem bieżącego Okresu Abonamentowego, zgodnie z procedurą opisaną w Aplikacji lub poprzez kontakt z Usługodawcą. 7. W przypadku automatycznego odnowienia Abonamentu, Op ł ata Abonamentowa za kolejny okres zostanie pobrana automatycznie z wykorzystaniem metody płatności użytej przy poprzedniej transakcji, o ile Użytkownik nie dokonał jej zmiany. 8. U ż ytkownik ma prawo do zmiany planu abonamentowego. Zasady zmiany planu (np. przejście na wyższy lub niższy plan, rozliczenie niewykorzystanych środków) są określone w Cenniku lub w Aplikacji. 9. W przypadku braku terminowej p ł atno ś ci Op ł aty Abonamentowej, Us ł ugodawca ma prawo zawiesić dostęp Użytkownika do płatnych funkcjonalności Aplikacji do czasu uregulowania zaległości. W przypadku dłuższego braku płatności, Usługodawca może wypowiedzieć Umowę zgodnie z 
+## § 2. Definicje
 
-§ 12. 10. Us ł ugodawca zastrzega sobie prawo do zmiany Cennika. Zmiany Cennika nie dotycz ą Okresów Abonamentowych już opłaconych. O planowanych zmianach Cennika Usługodawca poinformuje Użytkowników z co najmniej 30-dniowym wyprzedzeniem. W przypadku braku akceptacji nowego Cennika, Użytkownik ma prawo wypowiedzieć Umowę ze skutkiem na koniec bieżącego, opłaconego Okresu Abonamentowego. 
+| Pojęcie | Znaczenie |
+|---|---|
+| **Aplikacja** | Oprogramowanie Superwizor AI dostarczane w modelu SaaS |
+| **Konto** | Indywidualne konto Użytkownika w Aplikacji |
+| **DPA** | Umowa Powierzenia Przetwarzania Danych Osobowych |
+| **Pacjent** | Osoba, której dane są przetwarzane przez Użytkownika przy użyciu Aplikacji |
+| **Materiały Użytkownika** | Nagrania audio, transkrypcje i inne treści wprowadzane do Aplikacji |
+| **Abonament** | Okres dostępu do płatnych funkcjonalności po uiszczeniu opłaty |
 
-§ 7. Prawa W ł asno ś ci Intelektualnej 1. Aplikacja, jej wygl ą d, struktura, kod ź ród ł owy (w zakresie, w jakim nie jest oparty na komponentach open source z odrębnymi licencjami), treści udostępniane przez Usługodawcę (np. teksty, grafiki, logotypy), stanowią utwory w rozumieniu ustawy o prawie autorskim i prawach pokrewnych i podlegają ochronie prawnej. Wszelkie prawa autorskie majątkowe do Aplikacji i jej elementów przysługują Usługodawcy lub podmiotom, z którymi Usługodawca zawarł stosowne umowy. 2. Z chwil ą zawarcia Umowy i pod warunkiem terminowego uiszczania Op ł at Abonamentowych (jeśli dotyczy), Usługodawca udziela Użytkownikowi niewyłącznej, nieprzenoszalnej, ograniczonej czasowo do okresu trwania Umowy i terytorialnie (co do zasady, zgodnie z dostępnością Usługi) licencji na korzystanie z Aplikacji zgodnie z jej przeznaczeniem i niniejszym Regulaminem. 3. Licencja uprawnia U ż ytkownika do korzystania z Aplikacji wy łą cznie na w ł asny u ż ytek zawodowy. Użytkownik nie jest uprawniony do: o Udzielania sublicencji, sprzeda ż y, wynajmowania, dzier ż awienia Aplikacji lub jej części. o Modyfikowania, t ł umaczenia, adaptowania, dekompilowania, odtwarzania kodu źródłowego Aplikacji (reverse engineering), o ile nie jest to dozwolone bezwzględnie obowiązującymi przepisami prawa. o Tworzenia dzie ł pochodnych na bazie Aplikacji. o Usuwania lub zas ł aniania oznacze ń praw autorskich lub innych oznacze ń własnościowych Usługodawcy.
+---
 
+## § 3. Wymagania techniczne i rejestracja
 
+Korzystanie z Aplikacji wymaga:
+- Urządzenia z dostępem do Internetu (komputer, smartfon, tablet)
+- Aktywnego konta e-mail
+- Mikrofonu — w przypadku funkcji nagrywania
 
-4. Wszelkie prawa do Materia ł ów U ż ytkownika, przys ł uguj ą U ż ytkownikowi lub Pacjentom, zgodnie z obowiązującymi przepisami. Użytkownik, wprowadzając Materiały Użytkownika do Aplikacji, udziela Usługodawcy ograniczonej licencji na korzystanie z tych Materiałów (w tym ich kopiowanie, przechowywanie, przetwarzanie, modyfikowanie w zakresie niezbędnym do zgodności z RODO, przesyłanie do sub-procesorów AI) w celu świadczenia Usług określonych w niniejszym Regulaminie oraz w celu rozwijania Aplikacji. Licencja ta wygasa wraz z usunięciem Materiałów Użytkownika z Aplikacji lub rozwiązaniem Umowy, z zastrzeżeniem konieczności przechowywania danych wynikającej z przepisów prawa. 5. U ż ytkownik o ś wiadcza, ż e posiada wszelkie niezb ę dne prawa i zgody do Materia ł ów Użytkownika wprowadzanych do Aplikacji i że korzystanie z nich przez Usługodawcę w sposób określony w ust. 4 nie naruszy praw osób trzecich. 
+Rejestracja polega na wypełnieniu formularza w Aplikacji, podaniu adresu e-mail oraz hasła, a także akceptacji Regulaminu, Polityki Prywatności i DPA.
 
-§ 8. Odpowiedzialno ść Us ł ugodawcy 1. Us ł ugodawca zobowi ą zuje si ę do ś wiadczenia Us ł ug z nale ż yt ą staranno ś ci ą , jednak ż e nie gwarantuje nieprzerwanego i wolnego od błędów działania Aplikacji. Mogą wystąpić przerwy techniczne, awarie lub błędy spowodowane konserwacją systemu, aktualizacjami, awariami sprzętu, oprogramowania lub działaniem Siły Wyższej. 2. Us ł ugodawca do ł o ż y stara ń , aby planowane przerwy techniczne odbywa ł y si ę w godzinach nocnych i były zapowiadane z wyprzedzeniem. 3. Odpowiedzialno ść Us ł ugodawcy z tytu ł u niewykonania lub nienale ż ytego wykonania Umowy ograniczona jest do szkód rzeczywistych (damnum emergens) i nie obejmuje utraconych korzyści (lucrum cessans), chyba że szkoda została wyrządzona z winy umyślnej Usługodawcy. 4. Ca ł kowita odpowiedzialno ść Us ł ugodawcy wobec U ż ytkownika z jakiegokolwiek tytu ł u (w tym odpowiedzialność kontraktowa i deliktowa) w związku ze świadczeniem Usług w ramach jednego Okresu Abonamentowego jest ograniczona do wysokości Opłaty Abonamentowej uiszczonej przez Użytkownika za ten Okres Abonamentowy, w którym wystąpiło zdarzenie powodujące szkodę. W przypadku Usług świadczonych nieodpłatnie lub w Okresie Próbnym, odpowiedzialność Usługodawcy jest wyłączona w najszerszym zakresie dopuszczalnym przez prawo. 5. Ograniczenia odpowiedzialno ś ci, o których mowa w ust. 3 i 4, nie maj ą zastosowania w przypadkach, gdy odpowiedzialność nie może być ograniczona lub wyłączona na mocy bezwzględnie obowiązujących przepisów prawa (np. odpowiedzialność za szkodę wyrządzoną z winy umyślnej, odpowiedzialność za produkt niebezpieczny). 6. Us ł ugodawca nie ponosi odpowiedzialno ś ci za: o Szkody wynikaj ą ce z nieprawid ł owego korzystania z Aplikacji przez U ż ytkownika lub naruszenia przez niego Regulaminu. o Tre ść i legalno ść Materia ł ów U ż ytkownika wprowadzanych do Aplikacji. o Decyzje terapeutyczne, diagnostyczne lub inne decyzje zawodowe podejmowane przez Użytkownika na podstawie informacji uzyskanych z Aplikacji. Aplikacja jest jedynie narzędziem wspomagającym. o Szkody wynikaj ą ce z dzia ł ania Si ł y Wy ż szej. o Funkcjonowanie sieci Internet oraz us ł ug podmiotów trzecich (np. dostawców Internetu, operatorów płatności, dostawców usług AI), za które Usługodawca nie odpowiada. o Skutki nieuprawnionego dost ę pu do Konta U ż ytkownika przez osoby trzecie, je ś li nastąpiło to z winy Użytkownika (np. udostępnienie Danych Logowania). 7. Postanowienia niniejszego paragrafu nie naruszaj ą uprawnie ń konsumentów, je ś li Użytkownik w danym przypadku posiadałby status konsumenta w rozumieniu przepisów prawa (co do zasady, Użytkownik Profesjonalny nie jest konsumentem).
+Użytkownik jest odpowiedzialny za zachowanie poufności swoich danych logowania.
 
+---
 
+## § 4. Zakres świadczonych usług
 
-§ 9. Ochrona Danych Osobowych i Prywatno ść 1. Zasady przetwarzania danych osobowych U ż ytkowników Profesjonalnych przez Us ł ugodawc ę jako administratora tych danych (np. danych rejestracyjnych, kontaktowych, płatniczych) określa Polityka Prywatności, stanowiąca integralną część Regulaminu dostępna [Strona Aplikacji/Menu/Polityka Prywatności]. 2. W odniesieniu do Danych Osobowych Pacjentów, które U ż ytkownik Profesjonalny wprowadza i przetwarza za pomocą Aplikacji, Użytkownik Profesjonalny jest Administratorem Danych Osobowych, a Usługodawca jest Podmiotem Przetwarzającym (Procesorem), działającym na udokumentowane polecenie Użytkownika. 3. Warunki powierzenia przetwarzania Danych Osobowych Pacjentów Us ł ugodawcy, w tym obowiązki stron, zasady podpowierzenia, środki bezpieczeństwa i inne kwestie wymagane przez art. 28 RODO, określa Umowa Powierzenia Przetwarzania Danych (DPA). Akceptacja DPA przez Użytkownika Profesjonalnego jest warunkiem koniecznym do korzystania z funkcjonalności Aplikacji pozwalających na przetwarzanie danych Pacjentów. DPA jest dostępna pod adresem [Strona Aplikacji/Menu/Umowa Przetwarzania Danych Osobowych]. 4. U ż ytkownik Profesjonalny, jako Administrator danych Pacjentów, jest wy łą cznie odpowiedzialny za legalność przetwarzania tych danych, w tym za posiadanie odpowiedniej podstawy prawnej (np. zgody Pacjenta, jeśli jest wymagana, lub innej podstawy z art. 6 i art. 9 RODO), spełnienie obowiązku informacyjnego wobec Pacjentów oraz realizację ich praw. 5. Us ł ugodawca zobowi ą zuje si ę do przetwarzania Danych Osobowych Pacjentów wy łą cznie w celu i zakresie niezbędnym do świadczenia Usług, zgodnie z DPA, niniejszym Regulaminem oraz obowiązującymi przepisami prawa, w szczególności RODO. 6. Us ł ugodawca stosuje odpowiednie ś rodki techniczne i organizacyjne w celu zapewnienia bezpieczeństwa przetwarzanych danych osobowych, adekwatne do ryzyka, zgodnie z wymogami RODO i DPA. 
+Superwizor AI umożliwia w szczególności:
 
-§ 10. Wsparcie Techniczne 1. Us ł ugodawca ś wiadczy wsparcie techniczne dotycz ą ce funkcjonowania Aplikacji. 2. Wsparcie techniczne jest dost ę pne w dni robocze, w godzinach 9:00–17:00 czasu polskiego, za pośrednictwem kontakt@euphire.pl. 3. Czas reakcji na zg ł oszenie zale ż y od jego priorytetu i rodzaju problemu, przy czym Usługodawca dołoży starań, aby odpowiedzieć na zgłoszenia bez zbędnej zwłoki. 4. Zakres wsparcia technicznego mo ż e zale ż e ć od wybranego przez U ż ytkownika planu abonamentowego. 
+- Przesyłanie nagrań audio sesji terapeutycznych
+- Automatyczną transkrypcję i diaryzację mowy (przypisanie wypowiedzi do mówców)
+- Analizę kliniczną sesji z wykorzystaniem sztucznej inteligencji (Gemini)
+- Generowanie strukturyzowanych raportów klinicznych i pomiarów HiTOP
+- Zarządzanie kartotekami pacjentów i sesjami
 
-§ 11. Procedura Reklamacyjna 1. U ż ytkownik ma prawo sk ł ada ć reklamacje dotycz ą ce Us ł ug ś wiadczonych przez Usługodawcę. 2. Reklamacja powinna zawiera ć co najmniej: o Dane identyfikuj ą ce U ż ytkownika (imi ę , nazwisko/nazwa firmy, adres e-mail u ż yty do Rejestracji). o Przedmiot reklamacji (dok ł adny opis problemu lub nieprawid ł owo ś ci). o Okoliczno ś ci uzasadniaj ą ce reklamacj ę . o Oczekiwany sposób rozwi ą zania sprawy. 3. Reklamacje mo ż na sk ł ada ć : o Pisemnie na adres siedziby Us ł ugodawcy. o Elektronicznie na adres e-mail: kontakt@euphire.pl.
+> **Ważne:** Wyniki analizy AI mają charakter wyłącznie pomocniczy i informacyjny. Nie stanowią porady medycznej, psychologicznej ani diagnozy. Ostateczna interpretacja wyników i odpowiedzialność za proces terapeutyczny spoczywa wyłącznie na Użytkowniku Profesjonalnym.
 
+---
 
+## § 5. Warunki korzystania z Aplikacji
 
-4. Us ł ugodawca rozpatrzy reklamacj ę w terminie 14 dni od daty jej otrzymania. W przypadkach bardziej skomplikowanych, termin ten może zostać przedłużony do 30 dni, o czym Użytkownik zostanie poinformowany. 5. Odpowied ź na reklamacj ę zostanie wys ł ana na adres e-mail U ż ytkownika lub adres korespondencyjny wskazany w reklamacji. 6. W przypadku, gdy U ż ytkownik jest konsumentem (co w tym modelu biznesowym jest ma ł o prawdopodobne, ale warto o tym wspomnieć dla kompletności), przysługują mu również pozasądowe sposoby rozpatrywania reklamacji i dochodzenia roszczeń, np. za po ś rednictwem platformy ODR (Online Dispute Resolution) dost ę pnej pod adresem http://ec.europa.eu/consumers/odr/. 
+Użytkownik zobowiązuje się:
 
-§ 12. Zmiana i Rozwi ą zanie Umowy 1. Umowa o ś wiadczenie Us ł ug zawierana jest: o Na czas nieokre ś lony – w przypadku korzystania z bezp ł atnych funkcji Aplikacji (je ś li są oferowane) lub po przejściu z Okresu Próbnego/Abonamentowego na taki tryb. o Na czas okre ś lony odpowiadaj ą cy wybranemu Okresowi Abonamentowemu – w przypadku korzystania z płatnych Usług. Po upływie tego okresu, Umowa ulega automatycznemu przedłużeniu na kolejny taki sam okres, chyba że Użytkownik zrezygnuje z subskrypcji przed jego końcem. 2. U ż ytkownik mo ż e wypowiedzie ć Umow ę zawart ą na czas nieokre ś lony w ka ż dym czasie, ze skutkiem natychmiastowym (lub na koniec bieżącego okresu rozliczeniowego, jeśli dotyczy), poprzez usunięcie Konta w Aplikacji lub złożenie stosownego oświadczenia Usługodawcy. 3. U ż ytkownik mo ż e zrezygnowa ć z subskrypcji (co jest równoznaczne z wypowiedzeniem Umowy zawartej na czas określony ze skutkiem na koniec bieżącego Okresu Abonamentowego) poprzez odpowiednią opcję w ustawieniach Konta lub kontakt z Usługodawcą, nie później niż 24 godziny przed końcem bieżącego Okresu Abonamentowego. W przypadku braku rezygnacji, Umowa ulega automatycznemu przedłużeniu. 4. Us ł ugodawca mo ż e wypowiedzie ć Umow ę zawart ą na czas nieokre ś lony z zachowaniem 14 dni okresu wypowiedzenia, ze skutkiem na koniec miesiąca kalendarzowego. 5. Us ł ugodawca mo ż e rozwi ą za ć Umow ę (zarówno zawart ą na czas nieokre ś lony, jak i określony) ze skutkiem natychmiastowym w przypadku: o Ra żą cego naruszenia przez U ż ytkownika postanowie ń niniejszego Regulaminu, w szczególności 
+- Korzystać z Aplikacji zgodnie z jej przeznaczeniem i obowiązującym prawem
+- Posiadać wszelkie wymagane zgody pacjentów na nagrywanie i przetwarzanie ich danych
+- Przestrzegać tajemnicy zawodowej obowiązującej w swojej profesji
+- Nie podejmować prób nieautoryzowanego dostępu do zasobów Aplikacji
+- Nie udostępniać danych logowania osobom trzecim
 
-§ 5. o Podania przez U ż ytkownika nieprawdziwych danych podczas Rejestracji. o Wykorzystywania Aplikacji w sposób sprzeczny z prawem lub dobrymi obyczajami. o Zalegania z Op ł atami Abonamentowymi przez okres d ł u ż szy ni ż 14 dni, pomimo wezwania do zapłaty. o Likwidacji lub upad ł o ś ci U ż ytkownika. 6. W przypadku rozwi ą zania Umowy, Us ł ugodawca mo ż e usun ąć Konto U ż ytkownika oraz wszystkie Materiały Użytkownika przechowywane w Aplikacji, zgodnie z zasadami określonymi w Polityce Prywatności i DPA (w szczególności DPA może przewidywać określony czas na pobranie danych przez Użytkownika po rozwiązaniu umowy). Użytkownik jest odpowiedzialny za wykonanie kopii zapasowych swoich danych przed rozwiązaniem Umowy. 7. Op ł aty Abonamentowe uiszczone z góry nie podlegaj ą zwrotowi w przypadku rozwi ą zania Umowy przez Użytkownika przed końcem Okresu Abonamentowego lub przez Usługodawcę z winy Użytkownika, chyba że co innego wynika z bezwzględnie obowiązujących przepisów prawa. 
+---
 
-§ 13. Zmiany Regulaminu
+## § 6. Płatności i abonament
 
+Korzystanie z pełnych funkcjonalności Aplikacji jest odpłatne zgodnie z aktualnym Cennikiem.
 
+Opłaty abonamentowe są pobierane z góry za wybrany okres (miesięczny lub roczny). Abonament odnawia się automatycznie, chyba że Użytkownik zrezygnuje przed końcem bieżącego okresu.
 
-1. Us ł ugodawca zastrzega sobie prawo do zmiany niniejszego Regulaminu z wa ż nych przyczyn, takich jak: o Zmiana przepisów prawa maj ą ca wp ł yw na ś wiadczenie Us ł ug. o Wprowadzenie nowych funkcjonalno ś ci Aplikacji lub zmiana istniej ą cych. o Konieczno ść dostosowania Regulaminu do zalece ń , nakazów, orzecze ń lub decyzji organów administracji publicznej lub sądów. o Zmiany technologiczne lub organizacyjne. o Konieczno ść doprecyzowania postanowie ń Regulaminu. 2. O planowanych zmianach Regulaminu Us ł ugodawca poinformuje U ż ytkowników co najmniej 14 dni przed ich wejściem w życie, poprzez publikację zmienionego Regulaminu na Stronie Internetowej Usługodawcy, w Aplikacji lub poprzez wiadomość e-mail wysłaną na adres Użytkownika. 3. Je ż eli U ż ytkownik nie akceptuje zmian w Regulaminie, ma prawo wypowiedzie ć Umow ę ze skutkiem na dzień wejścia w życie nowego Regulaminu, składając stosowne oświadczenie Usługodawcy przed tą datą. Brak wypowiedzenia Umowy w tym terminie oznacza akceptację nowego Regulaminu. 4. Zmiany Regulaminu nie wp ł ywaj ą na prawa i obowi ą zki nabyte przed wej ś ciem w ż ycie tych zmian, w szczególności na warunki opłaconych Okresów Abonamentowych. 
+Usługodawca zastrzega sobie prawo do zmiany Cennika z co najmniej 30-dniowym wyprzedzeniem.
 
-§ 14. Postanowienia Ko ń cowe 1. Niniejszy Regulamin oraz Umowy zawierane na jego podstawie podlegaj ą prawu polskiemu. 2. W sprawach nieuregulowanych w niniejszym Regulaminie zastosowanie maj ą odpowiednie przepisy prawa polskiego, w szczególności Kodeksu cywilnego, ustawy o świadczeniu usług drogą elektroniczną, ustawy o prawie autorskim i prawach pokrewnych oraz RODO. 3. Wszelkie spory wynikaj ą ce z Umowy lub z ni ą zwi ą zane b ę d ą rozstrzygane w pierwszej kolejności polubownie. W przypadku braku możliwości polubownego rozwiązania sporu, sądem właściwym do jego rozstrzygnięcia będzie sąd właściwy miejscowo dla siedziby Usługodawcy. Zdanie poprzednie nie ma zastosowania, jeśli Użytkownik posiada status konsumenta (co jest mało prawdopodobne). 4. Je ż eli którekolwiek z postanowie ń niniejszego Regulaminu zostanie uznane za niewa ż ne, niezgodne z prawem lub niewykonalne, pozostałe postanowienia pozostają w mocy w najszerszym zakresie dopuszczalnym przez prawo. 5. Niewykonanie lub opó ź nienie w wykonaniu przez Us ł ugodawc ę lub U ż ytkownika jakiegokolwiek prawa wynikającego z Regulaminu nie będzie interpretowane jako zrzeczenie się tego prawa. 6. Regulamin wchodzi w ż ycie z dniem 07.07.2025.
+---
 
+## § 7. Prawa własności intelektualnej
+
+Aplikacja, jej wygląd, kod źródłowy oraz treści udostępniane przez Usługodawcę są chronione prawem autorskim i przysługują Euphire sp. z o.o.
+
+Usługodawca udziela Użytkownikowi niewyłącznej licencji na korzystanie z Aplikacji wyłącznie na własny użytek zawodowy.
+
+Użytkownik nie jest uprawniony do:
+- Udzielania sublicencji ani odsprzedaży Aplikacji
+- Dekompilowania ani odtwarzania kodu źródłowego
+- Tworzenia dzieł pochodnych na bazie Aplikacji
+
+---
+
+## § 8. Odpowiedzialność Usługodawcy
+
+Usługodawca świadczy Usługi z należytą starannością, lecz nie gwarantuje nieprzerwanego i wolnego od błędów działania Aplikacji.
+
+Całkowita odpowiedzialność Usługodawcy wobec Użytkownika ograniczona jest do wysokości Opłaty Abonamentowej uiszczonej za Okres Abonamentowy, w którym wystąpiło zdarzenie powodujące szkodę.
+
+Usługodawca nie ponosi odpowiedzialności za:
+- Decyzje terapeutyczne podejmowane na podstawie wyników analizy AI
+- Treść i legalność Materiałów Użytkownika
+- Szkody wynikające z siły wyższej lub działania podmiotów trzecich
+
+---
+
+## § 9. Ochrona danych osobowych
+
+Zasady przetwarzania danych osobowych Użytkowników Profesjonalnych określa **Polityka Prywatności**.
+
+W odniesieniu do danych osobowych Pacjentów:
+- Użytkownik Profesjonalny jest **Administratorem** danych
+- Euphire sp. z o.o. jest **Podmiotem Przetwarzającym** działającym na zlecenie Użytkownika
+- Warunki powierzenia określa **DPA** (Umowa Powierzenia Przetwarzania Danych)
+
+Usługodawca przetwarza dane Pacjentów wyłącznie na potrzeby świadczenia Usług, z zachowaniem najwyższych standardów bezpieczeństwa i zgodności z RODO.
+
+---
+
+## § 10. Wsparcie techniczne i reklamacje
+
+Wsparcie techniczne dostępne jest w dni robocze w godzinach 9:00–17:00 pod adresem: **kontakt@superwizor.ai**
+
+Reklamacja powinna zawierać:
+- Dane identyfikujące konto (adres e-mail)
+- Opis problemu i okoliczności jego wystąpienia
+- Oczekiwany sposób rozwiązania
+
+Usługodawca rozpatrzy reklamację w terminie 14 dni.
+
+---
+
+## § 11. Zmiana i rozwiązanie umowy
+
+Użytkownik może wypowiedzieć Umowę w dowolnym czasie poprzez usunięcie Konta lub złożenie stosownego oświadczenia.
+
+Usługodawca może rozwiązać Umowę ze skutkiem natychmiastowym w przypadku rażącego naruszenia Regulaminu, podania nieprawdziwych danych lub działania na szkodę innych użytkowników.
+
+---
+
+## § 12. Zmiany Regulaminu
+
+O planowanych zmianach Regulaminu Usługodawca poinformuje Użytkowników z co najmniej **14-dniowym wyprzedzeniem** poprzez komunikat w Aplikacji lub wiadomość e-mail.
+
+Brak zgody na zmiany uprawnia Użytkownika do wypowiedzenia Umowy przed dniem wejścia zmian w życie.
+
+---
+
+## § 13. Postanowienia końcowe
+
+Niniejszy Regulamin podlega prawu polskiemu.
+
+Wszelkie spory będą rozstrzygane w pierwszej kolejności polubownie. W przypadku braku porozumienia, sądem właściwym jest sąd właściwy dla siedziby Usługodawcy.
+
+*Regulamin wchodzi w życie z dniem 21 lipca 2025 r.*

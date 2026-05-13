@@ -1,59 +1,73 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+import '../generated/identity/v1/identity.pb.dart';
+import '../providers/current_user_provider.dart';
+import '../providers/grpc_provider.dart';
+import '../theme/euphire_theme.dart';
 import 'euphire_button.dart';
 import 'euphire_text_field.dart';
-import '../providers/grpc_provider.dart';
-import '../providers/current_user_provider.dart';
-import '../generated/identity/v1/identity.pb.dart';
 
 class ProfileEditSheet extends ConsumerStatefulWidget {
-  const ProfileEditSheet({super.key});
+  /// Wywoływany po pomyślnym zapisaniu profilu — użyj do setState w rodzicu.
+  final VoidCallback? onSaved;
+
+  const ProfileEditSheet({super.key, this.onSaved});
 
   @override
   ConsumerState<ProfileEditSheet> createState() => _ProfileEditSheetState();
 }
 
 class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
-  final _controller = TextEditingController();
+  final _firstController = TextEditingController();
+  final _lastController = TextEditingController();
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _controller.text = FirebaseAuth.instance.currentUser?.displayName ?? '';
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final parts = (user.displayName ?? '').split(' ');
+      _firstController.text = parts.isNotEmpty ? parts.first : '';
+      _lastController.text = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+    }
   }
 
   Future<void> _saveProfile() async {
+    final firstName = _firstController.text.trim();
+    final lastName = _lastController.text.trim();
+    if (firstName.isEmpty) return;
+
     setState(() => _isSaving = true);
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        // Firebase auth update
-        await user.updateDisplayName(_controller.text);
+      if (user == null) return;
 
-        // Splitting Display name into First and Last
-        final parts = _controller.text.split(' ');
-        final firstName = parts.isNotEmpty ? parts.first : '';
-        final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      final displayName = [firstName, lastName].where((s) => s.isNotEmpty).join(' ');
 
-        // identityClient update
-        try {
-          await ref.read(grpcClientsProvider).identity.updateProfile(
-            UpdateProfileRequest(
-              firstName: firstName,
-              lastName: lastName,
-            )
-          );
-        } catch (_) {} // Ignore if not fully implemented in backend yet
+      // 1. Firebase Auth — aktualizuje displayName
+      await user.updateDisplayName(displayName);
 
-        // Force user reload so the UI updates
-        await user.reload();
-        ref.invalidate(currentUserProvider);
-
-        if (!mounted) return;
-        Navigator.of(context).pop();
+      // 2. identity-svc gRPC — aktualizuje rejestr backendu
+      try {
+        await ref.read(grpcClientsProvider).identity.updateProfile(
+          UpdateProfileRequest(firstName: firstName, lastName: lastName),
+        );
+      } catch (_) {
+        // Nie blokuj UI jeśli backend niedostępny
       }
+
+      // 3. Wymuszamy reload — konieczne żeby FirebaseAuth.currentUser.displayName
+      //    był aktualny natychmiast po pop()
+      await user.reload();
+      ref.invalidate(currentUserProvider);
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      // Callback do rodzica — odświeża setState w MenuScreen
+      widget.onSaved?.call();
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -61,13 +75,16 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    _firstController.dispose();
+    _lastController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: bottomPadding + 24,
@@ -79,18 +96,28 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Edycja profilu', style: Theme.of(context).textTheme.headlineMedium),
+          Text('Edytuj profil.', style: theme.textTheme.headlineMedium),
+          const SizedBox(height: 6),
+          Text(
+            'Podaj swoje imię i nazwisko.',
+            style: theme.textTheme.bodyMedium?.copyWith(color: EuphireColors.mist),
+          ),
           const SizedBox(height: 24),
           EuphireTextField(
-            controller: _controller,
-            labelText: 'Imię i nazwisko (lub pseudonim)',
+            controller: _firstController,
+            labelText: 'Imię',
+          ),
+          const SizedBox(height: 12),
+          EuphireTextField(
+            controller: _lastController,
+            labelText: 'Nazwisko (opcjonalne)',
           ),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
-            height: 56,
+            height: 54,
             child: EuphireButton(
-              text: 'Zapisz',
+              text: 'Zapisz.',
               isLoading: _isSaving,
               onPressed: _saveProfile,
             ),

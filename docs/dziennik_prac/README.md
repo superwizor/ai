@@ -8,10 +8,10 @@ Kronikarz (`/docs/kronikarz/SKILL.md`) automatycznie dodaje tutaj nowe wpisy pod
 
 | Data | Tytuł Sesji | Podsumowanie |
 |------|-------------|--------------|
+| 2026-05-13 | [Settings UI Polish — Labirynt Standards](2026-05-13-settings-ui-polish-labirynt.md) | Pełny refaktor MenuScreen: toggle dźwięki/wibracje z białym kółkiem, logout bottom sheet z ikoną, 3-poziomowy delete flow (toggle→sheet→ekran "USUWAM"), przebudowa legal docs (Markdown), licencje w boksach. |
 | 2026-05-11 | [UI MVP, Lokalizacja, Pipeline Audio i Plan HiTOP](2026-05-11-UI-MVP-Lokalizacja-i-HiTOP.md) | Lokalizacja, konwersja audio WAV→16bit PCM, zarządzanie sesjami (rename/delete), upgrade LLM na gemini-3.1-flash (16k tokenów), modalności Riverpod. |
 | 2026-05-04 | [🎉 v0.2.0 — E2E Recording Pipeline](2026-05-04-v0.2.0-recording-pipeline.md) | Kamień milowy: pełny pipeline nagrywania, upload GCS, ingestion-svc na Cloud Run, graceful "coming soon" UI |
 | 2026-05-03 | [Zakończenie Fazy 2](2026-05-03-faza-2-zakonczenie.md) | E2E test pipeline ingestion + IAM integration |
 | 2026-04-30 | [Zakończenie Fazy 1](2026-04-30-Faza-1-Zakonczona.md) | Zakończenie fazy 1, walidacja UI Flutter i testów, naprawa linterów |
 | 2026-04-29 | [Zakończenie Fazy 0](2026-04-29-faza-0-zakonczenie.md) | Migracja Cloud SQL, rozszerzenia pgvector i zamknięcie zadań z fundamentów |
-| 2026-04-28 | [Inicjalizacja Dziennika](2026-04-28-Inicjalizacja-Dziennika.md) | Przebudowa Kronikarza na dziennik prac i usunięcie starych wytycznych |
 
