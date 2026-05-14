@@ -1,3 +1,16 @@
+// ai-pipeline-svc — Cloud Run health endpoint only.
+//
+// Historically this binary mounted /worker/stt and /worker/llm Gin
+// routes that stubbed the STT and LLM workers. Those stubs were dead
+// code: production routes transcript.completed / audio.uploaded
+// Pub/Sub events to dedicated Cloud Functions Gen2 (cmd/llm-worker
+// and cmd/stt-worker), not to this HTTP service.
+//
+// The stubs were removed in feat/llm-optimisation. The Cloud Run
+// service still exists so health probes have something to talk to and
+// so the existing terraform service-account / IAM bindings keep
+// resolving; if we ever decide nothing on the platform actually dials
+// it, the whole resource can be deleted in infra/.
 package main
 
 import (
@@ -10,10 +23,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/adapters/pubsub"
-	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/handlers"
-	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/models"
-	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/services"
 )
 
 func main() {
@@ -23,44 +32,9 @@ func main() {
 	}
 
 	router := gin.Default()
-
-	// Health check
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "OK", "service": "ai-pipeline-svc"})
 	})
-
-	// Setup DB
-	dbUrl := os.Getenv("DATABASE_URL")
-	if dbUrl == "" {
-		log.Println("DATABASE_URL not set, DB ops will fail")
-	}
-	db, err := models.NewDB(context.Background(), dbUrl)
-	if err != nil {
-		log.Printf("DB connection error: %v", err)
-	}
-
-	projectID := os.Getenv("GCP_PROJECT_ID")
-	if projectID == "" {
-		projectID = "superwizor-staging" // default fallback
-	}
-
-	sttService, _ := services.NewSTTService(context.Background(), projectID)
-	llmService, _ := services.NewLLMService(context.Background(), projectID)
-	publisher, err := pubsub.NewPublisher(context.Background(), projectID)
-	if err != nil {
-		log.Printf("Publisher initialization error: %v", err)
-	}
-
-	workerCtx := &handlers.WorkerContext{
-		DB:        db,
-		STT:       sttService,
-		LLM:       llmService,
-		Publisher: publisher,
-	}
-
-	// Pub/Sub Push endpoints
-	router.POST("/worker/stt", workerCtx.STTWorkerHandler)
-	router.POST("/worker/llm", workerCtx.LLMWorkerHandler)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
