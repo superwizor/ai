@@ -26,11 +26,11 @@ func BCP47ize(uiLanguage string) string { return lang.BCP47ize(uiLanguage) }
 var Chirp3DiarizationLanguages = map[string]bool{
 	"pl-PL": false, // primary user base, NOT yet enabled
 	"en-US": true,  // verified Chirp 3 support; enabled 2026-05-14
-	"en-GB": false,
-	"de-DE": false,
-	"es-ES": false,
-	"fr-FR": false,
-	"uk-UA": false,
+	"en-GB": true,
+	"de-DE": true,
+	"es-ES": true,
+	"fr-FR": true,
+	"uk-UA": true,
 }
 
 // NativeDiarizationSupported reports whether the given BCP47 tag is
