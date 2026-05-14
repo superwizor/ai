@@ -49,6 +49,38 @@ Tracked-but-not-yet-scheduled items. Each entry: what's broken, why it matters, 
 
 ## Lower priority / unscheduled
 
+### llm-worker: extract generation-config knobs to named constants
+
+**Status**: not started.
+
+**What**: today `services/ai-pipeline-svc/cmd/llm-worker/main.go` has three
+`model.GenerationConfig = vertexai.GenerationConfig{...}` blocks with raw
+numbers (Temperature, TopP, MaxOutputTokens) inlined at each call site.
+Two distinct profiles by design:
+
+  - Metadata (call 1): Temperature 0.1, MaxOutputTokens 16384
+  - Report   (call 2): Temperature 0.3, MaxOutputTokens 65535
+  - TopP 0.95 shared
+
+**Why now (eventually)**: maintainer briefly thought 65535 was a typo for
+16384 — easy mistake when three call sites have different inlined numbers.
+Named constants make the design intent (two profiles, by design) visible.
+
+**Fix shape**: pull into package-level `geminiTempMetadata`,
+`geminiTempReport`, `geminiTopP`, `geminiMaxOutMetadata`, `geminiMaxOutReport`
+constants near the existing `geminiModel`/`geminiRegion` block. Substitute
+at the three call sites. ~30 LOC delta, no behavior change. Either pure
+constants, or a tiny pair of helper funcs (`metadataGenConfig` /
+`reportGenConfig`) — bare constants are enough.
+
+**Out of scope**: any further consolidation of the actual prompt strings.
+The prompt text is correctly different across call 1 (JSON), call 1
+(Markdown cluster), call 1 (Markdown role-only), and call 2 (report) —
+each job has different output constraints. See the audit notes on the
+2026-05-14 conversation thread for the rationale.
+
+---
+
 Add entries here as they surface. Format:
 
 > ### Short description
