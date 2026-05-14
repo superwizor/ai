@@ -20,6 +20,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/diarization"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
 	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 )
 
@@ -161,7 +163,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("load session: %w", err)
 	}
 
-	transcriptText, err := loadTranscriptText(ctx, ev.TranscriptID)
+	chunks, err := loadTranscriptBlob(ctx, ev.TranscriptID)
 	if err != nil {
 		logger.Error("load transcript", "error", err)
 		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
@@ -175,13 +177,17 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("load prompt: %w", err)
 	}
 
-	ragContext, err := loadRAGContext(ctx, session.PatientFileID, transcriptText)
+	// RAG-context lookup still operates on text — passes the legacy
+	// formatted transcript so existing pgvector similarity logic
+	// (Phase 3) gets the same shape it's used to. Cheap conversion;
+	// stays out of the LLM-input critical path.
+	ragContext, err := loadRAGContext(ctx, session.PatientFileID, legacyChunkFormat(chunks))
 	if err != nil {
 		logger.Warn("rag context", "error", err)
 		ragContext = ""
 	}
 
-	reportJSON, tokenStats, err := generateReport(ctx, session.ReportLanguage, modalityPrompt, ragContext, transcriptText)
+	reportJSON, tokenStats, err := generateReport(ctx, session.ReportLanguage, modalityPrompt, ragContext, chunks)
 	if err != nil {
 		// Vertex AI errors (quota, schema rejection, content filter,
 		// region availability) all land here. Log full error text so we
@@ -190,7 +196,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		logger.Error("generate report (Vertex AI)",
 			"error", err,
 			"prompt_len", len(modalityPrompt),
-			"transcript_len", len(transcriptText),
+			"chunk_count", len(chunks),
 			"rag_context_len", len(ragContext))
 		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
 		return fmt.Errorf("generate: %w", err)
@@ -305,93 +311,64 @@ type TokenStats struct {
 //go:embed schemas/report_schema.json
 var reportSchemaBytes []byte
 
-func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragContext, transcriptText string) (string, TokenStats, error) {
+// diarizationMode reports the active LLM_DIARIZATION_MODE setting.
+// "json" (default) keeps the legacy schema-constrained call 1; "markdown"
+// switches call 1 to free-form Markdown + server-side parsing via the
+// internal/diarization package. Call 2's transcript format is ALWAYS
+// Format B Markdown (speaker-turn-grouped) regardless of this flag —
+// the read-friendliness gain is unconditional and uncoupled from the
+// call-1 output format.
+func diarizationMode() string {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("LLM_DIARIZATION_MODE")))
+	if v == "" {
+		return "json"
+	}
+	return v
+}
+
+func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragContext string, chunks []transcriptfmt.Chunk) (string, TokenStats, error) {
 	model := vertexClient.GenerativeModel(geminiModel)
-	
-	// --- Krok 1: Diaryzacja i Metadane (JSON Mode) ---
-	var schema map[string]any
-	if err := json.Unmarshal(reportSchemaBytes, &schema); err != nil {
-		return "", TokenStats{}, fmt.Errorf("parse schema: %w", err)
-	}
+	mode := diarizationMode()
+	native := hasNativeSpeakers(chunks)
 
-	model.GenerationConfig = vertexai.GenerationConfig{
-		Temperature: vertexai.Ptr[float32](0.1),
-		TopP:        vertexai.Ptr[float32](0.95),
-		// 16384 is a safety margin for the metadata JSON step.
-		// Typical successful output is ~1-2k tokens (title +
-		// summary_short + speaker_groups + rag_summary_chunk), but
-		// the 8192 cap occasionally truncated mid-`speaker_groups`
-		// array on long sessions with many chunks. The wider cap
-		// eliminates that truncation cliff — cost is unchanged
-		// because you only pay for tokens actually generated.
-		MaxOutputTokens:  vertexai.Ptr[int32](16384),
-		ResponseMIMEType: "application/json",
-		ResponseSchema:   schemaToVertexSchema(schema),
-	}
+	slog.Info("llm config",
+		"diarization_mode", mode,
+		"native_speakers", native,
+		"chunk_count", len(chunks))
 
-	metadataPrompt := fmt.Sprintf(`
-WAŻNE — KONTEKST DIARYZACJI I METADANYCH:
-Transkrypt poniżej składa się z PONUMEROWANYCH chunków oddzielonych pauzami.
-Chunki NIE mają jeszcze przypisanych mówców.
-
-Twoje zadania:
-1. Klastrowanie: Pogrupuj chunki w 2 (lub 3 dla par/rodzin) wirtualne grupy mówców.
-2. Dedukcja ról: Określ rolę każdej grupy (therapist/patient/...).
-3. Metadane: Wygeneruj krótki tytuł i streszczenie.
-
-Wskazówki dot. klastrowania:
-- Terapeuta: zadaje pytania, stosuje techniki, mówi krócej.
-- Pacjent: opisuje odczucia, odpowiada, ma dłuższe wypowiedzi.
-
-JĘZYK RAPORTU: %s
-
-KONTEKST POPRZEDNICH SESJI:
-%s
-
-TRANSKRYPT BIEŻĄCEJ SESJI:
-%s
-
-Wygeneruj TYLKO metadane zgodnie z podanym JSON Schema.
-
-ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
-- title: max 100 znaków, jedno zdanie/fraza.
-- summary_short: max 500 znaków, 2-3 zdania.
-- evidence (cytaty z transkryptu): pojedynczy cytat, max 200 znaków.
-- rag_summary_chunk: max 1500 znaków, kluczowe fakty dla pamięci długoterminowej.
-- Pisz konkretami, NIE parafrazuj całych wypowiedzi.`,
-		reportLanguage, ragContext, transcriptText)
-
-	debugLogChunked(slog.Default(), "vertex_prompt", "step", "metadata", "content", metadataPrompt)
-
-	respMetadata, err := model.GenerateContent(ctx, vertexai.Text(metadataPrompt))
-	if err != nil {
-		return "", TokenStats{}, fmt.Errorf("generate metadata: %w", err)
-	}
-	if len(respMetadata.Candidates) == 0 || respMetadata.Candidates[0].Content == nil {
-		return "", TokenStats{}, fmt.Errorf("no candidates returned for metadata")
-	}
-
-	var metaOutput strings.Builder
-	for _, part := range respMetadata.Candidates[0].Content.Parts {
-		if text, ok := part.(vertexai.Text); ok {
-			metaOutput.WriteString(string(text))
-		}
-	}
-
-	debugLogChunked(slog.Default(), "vertex_response", "step", "metadata", "content", metaOutput.String())
-
+	// --- Krok 1: Diaryzacja i Metadane ---
 	var metadataPayload ReportPayload
-	if err := json.Unmarshal([]byte(metaOutput.String()), &metadataPayload); err != nil {
-		return "", TokenStats{}, fmt.Errorf("parse metadata json: %w", err)
-	}
-
 	stats := TokenStats{}
-	if respMetadata.UsageMetadata != nil {
-		stats.InputTokens += respMetadata.UsageMetadata.PromptTokenCount
-		stats.OutputTokens += respMetadata.UsageMetadata.CandidatesTokenCount
+
+	switch mode {
+	case "markdown":
+		mdResult, mdStats, err := callMetadataMarkdown(ctx, model, reportLanguage, ragContext, chunks, native)
+		if err != nil {
+			return "", TokenStats{}, err
+		}
+		metadataPayload = markdownResultToPayload(mdResult, chunks, native)
+		stats.InputTokens += mdStats.InputTokens
+		stats.OutputTokens += mdStats.OutputTokens
+	default: // "json" — legacy path, byte-identical to pre-refactor behavior.
+		payload, jsonStats, err := callMetadataJSON(ctx, model, reportLanguage, ragContext, legacyChunkFormat(chunks))
+		if err != nil {
+			return "", TokenStats{}, err
+		}
+		metadataPayload = payload
+		stats.InputTokens += jsonStats.InputTokens
+		stats.OutputTokens += jsonStats.OutputTokens
 	}
 
 	// --- Krok 2: Pełny Raport Kliniczny (Raw Text Mode) ---
+	// Call 2's transcript is ALWAYS Format B (speaker-turn-grouped
+	// Markdown) — readable prose with speaker attribution baked in.
+	// Annotate chunks with the just-resolved speaker tags first so
+	// the formatter can group by speaker (otherwise chunks with
+	// SpeakerTag=0 all collapse into a single "Speaker 1" turn —
+	// correct for native-diarization-off sessions before call 1 runs,
+	// but not what we want post-call-1).
+	annotated := annotateChunksWithSpeakers(chunks, metadataPayload.SpeakerRoleInference.SpeakerGroups)
+	transcriptForCall2 := transcriptfmt.FormatSpeakerTurns(annotated)
 	model.GenerationConfig = vertexai.GenerationConfig{
 		Temperature:      vertexai.Ptr[float32](0.3),
 		TopP:             vertexai.Ptr[float32](0.95),
@@ -423,9 +400,9 @@ ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 KONTEKST POPRZEDNICH SESJI:
 %s
 
-TRANSKRYPT BIEŻĄCEJ SESJI:
+TRANSKRYPT BIEŻĄCEJ SESJI (Markdown, grupowanie po mówcach):
 %s`,
-		modalityPrompt, reportLanguage, ragContext, transcriptText)
+		modalityPrompt, reportLanguage, ragContext, transcriptForCall2)
 
 	debugLogChunked(slog.Default(), "vertex_prompt", "step", "markdown", "content", reportPrompt)
 
@@ -460,6 +437,300 @@ TRANSKRYPT BIEŻĄCEJ SESJI:
 	}
 
 	return string(finalJSON), stats, nil
+}
+
+// callMetadataJSON is the legacy schema-constrained call 1 path —
+// extracted verbatim from the pre-refactor generateReport so that
+// the LLM_DIARIZATION_MODE=json branch is byte-for-byte identical
+// to pre-refactor behavior. Don't refactor the prompt content here
+// without explicit go-ahead; it's the production hot path.
+func callMetadataJSON(ctx context.Context, model *vertexai.GenerativeModel, reportLanguage, ragContext, transcriptText string) (ReportPayload, TokenStats, error) {
+	var schema map[string]any
+	if err := json.Unmarshal(reportSchemaBytes, &schema); err != nil {
+		return ReportPayload{}, TokenStats{}, fmt.Errorf("parse schema: %w", err)
+	}
+	model.GenerationConfig = vertexai.GenerationConfig{
+		Temperature:      vertexai.Ptr[float32](0.1),
+		TopP:             vertexai.Ptr[float32](0.95),
+		MaxOutputTokens:  vertexai.Ptr[int32](16384),
+		ResponseMIMEType: "application/json",
+		ResponseSchema:   schemaToVertexSchema(schema),
+	}
+
+	prompt := fmt.Sprintf(`
+WAŻNE — KONTEKST DIARYZACJI I METADANYCH:
+Transkrypt poniżej składa się z PONUMEROWANYCH chunków oddzielonych pauzami.
+Chunki NIE mają jeszcze przypisanych mówców.
+
+Twoje zadania:
+1. Klastrowanie: Pogrupuj chunki w 2 (lub 3 dla par/rodzin) wirtualne grupy mówców.
+2. Dedukcja ról: Określ rolę każdej grupy (therapist/patient/...).
+3. Metadane: Wygeneruj krótki tytuł i streszczenie.
+
+Wskazówki dot. klastrowania:
+- Terapeuta: zadaje pytania, stosuje techniki, mówi krócej.
+- Pacjent: opisuje odczucia, odpowiada, ma dłuższe wypowiedzi.
+
+JĘZYK RAPORTU: %s
+
+KONTEKST POPRZEDNICH SESJI:
+%s
+
+TRANSKRYPT BIEŻĄCEJ SESJI:
+%s
+
+Wygeneruj TYLKO metadane zgodnie z podanym JSON Schema.
+
+ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
+- title: max 100 znaków, jedno zdanie/fraza.
+- summary_short: max 500 znaków, 2-3 zdania.
+- evidence (cytaty z transkryptu): pojedynczy cytat, max 200 znaków.
+- rag_summary_chunk: max 1500 znaków, kluczowe fakty dla pamięci długoterminowej.
+- Pisz konkretami, NIE parafrazuj całych wypowiedzi.`,
+		reportLanguage, ragContext, transcriptText)
+
+	debugLogChunked(slog.Default(), "vertex_prompt", "step", "metadata", "mode", "json", "content", prompt)
+
+	resp, err := model.GenerateContent(ctx, vertexai.Text(prompt))
+	if err != nil {
+		return ReportPayload{}, TokenStats{}, fmt.Errorf("generate metadata (json): %w", err)
+	}
+	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil {
+		return ReportPayload{}, TokenStats{}, fmt.Errorf("no candidates returned for metadata (json)")
+	}
+	var out strings.Builder
+	for _, part := range resp.Candidates[0].Content.Parts {
+		if text, ok := part.(vertexai.Text); ok {
+			out.WriteString(string(text))
+		}
+	}
+	debugLogChunked(slog.Default(), "vertex_response", "step", "metadata", "mode", "json", "content", out.String())
+
+	var payload ReportPayload
+	if err := json.Unmarshal([]byte(out.String()), &payload); err != nil {
+		return ReportPayload{}, TokenStats{}, fmt.Errorf("parse metadata json: %w", err)
+	}
+	var stats TokenStats
+	if resp.UsageMetadata != nil {
+		stats.InputTokens = resp.UsageMetadata.PromptTokenCount
+		stats.OutputTokens = resp.UsageMetadata.CandidatesTokenCount
+	}
+	return payload, stats, nil
+}
+
+// callMetadataMarkdown — new call-1 path that asks the LLM for
+// Markdown output (free-form, no schema constraint) and parses it
+// server-side via internal/diarization. Format A (chunk-indexed)
+// when native diarization is absent — the LLM has to cluster; Format
+// B (speaker-turn) when native diarization is present — the LLM only
+// labels roles. Same model + temperature as the JSON path.
+func callMetadataMarkdown(ctx context.Context, model *vertexai.GenerativeModel, reportLanguage, ragContext string, chunks []transcriptfmt.Chunk, native bool) (diarization.Result, TokenStats, error) {
+	model.GenerationConfig = vertexai.GenerationConfig{
+		Temperature:     vertexai.Ptr[float32](0.1),
+		TopP:            vertexai.Ptr[float32](0.95),
+		MaxOutputTokens: vertexai.Ptr[int32](16384),
+		// No ResponseMIMEType / ResponseSchema — free-form text out.
+	}
+
+	var transcriptStr, prompt string
+	if native {
+		// Format B input, role-only grammar output.
+		transcriptStr = transcriptfmt.FormatSpeakerTurns(chunks)
+		prompt = fmt.Sprintf(`
+WAŻNE — TRANSCRIPT JUŻ JEST POGRUPOWANY PER MÓWCA.
+Każda sekcja ## Speaker N reprezentuje jednego mówcę z natywnej diaryzacji STT.
+Twoim zadaniem jest tylko PRZYPISAĆ ROLĘ każdemu mówcy oraz wygenerować metadane.
+
+Role: therapist, patient, couple_partner, family_member_parent,
+family_member_child, family_member_sibling, third_party, filler, unknown.
+
+JĘZYK RAPORTU: %s
+
+KONTEKST POPRZEDNICH SESJI:
+%s
+
+TRANSKRYPT (pogrupowany po mówcach):
+%s
+
+ODPOWIEDŹ — Sformatuj DOKŁADNIE w tym kształcie Markdown (bez bloków kodu, bez bold, bez list):
+
+# Speakers
+
+Speaker 1 — therapist (confidence 0.92)
+Speaker 2 — patient (confidence 0.95)
+
+# Metadata
+
+Title: <tytuł, max 100 znaków>
+Summary: <streszczenie, max 500 znaków, 2-3 zdania>
+Overall_diarization_confidence: 0.94
+
+ZASADY:
+- Sekcje "# Speakers" i "# Metadata", dokładnie w tej kolejności.
+- Po jednym wierszu na speakera w "# Speakers".
+- Confidence: float 0.0–1.0.
+- BEZ żadnego tekstu poza tym blokiem.`,
+			reportLanguage, ragContext, transcriptStr)
+	} else {
+		// Format A input, cluster grammar output (current Polish path
+		// — pl-PL has no native Chirp diarization).
+		transcriptStr = transcriptfmt.FormatChunkIndexed(chunks)
+		prompt = fmt.Sprintf(`
+WAŻNE — KONTEKST DIARYZACJI I METADANYCH:
+Transkrypt poniżej składa się z PONUMEROWANYCH chunków oddzielonych pauzami.
+Chunki NIE mają jeszcze przypisanych mówców.
+
+Twoje zadania:
+1. Klastrowanie: Pogrupuj chunki w 2 (lub 3 dla par/rodzin) wirtualne grupy mówców.
+2. Dedukcja ról: Określ rolę każdej grupy (therapist/patient/...).
+3. Metadane: Wygeneruj krótki tytuł i streszczenie.
+
+Wskazówki dot. klastrowania:
+- Terapeuta: zadaje pytania, stosuje techniki, mówi krócej.
+- Pacjent: opisuje odczucia, odpowiada, ma dłuższe wypowiedzi.
+
+Role: therapist, patient, couple_partner, family_member_parent,
+family_member_child, family_member_sibling, third_party, filler, unknown.
+
+JĘZYK RAPORTU: %s
+
+KONTEKST POPRZEDNICH SESJI:
+%s
+
+TRANSKRYPT BIEŻĄCEJ SESJI:
+%s
+
+ODPOWIEDŹ — Sformatuj DOKŁADNIE w tym kształcie Markdown (bez bloków kodu, bez bold, bez list):
+
+# Speakers
+
+## Group 1 — therapist (confidence 0.87)
+Chunks: 0, 2, 5, 8, 12, 14, 17
+Evidence: "Z czym dzisiaj przychodzisz?"
+
+## Group 2 — patient (confidence 0.92)
+Chunks: 1, 3, 6, 9, 13, 15, 18, 19
+Evidence: "Trochę zmęczona ostatnio."
+
+# Metadata
+
+Title: <tytuł, max 100 znaków>
+Summary: <streszczenie, max 500 znaków, 2-3 zdania>
+Overall_diarization_confidence: 0.89
+
+ZASADY:
+- Sekcje "# Speakers" i "# Metadata", dokładnie w tej kolejności.
+- "## Group N — <rola> (confidence 0.XX)" — używaj em-dash "—".
+- "Chunks:" — liczby chunków oddzielone przecinkami, każdy chunk w DOKŁADNIE JEDNEJ grupie.
+- "Evidence:" — pojedynczy cytat z transkrypcji w cudzysłowach.
+- Confidence: float 0.0–1.0.
+- BEZ żadnego tekstu poza tym blokiem.`,
+			reportLanguage, ragContext, transcriptStr)
+	}
+
+	debugLogChunked(slog.Default(), "vertex_prompt", "step", "metadata", "mode", "markdown", "native", native, "content", prompt)
+
+	resp, err := model.GenerateContent(ctx, vertexai.Text(prompt))
+	if err != nil {
+		return diarization.Result{}, TokenStats{}, fmt.Errorf("generate metadata (markdown): %w", err)
+	}
+	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil {
+		return diarization.Result{}, TokenStats{}, fmt.Errorf("no candidates returned for metadata (markdown)")
+	}
+	var out strings.Builder
+	for _, part := range resp.Candidates[0].Content.Parts {
+		if text, ok := part.(vertexai.Text); ok {
+			out.WriteString(string(text))
+		}
+	}
+	debugLogChunked(slog.Default(), "vertex_response", "step", "metadata", "mode", "markdown", "content", out.String())
+
+	result, err := diarization.ParseMetadataMarkdown(out.String())
+	if err != nil {
+		return diarization.Result{}, TokenStats{}, fmt.Errorf("parse markdown metadata: %w", err)
+	}
+
+	var stats TokenStats
+	if resp.UsageMetadata != nil {
+		stats.InputTokens = resp.UsageMetadata.PromptTokenCount
+		stats.OutputTokens = resp.UsageMetadata.CandidatesTokenCount
+	}
+	return result, stats, nil
+}
+
+// markdownResultToPayload adapts the parser's Result into the
+// existing ReportPayload struct so downstream
+// generateAndSaveSpeakerLabels (and the persistReport JSON shape) is
+// untouched.
+//
+// Cluster grammar: ChunkIndices comes from the parsed output directly.
+// Role-only grammar: ChunkIndices is empty in the Result, we
+// reconstruct it by walking the input transcript and grouping chunks
+// by their existing SpeakerTag.
+func markdownResultToPayload(r diarization.Result, chunks []transcriptfmt.Chunk, native bool) ReportPayload {
+	method := "llm_inferred"
+	if native {
+		method = "native_chirp_3"
+	}
+
+	groups := make([]SpeakerGroup, 0, len(r.Speakers))
+	for _, sp := range r.Speakers {
+		g := SpeakerGroup{
+			Role:       sp.Role,
+			Confidence: sp.Confidence,
+			Evidence:   sp.Evidence,
+		}
+		if native {
+			// Walk chunks and collect those whose SpeakerTag matches
+			// this speaker's Index. Stable order = sorted by chunk_idx
+			// (chunks are usually pre-sorted by start_ms).
+			for _, c := range chunks {
+				if c.SpeakerTag == int32(sp.Index) {
+					g.ChunkIndices = append(g.ChunkIndices, c.ChunkIdx)
+				}
+			}
+		} else {
+			g.ChunkIndices = sp.ChunkIndices
+		}
+		groups = append(groups, g)
+	}
+
+	return ReportPayload{
+		Title:        r.Title,
+		SummaryShort: r.Summary,
+		SpeakerRoleInference: SpeakerRoleInference{
+			Method:                       method,
+			SpeakerGroups:                groups,
+			OverallDiarizationConfidence: r.OverallDiarizationConfidence,
+		},
+	}
+}
+
+// annotateChunksWithSpeakers stamps the just-resolved speaker tags
+// onto the chunk slice so FormatSpeakerTurns can group properly for
+// call 2. Group index N → speaker_tag N. Chunks not assigned to any
+// group keep their existing speaker_tag (which is usually 0 — falls
+// into "Speaker 1" by Format B's graceful-degradation rule).
+//
+// Returns a new slice — does not mutate the input.
+func annotateChunksWithSpeakers(chunks []transcriptfmt.Chunk, groups []SpeakerGroup) []transcriptfmt.Chunk {
+	annotated := make([]transcriptfmt.Chunk, len(chunks))
+	copy(annotated, chunks)
+
+	// Build chunk_idx → speaker_tag from groups (1-indexed by group order).
+	tagByChunkIdx := make(map[int]int32, 0)
+	for i, g := range groups {
+		tag := int32(i + 1)
+		for _, ci := range g.ChunkIndices {
+			tagByChunkIdx[ci] = tag
+		}
+	}
+	for i := range annotated {
+		if t, ok := tagByChunkIdx[annotated[i].ChunkIdx]; ok {
+			annotated[i].SpeakerTag = t
+		}
+	}
+	return annotated
 }
 
 func mapSchemaType(t string) vertexai.Type {
@@ -678,10 +949,15 @@ func loadSession(ctx context.Context, sessionID string) (*SessionContext, error)
 //
 // Format umożliwia LLM odwołanie się do chunków po indeksie w polu
 // speaker_role_inference.speaker_groups[*].chunk_indices.
-func loadTranscriptText(ctx context.Context, transcriptID string) (string, error) {
+// loadTranscriptBlob reads the canonical encrypted blob (ADR-IMPL-006),
+// decrypts it, and returns the chunks in their decoded form for
+// downstream formatting. Replaces the old loadTranscriptText, which
+// fused decryption and formatting; separating them lets us format
+// the same blob differently for call 1 vs call 2.
+func loadTranscriptBlob(ctx context.Context, transcriptID string) ([]transcriptfmt.Chunk, error) {
 	id, err := uuid.Parse(transcriptID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var ciphertext []byte
@@ -689,15 +965,19 @@ func loadTranscriptText(ctx context.Context, transcriptID string) (string, error
 	row := dbPool.QueryRow(ctx,
 		"SELECT transcript_ciphertext, transcript_encrypted_dek FROM transcripts WHERE id = $1", id)
 	if err := row.Scan(&ciphertext, &encryptedDEK); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	blobJSONBytes, err := crypto.Decrypt(ctx, ciphertext, encryptedDEK)
 	if err != nil {
-		return "", fmt.Errorf("decrypt transcript blob: %w", err)
+		return nil, fmt.Errorf("decrypt transcript blob: %w", err)
 	}
 
-	type BlobLine struct {
+	// The canonical blob's on-disk shape (stt-worker.BlobLine). We
+	// don't import that package here to keep the worker-to-worker
+	// dependency surface small. The Chunk type the formatter wants
+	// is the subset we actually need.
+	type blobLine struct {
 		ChunkIdx     int     `json:"chunk_idx"`
 		Text         string  `json:"text"`
 		StartMS      int64   `json:"start_ms"`
@@ -708,25 +988,63 @@ func loadTranscriptText(ctx context.Context, transcriptID string) (string, error
 		SpeakerLabel *string `json:"speaker_label,omitempty"`
 	}
 
-	var lines []BlobLine
+	var lines []blobLine
 	if err := json.Unmarshal(blobJSONBytes, &lines); err != nil {
-		return "", fmt.Errorf("unmarshal transcript blob: %w", err)
+		return nil, fmt.Errorf("unmarshal transcript blob: %w", err)
 	}
 
+	chunks := make([]transcriptfmt.Chunk, len(lines))
+	for i, l := range lines {
+		c := transcriptfmt.Chunk{
+			ChunkIdx: l.ChunkIdx,
+			Text:     l.Text,
+			StartMS:  l.StartMS,
+			EndMS:    l.EndMS,
+		}
+		if l.SpeakerTag != nil {
+			c.SpeakerTag = *l.SpeakerTag
+		}
+		if l.SpeakerLabel != nil {
+			c.SpeakerLabel = *l.SpeakerLabel
+		}
+		chunks[i] = c
+	}
+	return chunks, nil
+}
+
+// legacyChunkFormat renders the chunk list in the pre-Markdown shape
+// that the JSON-mode prompt expects:
+//
+//	[CHUNK 0] (1200ms-4500ms) text
+//	[CHUNK 1 / Speaker 1] (4800ms-7800ms) text    (when native diarization)
+//
+// Kept inline rather than in transcriptfmt because it's the legacy
+// format — we don't want to encourage new callers.
+func legacyChunkFormat(chunks []transcriptfmt.Chunk) string {
 	var sb strings.Builder
-	for _, l := range lines {
-		if l.SpeakerLabel != nil && *l.SpeakerLabel != "" {
-			// Native diarization: pokazujemy speaker label
+	for _, c := range chunks {
+		if c.SpeakerLabel != "" {
 			fmt.Fprintf(&sb, "[CHUNK %d / %s] (%dms-%dms) %s\n",
-				l.ChunkIdx, *l.SpeakerLabel, l.StartMS, l.EndMS, l.Text)
+				c.ChunkIdx, c.SpeakerLabel, c.StartMS, c.EndMS, c.Text)
 		} else {
-			// Default flow (v1.2): tylko numerowany chunk, LLM przypisze speaker
 			fmt.Fprintf(&sb, "[CHUNK %d] (%dms-%dms) %s\n",
-				l.ChunkIdx, l.StartMS, l.EndMS, l.Text)
+				c.ChunkIdx, c.StartMS, c.EndMS, c.Text)
 		}
 	}
+	return sb.String()
+}
 
-	return sb.String(), nil
+// hasNativeSpeakers reports whether any chunk carries a non-zero
+// speaker_tag (i.e., Chirp 3 native diarization fired upstream).
+// When true, call 1 uses the role-only grammar; when false, call 1
+// uses the cluster grammar (LLM has to group chunks).
+func hasNativeSpeakers(chunks []transcriptfmt.Chunk) bool {
+	for _, c := range chunks {
+		if c.SpeakerTag != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func loadModalityPrompt(ctx context.Context, modalityID uuid.UUID) (string, error) {
