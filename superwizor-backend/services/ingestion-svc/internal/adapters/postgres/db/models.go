@@ -841,8 +841,8 @@ type User struct {
 	OrganizationID      pgtype.UUID
 	DefaultModalityID   pgtype.UUID
 	BillingAddressID    pgtype.UUID
-	FirebaseUid         string
-	Email               string
+	FirebaseUid         *string
+	Email               *string
 	PhoneNumber         *string
 	IsEmailVerified     bool
 	FirstName           string

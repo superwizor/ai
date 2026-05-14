@@ -41,13 +41,22 @@ var (
 	pubsubClient *pubsub.Client
 	crypto       cryptobox.CryptoBox
 	projectID    string
-	// gemini-2.5-flash-lite — verified available in europe-west4 for
-	// this project on 2026-05-11 by probing the publishers/google/models
-	// endpoint directly. The 3.1 line (which b52aab1 originally targeted)
-	// is NOT published in europe-west4 yet — calls return NotFound.
-	// When 3.1 lands in europe-west4 or production data residency
-	// requirements relax to allow us-central1, swap this in one line.
-	geminiModel  string = "gemini-2.5-flash-lite"
+	// gemini-2.5-flash — bumped from flash-lite (2026-05-14) on the
+	// feat/llm-optimisation branch. The flash-lite line has a
+	// documented structured-output weakness ("prefers concise
+	// instructions or short JSON"); the metadata-step schema (an
+	// array of speaker_groups with nested chunk index arrays) is
+	// exactly the shape that struggles. Flash's structured output is
+	// "plugged directly into a downstream parser without cleaning in
+	// most cases." Cost increases from $0.0375/M+$0.15/M to
+	// $0.075/M+$0.30/M input/output — roughly $0.002/session at
+	// typical 40-min volumes (vs $0.0007). Negligible at our scale.
+	//
+	// Available in europe-west4 since the 2.5 GA rollout. When
+	// gemini-3-flash lands in europe-west4 we'll evaluate the swap
+	// separately via the llm-eval matrix; do not chain a model bump
+	// into the Markdown-mode rollout — one variable at a time.
+	geminiModel  string = "gemini-2.5-flash"
 	geminiRegion string = "europe-west4"
 	// debugLogPrompts controls whether we emit the full prompt sent to
 	// Vertex + the full raw response back, to Cloud Logging. Gated by
