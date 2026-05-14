@@ -180,8 +180,11 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 
 	// Always-on stats (no PHI). Surfaces silent / undecodable audio fast —
 	// total_words=0 means Chirp 3 returned nothing recognizable.
+	//
+	// session_id and upload_id come from logger.With() at the top of
+	// ProcessAudio — don't pass them again or slog/Cloud Logging
+	// concatenates the duplicate keys into one mangled field.
 	logger.Info("chunked transcript",
-		"session_id", event.SessionID,
 		"language", transcriptResult.LanguageCode,
 		"raw_word_count", transcriptResult.WordCount,
 		"chunk_count", stats.ChunkCount,
@@ -193,7 +196,6 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 
 	if transcriptResult.WordCount == 0 {
 		logger.Warn("empty transcript — Chirp 3 returned no words",
-			"session_id", event.SessionID,
 			"language", transcriptResult.LanguageCode,
 			"hint", "check audio quality (silent / non-Polish / unsupported codec) and Chirp 3 model availability")
 	}
@@ -228,8 +230,18 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 
 	// 5. Update session: language_code (speaker_label_mapping zostanie wypełniony
 	//    przez llm-worker.generateAndSaveSpeakerLabels po analizie LLM).
-	if err := updateSessionLanguage(ctx, event.SessionID, transcriptResult.LanguageCode); err != nil {
-		logger.Warn("session language update", "error", err)
+	//
+	// Guard: only write language_code when the DB didn't already have
+	// one. ingestion-svc.CompleteAudioUpload (since feat/llm-optimisation)
+	// writes it from patient_user.ui_language at session-create time —
+	// that value is the source of truth for the audio language and
+	// shouldn't be overwritten by whatever Chirp detected. The write
+	// is still useful for legacy / orphan sessions where the column
+	// is NULL and we used the multi-language auto-detect fallback.
+	if sessionLanguage == "" && transcriptResult.LanguageCode != "" {
+		if err := updateSessionLanguage(ctx, event.SessionID, transcriptResult.LanguageCode); err != nil {
+			logger.Warn("session language update", "error", err)
+		}
 	}
 	_ = updateSessionStatus(ctx, event.SessionID, "ANALYZING")
 
@@ -326,11 +338,20 @@ func transcribeAudio(ctx context.Context, gcsURI string, languageCode string, us
 		return nil, fmt.Errorf("await: %w", err)
 	}
 
-	return ParseChirp3Results(resp, useNativeDiarization)
+	return ParseChirp3Results(resp, useNativeDiarization, languageCode)
 }
 
 // ParseChirp3Results extracts words and confidence from the Speech API response.
 // Słowa są zwracane bez speaker_tag (default flow) — chunker je zgrupuje.
+//
+// fallbackLanguage is the language we pinned in the recognize request
+// (e.g. "en-US"). Chirp returns the actually-detected language per
+// SpeechRecognitionResult.LanguageCode — first non-empty value wins.
+// We fall back to fallbackLanguage only when none of the result rows
+// carry a language (multi-detect mode with empty input, or older API
+// responses). The hardcoded "pl-PL" that this function used to default
+// to was a Polish-only-era leftover that silently overwrote
+// session.language_code on every transcribe — fixed 2026-05-14.
 //
 // Returns an error if any file-level result has a non-nil Error status. We
 // always submit a single file per BatchRecognize call (one audio upload per
@@ -340,9 +361,8 @@ func transcribeAudio(ctx context.Context, gcsURI string, languageCode string, us
 // (e.g. M4A/AAC), the response carries an INTERNAL/INVALID_ARGUMENT
 // per-file Error, and ProcessAudio would otherwise see WordCount=0 and
 // keep going.
-func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarization bool) (*TranscriptResult, error) {
+func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarization bool, fallbackLanguage string) (*TranscriptResult, error) {
 	result := &TranscriptResult{
-		LanguageCode:         "pl-PL",
 		HasNativeDiarization: useNativeDiarization,
 	}
 	speakerSet := map[string]bool{}
@@ -374,6 +394,15 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 			}
 			alt := r.Alternatives[0]
 
+			// Capture the actually-detected language. Chirp populates
+			// this per result; first non-empty value wins (results
+			// within one file share a language). If Chirp didn't set
+			// it for any result we fall back to the pinned language
+			// after the loop.
+			if result.LanguageCode == "" && r.LanguageCode != "" {
+				result.LanguageCode = r.LanguageCode
+			}
+
 			for _, w := range alt.Words {
 				word := chunker.Word{
 					Text:       w.Word,
@@ -400,6 +429,14 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 		result.ConfidenceAvg = totalConfidence / float32(confidenceCount)
 	}
 	result.SpeakerCount = len(speakerSet)
+
+	// Fallback for the case where Chirp didn't populate LanguageCode
+	// on any result (multi-detect with no recognized words, or older
+	// API responses). Use whatever we pinned in the request; empty
+	// stays empty so updateSessionLanguage's guard kicks in.
+	if result.LanguageCode == "" {
+		result.LanguageCode = fallbackLanguage
+	}
 
 	if len(fileErrors) > 0 {
 		// Common causes:

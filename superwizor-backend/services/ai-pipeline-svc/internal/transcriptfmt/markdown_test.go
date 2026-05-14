@@ -192,13 +192,26 @@ func TestBCP47ize(t *testing.T) {
 	}
 }
 
-func TestNativeDiarizationSupported_DefaultsAllFalse(t *testing.T) {
-	// All entries in the static map start at false. Probe evidence
-	// is required before any flip. This test catches accidental
-	// edits to the map's defaults.
-	for tag := range Chirp3DiarizationLanguages {
-		if NativeDiarizationSupported(tag) {
-			t.Errorf("language %q must start at false; flipping it needs an explicit code review", tag)
+func TestNativeDiarizationSupported_StaticMap(t *testing.T) {
+	// Pin the exact state of the static map. Flipping a language
+	// from false → true (or vice versa) is intentional and should
+	// land in the same commit as the test update. This catches
+	// accidental edits.
+	want := map[string]bool{
+		"pl-PL": false,
+		"en-US": true, // enabled 2026-05-14 — Chirp 3 supports en-US diarization
+		"en-GB": false,
+		"de-DE": false,
+		"es-ES": false,
+		"fr-FR": false,
+		"uk-UA": false,
+	}
+	if len(Chirp3DiarizationLanguages) != len(want) {
+		t.Errorf("map size: want %d, got %d", len(want), len(Chirp3DiarizationLanguages))
+	}
+	for tag, expected := range want {
+		if got := NativeDiarizationSupported(tag); got != expected {
+			t.Errorf("%q: want %v, got %v", tag, expected, got)
 		}
 	}
 }

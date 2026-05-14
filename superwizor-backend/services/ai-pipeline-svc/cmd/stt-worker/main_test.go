@@ -46,7 +46,7 @@ func TestParseChirp3Results(t *testing.T) {
 		},
 	}
 
-	result, err := ParseChirp3Results(resp, false)
+	result, err := ParseChirp3Results(resp, false, "pl-PL")
 	assert.NoError(t, err)
 
 	assert.NotNil(t, result)
@@ -93,7 +93,7 @@ func TestParseChirp3Results_NativeDiarization(t *testing.T) {
 		},
 	}
 
-	result, err := ParseChirp3Results(resp, true)
+	result, err := ParseChirp3Results(resp, true, "pl-PL")
 	assert.NoError(t, err)
 
 	assert.True(t, result.HasNativeDiarization)
@@ -116,7 +116,7 @@ func TestParseChirp3Results_FileError(t *testing.T) {
 		},
 	}
 
-	result, err := ParseChirp3Results(resp, false)
+	result, err := ParseChirp3Results(resp, false, "pl-PL")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "code=13")
 	assert.Contains(t, err.Error(), "Internal error encountered")

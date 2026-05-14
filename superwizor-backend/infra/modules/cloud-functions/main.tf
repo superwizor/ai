@@ -169,6 +169,15 @@ resource "google_cloudfunctions2_function" "stt_worker" {
       # PHI exposure: when "true", logs the full plaintext transcript
       # to Cloud Logging. Staging-only debugging; never set on prod.
       DEV_LOG_PLAINTEXT_TRANSCRIPT = var.dev_log_plaintext_transcript ? "true" : "false"
+      # Operator opt-in for native Chirp 3 diarization. When "on", AND
+      # the session's language is true in
+      # transcriptfmt.Chirp3DiarizationLanguages, stt-worker enables
+      # SpeakerDiarizationConfig on the BatchRecognize call → words
+      # come back with speaker_tag populated → llm-worker takes the
+      # role-only-grammar branch instead of clustering.
+      # Today: en-US is the only language flagged true; pl-PL stays
+      # on the LLM-clustering path. Rollback: change to "off".
+      STT_NATIVE_DIARIZATION = "on"
     }
 
     secret_environment_variables {

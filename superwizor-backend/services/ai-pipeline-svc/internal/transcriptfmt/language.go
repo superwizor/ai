@@ -25,7 +25,7 @@ func BCP47ize(uiLanguage string) string { return lang.BCP47ize(uiLanguage) }
 // a stt-worker redeploy.
 var Chirp3DiarizationLanguages = map[string]bool{
 	"pl-PL": false, // primary user base, NOT yet enabled
-	"en-US": false, // pending verification
+	"en-US": true,  // verified Chirp 3 support; enabled 2026-05-14
 	"en-GB": false,
 	"de-DE": false,
 	"es-ES": false,
