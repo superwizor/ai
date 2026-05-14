@@ -20,7 +20,9 @@ import (
 	"google.golang.org/api/option"
 
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
+	"github.com/superwizor-ai/backend/pkg/i18n/lang"
 	"github.com/superwizor-ai/backend/pkg/transcription/chunker"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
 )
 
 // AudioUploadedEvent matches publisher payload
@@ -131,13 +133,40 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 		return err
 	}
 
-	// 2. Run Chirp 3 — feature flag USE_NATIVE_DIARIZATION (ADR-IMPL-007).
-	//    Default false: polski nie jest na liście supported dla diarization,
-	//    więc słowa są zwracane bez speaker_tag i grupowane przez chunker.
-	gcsURI := fmt.Sprintf("gs://%s/%s", bucketName, event.ObjectPath)
-	useNativeDiarization := os.Getenv("USE_NATIVE_DIARIZATION") == "true"
+	// 2. Resolve language from session.language_code (populated by
+	//    ingestion-svc.CompleteAudioUpload from patient_user.ui_language).
+	//    Empty means orphan session / pre-feat/llm-optimisation row →
+	//    fall back to multi-language auto-detect (preserves the old
+	//    behavior for legacy data).
+	sessionLanguage, err := loadSessionLanguage(ctx, event.SessionID)
+	if err != nil {
+		logger.Warn("session language lookup", "error", err)
+		sessionLanguage = "" // fall through to multi-detect
+	}
+	// BCP47-ize so callers can pass "pl" or "pl-PL"; both end up
+	// "pl-PL" on the wire to Chirp.
+	bcp47Lang := lang.BCP47ize(sessionLanguage)
 
-	transcriptResult, err := transcribeAudio(ctx, gcsURI, useNativeDiarization)
+	// 3. Native diarization gate (ADR-IMPL-007). Two-key system:
+	//    (a) operator opt-in via STT_NATIVE_DIARIZATION=on env var
+	//        (legacy USE_NATIVE_DIARIZATION=true also accepted), AND
+	//    (b) language is flagged true in
+	//        transcriptfmt.Chirp3DiarizationLanguages (all start false,
+	//        flip per-language only with probe evidence).
+	//    Both must hold; either off → flat words + LLM clustering (current
+	//    production behavior). When both on → Chirp emits speaker_tag per
+	//    word, downstream llm-worker uses role-only call-1 path.
+	gcsURI := fmt.Sprintf("gs://%s/%s", bucketName, event.ObjectPath)
+	operatorOptIn := os.Getenv("STT_NATIVE_DIARIZATION") == "on" || os.Getenv("USE_NATIVE_DIARIZATION") == "true"
+	useNativeDiarization := operatorOptIn && transcriptfmt.NativeDiarizationSupported(bcp47Lang)
+
+	logger.Info("stt config",
+		"session_language", sessionLanguage,
+		"bcp47", bcp47Lang,
+		"operator_opt_in", operatorOptIn,
+		"native_diarization", useNativeDiarization)
+
+	transcriptResult, err := transcribeAudio(ctx, gcsURI, bcp47Lang, useNativeDiarization)
 	if err != nil {
 		logger.Error("chirp 3", "error", err)
 		_ = updateSessionStatus(ctx, event.SessionID, "FAILED")
@@ -229,21 +258,40 @@ type TranscriptResult struct {
 }
 
 // transcribeAudio wywołuje Chirp 3 BatchRecognize.
-// Default (useNativeDiarization=false): zwraca płaską listę słów z timestamps
-// bez przypisania mówców. Diarization jest robiona później przez LLM (ADR-IMPL-007).
-func transcribeAudio(ctx context.Context, gcsURI string, useNativeDiarization bool) (*TranscriptResult, error) {
+//
+// languageCode: when non-empty, pinned as the single recognized
+// language (e.g. "pl-PL"). Empty falls back to the legacy
+// multi-language auto-detect list — used when session.language_code
+// wasn't set (orphan rows / pre-feat/llm-optimisation sessions) so
+// the worker still produces useful output.
+//
+// useNativeDiarization: gated upstream by operator opt-in AND the
+// Chirp3DiarizationLanguages allow-list. When true, Chirp emits
+// per-word speaker_tag; when false (current default for every
+// language), words come back flat and llm-worker clusters them.
+func transcribeAudio(ctx context.Context, gcsURI string, languageCode string, useNativeDiarization bool) (*TranscriptResult, error) {
 	features := &speechpb.RecognitionFeatures{
 		EnableAutomaticPunctuation: true,
 		EnableWordTimeOffsets:      true,
 	}
 
-	// Native diarization tylko jeśli flag explicit włączony.
-	// Polski (pl-PL) NIE jest na liście supportowanych dla diarization w v1.2.
 	if useNativeDiarization {
 		features.DiarizationConfig = &speechpb.SpeakerDiarizationConfig{
 			MinSpeakerCount: 2,
 			MaxSpeakerCount: 4,
 		}
+	}
+
+	// Language list: pinned single language when known (cleaner Chirp
+	// behavior, fewer mis-detections), multi-list fallback otherwise.
+	// Multi-list intentionally includes uk-UA because Polish therapy
+	// occasionally hits Ukrainian-speaking patients post-2022, and
+	// we'd rather Chirp pick the right one than misroute pl-PL.
+	var languageCodes []string
+	if languageCode != "" {
+		languageCodes = []string{languageCode}
+	} else {
+		languageCodes = []string{"pl-PL", "en-US", "de-DE", "uk-UA"}
 	}
 
 	req := &speechpb.BatchRecognizeRequest{
@@ -253,7 +301,7 @@ func transcribeAudio(ctx context.Context, gcsURI string, useNativeDiarization bo
 				AutoDecodingConfig: &speechpb.AutoDetectDecodingConfig{},
 			},
 			Model:         "chirp_3",
-			LanguageCodes: []string{"pl-PL", "en-US", "de-DE", "uk-UA"},
+			LanguageCodes: languageCodes,
 			Features:      features,
 		},
 		Files: []*speechpb.BatchRecognizeFileMetadata{
@@ -381,9 +429,44 @@ func updateSessionStatus(ctx context.Context, sessionID, status string) error {
 	return err
 }
 
+// loadSessionLanguage reads session.language_code (BCP47 tag like
+// "pl-PL") set by ingestion-svc.CompleteAudioUpload at session create.
+// Empty string means the row is NULL — caller falls back to
+// multi-language auto-detect. Non-fatal errors (DB down, row not
+// found) also return "" so the worker degrades gracefully rather
+// than failing the whole STT call.
+func loadSessionLanguage(ctx context.Context, sessionID string) (string, error) {
+	if dbPool == nil {
+		return "", nil
+	}
+	id, err := uuid.Parse(sessionID)
+	if err != nil {
+		return "", err
+	}
+	var languageCode *string
+	err = dbPool.QueryRow(ctx,
+		"SELECT language_code FROM sessions WHERE id = $1",
+		id).Scan(&languageCode)
+	if err != nil {
+		return "", err
+	}
+	if languageCode == nil {
+		return "", nil
+	}
+	return *languageCode, nil
+}
+
 // updateSessionLanguage zapisuje wykryty/użyty language_code dla sesji.
 // speaker_label_mapping zostaje pusty {} — zostanie wypełniony przez
 // llm-worker.generateAndSaveSpeakerLabels po analizie LLM.
+//
+// Idempotency: when session.language_code was already populated by
+// ingestion-svc (the common case post-feat/llm-optimisation), this
+// just overwrites with the same value. Harmless. We keep the write
+// for two reasons: (a) record what Chirp actually used, including
+// the multi-detect fallback path where the input language was
+// unknown; (b) backwards compatibility with reports / dashboards
+// that read this column after STT.
 func updateSessionLanguage(ctx context.Context, sessionID string, languageCode string) error {
 	if dbPool == nil {
 		return nil
