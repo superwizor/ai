@@ -14,8 +14,14 @@ import (
 const createSession = `-- name: CreateSession :one
 INSERT INTO sessions (
     therapist_id, patient_file_id, audio_upload_id,
-    session_date, session_number, duration_seconds, contact_form, report_language, name
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9::text, ''))
+    session_date, session_number, duration_seconds, contact_form,
+    report_language, name, language_code
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7,
+    $8,
+    NULLIF($9::text, ''),
+    NULLIF($10::text, '')
+)
 RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name
 `
 
@@ -29,6 +35,7 @@ type CreateSessionParams struct {
 	ContactForm     ContactForm
 	ReportLanguage  string
 	NameDefault     string
+	LanguageCode    string
 }
 
 // name is computed at app level (see grpc/server.go) as
@@ -39,6 +46,14 @@ type CreateSessionParams struct {
 // caller couldn't resolve the modality — backfill migration 000011
 // + handler still survives, just with a NULL row that the proto
 // mapper emits as "" so Flutter falls back to its default rendering.
+//
+// language_code is the AUDIO language of the conversation (what STT
+// recognizes), populated from the paired patient_user.ui_language at
+// create time. Distinct from report_language, which is the desired
+// output language for the AI-generated clinical report. NULLIF on
+// empty input so an unset language stores as NULL (stt-worker then
+// falls back to multi-language auto-detect — preserves
+// pre-feat/llm-optimisation behavior for orphan rows).
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
 	row := q.db.QueryRow(ctx, createSession,
 		arg.TherapistID,
@@ -50,6 +65,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		arg.ContactForm,
 		arg.ReportLanguage,
 		arg.NameDefault,
+		arg.LanguageCode,
 	)
 	var i Session
 	err := row.Scan(
@@ -77,24 +93,6 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 	return i, err
 }
 
-const getModalityDisplayNameForPatientFile = `-- name: GetModalityDisplayNameForPatientFile :one
-SELECT COALESCE(m.display_name, '') AS display_name
-FROM patient_files pf
-LEFT JOIN modalities m ON m.id = pf.modality_id
-WHERE pf.id = $1
-`
-
-// Used by CompleteAudioUpload to compute the initial session.name.
-// Returns the modality's display_name for the patient_file's
-// modality_id. Falls back to ” if the join misses (shouldn't happen
-// since patient_files.modality_id is NOT NULL, but defensive).
-func (q *Queries) GetModalityDisplayNameForPatientFile(ctx context.Context, id pgtype.UUID) (string, error) {
-	row := q.db.QueryRow(ctx, getModalityDisplayNameForPatientFile, id)
-	var display_name string
-	err := row.Scan(&display_name)
-	return display_name, err
-}
-
 const getNextSessionNumber = `-- name: GetNextSessionNumber :one
 SELECT COALESCE(MAX(session_number), 0) + 1 AS next_number
 FROM sessions
@@ -106,4 +104,39 @@ func (q *Queries) GetNextSessionNumber(ctx context.Context, patientFileID pgtype
 	var next_number int32
 	err := row.Scan(&next_number)
 	return next_number, err
+}
+
+const getSessionDefaultsForPatientFile = `-- name: GetSessionDefaultsForPatientFile :one
+SELECT
+  COALESCE(m.display_name, '')                    AS display_name,
+  COALESCE(NULLIF(u.ui_language, ''), '')::text   AS patient_language
+FROM patient_files pf
+LEFT JOIN modalities m ON m.id = pf.modality_id
+LEFT JOIN users u ON u.id = pf.patient_id AND u.role = 'PATIENT' AND u.deleted_at IS NULL
+WHERE pf.id = $1
+`
+
+type GetSessionDefaultsForPatientFileRow struct {
+	DisplayName     string
+	PatientLanguage string
+}
+
+// Used by CompleteAudioUpload to compute the initial session.name
+// (from modality display_name) AND the session.language_code (from
+// the paired patient_user's ui_language). Single round-trip vs two
+// separate queries.
+//
+// Falls back to ” on either column if the join misses:
+//   - display_name=” → session.name stored as NULL → Flutter renders default
+//   - patient_language=” → stt-worker falls back to multi-language
+//     auto-detect (preserves pre-feat/llm-optimisation behavior)
+//
+// The patient-user LEFT JOIN guards against patient_files rows that
+// lack a patient_id (orphan rows pre-migration 000014, or after a
+// DeletePatientUser left an orphan before the CASCADE fix).
+func (q *Queries) GetSessionDefaultsForPatientFile(ctx context.Context, id pgtype.UUID) (GetSessionDefaultsForPatientFileRow, error) {
+	row := q.db.QueryRow(ctx, getSessionDefaultsForPatientFile, id)
+	var i GetSessionDefaultsForPatientFileRow
+	err := row.Scan(&i.DisplayName, &i.PatientLanguage)
+	return i, err
 }

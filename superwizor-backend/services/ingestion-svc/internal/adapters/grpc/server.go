@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	ingestionv1 "github.com/superwizor-ai/backend/gen/go/ingestion/v1"
+	"github.com/superwizor-ai/backend/pkg/i18n/lang"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/postgres/db"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/storage"
 )
@@ -173,21 +174,42 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
     t := time.Now()
 	datePg := pgtype.Date{Time: t, Valid: true}
 
+	// Single round-trip: pull the modality display_name (for the
+	// default session.name) AND the patient_user's ui_language (for
+	// session.language_code that stt-worker reads, AND the
+	// report_language fallback below). Both columns degrade to ""
+	// on join misses; the InsertSession SQL NULLIFs each so a
+	// missing modality or orphan patient_files row stores NULL and
+	// downstream falls back appropriately.
+	defaults, lookupErr := s.queries.GetSessionDefaultsForPatientFile(ctx, upload.PatientFileID)
+	var defaultName string
+	if lookupErr == nil && defaults.DisplayName != "" {
+		defaultName = fmt.Sprintf("%s %d", defaults.DisplayName, nextNum)
+	}
+	// BCP47-ize the patient's ui_language for STT (Chirp wants pl-PL,
+	// not pl). Empty → BCP47ize returns "" → SQL NULLIF stores NULL →
+	// stt-worker falls back to its multi-language auto-detect list.
+	audioLang := ""
+	if lookupErr == nil {
+		audioLang = lang.BCP47ize(defaults.PatientLanguage)
+	}
+	// report_language resolution — three-tier fallback so an English
+	// patient's report doesn't silently come out in Polish (the bug
+	// surfaced 2026-05-15 on session 7da68e6c):
+	//   1. explicit req.ReportLanguage (Flutter passes it for sessions
+	//      where therapist wants a different output language than the
+	//      patient speaks)
+	//   2. patient_user.ui_language from the JOIN above (mirrors the
+	//      STT side — if patient's audio is en-US, default the report
+	//      to English unless overridden)
+	//   3. "pl" hardcoded fallback for orphan rows / pre-feat sessions
+	//      where neither source is available
 	reportLang := req.ReportLanguage
+	if reportLang == "" && lookupErr == nil {
+		reportLang = defaults.PatientLanguage
+	}
 	if reportLang == "" {
 		reportLang = "pl"
-	}
-
-	// Compute the default session.name now while we have the
-	// patient_file_id handy. Formula matches migration 000011's
-	// backfill: "<modality display_name> <session_number>". Empty
-	// modality lookup → empty NameDefault → DB stores NULL → the
-	// proto mapper emits "" and Flutter falls back to its own
-	// rendering. That degradation path is benign.
-	modalityDisplay, lookupErr := s.queries.GetModalityDisplayNameForPatientFile(ctx, upload.PatientFileID)
-	var defaultName string
-	if lookupErr == nil && modalityDisplay != "" {
-		defaultName = fmt.Sprintf("%s %d", modalityDisplay, nextNum)
 	}
 
 	session, err := s.queries.CreateSession(ctx, db.CreateSessionParams{
@@ -200,6 +222,7 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 		ContactForm:     "OFFICE",
 		ReportLanguage:  reportLang,
 		NameDefault:     defaultName,
+		LanguageCode:    audioLang,
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

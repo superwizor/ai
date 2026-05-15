@@ -24,6 +24,13 @@ cp "$AI_SVC_DIR/go.sum" "$OUT_DIR/.tmp/stt-worker/"
 cp -R "$REPO_DIR/pkg" "$OUT_DIR/.tmp/stt-worker/"
 cp -R "$REPO_DIR/gen" "$OUT_DIR/.tmp/stt-worker/"
 
+# ai-pipeline-svc/internal — needed since feat/llm-optimisation
+# wired stt-worker through internal/transcriptfmt (BCP47ize + the
+# Chirp3DiarizationLanguages allow-list). Cloud Build can't resolve
+# internal/* imports unless they're inside the zip; same pattern as
+# the notification-worker section below.
+cp -R "$AI_SVC_DIR/internal" "$OUT_DIR/.tmp/stt-worker/"
+
 # Podmiana ścieżek w go.mod
 cd "$OUT_DIR/.tmp/stt-worker"
 sed -i.bak 's|=> ../../pkg|=> ./pkg|g' go.mod
@@ -44,6 +51,14 @@ cp "$AI_SVC_DIR/go.sum" "$OUT_DIR/.tmp/llm-worker/"
 # Kopiowanie lokalnych zależności
 cp -R "$REPO_DIR/pkg" "$OUT_DIR/.tmp/llm-worker/"
 cp -R "$REPO_DIR/gen" "$OUT_DIR/.tmp/llm-worker/"
+
+# ai-pipeline-svc/internal — needed since feat/llm-optimisation
+# wired llm-worker through internal/transcriptfmt (Format A/B
+# renderers) and internal/diarization (Markdown call-1 parser).
+# Without this, the Cloud Build go-functions-framework can't resolve
+# the imports and tries to fetch them from github.com (which fails
+# because the repo is private).
+cp -R "$AI_SVC_DIR/internal" "$OUT_DIR/.tmp/llm-worker/"
 
 # Podmiana ścieżek w go.mod
 cd "$OUT_DIR/.tmp/llm-worker"

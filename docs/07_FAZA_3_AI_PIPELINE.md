@@ -51,3 +51,21 @@ Ten dokument opisuje szczegółowy, techniczny plan dla **Fazy 2.5 → 3**: "Dep
   - `report-worker`: `aiplatform.user`, `cloudkms.cryptoKeyEncrypterDecrypter`.
 - [x] **Kryteria wykonania (DoD):** Usunięcie wszystkich referencji do `ENCRYPT_PLACEHOLDER` z bazy kodu. Aplikacja nadal płynnie zapisuje i czyta sesje, a logi Terraform pokazują dokładne okrojenie ról.
 - [x] **Wymagane testy:** Test e2e kryptografii - z użyciem lokalnego symulatora KMS (bądź mocka Cryptobox).
+
+### Priorytet 5: Hardening natywnej diaryzacji Chirp 3 (post-launch, `feat/llm-optimisation`)
+
+**Cel:** Odzyskanie chunków, którym Chirp 3 nie nadał `speaker_label`, tak żeby UI pokazywał wszystkich mówców widocznych w transkrypcie — a nie tylko tych, których Chirp etykietował konsekwentnie.
+
+**Tło problemu** (sesja `26ecf316`, 2026-05-15): Chirp 3 z `SpeakerDiarizationConfig` *nie* etykietuje każdego słowa. W praktyce: dominujący mówca (terapeuta, dłuższe wypowiedzi) dostaje stabilne `speaker_label="1"`, ale słowa drugiego mówcy oraz krótkie wtrącenia często wracają z `speaker_label=""`. Nasz chunker traktuje `""` jako odrębny "speaker" od `"1"`, więc nieoznaczone runy stają się osierocone chunki `tag=0`, a downstream LLM nie ma do czego ich dołączyć. Efekt: `sessions.speaker_label_mapping = {"1": "Person 1"}` zamiast `{"1": ..., "2": ...}`, UI wyświetla jedną osobę.
+
+- [x] **KROK 5.1:** `stt-worker.fillSpeakerLabels(words, maxGapMS)` — pre-chunker pass propagujący najbliższą niepustą `SpeakerLabel` w obie strony, ograniczony progiem pauzy z `chunker.DefaultConfig().PauseThresholdMS` (600ms). Nigdy nie przepuszcza etykiety przez pauzę — pauza jest jedynym sygnałem zmiany mówcy.
+- [x] **KROK 5.2:** `llm-worker.markdownResultToPayload` — fallback dla trybu native: jeśli dokładnie **jedna** `SpeakerGroup` ma puste `ChunkIndices` i istnieją osierocone chunki `SpeakerTag=0`, przypisz wszystkie sieroty do tej pustej grupy. Wiele pustych grup → log warning, pominięcie (nie zgadujemy).
+- [x] **KROK 5.3:** Testy jednostkowe `TestFillSpeakerLabels` — 7 przypadków: forward fill, stop na pauzie, backward fill, no-op gdy nic do etykietowania, niezmienialność istniejących etykiet, pusty input, oraz wierne odtworzenie kształtu produkcyjnej sesji `26ecf316`.
+- [x] **Kryteria wykonania (DoD):** Po wgraniu sesji EN z dwoma mówcami: `sessions.speaker_label_mapping` zawiera oba taggi (`{"1": "Person 1", "2": "Person 2"}`), `transcript_segments` nie ma już wierszy `tag=0, label=""` (lub jest ich znikomo mało — krótkie filler-tokeny na granicach pauz), UI poprawnie wyświetla obie osoby.
+- [x] **Wymagane testy:** Probe na staging — odtworzenie kształtu sesji `26ecf316` (terapeuta etykietowany, pacjent bez etykiet) i weryfikacja, że oba layery razem przywracają drugiego mówcę.
+
+> **Cofalność:** Layer 1 mutuje listę słów in-place przed chunkowaniem — wpływa na każdą sesję z `useNativeDiarization=true`. Wyłączenie polega na cofnięciu commitu lub flippnięciu języka w `transcriptfmt.Chirp3DiarizationLanguages` na `false`. Layer 2 jest defensywny i nie szkodzi przy poprawnych wynikach Chirpa (warunek `emptyCount == 1` chroni dobre sesje).
+
+> **Dlaczego nie tylko Layer 2:** Bez Layer 1 LLM otrzymuje Format B transkrypt, który mapuje wszystkie nieoznaczone słowa na `## Speaker 1` (`FormatSpeakerTurns` reguła "tag==0 → 1"), tracąc strukturę turn-taking widoczną w sygnale audio. Klastrowanie LLM stoi się trudniejsze, jakość ról spada. Layer 1 zachowuje kolejność i grupowanie w transkrypcie, Layer 2 ratuje pojedyncze osierocone runy, których Layer 1 nie objął (np. krótka odpowiedź pacjenta po pauzie, której Chirp w ogóle nie oetykietował).
+
+> Szczegóły implementacji + ADR-IMPL-007a → `docs/agents/05_ai-pipeline-svc.md` sekcja "Native-diarization sparse-label recovery (2026-05-15)".

@@ -47,7 +47,87 @@ Tracked-but-not-yet-scheduled items. Each entry: what's broken, why it matters, 
 
 ---
 
+### Wire DLQ on Eventarc-managed Pub/Sub subscriptions
+
+**Status**: not started. Worker-side poison-guard partially mitigates
+(stt-worker shipped with `loadSessionStatus` check 2026-05-15) but
+the DLQ should still exist as a safety net for messages that don't
+correspond to a session row at all (e.g. malformed events).
+
+**What**: stt-worker / llm-worker Eventarc triggers create their own
+Pub/Sub subscriptions under the hood (`eventarc-europe-central2-*-sub-*`).
+These subscriptions DON'T have `deadLetterPolicy` set, even though
+our terraform `module.pubsub` declares the DLQ topics
+(`audio.uploaded.dlq`, `transcript.completed.dlq`). So poison
+messages retry for the full 24h retention window before aging out,
+with no DLQ exit.
+
+**Evidence (2026-05-14 → 2026-05-15)**: session `b6c7a606` failed first
+delivery at 15:52 UTC on 5/14 (Chirp `code=13 INTERNAL` on a
+multi-language audio request). Same message redelivered every ~7-10
+min for 24+ hours, ~100 retry attempts. Drained manually via
+`gcloud pubsub subscriptions seek SUB --time=NOW`.
+
+**Where**:
+  - Eventarc trigger config — `infra/modules/cloud-functions/main.tf`,
+    `event_trigger { ... }` blocks on `stt_worker` and `llm_worker`
+  - DLQ topics already in `infra/modules/pubsub/main.tf`
+
+**Why now**: keeps biting. Every operator-side mistake or transient
+Chirp/Vertex outage produces a 24h log-noise tail.
+
+**Fix shape**: two options:
+  1. Add `dead_letter_config` to the Eventarc `event_trigger` block.
+     The Cloud Functions Gen2 API supports it on Eventarc-managed
+     triggers as of the late-2024 SDK. Verify the provider exposes
+     the field; if so, single-line terraform addition per worker.
+  2. If the provider doesn't expose it: post-create patch the
+     subscription via a `google_pubsub_subscription` data lookup +
+     dependent IAM. Fiddlier; keep as fallback.
+
+Also add explicit retry-policy `max_delivery_attempts` so messages
+drain after N tries instead of riding the 24h retention.
+
+**Tests**: an explicit poison-message test on staging — drop an
+unprocessable audio path into the queue, verify DLQ topic receives
+the message after the retry budget, verify main subscription stops
+retrying. ~30 min of manual testing once the terraform change lands.
+
+---
+
 ## Lower priority / unscheduled
+
+### llm-worker: extract generation-config knobs to named constants
+
+**Status**: not started.
+
+**What**: today `services/ai-pipeline-svc/cmd/llm-worker/main.go` has three
+`model.GenerationConfig = vertexai.GenerationConfig{...}` blocks with raw
+numbers (Temperature, TopP, MaxOutputTokens) inlined at each call site.
+Two distinct profiles by design:
+
+  - Metadata (call 1): Temperature 0.1, MaxOutputTokens 16384
+  - Report   (call 2): Temperature 0.3, MaxOutputTokens 65535
+  - TopP 0.95 shared
+
+**Why now (eventually)**: maintainer briefly thought 65535 was a typo for
+16384 — easy mistake when three call sites have different inlined numbers.
+Named constants make the design intent (two profiles, by design) visible.
+
+**Fix shape**: pull into package-level `geminiTempMetadata`,
+`geminiTempReport`, `geminiTopP`, `geminiMaxOutMetadata`, `geminiMaxOutReport`
+constants near the existing `geminiModel`/`geminiRegion` block. Substitute
+at the three call sites. ~30 LOC delta, no behavior change. Either pure
+constants, or a tiny pair of helper funcs (`metadataGenConfig` /
+`reportGenConfig`) — bare constants are enough.
+
+**Out of scope**: any further consolidation of the actual prompt strings.
+The prompt text is correctly different across call 1 (JSON), call 1
+(Markdown cluster), call 1 (Markdown role-only), and call 2 (report) —
+each job has different output constraints. See the audit notes on the
+2026-05-14 conversation thread for the rationale.
+
+---
 
 Add entries here as they surface. Format:
 

@@ -62,6 +62,12 @@ class ClientDetailsScreen extends ConsumerWidget {
           patientFileId: patientId,
           therapistId: therapistId!,
           patientAlias: '${patient.firstName} ${patient.lastName}'.trim(),
+          // Pass patient's BCP47 language so the audio upload's
+          // reportLanguage isn't hardcoded to 'pl' (2026-05-15 fix:
+          // English patient was getting a Polish report). Falls back
+          // to NewSessionScreen's 'pl-PL' default if empty.
+          patientLanguageCode:
+              patient.languageCode.isNotEmpty ? patient.languageCode : 'pl-PL',
         ),
       ),
     );

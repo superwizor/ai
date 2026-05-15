@@ -108,6 +108,13 @@ class AddSessionModal extends ConsumerWidget {
                           patientAlias:
                               '${patient.firstName} ${patient.lastName}'
                                   .trim(),
+                          // BCP47 from PatientFile.patientLanguageCode
+                          // → CreateAudioUploadRequest.reportLanguage so
+                          // EN-patient reports don't silently default
+                          // to Polish (2026-05-15 fix). Empty → 'pl-PL'.
+                          patientLanguageCode: patient.languageCode.isNotEmpty
+                              ? patient.languageCode
+                              : 'pl-PL',
                         ),
                       ),
                     );

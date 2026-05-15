@@ -67,6 +67,11 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
           firstName: firstName,
           lastName: lastName,
           modalityCode: pf.modalityCode,
+          // PatientFile.patientLanguageCode (proto field 18). Feeds
+          // NewSessionScreen → CreateAudioUploadRequest.reportLanguage
+          // so an English-speaking patient doesn't get a Polish report.
+          // Empty when missing; NewSessionScreen falls back to 'pl-PL'.
+          languageCode: pf.patientLanguageCode,
           sessionCount: counts[i],
         );
       });

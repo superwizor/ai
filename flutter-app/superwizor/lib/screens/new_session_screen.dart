@@ -62,12 +62,21 @@ class NewSessionScreen extends ConsumerStatefulWidget {
   final String patientFileId;
   final String therapistId;
   final String patientAlias;
+  // BCP47-tagged language for the AI-generated clinical report.
+  // Sourced from PatientFile.patientLanguageCode (set at create-time
+  // from the patient's ui_language). Passed through to CreateAudio
+  // UploadRequest + CompleteAudioUploadRequest so the server doesn't
+  // have to fall back to its defensive default. Default 'pl-PL' kept
+  // for the legacy-fixture path; production callers always have a real
+  // value from the kartoteka.
+  final String patientLanguageCode;
 
   const NewSessionScreen({
     super.key,
     required this.patientFileId,
     required this.therapistId,
     required this.patientAlias,
+    this.patientLanguageCode = 'pl-PL',
   });
 
   @override
@@ -254,7 +263,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
         patientFileId: widget.patientFileId,
         therapistId: widget.therapistId,
         patientAlias: widget.patientAlias,
-        reportLanguage: 'pl',
+        reportLanguage: widget.patientLanguageCode,
       ),
     ));
   }
@@ -401,7 +410,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
         contentType: contentType,
         clientPlatform: Platform.isIOS ? 'ios' : 'android',
         idempotencyKey: sessionId,
-        reportLanguage: 'pl',
+        reportLanguage: widget.patientLanguageCode,
       ));
       final uploadId = createRes.uploadId;
       final signedUrl = createRes.signedUrl;
@@ -433,7 +442,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
         actualDurationSeconds: 0,
         actualSizeBytes: Int64(uploadSize),
         chunkCount: 1,
-        reportLanguage: 'pl',
+        reportLanguage: widget.patientLanguageCode,
       ));
       final completedSessionId = completeRes.sessionId;
       debugPrint('[file-upload] done, sessionId=$completedSessionId');

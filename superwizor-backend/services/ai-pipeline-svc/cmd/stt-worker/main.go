@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,7 +21,9 @@ import (
 	"google.golang.org/api/option"
 
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
+	"github.com/superwizor-ai/backend/pkg/i18n/lang"
 	"github.com/superwizor-ai/backend/pkg/transcription/chunker"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
 )
 
 // AudioUploadedEvent matches publisher payload
@@ -124,6 +127,33 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 	logger = logger.With("session_id", event.SessionID, "upload_id", event.UploadID)
 	logger.Info("processing audio")
 
+	// Poison-message guard. If the session is already in a terminal
+	// state, a prior worker invocation already concluded (success or
+	// permanent failure). Redelivery of the same Pub/Sub message
+	// would just re-run Chirp on the same audio with the same result
+	// — wasted spend and noise. ACK by returning nil.
+	//
+	// "FAILED" terminal-fail case (the b6c7a606 scenario from
+	// 2026-05-14): first attempt set status=FAILED + returned error
+	// → Pub/Sub redelivered for 24h without DLQ. Now: redelivery
+	// sees FAILED → drops the message.
+	// "COMPLETED" should never see a redelivery in practice
+	// (transcript.completed has already been published, llm-worker
+	// ran, report saved), but is included for symmetry.
+	//
+	// Non-terminal statuses ("", CREATED, TRANSCRIBING, ANALYZING)
+	// fall through — TRANSCRIBING in particular means a previous
+	// invocation crashed mid-flight before reaching FAILED/COMPLETED,
+	// and we want the retry to make progress.
+	if status, err := loadSessionStatus(ctx, event.SessionID); err != nil {
+		logger.Warn("session status pre-check", "error", err)
+	} else if status == "FAILED" || status == "COMPLETED" {
+		logger.Warn("dropping poison redelivery — session already terminal",
+			"prior_status", status,
+			"hint", "manual admin path is to reset session.status before re-uploading audio")
+		return nil
+	}
+
 	startTime := time.Now()
 
 	if err := updateSessionStatus(ctx, event.SessionID, "TRANSCRIBING"); err != nil {
@@ -131,13 +161,40 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 		return err
 	}
 
-	// 2. Run Chirp 3 — feature flag USE_NATIVE_DIARIZATION (ADR-IMPL-007).
-	//    Default false: polski nie jest na liście supported dla diarization,
-	//    więc słowa są zwracane bez speaker_tag i grupowane przez chunker.
-	gcsURI := fmt.Sprintf("gs://%s/%s", bucketName, event.ObjectPath)
-	useNativeDiarization := os.Getenv("USE_NATIVE_DIARIZATION") == "true"
+	// 2. Resolve language from session.language_code (populated by
+	//    ingestion-svc.CompleteAudioUpload from patient_user.ui_language).
+	//    Empty means orphan session / pre-feat/llm-optimisation row →
+	//    fall back to multi-language auto-detect (preserves the old
+	//    behavior for legacy data).
+	sessionLanguage, err := loadSessionLanguage(ctx, event.SessionID)
+	if err != nil {
+		logger.Warn("session language lookup", "error", err)
+		sessionLanguage = "" // fall through to multi-detect
+	}
+	// BCP47-ize so callers can pass "pl" or "pl-PL"; both end up
+	// "pl-PL" on the wire to Chirp.
+	bcp47Lang := lang.BCP47ize(sessionLanguage)
 
-	transcriptResult, err := transcribeAudio(ctx, gcsURI, useNativeDiarization)
+	// 3. Native diarization gate (ADR-IMPL-007). Two-key system:
+	//    (a) operator opt-in via STT_NATIVE_DIARIZATION=on env var
+	//        (legacy USE_NATIVE_DIARIZATION=true also accepted), AND
+	//    (b) language is flagged true in
+	//        transcriptfmt.Chirp3DiarizationLanguages (all start false,
+	//        flip per-language only with probe evidence).
+	//    Both must hold; either off → flat words + LLM clustering (current
+	//    production behavior). When both on → Chirp emits speaker_tag per
+	//    word, downstream llm-worker uses role-only call-1 path.
+	gcsURI := fmt.Sprintf("gs://%s/%s", bucketName, event.ObjectPath)
+	operatorOptIn := os.Getenv("STT_NATIVE_DIARIZATION") == "on" || os.Getenv("USE_NATIVE_DIARIZATION") == "true"
+	useNativeDiarization := operatorOptIn && transcriptfmt.NativeDiarizationSupported(bcp47Lang)
+
+	logger.Info("stt config",
+		"session_language", sessionLanguage,
+		"bcp47", bcp47Lang,
+		"operator_opt_in", operatorOptIn,
+		"native_diarization", useNativeDiarization)
+
+	transcriptResult, err := transcribeAudio(ctx, gcsURI, bcp47Lang, useNativeDiarization)
 	if err != nil {
 		logger.Error("chirp 3", "error", err)
 		_ = updateSessionStatus(ctx, event.SessionID, "FAILED")
@@ -146,13 +203,31 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 
 	// 3. Chunkowanie słów na podstawie pauz (zob. pkg/transcription/chunker).
 	//    LLM przypisze chunki do mówców w Sprint 2.6.
-	chunks := chunker.ChunkByPauses(transcriptResult.Words, chunker.DefaultConfig())
+	chunkerCfg := chunker.DefaultConfig()
+	// Forward/backward-fill missing per-word speaker labels before
+	// chunking. Chirp 3's native diarization occasionally drops labels
+	// on individual words (or sustained runs) while still labeling
+	// adjacent words — without this pass those gaps become orphan
+	// SpeakerTag=0 chunks that downstream LLM clustering can't
+	// reattach to either speaker. The 2026-05-15 regression
+	// (session 26ecf316) had 8 chunks correctly labeled "1"/therapist
+	// and 12 interleaved chunks orphaned as tag=0 — those were
+	// actually the patient, but the UI only displayed Person 1.
+	// Bounded by the chunker's pause threshold so we never propagate
+	// a label across a pause where the speaker may have changed.
+	if useNativeDiarization {
+		fillSpeakerLabels(transcriptResult.Words, int64(chunkerCfg.PauseThresholdMS))
+	}
+	chunks := chunker.ChunkByPauses(transcriptResult.Words, chunkerCfg)
 	stats := chunker.ComputeStats(chunks)
 
 	// Always-on stats (no PHI). Surfaces silent / undecodable audio fast —
 	// total_words=0 means Chirp 3 returned nothing recognizable.
+	//
+	// session_id and upload_id come from logger.With() at the top of
+	// ProcessAudio — don't pass them again or slog/Cloud Logging
+	// concatenates the duplicate keys into one mangled field.
 	logger.Info("chunked transcript",
-		"session_id", event.SessionID,
 		"language", transcriptResult.LanguageCode,
 		"raw_word_count", transcriptResult.WordCount,
 		"chunk_count", stats.ChunkCount,
@@ -164,7 +239,6 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 
 	if transcriptResult.WordCount == 0 {
 		logger.Warn("empty transcript — Chirp 3 returned no words",
-			"session_id", event.SessionID,
 			"language", transcriptResult.LanguageCode,
 			"hint", "check audio quality (silent / non-Polish / unsupported codec) and Chirp 3 model availability")
 	}
@@ -199,8 +273,18 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 
 	// 5. Update session: language_code (speaker_label_mapping zostanie wypełniony
 	//    przez llm-worker.generateAndSaveSpeakerLabels po analizie LLM).
-	if err := updateSessionLanguage(ctx, event.SessionID, transcriptResult.LanguageCode); err != nil {
-		logger.Warn("session language update", "error", err)
+	//
+	// Guard: only write language_code when the DB didn't already have
+	// one. ingestion-svc.CompleteAudioUpload (since feat/llm-optimisation)
+	// writes it from patient_user.ui_language at session-create time —
+	// that value is the source of truth for the audio language and
+	// shouldn't be overwritten by whatever Chirp detected. The write
+	// is still useful for legacy / orphan sessions where the column
+	// is NULL and we used the multi-language auto-detect fallback.
+	if sessionLanguage == "" && transcriptResult.LanguageCode != "" {
+		if err := updateSessionLanguage(ctx, event.SessionID, transcriptResult.LanguageCode); err != nil {
+			logger.Warn("session language update", "error", err)
+		}
 	}
 	_ = updateSessionStatus(ctx, event.SessionID, "ANALYZING")
 
@@ -229,21 +313,40 @@ type TranscriptResult struct {
 }
 
 // transcribeAudio wywołuje Chirp 3 BatchRecognize.
-// Default (useNativeDiarization=false): zwraca płaską listę słów z timestamps
-// bez przypisania mówców. Diarization jest robiona później przez LLM (ADR-IMPL-007).
-func transcribeAudio(ctx context.Context, gcsURI string, useNativeDiarization bool) (*TranscriptResult, error) {
+//
+// languageCode: when non-empty, pinned as the single recognized
+// language (e.g. "pl-PL"). Empty falls back to the legacy
+// multi-language auto-detect list — used when session.language_code
+// wasn't set (orphan rows / pre-feat/llm-optimisation sessions) so
+// the worker still produces useful output.
+//
+// useNativeDiarization: gated upstream by operator opt-in AND the
+// Chirp3DiarizationLanguages allow-list. When true, Chirp emits
+// per-word speaker_tag; when false (current default for every
+// language), words come back flat and llm-worker clusters them.
+func transcribeAudio(ctx context.Context, gcsURI string, languageCode string, useNativeDiarization bool) (*TranscriptResult, error) {
 	features := &speechpb.RecognitionFeatures{
 		EnableAutomaticPunctuation: true,
 		EnableWordTimeOffsets:      true,
 	}
 
-	// Native diarization tylko jeśli flag explicit włączony.
-	// Polski (pl-PL) NIE jest na liście supportowanych dla diarization w v1.2.
 	if useNativeDiarization {
 		features.DiarizationConfig = &speechpb.SpeakerDiarizationConfig{
 			MinSpeakerCount: 2,
 			MaxSpeakerCount: 4,
 		}
+	}
+
+	// Language list: pinned single language when known (cleaner Chirp
+	// behavior, fewer mis-detections), multi-list fallback otherwise.
+	// Multi-list intentionally includes uk-UA because Polish therapy
+	// occasionally hits Ukrainian-speaking patients post-2022, and
+	// we'd rather Chirp pick the right one than misroute pl-PL.
+	var languageCodes []string
+	if languageCode != "" {
+		languageCodes = []string{languageCode}
+	} else {
+		languageCodes = []string{"pl-PL", "en-US", "de-DE", "uk-UA"}
 	}
 
 	req := &speechpb.BatchRecognizeRequest{
@@ -253,7 +356,7 @@ func transcribeAudio(ctx context.Context, gcsURI string, useNativeDiarization bo
 				AutoDecodingConfig: &speechpb.AutoDetectDecodingConfig{},
 			},
 			Model:         "chirp_3",
-			LanguageCodes: []string{"pl-PL", "en-US", "de-DE", "uk-UA"},
+			LanguageCodes: languageCodes,
 			Features:      features,
 		},
 		Files: []*speechpb.BatchRecognizeFileMetadata{
@@ -278,11 +381,20 @@ func transcribeAudio(ctx context.Context, gcsURI string, useNativeDiarization bo
 		return nil, fmt.Errorf("await: %w", err)
 	}
 
-	return ParseChirp3Results(resp, useNativeDiarization)
+	return ParseChirp3Results(resp, useNativeDiarization, languageCode)
 }
 
 // ParseChirp3Results extracts words and confidence from the Speech API response.
 // Słowa są zwracane bez speaker_tag (default flow) — chunker je zgrupuje.
+//
+// fallbackLanguage is the language we pinned in the recognize request
+// (e.g. "en-US"). Chirp returns the actually-detected language per
+// SpeechRecognitionResult.LanguageCode — first non-empty value wins.
+// We fall back to fallbackLanguage only when none of the result rows
+// carry a language (multi-detect mode with empty input, or older API
+// responses). The hardcoded "pl-PL" that this function used to default
+// to was a Polish-only-era leftover that silently overwrote
+// session.language_code on every transcribe — fixed 2026-05-14.
 //
 // Returns an error if any file-level result has a non-nil Error status. We
 // always submit a single file per BatchRecognize call (one audio upload per
@@ -292,9 +404,8 @@ func transcribeAudio(ctx context.Context, gcsURI string, useNativeDiarization bo
 // (e.g. M4A/AAC), the response carries an INTERNAL/INVALID_ARGUMENT
 // per-file Error, and ProcessAudio would otherwise see WordCount=0 and
 // keep going.
-func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarization bool) (*TranscriptResult, error) {
+func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarization bool, fallbackLanguage string) (*TranscriptResult, error) {
 	result := &TranscriptResult{
-		LanguageCode:         "pl-PL",
 		HasNativeDiarization: useNativeDiarization,
 	}
 	speakerSet := map[string]bool{}
@@ -326,6 +437,15 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 			}
 			alt := r.Alternatives[0]
 
+			// Capture the actually-detected language. Chirp populates
+			// this per result; first non-empty value wins (results
+			// within one file share a language). If Chirp didn't set
+			// it for any result we fall back to the pinned language
+			// after the loop.
+			if result.LanguageCode == "" && r.LanguageCode != "" {
+				result.LanguageCode = r.LanguageCode
+			}
+
 			for _, w := range alt.Words {
 				word := chunker.Word{
 					Text:       w.Word,
@@ -333,12 +453,21 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 					EndMS:      w.EndOffset.AsDuration().Milliseconds(),
 					Confidence: w.Confidence,
 				}
+				if useNativeDiarization {
+					// Propagate Chirp's per-word speaker label so the
+					// chunker can preserve attribution. Without this,
+					// downstream BlobLines lose speaker_tag and llm-
+					// worker falls back to LLM clustering even on
+					// languages where Chirp diarized successfully.
+					// Empty label is allowed (Chirp can skip labeling
+					// some words, e.g. cross-speaker filler).
+					word.SpeakerLabel = w.SpeakerLabel
+					if w.SpeakerLabel != "" {
+						speakerSet[w.SpeakerLabel] = true
+					}
+				}
 				result.Words = append(result.Words, word)
 				result.WordCount++
-
-				if useNativeDiarization && w.SpeakerLabel != "" {
-					speakerSet[w.SpeakerLabel] = true
-				}
 			}
 
 			if alt.Confidence > 0 {
@@ -353,6 +482,14 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 	}
 	result.SpeakerCount = len(speakerSet)
 
+	// Fallback for the case where Chirp didn't populate LanguageCode
+	// on any result (multi-detect with no recognized words, or older
+	// API responses). Use whatever we pinned in the request; empty
+	// stays empty so updateSessionLanguage's guard kicks in.
+	if result.LanguageCode == "" {
+		result.LanguageCode = fallbackLanguage
+	}
+
 	if len(fileErrors) > 0 {
 		// Common causes:
 		//   - Codec not supported by Chirp 3 (e.g. M4A/AAC; use FLAC, WAV-LINEAR16, OGG-OPUS).
@@ -365,6 +502,74 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 	}
 
 	return result, nil
+}
+
+// fillSpeakerLabels propagates per-word SpeakerLabels into adjacent
+// unlabeled words. Chirp 3 native diarization is reliable on labeling
+// the more dominant / longer-speaking speaker but routinely drops
+// labels on the other speaker's words and on filler / short
+// interjections (observed empirically on session 26ecf316 — 100 of 295
+// words returned label=""). The chunker treats label="" as a separate
+// "speaker" from label="1"/"2", so unlabeled runs become orphan
+// tag=0 chunks that the downstream LLM role-only path can't reattach.
+//
+// Algorithm: forward pass propagates the most recently seen label
+// forward into contiguous unlabeled words; backward pass does the
+// same for leading unlabeled words (case where Chirp didn't label
+// anyone until the second speaker's first turn). Both passes are
+// bounded by maxGapMS — if there's a pause >= the chunker's pause
+// threshold between the last labeled word and the current one, we
+// stop propagating. Pauses are the only signal we have that the
+// speaker may have changed, so crossing them silently would be the
+// classic "fix one bug, introduce another" trap.
+//
+// Mutates words in place. No-op when len(words) == 0.
+func fillSpeakerLabels(words []chunker.Word, maxGapMS int64) {
+	if len(words) == 0 {
+		return
+	}
+
+	// Forward pass.
+	lastLabel := ""
+	var lastEndMS int64 = -1
+	for i := range words {
+		if words[i].SpeakerLabel != "" {
+			lastLabel = words[i].SpeakerLabel
+			lastEndMS = words[i].EndMS
+			continue
+		}
+		if lastLabel == "" {
+			continue
+		}
+		if lastEndMS >= 0 && words[i].StartMS-lastEndMS > maxGapMS {
+			// Pause boundary crossed — speaker may have changed; stop
+			// propagating until we see another labeled word.
+			lastLabel = ""
+			continue
+		}
+		words[i].SpeakerLabel = lastLabel
+		lastEndMS = words[i].EndMS
+	}
+
+	// Backward pass for leading unlabeled words.
+	nextLabel := ""
+	var nextStartMS int64 = -1
+	for i := len(words) - 1; i >= 0; i-- {
+		if words[i].SpeakerLabel != "" {
+			nextLabel = words[i].SpeakerLabel
+			nextStartMS = words[i].StartMS
+			continue
+		}
+		if nextLabel == "" {
+			continue
+		}
+		if nextStartMS >= 0 && nextStartMS-words[i].EndMS > maxGapMS {
+			nextLabel = ""
+			continue
+		}
+		words[i].SpeakerLabel = nextLabel
+		nextStartMS = words[i].StartMS
+	}
 }
 
 func updateSessionStatus(ctx context.Context, sessionID, status string) error {
@@ -381,9 +586,67 @@ func updateSessionStatus(ctx context.Context, sessionID, status string) error {
 	return err
 }
 
+// loadSessionStatus reads sessions.status. Used as the poison-
+// message guard at ProcessAudio entry. Returns "" on missing row or
+// DB unavailable (the caller treats empty as "proceed normally" so
+// we never block legitimate first-time processing on a transient DB
+// hiccup). Non-fatal — we'd rather over-process than silently drop.
+func loadSessionStatus(ctx context.Context, sessionID string) (string, error) {
+	if dbPool == nil {
+		return "", nil
+	}
+	id, err := uuid.Parse(sessionID)
+	if err != nil {
+		return "", err
+	}
+	var status string
+	err = dbPool.QueryRow(ctx,
+		"SELECT status FROM sessions WHERE id = $1",
+		id).Scan(&status)
+	if err != nil {
+		return "", err
+	}
+	return status, nil
+}
+
+// loadSessionLanguage reads session.language_code (BCP47 tag like
+// "pl-PL") set by ingestion-svc.CompleteAudioUpload at session create.
+// Empty string means the row is NULL — caller falls back to
+// multi-language auto-detect. Non-fatal errors (DB down, row not
+// found) also return "" so the worker degrades gracefully rather
+// than failing the whole STT call.
+func loadSessionLanguage(ctx context.Context, sessionID string) (string, error) {
+	if dbPool == nil {
+		return "", nil
+	}
+	id, err := uuid.Parse(sessionID)
+	if err != nil {
+		return "", err
+	}
+	var languageCode *string
+	err = dbPool.QueryRow(ctx,
+		"SELECT language_code FROM sessions WHERE id = $1",
+		id).Scan(&languageCode)
+	if err != nil {
+		return "", err
+	}
+	if languageCode == nil {
+		return "", nil
+	}
+	return *languageCode, nil
+}
+
 // updateSessionLanguage zapisuje wykryty/użyty language_code dla sesji.
 // speaker_label_mapping zostaje pusty {} — zostanie wypełniony przez
 // llm-worker.generateAndSaveSpeakerLabels po analizie LLM.
+//
+// Idempotency: when session.language_code was already populated by
+// ingestion-svc (the common case post-feat/llm-optimisation), this
+// just overwrites with the same value. Harmless. We keep the write
+// for two reasons: (a) record what Chirp actually used, including
+// the multi-detect fallback path where the input language was
+// unknown; (b) backwards compatibility with reports / dashboards
+// that read this column after STT.
 func updateSessionLanguage(ctx context.Context, sessionID string, languageCode string) error {
 	if dbPool == nil {
 		return nil
@@ -478,14 +741,35 @@ func persistTranscript(ctx context.Context, sessionID string, result *Transcript
 
 	blobLines := make([]BlobLine, 0, len(chunks))
 	for _, c := range chunks {
-		blobLines = append(blobLines, BlobLine{
+		bl := BlobLine{
 			ChunkIdx:   c.Index,
 			Text:       c.Text,
 			StartMS:    c.StartMS,
 			EndMS:      c.EndMS,
 			WordCount:  c.WordCount,
 			Confidence: c.Confidence,
-		})
+		}
+		// Propagate speaker attribution from STT-native diarization.
+		// Chirp returns SpeakerLabel as a numeric string ("1", "2",
+		// ...); we store both the integer SpeakerTag (for downstream
+		// llm-worker.generateAndSaveSpeakerLabels which keys on tags)
+		// and the raw SpeakerLabel (for debugging / future Chirp
+		// label-format changes). Parse-failure → log a warning and
+		// emit SpeakerTag=0, which downstream treats as "no native
+		// diarization" — degrades to LLM clustering rather than
+		// silently corrupting the attribution.
+		if c.SpeakerLabel != "" {
+			label := c.SpeakerLabel
+			bl.SpeakerLabel = &label
+			if tag, err := strconv.Atoi(c.SpeakerLabel); err == nil {
+				t := int32(tag)
+				bl.SpeakerTag = &t
+			} else {
+				slog.Warn("non-numeric Chirp speaker label; speaker_tag left nil — chunk will route to LLM clustering",
+					"chunk_idx", c.Index, "speaker_label", c.SpeakerLabel)
+			}
+		}
+		blobLines = append(blobLines, bl)
 	}
 
 	blobJSON, err := json.Marshal(blobLines)

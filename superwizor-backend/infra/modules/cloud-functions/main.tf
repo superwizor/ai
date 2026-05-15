@@ -169,6 +169,15 @@ resource "google_cloudfunctions2_function" "stt_worker" {
       # PHI exposure: when "true", logs the full plaintext transcript
       # to Cloud Logging. Staging-only debugging; never set on prod.
       DEV_LOG_PLAINTEXT_TRANSCRIPT = var.dev_log_plaintext_transcript ? "true" : "false"
+      # Operator opt-in for native Chirp 3 diarization. When "on", AND
+      # the session's language is true in
+      # transcriptfmt.Chirp3DiarizationLanguages, stt-worker enables
+      # SpeakerDiarizationConfig on the BatchRecognize call → words
+      # come back with speaker_tag populated → llm-worker takes the
+      # role-only-grammar branch instead of clustering.
+      # Today: en-US is the only language flagged true; pl-PL stays
+      # on the LLM-clustering path. Rollback: change to "off".
+      STT_NATIVE_DIARIZATION = "on"
     }
 
     secret_environment_variables {
@@ -226,6 +235,13 @@ resource "google_cloudfunctions2_function" "llm_worker" {
     environment_variables = {
       GCP_PROJECT_ID = var.project_id
       KMS_KEY_URI    = var.app_data_key_id
+      # LLM_DIARIZATION_MODE: "json" (default in code) or "markdown".
+      # "markdown" switches call 1 to free-form Markdown output parsed
+      # server-side by internal/diarization. Call 2 is ALWAYS Format B
+      # speaker-turn Markdown input regardless of this flag.
+      # Rollback: change to "json" + re-apply (no rebuild needed,
+      # terraform updates the env var in place in ~30s).
+      LLM_DIARIZATION_MODE = "markdown"
     }
 
     secret_environment_variables {
