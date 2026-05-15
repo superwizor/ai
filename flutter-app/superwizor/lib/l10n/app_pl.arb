@@ -55,6 +55,9 @@
   "modality_eft": "Skoncentrowana na Emocjach (EFT)",
   "modality_coaching": "Coaching (ICF/GROW)",
 
+  "modality_sheet_title": "Wybierz swój nurt",
+  "modality_sheet_subtitle": "To ustawienie wpływa na generowane raporty. Możesz je zmienić w każdej chwili.",
+
   "addPatient_title": "Nowy pacjent.",
   "addPatient_first_name_label": "Imię pacjenta (wymagane)",
   "addPatient_last_name_label": "Nazwisko (opcjonalne)",
@@ -249,5 +252,19 @@
   "settings_delete_confirm_body": "Ta operacja jest NIEODWRACALNA.\nUstracisz całą dokumentację kliniczną i dane pacjentów.",
   "settings_delete_confirm_proceed": "Rozumiem — przejdź dalej.",
   "settings_delete_confirm_cancel": "Anuluj — zachowaj konto.",
-  "settings_choose_language": "Wybierz język"
+  "settings_choose_language": "Wybierz język",
+  "delete_account_title": "Usuń konto",
+  "delete_account_consequence_1": "Cała dokumentacja kliniczna — wszystkich pacjentów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.",
+  "delete_account_consequence_2": "Twoja subskrypcja (jeśli ją posiadasz) nie zostanie automatycznie anulowana. Musisz ją anulować osobno w App Store lub Google Play.",
+  "delete_account_consequence_3": "Nie będziesz mógł odzyskać danych po zakończeniu tego procesu. Operacja jest nieodwracalna.",
+  "delete_account_toggle_text": "Rozumiem konsekwencje\ni chcę usunąć konto",
+  "delete_account_button": "Usuń moje konto",
+  "delete_account_sheet_title": "Ostatni krok.",
+  "delete_account_sheet_subtitle": "Aby potwierdzić, wpisz:",
+  "delete_account_sheet_hint": "wpisz tutaj…",
+  "delete_account_sheet_button": "USUWAM KONTO",
+  "delete_account_sheet_cancel": "Anuluj.",
+  "delete_account_relogin_error": "Zaloguj się ponownie, by usunąć konto.",
+  "delete_account_confirm_word": "usuwam",
+  "settings_licenses_desc": "Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania."
 }

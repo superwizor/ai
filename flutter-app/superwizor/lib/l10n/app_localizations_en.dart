@@ -145,6 +145,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modality_coaching => 'Coaching (ICF/GROW)';
 
   @override
+  String get modality_sheet_title => 'Choose your approach';
+
+  @override
+  String get modality_sheet_subtitle =>
+      'This affects how your reports are generated. You can change it anytime.';
+
+  @override
   String get addPatient_title => 'New Patient.';
 
   @override
@@ -679,4 +686,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settings_choose_language => 'Choose language';
+
+  @override
+  String get delete_account_title => 'Delete account';
+
+  @override
+  String get delete_account_consequence_1 =>
+      'All clinical documentation — all patients, records, sessions, and AI reports — will be permanently deleted.';
+
+  @override
+  String get delete_account_consequence_2 =>
+      'Your subscription (if you have one) will not be automatically canceled. You must cancel it separately in the App Store or Google Play.';
+
+  @override
+  String get delete_account_consequence_3 =>
+      'You will not be able to recover your data after completing this process. The operation is irreversible.';
+
+  @override
+  String get delete_account_toggle_text =>
+      'I understand the consequences\nand want to delete my account';
+
+  @override
+  String get delete_account_button => 'Delete my account';
+
+  @override
+  String get delete_account_sheet_title => 'Final step.';
+
+  @override
+  String get delete_account_sheet_subtitle => 'To confirm, type:';
+
+  @override
+  String get delete_account_sheet_hint => 'type here…';
+
+  @override
+  String get delete_account_sheet_button => 'DELETE ACCOUNT';
+
+  @override
+  String get delete_account_sheet_cancel => 'Cancel.';
+
+  @override
+  String get delete_account_relogin_error =>
+      'Please log in again to delete your account.';
+
+  @override
+  String get delete_account_confirm_word => 'delete';
+
+  @override
+  String get settings_licenses_desc =>
+      'This application was built thanks to the work of thousands of developers around the world. Below you\'ll find information about the open-source software we use to deliver the highest quality experience.';
 }

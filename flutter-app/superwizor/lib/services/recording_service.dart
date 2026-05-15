@@ -1,9 +1,10 @@
 // RecordingService — wraps the `record` package with our domain semantics.
 //
-// Per D10: native OGG-OPUS @ 64 kbps mono. Hardware-accelerated on
-// iOS (AudioToolbox 11+) and Android (MediaCodec API 21+). No
-// post-processing — `recorder.stop()` returns the path to a final
-// .ogg file ready for AES-GCM encryption by SecureAudioStorageService.
+// Per D10 Plan C: native FLAC @ 16 kHz mono. iOS does not ship a
+// public Opus encoder; the `record` package's iOS Opus path produces
+// 0-byte files. FLAC works natively and is a Chirp 3-supported codec.
+// `recorder.stop()` returns the path to a final .flac file ready for
+// AES-GCM encryption by SecureAudioStorageService.
 //
 // State machine:
 //
@@ -57,8 +58,8 @@ class RecordingService {
     return base;
   }
 
-  /// Begins a fresh recording for [sessionId]. The OGG file lands at
-  /// `<docs>/sessions/<sessionId>/raw.ogg`. Throws if a recording is
+  /// Begins a fresh recording for [sessionId]. The FLAC file lands at
+  /// `<docs>/sessions/<sessionId>/raw.flac`. Throws if a recording is
   /// already in progress.
   Future<void> start(String sessionId) async {
     if (_state != RecordingState.idle && _state != RecordingState.stopped) {
@@ -134,7 +135,7 @@ class RecordingService {
     _setState(RecordingState.recording);
   }
 
-  /// Stops the recorder. Returns the path to the finished OGG file
+  /// Stops the recorder. Returns the path to the finished FLAC file
   /// (or null if recording never actually started). Caller hands the
   /// file off to SecureAudioStorageService.encryptRecording().
   ///

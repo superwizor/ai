@@ -144,6 +144,9 @@ class AudioConverterService {
 
     // Write output WAV
     final tmpDir = await getTemporaryDirectory();
+    if (!await tmpDir.exists()) {
+      await tmpDir.create(recursive: true);
+    }
     final outputPath = p.join(
       tmpDir.path,
       'superwizor_norm_${DateTime.now().millisecondsSinceEpoch}.wav',

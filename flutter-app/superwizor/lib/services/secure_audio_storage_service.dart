@@ -3,7 +3,7 @@
 // Responsibilities:
 //   - Generate one master key per user on first login on this device,
 //     stored in flutter_secure_storage (iOS Keychain, Android Keystore).
-//   - Encrypt-after-recording: take the OGG file from `record` package,
+//   - Encrypt-after-recording: take the FLAC file from `record` package,
 //     stream-read it in 1 MB chunks, AES-GCM each chunk with a fresh IV,
 //     write encrypted .enc files to app documents directory.
 //   - Securely delete the raw recording (zero-overwrite + unlink).
@@ -90,12 +90,37 @@ class SecureAudioStorageService {
     return enc.Key(base64Decode(stored));
   }
 
-  // ---------- write path: encrypt the recorded OGG ----------
+  // ---------- size computation (no decryption) ----------
+
+  /// Computes the exact decrypted plaintext size from encrypted chunk
+  /// metadata.  Each chunk file contains:
+  ///   [1 byte key_version] [12 bytes IV] [ciphertext] [16 bytes GCM tag]
+  /// So: `plaintext_per_chunk = chunk.sizeBytes - _headerLen - _gcmTagLen`
+  ///
+  /// This lets callers (e.g. `_finishAndUpload`) obtain the size needed
+  /// for `CreateAudioUploadRequest.estimatedSizeBytes` **without** an
+  /// expensive decrypt→write→measure→delete round-trip.
+  static int estimateDecryptedSize(List<EncryptedChunk> chunks) {
+    const overhead = _headerLen + _gcmTagLen; // 13 + 16 = 29
+    int total = 0;
+    for (final c in chunks) {
+      final plain = c.sizeBytes - overhead;
+      if (plain > 0) total += plain;
+    }
+    return total;
+  }
+
+  // ---------- write path: encrypt the recorded FLAC ----------
 
   /// Reads [rawPath] in 1 MB chunks, AES-GCM-encrypts each, writes
   /// `chunk_NNNNN.enc` files to `<docs>/sessions/<sessionId>/`.
   /// On success the source file is securely deleted (zero-overwrite
   /// followed by unlink). Returns metadata about all written chunks.
+  ///
+  /// **Atomicity guard**: if a previous encryption attempt for the same
+  /// [sessionId] left partial chunks on disk (crash, out-of-space),
+  /// they are wiped before starting so the caller always gets a
+  /// consistent set.
   Future<List<EncryptedChunk>> encryptRecording({
     required String rawPath,
     required String sessionId,
@@ -110,7 +135,17 @@ class SecureAudioStorageService {
     final keyVersion = keyInfo.version;
 
     final dir = await _sessionDir(sessionId);
-    await dir.create(recursive: true);
+    // Atomic guard: wipe stale chunks from a previous failed attempt
+    // so we don't end up with a mix of old + new chunks.
+    if (await dir.exists()) {
+      await for (final entry in dir.list()) {
+        if (entry is File && entry.path.endsWith('.enc')) {
+          try { await entry.delete(); } catch (_) {}
+        }
+      }
+    } else {
+      await dir.create(recursive: true);
+    }
 
     final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
     final out = <EncryptedChunk>[];
@@ -189,6 +224,13 @@ class SecureAudioStorageService {
     }
 
     final tempDir = await getTemporaryDirectory();
+    // On macOS, the sandboxed temp directory (Caches/<bundleId>/) may not
+    // exist yet — getTemporaryDirectory() returns the *expected* path but
+    // doesn't guarantee the directory is created.  Without this guard,
+    // File.openWrite() throws PathNotFoundException.
+    if (!await tempDir.exists()) {
+      await tempDir.create(recursive: true);
+    }
     final out = File(p.join(tempDir.path, 'session_$sessionId.flac'));
     final sink = out.openWrite();
 

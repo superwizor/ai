@@ -8,6 +8,7 @@ import '../theme/euphire_theme.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
 import '../widgets/add_patient_modal.dart';
+import '../widgets/edit_patient_modal.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import 'client_details_screen.dart';
 import 'menu_screen.dart';
@@ -407,10 +408,18 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
   // Funkcja edycji z formularzem do imienia i nazwiska
   void _editName() {
     Navigator.pop(context); // close options
-    // TODO: zaimplementować pełny dialog edycji updatePatientUser.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edycja w przygotowaniu...')),
-    );
+    final patients = ref.read(patientsProvider).value ?? [];
+    try {
+      final patient = patients.firstWhere((p) => p.id == widget.patientId);
+      showEuphireBottomSheet(
+        context: context,
+        builder: (context) => EditPatientModal(patient: patient),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Błąd: Nie znaleziono klienta.')),
+      );
+    }
   }
 
   void _deleteWarning() {
@@ -439,7 +448,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Center(
                 child: Container(
@@ -448,30 +457,141 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                     color: Colors.white24, borderRadius: BorderRadius.circular(2)),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
+              
+              // Ikona
+              Center(
+                child: Container(
+                  width: 72, height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: EuphireColors.ember.withValues(alpha: 0.12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: EuphireColors.ember.withValues(alpha: 0.2),
+                        blurRadius: 28, spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.manage_accounts_rounded,
+                    color: EuphireColors.ember,
+                    size: 34,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              
               Text(
-                'Zarządzaj: ${widget.patientName}',
+                widget.patientName,
                 style: const TextStyle(
                   fontFamily: 'Merriweather',
                   fontStyle: FontStyle.italic,
-                  fontSize: 18,
+                  fontSize: 22,
                   color: EuphireColors.frostWhite,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Zarządzaj kartoteką klienta',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  color: EuphireColors.mist.withValues(alpha: 0.8),
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+
+              InkWell(
+                onTap: _editName,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: EuphireColors.ember.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.edit_rounded, color: EuphireColors.ember, size: 22),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Edytuj dane',
+                              style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w600, color: EuphireColors.frostWhite),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Zmień imię i nazwisko',
+                              style: TextStyle(fontFamily: 'Montserrat', fontSize: 12, color: EuphireColors.mist.withValues(alpha: 0.7)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded, color: EuphireColors.mist, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              InkWell(
+                onTap: _deleteWarning,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: EuphireColors.magma.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: EuphireColors.magma.withValues(alpha: 0.15)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: EuphireColors.magma.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.delete_outline_rounded, color: EuphireColors.magma, size: 22),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Usuń kartotekę',
+                              style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w600, color: EuphireColors.magma),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Skasuj historię, sesje i notatki',
+                              style: TextStyle(fontFamily: 'Montserrat', fontSize: 12, color: EuphireColors.magma.withValues(alpha: 0.7)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right_rounded, color: EuphireColors.magma.withValues(alpha: 0.5), size: 20),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.edit_outlined, color: EuphireColors.mist),
-                title: const Text('Edytuj imię i nazwisko', style: TextStyle(color: EuphireColors.frostWhite)),
-                onTap: _editName,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: EuphireColors.magma),
-                title: const Text('Usuń kartotekę', style: TextStyle(color: EuphireColors.magma)),
-                onTap: _deleteWarning,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              const SizedBox(height: 8),
             ],
           ),
         ),

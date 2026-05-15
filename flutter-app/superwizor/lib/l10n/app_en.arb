@@ -55,6 +55,9 @@
   "modality_eft": "Emotionally Focused (EFT)",
   "modality_coaching": "Coaching (ICF/GROW)",
 
+  "modality_sheet_title": "Choose your approach",
+  "modality_sheet_subtitle": "This affects how your reports are generated. You can change it anytime.",
+
   "addPatient_title": "New Patient.",
   "addPatient_first_name_label": "Patient's first name (required)",
   "addPatient_last_name_label": "Patient's last name (optional)",
@@ -249,5 +252,19 @@
   "settings_delete_confirm_body": "This action is IRREVERSIBLE.\nYou will lose all clinical documentation and patient data.",
   "settings_delete_confirm_proceed": "I understand — proceed.",
   "settings_delete_confirm_cancel": "Cancel — keep my account.",
-  "settings_choose_language": "Choose language"
+  "settings_choose_language": "Choose language",
+  "delete_account_title": "Delete account",
+  "delete_account_consequence_1": "All clinical documentation — all patients, records, sessions, and AI reports — will be permanently deleted.",
+  "delete_account_consequence_2": "Your subscription (if you have one) will not be automatically canceled. You must cancel it separately in the App Store or Google Play.",
+  "delete_account_consequence_3": "You will not be able to recover your data after completing this process. The operation is irreversible.",
+  "delete_account_toggle_text": "I understand the consequences\nand want to delete my account",
+  "delete_account_button": "Delete my account",
+  "delete_account_sheet_title": "Final step.",
+  "delete_account_sheet_subtitle": "To confirm, type:",
+  "delete_account_sheet_hint": "type here…",
+  "delete_account_sheet_button": "DELETE ACCOUNT",
+  "delete_account_sheet_cancel": "Cancel.",
+  "delete_account_relogin_error": "Please log in again to delete your account.",
+  "delete_account_confirm_word": "delete",
+  "settings_licenses_desc": "This application was built thanks to the work of thousands of developers around the world. Below you'll find information about the open-source software we use to deliver the highest quality experience."
 }

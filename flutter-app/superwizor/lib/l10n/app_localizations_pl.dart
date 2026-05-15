@@ -148,6 +148,13 @@ class AppLocalizationsPl extends AppLocalizations {
   String get modality_coaching => 'Coaching (ICF/GROW)';
 
   @override
+  String get modality_sheet_title => 'Wybierz swój nurt';
+
+  @override
+  String get modality_sheet_subtitle =>
+      'To ustawienie wpływa na generowane raporty. Możesz je zmienić w każdej chwili.';
+
+  @override
   String get addPatient_title => 'Nowy pacjent.';
 
   @override
@@ -681,4 +688,52 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get settings_choose_language => 'Wybierz język';
+
+  @override
+  String get delete_account_title => 'Usuń konto';
+
+  @override
+  String get delete_account_consequence_1 =>
+      'Cała dokumentacja kliniczna — wszystkich pacjentów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.';
+
+  @override
+  String get delete_account_consequence_2 =>
+      'Twoja subskrypcja (jeśli ją posiadasz) nie zostanie automatycznie anulowana. Musisz ją anulować osobno w App Store lub Google Play.';
+
+  @override
+  String get delete_account_consequence_3 =>
+      'Nie będziesz mógł odzyskać danych po zakończeniu tego procesu. Operacja jest nieodwracalna.';
+
+  @override
+  String get delete_account_toggle_text =>
+      'Rozumiem konsekwencje\ni chcę usunąć konto';
+
+  @override
+  String get delete_account_button => 'Usuń moje konto';
+
+  @override
+  String get delete_account_sheet_title => 'Ostatni krok.';
+
+  @override
+  String get delete_account_sheet_subtitle => 'Aby potwierdzić, wpisz:';
+
+  @override
+  String get delete_account_sheet_hint => 'wpisz tutaj…';
+
+  @override
+  String get delete_account_sheet_button => 'USUWAM KONTO';
+
+  @override
+  String get delete_account_sheet_cancel => 'Anuluj.';
+
+  @override
+  String get delete_account_relogin_error =>
+      'Zaloguj się ponownie, by usunąć konto.';
+
+  @override
+  String get delete_account_confirm_word => 'usuwam';
+
+  @override
+  String get settings_licenses_desc =>
+      'Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania.';
 }

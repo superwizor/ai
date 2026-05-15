@@ -5,7 +5,7 @@
 //      `therapistId`
 //   2. ConsentService.hasConsent() second-line check; missing → show
 //      "Brak zgody" sheet, pop back
-//   3. Generate sessionId, start RecordingService (OPUS @ 64kbps)
+//   3. Generate sessionId, start RecordingService (FLAC @ 16 kHz mono)
 //   4. UI shows waveform + counter + instructions block
 //   5. Stop button:
 //        < 5 min → "Nagranie zbyt krótkie" sheet, recording continues
@@ -33,6 +33,7 @@ import '../providers/grpc_provider.dart';
 import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
 import '../services/recording_service.dart';
+import '../services/secure_audio_storage_service.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
@@ -431,13 +432,20 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       );
       _chunkCount = chunks.length;
       debugPrint('[recording] encrypted: ${chunks.length} chunks');
-
-      final tempForLength = await storage.decryptToTempFile(sessionId: sessionId);
-      final length = await tempForLength.length();
-      try {
-        if (await tempForLength.exists()) await tempForLength.delete();
-      } catch (_) {}
-      debugPrint('[recording] temp decrypted size=${length}B');
+      // Calculate exact plaintext size from chunk metadata — no
+      // decryption needed.  Each .enc file has 29 bytes of overhead
+      // (13 header + 16 GCM tag), so plaintext = Σ(chunk.size - 29).
+      //
+      // OLD CODE (removed): the previous implementation did a full
+      // decryptToTempFile() → .length() → delete(), only to get this
+      // number.  That was a double-decrypt anti-pattern because
+      // uploadEncryptedSession() internally calls decryptToTempFile()
+      // again.  Two AES-GCM passes + two full disk writes for a single
+      // upload — wasteful and the root cause of the PathNotFound crash
+      // (the first decrypt hit a non-existent temp directory on macOS).
+      final length = SecureAudioStorageService.estimateDecryptedSize(chunks);
+      debugPrint('[recording] estimated decrypted size=${length}B '
+          '(${chunks.length} chunks, ${(length / 1024 / 1024).toStringAsFixed(1)} MB)');
 
       final signedUrl = await _requestSignedUrl(length);
       debugPrint('[recording] got signed URL (uploadId=$_uploadId)');
@@ -493,7 +501,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       therapistId: widget.therapistId,
       estimatedSizeBytes: Int64(sizeBytes),
       contentType: 'audio/flac',
-      clientPlatform: Platform.isIOS ? 'ios' : 'android',
+      clientPlatform: Platform.isIOS
+          ? 'ios'
+          : Platform.isMacOS
+              ? 'macos'
+              : Platform.isAndroid
+                  ? 'android'
+                  : 'desktop',
       idempotencyKey: _sessionId ?? const Uuid().v4(),
       reportLanguage: widget.reportLanguage,
     ));

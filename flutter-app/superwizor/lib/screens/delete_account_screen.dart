@@ -10,6 +10,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme/euphire_theme.dart';
 
 class DeleteAccountScreen extends StatefulWidget {
@@ -37,6 +38,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: EuphireColors.nocturne,
@@ -58,7 +60,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
                 child: Text(
-                  'Usuń konto',
+                  t.delete_account_title,
                   style: theme.textTheme.displaySmall?.copyWith(
                     fontFamily: 'Merriweather',
                     fontStyle: FontStyle.italic,
@@ -74,18 +76,12 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      _ConsequenceItem(
-                        'Całą dokumentację kliniczną — wszystkich pacjentów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.',
-                      ),
-                      SizedBox(height: 20),
-                      _ConsequenceItem(
-                        'Twoja subskrypcja (jeśli ją posiadasz) nie zostanie automatycznie anulowana. Musisz ją anulować osobno w App Store lub Google Play.',
-                      ),
-                      SizedBox(height: 20),
-                      _ConsequenceItem(
-                        'Nie będziesz mógł odzyskać danych po zakończeniu tego procesu. Operacja jest nieodwracalna.',
-                      ),
+                    children: [
+                      _ConsequenceItem(t.delete_account_consequence_1),
+                      const SizedBox(height: 20),
+                      _ConsequenceItem(t.delete_account_consequence_2),
+                      const SizedBox(height: 20),
+                      _ConsequenceItem(t.delete_account_consequence_3),
                     ],
                   ),
                 ),
@@ -107,8 +103,8 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            'Rozumiem konsekwencje\ni chcę usunąć konto',
-                            style: TextStyle(
+                            t.delete_account_toggle_text,
+                            style: const TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -148,9 +144,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                 borderRadius: BorderRadius.circular(16)),
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'Usuń moje konto',
-                            style: TextStyle(
+                          child: Text(
+                            t.delete_account_button,
+                            style: const TextStyle(
                               fontFamily: 'Montserrat',
                               fontWeight: FontWeight.w700,
                               fontSize: 17,
@@ -223,12 +219,17 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
   bool _deleting = false;
 
   @override
-  void initState() {
-    super.initState();
-    _ctrl.addListener(() {
-      final ok = _ctrl.text.trim() == 'USUWAM';
-      if (ok != _confirmed) setState(() => _confirmed = ok);
-    });
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _ctrl.removeListener(_onTextChanged);
+    _ctrl.addListener(_onTextChanged);
+    _onTextChanged();
+  }
+
+  void _onTextChanged() {
+    final expected = AppLocalizations.of(context)!.delete_account_confirm_word;
+    final ok = _ctrl.text.trim().toLowerCase() == expected.toLowerCase();
+    if (ok != _confirmed) setState(() => _confirmed = ok);
   }
 
   @override
@@ -249,8 +250,8 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
       if (e.code == 'requires-recent-login') {
         Navigator.of(context).pop(false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Zaloguj się ponownie, by usunąć konto.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.delete_account_relogin_error),
             backgroundColor: Colors.red,
           ),
         );
@@ -264,6 +265,7 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
     return Padding(
       // Przesuwa sheet nad klawiaturę
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -306,7 +308,7 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
                 const SizedBox(height: 16),
 
                 Text(
-                  'Ostatni krok.',
+                  t.delete_account_sheet_title,
                   style: theme.textTheme.headlineMedium?.copyWith(
                     fontFamily: 'Merriweather',
                     fontStyle: FontStyle.italic,
@@ -316,13 +318,13 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Aby potwierdzić, wpisz:',
+                  t.delete_account_sheet_subtitle,
                   style: theme.textTheme.bodyMedium?.copyWith(color: EuphireColors.mist),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'USUWAM',
+                  t.delete_account_confirm_word,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontFamily: 'RobotoMono',
                     color: EuphireColors.magma,
@@ -345,7 +347,7 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
                     letterSpacing: 3,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'wpisz tutaj…',
+                    hintText: t.delete_account_sheet_hint,
                     hintStyle: TextStyle(
                       fontFamily: 'RobotoMono', fontSize: 14,
                       color: EuphireColors.mist.withValues(alpha: 0.4),
@@ -398,9 +400,9 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
                               width: 22, height: 22,
                               child: CircularProgressIndicator(
                                   color: Colors.white, strokeWidth: 2))
-                          : const Text(
-                              'USUWAM KONTO',
-                              style: TextStyle(
+                          : Text(
+                              t.delete_account_sheet_button,
+                              style: const TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontWeight: FontWeight.w800,
                                 fontSize: 14,
@@ -415,7 +417,7 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
                   child: Text(
-                    'Anuluj.',
+                    t.delete_account_sheet_cancel,
                     style: TextStyle(
                       fontFamily: 'Montserrat',
                       color: EuphireColors.mist.withValues(alpha: 0.7),

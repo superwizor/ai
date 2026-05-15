@@ -356,6 +356,18 @@ abstract class AppLocalizations {
   /// **'Coaching (ICF/GROW)'**
   String get modality_coaching;
 
+  /// No description provided for @modality_sheet_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz swój nurt'**
+  String get modality_sheet_title;
+
+  /// No description provided for @modality_sheet_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'To ustawienie wpływa na generowane raporty. Możesz je zmienić w każdej chwili.'**
+  String get modality_sheet_subtitle;
+
   /// No description provided for @addPatient_title.
   ///
   /// In pl, this message translates to:
@@ -1321,6 +1333,90 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Wybierz język'**
   String get settings_choose_language;
+
+  /// No description provided for @delete_account_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń konto'**
+  String get delete_account_title;
+
+  /// No description provided for @delete_account_consequence_1.
+  ///
+  /// In pl, this message translates to:
+  /// **'Cała dokumentacja kliniczna — wszystkich pacjentów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.'**
+  String get delete_account_consequence_1;
+
+  /// No description provided for @delete_account_consequence_2.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twoja subskrypcja (jeśli ją posiadasz) nie zostanie automatycznie anulowana. Musisz ją anulować osobno w App Store lub Google Play.'**
+  String get delete_account_consequence_2;
+
+  /// No description provided for @delete_account_consequence_3.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie będziesz mógł odzyskać danych po zakończeniu tego procesu. Operacja jest nieodwracalna.'**
+  String get delete_account_consequence_3;
+
+  /// No description provided for @delete_account_toggle_text.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozumiem konsekwencje\ni chcę usunąć konto'**
+  String get delete_account_toggle_text;
+
+  /// No description provided for @delete_account_button.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń moje konto'**
+  String get delete_account_button;
+
+  /// No description provided for @delete_account_sheet_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ostatni krok.'**
+  String get delete_account_sheet_title;
+
+  /// No description provided for @delete_account_sheet_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Aby potwierdzić, wpisz:'**
+  String get delete_account_sheet_subtitle;
+
+  /// No description provided for @delete_account_sheet_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'wpisz tutaj…'**
+  String get delete_account_sheet_hint;
+
+  /// No description provided for @delete_account_sheet_button.
+  ///
+  /// In pl, this message translates to:
+  /// **'USUWAM KONTO'**
+  String get delete_account_sheet_button;
+
+  /// No description provided for @delete_account_sheet_cancel.
+  ///
+  /// In pl, this message translates to:
+  /// **'Anuluj.'**
+  String get delete_account_sheet_cancel;
+
+  /// No description provided for @delete_account_relogin_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaloguj się ponownie, by usunąć konto.'**
+  String get delete_account_relogin_error;
+
+  /// No description provided for @delete_account_confirm_word.
+  ///
+  /// In pl, this message translates to:
+  /// **'usuwam'**
+  String get delete_account_confirm_word;
+
+  /// No description provided for @settings_licenses_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania.'**
+  String get settings_licenses_desc;
 }
 
 class _AppLocalizationsDelegate

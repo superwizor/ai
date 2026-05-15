@@ -399,7 +399,13 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
         therapistId: widget.therapistId,
         estimatedSizeBytes: Int64(uploadSize),
         contentType: contentType,
-        clientPlatform: Platform.isIOS ? 'ios' : 'android',
+        clientPlatform: Platform.isIOS
+            ? 'ios'
+            : Platform.isMacOS
+                ? 'macos'
+                : Platform.isAndroid
+                    ? 'android'
+                    : 'desktop',
         idempotencyKey: sessionId,
         reportLanguage: 'pl',
       ));
