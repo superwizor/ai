@@ -198,19 +198,27 @@ func TestNativeDiarizationSupported_StaticMap(t *testing.T) {
 	// land in the same commit as the test update. This catches
 	// accidental edits.
 	//
-	// Current policy (2026-05-14): Chirp 3 supports diarization for
-	// every language on our patient_user list except pl-PL. pl-PL
-	// stays false until verified — Google's docs are silent on it
-	// and a probe in production showed Polish sessions came back
-	// with no speaker_tag despite the diarization config being on.
+	// 2026-05-15: expanded to Google's authoritative Chirp 3
+	// diarization-supported list. pl-PL and uk-UA explicitly stay
+	// false (not on Google's list; pl-PL probe confirmed Chirp
+	// returns no speaker_tag).
 	want := map[string]bool{
-		"pl-PL": false,
-		"en-US": true,
-		"en-GB": true,
-		"de-DE": true,
-		"es-ES": true,
-		"fr-FR": true,
-		"uk-UA": true,
+		"pl-PL":       false,
+		"uk-UA":       false,
+		"cmn-Hans-CN": true,
+		"de-DE":       true,
+		"en-GB":       true,
+		"en-IN":       true,
+		"en-US":       true,
+		"es-ES":       true,
+		"es-US":       true,
+		"fr-CA":       true,
+		"fr-FR":       true,
+		"hi-IN":       true,
+		"it-IT":       true,
+		"ja-JP":       true,
+		"ko-KR":       true,
+		"pt-BR":       true,
 	}
 	if len(Chirp3DiarizationLanguages) != len(want) {
 		t.Errorf("map size: want %d, got %d", len(want), len(Chirp3DiarizationLanguages))
