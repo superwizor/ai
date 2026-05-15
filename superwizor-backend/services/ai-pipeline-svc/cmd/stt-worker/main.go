@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -125,6 +126,33 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 
 	logger = logger.With("session_id", event.SessionID, "upload_id", event.UploadID)
 	logger.Info("processing audio")
+
+	// Poison-message guard. If the session is already in a terminal
+	// state, a prior worker invocation already concluded (success or
+	// permanent failure). Redelivery of the same Pub/Sub message
+	// would just re-run Chirp on the same audio with the same result
+	// — wasted spend and noise. ACK by returning nil.
+	//
+	// "FAILED" terminal-fail case (the b6c7a606 scenario from
+	// 2026-05-14): first attempt set status=FAILED + returned error
+	// → Pub/Sub redelivered for 24h without DLQ. Now: redelivery
+	// sees FAILED → drops the message.
+	// "COMPLETED" should never see a redelivery in practice
+	// (transcript.completed has already been published, llm-worker
+	// ran, report saved), but is included for symmetry.
+	//
+	// Non-terminal statuses ("", CREATED, TRANSCRIBING, ANALYZING)
+	// fall through — TRANSCRIBING in particular means a previous
+	// invocation crashed mid-flight before reaching FAILED/COMPLETED,
+	// and we want the retry to make progress.
+	if status, err := loadSessionStatus(ctx, event.SessionID); err != nil {
+		logger.Warn("session status pre-check", "error", err)
+	} else if status == "FAILED" || status == "COMPLETED" {
+		logger.Warn("dropping poison redelivery — session already terminal",
+			"prior_status", status,
+			"hint", "manual admin path is to reset session.status before re-uploading audio")
+		return nil
+	}
 
 	startTime := time.Now()
 
@@ -410,12 +438,21 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 					EndMS:      w.EndOffset.AsDuration().Milliseconds(),
 					Confidence: w.Confidence,
 				}
+				if useNativeDiarization {
+					// Propagate Chirp's per-word speaker label so the
+					// chunker can preserve attribution. Without this,
+					// downstream BlobLines lose speaker_tag and llm-
+					// worker falls back to LLM clustering even on
+					// languages where Chirp diarized successfully.
+					// Empty label is allowed (Chirp can skip labeling
+					// some words, e.g. cross-speaker filler).
+					word.SpeakerLabel = w.SpeakerLabel
+					if w.SpeakerLabel != "" {
+						speakerSet[w.SpeakerLabel] = true
+					}
+				}
 				result.Words = append(result.Words, word)
 				result.WordCount++
-
-				if useNativeDiarization && w.SpeakerLabel != "" {
-					speakerSet[w.SpeakerLabel] = true
-				}
 			}
 
 			if alt.Confidence > 0 {
@@ -464,6 +501,29 @@ func updateSessionStatus(ctx context.Context, sessionID, status string) error {
 		"UPDATE sessions SET status = $1, status_updated_at = now() WHERE id = $2",
 		status, id)
 	return err
+}
+
+// loadSessionStatus reads sessions.status. Used as the poison-
+// message guard at ProcessAudio entry. Returns "" on missing row or
+// DB unavailable (the caller treats empty as "proceed normally" so
+// we never block legitimate first-time processing on a transient DB
+// hiccup). Non-fatal — we'd rather over-process than silently drop.
+func loadSessionStatus(ctx context.Context, sessionID string) (string, error) {
+	if dbPool == nil {
+		return "", nil
+	}
+	id, err := uuid.Parse(sessionID)
+	if err != nil {
+		return "", err
+	}
+	var status string
+	err = dbPool.QueryRow(ctx,
+		"SELECT status FROM sessions WHERE id = $1",
+		id).Scan(&status)
+	if err != nil {
+		return "", err
+	}
+	return status, nil
 }
 
 // loadSessionLanguage reads session.language_code (BCP47 tag like
@@ -598,14 +658,35 @@ func persistTranscript(ctx context.Context, sessionID string, result *Transcript
 
 	blobLines := make([]BlobLine, 0, len(chunks))
 	for _, c := range chunks {
-		blobLines = append(blobLines, BlobLine{
+		bl := BlobLine{
 			ChunkIdx:   c.Index,
 			Text:       c.Text,
 			StartMS:    c.StartMS,
 			EndMS:      c.EndMS,
 			WordCount:  c.WordCount,
 			Confidence: c.Confidence,
-		})
+		}
+		// Propagate speaker attribution from STT-native diarization.
+		// Chirp returns SpeakerLabel as a numeric string ("1", "2",
+		// ...); we store both the integer SpeakerTag (for downstream
+		// llm-worker.generateAndSaveSpeakerLabels which keys on tags)
+		// and the raw SpeakerLabel (for debugging / future Chirp
+		// label-format changes). Parse-failure → log a warning and
+		// emit SpeakerTag=0, which downstream treats as "no native
+		// diarization" — degrades to LLM clustering rather than
+		// silently corrupting the attribution.
+		if c.SpeakerLabel != "" {
+			label := c.SpeakerLabel
+			bl.SpeakerLabel = &label
+			if tag, err := strconv.Atoi(c.SpeakerLabel); err == nil {
+				t := int32(tag)
+				bl.SpeakerTag = &t
+			} else {
+				slog.Warn("non-numeric Chirp speaker label; speaker_tag left nil — chunk will route to LLM clustering",
+					"chunk_idx", c.Index, "speaker_label", c.SpeakerLabel)
+			}
+		}
+		blobLines = append(blobLines, bl)
 	}
 
 	blobJSON, err := json.Marshal(blobLines)

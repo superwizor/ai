@@ -13,21 +13,29 @@ import (
 )
 
 // Word reprezentuje pojedyncze słowo z timestamps zwrócone przez STT.
+// SpeakerLabel jest wypełniony tylko gdy STT zwrócił natywną diaryzację
+// (Chirp 3 z DiarizationConfig dla wspieranego języka). Pusty string =
+// brak diaryzacji, llm-worker zrobi klastrowanie potem.
 type Word struct {
-	Text       string
-	StartMS    int64
-	EndMS      int64
-	Confidence float32
+	Text         string
+	StartMS      int64
+	EndMS        int64
+	Confidence   float32
+	SpeakerLabel string // "" when STT didn't diarize
 }
 
 // Chunk reprezentuje grupę kolejnych słów rozdzieloną pauzą od następnej grupy.
+// Wszystkie słowa w chunku mają ten sam SpeakerLabel — ChunkByPauses
+// forsuje split przy zmianie mówcy, więc Chunk.SpeakerLabel == words[0].
+// SpeakerLabel pusty gdy STT nie diaryzował.
 type Chunk struct {
-	Index      int     // 0-based, w kolejności występowania
-	Text       string  // konkatenowane słowa, jeden spacja
-	StartMS    int64   // timestamp pierwszego słowa
-	EndMS      int64   // timestamp końca ostatniego słowa
-	WordCount  int
-	Confidence float32 // średnia ważona długością słów
+	Index        int     // 0-based, w kolejności występowania
+	Text         string  // konkatenowane słowa, jeden spacja
+	StartMS      int64   // timestamp pierwszego słowa
+	EndMS        int64   // timestamp końca ostatniego słowa
+	WordCount    int
+	Confidence   float32 // średnia ważona długością słów
+	SpeakerLabel string  // raw label from STT (e.g. "1", "2"); empty when not diarized
 }
 
 // Config kontroluje zachowanie chunkera.
@@ -81,7 +89,7 @@ func ChunkByPauses(words []Word, cfg Config) []Chunk {
 
 func buildBaseChunks(words []Word, pauseThresholdMS int) []Chunk {
 	chunks := []Chunk{}
-	current := Chunk{StartMS: words[0].StartMS}
+	current := Chunk{StartMS: words[0].StartMS, SpeakerLabel: words[0].SpeakerLabel}
 	wordsInChunk := []Word{}
 
 	for i, w := range words {
@@ -93,8 +101,18 @@ func buildBaseChunks(words []Word, pauseThresholdMS int) []Chunk {
 		isLastWord := i == len(words)-1
 		shouldFlush := isLastWord
 		if !isLastWord {
+			// Flush condition (a): pause threshold exceeded
 			pauseMS := words[i+1].StartMS - w.EndMS
 			if int(pauseMS) >= pauseThresholdMS {
+				shouldFlush = true
+			}
+			// Flush condition (b): speaker change. Without this, two
+			// adjacent speakers in tight timing (back-and-forth in a
+			// couple session) would merge into one chunk and lose
+			// attribution. ChunkByPauses guarantees every chunk has a
+			// single SpeakerLabel; mergeShortChunks must also respect
+			// this.
+			if words[i+1].SpeakerLabel != w.SpeakerLabel {
 				shouldFlush = true
 			}
 		}
@@ -105,7 +123,7 @@ func buildBaseChunks(words []Word, pauseThresholdMS int) []Chunk {
 			chunks = append(chunks, current)
 
 			if !isLastWord {
-				current = Chunk{StartMS: words[i+1].StartMS}
+				current = Chunk{StartMS: words[i+1].StartMS, SpeakerLabel: words[i+1].SpeakerLabel}
 				wordsInChunk = []Word{}
 			}
 		}
@@ -124,7 +142,15 @@ func mergeShortChunks(chunks []Chunk, minDurationMS int) []Chunk {
 		c := chunks[i]
 		duration := c.EndMS - c.StartMS
 
-		if duration < int64(minDurationMS) && len(merged) > 0 {
+		// Cross-speaker guard: a short chunk from speaker B must NOT
+		// be merged into the previous speaker-A chunk — that'd
+		// silently mis-attribute a back-channel "uh-huh" from the
+		// therapist as part of the patient's prior turn (or vice
+		// versa). Only merge when both chunks share a speaker label.
+		// Empty labels (no native diarization) match each other, so
+		// the old behavior is preserved when STT didn't diarize.
+		sameSpeaker := len(merged) > 0 && merged[len(merged)-1].SpeakerLabel == c.SpeakerLabel
+		if duration < int64(minDurationMS) && sameSpeaker {
 			prev := &merged[len(merged)-1]
 			prev.Text += " " + c.Text
 			prev.EndMS = c.EndMS
@@ -203,9 +229,10 @@ func wordsToChunk(words []Word) Chunk {
 		return Chunk{}
 	}
 	c := Chunk{
-		StartMS:   words[0].StartMS,
-		EndMS:     words[len(words)-1].EndMS,
-		WordCount: len(words),
+		StartMS:      words[0].StartMS,
+		EndMS:        words[len(words)-1].EndMS,
+		WordCount:    len(words),
+		SpeakerLabel: words[0].SpeakerLabel, // all words in a recursive-split slice share a speaker (forced by buildBaseChunks)
 	}
 	parts := make([]string, len(words))
 	for i, w := range words {
