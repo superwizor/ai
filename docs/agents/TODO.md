@@ -47,6 +47,44 @@ Tracked-but-not-yet-scheduled items. Each entry: what's broken, why it matters, 
 
 ---
 
+### Flutter: send `report_language` on `CreateAudioUploadRequest`
+
+**Status**: not started. Server-side defensive fallback shipped
+2026-05-15 — ingestion-svc now defaults `report_language` to the
+patient's `ui_language` when Flutter doesn't pass one. That's the
+must-have. This entry covers the should-have on the Flutter side
+so the call site makes the choice explicit instead of relying on
+the server-side default.
+
+**What**: `flutter-app/superwizor/lib/providers/...` (the audio
+upload provider — find via `grep -rn "CreateAudioUploadRequest"`).
+Currently doesn't set the `reportLanguage` field on the request,
+which means an English patient's report would silently come out in
+Polish without our server fix. The fix is one line: set
+`reportLanguage` from the patient's `languageCode` (already on the
+PatientFile proto field 18 — `patientLanguageCode`) at request
+build time.
+
+**Why now (eventually)**: server-side fallback handles new sessions
+but it's better to have the intent visible at the Flutter call
+site so future devs see what's happening. Also future-proofs for
+the case where a therapist wants reports in a different language
+than the patient speaks (clinical reasoning: notes for a Polish
+therapist on an English-speaking patient).
+
+**Fix shape**: 
+1. Find the provider that builds `CreateAudioUploadRequest` (search
+   `CreateAudioUploadRequest` in lib/providers).
+2. Add `reportLanguage: patient.patientLanguageCode` (or whatever
+   the field is called on the existing PatientFile proto) to the
+   request constructor.
+3. UX consideration: should the therapist be able to override the
+   report language per-session? If yes, add a picker to the
+   pre-record screen. If no (single language per kartoteka),
+   leaving the field tied to the patient is fine.
+
+---
+
 ### Wire DLQ on Eventarc-managed Pub/Sub subscriptions
 
 **Status**: not started. Worker-side poison-guard partially mitigates

@@ -174,17 +174,13 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
     t := time.Now()
 	datePg := pgtype.Date{Time: t, Valid: true}
 
-	reportLang := req.ReportLanguage
-	if reportLang == "" {
-		reportLang = "pl"
-	}
-
 	// Single round-trip: pull the modality display_name (for the
 	// default session.name) AND the patient_user's ui_language (for
-	// session.language_code that stt-worker reads). Both columns
-	// degrade to "" on join misses; the InsertSession SQL NULLIFs
-	// each so a missing modality or orphan patient_files row stores
-	// NULL and downstream falls back appropriately.
+	// session.language_code that stt-worker reads, AND the
+	// report_language fallback below). Both columns degrade to ""
+	// on join misses; the InsertSession SQL NULLIFs each so a
+	// missing modality or orphan patient_files row stores NULL and
+	// downstream falls back appropriately.
 	defaults, lookupErr := s.queries.GetSessionDefaultsForPatientFile(ctx, upload.PatientFileID)
 	var defaultName string
 	if lookupErr == nil && defaults.DisplayName != "" {
@@ -196,6 +192,24 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 	audioLang := ""
 	if lookupErr == nil {
 		audioLang = lang.BCP47ize(defaults.PatientLanguage)
+	}
+	// report_language resolution — three-tier fallback so an English
+	// patient's report doesn't silently come out in Polish (the bug
+	// surfaced 2026-05-15 on session 7da68e6c):
+	//   1. explicit req.ReportLanguage (Flutter passes it for sessions
+	//      where therapist wants a different output language than the
+	//      patient speaks)
+	//   2. patient_user.ui_language from the JOIN above (mirrors the
+	//      STT side — if patient's audio is en-US, default the report
+	//      to English unless overridden)
+	//   3. "pl" hardcoded fallback for orphan rows / pre-feat sessions
+	//      where neither source is available
+	reportLang := req.ReportLanguage
+	if reportLang == "" && lookupErr == nil {
+		reportLang = defaults.PatientLanguage
+	}
+	if reportLang == "" {
+		reportLang = "pl"
 	}
 
 	session, err := s.queries.CreateSession(ctx, db.CreateSessionParams{
