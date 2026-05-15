@@ -126,3 +126,106 @@ func TestParseChirp3Results_FileError(t *testing.T) {
 	assert.NotNil(t, result)
 	assert.Equal(t, 0, result.WordCount)
 }
+
+// TestFillSpeakerLabels — Chirp 3 native diarization occasionally
+// drops per-word speaker labels. fillSpeakerLabels recovers most by
+// forward/backward-propagating the nearest labeled neighbor, bounded
+// by the chunker's pause threshold so we don't silently propagate
+// across a speaker change.
+func TestFillSpeakerLabels(t *testing.T) {
+	t.Run("forward fill within continuous speech", func(t *testing.T) {
+		// "1" "" "" "1" — gap-less, last two should inherit "1".
+		words := []chunker.Word{
+			{Text: "a", StartMS: 0, EndMS: 100, SpeakerLabel: "1"},
+			{Text: "b", StartMS: 100, EndMS: 200, SpeakerLabel: ""},
+			{Text: "c", StartMS: 200, EndMS: 300, SpeakerLabel: ""},
+			{Text: "d", StartMS: 300, EndMS: 400, SpeakerLabel: "1"},
+		}
+		fillSpeakerLabels(words, 600)
+		assert.Equal(t, []string{"1", "1", "1", "1"}, labelsOf(words))
+	})
+
+	t.Run("forward fill stops at pause boundary", func(t *testing.T) {
+		// "1" "" [800ms pause] "" "2" — first "" inherits "1", second
+		// "" stays "" because the pause crossed first (then gets the
+		// backward "2" treatment).
+		words := []chunker.Word{
+			{Text: "a", StartMS: 0, EndMS: 100, SpeakerLabel: "1"},
+			{Text: "b", StartMS: 100, EndMS: 200, SpeakerLabel: ""},
+			{Text: "c", StartMS: 1000, EndMS: 1100, SpeakerLabel: ""}, // 800ms gap from "b"
+			{Text: "d", StartMS: 1100, EndMS: 1200, SpeakerLabel: "2"},
+		}
+		fillSpeakerLabels(words, 600)
+		// b: inherits "1" (no pause from a, gap=0)
+		// c: forward pass cuts at pause; backward pass picks "2" (gap c↔d = 0)
+		assert.Equal(t, []string{"1", "1", "2", "2"}, labelsOf(words))
+	})
+
+	t.Run("backward fill leading unlabeled words", func(t *testing.T) {
+		// "" "" "1" — both leading words should backward-inherit "1".
+		words := []chunker.Word{
+			{Text: "a", StartMS: 0, EndMS: 100, SpeakerLabel: ""},
+			{Text: "b", StartMS: 100, EndMS: 200, SpeakerLabel: ""},
+			{Text: "c", StartMS: 200, EndMS: 300, SpeakerLabel: "1"},
+		}
+		fillSpeakerLabels(words, 600)
+		assert.Equal(t, []string{"1", "1", "1"}, labelsOf(words))
+	})
+
+	t.Run("all unlabeled stays unlabeled", func(t *testing.T) {
+		// No labels at all — nothing to propagate. Preserves the
+		// "Chirp couldn't diarize" degradation path (downstream LLM
+		// clustering handles it).
+		words := []chunker.Word{
+			{Text: "a", StartMS: 0, EndMS: 100, SpeakerLabel: ""},
+			{Text: "b", StartMS: 100, EndMS: 200, SpeakerLabel: ""},
+		}
+		fillSpeakerLabels(words, 600)
+		assert.Equal(t, []string{"", ""}, labelsOf(words))
+	})
+
+	t.Run("all labeled is no-op", func(t *testing.T) {
+		// Defense against regression — labeled words must never be
+		// overwritten by fill (the forward pass only touches "").
+		words := []chunker.Word{
+			{Text: "a", StartMS: 0, EndMS: 100, SpeakerLabel: "1"},
+			{Text: "b", StartMS: 200, EndMS: 300, SpeakerLabel: "2"},
+			{Text: "c", StartMS: 400, EndMS: 500, SpeakerLabel: "1"},
+		}
+		fillSpeakerLabels(words, 600)
+		assert.Equal(t, []string{"1", "2", "1"}, labelsOf(words))
+	})
+
+	t.Run("empty slice is safe", func(t *testing.T) {
+		fillSpeakerLabels([]chunker.Word{}, 600) // must not panic
+	})
+
+	t.Run("session 26ecf316 shape — sparse labeling of one speaker", func(t *testing.T) {
+		// Simulates the production regression: speaker_1 labeled
+		// consistently, speaker_2 returned without labels. After fill
+		// the un-labeled words in the patient's turn should NOT
+		// inherit speaker_1 because there's a pause between turns.
+		words := []chunker.Word{
+			// Therapist turn (labeled "1")
+			{Text: "t1", StartMS: 0, EndMS: 200, SpeakerLabel: "1"},
+			{Text: "t2", StartMS: 200, EndMS: 500, SpeakerLabel: "1"},
+			// 800ms pause — speaker change
+			// Patient turn (labels dropped)
+			{Text: "p1", StartMS: 1300, EndMS: 1500, SpeakerLabel: ""},
+			{Text: "p2", StartMS: 1500, EndMS: 1800, SpeakerLabel: ""},
+		}
+		fillSpeakerLabels(words, 600)
+		// Therapist words preserved, patient words stay "" because
+		// the pause across speakers prevented propagation. The
+		// downstream llm-worker fallback handles tag=0 reattach.
+		assert.Equal(t, []string{"1", "1", "", ""}, labelsOf(words))
+	})
+}
+
+func labelsOf(words []chunker.Word) []string {
+	out := make([]string, len(words))
+	for i, w := range words {
+		out[i] = w.SpeakerLabel
+	}
+	return out
+}

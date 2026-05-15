@@ -695,6 +695,52 @@ func markdownResultToPayload(r diarization.Result, chunks []transcriptfmt.Chunk,
 		groups = append(groups, g)
 	}
 
+	// Native-mode orphan-chunk reattach. Chirp 3 sometimes labels one
+	// speaker reliably ("1") and drops labels on the other speaker's
+	// words — the stt-worker's fillSpeakerLabels pass catches most of
+	// those, but residual unlabeled runs (e.g. leading words before
+	// Chirp's first label, or chunks across pauses) still arrive with
+	// SpeakerTag=0. Without this fallback those chunks stay tag=0 in
+	// the DB and the UI shows only the speakers Chirp labeled.
+	//
+	// Strategy: if the LLM inferred N speakers (N >= 2) but exactly
+	// one of them ended up with no chunks attached, give that speaker
+	// all orphan tag=0 chunks. The LLM saw the transcript content and
+	// concluded there were N speakers — a single empty group is the
+	// "Chirp labeled only the other one" case from session 26ecf316.
+	// Multiple empty groups means we're guessing about which orphan
+	// chunk belongs to which speaker; skip — current behavior preserved
+	// (orphans stay tag=0, log a warning so operators see the case).
+	if native && len(groups) >= 2 {
+		emptyIdx := -1
+		emptyCount := 0
+		for i, g := range groups {
+			if len(g.ChunkIndices) == 0 {
+				emptyIdx = i
+				emptyCount++
+			}
+		}
+		if emptyCount == 1 {
+			var orphans []int
+			for _, c := range chunks {
+				if c.SpeakerTag == 0 {
+					orphans = append(orphans, c.ChunkIdx)
+				}
+			}
+			if len(orphans) > 0 {
+				slog.Info("native-mode orphan reattach",
+					"role", groups[emptyIdx].Role,
+					"orphan_chunks", len(orphans))
+				groups[emptyIdx].ChunkIndices = orphans
+			}
+		} else if emptyCount > 1 {
+			slog.Warn("native-mode diarization left multiple speaker groups empty — keeping orphan tag=0 chunks unassigned",
+				"empty_groups", emptyCount,
+				"total_groups", len(groups),
+				"hint", "Chirp labeling reliability — consider re-running with diarization off for this language")
+		}
+	}
+
 	return ReportPayload{
 		Title:        r.Title,
 		SummaryShort: r.Summary,

@@ -203,7 +203,22 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 
 	// 3. Chunkowanie słów na podstawie pauz (zob. pkg/transcription/chunker).
 	//    LLM przypisze chunki do mówców w Sprint 2.6.
-	chunks := chunker.ChunkByPauses(transcriptResult.Words, chunker.DefaultConfig())
+	chunkerCfg := chunker.DefaultConfig()
+	// Forward/backward-fill missing per-word speaker labels before
+	// chunking. Chirp 3's native diarization occasionally drops labels
+	// on individual words (or sustained runs) while still labeling
+	// adjacent words — without this pass those gaps become orphan
+	// SpeakerTag=0 chunks that downstream LLM clustering can't
+	// reattach to either speaker. The 2026-05-15 regression
+	// (session 26ecf316) had 8 chunks correctly labeled "1"/therapist
+	// and 12 interleaved chunks orphaned as tag=0 — those were
+	// actually the patient, but the UI only displayed Person 1.
+	// Bounded by the chunker's pause threshold so we never propagate
+	// a label across a pause where the speaker may have changed.
+	if useNativeDiarization {
+		fillSpeakerLabels(transcriptResult.Words, int64(chunkerCfg.PauseThresholdMS))
+	}
+	chunks := chunker.ChunkByPauses(transcriptResult.Words, chunkerCfg)
 	stats := chunker.ComputeStats(chunks)
 
 	// Always-on stats (no PHI). Surfaces silent / undecodable audio fast —
@@ -487,6 +502,74 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 	}
 
 	return result, nil
+}
+
+// fillSpeakerLabels propagates per-word SpeakerLabels into adjacent
+// unlabeled words. Chirp 3 native diarization is reliable on labeling
+// the more dominant / longer-speaking speaker but routinely drops
+// labels on the other speaker's words and on filler / short
+// interjections (observed empirically on session 26ecf316 — 100 of 295
+// words returned label=""). The chunker treats label="" as a separate
+// "speaker" from label="1"/"2", so unlabeled runs become orphan
+// tag=0 chunks that the downstream LLM role-only path can't reattach.
+//
+// Algorithm: forward pass propagates the most recently seen label
+// forward into contiguous unlabeled words; backward pass does the
+// same for leading unlabeled words (case where Chirp didn't label
+// anyone until the second speaker's first turn). Both passes are
+// bounded by maxGapMS — if there's a pause >= the chunker's pause
+// threshold between the last labeled word and the current one, we
+// stop propagating. Pauses are the only signal we have that the
+// speaker may have changed, so crossing them silently would be the
+// classic "fix one bug, introduce another" trap.
+//
+// Mutates words in place. No-op when len(words) == 0.
+func fillSpeakerLabels(words []chunker.Word, maxGapMS int64) {
+	if len(words) == 0 {
+		return
+	}
+
+	// Forward pass.
+	lastLabel := ""
+	var lastEndMS int64 = -1
+	for i := range words {
+		if words[i].SpeakerLabel != "" {
+			lastLabel = words[i].SpeakerLabel
+			lastEndMS = words[i].EndMS
+			continue
+		}
+		if lastLabel == "" {
+			continue
+		}
+		if lastEndMS >= 0 && words[i].StartMS-lastEndMS > maxGapMS {
+			// Pause boundary crossed — speaker may have changed; stop
+			// propagating until we see another labeled word.
+			lastLabel = ""
+			continue
+		}
+		words[i].SpeakerLabel = lastLabel
+		lastEndMS = words[i].EndMS
+	}
+
+	// Backward pass for leading unlabeled words.
+	nextLabel := ""
+	var nextStartMS int64 = -1
+	for i := len(words) - 1; i >= 0; i-- {
+		if words[i].SpeakerLabel != "" {
+			nextLabel = words[i].SpeakerLabel
+			nextStartMS = words[i].StartMS
+			continue
+		}
+		if nextLabel == "" {
+			continue
+		}
+		if nextStartMS >= 0 && nextStartMS-words[i].EndMS > maxGapMS {
+			nextLabel = ""
+			continue
+		}
+		words[i].SpeakerLabel = nextLabel
+		nextStartMS = words[i].StartMS
+	}
 }
 
 func updateSessionStatus(ctx context.Context, sessionID, status string) error {
