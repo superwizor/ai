@@ -197,6 +197,7 @@ Both grammars parsed by `internal/diarization/markdown.go` into the same `Speake
 | **ADR-IMPL-004** | Workers are Cloud Functions Gen2, not Cloud Run services. Don't add `main()`. |
 | **ADR-IMPL-006** | `transcripts.transcript_ciphertext` is the **canonical blob**. Segments are derived. Any rebuild path (e.g., clinical-svc `UpdateSpeakerLabels`) must rebuild this blob. |
 | **ADR-IMPL-007** | Originally: `pl-PL` doesn't have native Chirp 3 diarization; LLM clusters. Generalized in `feat/llm-optimisation`: per-language gate via static `chirp3DiarizationLanguages` map; **`pl-PL` stays false** until verified on staging. Each language flips independently with evidence. When false → LLM-clusters path (current behavior). When true → STT native tags + LLM only labels roles. Same downstream `SpeakerRoleInference` struct in both branches. |
+| **ADR-IMPL-007a** | Chirp 3 native diarization labels are **sparse, not complete**: the dominant speaker is labeled reliably, the other speaker's words and filler often come back with `label=""`. We treat this as a known characteristic and recover via two layers: `stt-worker.fillSpeakerLabels` propagates labels within continuous speech (bounded by pause threshold); `llm-worker.markdownResultToPayload` reattaches orphan `SpeakerTag=0` chunks to the LLM's single empty `SpeakerGroup` when exactly one is empty. See the "Native-diarization sparse-label recovery" section above. |
 | **P1 (Zero Data Loss)** | Idempotency: `SELECT status FROM sessions WHERE id=$1 FOR UPDATE SKIP LOCKED` at worker entry. If status already advanced, ACK without work. |
 | **P3 (EU residency)** | Vertex AI region `europe-west4`; STT endpoint `eu-speech.googleapis.com:443` |
 
@@ -210,6 +211,22 @@ Pause-threshold-based segmentation. `DefaultConfig`:
 Pipeline: `buildBaseChunks` → `mergeShortChunks` → `splitLongChunks`. See [`pkg/transcription/chunker/chunker.go`](../../superwizor-backend/pkg/transcription/chunker/chunker.go).
 
 If you change defaults, update `DefaultConfig` and re-run the test in `chunker_test.go`. The thresholds are tuned for Polish therapy speech — changing them affects diarization quality downstream.
+
+## Native-diarization sparse-label recovery (2026-05-15)
+
+Chirp 3's native diarization is **not** "every word gets a speaker_label". In practice it labels the dominant speaker reliably and drops labels on the other speaker's words (and on short interjections / filler). On session `26ecf316` we observed: 295 words, 8 chunks correctly `tag=1` (~195 words, therapist), 12 chunks interleaved at the patient's timestamps stuck at `tag=0, label=""` (~100 words). The LLM call-1 still inferred two speakers from content, but `markdownResultToPayload` found zero chunks with `SpeakerTag=2` → patient `SpeakerGroup.ChunkIndices=null` → `generateAndSaveSpeakerLabels` never wrote `tag=2` rows → UI rendered "Person 1" only.
+
+Two-layer mitigation. Both stay enabled whenever `useNativeDiarization=true`:
+
+**Layer 1 (signal-level, stt-worker)** — `fillSpeakerLabels(words, maxGapMS)` runs between `transcribeAudio` and `chunker.ChunkByPauses`. Forward pass: propagates the most recently-seen non-empty `SpeakerLabel` into adjacent unlabeled words. Backward pass: same for leading unlabeled words (Chirp's first label appears later in the stream). **Both bounded by `chunker.DefaultConfig().PauseThresholdMS` (600ms)** — pauses are our only signal that the speaker may have changed, so we never propagate across them. Mutates the word slice in place.
+
+**Layer 2 (defensive, llm-worker)** — in `markdownResultToPayload(native=true)`, after collecting chunks per LLM-inferred speaker: if **exactly one** `SpeakerGroup` ended up with zero `ChunkIndices` AND there are `SpeakerTag=0` orphan chunks, give all orphans to the empty group. The LLM saw the transcript content and concluded N speakers exist; a single empty group is the "Chirp only labeled the other speaker" case. **Multiple** empty groups → log a warning, skip — we don't have enough signal to guess which orphan goes where.
+
+Trade-offs:
+- Layer 1 can mis-attribute if Chirp labels only one speaker AND the unlabeled run is genuinely the other speaker without a pause between them. We accept this — the pause boundary is the strongest signal we have. If Chirp's labeling reliability ever degrades further, the fallback is to disable native diarization for that language in `transcriptfmt.Chirp3DiarizationLanguages`.
+- Layer 2 assumes the LLM doesn't hallucinate a missing speaker. The role-only prompt forces the LLM to label only the speakers visible in Format B input; if it adds a speaker that isn't in the transcript, that's a different bug (we'd see hallucinated text in the report too).
+
+Tests: `TestFillSpeakerLabels` in `services/ai-pipeline-svc/cmd/stt-worker/main_test.go` covers forward fill, pause-boundary stop, backward fill, all-unlabeled no-op, all-labeled invariant, empty input, and the session-26ecf316 shape. Run with `go test ./services/ai-pipeline-svc/cmd/stt-worker/...`.
 
 ## The LLM diarization prompt (Phase 2 critical path)
 
@@ -336,6 +353,7 @@ To exercise the full pipeline locally, you'd need:
 - **`BatchRecognizeFileResult.GetInlineResult().GetTranscript()`** — the new way. Tests must construct fixtures using `BatchRecognizeFileResult_InlineResult{InlineResult: &speechpb.InlineResult{Transcript: ...}}`. See `cmd/stt-worker/main_test.go`.
 - **JSON schema not generating:** `loadModalityPrompt` reads `modalities.therapist_ai_general_prompt` JSONB → expects shape `{"system": "...", "user": "..."}`. If migration 000008 didn't apply (Polish prompts), the column is empty and Gemini gets a blank prompt → garbage output.
 - **Cold start on llm-worker:** Vertex AI client init can be ~1.5s. `min_instance_count = 0` per terraform. Acceptable for batch flow.
+- **Chirp 3 native diarization is sparse, not complete.** Words often come back with `speaker_label=""` even when the request had `DiarizationConfig` set. If a session shows `sessions.speaker_label_mapping = {"1": ...}` (only one speaker) but the transcript clearly has multiple speakers, look at `transcript_segments` — `tag=0, label=""` rows are orphan chunks Chirp failed to label. `stt-worker.fillSpeakerLabels` + `llm-worker.markdownResultToPayload` orphan reattach handle the common case; if both fail, the next step is to disable native diarization for the language in `transcriptfmt.Chirp3DiarizationLanguages`.
 
 ## Source-doc pointers
 
