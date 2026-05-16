@@ -6,7 +6,6 @@ import 'package:flutter/cupertino.dart';
 
 import '../theme/euphire_theme.dart';
 import '../providers/current_user_provider.dart';
-import '../models/session.dart';
 import '../providers/patient_provider.dart';
 import '../widgets/add_patient_modal.dart';
 import '../widgets/edit_patient_modal.dart';
@@ -167,15 +166,11 @@ class HomeScreen extends ConsumerWidget {
                             final lastSessionDate = patientSessions.isNotEmpty
                                 ? patientSessions.last.date
                                 : null;
-                            final hasActiveAnalysis = patientSessions.any(
-                              (s) => s.status != SessionStatus.completed,
-                            );
 
                             return _PatientCalmCard(
                               patientId: patient.id,
                               name: '${patient.firstName} ${patient.lastName}'.trim(),
                               lastSessionDate: lastSessionDate,
-                              hasActiveAnalysis: hasActiveAnalysis,
                             );
                           },
                         );
@@ -208,13 +203,11 @@ class _PatientCalmCard extends ConsumerWidget {
   final String patientId;
   final String name;
   final DateTime? lastSessionDate;
-  final bool hasActiveAnalysis;
 
   const _PatientCalmCard({
     required this.patientId,
     required this.name,
     this.lastSessionDate,
-    this.hasActiveAnalysis = false,
   });
 
   void _showOptions(BuildContext context, WidgetRef ref) {
@@ -232,9 +225,6 @@ class _PatientCalmCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Status dot color: ember = analysis in progress, aurora = idle/all done
-    final dotColor = hasActiveAnalysis ? EuphireColors.ember : EuphireColors.aurora;
-    // Relative time label
     final timeLabel = lastSessionDate != null
         ? _relativeTime(lastSessionDate!)
         : null;
@@ -257,31 +247,9 @@ class _PatientCalmCard extends ConsumerWidget {
         },
         onLongPress: () => _showOptions(context, ref),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           child: Row(
             children: [
-              // ── Status dot ──
-              if (lastSessionDate != null)
-                Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.only(right: 14),
-                  decoration: BoxDecoration(
-                    color: dotColor,
-                    shape: BoxShape.circle,
-                    boxShadow: hasActiveAnalysis
-                        ? [
-                            BoxShadow(
-                              color: EuphireColors.ember.withValues(alpha: 0.4),
-                              blurRadius: 6,
-                            ),
-                          ]
-                        : null,
-                  ),
-                )
-              else
-                const SizedBox(width: 22), // alignment spacer for dot-less cards
-
               // ── Patient name ──
               Expanded(
                 child: Text(
@@ -305,17 +273,17 @@ class _PatientCalmCard extends ConsumerWidget {
                   style: TextStyle(
                     fontFamily: 'RobotoMono',
                     fontSize: 12,
-                    color: EuphireColors.mist.withValues(alpha: 0.6),
+                    color: EuphireColors.mist.withValues(alpha: 0.5),
                   ),
                 ),
               ],
 
-              // ── Chevron (navigation affordance) ──
+              // ── Chevron ──
               const SizedBox(width: 8),
               Icon(
                 Icons.chevron_right_rounded,
                 size: 20,
-                color: EuphireColors.mist.withValues(alpha: 0.3),
+                color: EuphireColors.mist.withValues(alpha: 0.25),
               ),
             ],
           ),
