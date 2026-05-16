@@ -1,17 +1,34 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/cupertino.dart';
 
 import '../theme/euphire_theme.dart';
 import '../providers/current_user_provider.dart';
+import '../models/session.dart';
 import '../providers/patient_provider.dart';
 import '../widgets/add_patient_modal.dart';
 import '../widgets/edit_patient_modal.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import 'client_details_screen.dart';
 import 'menu_screen.dart';
+
+/// Returns a human-friendly relative time string in Polish.
+/// e.g. "dzisiaj", "wczoraj", "3 dni temu", "2 tyg. temu", "1 mies. temu".
+String _relativeTime(DateTime date) {
+  final now = DateTime.now();
+  final diff = now.difference(date);
+
+  if (diff.inDays == 0) return 'dzisiaj';
+  if (diff.inDays == 1) return 'wczoraj';
+  if (diff.inDays < 7) return '${diff.inDays} dni temu';
+  if (diff.inDays < 14) return '1 tydz. temu';
+  if (diff.inDays < 30) return '${(diff.inDays / 7).floor()} tyg. temu';
+  if (diff.inDays < 60) return '1 mies. temu';
+  if (diff.inDays < 365) return '${(diff.inDays / 30).floor()} mies. temu';
+  return '${(diff.inDays / 365).floor()} r. temu';
+}
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -25,11 +42,9 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = FirebaseAuth.instance.currentUser;
     final patientsAsync = ref.watch(patientsProvider);
     ref.watch(currentUserProvider); // fire backend lookup
 
-    final userName = user?.displayName ?? 'Operatorze';
 
     return Scaffold(
       backgroundColor: EuphireColors.nocturne,
@@ -81,147 +96,92 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
+              // ── Patient list (directly in Expanded — no greeting/section header) ──
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ── Powitanie ───────────────────────────────────────
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text.rich(
-                              TextSpan(
-                                text: 'Witaj, ',
-                                style: const TextStyle(
-                                  fontFamily: 'Montserrat',
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w700,
-                                  color: EuphireColors.frostWhite,
-                                  height: 1.2,
-                                ),
-                                children: [
-                                  TextSpan(
-                                    text: userName,
-                                    style: const TextStyle(
-                                      fontStyle: FontStyle.italic,
-                                      color: EuphireColors.ember,
-                                    ),
-                                  ),
-                                  const TextSpan(text: '.'),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Oto Twoje kartoteki. Z czym dzisiaj pracujemy?',
-                              style: TextStyle(
-                                fontFamily: 'RobotoMono',
-                                fontSize: 13,
-                                color: EuphireColors.mist.withValues(alpha: 0.8),
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-        
-                      // ── Lista Kartotek ──────────────────────────────────
-                      patientsAsync.when(
-                        loading: () => const Padding(
-                          padding: EdgeInsets.all(32),
-                          child: Center(child: CircularProgressIndicator(color: EuphireColors.ember)),
-                        ),
-                        error: (err, stack) => Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Center(child: Text('Błąd: $err', style: const TextStyle(color: EuphireColors.ember))),
-                        ),
-                        data: (patients) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                child: patientsAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: EuphireColors.ember),
+                  ),
+                  error: (err, stack) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Text('Błąd: $err', style: const TextStyle(color: EuphireColors.ember)),
+                    ),
+                  ),
+                  data: (patients) {
+                    if (patients.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 48),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'AKTYWNE KARTOTEKI',
-                                      style: TextStyle(
-                                        fontFamily: 'Montserrat',
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 1.5,
-                                        color: EuphireColors.mist.withValues(alpha: 0.6),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: EuphireColors.frostWhite.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        'Ilość: ${patients.length}',
-                                        style: TextStyle(
-                                          fontFamily: 'RobotoMono',
-                                          fontSize: 11,
-                                          color: EuphireColors.mist.withValues(alpha: 0.8),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: EuphireColors.frostWhite.withValues(alpha: 0.05),
+                                  shape: BoxShape.circle,
                                 ),
+                                child: Icon(
+                                  Icons.folder_open_rounded,
+                                  size: 40,
+                                  color: EuphireColors.mist.withValues(alpha: 0.4),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Text(
+                                'Twoja kartoteka jest pusta',
+                                style: TextStyle(
+                                  fontFamily: 'Merriweather',
+                                  fontSize: 17,
+                                  fontStyle: FontStyle.italic,
+                                  color: EuphireColors.frostWhite.withValues(alpha: 0.7),
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 8),
-                              if (patients.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.all(32),
-                                  child: Center(
-                                    child: Text(
-                                      'Brak kartotek. Dodaj nowego klienta.',
-                                      style: TextStyle(
-                                        fontFamily: 'Merriweather',
-                                        color: EuphireColors.mist.withValues(alpha: 0.6),
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              else
-                                Consumer(
-                                  builder: (context, ref, child) {
-                                    final sessionsMap = ref.watch(sessionsProvider).value ?? {};
-                                    return ListView.separated(
-                                      shrinkWrap: true,
-                                      physics: const NeverScrollableScrollPhysics(),
-                                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                                      itemCount: patients.length,
-                                      separatorBuilder: (context, index) => const SizedBox(height: 12),
-                                      itemBuilder: (context, index) {
-                                        final patient = patients[index];
-                                        final patientSessions = sessionsMap[patient.id] ?? [];
-                                        final lastSessionDate = patientSessions.isNotEmpty ? patientSessions.last.date : null;
-                                        
-                                        return _PatientGlassCard(
-                                          patientId: patient.id,
-                                          name: '${patient.firstName} ${patient.lastName}'.trim(),
-                                          sessionCount: patient.sessionCount,
-                                          modalityCode: patient.modalityCode,
-                                          lastSessionDate: lastSessionDate,
-                                        );
-                                      },
-                                    );
-                                  },
+                              Text(
+                                'Dodaj pierwszego klienta przyciskiem +',
+                                style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 13,
+                                  color: EuphireColors.mist.withValues(alpha: 0.5),
                                 ),
+                                textAlign: TextAlign.center,
+                              ),
                             ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
+                          ),
+                        ),
+                      );
+                    }
+                    return Consumer(
+                      builder: (context, ref, child) {
+                        final sessionsMap = ref.watch(sessionsProvider).value ?? {};
+                        return ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                          itemCount: patients.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 2),
+                          itemBuilder: (context, index) {
+                            final patient = patients[index];
+                            final patientSessions = sessionsMap[patient.id] ?? [];
+                            final lastSessionDate = patientSessions.isNotEmpty
+                                ? patientSessions.last.date
+                                : null;
+                            final hasActiveAnalysis = patientSessions.any(
+                              (s) => s.status != SessionStatus.completed,
+                            );
+
+                            return _PatientCalmCard(
+                              patientId: patient.id,
+                              name: '${patient.firstName} ${patient.lastName}'.trim(),
+                              lastSessionDate: lastSessionDate,
+                              hasActiveAnalysis: hasActiveAnalysis,
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ],
@@ -240,22 +200,25 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _PatientGlassCard extends ConsumerWidget {
+// ─── Calm Kartoteka Card ────────────────────────────────────────────
+// Minimal 1-line design: status dot + name + relative time + chevron.
+// Options (edit/delete) available via long-press (iOS-native pattern).
+
+class _PatientCalmCard extends ConsumerWidget {
   final String patientId;
   final String name;
-  final int sessionCount;
-  final String modalityCode;
   final DateTime? lastSessionDate;
+  final bool hasActiveAnalysis;
 
-  const _PatientGlassCard({
+  const _PatientCalmCard({
     required this.patientId,
     required this.name,
-    required this.sessionCount,
-    required this.modalityCode,
     this.lastSessionDate,
+    this.hasActiveAnalysis = false,
   });
 
   void _showOptions(BuildContext context, WidgetRef ref) {
+    HapticFeedback.mediumImpact();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -269,123 +232,92 @@ class _PatientGlassCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF2D6068), // Kontenery: #2d6068
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ClientDetailsScreen(
-                  patientId: patientId,
-                  clientName: name,
+    // Status dot color: ember = analysis in progress, aurora = idle/all done
+    final dotColor = hasActiveAnalysis ? EuphireColors.ember : EuphireColors.aurora;
+    // Relative time label
+    final timeLabel = lastSessionDate != null
+        ? _relativeTime(lastSessionDate!)
+        : null;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          Navigator.push(
+            context,
+            CupertinoPageRoute(
+              builder: (_) => ClientDetailsScreen(
+                patientId: patientId,
+                clientName: name,
+              ),
+            ),
+          );
+        },
+        onLongPress: () => _showOptions(context, ref),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              // ── Status dot ──
+              if (lastSessionDate != null)
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(right: 14),
+                  decoration: BoxDecoration(
+                    color: dotColor,
+                    shape: BoxShape.circle,
+                    boxShadow: hasActiveAnalysis
+                        ? [
+                            BoxShadow(
+                              color: EuphireColors.ember.withValues(alpha: 0.4),
+                              blurRadius: 6,
+                            ),
+                          ]
+                        : null,
+                  ),
+                )
+              else
+                const SizedBox(width: 22), // alignment spacer for dot-less cards
+
+              // ── Patient name ──
+              Expanded(
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    color: EuphireColors.frostWhite,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Builder(
-                        builder: (context) {
-                          String modName = 'Uniwersalna';
-                          switch (modalityCode.toUpperCase()) {
-                            case 'UNIV': modName = 'Uniwersalna'; break;
-                            case 'CBT': modName = 'Beh-Pozn'; break;
-                            case 'PSYCHO': modName = 'Psychodynamiczna'; break;
-                            case 'PPT': modName = 'Pozytywna'; break;
-                            case 'ST': modName = 'Schematów'; break;
-                            case 'SYS': modName = 'Systemowa'; break;
-                            case 'EFT': modName = 'Skon. na emocjach'; break;
-                            case 'COACH': modName = 'Coaching'; break;
-                            default: if (modalityCode.isNotEmpty) modName = modalityCode;
-                          }
-                          return Text(
-                            'Ilość Sesji: $sessionCount  /  MOD: $modName',
-                            style: TextStyle(
-                              fontFamily: 'RobotoMono',
-                              fontSize: 11,
-                              color: EuphireColors.mist.withValues(alpha: 0.7),
-                            ),
-                          );
-                        }
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.only(top: 12),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            top: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.08)),
-                          ),
-                        ),
-                        child: Builder(
-                          builder: (context) {
-                            String dateText = 'Oczekuje na dane';
-                            if (lastSessionDate != null) {
-                              final months = ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'];
-                              dateText = '${lastSessionDate!.day} ${months[lastSessionDate!.month - 1]} ${lastSessionDate!.year}';
-                            } else if (sessionCount > 0) {
-                              dateText = 'Rozpocznij sesję, by dodać dane';
-                            }
-                            return Text(
-                              'OSTATNIA SESJA: $dateText',
-                              style: TextStyle(
-                                fontFamily: 'Montserrat',
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.2,
-                                color: (lastSessionDate != null || sessionCount > 0)
-                                    ? EuphireColors.mist.withValues(alpha: 0.9)
-                                    : EuphireColors.mist.withValues(alpha: 0.5),
-                              ),
-                            );
-                          }
-                        ),
-                      ),
-                    ],
+
+              // ── Relative time ──
+              if (timeLabel != null) ...[
+                const SizedBox(width: 12),
+                Text(
+                  timeLabel,
+                  style: TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 12,
+                    color: EuphireColors.mist.withValues(alpha: 0.6),
                   ),
                 ),
-                IconButton(
-                  onPressed: () => _showOptions(context, ref),
-                  icon: Icon(Icons.more_horiz,
-                      color: EuphireColors.frostWhite.withValues(alpha: 0.5)),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(), // minimize padding
-                  splashRadius: 24,
-                ),
               ],
-            ),
+
+              // ── Chevron (navigation affordance) ──
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: EuphireColors.mist.withValues(alpha: 0.3),
+              ),
+            ],
           ),
         ),
       ),
