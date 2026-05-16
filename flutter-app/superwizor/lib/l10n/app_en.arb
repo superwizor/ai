@@ -60,7 +60,7 @@
 
   "addPatient_title": "New Patient.",
   "addPatient_first_name_label": "Patient's first name (required)",
-  "addPatient_last_name_label": "Patient's last name (optional)",
+  "addPatient_last_name_label": "Alias or initial (optional)",
   "addPatient_modality_label": "Session modality (inherited from profile)",
   "addPatient_language_label": "Session language",
   "addPatient_consent_label": "I declare that the patient consented to recording and data processing according to the Privacy Policy and DPA of Superwizor AI.",
@@ -69,6 +69,9 @@
   "addPatient_no_consent_header": "No consent to record.",
   "addPatient_no_consent_body": "We cannot start a session without explicit patient consent. Data protection laws require this.",
   "addPatient_no_consent_primary": "I understand.",
+  "addPatient_duplicate_header": "This patient already exists.",
+  "addPatient_duplicate_body": "You already have a record with this name combination. Add an initial, nickname, or other identifier to avoid confusion.",
+  "addPatient_duplicate_primary": "I'll fix the name.",
 
   "editPatient_title": "Edit patient details.",
   "editPatient_save_primary": "Save changes.",
@@ -92,12 +95,12 @@
   },
 
   "recording_screen_title": "Session in progress.",
-  "recording_instructions_title": "How to record best?",
-  "recording_instruction_1": "Do not lock the screen while recording.",
-  "recording_instruction_2": "Place the phone on a table, between speakers (50–100 cm distance).",
-  "recording_instruction_3": "Point the microphone towards the conversation, do not cover it.",
-  "recording_instruction_4": "Quiet environment – close windows/doors, turn off noise sources.",
-  "recording_instruction_5": "For video conferences (e.g. Google Meet, Zoom), always use a secondary device to record.",
+  "recording_instructions_title": "A few tips for a better recording",
+  "recording_instructions_subtitle": "Good recording conditions mean better transcription quality and more accurate AI insights.",
+  "recording_instruction_1": "Place the phone on a table, between speakers (50–100 cm distance).",
+  "recording_instruction_2": "Point the microphone towards the conversation, do not cover it.",
+  "recording_instruction_3": "Quiet environment – close windows/doors, turn off noise sources.",
+  "recording_instruction_4": "For video conferences (e.g. Google Meet, Zoom), always use a secondary device to record.",
   "recording_status_recording": "Recording in progress.",
   "recording_status_paused": "Recording paused.",
 
@@ -149,6 +152,10 @@
   "session_failed_body": "Something went wrong during analysis. We will retry automatically. If the problem persists, contact technical support.",
   "session_failed_primary": "Contact support.",
 
+  "session_status_title": "Secure analysis in progress.",
+  "session_status_subtitle": "We are preparing your reports and transcriptions. This may take up to 15 minutes. You can come back shortly.",
+  "session_status_success": "Done!",
+  "session_status_back_to_records": "Back to records",
   "session_loading": "Transcription is preparing. You can return here shortly.",
   "session_load_error_header": "Failed to load session.",
   "session_load_error_body": "Something failed on our end. Please try again shortly.",

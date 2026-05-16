@@ -19,6 +19,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:fixnum/fixnum.dart';
@@ -62,23 +63,80 @@ class NewSessionScreen extends ConsumerStatefulWidget {
   final String patientFileId;
   final String therapistId;
   final String patientAlias;
+  final bool autoPickFile;
 
   const NewSessionScreen({
     super.key,
     required this.patientFileId,
     required this.therapistId,
     required this.patientAlias,
+    this.autoPickFile = false,
   });
 
   @override
   ConsumerState<NewSessionScreen> createState() => _NewSessionScreenState();
 }
 
-class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
+class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
+    with TickerProviderStateMixin {
   bool _uploading = false;
   String? _uploadFileName;
-  double _uploadProgress = 0.0;
   String _uploadStatusLabel = '';
+
+  // ── Smoothed progress animation ──
+  // Instead of directly showing the raw upload fraction (which can jump
+  // from 0 to 82% in a flash when uploading a local file), we animate
+  // from a stored snapshot (_startProgress) to the new _targetProgress.
+  // The duration scales with the jump size: small increments are fast,
+  // big jumps (0→82%) play out over ~3 seconds so the bar fills smoothly.
+  late AnimationController _smoothProgressController;
+  double _displayedProgress = 0.0;
+  double _startProgress = 0.0;
+  double _targetProgress = 0.0;
+
+  void _setUploadProgress(double target) {
+    // Snapshot where we are RIGHT NOW so the tween is stable.
+    _startProgress = _displayedProgress;
+    _targetProgress = target.clamp(0.0, 1.0);
+
+    // Duration proportional to jump size.
+    // Small increments (33%→35%) ~500ms; big jumps (0→82%) ~3s.
+    final delta = (_targetProgress - _startProgress).abs();
+    final durationMs = (delta * 4000).clamp(300, 3500).toInt();
+
+    _smoothProgressController.duration =
+        Duration(milliseconds: durationMs);
+    _smoothProgressController.forward(from: 0.0);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _smoothProgressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..addListener(() {
+        if (!mounted) return;
+        // Simple tween from fixed start to fixed target — no mutation
+        // of the start point, so the easing curve renders correctly.
+        final easedT =
+            Curves.easeOutCubic.transform(_smoothProgressController.value);
+        setState(() {
+          _displayedProgress =
+              _startProgress + (_targetProgress - _startProgress) * easedT;
+        });
+      });
+
+    if (widget.autoPickFile) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _pickAndUploadFile());
+    }
+  }
+
+  @override
+  void dispose() {
+    _smoothProgressController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +172,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'NOWA SESJA',
+                          widget.autoPickFile ? 'PRZESYŁANIE PLIKU' : 'NOWA SESJA',
                           style: TextStyle(
                             fontFamily: 'RobotoMono',
                             fontSize: 10,
@@ -148,103 +206,176 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 32),
-
-                      // Patient name — Montserrat headline
-                      Text(
-                        widget.patientAlias,
-                        style: const TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                          color: EuphireColors.frostWhite,
-                          letterSpacing: -0.5,
-                          height: 1.2,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Subtitle divider (Labirynt ember gradient divider)
-                      Center(
-                        child: Container(
-                          height: 1,
-                          width: 80,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.transparent,
-                                EuphireColors.ember.withValues(alpha: 0.4),
-                                Colors.transparent,
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Description — Merriweather body
-                      Text(
-                        'Nagraj tę sesję, lub prześlij plik audio z dyktafonu.',
-                        style: TextStyle(
-                          fontFamily: 'Merriweather',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w400,
-                          color: EuphireColors.frostWhite
-                              .withValues(alpha: 0.8),
-                          height: 1.5,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-
-                      const SizedBox(height: 40),
-
-                      // Security badge — glassmorphism card
-                      _SecurityBadge(),
-
-                      const Spacer(),
-
-                      // Upload progress state
-                      if (_uploading && _uploadFileName != null) ...[
-                        _UploadProgressCard(
-                          fileName: _uploadFileName!,
-                          progress: _uploadProgress,
-                          statusLabel: _uploadStatusLabel,
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-
-                      // Usunięty wybór języka
-
-
-                      // CTA buttons at the bottom
-                      if (!_uploading) ...[
-                        // Primary CTA — Ember with glow
-                        _PrimaryButton(
-                          icon: Icons.mic_rounded,
-                          label: 'ROZPOCZNIJ NAGRYWANIE',
-                          onPressed: _goToRecording,
-                        ),
-                        const SizedBox(height: 12),
-                        // Secondary — outlined
-                        _SecondaryButton(
-                          icon: Icons.upload_file_rounded,
-                          label: 'Wgraj plik audio',
-                          onPressed: _pickAndUploadFile,
-                        ),
-                      ],
-                      const SizedBox(height: 32),
-                    ],
-                  ),
+                  child: _uploading && _uploadFileName != null
+                      ? _buildSecureUploadView()
+                      : _buildDefaultView(),
                 ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  // ── Default view: file/record selection ──
+  Widget _buildDefaultView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 32),
+
+        // Patient name — Montserrat headline
+        Text(
+          widget.patientAlias,
+          style: const TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            color: EuphireColors.frostWhite,
+            letterSpacing: -0.5,
+            height: 1.2,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+
+        // Subtitle divider (Labirynt ember gradient divider)
+        Center(
+          child: Container(
+            height: 1,
+            width: 80,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  EuphireColors.ember.withValues(alpha: 0.4),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Description — context-aware
+        Text(
+          widget.autoPickFile
+              ? 'Wybierz plik audio z dysku. Po przesłaniu plik zostanie automatycznie przeanalizowany.'
+              : 'Nagraj tę sesję, lub prześlij plik audio z dyktafonu.',
+          style: TextStyle(
+            fontFamily: 'Merriweather',
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            color: EuphireColors.frostWhite.withValues(alpha: 0.8),
+            height: 1.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+
+        const SizedBox(height: 40),
+
+        // Security badge — only in full mode
+        if (!widget.autoPickFile) _SecurityBadge(),
+
+        const Spacer(),
+
+        // CTA buttons — only in full mode
+        if (!widget.autoPickFile) ...[
+          // Primary CTA — Ember with glow
+          _PrimaryButton(
+            icon: Icons.mic_rounded,
+            label: 'ROZPOCZNIJ NAGRYWANIE',
+            onPressed: _goToRecording,
+          ),
+          const SizedBox(height: 12),
+          // Secondary — outlined
+          _SecondaryButton(
+            icon: Icons.upload_file_rounded,
+            label: 'Wgraj plik audio',
+            onPressed: _pickAndUploadFile,
+          ),
+        ],
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+
+  // ── Secure upload view: shown while file is being uploaded ──
+  Widget _buildSecureUploadView() {
+    return Column(
+      children: [
+        const SizedBox(height: 48),
+
+        // ── Animated Shield Icon ──
+        _AnimatedShieldIcon(progress: _displayedProgress),
+
+        const SizedBox(height: 32),
+
+        // ── Title ──
+        const Text(
+          'Bezpieczne przesyłanie.',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: EuphireColors.frostWhite,
+            letterSpacing: -0.3,
+            height: 1.2,
+          ),
+          textAlign: TextAlign.center,
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Security description ──
+        Text(
+          'Twój plik jest szyfrowany i bezpiecznie przesyłany na nasze serwery w Europie. Nikt poza Tobą nie ma dostępu do tych danych.',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: EuphireColors.mist.withValues(alpha: 0.8),
+            height: 1.6,
+          ),
+          textAlign: TextAlign.center,
+        ),
+
+        const SizedBox(height: 24),
+
+        // ── Encryption badges ──
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _EncryptionChip(
+              icon: Icons.lock_rounded,
+              label: 'E2E',
+            ),
+            const SizedBox(width: 12),
+            _EncryptionChip(
+              icon: Icons.language_rounded,
+              label: 'EU',
+            ),
+            const SizedBox(width: 12),
+            _EncryptionChip(
+              icon: Icons.verified_user_rounded,
+              label: 'RODO',
+            ),
+          ],
+        ),
+
+        const Spacer(),
+
+        // ── Progress card at bottom ──
+        _UploadProgressCard(
+          fileName: _uploadFileName!,
+          progress: _displayedProgress,
+          statusLabel: _uploadStatusLabel,
+          isActive: _displayedProgress < 1.0,
+        ),
+
+        const SizedBox(height: 32),
+      ],
     );
   }
 
@@ -268,7 +399,13 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
       allowMultiple: false,
     );
 
-    if (result == null || result.files.isEmpty) return;
+    if (result == null || result.files.isEmpty) {
+      // User cancelled file picker — go back if in auto-pick mode
+      if (widget.autoPickFile && mounted) {
+        Navigator.of(context).maybePop();
+      }
+      return;
+    }
     final picked = result.files.first;
 
     if (picked.path == null) {
@@ -315,9 +452,11 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     setState(() {
       _uploading = true;
       _uploadFileName = picked.name;
-      _uploadProgress = 0.0;
+      _displayedProgress = 0.0;
+      _targetProgress = 0.0;
       _uploadStatusLabel = 'Konwersja audio...';
     });
+    _setUploadProgress(0.02);
 
     try {
       await _convertAndUploadFile(file: file, originalSizeBytes: sizeBytes);
@@ -345,10 +484,8 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
       // ── Phase 1: Normalize WAV if needed (0% → 25%) ──
       if (ext == '.wav') {
         if (!mounted) return;
-        setState(() {
-          _uploadProgress = 0.02;
-          _uploadStatusLabel = 'Normalizacja audio...';
-        });
+        setState(() => _uploadStatusLabel = 'Normalizacja audio...');
+        _setUploadProgress(0.02);
 
         try {
           final converter = AudioConverterService();
@@ -357,9 +494,9 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
             onProgress: (p) {
               if (!mounted) return;
               setState(() {
-                _uploadProgress = p * 0.25;
-                _uploadStatusLabel = 'Normalizacja audio... ${(p * 100).toInt()}%';
+                _uploadStatusLabel = 'Normalizacja audio...';
               });
+              _setUploadProgress(p * 0.25);
             },
           );
 
@@ -387,10 +524,8 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
       }
 
       if (!mounted) return;
-      setState(() {
-        _uploadProgress = 0.28;
-        _uploadStatusLabel = 'Przygotowywanie...';
-      });
+      setState(() => _uploadStatusLabel = 'Przygotowywanie...');
+      _setUploadProgress(0.28);
 
       // ── Phase 2: Request signed URL (28% → 33%) ──
       final client = ref.read(grpcClientsProvider).ingestion;
@@ -414,10 +549,8 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
       debugPrint('[file-upload] got signed URL (uploadId=$uploadId)');
 
       if (!mounted) return;
-      setState(() {
-        _uploadProgress = 0.33;
-        _uploadStatusLabel = 'Przesyłanie pliku...';
-      });
+      setState(() => _uploadStatusLabel = 'Przesyłanie pliku...');
+      _setUploadProgress(0.33);
 
       // ── Phase 3: Upload with streamed progress (33% → 90%) ──
       await _uploadWithProgress(
@@ -428,10 +561,8 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
       );
 
       if (!mounted) return;
-      setState(() {
-        _uploadProgress = 0.92;
-        _uploadStatusLabel = 'Finalizacja...';
-      });
+      setState(() => _uploadStatusLabel = 'Finalizacja...');
+      _setUploadProgress(0.92);
 
       // ── Phase 4: Complete upload (92% → 100%) ──
       final completeRes = await client.completeAudioUpload(CompleteAudioUploadRequest(
@@ -445,10 +576,8 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
       debugPrint('[file-upload] done, sessionId=$completedSessionId');
 
       if (!mounted) return;
-      setState(() {
-        _uploadProgress = 1.0;
-        _uploadStatusLabel = 'Gotowe!';
-      });
+      setState(() => _uploadStatusLabel = 'Gotowe!');
+      _setUploadProgress(1.0);
 
       // Invalidate caches
       ref.invalidate(patientsProvider);
@@ -496,10 +625,9 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
         // Map upload progress to 33% → 90% of total progress
         final totalProgress = 0.33 + (uploadFraction * 0.57);
         setState(() {
-          _uploadProgress = totalProgress;
-          _uploadStatusLabel =
-              'Przesyłanie... ${(uploadFraction * 100).toInt()}%';
+          _uploadStatusLabel = 'Przesyłanie...';
         });
+        _setUploadProgress(totalProgress);
       },
       onDone: () => request.sink.close(),
       onError: (e) => request.sink.addError(e),
@@ -688,11 +816,13 @@ class _UploadProgressCard extends StatefulWidget {
   final String fileName;
   final double progress;
   final String statusLabel;
+  final bool isActive;
 
   const _UploadProgressCard({
     required this.fileName,
     required this.progress,
     required this.statusLabel,
+    this.isActive = true,
   });
 
   @override
@@ -700,8 +830,9 @@ class _UploadProgressCard extends StatefulWidget {
 }
 
 class _UploadProgressCardState extends State<_UploadProgressCard>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _pulseController;
+  late AnimationController _spinController;
 
   @override
   void initState() {
@@ -710,17 +841,23 @@ class _UploadProgressCardState extends State<_UploadProgressCard>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
+    _spinController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _spinController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final percentage = (widget.progress * 100).toInt();
+    final percentage = (widget.progress * 100).toInt().clamp(0, 100);
+    final isDone = widget.progress >= 0.99;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -742,16 +879,39 @@ class _UploadProgressCardState extends State<_UploadProgressCard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Overline
-          Text(
-            'PRZETWARZANIE',
-            style: TextStyle(
-              fontFamily: 'RobotoMono',
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: EuphireColors.frostWhite.withValues(alpha: 0.4),
-              letterSpacing: 2.0,
-            ),
+          // Overline with spinning indicator
+          Row(
+            children: [
+              Text(
+                'PRZETWARZANIE',
+                style: TextStyle(
+                  fontFamily: 'RobotoMono',
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: EuphireColors.frostWhite.withValues(alpha: 0.4),
+                  letterSpacing: 2.0,
+                ),
+              ),
+              if (widget.isActive && !isDone) ...[
+                const SizedBox(width: 8),
+                AnimatedBuilder(
+                  animation: _spinController,
+                  builder: (_, child) => Transform.rotate(
+                    angle: _spinController.value * 2 * math.pi,
+                    child: child,
+                  ),
+                  child: SizedBox(
+                    width: 10,
+                    height: 10,
+                    child: CustomPaint(
+                      painter: _SpinnerPainter(
+                        color: EuphireColors.ember.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 12),
           Row(
@@ -769,7 +929,7 @@ class _UploadProgressCardState extends State<_UploadProgressCard>
                       : widget.progress < 0.90
                           ? Icons.cloud_upload_rounded
                           : Icons.check_circle_outline_rounded,
-                  color: EuphireColors.ember,
+                  color: isDone ? const Color(0xFF4CAF50) : EuphireColors.ember,
                   size: 24,
                 ),
               ),
@@ -789,50 +949,122 @@ class _UploadProgressCardState extends State<_UploadProgressCard>
               ),
               Text(
                 '$percentage%',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'RobotoMono',
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: EuphireColors.ember,
+                  color: isDone ? const Color(0xFF4CAF50) : EuphireColors.ember,
                   letterSpacing: 1.0,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          // Smooth animated progress bar
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: widget.progress),
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-            builder: (_, value, child) => ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: value,
-                backgroundColor: Colors.white.withValues(alpha: 0.05),
-                valueColor: AlwaysStoppedAnimation(
-                  widget.progress >= 1.0
-                      ? const Color(0xFF4CAF50) // green when done
-                      : EuphireColors.ember,
-                ),
-                minHeight: 5,
+          // Progress bar — value is already smoothed by the parent controller
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: widget.progress.clamp(0.0, 1.0),
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              valueColor: AlwaysStoppedAnimation(
+                isDone
+                    ? const Color(0xFF4CAF50)
+                    : EuphireColors.ember,
               ),
+              minHeight: 5,
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            widget.statusLabel,
-            style: TextStyle(
-              fontFamily: 'Merriweather',
-              fontSize: 12,
-              color: EuphireColors.frostWhite.withValues(alpha: 0.5),
-              height: 1.5,
-            ),
+          // Animated status label with wave effect
+          _AnimatedStatusLabel(
+            text: widget.statusLabel,
+            isActive: widget.isActive && !isDone,
           ),
         ],
       ),
     );
   }
+}
+
+/// Animated status text with:
+/// - Wave effect: letters gently bounce in a sine-wave pattern
+/// - Animated dots: cycles through ".", "..", "..." every 600ms
+class _AnimatedStatusLabel extends StatefulWidget {
+  final String text;
+  final bool isActive;
+
+  const _AnimatedStatusLabel({
+    required this.text,
+    this.isActive = true,
+  });
+
+  @override
+  State<_AnimatedStatusLabel> createState() => _AnimatedStatusLabelState();
+}
+
+class _AnimatedStatusLabelState extends State<_AnimatedStatusLabel> {
+  Timer? _dotTimer;
+  int _dotCount = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _dotTimer = Timer.periodic(const Duration(milliseconds: 350), (_) {
+      if (!mounted) return;
+      setState(() => _dotCount = (_dotCount % 3) + 1);
+    });
+  }
+
+  @override
+  void dispose() {
+    _dotTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Split the label into base text and dots
+    final hasTrailingDots = widget.text.endsWith('...');
+    final baseText = hasTrailingDots
+        ? widget.text.substring(0, widget.text.length - 3)
+        : widget.text;
+    final animatedDots = widget.isActive && hasTrailingDots
+        ? '.' * _dotCount
+        : (hasTrailingDots ? '...' : '');
+
+    return Text(
+      '$baseText$animatedDots',
+      style: TextStyle(
+        fontFamily: 'Merriweather',
+        fontSize: 12,
+        color: EuphireColors.frostWhite.withValues(alpha: 0.5),
+        height: 1.5,
+      ),
+    );
+  }
+}
+
+/// Custom painter for a small arc-based spinner.
+class _SpinnerPainter extends CustomPainter {
+  final Color color;
+
+  _SpinnerPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    final rect = Offset.zero & size;
+    // Draw a 270° arc — the remaining 90° gap creates the spinner effect
+    canvas.drawArc(rect, 0, math.pi * 1.5, false, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpinnerPainter old) => color != old.color;
 }
 
 String _getLanguageLabel(String code) {
@@ -845,3 +1077,157 @@ String _getLanguageLabel(String code) {
   }
 }
 
+/// Animated shield icon with progress ring and pulsing glow.
+class _AnimatedShieldIcon extends StatefulWidget {
+  final double progress;
+
+  const _AnimatedShieldIcon({required this.progress});
+
+  @override
+  State<_AnimatedShieldIcon> createState() => _AnimatedShieldIconState();
+}
+
+class _AnimatedShieldIconState extends State<_AnimatedShieldIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDone = widget.progress >= 1.0;
+
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (_, __) {
+        final glowOpacity = isDone
+            ? 0.35
+            : 0.1 + (_pulseController.value * 0.15);
+        final scale = isDone
+            ? 1.0
+            : 1.0 + (_pulseController.value * 0.03);
+
+        return Transform.scale(
+          scale: scale,
+          child: SizedBox(
+            width: 120,
+            height: 120,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Outer glow
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: EuphireColors.ember.withValues(alpha: glowOpacity),
+                        blurRadius: 40,
+                        spreadRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+                // Progress ring
+                SizedBox(
+                  width: 110,
+                  height: 110,
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: widget.progress),
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOut,
+                    builder: (_, value, __) => CircularProgressIndicator(
+                      value: value,
+                      strokeWidth: 3,
+                      backgroundColor: Colors.white.withValues(alpha: 0.06),
+                      valueColor: AlwaysStoppedAnimation(
+                        isDone
+                            ? const Color(0xFF4CAF50)
+                            : EuphireColors.ember,
+                      ),
+                    ),
+                  ),
+                ),
+                // Inner circle with shield icon
+                Container(
+                  width: 88,
+                  height: 88,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.06),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  child: Icon(
+                    isDone
+                        ? Icons.check_rounded
+                        : Icons.shield_rounded,
+                    size: 40,
+                    color: isDone
+                        ? const Color(0xFF4CAF50)
+                        : EuphireColors.ember,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Small pill-shaped badge for encryption/compliance features.
+class _EncryptionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _EncryptionChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: EuphireColors.ember),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'RobotoMono',
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: EuphireColors.mist,
+              letterSpacing: 1.0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

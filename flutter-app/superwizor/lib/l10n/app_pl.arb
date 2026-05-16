@@ -60,7 +60,7 @@
 
   "addPatient_title": "Nowy pacjent.",
   "addPatient_first_name_label": "Imię pacjenta (wymagane)",
-  "addPatient_last_name_label": "Nazwisko (opcjonalne)",
+  "addPatient_last_name_label": "Pseudonim lub inicjał (opcjonalne)",
   "addPatient_modality_label": "Nurt sesji (dziedziczony z profilu)",
   "addPatient_language_label": "Język sesji",
   "addPatient_consent_label": "Oświadczam, że pacjent wyraził zgodę na nagrywanie i przetwarzanie danych zgodnie z Polityką Prywatności i DPA Superwizor AI.",
@@ -69,6 +69,9 @@
   "addPatient_no_consent_header": "Brak zgody na nagrywanie.",
   "addPatient_no_consent_body": "Nie możemy rozpocząć sesji bez wyraźnej zgody pacjenta. Wymagają tego przepisy o ochronie danych.",
   "addPatient_no_consent_primary": "Rozumiem.",
+  "addPatient_duplicate_header": "Taki pacjent już istnieje.",
+  "addPatient_duplicate_body": "Masz już kartotekę z tą kombinacją imienia i pseudonimu. Dodaj inicjał, przydomek lub inny wyróżnik, aby uniknąć pomyłek.",
+  "addPatient_duplicate_primary": "Poprawię nazwę.",
 
   "editPatient_title": "Edycja danych pacjenta.",
   "editPatient_save_primary": "Zapisz zmiany.",
@@ -92,12 +95,12 @@
   },
 
   "recording_screen_title": "Sesja w toku.",
-  "recording_instructions_title": "Jak najlepiej nagrywać?",
-  "recording_instruction_1": "Nie blokuj ekranu podczas nagrywania.",
-  "recording_instruction_2": "Połóż telefon na stole, między rozmówcami (50–100 cm odległości).",
-  "recording_instruction_3": "Mikrofon skieruj w stronę rozmowy, niczym go nie zasłaniaj.",
-  "recording_instruction_4": "Ciche otoczenie – zamknij okna/drzwi, wyłącz źródła hałasu.",
-  "recording_instruction_5": "Do wideokonferencji (np. Google Meet, Zoom) używaj zawsze dodatkowego urządzenia do nagrywania.",
+  "recording_instructions_title": "Kilka wskazówek dla lepszego nagrania",
+  "recording_instructions_subtitle": "Dobre warunki nagrywania to lepsza jakość transkrypcji i trafniejsze wnioski AI.",
+  "recording_instruction_1": "Połóż telefon na stole, między rozmówcami (50–100 cm odległości).",
+  "recording_instruction_2": "Mikrofon skieruj w stronę rozmowy, niczym go nie zasłaniaj.",
+  "recording_instruction_3": "Ciche otoczenie – zamknij okna/drzwi, wyłącz źródła hałasu.",
+  "recording_instruction_4": "Do wideokonferencji (np. Google Meet, Zoom) używaj zawsze dodatkowego urządzenia do nagrywania.",
   "recording_status_recording": "Nagrywanie w toku.",
   "recording_status_paused": "Nagrywanie wstrzymane.",
 
@@ -149,6 +152,10 @@
   "session_failed_body": "Coś poszło nie tak po stronie analizy. Spróbujemy ponownie automatycznie. Jeśli problem się utrzymuje, skontaktuj się z pomocą techniczną.",
   "session_failed_primary": "Skontaktuj się z pomocą.",
 
+  "session_status_title": "Bezpieczna analiza w toku.",
+  "session_status_subtitle": "Opracowujemy dla Ciebie raporty i transkrypcje. Może to potrwać 15 minut. Możesz tutaj wrócić za chwilę.",
+  "session_status_success": "Gotowe!",
+  "session_status_back_to_records": "Wróć do kartotek",
   "session_loading": "Opracowujemy dla Ciebie raporty i transkrypcje. Możesz tutaj wrócić za chwilę.",
   "session_load_error_header": "Nie udało się pobrać sesji.",
   "session_load_error_body": "Coś nie zadziałało po naszej stronie. Spróbuj ponownie za chwilę.",

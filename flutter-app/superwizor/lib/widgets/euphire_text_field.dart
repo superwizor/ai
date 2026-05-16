@@ -6,6 +6,7 @@ class EuphireTextField extends StatelessWidget {
   final bool obscureText;
   final TextInputType keyboardType;
   final ValueChanged<String>? onChanged;
+  final String? errorText;
 
   const EuphireTextField({
     super.key,
@@ -14,6 +15,7 @@ class EuphireTextField extends StatelessWidget {
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
     this.onChanged,
+    this.errorText,
   });
 
   @override
@@ -25,8 +27,7 @@ class EuphireTextField extends StatelessWidget {
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: labelText,
-        // Tu można w przyszłości rozszerzyć o specyficzne stylowanie dla Euphire
-        // zgodnie z systemem designu np. filled: true, fillColor: Frost White itd.
+        errorText: errorText,
       ),
     );
   }

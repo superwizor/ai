@@ -574,8 +574,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
               IconButton(
                 icon: const Icon(Icons.info_outline, color: EuphireColors.mist),
                 onPressed: () {
-                  showEuphireBottomSheet<void>(
+                  showModalBottomSheet<void>(
                     context: context,
+                    backgroundColor: Colors.transparent,
+                    isScrollControlled: true,
                     builder: (_) => _InstructionsBlock(),
                   );
                 },
@@ -765,37 +767,132 @@ class _InstructionsBlock extends StatelessWidget {
       t.recording_instruction_2,
       t.recording_instruction_3,
       t.recording_instruction_4,
-      t.recording_instruction_5,
     ];
 
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(t.recording_instructions_title,
-                style: theme.textTheme.titleLarge),
-            const SizedBox(height: 16),
-            for (final line in items) ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6, right: 8),
-                    child: Icon(Icons.circle, size: 6, color: EuphireColors.mist),
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A2326),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(top: BorderSide(color: Colors.white10)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Info icon — subtle white, not attention-grabbing
+              Container(
+                width: 64, height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: EuphireColors.frostWhite.withValues(alpha: 0.08),
+                  border: Border.all(
+                    color: EuphireColors.frostWhite.withValues(alpha: 0.1),
                   ),
-                  Expanded(
-                    child: Text(line, style: theme.textTheme.bodyMedium),
+                ),
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  color: EuphireColors.frostWhite,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Title — Merriweather italic, like logout sheet
+              Text(
+                t.recording_instructions_title,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontFamily: 'Merriweather',
+                  fontStyle: FontStyle.italic,
+                  color: EuphireColors.frostWhite,
+                  fontSize: 20,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+
+              // Subtitle — explains why these tips matter
+              Text(
+                t.recording_instructions_subtitle,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: EuphireColors.mist,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+
+              // Tips list
+              for (int i = 0; i < items.length; i++) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 7, right: 12),
+                        child: Container(
+                          width: 6, height: 6,
+                          decoration: const BoxDecoration(
+                            color: EuphireColors.ember,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          items[i],
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: EuphireColors.frostWhite.withValues(alpha: 0.85),
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
+              ],
+
+              const SizedBox(height: 24),
+
+              // Dismiss button
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: EuphireColors.frostWhite.withValues(alpha: 0.1),
+                    foregroundColor: EuphireColors.frostWhite,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    t.common_understand,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
             ],
-            const SizedBox(height: 16),
-          ],
+          ),
         ),
       ),
     );

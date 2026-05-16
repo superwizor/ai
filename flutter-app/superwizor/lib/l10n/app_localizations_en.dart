@@ -158,7 +158,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPatient_first_name_label => 'Patient\'s first name (required)';
 
   @override
-  String get addPatient_last_name_label => 'Patient\'s last name (optional)';
+  String get addPatient_last_name_label => 'Alias or initial (optional)';
 
   @override
   String get addPatient_modality_label =>
@@ -186,6 +186,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addPatient_no_consent_primary => 'I understand.';
+
+  @override
+  String get addPatient_duplicate_header => 'This patient already exists.';
+
+  @override
+  String get addPatient_duplicate_body =>
+      'You already have a record with this name combination. Add an initial, nickname, or other identifier to avoid confusion.';
+
+  @override
+  String get addPatient_duplicate_primary => 'I\'ll fix the name.';
 
   @override
   String get editPatient_title => 'Edit patient details.';
@@ -243,26 +253,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recording_screen_title => 'Session in progress.';
 
   @override
-  String get recording_instructions_title => 'How to record best?';
+  String get recording_instructions_title =>
+      'A few tips for a better recording';
+
+  @override
+  String get recording_instructions_subtitle =>
+      'Good recording conditions mean better transcription quality and more accurate AI insights.';
 
   @override
   String get recording_instruction_1 =>
-      'Do not lock the screen while recording.';
-
-  @override
-  String get recording_instruction_2 =>
       'Place the phone on a table, between speakers (50–100 cm distance).';
 
   @override
-  String get recording_instruction_3 =>
+  String get recording_instruction_2 =>
       'Point the microphone towards the conversation, do not cover it.';
 
   @override
-  String get recording_instruction_4 =>
+  String get recording_instruction_3 =>
       'Quiet environment – close windows/doors, turn off noise sources.';
 
   @override
-  String get recording_instruction_5 =>
+  String get recording_instruction_4 =>
       'For video conferences (e.g. Google Meet, Zoom), always use a secondary device to record.';
 
   @override
@@ -396,6 +407,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get session_failed_primary => 'Contact support.';
+
+  @override
+  String get session_status_title => 'Secure analysis in progress.';
+
+  @override
+  String get session_status_subtitle =>
+      'We are preparing your reports and transcriptions. This may take up to 15 minutes. You can come back shortly.';
+
+  @override
+  String get session_status_success => 'Done!';
+
+  @override
+  String get session_status_back_to_records => 'Back to records';
 
   @override
   String get session_loading =>
