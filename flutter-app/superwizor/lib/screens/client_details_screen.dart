@@ -140,7 +140,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
           Patient(id: widget.patientId, firstName: 'Brak', lastName: ''),
     );
     final alias = '${patient.firstName} ${patient.lastName}'.trim();
-    return (therapistId: therapistId!, alias: alias);
+    return (therapistId: therapistId, alias: alias);
   }
 
   Future<void> _onRecordTapped() async {
@@ -222,7 +222,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
               );
             },
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
         ],
       ),
@@ -257,10 +257,9 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                             '${patient.firstName} ${patient.lastName}'
                                 .trim(),
                         subtitle:
-                            '${patient.sessionCount} sesji' +
-                                (patient.modalityCode.isNotEmpty
+                            '${patient.sessionCount} sesji${patient.modalityCode.isNotEmpty
                                     ? ' • ${patient.modalityCode}'
-                                    : ''),
+                                    : ''}',
                       ),
                       const SizedBox(height: 32),
                       sessionsAsync.when(
@@ -348,7 +347,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
               // ── Scrim (dark overlay when FAB expanded) ──
               AnimatedBuilder(
                 animation: _fabController,
-                builder: (_, __) {
+                builder: (_, _) {
                   if (_fabController.value == 0) {
                     return const SizedBox.shrink();
                   }
@@ -458,7 +457,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
 
                     return AnimatedBuilder(
                       animation: _fabController,
-                      builder: (_, __) => Column(
+                      builder: (_, _) => Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [

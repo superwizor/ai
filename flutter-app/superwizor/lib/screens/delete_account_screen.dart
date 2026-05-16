@@ -38,7 +38,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: EuphireColors.nocturne,
@@ -227,7 +227,7 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
   }
 
   void _onTextChanged() {
-    final expected = AppLocalizations.of(context)!.delete_account_confirm_word;
+    final expected = AppLocalizations.of(context).delete_account_confirm_word;
     final ok = _ctrl.text.trim().toLowerCase() == expected.toLowerCase();
     if (ok != _confirmed) setState(() => _confirmed = ok);
   }
@@ -251,7 +251,7 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
         Navigator.of(context).pop(false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)!.delete_account_relogin_error),
+            content: Text(AppLocalizations.of(context).delete_account_relogin_error),
             backgroundColor: Colors.red,
           ),
         );
@@ -265,7 +265,7 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
     return Padding(
       // Przesuwa sheet nad klawiaturę
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),

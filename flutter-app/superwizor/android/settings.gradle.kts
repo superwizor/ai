@@ -27,3 +27,5 @@ plugins {
 }
 
 include(":app")
+
+rootProject.name = "superwizor_android"

@@ -143,7 +143,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
     final settings = ref.watch(appSettingsProvider);
     final settingsNotifier = ref.read(appSettingsProvider.notifier);
     final locale = ref.watch(localeProvider);
@@ -468,7 +468,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
 // ─── Helper: skróty modalności ───────────────────────────────
 
 String _modalityAbbr(BuildContext context, String code) {
-  final t = AppLocalizations.of(context)!;
+  final t = AppLocalizations.of(context);
   switch (code) {
     case 'UNIV': return t.modality_abbr_univ;
     case 'CBT':  return t.modality_abbr_cbt;
@@ -549,7 +549,6 @@ class _SettingsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
     final fgColor = titleColor ?? EuphireColors.frostWhite;
     final icColor = iconColor ?? EuphireColors.mist;
 
@@ -608,7 +607,6 @@ class _ToggleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
@@ -655,14 +653,13 @@ class _LanguageRow extends ConsumerWidget {
     final flag = isPl ? '🇵🇱' : '🇬🇧';
     final langName = isPl ? 'Polski (PL)' : 'English (UK)';
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(AppLocalizations.of(context)!.settings_language_app,
+          Text(AppLocalizations.of(context).settings_language_app,
               style: theme.textTheme.titleMedium?.copyWith(
                   color: EuphireColors.frostWhite, fontWeight: FontWeight.w500, fontSize: 15)),
           const SizedBox(height: 10),
@@ -740,7 +737,7 @@ class _LanguagePickerSheet extends ConsumerWidget {
             ),
             Padding(
               padding: const EdgeInsets.all(24),
-              child: Text(AppLocalizations.of(context)!.settings_choose_language,
+              child: Text(AppLocalizations.of(context).settings_choose_language,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontFamily: 'Merriweather', fontWeight: FontWeight.w700,
                       color: EuphireColors.frostWhite)),
@@ -815,7 +812,6 @@ class _LogoutBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF0A2326),
@@ -860,7 +856,7 @@ class _LogoutBottomSheet extends StatelessWidget {
               const SizedBox(height: 20),
 
               Text(
-                AppLocalizations.of(context)!.settings_logout_confirm_title,
+                AppLocalizations.of(context).settings_logout_confirm_title,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontFamily: 'Merriweather',
                   fontStyle: FontStyle.italic,
@@ -870,7 +866,7 @@ class _LogoutBottomSheet extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                AppLocalizations.of(context)!.settings_logout_confirm_body,
+                AppLocalizations.of(context).settings_logout_confirm_body,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: EuphireColors.mist,
                   height: 1.5,
@@ -892,7 +888,7 @@ class _LogoutBottomSheet extends StatelessWidget {
                     elevation: 0,
                   ),
                   child: Text(
-                    AppLocalizations.of(context)!.settings_logout_confirm_logout,
+                    AppLocalizations.of(context).settings_logout_confirm_logout,
                     style: TextStyle(
                       fontFamily: 'Montserrat',
                       fontWeight: FontWeight.w700,
@@ -908,7 +904,7 @@ class _LogoutBottomSheet extends StatelessWidget {
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
                 child: Text(
-                  AppLocalizations.of(context)!.settings_logout_confirm_cancel,
+                  AppLocalizations.of(context).settings_logout_confirm_cancel,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     color: EuphireColors.mist.withValues(alpha: 0.7),
@@ -967,7 +963,6 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
@@ -980,7 +975,7 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  AppLocalizations.of(context)!.settings_delete_account,
+                  AppLocalizations.of(context).settings_delete_account,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: EuphireColors.magma,
                     fontWeight: FontWeight.w500,
@@ -1018,7 +1013,6 @@ class _DeleteWarningSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF0A2326),
@@ -1054,7 +1048,7 @@ class _DeleteWarningSheet extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                AppLocalizations.of(context)!.settings_delete_confirm_title,
+                AppLocalizations.of(context).settings_delete_confirm_title,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontFamily: 'Merriweather',
                   fontStyle: FontStyle.italic,
@@ -1064,7 +1058,7 @@ class _DeleteWarningSheet extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                AppLocalizations.of(context)!.settings_delete_confirm_body,
+                AppLocalizations.of(context).settings_delete_confirm_body,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: EuphireColors.mist,
                   height: 1.5,
@@ -1084,7 +1078,7 @@ class _DeleteWarningSheet extends StatelessWidget {
                     elevation: 0,
                   ),
                   child: Text(
-                    AppLocalizations.of(context)!.settings_delete_confirm_proceed,
+                    AppLocalizations.of(context).settings_delete_confirm_proceed,
                     style: TextStyle(
                       fontFamily: 'Montserrat',
                       fontWeight: FontWeight.w700,
@@ -1097,7 +1091,7 @@ class _DeleteWarningSheet extends StatelessWidget {
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
                 child: Text(
-                  AppLocalizations.of(context)!.settings_delete_confirm_cancel,
+                  AppLocalizations.of(context).settings_delete_confirm_cancel,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     color: EuphireColors.mist.withValues(alpha: 0.7),
@@ -1138,7 +1132,6 @@ class _LicensesScreenState extends State<_LicensesScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
     // Group by package name
     final Map<String, List<LicenseEntry>> byPkg = {};
     for (final e in _licenses) {
@@ -1214,7 +1207,6 @@ class _LicenseTileState extends State<_LicenseTile> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(

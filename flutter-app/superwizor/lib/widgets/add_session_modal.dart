@@ -16,8 +16,6 @@ import '../models/patient.dart';
 import '../providers/patient_provider.dart';
 import '../screens/new_session_screen.dart';
 import '../theme/euphire_theme.dart';
-import 'euphire_card.dart';
-import 'euphire_list_tile.dart';
 
 class AddSessionModal extends ConsumerWidget {
   final String patientId;

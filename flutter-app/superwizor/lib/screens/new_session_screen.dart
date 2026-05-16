@@ -23,7 +23,6 @@ import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:fixnum/fixnum.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -1067,16 +1066,6 @@ class _SpinnerPainter extends CustomPainter {
   bool shouldRepaint(covariant _SpinnerPainter old) => color != old.color;
 }
 
-String _getLanguageLabel(String code) {
-  switch (code) {
-    case 'pl': return 'Polski';
-    case 'en': return 'English';
-    case 'de': return 'Deutsch';
-    case 'uk': return 'Українська';
-    default: return 'Polski';
-  }
-}
-
 /// Animated shield icon with progress ring and pulsing glow.
 class _AnimatedShieldIcon extends StatefulWidget {
   final double progress;
@@ -1112,7 +1101,7 @@ class _AnimatedShieldIconState extends State<_AnimatedShieldIcon>
 
     return AnimatedBuilder(
       animation: _pulseController,
-      builder: (_, __) {
+      builder: (_, _) {
         final glowOpacity = isDone
             ? 0.35
             : 0.1 + (_pulseController.value * 0.15);
@@ -1151,7 +1140,7 @@ class _AnimatedShieldIconState extends State<_AnimatedShieldIcon>
                     tween: Tween(begin: 0, end: widget.progress),
                     duration: const Duration(milliseconds: 400),
                     curve: Curves.easeOut,
-                    builder: (_, value, __) => CircularProgressIndicator(
+                    builder: (_, value, _) => CircularProgressIndicator(
                       value: value,
                       strokeWidth: 3,
                       backgroundColor: Colors.white.withValues(alpha: 0.06),

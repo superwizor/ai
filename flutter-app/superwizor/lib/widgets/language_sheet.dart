@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'euphire_action_sheet.dart';
-import 'euphire_bottom_sheet.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/app_localizations.dart';
@@ -44,7 +42,7 @@ class _LanguageSheetState extends ConsumerState<LanguageSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(AppLocalizations.of(context)!.drawer_language, style: Theme.of(context).textTheme.headlineMedium),
+          Text(AppLocalizations.of(context).drawer_language, style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 24),
           _LanguageOption(
             title: 'Polski',

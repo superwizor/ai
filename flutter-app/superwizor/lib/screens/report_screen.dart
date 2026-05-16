@@ -34,7 +34,6 @@ class ReportScreen extends ConsumerStatefulWidget {
   ConsumerState<ReportScreen> createState() => _ReportScreenState();
 }
 
-enum _RiskLevel { high, moderate, low, none, unknown }
 
 class _ReportScreenState extends ConsumerState<ReportScreen> {
   bool _loading = true;

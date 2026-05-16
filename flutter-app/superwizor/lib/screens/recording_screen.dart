@@ -97,7 +97,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         await ref.read(consentServiceProvider).hasConsent(patientFileId: widget.patientFileId);
     if (!consent) {
       if (!mounted) return;
-      final t = AppLocalizations.of(context)!;
+      final t = AppLocalizations.of(context);
       final granted = await showEuphireBottomSheet<bool>(
         context: context,
         builder: (ctx) => EuphireActionSheet(
@@ -532,8 +532,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
     final dateLabel = DateFormat('d MMMM y', 'pl_PL').format(DateTime.now());
 
     return PopScope(
@@ -761,7 +760,7 @@ class _InstructionsBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
     final items = [
       t.recording_instruction_1,
       t.recording_instruction_2,
