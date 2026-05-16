@@ -18,6 +18,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -218,9 +219,31 @@ class RecordingService {
       try {
         final amp = await _recorder.getAmplitude();
         if (!_amplitudeController.isClosed) {
-          // amp.current is dBFS; map [-60..0] → [0..1] for waveform UI.
-          final clamped = amp.current.clamp(-60.0, 0.0);
-          _amplitudeController.add((clamped + 60.0) / 60.0);
+          // amp.current is dBFS (negative, silence = -∞ / -160).
+          //
+          // Noise gate + linear scaling.
+          //   Gate at -42 dB: sweet-spot — fridge/fan noise (~-35 dBFS
+          //   after macOS AGC) produces tiny bars (0.18), while normal
+          //   conversational speech (-15 dB) fills bars nicely (0.68).
+          //   No power curve — linear gives maximum mid-range sensitivity.
+          //
+          //   Mapping (gate -42, max -2, range 40 dB) + pow(x, 0.7) boost:
+          //     fridge  (-35 dB) → 0.18 → 0.28  (tiny bars)
+          //     soft    (-25 dB) → 0.43 → 0.54  (clearly visible)
+          //     normal  (-15 dB) → 0.68 → 0.75  (fills nicely)
+          //     loud    (-5 dB)  → 0.93 → 0.95  (nearly full)
+          //   The pow(0.7) boost is safe here because noise is gated
+          //   to zero — unlike the original pre-gate pow(0.7) which
+          //   inflated noise from 0.5 to 0.62.
+          const double gateDb = -42.0;
+          const double maxDb = -2.0;
+          final double db = amp.current.clamp(-96.0, 0.0);
+          if (db <= gateDb) {
+            _amplitudeController.add(0.0);
+          } else {
+            final normalized = ((db - gateDb) / (maxDb - gateDb)).clamp(0.0, 1.0);
+            _amplitudeController.add(math.pow(normalized, 0.7).toDouble());
+          }
         }
       } catch (_) {/* amplitude is best-effort */}
     });

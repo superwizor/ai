@@ -727,7 +727,7 @@ class _DeletePatientConfirmSheetState extends ConsumerState<_DeletePatientConfir
   void initState() {
     super.initState();
     _ctrl.addListener(() {
-      final ok = _ctrl.text.trim() == 'USUWAM';
+      final ok = _ctrl.text.trim().toLowerCase() == 'usuwam';
       if (ok != _confirmed) setState(() => _confirmed = ok);
     });
   }
@@ -770,7 +770,7 @@ class _DeletePatientConfirmSheetState extends ConsumerState<_DeletePatientConfir
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'USUWAM',
+                  'usuwam',
                   style: TextStyle(fontFamily: 'RobotoMono', color: EuphireColors.magma, fontWeight: FontWeight.w800, letterSpacing: 4, fontSize: 20),
                 ),
                 const SizedBox(height: 16),
@@ -803,7 +803,7 @@ class _DeletePatientConfirmSheetState extends ConsumerState<_DeletePatientConfir
                       ),
                       child: _deleting
                           ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('USUWAM PACJENTA', style: TextStyle(color: Colors.white, fontFamily: 'Montserrat', fontWeight: FontWeight.w800, letterSpacing: 1)),
+                          : const Text('Usuń pacjenta', style: TextStyle(color: Colors.white, fontFamily: 'Montserrat', fontWeight: FontWeight.w800, letterSpacing: 1)),
                     ),
                   ),
                 ),
