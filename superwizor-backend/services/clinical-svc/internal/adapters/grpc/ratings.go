@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 	"time"
@@ -134,13 +135,21 @@ func (s *Server) RateReport(ctx context.Context, req *clinicalv1.RateReportReque
 	// want a client bug to lose the thumbs-up signal.
 	issues := req.Issues
 	if req.Rating == "positive" {
-		issues = nil
+		issues = []string{}
 	} else {
 		for _, iss := range issues {
 			if !allowedIssues[iss] {
 				return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("unknown issue category: %q", iss))
 			}
 		}
+	}
+	// Normalize to non-nil slice. The DB column is `TEXT[] NOT NULL
+	// DEFAULT '{}'` — the DEFAULT only kicks in when the column is
+	// OMITTED from the INSERT, NOT when we explicitly pass nil. pgx
+	// encodes Go nil as SQL NULL, which violates NOT NULL with SQLSTATE
+	// 23502. Empty slice → SQL '{}' (the intended default).
+	if issues == nil {
+		issues = []string{}
 	}
 
 	notes, err := sanitizeRatingNotes(req.Notes)
@@ -162,6 +171,22 @@ func (s *Server) RateReport(ctx context.Context, req *clinicalv1.RateReportReque
 		Source:      source,
 	})
 	if err != nil {
+		// Don't leak DB error text to the client (gRPC convention),
+		// but log the actual error so we can diagnose. Common
+		// failure modes worth distinguishing here:
+		//   - FK violation on report_id (report deleted between
+		//     GetSessionDetails and RateReport — race)
+		//   - FK violation on therapist_id (auth/session mismatch)
+		//   - CHECK constraint (invalid rating value snuck past
+		//     handler validation — shouldn't happen)
+		// Cloud Logging filter:
+		//   resource.labels.service_name="clinical-svc"
+		//     AND jsonPayload.msg="UpsertReportRating"
+		slog.Error("UpsertReportRating",
+			"error", err.Error(),
+			"report_id", reportID.String(),
+			"therapist_id", therapistID.String(),
+			"rating", req.Rating)
 		return nil, status.Error(codes.Internal, "save rating")
 	}
 
