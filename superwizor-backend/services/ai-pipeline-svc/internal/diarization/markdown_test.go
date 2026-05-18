@@ -154,8 +154,10 @@ Summary: y`
 }
 
 func TestParse_MalformedChunkList(t *testing.T) {
+	// Note: "empty Chunks: list" used to error — relaxed 2026-05-18
+	// (Agnieszka incident, single-chunk session). Empty list now
+	// silently drops the group. See TestParse_EmptyChunksDropsGroup.
 	cases := []struct{ name, list string }{
-		{"empty", "Chunks: "},
 		{"non-int", "Chunks: a, b"},
 		{"negative", "Chunks: -1"},
 		{"repeated within group", "Chunks: 0, 0, 1"},
@@ -169,6 +171,59 @@ func TestParse_MalformedChunkList(t *testing.T) {
 				t.Errorf("want ErrInvalidChunkList, got %v", err)
 			}
 		})
+	}
+}
+
+// TestParse_EmptyChunksDropsGroup pins the new contract: an empty
+// `Chunks:` line in cluster grammar drops the group silently. This
+// is the 2026-05-18 Agnieszka fix — single-chunk sessions where the
+// LLM emits group 2 with no chunks must not error the whole pipeline.
+func TestParse_EmptyChunksDropsGroup(t *testing.T) {
+	in := `# Speakers
+
+## Group 1 — therapist (confidence 0.9)
+Chunks: 0
+Evidence: "Cześć"
+
+## Group 2 — patient (confidence 0.9)
+Chunks:
+Evidence: "..."
+
+# Metadata
+Title: Sesja krótka
+Summary: Krótkie nagranie pacjenta
+Overall_diarization_confidence: 0.85`
+	res, err := ParseMetadataMarkdown(in)
+	if err != nil {
+		t.Fatalf("expected empty-Chunks group to be dropped silently, got %v", err)
+	}
+	if len(res.Speakers) != 1 {
+		t.Fatalf("expected 1 speaker (group 2 dropped), got %d: %+v", len(res.Speakers), res.Speakers)
+	}
+	if res.Speakers[0].Index != 1 || res.Speakers[0].Role != "therapist" {
+		t.Fatalf("expected only group 1 (therapist) survived, got %+v", res.Speakers[0])
+	}
+}
+
+// TestParse_AllGroupsEmptyChunksFails pins the contract: if EVERY
+// group has empty Chunks, the parser still errors (we need at least
+// one speaker). Otherwise we'd silently produce a zero-speaker
+// inference which downstream wouldn't know how to handle.
+func TestParse_AllGroupsEmptyChunksFails(t *testing.T) {
+	in := `# Speakers
+
+## Group 1 — therapist (confidence 0.9)
+Chunks:
+
+## Group 2 — patient (confidence 0.9)
+Chunks:
+
+# Metadata
+Title: x
+Summary: y`
+	_, err := ParseMetadataMarkdown(in)
+	if !errors.Is(err, ErrMissingSection) {
+		t.Errorf("want ErrMissingSection (empty speakers), got %v", err)
 	}
 }
 

@@ -161,6 +161,24 @@ func ParseMetadataMarkdown(raw string) (Result, error) {
 		seenChunk   = map[int]int{} // chunk_idx → group it was assigned to (duplicate guard)
 	)
 
+	// finalizeCurrentGroup pushes `current` to res.Speakers UNLESS it
+	// has no chunks assigned (parseChunkList returned nil for empty
+	// `Chunks:` line, or the LLM forgot the Chunks: line entirely).
+	// In cluster grammar a group without any chunks is a degenerate
+	// placeholder — happens on tiny sessions (1 chunk total, prompt
+	// still asks for ≥2 groups). Drop it silently rather than error.
+	// Role-only grammar appends directly without using `current`, so
+	// this helper only affects the cluster-grammar path.
+	finalizeCurrentGroup := func() {
+		if current == nil {
+			return
+		}
+		if len(current.ChunkIndices) > 0 {
+			res.Speakers = append(res.Speakers, *current)
+		}
+		current = nil
+	}
+
 	for _, rawLine := range lines {
 		line := strings.TrimRight(strings.TrimLeft(rawLine, " \t"), " \t\r")
 		if line == "" {
@@ -181,10 +199,7 @@ func ParseMetadataMarkdown(raw string) (Result, error) {
 				return Result{}, fmt.Errorf("%w: '# Metadata' before '# Speakers'", ErrUnexpectedLine)
 			}
 			// Finalize any open group before switching sections.
-			if current != nil {
-				res.Speakers = append(res.Speakers, *current)
-				current = nil
-			}
+			finalizeCurrentGroup()
 			sawMetadata = true
 			state = stateInMetadata
 			continue
@@ -197,9 +212,7 @@ func ParseMetadataMarkdown(raw string) (Result, error) {
 		case stateInSpeakers:
 			// Try cluster header
 			if m := groupHeader.FindStringSubmatch(line); m != nil {
-				if current != nil {
-					res.Speakers = append(res.Speakers, *current)
-				}
+				finalizeCurrentGroup()
 				idx, _ := strconv.Atoi(m[1]) // regex guarantees \d+
 				role := strings.ToLower(m[2])
 				if !validRoles[role] {
@@ -244,6 +257,9 @@ func ParseMetadataMarkdown(raw string) (Result, error) {
 						}
 						seenChunk[ci] = current.Index
 					}
+					// Note: indices may be nil for empty `Chunks:` line
+					// — finalizeCurrentGroup drops such groups when
+					// the next section/header is seen.
 					current.ChunkIndices = indices
 					continue
 				}
@@ -293,10 +309,8 @@ func ParseMetadataMarkdown(raw string) (Result, error) {
 	if !sawMetadata {
 		return Result{}, fmt.Errorf("%w: '# Metadata'", ErrMissingSection)
 	}
-	// If we ended mid-cluster, finalize the last group.
-	if current != nil {
-		res.Speakers = append(res.Speakers, *current)
-	}
+	// If we ended mid-cluster, finalize the last group (drops if no chunks).
+	finalizeCurrentGroup()
 	if len(res.Speakers) == 0 {
 		return Result{}, fmt.Errorf("%w: '# Speakers' is empty", ErrMissingSection)
 	}
@@ -337,10 +351,17 @@ func parseConfidence(s string) (float64, error) {
 // parseChunkList parses "0, 2, 5, 8" → [0,2,5,8]. Strict: comma
 // separator, integers only, no ranges, no negatives. The prompt's
 // worked example shows the exact shape so the model shouldn't drift.
+//
+// Empty list returns (nil, nil) — not an error — because for sessions
+// with few chunks the LLM sometimes emits a group with no chunks
+// (e.g. 1-chunk session, prompt still asks for 2 groups, group 2 has
+// `Chunks:` empty). Caller's finalize-current-group step drops cluster
+// groups whose ChunkIndices ended up nil. See the 2026-05-18
+// Agnieszka incident for the motivating case.
 func parseChunkList(s string) ([]int, error) {
 	trimmed := strings.TrimSpace(s)
 	if trimmed == "" {
-		return nil, fmt.Errorf("%w: empty list", ErrInvalidChunkList)
+		return nil, nil
 	}
 	parts := strings.Split(trimmed, ",")
 	out := make([]int, 0, len(parts))

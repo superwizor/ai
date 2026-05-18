@@ -66,10 +66,21 @@ var (
 	// into one — call 1 wants determinism for parser-friendly output,
 	// call 2 also wants determinism (clinical accuracy > prose variety).
 	//
-	//   Metadata (call 1): very low temperature, tight budget.
-	//     - JSON mode: structured-output, schema-constrained, ~few KB.
-	//     - Markdown mode: free-form text but still small — speaker
-	//       groups + title + summary fit in <1k tokens easily.
+	//   Metadata (call 1): very low temperature, generous budget.
+	//     - JSON mode: structured-output, schema-constrained, fits
+	//       easily in a few KB.
+	//     - Markdown mode (LLM_DIARIZATION_MODE=markdown): output
+	//       includes EVERY chunk index inline per speaker group, e.g.
+	//       "Chunks: 0, 2, 5, 8, 12, 14, 17, 23, 28, 33, 36, ...".
+	//       A 60-min session with 50+ chunks across 2-3 speakers
+	//       can push past 2k tokens just on the chunk-index lists.
+	//       Keep this generous — call-1 truncation causes the
+	//       markdown parser to fail (missing '# Metadata' section,
+	//       mid-quote 'Evidence:' lines, empty Chunks: lists), which
+	//       cascades into 5+ Pub/Sub retries and ultimately a
+	//       dead-letter for the session. See the 2026-05-18 incident
+	//       (session 17cd350e) — caused by 2048 cap, fixed by
+	//       reverting to 16384.
 	//   Report   (call 2): low temperature for clinical accuracy +
 	//     budget *calibrated to actual target length*, not headroom.
 	//     The model fills available room; we no longer give it 65k.
@@ -83,7 +94,7 @@ var (
 	//
 	// Hard ceiling = the Vertex-enforced cap on gemini-2.5-flash
 	// (65536 exclusive → 65535 highest accepted). Used only by the
-	// safety-retry path when call 2 returns FinishReasonMaxTokens.
+	// safety-retry paths when calls return FinishReasonMaxTokens.
 	//
 	// Temp 0.2 (down from 0.3 on 2026-05-18): pushes call 2 toward
 	// the same accuracy-first profile as call 1. Verbosity reports
@@ -93,7 +104,7 @@ var (
 	geminiTempMetadata             float32 = 0.1
 	geminiTempReport               float32 = 0.2
 	geminiTopP                     float32 = 0.95
-	geminiMaxOutMetadata           int32   = 2048
+	geminiMaxOutMetadata           int32   = 16384
 	geminiMaxOutReportDefault      int32   = 4096
 	geminiMaxOutReportHardCeiling  int32   = 65535
 	// debugLogPrompts controls whether we emit the full prompt sent to
@@ -432,23 +443,59 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 	var metadataPayload ReportPayload
 	stats := TokenStats{}
 
-	switch mode {
-	case "markdown":
-		mdResult, mdStats, err := callMetadataMarkdown(ctx, model, reportLanguage, ragContext, chunks, native)
-		if err != nil {
-			return "", TokenStats{}, err
+	// Fast-path for tiny sessions: skip the diarization LLM call
+	// entirely when there are fewer than 2 chunks. The cluster prompt
+	// asks the model for "2 (lub 3) wirtualne grupy mówców" — a single
+	// chunk can't be split into multiple groups, the LLM emits a
+	// degenerate "Chunks:" empty list for group 2, and the strict
+	// Markdown parser barfs (the 2026-05-18 Agnieszka incident).
+	// Synthesize a single-speaker payload with role "unknown" so call
+	// 2 still produces a content-focused report; downstream
+	// generateAndSaveSpeakerLabels skips "unknown" groups, which
+	// leaves transcript_segments with their default speaker_tag=0
+	// state — UI shows the segment under the default speaker label.
+	//
+	// Also handles len(chunks)==0 — Chirp returned no words; report
+	// will be minimal/empty but the pipeline doesn't crash.
+	if len(chunks) < 2 {
+		slog.Info("skipping call 1 — fewer than 2 chunks, diarization is a no-op",
+			"chunk_count", len(chunks))
+		chunkIndices := make([]int, len(chunks))
+		for i, c := range chunks {
+			chunkIndices[i] = c.ChunkIdx
 		}
-		metadataPayload = markdownResultToPayload(mdResult, chunks, native)
-		stats.InputTokens += mdStats.InputTokens
-		stats.OutputTokens += mdStats.OutputTokens
-	default: // "json" — legacy path, byte-identical to pre-refactor behavior.
-		payload, jsonStats, err := callMetadataJSON(ctx, model, reportLanguage, ragContext, legacyChunkFormat(chunks))
-		if err != nil {
-			return "", TokenStats{}, err
+		metadataPayload = ReportPayload{
+			SpeakerRoleInference: SpeakerRoleInference{
+				Method: "skipped_too_few_chunks",
+				SpeakerGroups: []SpeakerGroup{
+					{
+						Role:         "unknown",
+						Confidence:   1.0,
+						ChunkIndices: chunkIndices,
+					},
+				},
+				OverallDiarizationConfidence: 1.0,
+			},
 		}
-		metadataPayload = payload
-		stats.InputTokens += jsonStats.InputTokens
-		stats.OutputTokens += jsonStats.OutputTokens
+	} else {
+		switch mode {
+		case "markdown":
+			mdResult, mdStats, err := callMetadataMarkdown(ctx, model, reportLanguage, ragContext, chunks, native)
+			if err != nil {
+				return "", TokenStats{}, err
+			}
+			metadataPayload = markdownResultToPayload(mdResult, chunks, native)
+			stats.InputTokens += mdStats.InputTokens
+			stats.OutputTokens += mdStats.OutputTokens
+		default: // "json" — legacy path, byte-identical to pre-refactor behavior.
+			payload, jsonStats, err := callMetadataJSON(ctx, model, reportLanguage, ragContext, legacyChunkFormat(chunks))
+			if err != nil {
+				return "", TokenStats{}, err
+			}
+			metadataPayload = payload
+			stats.InputTokens += jsonStats.InputTokens
+			stats.OutputTokens += jsonStats.OutputTokens
+		}
 	}
 
 	// --- Krok 2: Pełny Raport Kliniczny (Raw Text Mode) ---
@@ -774,6 +821,46 @@ ZASADY:
 	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil {
 		return diarization.Result{}, TokenStats{}, fmt.Errorf("no candidates returned for metadata (markdown)")
 	}
+
+	// Safety retry: if call 1 hit MaxOutputTokens, the Markdown
+	// output is truncated mid-output and ParseMetadataMarkdown will
+	// fail with errors like "missing required section '# Metadata'"
+	// or "unexpected line: Evidence: ...". Retry ONCE at 2× cap
+	// (bounded by geminiMaxOutReportHardCeiling) before letting
+	// Pub/Sub see the failure. Mirrors the call-2 safety retry
+	// added in commit d212f38. See the 2026-05-18 incident
+	// (session 17cd350e — 6+ Pub/Sub redeliveries) for the
+	// motivating case.
+	if resp.Candidates[0].FinishReason == vertexai.FinishReasonMaxTokens {
+		retryMaxOut := geminiMaxOutMetadata * 2
+		if retryMaxOut > geminiMaxOutReportHardCeiling {
+			retryMaxOut = geminiMaxOutReportHardCeiling
+		}
+		slog.Warn("call 1 (markdown) hit MaxOutputTokens — retrying once at 2× cap",
+			"original_cap", geminiMaxOutMetadata,
+			"retry_cap", retryMaxOut,
+			"native_diarization", native)
+		// Rebuild config with bumped cap; keep temp/TopP identical.
+		retryConfig := metadataGenConfigMarkdown()
+		retryConfig.MaxOutputTokens = vertexai.Ptr[int32](retryMaxOut)
+		model.GenerationConfig = retryConfig
+		resp, err = model.GenerateContent(ctx, vertexai.Text(prompt))
+		if err != nil {
+			return diarization.Result{}, TokenStats{}, fmt.Errorf("generate metadata (markdown, retry): %w", err)
+		}
+		if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil {
+			return diarization.Result{}, TokenStats{}, fmt.Errorf("no candidates returned for metadata (markdown, retry)")
+		}
+		if resp.Candidates[0].FinishReason == vertexai.FinishReasonMaxTokens {
+			// Even 2× wasn't enough. Accept the truncated output
+			// and let the parser fail loud — Pub/Sub will redeliver,
+			// metrics will fire, we tune caps next iteration. Don't
+			// loop indefinitely.
+			slog.Error("call 1 hit MaxOutputTokens twice — Markdown parser will likely fail downstream",
+				"retry_cap", retryMaxOut)
+		}
+	}
+
 	var out strings.Builder
 	for _, part := range resp.Candidates[0].Content.Parts {
 		if text, ok := part.(vertexai.Text); ok {
