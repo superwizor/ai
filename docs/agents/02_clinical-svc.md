@@ -49,6 +49,12 @@ service ClinicalService {
   rpc UpdateSpeakerLabels(UpdateSpeakerLabelsRequest) returns (UpdateSpeakerLabelsResponse);
   // Modalities
   rpc ListModalities(ListModalitiesRequest) returns (ListModalitiesResponse);
+  // Report ratings + suggestion engine (feat/report-customization,
+  // 2026-05-18) — see "Report ratings + suggestion engine" below.
+  rpc RateReport(RateReportRequest) returns (RateReportResponse);
+  rpc GetReportRating(GetReportRatingRequest) returns (ReportRating);
+  rpc GetActiveSuggestion(GetActiveSuggestionRequest) returns (PreferenceSuggestion);
+  rpc LogPreferenceSuggestion(LogPreferenceSuggestionRequest) returns (google.protobuf.Empty);
 }
 ```
 
@@ -61,6 +67,7 @@ service ClinicalService {
 | **Clinical** | `modalities`, `patient_files`, `therapist_patient_relations` | clinical-svc CRUD |
 | **Sessions** | `sessions`, `transcripts`, `transcript_segments`, `therapist_reports`, `patient_views`, `audio_uploads`, `upload_tickets` | clinical-svc reads + ai-pipeline-svc writes |
 | **Feedback** | `report_feedback`, `feedback_categories`, `report_feedback_categories` | clinical-svc (not yet implemented) |
+| **Report ratings** | `report_ratings`, `preference_suggestions_log` (since migration 000015) | clinical-svc (since feat/report-customization, 2026-05-18) |
 
 > Source: `docs/03_DATA_MODEL.md` §4.5–4.6 (lines 1385–1738) and §4.9 (lines 2025–2212).
 
@@ -141,6 +148,48 @@ DATABASE_URL="postgres://superwizor_app:$PASSWORD@127.0.0.1:15432/superwizor?ssl
 - Adding a `WriteReport`/`UpdateReport` endpoint — violates P4.
 - Crossing the patient-view ↔ therapist-report boundary in app logic — violates ADR-DM-008.
 - Embedding speaker role detection here (e.g., "guess that speaker_tag=1 is therapist") — violates ADR-IMPL-002. Roles are inferred by llm-worker only.
+
+## Report ratings + suggestion engine (feat/report-customization, 2026-05-18)
+
+LLM-chat-style 👍/👎 feedback on AI-generated reports + a v1
+suggestion engine that proposes preference changes when a therapist
+consistently complains about the same dimension.
+
+Design spec: `docs/10_REPORT_CUSTOMIZATION.md` §5 + §6.
+
+**Handler**: `internal/adapters/grpc/ratings.go`.  
+**sqlc queries**: `internal/adapters/postgres/queries/report_ratings.sql`.
+
+**Tables**:
+- `report_ratings` — `UNIQUE (report_id, therapist_id)` so re-rating UPSERTs. FK CASCADE on both report and therapist (rationale: ratings are derivative; orphan rows have no analytic value). Per ADR-DM-010 the cascade is documented in the migration comment.
+- `preference_suggestions_log` — pure telemetry for the suggestion engine. Three rows per banner lifecycle (`shown` → `applied` or `dismissed`). Safe to TRUNCATE without product impact.
+
+**RPCs**:
+- `RateReport(report_id, therapist_id, rating, issues, notes, source, idempotency_key)` — UPSERT. `rating ∈ {"positive", "negative"}`. `issues` is a chip-array (negative path only); positive rating with non-empty issues silently clamps to empty rather than 400. `idempotency_key` required.
+- `GetReportRating(report_id, therapist_id)` — NotFound when unrated. Used to render the widget state on report-view entry.
+- `GetActiveSuggestion(therapist_id)` — engine read. Returns an empty `PreferenceSuggestion` (empty `suggestion_id`) when no banner; non-empty when triggered. Never returns NotFound — empty is the "no banner" state.
+- `LogPreferenceSuggestion(...)` — telemetry-only INSERT. Fire-and-forget from the client.
+
+**Chip allow-list** (synced with Flutter widget):
+```
+za_dlugi, za_krotki, zly_ton, za_duzo_cytatow,
+za_malo_cytatow, niedokladna_interpretacja,
+brakuje_mocnych_stron, brakuje_kontekstu, inne
+```
+Each maps (in `dimensionForChip`) to a preference dimension the suggestion engine may nudge — see ratings.go for the table.
+
+**Suggestion engine logic** (`pickTriggerChip` + `proposeNudge`):
+- Trigger: ≥3 negative ratings of the same chip category in last 5 ratings.
+- Cooldown: 14 days after dismissal of a banner for the same dimension.
+- Mapping: chip → dimension → proposed `from_value`/`to_value` is deterministic (no ML in v1).
+- Returns `""` for chips without an actionable dimension (e.g. `inne` → just data collection).
+
+**Cross-service coupling**:
+- Preferences themselves live in identity-svc (`users.report_preferences`). clinical-svc never reads or writes that JSONB — only the rating data feeding the engine.
+- Flutter calls `identity.GetReportPreferences` and `clinical.GetActiveSuggestion` in parallel on the settings screen. The two services have no runtime dep on each other for this feature.
+- When a "shown" suggestion is later "applied", the Flutter app calls `identity.UpdateReportPreferences` (the actual write) AND `clinical.LogPreferenceSuggestion(action="applied")` (telemetry). The two could in principle drift if the second call fails; we accept that — telemetry is best-effort.
+
+**P4 (Flutter read-only on AI reports) still holds.** `RateReport` writes to `report_ratings`, NOT to `reports`. The clinical document remains untouchable from the client.
 
 ## Common gotchas
 

@@ -39,6 +39,10 @@ service IdentityService {
   rpc GetUser(GetUserRequest) returns (User);
   rpc UpdateProfile(UpdateProfileRequest) returns (User);
   rpc CheckPermission(CheckPermissionRequest) returns (PermissionDecision);
+  // Report customization (feat/report-customization, 2026-05-18) —
+  // see "Report preferences" section below.
+  rpc GetReportPreferences(GetReportPreferencesRequest) returns (ReportPreferences);
+  rpc UpdateReportPreferences(UpdateReportPreferencesRequest) returns (ReportPreferences);
 }
 ```
 
@@ -50,7 +54,7 @@ service IdentityService {
 
 | Table | Purpose |
 |---|---|
-| `users` | UUID v4 PK, `firebase_uid UNIQUE NOT NULL`, `email`, `role` enum (`THERAPIST`/`PATIENT`), `organization_id` FK, `deleted_at` (soft delete) |
+| `users` | UUID v4 PK, `firebase_uid UNIQUE` (NULLable since migration 000013 — patient rows have no Firebase account), `email` (also NULLable post-000013, partial CHECK enforces presence for non-PATIENT), `role` enum (`THERAPIST`/`PATIENT`), `organization_id` FK, `deleted_at` (soft delete), `report_preferences JSONB DEFAULT '{}'` (since 000015 — therapist style preferences for AI report generation, see "Report preferences" below) |
 | `organizations` | Therapy practices; `subscription_id` FK to billing |
 | `addresses` | Postal addresses (1:1 with `organizations`) |
 | `user_roles` | Reserved for future multi-role support; today `users.role` enum is the truth |
@@ -141,9 +145,62 @@ DATABASE_URL="postgres://superwizor_app:$PASSWORD@127.0.0.1:15432/superwizor?ssl
 - Hard-code roles other than THERAPIST/PATIENT — see ADR-DM-004.
 - Bypass Firebase Auth (e.g., adding password auth here) — see architecture §4.2.1.
 
+## Report preferences (feat/report-customization, 2026-05-18)
+
+Per-therapist style preferences for AI-generated clinical reports.
+**identity-svc owns the storage** (`users.report_preferences JSONB`),
+not the consumption — ai-pipeline-svc reads the JSONB at call-2
+prompt build time. clinical-svc owns the matched feedback loop
+(`report_ratings`, `preference_suggestions_log`).
+
+Design spec: `docs/10_REPORT_CUSTOMIZATION.md`.
+
+**Handler**: `internal/adapters/grpc/preferences.go`.
+
+**RPCs**:
+- `GetReportPreferences(therapist_id)` — returns the stored blob
+  decoded. Empty/missing → default `ReportPreferences` (renders to
+  no-op fragment in ai-pipeline-svc).
+- `UpdateReportPreferences(therapist_id, preferences, idempotency_key)` —
+  validates + sanitizes + UPSERTs. Returns the post-update blob.
+
+**Stored shape (`users.report_preferences` JSONB)**:
+
+```json
+{
+  "version": 1,
+  "length": "brief|standard|detailed",
+  "tone": "clinical_formal|empathic_warm|pragmatic_direct|academic_rigorous",
+  "quote_density": "few|selective|many",
+  "diagnostic_language": "descriptive|clinical_labels|dsm_icd",
+  "hypothesis_hedging": "tentative|balanced|assertive",
+  "section_emphasis": ["clinical_picture", "safety_and_risk", ...],
+  "strengths_framing": "problem_focused|balanced|strengths_first",
+  "free_text": "Plain-Polish guidance, ≤500 chars, sanitized.",
+  "updated_at": "2026-05-18T..."
+}
+```
+
+Empty string for any enum field = "use default". Empty object `{}` = "use defaults for everything". Both render to an empty prompt fragment server-side.
+
+**Validation rules** (`preferences.go::validatePayload`):
+- Closed allow-lists for every enum field. Unknown value → `InvalidArgument`.
+- `section_emphasis` allow-list checked per entry; whitespace-only entries dropped before validation.
+- `free_text` ≤ 500 chars; newlines/zero-width chars stripped silently; regex-rejected on injection patterns (`ignore previous instructions`, `system prompt`, `you are now`, `new instructions:`, `act as ...`). **Rejection is the contract — don't silently strip injection attempts.**
+- Server stamps `version + updated_at` ignoring client values for those fields.
+
+**Idempotency quirk vs the global pattern**: `UpdateReportPreferences` accepts same key + different payload (treats it as "user changed their mind mid-flight" and overwrites). This DIVERGES from `CreatePatientFile`-style contracts where same key + different payload → `AlreadyExists`. Documented in the handler doc comment because it's surprising.
+
+**Cross-service coupling**:
+- Suggestion engine lives in clinical-svc (owns `report_ratings`). Identity-svc has no downstream dep on clinical-svc — they're queried in parallel by Flutter on the settings screen.
+- `users.report_preferences` is JOINed by ai-pipeline-svc at call-2 prompt build time. If you change the JSONB schema, update BOTH the `preferencesPayload` struct here AND the `Preferences` struct in `ai-pipeline-svc/internal/reportprefs/` in lockstep. Tests cover the renderer end of that contract.
+
 ## Common gotchas
 
 - **`firebase_uid` not set** on User insert → all subsequent `ValidateToken` calls fail because lookup is by `firebase_uid`. Always populate from token claims.
+- **`firebase_uid` + `email` are now `*string`** in sqlc-generated types (since migration 000013 relaxed NOT NULL for patient rows). Use the `derefString` helper in `server.go` when rendering to wire types. CreateUser path still requires both pre-pointer-wrap (partial CHECK enforces presence for THERAPIST).
+- **Report preferences JSONB**: querying with `WHERE deleted_at IS NULL` is implicit via `GetReportPreferences` query — soft-deleted users return `NotFound`, not a stale blob.
+- **Injection patterns in `free_text`**: legitimate Polish therapy phrasing has been verified not to trip the regex (`TestValidatePayload_AllowsLegitimatePolishGuidance`). If a real-world false positive surfaces, add it to that test before relaxing the regex.
 - **`audience` claim** must equal the Firebase project ID (`superwizor-ai-25ecd`), not a custom string. Set in Flutter's Firebase init, not here.
 - **Soft-deleted users** still exist in `users` table; queries must filter `WHERE deleted_at IS NULL` unless you specifically need the audit trail.
 - **Cloud Run cold start + Firebase Admin SDK init** can add ~2s. Use min-instances=1 if latency-sensitive.

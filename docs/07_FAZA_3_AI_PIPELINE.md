@@ -69,3 +69,53 @@ Ten dokument opisuje szczegółowy, techniczny plan dla **Fazy 2.5 → 3**: "Dep
 > **Dlaczego nie tylko Layer 2:** Bez Layer 1 LLM otrzymuje Format B transkrypt, który mapuje wszystkie nieoznaczone słowa na `## Speaker 1` (`FormatSpeakerTurns` reguła "tag==0 → 1"), tracąc strukturę turn-taking widoczną w sygnale audio. Klastrowanie LLM stoi się trudniejsze, jakość ról spada. Layer 1 zachowuje kolejność i grupowanie w transkrypcie, Layer 2 ratuje pojedyncze osierocone runy, których Layer 1 nie objął (np. krótka odpowiedź pacjenta po pauzie, której Chirp w ogóle nie oetykietował).
 
 > Szczegóły implementacji + ADR-IMPL-007a → `docs/agents/05_ai-pipeline-svc.md` sekcja "Native-diarization sparse-label recovery (2026-05-15)".
+
+### Priorytet 6: Personalizacja raportów per terapeuta + system ocen (`feat/report-customization`, 2026-05-18)
+
+**Cel:** Pozwolić terapeutom dostroić styl raportów (długość, ton, gęstość cytatów itp.) w prostym polskim — nie technicznie — przy zachowaniu klinicznego baseline'u promptu modalności. Plus lekki UX oceniania 👍/👎 z chipami szczegółów, który zamyka pętlę feedback → konfiguracja przez aktywny suggestion engine.
+
+**Tło projektowe + decyzje:** `docs/10_REPORT_CUSTOMIZATION.md` (350+ linii, 7 wymiarów + free text, suggestion engine w v1, dziennik decyzji w §13).
+
+#### Serwer-side (zrobione w db57fdb)
+
+- [x] **KROK 6.1:** Migracja `000015_report_customization.up.sql`:
+  - `ALTER users ADD COLUMN report_preferences JSONB DEFAULT '{}'`
+  - `CREATE TABLE report_ratings` z `UNIQUE (report_id, therapist_id)`, FK CASCADE udokumentowane per ADR-DM-010
+  - `CREATE TABLE preference_suggestions_log` (telemetria silnika sugestii)
+- [x] **KROK 6.2:** `identity-svc.GetReportPreferences` / `UpdateReportPreferences` — RPC + closed enum allow-lists + cap 500 znaków na `free_text` + regex-odrzucenie wzorców prompt-injection (rejektuje, nie strippuje cicho — fail loud). Handler w `internal/adapters/grpc/preferences.go`.
+- [x] **KROK 6.3:** `clinical-svc.RateReport` / `GetReportRating` / `GetActiveSuggestion` / `LogPreferenceSuggestion` — RPC + chip allow-list + sanityzacja notatek + silnik sugestii (≥3 negatywne oceny tej samej kategorii w 5 ostatnich raportach, 14-dniowy cooldown na dismissed). Handler w `internal/adapters/grpc/ratings.go`.
+- [x] **KROK 6.4:** Nowy pakiet `ai-pipeline-svc/internal/reportprefs/` — sole consumer JSONB blob'u. `RenderFragment` produkuje polski fragment promptu PODRZĘDNY baseline'owi modalności ("NIE sprzeczne z powyższymi zasadami klinicznymi"). Zwraca "" dla defaultów / nieznanych enum-ów — zachowuje byte-identical prompty dla użytkowników bez konfiguracji.
+- [x] **KROK 6.5:** `llm-worker` — `SessionContext` rozszerzony o `TherapistID + ReportPreferences`. `loadSessionContext` JOIN-uje przez `patient_files → users.report_preferences`. `generateReport` przyjmuje prefs, wstrzykuje fragment między prompt modalności a ZASADY ZWIĘZŁOŚCI, aplikuje cap na `MaxOutputTokens`.
+
+> **Architektura cross-service:** identity-svc pozostaje na dnie drzewa zależności (`docs/agents/01_identity-svc.md`). Silnik sugestii żyje w clinical-svc (właściciel `report_ratings`). Flutter robi dwa równoległe wywołania na wejściu do ustawień: `identity.GetReportPreferences` + `clinical.GetActiveSuggestion`. JSONB shape zduplikowany świadomie w `identity-svc.preferences.preferencesPayload` i `reportprefs.Preferences` — zmiana wymiarów = update OBU w lockstep (zaznaczone w doc commentach).
+
+#### Hardening długości raportów (zrobione w 32f9b82 + d212f38)
+
+Pre-feature obserwacja: raporty były rozwlekłe nawet dla 2-minutowych sesji. Model wypełnia dostępne miejsce (`MaxOutputTokens = 65535`) niezależnie od długości wejścia.
+
+- [x] **KROK 6.6:** Refaktor stałych w `cmd/llm-worker/main.go` — wyodrębnienie `geminiTempMetadata/Report`, `geminiTopP`, `geminiMaxOut*` do bloku var() obok `geminiModel/geminiRegion`. Trzy helper funkcje `metadataGenConfigJSON / metadataGenConfigMarkdown / reportGenConfig` zastępują trzy inline `vertexai.GenerationConfig{...}` literały — single source of truth dla każdego profilu samplowania.
+- [x] **KROK 6.7:** Kalibracja capów MaxOutputTokens na bazie liczenia tokenów PL (~2.0 tok/słowo, ~30 tok/zdanie, ~600 tok/strona, 7 sekcji × 2-5 zdań):
+  - `geminiTempReport`: 0.3 → **0.2** (dokładność > różnorodność prozy dla dokumentu klinicznego)
+  - `geminiMaxOutMetadata`: 16384 → **2048** (call 1 to mały JSON, nie potrzebuje 16× headroom)
+  - `geminiMaxOutReportDefault`: 65535 → **4096** (standardowy cel 2-stronnicowy ≈ 1200 effective tokenów + 3× margines)
+  - `reportprefs.MaxOutputTokens`: brief 16384→**2048**, detailed 65535→**8192**
+- [x] **KROK 6.8:** `reportprefs.TargetLengthDirective` — polska dyrektywa promptowa sparowana z capem ("DOCELOWA DŁUGOŚĆ RAPORTU: ~X strony (≈Y słów). Mieść się w tym budżecie z marginesem na zwięzłą formę."). Wstrzykiwana jako standalone block nad ZASADY ZWIĘZŁOŚCI w call-2 prompcie. Model honoruje explicit budżety w prompcie znacznie lepiej niż implicit hard capy.
+- [x] **KROK 6.9:** Safety-retry w `generateReport` — jeśli call 2 zwróci `FinishReasonMaxTokens`, retry RAZ przy 2× capie (bounded przez `geminiMaxOutReportHardCeiling = 65535`). Loguje Warn na trigger, Error gdy retry też truncatuje (akceptuje partial output, nie loop). Belt-and-suspenders na okres rolloutu — tracked w `docs/agents/TODO.md` do usunięcia gdy trigger rate <1% przez 2 tygodnie.
+
+- [x] **Kryteria wykonania (DoD):**
+  - `go build` / `go vet` / `go test` czyste na 3 affected services.
+  - Migracja 000015 stosuje się czysto na staging.
+  - Ratowanie raportu zapisuje wiersz w `report_ratings` z idempotencją na `(report_id, therapist_id)`.
+  - Update preferencji z `length=brief` faktycznie produkuje raport ≈1 strona (vs ≈3 dziś dla tej samej sesji) — do potwierdzenia na realnej sesji po deploy.
+  - Suggestion engine: po ≥3 negatywach z kategorią `za_dlugi`, `GetActiveSuggestion` zwraca `dimension=length, to_value=brief` (lub niżej).
+
+- [x] **Wymagane testy:** unit (preferences validators, ratings chip mapping, reportprefs rendering, suggestion engine pure logic). Eval-matrix probe na różne profile długości — odsunięte (tracked w TODO).
+
+> **Cofalność:** Migracja down.sql gotowa (drop column + drop tables; styl-data nie jest PHI). Wycofanie samej feature po deployu = revert kodu (DB column zostaje pusta = no-op). Safety-retry można usunąć osobnym commitem gdy dane produkcyjne potwierdzą trigger rate ≈ 0%.
+
+> **Co NIE zmienia się:** Call 1 (diaryzacja / metadane) nietknięty. Prompty modalności zablokowane (clinical baseline, ADR-IMPL-007). Pipeline labelingu mówców (ADR-IMPL-007a) niezależny. Format B transkrypt w call 2 niezmieniony. P4 (Flutter read-only on AI reports) zachowany — `RateReport` zapisuje do `report_ratings`, NIGDY do `reports`.
+
+> Szczegóły implementacji per serwis:
+> - `docs/agents/01_identity-svc.md` sekcja "Report preferences (2026-05-18)"
+> - `docs/agents/02_clinical-svc.md` sekcja "Report ratings + suggestion engine (2026-05-18)"
+> - `docs/agents/05_ai-pipeline-svc.md` sekcja "Report customization integration (2026-05-18)"

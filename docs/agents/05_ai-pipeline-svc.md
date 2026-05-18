@@ -47,6 +47,9 @@ services/ai-pipeline-svc/
     ├── diarization/                 # (feat/llm-optimisation) NEW
     │   ├── markdown.go              # Markdown parser, both grammars (cluster + role-only)
     │   └── markdown_test.go
+    ├── reportprefs/                 # (feat/report-customization, 2026-05-18) NEW
+    │   ├── reportprefs.go           # Preferences struct + RenderFragment + MaxOutputTokens + TargetLengthDirective
+    │   └── reportprefs_test.go
     └── models/, services/
 
 pkg/transcription/chunker/           # ChunkByPauses, used by stt-worker
@@ -87,7 +90,8 @@ stt-worker (ProcessAudio):
 Pub/Sub transcript.completed
        ↓
 llm-worker (ProcessTranscript):
-  1. load SessionContext (sessions row + speaker_label_mapping)
+  1. load SessionContext (sessions row + speaker_label_mapping +
+       therapist_id + users.report_preferences via patient_files JOIN)
   2. loadTranscriptBlob: decrypt → []BlobLine
   3. hasNativeSpeakers := any(BlobLine.speaker_tag != 0)
   4. loadRAGContext (Phase 2: stub returns "")
@@ -103,13 +107,20 @@ llm-worker (ProcessTranscript):
             - LLM_DIARIZATION_MODE=markdown → text/plain, parser handles both grammars
             - LLM_DIARIZATION_MODE=json     → schema-constrained (legacy path)
        d. parse → SpeakerRoleInference (same struct shape on every branch)
+       config: metadataGenConfigJSON / metadataGenConfigMarkdown helpers
   7. generateAndSaveSpeakerLabels:
        walk SpeakerGroups → assign sequential speaker_tags (skip filler/unknown)
        speakerlabels.Generate(langCode, tag)
        update transcript_segments + sessions.speaker_label_mapping
   8. Call 2 (clinical report):
        transcript text: always Format B (speaker-turn Markdown, labels now resolved)
-       Markdown text output (unchanged)
+       prompt: modality baseline
+               + reportprefs.RenderFragment(prefs)  ← preferences fragment
+               + reportprefs.TargetLengthDirective(prefs)  ← length directive
+               + ZASADY ZWIĘZŁOŚCI + RAG + transcript
+       config: reportGenConfig(reportprefs.MaxOutputTokens(prefs))
+       safety: retry once at 2× cap on FinishReasonMaxTokens
+       Markdown text output
   9. persistReport: encrypt → therapist_reports + hitop_measurements
  10. update sessions.status = COMPLETED
  11. publishReportGenerated on report.generated
@@ -212,6 +223,122 @@ Pipeline: `buildBaseChunks` → `mergeShortChunks` → `splitLongChunks`. See [`
 
 If you change defaults, update `DefaultConfig` and re-run the test in `chunker_test.go`. The thresholds are tuned for Polish therapy speech — changing them affects diarization quality downstream.
 
+## Report customization integration (feat/report-customization, 2026-05-18)
+
+Per-therapist report style preferences. **identity-svc owns the
+storage** (`users.report_preferences JSONB`); ai-pipeline-svc is the
+**sole consumer** at call-2 prompt build time. Rating feedback +
+suggestion engine live in clinical-svc.
+
+Design spec: `docs/10_REPORT_CUSTOMIZATION.md`.
+
+### Loading
+
+`loadSessionContext` in `cmd/llm-worker/main.go` was extended with a
+JOIN through `patient_files → users.report_preferences`. New fields
+on `SessionContext`:
+
+```go
+type SessionContext struct {
+    ...
+    TherapistID       uuid.UUID                     // NEW
+    ReportPreferences reportprefs.Preferences       // NEW (zero value = use defaults)
+}
+```
+
+The JOIN uses `COALESCE(u.report_preferences, '{}'::jsonb)` so a
+NULL row (shouldn't happen post-migration 000015) decodes as
+default. A corrupt JSONB blob is logged as Warn and falls through
+to defaults — never fails the whole pipeline.
+
+### Rendering
+
+`internal/reportprefs/RenderFragment(prefs)` produces a Polish
+prompt block subordinate to the modality baseline:
+
+```
+PREFERENCJE TERAPEUTY (uzupełnienia stylu, NIE sprzeczne z
+powyższymi zasadami klinicznymi):
+
+- Długość raportu: krótki (≈1 strona)
+- Ton: empatyczny-ciepły
+- Cytaty z transkryptu: wybiórczo (3-5)
+- ...
+- Dodatkowe wskazówki terapeuty: <free_text verbatim>
+```
+
+Empty / all-defaults / unknown-enum input → empty fragment.
+Preserves byte-identical prompts for users who haven't configured.
+Inserted in `generateReport` **between** the modality prompt
+(immutable clinical framework) and the universal `ZASADY ZWIĘZŁOŚCI`
+block — the "NIE sprzeczne" framing keeps the modality baseline
+winning on any conflict.
+
+### Length caps + prompt directive (2026-05-18 calibration)
+
+Pre-feature observation: reports were verbose even for 2-min sessions because `MaxOutputTokens` was 65535 (effectively uncapped) and the model fills available room.
+
+**New constants** in `cmd/llm-worker/main.go` (Polish token math:
+~600 tok/page, 7 sections × 2-5 sentences each per ZASADY ZWIĘZŁOŚCI):
+
+| Constant | Value | Notes |
+|---|---|---|
+| `geminiTempMetadata` | 0.1 | Call 1 (parser-friendly) |
+| `geminiTempReport` | 0.2 | Was 0.3 — accuracy > prose variety |
+| `geminiTopP` | 0.95 | Shared |
+| `geminiMaxOutMetadata` | 2048 | Call 1 JSON/Markdown — was 16384 |
+| `geminiMaxOutReportDefault` | 4096 | Call 2 standard target — was 65535 |
+| `geminiMaxOutReportHardCeiling` | 65535 | Vertex's hard limit; used only by safety retry |
+
+**`reportprefs.MaxOutputTokens`** maps the therapist's `length` preference to a cap:
+- `brief` → 2048 (~1-page report, 3× safety margin over 600 effective tokens)
+- `standard` → 0 (caller's `geminiMaxOutReportDefault` applies)
+- `detailed` → 8192 (~3-page report, 4× safety margin)
+
+**`reportprefs.TargetLengthDirective`** returns the prompt directive paired with the cap:
+
+```
+DOCELOWA DŁUGOŚĆ RAPORTU: ~2 strony (≈1000 słów).
+Mieść się w tym budżecie z marginesem na zwięzłą formę.
+```
+
+Inserted as a standalone block above `ZASADY ZWIĘZŁOŚCI`. **The model honors prompt budgets much better than implicit `MaxOutputTokens` caps** — pair them; don't rely on either alone.
+
+### Safety-retry pattern (rollout period only)
+
+After call 2 returns, if `FinishReason == FinishReasonMaxTokens`,
+`generateReport` retries ONCE at 2× cap (bounded by
+`geminiMaxOutReportHardCeiling`). Logs `Warn` on retry, `Error` if
+retry also truncates (accepts the partial output rather than loop).
+
+**Belt-and-suspenders for the new caps.** Tracked in
+`docs/agents/TODO.md` — once production data shows trigger rate <1%
+over 2 weeks, the retry block is the first thing to drop (~20 lines).
+
+Cloud Logging filter for monitoring:
+```
+resource.labels.service_name="llm-worker"
+AND (jsonPayload.message=~"MaxOutputTokens")
+```
+
+### Constraints when editing this surface
+
+- **Add a new preference dimension**: update `Preferences` struct here AND `preferencesPayload` in identity-svc.preferences.go AND the validator allow-lists there AND the label maps here AND the chip mapping in clinical-svc.ratings.go (if it has a complaint chip). Five places, one PR. Doc-commented at the top of `reportprefs.go`.
+- **Tighten caps further**: only after monitoring shows zero MaxOutputTokens retries. The math currently assumes ~600 tok/page for Polish; if you switch the audio language to one with different tokenization density (English ~400 tok/page, Mandarin ~1500 tok/page) the page-count math breaks. Verify with `cmd/llm-eval` first.
+- **Never override the modality prompt** from preferences. The fragment is subordinate by design (P4 + ADR-IMPL-007); inverting that lets a therapist disable safety/risk emphasis, which is the one thing we won't expose as a knob (intentionally dropped from the design — see `docs/10_REPORT_CUSTOMIZATION.md` §13.1).
+
+### GenerationConfig helper functions
+
+Three helpers in `cmd/llm-worker/main.go` consolidate the three call profiles into single source-of-truth blocks:
+
+| Helper | Used by | Output shape |
+|---|---|---|
+| `metadataGenConfigJSON(schema)` | `callMetadataJSON` | Temp 0.1, TopP 0.95, MaxOut 2048, `application/json` + `ResponseSchema` |
+| `metadataGenConfigMarkdown()` | `callMetadataMarkdown` | Same temp/TopP/MaxOut, no MIME/schema |
+| `reportGenConfig(maxOut int32)` | `generateReport` | Temp 0.2, TopP 0.95, `text/plain`, MaxOut from arg (falls back to `geminiMaxOutReportDefault` when 0) |
+
+Don't inline new `vertexai.GenerationConfig{...}` literals at call sites — pollute the lockstep.
+
 ## Native-diarization sparse-label recovery (2026-05-15)
 
 Chirp 3's native diarization is **not** "every word gets a speaker_label". In practice it labels the dominant speaker reliably and drops labels on the other speaker's words (and on short interjections / filler). On session `26ecf316` we observed: 295 words, 8 chunks correctly `tag=1` (~195 words, therapist), 12 chunks interleaved at the patient's timestamps stuck at `tag=0, label=""` (~100 words). The LLM call-1 still inferred two speakers from content, but `markdownResultToPayload` found zero chunks with `SpeakerTag=2` → patient `SpeakerGroup.ChunkIndices=null` → `generateAndSaveSpeakerLabels` never wrote `tag=2` rows → UI rendered "Person 1" only.
@@ -257,6 +384,7 @@ Migration `000008_modality_prompts_pl.up.sql` populates the Polish prompts. If p
 | `modalities` | yes (read prompt JSON) | — |
 | `audio_uploads` | yes (status check) | yes (status update on success) |
 | `clinical_memory`, `rag_memories` | yes (RAG retrieval — Phase 3) | yes (Phase 3) |
+| `users.report_preferences` | yes (JSONB JOIN'd in `loadSessionContext` since 2026-05-18) | — |
 
 ## Auth model
 
@@ -354,6 +482,8 @@ To exercise the full pipeline locally, you'd need:
 - **JSON schema not generating:** `loadModalityPrompt` reads `modalities.therapist_ai_general_prompt` JSONB → expects shape `{"system": "...", "user": "..."}`. If migration 000008 didn't apply (Polish prompts), the column is empty and Gemini gets a blank prompt → garbage output.
 - **Cold start on llm-worker:** Vertex AI client init can be ~1.5s. `min_instance_count = 0` per terraform. Acceptable for batch flow.
 - **Chirp 3 native diarization is sparse, not complete.** Words often come back with `speaker_label=""` even when the request had `DiarizationConfig` set. If a session shows `sessions.speaker_label_mapping = {"1": ...}` (only one speaker) but the transcript clearly has multiple speakers, look at `transcript_segments` — `tag=0, label=""` rows are orphan chunks Chirp failed to label. `stt-worker.fillSpeakerLabels` + `llm-worker.markdownResultToPayload` orphan reattach handle the common case; if both fail, the next step is to disable native diarization for the language in `transcriptfmt.Chirp3DiarizationLanguages`.
+- **MaxOutputTokens is a ceiling, not a target.** Setting `geminiMaxOutReportDefault` low (e.g. 4096) doesn't auto-shorten reports — the model only "knows" the cap by running into it (truncation mid-sentence). **You MUST pair every cap change with a `reportprefs.TargetLengthDirective`-style prompt directive** ("DOCELOWA DŁUGOŚĆ RAPORTU: …"). If you see truncations in Cloud Logging (`MaxOutputTokens` warns from the safety-retry path), the prompt directive isn't strong enough or the cap is too tight for that profile.
+- **Preferences JSONB schema drift between identity-svc and reportprefs.** The two services duplicate the struct (`preferencesPayload` in identity-svc + `Preferences` in reportprefs) by design to avoid a cross-service Go import. Schema changes need to land in BOTH structs + the validator + the renderer label maps in the same PR. Doc-commented in both packages but easy to forget — `go test` won't catch a drift until a runtime decode fails.
 
 ## Source-doc pointers
 
