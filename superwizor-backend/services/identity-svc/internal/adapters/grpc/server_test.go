@@ -44,12 +44,14 @@ func TestToProtoUser(t *testing.T) {
 	id := uuid.New()
 	orgID := uuid.New()
 
+	fbUID := "firebase-uid-123"
+	email := "test@example.com"
 	user := db.User{
 		ID:             id,
 		Role:           "THERAPIST",
 		OrganizationID: pgtype.UUID{Bytes: orgID, Valid: true},
-		FirebaseUid:    "firebase-uid-123",
-		Email:          "test@example.com",
+		FirebaseUid:    &fbUID,
+		Email:          &email,
 		FirstName:      "Anna",
 		LastName:       "Kowalska",
 		UiLanguage:     "pl",

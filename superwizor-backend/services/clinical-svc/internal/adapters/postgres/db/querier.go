@@ -48,6 +48,10 @@ type Querier interface {
 	// a missing modality join (defensive — modality_id is NOT NULL on
 	// patient_files so this should never fire, but cheap insurance).
 	GetDefaultSessionName(ctx context.Context, arg GetDefaultSessionNameParams) (interface{}, error)
+	// Used by the suggestion engine to honor the 14-day cooldown after
+	// a banner is dismissed for a given dimension. Returns the most
+	// recent 'dismissed' row for (therapist, dimension) or NotFound.
+	GetLatestSuggestionDismissForDimension(ctx context.Context, arg GetLatestSuggestionDismissForDimensionParams) (GetLatestSuggestionDismissForDimensionRow, error)
 	GetModalityByCode(ctx context.Context, systemCode string) (GetModalityByCodeRow, error)
 	// Kept for code paths that don't need user fields (e.g. internal
 	// authz/ownership checks). External callers use GetPatientFileWithUser.
@@ -66,6 +70,11 @@ type Querier interface {
 	// create" gap surfaced by the previous Faza 2 TODO.
 	GetPatientFileWithUser(ctx context.Context, id uuid.UUID) (GetPatientFileWithUserRow, error)
 	GetPatientUser(ctx context.Context, id uuid.UUID) (GetPatientUserRow, error)
+	// Report-rating queries. Spec: docs/10_REPORT_CUSTOMIZATION.md §5.
+	// All paths assume the gRPC handler has already validated that the
+	// therapist owns the session that owns the report (auth happens at
+	// the handler boundary, not in SQL).
+	GetReportRating(ctx context.Context, arg GetReportRatingParams) (ReportRating, error)
 	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 	GetSessionWithDetails(ctx context.Context, id uuid.UUID) (GetSessionWithDetailsRow, error)
 	// Used by CreatePatientFile to default the new patient's ui_language
@@ -90,10 +99,19 @@ type Querier interface {
 	// Returns affected rows so the handler can distinguish "not found /
 	// not yours" (0 rows) from successful delete (1 row).
 	HardDeleteSession(ctx context.Context, arg HardDeleteSessionParams) (int64, error)
+	// ─── preference_suggestions_log ─────────────────────────────
+	// Telemetry-only. Three action values: 'shown' | 'applied' |
+	// 'dismissed' — DB CHECK constraint enforces.
+	InsertPreferenceSuggestionLog(ctx context.Context, arg InsertPreferenceSuggestionLogParams) error
 	ListPatientFilesByTherapist(ctx context.Context, arg ListPatientFilesByTherapistParams) ([]PatientFile, error)
 	// See GetPatientFileWithUser comment for the JOIN strategy. Same
 	// shape, just the WHERE switches to therapist_id + paged.
 	ListPatientFilesByTherapistWithUser(ctx context.Context, arg ListPatientFilesByTherapistWithUserParams) ([]ListPatientFilesByTherapistWithUserRow, error)
+	// Pulls the last N negative ratings for a therapist. The
+	// suggestion-engine Go code aggregates by chip category. We cap at
+	// 5 in production today (the trigger window) but the LIMIT comes
+	// from the caller so eval / debugging can ask for more.
+	ListRecentNegativeRatings(ctx context.Context, arg ListRecentNegativeRatingsParams) ([]ListRecentNegativeRatingsRow, error)
 	ListReportsBySession(ctx context.Context, sessionID uuid.UUID) ([]Report, error)
 	ListSegmentsForRebuild(ctx context.Context, transcriptID uuid.UUID) ([]ListSegmentsForRebuildRow, error)
 	// Pre-fetched before DeletePatientUser runs so the handler can fan
@@ -137,6 +155,10 @@ type Querier interface {
 	UpdateSessionName(ctx context.Context, arg UpdateSessionNameParams) (Session, error)
 	UpdateSessionStatus(ctx context.Context, arg UpdateSessionStatusParams) error
 	UpdateTranscriptBlob(ctx context.Context, arg UpdateTranscriptBlobParams) error
+	// UPSERT on the unique (report_id, therapist_id) pair so re-rating
+	// replaces in place. updated_at is bumped on every conflict — gives
+	// analytics a "last-touch" timestamp without a separate column.
+	UpsertReportRating(ctx context.Context, arg UpsertReportRatingParams) (ReportRating, error)
 }
 
 var _ Querier = (*Queries)(nil)

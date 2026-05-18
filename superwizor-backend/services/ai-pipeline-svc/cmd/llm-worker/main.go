@@ -21,6 +21,7 @@ import (
 
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/diarization"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/reportprefs"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
 	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 )
@@ -187,7 +188,7 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		ragContext = ""
 	}
 
-	reportJSON, tokenStats, err := generateReport(ctx, session.ReportLanguage, modalityPrompt, ragContext, chunks)
+	reportJSON, tokenStats, err := generateReport(ctx, session.ReportLanguage, modalityPrompt, ragContext, chunks, session.ReportPreferences)
 	if err != nil {
 		// Vertex AI errors (quota, schema rejection, content filter,
 		// region availability) all land here. Log full error text so we
@@ -267,10 +268,18 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 type SessionContext struct {
 	ID                  uuid.UUID
 	PatientFileID       uuid.UUID
+	TherapistID         uuid.UUID
 	ModalityID          uuid.UUID
 	LanguageCode        string
 	SpeakerLabelMapping map[int32]string
 	ReportLanguage      string
+	// Per-therapist style preferences loaded from
+	// users.report_preferences (identity-svc's domain, JOIN'd here
+	// because llm-worker needs them at call-2 prompt build time).
+	// Zero value = "use defaults" — the renderer emits an empty
+	// fragment in that case, preserving byte-identical prompts for
+	// users who haven't configured anything.
+	ReportPreferences reportprefs.Preferences
 }
 
 type ReportPayload struct {
@@ -326,7 +335,7 @@ func diarizationMode() string {
 	return v
 }
 
-func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragContext string, chunks []transcriptfmt.Chunk) (string, TokenStats, error) {
+func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragContext string, chunks []transcriptfmt.Chunk, prefs reportprefs.Preferences) (string, TokenStats, error) {
 	model := vertexClient.GenerativeModel(geminiModel)
 	mode := diarizationMode()
 	native := hasNativeSpeakers(chunks)
@@ -334,7 +343,8 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 	slog.Info("llm config",
 		"diarization_mode", mode,
 		"native_speakers", native,
-		"chunk_count", len(chunks))
+		"chunk_count", len(chunks),
+		"preferences", prefs.Summary())
 
 	// --- Krok 1: Diaryzacja i Metadane ---
 	var metadataPayload ReportPayload
@@ -369,6 +379,13 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 	// but not what we want post-call-1).
 	annotated := annotateChunksWithSpeakers(chunks, metadataPayload.SpeakerRoleInference.SpeakerGroups)
 	transcriptForCall2 := transcriptfmt.FormatSpeakerTurns(annotated)
+
+	// Per-therapist length nudge. Empty length → keep the 65535
+	// default; "brief" lowers the cap, "detailed" stays at max.
+	maxOut := int32(65535)
+	if override := reportprefs.MaxOutputTokens(prefs); override > 0 {
+		maxOut = override
+	}
 	model.GenerationConfig = vertexai.GenerationConfig{
 		Temperature:      vertexai.Ptr[float32](0.3),
 		TopP:             vertexai.Ptr[float32](0.95),
@@ -376,8 +393,18 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 		// gemini-2.5-flash-lite — 65536 is rejected with
 		// "supported range is from 1 (inclusive) to 65536 (exclusive)".
 		// 65535 is the highest accepted value.
-		MaxOutputTokens:  vertexai.Ptr[int32](65535),
+		MaxOutputTokens:  vertexai.Ptr[int32](maxOut),
 		ResponseMIMEType: "text/plain",
+	}
+
+	// Render the optional preference fragment. Empty when the
+	// therapist hasn't customized — preserves byte-identical prompts
+	// for the default path.
+	prefsFragment := reportprefs.RenderFragment(prefs)
+	if prefsFragment != "" {
+		// Add a blank line above so it visually separates from the
+		// modality prompt in the rendered text.
+		prefsFragment = "\n" + prefsFragment
 	}
 
 	reportPrompt := fmt.Sprintf(`%s
@@ -385,7 +412,7 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 JĘZYK RAPORTU: %s
 Wygeneruj CAŁY raport w tym języku. Cytaty z transkryptu pozostaw w oryginale.
 Sformatuj raport używając czytelnego Markdown (nagłówki ##, pogrubienia, cytaty).
-
+%s
 ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 - Raport powinien być WARTOŚCIOWY dla superwizora, NIE wielostronicowy.
 - Każda sekcja: 2-5 zdań, max 1 akapit. Wyjątek: studium przypadku / hipotezy
@@ -402,7 +429,7 @@ KONTEKST POPRZEDNICH SESJI:
 
 TRANSKRYPT BIEŻĄCEJ SESJI (Markdown, grupowanie po mówcach):
 %s`,
-		modalityPrompt, reportLanguage, ragContext, transcriptForCall2)
+		modalityPrompt, reportLanguage, prefsFragment, ragContext, transcriptForCall2)
 
 	debugLogChunked(slog.Default(), "vertex_prompt", "step", "markdown", "content", reportPrompt)
 
@@ -949,13 +976,34 @@ func loadSession(ctx context.Context, sessionID string) (*SessionContext, error)
 	var mappingJSON []byte
 	var langCode *string
 	var reportLang *string
+	// Join in the therapist (via patient_files) and their report
+	// style preferences (JSONB) so call 2 can build a personalized
+	// prompt without a second round-trip. ReportPreferences is a
+	// JSONB column on users; empty {} is the common case for users
+	// who haven't customized — the renderer treats that as no-op.
+	var prefsRaw []byte
 	row := dbPool.QueryRow(ctx, `
-		SELECT s.patient_file_id, pf.modality_id, s.speaker_label_mapping, s.language_code, s.report_language
+		SELECT s.patient_file_id, pf.therapist_id, pf.modality_id,
+		       s.speaker_label_mapping, s.language_code, s.report_language,
+		       COALESCE(u.report_preferences, '{}'::jsonb)
 		FROM sessions s
 		JOIN patient_files pf ON pf.id = s.patient_file_id
+		JOIN users u ON u.id = pf.therapist_id
 		WHERE s.id = $1`, id)
-	if err := row.Scan(&sc.PatientFileID, &sc.ModalityID, &mappingJSON, &langCode, &reportLang); err != nil {
+	if err := row.Scan(&sc.PatientFileID, &sc.TherapistID, &sc.ModalityID,
+		&mappingJSON, &langCode, &reportLang, &prefsRaw); err != nil {
 		return nil, err
+	}
+
+	if prefs, err := reportprefs.Decode(prefsRaw); err != nil {
+		// Corrupt JSONB on users.report_preferences should never
+		// happen (identity-svc writes only validated payloads), but
+		// if it does, log + fall back to defaults rather than
+		// failing the whole report-generation pipeline.
+		slog.Warn("decode report_preferences fell through to defaults",
+			"therapist_id", sc.TherapistID, "error", err)
+	} else {
+		sc.ReportPreferences = prefs
 	}
 
 	if langCode != nil {

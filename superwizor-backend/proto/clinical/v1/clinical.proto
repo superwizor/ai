@@ -42,6 +42,24 @@ service ClinicalService {
     // Publishes session.deleted Pub/Sub event for downstream Firestore +
     // inbox cleanup.
     rpc DeleteSession(DeleteSessionRequest) returns (google.protobuf.Empty);
+
+    // ─── Report ratings (docs/10_REPORT_CUSTOMIZATION.md §5) ───
+    // 👍/👎 rating on a generated report. Idempotent on
+    // (report_id, therapist_id) — re-rating UPSERTs in place.
+    rpc RateReport(RateReportRequest) returns (RateReportResponse);
+    // Read the current rating (if any) the therapist gave a report.
+    // Returns NotFound if unrated.
+    rpc GetReportRating(GetReportRatingRequest) returns (ReportRating);
+    // Returns a single preference-change suggestion if the therapist's
+    // recent ratings warrant one (≥3 negatives of same chip category
+    // in last 5 reports). Returns an empty PreferenceSuggestion with
+    // empty suggestion_id when no suggestion is active — Flutter
+    // hides the banner in that case. Called in parallel with
+    // identity-svc.GetReportPreferences on settings entry.
+    rpc GetActiveSuggestion(GetActiveSuggestionRequest) returns (PreferenceSuggestion);
+    // Records that a suggestion-engine banner was either shown,
+    // applied, or dismissed. Telemetry only; safe to fire-and-forget.
+    rpc LogPreferenceSuggestion(LogPreferenceSuggestionRequest) returns (google.protobuf.Empty);
 }
 
 enum ProcessType {
@@ -293,4 +311,88 @@ message GetSessionDetailsResponse {
   Session session = 1;
   Transcript transcript = 2;
   repeated Report reports = 3;
+}
+
+// ─── Report ratings (docs/10_REPORT_CUSTOMIZATION.md §5) ───
+
+message ReportRating {
+  string id = 1;
+  string report_id = 2;
+  string therapist_id = 3;
+  // "positive" | "negative"
+  string rating = 4;
+  // Chip categories the therapist picked on the negative-rating
+  // modal. Empty when rating="positive". See design doc for
+  // canonical list.
+  repeated string issues = 5;
+  // Optional free-form note ≤200 chars, server-sanitized.
+  string notes = 6;
+  // Origin of the rating: "in_app" | "email" | "post_session" | ...
+  string source = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message RateReportRequest {
+  string report_id = 1;
+  // Therapist doing the rating. Server validates against the
+  // authenticated user — request therapist_id must equal session
+  // therapist_id.
+  string therapist_id = 2;
+  // "positive" | "negative". Rejects other values.
+  string rating = 3;
+  repeated string issues = 4;
+  string notes = 5;
+  string source = 6;
+  // Required. UPSERT key: same (report, therapist) with same
+  // idempotency_key replays as no-op. Different idempotency_key on
+  // the same (report, therapist) overwrites the prior rating
+  // (re-rating is intended behavior).
+  string idempotency_key = 7;
+}
+
+message RateReportResponse {
+  ReportRating rating = 1;
+}
+
+message GetReportRatingRequest {
+  string report_id = 1;
+  string therapist_id = 2;
+}
+
+message GetActiveSuggestionRequest {
+  string therapist_id = 1;
+}
+
+message PreferenceSuggestion {
+  // Empty string = no active suggestion (Flutter hides banner).
+  // Non-empty = stable ID for telemetry round-trips.
+  string suggestion_id = 1;
+  // Which preference dimension to nudge (matches a field name on
+  // identity.v1.ReportPreferences).
+  string dimension = 2;
+  string from_value = 3;
+  string to_value = 4;
+  // Localized chip label that triggered this suggestion (e.g.
+  // "za długi"). UI uses it to render the banner copy.
+  string reason_label = 5;
+  // How many negatives drove this (≥3 by current trigger).
+  int32 trigger_count = 6;
+}
+
+message LogPreferenceSuggestionRequest {
+  string therapist_id = 1;
+  // Echoed back from PreferenceSuggestion.suggestion_id that
+  // identity-svc handed to the Flutter client.
+  string suggestion_id = 2;
+  // Which dimension the banner targeted.
+  string dimension = 3;
+  string from_value = 4;
+  string to_value = 5;
+  int32 trigger_count = 6;
+  // Lifecycle event: "shown" | "applied" | "dismissed".
+  // "applied" fires from UpdateReportPreferences in identity-svc
+  // (we log to both rows so analytics doesn't need a cross-service
+  // join); "shown"/"dismissed" come from the Flutter UI directly.
+  string action = 7;
 }

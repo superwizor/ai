@@ -34,3 +34,20 @@ WHERE organization_id = $1
   AND role = 'THERAPIST'
   AND deleted_at IS NULL
 ORDER BY last_name, first_name;
+
+-- name: GetReportPreferences :one
+-- Returns the raw JSONB. Empty object {} when the user has never
+-- customized; Go layer turns that into the default ReportPreferences.
+SELECT report_preferences
+FROM users
+WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: UpdateReportPreferences :one
+-- Replaces the entire preferences blob. The Go handler sanitizes
+-- and validates the blob shape before calling this; sqlc just
+-- writes whatever JSONB it gets. Returns the post-update value so
+-- the gRPC handler can echo it back without a second SELECT.
+UPDATE users
+SET report_preferences = $2
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING report_preferences;

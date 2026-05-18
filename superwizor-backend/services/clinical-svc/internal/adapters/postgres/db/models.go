@@ -735,6 +735,18 @@ type PatientFile struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 }
 
+// Suggestion engine telemetry. Pure analytics; safe to TRUNCATE. See docs/10_REPORT_CUSTOMIZATION.md §6.
+type PreferenceSuggestionsLog struct {
+	ID           uuid.UUID `json:"id"`
+	TherapistID  uuid.UUID `json:"therapist_id"`
+	Dimension    string    `json:"dimension"`
+	FromValue    string    `json:"from_value"`
+	ToValue      string    `json:"to_value"`
+	TriggerCount int32     `json:"trigger_count"`
+	Action       string    `json:"action"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
 type RagMemory struct {
 	ID                  uuid.UUID        `json:"id"`
 	PatientFileID       uuid.UUID        `json:"patient_file_id"`
@@ -771,6 +783,19 @@ type Report struct {
 	ParentReportID       pgtype.UUID    `json:"parent_report_id"`
 	GenerationCount      int32          `json:"generation_count"`
 	CreatedAt            time.Time      `json:"created_at"`
+}
+
+// LLM-chat-style 👍/👎 feedback on therapist_reports. See docs/10_REPORT_CUSTOMIZATION.md §5.
+type ReportRating struct {
+	ID          uuid.UUID `json:"id"`
+	ReportID    uuid.UUID `json:"report_id"`
+	TherapistID uuid.UUID `json:"therapist_id"`
+	Rating      string    `json:"rating"`
+	Issues      []string  `json:"issues"`
+	Notes       string    `json:"notes"`
+	Source      string    `json:"source"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type Session struct {
@@ -859,4 +884,6 @@ type User struct {
 	HasMarketingConsent bool               `json:"has_marketing_consent"`
 	CreatedAt           time.Time          `json:"created_at"`
 	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
+	// Per-therapist style preferences for llm-worker call 2 report generation. Empty object {} = all defaults (current behavior). Shape documented in docs/10_REPORT_CUSTOMIZATION.md §7.
+	ReportPreferences []byte `json:"report_preferences"`
 }

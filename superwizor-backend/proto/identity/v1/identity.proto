@@ -26,6 +26,18 @@ service IdentityService {
   // RBAC: check permission on resource
   rpc CheckPermission(CheckPermissionRequest) returns (PermissionDecision);
 
+  // ─── Report customization (docs/10_REPORT_CUSTOMIZATION.md) ───
+  // Returns the therapist's report style preferences. The active
+  // suggestion banner (if any) is fetched separately from
+  // clinical-svc.GetActiveSuggestion — identity-svc has no
+  // dependency on clinical data tables (it's the bottom of the
+  // service dep tree).
+  rpc GetReportPreferences(GetReportPreferencesRequest) returns (ReportPreferences);
+
+  // Updates the therapist's preferences. Idempotent: re-sending the
+  // same payload is a no-op past the first write.
+  rpc UpdateReportPreferences(UpdateReportPreferencesRequest) returns (ReportPreferences);
+
   // Health check
   rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
 }
@@ -115,4 +127,50 @@ message PermissionDecision {
 message HealthCheckResponse {
   string status = 1;
   string version = 2;
+}
+
+// ─── Report customization messages ───
+// Each enum-valued field stores the string ID of the choice (e.g.
+// "brief", "clinical_formal") — UI translates to localized labels.
+// Empty strings mean "use default" for that dimension; the renderer
+// in ai-pipeline-svc treats them as no-op.
+message ReportPreferences {
+  // Schema version. Bump when we add a new dimension without a
+  // proto-message change so renderers can branch on it.
+  int32 version = 1;
+
+  // Length: "brief" | "standard" | "detailed"
+  string length = 2;
+  // Tone: "clinical_formal" | "empathic_warm" | "pragmatic_direct"
+  // | "academic_rigorous"
+  string tone = 3;
+  // Quote density: "few" | "selective" | "many"
+  string quote_density = 4;
+  // Diagnostic language: "descriptive" | "clinical_labels" | "dsm_icd"
+  string diagnostic_language = 5;
+  // Hypothesis hedging: "tentative" | "balanced" | "assertive"
+  string hypothesis_hedging = 6;
+  // Multi-select section IDs to expand:
+  // "clinical_picture", "interventions", "case_formulation",
+  // "supervisory_recommendations", "homework_between_sessions",
+  // "cultural_context", "safety_and_risk".
+  repeated string section_emphasis = 7;
+  // Strengths framing: "problem_focused" | "balanced" | "strengths_first"
+  string strengths_framing = 8;
+  // Free-text additional guidance, ≤500 chars, server-sanitized.
+  string free_text = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message GetReportPreferencesRequest {
+  string therapist_id = 1;
+}
+
+message UpdateReportPreferencesRequest {
+  string therapist_id = 1;
+  ReportPreferences preferences = 2;
+  // Required: must be a stable client-generated UUID. Same key with
+  // same payload → no-op past the first write. Same key with
+  // different payload → AlreadyExists (idempotency violation).
+  string idempotency_key = 3;
 }

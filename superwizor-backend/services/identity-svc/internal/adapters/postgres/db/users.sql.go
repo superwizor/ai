@@ -17,13 +17,13 @@ INSERT INTO users (
     role, firebase_uid, email,
     first_name, last_name, ui_language, timezone, has_accepted_tos
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at
+RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences
 `
 
 type CreateUserParams struct {
 	Role           UserRole `json:"role"`
-	FirebaseUid    string   `json:"firebase_uid"`
-	Email          string   `json:"email"`
+	FirebaseUid    *string  `json:"firebase_uid"`
+	Email          *string  `json:"email"`
 	FirstName      string   `json:"first_name"`
 	LastName       string   `json:"last_name"`
 	UiLanguage     string   `json:"ui_language"`
@@ -65,15 +65,31 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.HasMarketingConsent,
 		&i.CreatedAt,
 		&i.DeletedAt,
+		&i.ReportPreferences,
 	)
 	return i, err
 }
 
-const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at FROM users WHERE email = $1 AND deleted_at IS NULL
+const getReportPreferences = `-- name: GetReportPreferences :one
+SELECT report_preferences
+FROM users
+WHERE id = $1 AND deleted_at IS NULL
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+// Returns the raw JSONB. Empty object {} when the user has never
+// customized; Go layer turns that into the default ReportPreferences.
+func (q *Queries) GetReportPreferences(ctx context.Context, id uuid.UUID) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getReportPreferences, id)
+	var report_preferences []byte
+	err := row.Scan(&report_preferences)
+	return report_preferences, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences FROM users WHERE email = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email *string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i User
 	err := row.Scan(
@@ -98,15 +114,16 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.HasMarketingConsent,
 		&i.CreatedAt,
 		&i.DeletedAt,
+		&i.ReportPreferences,
 	)
 	return i, err
 }
 
 const getUserByFirebaseUID = `-- name: GetUserByFirebaseUID :one
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at FROM users WHERE firebase_uid = $1 AND deleted_at IS NULL
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences FROM users WHERE firebase_uid = $1 AND deleted_at IS NULL
 `
 
-func (q *Queries) GetUserByFirebaseUID(ctx context.Context, firebaseUid string) (User, error) {
+func (q *Queries) GetUserByFirebaseUID(ctx context.Context, firebaseUid *string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByFirebaseUID, firebaseUid)
 	var i User
 	err := row.Scan(
@@ -131,12 +148,13 @@ func (q *Queries) GetUserByFirebaseUID(ctx context.Context, firebaseUid string) 
 		&i.HasMarketingConsent,
 		&i.CreatedAt,
 		&i.DeletedAt,
+		&i.ReportPreferences,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at FROM users WHERE id = $1 AND deleted_at IS NULL
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences FROM users WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -164,12 +182,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.HasMarketingConsent,
 		&i.CreatedAt,
 		&i.DeletedAt,
+		&i.ReportPreferences,
 	)
 	return i, err
 }
 
 const listTherapistsByOrganization = `-- name: ListTherapistsByOrganization :many
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at FROM users
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences FROM users
 WHERE organization_id = $1
   AND role = 'THERAPIST'
   AND deleted_at IS NULL
@@ -207,6 +226,7 @@ func (q *Queries) ListTherapistsByOrganization(ctx context.Context, organization
 			&i.HasMarketingConsent,
 			&i.CreatedAt,
 			&i.DeletedAt,
+			&i.ReportPreferences,
 		); err != nil {
 			return nil, err
 		}
@@ -236,7 +256,7 @@ UPDATE users SET
     biography = $5,
     phone_number = $6
 WHERE id = $7 AND deleted_at IS NULL
-RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at
+RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences
 `
 
 type UpdateProfileParams struct {
@@ -282,6 +302,30 @@ func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (U
 		&i.HasMarketingConsent,
 		&i.CreatedAt,
 		&i.DeletedAt,
+		&i.ReportPreferences,
 	)
 	return i, err
+}
+
+const updateReportPreferences = `-- name: UpdateReportPreferences :one
+UPDATE users
+SET report_preferences = $2
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING report_preferences
+`
+
+type UpdateReportPreferencesParams struct {
+	ID                uuid.UUID `json:"id"`
+	ReportPreferences []byte    `json:"report_preferences"`
+}
+
+// Replaces the entire preferences blob. The Go handler sanitizes
+// and validates the blob shape before calling this; sqlc just
+// writes whatever JSONB it gets. Returns the post-update value so
+// the gRPC handler can echo it back without a second SELECT.
+func (q *Queries) UpdateReportPreferences(ctx context.Context, arg UpdateReportPreferencesParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, updateReportPreferences, arg.ID, arg.ReportPreferences)
+	var report_preferences []byte
+	err := row.Scan(&report_preferences)
+	return report_preferences, err
 }

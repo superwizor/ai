@@ -47,16 +47,23 @@ func (s *Server) ValidateToken(ctx context.Context, req *identityv1.ValidateToke
 		return nil, status.Error(codes.Unauthenticated, "invalid token")
 	}
 
-	user, err := s.queries.GetUserByFirebaseUID(ctx, firebaseUID)
+	user, err := s.queries.GetUserByFirebaseUID(ctx, &firebaseUID)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "user not registered")
 	}
 
+	// Per migration 000013, users.firebase_uid and users.email are
+	// nullable for patient rows (which don't authenticate). Therapist
+	// rows still have both populated — the partial CHECK constraint
+	// enforces that — but the Go types are *string so we dereference
+	// defensively. Empty strings on the wire are fine; clients already
+	// treat them as "unset" for the same reason patient_users don't
+	// have these fields surfaced in the patient app.
 	resp := &identityv1.UserContext{
-		UserId:         user.ID.String(),
-		FirebaseUid:    user.FirebaseUid,
-		Role:           toProtoRole(user.Role),
-		Email:          user.Email,
+		UserId:      user.ID.String(),
+		FirebaseUid: derefString(user.FirebaseUid),
+		Role:        toProtoRole(user.Role),
+		Email:       derefString(user.Email),
 	}
 	if user.OrganizationID.Valid {
 		resp.OrganizationId = uuid.UUID(user.OrganizationID.Bytes).String()
@@ -82,7 +89,7 @@ func (s *Server) GetUserByFirebaseUID(ctx context.Context, req *identityv1.GetUs
 	if req.FirebaseUid == "" {
 		return nil, status.Error(codes.InvalidArgument, "firebase_uid is required")
 	}
-	user, err := s.queries.GetUserByFirebaseUID(ctx, req.FirebaseUid)
+	user, err := s.queries.GetUserByFirebaseUID(ctx, &req.FirebaseUid)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "user not found")
 	}
@@ -104,10 +111,14 @@ func (s *Server) CreateUser(ctx context.Context, req *identityv1.CreateUserReque
 		dbRole = db.UserRole("PATIENT")
 	}
 
+	// Therapist creation path requires both fields per the partial
+	// CHECK on users (migration 000013). Patient rows go through
+	// clinical-svc.CreatePatientUser, which leaves these NULL — not
+	// this RPC.
 	user, err := s.queries.CreateUser(ctx, db.CreateUserParams{
 		Role:           dbRole,
-		FirebaseUid:    req.FirebaseUid,
-		Email:          req.Email,
+		FirebaseUid:    &req.FirebaseUid,
+		Email:          &req.Email,
 		FirstName:      req.FirstName,
 		LastName:       req.LastName,
 		UiLanguage:     req.UiLanguage,
@@ -171,12 +182,22 @@ func toProtoRole(r db.UserRole) identityv1.UserRole {
 	return identityv1.UserRole_USER_ROLE_UNSPECIFIED
 }
 
+// derefString safely dereferences a *string column (nullable after
+// migration 000013 for patient rows). Returns "" when nil so wire
+// messages never carry phantom values.
+func derefString(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
 func toProtoUser(u db.User) *identityv1.User {
 	resp := &identityv1.User{
 		Id:              u.ID.String(),
 		Role:            toProtoRole(u.Role),
-		FirebaseUid:     u.FirebaseUid,
-		Email:           u.Email,
+		FirebaseUid:     derefString(u.FirebaseUid),
+		Email:           derefString(u.Email),
 		IsEmailVerified: u.IsEmailVerified,
 		FirstName:       u.FirstName,
 		LastName:        u.LastName,
