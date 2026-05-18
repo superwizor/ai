@@ -64,27 +64,38 @@ var (
 
 	// Two distinct sampling profiles by design. Don't collapse them
 	// into one — call 1 wants determinism for parser-friendly output,
-	// call 2 wants prose variety.
+	// call 2 also wants determinism (clinical accuracy > prose variety).
 	//
-	//   Metadata (call 1): low temperature, smaller budget.
+	//   Metadata (call 1): very low temperature, tight budget.
 	//     - JSON mode: structured-output, schema-constrained, ~few KB.
 	//     - Markdown mode: free-form text but still small — speaker
-	//       groups + title + summary fit in <2k tokens easily.
-	//   Report (call 2): higher temperature for narrative quality,
-	//     much larger budget for the full clinical writeup.
+	//       groups + title + summary fit in <1k tokens easily.
+	//   Report   (call 2): low temperature for clinical accuracy +
+	//     budget *calibrated to actual target length*, not headroom.
+	//     The model fills available room; we no longer give it 65k.
 	//
-	// MaxOutputTokens lower bound (16384) was tuned against the
-	// structured-output schema's max size + a safety margin; upper
-	// bound (65535) is the Vertex-enforced cap on gemini-2.5-flash
-	// (65536 exclusive). The 65535 value here is the *baseline*
-	// before the per-therapist length-preference override applied
-	// by reportprefs.MaxOutputTokens (see report-customization
-	// commit) which can lower it to 16384 for "brief".
-	geminiTempMetadata        float32 = 0.1
-	geminiTempReport          float32 = 0.3
-	geminiTopP                float32 = 0.95
-	geminiMaxOutMetadata      int32   = 16384
-	geminiMaxOutReportDefault int32   = 65535
+	// Token math (Polish, ~2.0 tok/word, ~30 tok/sentence, ~600
+	// tok/page) per the ZASADY ZWIĘZŁOŚCI rules (2-5 sentences per
+	// section, 7 sections + title + summary):
+	//   brief    ≈1 page  ≈ 600 effective tok → cap 2048 (3× safety)
+	//   standard ≈2 pages ≈1200 effective tok → cap 4096 (3× safety)
+	//   detailed ≈3 pages ≈2000 effective tok → cap 8192 (4× safety)
+	//
+	// Hard ceiling = the Vertex-enforced cap on gemini-2.5-flash
+	// (65536 exclusive → 65535 highest accepted). Used only by the
+	// safety-retry path when call 2 returns FinishReasonMaxTokens.
+	//
+	// Temp 0.2 (down from 0.3 on 2026-05-18): pushes call 2 toward
+	// the same accuracy-first profile as call 1. Verbosity reports
+	// from short sessions suggested 0.3 was giving the model too much
+	// "creative" room to elaborate — accuracy beats prose variety on
+	// a clinical document.
+	geminiTempMetadata             float32 = 0.1
+	geminiTempReport               float32 = 0.2
+	geminiTopP                     float32 = 0.95
+	geminiMaxOutMetadata           int32   = 2048
+	geminiMaxOutReportDefault      int32   = 4096
+	geminiMaxOutReportHardCeiling  int32   = 65535
 	// debugLogPrompts controls whether we emit the full prompt sent to
 	// Vertex + the full raw response back, to Cloud Logging. Gated by
 	// the LLM_DEBUG_LOG_PROMPTS env var ("true" = on, anything else =
@@ -451,11 +462,14 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 	annotated := annotateChunksWithSpeakers(chunks, metadataPayload.SpeakerRoleInference.SpeakerGroups)
 	transcriptForCall2 := transcriptfmt.FormatSpeakerTurns(annotated)
 
-	// Per-therapist length nudge. Empty length → reportGenConfig
-	// falls back to geminiMaxOutReportDefault (65535); "brief"
-	// lowers to geminiMaxOutMetadata-style 16384; "detailed" stays
-	// at max. See reportprefs.MaxOutputTokens for the mapping.
-	model.GenerationConfig = reportGenConfig(reportprefs.MaxOutputTokens(prefs))
+	// Compute the effective cap up front (rather than letting
+	// reportGenConfig apply the default internally) so the
+	// safety-retry path below can reason about the same value.
+	effectiveMaxOut := reportprefs.MaxOutputTokens(prefs)
+	if effectiveMaxOut <= 0 {
+		effectiveMaxOut = geminiMaxOutReportDefault
+	}
+	model.GenerationConfig = reportGenConfig(effectiveMaxOut)
 
 	// Render the optional preference fragment. Empty when the
 	// therapist hasn't customized — preserves byte-identical prompts
@@ -467,12 +481,21 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 		prefsFragment = "\n" + prefsFragment
 	}
 
+	// Explicit length directive paired with the MaxOutputTokens cap.
+	// The model honors prompt budgets much better than implicit
+	// caps — without this directive the model fills available room
+	// regardless of session length. Standalone block above ZASADY
+	// ZWIĘZŁOŚCI so it reads as a top-level constraint.
+	lengthDirective := reportprefs.TargetLengthDirective(prefs)
+
 	reportPrompt := fmt.Sprintf(`%s
 
 JĘZYK RAPORTU: %s
 Wygeneruj CAŁY raport w tym języku. Cytaty z transkryptu pozostaw w oryginale.
 Sformatuj raport używając czytelnego Markdown (nagłówki ##, pogrubienia, cytaty).
 %s
+%s
+
 ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 - Raport powinien być WARTOŚCIOWY dla superwizora, NIE wielostronicowy.
 - Każda sekcja: 2-5 zdań, max 1 akapit. Wyjątek: studium przypadku / hipotezy
@@ -489,7 +512,7 @@ KONTEKST POPRZEDNICH SESJI:
 
 TRANSKRYPT BIEŻĄCEJ SESJI (Markdown, grupowanie po mówcach):
 %s`,
-		modalityPrompt, reportLanguage, prefsFragment, ragContext, transcriptForCall2)
+		modalityPrompt, reportLanguage, prefsFragment, lengthDirective, ragContext, transcriptForCall2)
 
 	debugLogChunked(slog.Default(), "vertex_prompt", "step", "markdown", "content", reportPrompt)
 
@@ -499,6 +522,42 @@ TRANSKRYPT BIEŻĄCEJ SESJI (Markdown, grupowanie po mówcach):
 	}
 	if len(respReport.Candidates) == 0 || respReport.Candidates[0].Content == nil {
 		return "", TokenStats{}, fmt.Errorf("no candidates returned for report markdown")
+	}
+
+	// Safety retry: if the new tighter caps occasionally bite and
+	// the model gets truncated mid-sentence, retry ONCE with a 2×
+	// budget. Bounded by geminiMaxOutReportHardCeiling so we never
+	// exceed Vertex's hard limit. Logs loudly so we can monitor
+	// the trigger rate and tune caps if it fires often.
+	//
+	// This is a rollout-period safety net — once production data
+	// shows the trigger rate is near-zero, the retry block can be
+	// removed. Tracked in docs/agents/TODO.md.
+	if respReport.Candidates[0].FinishReason == vertexai.FinishReasonMaxTokens {
+		retryMaxOut := effectiveMaxOut * 2
+		if retryMaxOut > geminiMaxOutReportHardCeiling {
+			retryMaxOut = geminiMaxOutReportHardCeiling
+		}
+		slog.Warn("call 2 hit MaxOutputTokens — retrying once at 2× cap",
+			"original_cap", effectiveMaxOut,
+			"retry_cap", retryMaxOut,
+			"length_preference", prefs.Length)
+		model.GenerationConfig = reportGenConfig(retryMaxOut)
+		respReport, err = model.GenerateContent(ctx, vertexai.Text(reportPrompt))
+		if err != nil {
+			return "", TokenStats{}, fmt.Errorf("generate report markdown (retry): %w", err)
+		}
+		if len(respReport.Candidates) == 0 || respReport.Candidates[0].Content == nil {
+			return "", TokenStats{}, fmt.Errorf("no candidates returned for report markdown (retry)")
+		}
+		if respReport.Candidates[0].FinishReason == vertexai.FinishReasonMaxTokens {
+			// Retry also truncated. Take what we have + log; don't
+			// loop. Therapist will see the report; we'll see it in
+			// metrics + tune caps next iteration.
+			slog.Error("call 2 hit MaxOutputTokens twice — accepting truncated output",
+				"retry_cap", retryMaxOut,
+				"length_preference", prefs.Length)
+		}
 	}
 
 	var reportOutput strings.Builder

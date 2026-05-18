@@ -97,7 +97,17 @@ retrying. ~30 min of manual testing once the terraform change lands.
 
 ## Lower priority / unscheduled
 
-_(no entries — extract-constants TODO shipped on feat/report-customization)_
+### llm-worker: remove call-2 MaxOutputTokens safety retry after monitoring window
+
+**Status**: rollout safety net shipped 2026-05-18 on feat/report-customization.
+
+**What**: `generateReport` in `services/ai-pipeline-svc/cmd/llm-worker/main.go` retries call 2 ONCE at 2× cap when `FinishReasonMaxTokens` fires. Belt-and-suspenders for the tighter caps introduced in the same commit (4096 default, 2048 brief, 8192 detailed — was effectively uncapped before).
+
+**Why now (eventually)**: once production data confirms the trigger rate is near-zero (target: <1% of sessions over 2 weeks), the retry block doubles call 2 cost on edge cases for marginal benefit. Cheap to remove.
+
+**Fix shape**: monitor `slog` Warn entries with message "call 2 hit MaxOutputTokens — retrying once at 2× cap" and Error entries "call 2 hit MaxOutputTokens twice". If rate <1% over 2 weeks → delete the retry block (~20 lines). If higher → tune caps upward instead.
+
+**Cloud Logging query**: `resource.labels.service_name="llm-worker" AND (jsonPayload.message=~"MaxOutputTokens")`.
 
 ---
 

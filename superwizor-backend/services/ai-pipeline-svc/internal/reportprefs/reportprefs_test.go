@@ -117,10 +117,15 @@ func TestRenderFragment_UnknownEnumDropped(t *testing.T) {
 }
 
 func TestMaxOutputTokens(t *testing.T) {
+	// Calibrated to actual target lengths (Polish ~600 tok/page,
+	// 7-section reports with 2-5 sentences each per ZASADY ZWIĘZŁOŚCI):
+	//   brief    → 2048 (~1-page report budget + 3× safety margin)
+	//   standard → 0    (caller's geminiMaxOutReportDefault = 4096)
+	//   detailed → 8192 (~3-page report budget + 4× safety margin)
 	cases := map[string]int32{
-		"brief":    16384,
+		"brief":    2048,
 		"standard": 0,
-		"detailed": 65535,
+		"detailed": 8192,
 		"":         0,
 		"garbage":  0,
 	}
@@ -129,6 +134,35 @@ func TestMaxOutputTokens(t *testing.T) {
 			got := MaxOutputTokens(Preferences{Length: v})
 			if got != want {
 				t.Fatalf("length=%q: got %d, want %d", v, got, want)
+			}
+		})
+	}
+}
+
+func TestTargetLengthDirective(t *testing.T) {
+	// Every length value (including default + unknown) produces a
+	// non-empty directive — the prompt always needs a length budget.
+	// The "brief"/"detailed" variants must mention the page count
+	// matching the design doc's UI labels so therapists who configure
+	// "Krótki (≈1 strona)" see consistent behavior.
+	cases := map[string]string{
+		"brief":    "1 strona",
+		"standard": "2 strony",
+		"detailed": "3 strony",
+		"":         "2 strony", // default
+		"garbage":  "2 strony", // fall through
+	}
+	for v, wantSubstr := range cases {
+		t.Run(v, func(t *testing.T) {
+			got := TargetLengthDirective(Preferences{Length: v})
+			if got == "" {
+				t.Fatalf("length=%q: expected non-empty directive", v)
+			}
+			if !strings.Contains(got, wantSubstr) {
+				t.Fatalf("length=%q: expected %q in directive, got %q", v, wantSubstr, got)
+			}
+			if !strings.HasPrefix(got, "DOCELOWA DŁUGOŚĆ RAPORTU:") {
+				t.Fatalf("length=%q: expected directive prefix, got %q", v, got)
 			}
 		})
 	}

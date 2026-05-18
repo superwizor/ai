@@ -120,20 +120,54 @@ func RenderFragment(p Preferences) string {
 
 // MaxOutputTokens returns the recommended cap for call 2's
 // GenerationConfig.MaxOutputTokens based on the length preference.
-// llm-worker reads this and overrides its default 65535 cap.
+// llm-worker reads this and overrides its default cap (which is
+// geminiMaxOutReportDefault = 4096 for the standard target).
 // Returns 0 when the caller should keep its default — empty length
-// preference means "no opinion".
+// preference and explicit "standard" both mean "no opinion".
+//
+// Values are tuned to actual target lengths per the ZASADY ZWIĘZŁOŚCI
+// rules (Polish, ~600 tokens/page, 2-5 sentences/section). See the
+// matching comment block in llm-worker/main.go geminiMaxOut*
+// constants for the full token math.
+//
+// Was 16384/0/65535 before the 2026-05-18 calibration — those values
+// were "no real cap" and let the model fill arbitrary room. New
+// values give the LLM a target rather than just a ceiling.
 func MaxOutputTokens(p Preferences) int32 {
 	switch p.Length {
 	case "brief":
-		return 16384
+		return 2048
 	case "standard":
-		// Same as today's default (we don't override).
+		// Same as the geminiMaxOutReportDefault — caller keeps its
+		// default (single source of truth for the standard target).
 		return 0
 	case "detailed":
-		return 65535
+		return 8192
 	}
 	return 0
+}
+
+// TargetLengthDirective returns the Polish prompt directive paired
+// with the MaxOutputTokens cap. The model honors explicit prompt
+// budgets much better than implicit hard caps — so MaxOutputTokens
+// alone isn't enough to shape output length, you need a directive
+// that tells the model the target up front.
+//
+// Used by llm-worker's call-2 prompt construction as a standalone
+// block right above ZASADY ZWIĘZŁOŚCI. Returns a non-empty string
+// for every length value (including "" → standard).
+func TargetLengthDirective(p Preferences) string {
+	switch p.Length {
+	case "brief":
+		return "DOCELOWA DŁUGOŚĆ RAPORTU: ~1 strona (≈500 słów). " +
+			"Mieść się w tym budżecie z dużym marginesem na zwięzłą formę."
+	case "detailed":
+		return "DOCELOWA DŁUGOŚĆ RAPORTU: ~3 strony (≈2000 słów). " +
+			"Mieść się w tym budżecie z marginesem; nie rozwijaj sekcji bez treści."
+	default: // "" or "standard"
+		return "DOCELOWA DŁUGOŚĆ RAPORTU: ~2 strony (≈1000 słów). " +
+			"Mieść się w tym budżecie z marginesem na zwięzłą formę."
+	}
 }
 
 // ─── label maps ─────────────────────────────────────────────
