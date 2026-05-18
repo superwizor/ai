@@ -60,6 +60,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"cloud.google.com/go/pubsub/v2"
 	firebase "firebase.google.com/go/v4"
 	fbauth "firebase.google.com/go/v4/auth"
 	"github.com/stretchr/testify/assert"
@@ -716,6 +717,108 @@ func TestFullSession_HappyPath(t *testing.T) {
 		t.Logf("  ✓ Suggestion engine empty after 1 negative rating (threshold ≥3)")
 
 		// --------------------------------------------------------------
+		// Step 8.7 — Preferences affect future reports (feat/report-customization)
+		// --------------------------------------------------------------
+		// End-to-end proof that user-configured report preferences
+		// actually shape the generated report. Two-phase:
+		//
+		//   Phase 1 (already done): therapist had ZERO preferences set
+		//   when the first report was generated in Step 7 — so report1
+		//   uses the standard/default cap (geminiMaxOutReportDefault =
+		//   4096) and no preference fragment in the call-2 prompt.
+		//
+		//   Phase 2 (this step): bump preferences to "detailed" length
+		//   + a substantive free_text directive, then re-publish
+		//   transcript.completed for the SAME session_id. llm-worker
+		//   loads the new preferences via the SessionContext JOIN and
+		//   produces a NEW report (reports rows are insert-not-upsert)
+		//   that should reflect the bumped budget + the prompt
+		//   addition.
+		//
+		// Assertion: report2.Content is measurably longer than
+		// report1.Content. Soft threshold (≥15%) accounts for LLM
+		// stochasticity — detailed-mode cap is 8192 vs default 4096,
+		// so 2× headroom is available, but the model only fills what
+		// the prompt asks for. The DOCELOWA DŁUGOŚĆ directive +
+		// section-emphasis nudge from free_text should push the model
+		// to use more of that headroom on the same input.
+		//
+		// We avoid asserting on the free_text content itself appearing
+		// verbatim in the report — too prompt-specific and the LLM
+		// summarizes/rephrases. Length is the most reliable
+		// observable signal.
+		t.Log("\n═══ Step 8.7: Preferences affect future reports ═══")
+
+		// 8.7a — Update preferences to detailed length + free_text guidance
+		_, err = identityClient.UpdateReportPreferences(ctx, &identityv1.UpdateReportPreferencesRequest{
+			TherapistId: therapist.Id,
+			Preferences: &identityv1.ReportPreferences{
+				Length: "detailed",
+				FreeText: "Skupiaj się szczególnie na obserwacjach języka ciała pacjenta " +
+					"i kontakcie wzrokowym; rozwiń wątek dynamiki relacji terapeutycznej " +
+					"oraz wzorców komunikacji niewerbalnej. Cytuj fragmenty wypowiedzi tam, " +
+					"gdzie jest to istotne dla obserwacji klinicznych.",
+			},
+			IdempotencyKey: fmt.Sprintf("e2e-prefs-detailed-%d", time.Now().Unix()),
+		})
+		require.NoError(t, err, "UpdateReportPreferences (detailed)")
+		t.Logf("  ✓ updated preferences: length=detailed + free_text guidance")
+
+		// 8.7b — Snapshot report1 for comparison
+		require.NotEmpty(t, details.Reports, "no baseline report to compare against")
+		report1 := details.Reports[0]
+		require.NotNil(t, details.Transcript, "session has no transcript")
+		transcriptID := details.Transcript.Id
+		t.Logf("  baseline report id=%s, content length=%d chars",
+			report1.Id[:8], len(report1.Content))
+
+		// 8.7c — Republish transcript.completed → llm-worker reprocesses
+		// with the new preferences. New report row appears in the
+		// reports table for the same session.
+		publishTranscriptCompletedRetry(t, ctx, cfg.projectID, complete.SessionId, transcriptID)
+		t.Logf("  ✓ republished transcript.completed for session %s",
+			complete.SessionId[:8])
+
+		// 8.7d — Poll for the second report (the one whose id differs
+		// from report1's). Re-run typically completes in 10-30s; give
+		// 3 min for cold-start headroom.
+		report2Deadline := time.Now().Add(3 * time.Minute)
+		var report2 *clinicalv1.Report
+		for time.Now().Before(report2Deadline) {
+			details2, err := clinicalClient.GetSessionDetails(ctx,
+				&clinicalv1.GetSessionDetailsRequest{SessionId: complete.SessionId})
+			if err == nil && len(details2.Reports) >= 2 {
+				for _, r := range details2.Reports {
+					if r.Id != report1.Id {
+						report2 = r
+						break
+					}
+				}
+				if report2 != nil {
+					break
+				}
+			}
+			select {
+			case <-ctx.Done():
+				t.Fatal("context cancelled while polling for second report")
+			case <-time.After(5 * time.Second):
+			}
+		}
+		require.NotNil(t, report2,
+			"second report did not appear within 3min — preferences may not have triggered regeneration")
+		t.Logf("  ✓ second report id=%s, content length=%d chars",
+			report2.Id[:8], len(report2.Content))
+
+		// 8.7e — Compare lengths
+		ratio := float64(len(report2.Content)) / float64(len(report1.Content))
+		t.Logf("  length ratio (report2/report1): %.2fx", ratio)
+		assert.Greater(t, len(report2.Content), int(float64(len(report1.Content))*1.15),
+			"expected detailed-length pref to produce ≥15%% longer report; "+
+				"got report2=%d vs report1=%d chars (ratio %.2fx). LLM may have "+
+				"underproduced — check the call-2 prompt directive is reaching the model.",
+			len(report2.Content), len(report1.Content), ratio)
+
+		// --------------------------------------------------------------
 		// Step 9 — RODO cascade verification
 		// --------------------------------------------------------------
 		// Now that we have a real kartoteka with a real session + real
@@ -1137,4 +1240,36 @@ func assertCompletedSessionShape(t *testing.T, d *clinicalv1.GetSessionDetailsRe
 
 	t.Logf("✓ %d speaker turns (grouped from %d segments)", len(d.Transcript.Turns), len(d.Transcript.Segments))
 	t.Logf("✓ %d report(s) generated", len(d.Reports))
+}
+
+// publishTranscriptCompletedRetry publishes a fresh transcript.completed
+// event to the Pub/Sub topic for the given session, triggering an
+// llm-worker re-run against the EXISTING transcript blob (no STT
+// rerun, no audio re-upload). Used by TestFullSession_HappyPath Step
+// 8.7 to validate that report_preferences updates affect the next
+// generated report.
+//
+// Message shape matches what stt-worker emits (see
+// services/ai-pipeline-svc/internal/adapters/pubsub/publisher.go):
+//
+//	{ "session_id": "...", "transcript_id": "..." }
+//
+// Eventarc wraps this in a CloudEvent envelope before delivering to
+// llm-worker, which extracts via MessagePublishedData. We publish
+// the raw JSON; the wrapper is automatic.
+func publishTranscriptCompletedRetry(t *testing.T, ctx context.Context, projectID, sessionID, transcriptID string) {
+	t.Helper()
+	client, err := pubsub.NewClient(ctx, projectID)
+	require.NoError(t, err, "pubsub.NewClient")
+	defer client.Close()
+
+	publisher := client.Publisher(
+		fmt.Sprintf("projects/%s/topics/transcript.completed", projectID))
+	defer publisher.Stop()
+
+	payload := fmt.Sprintf(`{"session_id":"%s","transcript_id":"%s"}`,
+		sessionID, transcriptID)
+	result := publisher.Publish(ctx, &pubsub.Message{Data: []byte(payload)})
+	_, err = result.Get(ctx)
+	require.NoError(t, err, "publish transcript.completed")
 }
