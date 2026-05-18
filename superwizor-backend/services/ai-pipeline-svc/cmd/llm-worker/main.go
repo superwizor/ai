@@ -61,6 +61,30 @@ var (
 	// into the Markdown-mode rollout — one variable at a time.
 	geminiModel  string = "gemini-2.5-flash"
 	geminiRegion string = "europe-west4"
+
+	// Two distinct sampling profiles by design. Don't collapse them
+	// into one — call 1 wants determinism for parser-friendly output,
+	// call 2 wants prose variety.
+	//
+	//   Metadata (call 1): low temperature, smaller budget.
+	//     - JSON mode: structured-output, schema-constrained, ~few KB.
+	//     - Markdown mode: free-form text but still small — speaker
+	//       groups + title + summary fit in <2k tokens easily.
+	//   Report (call 2): higher temperature for narrative quality,
+	//     much larger budget for the full clinical writeup.
+	//
+	// MaxOutputTokens lower bound (16384) was tuned against the
+	// structured-output schema's max size + a safety margin; upper
+	// bound (65535) is the Vertex-enforced cap on gemini-2.5-flash
+	// (65536 exclusive). The 65535 value here is the *baseline*
+	// before the per-therapist length-preference override applied
+	// by reportprefs.MaxOutputTokens (see report-customization
+	// commit) which can lower it to 16384 for "brief".
+	geminiTempMetadata        float32 = 0.1
+	geminiTempReport          float32 = 0.3
+	geminiTopP                float32 = 0.95
+	geminiMaxOutMetadata      int32   = 16384
+	geminiMaxOutReportDefault int32   = 65535
 	// debugLogPrompts controls whether we emit the full prompt sent to
 	// Vertex + the full raw response back, to Cloud Logging. Gated by
 	// the LLM_DEBUG_LOG_PROMPTS env var ("true" = on, anything else =
@@ -320,13 +344,60 @@ type TokenStats struct {
 //go:embed schemas/report_schema.json
 var reportSchemaBytes []byte
 
+// metadataGenConfigJSON returns the GenerationConfig for call 1
+// in JSON mode (schema-constrained structured output). Built from
+// the package-level gemini* constants so all three call sites stay
+// in lockstep — see the comment block on `geminiTempMetadata`.
+func metadataGenConfigJSON(schema *vertexai.Schema) vertexai.GenerationConfig {
+	return vertexai.GenerationConfig{
+		Temperature:      vertexai.Ptr[float32](geminiTempMetadata),
+		TopP:             vertexai.Ptr[float32](geminiTopP),
+		MaxOutputTokens:  vertexai.Ptr[int32](geminiMaxOutMetadata),
+		ResponseMIMEType: "application/json",
+		ResponseSchema:   schema,
+	}
+}
+
+// metadataGenConfigMarkdown returns the GenerationConfig for call 1
+// in Markdown mode (free-form text). Same sampling profile as the
+// JSON variant; differs only by absence of ResponseMIMEType +
+// ResponseSchema so the model emits plain text we parse ourselves
+// via internal/diarization.
+func metadataGenConfigMarkdown() vertexai.GenerationConfig {
+	return vertexai.GenerationConfig{
+		Temperature:     vertexai.Ptr[float32](geminiTempMetadata),
+		TopP:            vertexai.Ptr[float32](geminiTopP),
+		MaxOutputTokens: vertexai.Ptr[int32](geminiMaxOutMetadata),
+	}
+}
+
+// reportGenConfig returns the GenerationConfig for call 2 (the
+// full clinical report). maxOut is the per-call cap — caller
+// computes it from the therapist's length preference via
+// reportprefs.MaxOutputTokens, falling back to
+// geminiMaxOutReportDefault when no preference is set. We accept
+// it as an arg rather than computing inside because the call site
+// already has the prefs in scope and computing here would force
+// a second package import for an otherwise trivial helper.
+func reportGenConfig(maxOut int32) vertexai.GenerationConfig {
+	if maxOut <= 0 {
+		maxOut = geminiMaxOutReportDefault
+	}
+	return vertexai.GenerationConfig{
+		Temperature:      vertexai.Ptr[float32](geminiTempReport),
+		TopP:             vertexai.Ptr[float32](geminiTopP),
+		MaxOutputTokens:  vertexai.Ptr[int32](maxOut),
+		ResponseMIMEType: "text/plain",
+	}
+}
+
 // diarizationMode reports the active LLM_DIARIZATION_MODE setting.
-// "json" (default) keeps the legacy schema-constrained call 1; "markdown"
-// switches call 1 to free-form Markdown + server-side parsing via the
-// internal/diarization package. Call 2's transcript format is ALWAYS
-// Format B Markdown (speaker-turn-grouped) regardless of this flag —
-// the read-friendliness gain is unconditional and uncoupled from the
-// call-1 output format.
+// "json" (default) keeps the legacy schema-constrained call 1;
+// "markdown" switches call 1 to free-form Markdown + server-side
+// parsing via the internal/diarization package. Call 2's transcript
+// format is ALWAYS Format B Markdown (speaker-turn-grouped)
+// regardless of this flag — the read-friendliness gain is
+// unconditional and uncoupled from the call-1 output format.
 func diarizationMode() string {
 	v := strings.ToLower(strings.TrimSpace(os.Getenv("LLM_DIARIZATION_MODE")))
 	if v == "" {
@@ -380,22 +451,11 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 	annotated := annotateChunksWithSpeakers(chunks, metadataPayload.SpeakerRoleInference.SpeakerGroups)
 	transcriptForCall2 := transcriptfmt.FormatSpeakerTurns(annotated)
 
-	// Per-therapist length nudge. Empty length → keep the 65535
-	// default; "brief" lowers the cap, "detailed" stays at max.
-	maxOut := int32(65535)
-	if override := reportprefs.MaxOutputTokens(prefs); override > 0 {
-		maxOut = override
-	}
-	model.GenerationConfig = vertexai.GenerationConfig{
-		Temperature:      vertexai.Ptr[float32](0.3),
-		TopP:             vertexai.Ptr[float32](0.95),
-		// Vertex enforces this as an EXCLUSIVE upper bound on
-		// gemini-2.5-flash-lite — 65536 is rejected with
-		// "supported range is from 1 (inclusive) to 65536 (exclusive)".
-		// 65535 is the highest accepted value.
-		MaxOutputTokens:  vertexai.Ptr[int32](maxOut),
-		ResponseMIMEType: "text/plain",
-	}
+	// Per-therapist length nudge. Empty length → reportGenConfig
+	// falls back to geminiMaxOutReportDefault (65535); "brief"
+	// lowers to geminiMaxOutMetadata-style 16384; "detailed" stays
+	// at max. See reportprefs.MaxOutputTokens for the mapping.
+	model.GenerationConfig = reportGenConfig(reportprefs.MaxOutputTokens(prefs))
 
 	// Render the optional preference fragment. Empty when the
 	// therapist hasn't customized — preserves byte-identical prompts
@@ -476,13 +536,7 @@ func callMetadataJSON(ctx context.Context, model *vertexai.GenerativeModel, repo
 	if err := json.Unmarshal(reportSchemaBytes, &schema); err != nil {
 		return ReportPayload{}, TokenStats{}, fmt.Errorf("parse schema: %w", err)
 	}
-	model.GenerationConfig = vertexai.GenerationConfig{
-		Temperature:      vertexai.Ptr[float32](0.1),
-		TopP:             vertexai.Ptr[float32](0.95),
-		MaxOutputTokens:  vertexai.Ptr[int32](16384),
-		ResponseMIMEType: "application/json",
-		ResponseSchema:   schemaToVertexSchema(schema),
-	}
+	model.GenerationConfig = metadataGenConfigJSON(schemaToVertexSchema(schema))
 
 	prompt := fmt.Sprintf(`
 WAŻNE — KONTEKST DIARYZACJI I METADANYCH:
@@ -552,12 +606,9 @@ ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 // B (speaker-turn) when native diarization is present — the LLM only
 // labels roles. Same model + temperature as the JSON path.
 func callMetadataMarkdown(ctx context.Context, model *vertexai.GenerativeModel, reportLanguage, ragContext string, chunks []transcriptfmt.Chunk, native bool) (diarization.Result, TokenStats, error) {
-	model.GenerationConfig = vertexai.GenerationConfig{
-		Temperature:     vertexai.Ptr[float32](0.1),
-		TopP:            vertexai.Ptr[float32](0.95),
-		MaxOutputTokens: vertexai.Ptr[int32](16384),
-		// No ResponseMIMEType / ResponseSchema — free-form text out.
-	}
+	// No ResponseMIMEType / ResponseSchema in Markdown mode —
+	// free-form text out, parsed server-side by internal/diarization.
+	model.GenerationConfig = metadataGenConfigMarkdown()
 
 	var transcriptStr, prompt string
 	if native {
