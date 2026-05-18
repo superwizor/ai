@@ -622,6 +622,100 @@ func TestFullSession_HappyPath(t *testing.T) {
 		assertFirestoreSessionStateDone(t, ctx, cfg.projectID, complete.SessionId, firebaseUID)
 
 		// --------------------------------------------------------------
+		// Step 8.6 — Report rating happy-path (feat/report-customization)
+		// --------------------------------------------------------------
+		// Exercises clinical-svc.RateReport / GetReportRating against
+		// the REAL report produced by the LLM call. The validation-only
+		// e2e tests in report_customization_test.go can't cover this
+		// path because they use a fake report_id that fails the FK
+		// before the handler does anything interesting.
+		//
+		// What's verified:
+		//   - GetReportRating before any rating → NotFound (Flutter
+		//     widget cue to render the "Rate this report" prompt).
+		//   - RateReport positive happy path → returns the persisted row.
+		//   - GetReportRating after → matches the just-rated state.
+		//   - RateReport negative with chips + notes → upserts in place
+		//     (same UNIQUE(report_id, therapist_id), re-rating allowed
+		//     per the design doc — "user changed their mind" semantics).
+		//   - GetActiveSuggestion after one negative → still empty
+		//     (engine trigger is ≥3 negatives of same chip; one isn't
+		//     enough — pins the threshold contract).
+		t.Log("\n═══ Step 8.6: Report rating happy-path ═══")
+		require.NotEmpty(t, details.Reports, "no reports to rate")
+		reportID := details.Reports[0].Id
+		require.NotEmpty(t, reportID, "report_id is empty")
+		t.Logf("  Rating against report_id=%s", reportID[:8])
+
+		// 8.6a — pre-rating NotFound
+		_, getErr := clinicalClient.GetReportRating(ctx, &clinicalv1.GetReportRatingRequest{
+			ReportId:    reportID,
+			TherapistId: therapist.Id,
+		})
+		require.Error(t, getErr, "expected NotFound on unrated report")
+		require.Equal(t, codes.NotFound, status.Code(getErr),
+			"expected NotFound code, got %v", status.Code(getErr))
+		t.Logf("  ✓ pre-rating GetReportRating returns NotFound")
+
+		// 8.6b — positive rating happy path
+		posResp, err := clinicalClient.RateReport(ctx, &clinicalv1.RateReportRequest{
+			ReportId:       reportID,
+			TherapistId:    therapist.Id,
+			Rating:         "positive",
+			Source:         "in_app",
+			IdempotencyKey: fmt.Sprintf("e2e-rating-pos-%d", time.Now().Unix()),
+		})
+		require.NoError(t, err, "RateReport positive")
+		require.NotNil(t, posResp.Rating)
+		require.Equal(t, "positive", posResp.Rating.Rating)
+		require.Empty(t, posResp.Rating.Issues, "positive rating must have empty issues (server clamps)")
+		t.Logf("  ✓ RateReport positive → id=%s", posResp.Rating.Id[:8])
+
+		// 8.6c — Get after positive
+		got, err := clinicalClient.GetReportRating(ctx, &clinicalv1.GetReportRatingRequest{
+			ReportId:    reportID,
+			TherapistId: therapist.Id,
+		})
+		require.NoError(t, err, "GetReportRating after positive")
+		require.Equal(t, "positive", got.Rating)
+		require.Equal(t, posResp.Rating.Id, got.Id, "Get returned a different row than Rate's response")
+		t.Logf("  ✓ GetReportRating returns positive state")
+
+		// 8.6d — negative rating re-rating (upsert)
+		negResp, err := clinicalClient.RateReport(ctx, &clinicalv1.RateReportRequest{
+			ReportId:    reportID,
+			TherapistId: therapist.Id,
+			Rating:      "negative",
+			Issues:      []string{"za_dlugi", "zly_ton"},
+			Notes:       "Trochę za bardzo formalny",
+			Source:      "in_app",
+			// Different idempotency key — represents an actual "re-rating"
+			// flow where the user changed their mind. UNIQUE constraint
+			// on (report_id, therapist_id) ensures the row is replaced
+			// in place, not duplicated.
+			IdempotencyKey: fmt.Sprintf("e2e-rating-neg-%d", time.Now().Unix()),
+		})
+		require.NoError(t, err, "RateReport negative (re-rating)")
+		require.Equal(t, "negative", negResp.Rating.Rating)
+		require.Equal(t, []string{"za_dlugi", "zly_ton"}, negResp.Rating.Issues)
+		require.Equal(t, "Trochę za bardzo formalny", negResp.Rating.Notes)
+		// Same DB row → same ID (upsert, not insert).
+		require.Equal(t, posResp.Rating.Id, negResp.Rating.Id,
+			"re-rating must UPSERT in place — got a new row instead")
+		t.Logf("  ✓ Re-rating negative upserts: same id=%s, issues=%v", negResp.Rating.Id[:8], negResp.Rating.Issues)
+
+		// 8.6e — Suggestion engine still empty after only 1 negative
+		// (threshold is ≥3 of same chip; one rating not enough)
+		sugg, err := clinicalClient.GetActiveSuggestion(ctx, &clinicalv1.GetActiveSuggestionRequest{
+			TherapistId: therapist.Id,
+		})
+		require.NoError(t, err, "GetActiveSuggestion after 1 negative")
+		require.NotNil(t, sugg)
+		require.Empty(t, sugg.SuggestionId,
+			"engine fired with only 1 negative — should require ≥3 per design doc §6")
+		t.Logf("  ✓ Suggestion engine empty after 1 negative rating (threshold ≥3)")
+
+		// --------------------------------------------------------------
 		// Step 9 — RODO cascade verification
 		// --------------------------------------------------------------
 		// Now that we have a real kartoteka with a real session + real

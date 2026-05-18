@@ -53,6 +53,7 @@ type lifecycleEnv struct {
 	ctx       context.Context
 	cfg       config
 	therapist *identityv1.User
+	identity  identityv1.IdentityServiceClient // exposed for report_customization_test.go
 	clinical  clinicalv1.ClinicalServiceClient
 	runID     int64
 }
@@ -110,6 +111,7 @@ func setupLifecycleEnv(t *testing.T) *lifecycleEnv {
 		ctx:       ctx,
 		cfg:       cfg,
 		therapist: therapist,
+		identity:  identityClient,
 		clinical:  clinicalClient,
 		runID:     runID,
 	}
