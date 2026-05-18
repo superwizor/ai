@@ -23,7 +23,7 @@ class _HardDeleteSheetState extends ConsumerState<HardDeleteSheet> {
 
   void _onTextChanged(String val) {
     setState(() {
-      _isValid = val == 'USUWAM';
+      _isValid = val.trim().toLowerCase() == 'usuwam';
     });
   }
 
@@ -96,12 +96,12 @@ class _HardDeleteSheetState extends ConsumerState<HardDeleteSheet> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Skasujemy Twój profil terapeuty, wszystkie sesje, transkrypcje i raporty. Tej akcji nie można cofnąć. Jeśli jesteś pewna/pewien — wpisz słowo USUWAM.',
+            'Skasujemy Twój profil terapeuty, wszystkie sesje, transkrypcje i raporty. Tej akcji nie można cofnąć. Jeśli jesteś pewna/pewien — wpisz słowo usuwam.',
           ),
           const SizedBox(height: 24),
           EuphireTextField(
             controller: _controller,
-            labelText: 'Wpisz USUWAM',
+            labelText: 'Wpisz usuwam',
             onChanged: _onTextChanged,
           ),
           const SizedBox(height: 24),

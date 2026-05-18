@@ -82,7 +82,7 @@ class MainDrawer extends StatelessWidget {
               ),
               _DrawerTile(
                 icon: Icons.person_outline,
-                title: AppLocalizations.of(context)!.drawer_profile,
+                title: AppLocalizations.of(context).drawer_profile,
                 onTap: () {
                   Navigator.of(context).pop(); // close drawer
                   showEuphireBottomSheet<void>(
@@ -93,7 +93,7 @@ class MainDrawer extends StatelessWidget {
               ),
               _DrawerTile(
                 icon: Icons.language,
-                title: AppLocalizations.of(context)!.drawer_language,
+                title: AppLocalizations.of(context).drawer_language,
                 onTap: () {
                   Navigator.of(context).pop();
                   showEuphireBottomSheet<void>(
@@ -104,7 +104,7 @@ class MainDrawer extends StatelessWidget {
               ),
               _DrawerTile(
                 icon: Icons.psychology_outlined,
-                title: AppLocalizations.of(context)!.drawer_modalities,
+                title: AppLocalizations.of(context).drawer_modalities,
                 onTap: () {
                   Navigator.of(context).pop();
                   showEuphireBottomSheet<void>(
@@ -122,21 +122,21 @@ class MainDrawer extends StatelessWidget {
               ),
               _DrawerTile(
                 icon: Icons.description_outlined,
-                title: AppLocalizations.of(context)!.settings_terms,
+                title: AppLocalizations.of(context).settings_terms,
                 onTap: () {
                   final lang = Localizations.localeOf(context).languageCode;
                   Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => LegalMarkdownScreen(assetPath: lang == 'en' ? 'assets/legal/terms_en.md' : 'assets/legal/terms.md', title: AppLocalizations.of(context)!.settings_terms),
+                    builder: (_) => LegalMarkdownScreen(assetPath: lang == 'en' ? 'assets/legal/terms_en.md' : 'assets/legal/terms.md', title: AppLocalizations.of(context).settings_terms),
                   ));
                 },
               ),
               _DrawerTile(
                 icon: Icons.lock_outline,
-                title: AppLocalizations.of(context)!.settings_privacy,
+                title: AppLocalizations.of(context).settings_privacy,
                 onTap: () {
                   final lang = Localizations.localeOf(context).languageCode;
                   Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => LegalMarkdownScreen(assetPath: lang == 'en' ? 'assets/legal/privacy_policy_en.md' : 'assets/legal/privacy_policy.md', title: AppLocalizations.of(context)!.settings_privacy),
+                    builder: (_) => LegalMarkdownScreen(assetPath: lang == 'en' ? 'assets/legal/privacy_policy_en.md' : 'assets/legal/privacy_policy.md', title: AppLocalizations.of(context).settings_privacy),
                   ));
                 },
               ),

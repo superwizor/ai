@@ -145,13 +145,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modality_coaching => 'Coaching (ICF/GROW)';
 
   @override
+  String get modality_sheet_title => 'Choose your approach';
+
+  @override
+  String get modality_sheet_subtitle =>
+      'This affects how your reports are generated. You can change it anytime.';
+
+  @override
   String get addPatient_title => 'New Patient.';
 
   @override
   String get addPatient_first_name_label => 'Patient\'s first name (required)';
 
   @override
-  String get addPatient_last_name_label => 'Patient\'s last name (optional)';
+  String get addPatient_last_name_label => 'Alias or initial (optional)';
 
   @override
   String get addPatient_modality_label =>
@@ -179,6 +186,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addPatient_no_consent_primary => 'I understand.';
+
+  @override
+  String get addPatient_duplicate_header => 'This patient already exists.';
+
+  @override
+  String get addPatient_duplicate_body =>
+      'You already have a record with this name combination. Add an initial, nickname, or other identifier to avoid confusion.';
+
+  @override
+  String get addPatient_duplicate_primary => 'I\'ll fix the name.';
 
   @override
   String get editPatient_title => 'Edit patient details.';
@@ -236,26 +253,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recording_screen_title => 'Session in progress.';
 
   @override
-  String get recording_instructions_title => 'How to record best?';
+  String get recording_instructions_title =>
+      'A few tips for a better recording';
+
+  @override
+  String get recording_instructions_subtitle =>
+      'Good recording conditions mean better transcription quality and more accurate AI insights.';
 
   @override
   String get recording_instruction_1 =>
-      'Do not lock the screen while recording.';
-
-  @override
-  String get recording_instruction_2 =>
       'Place the phone on a table, between speakers (50–100 cm distance).';
 
   @override
-  String get recording_instruction_3 =>
+  String get recording_instruction_2 =>
       'Point the microphone towards the conversation, do not cover it.';
 
   @override
-  String get recording_instruction_4 =>
+  String get recording_instruction_3 =>
       'Quiet environment – close windows/doors, turn off noise sources.';
 
   @override
-  String get recording_instruction_5 =>
+  String get recording_instruction_4 =>
       'For video conferences (e.g. Google Meet, Zoom), always use a secondary device to record.';
 
   @override
@@ -389,6 +407,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get session_failed_primary => 'Contact support.';
+
+  @override
+  String get session_status_title => 'Secure analysis in progress.';
+
+  @override
+  String get session_status_subtitle =>
+      'We are preparing your reports and transcriptions. This may take up to 15 minutes. You can come back shortly.';
+
+  @override
+  String get session_status_success => 'Done!';
+
+  @override
+  String get session_status_back_to_records => 'Back to records';
 
   @override
   String get session_loading =>
@@ -679,4 +710,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settings_choose_language => 'Choose language';
+
+  @override
+  String get delete_account_title => 'Delete account';
+
+  @override
+  String get delete_account_consequence_1 =>
+      'All clinical documentation — all patients, records, sessions, and AI reports — will be permanently deleted.';
+
+  @override
+  String get delete_account_consequence_2 =>
+      'Your subscription (if you have one) will not be automatically canceled. You must cancel it separately in the App Store or Google Play.';
+
+  @override
+  String get delete_account_consequence_3 =>
+      'You will not be able to recover your data after completing this process. The operation is irreversible.';
+
+  @override
+  String get delete_account_toggle_text =>
+      'I understand the consequences\nand want to delete my account';
+
+  @override
+  String get delete_account_button => 'Delete my account';
+
+  @override
+  String get delete_account_sheet_title => 'Final step.';
+
+  @override
+  String get delete_account_sheet_subtitle => 'To confirm, type:';
+
+  @override
+  String get delete_account_sheet_hint => 'type here…';
+
+  @override
+  String get delete_account_sheet_button => 'DELETE ACCOUNT';
+
+  @override
+  String get delete_account_sheet_cancel => 'Cancel.';
+
+  @override
+  String get delete_account_relogin_error =>
+      'Please log in again to delete your account.';
+
+  @override
+  String get delete_account_confirm_word => 'delete';
+
+  @override
+  String get settings_licenses_desc =>
+      'This application was built thanks to the work of thousands of developers around the world. Below you\'ll find information about the open-source software we use to deliver the highest quality experience.';
 }

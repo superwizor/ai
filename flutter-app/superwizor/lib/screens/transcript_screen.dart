@@ -487,7 +487,7 @@ class _SegmentTile extends StatelessWidget {
                         ..._highlight(segment.text, search, theme).map((span) {
                           // Copy style from highlight and apply simplifications
                           return TextSpan(
-                            text: (span as TextSpan).text,
+                            text: (span).text,
                             style: TextStyle(
                               color: EuphireColors.frostWhite,
                               fontSize: 15,

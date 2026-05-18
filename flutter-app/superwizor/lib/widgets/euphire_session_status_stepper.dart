@@ -1,15 +1,19 @@
 // EuphireSessionStatusStepper — Etap 4 / Task 4.1
 //
-// Maps Firestore session_states.status → 4-step UI per ADR-IMPL-012:
+// Maps Firestore session_states.status → 5-step UI per ADR-IMPL-012:
 //   uploaded   → step 1 done
 //   analyzing  → steps 1+2+3 done (backend SKIPS 'transcribing' in
 //                  Phase 3 — we mark it complete on transition to
 //                  analyzing)
-//   done       → all 4 done
+//   done       → all 5 done
 //   failed     → last step turns destructive (red); no Cascade.
 //
 // Listener gating (60s — D4) is handled by the parent view-model
 // (SessionStatusViewModel) — this widget just renders state.
+//
+// Apple-quality design: connected line between steps, subtle glow on
+// active step, obsidianBlack numbers on ember background (fixes the
+// white-on-yellow visibility bug).
 
 import 'package:flutter/material.dart';
 
@@ -40,7 +44,14 @@ extension SessionStepperPhaseFromStatus on String {
 class EuphireSessionStatusStepper extends StatelessWidget {
   final SessionStepperPhase phase;
 
-  const EuphireSessionStatusStepper({super.key, required this.phase});
+  /// When true, steps fade out with animation (used for success cascade).
+  final bool collapsed;
+
+  const EuphireSessionStatusStepper({
+    super.key,
+    required this.phase,
+    this.collapsed = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -53,18 +64,28 @@ class EuphireSessionStatusStepper extends StatelessWidget {
       _Step(t.stepper_step5_done, _stateForStep(4)),
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (int i = 0; i < steps.length; i++)
-          _StepRow(
-            number: i + 1,
-            text: steps[i].text,
-            state: steps[i].state,
-            isLast: i == steps.length - 1,
-            nextState: i < steps.length - 1 ? steps[i + 1].state : null,
-          ),
-      ],
+    return AnimatedOpacity(
+      opacity: collapsed ? 0.0 : 1.0,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOut,
+      child: AnimatedSlide(
+        offset: collapsed ? const Offset(0, -0.1) : Offset.zero,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOut,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (int i = 0; i < steps.length; i++)
+              _StepRow(
+                number: i + 1,
+                text: steps[i].text,
+                state: steps[i].state,
+                isLast: i == steps.length - 1,
+                nextState: i < steps.length - 1 ? steps[i + 1].state : null,
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -116,57 +137,90 @@ class _StepRow extends StatelessWidget {
     final isDone = state == _StepState.done;
     final isActive = state == _StepState.active;
     final isFailed = state == _StepState.failed;
-
-    final color = isFailed
+    // Circle colors
+    final circleColor = isFailed
         ? EuphireColors.magma
         : isDone || isActive
             ? EuphireColors.ember
-            : Colors.white.withValues(alpha: 0.1);
+            : Colors.white.withValues(alpha: 0.08);
 
+    // Connector line: active if both current and next step are done/active
+    final lineActive = isDone &&
+        (nextState == _StepState.done || nextState == _StepState.active);
+
+    // BUG FIX: Numbers must use obsidianBlack on ember background.
+    // Previously used mist (light grey) which was invisible on yellow.
     final icon = isFailed
-        ? const Icon(Icons.close, size: 18, color: EuphireColors.frostWhite)
+        ? const Icon(Icons.close_rounded, size: 16, color: EuphireColors.frostWhite)
         : isDone
-            ? const Icon(Icons.check, size: 18, color: EuphireColors.obsidianBlack)
-            : Text('$number',
-                style: const TextStyle(
-                  color: EuphireColors.mist,
-                  fontWeight: FontWeight.w600,
-                ));
+            ? const Icon(Icons.check_rounded, size: 16, color: EuphireColors.obsidianBlack)
+            : Text(
+                '$number',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  // Active step (ember bg) → dark text. Pending (dark bg) → mist.
+                  color: isActive
+                      ? EuphireColors.obsidianBlack
+                      : EuphireColors.mist,
+                ),
+              );
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Column(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: isActive
-                      ? Border.all(color: EuphireColors.ember, width: 2)
-                      : null,
-                ),
-                child: icon,
-              ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: (isDone && (nextState == _StepState.done || nextState == _StepState.active))
-                        ? EuphireColors.ember
-                        : Colors.white.withValues(alpha: 0.1),
+          // ── Left column: circle + connector line ──
+          SizedBox(
+            width: 36,
+            child: Column(
+              children: [
+                // Circle with optional glow for active state
+                Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: circleColor,
+                    shape: BoxShape.circle,
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color: EuphireColors.ember.withValues(alpha: 0.4),
+                              blurRadius: 12,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
                   ),
+                  child: icon,
                 ),
-            ],
+                // Connector line
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 2),
+                      decoration: BoxDecoration(
+                        color: lineActive
+                            ? EuphireColors.ember
+                            : Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
+          // ── Right column: text + spinner ──
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 32.0, top: 4.0),
+              padding: EdgeInsets.only(
+                bottom: isLast ? 0.0 : 28.0,
+                top: 5.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -174,23 +228,32 @@ class _StepRow extends StatelessWidget {
                   Text(
                     text,
                     style: theme.textTheme.bodyLarge?.copyWith(
+                      fontSize: 15,
                       color: isFailed
                           ? EuphireColors.magma
-                          : (isDone || isActive)
+                          : isDone
                               ? EuphireColors.frostWhite
-                              : EuphireColors.mist,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                              : isActive
+                                  ? EuphireColors.frostWhite
+                                  : EuphireColors.mist.withValues(alpha: 0.5),
+                      fontWeight: isActive
+                          ? FontWeight.w600
+                          : isDone
+                              ? FontWeight.w400
+                              : FontWeight.w300,
+                      height: 1.4,
                     ),
                   ),
                   if (isActive)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 12.0),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10.0),
                       child: SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 18,
+                        height: 18,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation(EuphireColors.ember),
+                          strokeWidth: 1.5,
+                          valueColor:
+                              const AlwaysStoppedAnimation(EuphireColors.ember),
                         ),
                       ),
                     ),

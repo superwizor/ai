@@ -22,7 +22,7 @@ class EuphireWaveformIndicator extends StatefulWidget {
 }
 
 class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   StreamSubscription<double>? _amplitudeSub;
   static const int _barCount = 20;
 
@@ -30,10 +30,24 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
   double _smoothedAmplitude = 0.0;
   late AnimationController _tickController;
 
+  /// Controls smooth fade-in/out on resume/pause.
+  /// 1.0 = fully recording, 0.0 = fully paused.
+  late AnimationController _fadeController;
+
   @override
   void initState() {
     super.initState();
     _subscribeToAmplitude();
+
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+      reverseDuration: const Duration(milliseconds: 1200),
+      value: widget.isRecording ? 1.0 : 0.0,
+    )..addListener(() {
+        // Needed so ring opacity updates every frame during fade.
+        if (mounted) setState(() {});
+      });
 
     _tickController = AnimationController(
       vsync: this,
@@ -47,6 +61,8 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
 
   DateTime _lastTick = DateTime.now();
 
+  static final math.Random _rng = math.Random();
+
   void _onTick() {
     final now = DateTime.now();
     if (now.difference(_lastTick).inMilliseconds < 50) return;
@@ -56,7 +72,13 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
 
     setState(() {
       _samples.removeAt(0);
-      _samples.add(_smoothedAmplitude);
+      // Add micro-variation (±12%) per sample to break the "rectangle"
+      // effect.  Without this, groups of 4 bars (50 ms tick vs 200 ms
+      // amplitude poll) share the exact same height → flat block.
+      // The variation is proportional to the amplitude so silence stays
+      // flat and speech looks organically wavy.
+      final jitter = 1.0 + (_rng.nextDouble() - 0.5) * 0.24;
+      _samples.add((_smoothedAmplitude * jitter).clamp(0.0, 1.0));
     });
   }
 
@@ -65,16 +87,21 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
     super.didUpdateWidget(oldWidget);
 
     if (widget.isRecording && !oldWidget.isRecording) {
-      _tickController.repeat();
+      // ── Resume ──
+      if (!_tickController.isAnimating) _tickController.repeat();
+      _fadeController.forward();
     } else if (!widget.isRecording && oldWidget.isRecording) {
+      // ── Pause ──
+      // Kill amplitude immediately so new bars pushed by _onTick
+      // are flat (zero).  Existing "live" bars stay in _samples and
+      // naturally scroll off the left edge over ~1 s (20 bars × 50 ms).
+      // Rings fade via _fadeController.  Tick controller keeps running
+      // until the fade completes.
       _smoothedAmplitude = 0.0;
-      Future.delayed(const Duration(milliseconds: 500), () {
+      _fadeController.reverse().then((_) {
         if (mounted && !widget.isRecording) {
           _tickController.stop();
-          // Clear samples on stop
-          setState(() {
-            _samples.fillRange(0, _barCount, 0.0);
-          });
+          setState(() => _samples.fillRange(0, _barCount, 0.0));
         }
       });
     }
@@ -91,9 +118,15 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
 
     _amplitudeSub = stream.listen((amplitudeValue) {
       if (!mounted || !widget.isRecording) return;
-      double raw = amplitudeValue.clamp(0.0, 1.0);
-      raw = math.pow(raw, 0.7).toDouble();
-      const double alpha = 0.35;
+      // The source signal is already noise-gated and quadratic-scaled
+      // in RecordingService — no additional pow() transform needed.
+      //
+      // OLD: pow(raw, 0.7) — exponent < 1 _inflated_ small values
+      // (noise at 0.1 → 0.2), killing dynamic range.
+      final raw = amplitudeValue.clamp(0.0, 1.0);
+      // Smoothing: alpha 0.55 reacts fast to speech transients
+      // but still damps per-frame jitter. Higher = more responsive.
+      const double alpha = 0.55;
       _smoothedAmplitude = alpha * raw + (1.0 - alpha) * _smoothedAmplitude;
     });
   }
@@ -102,11 +135,17 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
   void dispose() {
     _amplitudeSub?.cancel();
     _tickController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // fade: 1.0 during recording, animates to 0.0 on pause.
+    final fade = _fadeController.value;
+    // Show rings when recording OR during fade-out (fade > 0).
+    final showRings = widget.isRecording || fade > 0.01;
+
     return Center(
       child: SizedBox(
         width: double.infinity,
@@ -115,8 +154,9 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
           alignment: Alignment.center,
           clipBehavior: Clip.none,
           children: [
-            // Ambient Radar Rings
-            if (widget.isRecording)
+            // Ambient Radar Rings — visible during recording AND
+            // during fade-out so existing rings gracefully complete.
+            if (showRings)
               AnimatedBuilder(
                 animation: _tickController,
                 builder: (context, child) {
@@ -124,9 +164,9 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
                     alignment: Alignment.center,
                     clipBehavior: Clip.none,
                     children: [
-                      _buildRing(1.0 + (_tickController.value * 3.0), 0.3 * (1 - _tickController.value)),
-                      _buildRing(1.0 + (((_tickController.value + 0.33) % 1.0) * 3.0), 0.3 * (1 - ((_tickController.value + 0.33) % 1.0))),
-                      _buildRing(1.0 + (((_tickController.value + 0.66) % 1.0) * 3.0), 0.3 * (1 - ((_tickController.value + 0.66) % 1.0))),
+                      _buildRing(1.0 + (_tickController.value * 3.0), 0.3 * (1 - _tickController.value) * fade),
+                      _buildRing(1.0 + (((_tickController.value + 0.33) % 1.0) * 3.0), 0.3 * (1 - ((_tickController.value + 0.33) % 1.0)) * fade),
+                      _buildRing(1.0 + (((_tickController.value + 0.66) % 1.0) * 3.0), 0.3 * (1 - ((_tickController.value + 0.66) % 1.0)) * fade),
                     ],
                   );
                 },
@@ -247,19 +287,11 @@ class _HorizontalWaveformPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (!isRecording) {
-      final paint = Paint()
-        ..color = color.withValues(alpha: 0.3)
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round;
-      canvas.drawLine(Offset(0, size.height / 2), Offset(size.width, size.height / 2), paint);
-      return;
-    }
 
     final barCount = samples.length;
     final maxBarHeight = size.height;
-    final minBarHeight = 4.0;
-    final barWidth = 4.0;
+    const minBarHeight = 2.0; // Was 4 — thinner silence bars
+    const barWidth = 4.5;
     final spacing = (size.width - (barCount * barWidth)) / (barCount - 1);
 
     final paint = Paint()
@@ -270,23 +302,24 @@ class _HorizontalWaveformPainter extends CustomPainter {
       final sample = samples[i];
       final barHeight = minBarHeight + (maxBarHeight - minBarHeight) * sample;
 
-      final x = i * (barWidth + spacing) + barWidth / 2;
-      final y1 = (size.height - barHeight) / 2;
-      final y2 = y1 + barHeight;
+      final x = i * (barWidth + spacing);
+      final y = (size.height - barHeight) / 2;
 
       final opacity = 0.3 + 0.7 * sample;
       paint.color = color.withValues(alpha: opacity.clamp(0.0, 1.0));
-      paint.strokeWidth = barWidth;
 
-      canvas.drawLine(Offset(x, y1), Offset(x, y2), paint);
-      
-      if (sample > 0.4) {
+      final rrect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, y, barWidth, barHeight),
+        const Radius.circular(2.5),
+      );
+      canvas.drawRRect(rrect, paint);
+
+      // Glow on moderate-to-loud speech (threshold lowered from 0.4)
+      if (sample > 0.2) {
         final glowPaint = Paint()
-          ..color = color.withValues(alpha: (0.2 * sample).clamp(0.0, 1.0))
-          ..strokeWidth = barWidth
-          ..strokeCap = StrokeCap.round
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-        canvas.drawLine(Offset(x, y1), Offset(x, y2), glowPaint);
+          ..color = color.withValues(alpha: (0.15 + 0.15 * sample).clamp(0.0, 1.0))
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 3 + 4 * sample);
+        canvas.drawRRect(rrect, glowPaint);
       }
     }
   }

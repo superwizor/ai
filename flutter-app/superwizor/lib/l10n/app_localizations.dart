@@ -356,6 +356,18 @@ abstract class AppLocalizations {
   /// **'Coaching (ICF/GROW)'**
   String get modality_coaching;
 
+  /// No description provided for @modality_sheet_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz swój nurt'**
+  String get modality_sheet_title;
+
+  /// No description provided for @modality_sheet_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'To ustawienie wpływa na generowane raporty. Możesz je zmienić w każdej chwili.'**
+  String get modality_sheet_subtitle;
+
   /// No description provided for @addPatient_title.
   ///
   /// In pl, this message translates to:
@@ -371,7 +383,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_last_name_label.
   ///
   /// In pl, this message translates to:
-  /// **'Nazwisko (opcjonalne)'**
+  /// **'Pseudonim lub inicjał (opcjonalne)'**
   String get addPatient_last_name_label;
 
   /// No description provided for @addPatient_modality_label.
@@ -421,6 +433,24 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Rozumiem.'**
   String get addPatient_no_consent_primary;
+
+  /// No description provided for @addPatient_duplicate_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Taki pacjent już istnieje.'**
+  String get addPatient_duplicate_header;
+
+  /// No description provided for @addPatient_duplicate_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Masz już kartotekę z tą kombinacją imienia i pseudonimu. Dodaj inicjał, przydomek lub inny wyróżnik, aby uniknąć pomyłek.'**
+  String get addPatient_duplicate_body;
+
+  /// No description provided for @addPatient_duplicate_primary.
+  ///
+  /// In pl, this message translates to:
+  /// **'Poprawię nazwę.'**
+  String get addPatient_duplicate_primary;
 
   /// No description provided for @editPatient_title.
   ///
@@ -515,38 +545,38 @@ abstract class AppLocalizations {
   /// No description provided for @recording_instructions_title.
   ///
   /// In pl, this message translates to:
-  /// **'Jak najlepiej nagrywać?'**
+  /// **'Kilka wskazówek dla lepszego nagrania'**
   String get recording_instructions_title;
+
+  /// No description provided for @recording_instructions_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dobre warunki nagrywania to lepsza jakość transkrypcji i trafniejsze wnioski AI.'**
+  String get recording_instructions_subtitle;
 
   /// No description provided for @recording_instruction_1.
   ///
   /// In pl, this message translates to:
-  /// **'Nie blokuj ekranu podczas nagrywania.'**
+  /// **'Połóż telefon na stole, między rozmówcami (50–100 cm odległości).'**
   String get recording_instruction_1;
 
   /// No description provided for @recording_instruction_2.
   ///
   /// In pl, this message translates to:
-  /// **'Połóż telefon na stole, między rozmówcami (50–100 cm odległości).'**
+  /// **'Mikrofon skieruj w stronę rozmowy, niczym go nie zasłaniaj.'**
   String get recording_instruction_2;
 
   /// No description provided for @recording_instruction_3.
   ///
   /// In pl, this message translates to:
-  /// **'Mikrofon skieruj w stronę rozmowy, niczym go nie zasłaniaj.'**
+  /// **'Ciche otoczenie – zamknij okna/drzwi, wyłącz źródła hałasu.'**
   String get recording_instruction_3;
 
   /// No description provided for @recording_instruction_4.
   ///
   /// In pl, this message translates to:
-  /// **'Ciche otoczenie – zamknij okna/drzwi, wyłącz źródła hałasu.'**
-  String get recording_instruction_4;
-
-  /// No description provided for @recording_instruction_5.
-  ///
-  /// In pl, this message translates to:
   /// **'Do wideokonferencji (np. Google Meet, Zoom) używaj zawsze dodatkowego urządzenia do nagrywania.'**
-  String get recording_instruction_5;
+  String get recording_instruction_4;
 
   /// No description provided for @recording_status_recording.
   ///
@@ -781,6 +811,30 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Skontaktuj się z pomocą.'**
   String get session_failed_primary;
+
+  /// No description provided for @session_status_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Bezpieczna analiza w toku.'**
+  String get session_status_title;
+
+  /// No description provided for @session_status_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Opracowujemy dla Ciebie raporty i transkrypcje. Może to potrwać 15 minut. Możesz tutaj wrócić za chwilę.'**
+  String get session_status_subtitle;
+
+  /// No description provided for @session_status_success.
+  ///
+  /// In pl, this message translates to:
+  /// **'Gotowe!'**
+  String get session_status_success;
+
+  /// No description provided for @session_status_back_to_records.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wróć do kartotek'**
+  String get session_status_back_to_records;
 
   /// No description provided for @session_loading.
   ///
@@ -1321,6 +1375,90 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Wybierz język'**
   String get settings_choose_language;
+
+  /// No description provided for @delete_account_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń konto'**
+  String get delete_account_title;
+
+  /// No description provided for @delete_account_consequence_1.
+  ///
+  /// In pl, this message translates to:
+  /// **'Cała dokumentacja kliniczna — wszystkich pacjentów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.'**
+  String get delete_account_consequence_1;
+
+  /// No description provided for @delete_account_consequence_2.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twoja subskrypcja (jeśli ją posiadasz) nie zostanie automatycznie anulowana. Musisz ją anulować osobno w App Store lub Google Play.'**
+  String get delete_account_consequence_2;
+
+  /// No description provided for @delete_account_consequence_3.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie będziesz mógł odzyskać danych po zakończeniu tego procesu. Operacja jest nieodwracalna.'**
+  String get delete_account_consequence_3;
+
+  /// No description provided for @delete_account_toggle_text.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozumiem konsekwencje\ni chcę usunąć konto'**
+  String get delete_account_toggle_text;
+
+  /// No description provided for @delete_account_button.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń moje konto'**
+  String get delete_account_button;
+
+  /// No description provided for @delete_account_sheet_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ostatni krok.'**
+  String get delete_account_sheet_title;
+
+  /// No description provided for @delete_account_sheet_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Aby potwierdzić, wpisz:'**
+  String get delete_account_sheet_subtitle;
+
+  /// No description provided for @delete_account_sheet_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'wpisz tutaj…'**
+  String get delete_account_sheet_hint;
+
+  /// No description provided for @delete_account_sheet_button.
+  ///
+  /// In pl, this message translates to:
+  /// **'USUWAM KONTO'**
+  String get delete_account_sheet_button;
+
+  /// No description provided for @delete_account_sheet_cancel.
+  ///
+  /// In pl, this message translates to:
+  /// **'Anuluj.'**
+  String get delete_account_sheet_cancel;
+
+  /// No description provided for @delete_account_relogin_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaloguj się ponownie, by usunąć konto.'**
+  String get delete_account_relogin_error;
+
+  /// No description provided for @delete_account_confirm_word.
+  ///
+  /// In pl, this message translates to:
+  /// **'usuwam'**
+  String get delete_account_confirm_word;
+
+  /// No description provided for @settings_licenses_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania.'**
+  String get settings_licenses_desc;
 }
 
 class _AppLocalizationsDelegate

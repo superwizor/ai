@@ -117,6 +117,9 @@ class TranscriptPdfExporter {
     ));
 
     final dir = await getTemporaryDirectory();
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
     final file = File(p.join(dir.path, 'transkrypcja_${meta.sessionId}.pdf'));
     await file.writeAsBytes(await pdf.save());
     return file;

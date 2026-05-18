@@ -30,7 +30,7 @@ import 'modality_sheet.dart';
 import '../constants/modalities.dart';
 
 const String kCurrentDpaVersion = 'dpa-v1-2026-04';
-const String kDpaAssetPath = 'assets/legal/DPA Superwizor AI.md';
+const String kDpaAssetPath = 'assets/legal/dpa.md';
 
 class AddPatientModal extends ConsumerStatefulWidget {
   const AddPatientModal({super.key});
@@ -44,6 +44,7 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
   final _lastNameController = TextEditingController();
   bool _consentGiven = false;
   bool _saving = false;
+  bool _duplicateError = false;
   String _languageCode = 'pl-PL';
   late String _modalityCode;
 
@@ -51,10 +52,22 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
   void initState() {
     super.initState();
     _modalityCode = ref.read(selectedModalityProvider);
+    // Rebuild on every keystroke so canSave re-evaluates regardless of
+    // field fill order (fixes: consent first → name → button stays grey).
+    _firstNameController.addListener(_onFieldChanged);
+    _lastNameController.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    // Clear duplicate error as soon as the user starts correcting the name.
+    if (_duplicateError) _duplicateError = false;
+    setState(() {});
   }
 
   @override
   void dispose() {
+    _firstNameController.removeListener(_onFieldChanged);
+    _lastNameController.removeListener(_onFieldChanged);
     _firstNameController.dispose();
     _lastNameController.dispose();
     super.dispose();
@@ -99,11 +112,13 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
             EuphireTextField(
               controller: _firstNameController,
               labelText: t.addPatient_first_name_label,
+              errorText: _duplicateError ? t.addPatient_duplicate_header : null,
             ),
             const SizedBox(height: 16),
             EuphireTextField(
               controller: _lastNameController,
               labelText: t.addPatient_last_name_label,
+              errorText: _duplicateError ? '' : null,
             ),
             const SizedBox(height: 16),
             const Text(
@@ -244,6 +259,22 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
     final alias = '$firstName $lastName'.trim();
     if (firstName.isEmpty) return;
 
+    // ── Client-side duplicate detection ──
+    // Check the already-loaded patient list for an identical name
+    // (case-insensitive). This catches duplicates before the RPC call
+    // so the user gets immediate feedback instead of a network round-trip.
+    final existingPatients =
+        ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? const [];
+    final isDuplicate = existingPatients.any((p) {
+      final existingName =
+          '${p.firstName} ${p.lastName}'.trim().toLowerCase();
+      return existingName == alias.toLowerCase();
+    });
+    if (isDuplicate) {
+      _showDuplicateSheet(t);
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       // Save patient via existing notifier (MVP — backend doesn't
@@ -278,9 +309,7 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
     } on grpc.GrpcError catch (e) {
       if (mounted) {
         if (e.code == grpc.StatusCode.alreadyExists) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Pacjent o nazwie "$alias" już istnieje. Wybierz inną.')),
-          );
+          _showDuplicateSheet(t);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.message ?? 'Wystąpił błąd.')),
@@ -306,6 +335,21 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
         body: t.addPatient_no_consent_body,
         primary: EuphireSheetAction(
           label: t.addPatient_no_consent_primary,
+          onPressed: () => Navigator.of(ctx).pop(),
+        ),
+      ),
+    );
+  }
+
+  void _showDuplicateSheet(AppLocalizations t) {
+    setState(() => _duplicateError = true);
+    showEuphireBottomSheet(
+      context: context,
+      builder: (ctx) => EuphireActionSheet(
+        header: t.addPatient_duplicate_header,
+        body: t.addPatient_duplicate_body,
+        primary: EuphireSheetAction(
+          label: t.addPatient_duplicate_primary,
           onPressed: () => Navigator.of(ctx).pop(),
         ),
       ),

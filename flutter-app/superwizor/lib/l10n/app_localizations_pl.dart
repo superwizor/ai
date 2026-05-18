@@ -148,13 +148,20 @@ class AppLocalizationsPl extends AppLocalizations {
   String get modality_coaching => 'Coaching (ICF/GROW)';
 
   @override
+  String get modality_sheet_title => 'Wybierz swój nurt';
+
+  @override
+  String get modality_sheet_subtitle =>
+      'To ustawienie wpływa na generowane raporty. Możesz je zmienić w każdej chwili.';
+
+  @override
   String get addPatient_title => 'Nowy pacjent.';
 
   @override
   String get addPatient_first_name_label => 'Imię pacjenta (wymagane)';
 
   @override
-  String get addPatient_last_name_label => 'Nazwisko (opcjonalne)';
+  String get addPatient_last_name_label => 'Pseudonim lub inicjał (opcjonalne)';
 
   @override
   String get addPatient_modality_label => 'Nurt sesji (dziedziczony z profilu)';
@@ -181,6 +188,16 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get addPatient_no_consent_primary => 'Rozumiem.';
+
+  @override
+  String get addPatient_duplicate_header => 'Taki pacjent już istnieje.';
+
+  @override
+  String get addPatient_duplicate_body =>
+      'Masz już kartotekę z tą kombinacją imienia i pseudonimu. Dodaj inicjał, przydomek lub inny wyróżnik, aby uniknąć pomyłek.';
+
+  @override
+  String get addPatient_duplicate_primary => 'Poprawię nazwę.';
 
   @override
   String get editPatient_title => 'Edycja danych pacjenta.';
@@ -241,25 +258,27 @@ class AppLocalizationsPl extends AppLocalizations {
   String get recording_screen_title => 'Sesja w toku.';
 
   @override
-  String get recording_instructions_title => 'Jak najlepiej nagrywać?';
+  String get recording_instructions_title =>
+      'Kilka wskazówek dla lepszego nagrania';
 
   @override
-  String get recording_instruction_1 => 'Nie blokuj ekranu podczas nagrywania.';
+  String get recording_instructions_subtitle =>
+      'Dobre warunki nagrywania to lepsza jakość transkrypcji i trafniejsze wnioski AI.';
 
   @override
-  String get recording_instruction_2 =>
+  String get recording_instruction_1 =>
       'Połóż telefon na stole, między rozmówcami (50–100 cm odległości).';
 
   @override
-  String get recording_instruction_3 =>
+  String get recording_instruction_2 =>
       'Mikrofon skieruj w stronę rozmowy, niczym go nie zasłaniaj.';
 
   @override
-  String get recording_instruction_4 =>
+  String get recording_instruction_3 =>
       'Ciche otoczenie – zamknij okna/drzwi, wyłącz źródła hałasu.';
 
   @override
-  String get recording_instruction_5 =>
+  String get recording_instruction_4 =>
       'Do wideokonferencji (np. Google Meet, Zoom) używaj zawsze dodatkowego urządzenia do nagrywania.';
 
   @override
@@ -393,6 +412,19 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get session_failed_primary => 'Skontaktuj się z pomocą.';
+
+  @override
+  String get session_status_title => 'Bezpieczna analiza w toku.';
+
+  @override
+  String get session_status_subtitle =>
+      'Opracowujemy dla Ciebie raporty i transkrypcje. Może to potrwać 15 minut. Możesz tutaj wrócić za chwilę.';
+
+  @override
+  String get session_status_success => 'Gotowe!';
+
+  @override
+  String get session_status_back_to_records => 'Wróć do kartotek';
 
   @override
   String get session_loading =>
@@ -681,4 +713,52 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get settings_choose_language => 'Wybierz język';
+
+  @override
+  String get delete_account_title => 'Usuń konto';
+
+  @override
+  String get delete_account_consequence_1 =>
+      'Cała dokumentacja kliniczna — wszystkich pacjentów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.';
+
+  @override
+  String get delete_account_consequence_2 =>
+      'Twoja subskrypcja (jeśli ją posiadasz) nie zostanie automatycznie anulowana. Musisz ją anulować osobno w App Store lub Google Play.';
+
+  @override
+  String get delete_account_consequence_3 =>
+      'Nie będziesz mógł odzyskać danych po zakończeniu tego procesu. Operacja jest nieodwracalna.';
+
+  @override
+  String get delete_account_toggle_text =>
+      'Rozumiem konsekwencje\ni chcę usunąć konto';
+
+  @override
+  String get delete_account_button => 'Usuń moje konto';
+
+  @override
+  String get delete_account_sheet_title => 'Ostatni krok.';
+
+  @override
+  String get delete_account_sheet_subtitle => 'Aby potwierdzić, wpisz:';
+
+  @override
+  String get delete_account_sheet_hint => 'wpisz tutaj…';
+
+  @override
+  String get delete_account_sheet_button => 'USUWAM KONTO';
+
+  @override
+  String get delete_account_sheet_cancel => 'Anuluj.';
+
+  @override
+  String get delete_account_relogin_error =>
+      'Zaloguj się ponownie, by usunąć konto.';
+
+  @override
+  String get delete_account_confirm_word => 'usuwam';
+
+  @override
+  String get settings_licenses_desc =>
+      'Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania.';
 }
