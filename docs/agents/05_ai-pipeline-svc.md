@@ -94,7 +94,18 @@ llm-worker (ProcessTranscript):
        therapist_id + users.report_preferences via patient_files JOIN)
   2. loadTranscriptBlob: decrypt → []BlobLine
   3. hasNativeSpeakers := any(BlobLine.speaker_tag != 0)
-  4. loadRAGContext (Phase 2: stub returns "")
+  4. loadRAGContext (real, since 2026-05-19):
+       a. embed currentText via text-embedding-005 (768-dim)
+       b. pgvector cosine search, 2-stage CTE:
+            stage 1: patient's last 36 rag_memories rows (most-recent
+                     first, NOT is_compacted)
+            stage 2: top-3 by cosine distance within that pool
+       c. decrypt summary_ciphertext (KMS envelope), skip empties
+       d. join with double-newline, cap at 5000 chars total
+       e. background UPDATE last_accessed_at (best-effort)
+       Non-fatal on every error: returns "" + nil, worker continues.
+       Result threaded into call-2 ONLY (not call-1) — see RAG
+       section below for rationale.
   5. loadModalityPrompt (from modalities.therapist_ai_general_prompt JSONB)
   6. Call 1 (metadata + diarization):
        a. transcript text:
@@ -337,7 +348,28 @@ Three helpers in `cmd/llm-worker/main.go` consolidate the three call profiles in
 | `metadataGenConfigMarkdown()` | `callMetadataMarkdown` | Same temp/TopP/MaxOut, no MIME/schema |
 | `reportGenConfig(maxOut int32)` | `generateReport` | Temp 0.2, TopP 0.95, `text/plain`, MaxOut from arg (falls back to `geminiMaxOutReportDefault` when 0) |
 
-Don't inline new `vertexai.GenerationConfig{...}` literals at call sites — pollute the lockstep.
+Don't inline new `genai.GenerateContentConfig{...}` literals at call sites — pollute the lockstep.
+
+**Cap-vs-target bump (2026-05-19):** caps decoupled from the prompt-directive target. The `TargetLengthDirective` is what shapes report length; the cap is a remote safety net. Old approach (cap = target) silently truncated 10–20% overshoots and triggered an expensive safety-retry (~3× cost on affected sessions). New defaults give 3× headroom over the directive target:
+
+- `geminiMaxOutReportDefault`: 4096 → **12288** (standard length)
+- `reportprefs.MaxOutputTokens(brief)`: 2048 → **6144**
+- `reportprefs.MaxOutputTokens(detailed)`: 8192 → **24576**
+- Soft section_emphasis ceiling: **32768** (still well below `geminiMaxOutReportHardCeiling=65535`)
+
+Plus `section_emphasis` budget scaling: each emphasized section adds 500 tok of cap headroom (`MaxOutputTokens(prefs) += n * 500`). Reason: emphasized sections are a prompt nudge to expand, which costs tokens. Without the bump, the production session `0a5523a0` (standard + 7 emphasized sections) hit cap → safety-retry → hit cap AGAIN → accepted truncated output.
+
+**Safety-retry multiplier 2× → 4×** (also 2026-05-19). With 3× default headroom, the safety-retry should essentially never fire — but if it does, 2× cap occasionally re-triggers (observed: session `0a5523a0`, both calls truncated). 4× gives the retry real budget. Cap clamped at `geminiMaxOutReportHardCeiling=65535`.
+
+**Markdown blockquote enforcement** (also 2026-05-19): call-2 prompt explicitly forbids label-form quotes (`**Cytat:** "..."`, `**Quote:** "..."`) and requires `> "..."` on its own line. The Flutter rendering layer only styles `> ` blockquotes — label-form quotes lost their visual treatment and read as plain text. Even when the modality template suggests a label form, the call-2 prompt overrides.
+
+**SDK migration (2026-05-19):** the worker was migrated from `cloud.google.com/go/vertexai/genai` (deprecated 2025-06-24, removed 2026-06-24) to `google.golang.org/genai`. Three structural deltas to remember when touching the call sites:
+
+1. **No per-model object.** The old pattern `model := client.GenerativeModel(name); model.GenerationConfig = cfg; model.GenerateContent(...)` no longer exists. Each call is `vertexClient.Models.GenerateContent(ctx, modelName, contents, cfg)` with the config passed as the fourth argument.
+2. **Config type is `*genai.GenerateContentConfig` (pointer).** The three helpers in this file return pointers, not value types.
+3. **Parts are structs, not interfaces.** Read `part.Text` directly instead of `if t, ok := part.(genai.Text); ok`. The old type assertion no longer compiles.
+
+`genai.Text`, `genai.Ptr`, `genai.Schema`, the `genai.Type*` enums, `genai.FinishReasonMaxTokens`, and the response-shape (`Candidates[...].Content.Parts`, `UsageMetadata.PromptTokenCount`, `UsageMetadata.CandidatesTokenCount`) are unchanged.
 
 ## Native-diarization sparse-label recovery (2026-05-15)
 
@@ -354,6 +386,141 @@ Trade-offs:
 - Layer 2 assumes the LLM doesn't hallucinate a missing speaker. The role-only prompt forces the LLM to label only the speakers visible in Format B input; if it adds a speaker that isn't in the transcript, that's a different bug (we'd see hallucinated text in the report too).
 
 Tests: `TestFillSpeakerLabels` in `services/ai-pipeline-svc/cmd/stt-worker/main_test.go` covers forward fill, pause-boundary stop, backward fill, all-unlabeled no-op, all-labeled invariant, empty input, and the session-26ecf316 shape. Run with `go test ./services/ai-pipeline-svc/cmd/stt-worker/...`.
+
+## Long-term memory (RAG) — wired 2026-05-19
+
+The worker accrues a short, identity-stripped summary of every report into `rag_memories` and reads back the most relevant prior summaries on the next session. Implements ADR-002 (pgvector RAG, no external vector store) and ADR-DM-009-adjacent (KMS-envelope encryption on the stored summary text).
+
+### Pipeline shape
+
+```
+   call-1 Markdown response                 (write side, every report run)
+      │ # Metadata
+      │ Title: …
+      │ Summary: …                          ← short clinical summary
+      │ RAG_Summary: …                      ← NEW: dense, no-PII summary
+      │                                       for long-term memory
+      ↓
+   markdownResultToPayload()
+   - RAGSummaryChunk = r.RAGSummary || r.Summary  (fall-back when the
+                                                   model didn't emit
+                                                   the dedicated line)
+      ↓
+   generateEmbedding(RAGSummaryChunk)
+   - Vertex AI `text-embedding-005`
+   - 768-dim multilingual vector
+   - matches `rag_memories.embedding vector(768)`
+      ↓
+   persistRAGMemory()
+   - encrypt summary via cryptobox (KMS envelope)
+   - INSERT into rag_memories (patient_file_id, source_session_id,
+                               source_report_id, summary_ciphertext,
+                               summary_encrypted_dek, embedding,
+                               chunk_type='summary',
+                               importance_score=0.7)
+
+   ────────────────────────────────────────────────────────────
+
+   ProcessTranscript (next session)         (read side)
+      │
+      ↓
+   loadRAGContext(patientFileID, currentText)
+   1. Embed currentText via text-embedding-005
+   2. pgvector cosine search — two-stage CTE:
+        WITH recent AS (
+            SELECT id, summary_ciphertext, summary_encrypted_dek, embedding
+            FROM rag_memories
+            WHERE patient_file_id = $1 AND NOT is_compacted
+            ORDER BY created_at DESC
+            LIMIT 36                      ← lookback cap (≈9 months
+                                            weekly, ≈18 months bi-weekly)
+        )
+        SELECT id, summary_ciphertext, summary_encrypted_dek
+        FROM recent
+        ORDER BY embedding <=> $2::vector
+        LIMIT 3                           ← top-K by cosine distance
+   3. Decrypt each summary (KMS envelope). Skip empty plaintext
+      (legacy rows from the pre-2026-05-19 markdown-mode bug).
+   4. Join "1. …\n\n2. …\n\n3. …" capped at 5000 chars total
+      (`ragContextMaxChars` — keep RAG below ~10% of call-2 input
+      budget).
+   5. Background UPDATE last_accessed_at on the hit rows
+      (best-effort, doesn't block worker critical path).
+      ↓
+   ragContext threaded into CALL-2 ONLY at the "KONTEKST POPRZEDNICH
+   SESJI:" placeholder. Call-1 (metadata + diarization) does NOT
+   receive ragContext — see "Why call-1 doesn't get RAG" below.
+```
+
+### Why call-1 doesn't get RAG (2026-05-19)
+
+Before the split: `ragContext` was passed to both call-1 and call-2
+prompts. Removed from call-1 because all six call-1 outputs are
+structural facts about THIS session:
+
+| call-1 output | Why prior context hurts |
+|---|---|
+| `title` (≤100 ch) | Should describe THIS session. Continuity priming caused the model to write ordinal-style titles ("Druga sesja…") that get the numbering wrong (we have `created_at` for that). |
+| `summary_short` (≤500 ch) | Self-contained recap for `GetSessionDetails`. RAG injection made the model reference prior content inside this summary. |
+| `RAG_Summary` (≤1500 ch) | This is the patient's new long-term-memory entry. Priming it with prior summaries causes duplicate-content multiplication across sessions + drops unique signal from this session. |
+| Speaker clustering / role inference | Pure transcript-content analysis. Prior context can bias labels toward "therapist/patient" from prior sessions even if this session has a different speaker mix. |
+| `overall_diarization_confidence` | Pure speaker-tag math. Irrelevant. |
+
+Plus the ZASADY (rules) section in each call-1 prompt now includes
+explicit self-containment reminders so the model doesn't fabricate
+continuity from the modality prompt alone:
+
+```
+- title: ... Opisuje TĘ sesję, nie buduj numeracji ani kontynuacji
+  z wcześniejszych spotkań.
+- summary_short: ... Samodzielne streszczenie TEJ sesji — nie odwołuj
+  się do wcześniejszych spotkań.
+- rag_summary_chunk: ... Nie powtarzaj treści wcześniejszych
+  podsumowań — niech wpis będzie samodzielnym śladem tej sesji.
+```
+
+`loadRAGContext` itself still fires once at the top of
+`ProcessTranscript` — the embedding/decrypt work is the cost; using
+the result once vs twice is free at that point. The refactor is
+purely in prompt construction.
+
+### Knobs (services/ai-pipeline-svc/cmd/llm-worker/main.go)
+
+| Constant | Default | Why |
+|---|---|---|
+| `embeddingModel` | `"text-embedding-005"` | Vertex AI's current 768-dim multilingual model; matches `vector(768)` schema constraint. |
+| `embeddingDims` | `768` | Defensive equality check in `generateEmbedding` — silent dim mismatch would corrupt pgvector INSERTs. |
+| `ragLookbackMemories` | `36` | Candidate pool cap (newest-first by `created_at`). Bounds the search regardless of patient tenure. |
+| `ragTopK` | `3` | Hits returned per session. Enough to ground recall without drowning the prompt. |
+| `ragContextMaxChars` | `5000` | Total-output cap on the joined block. ≈3× single-summary max (1500). |
+
+### Failure modes (intentionally all non-fatal)
+
+| What fails | Behavior | Why non-fatal |
+|---|---|---|
+| `generateEmbedding` (Vertex 503, quota, etc.) | `loadRAGContext` returns `""` + err; caller logs Warn; report still saves. | Worse to fail the whole report than to skip context this round. |
+| KMS decrypt of one `rag_memories` row | Log Warn with `rag_memory_id`, skip that row, continue. | One corrupt row shouldn't poison the retrieval. |
+| Empty plaintext after decrypt | Silent skip. | Legacy Markdown-mode rows from before option-C landed have `RAGSummaryChunk == ""`. They rank high (zero-vector embedding) but carry no signal. |
+| `last_accessed_at` background UPDATE | Goroutine logs Warn, swallows error. | Cosmetic timestamp; doesn't gate functionality. |
+| Empty result set | Return `""` + nil. Prompt sees no `KONTEKST POPRZEDNICH SESJI`. | First-session-per-patient is the common case; matches pre-RAG behavior. |
+
+### Privacy
+
+`patient_file_id` filter is BOTH a privacy guarantee (no cross-patient leakage) and an HNSW pre-filter via the partial index `idx_rag_memories_patient_file ON rag_memories(patient_file_id, created_at DESC) WHERE NOT is_compacted`. The encrypted column means summaries are unreadable at rest without KMS; the prompt itself instructs the model to keep RAG_Summary identity-stripped (no names, no places). Combined with the `ON DELETE CASCADE` from `patient_files`, RODO erasure also wipes the patient's memory.
+
+### Cost
+
+- Embedding: 1 call per report × ~$0.0001 (Vertex AI pricing) = negligible.
+- pgvector query: HNSW index on `embedding`; partial index on `(patient_file_id, created_at DESC) WHERE NOT is_compacted` — sub-10ms for the 2-stage CTE in our scale.
+
+### Compaction (not yet wired)
+
+Schema supports it: `rag_memories.is_compacted BOOLEAN` + `compacted_into_id UUID REFERENCES rag_memories(id)`. Idea: when a patient passes the lookback window, fold the oldest N memories into a single compacted summary, mark `is_compacted=true`, and link via `compacted_into_id`. The lookback CTE already filters `NOT is_compacted`, so compacted rows fall out of candidate pool automatically — no read-side change needed when the compaction job lands.
+
+### Tests
+
+- Unit (parser): `services/ai-pipeline-svc/internal/diarization/markdown_test.go::TestParse_RAGSummary*` — three cases: present, absent, oversize truncation.
+- E2E: covered transitively by `TestFullSession_HappyPath` (Step 7). First-session-of-fresh-patient path exercises `loadRAGContext`'s empty-result branch. To exercise the populated branch we'd need a multi-session e2e — deferred until compaction lands.
 
 ## The LLM diarization prompt (Phase 2 critical path)
 

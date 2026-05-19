@@ -119,3 +119,145 @@ Pre-feature obserwacja: raporty były rozwlekłe nawet dla 2-minutowych sesji. M
 > - `docs/agents/01_identity-svc.md` sekcja "Report preferences (2026-05-18)"
 > - `docs/agents/02_clinical-svc.md` sekcja "Report ratings + suggestion engine (2026-05-18)"
 > - `docs/agents/05_ai-pipeline-svc.md` sekcja "Report customization integration (2026-05-18)"
+
+### Priorytet 7: Pamięć długoterminowa (RAG) — pełne uzbrojenie (`feat/rag-wire`, 2026-05-19)
+
+**Cel:** Włączyć działającą pamięć kliniczną na pacjenta. Przed dzisiejszym commitem `loadRAGContext` zwracał stub `""` i `generateEmbedding` produkował zero-vector — schemat `rag_memories` istniał, write-side dopisywał wiersze, ale read-side nigdy nie zasilał promptów. Po tej zmianie pipeline jest end-to-end.
+
+**Tło projektowe:** ADR-002 (pgvector RAG, bez external vector store), ADR-DM-002 (envelope encryption na `summary_ciphertext`), ADR-DM-007 (CASCADE na patient_files → spełnia RODO).
+
+#### Migration na nowy SDK (zrobione w tym samym commit'cie)
+
+- [x] **KROK 7.0:** Migration `cloud.google.com/go/vertexai/genai` (deprecated 2025-06-24, removed 2026-06-24) → `google.golang.org/genai`. Both `llm-worker/main.go` and `llm-eval/main.go`. Struktualne delty: brak per-model objectu (config przekazywany na każde wywołanie), `Part` to struct nie interface (czyt. `part.Text` zamiast type-assertion), `EmbedContent` API dostępne pod `client.Models.EmbedContent`. Eliminuje deprecation warning na cold-startach. Pełna migracja udokumentowana w `docs/agents/05_ai-pipeline-svc.md`.
+
+#### Producer (write-side) — Option C: RAG_Summary w Markdown call-1
+
+Pre-feature obserwacja: w Markdown mode (`LLM_DIARIZATION_MODE=markdown`, current prod) `markdownResultToPayload` nie ustawiał `RAGSummaryChunk`. Każdy wiersz `rag_memories` od czasu Markdown flip miał empty plaintext po dekrypcji. Migration 000016 (legacy bullets cleanup, 2026-05-18) eliminowała wcześniejszą wersję bug'a (gdzie summary leakował do `report_markdown`), ale wciąż nie produkowała czystego summary.
+
+- [x] **KROK 7.1:** Dodaj pole `RAGSummary string` do `diarization.Result`. Aktualizuj parser metadata state-machine o `ragSummaryLine` regex z aliasami (`RAG_Summary`, `RAGSummary`, `Rag_summary`, `rag_summary_chunk`) — odporne na drift modelu między ciągami. Truncacja >1500 bajtów (zamiast error) — best-effort persistence.
+- [x] **KROK 7.2:** Update obu wariantów Markdown call-1 prompt'u (native + cluster) o linijkę `RAG_Summary: <streszczenie do pamięci długoterminowej, max 1500 znaków, gęsto informacyjne, BEZ danych identyfikujących...>`. Plus reguła w sekcji ZASADY: "RAG_Summary jest opcjonalne tylko gdy materiał jest zbyt krótki (≤1 chunk); inaczej WYMAGANE".
+- [x] **KROK 7.3:** `markdownResultToPayload` populates `RAGSummaryChunk = r.RAGSummary || r.Summary` — fall-back zachowuje sensowny insert nawet gdy model pominie linijkę (np. małe sesje).
+- [x] **KROK 7.4:** Testy parser'a: `TestParse_RAGSummary{Present, Absent, Truncated}` (3 cases) — wszystkie istniejące testy parser'a niezłamane.
+
+#### Consumer (read-side) — real loadRAGContext
+
+- [x] **KROK 7.5:** Real `generateEmbedding`:
+  - Vertex AI `text-embedding-005` (768-dim, multilingual)
+  - `client.Models.EmbedContent` z nowego SDK
+  - Defensive dim check (`embeddingDims = 768` constraint)
+  - Empty input → zero-vector + nil err (zachowuje stub-friendly zachowanie dla unit testów bez Vertex shim'a)
+  - Non-fatal failure: caller logs Warn + skip persistRAGMemory
+  - Cost: ~$0.0001 per report (jeden embed per sesja).
+- [x] **KROK 7.6:** Real `loadRAGContext`:
+  - Embed `currentText` (transcript surrogate, użyty jako similarity probe)
+  - Two-stage CTE:
+    ```sql
+    WITH recent AS (
+        SELECT id, summary_ciphertext, summary_encrypted_dek, embedding
+        FROM rag_memories
+        WHERE patient_file_id = $1 AND NOT is_compacted
+        ORDER BY created_at DESC
+        LIMIT 36                  -- ragLookbackMemories
+    )
+    SELECT id, summary_ciphertext, summary_encrypted_dek
+    FROM recent
+    ORDER BY embedding <=> $2::vector
+    LIMIT 3                       -- ragTopK
+    ```
+  - Pre-filter (Stage 1): pacjent's last 36 wpisów = ~9 miesięcy weekly / ~18 miesięcy bi-weekly. Bounds search regardless of patient tenure.
+  - Top-K (Stage 2): cosine distance via pgvector `<=>` operator, HNSW index covers.
+  - Decrypt per row (KMS envelope), skip empties (defensive — legacy rows pre-7.1).
+  - Join "1. ... 2. ... 3. ..." capped at 5000 chars total (`ragContextMaxChars`) — pod 10% call-2 input budget.
+  - Background `UPDATE last_accessed_at` (best-effort, async — nie blokuje krytycznej ścieżki worker'a).
+  - Non-fatal na każdym błędzie: returns `""` + err, worker dalej tworzy raport bez kontekstu.
+
+- [x] **KROK 7.7:** Knoby w `services/ai-pipeline-svc/cmd/llm-worker/main.go` (sąsiadują dla łatwego tunningu):
+  ```go
+  embeddingModel       = "text-embedding-005"
+  embeddingDims        = 768
+  ragLookbackMemories  = 36   // candidate pool cap
+  ragTopK              = 3    // hits returned
+  ragContextMaxChars   = 5000 // joined output cap
+  ```
+
+#### Decyzje projektowe
+
+- **Old-data backfill: skipped.** User confirmed test data only — historical zero-vector rows zostają. `loadRAGContext` skip-empty-plaintext logic obsługuje je gracefully (skipują ranking ale nie pollutują output).
+- **Privacy:** `patient_file_id` filter w CTE = both privacy gate AND HNSW pre-filter (matches `idx_rag_memories_patient_file ON ... WHERE NOT is_compacted`). Cross-patient leakage niemożliwy. RODO erasure (CASCADE from `patient_files`) auto-wipes memorie.
+- **Compaction (deferred):** schema już ma `is_compacted BOOLEAN` + `compacted_into_id UUID`. Lookback CTE filtruje `NOT is_compacted` → kiedy job compaction wyląduje (post-launch, gdy zaobserwujemy patientów >36 sessions), żadna zmiana read-side nie będzie potrzebna.
+
+- [x] **Kryteria wykonania (DoD):**
+  - `go build` / `go vet` / unit testy czyste na ai-pipeline-svc.
+  - 3 nowe parser testy (`RAGSummary*`) green.
+  - Deploy llm-worker via standard pattern (trigger-service-account + retry flagi, per runbook w `docs/agents/07_devops-cicd.md`).
+  - E2E `TestFullSession_HappyPath` Step 7 zielony — krytyczny smoke test: nowy SDK + nowy embedding call + nowy RAG read.
+  - Fresh patient → `rag_summary_chunk` populated w nowym raporcie (verify via `dump-report` CLI jeśli potrzeba).
+
+- [x] **Wymagane testy:** unit (parser RAGSummary x 3). E2E happy-path (Step 7) — first-session-per-patient pokrywa empty-result branch `loadRAGContext`'a. Multi-session e2e dla populated-branch — odsunięte (wymaga compaction job lub explicit dual-session fixture; tracked w TODO).
+
+> **Cofalność:** Pełny rollback przez deploy poprzedniej revision llm-worker. Schemat `rag_memories` niezmieniony (był od 000007); `RAGSummary` field w `diarization.Result` jest dodatkowy (nie usuwany przez stary kod). Stara revision will produce zero-vector embeds + empty RAGSummaryChunk again — degraduje do pre-feature behavior bez data loss.
+
+> **Co NIE zmienia się:** Schemat `rag_memories` (001 created w 000007). Pipeline transkryptu / diaryzacji / Format A vs B (ADR-IMPL-002, ADR-IMPL-007) nietknięty. Modality prompts (000008) niezmienione — RAG_Summary prompt'owe instructions są w `cmd/llm-worker/main.go::callMetadataMarkdown`, nie w DB. P4 (Flutter read-only) zachowany.
+
+> Szczegóły implementacji + failure modes table + cost analysis:
+> - `docs/agents/05_ai-pipeline-svc.md` sekcja "Long-term memory (RAG) — wired 2026-05-19"
+
+#### Hardening długości raportów — 3× headroom cap bump (`feat/cap-bump`, 2026-05-19 pm)
+
+Pre-feature obserwacja: na sesji `0a5523a0` (modality PPT, prefs `length=standard` + `section_emphasis=[wszystkie 7 sekcji]`) call-2 dwukrotnie hit MaxOutputTokens i przyjął truncated output. Logi llm-worker:
+
+```
+12:32:18  call 2 hit MaxOutputTokens — retrying once at 2× cap
+12:33:05  call 2 hit MaxOutputTokens twice — accepting truncated output
+```
+
+Root cause: cap był ustawiony NA target dyrektywy promptowej, więc 10–20% overshoot modelu wystarczał, żeby wystrzelić safety-retry. Retry przy 2× cap też hit limit (typowa sekwencja: pierwszy call 3411 tok → cap 4096; retry 8192 → też za mało dla user'a z 7 wymuszonymi sekcjami). Każde takie zdarzenie = ~3× koszt sesji + ~2.5× latency.
+
+Decision: caps mają być remote safety net, NIE budżetem do którego model się "ściga". Dyrektywa promptowa (`TargetLengthDirective`) faktycznie kształtuje długość — caps tylko ją osłaniają.
+
+- [x] **KROK 7.8 (caps 3× headroom):** Bump default caps trzykrotnie nad target dyrektywy:
+  - `geminiMaxOutReportDefault`: 4096 → **12288**
+  - `reportprefs.MaxOutputTokens(brief)`: 2048 → **6144**
+  - `reportprefs.MaxOutputTokens(detailed)`: 8192 → **24576**
+  - Koszt impact: ZERO (Vertex bills on actual emitted tokens, not cap). Headroom = insurance.
+
+- [x] **KROK 7.9 (section_emphasis budget scaling):** Każda emphasized sekcja dodaje 500 tok do cap'a (`MaxOutputTokens += n * 500`), soft ceiling 32768 (well below `geminiMaxOutReportHardCeiling=65535`). Naprawia produktową sprzeczność: pre-feature user mógł zaznaczyć `section_emphasis=[7 sekcji]` + `length=standard`, ale cap pozostawał na 4096 → gwarantowana truncacja. Po fix user'ów case ląduje na `12288 + 7×500 = 15788`, well above the model's natural ~5000-6000 emission.
+
+- [x] **KROK 7.10 (safety-retry 2× → 4×):** Multiplier bumped on both call-1 + call-2 retry paths. Z 3×-headroom default'ami retry zasadniczo nie powinno firować — ale jeśli firuje, 2× często sięga limitu ponownie (obserwacja: session `0a5523a0`, oba calle truncated). 4× daje retry'owi prawdziwy budżet. Clamped at `geminiMaxOutReportHardCeiling=65535`.
+
+- [x] **KROK 7.11 (force markdown blockquote dla cytatów):** Call-2 prompt explicitly forbids label-form (`**Cytat:** "..."` / `**Quote:** "..."`) i wymaga `> "..."` on its own line:
+
+  > "Render each quote as a markdown blockquote on its own line, prefixed with '> ' (greater-than + space). DO NOT use the label form. Even if the modality template suggests a label form, override it and use '> '."
+
+  Pre-fix: PPT modality prompt example pattern (`**Cytat:**`) wygrywał z mojej wcześniejszej "blockquotes OR quote marks" allowance → Flutter renderer (który styluje only `> ...`) lost the visual treatment. Naprawione przez explicit ban + ovveride mandate.
+
+#### Call-1 nie dostaje RAG context (`feat/rag-call1-drop`, 2026-05-19 pm)
+
+Pre-feature: `ragContext` był threadowany do obu callsów: call-1 (metadata + diarization) i call-2 (clinical report). Reasoning behind drop: wszystkie 6 outputów call-1 (title, summary_short, RAG_Summary, speaker clustering, role inference, overall_confidence) opisują TĘ sesję. Prior context może tylko zaszkodzić:
+
+| call-1 output | Co psuje prior context |
+|---|---|
+| title | Numeracja-style continuity ("Druga sesja…") — get ordering wrong (mamy `created_at`). |
+| summary_short | Self-contained recap; RAG injection powodował referencowanie wcześniejszych sesji wewnątrz tego summary. |
+| RAG_Summary | Nowy wpis pamięci długoterminowej — priming wcześniejszymi powodował multiplikację treści + drop unique signal. |
+| Speaker clustering | Czysta analiza zawartości transkryptu; prior context mógł biasować labels do "therapist/patient" z wcześniejszych sesji nawet jeśli ta sesja ma inną kompozycję mówców. |
+| overall_diarization_confidence | Czysta speaker-tag math. Nieistotne. |
+
+- [x] **KROK 7.12:** Drop `ragContext` z `callMetadataJSON` i `callMetadataMarkdown` (oba grammar variants). `KONTEKST POPRZEDNICH SESJI:` heading + placeholder usunięte z trzech promptów call-1. Call-2 (`generateReport`) wciąż otrzymuje ragContext — to tam clinical synthesis genuinely needs cross-session continuity.
+
+- [x] **KROK 7.13:** Self-containment reminders dodane do ZASADY w każdym call-1 promptcie:
+  - "title: ... Opisuje TĘ sesję, nie buduj numeracji ani kontynuacji z wcześniejszych spotkań."
+  - "summary_short: ... Samodzielne streszczenie TEJ sesji — nie odwołuj się do wcześniejszych spotkań."
+  - "rag_summary_chunk: ... Nie powtarzaj treści wcześniejszych podsumowań — niech wpis będzie samodzielnym śladem tej sesji."
+
+`loadRAGContext` wciąż firuje raz na top of `ProcessTranscript` — embedding/decrypt to koszt; using result once vs twice is free at that point.
+
+- [x] **Kryteria wykonania (DoD):**
+  - go build / go vet / unit testy zielone (TestMaxOutputTokens rozszerzony o 6 sub-cases dla section_emphasis scaling).
+  - Deploy llm-worker standardową ścieżką (trigger-service-account + retry flagi).
+  - E2E 12/12 PASS — zarówno przed (bs8athxq3t) i po (bigy5sqwb, b8athxq3t, follow-up) były zielone.
+  - Verification on production data: patient `para znowu test Raga` (4 sessions, ostatnia 13:29 UTC) — `rag_memories` shows all 4 wierszy z real 768-dim vectors (distance from zero-vec ~0.9999) + non-empty plaintext (~700-1000 bajtów summary_ciphertext). `last_accessed_at` bumps prove session 4 retrieved 1-3 jako candidates.
+
+> **Cofalność:** Wszystkie 4 zmiany cofalne przez deploy poprzedniej revision llm-worker. Caps bump jest soft-tunable przez `geminiMaxOut*` consts; section_emphasis scaling — single function. Call-1 RAG drop — restoration to przywrócenie `ragContext` parametru + `KONTEKST POPRZEDNICH SESJI:` block do 3 promptów.
+
+> **Co NIE zmienia się:** ADR-IMPL-007 (LLM-inferred diarization). `rag_memories` schemat. Modality prompts (DB-stored, migration 000008). Call-2 prompt RAG injection point (`KONTEKST POPRZEDNICH SESJI:`). Flutter rendering layer (call-2 prompt enforces `> ...` shape — to is what `flutter_markdown` blockquote styling expects).
