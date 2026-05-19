@@ -292,3 +292,95 @@ const HealthCheckResponse$json = {
 final $typed_data.Uint8List healthCheckResponseDescriptor = $convert.base64Decode(
     'ChNIZWFsdGhDaGVja1Jlc3BvbnNlEhYKBnN0YXR1cxgBIAEoCVIGc3RhdHVzEhgKB3ZlcnNpb2'
     '4YAiABKAlSB3ZlcnNpb24=');
+
+@$core.Deprecated('Use reportPreferencesDescriptor instead')
+const ReportPreferences$json = {
+  '1': 'ReportPreferences',
+  '2': [
+    {'1': 'version', '3': 1, '4': 1, '5': 5, '10': 'version'},
+    {'1': 'length', '3': 2, '4': 1, '5': 9, '10': 'length'},
+    {'1': 'tone', '3': 3, '4': 1, '5': 9, '10': 'tone'},
+    {'1': 'quote_density', '3': 4, '4': 1, '5': 9, '10': 'quoteDensity'},
+    {
+      '1': 'diagnostic_language',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '10': 'diagnosticLanguage'
+    },
+    {
+      '1': 'hypothesis_hedging',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'hypothesisHedging'
+    },
+    {'1': 'section_emphasis', '3': 7, '4': 3, '5': 9, '10': 'sectionEmphasis'},
+    {
+      '1': 'strengths_framing',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'strengthsFraming'
+    },
+    {'1': 'free_text', '3': 9, '4': 1, '5': 9, '10': 'freeText'},
+    {
+      '1': 'updated_at',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `ReportPreferences`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportPreferencesDescriptor = $convert.base64Decode(
+    'ChFSZXBvcnRQcmVmZXJlbmNlcxIYCgd2ZXJzaW9uGAEgASgFUgd2ZXJzaW9uEhYKBmxlbmd0aB'
+    'gCIAEoCVIGbGVuZ3RoEhIKBHRvbmUYAyABKAlSBHRvbmUSIwoNcXVvdGVfZGVuc2l0eRgEIAEo'
+    'CVIMcXVvdGVEZW5zaXR5Ei8KE2RpYWdub3N0aWNfbGFuZ3VhZ2UYBSABKAlSEmRpYWdub3N0aW'
+    'NMYW5ndWFnZRItChJoeXBvdGhlc2lzX2hlZGdpbmcYBiABKAlSEWh5cG90aGVzaXNIZWRnaW5n'
+    'EikKEHNlY3Rpb25fZW1waGFzaXMYByADKAlSD3NlY3Rpb25FbXBoYXNpcxIrChFzdHJlbmd0aH'
+    'NfZnJhbWluZxgIIAEoCVIQc3RyZW5ndGhzRnJhbWluZxIbCglmcmVlX3RleHQYCSABKAlSCGZy'
+    'ZWVUZXh0EjkKCnVwZGF0ZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUg'
+    'l1cGRhdGVkQXQ=');
+
+@$core.Deprecated('Use getReportPreferencesRequestDescriptor instead')
+const GetReportPreferencesRequest$json = {
+  '1': 'GetReportPreferencesRequest',
+  '2': [
+    {'1': 'therapist_id', '3': 1, '4': 1, '5': 9, '10': 'therapistId'},
+  ],
+};
+
+/// Descriptor for `GetReportPreferencesRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getReportPreferencesRequestDescriptor =
+    $convert.base64Decode(
+        'ChtHZXRSZXBvcnRQcmVmZXJlbmNlc1JlcXVlc3QSIQoMdGhlcmFwaXN0X2lkGAEgASgJUgt0aG'
+        'VyYXBpc3RJZA==');
+
+@$core.Deprecated('Use updateReportPreferencesRequestDescriptor instead')
+const UpdateReportPreferencesRequest$json = {
+  '1': 'UpdateReportPreferencesRequest',
+  '2': [
+    {'1': 'therapist_id', '3': 1, '4': 1, '5': 9, '10': 'therapistId'},
+    {
+      '1': 'preferences',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.identity.v1.ReportPreferences',
+      '10': 'preferences'
+    },
+    {'1': 'idempotency_key', '3': 3, '4': 1, '5': 9, '10': 'idempotencyKey'},
+  ],
+};
+
+/// Descriptor for `UpdateReportPreferencesRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List updateReportPreferencesRequestDescriptor =
+    $convert.base64Decode(
+        'Ch5VcGRhdGVSZXBvcnRQcmVmZXJlbmNlc1JlcXVlc3QSIQoMdGhlcmFwaXN0X2lkGAEgASgJUg'
+        't0aGVyYXBpc3RJZBJACgtwcmVmZXJlbmNlcxgCIAEoCzIeLmlkZW50aXR5LnYxLlJlcG9ydFBy'
+        'ZWZlcmVuY2VzUgtwcmVmZXJlbmNlcxInCg9pZGVtcG90ZW5jeV9rZXkYAyABKAlSDmlkZW1wb3'
+        'RlbmN5S2V5');

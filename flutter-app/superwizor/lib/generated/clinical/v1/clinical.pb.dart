@@ -2363,6 +2363,856 @@ class GetSessionDetailsResponse extends $pb.GeneratedMessage {
   $pb.PbList<Report> get reports => $_getList(2);
 }
 
+class ReportRating extends $pb.GeneratedMessage {
+  factory ReportRating({
+    $core.String? id,
+    $core.String? reportId,
+    $core.String? therapistId,
+    $core.String? rating,
+    $core.Iterable<$core.String>? issues,
+    $core.String? notes,
+    $core.String? source,
+    $2.Timestamp? createdAt,
+    $2.Timestamp? updatedAt,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (reportId != null) result.reportId = reportId;
+    if (therapistId != null) result.therapistId = therapistId;
+    if (rating != null) result.rating = rating;
+    if (issues != null) result.issues.addAll(issues);
+    if (notes != null) result.notes = notes;
+    if (source != null) result.source = source;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  ReportRating._();
+
+  factory ReportRating.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ReportRating.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReportRating',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'reportId')
+    ..aOS(3, _omitFieldNames ? '' : 'therapistId')
+    ..aOS(4, _omitFieldNames ? '' : 'rating')
+    ..pPS(5, _omitFieldNames ? '' : 'issues')
+    ..aOS(6, _omitFieldNames ? '' : 'notes')
+    ..aOS(7, _omitFieldNames ? '' : 'source')
+    ..aOM<$2.Timestamp>(8, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $2.Timestamp.create)
+    ..aOM<$2.Timestamp>(9, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $2.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportRating clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportRating copyWith(void Function(ReportRating) updates) =>
+      super.copyWith((message) => updates(message as ReportRating))
+          as ReportRating;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ReportRating create() => ReportRating._();
+  @$core.override
+  ReportRating createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ReportRating getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReportRating>(create);
+  static ReportRating? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get reportId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set reportId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasReportId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearReportId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get therapistId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set therapistId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTherapistId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTherapistId() => $_clearField(3);
+
+  /// "positive" | "negative"
+  @$pb.TagNumber(4)
+  $core.String get rating => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set rating($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasRating() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearRating() => $_clearField(4);
+
+  /// Chip categories the therapist picked on the negative-rating
+  /// modal. Empty when rating="positive". See design doc for
+  /// canonical list.
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get issues => $_getList(4);
+
+  /// Optional free-form note ≤200 chars, server-sanitized.
+  @$pb.TagNumber(6)
+  $core.String get notes => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set notes($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasNotes() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearNotes() => $_clearField(6);
+
+  /// Origin of the rating: "in_app" | "email" | "post_session" | ...
+  @$pb.TagNumber(7)
+  $core.String get source => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set source($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSource() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSource() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $2.Timestamp get createdAt => $_getN(7);
+  @$pb.TagNumber(8)
+  set createdAt($2.Timestamp value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasCreatedAt() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearCreatedAt() => $_clearField(8);
+  @$pb.TagNumber(8)
+  $2.Timestamp ensureCreatedAt() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  $2.Timestamp get updatedAt => $_getN(8);
+  @$pb.TagNumber(9)
+  set updatedAt($2.Timestamp value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasUpdatedAt() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearUpdatedAt() => $_clearField(9);
+  @$pb.TagNumber(9)
+  $2.Timestamp ensureUpdatedAt() => $_ensure(8);
+}
+
+class RateReportRequest extends $pb.GeneratedMessage {
+  factory RateReportRequest({
+    $core.String? reportId,
+    $core.String? therapistId,
+    $core.String? rating,
+    $core.Iterable<$core.String>? issues,
+    $core.String? notes,
+    $core.String? source,
+    $core.String? idempotencyKey,
+  }) {
+    final result = create();
+    if (reportId != null) result.reportId = reportId;
+    if (therapistId != null) result.therapistId = therapistId;
+    if (rating != null) result.rating = rating;
+    if (issues != null) result.issues.addAll(issues);
+    if (notes != null) result.notes = notes;
+    if (source != null) result.source = source;
+    if (idempotencyKey != null) result.idempotencyKey = idempotencyKey;
+    return result;
+  }
+
+  RateReportRequest._();
+
+  factory RateReportRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory RateReportRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RateReportRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'reportId')
+    ..aOS(2, _omitFieldNames ? '' : 'therapistId')
+    ..aOS(3, _omitFieldNames ? '' : 'rating')
+    ..pPS(4, _omitFieldNames ? '' : 'issues')
+    ..aOS(5, _omitFieldNames ? '' : 'notes')
+    ..aOS(6, _omitFieldNames ? '' : 'source')
+    ..aOS(7, _omitFieldNames ? '' : 'idempotencyKey')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RateReportRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RateReportRequest copyWith(void Function(RateReportRequest) updates) =>
+      super.copyWith((message) => updates(message as RateReportRequest))
+          as RateReportRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RateReportRequest create() => RateReportRequest._();
+  @$core.override
+  RateReportRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static RateReportRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RateReportRequest>(create);
+  static RateReportRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get reportId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set reportId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasReportId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearReportId() => $_clearField(1);
+
+  /// Therapist doing the rating. Server validates against the
+  /// authenticated user — request therapist_id must equal session
+  /// therapist_id.
+  @$pb.TagNumber(2)
+  $core.String get therapistId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set therapistId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTherapistId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTherapistId() => $_clearField(2);
+
+  /// "positive" | "negative". Rejects other values.
+  @$pb.TagNumber(3)
+  $core.String get rating => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set rating($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRating() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRating() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<$core.String> get issues => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $core.String get notes => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set notes($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasNotes() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearNotes() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get source => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set source($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSource() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSource() => $_clearField(6);
+
+  /// Required. UPSERT key: same (report, therapist) with same
+  /// idempotency_key replays as no-op. Different idempotency_key on
+  /// the same (report, therapist) overwrites the prior rating
+  /// (re-rating is intended behavior).
+  @$pb.TagNumber(7)
+  $core.String get idempotencyKey => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set idempotencyKey($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasIdempotencyKey() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearIdempotencyKey() => $_clearField(7);
+}
+
+class RateReportResponse extends $pb.GeneratedMessage {
+  factory RateReportResponse({
+    ReportRating? rating,
+  }) {
+    final result = create();
+    if (rating != null) result.rating = rating;
+    return result;
+  }
+
+  RateReportResponse._();
+
+  factory RateReportResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory RateReportResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RateReportResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOM<ReportRating>(1, _omitFieldNames ? '' : 'rating',
+        subBuilder: ReportRating.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RateReportResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RateReportResponse copyWith(void Function(RateReportResponse) updates) =>
+      super.copyWith((message) => updates(message as RateReportResponse))
+          as RateReportResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RateReportResponse create() => RateReportResponse._();
+  @$core.override
+  RateReportResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static RateReportResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RateReportResponse>(create);
+  static RateReportResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ReportRating get rating => $_getN(0);
+  @$pb.TagNumber(1)
+  set rating(ReportRating value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRating() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRating() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ReportRating ensureRating() => $_ensure(0);
+}
+
+class GetReportRatingRequest extends $pb.GeneratedMessage {
+  factory GetReportRatingRequest({
+    $core.String? reportId,
+    $core.String? therapistId,
+  }) {
+    final result = create();
+    if (reportId != null) result.reportId = reportId;
+    if (therapistId != null) result.therapistId = therapistId;
+    return result;
+  }
+
+  GetReportRatingRequest._();
+
+  factory GetReportRatingRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetReportRatingRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetReportRatingRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'reportId')
+    ..aOS(2, _omitFieldNames ? '' : 'therapistId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetReportRatingRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetReportRatingRequest copyWith(
+          void Function(GetReportRatingRequest) updates) =>
+      super.copyWith((message) => updates(message as GetReportRatingRequest))
+          as GetReportRatingRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetReportRatingRequest create() => GetReportRatingRequest._();
+  @$core.override
+  GetReportRatingRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetReportRatingRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetReportRatingRequest>(create);
+  static GetReportRatingRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get reportId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set reportId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasReportId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearReportId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get therapistId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set therapistId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTherapistId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTherapistId() => $_clearField(2);
+}
+
+class GetActiveSuggestionRequest extends $pb.GeneratedMessage {
+  factory GetActiveSuggestionRequest({
+    $core.String? therapistId,
+  }) {
+    final result = create();
+    if (therapistId != null) result.therapistId = therapistId;
+    return result;
+  }
+
+  GetActiveSuggestionRequest._();
+
+  factory GetActiveSuggestionRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetActiveSuggestionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetActiveSuggestionRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'therapistId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetActiveSuggestionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetActiveSuggestionRequest copyWith(
+          void Function(GetActiveSuggestionRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as GetActiveSuggestionRequest))
+          as GetActiveSuggestionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetActiveSuggestionRequest create() => GetActiveSuggestionRequest._();
+  @$core.override
+  GetActiveSuggestionRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetActiveSuggestionRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetActiveSuggestionRequest>(create);
+  static GetActiveSuggestionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get therapistId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set therapistId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTherapistId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTherapistId() => $_clearField(1);
+}
+
+class PreferenceSuggestion extends $pb.GeneratedMessage {
+  factory PreferenceSuggestion({
+    $core.String? suggestionId,
+    $core.String? dimension,
+    $core.String? fromValue,
+    $core.String? toValue,
+    $core.String? reasonLabel,
+    $core.int? triggerCount,
+    $core.Iterable<PreferenceSuggestionCandidate>? alternatives,
+  }) {
+    final result = create();
+    if (suggestionId != null) result.suggestionId = suggestionId;
+    if (dimension != null) result.dimension = dimension;
+    if (fromValue != null) result.fromValue = fromValue;
+    if (toValue != null) result.toValue = toValue;
+    if (reasonLabel != null) result.reasonLabel = reasonLabel;
+    if (triggerCount != null) result.triggerCount = triggerCount;
+    if (alternatives != null) result.alternatives.addAll(alternatives);
+    return result;
+  }
+
+  PreferenceSuggestion._();
+
+  factory PreferenceSuggestion.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory PreferenceSuggestion.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PreferenceSuggestion',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'suggestionId')
+    ..aOS(2, _omitFieldNames ? '' : 'dimension')
+    ..aOS(3, _omitFieldNames ? '' : 'fromValue')
+    ..aOS(4, _omitFieldNames ? '' : 'toValue')
+    ..aOS(5, _omitFieldNames ? '' : 'reasonLabel')
+    ..aI(6, _omitFieldNames ? '' : 'triggerCount')
+    ..pPM<PreferenceSuggestionCandidate>(
+        7, _omitFieldNames ? '' : 'alternatives',
+        subBuilder: PreferenceSuggestionCandidate.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PreferenceSuggestion clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PreferenceSuggestion copyWith(void Function(PreferenceSuggestion) updates) =>
+      super.copyWith((message) => updates(message as PreferenceSuggestion))
+          as PreferenceSuggestion;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static PreferenceSuggestion create() => PreferenceSuggestion._();
+  @$core.override
+  PreferenceSuggestion createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static PreferenceSuggestion getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PreferenceSuggestion>(create);
+  static PreferenceSuggestion? _defaultInstance;
+
+  /// Empty string = no active suggestion (Flutter hides banner).
+  /// Non-empty = stable ID for telemetry round-trips. All
+  /// alternatives below share this same id — the user sees ONE
+  /// banner; suggestion_id identifies that banner session, not the
+  /// specific dimension.
+  @$pb.TagNumber(1)
+  $core.String get suggestionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set suggestionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuggestionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuggestionId() => $_clearField(1);
+
+  /// Which preference dimension to nudge (matches a field name on
+  /// identity.v1.ReportPreferences). This is the top candidate —
+  /// dimension/from_value/to_value/reason_label/trigger_count
+  /// duplicate alternatives[0] (or are empty if no candidate
+  /// survives filtering).
+  @$pb.TagNumber(2)
+  $core.String get dimension => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set dimension($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDimension() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDimension() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get fromValue => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set fromValue($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasFromValue() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearFromValue() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get toValue => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set toValue($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasToValue() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearToValue() => $_clearField(4);
+
+  /// Localized chip label that triggered this suggestion (e.g.
+  /// "za długi"). UI uses it to render the banner copy.
+  @$pb.TagNumber(5)
+  $core.String get reasonLabel => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set reasonLabel($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasReasonLabel() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearReasonLabel() => $_clearField(5);
+
+  /// How many negatives drove this (≥3 by current trigger).
+  @$pb.TagNumber(6)
+  $core.int get triggerCount => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set triggerCount($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTriggerCount() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTriggerCount() => $_clearField(6);
+
+  /// Ranked candidate list (highest chip count first). The first
+  /// entry is identical to the top-level fields above; subsequent
+  /// entries are fall-backs the client can iterate when the top
+  /// candidate is a no-op (current pref already equals to_value).
+  /// Empty when no candidates survive trigger-count + dimension +
+  /// cooldown filtering. Always populated for non-empty
+  /// suggestion_id responses (alternatives.length >= 1).
+  @$pb.TagNumber(7)
+  $pb.PbList<PreferenceSuggestionCandidate> get alternatives => $_getList(6);
+}
+
+/// PreferenceSuggestionCandidate is one row in the ranked candidate
+/// list. Same shape as the top-level PreferenceSuggestion fields
+/// minus suggestion_id (shared at the top level).
+class PreferenceSuggestionCandidate extends $pb.GeneratedMessage {
+  factory PreferenceSuggestionCandidate({
+    $core.String? dimension,
+    $core.String? fromValue,
+    $core.String? toValue,
+    $core.String? reasonLabel,
+    $core.int? triggerCount,
+  }) {
+    final result = create();
+    if (dimension != null) result.dimension = dimension;
+    if (fromValue != null) result.fromValue = fromValue;
+    if (toValue != null) result.toValue = toValue;
+    if (reasonLabel != null) result.reasonLabel = reasonLabel;
+    if (triggerCount != null) result.triggerCount = triggerCount;
+    return result;
+  }
+
+  PreferenceSuggestionCandidate._();
+
+  factory PreferenceSuggestionCandidate.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory PreferenceSuggestionCandidate.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PreferenceSuggestionCandidate',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'dimension')
+    ..aOS(2, _omitFieldNames ? '' : 'fromValue')
+    ..aOS(3, _omitFieldNames ? '' : 'toValue')
+    ..aOS(4, _omitFieldNames ? '' : 'reasonLabel')
+    ..aI(5, _omitFieldNames ? '' : 'triggerCount')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PreferenceSuggestionCandidate clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PreferenceSuggestionCandidate copyWith(
+          void Function(PreferenceSuggestionCandidate) updates) =>
+      super.copyWith(
+              (message) => updates(message as PreferenceSuggestionCandidate))
+          as PreferenceSuggestionCandidate;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static PreferenceSuggestionCandidate create() =>
+      PreferenceSuggestionCandidate._();
+  @$core.override
+  PreferenceSuggestionCandidate createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static PreferenceSuggestionCandidate getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PreferenceSuggestionCandidate>(create);
+  static PreferenceSuggestionCandidate? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get dimension => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set dimension($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDimension() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDimension() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get fromValue => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set fromValue($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFromValue() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFromValue() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get toValue => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set toValue($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasToValue() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearToValue() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get reasonLabel => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set reasonLabel($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasReasonLabel() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearReasonLabel() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get triggerCount => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set triggerCount($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTriggerCount() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTriggerCount() => $_clearField(5);
+}
+
+class LogPreferenceSuggestionRequest extends $pb.GeneratedMessage {
+  factory LogPreferenceSuggestionRequest({
+    $core.String? therapistId,
+    $core.String? suggestionId,
+    $core.String? dimension,
+    $core.String? fromValue,
+    $core.String? toValue,
+    $core.int? triggerCount,
+    $core.String? action,
+  }) {
+    final result = create();
+    if (therapistId != null) result.therapistId = therapistId;
+    if (suggestionId != null) result.suggestionId = suggestionId;
+    if (dimension != null) result.dimension = dimension;
+    if (fromValue != null) result.fromValue = fromValue;
+    if (toValue != null) result.toValue = toValue;
+    if (triggerCount != null) result.triggerCount = triggerCount;
+    if (action != null) result.action = action;
+    return result;
+  }
+
+  LogPreferenceSuggestionRequest._();
+
+  factory LogPreferenceSuggestionRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory LogPreferenceSuggestionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LogPreferenceSuggestionRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'therapistId')
+    ..aOS(2, _omitFieldNames ? '' : 'suggestionId')
+    ..aOS(3, _omitFieldNames ? '' : 'dimension')
+    ..aOS(4, _omitFieldNames ? '' : 'fromValue')
+    ..aOS(5, _omitFieldNames ? '' : 'toValue')
+    ..aI(6, _omitFieldNames ? '' : 'triggerCount')
+    ..aOS(7, _omitFieldNames ? '' : 'action')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LogPreferenceSuggestionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LogPreferenceSuggestionRequest copyWith(
+          void Function(LogPreferenceSuggestionRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as LogPreferenceSuggestionRequest))
+          as LogPreferenceSuggestionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static LogPreferenceSuggestionRequest create() =>
+      LogPreferenceSuggestionRequest._();
+  @$core.override
+  LogPreferenceSuggestionRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static LogPreferenceSuggestionRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LogPreferenceSuggestionRequest>(create);
+  static LogPreferenceSuggestionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get therapistId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set therapistId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTherapistId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTherapistId() => $_clearField(1);
+
+  /// Echoed back from PreferenceSuggestion.suggestion_id that
+  /// identity-svc handed to the Flutter client.
+  @$pb.TagNumber(2)
+  $core.String get suggestionId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set suggestionId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSuggestionId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSuggestionId() => $_clearField(2);
+
+  /// Which dimension the banner targeted.
+  @$pb.TagNumber(3)
+  $core.String get dimension => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set dimension($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDimension() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDimension() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get fromValue => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set fromValue($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasFromValue() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFromValue() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get toValue => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set toValue($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasToValue() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearToValue() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get triggerCount => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set triggerCount($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTriggerCount() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTriggerCount() => $_clearField(6);
+
+  /// Lifecycle event: "shown" | "applied" | "dismissed".
+  /// "applied" fires from UpdateReportPreferences in identity-svc
+  /// (we log to both rows so analytics doesn't need a cross-service
+  /// join); "shown"/"dismissed" come from the Flutter UI directly.
+  @$pb.TagNumber(7)
+  $core.String get action => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set action($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasAction() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearAction() => $_clearField(7);
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

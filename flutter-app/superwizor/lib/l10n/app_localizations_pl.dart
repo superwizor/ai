@@ -761,4 +761,256 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get settings_licenses_desc =>
       'Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania.';
+
+  @override
+  String get report_rating_thumbs_up_tooltip => 'Dobry raport';
+
+  @override
+  String get report_rating_thumbs_down_tooltip => 'Coś jest nie tak';
+
+  @override
+  String get report_rating_saved_positive => 'Dzięki za pozytywną ocenę.';
+
+  @override
+  String get report_rating_saved_negative =>
+      'Dzięki — uwzględnimy to przy kolejnych raportach.';
+
+  @override
+  String get report_rating_save_error =>
+      'Nie udało się zapisać oceny. Spróbuj ponownie.';
+
+  @override
+  String get report_rating_modal_title => 'Co poszło nie tak?';
+
+  @override
+  String get report_rating_modal_subtitle =>
+      'Wybierz jedną lub więcej kategorii. Pomoże nam to dostroić kolejne raporty.';
+
+  @override
+  String get report_rating_notes_label => 'Dodatkowy komentarz (opcjonalnie)';
+
+  @override
+  String get report_rating_notes_hint => 'Krótka notatka, max. 200 znaków…';
+
+  @override
+  String get report_rating_submit => 'Wyślij ocenę';
+
+  @override
+  String get report_rating_chip_too_long => 'Za długi';
+
+  @override
+  String get report_rating_chip_too_short => 'Za krótki';
+
+  @override
+  String get report_rating_chip_wrong_tone => 'Zły ton';
+
+  @override
+  String get report_rating_chip_too_many_quotes => 'Za dużo cytatów';
+
+  @override
+  String get report_rating_chip_too_few_quotes => 'Za mało cytatów';
+
+  @override
+  String get report_rating_chip_inaccurate_interpretation =>
+      'Niedokładna interpretacja';
+
+  @override
+  String get report_rating_chip_missing_strengths =>
+      'Brakuje mocnych stron pacjenta';
+
+  @override
+  String get report_rating_chip_missing_context =>
+      'Brakuje kontekstu / złe akcenty';
+
+  @override
+  String get report_rating_chip_other => 'Inne';
+
+  @override
+  String get settings_section_report_preferences => 'PREFERENCJE RAPORTÓW';
+
+  @override
+  String get report_prefs_intro_title => 'Styl raportów';
+
+  @override
+  String get report_prefs_intro_subtitle =>
+      'Dostosuj, jak AI pisze raporty z Twoich sesji.';
+
+  @override
+  String get report_prefs_load_error => 'Nie udało się załadować preferencji.';
+
+  @override
+  String get report_prefs_save_error =>
+      'Nie udało się zapisać preferencji. Spróbuj ponownie.';
+
+  @override
+  String get report_prefs_saved => 'Zapisano preferencje.';
+
+  @override
+  String get report_prefs_length_label => 'Długość raportu';
+
+  @override
+  String get report_prefs_length_brief => 'Krótki';
+
+  @override
+  String get report_prefs_length_standard => 'Standardowy';
+
+  @override
+  String get report_prefs_length_detailed => 'Szczegółowy';
+
+  @override
+  String get report_prefs_tone_label => 'Ton';
+
+  @override
+  String get report_prefs_tone_clinical_formal => 'Kliniczny, formalny';
+
+  @override
+  String get report_prefs_tone_empathic_warm => 'Empatyczny, ciepły';
+
+  @override
+  String get report_prefs_tone_pragmatic_direct => 'Pragmatyczny, bezpośredni';
+
+  @override
+  String get report_prefs_tone_academic_rigorous => 'Akademicki, rygorystyczny';
+
+  @override
+  String get report_prefs_quote_density_label => 'Liczba cytatów z sesji';
+
+  @override
+  String get report_prefs_quote_density_few => 'Mało';
+
+  @override
+  String get report_prefs_quote_density_selective => 'Wybiórczo';
+
+  @override
+  String get report_prefs_quote_density_many => 'Dużo';
+
+  @override
+  String get report_prefs_diagnostic_language_label => 'Język diagnostyczny';
+
+  @override
+  String get report_prefs_diagnostic_language_descriptive => 'Opisowy';
+
+  @override
+  String get report_prefs_diagnostic_language_clinical_labels =>
+      'Etykiety kliniczne';
+
+  @override
+  String get report_prefs_diagnostic_language_dsm_icd => 'DSM / ICD';
+
+  @override
+  String get report_prefs_hypothesis_hedging_label =>
+      'Stopień asertywności hipotez';
+
+  @override
+  String get report_prefs_hypothesis_hedging_tentative => 'Ostrożny';
+
+  @override
+  String get report_prefs_hypothesis_hedging_balanced => 'Wyważony';
+
+  @override
+  String get report_prefs_hypothesis_hedging_assertive => 'Asertywny';
+
+  @override
+  String get report_prefs_section_emphasis_label => 'Sekcje do rozwinięcia';
+
+  @override
+  String get report_prefs_section_emphasis_subtitle =>
+      'Wybierz sekcje, na których AI ma się skupić.';
+
+  @override
+  String get report_prefs_section_clinical_picture => 'Obraz kliniczny';
+
+  @override
+  String get report_prefs_section_interventions => 'Interwencje';
+
+  @override
+  String get report_prefs_section_case_formulation =>
+      'Konceptualizacja przypadku';
+
+  @override
+  String get report_prefs_section_supervisory_recommendations =>
+      'Rekomendacje superwizyjne';
+
+  @override
+  String get report_prefs_section_homework_between_sessions =>
+      'Zadania między sesjami';
+
+  @override
+  String get report_prefs_section_cultural_context => 'Kontekst kulturowy';
+
+  @override
+  String get report_prefs_section_safety_and_risk => 'Bezpieczeństwo i ryzyko';
+
+  @override
+  String get report_prefs_strengths_framing_label =>
+      'Akcent na mocnych stronach';
+
+  @override
+  String get report_prefs_strengths_framing_problem_focused =>
+      'Skupiony na problemach';
+
+  @override
+  String get report_prefs_strengths_framing_balanced => 'Wyważony';
+
+  @override
+  String get report_prefs_strengths_framing_strengths_first =>
+      'Mocne strony na pierwszym planie';
+
+  @override
+  String get report_prefs_free_text_label => 'Dodatkowe wskazówki';
+
+  @override
+  String get report_prefs_free_text_subtitle =>
+      'Wolny tekst, max. 500 znaków. Te wskazówki AI uwzględni w każdym raporcie.';
+
+  @override
+  String get report_prefs_free_text_hint =>
+      'np. Skupiaj się na obserwacjach języka ciała pacjenta…';
+
+  @override
+  String get report_prefs_value_not_set => 'Domyślne';
+
+  @override
+  String get report_prefs_picker_title => 'Wybierz opcję';
+
+  @override
+  String get report_prefs_save => 'Zapisz';
+
+  @override
+  String get report_prefs_too_long => 'Tekst za długi (max. 500 znaków).';
+
+  @override
+  String get suggestion_banner_header => 'Sugestia od AI';
+
+  @override
+  String suggestion_banner_body(
+    String reason,
+    int count,
+    String dimension,
+    String toValue,
+  ) {
+    return 'Ostatnie raporty oznaczyłeś jako „$reason\" ($count×). Czy zmienić $dimension na „$toValue\"?';
+  }
+
+  @override
+  String suggestion_banner_body_section_emphasis(String reason, int count) {
+    return 'Ostatnie raporty oznaczyłeś jako „$reason\" ($count×). Otwórz ustawienia, aby dostosować akcenty sekcji.';
+  }
+
+  @override
+  String get suggestion_banner_apply => 'Zmień';
+
+  @override
+  String get suggestion_banner_open_settings => 'Otwórz ustawienia';
+
+  @override
+  String get suggestion_banner_dismiss => 'Nie teraz';
+
+  @override
+  String get suggestion_banner_applied_toast =>
+      'Zmieniono — kolejne raporty uwzględnią to ustawienie.';
+
+  @override
+  String get suggestion_banner_apply_error =>
+      'Nie udało się zmienić ustawienia.';
 }

@@ -700,3 +700,183 @@ final $typed_data.Uint8List getSessionDetailsResponseDescriptor = $convert.base6
     '52MS5TZXNzaW9uUgdzZXNzaW9uEjcKCnRyYW5zY3JpcHQYAiABKAsyFy5jbGluaWNhbC52MS5U'
     'cmFuc2NyaXB0Ugp0cmFuc2NyaXB0Ei0KB3JlcG9ydHMYAyADKAsyEy5jbGluaWNhbC52MS5SZX'
     'BvcnRSB3JlcG9ydHM=');
+
+@$core.Deprecated('Use reportRatingDescriptor instead')
+const ReportRating$json = {
+  '1': 'ReportRating',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'report_id', '3': 2, '4': 1, '5': 9, '10': 'reportId'},
+    {'1': 'therapist_id', '3': 3, '4': 1, '5': 9, '10': 'therapistId'},
+    {'1': 'rating', '3': 4, '4': 1, '5': 9, '10': 'rating'},
+    {'1': 'issues', '3': 5, '4': 3, '5': 9, '10': 'issues'},
+    {'1': 'notes', '3': 6, '4': 1, '5': 9, '10': 'notes'},
+    {'1': 'source', '3': 7, '4': 1, '5': 9, '10': 'source'},
+    {
+      '1': 'created_at',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'updated_at',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `ReportRating`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportRatingDescriptor = $convert.base64Decode(
+    'CgxSZXBvcnRSYXRpbmcSDgoCaWQYASABKAlSAmlkEhsKCXJlcG9ydF9pZBgCIAEoCVIIcmVwb3'
+    'J0SWQSIQoMdGhlcmFwaXN0X2lkGAMgASgJUgt0aGVyYXBpc3RJZBIWCgZyYXRpbmcYBCABKAlS'
+    'BnJhdGluZxIWCgZpc3N1ZXMYBSADKAlSBmlzc3VlcxIUCgVub3RlcxgGIAEoCVIFbm90ZXMSFg'
+    'oGc291cmNlGAcgASgJUgZzb3VyY2USOQoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90'
+    'b2J1Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdBI5Cgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLn'
+    'Byb3RvYnVmLlRpbWVzdGFtcFIJdXBkYXRlZEF0');
+
+@$core.Deprecated('Use rateReportRequestDescriptor instead')
+const RateReportRequest$json = {
+  '1': 'RateReportRequest',
+  '2': [
+    {'1': 'report_id', '3': 1, '4': 1, '5': 9, '10': 'reportId'},
+    {'1': 'therapist_id', '3': 2, '4': 1, '5': 9, '10': 'therapistId'},
+    {'1': 'rating', '3': 3, '4': 1, '5': 9, '10': 'rating'},
+    {'1': 'issues', '3': 4, '4': 3, '5': 9, '10': 'issues'},
+    {'1': 'notes', '3': 5, '4': 1, '5': 9, '10': 'notes'},
+    {'1': 'source', '3': 6, '4': 1, '5': 9, '10': 'source'},
+    {'1': 'idempotency_key', '3': 7, '4': 1, '5': 9, '10': 'idempotencyKey'},
+  ],
+};
+
+/// Descriptor for `RateReportRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List rateReportRequestDescriptor = $convert.base64Decode(
+    'ChFSYXRlUmVwb3J0UmVxdWVzdBIbCglyZXBvcnRfaWQYASABKAlSCHJlcG9ydElkEiEKDHRoZX'
+    'JhcGlzdF9pZBgCIAEoCVILdGhlcmFwaXN0SWQSFgoGcmF0aW5nGAMgASgJUgZyYXRpbmcSFgoG'
+    'aXNzdWVzGAQgAygJUgZpc3N1ZXMSFAoFbm90ZXMYBSABKAlSBW5vdGVzEhYKBnNvdXJjZRgGIA'
+    'EoCVIGc291cmNlEicKD2lkZW1wb3RlbmN5X2tleRgHIAEoCVIOaWRlbXBvdGVuY3lLZXk=');
+
+@$core.Deprecated('Use rateReportResponseDescriptor instead')
+const RateReportResponse$json = {
+  '1': 'RateReportResponse',
+  '2': [
+    {
+      '1': 'rating',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.clinical.v1.ReportRating',
+      '10': 'rating'
+    },
+  ],
+};
+
+/// Descriptor for `RateReportResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List rateReportResponseDescriptor = $convert.base64Decode(
+    'ChJSYXRlUmVwb3J0UmVzcG9uc2USMQoGcmF0aW5nGAEgASgLMhkuY2xpbmljYWwudjEuUmVwb3'
+    'J0UmF0aW5nUgZyYXRpbmc=');
+
+@$core.Deprecated('Use getReportRatingRequestDescriptor instead')
+const GetReportRatingRequest$json = {
+  '1': 'GetReportRatingRequest',
+  '2': [
+    {'1': 'report_id', '3': 1, '4': 1, '5': 9, '10': 'reportId'},
+    {'1': 'therapist_id', '3': 2, '4': 1, '5': 9, '10': 'therapistId'},
+  ],
+};
+
+/// Descriptor for `GetReportRatingRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getReportRatingRequestDescriptor =
+    $convert.base64Decode(
+        'ChZHZXRSZXBvcnRSYXRpbmdSZXF1ZXN0EhsKCXJlcG9ydF9pZBgBIAEoCVIIcmVwb3J0SWQSIQ'
+        'oMdGhlcmFwaXN0X2lkGAIgASgJUgt0aGVyYXBpc3RJZA==');
+
+@$core.Deprecated('Use getActiveSuggestionRequestDescriptor instead')
+const GetActiveSuggestionRequest$json = {
+  '1': 'GetActiveSuggestionRequest',
+  '2': [
+    {'1': 'therapist_id', '3': 1, '4': 1, '5': 9, '10': 'therapistId'},
+  ],
+};
+
+/// Descriptor for `GetActiveSuggestionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getActiveSuggestionRequestDescriptor =
+    $convert.base64Decode(
+        'ChpHZXRBY3RpdmVTdWdnZXN0aW9uUmVxdWVzdBIhCgx0aGVyYXBpc3RfaWQYASABKAlSC3RoZX'
+        'JhcGlzdElk');
+
+@$core.Deprecated('Use preferenceSuggestionDescriptor instead')
+const PreferenceSuggestion$json = {
+  '1': 'PreferenceSuggestion',
+  '2': [
+    {'1': 'suggestion_id', '3': 1, '4': 1, '5': 9, '10': 'suggestionId'},
+    {'1': 'dimension', '3': 2, '4': 1, '5': 9, '10': 'dimension'},
+    {'1': 'from_value', '3': 3, '4': 1, '5': 9, '10': 'fromValue'},
+    {'1': 'to_value', '3': 4, '4': 1, '5': 9, '10': 'toValue'},
+    {'1': 'reason_label', '3': 5, '4': 1, '5': 9, '10': 'reasonLabel'},
+    {'1': 'trigger_count', '3': 6, '4': 1, '5': 5, '10': 'triggerCount'},
+    {
+      '1': 'alternatives',
+      '3': 7,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.PreferenceSuggestionCandidate',
+      '10': 'alternatives'
+    },
+  ],
+};
+
+/// Descriptor for `PreferenceSuggestion`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List preferenceSuggestionDescriptor = $convert.base64Decode(
+    'ChRQcmVmZXJlbmNlU3VnZ2VzdGlvbhIjCg1zdWdnZXN0aW9uX2lkGAEgASgJUgxzdWdnZXN0aW'
+    '9uSWQSHAoJZGltZW5zaW9uGAIgASgJUglkaW1lbnNpb24SHQoKZnJvbV92YWx1ZRgDIAEoCVIJ'
+    'ZnJvbVZhbHVlEhkKCHRvX3ZhbHVlGAQgASgJUgd0b1ZhbHVlEiEKDHJlYXNvbl9sYWJlbBgFIA'
+    'EoCVILcmVhc29uTGFiZWwSIwoNdHJpZ2dlcl9jb3VudBgGIAEoBVIMdHJpZ2dlckNvdW50Ek4K'
+    'DGFsdGVybmF0aXZlcxgHIAMoCzIqLmNsaW5pY2FsLnYxLlByZWZlcmVuY2VTdWdnZXN0aW9uQ2'
+    'FuZGlkYXRlUgxhbHRlcm5hdGl2ZXM=');
+
+@$core.Deprecated('Use preferenceSuggestionCandidateDescriptor instead')
+const PreferenceSuggestionCandidate$json = {
+  '1': 'PreferenceSuggestionCandidate',
+  '2': [
+    {'1': 'dimension', '3': 1, '4': 1, '5': 9, '10': 'dimension'},
+    {'1': 'from_value', '3': 2, '4': 1, '5': 9, '10': 'fromValue'},
+    {'1': 'to_value', '3': 3, '4': 1, '5': 9, '10': 'toValue'},
+    {'1': 'reason_label', '3': 4, '4': 1, '5': 9, '10': 'reasonLabel'},
+    {'1': 'trigger_count', '3': 5, '4': 1, '5': 5, '10': 'triggerCount'},
+  ],
+};
+
+/// Descriptor for `PreferenceSuggestionCandidate`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List preferenceSuggestionCandidateDescriptor = $convert.base64Decode(
+    'Ch1QcmVmZXJlbmNlU3VnZ2VzdGlvbkNhbmRpZGF0ZRIcCglkaW1lbnNpb24YASABKAlSCWRpbW'
+    'Vuc2lvbhIdCgpmcm9tX3ZhbHVlGAIgASgJUglmcm9tVmFsdWUSGQoIdG9fdmFsdWUYAyABKAlS'
+    'B3RvVmFsdWUSIQoMcmVhc29uX2xhYmVsGAQgASgJUgtyZWFzb25MYWJlbBIjCg10cmlnZ2VyX2'
+    'NvdW50GAUgASgFUgx0cmlnZ2VyQ291bnQ=');
+
+@$core.Deprecated('Use logPreferenceSuggestionRequestDescriptor instead')
+const LogPreferenceSuggestionRequest$json = {
+  '1': 'LogPreferenceSuggestionRequest',
+  '2': [
+    {'1': 'therapist_id', '3': 1, '4': 1, '5': 9, '10': 'therapistId'},
+    {'1': 'suggestion_id', '3': 2, '4': 1, '5': 9, '10': 'suggestionId'},
+    {'1': 'dimension', '3': 3, '4': 1, '5': 9, '10': 'dimension'},
+    {'1': 'from_value', '3': 4, '4': 1, '5': 9, '10': 'fromValue'},
+    {'1': 'to_value', '3': 5, '4': 1, '5': 9, '10': 'toValue'},
+    {'1': 'trigger_count', '3': 6, '4': 1, '5': 5, '10': 'triggerCount'},
+    {'1': 'action', '3': 7, '4': 1, '5': 9, '10': 'action'},
+  ],
+};
+
+/// Descriptor for `LogPreferenceSuggestionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List logPreferenceSuggestionRequestDescriptor = $convert.base64Decode(
+    'Ch5Mb2dQcmVmZXJlbmNlU3VnZ2VzdGlvblJlcXVlc3QSIQoMdGhlcmFwaXN0X2lkGAEgASgJUg'
+    't0aGVyYXBpc3RJZBIjCg1zdWdnZXN0aW9uX2lkGAIgASgJUgxzdWdnZXN0aW9uSWQSHAoJZGlt'
+    'ZW5zaW9uGAMgASgJUglkaW1lbnNpb24SHQoKZnJvbV92YWx1ZRgEIAEoCVIJZnJvbVZhbHVlEh'
+    'kKCHRvX3ZhbHVlGAUgASgJUgd0b1ZhbHVlEiMKDXRyaWdnZXJfY291bnQYBiABKAVSDHRyaWdn'
+    'ZXJDb3VudBIWCgZhY3Rpb24YByABKAlSBmFjdGlvbg==');

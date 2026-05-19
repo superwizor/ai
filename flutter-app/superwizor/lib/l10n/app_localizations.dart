@@ -1459,6 +1459,455 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania.'**
   String get settings_licenses_desc;
+
+  /// No description provided for @report_rating_thumbs_up_tooltip.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dobry raport'**
+  String get report_rating_thumbs_up_tooltip;
+
+  /// No description provided for @report_rating_thumbs_down_tooltip.
+  ///
+  /// In pl, this message translates to:
+  /// **'Coś jest nie tak'**
+  String get report_rating_thumbs_down_tooltip;
+
+  /// No description provided for @report_rating_saved_positive.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dzięki za pozytywną ocenę.'**
+  String get report_rating_saved_positive;
+
+  /// No description provided for @report_rating_saved_negative.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dzięki — uwzględnimy to przy kolejnych raportach.'**
+  String get report_rating_saved_negative;
+
+  /// No description provided for @report_rating_save_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się zapisać oceny. Spróbuj ponownie.'**
+  String get report_rating_save_error;
+
+  /// No description provided for @report_rating_modal_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Co poszło nie tak?'**
+  String get report_rating_modal_title;
+
+  /// No description provided for @report_rating_modal_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz jedną lub więcej kategorii. Pomoże nam to dostroić kolejne raporty.'**
+  String get report_rating_modal_subtitle;
+
+  /// No description provided for @report_rating_notes_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dodatkowy komentarz (opcjonalnie)'**
+  String get report_rating_notes_label;
+
+  /// No description provided for @report_rating_notes_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Krótka notatka, max. 200 znaków…'**
+  String get report_rating_notes_hint;
+
+  /// No description provided for @report_rating_submit.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij ocenę'**
+  String get report_rating_submit;
+
+  /// No description provided for @report_rating_chip_too_long.
+  ///
+  /// In pl, this message translates to:
+  /// **'Za długi'**
+  String get report_rating_chip_too_long;
+
+  /// No description provided for @report_rating_chip_too_short.
+  ///
+  /// In pl, this message translates to:
+  /// **'Za krótki'**
+  String get report_rating_chip_too_short;
+
+  /// No description provided for @report_rating_chip_wrong_tone.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zły ton'**
+  String get report_rating_chip_wrong_tone;
+
+  /// No description provided for @report_rating_chip_too_many_quotes.
+  ///
+  /// In pl, this message translates to:
+  /// **'Za dużo cytatów'**
+  String get report_rating_chip_too_many_quotes;
+
+  /// No description provided for @report_rating_chip_too_few_quotes.
+  ///
+  /// In pl, this message translates to:
+  /// **'Za mało cytatów'**
+  String get report_rating_chip_too_few_quotes;
+
+  /// No description provided for @report_rating_chip_inaccurate_interpretation.
+  ///
+  /// In pl, this message translates to:
+  /// **'Niedokładna interpretacja'**
+  String get report_rating_chip_inaccurate_interpretation;
+
+  /// No description provided for @report_rating_chip_missing_strengths.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brakuje mocnych stron pacjenta'**
+  String get report_rating_chip_missing_strengths;
+
+  /// No description provided for @report_rating_chip_missing_context.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brakuje kontekstu / złe akcenty'**
+  String get report_rating_chip_missing_context;
+
+  /// No description provided for @report_rating_chip_other.
+  ///
+  /// In pl, this message translates to:
+  /// **'Inne'**
+  String get report_rating_chip_other;
+
+  /// No description provided for @settings_section_report_preferences.
+  ///
+  /// In pl, this message translates to:
+  /// **'PREFERENCJE RAPORTÓW'**
+  String get settings_section_report_preferences;
+
+  /// No description provided for @report_prefs_intro_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Styl raportów'**
+  String get report_prefs_intro_title;
+
+  /// No description provided for @report_prefs_intro_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dostosuj, jak AI pisze raporty z Twoich sesji.'**
+  String get report_prefs_intro_subtitle;
+
+  /// No description provided for @report_prefs_load_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się załadować preferencji.'**
+  String get report_prefs_load_error;
+
+  /// No description provided for @report_prefs_save_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się zapisać preferencji. Spróbuj ponownie.'**
+  String get report_prefs_save_error;
+
+  /// No description provided for @report_prefs_saved.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisano preferencje.'**
+  String get report_prefs_saved;
+
+  /// No description provided for @report_prefs_length_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Długość raportu'**
+  String get report_prefs_length_label;
+
+  /// No description provided for @report_prefs_length_brief.
+  ///
+  /// In pl, this message translates to:
+  /// **'Krótki'**
+  String get report_prefs_length_brief;
+
+  /// No description provided for @report_prefs_length_standard.
+  ///
+  /// In pl, this message translates to:
+  /// **'Standardowy'**
+  String get report_prefs_length_standard;
+
+  /// No description provided for @report_prefs_length_detailed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Szczegółowy'**
+  String get report_prefs_length_detailed;
+
+  /// No description provided for @report_prefs_tone_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ton'**
+  String get report_prefs_tone_label;
+
+  /// No description provided for @report_prefs_tone_clinical_formal.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kliniczny, formalny'**
+  String get report_prefs_tone_clinical_formal;
+
+  /// No description provided for @report_prefs_tone_empathic_warm.
+  ///
+  /// In pl, this message translates to:
+  /// **'Empatyczny, ciepły'**
+  String get report_prefs_tone_empathic_warm;
+
+  /// No description provided for @report_prefs_tone_pragmatic_direct.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pragmatyczny, bezpośredni'**
+  String get report_prefs_tone_pragmatic_direct;
+
+  /// No description provided for @report_prefs_tone_academic_rigorous.
+  ///
+  /// In pl, this message translates to:
+  /// **'Akademicki, rygorystyczny'**
+  String get report_prefs_tone_academic_rigorous;
+
+  /// No description provided for @report_prefs_quote_density_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Liczba cytatów z sesji'**
+  String get report_prefs_quote_density_label;
+
+  /// No description provided for @report_prefs_quote_density_few.
+  ///
+  /// In pl, this message translates to:
+  /// **'Mało'**
+  String get report_prefs_quote_density_few;
+
+  /// No description provided for @report_prefs_quote_density_selective.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybiórczo'**
+  String get report_prefs_quote_density_selective;
+
+  /// No description provided for @report_prefs_quote_density_many.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dużo'**
+  String get report_prefs_quote_density_many;
+
+  /// No description provided for @report_prefs_diagnostic_language_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Język diagnostyczny'**
+  String get report_prefs_diagnostic_language_label;
+
+  /// No description provided for @report_prefs_diagnostic_language_descriptive.
+  ///
+  /// In pl, this message translates to:
+  /// **'Opisowy'**
+  String get report_prefs_diagnostic_language_descriptive;
+
+  /// No description provided for @report_prefs_diagnostic_language_clinical_labels.
+  ///
+  /// In pl, this message translates to:
+  /// **'Etykiety kliniczne'**
+  String get report_prefs_diagnostic_language_clinical_labels;
+
+  /// No description provided for @report_prefs_diagnostic_language_dsm_icd.
+  ///
+  /// In pl, this message translates to:
+  /// **'DSM / ICD'**
+  String get report_prefs_diagnostic_language_dsm_icd;
+
+  /// No description provided for @report_prefs_hypothesis_hedging_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Stopień asertywności hipotez'**
+  String get report_prefs_hypothesis_hedging_label;
+
+  /// No description provided for @report_prefs_hypothesis_hedging_tentative.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ostrożny'**
+  String get report_prefs_hypothesis_hedging_tentative;
+
+  /// No description provided for @report_prefs_hypothesis_hedging_balanced.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyważony'**
+  String get report_prefs_hypothesis_hedging_balanced;
+
+  /// No description provided for @report_prefs_hypothesis_hedging_assertive.
+  ///
+  /// In pl, this message translates to:
+  /// **'Asertywny'**
+  String get report_prefs_hypothesis_hedging_assertive;
+
+  /// No description provided for @report_prefs_section_emphasis_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sekcje do rozwinięcia'**
+  String get report_prefs_section_emphasis_label;
+
+  /// No description provided for @report_prefs_section_emphasis_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz sekcje, na których AI ma się skupić.'**
+  String get report_prefs_section_emphasis_subtitle;
+
+  /// No description provided for @report_prefs_section_clinical_picture.
+  ///
+  /// In pl, this message translates to:
+  /// **'Obraz kliniczny'**
+  String get report_prefs_section_clinical_picture;
+
+  /// No description provided for @report_prefs_section_interventions.
+  ///
+  /// In pl, this message translates to:
+  /// **'Interwencje'**
+  String get report_prefs_section_interventions;
+
+  /// No description provided for @report_prefs_section_case_formulation.
+  ///
+  /// In pl, this message translates to:
+  /// **'Konceptualizacja przypadku'**
+  String get report_prefs_section_case_formulation;
+
+  /// No description provided for @report_prefs_section_supervisory_recommendations.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rekomendacje superwizyjne'**
+  String get report_prefs_section_supervisory_recommendations;
+
+  /// No description provided for @report_prefs_section_homework_between_sessions.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zadania między sesjami'**
+  String get report_prefs_section_homework_between_sessions;
+
+  /// No description provided for @report_prefs_section_cultural_context.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kontekst kulturowy'**
+  String get report_prefs_section_cultural_context;
+
+  /// No description provided for @report_prefs_section_safety_and_risk.
+  ///
+  /// In pl, this message translates to:
+  /// **'Bezpieczeństwo i ryzyko'**
+  String get report_prefs_section_safety_and_risk;
+
+  /// No description provided for @report_prefs_strengths_framing_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Akcent na mocnych stronach'**
+  String get report_prefs_strengths_framing_label;
+
+  /// No description provided for @report_prefs_strengths_framing_problem_focused.
+  ///
+  /// In pl, this message translates to:
+  /// **'Skupiony na problemach'**
+  String get report_prefs_strengths_framing_problem_focused;
+
+  /// No description provided for @report_prefs_strengths_framing_balanced.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyważony'**
+  String get report_prefs_strengths_framing_balanced;
+
+  /// No description provided for @report_prefs_strengths_framing_strengths_first.
+  ///
+  /// In pl, this message translates to:
+  /// **'Mocne strony na pierwszym planie'**
+  String get report_prefs_strengths_framing_strengths_first;
+
+  /// No description provided for @report_prefs_free_text_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dodatkowe wskazówki'**
+  String get report_prefs_free_text_label;
+
+  /// No description provided for @report_prefs_free_text_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wolny tekst, max. 500 znaków. Te wskazówki AI uwzględni w każdym raporcie.'**
+  String get report_prefs_free_text_subtitle;
+
+  /// No description provided for @report_prefs_free_text_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'np. Skupiaj się na obserwacjach języka ciała pacjenta…'**
+  String get report_prefs_free_text_hint;
+
+  /// No description provided for @report_prefs_value_not_set.
+  ///
+  /// In pl, this message translates to:
+  /// **'Domyślne'**
+  String get report_prefs_value_not_set;
+
+  /// No description provided for @report_prefs_picker_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz opcję'**
+  String get report_prefs_picker_title;
+
+  /// No description provided for @report_prefs_save.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisz'**
+  String get report_prefs_save;
+
+  /// No description provided for @report_prefs_too_long.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tekst za długi (max. 500 znaków).'**
+  String get report_prefs_too_long;
+
+  /// No description provided for @suggestion_banner_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sugestia od AI'**
+  String get suggestion_banner_header;
+
+  /// No description provided for @suggestion_banner_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ostatnie raporty oznaczyłeś jako „{reason}\" ({count}×). Czy zmienić {dimension} na „{toValue}\"?'**
+  String suggestion_banner_body(
+    String reason,
+    int count,
+    String dimension,
+    String toValue,
+  );
+
+  /// No description provided for @suggestion_banner_body_section_emphasis.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ostatnie raporty oznaczyłeś jako „{reason}\" ({count}×). Otwórz ustawienia, aby dostosować akcenty sekcji.'**
+  String suggestion_banner_body_section_emphasis(String reason, int count);
+
+  /// No description provided for @suggestion_banner_apply.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zmień'**
+  String get suggestion_banner_apply;
+
+  /// No description provided for @suggestion_banner_open_settings.
+  ///
+  /// In pl, this message translates to:
+  /// **'Otwórz ustawienia'**
+  String get suggestion_banner_open_settings;
+
+  /// No description provided for @suggestion_banner_dismiss.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie teraz'**
+  String get suggestion_banner_dismiss;
+
+  /// No description provided for @suggestion_banner_applied_toast.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zmieniono — kolejne raporty uwzględnią to ustawienie.'**
+  String get suggestion_banner_applied_toast;
+
+  /// No description provided for @suggestion_banner_apply_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się zmienić ustawienia.'**
+  String get suggestion_banner_apply_error;
 }
 
 class _AppLocalizationsDelegate

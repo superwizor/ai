@@ -10,6 +10,7 @@ import '../providers/patient_provider.dart';
 import '../widgets/add_patient_modal.dart';
 import '../widgets/edit_patient_modal.dart';
 import '../widgets/euphire_bottom_sheet.dart';
+import '../widgets/preference_suggestion_banner.dart';
 import 'client_details_screen.dart';
 import 'menu_screen.dart';
 
@@ -127,7 +128,13 @@ class HomeScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-        
+
+                      // ── Sugestia AI (feat/report-customization §6) ──
+                      // Empty state self-hides; no impact on layout when
+                      // there's no active suggestion. Renders an ember-
+                      // tinted card with Apply / Dismiss CTAs.
+                      const PreferenceSuggestionBanner(),
+
                       // ── Lista Kartotek ──────────────────────────────────
                       patientsAsync.when(
                         loading: () => const Padding(

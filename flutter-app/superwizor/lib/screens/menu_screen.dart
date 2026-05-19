@@ -27,6 +27,7 @@ import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/modality_sheet.dart';
 import '../widgets/profile_edit_sheet.dart';
+import '../widgets/report_preferences_section.dart';
 import '../l10n/app_localizations.dart';
 import 'delete_account_screen.dart';
 import 'legal_markdown_screen.dart';
@@ -346,6 +347,14 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                           // Język aplikacji — inline selector
                           _LanguageRow(locale: locale),
                         ]),
+
+                        const SizedBox(height: 24),
+
+                        // ── PREFERENCJE RAPORTÓW ─────────────────────────
+                        // Per-therapist report-style preferences (length,
+                        // tone, sections, free-text guidance, etc.). Loads
+                        // its own data; renders a self-contained card.
+                        const ReportPreferencesSection(),
 
                         const SizedBox(height: 24),
 

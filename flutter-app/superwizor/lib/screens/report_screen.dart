@@ -22,6 +22,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_segmented_control.dart';
+import '../widgets/report_rating_widget.dart';
 import 'transcript_screen.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
@@ -131,6 +132,11 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         elevation: 0,
         title: Text(t.report_tab, style: theme.textTheme.titleLarge),
         actions: [
+          // Rating sits to the LEFT of Copy (i.e. first in the actions
+          // list) — it's report-scoped UI, so it only shows once the
+          // GetSessionDetails fetch has resolved a report we can target.
+          if (_data != null && _data!.reports.isNotEmpty)
+            ReportRatingWidget(reportId: _data!.reports.first.id),
           IconButton(
             tooltip: 'Skopiuj raporty',
             icon: const Icon(Icons.copy),
@@ -277,6 +283,30 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                         h2: theme.textTheme.headlineMedium,
                         h3: theme.textTheme.headlineSmall,
                         listBullet: theme.textTheme.bodyLarge,
+                        // Style transcript quotes (the LLM wraps them in
+                        // `> ...` blockquotes per the call-2 prompt).
+                        // Default flutter_markdown gives blockquotes a
+                        // white background which looks broken on our
+                        // dark theme — restyle to match the surrounding
+                        // card with an ember accent bar on the left.
+                        blockquote: theme.textTheme.bodyLarge?.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: EuphireColors.frostWhite.withValues(alpha: 0.85),
+                        ),
+                        blockquoteDecoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.04),
+                          border: Border(
+                            left: BorderSide(
+                              color: EuphireColors.ember.withValues(alpha: 0.7),
+                              width: 3,
+                            ),
+                          ),
+                          borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(6),
+                            bottomRight: Radius.circular(6),
+                          ),
+                        ),
+                        blockquotePadding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                       ),
                     ),
                   ),
@@ -373,14 +403,95 @@ class _ReportPayload {
     }
     try {
       final json = jsonDecode(report.content) as Map<String, dynamic>;
+      final rawMd = (json['report_markdown'] ?? '').toString();
+      // Pipeline: terminate blockquotes first (fixes white-box leak),
+      // then separate bold-labeled continuation paragraphs onto their
+      // own lines (fixes the run-together "Analiza w Modelu Równowagi"
+      // sub-label problem). Order matters — blockquote termination
+      // adds blank lines that the label separator relies on as
+      // already-blank "prev" lines (idempotency).
+      final cleaned = _separateBoldLabels(_terminateBlockquotes(rawMd));
       return _ReportPayload(
         summary: json['summary_short'] as String?,
-        reportMarkdown: (json['report_markdown'] ?? '').toString(),
+        reportMarkdown: cleaned,
       );
     } catch (_) {
       return empty();
     }
   }
+}
+
+/// flutter_markdown follows CommonMark's "lazy continuation" rule: a
+/// `> quote` line followed by an indented continuation line without
+/// `>` absorbs that continuation into the blockquote. Inside bullet
+/// items (which the LLM produces with structure
+///
+///   *   **Opis sytuacji i cytat:** prose.
+///       > "transcript quote"
+///       **Analiza...** more prose...
+///
+/// ) this means *every paragraph after the quote* inherits the
+/// blockquote decoration — looks like a runaway white box swallowing
+/// the rest of the bullet. The minimal fix: terminate the blockquote
+/// with an explicit blank line so the parser closes it before the
+/// next paragraph. Idempotent — re-applying the transform to already-
+/// fixed markdown produces no further changes.
+String _terminateBlockquotes(String md) {
+  final lines = md.split('\n');
+  final out = <String>[];
+  for (var i = 0; i < lines.length; i++) {
+    out.add(lines[i]);
+    final trimmed = lines[i].trimLeft();
+    final isBlockquote = trimmed.startsWith('>');
+    if (!isBlockquote || i + 1 >= lines.length) continue;
+    final next = lines[i + 1];
+    final nextTrim = next.trimLeft();
+    final nextIsBlockquote = nextTrim.startsWith('>');
+    final nextIsBlank = next.trim().isEmpty;
+    // Only insert a blank line if the next line is neither another
+    // blockquote line (multi-line quote) nor already blank.
+    if (!nextIsBlockquote && !nextIsBlank) {
+      out.add('');
+    }
+  }
+  return out.join('\n');
+}
+
+/// The LLM emits "sub-labeled" paragraphs inside bullet items like:
+///
+///   *   **Opis sytuacji i cytat:** prose.
+///       **Analiza w Modelu Równowagi:** more prose.
+///       **Identyfikacja potencjalności:** more prose.
+///       **Pozytywna funkcja – Positum:** more prose.
+///       **Sygnały niewerbalne:** more prose.
+///
+/// CommonMark merges consecutive non-blank indented lines into a
+/// single paragraph, so all five labels render run-together inline.
+/// Fix: inject a blank line before any indented line that begins with
+/// a bold label terminated by `:**` — except when the previous line
+/// is already blank (idempotency).
+///
+/// We deliberately require leading whitespace in the regex so this
+/// only fires on *continuation* lines inside list items; the first
+/// label (which lives on the bullet line itself, prefixed by `*   `
+/// or `1. `) is left alone.
+String _separateBoldLabels(String md) {
+  // Matches an indented line whose first non-whitespace token is a
+  // bold label like `**Anything goes here:**` — must end with the
+  // ":**" pattern to avoid grabbing every bold-prefixed paragraph.
+  final boldLabelLine = RegExp(r'^\s+\*\*[^*\n]+:\*\*');
+  final lines = md.split('\n');
+  final out = <String>[];
+  for (final line in lines) {
+    if (boldLabelLine.hasMatch(line)) {
+      final prev = out.isEmpty ? '' : out.last;
+      if (prev.trim().isNotEmpty) {
+        out.add('');
+      }
+    }
+    out.add(line);
+  }
+  return out.join('\n');
 }
 
 class _ReportSection {

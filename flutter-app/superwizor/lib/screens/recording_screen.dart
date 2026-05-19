@@ -27,6 +27,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
 
+import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../generated/ingestion/v1/ingestion.pb.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
@@ -93,6 +94,32 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   }
 
   Future<void> _verifyConsentAndStart() async {
+    // SOURCE OF TRUTH: the backend's patient_files.has_recording_consent
+    // (set at CreatePatientFile time, never cleared in the current
+    // schema). The local Hive cache below (ConsentService.hasConsent)
+    // is wiped on every app reinstall — trusting it alone re-prompted
+    // therapists for consent on every reinstall, even when the
+    // patient's consent was already captured server-side. Fixed
+    // 2026-05-19: GetPatientFile first, fall through to local cache
+    // only when offline / RPC fails (the local-only path remains as
+    // a graceful offline safety net for the rare case the user opens
+    // a recently-created patient with no network).
+    bool backendSaysConsent = false;
+    try {
+      final patient = await ref.read(grpcClientsProvider).clinical.getPatientFile(
+            clinical_pb.GetPatientFileRequest(patientFileId: widget.patientFileId),
+          );
+      backendSaysConsent = patient.hasRecordingConsent;
+    } catch (_) {
+      // Backend unreachable — fall through to local-only check.
+      // Conservative: an offline therapist who already captured
+      // consent shouldn't be blocked from recording.
+    }
+    if (backendSaysConsent) {
+      await _start();
+      return;
+    }
+
     final consent =
         await ref.read(consentServiceProvider).hasConsent(patientFileId: widget.patientFileId);
     if (!consent) {

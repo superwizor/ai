@@ -1064,6 +1064,329 @@ class HealthCheckResponse extends $pb.GeneratedMessage {
   void clearVersion() => $_clearField(2);
 }
 
+/// ─── Report customization messages ───
+/// Each enum-valued field stores the string ID of the choice (e.g.
+/// "brief", "clinical_formal") — UI translates to localized labels.
+/// Empty strings mean "use default" for that dimension; the renderer
+/// in ai-pipeline-svc treats them as no-op.
+class ReportPreferences extends $pb.GeneratedMessage {
+  factory ReportPreferences({
+    $core.int? version,
+    $core.String? length,
+    $core.String? tone,
+    $core.String? quoteDensity,
+    $core.String? diagnosticLanguage,
+    $core.String? hypothesisHedging,
+    $core.Iterable<$core.String>? sectionEmphasis,
+    $core.String? strengthsFraming,
+    $core.String? freeText,
+    $2.Timestamp? updatedAt,
+  }) {
+    final result = create();
+    if (version != null) result.version = version;
+    if (length != null) result.length = length;
+    if (tone != null) result.tone = tone;
+    if (quoteDensity != null) result.quoteDensity = quoteDensity;
+    if (diagnosticLanguage != null)
+      result.diagnosticLanguage = diagnosticLanguage;
+    if (hypothesisHedging != null) result.hypothesisHedging = hypothesisHedging;
+    if (sectionEmphasis != null) result.sectionEmphasis.addAll(sectionEmphasis);
+    if (strengthsFraming != null) result.strengthsFraming = strengthsFraming;
+    if (freeText != null) result.freeText = freeText;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  ReportPreferences._();
+
+  factory ReportPreferences.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ReportPreferences.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReportPreferences',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'version')
+    ..aOS(2, _omitFieldNames ? '' : 'length')
+    ..aOS(3, _omitFieldNames ? '' : 'tone')
+    ..aOS(4, _omitFieldNames ? '' : 'quoteDensity')
+    ..aOS(5, _omitFieldNames ? '' : 'diagnosticLanguage')
+    ..aOS(6, _omitFieldNames ? '' : 'hypothesisHedging')
+    ..pPS(7, _omitFieldNames ? '' : 'sectionEmphasis')
+    ..aOS(8, _omitFieldNames ? '' : 'strengthsFraming')
+    ..aOS(9, _omitFieldNames ? '' : 'freeText')
+    ..aOM<$2.Timestamp>(10, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $2.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportPreferences clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportPreferences copyWith(void Function(ReportPreferences) updates) =>
+      super.copyWith((message) => updates(message as ReportPreferences))
+          as ReportPreferences;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ReportPreferences create() => ReportPreferences._();
+  @$core.override
+  ReportPreferences createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ReportPreferences getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReportPreferences>(create);
+  static ReportPreferences? _defaultInstance;
+
+  /// Schema version. Bump when we add a new dimension without a
+  /// proto-message change so renderers can branch on it.
+  @$pb.TagNumber(1)
+  $core.int get version => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set version($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVersion() => $_clearField(1);
+
+  /// Length: "brief" | "standard" | "detailed"
+  @$pb.TagNumber(2)
+  $core.String get length => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set length($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLength() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLength() => $_clearField(2);
+
+  /// Tone: "clinical_formal" | "empathic_warm" | "pragmatic_direct"
+  /// | "academic_rigorous"
+  @$pb.TagNumber(3)
+  $core.String get tone => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set tone($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTone() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTone() => $_clearField(3);
+
+  /// Quote density: "few" | "selective" | "many"
+  @$pb.TagNumber(4)
+  $core.String get quoteDensity => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set quoteDensity($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasQuoteDensity() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearQuoteDensity() => $_clearField(4);
+
+  /// Diagnostic language: "descriptive" | "clinical_labels" | "dsm_icd"
+  @$pb.TagNumber(5)
+  $core.String get diagnosticLanguage => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set diagnosticLanguage($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasDiagnosticLanguage() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDiagnosticLanguage() => $_clearField(5);
+
+  /// Hypothesis hedging: "tentative" | "balanced" | "assertive"
+  @$pb.TagNumber(6)
+  $core.String get hypothesisHedging => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set hypothesisHedging($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasHypothesisHedging() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearHypothesisHedging() => $_clearField(6);
+
+  /// Multi-select section IDs to expand:
+  /// "clinical_picture", "interventions", "case_formulation",
+  /// "supervisory_recommendations", "homework_between_sessions",
+  /// "cultural_context", "safety_and_risk".
+  @$pb.TagNumber(7)
+  $pb.PbList<$core.String> get sectionEmphasis => $_getList(6);
+
+  /// Strengths framing: "problem_focused" | "balanced" | "strengths_first"
+  @$pb.TagNumber(8)
+  $core.String get strengthsFraming => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set strengthsFraming($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasStrengthsFraming() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearStrengthsFraming() => $_clearField(8);
+
+  /// Free-text additional guidance, ≤500 chars, server-sanitized.
+  @$pb.TagNumber(9)
+  $core.String get freeText => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set freeText($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasFreeText() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearFreeText() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $2.Timestamp get updatedAt => $_getN(9);
+  @$pb.TagNumber(10)
+  set updatedAt($2.Timestamp value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasUpdatedAt() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearUpdatedAt() => $_clearField(10);
+  @$pb.TagNumber(10)
+  $2.Timestamp ensureUpdatedAt() => $_ensure(9);
+}
+
+class GetReportPreferencesRequest extends $pb.GeneratedMessage {
+  factory GetReportPreferencesRequest({
+    $core.String? therapistId,
+  }) {
+    final result = create();
+    if (therapistId != null) result.therapistId = therapistId;
+    return result;
+  }
+
+  GetReportPreferencesRequest._();
+
+  factory GetReportPreferencesRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetReportPreferencesRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetReportPreferencesRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'therapistId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetReportPreferencesRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetReportPreferencesRequest copyWith(
+          void Function(GetReportPreferencesRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as GetReportPreferencesRequest))
+          as GetReportPreferencesRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetReportPreferencesRequest create() =>
+      GetReportPreferencesRequest._();
+  @$core.override
+  GetReportPreferencesRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetReportPreferencesRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetReportPreferencesRequest>(create);
+  static GetReportPreferencesRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get therapistId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set therapistId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTherapistId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTherapistId() => $_clearField(1);
+}
+
+class UpdateReportPreferencesRequest extends $pb.GeneratedMessage {
+  factory UpdateReportPreferencesRequest({
+    $core.String? therapistId,
+    ReportPreferences? preferences,
+    $core.String? idempotencyKey,
+  }) {
+    final result = create();
+    if (therapistId != null) result.therapistId = therapistId;
+    if (preferences != null) result.preferences = preferences;
+    if (idempotencyKey != null) result.idempotencyKey = idempotencyKey;
+    return result;
+  }
+
+  UpdateReportPreferencesRequest._();
+
+  factory UpdateReportPreferencesRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdateReportPreferencesRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateReportPreferencesRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'therapistId')
+    ..aOM<ReportPreferences>(2, _omitFieldNames ? '' : 'preferences',
+        subBuilder: ReportPreferences.create)
+    ..aOS(3, _omitFieldNames ? '' : 'idempotencyKey')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateReportPreferencesRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateReportPreferencesRequest copyWith(
+          void Function(UpdateReportPreferencesRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as UpdateReportPreferencesRequest))
+          as UpdateReportPreferencesRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdateReportPreferencesRequest create() =>
+      UpdateReportPreferencesRequest._();
+  @$core.override
+  UpdateReportPreferencesRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdateReportPreferencesRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateReportPreferencesRequest>(create);
+  static UpdateReportPreferencesRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get therapistId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set therapistId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTherapistId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTherapistId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  ReportPreferences get preferences => $_getN(1);
+  @$pb.TagNumber(2)
+  set preferences(ReportPreferences value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPreferences() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPreferences() => $_clearField(2);
+  @$pb.TagNumber(2)
+  ReportPreferences ensurePreferences() => $_ensure(1);
+
+  /// Required: must be a stable client-generated UUID. Same key with
+  /// same payload → no-op past the first write. Same key with
+  /// different payload → AlreadyExists (idempotency violation).
+  @$pb.TagNumber(3)
+  $core.String get idempotencyKey => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set idempotencyKey($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasIdempotencyKey() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearIdempotencyKey() => $_clearField(3);
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

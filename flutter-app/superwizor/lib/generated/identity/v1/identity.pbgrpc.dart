@@ -81,6 +81,29 @@ class IdentityServiceClient extends $grpc.Client {
     return $createUnaryCall(_$checkPermission, request, options: options);
   }
 
+  /// ─── Report customization (docs/10_REPORT_CUSTOMIZATION.md) ───
+  /// Returns the therapist's report style preferences. The active
+  /// suggestion banner (if any) is fetched separately from
+  /// clinical-svc.GetActiveSuggestion — identity-svc has no
+  /// dependency on clinical data tables (it's the bottom of the
+  /// service dep tree).
+  $grpc.ResponseFuture<$0.ReportPreferences> getReportPreferences(
+    $0.GetReportPreferencesRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getReportPreferences, request, options: options);
+  }
+
+  /// Updates the therapist's preferences. Idempotent: re-sending the
+  /// same payload is a no-op past the first write.
+  $grpc.ResponseFuture<$0.ReportPreferences> updateReportPreferences(
+    $0.UpdateReportPreferencesRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$updateReportPreferences, request,
+        options: options);
+  }
+
   /// Health check
   $grpc.ResponseFuture<$0.HealthCheckResponse> healthCheck(
     $1.Empty request, {
@@ -119,6 +142,16 @@ class IdentityServiceClient extends $grpc.Client {
           '/identity.v1.IdentityService/CheckPermission',
           ($0.CheckPermissionRequest value) => value.writeToBuffer(),
           $0.PermissionDecision.fromBuffer);
+  static final _$getReportPreferences =
+      $grpc.ClientMethod<$0.GetReportPreferencesRequest, $0.ReportPreferences>(
+          '/identity.v1.IdentityService/GetReportPreferences',
+          ($0.GetReportPreferencesRequest value) => value.writeToBuffer(),
+          $0.ReportPreferences.fromBuffer);
+  static final _$updateReportPreferences = $grpc.ClientMethod<
+          $0.UpdateReportPreferencesRequest, $0.ReportPreferences>(
+      '/identity.v1.IdentityService/UpdateReportPreferences',
+      ($0.UpdateReportPreferencesRequest value) => value.writeToBuffer(),
+      $0.ReportPreferences.fromBuffer);
   static final _$healthCheck =
       $grpc.ClientMethod<$1.Empty, $0.HealthCheckResponse>(
           '/identity.v1.IdentityService/HealthCheck',
@@ -178,6 +211,24 @@ abstract class IdentityServiceBase extends $grpc.Service {
             ($core.List<$core.int> value) =>
                 $0.CheckPermissionRequest.fromBuffer(value),
             ($0.PermissionDecision value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetReportPreferencesRequest,
+            $0.ReportPreferences>(
+        'GetReportPreferences',
+        getReportPreferences_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetReportPreferencesRequest.fromBuffer(value),
+        ($0.ReportPreferences value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.UpdateReportPreferencesRequest,
+            $0.ReportPreferences>(
+        'UpdateReportPreferences',
+        updateReportPreferences_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.UpdateReportPreferencesRequest.fromBuffer(value),
+        ($0.ReportPreferences value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$1.Empty, $0.HealthCheckResponse>(
         'HealthCheck',
         healthCheck_Pre,
@@ -235,6 +286,24 @@ abstract class IdentityServiceBase extends $grpc.Service {
 
   $async.Future<$0.PermissionDecision> checkPermission(
       $grpc.ServiceCall call, $0.CheckPermissionRequest request);
+
+  $async.Future<$0.ReportPreferences> getReportPreferences_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetReportPreferencesRequest> $request) async {
+    return getReportPreferences($call, await $request);
+  }
+
+  $async.Future<$0.ReportPreferences> getReportPreferences(
+      $grpc.ServiceCall call, $0.GetReportPreferencesRequest request);
+
+  $async.Future<$0.ReportPreferences> updateReportPreferences_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.UpdateReportPreferencesRequest> $request) async {
+    return updateReportPreferences($call, await $request);
+  }
+
+  $async.Future<$0.ReportPreferences> updateReportPreferences(
+      $grpc.ServiceCall call, $0.UpdateReportPreferencesRequest request);
 
   $async.Future<$0.HealthCheckResponse> healthCheck_Pre(
       $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {

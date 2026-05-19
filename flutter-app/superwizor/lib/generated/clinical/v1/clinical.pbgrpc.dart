@@ -148,6 +148,48 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$deleteSession, request, options: options);
   }
 
+  /// ─── Report ratings (docs/10_REPORT_CUSTOMIZATION.md §5) ───
+  /// 👍/👎 rating on a generated report. Idempotent on
+  /// (report_id, therapist_id) — re-rating UPSERTs in place.
+  $grpc.ResponseFuture<$0.RateReportResponse> rateReport(
+    $0.RateReportRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$rateReport, request, options: options);
+  }
+
+  /// Read the current rating (if any) the therapist gave a report.
+  /// Returns NotFound if unrated.
+  $grpc.ResponseFuture<$0.ReportRating> getReportRating(
+    $0.GetReportRatingRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getReportRating, request, options: options);
+  }
+
+  /// Returns a single preference-change suggestion if the therapist's
+  /// recent ratings warrant one (≥3 negatives of same chip category
+  /// in last 5 reports). Returns an empty PreferenceSuggestion with
+  /// empty suggestion_id when no suggestion is active — Flutter
+  /// hides the banner in that case. Called in parallel with
+  /// identity-svc.GetReportPreferences on settings entry.
+  $grpc.ResponseFuture<$0.PreferenceSuggestion> getActiveSuggestion(
+    $0.GetActiveSuggestionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getActiveSuggestion, request, options: options);
+  }
+
+  /// Records that a suggestion-engine banner was either shown,
+  /// applied, or dismissed. Telemetry only; safe to fire-and-forget.
+  $grpc.ResponseFuture<$1.Empty> logPreferenceSuggestion(
+    $0.LogPreferenceSuggestionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$logPreferenceSuggestion, request,
+        options: options);
+  }
+
   // method descriptors
 
   static final _$createPatientFile =
@@ -219,6 +261,26 @@ class ClinicalServiceClient extends $grpc.Client {
       $grpc.ClientMethod<$0.DeleteSessionRequest, $1.Empty>(
           '/clinical.v1.ClinicalService/DeleteSession',
           ($0.DeleteSessionRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$rateReport =
+      $grpc.ClientMethod<$0.RateReportRequest, $0.RateReportResponse>(
+          '/clinical.v1.ClinicalService/RateReport',
+          ($0.RateReportRequest value) => value.writeToBuffer(),
+          $0.RateReportResponse.fromBuffer);
+  static final _$getReportRating =
+      $grpc.ClientMethod<$0.GetReportRatingRequest, $0.ReportRating>(
+          '/clinical.v1.ClinicalService/GetReportRating',
+          ($0.GetReportRatingRequest value) => value.writeToBuffer(),
+          $0.ReportRating.fromBuffer);
+  static final _$getActiveSuggestion = $grpc.ClientMethod<
+          $0.GetActiveSuggestionRequest, $0.PreferenceSuggestion>(
+      '/clinical.v1.ClinicalService/GetActiveSuggestion',
+      ($0.GetActiveSuggestionRequest value) => value.writeToBuffer(),
+      $0.PreferenceSuggestion.fromBuffer);
+  static final _$logPreferenceSuggestion =
+      $grpc.ClientMethod<$0.LogPreferenceSuggestionRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/LogPreferenceSuggestion',
+          ($0.LogPreferenceSuggestionRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
 }
 
@@ -341,6 +403,38 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.DeleteSessionRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.RateReportRequest, $0.RateReportResponse>(
+        'RateReport',
+        rateReport_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.RateReportRequest.fromBuffer(value),
+        ($0.RateReportResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetReportRatingRequest, $0.ReportRating>(
+        'GetReportRating',
+        getReportRating_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetReportRatingRequest.fromBuffer(value),
+        ($0.ReportRating value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetActiveSuggestionRequest,
+            $0.PreferenceSuggestion>(
+        'GetActiveSuggestion',
+        getActiveSuggestion_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetActiveSuggestionRequest.fromBuffer(value),
+        ($0.PreferenceSuggestion value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.LogPreferenceSuggestionRequest, $1.Empty>(
+        'LogPreferenceSuggestion',
+        logPreferenceSuggestion_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.LogPreferenceSuggestionRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.PatientFile> createPatientFile_Pre($grpc.ServiceCall $call,
@@ -458,4 +552,37 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$1.Empty> deleteSession(
       $grpc.ServiceCall call, $0.DeleteSessionRequest request);
+
+  $async.Future<$0.RateReportResponse> rateReport_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.RateReportRequest> $request) async {
+    return rateReport($call, await $request);
+  }
+
+  $async.Future<$0.RateReportResponse> rateReport(
+      $grpc.ServiceCall call, $0.RateReportRequest request);
+
+  $async.Future<$0.ReportRating> getReportRating_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.GetReportRatingRequest> $request) async {
+    return getReportRating($call, await $request);
+  }
+
+  $async.Future<$0.ReportRating> getReportRating(
+      $grpc.ServiceCall call, $0.GetReportRatingRequest request);
+
+  $async.Future<$0.PreferenceSuggestion> getActiveSuggestion_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetActiveSuggestionRequest> $request) async {
+    return getActiveSuggestion($call, await $request);
+  }
+
+  $async.Future<$0.PreferenceSuggestion> getActiveSuggestion(
+      $grpc.ServiceCall call, $0.GetActiveSuggestionRequest request);
+
+  $async.Future<$1.Empty> logPreferenceSuggestion_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.LogPreferenceSuggestionRequest> $request) async {
+    return logPreferenceSuggestion($call, await $request);
+  }
+
+  $async.Future<$1.Empty> logPreferenceSuggestion(
+      $grpc.ServiceCall call, $0.LogPreferenceSuggestionRequest request);
 }
