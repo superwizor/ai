@@ -214,6 +214,30 @@ For the deploy half, you'd need WIF or `gcloud auth login` with the right projec
 - Skip the `lint-and-test` job dependency on `build-and-deploy` (`needs: lint-and-test`) — that's the only thing keeping broken code out of staging.
 - Run `terragrunt apply` from CI without PR approval gates (we don't yet — but if you add it, gate it).
 
+## Runbooks
+
+### Wiring DLQ on Eventarc subscriptions (manual post-apply)
+
+**When to run:** after every `terragrunt apply` that touches the `cloud-functions` module, OR after any manual `gcloud functions deploy` to one of the Eventarc-driven workers (`stt-worker`, `llm-worker`, `notification-worker-on-*`).
+
+**Why manual:** the terraform `google` / `google-beta` providers (verified up to v6.x) don't expose `dead_letter_config` on `google_cloudfunctions2_function.event_trigger`. Until they catch up, the Eventarc-managed Pub/Sub subscription must be patched out-of-band.
+
+**The script:**
+```bash
+./infra/scripts/wire_dlq.sh
+```
+Idempotent — re-runs are no-ops. Resolves each Eventarc trigger → its auto-generated subscription, then patches `deadLetterPolicy` + `maxDeliveryAttempts`. Per-worker mapping is hard-coded in the script (keep in sync with `infra/modules/cloud-functions/main.tf`).
+
+**Verification:**
+```bash
+gcloud pubsub subscriptions describe <sub-name> \
+  --project=superwizor-ai-25ecd \
+  --format='yaml(deadLetterPolicy)'
+```
+Should return a `deadLetterTopic` + `maxDeliveryAttempts` block. If empty, the patch didn't land — re-run the script.
+
+**Symptom of forgetting to run it:** poison messages retry for the full 24h Pub/Sub retention window. Reference incident: session `b6c7a606` (2026-05-14), ~100 retries on a Chirp `INTERNAL` error, drained manually via `subscriptions seek --time=NOW`. With DLQ wired, the same message dead-letters after ~5–10 min.
+
 ## Source-doc pointers
 
 - `docs/02_ARCHITEKTURA_TECHNICZNA.md` §12 (CI/CD and IaC, lines 1165+) — Cloud Build / Cloud Deploy spec (canary deploys are aspirational; we use simple `gcloud run deploy` today).

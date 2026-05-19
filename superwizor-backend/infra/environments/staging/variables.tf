@@ -4,6 +4,20 @@ variable "project_id" {
   default     = "superwizor-ai-25ecd"
 }
 
+variable "project_number" {
+  type        = string
+  description = <<-EOT
+    GCP project NUMBER (not project_id). Needed to construct the Pub/Sub
+    service-agent principal `service-<NUMBER>@gcp-sa-pubsub.iam.gserviceaccount.com`,
+    which is the identity that publishes to DLQ topics when a subscription
+    crosses max_delivery_attempts. Without binding pubsub.publisher to this
+    agent on each DLQ topic, dead-letter delivery silently fails.
+
+    Lookup: `gcloud projects describe superwizor-ai-25ecd --format='value(projectNumber)'`.
+  EOT
+  default     = "344724821207"
+}
+
 variable "e2e_token_minters" {
   type        = list(string)
   description = <<-EOT

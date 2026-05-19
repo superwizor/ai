@@ -46,8 +46,9 @@ module "storage" {
 }
 
 module "pubsub" {
-  source     = "../../modules/pubsub"
-  project_id = var.project_id
+  source         = "../../modules/pubsub"
+  project_id     = var.project_id
+  project_number = var.project_number
 }
 
 module "migrations" {

@@ -1,5 +1,16 @@
 variable "project_id" { type = string }
 
+# Project number is needed to construct the Pub/Sub service-agent
+# principal (`service-<PROJECT_NUMBER>@gcp-sa-pubsub.iam.gserviceaccount.com`).
+# That agent is the one that publishes to the DLQ topic when the main
+# subscription exhausts max_delivery_attempts — without explicit
+# pubsub.publisher on the DLQ topic, the dead-letter flow silently
+# drops messages.
+variable "project_number" {
+  type        = string
+  description = "GCP project number (NOT project_id). Used to bind the Pub/Sub service agent to DLQ topics for dead-letter delivery."
+}
+
 # ============================================
 # TOPICS
 # ============================================
@@ -43,6 +54,103 @@ resource "google_pubsub_topic" "transcript_completed_dlq" {
 resource "google_pubsub_topic" "session_deleted_dlq" {
   name    = "session.deleted.dlq"
   project = var.project_id
+}
+
+# DLQ for the report.generated pipeline (notification-worker-on-report).
+# Mirror of audio_uploaded_dlq / transcript_completed_dlq — every main
+# topic that has an Eventarc consumer gets a paired DLQ so the
+# wire_dlq.sh post-apply script can bind it via
+# `gcloud pubsub subscriptions update`.
+resource "google_pubsub_topic" "report_generated_dlq" {
+  name    = "report.generated.dlq"
+  project = var.project_id
+}
+
+# ============================================
+# DLQ publisher bindings
+# ============================================
+# When an Eventarc-managed subscription crosses its max_delivery_attempts
+# threshold, Pub/Sub itself (acting as the subscription owner) publishes
+# the rejected message to the dead-letter topic. The publishing identity
+# is the project's Pub/Sub service agent, NOT the consumer's runtime SA.
+# Without the bindings below the dead-letter flow silently fails — main
+# subscription keeps retrying for the full 24h retention window (the
+# exact failure mode documented in docs/agents/TODO.md "Wire DLQ" entry,
+# session b6c7a606, 2026-05-14).
+locals {
+  pubsub_service_agent = "serviceAccount:service-${var.project_number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_topic_iam_member" "pubsub_agent_audio_dlq_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.audio_uploaded_dlq.name
+  role    = "roles/pubsub.publisher"
+  member  = local.pubsub_service_agent
+}
+
+resource "google_pubsub_topic_iam_member" "pubsub_agent_transcript_dlq_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.transcript_completed_dlq.name
+  role    = "roles/pubsub.publisher"
+  member  = local.pubsub_service_agent
+}
+
+resource "google_pubsub_topic_iam_member" "pubsub_agent_report_dlq_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.report_generated_dlq.name
+  role    = "roles/pubsub.publisher"
+  member  = local.pubsub_service_agent
+}
+
+resource "google_pubsub_topic_iam_member" "pubsub_agent_session_deleted_dlq_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.session_deleted_dlq.name
+  role    = "roles/pubsub.publisher"
+  member  = local.pubsub_service_agent
+}
+
+# Pull subscriptions on each DLQ so operators can inspect dead messages
+# (`gcloud pubsub subscriptions pull <name> --auto-ack`) without
+# attaching a consumer. Mirrors firestore_sync_dlq_reader below — same
+# 7-day retention, never expires.
+resource "google_pubsub_subscription" "audio_uploaded_dlq_reader" {
+  name    = "audio.uploaded.dlq.reader"
+  project = var.project_id
+  topic   = google_pubsub_topic.audio_uploaded_dlq.id
+
+  ack_deadline_seconds       = 60
+  message_retention_duration = "604800s" # 7 days
+  expiration_policy { ttl = "" }
+}
+
+resource "google_pubsub_subscription" "transcript_completed_dlq_reader" {
+  name    = "transcript.completed.dlq.reader"
+  project = var.project_id
+  topic   = google_pubsub_topic.transcript_completed_dlq.id
+
+  ack_deadline_seconds       = 60
+  message_retention_duration = "604800s"
+  expiration_policy { ttl = "" }
+}
+
+resource "google_pubsub_subscription" "report_generated_dlq_reader" {
+  name    = "report.generated.dlq.reader"
+  project = var.project_id
+  topic   = google_pubsub_topic.report_generated_dlq.id
+
+  ack_deadline_seconds       = 60
+  message_retention_duration = "604800s"
+  expiration_policy { ttl = "" }
+}
+
+resource "google_pubsub_subscription" "session_deleted_dlq_reader" {
+  name    = "session.deleted.dlq.reader"
+  project = var.project_id
+  topic   = google_pubsub_topic.session_deleted_dlq.id
+
+  ack_deadline_seconds       = 60
+  message_retention_duration = "604800s"
+  expiration_policy { ttl = "" }
 }
 
 # DLQ for best-effort Firestore writes from notification-svc worker
@@ -143,6 +251,7 @@ output "report_generated_topic" { value = google_pubsub_topic.report_generated.i
 output "session_deleted_topic" { value = google_pubsub_topic.session_deleted.id }
 output "audio_uploaded_dlq_topic" { value = google_pubsub_topic.audio_uploaded_dlq.id }
 output "transcript_completed_dlq_topic" { value = google_pubsub_topic.transcript_completed_dlq.id }
+output "report_generated_dlq_topic" { value = google_pubsub_topic.report_generated_dlq.id }
 output "session_deleted_dlq_topic" { value = google_pubsub_topic.session_deleted_dlq.id }
 output "firestore_sync_dlq_topic" { value = google_pubsub_topic.firestore_sync_dlq.id }
 output "firestore_sync_dlq_subscription" { value = google_pubsub_subscription.firestore_sync_dlq_reader.id }
