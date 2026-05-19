@@ -19,8 +19,6 @@ cloud.google.com/go/pubsub/v2 v2.4.0 h1:oMKNiBQpXImRWnHYla9uSU66ZzByZwBSCJOEs/pT
 cloud.google.com/go/pubsub/v2 v2.4.0/go.mod h1:2lS/XQKq5qtOMs6kHBK+WX1ytUC36kLl2ig3zqsGUx8=
 cloud.google.com/go/speech v1.34.0 h1:20mFnS6VBeueaDVYiMCYhdSp22M6707WKocsmmcZv3k=
 cloud.google.com/go/speech v1.34.0/go.mod h1:shnf33sZbGnQQZyek1fdLOR5rRKV6D3jsNqpqyijvj8=
-cloud.google.com/go/vertexai v0.19.0 h1:s2ycqpWiLtydvs8u86fwFG1P4ovdHmiYtSZ2Qtd9vnM=
-cloud.google.com/go/vertexai v0.19.0/go.mod h1:LDCXm7/7mi+MdbwhSSZ/qvNSqxvrGiwqUeC/OBlC3oY=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/GoogleCloudPlatform/functions-framework-go v1.9.2 h1:Cev/PdoxY86bJjGwHJcpiWMhrZMVEoKp9wuEp9gCUvw=
 github.com/GoogleCloudPlatform/functions-framework-go v1.9.2/go.mod h1:wLEV4uSJztSBI+QyUy2fkHBuGFjRIAEDOqcEQ2hwmgE=

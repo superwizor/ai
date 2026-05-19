@@ -56,6 +56,12 @@ import (
 type Result struct {
 	Title                        string
 	Summary                      string
+	// RAGSummary is the optional `RAG_Summary:` line under # Metadata
+	// — a short, identity-stripped summary written specifically for
+	// long-term-memory recall (the "rag_summary_chunk" equivalent from
+	// the legacy JSON-mode schema). Empty when the model didn't emit
+	// the line; callers should fall back to Summary or skip RAG persist.
+	RAGSummary                   string
 	OverallDiarizationConfidence float64
 	Speakers                     []Speaker
 }
@@ -101,8 +107,9 @@ var validRoles = map[string]bool{
 }
 
 const (
-	maxTitleLen   = 100
-	maxSummaryLen = 500
+	maxTitleLen      = 100
+	maxSummaryLen    = 500
+	maxRAGSummaryLen = 1500
 )
 
 // Compiled regexes — patterns are tight on purpose. The prompt
@@ -126,6 +133,11 @@ var (
 	summaryLine = regexp.MustCompile(`^Summary(?:_short)?:\s*(.+)$`)
 	// "Overall_diarization_confidence: 0.89"
 	overallLine = regexp.MustCompile(`(?i)^Overall(?:_diarization)?_confidence:\s*([0-9.]+)\s*$`)
+	// "RAG_Summary: ..."   (optional) — short factual summary for
+	// long-term memory; identity-stripped per prompt instruction.
+	// Optional aliases preserve the JSON-schema field name in case
+	// the model echoes that variant.
+	ragSummaryLine = regexp.MustCompile(`^(?:RAG_Summary|RAGSummary|Rag_summary|rag_summary_chunk):\s*(.+)$`)
 )
 
 // ParseMetadataMarkdown parses an LLM call-1 response. Auto-detects
@@ -297,6 +309,21 @@ func ParseMetadataMarkdown(raw string) (Result, error) {
 					return Result{}, err
 				}
 				res.OverallDiarizationConfidence = conf
+				continue
+			}
+			if m := ragSummaryLine.FindStringSubmatch(line); m != nil {
+				// Optional line. Last write wins on duplicates — a
+				// permissive choice; the legacy JSON-schema path
+				// didn't have a duplicate concept either.
+				val := strings.TrimSpace(m[1])
+				if len(val) > maxRAGSummaryLen {
+					// Truncate rather than error — RAG summaries are
+					// best-effort persistence. The worker emits a
+					// Warn for empty RAGSummary downstream; oversize
+					// is the milder failure mode.
+					val = val[:maxRAGSummaryLen]
+				}
+				res.RAGSummary = val
 				continue
 			}
 			return Result{}, fmt.Errorf("%w: %q in '# Metadata'", ErrUnexpectedLine, line)

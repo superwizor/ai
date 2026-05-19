@@ -117,15 +117,15 @@ func TestRenderFragment_UnknownEnumDropped(t *testing.T) {
 }
 
 func TestMaxOutputTokens(t *testing.T) {
-	// Calibrated to actual target lengths (Polish ~600 tok/page,
-	// 7-section reports with 2-5 sentences each per ZASADY ZWIĘZŁOŚCI):
-	//   brief    → 2048 (~1-page report budget + 3× safety margin)
-	//   standard → 0    (caller's geminiMaxOutReportDefault = 4096)
-	//   detailed → 8192 (~3-page report budget + 4× safety margin)
+	// 2026-05-19 cap bump: 3× headroom over the directive target
+	// (caps are remote safety nets, not budgets the model races to).
+	//   brief    → 6144  (was 2048, ~3-page hard ceiling)
+	//   standard → 0     (caller falls through to geminiMaxOutReportDefault = 12288)
+	//   detailed → 24576 (was 8192, far above expected emission)
 	cases := map[string]int32{
-		"brief":    2048,
+		"brief":    6144,
 		"standard": 0,
-		"detailed": 8192,
+		"detailed": 24576,
 		"":         0,
 		"garbage":  0,
 	}
@@ -134,6 +134,66 @@ func TestMaxOutputTokens(t *testing.T) {
 			got := MaxOutputTokens(Preferences{Length: v})
 			if got != want {
 				t.Fatalf("length=%q: got %d, want %d", v, got, want)
+			}
+		})
+	}
+}
+
+func TestMaxOutputTokens_SectionEmphasisBumpsBudget(t *testing.T) {
+	// section_emphasis nudges the model to expand emphasized sections.
+	// Without a matching cap bump, multi-emphasis prefs hit the cap
+	// mid-section (production session 0a5523a0, 2026-05-19). Each
+	// emphasized section adds 500 tok of budget headroom.
+	cases := []struct {
+		name      string
+		length    string
+		emphasis  []string
+		want      int32
+	}{
+		{
+			name:     "standard + 0 emphasis = standard default sentinel",
+			length:   "standard",
+			emphasis: nil,
+			want:     0, // caller uses geminiMaxOutReportDefault
+		},
+		{
+			name:     "standard + 3 emphasis = 12288 base + 1500",
+			length:   "standard",
+			emphasis: []string{"clinical_picture", "interventions", "safety_and_risk"},
+			want:     12288 + 1500,
+		},
+		{
+			name:     "standard + 7 emphasis = full production case",
+			length:   "standard",
+			emphasis: []string{"a", "b", "c", "d", "e", "f", "g"},
+			want:     12288 + 3500,
+		},
+		{
+			name:     "detailed + 7 emphasis hits the 32768 soft ceiling",
+			length:   "detailed",
+			emphasis: []string{"a", "b", "c", "d", "e", "f", "g"},
+			// 24576 + 3500 = 28076, under 32768 ceiling → unchanged
+			want: 24576 + 3500,
+		},
+		{
+			name:     "soft ceiling clamps pathological prefs",
+			length:   "detailed",
+			emphasis: []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r"},
+			// 24576 + 9000 = 33576 → clamped to 32768
+			want: 32768,
+		},
+		{
+			name:     "brief + 3 emphasis bumps the brief cap",
+			length:   "brief",
+			emphasis: []string{"a", "b", "c"},
+			want:     6144 + 1500,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := MaxOutputTokens(Preferences{Length: c.length, SectionEmphasis: c.emphasis})
+			if got != c.want {
+				t.Fatalf("got %d, want %d", got, c.want)
 			}
 		})
 	}

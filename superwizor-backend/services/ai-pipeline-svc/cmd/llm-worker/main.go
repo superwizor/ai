@@ -13,8 +13,8 @@ import (
 	"cloud.google.com/go/aiplatform/apiv1/aiplatformpb"
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/pubsub/v2"
-	vertexai "cloud.google.com/go/vertexai/genai"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+	"google.golang.org/genai"
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -40,7 +40,7 @@ type MessagePublishedData struct {
 
 var (
 	dbPool       *pgxpool.Pool
-	vertexClient *vertexai.Client
+	vertexClient *genai.Client
 	pubsubClient *pubsub.Client
 	crypto       cryptobox.CryptoBox
 	projectID    string
@@ -61,6 +61,41 @@ var (
 	// into the Markdown-mode rollout — one variable at a time.
 	geminiModel  string = "gemini-2.5-flash"
 	geminiRegion string = "europe-west4"
+
+	// Embedding model for the RAG long-term-memory pipeline. Vertex AI's
+	// text-embedding-005 produces 768-dim multilingual vectors — matches
+	// `rag_memories.embedding vector(768)` exactly. Used by
+	// generateEmbedding(); failures are non-fatal (the worker Warns and
+	// skips persistRAGMemory, preserving report save).
+	embeddingModel string = "text-embedding-005"
+	embeddingDims  int    = 768
+
+	// RAG read-side knobs. loadRAGContext is a two-stage filter:
+	//   1. Bound the candidate pool to the patient's last
+	//      `ragLookbackMemories` rows (most-recent first by
+	//      created_at).
+	//   2. Within that pool, pick the top-`ragTopK` nearest neighbors
+	//      by cosine similarity.
+	// Joined output is capped at `ragContextMaxChars` to keep
+	// call-1/call-2 prompts bounded.
+	//
+	// Sizing rationale:
+	//   - lookback=36: ≈9 months at weekly cadence, ≈18 months at
+	//     bi-weekly. Captures the patient's recent clinical arc
+	//     without dragging in stale states from years ago. Also
+	//     matches the typical "this client has been in therapy
+	//     ~1 year" attention window. Tunable as we observe long-run
+	//     patients.
+	//   - K=3: enough to ground "what we've worked on so far" without
+	//     drowning the prompt. Tunable from production data once read
+	//     side has flown.
+	//   - max-chars=5000: ≈3× 1500-char per-memory cap. Generous head-
+	//     room for the typical case; truncation triggers only on huge
+	//     summaries or future K bumps. Keep below ~10% of the call-2
+	//     input budget so RAG never dominates the prompt.
+	ragLookbackMemories int = 36
+	ragTopK             int = 3
+	ragContextMaxChars  int = 5000
 
 	// Two distinct sampling profiles by design. Don't collapse them
 	// into one — call 1 wants determinism for parser-friendly output,
@@ -105,7 +140,21 @@ var (
 	geminiTempReport               float32 = 0.2
 	geminiTopP                     float32 = 0.95
 	geminiMaxOutMetadata           int32   = 16384
-	geminiMaxOutReportDefault      int32   = 4096
+	// 3× headroom over the directive's target (2026-05-19 bump from 4096):
+	// the `TargetLengthDirective` prompt already shapes report length
+	// effectively — the cap should be a remote safety net, NOT a
+	// budget the model races to hit. With cap = target, sessions that
+	// the model naturally writes 10% over budget triggered the
+	// safety-retry (extra Vertex call, ~3× cost on the affected
+	// session, ~2.5× latency). Bumping cap to 3× of the directive
+	// target moves the safety net far from the working zone:
+	//   - directive says: "aim for ~2 pages / ~1200 effective tok"
+	//   - actual emission: typically 1500–4500 tok
+	//   - new cap: 12288 → never fires under normal use
+	// Cost impact of the bump: zero — Vertex bills on actual output
+	// tokens, not the cap. See reportprefs.MaxOutputTokens for the
+	// per-length bumps and section_emphasis scaling.
+	geminiMaxOutReportDefault      int32   = 12288
 	geminiMaxOutReportHardCeiling  int32   = 65535
 	// debugLogPrompts controls whether we emit the full prompt sent to
 	// Vertex + the full raw response back, to Cloud Logging. Gated by
@@ -149,7 +198,16 @@ func init() {
 	}
 
 	if projectID != "" {
-		vertexClient, err = vertexai.NewClient(ctx, projectID, geminiRegion)
+		// Migrated from cloud.google.com/go/vertexai (deprecated
+		// 2025-06-24, removed 2026-06-24) to google.golang.org/genai.
+		// BackendVertexAI keeps us on the Vertex AI surface (same
+		// auth, same quotas, same region). Project + Location are now
+		// passed via ClientConfig instead of positional args.
+		vertexClient, err = genai.NewClient(ctx, &genai.ClientConfig{
+			Project:  projectID,
+			Location: geminiRegion,
+			Backend:  genai.BackendVertexAI,
+		})
 		if err != nil {
 			slog.Error("vertex", "error", err)
 			os.Exit(1)
@@ -366,49 +424,53 @@ type TokenStats struct {
 //go:embed schemas/report_schema.json
 var reportSchemaBytes []byte
 
-// metadataGenConfigJSON returns the GenerationConfig for call 1
+// metadataGenConfigJSON returns the GenerateContentConfig for call 1
 // in JSON mode (schema-constrained structured output). Built from
 // the package-level gemini* constants so all three call sites stay
 // in lockstep — see the comment block on `geminiTempMetadata`.
-func metadataGenConfigJSON(schema *vertexai.Schema) vertexai.GenerationConfig {
-	return vertexai.GenerationConfig{
-		Temperature:      vertexai.Ptr[float32](geminiTempMetadata),
-		TopP:             vertexai.Ptr[float32](geminiTopP),
-		MaxOutputTokens:  vertexai.Ptr[int32](geminiMaxOutMetadata),
+//
+// New-SDK note: config is now passed PER CALL to
+// client.Models.GenerateContent(...) — there's no per-model
+// GenerationConfig slot to mutate (vertexai's pattern).
+func metadataGenConfigJSON(schema *genai.Schema) *genai.GenerateContentConfig {
+	return &genai.GenerateContentConfig{
+		Temperature:      genai.Ptr[float32](geminiTempMetadata),
+		TopP:             genai.Ptr[float32](geminiTopP),
+		MaxOutputTokens:  geminiMaxOutMetadata,
 		ResponseMIMEType: "application/json",
 		ResponseSchema:   schema,
 	}
 }
 
-// metadataGenConfigMarkdown returns the GenerationConfig for call 1
-// in Markdown mode (free-form text). Same sampling profile as the
+// metadataGenConfigMarkdown returns the config for call 1 in
+// Markdown mode (free-form text). Same sampling profile as the
 // JSON variant; differs only by absence of ResponseMIMEType +
 // ResponseSchema so the model emits plain text we parse ourselves
 // via internal/diarization.
-func metadataGenConfigMarkdown() vertexai.GenerationConfig {
-	return vertexai.GenerationConfig{
-		Temperature:     vertexai.Ptr[float32](geminiTempMetadata),
-		TopP:            vertexai.Ptr[float32](geminiTopP),
-		MaxOutputTokens: vertexai.Ptr[int32](geminiMaxOutMetadata),
+func metadataGenConfigMarkdown() *genai.GenerateContentConfig {
+	return &genai.GenerateContentConfig{
+		Temperature:     genai.Ptr[float32](geminiTempMetadata),
+		TopP:            genai.Ptr[float32](geminiTopP),
+		MaxOutputTokens: geminiMaxOutMetadata,
 	}
 }
 
-// reportGenConfig returns the GenerationConfig for call 2 (the
-// full clinical report). maxOut is the per-call cap — caller
-// computes it from the therapist's length preference via
-// reportprefs.MaxOutputTokens, falling back to
-// geminiMaxOutReportDefault when no preference is set. We accept
-// it as an arg rather than computing inside because the call site
-// already has the prefs in scope and computing here would force
-// a second package import for an otherwise trivial helper.
-func reportGenConfig(maxOut int32) vertexai.GenerationConfig {
+// reportGenConfig returns the config for call 2 (the full clinical
+// report). maxOut is the per-call cap — caller computes it from the
+// therapist's length preference via reportprefs.MaxOutputTokens,
+// falling back to geminiMaxOutReportDefault when no preference is
+// set. We accept it as an arg rather than computing inside because
+// the call site already has the prefs in scope and computing here
+// would force a second package import for an otherwise trivial
+// helper.
+func reportGenConfig(maxOut int32) *genai.GenerateContentConfig {
 	if maxOut <= 0 {
 		maxOut = geminiMaxOutReportDefault
 	}
-	return vertexai.GenerationConfig{
-		Temperature:      vertexai.Ptr[float32](geminiTempReport),
-		TopP:             vertexai.Ptr[float32](geminiTopP),
-		MaxOutputTokens:  vertexai.Ptr[int32](maxOut),
+	return &genai.GenerateContentConfig{
+		Temperature:      genai.Ptr[float32](geminiTempReport),
+		TopP:             genai.Ptr[float32](geminiTopP),
+		MaxOutputTokens:  maxOut,
 		ResponseMIMEType: "text/plain",
 	}
 }
@@ -429,7 +491,9 @@ func diarizationMode() string {
 }
 
 func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragContext string, chunks []transcriptfmt.Chunk, prefs reportprefs.Preferences) (string, TokenStats, error) {
-	model := vertexClient.GenerativeModel(geminiModel)
+	// New SDK: no per-model object. Each GenerateContent call gets
+	// its own config (call-1 metadata vs call-2 report). The
+	// package-level vertexClient (genai.Client) is shared.
 	mode := diarizationMode()
 	native := hasNativeSpeakers(chunks)
 
@@ -480,7 +544,7 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 	} else {
 		switch mode {
 		case "markdown":
-			mdResult, mdStats, err := callMetadataMarkdown(ctx, model, reportLanguage, ragContext, chunks, native)
+			mdResult, mdStats, err := callMetadataMarkdown(ctx, reportLanguage, chunks, native)
 			if err != nil {
 				return "", TokenStats{}, err
 			}
@@ -488,7 +552,7 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 			stats.InputTokens += mdStats.InputTokens
 			stats.OutputTokens += mdStats.OutputTokens
 		default: // "json" — legacy path, byte-identical to pre-refactor behavior.
-			payload, jsonStats, err := callMetadataJSON(ctx, model, reportLanguage, ragContext, legacyChunkFormat(chunks))
+			payload, jsonStats, err := callMetadataJSON(ctx, reportLanguage, legacyChunkFormat(chunks))
 			if err != nil {
 				return "", TokenStats{}, err
 			}
@@ -516,7 +580,7 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 	if effectiveMaxOut <= 0 {
 		effectiveMaxOut = geminiMaxOutReportDefault
 	}
-	model.GenerationConfig = reportGenConfig(effectiveMaxOut)
+	reportCfg := reportGenConfig(effectiveMaxOut)
 
 	// Render the optional preference fragment. Empty when the
 	// therapist hasn't customized — preserves byte-identical prompts
@@ -537,11 +601,64 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 
 	reportPrompt := fmt.Sprintf(`%s
 
-JĘZYK RAPORTU: %s
-Wygeneruj CAŁY raport w tym języku. Cytaty z transkryptu pozostaw w oryginale.
+TARGET LANGUAGE FOR THE REPORT / JĘZYK DOCELOWY RAPORTU: %s
+
+CRITICAL — produce 100%% of the report output in the target language
+above. This includes EVERY part of the report, no exceptions besides
+literal transcript quotes:
+- All section headings (e.g. translate Polish prompt headings like
+  "Bilans Sesji", "Inspiracje Między Sesjami" into the target language).
+- All bullet labels and structural markdown (e.g. "Tytuł", "Cel",
+  "Instrukcja", "Opis sytuacji" → target-language equivalents).
+- All example phrasings, suggested instructions to the client, and
+  intervention scripts that the modality template above shows in
+  Polish — these are STRUCTURAL EXAMPLES, not content; translate
+  them. Do not copy Polish wording verbatim.
+- All your own prose, analysis, and clinical interpretation.
+
+The ONLY text you must preserve untranslated: literal direct quotes
+from the transcript section below. Render each quote as a markdown
+blockquote on its own line, prefixed with "> " (greater-than + space):
+
+    > "tekst cytatu w oryginalnym języku"
+
+DO NOT use the label form (e.g. "**Cytat:** ..." or "**Quote:** ...").
+DO NOT inline quotes inside a paragraph with just quote marks. The
+Flutter rendering layer styles only the "> " blockquote shape —
+label-form quotes lose their visual treatment and read as plain
+text. Even if the modality template suggests a label form, override
+it and use "> ".
+
+Everything else: target language.
+
+KRYTYCZNE — wygeneruj 100%% raportu w docelowym języku powyżej,
+łącznie z nagłówkami sekcji, etykietami punktów, oraz przykładami
+sformułowań z szablonu modality. JEDYNY wyjątek: dosłowne cytaty z
+transkryptu — te pozostaw w oryginale.
+
 Sformatuj raport używając czytelnego Markdown (nagłówki ##, pogrubienia, cytaty).
 %s
 %s
+
+CZEGO NIE PISZ / WHAT NOT TO WRITE:
+- NIE umieszczaj na początku raportu nagłówka z polami typu Klient /
+  Client, Imię / Name, ID, Data sesji / Session Date, Terapeuta /
+  Therapist. Te metadane są zarządzane przez aplikację (system
+  wyświetla je obok raportu) i nie należą do treści generowanej
+  przez Ciebie. DO NOT emit a metadata header block with fields like
+  Client / Patient / Therapist / Session Date / ID, even with
+  placeholder values like "[not provided]". Skip those entirely.
+- NIE pisz przedmowy ani powitania w stylu „Witaj, jako Superwizor AI
+  specjalizujący się w terapii…" / „Cześć, oto twój raport…" /
+  „As Superwizor AI, I will now analyze…". Raport zaczyna się
+  bezpośrednio od pierwszej sekcji analitycznej zdefiniowanej w
+  szablonie modality (np. „## Podsumowanie sesji" / „## Bilans
+  Sesji"). DO NOT emit a self-introductory greeting or preamble —
+  no "As Superwizor AI…", no "Hello, here is your report…", no
+  "I will now analyze the session…". Start with the first analytical
+  heading from the modality template above; the reader already knows
+  what tool produced this output.
+- NIE rozwijaj sekcji o pola, których szablon nie wymaga.
 
 ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 - Raport powinien być WARTOŚCIOWY dla superwizora, NIE wielostronicowy.
@@ -551,7 +668,6 @@ ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
   ilustrują obserwację. Nie cytuj dla samego cytowania.
 - UNIKAJ powtórzeń między sekcjami — każda informacja w raporcie max raz.
 - Pisz konkretami, używaj fachowego języka, ale nie nadużywaj żargonu.
-- NIE rozwijaj sekcji o pola, których szablon nie wymaga.
 - Pomijaj nagłówki sekcji jeśli ich treść byłaby pusta/spekulatywna.
 
 KONTEKST POPRZEDNICH SESJI:
@@ -563,7 +679,7 @@ TRANSKRYPT BIEŻĄCEJ SESJI (Markdown, grupowanie po mówcach):
 
 	debugLogChunked(slog.Default(), "vertex_prompt", "step", "markdown", "content", reportPrompt)
 
-	respReport, err := model.GenerateContent(ctx, vertexai.Text(reportPrompt))
+	respReport, err := vertexClient.Models.GenerateContent(ctx, geminiModel, genai.Text(reportPrompt), reportCfg)
 	if err != nil {
 		return "", TokenStats{}, fmt.Errorf("generate report markdown: %w", err)
 	}
@@ -580,24 +696,30 @@ TRANSKRYPT BIEŻĄCEJ SESJI (Markdown, grupowanie po mówcach):
 	// This is a rollout-period safety net — once production data
 	// shows the trigger rate is near-zero, the retry block can be
 	// removed. Tracked in docs/agents/TODO.md.
-	if respReport.Candidates[0].FinishReason == vertexai.FinishReasonMaxTokens {
-		retryMaxOut := effectiveMaxOut * 2
+	if respReport.Candidates[0].FinishReason == genai.FinishReasonMaxTokens {
+		// 2026-05-19: bumped retry multiplier from 2× to 4×. The 2×
+		// multiplier sometimes re-hit MaxTokens on the retry (observed:
+		// session 0a5523a0, both calls truncated). 4× gives the retry
+		// real headroom — with the new 3×-headroom defaults, this path
+		// should essentially never fire, but if it does, the retry has
+		// budget to actually finish.
+		retryMaxOut := effectiveMaxOut * 4
 		if retryMaxOut > geminiMaxOutReportHardCeiling {
 			retryMaxOut = geminiMaxOutReportHardCeiling
 		}
-		slog.Warn("call 2 hit MaxOutputTokens — retrying once at 2× cap",
+		slog.Warn("call 2 hit MaxOutputTokens — retrying once at 4× cap",
 			"original_cap", effectiveMaxOut,
 			"retry_cap", retryMaxOut,
 			"length_preference", prefs.Length)
-		model.GenerationConfig = reportGenConfig(retryMaxOut)
-		respReport, err = model.GenerateContent(ctx, vertexai.Text(reportPrompt))
+		reportCfg = reportGenConfig(retryMaxOut)
+		respReport, err = vertexClient.Models.GenerateContent(ctx, geminiModel, genai.Text(reportPrompt), reportCfg)
 		if err != nil {
 			return "", TokenStats{}, fmt.Errorf("generate report markdown (retry): %w", err)
 		}
 		if len(respReport.Candidates) == 0 || respReport.Candidates[0].Content == nil {
 			return "", TokenStats{}, fmt.Errorf("no candidates returned for report markdown (retry)")
 		}
-		if respReport.Candidates[0].FinishReason == vertexai.FinishReasonMaxTokens {
+		if respReport.Candidates[0].FinishReason == genai.FinishReasonMaxTokens {
 			// Retry also truncated. Take what we have + log; don't
 			// loop. Therapist will see the report; we'll see it in
 			// metrics + tune caps next iteration.
@@ -609,8 +731,8 @@ TRANSKRYPT BIEŻĄCEJ SESJI (Markdown, grupowanie po mówcach):
 
 	var reportOutput strings.Builder
 	for _, part := range respReport.Candidates[0].Content.Parts {
-		if text, ok := part.(vertexai.Text); ok {
-			reportOutput.WriteString(string(text))
+		if part.Text != "" {
+			reportOutput.WriteString(part.Text)
 		}
 	}
 
@@ -637,12 +759,17 @@ TRANSKRYPT BIEŻĄCEJ SESJI (Markdown, grupowanie po mówcach):
 // the LLM_DIARIZATION_MODE=json branch is byte-for-byte identical
 // to pre-refactor behavior. Don't refactor the prompt content here
 // without explicit go-ahead; it's the production hot path.
-func callMetadataJSON(ctx context.Context, model *vertexai.GenerativeModel, reportLanguage, ragContext, transcriptText string) (ReportPayload, TokenStats, error) {
+// Note: ragContext is NOT passed to call-1. All call-1 outputs (title,
+// summary_short, speaker clustering, RAG_Summary, diarization
+// confidence) describe THIS session — prior-session context can only
+// confuse the structural extraction. See docs/agents/05_ai-pipeline-svc.md
+// §"Long-term memory (RAG)" for the rationale.
+func callMetadataJSON(ctx context.Context, reportLanguage, transcriptText string) (ReportPayload, TokenStats, error) {
 	var schema map[string]any
 	if err := json.Unmarshal(reportSchemaBytes, &schema); err != nil {
 		return ReportPayload{}, TokenStats{}, fmt.Errorf("parse schema: %w", err)
 	}
-	model.GenerationConfig = metadataGenConfigJSON(schemaToVertexSchema(schema))
+	cfg := metadataGenConfigJSON(schemaToVertexSchema(schema))
 
 	prompt := fmt.Sprintf(`
 WAŻNE — KONTEKST DIARYZACJI I METADANYCH:
@@ -660,25 +787,22 @@ Wskazówki dot. klastrowania:
 
 JĘZYK RAPORTU: %s
 
-KONTEKST POPRZEDNICH SESJI:
-%s
-
 TRANSKRYPT BIEŻĄCEJ SESJI:
 %s
 
 Wygeneruj TYLKO metadane zgodnie z podanym JSON Schema.
 
 ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
-- title: max 100 znaków, jedno zdanie/fraza.
-- summary_short: max 500 znaków, 2-3 zdania.
+- title: max 100 znaków, jedno zdanie/fraza. Opisuje TĘ sesję, nie buduj numeracji ani kontynuacji z wcześniejszych spotkań.
+- summary_short: max 500 znaków, 2-3 zdania. Samodzielne streszczenie TEJ sesji — nie odwołuj się do wcześniejszych spotkań.
 - evidence (cytaty z transkryptu): pojedynczy cytat, max 200 znaków.
-- rag_summary_chunk: max 1500 znaków, kluczowe fakty dla pamięci długoterminowej.
+- rag_summary_chunk: max 1500 znaków, kluczowe fakty z TEJ sesji dla pamięci długoterminowej. Nie powtarzaj treści wcześniejszych podsumowań — niech wpis będzie samodzielnym śladem tej sesji.
 - Pisz konkretami, NIE parafrazuj całych wypowiedzi.`,
-		reportLanguage, ragContext, transcriptText)
+		reportLanguage, transcriptText)
 
 	debugLogChunked(slog.Default(), "vertex_prompt", "step", "metadata", "mode", "json", "content", prompt)
 
-	resp, err := model.GenerateContent(ctx, vertexai.Text(prompt))
+	resp, err := vertexClient.Models.GenerateContent(ctx, geminiModel, genai.Text(prompt), cfg)
 	if err != nil {
 		return ReportPayload{}, TokenStats{}, fmt.Errorf("generate metadata (json): %w", err)
 	}
@@ -687,8 +811,8 @@ ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 	}
 	var out strings.Builder
 	for _, part := range resp.Candidates[0].Content.Parts {
-		if text, ok := part.(vertexai.Text); ok {
-			out.WriteString(string(text))
+		if part.Text != "" {
+			out.WriteString(part.Text)
 		}
 	}
 	debugLogChunked(slog.Default(), "vertex_response", "step", "metadata", "mode", "json", "content", out.String())
@@ -711,10 +835,16 @@ ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 // when native diarization is absent — the LLM has to cluster; Format
 // B (speaker-turn) when native diarization is present — the LLM only
 // labels roles. Same model + temperature as the JSON path.
-func callMetadataMarkdown(ctx context.Context, model *vertexai.GenerativeModel, reportLanguage, ragContext string, chunks []transcriptfmt.Chunk, native bool) (diarization.Result, TokenStats, error) {
+//
+// Note: ragContext is NOT passed to call-1. All call-1 outputs (title,
+// summary_short, speaker clustering, RAG_Summary, diarization
+// confidence) describe THIS session — prior-session context can only
+// confuse the structural extraction. See docs/agents/05_ai-pipeline-svc.md
+// §"Long-term memory (RAG)" for the rationale.
+func callMetadataMarkdown(ctx context.Context, reportLanguage string, chunks []transcriptfmt.Chunk, native bool) (diarization.Result, TokenStats, error) {
 	// No ResponseMIMEType / ResponseSchema in Markdown mode —
 	// free-form text out, parsed server-side by internal/diarization.
-	model.GenerationConfig = metadataGenConfigMarkdown()
+	cfg := metadataGenConfigMarkdown()
 
 	var transcriptStr, prompt string
 	if native {
@@ -730,9 +860,6 @@ family_member_child, family_member_sibling, third_party, filler, unknown.
 
 JĘZYK RAPORTU: %s
 
-KONTEKST POPRZEDNICH SESJI:
-%s
-
 TRANSKRYPT (pogrupowany po mówcach):
 %s
 
@@ -745,16 +872,18 @@ Speaker 2 — patient (confidence 0.95)
 
 # Metadata
 
-Title: <tytuł, max 100 znaków>
-Summary: <streszczenie, max 500 znaków, 2-3 zdania>
+Title: <tytuł, max 100 znaków, opisuje TĘ sesję — nie buduj numeracji ani kontynuacji>
+Summary: <streszczenie, max 500 znaków, 2-3 zdania, samodzielne podsumowanie TEJ sesji>
 Overall_diarization_confidence: 0.94
+RAG_Summary: <streszczenie do pamięci długoterminowej, max 1500 znaków, gęsto informacyjne, BEZ danych identyfikujących (imion, miejsc, kontaktów). Skup się na kluczowych faktach klinicznych Z TEJ SESJI, wzorcach, hipotezach roboczych. Pisz w 3. osobie ("klient", "pacjent"), bez imion. Nie powtarzaj treści wcześniejszych podsumowań — niech wpis będzie samodzielnym śladem tej sesji.>
 
 ZASADY:
 - Sekcje "# Speakers" i "# Metadata", dokładnie w tej kolejności.
 - Po jednym wierszu na speakera w "# Speakers".
 - Confidence: float 0.0–1.0.
+- RAG_Summary jest opcjonalne tylko gdy materiał jest zbyt krótki (≤1 chunk); inaczej WYMAGANE.
 - BEZ żadnego tekstu poza tym blokiem.`,
-			reportLanguage, ragContext, transcriptStr)
+			reportLanguage, transcriptStr)
 	} else {
 		// Format A input, cluster grammar output (current Polish path
 		// — pl-PL has no native Chirp diarization).
@@ -778,9 +907,6 @@ family_member_child, family_member_sibling, third_party, filler, unknown.
 
 JĘZYK RAPORTU: %s
 
-KONTEKST POPRZEDNICH SESJI:
-%s
-
 TRANSKRYPT BIEŻĄCEJ SESJI:
 %s
 
@@ -798,9 +924,10 @@ Evidence: "Trochę zmęczona ostatnio."
 
 # Metadata
 
-Title: <tytuł, max 100 znaków>
-Summary: <streszczenie, max 500 znaków, 2-3 zdania>
+Title: <tytuł, max 100 znaków, opisuje TĘ sesję — nie buduj numeracji ani kontynuacji>
+Summary: <streszczenie, max 500 znaków, 2-3 zdania, samodzielne podsumowanie TEJ sesji>
 Overall_diarization_confidence: 0.89
+RAG_Summary: <streszczenie do pamięci długoterminowej, max 1500 znaków, gęsto informacyjne, BEZ danych identyfikujących (imion, miejsc, kontaktów). Skup się na kluczowych faktach klinicznych Z TEJ SESJI, wzorcach, hipotezach roboczych. Pisz w 3. osobie ("klient", "pacjent"), bez imion. Nie powtarzaj treści wcześniejszych podsumowań — niech wpis będzie samodzielnym śladem tej sesji.>
 
 ZASADY:
 - Sekcje "# Speakers" i "# Metadata", dokładnie w tej kolejności.
@@ -808,13 +935,14 @@ ZASADY:
 - "Chunks:" — liczby chunków oddzielone przecinkami, każdy chunk w DOKŁADNIE JEDNEJ grupie.
 - "Evidence:" — pojedynczy cytat z transkrypcji w cudzysłowach.
 - Confidence: float 0.0–1.0.
+- RAG_Summary jest opcjonalne tylko gdy materiał jest zbyt krótki (≤1 chunk); inaczej WYMAGANE.
 - BEZ żadnego tekstu poza tym blokiem.`,
-			reportLanguage, ragContext, transcriptStr)
+			reportLanguage, transcriptStr)
 	}
 
 	debugLogChunked(slog.Default(), "vertex_prompt", "step", "metadata", "mode", "markdown", "native", native, "content", prompt)
 
-	resp, err := model.GenerateContent(ctx, vertexai.Text(prompt))
+	resp, err := vertexClient.Models.GenerateContent(ctx, geminiModel, genai.Text(prompt), cfg)
 	if err != nil {
 		return diarization.Result{}, TokenStats{}, fmt.Errorf("generate metadata (markdown): %w", err)
 	}
@@ -831,27 +959,30 @@ ZASADY:
 	// added in commit d212f38. See the 2026-05-18 incident
 	// (session 17cd350e — 6+ Pub/Sub redeliveries) for the
 	// motivating case.
-	if resp.Candidates[0].FinishReason == vertexai.FinishReasonMaxTokens {
-		retryMaxOut := geminiMaxOutMetadata * 2
+	if resp.Candidates[0].FinishReason == genai.FinishReasonMaxTokens {
+		// 4× multiplier (bumped from 2× on 2026-05-19) — symmetric with
+		// the call-2 retry. Call-1 metadata cap is already generous
+		// (16384), so 4× ceilings at the hard limit; the clamp below
+		// handles that.
+		retryMaxOut := geminiMaxOutMetadata * 4
 		if retryMaxOut > geminiMaxOutReportHardCeiling {
 			retryMaxOut = geminiMaxOutReportHardCeiling
 		}
-		slog.Warn("call 1 (markdown) hit MaxOutputTokens — retrying once at 2× cap",
+		slog.Warn("call 1 (markdown) hit MaxOutputTokens — retrying once at 4× cap",
 			"original_cap", geminiMaxOutMetadata,
 			"retry_cap", retryMaxOut,
 			"native_diarization", native)
 		// Rebuild config with bumped cap; keep temp/TopP identical.
 		retryConfig := metadataGenConfigMarkdown()
-		retryConfig.MaxOutputTokens = vertexai.Ptr[int32](retryMaxOut)
-		model.GenerationConfig = retryConfig
-		resp, err = model.GenerateContent(ctx, vertexai.Text(prompt))
+		retryConfig.MaxOutputTokens = retryMaxOut
+		resp, err = vertexClient.Models.GenerateContent(ctx, geminiModel, genai.Text(prompt), retryConfig)
 		if err != nil {
 			return diarization.Result{}, TokenStats{}, fmt.Errorf("generate metadata (markdown, retry): %w", err)
 		}
 		if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil {
 			return diarization.Result{}, TokenStats{}, fmt.Errorf("no candidates returned for metadata (markdown, retry)")
 		}
-		if resp.Candidates[0].FinishReason == vertexai.FinishReasonMaxTokens {
+		if resp.Candidates[0].FinishReason == genai.FinishReasonMaxTokens {
 			// Even 2× wasn't enough. Accept the truncated output
 			// and let the parser fail loud — Pub/Sub will redeliver,
 			// metrics will fire, we tune caps next iteration. Don't
@@ -863,8 +994,8 @@ ZASADY:
 
 	var out strings.Builder
 	for _, part := range resp.Candidates[0].Content.Parts {
-		if text, ok := part.(vertexai.Text); ok {
-			out.WriteString(string(text))
+		if part.Text != "" {
+			out.WriteString(part.Text)
 		}
 	}
 	debugLogChunked(slog.Default(), "vertex_response", "step", "metadata", "mode", "markdown", "content", out.String())
@@ -965,9 +1096,19 @@ func markdownResultToPayload(r diarization.Result, chunks []transcriptfmt.Chunk,
 		}
 	}
 
+	// RAGSummaryChunk fall-through: prefer the dedicated RAG_Summary
+	// line from the parser; fall back to SummaryShort when the model
+	// didn't emit one (small sessions, parser leniency). Empty stays
+	// empty — persistRAGMemory writes a row anyway today but the
+	// real loadRAGContext will filter empty plaintext when reading.
+	rag := r.RAGSummary
+	if rag == "" {
+		rag = r.Summary
+	}
 	return ReportPayload{
-		Title:        r.Title,
-		SummaryShort: r.Summary,
+		Title:           r.Title,
+		SummaryShort:    r.Summary,
+		RAGSummaryChunk: rag,
 		SpeakerRoleInference: SpeakerRoleInference{
 			Method:                       method,
 			SpeakerGroups:                groups,
@@ -1003,30 +1144,30 @@ func annotateChunksWithSpeakers(chunks []transcriptfmt.Chunk, groups []SpeakerGr
 	return annotated
 }
 
-func mapSchemaType(t string) vertexai.Type {
+func mapSchemaType(t string) genai.Type {
 	switch t {
 	case "string":
-		return vertexai.TypeString
+		return genai.TypeString
 	case "number":
-		return vertexai.TypeNumber
+		return genai.TypeNumber
 	case "integer":
-		return vertexai.TypeInteger
+		return genai.TypeInteger
 	case "boolean":
-		return vertexai.TypeBoolean
+		return genai.TypeBoolean
 	case "array":
-		return vertexai.TypeArray
+		return genai.TypeArray
 	case "object":
-		return vertexai.TypeObject
+		return genai.TypeObject
 	default:
-		return vertexai.TypeUnspecified
+		return genai.TypeUnspecified
 	}
 }
 
-func schemaToVertexSchema(s map[string]any) *vertexai.Schema {
+func schemaToVertexSchema(s map[string]any) *genai.Schema {
 	if s == nil {
 		return nil
 	}
-	vs := &vertexai.Schema{}
+	vs := &genai.Schema{}
 
 	if t, ok := s["type"].(string); ok {
 		vs.Type = mapSchemaType(t)
@@ -1042,7 +1183,7 @@ func schemaToVertexSchema(s map[string]any) *vertexai.Schema {
 		}
 	}
 	if p, ok := s["properties"].(map[string]any); ok {
-		vs.Properties = make(map[string]*vertexai.Schema)
+		vs.Properties = make(map[string]*genai.Schema)
 		for k, v := range p {
 			if vMap, ok := v.(map[string]any); ok {
 				vs.Properties[k] = schemaToVertexSchema(vMap)
@@ -1156,9 +1297,51 @@ func generateAndSaveSpeakerLabels(ctx context.Context, session *SessionContext, 
 	return tx.Commit(ctx)
 }
 
+// generateEmbedding calls Vertex AI's text-embedding-005 to produce a
+// 768-dim multilingual vector for the given text. Returns the
+// zero-vector (and a nil error) on empty input — keeps the worker
+// path resilient to the small-session edge case where the LLM didn't
+// emit a RAG_Summary line.
+//
+// Cost: ~$0.0001 per call at current Vertex AI pricing (negligible —
+// one embed per report).
+//
+// Failure mode: any Vertex error returns the error to the caller.
+// The caller (`ProcessTranscript`) already logs Warn + skips
+// persistRAGMemory rather than failing the whole report.
 func generateEmbedding(ctx context.Context, text string) ([]float32, error) {
-	// Faza 2: stub. Faza 3: real Vertex textembedding-gecko call.
-	return make([]float32, 768), nil
+	if vertexClient == nil {
+		// Local/dev mode (no project configured) — preserve the old
+		// stub behavior so unit tests don't need a Vertex shim.
+		return make([]float32, embeddingDims), nil
+	}
+	if strings.TrimSpace(text) == "" {
+		// Common case for sub-2-chunk sessions where the LLM skipped
+		// RAG_Summary entirely. Zero vector means the row still
+		// participates in the patient's memory index (via
+		// patient_file_id filtering) but ranks neutrally in cosine
+		// similarity. Caller decides whether to persist.
+		return make([]float32, embeddingDims), nil
+	}
+
+	resp, err := vertexClient.Models.EmbedContent(ctx, embeddingModel,
+		[]*genai.Content{genai.NewContentFromText(text, genai.RoleUser)},
+		nil)
+	if err != nil {
+		return nil, fmt.Errorf("embed text: %w", err)
+	}
+	if len(resp.Embeddings) == 0 || len(resp.Embeddings[0].Values) == 0 {
+		return nil, fmt.Errorf("embed: empty response")
+	}
+	vec := resp.Embeddings[0].Values
+	if len(vec) != embeddingDims {
+		// Defensive: Vertex documents 768 for text-embedding-005 but a
+		// dimension mismatch would silently corrupt the pgvector
+		// column (vector(768) constraint would reject the INSERT, but
+		// surface the cause early here).
+		return nil, fmt.Errorf("embed: unexpected dim %d (want %d)", len(vec), embeddingDims)
+	}
+	return vec, nil
 }
 
 func loadSession(ctx context.Context, sessionID string) (*SessionContext, error) {
@@ -1353,9 +1536,142 @@ func loadModalityPrompt(ctx context.Context, modalityID uuid.UUID) (string, erro
 	return prompt["system"], nil
 }
 
+// loadRAGContext retrieves up to ragTopK encrypted long-term-memory
+// summaries from this patient's prior sessions, ranked by cosine
+// similarity against currentText's embedding, decrypts them, and
+// returns a newline-joined block suitable for the call-1/call-2
+// prompt's `KONTEKST POPRZEDNICH SESJI:` slot.
+//
+// Returns empty string (and nil error) for any of:
+//   - dbPool unconfigured (local/test mode)
+//   - this patient has no prior memories yet (first session)
+//   - the query embedding failed
+//   - every nearest neighbor decrypts to empty plaintext (the legacy
+//     "RAGSummaryChunk == \"\"" historical bug; option-A backfill is
+//     skipped per user direction — those rows just rank low)
+//
+// Side effect: bumps `last_accessed_at` on the retrieved rows so
+// future compaction prioritizes stale memories. Best-effort; an
+// UPDATE failure logs Warn but doesn't fail the read.
+//
+// Prompt-budget guard: caps the joined output at ragContextMaxChars
+// to avoid blowing the call-1/call-2 input window when a patient
+// accumulates 50+ sessions. Older rows truncated last (the SELECT
+// orders by similarity ascending — closest first).
 func loadRAGContext(ctx context.Context, patientFileID uuid.UUID, currentText string) (string, error) {
-	// Faza 2 stub. Faza 3: query embedding + similarity search via pgvector.
-	return "", nil
+	if dbPool == nil {
+		return "", nil
+	}
+	if strings.TrimSpace(currentText) == "" {
+		return "", nil
+	}
+
+	queryVec, err := generateEmbedding(ctx, currentText)
+	if err != nil {
+		// Non-fatal — log via the caller's Warn. Returning empty here
+		// means the model gets no prior context this round, same as
+		// the legacy stub behavior. Better than failing the report.
+		return "", fmt.Errorf("rag query embed: %w", err)
+	}
+
+	// Two-stage filter to keep the candidate pool bounded:
+	//   stage 1 (recent CTE): patient's last ragLookbackMemories rows,
+	//     newest first by created_at. Hard ceiling so a veteran patient
+	//     with 200 sessions doesn't drag in 5-year-old states.
+	//   stage 2 (outer SELECT): nearest neighbors within that pool by
+	//     pgvector cosine distance. HNSW index
+	//     `idx_rag_memories_embedding` covers the inner ORDER BY when
+	//     the candidate count is comparable to lookback size.
+	//
+	// patient_file_id filter on the CTE is BOTH a privacy guarantee
+	// (no cross-patient leakage) and an HNSW pre-filter via the
+	// partial index `idx_rag_memories_patient_file`.
+	rows, err := dbPool.Query(ctx, `
+		WITH recent AS (
+			SELECT id, summary_ciphertext, summary_encrypted_dek, embedding
+			FROM rag_memories
+			WHERE patient_file_id = $1 AND NOT is_compacted
+			ORDER BY created_at DESC
+			LIMIT $4
+		)
+		SELECT id, summary_ciphertext, summary_encrypted_dek
+		FROM recent
+		ORDER BY embedding <=> $2::vector
+		LIMIT $3`,
+		patientFileID, vectorToString(queryVec), ragTopK, ragLookbackMemories)
+	if err != nil {
+		return "", fmt.Errorf("rag query: %w", err)
+	}
+	defer rows.Close()
+
+	type memHit struct {
+		id        uuid.UUID
+		plaintext string
+	}
+	var hits []memHit
+	for rows.Next() {
+		var id uuid.UUID
+		var ct, dek []byte
+		if scanErr := rows.Scan(&id, &ct, &dek); scanErr != nil {
+			return "", fmt.Errorf("rag scan: %w", scanErr)
+		}
+		pt, decErr := crypto.Decrypt(ctx, ct, dek)
+		if decErr != nil {
+			// KMS misconfig or corrupted row. Log + skip — one bad
+			// row shouldn't poison the whole retrieval.
+			slog.Warn("rag decrypt failed", "rag_memory_id", id.String(), "error", decErr)
+			continue
+		}
+		ptStr := strings.TrimSpace(string(pt))
+		if ptStr == "" {
+			// Legacy markdown-mode rows with RAGSummaryChunk="" land
+			// here. Skip silently — they got ranked by zero-vector
+			// embedding back when the stub ran, so they're high in
+			// the result set on every query. Not actionable signal.
+			continue
+		}
+		hits = append(hits, memHit{id: id, plaintext: ptStr})
+	}
+	if rerr := rows.Err(); rerr != nil {
+		return "", fmt.Errorf("rag rows: %w", rerr)
+	}
+	if len(hits) == 0 {
+		return "", nil
+	}
+
+	// Bump last_accessed_at on the retrieved rows (best-effort).
+	// Background UPDATE so the cosmetic timestamp bump doesn't add
+	// latency to the worker's critical path.
+	hitIDs := make([]uuid.UUID, len(hits))
+	for i, h := range hits {
+		hitIDs[i] = h.id
+	}
+	go func(ids []uuid.UUID) {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if _, uerr := dbPool.Exec(bgCtx,
+			`UPDATE rag_memories SET last_accessed_at = now() WHERE id = ANY($1)`,
+			ids); uerr != nil {
+			slog.Warn("rag last_accessed bump failed", "ids_count", len(ids), "error", uerr)
+		}
+	}(hitIDs)
+
+	// Join with double-newlines so the LLM sees each memory as its
+	// own paragraph. Number them (1., 2., …) so prompt instructions
+	// can reference "the most relevant prior session" naturally.
+	var sb strings.Builder
+	for i, h := range hits {
+		next := fmt.Sprintf("%d. %s\n\n", i+1, h.plaintext)
+		// Prompt-budget guard. ragContextMaxChars is generous enough
+		// for the typical top-3 hits (~4500 chars) but trims when the
+		// LLM occasionally writes a longer summary or when ragTopK
+		// grows in the future.
+		if sb.Len()+len(next) > ragContextMaxChars {
+			break
+		}
+		sb.WriteString(next)
+	}
+	return strings.TrimRight(sb.String(), "\n"), nil
 }
 
 func persistReport(ctx context.Context, session *SessionContext, transcriptID string, report *ReportPayload, fullJSON string, tokenStats TokenStats, processingTime time.Duration) (string, error) {

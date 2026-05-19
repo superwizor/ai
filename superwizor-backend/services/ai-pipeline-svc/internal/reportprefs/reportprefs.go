@@ -119,32 +119,63 @@ func RenderFragment(p Preferences) string {
 }
 
 // MaxOutputTokens returns the recommended cap for call 2's
-// GenerationConfig.MaxOutputTokens based on the length preference.
-// llm-worker reads this and overrides its default cap (which is
-// geminiMaxOutReportDefault = 4096 for the standard target).
-// Returns 0 when the caller should keep its default — empty length
-// preference and explicit "standard" both mean "no opinion".
+// GenerationConfig.MaxOutputTokens. llm-worker reads this and
+// overrides its default cap (geminiMaxOutReportDefault = 12288 for
+// the standard target). Returns 0 when the caller should keep its
+// default — empty length preference and explicit "standard" both
+// mean "no opinion".
 //
-// Values are tuned to actual target lengths per the ZASADY ZWIĘZŁOŚCI
-// rules (Polish, ~600 tokens/page, 2-5 sentences/section). See the
-// matching comment block in llm-worker/main.go geminiMaxOut*
-// constants for the full token math.
+// Caps are 3× the prompt-directive target (see
+// TargetLengthDirective). The directive is what actually shapes
+// report length; the cap is a remote safety net. With cap = target,
+// the model occasionally overshot by 10–20% and triggered the
+// safety-retry (extra Vertex call). 3× headroom moves the cap well
+// out of the working zone, so safety-retry essentially never fires.
+// Cost impact: zero — Vertex bills on actual emitted tokens, not the
+// cap. See llm-worker/main.go geminiMaxOut* comment block for math.
 //
-// Was 16384/0/65535 before the 2026-05-18 calibration — those values
-// were "no real cap" and let the model fill arbitrary room. New
-// values give the LLM a target rather than just a ceiling.
+// section_emphasis bumps the cap further: each emphasized section is
+// a prompt nudge to expand that section, which costs tokens. Empirical
+// estimate ~500 tokens per emphasized section. We add `n × 500` to the
+// base cap and clamp at 32768 so a pathological prefs payload (all 7
+// sections emphasized + length=detailed) can't blow the hard ceiling.
+//
+// Bump history:
+//   - 2026-05-18: brief 16384→2048, standard 65535→4096, detailed
+//     65535→8192. Calibrated to actual target lengths.
+//   - 2026-05-19: 3× headroom bump (4096→12288 std, 2048→6144 brief,
+//     8192→24576 detailed) + section_emphasis budget scaling. Trade-
+//     off documented in docs/07_FAZA_3_AI_PIPELINE.md §Priorytet 7.
 func MaxOutputTokens(p Preferences) int32 {
+	var base int32
 	switch p.Length {
 	case "brief":
-		return 2048
-	case "standard":
-		// Same as the geminiMaxOutReportDefault — caller keeps its
-		// default (single source of truth for the standard target).
-		return 0
+		base = 6144
 	case "detailed":
-		return 8192
+		base = 24576
+	case "standard":
+		// Caller falls through to geminiMaxOutReportDefault when we
+		// return 0. EXCEPT when section_emphasis bumps the cap, in
+		// which case we materialize the standard default here so the
+		// bump has a base to grow on.
+		base = 0
+	default:
+		base = 0
 	}
-	return 0
+
+	if n := int32(len(p.SectionEmphasis)); n > 0 {
+		if base == 0 {
+			base = 12288 // standard default, materialized for the bump
+		}
+		base += n * 500
+		// Soft ceiling — well below geminiMaxOutReportHardCeiling
+		// (65535) but high enough to absorb the 7-section + detailed
+		// worst case (24576 + 3500 = 28076 < 32768).
+		if base > 32768 {
+			base = 32768
+		}
+	}
+	return base
 }
 
 // TargetLengthDirective returns the Polish prompt directive paired
