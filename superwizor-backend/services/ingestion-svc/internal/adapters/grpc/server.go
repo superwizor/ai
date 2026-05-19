@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -53,32 +55,17 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 	therapistIDPg := pgtype.UUID{Bytes: therapistID, Valid: true}
 	patientFileIDPg := pgtype.UUID{Bytes: patientFileID, Valid: true}
 
-	// Idempotency check
+	// Idempotency pre-check (migration 000018 added the right scope).
+	// On hit: short-circuit and return the cached row with a fresh
+	// signed URL. The cache-miss path below is wrapped with a
+	// unique-violation catch to handle the race between this lookup
+	// and the INSERT.
 	existing, err := s.queries.GetAudioUploadByIdempotency(ctx, db.GetAudioUploadByIdempotencyParams{
 		IdempotencyKey: &req.IdempotencyKey,
 		TherapistID:    therapistIDPg,
 	})
 	if err == nil {
-		// Already exists — regenerate signed URL
-		signedURL, expires, err := s.signer.GenerateUploadURL(ctx, existing.ObjectPath, existing.ContentType)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		
-		var existingID uuid.UUID
-		if existing.ID.Valid {
-			existingID = existing.ID.Bytes
-		}
-
-		return &ingestionv1.CreateAudioUploadResponse{
-			UploadId:           existingID.String(),
-			SignedUrl:          signedURL,
-			SignedUrlExpiresAt: timestamppb.New(expires),
-			ObjectPath:         existing.ObjectPath,
-			RequiredHeaders: map[string]string{
-				"x-goog-meta-source": "superwizor-mobile",
-			},
-		}, nil
+		return s.cachedAudioUploadResponse(ctx, existing)
 	}
 
 	ext := ".flac"
@@ -121,6 +108,23 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		ClientPlatform:    &req.ClientPlatform,
 	})
 	if err != nil {
+		// Race window: two concurrent requests with the same
+		// idempotency_key both passed the pre-check (lines 56–82) and
+		// reached this INSERT. Migration 000018 added
+		// ux_audio_uploads_idempotency partial unique index on
+		// (therapist_id, idempotency_key); the loser of the race hits
+		// this branch. Re-fetch by key + return the winner's row, same
+		// shape as the cache-hit response above.
+		if cname := uniqueViolationConstraint(err); cname == "ux_audio_uploads_idempotency" {
+			existing, gerr := s.queries.GetAudioUploadByIdempotency(ctx, db.GetAudioUploadByIdempotencyParams{
+				IdempotencyKey: &req.IdempotencyKey,
+				TherapistID:    therapistIDPg,
+			})
+			if gerr != nil {
+				return nil, status.Errorf(codes.Internal, "idempotency race refetch: %v", gerr)
+			}
+			return s.cachedAudioUploadResponse(ctx, existing)
+		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -143,6 +147,44 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 			"x-goog-meta-source": "superwizor-mobile",
 		},
 	}, nil
+}
+
+// cachedAudioUploadResponse rebuilds the gRPC response for an
+// already-existing audio_uploads row — used by both the cache-hit
+// path (pre-check) and the cache-miss race path (post-INSERT unique
+// violation). Same signed-URL regeneration: GCS signing is
+// stateless, so the URL is fresh but the object_path is the cached
+// one from the original create.
+func (s *Server) cachedAudioUploadResponse(ctx context.Context, existing db.AudioUpload) (*ingestionv1.CreateAudioUploadResponse, error) {
+	signedURL, expires, err := s.signer.GenerateUploadURL(ctx, existing.ObjectPath, existing.ContentType)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	var existingID uuid.UUID
+	if existing.ID.Valid {
+		existingID = existing.ID.Bytes
+	}
+	return &ingestionv1.CreateAudioUploadResponse{
+		UploadId:           existingID.String(),
+		SignedUrl:          signedURL,
+		SignedUrlExpiresAt: timestamppb.New(expires),
+		ObjectPath:         existing.ObjectPath,
+		RequiredHeaders: map[string]string{
+			"x-goog-meta-source": "superwizor-mobile",
+		},
+	}, nil
+}
+
+// uniqueViolationConstraint returns the violated constraint's name
+// for SQLSTATE 23505, or "" if err isn't a unique violation. Used by
+// CreateAudioUpload to distinguish a (therapist_id, idempotency_key)
+// race from any other unique-index trip (e.g. object_path).
+func uniqueViolationConstraint(err error) string {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		return pgErr.ConstraintName
+	}
+	return ""
 }
 
 func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.CompleteAudioUploadRequest) (*ingestionv1.CompleteAudioUploadResponse, error) {

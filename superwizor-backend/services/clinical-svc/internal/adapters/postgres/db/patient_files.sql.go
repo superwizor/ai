@@ -29,12 +29,13 @@ const createPatientFile = `-- name: CreatePatientFile :one
 INSERT INTO patient_files (
   therapist_id, patient_id, modality_id, working_alias,
   process_type, initial_complaint, has_recording_consent,
-  consent_given_at
+  consent_given_at, idempotency_key
 ) VALUES (
   $1, $2, $3, $4, $5, $6, $7,
-  CASE WHEN $7::boolean THEN now() ELSE NULL END
+  CASE WHEN $7::boolean THEN now() ELSE NULL END,
+  $8
 )
-RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at
+RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key
 `
 
 type CreatePatientFileParams struct {
@@ -45,6 +46,7 @@ type CreatePatientFileParams struct {
 	ProcessType         ProcessType `json:"process_type"`
 	InitialComplaint    *string     `json:"initial_complaint"`
 	HasRecordingConsent bool        `json:"has_recording_consent"`
+	IdempotencyKey      *string     `json:"idempotency_key"`
 }
 
 // patient_id is the FK to the paired users row (role='PATIENT'),
@@ -58,6 +60,12 @@ type CreatePatientFileParams struct {
 // audits routinely ask "when was consent given?". If consent is later
 // revoked (separate flow, not implemented yet), the timestamp stays as
 // the historical record of when it was originally granted.
+//
+// idempotency_key (migration 000017): client-supplied retry key. The
+// handler pre-checks via GetPatientFileByIdempotency before insert;
+// this query is also wrapped with a unique-violation catch on
+// ux_patient_files_idempotency for the race window between the
+// pre-check and the insert.
 func (q *Queries) CreatePatientFile(ctx context.Context, arg CreatePatientFileParams) (PatientFile, error) {
 	row := q.db.QueryRow(ctx, createPatientFile,
 		arg.TherapistID,
@@ -67,6 +75,7 @@ func (q *Queries) CreatePatientFile(ctx context.Context, arg CreatePatientFilePa
 		arg.ProcessType,
 		arg.InitialComplaint,
 		arg.HasRecordingConsent,
+		arg.IdempotencyKey,
 	)
 	var i PatientFile
 	err := row.Scan(
@@ -86,12 +95,13 @@ func (q *Queries) CreatePatientFile(ctx context.Context, arg CreatePatientFilePa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.IdempotencyKey,
 	)
 	return i, err
 }
 
 const getPatientFile = `-- name: GetPatientFile :one
-SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at FROM patient_files
+SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key FROM patient_files
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -117,13 +127,57 @@ func (q *Queries) GetPatientFile(ctx context.Context, id uuid.UUID) (PatientFile
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.IdempotencyKey,
+	)
+	return i, err
+}
+
+const getPatientFileByIdempotency = `-- name: GetPatientFileByIdempotency :one
+SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key FROM patient_files
+WHERE therapist_id = $1
+  AND idempotency_key = $2
+  AND deleted_at IS NULL
+LIMIT 1
+`
+
+type GetPatientFileByIdempotencyParams struct {
+	TherapistID    uuid.UUID `json:"therapist_id"`
+	IdempotencyKey *string   `json:"idempotency_key"`
+}
+
+// Lenient-mode idempotency lookup. Same (therapist_id, idempotency_key)
+// returns the first matching row regardless of payload differences.
+// Soft-deleted rows are excluded so the key is re-usable after a
+// DELETE — matches the partial unique index ux_patient_files_idempotency.
+// Empty/NULL key short-circuits in Go (handler doesn't call this query).
+func (q *Queries) GetPatientFileByIdempotency(ctx context.Context, arg GetPatientFileByIdempotencyParams) (PatientFile, error) {
+	row := q.db.QueryRow(ctx, getPatientFileByIdempotency, arg.TherapistID, arg.IdempotencyKey)
+	var i PatientFile
+	err := row.Scan(
+		&i.ID,
+		&i.TherapistID,
+		&i.PatientID,
+		&i.RelationID,
+		&i.ModalityID,
+		&i.WorkingAlias,
+		&i.ProcessType,
+		&i.InitialComplaint,
+		&i.IsProcessClosed,
+		&i.HasRecordingConsent,
+		&i.ConsentGivenAt,
+		&i.FirstConsultationAt,
+		&i.PrivateTherapistNotes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.IdempotencyKey,
 	)
 	return i, err
 }
 
 const getPatientFileWithUser = `-- name: GetPatientFileWithUser :one
 SELECT
-  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at,
+  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at, pf.idempotency_key,
   u.first_name  AS patient_first_name,
   u.last_name   AS patient_last_name,
   u.ui_language AS patient_language_code,
@@ -151,6 +205,7 @@ type GetPatientFileWithUserRow struct {
 	CreatedAt             time.Time          `json:"created_at"`
 	UpdatedAt             time.Time          `json:"updated_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
+	IdempotencyKey        *string            `json:"idempotency_key"`
 	PatientFirstName      *string            `json:"patient_first_name"`
 	PatientLastName       *string            `json:"patient_last_name"`
 	PatientLanguageCode   *string            `json:"patient_language_code"`
@@ -189,6 +244,7 @@ func (q *Queries) GetPatientFileWithUser(ctx context.Context, id uuid.UUID) (Get
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.IdempotencyKey,
 		&i.PatientFirstName,
 		&i.PatientLastName,
 		&i.PatientLanguageCode,
@@ -221,7 +277,7 @@ func (q *Queries) HardDeletePatientFile(ctx context.Context, arg HardDeletePatie
 }
 
 const listPatientFilesByTherapist = `-- name: ListPatientFilesByTherapist :many
-SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at FROM patient_files
+SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key FROM patient_files
 WHERE therapist_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -259,6 +315,7 @@ func (q *Queries) ListPatientFilesByTherapist(ctx context.Context, arg ListPatie
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.IdempotencyKey,
 		); err != nil {
 			return nil, err
 		}
@@ -272,7 +329,7 @@ func (q *Queries) ListPatientFilesByTherapist(ctx context.Context, arg ListPatie
 
 const listPatientFilesByTherapistWithUser = `-- name: ListPatientFilesByTherapistWithUser :many
 SELECT
-  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at,
+  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at, pf.idempotency_key,
   u.first_name  AS patient_first_name,
   u.last_name   AS patient_last_name,
   u.ui_language AS patient_language_code,
@@ -308,6 +365,7 @@ type ListPatientFilesByTherapistWithUserRow struct {
 	CreatedAt             time.Time          `json:"created_at"`
 	UpdatedAt             time.Time          `json:"updated_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
+	IdempotencyKey        *string            `json:"idempotency_key"`
 	PatientFirstName      *string            `json:"patient_first_name"`
 	PatientLastName       *string            `json:"patient_last_name"`
 	PatientLanguageCode   *string            `json:"patient_language_code"`
@@ -342,6 +400,7 @@ func (q *Queries) ListPatientFilesByTherapistWithUser(ctx context.Context, arg L
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.IdempotencyKey,
 			&i.PatientFirstName,
 			&i.PatientLastName,
 			&i.PatientLanguageCode,
@@ -411,7 +470,7 @@ UPDATE patient_files SET
   is_process_closed = $5,
   updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at
+RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key
 `
 
 type UpdatePatientFileParams struct {
@@ -455,6 +514,7 @@ func (q *Queries) UpdatePatientFile(ctx context.Context, arg UpdatePatientFilePa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.IdempotencyKey,
 	)
 	return i, err
 }

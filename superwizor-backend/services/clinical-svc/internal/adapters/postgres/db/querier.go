@@ -25,6 +25,12 @@ type Querier interface {
 	// audits routinely ask "when was consent given?". If consent is later
 	// revoked (separate flow, not implemented yet), the timestamp stays as
 	// the historical record of when it was originally granted.
+	//
+	// idempotency_key (migration 000017): client-supplied retry key. The
+	// handler pre-checks via GetPatientFileByIdempotency before insert;
+	// this query is also wrapped with a unique-violation catch on
+	// ux_patient_files_idempotency for the race window between the
+	// pre-check and the insert.
 	CreatePatientFile(ctx context.Context, arg CreatePatientFileParams) (PatientFile, error)
 	// Patient user CRUD — operates on rows in `users` with role='PATIENT'.
 	// Created/edited from clinical-svc.CreatePatientFile + UpdatePatientUser
@@ -56,6 +62,12 @@ type Querier interface {
 	// Kept for code paths that don't need user fields (e.g. internal
 	// authz/ownership checks). External callers use GetPatientFileWithUser.
 	GetPatientFile(ctx context.Context, id uuid.UUID) (PatientFile, error)
+	// Lenient-mode idempotency lookup. Same (therapist_id, idempotency_key)
+	// returns the first matching row regardless of payload differences.
+	// Soft-deleted rows are excluded so the key is re-usable after a
+	// DELETE — matches the partial unique index ux_patient_files_idempotency.
+	// Empty/NULL key short-circuits in Go (handler doesn't call this query).
+	GetPatientFileByIdempotency(ctx context.Context, arg GetPatientFileByIdempotencyParams) (PatientFile, error)
 	// Returns the patient_file plus the JOINed user fields used in the
 	// proto response. LEFT JOIN on users because patient_id may be NULL
 	// after DeletePatientUser left an orphan (only possible before

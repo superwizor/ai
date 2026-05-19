@@ -168,6 +168,38 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 		return nil, status.Error(codes.InvalidArgument, "patient_first_name required")
 	}
 
+	// Idempotency pre-check (migration 000017). Empty key opts out —
+	// legacy clients keep their current "always create" semantics.
+	// Non-empty key: if we've already created a kartoteka for this
+	// (therapist_id, idempotency_key) pair, short-circuit and return
+	// the cached row. Critical: this MUST run before the audit write
+	// below and before any side-effect (CreatePatientUser, etc.) so
+	// replays don't double-write.
+	if req.IdempotencyKey != "" {
+		existing, gerr := s.queries.GetPatientFileByIdempotency(ctx,
+			db.GetPatientFileByIdempotencyParams{
+				TherapistID:    therapistID,
+				IdempotencyKey: &req.IdempotencyKey,
+			})
+		if gerr == nil {
+			// Found — return cached row. Need modality + patient-user
+			// fields to reconstruct the response in the same shape as
+			// the first call returned. GetPatientFileWithUser does the
+			// JOIN we need; cheaper than re-running GetModalityByCode
+			// + GetPatientUser separately.
+			row, werr := s.queries.GetPatientFileWithUser(ctx, existing.ID)
+			if werr != nil {
+				return nil, status.Errorf(codes.Internal, "idempotency replay fetch: %v", werr)
+			}
+			return toProtoPatientFileFromJoinRow(row, ""), nil
+		}
+		// pgx.ErrNoRows is the expected "first call" path. Any other
+		// error is a real DB failure — surface it.
+		if !errors.Is(gerr, pgx.ErrNoRows) {
+			return nil, status.Errorf(codes.Internal, "idempotency lookup: %v", gerr)
+		}
+	}
+
 	// Resolve modality
 	modality, err := s.queries.GetModalityByCode(ctx, req.ModalityCode)
 	if err != nil {
@@ -217,6 +249,11 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 		return nil, status.Errorf(codes.Internal, "create patient user: %v", err)
 	}
 
+	var idempotencyKeyPtr *string
+	if req.IdempotencyKey != "" {
+		idempotencyKeyPtr = &req.IdempotencyKey
+	}
+
 	pf, err := qtx.CreatePatientFile(ctx, db.CreatePatientFileParams{
 		TherapistID:         therapistID,
 		PatientID:           pgtype.UUID{Bytes: patientUserID, Valid: true},
@@ -225,14 +262,39 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 		ProcessType:         dbProcessType,
 		InitialComplaint:    &req.InitialComplaint,
 		HasRecordingConsent: req.HasRecordingConsent,
+		IdempotencyKey:      idempotencyKeyPtr,
 	})
 	if err != nil {
-		// Unique violation on (therapist_id, working_alias) means
-		// this therapist already has a kartoteka with the same alias.
-		// Surface as AlreadyExists so Flutter can show a clear message.
-		if isUniqueViolation(err) {
-			return nil, status.Errorf(codes.AlreadyExists,
-				"working_alias %q already used by another active kartoteka", req.WorkingAlias)
+		// Two distinct unique-violation paths land here. Disambiguate
+		// by constraint name (pgconn surfaces it via PgError) so the
+		// caller gets a useful error.
+		if cname := uniqueViolationConstraint(err); cname != "" {
+			switch cname {
+			case "ux_patient_files_idempotency":
+				// Race: another goroutine won the (therapist_id,
+				// idempotency_key) insert between our pre-check and
+				// this INSERT. Roll back, re-fetch, return cached.
+				_ = tx.Rollback(ctx)
+				existing, gerr := s.queries.GetPatientFileByIdempotency(ctx,
+					db.GetPatientFileByIdempotencyParams{
+						TherapistID:    therapistID,
+						IdempotencyKey: &req.IdempotencyKey,
+					})
+				if gerr != nil {
+					return nil, status.Errorf(codes.Internal, "idempotency race refetch: %v", gerr)
+				}
+				row, werr := s.queries.GetPatientFileWithUser(ctx, existing.ID)
+				if werr != nil {
+					return nil, status.Errorf(codes.Internal, "idempotency race fetch full: %v", werr)
+				}
+				return toProtoPatientFileFromJoinRow(row, ""), nil
+			default:
+				// Default behavior: (therapist_id, working_alias) is the
+				// other partial unique index. Surface as AlreadyExists so
+				// Flutter can show "this alias is taken".
+				return nil, status.Errorf(codes.AlreadyExists,
+					"working_alias %q already used by another active kartoteka", req.WorkingAlias)
+			}
 		}
 		return nil, status.Errorf(codes.Internal, "create patient_file: %v", err)
 	}
@@ -275,6 +337,20 @@ func isUniqueViolation(err error) bool {
 		return pgErr.Code == pgerrcode.UniqueViolation
 	}
 	return false
+}
+
+// uniqueViolationConstraint returns the violated constraint's name
+// for SQLSTATE 23505 errors, or "" if err isn't a unique violation.
+// Used to disambiguate the two partial unique indexes on patient_files
+// (working_alias vs idempotency_key) inside CreatePatientFile so the
+// race-window catch can route correctly. Surface area kept narrow:
+// callers don't need to know about pgconn internals.
+func uniqueViolationConstraint(err error) string {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		return pgErr.ConstraintName
+	}
+	return ""
 }
 
 func (s *Server) GetPatientFile(ctx context.Context, req *clinicalv1.GetPatientFileRequest) (*clinicalv1.PatientFile, error) {

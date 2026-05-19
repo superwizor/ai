@@ -10,15 +10,34 @@
 -- audits routinely ask "when was consent given?". If consent is later
 -- revoked (separate flow, not implemented yet), the timestamp stays as
 -- the historical record of when it was originally granted.
+--
+-- idempotency_key (migration 000017): client-supplied retry key. The
+-- handler pre-checks via GetPatientFileByIdempotency before insert;
+-- this query is also wrapped with a unique-violation catch on
+-- ux_patient_files_idempotency for the race window between the
+-- pre-check and the insert.
 INSERT INTO patient_files (
   therapist_id, patient_id, modality_id, working_alias,
   process_type, initial_complaint, has_recording_consent,
-  consent_given_at
+  consent_given_at, idempotency_key
 ) VALUES (
   $1, $2, $3, $4, $5, $6, $7,
-  CASE WHEN $7::boolean THEN now() ELSE NULL END
+  CASE WHEN $7::boolean THEN now() ELSE NULL END,
+  $8
 )
 RETURNING *;
+
+-- name: GetPatientFileByIdempotency :one
+-- Lenient-mode idempotency lookup. Same (therapist_id, idempotency_key)
+-- returns the first matching row regardless of payload differences.
+-- Soft-deleted rows are excluded so the key is re-usable after a
+-- DELETE — matches the partial unique index ux_patient_files_idempotency.
+-- Empty/NULL key short-circuits in Go (handler doesn't call this query).
+SELECT * FROM patient_files
+WHERE therapist_id = $1
+  AND idempotency_key = $2
+  AND deleted_at IS NULL
+LIMIT 1;
 
 -- name: GetPatientFile :one
 -- Kept for code paths that don't need user fields (e.g. internal
