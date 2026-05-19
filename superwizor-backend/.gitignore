@@ -54,3 +54,13 @@ gen/
 gen/go/*
 !gen/go/go.mod
 !gen/go/go.sum
+
+# llm-eval offline matrix outputs + intermediate prompt dumps —
+# regenerated on every run, not source code.
+services/ai-pipeline-svc/llm-eval-results/
+services/ai-pipeline-svc/prompts/
+services/ai-pipeline-svc/testdata/
+
+# Temporary feature-branch build config — deleted on merge to main
+# per the file's own comment block.
+cloudbuild-feature-branch.yaml
