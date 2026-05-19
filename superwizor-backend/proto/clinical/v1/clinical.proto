@@ -366,10 +366,16 @@ message GetActiveSuggestionRequest {
 
 message PreferenceSuggestion {
   // Empty string = no active suggestion (Flutter hides banner).
-  // Non-empty = stable ID for telemetry round-trips.
+  // Non-empty = stable ID for telemetry round-trips. All
+  // alternatives below share this same id — the user sees ONE
+  // banner; suggestion_id identifies that banner session, not the
+  // specific dimension.
   string suggestion_id = 1;
   // Which preference dimension to nudge (matches a field name on
-  // identity.v1.ReportPreferences).
+  // identity.v1.ReportPreferences). This is the top candidate —
+  // dimension/from_value/to_value/reason_label/trigger_count
+  // duplicate alternatives[0] (or are empty if no candidate
+  // survives filtering).
   string dimension = 2;
   string from_value = 3;
   string to_value = 4;
@@ -378,6 +384,25 @@ message PreferenceSuggestion {
   string reason_label = 5;
   // How many negatives drove this (≥3 by current trigger).
   int32 trigger_count = 6;
+  // Ranked candidate list (highest chip count first). The first
+  // entry is identical to the top-level fields above; subsequent
+  // entries are fall-backs the client can iterate when the top
+  // candidate is a no-op (current pref already equals to_value).
+  // Empty when no candidates survive trigger-count + dimension +
+  // cooldown filtering. Always populated for non-empty
+  // suggestion_id responses (alternatives.length >= 1).
+  repeated PreferenceSuggestionCandidate alternatives = 7;
+}
+
+// PreferenceSuggestionCandidate is one row in the ranked candidate
+// list. Same shape as the top-level PreferenceSuggestion fields
+// minus suggestion_id (shared at the top level).
+message PreferenceSuggestionCandidate {
+  string dimension = 1;
+  string from_value = 2;
+  string to_value = 3;
+  string reason_label = 4;
+  int32 trigger_count = 5;
 }
 
 message LogPreferenceSuggestionRequest {

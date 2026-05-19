@@ -53,6 +53,61 @@ func TestPickTriggerChip_TwoChipsTie_PicksHighestCount(t *testing.T) {
 	}
 }
 
+func TestRankTriggerChips_ReturnsAllAboveThresholdDescending(t *testing.T) {
+	// 3 chips above threshold, one below. Result should be sorted by
+	// count (desc), and exclude the one below threshold.
+	rows := []db.ListRecentNegativeRatingsRow{
+		{Issues: []string{"za_malo_cytatow", "za_krotki", "zly_ton"}},
+		{Issues: []string{"za_malo_cytatow", "za_krotki", "zly_ton"}},
+		{Issues: []string{"za_malo_cytatow", "za_krotki", "zly_ton"}},
+		{Issues: []string{"za_malo_cytatow", "za_krotki"}},
+		{Issues: []string{"za_malo_cytatow", "inne"}}, // "inne" only appears once
+	}
+	got := rankTriggerChips(rows, 3)
+	if len(got) != 3 {
+		t.Fatalf("expected 3 chips above threshold, got %d (%+v)", len(got), got)
+	}
+	// za_malo_cytatow = 5, za_krotki = 4, zly_ton = 3.
+	if got[0].chip != "za_malo_cytatow" || got[0].count != 5 {
+		t.Errorf("rank 0: expected za_malo_cytatow=5, got %+v", got[0])
+	}
+	if got[1].chip != "za_krotki" || got[1].count != 4 {
+		t.Errorf("rank 1: expected za_krotki=4, got %+v", got[1])
+	}
+	if got[2].chip != "zly_ton" || got[2].count != 3 {
+		t.Errorf("rank 2: expected zly_ton=3, got %+v", got[2])
+	}
+}
+
+func TestRankTriggerChips_EqualCountsTieBreakAlpha(t *testing.T) {
+	// Two chips at the same count → alphabetical tie-break (stable,
+	// deterministic so the legacy single-chip behavior + the new
+	// alternatives ordering are reproducible across calls).
+	rows := []db.ListRecentNegativeRatingsRow{
+		{Issues: []string{"za_dlugi", "zly_ton"}},
+		{Issues: []string{"za_dlugi", "zly_ton"}},
+		{Issues: []string{"za_dlugi", "zly_ton"}},
+	}
+	got := rankTriggerChips(rows, 3)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 chips, got %d", len(got))
+	}
+	if got[0].chip != "za_dlugi" || got[1].chip != "zly_ton" {
+		t.Errorf("expected alpha tie-break za_dlugi → zly_ton, got %s → %s",
+			got[0].chip, got[1].chip)
+	}
+}
+
+func TestRankTriggerChips_EmptyWhenNothingMeetsThreshold(t *testing.T) {
+	rows := []db.ListRecentNegativeRatingsRow{
+		{Issues: []string{"za_dlugi"}},
+		{Issues: []string{"zly_ton"}},
+	}
+	if got := rankTriggerChips(rows, 3); len(got) != 0 {
+		t.Fatalf("expected empty result below threshold, got %+v", got)
+	}
+}
+
 func TestCountChipOccurrences(t *testing.T) {
 	rows := []db.ListRecentNegativeRatingsRow{
 		{Issues: []string{"za_dlugi", "zly_ton"}},

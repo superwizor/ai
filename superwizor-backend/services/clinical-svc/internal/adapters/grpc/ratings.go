@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -246,48 +247,65 @@ func (s *Server) GetActiveSuggestion(ctx context.Context, req *clinicalv1.GetAct
 		return nil, status.Error(codes.Internal, "scan recent ratings")
 	}
 
-	chip := pickTriggerChip(rows, suggestionTriggerCount)
-	if chip == "" {
+	// Rank ALL chips meeting the threshold (highest count first) so we
+	// can return a candidate list. Allowing the client to fall through
+	// to the second-most-common chip when the top one is a no-op (the
+	// therapist already has the suggested value set) is the only way
+	// to keep the banner useful when one dimension keeps "winning" but
+	// is already configured.
+	ranked := rankTriggerChips(rows, suggestionTriggerCount)
+	if len(ranked) == 0 {
 		return &clinicalv1.PreferenceSuggestion{}, nil
 	}
 
-	dimension := dimensionForChip[chip]
-	if dimension == "" {
-		// "inne" or unmapped chip — no actionable dimension. Treat as
-		// no suggestion to keep the banner free of dead-end nudges.
-		return &clinicalv1.PreferenceSuggestion{}, nil
-	}
-
-	// Cooldown check: did the therapist dismiss a banner for this
-	// dimension in the last 14 days? If so, suppress.
-	dismiss, err := s.queries.GetLatestSuggestionDismissForDimension(ctx,
-		db.GetLatestSuggestionDismissForDimensionParams{
-			TherapistID: therapistID,
-			Dimension:   dimension,
+	// Build the candidate list. Filter out:
+	//   - chips with no actionable dimension (e.g. "inne" → free-text)
+	//   - dimensions that crossed the 14-day dismiss cooldown
+	// The remaining list keeps the original ranking.
+	candidates := make([]*clinicalv1.PreferenceSuggestionCandidate, 0, len(ranked))
+	for _, chipCount := range ranked {
+		dim := dimensionForChip[chipCount.chip]
+		if dim == "" {
+			continue
+		}
+		dismiss, err := s.queries.GetLatestSuggestionDismissForDimension(ctx,
+			db.GetLatestSuggestionDismissForDimensionParams{
+				TherapistID: therapistID,
+				Dimension:   dim,
+			})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, status.Error(codes.Internal, "scan dismissals")
+		}
+		if err == nil && time.Since(dismiss.CreatedAt) < suggestionDismissCooldown {
+			continue
+		}
+		from, to := proposeNudge(dim, chipCount.chip)
+		candidates = append(candidates, &clinicalv1.PreferenceSuggestionCandidate{
+			Dimension:    dim,
+			FromValue:    from,
+			ToValue:      to,
+			ReasonLabel:  reasonLabelForChip[chipCount.chip],
+			TriggerCount: int32(chipCount.count),
 		})
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, status.Error(codes.Internal, "scan dismissals")
 	}
-	if err == nil && time.Since(dismiss.CreatedAt) < suggestionDismissCooldown {
+	if len(candidates) == 0 {
 		return &clinicalv1.PreferenceSuggestion{}, nil
 	}
 
-	// We don't know the therapist's *current* preferences here (those
-	// live in identity-svc). The Flutter client already has them
-	// loaded — it can decide whether the proposed nudge is a no-op
-	// based on its local state. Server-side we just say "this is the
-	// next value down/up the scale we'd propose." Clients filter
-	// no-op suggestions client-side before rendering.
-	from, to := proposeNudge(dimension, chip)
-	count := countChipOccurrences(rows, chip)
-
+	// Top-level fields duplicate candidates[0] for backwards compat
+	// with clients that don't yet iterate alternatives. Server-side
+	// we don't know the therapist's *current* preferences (those
+	// live in identity-svc) — the Flutter client filters no-op
+	// candidates client-side and picks the first actionable one.
+	top := candidates[0]
 	return &clinicalv1.PreferenceSuggestion{
 		SuggestionId: uuid.New().String(),
-		Dimension:    dimension,
-		FromValue:    from,
-		ToValue:      to,
-		ReasonLabel:  reasonLabelForChip[chip],
-		TriggerCount: int32(count),
+		Dimension:    top.Dimension,
+		FromValue:    top.FromValue,
+		ToValue:      top.ToValue,
+		ReasonLabel:  top.ReasonLabel,
+		TriggerCount: top.TriggerCount,
+		Alternatives: candidates,
 	}, nil
 }
 
@@ -329,26 +347,51 @@ func (s *Server) LogPreferenceSuggestion(ctx context.Context, req *clinicalv1.Lo
 // Pure helpers (no DB, no gRPC) — tested in ratings_test.go.
 // ────────────────────────────────────────────────────────────
 
-// pickTriggerChip returns the chip category that meets the trigger
-// count, or "" if none does. Tie-break: whichever crossed the
-// threshold first (i.e. has the most occurrences); pure max-count.
-// Empty input → "".
-func pickTriggerChip(rows []db.ListRecentNegativeRatingsRow, threshold int) string {
+// chipCount is one entry in rankTriggerChips's result — a chip
+// category and how often it appears in the lookback window.
+type chipCount struct {
+	chip  string
+	count int
+}
+
+// rankTriggerChips returns every chip whose occurrence count in the
+// lookback window meets the threshold, sorted highest-count first.
+// Tie-break: alphabetical chip string (stable, deterministic).
+//
+// Replaces pickTriggerChip (single result) — the caller can now pick
+// the first viable candidate after applying dimension/cooldown
+// filters and the Flutter no-op check.
+func rankTriggerChips(rows []db.ListRecentNegativeRatingsRow, threshold int) []chipCount {
 	counts := map[string]int{}
 	for _, r := range rows {
 		for _, iss := range r.Issues {
 			counts[iss]++
 		}
 	}
-	bestChip := ""
-	bestCount := 0
+	out := make([]chipCount, 0, len(counts))
 	for chip, n := range counts {
-		if n >= threshold && n > bestCount {
-			bestChip = chip
-			bestCount = n
+		if n >= threshold {
+			out = append(out, chipCount{chip: chip, count: n})
 		}
 	}
-	return bestChip
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].count != out[j].count {
+			return out[i].count > out[j].count
+		}
+		return out[i].chip < out[j].chip
+	})
+	return out
+}
+
+// pickTriggerChip — legacy single-chip API kept for ratings_test.go
+// compatibility. Returns the top-ranked chip or "" if none meets
+// the threshold. New code should call rankTriggerChips directly.
+func pickTriggerChip(rows []db.ListRecentNegativeRatingsRow, threshold int) string {
+	r := rankTriggerChips(rows, threshold)
+	if len(r) == 0 {
+		return ""
+	}
+	return r[0].chip
 }
 
 func countChipOccurrences(rows []db.ListRecentNegativeRatingsRow, chip string) int {
