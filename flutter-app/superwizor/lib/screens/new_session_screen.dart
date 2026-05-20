@@ -58,6 +58,21 @@ const Map<String, String> _kSupportedAudioTypes = {
   '.mp4': 'audio/mp4',
 };
 
+/// Content types Chirp 3 europe-central2 accepts directly. Anything not in
+/// this set must be routed through IngestionService.ConvertAudio before
+/// CompleteAudioUpload, or the server rejects with FAILED_PRECONDITION.
+/// Mirrors IsChirpSupported in ingestion-svc/internal/adapters/storage/converter.go.
+const Set<String> _kChirpNativeContentTypes = {
+  'audio/flac',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/ogg',
+  'audio/opus',
+  'audio/webm',
+  'audio/amr',
+  'audio/amr-wb',
+};
+
 class NewSessionScreen extends ConsumerStatefulWidget {
   final String patientFileId;
   final String therapistId;
@@ -586,6 +601,13 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
           needsServerSideConversion = true;
           contentType = ext == '.aac' ? 'audio/aac' : 'audio/mp4';
         }
+      }
+
+      // Any content type that isn't Chirp-native at this point (MP3, WMA,
+      // or an M4A/AAC that escaped client-side conversion) must go through
+      // server-side ConvertAudio before CompleteAudioUpload.
+      if (!_kChirpNativeContentTypes.contains(contentType)) {
+        needsServerSideConversion = true;
       }
 
       if (!mounted) return;
