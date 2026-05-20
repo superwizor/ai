@@ -29,3 +29,17 @@ RETURNING *;
 
 -- name: MarkAudioUploadFailed :exec
 UPDATE audio_uploads SET status = 'FAILED', error_message = $2 WHERE id = $1;
+
+-- name: UpdateAudioUploadAfterConversion :one
+-- Rewrites object_path + content_type after the new ConvertAudio RPC
+-- transcoded the GCS object (e.g. M4A → FLAC). Touched columns are
+-- bucket_name (defensively, in case we ever cross buckets — for now
+-- always the same) plus object_path + content_type. status stays at
+-- PENDING because conversion happens BEFORE CompleteAudioUpload.
+-- See services/ingestion-svc/internal/adapters/grpc/server.go::ConvertAudio.
+UPDATE audio_uploads SET
+    object_path  = $2,
+    content_type = $3,
+    bucket_name  = $4
+WHERE id = $1
+RETURNING *;

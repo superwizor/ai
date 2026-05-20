@@ -86,6 +86,21 @@ stt-worker (ProcessAudio):
   8. publishTranscriptCompleted on transcript.completed
   9. (TODO: delete audio object — currently relies on GCS OLM 48h)
  10. ACK Pub/Sub
+
+  On error:
+    - Classify via isTerminalSTTError (added 2026-05-20):
+      - Terminal (InvalidArgument / OutOfRange / NotFound /
+        PermissionDenied / Unauthenticated / file-level chirp errors /
+        codec-rejection signatures) → mark FAILED + return nil → ACK
+        the Pub/Sub message → no retry. Prevents the 6× cold-start
+        retry storm on unrecoverable inputs (bad codec, oversized file,
+        missing GCS object).
+      - Transient (Internal / Unavailable / DeadlineExceeded / DB or
+        KMS hiccups / unknown errors) → mark FAILED + return err →
+        Pub/Sub retries per topic policy.
+    - The session-status poison guard at handler entry remains as a
+      second line of defense for the edge case where the first attempt
+      crashes before reaching isTerminalSTTError.
        ↓
 Pub/Sub transcript.completed
        ↓

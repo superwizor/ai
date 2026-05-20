@@ -15,6 +15,23 @@ service IngestionService {
 
   // Stan uploadu
   rpc GetAudioUploadStatus(GetAudioUploadStatusRequest) returns (AudioUploadStatus);
+
+  // ConvertAudio transcodes an uploaded audio file to FLAC 16 kHz mono
+  // in place on GCS. Used as a fallback for client-side conversion
+  // failures (iOS pre-15 edge cases, Android pre-platform-channel-impl,
+  // corrupt M4A that AVAudioFile can't decode, web uploads). Synchronous:
+  // returns when the GCS object has been replaced and the
+  // audio_uploads row updated. ~30-60s for typical session length.
+  //
+  // No-op when audio_uploads.content_type is already a Chirp-supported
+  // codec (FLAC/WAV/OGG-OPUS/...). Re-callable; idempotent on the
+  // already-converted state.
+  //
+  // Caller flow:
+  //   1. CreateAudioUpload (content_type=audio/m4a) → PUT to GCS
+  //   2. ConvertAudio(audio_upload_id) → server transcodes
+  //   3. CompleteAudioUpload (unchanged)
+  rpc ConvertAudio(ConvertAudioRequest) returns (ConvertAudioResponse);
 }
 
 message CreateAudioUploadRequest {
@@ -62,4 +79,27 @@ message AudioUploadStatus {
   google.protobuf.Timestamp created_at = 3;
   google.protobuf.Timestamp expires_at = 4;
   string error_message = 5;
+}
+
+message ConvertAudioRequest {
+  // audio_uploads.id of the PENDING upload to transcode.
+  string audio_upload_id = 1;
+  // Optional: explicit target format. Defaults to "audio/flac" when
+  // empty. Supported: "audio/flac", "audio/wav" (LINEAR16). Other
+  // values return InvalidArgument.
+  string target_content_type = 2;
+}
+
+message ConvertAudioResponse {
+  // Final content_type after conversion. Always FLAC unless the
+  // caller asked for WAV (or the original was already Chirp-supported
+  // and the call was a no-op).
+  string content_type = 1;
+  // GCS object_path of the converted file. May equal the original
+  // path if the file was already in a supported format and conversion
+  // was a no-op.
+  string object_path = 2;
+  // True if ffmpeg actually ran. False on idempotent no-op
+  // (already-supported codec).
+  bool converted = 3;
 }

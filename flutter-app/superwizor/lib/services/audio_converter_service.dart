@@ -1,17 +1,28 @@
-// AudioConverterService — client-side WAV normalization.
+// AudioConverterService — client-side audio normalization.
 //
-// Chirp 3 on the eu-speech endpoint rejects 32-bit float WAV.
-// This converter reads a WAV file, detects if it's 32-bit float,
-// and rewrites it as 16-bit PCM WAV (which Chirp 3 supports).
-//
-// Pure Dart — no external dependencies, no ffmpeg.
+// Two responsibilities:
+//   1. WAV normalization — rewrites 32-bit float / 24-bit / etc. WAV
+//      as 16-bit PCM (Chirp 3 europe-central2 rejects non-PCM-int).
+//      Pure Dart; no native deps.
+//   2. M4A → FLAC conversion (iOS only) via the AudioConverter
+//      MethodChannel into ios/Runner/AudioConverter.swift. Uses
+//      AVAudioFile + AVAudioConverter + the AudioToolbox FLAC writer
+//      under the hood — all OS-built-in, no third-party deps.
+//      Server-side fallback (ingestion-svc.ConvertAudio) covers
+//      Android / web / iOS edge cases where decoding fails.
 
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+
+// Names match ios/Runner/AudioConverter.swift. Keep in sync.
+const _audioConverterMethodChannel = MethodChannel('ai.superwizor/audio_converter');
+const _audioConverterProgressChannel =
+    EventChannel('ai.superwizor/audio_converter/progress');
 
 class AudioConverterService {
   /// Normalizes a WAV file to 16-bit PCM if needed.
@@ -223,5 +234,89 @@ class AudioConverterService {
     final bd = ByteData(2);
     bd.setUint16(0, value, Endian.little);
     return bd.buffer.asUint8List();
+  }
+
+  /// Converts an M4A/AAC/MP4 file to FLAC 16 kHz mono 16-bit via the
+  /// iOS-native AudioConverter platform channel.
+  ///
+  /// Throws on any failure (codec unsupported, file corrupt, channel
+  /// not registered, platform != iOS). The caller is expected to
+  /// catch and fall through to the server-side
+  /// `ingestion.ConvertAudio` RPC.
+  ///
+  /// On success, returns the FLAC file. The original input is left in
+  /// place — the caller decides whether to delete it.
+  ///
+  /// [onProgress] receives values in [0.0, 1.0]. Throttled to whole
+  /// percent steps on the native side; expect ~100 ticks for a
+  /// typical clinical session.
+  Future<File> convertM4aToFlac(
+    String inputPath, {
+    void Function(double progress)? onProgress,
+  }) async {
+    if (!Platform.isIOS) {
+      // Android equivalent (Kotlin + MediaCodec) is deferred.
+      // Throwing here pushes the caller into the server-side fallback.
+      throw UnsupportedError(
+        'On-device M4A → FLAC conversion is iOS-only; '
+        'callers should fall through to the server ConvertAudio RPC '
+        'on other platforms.',
+      );
+    }
+
+    // Output path: same temp dir we use for WAV normalization.
+    final tmpDir = await getTemporaryDirectory();
+    if (!await tmpDir.exists()) {
+      await tmpDir.create(recursive: true);
+    }
+    final outputPath = p.join(
+      tmpDir.path,
+      'superwizor_m4aflac_${DateTime.now().millisecondsSinceEpoch}.flac',
+    );
+
+    debugPrint('[m4a-flac] input=$inputPath output=$outputPath');
+
+    // Subscribe to progress before invoking the method so we don't
+    // race the first emit. Cancelled in `finally`.
+    final progressSub = _audioConverterProgressChannel
+        .receiveBroadcastStream()
+        .listen((event) {
+      if (event is num) {
+        final p = event.toDouble().clamp(0.0, 1.0);
+        onProgress?.call(p);
+      }
+    });
+
+    try {
+      // ignore: avoid_dynamic_calls
+      final result = await _audioConverterMethodChannel.invokeMethod<String>(
+        'convertM4aToFlac',
+        <String, dynamic>{
+          'inputPath': inputPath,
+          'outputPath': outputPath,
+        },
+      );
+
+      if (result == null || result.isEmpty) {
+        throw StateError('AudioConverter returned empty path');
+      }
+
+      final outFile = File(result);
+      if (!await outFile.exists()) {
+        throw StateError('AudioConverter reported success but '
+            'output file is missing: $result');
+      }
+
+      final outSize = await outFile.length();
+      debugPrint('[m4a-flac] OK: ${(outSize / 1024 / 1024).toStringAsFixed(1)} MB');
+      return outFile;
+    } on PlatformException catch (e) {
+      debugPrint('[m4a-flac] platform exception: ${e.code} ${e.message}');
+      // Re-throw as a plain exception so callers don't need to
+      // import flutter/services to catch it.
+      throw StateError('Native conversion failed: ${e.code} ${e.message}');
+    } finally {
+      await progressSub.cancel();
+    }
   }
 }

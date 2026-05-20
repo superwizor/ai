@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 
+	gcs "cloud.google.com/go/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -49,6 +50,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Dedicated GCS client for the converter (download + upload during
+	// ConvertAudio). Separate from the Signer's internal client because
+	// Signer wraps a SignedURL-shaped API; the converter wants raw
+	// reader/writer access. Same SA, same IAM grants — no new IAM.
+	gcsClient, err := gcs.NewClient(ctx)
+	if err != nil {
+		slog.Error("gcs client", "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = gcsClient.Close() }()
+	converter := storage.NewConverter(gcsClient)
+
 	publisher, err := pubsub.NewPublisher(ctx, projectID)
 	if err != nil {
 		slog.Error("pubsub", "error", err)
@@ -56,7 +69,7 @@ func main() {
 	}
 
 	queries := db.New(pool)
-	srv := grpcadapter.NewServer(queries, signer, bucketName, publisher)
+	srv := grpcadapter.NewServer(queries, signer, converter, bucketName, publisher)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {

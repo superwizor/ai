@@ -618,11 +618,12 @@ type AudioUpload struct {
 	UploadStartedAt   pgtype.Timestamptz
 	UploadCompletedAt pgtype.Timestamptz
 	ExpiresAt         pgtype.Timestamptz
-	IdempotencyKey    *string
-	ClientAppVersion  *string
-	ClientPlatform    *string
-	ErrorMessage      *string
-	CreatedAt         pgtype.Timestamptz
+	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out.
+	IdempotencyKey   *string
+	ClientAppVersion *string
+	ClientPlatform   *string
+	ErrorMessage     *string
+	CreatedAt        pgtype.Timestamptz
 }
 
 type AuditEvent struct {
@@ -731,6 +732,20 @@ type PatientFile struct {
 	CreatedAt             pgtype.Timestamptz
 	UpdatedAt             pgtype.Timestamptz
 	DeletedAt             pgtype.Timestamptz
+	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out (legacy clients).
+	IdempotencyKey *string
+}
+
+// Suggestion engine telemetry. Pure analytics; safe to TRUNCATE. See docs/10_REPORT_CUSTOMIZATION.md §6.
+type PreferenceSuggestionsLog struct {
+	ID           pgtype.UUID
+	TherapistID  pgtype.UUID
+	Dimension    string
+	FromValue    string
+	ToValue      string
+	TriggerCount int32
+	Action       string
+	CreatedAt    pgtype.Timestamptz
 }
 
 type RagMemory struct {
@@ -769,6 +784,19 @@ type Report struct {
 	ParentReportID       pgtype.UUID
 	GenerationCount      int32
 	CreatedAt            pgtype.Timestamptz
+}
+
+// LLM-chat-style 👍/👎 feedback on therapist_reports. See docs/10_REPORT_CUSTOMIZATION.md §5.
+type ReportRating struct {
+	ID          pgtype.UUID
+	ReportID    pgtype.UUID
+	TherapistID pgtype.UUID
+	Rating      string
+	Issues      []string
+	Notes       string
+	Source      string
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type Session struct {
@@ -857,4 +885,6 @@ type User struct {
 	HasMarketingConsent bool
 	CreatedAt           pgtype.Timestamptz
 	DeletedAt           pgtype.Timestamptz
+	// Per-therapist style preferences for llm-worker call 2 report generation. Empty object {} = all defaults (current behavior). Shape documented in docs/10_REPORT_CUSTOMIZATION.md §7.
+	ReportPreferences []byte
 }

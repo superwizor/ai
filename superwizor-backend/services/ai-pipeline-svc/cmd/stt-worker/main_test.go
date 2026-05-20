@@ -1,6 +1,7 @@
 package sttworker
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -8,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/googleapis/rpc/status"
+	"google.golang.org/grpc/codes"
+	grpcstatuspkg "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/superwizor-ai/backend/pkg/transcription/chunker"
@@ -228,4 +231,75 @@ func labelsOf(words []chunker.Word) []string {
 		out[i] = w.SpeakerLabel
 	}
 	return out
+}
+
+// TestIsTerminalSTTError codifies the terminal-vs-retryable
+// classification for the Pub/Sub ack policy (added 2026-05-20).
+//
+// Coverage rules:
+//   - Terminal codes (InvalidArgument, OutOfRange, NotFound,
+//     PermissionDenied, Unauthenticated) ⇒ true.
+//   - Transient codes (Internal, Unavailable, DeadlineExceeded) ⇒ false.
+//   - File-level errors from ParseChirp3Results (text starting with
+//     "chirp 3 returned") ⇒ true regardless of inner code.
+//   - String fallbacks for codec-rejection signatures ⇒ true.
+//   - nil ⇒ false.
+//   - Plain errors (no grpc code, no known signature) ⇒ false
+//     (default to retry — safer to over-retry than under-retry).
+func TestIsTerminalSTTError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil error", nil, false},
+
+		// gRPC code path — terminal.
+		{"InvalidArgument", grpcstatuspkg.Error(codes.InvalidArgument, "bad codec"), true},
+		{"OutOfRange", grpcstatuspkg.Error(codes.OutOfRange, "file too big"), true},
+		{"NotFound", grpcstatuspkg.Error(codes.NotFound, "missing gcs object"), true},
+		{"PermissionDenied", grpcstatuspkg.Error(codes.PermissionDenied, "no iam"), true},
+		{"Unauthenticated", grpcstatuspkg.Error(codes.Unauthenticated, "no token"), true},
+
+		// Wrapped gRPC errors must also surface the code via
+		// grpcstatus.FromError; verifies the %w chain works.
+		{
+			"wrapped InvalidArgument",
+			fmt.Errorf("batch recognize: %w", grpcstatuspkg.Error(codes.InvalidArgument, "bad codec")),
+			true,
+		},
+
+		// gRPC code path — retryable.
+		{"Internal", grpcstatuspkg.Error(codes.Internal, "chirp 5xx"), false},
+		{"Unavailable", grpcstatuspkg.Error(codes.Unavailable, "network blip"), false},
+		{"DeadlineExceeded", grpcstatuspkg.Error(codes.DeadlineExceeded, "timeout"), false},
+
+		// File-level errors from ParseChirp3Results — always terminal.
+		// The literal "chirp 3 returned" prefix is what stt-worker
+		// emits; we match on it directly.
+		{
+			"chirp file-level error",
+			fmt.Errorf("chirp 3 returned 1 file-level error(s): code: INTERNAL"),
+			true,
+		},
+
+		// String fallbacks for codec-rejection signatures embedded in
+		// non-grpc errors (e.g. wrapped op.Wait outputs).
+		{"INVALID_ARGUMENT signature", fmt.Errorf("await: code = INVALID_ARGUMENT: bad audio"), true},
+		{"unsupported codec signature", fmt.Errorf("await: unsupported codec"), true},
+		{"audio too long", fmt.Errorf("await: audio is too long"), true},
+
+		// Default — unrecognized error → retry.
+		{"plain string error", fmt.Errorf("connection refused"), false},
+		{"db error", fmt.Errorf("pgxpool: connection timeout"), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isTerminalSTTError(tt.err)
+			if got != tt.want {
+				t.Errorf("isTerminalSTTError(%v) = %v, want %v", tt.err, got, tt.want)
+			}
+		})
+	}
 }

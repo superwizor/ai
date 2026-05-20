@@ -38,11 +38,56 @@ gen/go/ingestion/v1/
 service IngestionService {
   rpc RequestUploadTicket(RequestUploadTicketRequest) returns (UploadTicket);
   rpc ConfirmUpload(ConfirmUploadRequest) returns (ConfirmUploadResponse);
+  rpc ConvertAudio(ConvertAudioRequest) returns (ConvertAudioResponse);
   // (others in proto/ingestion/v1/ingestion.proto)
 }
 ```
 
 `UploadTicket` contains the V4 signed URL, the `upload_id`, and the GCS object path.
+
+### ConvertAudio (added 2026-05-20)
+
+Transcodes an uploaded audio file to FLAC 16 kHz mono **in place on
+GCS** via ffmpeg shelled out from the Cloud Run instance. Used as a
+fallback for clients that can't transcode on-device: Android (no
+platform-channel impl yet), web, and iOS edge cases where
+`AVAudioFile` fails to decode the source.
+
+Flow:
+1. Client calls `CreateAudioUpload(content_type=audio/m4a)` → PUT to GCS.
+2. Client tries `convertM4aToFlac` on-device (Phase 1 — `flutter-app/superwizor/ios/Runner/AudioConverter.swift`). On failure / non-iOS, client uploads the **original M4A**.
+3. Client calls `ConvertAudio(audio_upload_id)`. Server downloads, transcodes, uploads to a sibling `.flac` object, atomically updates `audio_uploads.object_path` + `content_type`, deletes the source object (OLM 48h backstop if delete races).
+4. Client calls `CompleteAudioUpload` as normal — stt-worker now sees a FLAC and Chirp accepts it.
+
+**Idempotent.** Re-calling on an already-Chirp-supported upload returns OK with `converted=false` and doesn't touch GCS.
+
+**Synchronous.** Takes ~30–60s for a typical 60-min session. Cloud Run request timeout must be ≥ 300s (see infra).
+
+**Failure modes:**
+- ffmpeg non-zero (corrupt input) → `InvalidArgument` with truncated stderr (≤ 1 KB).
+- GCS download fail → `Internal`/`Unavailable`.
+- DB update fail after GCS upload → orphan: row points at .m4a, GCS has only .flac. Manual repair: `UPDATE audio_uploads SET object_path='.flac' WHERE id=...`. Logged loudly so Sentry surfaces it.
+
+**Implementation:** `services/ingestion-svc/internal/adapters/storage/converter.go` (the ffmpeg shell-out + GCS streaming) + handler in `services/ingestion-svc/internal/adapters/grpc/server.go::ConvertAudio`.
+
+### CompleteAudioUpload codec gate (added 2026-05-20)
+
+Defense in depth for the M4A flow. `CompleteAudioUpload` now fetches
+the row BEFORE flipping status to UPLOADED and rejects unconverted
+non-Chirp codecs with `codes.FailedPrecondition`. The error message
+points the client at the remediation RPC by name and includes the
+offending codec.
+
+Catches: client uploads M4A, network hiccups between PUT and
+ConvertAudio, client retries from CompleteAudioUpload without
+re-running ConvertAudio. Without the gate, the M4A row would reach
+stt-worker, Chirp would reject it, and Pub/Sub would retry 6×.
+
+Uses `storage.IsChirpSupported` — the same allow-list (FLAC, WAV,
+WAV/x-wav, OGG, Opus, WebM, AMR, AMR-WB). Keep this list in sync with
+the rejection site in `ai-pipeline-svc/cmd/stt-worker/main.go`.
+
+**Dockerfile change:** runtime base switched from `distroless/static-debian12:nonroot` to `debian:bookworm-slim` because distroless has no shell + no apt. Net image growth ~80 MB (ffmpeg itself is ~50 MB).
 
 ## Tables owned
 

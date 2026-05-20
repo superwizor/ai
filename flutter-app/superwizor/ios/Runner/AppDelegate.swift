@@ -12,5 +12,13 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    // Register our hand-written AudioConverter plugin alongside the
+    // generated registrants. The MethodChannel bridges to
+    // lib/services/audio_converter_service.dart::convertM4aToFlac;
+    // the EventChannel feeds progress 0.0-1.0 back to the upload UI.
+    // See ios/Runner/AudioConverter.swift for the implementation.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AudioConverter") {
+      AudioConverter.register(with: registrar.messenger())
+    }
   }
 }

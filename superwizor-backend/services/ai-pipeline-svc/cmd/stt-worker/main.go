@@ -19,6 +19,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/pkg/i18n/lang"
@@ -196,9 +198,11 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 
 	transcriptResult, err := transcribeAudio(ctx, gcsURI, bcp47Lang, useNativeDiarization)
 	if err != nil {
-		logger.Error("chirp 3", "error", err)
-		_ = updateSessionStatus(ctx, event.SessionID, "FAILED")
-		return err
+		// Route through the terminal/transient classifier. Terminal
+		// errors (bad codec, file too large, missing object) ack the
+		// Pub/Sub message and stop the retry storm; transient errors
+		// return non-nil so Pub/Sub retries per topic policy.
+		return handleSTTError(ctx, logger, event.SessionID, err)
 	}
 
 	// 3. Chunkowanie słów na podstawie pauz (zob. pkg/transcription/chunker).
@@ -266,9 +270,12 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 	// 4. Persist blob (kanoniczny, ADR-IMPL-006) — chunki bez speaker labels.
 	transcriptID, err := persistTranscript(ctx, event.SessionID, transcriptResult, chunks, time.Since(startTime))
 	if err != nil {
+		// persistTranscript failures are almost always DB transient
+		// (Cloud SQL connection, KMS encrypt hiccup). Default to
+		// retry; isTerminalSTTError returns false for unrecognized
+		// errors, which is the safe default here.
 		logger.Error("persist", "error", err)
-		_ = updateSessionStatus(ctx, event.SessionID, "FAILED")
-		return err
+		return handleSTTError(ctx, logger, event.SessionID, err)
 	}
 
 	// 5. Update session: language_code (speaker_label_mapping zostanie wypełniony
@@ -570,6 +577,95 @@ func fillSpeakerLabels(words []chunker.Word, maxGapMS int64) {
 		words[i].SpeakerLabel = nextLabel
 		nextStartMS = words[i].StartMS
 	}
+}
+
+// isTerminalSTTError classifies an error from the STT pipeline as
+// "no point retrying" vs "should retry per Pub/Sub policy".
+//
+// Terminal (return nil from handler → Pub/Sub acks → no retry):
+//   - InvalidArgument: bad codec, malformed audio header, wrong sample
+//     rate. Chirp will keep rejecting on every retry.
+//   - OutOfRange: file size or duration outside Chirp limits.
+//   - NotFound: GCS object missing (OLM 48h already deleted it, or a
+//     race where the user retried CompleteAudioUpload after the object
+//     was GCed).
+//   - PermissionDenied / Unauthenticated: SA can't read the bucket;
+//     retrying doesn't fix IAM.
+//   - File-level errors from ParseChirp3Results carrying any of the
+//     above status strings (Chirp sometimes embeds the status as text
+//     inside a BatchRecognize success envelope).
+//
+// Retryable (return the error → Pub/Sub retries per topic policy):
+//   - Internal / Unavailable: Chirp 5xx, network blips, Cloud SQL
+//     hiccups, KMS transient.
+//   - DeadlineExceeded: caller-side timeout; Pub/Sub retry gets a fresh
+//     deadline.
+//   - Anything not on the terminal allowlist (default to retry — we'd
+//     rather over-retry a transient than under-retry a real failure).
+//
+// Before this helper landed (2026-05-20), every error path returned
+// non-nil. The poison-message guard at the top of ProcessAudio caught
+// most repeats by reading sessions.status, but the first attempt's
+// FAILED status had to land before retries started, which doesn't help
+// when the first attempt itself crashes before updateSessionStatus.
+// The terminal-ack path closes that gap.
+func isTerminalSTTError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// gRPC code on the wrapped chain. errors.As via FromError unwraps
+	// any %w-wrapped grpc error and surfaces the code; direct grpc
+	// errors are matched too.
+	if s, ok := grpcstatus.FromError(err); ok {
+		switch s.Code() {
+		case codes.InvalidArgument,
+			codes.OutOfRange,
+			codes.NotFound,
+			codes.PermissionDenied,
+			codes.Unauthenticated:
+			return true
+		}
+	}
+	// String fallback for file-level errors from ParseChirp3Results.
+	// Chirp's BatchRecognizeFileResult.Error is a google.rpc.Status that
+	// we stringify into the wrapped message; pattern-match the known
+	// terminal signatures.
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "chirp 3 returned"):
+		// File-level error always means "this specific input is bad" —
+		// retrying with the same input gets the same result. Terminal.
+		return true
+	case strings.Contains(msg, "INVALID_ARGUMENT"),
+		strings.Contains(msg, "invalid_argument"),
+		strings.Contains(msg, "unsupported codec"),
+		strings.Contains(msg, "Unsupported audio"),
+		strings.Contains(msg, "audio is too long"),
+		strings.Contains(msg, "audio is too short"):
+		return true
+	}
+	return false
+}
+
+// handleSTTError centralizes the FAILED-write + ack-or-retry decision
+// for any error during transcription. Marks the session FAILED
+// regardless (best-effort; idempotent write to sessions.status), then
+// returns either nil (ack — terminal) or the original error (retry —
+// transient).
+//
+// Returning the original `err` preserves stack/message for Cloud
+// Logging at the function framework layer.
+func handleSTTError(ctx context.Context, logger *slog.Logger, sessionID string, err error) error {
+	_ = updateSessionStatus(ctx, sessionID, "FAILED")
+	if isTerminalSTTError(err) {
+		logger.Error("stt: terminal failure — acking pubsub, no retry",
+			"error", err,
+			"hint", "check audio codec (Chirp 3 accepts FLAC/WAV/OGG/AMR; M4A must be transcoded via ingestion-svc.ConvertAudio before CompleteAudioUpload)")
+		return nil
+	}
+	logger.Error("stt: transient failure — returning error, pubsub will retry",
+		"error", err)
+	return err
 }
 
 func updateSessionStatus(ctx context.Context, sessionID, status string) error {

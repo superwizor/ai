@@ -56,6 +56,28 @@ class IngestionServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getAudioUploadStatus, request, options: options);
   }
 
+  /// ConvertAudio transcodes an uploaded audio file to FLAC 16 kHz mono
+  /// in place on GCS. Used as a fallback for client-side conversion
+  /// failures (iOS pre-15 edge cases, Android pre-platform-channel-impl,
+  /// corrupt M4A that AVAudioFile can't decode, web uploads). Synchronous:
+  /// returns when the GCS object has been replaced and the
+  /// audio_uploads row updated. ~30-60s for typical session length.
+  ///
+  /// No-op when audio_uploads.content_type is already a Chirp-supported
+  /// codec (FLAC/WAV/OGG-OPUS/...). Re-callable; idempotent on the
+  /// already-converted state.
+  ///
+  /// Caller flow:
+  ///   1. CreateAudioUpload (content_type=audio/m4a) → PUT to GCS
+  ///   2. ConvertAudio(audio_upload_id) → server transcodes
+  ///   3. CompleteAudioUpload (unchanged)
+  $grpc.ResponseFuture<$0.ConvertAudioResponse> convertAudio(
+    $0.ConvertAudioRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$convertAudio, request, options: options);
+  }
+
   // method descriptors
 
   static final _$createAudioUpload = $grpc.ClientMethod<
@@ -73,6 +95,11 @@ class IngestionServiceClient extends $grpc.Client {
           '/ingestion.v1.IngestionService/GetAudioUploadStatus',
           ($0.GetAudioUploadStatusRequest value) => value.writeToBuffer(),
           $0.AudioUploadStatus.fromBuffer);
+  static final _$convertAudio =
+      $grpc.ClientMethod<$0.ConvertAudioRequest, $0.ConvertAudioResponse>(
+          '/ingestion.v1.IngestionService/ConvertAudio',
+          ($0.ConvertAudioRequest value) => value.writeToBuffer(),
+          $0.ConvertAudioResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('ingestion.v1.IngestionService')
@@ -107,6 +134,15 @@ abstract class IngestionServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.GetAudioUploadStatusRequest.fromBuffer(value),
         ($0.AudioUploadStatus value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.ConvertAudioRequest, $0.ConvertAudioResponse>(
+            'ConvertAudio',
+            convertAudio_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.ConvertAudioRequest.fromBuffer(value),
+            ($0.ConvertAudioResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.CreateAudioUploadResponse> createAudioUpload_Pre(
@@ -135,4 +171,13 @@ abstract class IngestionServiceBase extends $grpc.Service {
 
   $async.Future<$0.AudioUploadStatus> getAudioUploadStatus(
       $grpc.ServiceCall call, $0.GetAudioUploadStatusRequest request);
+
+  $async.Future<$0.ConvertAudioResponse> convertAudio_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ConvertAudioRequest> $request) async {
+    return convertAudio($call, await $request);
+  }
+
+  $async.Future<$0.ConvertAudioResponse> convertAudio(
+      $grpc.ServiceCall call, $0.ConvertAudioRequest request);
 }

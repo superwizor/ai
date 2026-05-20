@@ -204,3 +204,39 @@ final $typed_data.Uint8List audioUploadStatusDescriptor = $convert.base64Decode(
     'VGltZXN0YW1wUgljcmVhdGVkQXQSOQoKZXhwaXJlc19hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2'
     'J1Zi5UaW1lc3RhbXBSCWV4cGlyZXNBdBIjCg1lcnJvcl9tZXNzYWdlGAUgASgJUgxlcnJvck1l'
     'c3NhZ2U=');
+
+@$core.Deprecated('Use convertAudioRequestDescriptor instead')
+const ConvertAudioRequest$json = {
+  '1': 'ConvertAudioRequest',
+  '2': [
+    {'1': 'audio_upload_id', '3': 1, '4': 1, '5': 9, '10': 'audioUploadId'},
+    {
+      '1': 'target_content_type',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'targetContentType'
+    },
+  ],
+};
+
+/// Descriptor for `ConvertAudioRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List convertAudioRequestDescriptor = $convert.base64Decode(
+    'ChNDb252ZXJ0QXVkaW9SZXF1ZXN0EiYKD2F1ZGlvX3VwbG9hZF9pZBgBIAEoCVINYXVkaW9VcG'
+    'xvYWRJZBIuChN0YXJnZXRfY29udGVudF90eXBlGAIgASgJUhF0YXJnZXRDb250ZW50VHlwZQ==');
+
+@$core.Deprecated('Use convertAudioResponseDescriptor instead')
+const ConvertAudioResponse$json = {
+  '1': 'ConvertAudioResponse',
+  '2': [
+    {'1': 'content_type', '3': 1, '4': 1, '5': 9, '10': 'contentType'},
+    {'1': 'object_path', '3': 2, '4': 1, '5': 9, '10': 'objectPath'},
+    {'1': 'converted', '3': 3, '4': 1, '5': 8, '10': 'converted'},
+  ],
+};
+
+/// Descriptor for `ConvertAudioResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List convertAudioResponseDescriptor = $convert.base64Decode(
+    'ChRDb252ZXJ0QXVkaW9SZXNwb25zZRIhCgxjb250ZW50X3R5cGUYASABKAlSC2NvbnRlbnRUeX'
+    'BlEh8KC29iamVjdF9wYXRoGAIgASgJUgpvYmplY3RQYXRoEhwKCWNvbnZlcnRlZBgDIAEoCFIJ'
+    'Y29udmVydGVk');

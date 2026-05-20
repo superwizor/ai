@@ -119,6 +119,30 @@ Firestore rules enforce read-only for clients; backend writes via Admin SDK (not
 | **ADR-005 (gRPC sync)** | All sync calls are gRPC, not REST. If a future endpoint is REST (e.g., the therapist registration form), it must be a separate, declared exception. |
 | **ADR-IMPL-002** | Display speaker labels from `sessions.speaker_label_mapping` (e.g. "Osoba 1") OR allow therapist to rename them via `clinical-svc.UpdateSpeakerLabels`. Never hard-code "Therapist"/"Patient" in the UI. |
 
+## iPhone M4A upload flow (added 2026-05-20)
+
+iPhone Voice Memos / WhatsApp voice notes / iOS share-sheet exports
+all land as AAC-in-MP4. Chirp 3 rejects this codec. Two-layer fix:
+
+1. **Client-side (iOS native)** — `ios/Runner/AudioConverter.swift`
+   uses `AVAudioFile` + `AVAudioConverter` + AudioToolbox's FLAC
+   writer (`kAudioFormatFLAC`) to transcode on-device. 5-10x
+   realtime on iPhone 15. Exposes a `MethodChannel` named
+   `ai.superwizor/audio_converter` plus a sibling
+   `EventChannel` for progress. Dart wrapper lives at
+   `lib/services/audio_converter_service.dart::convertM4aToFlac`.
+
+2. **Server-side fallback** — on Android/web/iOS-decode-failure,
+   the client uploads the original M4A then calls
+   `ingestion.ConvertAudio(audio_upload_id)`. Server transcodes via
+   ffmpeg in the ingestion-svc Cloud Run image. See
+   `docs/agents/04_ingestion-svc.md#ConvertAudio`.
+
+The wiring in `lib/screens/new_session_screen.dart::_convertAndUploadFile`
+adds an `ext == '.m4a' || ext == '.mp4' || ext == '.aac'` branch with
+a try/catch that flips `needsServerSideConversion=true` on iOS
+decode failure or non-iOS platforms.
+
 ## Recording → upload flow
 
 We must switch the recording encoder to a format natively supported by chirp_3 (e.g., FLAC, WAV, or OPUS).

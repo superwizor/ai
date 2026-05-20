@@ -492,6 +492,13 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
       String contentType = _kSupportedAudioTypes[ext] ?? 'audio/wav';
       int uploadSize = originalSizeBytes;
 
+      // Set to true when client-side M4A→FLAC fails and we need the
+      // backend's ConvertAudio fallback to fire after upload but
+      // before CompleteAudioUpload. Stays false on the happy path
+      // (FLAC live recording, WAV upload, or successful iOS native
+      // M4A conversion).
+      bool needsServerSideConversion = false;
+
       // ── Phase 1: Normalize WAV if needed (0% → 25%) ──
       if (ext == '.wav') {
         if (!mounted) return;
@@ -534,6 +541,53 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
         contentType = 'audio/wav';
       }
 
+      // ── M4A / AAC / MP4 branch: convert to FLAC client-side ──
+      //
+      // Chirp 3 europe-central2 doesn't accept AAC-in-MP4 — see
+      // d752639 (the block that this work re-enables). On iOS we
+      // transcode on-device via ios/Runner/AudioConverter.swift,
+      // which uses AudioToolbox's hardware AAC decoder + FLAC
+      // writer; 5-10x realtime on iPhone 15. On any failure
+      // (Android, web, iOS edge cases, corrupt files) we fall
+      // through to the server-side ConvertAudio RPC after upload.
+      if (ext == '.m4a' || ext == '.mp4' || ext == '.aac') {
+        if (!mounted) return;
+        setState(() => _uploadStatusLabel = 'Konwertuję plik audio...');
+        _setUploadProgress(0.02);
+
+        if (Platform.isIOS) {
+          try {
+            final converter = AudioConverterService();
+            final flac = await converter.convertM4aToFlac(
+              file.path,
+              onProgress: (p) {
+                if (!mounted) return;
+                _setUploadProgress(p * 0.25);
+              },
+            );
+            tempFile = flac;
+            fileToUpload = flac;
+            contentType = 'audio/flac';
+            uploadSize = await flac.length();
+            debugPrint('[file-upload] M4A → FLAC OK: '
+                '${(uploadSize / 1024 / 1024).toStringAsFixed(1)} MB');
+          } catch (e, st) {
+            debugPrint('[file-upload] M4A → FLAC FAILED, falling back to '
+                'server-side ConvertAudio: $e\n$st');
+            // Upload the original M4A; server will transcode after
+            // we land it on GCS.
+            needsServerSideConversion = true;
+            contentType = 'audio/mp4';
+          }
+        } else {
+          // Android / web — no on-device path yet. Server fallback.
+          debugPrint('[file-upload] non-iOS platform, using server-side '
+              'ConvertAudio for $ext');
+          needsServerSideConversion = true;
+          contentType = ext == '.aac' ? 'audio/aac' : 'audio/mp4';
+        }
+      }
+
       if (!mounted) return;
       setState(() => _uploadStatusLabel = 'Przygotowywanie...');
       _setUploadProgress(0.28);
@@ -570,6 +624,37 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
         contentType: contentType,
         totalBytes: uploadSize,
       );
+
+      // ── Server-side fallback conversion (if client failed) ──
+      //
+      // ingestion-svc.ConvertAudio transcodes the just-uploaded M4A
+      // into FLAC on the server (ffmpeg in the Cloud Run image).
+      // Synchronous; takes 30-60s for typical clinical session
+      // lengths. We block here before CompleteAudioUpload because
+      // CompleteAudioUpload triggers the STT pipeline — Chirp would
+      // reject the M4A and put the session into FAILED.
+      //
+      // Idempotent on the server side; safe to retry on transient
+      // network errors. We don't have automatic retry here yet —
+      // surface the error to the user and let them try again.
+      if (needsServerSideConversion) {
+        if (!mounted) return;
+        setState(() => _uploadStatusLabel = 'Konwersja po stronie serwera...');
+        _setUploadProgress(0.91);
+        try {
+          final convertRes = await client.convertAudio(ConvertAudioRequest(
+            audioUploadId: uploadId,
+            targetContentType: 'audio/flac',
+          ));
+          debugPrint('[file-upload] server-side conversion done: '
+              'object_path=${convertRes.objectPath} '
+              'content_type=${convertRes.contentType} '
+              'converted=${convertRes.converted}');
+        } catch (e, st) {
+          debugPrint('[file-upload] server-side ConvertAudio FAILED: $e\n$st');
+          rethrow;
+        }
+      }
 
       if (!mounted) return;
       setState(() => _uploadStatusLabel = 'Finalizacja...');

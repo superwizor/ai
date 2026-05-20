@@ -641,6 +641,162 @@ class AudioUploadStatus extends $pb.GeneratedMessage {
   void clearErrorMessage() => $_clearField(5);
 }
 
+class ConvertAudioRequest extends $pb.GeneratedMessage {
+  factory ConvertAudioRequest({
+    $core.String? audioUploadId,
+    $core.String? targetContentType,
+  }) {
+    final result = create();
+    if (audioUploadId != null) result.audioUploadId = audioUploadId;
+    if (targetContentType != null) result.targetContentType = targetContentType;
+    return result;
+  }
+
+  ConvertAudioRequest._();
+
+  factory ConvertAudioRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ConvertAudioRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ConvertAudioRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'ingestion.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'audioUploadId')
+    ..aOS(2, _omitFieldNames ? '' : 'targetContentType')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConvertAudioRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConvertAudioRequest copyWith(void Function(ConvertAudioRequest) updates) =>
+      super.copyWith((message) => updates(message as ConvertAudioRequest))
+          as ConvertAudioRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ConvertAudioRequest create() => ConvertAudioRequest._();
+  @$core.override
+  ConvertAudioRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ConvertAudioRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ConvertAudioRequest>(create);
+  static ConvertAudioRequest? _defaultInstance;
+
+  /// audio_uploads.id of the PENDING upload to transcode.
+  @$pb.TagNumber(1)
+  $core.String get audioUploadId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set audioUploadId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAudioUploadId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAudioUploadId() => $_clearField(1);
+
+  /// Optional: explicit target format. Defaults to "audio/flac" when
+  /// empty. Supported: "audio/flac", "audio/wav" (LINEAR16). Other
+  /// values return InvalidArgument.
+  @$pb.TagNumber(2)
+  $core.String get targetContentType => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set targetContentType($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTargetContentType() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTargetContentType() => $_clearField(2);
+}
+
+class ConvertAudioResponse extends $pb.GeneratedMessage {
+  factory ConvertAudioResponse({
+    $core.String? contentType,
+    $core.String? objectPath,
+    $core.bool? converted,
+  }) {
+    final result = create();
+    if (contentType != null) result.contentType = contentType;
+    if (objectPath != null) result.objectPath = objectPath;
+    if (converted != null) result.converted = converted;
+    return result;
+  }
+
+  ConvertAudioResponse._();
+
+  factory ConvertAudioResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ConvertAudioResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ConvertAudioResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'ingestion.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'contentType')
+    ..aOS(2, _omitFieldNames ? '' : 'objectPath')
+    ..aOB(3, _omitFieldNames ? '' : 'converted')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConvertAudioResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConvertAudioResponse copyWith(void Function(ConvertAudioResponse) updates) =>
+      super.copyWith((message) => updates(message as ConvertAudioResponse))
+          as ConvertAudioResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ConvertAudioResponse create() => ConvertAudioResponse._();
+  @$core.override
+  ConvertAudioResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ConvertAudioResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ConvertAudioResponse>(create);
+  static ConvertAudioResponse? _defaultInstance;
+
+  /// Final content_type after conversion. Always FLAC unless the
+  /// caller asked for WAV (or the original was already Chirp-supported
+  /// and the call was a no-op).
+  @$pb.TagNumber(1)
+  $core.String get contentType => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set contentType($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContentType() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContentType() => $_clearField(1);
+
+  /// GCS object_path of the converted file. May equal the original
+  /// path if the file was already in a supported format and conversion
+  /// was a no-op.
+  @$pb.TagNumber(2)
+  $core.String get objectPath => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set objectPath($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasObjectPath() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearObjectPath() => $_clearField(2);
+
+  /// True if ffmpeg actually ran. False on idempotent no-op
+  /// (already-supported codec).
+  @$pb.TagNumber(3)
+  $core.bool get converted => $_getBF(2);
+  @$pb.TagNumber(3)
+  set converted($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasConverted() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearConverted() => $_clearField(3);
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

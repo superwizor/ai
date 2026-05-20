@@ -202,6 +202,61 @@ func (q *Queries) MarkAudioUploadFailed(ctx context.Context, arg MarkAudioUpload
 	return err
 }
 
+const updateAudioUploadAfterConversion = `-- name: UpdateAudioUploadAfterConversion :one
+UPDATE audio_uploads SET
+    object_path  = $2,
+    content_type = $3,
+    bucket_name  = $4
+WHERE id = $1
+RETURNING id, therapist_id, patient_file_id, session_id, bucket_name, object_path, content_type, file_size_bytes, duration_seconds, sample_rate_hz, chunk_count, status, upload_started_at, upload_completed_at, expires_at, idempotency_key, client_app_version, client_platform, error_message, created_at
+`
+
+type UpdateAudioUploadAfterConversionParams struct {
+	ID          pgtype.UUID
+	ObjectPath  string
+	ContentType string
+	BucketName  string
+}
+
+// Rewrites object_path + content_type after the new ConvertAudio RPC
+// transcoded the GCS object (e.g. M4A → FLAC). Touched columns are
+// bucket_name (defensively, in case we ever cross buckets — for now
+// always the same) plus object_path + content_type. status stays at
+// PENDING because conversion happens BEFORE CompleteAudioUpload.
+// See services/ingestion-svc/internal/adapters/grpc/server.go::ConvertAudio.
+func (q *Queries) UpdateAudioUploadAfterConversion(ctx context.Context, arg UpdateAudioUploadAfterConversionParams) (AudioUpload, error) {
+	row := q.db.QueryRow(ctx, updateAudioUploadAfterConversion,
+		arg.ID,
+		arg.ObjectPath,
+		arg.ContentType,
+		arg.BucketName,
+	)
+	var i AudioUpload
+	err := row.Scan(
+		&i.ID,
+		&i.TherapistID,
+		&i.PatientFileID,
+		&i.SessionID,
+		&i.BucketName,
+		&i.ObjectPath,
+		&i.ContentType,
+		&i.FileSizeBytes,
+		&i.DurationSeconds,
+		&i.SampleRateHz,
+		&i.ChunkCount,
+		&i.Status,
+		&i.UploadStartedAt,
+		&i.UploadCompletedAt,
+		&i.ExpiresAt,
+		&i.IdempotencyKey,
+		&i.ClientAppVersion,
+		&i.ClientPlatform,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const updateAudioUploadStatus = `-- name: UpdateAudioUploadStatus :exec
 UPDATE audio_uploads
 SET status = $2, error_message = $3, upload_completed_at = now()
