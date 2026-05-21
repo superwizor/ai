@@ -10,6 +10,7 @@ import '../providers/patient_provider.dart';
 import '../widgets/add_patient_modal.dart';
 import '../widgets/edit_patient_modal.dart';
 import '../widgets/euphire_bottom_sheet.dart';
+import '../widgets/pending_uploads_pill.dart';
 import '../widgets/preference_suggestion_banner.dart';
 import 'client_details_screen.dart';
 import 'menu_screen.dart';
@@ -70,6 +71,8 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                     const Spacer(),
+                    const PendingUploadsPill(),
+                    const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.menu, color: EuphireColors.frostWhite),
                       onPressed: () {
