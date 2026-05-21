@@ -32,6 +32,8 @@ import '../providers/grpc_provider.dart';
 import '../providers/services_provider.dart';
 import '../services/session_state_listener.dart';
 import '../theme/euphire_theme.dart';
+import '../uploads/pending_upload.dart';
+import '../uploads/upload_queue_provider.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_session_status_stepper.dart';
@@ -39,9 +41,27 @@ import 'home_screen.dart';
 import 'transcript_screen.dart';
 
 class SessionStatusScreen extends ConsumerStatefulWidget {
-  final String sessionId;
+  /// The server-side session UUID. Optional — when launched via
+  /// the upload queue (new_session / recording screens), the
+  /// sessionId is not known up front and arrives once
+  /// CompleteAudioUpload succeeds inside the worker. In that case
+  /// pass [localId] instead; this screen watches the queue row
+  /// and transparently switches over to the sessionId-driven
+  /// listeners when it lands.
+  final String? sessionId;
 
-  const SessionStatusScreen({super.key, required this.sessionId});
+  /// The upload queue's local row ID. When provided, the screen
+  /// renders upload-phase progress from the queue until
+  /// [PendingUpload.sessionId] is populated, then switches to the
+  /// server-side processing listeners (Firestore + clinical-svc).
+  final String? localId;
+
+  const SessionStatusScreen({
+    super.key,
+    this.sessionId,
+    this.localId,
+  }) : assert(sessionId != null || localId != null,
+            'Either sessionId or localId must be provided');
 
   @override
   ConsumerState<SessionStatusScreen> createState() =>
@@ -52,9 +72,13 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     with TickerProviderStateMixin {
   StreamSubscription<SessionState>? _sub;
   Timer? _fallbackTimer;
-  SessionStepperPhase _phase = SessionStepperPhase.uploaded;
+  SessionStepperPhase _phase = SessionStepperPhase.pending;
   bool _routedAway = false;
   bool _failureShown = false;
+  /// Resolved sessionId — either passed in via widget.sessionId, or
+  /// observed on the queue row after CompleteAudioUpload succeeds.
+  /// Null while we're still in the upload phase.
+  String? _resolvedSessionId;
 
   // ── Success Cascade controllers ──
   late final AnimationController _checkScaleAnim;
@@ -73,7 +97,28 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-    _startListeners();
+
+    // Eager-resolve sessionId for the legacy entry point (when caller
+    // already has one from a prior synchronous upload). For the
+    // queue-based entry point we resolve it lazily as the worker
+    // advances; see _onQueueSnapshot.
+    if (widget.sessionId != null) {
+      _resolvedSessionId = widget.sessionId;
+      _startListeners();
+    }
+
+    // Surface the "Wgrywanie w toku" snackbar that previously lived
+    // on the source screen — keeps the affordance the user expects
+    // while moving the upload work to the queue.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Wgrywanie w toku — analiza rozpocznie się '
+              'gdy serwer odbierze plik.'),
+        ),
+      );
+    });
   }
 
   @override
@@ -87,11 +132,51 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   }
 
   void _startListeners() {
+    final sid = _resolvedSessionId;
+    if (sid == null) return; // queue-mode: not ready yet
     _sub = ref
         .read(sessionStateListenerProvider)
-        .watchSession(widget.sessionId)
+        .watchSession(sid)
         .listen(_onState);
     _resetFallbackTimer();
+  }
+
+  /// Called from the build() Consumer when the queue snapshot
+  /// changes. Drives the stepper phase from upload state and, the
+  /// moment CompleteAudioUpload returns, hands off to the
+  /// sessionId-driven listeners.
+  void _onQueueSnapshot(List<PendingUpload> rows) {
+    final localId = widget.localId;
+    if (localId == null) return;
+
+    final row = rows.cast<PendingUpload?>().firstWhere(
+          (u) => u?.localId == localId,
+          orElse: () => null,
+        );
+    if (row == null) return;
+
+    // Failure surface: queue worker classified the upload as
+    // terminal-failed. Show the existing failure sheet with the
+    // worker's lastError so the user sees what actually happened.
+    if (row.phase == UploadPhase.failed &&
+        !_failureShown &&
+        !_routedAway) {
+      _failureShown = true;
+      _scheduleFailureSheet(reason: row.lastError);
+      return;
+    }
+
+    // SessionId materialised — CompleteAudioUpload just succeeded.
+    // Hand off to the server-side processing listeners.
+    final newSid = row.sessionId;
+    if (newSid != null && _resolvedSessionId == null) {
+      _resolvedSessionId = newSid;
+      // Move stepper into "uploaded" — server-side analysis kicks in.
+      if (mounted) {
+        setState(() => _phase = SessionStepperPhase.uploaded);
+      }
+      _startListeners();
+    }
   }
 
   void _onState(SessionState s) {
@@ -120,10 +205,17 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   }
 
   Future<void> _pollClinicalSvc() async {
+    final sid = _resolvedSessionId;
+    if (sid == null) {
+      // Still in upload phase; queue snapshots will drive us once
+      // the server-side session_id arrives. Reschedule a no-op tick.
+      _resetFallbackTimer();
+      return;
+    }
     try {
       final clients = ref.read(grpcClientsProvider);
       final res = await clients.clinical.getSessionDetails(
-        clinical_pb.GetSessionDetailsRequest(sessionId: widget.sessionId),
+        clinical_pb.GetSessionDetailsRequest(sessionId: sid),
       );
       final status = res.session.status;
       if (status == 'COMPLETED' && !_routedAway) {
@@ -161,9 +253,12 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     // Phase 3: Wait and navigate
     await Future<void>.delayed(const Duration(seconds: 3));
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(MaterialPageRoute(
-      builder: (_) => TranscriptScreen(sessionId: widget.sessionId),
-    ));
+    final sid = _resolvedSessionId;
+    if (sid != null) {
+      Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (_) => TranscriptScreen(sessionId: sid),
+      ));
+    }
     try {
       await player.dispose();
     } catch (_) {}
@@ -172,8 +267,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   /// Wait 5 seconds before showing a failure sheet — gives time for
   /// the pipeline to retry or for a newer upload to succeed.
   Timer? _failureDelayTimer;
+  String? _failureReason;
 
-  void _scheduleFailureSheet() {
+  void _scheduleFailureSheet({String? reason}) {
+    _failureReason = reason;
     _failureDelayTimer?.cancel();
     _failureDelayTimer = Timer(const Duration(seconds: 5), () {
       if (_routedAway) return; // success arrived in the meantime
@@ -192,12 +289,15 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   Future<void> _showFailureSheet() async {
     if (!mounted || _routedAway) return;
     final t = AppLocalizations.of(context);
+    final reason = _failureReason;
     await showEuphireBottomSheet<void>(
       context: context,
       isDismissible: true, // Allow user to dismiss and wait
       builder: (ctx) => EuphireActionSheet(
         header: t.session_failed_header,
-        body: t.session_failed_body,
+        body: reason != null && reason.isNotEmpty
+            ? '${t.session_failed_body}\n\n$reason'
+            : t.session_failed_body,
         primary: EuphireSheetAction(
           label: t.session_failed_primary,
           onPressed: () => Navigator.of(ctx).pop(),
@@ -216,6 +316,24 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+
+    // When launched in queue-mode, react to every queue snapshot so
+    // we can advance the stepper phase and pick up sessionId the
+    // moment CompleteAudioUpload returns.
+    if (widget.localId != null) {
+      ref.listen<AsyncValue<List<PendingUpload>>>(
+        pendingUploadsStreamProvider,
+        (prev, next) => next.whenData(_onQueueSnapshot),
+      );
+      // listen() only fires on changes — drive the initial snapshot
+      // ourselves so the screen reflects the current row state on
+      // first paint (in case the worker already advanced past
+      // `pending` before this screen mounted).
+      ref
+          .read(pendingUploadsStreamProvider)
+          .whenData(_onQueueSnapshot);
+    }
+
     return Scaffold(
       backgroundColor: EuphireColors.evergreen,
       body: Container(

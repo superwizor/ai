@@ -42,6 +42,7 @@ import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_button.dart';
 import '../widgets/euphire_recording_indicator.dart';
+import 'session_status_screen.dart';
 
 // TODO(pre-prod): restore to Duration(minutes: 5) before TestFlight.
 // Lowered to 30s for end-to-end smoke testing on real device — saves us
@@ -509,12 +510,14 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       ref.invalidate(sessionsProvider);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Wgrywanie nagrania w toku — śledź postęp na liście.')),
-      );
-      Navigator.of(context).pop();
+      // Push the status screen so the user keeps the familiar
+      // upload-then-processing visual flow. SessionStatusScreen
+      // watches the queue row by localId until CompleteAudioUpload
+      // returns a sessionId, then hands off to the Firestore /
+      // clinical-svc listeners.
+      await Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (_) => SessionStatusScreen(localId: sessionId),
+      ));
     } catch (e, st) {
       debugPrint('[recording] _finishAndUpload FAILED: $e\n$st');
       if (mounted) {

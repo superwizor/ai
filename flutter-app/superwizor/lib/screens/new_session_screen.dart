@@ -38,6 +38,7 @@ import '../uploads/upload_queue_provider.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import 'recording_screen.dart';
+import 'session_status_screen.dart';
 
 /// Supported audio extensions for file upload.
 /// All are converted client-side to FLAC before upload.
@@ -673,12 +674,17 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
       ref.invalidate(patientsProvider);
       ref.invalidate(sessionsProvider);
 
-      // Snackbar + pop back to the caller (kartoteka). The pending-
-      // uploads pill on the home shell shows the queue from here.
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Wgrywanie w toku — śledź postęp na liście.')),
-      );
-      Navigator.of(context).pop();
+      // Navigate to the status screen so the user sees the stepper
+      // (upload → analyze → done) without losing the progress
+      // affordance. SessionStatusScreen watches the queue row by
+      // localId; once CompleteAudioUpload returns and we have a
+      // server-side sessionId, it switches to the Firestore /
+      // clinical-svc listeners. The snackbar appears inside
+      // SessionStatusScreen's initState so it survives the
+      // pushReplacement transition.
+      await Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (_) => SessionStatusScreen(localId: localId),
+      ));
     } finally {
       // Clean up temp file (only if one is still hanging around —
       // we delete it above before staging but a thrown exception

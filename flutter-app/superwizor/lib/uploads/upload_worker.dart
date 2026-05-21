@@ -69,23 +69,37 @@ class UploadWorker {
   Future<PendingUpload> runOne(PendingUpload u) async {
     if (u.isTerminal) return u;
 
+    debugPrint('[upload-worker] runOne localId=${u.localId} '
+        'phase=${u.phase.name} attempt=${u.attemptCount} '
+        'kind=${u.sourceKind.name}');
+
     try {
+      final PendingUpload next;
       switch (u.phase) {
         case UploadPhase.pending:
-          return await _doCreate(u);
+          next = await _doCreate(u);
+          break;
         case UploadPhase.created:
-          return await _doUpload(u);
+          next = await _doUpload(u);
+          break;
         case UploadPhase.uploaded:
           if (u.needsServerSideConversion) {
-            return await _doConvert(u);
+            next = await _doConvert(u);
+          } else {
+            next = await _doComplete(u);
           }
-          return await _doComplete(u);
+          break;
         case UploadPhase.converted:
-          return await _doComplete(u);
+          next = await _doComplete(u);
+          break;
         case UploadPhase.completed:
         case UploadPhase.failed:
           return u;
       }
+      debugPrint('[upload-worker] runOne localId=${u.localId} '
+          '→ phase=${next.phase.name} '
+          '${next.lastError != null ? "error=${next.lastError}" : ""}');
+      return next;
     } catch (e, st) {
       // Defensive — runOne is supposed to be exception-safe via the
       // per-step handlers below. If we land here something genuinely
