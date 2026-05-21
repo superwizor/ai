@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/patient.dart';
 import '../models/session.dart';
+import '../repositories/patient_repository.dart';
 import 'current_user_provider.dart';
 import 'grpc_provider.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as grpc_clinical;
@@ -11,6 +12,8 @@ final patientsProvider = AsyncNotifierProvider<PatientsNotifier, List<Patient>>(
 });
 
 class PatientsNotifier extends AsyncNotifier<List<Patient>> {
+  PatientRepository? _repo;
+
   @override
   Future<List<Patient>> build() async {
     // Tie the patient list to the currently authenticated Firebase
@@ -20,40 +23,60 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     // screen showed stale data across login transitions.
     final user = await ref.watch(firebaseUserProvider.future);
     if (user == null) return const [];
-    return _fetchPatients();
+
+    // Repository wraps the cache + gRPC client. Null while the cache
+    // is still opening — fall back to a direct network fetch in that
+    // window (rare; <100ms on a warm Hive).
+    final repo = await ref.watch(patientRepositoryProvider.future);
+    _repo = repo;
+    if (repo == null) {
+      return _fetchDirectFallback();
+    }
+
+    final cached = await repo.getCachedAsModels();
+
+    // Fresh cache hit — return immediately, no network.
+    if (cached.isFresh) {
+      return cached.data!;
+    }
+
+    // Stale cache hit — serve cached for instant UI, kick off a
+    // background refresh that updates state once it lands.
+    if (cached.hasData) {
+      _backgroundRefresh();
+      return cached.data!;
+    }
+
+    // Cold cache — block on network.
+    final fresh = await repo.refresh();
+    return fresh.map((d) => d.toModel()).toList();
   }
 
-  Future<List<Patient>> _fetchPatients() async {
+  void _backgroundRefresh() async {
+    final repo = _repo;
+    if (repo == null) return;
+    try {
+      final fresh = await repo.refresh();
+      state = AsyncValue.data(fresh.map((d) => d.toModel()).toList());
+    } catch (e) {
+      debugPrint('[patients] background refresh failed: $e');
+      // Keep showing the stale cached data — don't surface this as
+      // an error to the UI. Network will retry on next provider rebuild.
+    }
+  }
+
+  // Used only during the cache-warming window or if the repository
+  // is unavailable for any reason. Skips the cache write — next
+  // rebuild will populate it.
+  Future<List<Patient>> _fetchDirectFallback() async {
     final client = ref.read(grpcClientsProvider).clinical;
     try {
-      final req = grpc_clinical.ListPatientFilesRequest(therapistId: '', pageSize: 100);
-      final res = await client.listPatientFiles(req);
-
-      // Backend's PatientFile proto doesn't expose sessionCount, so we
-      // fan out one ListSessions per patient in parallel. Cheap for the
-      // tens-of-patients scale we expect; if this ever slows down we'll
-      // add a count to the proto / a dedicated GetPatientStats RPC.
-      final counts = await Future.wait(
-        res.patientFiles.map((pf) async {
-          try {
-            final sessRes = await client.listSessions(
-              grpc_clinical.ListSessionsRequest(patientFileId: pf.id),
-            );
-            return sessRes.sessions.length;
-          } catch (e) {
-            debugPrint('listSessions failed for ${pf.id}: $e');
-            return 0;
-          }
-        }),
-        eagerError: false,
+      final res = await client.listPatientFiles(
+        grpc_clinical.ListPatientFilesRequest(therapistId: '', pageSize: 100),
       );
-
-      return List.generate(res.patientFiles.length, (i) {
-        final pf = res.patientFiles[i];
-        
+      return res.patientFiles.map((pf) {
         String firstName = pf.patientFirstName;
         String lastName = pf.patientLastName;
-        
         if (firstName.isEmpty && lastName.isEmpty && pf.workingAlias.isNotEmpty) {
           final names = pf.workingAlias.split(' ');
           firstName = names.isNotEmpty ? names.first : 'Nieznany';
@@ -61,23 +84,18 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
         } else if (firstName.isEmpty) {
           firstName = 'Nieznany';
         }
-
         return Patient(
           id: pf.id,
           firstName: firstName,
           lastName: lastName,
           modalityCode: pf.modalityCode,
-          // PatientFile.patientLanguageCode (proto field 18). Feeds
-          // NewSessionScreen → CreateAudioUploadRequest.reportLanguage
-          // so an English-speaking patient doesn't get a Polish report.
-          // Empty when missing; NewSessionScreen falls back to 'pl-PL'.
           languageCode: pf.patientLanguageCode,
-          sessionCount: counts[i],
+          sessionCount: 0, // skip the fan-out in the fallback path
         );
-      });
+      }).toList();
     } catch (e) {
-      debugPrint('Error fetching patients: $e');
-      return [];
+      debugPrint('[patients] direct fetch fallback failed: $e');
+      return const [];
     }
   }
 
@@ -99,13 +117,13 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
       patientLastName: lastName,
       patientLanguageCode: languageCode,
     );
-    
+
     state = const AsyncValue.loading();
     try {
       await client.createPatientFile(req);
-      state = AsyncValue.data(await _fetchPatients());
+      await _refreshAndPublish();
     } catch (e) {
-      state = AsyncValue.data(await _fetchPatients());
+      await _refreshAndPublish();
       rethrow;
     }
   }
@@ -118,7 +136,7 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
         firstName: firstName,
         lastName: lastName,
       ));
-      state = AsyncValue.data(await _fetchPatients());
+      await _refreshAndPublish();
     } catch (e) {
       debugPrint('Error updating patient: $e');
       rethrow;
@@ -131,11 +149,24 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
       await client.deletePatientUser(grpc_clinical.DeletePatientUserRequest(
         patientFileId: patientFileId,
       ));
-      state = AsyncValue.data(await _fetchPatients());
+      await _refreshAndPublish();
     } catch (e) {
       debugPrint('Error deleting patient: $e');
       rethrow;
     }
+  }
+
+  /// Re-fetches via the repository (which writes the fresh list to
+  /// cache) and publishes the result. Used by every mutation path so
+  /// the cache never diverges from the canonical server view.
+  Future<void> _refreshAndPublish() async {
+    final repo = _repo;
+    if (repo == null) {
+      state = AsyncValue.data(await _fetchDirectFallback());
+      return;
+    }
+    final fresh = await repo.refresh();
+    state = AsyncValue.data(fresh.map((d) => d.toModel()).toList());
   }
 
   void incrementSessionCount(String patientId) {

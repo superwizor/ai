@@ -13,7 +13,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
-import 'package:path/path.dart' as p;
 import 'package:superwizor/cache/cache_box.dart';
 import 'package:superwizor/cache/cache_envelope.dart';
 import 'package:superwizor/cache/cache_keys.dart';
