@@ -95,6 +95,7 @@ UploadQueueRunner _runner({
   required UploadQueue queue,
   required _FakeIo io,
   Stream<String> Function(String)? sessionStatusStream,
+  Future<void> Function(PendingUpload)? onUploadComplete,
   Future<void> Function(PendingUpload)? onAnalysisComplete,
   Duration Function(int)? backoff,
 }) =>
@@ -108,6 +109,7 @@ UploadQueueRunner _runner({
       connectivityStream: const Stream.empty(),
       hasNetwork: () async => true,
       sessionStatusStream: sessionStatusStream,
+      onUploadComplete: onUploadComplete,
       onAnalysisComplete: onAnalysisComplete,
     );
 
@@ -228,6 +230,69 @@ void main() {
       expect(row.phase, UploadPhase.failed);
       expect(row.terminatedAt, isNotNull);
       expect(row.lastError, contains('FAILED_PRECONDITION'));
+
+      await runner.dispose();
+    });
+  });
+
+  group('onUploadComplete (kartoteka refresh on upload finish)', () {
+    test('fires exactly once when row first hits phase=completed', () async {
+      var calls = 0;
+      PendingUpload? lastRowSeen;
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = _runner(
+        queue: queue,
+        io: _FakeIo(),
+        onUploadComplete: (row) async {
+          calls++;
+          lastRowSeen = row;
+        },
+      );
+      await runner.start();
+      await runner.enqueueAndKick(_seed('uc1'));
+      expect(calls, 1);
+      expect(lastRowSeen?.localId, 'uc1');
+      expect(lastRowSeen?.phase, UploadPhase.completed);
+
+      // A second tick must NOT refire the callback for the same row.
+      await runner.kick();
+      expect(calls, 1, reason: 'no duplicate fire on subsequent ticks');
+
+      await runner.dispose();
+    });
+
+    test('does not fire on terminal-failed transition', () async {
+      var calls = 0;
+      final io = _FakeIo()
+        ..createUploadError =
+            grpc.GrpcError.failedPrecondition('nope');
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = _runner(
+        queue: queue,
+        io: io,
+        onUploadComplete: (_) async => calls++,
+      );
+      await runner.start();
+      await runner.enqueueAndKick(_seed('uc2'));
+      expect(queue.getById('uc2')!.phase, UploadPhase.failed);
+      expect(calls, 0,
+          reason: 'failure path must not trigger upload-complete');
+
+      await runner.dispose();
+    });
+
+    test('upload-complete failure does not abort the row', () async {
+      // If the cache refresh blows up the row should still settle at
+      // phase=completed — the kartoteka being stale is a soft failure.
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = _runner(
+        queue: queue,
+        io: _FakeIo(),
+        onUploadComplete: (_) async => throw Exception('refresh boom'),
+      );
+      await runner.start();
+      await runner.enqueueAndKick(_seed('uc3'));
+      expect(queue.getById('uc3')!.phase, UploadPhase.completed);
 
       await runner.dispose();
     });

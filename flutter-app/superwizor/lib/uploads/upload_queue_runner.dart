@@ -41,10 +41,18 @@ import 'upload_worker.dart';
 /// Wired in upload_queue_provider via SessionStateListener.
 typedef SessionStatusStream = Stream<String> Function(String sessionId);
 
+/// Invoked the moment a row transitions to phase=completed —
+/// CompleteAudioUpload returned, so the server has a session row
+/// (in PROCESSING state). Production wires this to refresh
+/// patient + session repository caches so the kartoteka actually
+/// shows the new session while analysis runs, instead of serving
+/// the stale cached session list.
+typedef OnUploadComplete = Future<void> Function(PendingUpload row);
+
 /// Invoked when the runner detects that a previously-uploaded row's
 /// server-side analysis has finished (status 'done' or 'failed').
 /// Production wires this to refresh patient + session repository
-/// caches so the kartoteka reflects the new state.
+/// caches so the kartoteka picks up the new status string.
 typedef OnAnalysisComplete = Future<void> Function(PendingUpload row);
 
 class UploadQueueRunner {
@@ -55,6 +63,7 @@ class UploadQueueRunner {
     Stream<List<ConnectivityResult>>? connectivityStream,
     Future<bool> Function()? hasNetwork,
     SessionStatusStream? sessionStatusStream,
+    OnUploadComplete? onUploadComplete,
     OnAnalysisComplete? onAnalysisComplete,
   })  : _queue = queue,
         _worker = worker,
@@ -63,6 +72,7 @@ class UploadQueueRunner {
             connectivityStream ?? Connectivity().onConnectivityChanged,
         _hasNetwork = hasNetwork ?? _defaultHasNetwork,
         _sessionStatusStream = sessionStatusStream,
+        _onUploadComplete = onUploadComplete,
         _onAnalysisComplete = onAnalysisComplete;
 
   final UploadQueue _queue;
@@ -71,6 +81,7 @@ class UploadQueueRunner {
   final Stream<List<ConnectivityResult>> _connectivityStream;
   final Future<bool> Function() _hasNetwork;
   final SessionStatusStream? _sessionStatusStream;
+  final OnUploadComplete? _onUploadComplete;
   final OnAnalysisComplete? _onAnalysisComplete;
 
   /// Active per-sessionId Firestore subscriptions for completed rows
@@ -225,6 +236,21 @@ class UploadQueueRunner {
           // each phase transition (pending → created → uploaded → …)
           // without waiting for the whole pipeline to finish.
           _emitSnapshot();
+
+          // First-time transition into phase=completed: the upload
+          // pipeline finished and the server has a real session row
+          // (in PROCESSING state). Refresh kartoteka caches so the
+          // user sees the new session as soon as they navigate
+          // back — without this the cached session list serves the
+          // pre-upload snapshot for the duration of analysis.
+          if (current.phase != UploadPhase.completed &&
+              next.phase == UploadPhase.completed) {
+            try {
+              await _onUploadComplete?.call(next);
+            } catch (e) {
+              debugPrint('[upload-runner] onUploadComplete failed: $e');
+            }
+          }
 
           if (next.isTerminal) break;
           // Worker scheduled a backoff retry — let a future tick

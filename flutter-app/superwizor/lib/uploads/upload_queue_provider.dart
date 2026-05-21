@@ -90,22 +90,18 @@ final uploadQueueRunnerProvider =
     sessionStatusStream: (sessionId) => sessionStateListener
         .watchSession(sessionId)
         .map((s) => s.status),
-    // When analysis terminates, refresh the patient + session
-    // caches so the kartoteka reflects the new session.status.
-    // The session-list cache had stored the pre-analysis
-    // "PROCESSING" value at upload-time; without this refresh the
-    // kartoteka would keep showing "W trakcie analizy" for hours.
+    // Fires when CompleteAudioUpload returns — the server has the
+    // new session row in PROCESSING state but the kartoteka cache
+    // still holds the pre-upload session list. Refresh so the
+    // session appears immediately (with PROCESSING status), not
+    // only after analysis terminates.
+    onUploadComplete: (row) async {
+      await _refreshKartoteka(ref, row.patientFileId);
+    },
+    // Second refresh when analysis terminates — picks up the
+    // PROCESSING → COMPLETED/FAILED status flip server-side.
     onAnalysisComplete: (row) async {
-      try {
-        final patientRepo =
-            await ref.read(patientRepositoryProvider.future);
-        await patientRepo?.refresh();
-      } catch (_) {}
-      try {
-        final sessionRepo =
-            await ref.read(sessionRepositoryProvider.future);
-        await sessionRepo?.refresh(row.patientFileId);
-      } catch (_) {}
+      await _refreshKartoteka(ref, row.patientFileId);
     },
   );
 
@@ -145,6 +141,24 @@ final pendingUploadCountProvider = Provider<int>((ref) {
     orElse: () => 0,
   );
 });
+
+/// Refreshes both repositories' caches for [patientFileId]. Used by
+/// the upload-runner callbacks (onUploadComplete + onAnalysisComplete)
+/// to keep the kartoteka in sync with server state without polling.
+Future<void> _refreshKartoteka(Ref ref, String patientFileId) async {
+  try {
+    final patientRepo = await ref.read(patientRepositoryProvider.future);
+    await patientRepo?.refresh();
+  } catch (e) {
+    debugPrint('[upload-runner] patient refresh failed: $e');
+  }
+  try {
+    final sessionRepo = await ref.read(sessionRepositoryProvider.future);
+    await sessionRepo?.refresh(patientFileId);
+  } catch (e) {
+    debugPrint('[upload-runner] session refresh failed: $e');
+  }
+}
 
 /// AppLifecycleObserver that nudges the queue when the app returns
 /// to the foreground. Install once at the root in main.dart via
