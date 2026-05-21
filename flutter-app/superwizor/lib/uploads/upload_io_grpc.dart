@@ -173,10 +173,25 @@ class GrpcUploadIo implements UploadIo {
 
   @override
   Future<void> cleanupSource(PendingUpload u) async {
-    if (u.sourceKind != UploadSourceKind.encryptedChunks) return;
     try {
-      final sessionId = _sessionIdFromPath(u.sourcePath);
-      await _secureStorage.purgeSession(sessionId);
+      if (u.sourceKind == UploadSourceKind.encryptedChunks) {
+        final sessionId = _sessionIdFromPath(u.sourcePath);
+        await _secureStorage.purgeSession(sessionId);
+        return;
+      }
+
+      // plainFile: only delete files we own — those under the
+      // `queued_uploads/<localId>/` staging dir that
+      // new_session_screen copies the picked file into. User-picked
+      // files outside that prefix are never ours to delete.
+      final path = u.sourcePath;
+      if (path.contains('${Platform.pathSeparator}queued_uploads'
+              '${Platform.pathSeparator}${u.localId}${Platform.pathSeparator}')) {
+        final dir = Directory(File(path).parent.path);
+        if (await dir.exists()) {
+          await dir.delete(recursive: true);
+        }
+      }
     } catch (e) {
       debugPrint('[upload-io] cleanupSource failed: $e');
       // Don't rethrow — terminal-success on the server is what matters.

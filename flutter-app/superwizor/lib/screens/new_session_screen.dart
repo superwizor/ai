@@ -22,25 +22,22 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
-import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
-import '../generated/ingestion/v1/ingestion.pb.dart';
 import '../l10n/app_localizations.dart';
-import '../providers/grpc_provider.dart';
 import '../providers/patient_provider.dart';
-
 import '../services/audio_converter_service.dart';
 import '../theme/euphire_theme.dart';
+import '../uploads/pending_upload.dart';
+import '../uploads/upload_queue_provider.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import 'recording_screen.dart';
-import 'session_status_screen.dart';
 
 /// Supported audio extensions for file upload.
 /// All are converted client-side to FLAC before upload.
@@ -498,7 +495,6 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     required File file,
     required int originalSizeBytes,
   }) async {
-    final sessionId = const Uuid().v4();
     File? tempFile;
 
     try {
@@ -611,104 +607,82 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
       }
 
       if (!mounted) return;
-      setState(() => _uploadStatusLabel = 'Przygotowywanie...');
+      setState(() => _uploadStatusLabel = 'Kolejkuję...');
       _setUploadProgress(0.28);
 
-      // ── Phase 2: Request signed URL (28% → 33%) ──
-      final client = ref.read(grpcClientsProvider).ingestion;
-      final createRes = await client.createAudioUpload(CreateAudioUploadRequest(
-        patientFileId: widget.patientFileId,
-        therapistId: widget.therapistId,
-        estimatedSizeBytes: Int64(uploadSize),
-        contentType: contentType,
-        clientPlatform: Platform.isIOS
-            ? 'ios'
-            : Platform.isMacOS
-                ? 'macos'
-                : Platform.isAndroid
-                    ? 'android'
-                    : 'desktop',
-        idempotencyKey: sessionId,
-        reportLanguage: widget.patientLanguageCode,
-      ));
-      final uploadId = createRes.uploadId;
-      final signedUrl = createRes.signedUrl;
-      debugPrint('[file-upload] got signed URL (uploadId=$uploadId)');
-
-      if (!mounted) return;
-      setState(() => _uploadStatusLabel = 'Przesyłanie pliku...');
-      _setUploadProgress(0.33);
-
-      // ── Phase 3: Upload with streamed progress (33% → 90%) ──
-      await _uploadWithProgress(
-        signedUrl: signedUrl,
-        file: fileToUpload,
-        contentType: contentType,
-        totalBytes: uploadSize,
+      // ── Phase 2: copy to stable docs-relative path ──
+      //
+      // The file the user picked typically lives in the OS cache dir
+      // (file_picker on iOS/Android), which the OS can purge any time
+      // — and we may not get to upload before that happens. Copy to
+      // <docs>/queued_uploads/<localId>/<basename> so the queue can
+      // resume after an app kill or week-long offline stretch.
+      // GrpcUploadIo.cleanupSource deletes this dir on terminal-success
+      // or on dismiss.
+      final localId = const Uuid().v4();
+      final stagedFile = await _stageForQueue(
+        localId: localId,
+        source: fileToUpload,
       );
 
-      // ── Server-side fallback conversion (if client failed) ──
-      //
-      // ingestion-svc.ConvertAudio transcodes the just-uploaded M4A
-      // into FLAC on the server (ffmpeg in the Cloud Run image).
-      // Synchronous; takes 30-60s for typical clinical session
-      // lengths. We block here before CompleteAudioUpload because
-      // CompleteAudioUpload triggers the STT pipeline — Chirp would
-      // reject the M4A and put the session into FAILED.
-      //
-      // Idempotent on the server side; safe to retry on transient
-      // network errors. We don't have automatic retry here yet —
-      // surface the error to the user and let them try again.
-      if (needsServerSideConversion) {
-        if (!mounted) return;
-        setState(() => _uploadStatusLabel = 'Konwersja po stronie serwera...');
-        _setUploadProgress(0.91);
+      // Temp file from M4A→FLAC / WAV-normalize is no longer needed
+      // once it's copied into the staging dir.
+      if (tempFile != null) {
         try {
-          final convertRes = await client.convertAudio(ConvertAudioRequest(
-            audioUploadId: uploadId,
-            targetContentType: 'audio/flac',
-          ));
-          debugPrint('[file-upload] server-side conversion done: '
-              'object_path=${convertRes.objectPath} '
-              'content_type=${convertRes.contentType} '
-              'converted=${convertRes.converted}');
-        } catch (e, st) {
-          debugPrint('[file-upload] server-side ConvertAudio FAILED: $e\n$st');
-          rethrow;
-        }
+          if (await tempFile.exists()) await tempFile.delete();
+        } catch (_) {}
+        tempFile = null;
       }
 
-      if (!mounted) return;
-      setState(() => _uploadStatusLabel = 'Finalizacja...');
-      _setUploadProgress(0.92);
+      // ── Phase 3: enqueue & kick the runner ──
+      //
+      // After enqueueAndKick returns the runner has either:
+      //   • Driven the row to phase=created (online happy path), or
+      //   • Left it as phase=pending (offline / runner not ready)
+      // Either way the upload continues in the background; the user
+      // can leave this screen and the pending-uploads pill on the
+      // home shell tracks progress.
+      final runner = await ref.read(uploadQueueRunnerProvider.future);
+      if (runner == null) {
+        throw StateError('Upload queue not available — user not signed in?');
+      }
 
-      // ── Phase 4: Complete upload (92% → 100%) ──
-      final completeRes = await client.completeAudioUpload(CompleteAudioUploadRequest(
-        uploadId: uploadId,
-        actualDurationSeconds: 0,
-        actualSizeBytes: Int64(uploadSize),
+      final pending = PendingUpload.initial(
+        localId: localId,
+        therapistId: widget.therapistId,
+        patientFileId: widget.patientFileId,
+        patientLanguageCode: widget.patientLanguageCode,
+        sourceKind: UploadSourceKind.plainFile,
+        sourcePath: stagedFile.path,
+        contentType: contentType,
+        sizeBytes: uploadSize,
         chunkCount: 1,
-        reportLanguage: widget.patientLanguageCode,
-      ));
-      final completedSessionId = completeRes.sessionId;
-      debugPrint('[file-upload] done, sessionId=$completedSessionId');
+        actualDurationSeconds: 0,
+        needsServerSideConversion: needsServerSideConversion,
+        idempotencyKey: localId,
+        now: DateTime.now().toUtc(),
+      );
+
+      await runner.enqueueAndKick(pending);
 
       if (!mounted) return;
-      setState(() => _uploadStatusLabel = 'Gotowe!');
       _setUploadProgress(1.0);
 
-      // Invalidate caches
+      // Refresh the patient + sessions cache so the new session
+      // (once it lands server-side) shows up in the kartoteka.
       ref.invalidate(patientsProvider);
       ref.invalidate(sessionsProvider);
 
-      await Future<void>.delayed(const Duration(milliseconds: 400));
-
-      if (!mounted) return;
-      await Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (_) => SessionStatusScreen(sessionId: completedSessionId),
-      ));
+      // Snackbar + pop back to the caller (kartoteka). The pending-
+      // uploads pill on the home shell shows the queue from here.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wgrywanie w toku — śledź postęp na liście.')),
+      );
+      Navigator.of(context).pop();
     } finally {
-      // Clean up temp file (only if we created one)
+      // Clean up temp file (only if one is still hanging around —
+      // we delete it above before staging but a thrown exception
+      // before that point would land here).
       if (tempFile != null) {
         try {
           if (await tempFile.exists()) await tempFile.delete();
@@ -717,48 +691,23 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     }
   }
 
-  /// Uploads a file via streamed PUT with real-time progress tracking.
-  Future<void> _uploadWithProgress({
-    required String signedUrl,
-    required File file,
-    required String contentType,
-    required int totalBytes,
+  /// Copies [source] into `<docs>/queued_uploads/<localId>/<basename>`
+  /// and returns the new File. The staging dir is exclusive to this
+  /// upload — GrpcUploadIo.cleanupSource deletes the whole dir when
+  /// the upload terminates (success or failed dismiss).
+  Future<File> _stageForQueue({
+    required String localId,
+    required File source,
   }) async {
-    final uri = Uri.parse(signedUrl);
-    final request = http.StreamedRequest('PUT', uri);
-    request.headers['Content-Type'] = contentType;
-    request.headers['x-goog-meta-source'] = 'superwizor-mobile';
-    request.contentLength = totalBytes;
-
-    // Stream the file bytes and track progress
-    int bytesSent = 0;
-    final fileStream = file.openRead();
-
-    fileStream.listen(
-      (chunk) {
-        request.sink.add(chunk);
-        bytesSent += chunk.length;
-        if (!mounted) return;
-        final uploadFraction = bytesSent / totalBytes;
-        // Map upload progress to 33% → 90% of total progress
-        final totalProgress = 0.33 + (uploadFraction * 0.57);
-        setState(() {
-          _uploadStatusLabel = 'Przesyłanie...';
-        });
-        _setUploadProgress(totalProgress);
-      },
-      onDone: () => request.sink.close(),
-      onError: (e) => request.sink.addError(e),
-      cancelOnError: true,
-    );
-
-    final response = await http.Client().send(request);
-    final statusCode = response.statusCode;
-
-    if (statusCode != 200 && statusCode != 204) {
-      final body = await response.stream.bytesToString();
-      throw StateError('Upload failed (HTTP $statusCode): $body');
+    final docs = await getApplicationDocumentsDirectory();
+    final stagingRoot = Directory(p.join(docs.path, 'queued_uploads', localId));
+    if (!await stagingRoot.exists()) {
+      await stagingRoot.create(recursive: true);
     }
+    final basename = p.basename(source.path);
+    final dest = File(p.join(stagingRoot.path, basename));
+    await source.copy(dest.path);
+    return dest;
   }
 
   Future<void> _showErrorSheet(String message) async {

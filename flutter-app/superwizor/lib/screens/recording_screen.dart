@@ -19,16 +19,16 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
 
 import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
-import '../generated/ingestion/v1/ingestion.pb.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/patient_provider.dart';
@@ -36,11 +36,12 @@ import '../providers/services_provider.dart';
 import '../services/recording_service.dart';
 import '../services/secure_audio_storage_service.dart';
 import '../theme/euphire_theme.dart';
+import '../uploads/pending_upload.dart';
+import '../uploads/upload_queue_provider.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_button.dart';
 import '../widgets/euphire_recording_indicator.dart';
-import 'session_status_screen.dart';
 
 // TODO(pre-prod): restore to Duration(minutes: 5) before TestFlight.
 // Lowered to 30s for end-to-end smoke testing on real device — saves us
@@ -75,7 +76,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   StreamSubscription<RecordingState>? _stateSub;
   bool _uploading = false;
   bool _maxLimitTriggered = false;
-  String? _uploadId;
   int _chunkCount = 0;
 
   RecordingService get _service => ref.read(recordingServiceProvider);
@@ -443,15 +443,17 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     try {
       final rawPath = await _service.stop();
       if (rawPath == null) throw StateError('no recording produced');
-      // Log the actual file size so we can diagnose the iOS pause→stop
-      // empty-file bug if it returns. A healthy 30s OPUS @ 60 kbps file
-      // should be ~225 KB (60_000 bps × 30 s ÷ 8).
       final rawSize = await File(rawPath).length();
       debugPrint('[recording] stopped, raw=$rawPath size=${rawSize}B');
       if (rawSize == 0) {
-        throw StateError('recording file is empty (0 bytes) — iOS encoder failed to flush');
+        throw StateError(
+            'recording file is empty (0 bytes) — iOS encoder failed to flush');
       }
 
+      // Encrypt to chunks at <docs>/sessions/<sessionId>/chunk_NNNNN.enc.
+      // This is the durable state the upload queue resumes from across
+      // app restarts; the worker decrypts to a temp file at PUT time
+      // via SecureAudioStorageService.
       final storage = ref.read(secureAudioStorageProvider);
       final chunks = await storage.encryptRecording(
         rawPath: rawPath,
@@ -459,49 +461,60 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       );
       _chunkCount = chunks.length;
       debugPrint('[recording] encrypted: ${chunks.length} chunks');
-      // Calculate exact plaintext size from chunk metadata — no
-      // decryption needed.  Each .enc file has 29 bytes of overhead
-      // (13 header + 16 GCM tag), so plaintext = Σ(chunk.size - 29).
-      //
-      // OLD CODE (removed): the previous implementation did a full
-      // decryptToTempFile() → .length() → delete(), only to get this
-      // number.  That was a double-decrypt anti-pattern because
-      // uploadEncryptedSession() internally calls decryptToTempFile()
-      // again.  Two AES-GCM passes + two full disk writes for a single
-      // upload — wasteful and the root cause of the PathNotFound crash
-      // (the first decrypt hit a non-existent temp directory on macOS).
+
+      // Plaintext size estimated from chunk metadata — each .enc file
+      // has 29 bytes of overhead (13 header + 16 GCM tag), so
+      // plaintext = Σ(chunk.size - 29). Avoids a wasted decrypt pass.
       final length = SecureAudioStorageService.estimateDecryptedSize(chunks);
       debugPrint('[recording] estimated decrypted size=${length}B '
-          '(${chunks.length} chunks, ${(length / 1024 / 1024).toStringAsFixed(1)} MB)');
+          '(${chunks.length} chunks, '
+          '${(length / 1024 / 1024).toStringAsFixed(1)} MB)');
 
-      final signedUrl = await _requestSignedUrl(length);
-      debugPrint('[recording] got signed URL (uploadId=$_uploadId)');
+      // Build the per-session chunks dir path; this is what the
+      // queue worker passes back to SecureAudioStorageService.
+      final docs = await getApplicationDocumentsDirectory();
+      final sessionDir = p.join(docs.path, 'sessions', sessionId);
 
-      final uploadOk = await ref.read(uploadServiceProvider).uploadEncryptedSession(
-            sessionId: sessionId,
-            signedUrl: signedUrl,
-            contentType: 'audio/flac',
-          );
-      debugPrint('[recording] PUT result: uploadOk=$uploadOk');
-      if (!uploadOk) throw StateError('upload failed');
+      // Enqueue. The queue runner takes ownership of the rest of the
+      // pipeline — CreateAudioUpload → PUT → (optional ConvertAudio)
+      // → CompleteAudioUpload → purgeSession. A crash mid-upload
+      // leaves the encrypted chunks on disk; the runner resumes on
+      // next app start.
+      final runner = await ref.read(uploadQueueRunnerProvider.future);
+      if (runner == null) {
+        throw StateError('Upload queue not available — user not signed in?');
+      }
 
-      debugPrint('[recording] calling completeAudioUpload uploadId=$_uploadId len=$length');
-      final completedSessionId = await _completeUpload(length);
-      debugPrint('[recording] completeAudioUpload returned sessionId=$completedSessionId');
-      await storage.purgeSession(sessionId);
+      final pending = PendingUpload.initial(
+        localId: sessionId, // recordings: reuse session UUID as localId
+        therapistId: widget.therapistId,
+        patientFileId: widget.patientFileId,
+        patientLanguageCode: widget.reportLanguage,
+        sourceKind: UploadSourceKind.encryptedChunks,
+        sourcePath: sessionDir,
+        contentType: 'audio/flac',
+        sizeBytes: length,
+        chunkCount: chunks.length,
+        actualDurationSeconds: _displayDuration.inSeconds,
+        needsServerSideConversion: false,
+        idempotencyKey: sessionId,
+        now: DateTime.now().toUtc(),
+      );
 
-      // Invalidate patient + session caches so the home screen shows
-      // the new session count (and the patient's session list reflects
-      // the freshly-created session) the next time the user visits.
-      // Without this, patientsProvider's per-patient count stays at
-      // its pre-recording value until next login.
+      await runner.enqueueAndKick(pending);
+
+      // Invalidate patient + session caches so the new session shows
+      // up in the kartoteka once the server confirms.
       ref.invalidate(patientsProvider);
       ref.invalidate(sessionsProvider);
 
       if (!mounted) return;
-      await Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (_) => SessionStatusScreen(sessionId: completedSessionId),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('Wgrywanie nagrania w toku — śledź postęp na liście.')),
+      );
+      Navigator.of(context).pop();
     } catch (e, st) {
       debugPrint('[recording] _finishAndUpload FAILED: $e\n$st');
       if (mounted) {
@@ -519,40 +532,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         );
       }
     }
-  }
-
-  Future<String> _requestSignedUrl(int sizeBytes) async {
-    final client = ref.read(grpcClientsProvider).ingestion;
-    final res = await client.createAudioUpload(CreateAudioUploadRequest(
-      patientFileId: widget.patientFileId,
-      therapistId: widget.therapistId,
-      estimatedSizeBytes: Int64(sizeBytes),
-      contentType: 'audio/flac',
-      clientPlatform: Platform.isIOS
-          ? 'ios'
-          : Platform.isMacOS
-              ? 'macos'
-              : Platform.isAndroid
-                  ? 'android'
-                  : 'desktop',
-      idempotencyKey: _sessionId ?? const Uuid().v4(),
-      reportLanguage: widget.reportLanguage,
-    ));
-    _uploadId = res.uploadId;
-    return res.signedUrl;
-  }
-
-  Future<String> _completeUpload(int sizeBytes) async {
-    if (_uploadId == null) throw StateError('uploadId missing');
-    final client = ref.read(grpcClientsProvider).ingestion;
-    final res = await client.completeAudioUpload(CompleteAudioUploadRequest(
-      uploadId: _uploadId!,
-      actualDurationSeconds: _displayDuration.inSeconds,
-      actualSizeBytes: Int64(sizeBytes),
-      chunkCount: _chunkCount,
-      reportLanguage: widget.reportLanguage,
-    ));
-    return res.sessionId;
   }
 
   // ---------- UI ----------
