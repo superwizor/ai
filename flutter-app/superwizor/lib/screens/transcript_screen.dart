@@ -16,7 +16,8 @@
 //     resolution as a follow-up; playback gracefully degrades to
 //     "no audio" if the URL isn't available)
 //
-// Cache: TranscriptCacheStore reads first; backend fetch in background.
+// Cache: SessionDetailsRepository reads from Hive first; gRPC fetch
+// happens in the background on stale hits.
 // PDF export: Etap 5a.8 with PHI confirmation sheet (D2 — in MVP).
 // Security: FLAG_SECURE not yet wired (flutter_windowmanager isn't in
 // deps; can be added when iOS detection is ready). The Scaffold
@@ -31,11 +32,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
 
+import '../cache/dto/session_details_dto.dart';
+import '../cache/dto/transcript_dto.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/services_provider.dart';
-import '../services/transcript_cache_store.dart';
+import '../repositories/session_details_repository.dart';
 import '../services/transcript_pdf_exporter.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_action_sheet.dart';
@@ -53,7 +56,7 @@ class TranscriptScreen extends ConsumerStatefulWidget {
 }
 
 class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
-  CachedTranscript? _data;
+  SessionDetailsDto? _data;
   String? _patientName;
   DateTime? _sessionDate;
   Duration _sessionDuration = Duration.zero;
@@ -83,53 +86,50 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
   }
 
   Future<void> _loadInitial() async {
-    final cached = await ref.read(transcriptCacheProvider).load(widget.sessionId);
-    if (cached != null && mounted) {
-      setState(() {
-        _data = cached;
-        _loading = false;
-      });
+    // Cache-first: paint any hit immediately so the screen is never
+    // blank during the network refresh. The repository handles soft
+    // TTL — we just respect whatever it hands us and trigger a
+    // background refresh if it flags isStale.
+    final repo = await ref.read(sessionDetailsRepositoryProvider.future);
+    if (repo == null) {
+      // Cache layer not ready (cold start before auth resolves). Go
+      // straight to network — repository will populate cache on a
+      // later rebuild.
+      await _refreshFromBackend(showLoaderIfEmpty: true);
+      return;
     }
-    await _refreshFromBackend(showLoaderIfEmpty: cached == null);
+
+    final cached = await repo.getCached(widget.sessionId);
+    if (cached.hasData && mounted) {
+      _applyData(cached.data!);
+      if (cached.isStale) {
+        // Schedule a background refresh; the user keeps reading
+        // the cached transcript while we update.
+        unawaited(_refreshFromBackend(showLoaderIfEmpty: false));
+      }
+      return;
+    }
+
+    await _refreshFromBackend(showLoaderIfEmpty: true);
   }
 
   Future<void> _refreshFromBackend({required bool showLoaderIfEmpty}) async {
     try {
       if (showLoaderIfEmpty && mounted) setState(() => _loading = true);
-      final clients = ref.read(grpcClientsProvider);
-      final res = await clients.clinical.getSessionDetails(
-        clinical_pb.GetSessionDetailsRequest(sessionId: widget.sessionId),
-      );
 
-      final segments = res.transcript.turns
-          .map((s) => CachedSegment(
-                speakerTag: s.speakerTag,
-                speakerLabel: s.speakerLabel,
-                startOffsetMs: s.startOffsetMs.toInt(),
-                endOffsetMs: s.endOffsetMs.toInt(),
-                text: s.text,
-                confidence: s.confidenceAvg,
-              ))
-          .toList();
-      final speakerLabels = Map<String, String>.from(res.session.speakerLabelMapping);
-
-      final fresh = CachedTranscript(
-        sessionId: widget.sessionId,
-        segments: segments,
-        speakerLabels: speakerLabels,
-        cachedAt: DateTime.now(),
-      );
-      await ref.read(transcriptCacheProvider).save(fresh);
+      final repo = await ref.read(sessionDetailsRepositoryProvider.future);
+      late final SessionDetailsDto fresh;
+      if (repo != null) {
+        fresh = await repo.refresh(widget.sessionId);
+      } else {
+        // Last-resort fallback — repo isn't available (rare; usually
+        // means we're racing the cache-open on cold start). Bypass
+        // the cache; the next rebuild will populate it.
+        fresh = await _directFetchFallback();
+      }
 
       if (!mounted) return;
-      setState(() {
-        _data = fresh;
-        _patientName = '';
-        _sessionDate = res.session.createdAt.toDateTime();
-        _sessionDuration = Duration(seconds: res.session.durationSeconds);
-        _loading = false;
-        _error = null;
-      });
+      _applyData(fresh);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -140,21 +140,43 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
     }
   }
 
-  CachedSegment? get _currentlyPlayingSegment {
+  /// Direct gRPC fetch used only when the repository isn't available
+  /// yet (cache still opening). Doesn't write to cache — that's the
+  /// repository's job and will happen on the next provider rebuild.
+  Future<SessionDetailsDto> _directFetchFallback() async {
+    final clients = ref.read(grpcClientsProvider);
+    final res = await clients.clinical.getSessionDetails(
+      clinical_pb.GetSessionDetailsRequest(sessionId: widget.sessionId),
+    );
+    return SessionDetailsDto.fromProto(res);
+  }
+
+  void _applyData(SessionDetailsDto fresh) {
+    setState(() {
+      _data = fresh;
+      _patientName = '';
+      _sessionDate = fresh.session.createdAt.toLocal();
+      _sessionDuration = Duration(seconds: fresh.session.durationSeconds);
+      _loading = false;
+      _error = null;
+    });
+  }
+
+  SpeakerTurnDto? get _currentlyPlayingSegment {
     final data = _data;
     if (data == null) return null;
     final ms = _playbackPosition.inMilliseconds;
-    for (final s in data.segments) {
+    for (final s in data.transcript.turns) {
       if (ms >= s.startOffsetMs && ms < s.endOffsetMs) return s;
     }
     return null;
   }
 
-  List<CachedSegment> get _visibleSegments {
+  List<SpeakerTurnDto> get _visibleSegments {
     final data = _data;
     if (data == null) return const [];
     final q = _search.toLowerCase();
-    return data.segments.where((s) {
+    return data.transcript.turns.where((s) {
       if (_filter != 'all' && s.speakerTag.toString() != _filter) return false;
       if (q.isNotEmpty && !s.text.toLowerCase().contains(q)) return false;
       return true;
@@ -213,7 +235,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
     if (_loading && _data == null) return _buildLoading();
     if (_error != null && _data == null) return _buildError(t);
     final data = _data!;
-    if (data.segments.isEmpty) {
+    if (data.transcript.turns.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -295,10 +317,10 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
     );
   }
 
-  Widget _buildFilterRow(AppLocalizations t, CachedTranscript data) {
+  Widget _buildFilterRow(AppLocalizations t, SessionDetailsDto data) {
     final filters = <_FilterOption>[
       _FilterOption(value: 'all', label: t.transcript_filter_all),
-      ...data.speakerLabels.entries
+      ...data.session.speakerLabelMapping.entries
           .map((e) => _FilterOption(value: e.key, label: e.value)),
     ];
     return Padding(
@@ -344,7 +366,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
     );
   }
 
-  Future<void> _onSegmentTap(CachedSegment s) async {
+  Future<void> _onSegmentTap(SpeakerTurnDto s) async {
     try {
       await _player.seek(Duration(milliseconds: s.startOffsetMs));
       await _player.resume();
@@ -386,7 +408,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
     );
     try {
       final file = await exporter.export(
-        transcript: _data!,
+        transcript: _data!.transcript,
         meta: meta,
         strings: strings,
       );
@@ -405,7 +427,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
     if (data == null) return;
     
     final StringBuffer buffer = StringBuffer();
-    for (final s in data.segments) {
+    for (final s in data.transcript.turns) {
       final speaker = s.speakerLabel.isNotEmpty ? s.speakerLabel : "Głos";
       buffer.writeln('$speaker: ${s.text}');
     }
@@ -426,7 +448,7 @@ class _FilterOption {
 }
 
 class _SegmentTile extends StatelessWidget {
-  final CachedSegment segment;
+  final SpeakerTurnDto segment;
   final bool isPlaying;
   final String search;
   final VoidCallback onTap;
@@ -442,7 +464,10 @@ class _SegmentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
-    final lowConf = segment.confidence > 0 && segment.confidence < 0.7;
+    // SpeakerTurnDto exposes confidenceAvg (the word-weighted mean
+    // across the underlying TranscriptSegments) rather than a single
+    // confidence scalar — same usage, just named for what it is.
+    final lowConf = segment.confidenceAvg > 0 && segment.confidenceAvg < 0.7;
 
     return InkWell(
       onTap: onTap,
@@ -556,7 +581,7 @@ class _SegmentTile extends StatelessWidget {
     }
   }
 
-  String _formatRange(CachedSegment s) {
+  String _formatRange(SpeakerTurnDto s) {
     String fmt(int ms) {
       final d = Duration(milliseconds: ms);
       final m = d.inMinutes.toString().padLeft(2, '0');

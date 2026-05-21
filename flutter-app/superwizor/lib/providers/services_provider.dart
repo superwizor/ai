@@ -11,7 +11,6 @@ import '../services/fcm_token_service.dart';
 import '../services/recording_service.dart';
 import '../services/secure_audio_storage_service.dart';
 import '../services/session_state_listener.dart';
-import '../services/transcript_cache_store.dart';
 import '../services/transcript_pdf_exporter.dart';
 import '../services/upload_service.dart';
 import 'grpc_provider.dart';
@@ -47,9 +46,8 @@ final uploadServiceProvider = Provider<UploadService>((ref) {
   return UploadService(ref.watch(secureAudioStorageProvider));
 });
 
-final transcriptCacheProvider = Provider<TranscriptCacheStore>(
-  (ref) => TranscriptCacheStore(),
-);
+// transcriptCacheProvider retired 2026-05 — transcript caching is now
+// part of SessionDetailsRepository (see lib/repositories/).
 
 final transcriptPdfExporterProvider = Provider<TranscriptPdfExporter>(
   (ref) => TranscriptPdfExporter(),

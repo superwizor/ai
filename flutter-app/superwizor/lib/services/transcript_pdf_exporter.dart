@@ -14,7 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import 'transcript_cache_store.dart';
+import '../cache/dto/transcript_dto.dart';
 
 class TranscriptPdfMeta {
   final String sessionId;
@@ -32,7 +32,7 @@ class TranscriptPdfMeta {
 
 class TranscriptPdfExporter {
   Future<File> export({
-    required CachedTranscript transcript,
+    required TranscriptDto transcript,
     required TranscriptPdfMeta meta,
     required PdfStrings strings,
   }) async {
@@ -93,7 +93,11 @@ class TranscriptPdfExporter {
               style: const pw.TextStyle(fontSize: 11)),
           pw.Divider(thickness: 0.5),
           pw.SizedBox(height: 8),
-          ...transcript.segments.map((s) => pw.Container(
+          // Iterate `turns` (speaker-grouped spans) rather than raw
+          // segments — matches what the TranscriptScreen renders and
+          // what the legacy TranscriptCacheStore was actually storing
+          // under the misleading `segments` name.
+          ...transcript.turns.map((s) => pw.Container(
                 margin: const pw.EdgeInsets.only(bottom: 12),
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -125,10 +129,10 @@ class TranscriptPdfExporter {
     return file;
   }
 
-  String _speakerLabel(CachedSegment s) =>
+  String _speakerLabel(SpeakerTurnDto s) =>
       s.speakerLabel.isNotEmpty ? s.speakerLabel : '—';
 
-  String _formatTimeRange(CachedSegment s) {
+  String _formatTimeRange(SpeakerTurnDto s) {
     final start = Duration(milliseconds: s.startOffsetMs);
     final end = Duration(milliseconds: s.endOffsetMs);
     return '${_fmt(start)} – ${_fmt(end)}';

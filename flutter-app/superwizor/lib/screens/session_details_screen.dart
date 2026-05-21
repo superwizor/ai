@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:ui' as ui;
 
+import '../cache/dto/report_dto.dart';
+import '../cache/dto/transcript_dto.dart';
 import '../providers/session_details_provider.dart';
-import '../generated/clinical/v1/clinical.pbgrpc.dart';
 
 class SessionDetailsScreen extends ConsumerStatefulWidget {
   final String sessionId;
@@ -27,7 +28,7 @@ class SessionDetailsScreen extends ConsumerStatefulWidget {
 class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
   int _selectedSectionIndex = 0;
 
-  void _copyAllReports(BuildContext context, List<Report> reports) {
+  void _copyAllReports(BuildContext context, List<ReportDto> reports) {
     final buffer = StringBuffer();
     for (final section in reports) {
       buffer.writeln('### ${section.title}');
@@ -40,7 +41,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
     );
   }
   
-  void _copyTranscript(BuildContext context, Transcript transcript) {
+  void _copyTranscript(BuildContext context, TranscriptDto transcript) {
     final buffer = StringBuffer();
     for (final segment in transcript.segments) {
       buffer.writeln('${segment.speakerLabel}: ${segment.text}');
