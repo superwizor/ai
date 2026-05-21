@@ -13,6 +13,7 @@ import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'theme/euphire_theme.dart';
+import 'uploads/upload_queue_provider.dart';
 
 /// Top-level handler for FCM messages while the app is in the
 /// background or terminated. Must be a top-level function (or static)
@@ -32,8 +33,14 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Hive — used by ConsentService (D9) and TranscriptCacheStore.
+  // Hive — used by ConsentService (D9), the cache repositories
+  // (lib/cache/), and the offline upload queue (lib/uploads/).
   await Hive.initFlutter();
+
+  // App-lifecycle observer that nudges the upload queue runner when
+  // the app returns to the foreground. The runner itself is created
+  // lazily by uploadQueueRunnerProvider after the user signs in.
+  WidgetsBinding.instance.addObserver(UploadQueueLifecycleObserver());
 
   // Firestore offline persistence — keeps last seen session_states
   // for offline-first reads.
