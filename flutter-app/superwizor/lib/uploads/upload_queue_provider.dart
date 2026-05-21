@@ -19,6 +19,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/services_provider.dart';
+import '../repositories/patient_repository.dart';
+import '../repositories/session_repository.dart';
 import 'pending_upload.dart';
 import 'upload_io_grpc.dart';
 import 'upload_queue.dart';
@@ -71,12 +73,41 @@ final uploadQueueRunnerProvider =
   final queue = await UploadQueue.openForUser(user.id);
   final ingestion = ref.watch(grpcClientsProvider).ingestion;
   final secureStorage = ref.watch(secureAudioStorageProvider);
+  final sessionStateListener = ref.watch(sessionStateListenerProvider);
   final io = GrpcUploadIo(
     ingestion: ingestion,
     secureStorage: secureStorage,
   );
   final worker = UploadWorker(io: io);
-  final runner = UploadQueueRunner(queue: queue, worker: worker);
+  final runner = UploadQueueRunner(
+    queue: queue,
+    worker: worker,
+    // Push-driven status: the runner subscribes to Firestore
+    // `session_states/{sessionId}` (notification-svc mirrors
+    // Pub/Sub events here per docs/08_FAZA_3_NOTIFICATIONS.md).
+    // No polling — when the worker writes status=done/failed
+    // the runner's listener fires and dismisses the row.
+    sessionStatusStream: (sessionId) => sessionStateListener
+        .watchSession(sessionId)
+        .map((s) => s.status),
+    // When analysis terminates, refresh the patient + session
+    // caches so the kartoteka reflects the new session.status.
+    // The session-list cache had stored the pre-analysis
+    // "PROCESSING" value at upload-time; without this refresh the
+    // kartoteka would keep showing "W trakcie analizy" for hours.
+    onAnalysisComplete: (row) async {
+      try {
+        final patientRepo =
+            await ref.read(patientRepositoryProvider.future);
+        await patientRepo?.refresh();
+      } catch (_) {}
+      try {
+        final sessionRepo =
+            await ref.read(sessionRepositoryProvider.future);
+        await sessionRepo?.refresh(row.patientFileId);
+      } catch (_) {}
+    },
+  );
 
   _holder.queue = queue;
   _holder.runner = runner;

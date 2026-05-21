@@ -31,8 +31,6 @@ import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/services_provider.dart';
 import '../services/session_state_listener.dart';
-import '../repositories/patient_repository.dart';
-import '../repositories/session_repository.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
@@ -169,34 +167,17 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     }
 
     // SessionId materialised — CompleteAudioUpload just succeeded.
-    // Hand off to the server-side processing listeners + force a
-    // cache refresh on the patient + session list so the kartoteka
-    // shows the new session immediately when the user navigates back.
+    // Hand off to the server-side processing listeners. The
+    // queue runner now subscribes to Firestore session_states for
+    // this row and will refresh patient + session caches itself
+    // when analysis terminates (see upload_queue_provider.dart).
     final newSid = row.sessionId;
     if (newSid != null && _resolvedSessionId == null) {
       _resolvedSessionId = newSid;
-      // Move stepper into "uploaded" — server-side analysis kicks in.
       if (mounted) {
         setState(() => _phase = SessionStepperPhase.uploaded);
       }
       _startListeners();
-
-      // Cache invalidation — both repositories' soft-TTLs would
-      // otherwise serve stale lists on the next kartoteka visit.
-      _invalidateRelevantCaches(row.patientFileId);
-    }
-  }
-
-  Future<void> _invalidateRelevantCaches(String patientFileId) async {
-    try {
-      final patientRepo =
-          await ref.read(patientRepositoryProvider.future);
-      await patientRepo?.refresh();
-      final sessionRepo =
-          await ref.read(sessionRepositoryProvider.future);
-      await sessionRepo?.refresh(patientFileId);
-    } catch (e) {
-      debugPrint('[session-status] cache refresh after upload failed: $e');
     }
   }
 

@@ -1,0 +1,403 @@
+// End-to-end state-transition tests for the upload queue subsystem.
+//
+// These tests treat UploadQueueRunner + UploadWorker + UploadIo as a
+// single unit and walk the row through every meaningful state
+// transition that production hits. Where a transition depends on
+// external state (Firestore session_states, gRPC server errors), we
+// inject a fake.
+//
+// Transitions covered:
+//   pending → created → uploaded → completed                 (Chirp-native, plainFile)
+//   pending → created → uploaded → converted → completed      (server-side conversion)
+//   pending → created (transient err) → pending (backoff)     (retryable)
+//   pending → created → uploaded (403) → pending (URL refresh)
+//   completed + sessionId → Firestore 'done' → row removed
+//   completed + sessionId → Firestore 'failed' → row removed
+//   completed + sessionId → Firestore 'analyzing' → row stays
+//   onAnalysisComplete called exactly once per terminal transition
+
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:grpc/grpc.dart' as grpc;
+import 'package:hive/hive.dart';
+import 'package:superwizor/uploads/pending_upload.dart';
+import 'package:superwizor/uploads/upload_error.dart';
+import 'package:superwizor/uploads/upload_io.dart';
+import 'package:superwizor/uploads/upload_queue.dart';
+import 'package:superwizor/uploads/upload_queue_runner.dart';
+import 'package:superwizor/uploads/upload_worker.dart';
+
+class _FakeIo implements UploadIo {
+  int createCalls = 0;
+  int putCalls = 0;
+  int convertCalls = 0;
+  int completeCalls = 0;
+  Object? createUploadError;
+  Object? putBytesError;
+  ConvertAudioResult? convertResult;
+
+  @override
+  Future<CreateAudioUploadResult> createUpload(PendingUpload u) async {
+    createCalls++;
+    if (createUploadError != null) throw createUploadError!;
+    return CreateAudioUploadResult(
+        uploadId: 'au-${u.localId}', signedUrl: 'https://signed/${u.localId}');
+  }
+
+  @override
+  Future<void> putBytes(PendingUpload u,
+      {void Function(double)? onProgress}) async {
+    putCalls++;
+    if (putBytesError != null) {
+      final err = putBytesError!;
+      putBytesError = null; // one-shot — clear so subsequent attempts succeed
+      throw err;
+    }
+  }
+
+  @override
+  Future<ConvertAudioResult> convertAudio(PendingUpload u) async {
+    convertCalls++;
+    return convertResult ??
+        const ConvertAudioResult(contentType: 'audio/flac', converted: true);
+  }
+
+  @override
+  Future<CompleteAudioUploadResult> completeUpload(PendingUpload u) async {
+    completeCalls++;
+    return CompleteAudioUploadResult(sessionId: 'sess-${u.localId}');
+  }
+
+  @override
+  Future<void> cleanupSource(PendingUpload u) async {}
+}
+
+PendingUpload _seed(String id, {bool needsConversion = false}) =>
+    PendingUpload.initial(
+      localId: id,
+      therapistId: 'th-1',
+      patientFileId: 'pf-1',
+      patientLanguageCode: 'pl-PL',
+      sourceKind: UploadSourceKind.plainFile,
+      sourcePath: '/$id',
+      contentType: needsConversion ? 'audio/mpeg' : 'audio/flac',
+      sizeBytes: 100,
+      chunkCount: 1,
+      actualDurationSeconds: 0,
+      needsServerSideConversion: needsConversion,
+      idempotencyKey: id,
+      now: DateTime.utc(2026, 5, 20, 12),
+    );
+
+UploadQueueRunner _runner({
+  required UploadQueue queue,
+  required _FakeIo io,
+  Stream<String> Function(String)? sessionStatusStream,
+  Future<void> Function(PendingUpload)? onAnalysisComplete,
+  Duration Function(int)? backoff,
+}) =>
+    UploadQueueRunner(
+      queue: queue,
+      worker: UploadWorker(
+        io: io,
+        backoff: backoff ?? (_) => const Duration(minutes: 5),
+      ),
+      periodicInterval: const Duration(hours: 1),
+      connectivityStream: const Stream.empty(),
+      hasNetwork: () async => true,
+      sessionStatusStream: sessionStatusStream,
+      onAnalysisComplete: onAnalysisComplete,
+    );
+
+void main() {
+  late Directory tmpDir;
+  late Box<Map> rawBox;
+
+  setUp(() async {
+    tmpDir = await Directory.systemTemp.createTemp('state_transitions_');
+    Hive.init(tmpDir.path);
+    rawBox = await Hive.openBox<Map>(
+        'state_${DateTime.now().microsecondsSinceEpoch}');
+  });
+
+  tearDown(() async {
+    await Hive.close();
+    await tmpDir.delete(recursive: true);
+  });
+
+  group('happy paths', () {
+    test('Chirp-native: pending → created → uploaded → completed in one tick',
+        () async {
+      final queue = UploadQueue(hiveBox: rawBox);
+      final io = _FakeIo();
+      final runner = _runner(queue: queue, io: io);
+      await runner.start();
+      await runner.enqueueAndKick(_seed('a'));
+
+      final row = queue.getById('a')!;
+      expect(row.phase, UploadPhase.completed);
+      expect(row.sessionId, 'sess-a');
+      expect(io.createCalls, 1);
+      expect(io.putCalls, 1);
+      expect(io.convertCalls, 0);
+      expect(io.completeCalls, 1);
+
+      await runner.dispose();
+    });
+
+    test('needs conversion: pending → created → uploaded → converted → completed',
+        () async {
+      final queue = UploadQueue(hiveBox: rawBox);
+      final io = _FakeIo();
+      final runner = _runner(queue: queue, io: io);
+      await runner.start();
+      await runner.enqueueAndKick(_seed('b', needsConversion: true));
+
+      final row = queue.getById('b')!;
+      expect(row.phase, UploadPhase.completed);
+      expect(io.convertCalls, 1, reason: 'conversion ran exactly once');
+      expect(io.completeCalls, 1);
+
+      await runner.dispose();
+    });
+  });
+
+  group('transient failures', () {
+    test('retryable error keeps row in current phase with bumped attempt',
+        () async {
+      final io = _FakeIo()
+        ..createUploadError = grpc.GrpcError.unavailable('flaky');
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = _runner(
+        queue: queue,
+        io: io,
+        backoff: (_) => const Duration(minutes: 5),
+      );
+      await runner.start();
+      await runner.enqueueAndKick(_seed('c'));
+
+      final row = queue.getById('c')!;
+      expect(row.phase, UploadPhase.pending);
+      expect(row.attemptCount, 1);
+      expect(row.lastError, contains('UNAVAILABLE'));
+      expect(row.nextAttemptAt.isAfter(DateTime.now().toUtc()), isTrue);
+
+      await runner.dispose();
+    });
+
+    test('signed URL expiry: 403 PUT → row goes back to pending, creds cleared',
+        () async {
+      final queue = UploadQueue(hiveBox: rawBox);
+      final io = _FakeIo()
+        ..putBytesError = httpStatusError(403, 'SignatureExpired');
+      // backoff doesn't matter — signedUrlExpired schedules nextAttemptAt=now.
+      final runner = _runner(queue: queue, io: io);
+      await runner.start();
+      await runner.enqueueAndKick(_seed('d'));
+
+      // After one tick: pending → created (PUT fails 403) → back to
+      // pending with creds cleared, attemptCount=1, due immediately.
+      // The inner advance loop also re-runs createUpload + putBytes
+      // since the row is due now and putBytesError was one-shot.
+      final row = queue.getById('d')!;
+      // End state: full success since putBytesError was a one-shot.
+      expect(row.phase, UploadPhase.completed);
+      expect(io.createCalls, greaterThanOrEqualTo(2),
+          reason: 'createUpload re-ran after signed URL refresh');
+      expect(io.putCalls, greaterThanOrEqualTo(2),
+          reason: 'PUT retried after URL refresh');
+
+      await runner.dispose();
+    });
+  });
+
+  group('terminal failures', () {
+    test('FAILED_PRECONDITION → row marked failed, terminatedAt set',
+        () async {
+      final io = _FakeIo()
+        ..createUploadError = grpc.GrpcError.failedPrecondition(
+            'audio_uploads.content_type=mpeg not Chirp');
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = _runner(queue: queue, io: io);
+      await runner.start();
+      await runner.enqueueAndKick(_seed('e'));
+
+      final row = queue.getById('e')!;
+      expect(row.phase, UploadPhase.failed);
+      expect(row.terminatedAt, isNotNull);
+      expect(row.lastError, contains('FAILED_PRECONDITION'));
+
+      await runner.dispose();
+    });
+  });
+
+  group('post-upload Firestore-driven analysis', () {
+    test("status='done' removes the row and invokes onAnalysisComplete",
+        () async {
+      final analysisStatuses = StreamController<String>.broadcast();
+      var onCompleteCalls = 0;
+      PendingUpload? lastRowSeen;
+
+      final queue = UploadQueue(hiveBox: rawBox);
+      final io = _FakeIo();
+      final runner = _runner(
+        queue: queue,
+        io: io,
+        sessionStatusStream: (_) => analysisStatuses.stream,
+        onAnalysisComplete: (row) async {
+          onCompleteCalls++;
+          lastRowSeen = row;
+        },
+      );
+      await runner.start();
+      await runner.enqueueAndKick(_seed('f'));
+      // Upload finished; row sits at completed waiting for analysis.
+      expect(queue.getById('f')!.phase, UploadPhase.completed);
+
+      // Server-side mirror reports 'analyzing' first — should NOT
+      // remove the row.
+      analysisStatuses.add('analyzing');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(queue.getById('f'), isNotNull,
+          reason: "'analyzing' must not terminate the row");
+      expect(onCompleteCalls, 0);
+
+      // Then 'done' — runner refreshes caches + drops the row.
+      analysisStatuses.add('done');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(queue.getById('f'), isNull,
+          reason: "'done' must remove the row");
+      expect(onCompleteCalls, 1);
+      expect(lastRowSeen?.localId, 'f');
+
+      await runner.dispose();
+      await analysisStatuses.close();
+    });
+
+    test("status='failed' also terminates the row", () async {
+      final analysisStatuses = StreamController<String>.broadcast();
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = _runner(
+        queue: queue,
+        io: _FakeIo(),
+        sessionStatusStream: (_) => analysisStatuses.stream,
+        onAnalysisComplete: (_) async {},
+      );
+      await runner.start();
+      await runner.enqueueAndKick(_seed('g'));
+
+      analysisStatuses.add('failed');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(queue.getById('g'), isNull);
+
+      await runner.dispose();
+      await analysisStatuses.close();
+    });
+
+    test('one subscription per row — opening twice is a no-op', () async {
+      final analysisStatuses = StreamController<String>.broadcast();
+      var subscribeCount = 0;
+      Stream<String> wrap(String _) {
+        subscribeCount++;
+        return analysisStatuses.stream;
+      }
+
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = _runner(
+        queue: queue,
+        io: _FakeIo(),
+        sessionStatusStream: wrap,
+        onAnalysisComplete: (_) async {},
+      );
+      await runner.start();
+      await runner.enqueueAndKick(_seed('h'));
+      // A second kick should not open a second subscription for h.
+      await runner.kick();
+      await runner.kick();
+      expect(subscribeCount, 1);
+
+      await runner.dispose();
+      await analysisStatuses.close();
+    });
+
+    test('subscription torn down on dispose', () async {
+      final analysisStatuses = StreamController<String>.broadcast();
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = _runner(
+        queue: queue,
+        io: _FakeIo(),
+        sessionStatusStream: (_) => analysisStatuses.stream,
+        onAnalysisComplete: (_) async {},
+      );
+      await runner.start();
+      await runner.enqueueAndKick(_seed('i'));
+      expect(analysisStatuses.hasListener, isTrue);
+      await runner.dispose();
+      expect(analysisStatuses.hasListener, isFalse,
+          reason: 'dispose() cancels analysis subscriptions');
+      await analysisStatuses.close();
+    });
+
+    test('onAnalysisComplete failure does not block row removal', () async {
+      final analysisStatuses = StreamController<String>.broadcast();
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = _runner(
+        queue: queue,
+        io: _FakeIo(),
+        sessionStatusStream: (_) => analysisStatuses.stream,
+        onAnalysisComplete: (_) async => throw Exception('cache refresh boom'),
+      );
+      await runner.start();
+      await runner.enqueueAndKick(_seed('j'));
+
+      analysisStatuses.add('done');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(queue.getById('j'), isNull,
+          reason: 'row removal happens regardless of callback error');
+
+      await runner.dispose();
+      await analysisStatuses.close();
+    });
+  });
+
+  group('dismiss / retryFailed', () {
+    test('dismiss removes the row and emits a snapshot', () async {
+      final queue = UploadQueue(hiveBox: rawBox);
+      final io = _FakeIo();
+      final runner = _runner(queue: queue, io: io);
+      await runner.start();
+      await runner.enqueueAndKick(_seed('k'));
+      expect(queue.getById('k'), isNotNull);
+
+      await runner.dismiss('k');
+      expect(queue.getById('k'), isNull);
+
+      await runner.dispose();
+    });
+
+    test('retryFailed flips phase=failed → pending, clears bookkeeping',
+        () async {
+      final io = _FakeIo()
+        ..createUploadError = grpc.GrpcError.failedPrecondition('nope');
+      final queue = UploadQueue(hiveBox: rawBox);
+      final runner = _runner(queue: queue, io: io);
+      await runner.start();
+      await runner.enqueueAndKick(_seed('l'));
+      expect(queue.getById('l')!.phase, UploadPhase.failed);
+
+      // Clear the error and retry.
+      io.createUploadError = null;
+      await runner.retryFailed('l');
+
+      final row = queue.getById('l')!;
+      expect(row.phase, UploadPhase.completed,
+          reason: 'retry kicks the runner; row walks to completion');
+      expect(row.attemptCount, 0);
+      expect(row.lastError, isNull);
+
+      await runner.dispose();
+    });
+  });
+}
