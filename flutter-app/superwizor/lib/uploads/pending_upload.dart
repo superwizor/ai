@@ -191,6 +191,7 @@ class PendingUpload {
     String? lastError,
     DateTime? terminatedAt,
     bool clearLastError = false,
+    bool clearUploadCredentials = false,
     bool? needsServerSideConversion,
   }) {
     return PendingUpload(
@@ -207,8 +208,9 @@ class PendingUpload {
       needsServerSideConversion:
           needsServerSideConversion ?? this.needsServerSideConversion,
       phase: phase ?? this.phase,
-      uploadId: uploadId ?? this.uploadId,
-      signedUrl: signedUrl ?? this.signedUrl,
+      uploadId: clearUploadCredentials ? null : (uploadId ?? this.uploadId),
+      signedUrl:
+          clearUploadCredentials ? null : (signedUrl ?? this.signedUrl),
       sessionId: sessionId ?? this.sessionId,
       idempotencyKey: idempotencyKey,
       queuedAt: queuedAt,

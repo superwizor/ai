@@ -1,0 +1,221 @@
+// UploadWorker — drives a single PendingUpload forward by one phase.
+//
+// The worker is intentionally stateless and pure-ish: each `runOne`
+// call is "given the current upload state, do whatever the next step
+// is, return the new state". The runner (upload_queue_provider.dart)
+// owns ticking and persistence.
+//
+// Design rules:
+//   • One phase advance per call. Even a fresh `pending` upload only
+//     advances to `created` in one call — the runner immediately
+//     calls runOne again for the next phase. This keeps individual
+//     calls short (single-RPC granularity) so cancel / app-pause /
+//     network-blip can interrupt cleanly between phases.
+//   • All side effects go through [UploadIo]. The worker never
+//     touches Hive, gRPC, HTTP, or the filesystem directly.
+//   • All thrown errors are classified via [classifyUploadError]
+//     and folded into the returned PendingUpload state — runOne
+//     itself never throws (modulo bugs in our own code, which
+//     would be programmer errors and should surface).
+
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
+
+import 'pending_upload.dart';
+import 'upload_error.dart';
+import 'upload_io.dart';
+
+typedef BackoffPolicy = Duration Function(int attempt);
+
+/// Default backoff: min(60s × 2^attempt, 30 min) with ±25% jitter.
+/// attempt=0 → ~60s, attempt=4 → ~16 min, attempt≥5 → 30 min ± jitter.
+/// After the runner gives up retrying (e.g. 7-day max-age sweep)
+/// we want a single retry cadence of ~30 min — by then a transient
+/// network outage has either resolved or it's a real problem.
+Duration defaultBackoff(int attempt) {
+  final base = math.min(60 * (1 << attempt.clamp(0, 5)), 30 * 60);
+  // ±25% jitter so a fleet of clients can't synchronise their
+  // retry storm against a server outage.
+  final jitter = (base * 0.25 * (math.Random().nextDouble() * 2 - 1)).toInt();
+  final secs = (base + jitter).clamp(1, 60 * 60);
+  return Duration(seconds: secs);
+}
+
+class UploadWorker {
+  UploadWorker({
+    required UploadIo io,
+    DateTime Function()? clock,
+    BackoffPolicy? backoff,
+    int? maxAttemptsForTerminalClassError,
+  })  : _io = io,
+        _clock = clock ?? (() => DateTime.now().toUtc()),
+        _backoff = backoff ?? defaultBackoff,
+        _terminalRetryCap = maxAttemptsForTerminalClassError ?? 1;
+
+  final UploadIo _io;
+  final DateTime Function() _clock;
+  final BackoffPolicy _backoff;
+  /// Even when an error classifies as "terminal" we tolerate one
+  /// attempt — this is the budget. Set to 1 so we surface the
+  /// first terminal error to the user immediately; tests can bump
+  /// it to assert behavior on subsequent attempts.
+  // ignore: unused_field
+  final int _terminalRetryCap;
+
+  /// Advances [u] by one phase. Always returns a new PendingUpload
+  /// reflecting the outcome; never throws.
+  Future<PendingUpload> runOne(PendingUpload u) async {
+    if (u.isTerminal) return u;
+
+    try {
+      switch (u.phase) {
+        case UploadPhase.pending:
+          return await _doCreate(u);
+        case UploadPhase.created:
+          return await _doUpload(u);
+        case UploadPhase.uploaded:
+          if (u.needsServerSideConversion) {
+            return await _doConvert(u);
+          }
+          return await _doComplete(u);
+        case UploadPhase.converted:
+          return await _doComplete(u);
+        case UploadPhase.completed:
+        case UploadPhase.failed:
+          return u;
+      }
+    } catch (e, st) {
+      // Defensive — runOne is supposed to be exception-safe via the
+      // per-step handlers below. If we land here something genuinely
+      // unexpected happened. Treat as retryable so the next tick
+      // re-tries; surfacing it as terminal could hide our own bugs.
+      debugPrint('[upload-worker] runOne unexpected: $e\n$st');
+      return _scheduleRetry(u, 'unexpected: $e');
+    }
+  }
+
+  // ── Phase handlers ────────────────────────────────────────────
+
+  Future<PendingUpload> _doCreate(PendingUpload u) async {
+    try {
+      final res = await _io.createUpload(u);
+      return u.copyWith(
+        phase: UploadPhase.created,
+        uploadId: res.uploadId,
+        signedUrl: res.signedUrl,
+        attemptCount: 0,
+        clearLastError: true,
+      );
+    } catch (e) {
+      return _classify(u, e);
+    }
+  }
+
+  Future<PendingUpload> _doUpload(PendingUpload u) async {
+    if (u.uploadId == null || u.signedUrl == null) {
+      // Defensive — phase=created should always have these. If they're
+      // gone, drop back to pending so the next tick re-creates.
+      return u.copyWith(
+        phase: UploadPhase.pending,
+        lastError: 'invariant: uploadId/signedUrl missing in created phase',
+      );
+    }
+    try {
+      await _io.putBytes(u);
+      return u.copyWith(
+        phase: UploadPhase.uploaded,
+        attemptCount: 0,
+        clearLastError: true,
+      );
+    } catch (e) {
+      return _classify(u, e);
+    }
+  }
+
+  Future<PendingUpload> _doConvert(PendingUpload u) async {
+    try {
+      final res = await _io.convertAudio(u);
+      // Server can no-op the conversion if the content type was
+      // already supported (idempotency). Either way, advance.
+      return u.copyWith(
+        phase: UploadPhase.converted,
+        attemptCount: 0,
+        clearLastError: true,
+        // If the server normalized the content type, reflect it
+        // so subsequent CompleteAudioUpload sees the same shape
+        // the server sees. The contentType field on PendingUpload
+        // is informational at this stage; not persisted back to
+        // the original file.
+        needsServerSideConversion: !res.converted ? false : false,
+      );
+    } catch (e) {
+      return _classify(u, e);
+    }
+  }
+
+  Future<PendingUpload> _doComplete(PendingUpload u) async {
+    try {
+      final res = await _io.completeUpload(u);
+      // Fire-and-forget cleanup of on-disk material. If purge fails
+      // (rare; disk full while deleting?) we don't unwind the
+      // upload — the row is already terminal-success on the server.
+      try {
+        await _io.cleanupSource(u);
+      } catch (e) {
+        debugPrint('[upload-worker] cleanupSource failed (ignored): $e');
+      }
+      return u.copyWith(
+        phase: UploadPhase.completed,
+        sessionId: res.sessionId,
+        terminatedAt: _clock(),
+        clearLastError: true,
+      );
+    } catch (e) {
+      return _classify(u, e);
+    }
+  }
+
+  // ── Error → retry classification ─────────────────────────────
+
+  PendingUpload _classify(PendingUpload u, Object error) {
+    final cls = classifyUploadError(error);
+    switch (cls.kind) {
+      case UploadErrorClass.terminal:
+        return u.copyWith(
+          phase: UploadPhase.failed,
+          lastError: cls.message,
+          terminatedAt: _clock(),
+          attemptCount: u.attemptCount + 1,
+        );
+
+      case UploadErrorClass.signedUrlExpired:
+        // Drop the expired credentials and bounce back to pending so
+        // the next tick re-runs CreateAudioUpload with the same
+        // idempotencyKey — server returns the original uploadId and
+        // a fresh signedUrl.
+        return u.copyWith(
+          phase: UploadPhase.pending,
+          clearUploadCredentials: true,
+          attemptCount: u.attemptCount + 1,
+          nextAttemptAt: _clock(), // due immediately
+          lastError: cls.message,
+        );
+
+      case UploadErrorClass.retryable:
+        return _scheduleRetry(u, cls.message);
+    }
+  }
+
+  PendingUpload _scheduleRetry(PendingUpload u, String error) {
+    final nextAttempt = u.attemptCount + 1;
+    final delay = _backoff(nextAttempt);
+    final now = _clock();
+    return u.copyWith(
+      attemptCount: nextAttempt,
+      nextAttemptAt: now.add(delay),
+      lastError: error,
+    );
+  }
+}
