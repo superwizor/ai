@@ -119,6 +119,16 @@ class PatientRepository {
     final box = _cache.patientsBox();
     await box.delete(CacheKeys.patientsKey(_therapistId));
   }
+
+  /// Hard-evict cascade for a deleted patient: drops the patient from
+  /// the cached list, drops their session list, and drops every cached
+  /// session_details entry whose Session.patientFileId matches. Use
+  /// when the server confirms a DeletePatientUser/DeletePatientFile —
+  /// the backend has cascaded the delete (sessions, transcripts,
+  /// reports, audio_uploads), and the device must follow suit so we
+  /// never serve cached PHI for a record the server says is gone.
+  Future<void> evictPatient(String patientFileId) =>
+      _cache.evictPatient(patientFileId);
 }
 
 // ── Default gRPC fetcher ─────────────────────────────────────────

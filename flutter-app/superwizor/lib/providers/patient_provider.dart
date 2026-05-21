@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/patient.dart';
 import '../models/session.dart';
 import '../repositories/patient_repository.dart';
+import '../repositories/session_details_repository.dart';
 import '../repositories/session_repository.dart';
 import 'current_user_provider.dart';
 import 'grpc_provider.dart';
@@ -150,6 +151,14 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
       await client.deletePatientUser(grpc_clinical.DeletePatientUserRequest(
         patientFileId: patientFileId,
       ));
+
+      // Cascade-evict everything we cached for this patient: the
+      // patient row, the session list, every session_details entry.
+      // Done BEFORE refresh so the refresh writes a clean snapshot
+      // and the UI never momentarily shows the deleted patient's
+      // transcripts via a still-warm session_details cache.
+      await _repo?.evictPatient(patientFileId);
+
       await _refreshAndPublish();
     } catch (e) {
       debugPrint('Error deleting patient: $e');
@@ -189,6 +198,7 @@ final sessionsProvider = AsyncNotifierProvider<SessionsNotifier, Map<String, Lis
 
 class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
   SessionRepository? _repo;
+  SessionDetailsRepository? _detailsRepo;
 
   @override
   Future<Map<String, List<Session>>> build() async {
@@ -197,6 +207,7 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
     final user = await ref.watch(firebaseUserProvider.future);
     if (user == null) return const {};
     _repo = await ref.watch(sessionRepositoryProvider.future);
+    _detailsRepo = await ref.watch(sessionDetailsRepositoryProvider.future);
     return const {};
   }
 
@@ -298,6 +309,13 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
       // state and the cached DTO list. The cache mutation keeps
       // subsequent reads consistent without a refresh round-trip.
       await _repo?.removeSessionLocally(patientId, sessionId);
+
+      // Also evict the cached session_details for this session — the
+      // backend just CASCADE-deleted transcripts/reports/audio_uploads
+      // (migration 000012); if we left the entry in cache, a stale
+      // navigation back to it would render PHI for a session that no
+      // longer exists server-side.
+      await _detailsRepo?.invalidate(sessionId);
 
       final current = state.whenOrNull(data: (d) => d);
       if (current == null) return;
