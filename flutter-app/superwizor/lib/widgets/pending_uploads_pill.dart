@@ -19,21 +19,35 @@ class PendingUploadsPill extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(pendingUploadsStreamProvider);
-    final list = async.maybeWhen(data: (l) => l, orElse: () => <PendingUpload>[]);
+    final list =
+        async.maybeWhen(data: (l) => l, orElse: () => <PendingUpload>[]);
 
-    // Hide completed + dismissed rows from the count; failed rows are
-    // shown so the user notices and can retry.
-    final visible = list
-        .where((u) => u.phase != UploadPhase.completed)
-        .toList();
+    // We show every non-dismissed row so the pill stays visible during
+    // server-side processing too — the SessionStatusScreen's success
+    // cascade dismisses the row once analysis is fully done.
+    if (list.isEmpty) return const SizedBox.shrink();
 
-    if (visible.isEmpty) return const SizedBox.shrink();
+    final hasFailure = list.any((u) => u.phase == UploadPhase.failed);
+    final allCompleted =
+        list.every((u) => u.phase == UploadPhase.completed);
 
-    final hasFailure = visible.any((u) => u.phase == UploadPhase.failed);
-    final color = hasFailure ? Colors.redAccent.shade200 : EuphireColors.ember;
-    final icon = hasFailure ? Icons.error_outline : Icons.cloud_upload_outlined;
-    final label =
-        hasFailure ? '${visible.length} błąd' : '${visible.length} w toku';
+    final Color color;
+    final IconData icon;
+    final String label;
+    if (hasFailure) {
+      color = Colors.redAccent.shade200;
+      icon = Icons.error_outline;
+      label = '${list.length} błąd';
+    } else if (allCompleted) {
+      // Upload finished; backend analysis is still running.
+      color = EuphireColors.ember;
+      icon = Icons.auto_awesome;
+      label = '${list.length} analiza';
+    } else {
+      color = EuphireColors.ember;
+      icon = Icons.cloud_upload_outlined;
+      label = '${list.length} w toku';
+    }
 
     return InkWell(
       borderRadius: BorderRadius.circular(20),

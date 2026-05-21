@@ -112,19 +112,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       _resolvedSessionId = widget.sessionId;
       _startListeners();
     }
-
-    // Surface the "Wgrywanie w toku" snackbar that previously lived
-    // on the source screen — keeps the affordance the user expects
-    // while moving the upload work to the queue.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Wgrywanie w toku — analiza rozpocznie się '
-              'gdy serwer odbierze plik.'),
-        ),
-      );
-    });
   }
 
   @override
@@ -286,6 +273,21 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
 
     // Phase 3: Wait and navigate
     await Future<void>.delayed(const Duration(seconds: 3));
+
+    // Dismiss the queue row before navigating — server-side analysis
+    // is fully done, so the pill on home should disappear. We do
+    // this here (rather than relying on the queue's own GC) so the
+    // pill state is in lock-step with the user-visible state.
+    final localId = widget.localId;
+    if (localId != null) {
+      try {
+        final runner = await ref.read(uploadQueueRunnerProvider.future);
+        await runner?.dismiss(localId);
+      } catch (e) {
+        debugPrint('[session-status] dismiss queue row failed: $e');
+      }
+    }
+
     if (!mounted) return;
     final sid = _resolvedSessionId;
     if (sid != null) {
