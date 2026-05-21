@@ -31,6 +31,8 @@ import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/services_provider.dart';
 import '../services/session_state_listener.dart';
+import '../repositories/patient_repository.dart';
+import '../repositories/session_repository.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
@@ -79,6 +81,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   /// observed on the queue row after CompleteAudioUpload succeeds.
   /// Null while we're still in the upload phase.
   String? _resolvedSessionId;
+  /// Snapshot of the last queue row we saw (when launched via
+  /// localId). Used to render a small diagnostic label so the user
+  /// — and us — can see exactly which phase the worker is in.
+  PendingUpload? _lastRow;
 
   // ── Success Cascade controllers ──
   late final AnimationController _checkScaleAnim;
@@ -155,6 +161,15 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         );
     if (row == null) return;
 
+    // Update the diagnostic label.
+    if (_lastRow?.phase != row.phase ||
+        _lastRow?.attemptCount != row.attemptCount ||
+        _lastRow?.lastError != row.lastError) {
+      if (mounted) setState(() => _lastRow = row);
+    } else {
+      _lastRow = row;
+    }
+
     // Failure surface: queue worker classified the upload as
     // terminal-failed. Show the existing failure sheet with the
     // worker's lastError so the user sees what actually happened.
@@ -167,7 +182,9 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     }
 
     // SessionId materialised — CompleteAudioUpload just succeeded.
-    // Hand off to the server-side processing listeners.
+    // Hand off to the server-side processing listeners + force a
+    // cache refresh on the patient + session list so the kartoteka
+    // shows the new session immediately when the user navigates back.
     final newSid = row.sessionId;
     if (newSid != null && _resolvedSessionId == null) {
       _resolvedSessionId = newSid;
@@ -176,6 +193,23 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         setState(() => _phase = SessionStepperPhase.uploaded);
       }
       _startListeners();
+
+      // Cache invalidation — both repositories' soft-TTLs would
+      // otherwise serve stale lists on the next kartoteka visit.
+      _invalidateRelevantCaches(row.patientFileId);
+    }
+  }
+
+  Future<void> _invalidateRelevantCaches(String patientFileId) async {
+    try {
+      final patientRepo =
+          await ref.read(patientRepositoryProvider.future);
+      await patientRepo?.refresh();
+      final sessionRepo =
+          await ref.read(sessionRepositoryProvider.future);
+      await sessionRepo?.refresh(patientFileId);
+    } catch (e) {
+      debugPrint('[session-status] cache refresh after upload failed: $e');
     }
   }
 
@@ -462,9 +496,62 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
           phase: _phase,
           collapsed: _collapsed,
         ),
+        const SizedBox(height: 16),
+        // ── Queue-state diagnostic ──
+        // Only shown while we're in the upload phase (sessionId
+        // hasn't materialised yet). Helps the user — and us in dev
+        // — see exactly which phase the queue is in.
+        if (_lastRow != null && _resolvedSessionId == null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                Text(
+                  _queuePhaseLabel(_lastRow!),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
+                ),
+                if (_lastRow!.lastError != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    _lastRow!.lastError!,
+                    textAlign: TextAlign.center,
+                    maxLines: 4,
+                    style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      fontSize: 10,
+                      color: Colors.redAccent.shade200,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         const Spacer(),
       ],
     );
+  }
+
+  String _queuePhaseLabel(PendingUpload u) {
+    final attempt = u.attemptCount > 0 ? ' • próba ${u.attemptCount + 1}' : '';
+    switch (u.phase) {
+      case UploadPhase.pending:
+        return 'W kolejce$attempt';
+      case UploadPhase.created:
+        return 'Przesyłam plik na serwer...$attempt';
+      case UploadPhase.uploaded:
+        return 'Plik na serwerze, finalizuję...$attempt';
+      case UploadPhase.converted:
+        return 'Konwersja gotowa, finalizuję...$attempt';
+      case UploadPhase.completed:
+        return 'Wgrane';
+      case UploadPhase.failed:
+        return 'Błąd';
+    }
   }
 
   Widget _buildSuccessView(AppLocalizations t) {
