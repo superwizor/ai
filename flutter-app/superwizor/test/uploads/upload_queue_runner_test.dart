@@ -24,10 +24,12 @@ class _FakeIo implements UploadIo {
   int createCalls = 0;
   int putCalls = 0;
   int completeCalls = 0;
+  Object? createUploadError;
 
   @override
   Future<CreateAudioUploadResult> createUpload(PendingUpload u) async {
     createCalls++;
+    if (createUploadError != null) throw createUploadError!;
     return const CreateAudioUploadResult(
         uploadId: 'au-1', signedUrl: 'https://signed/1');
   }
@@ -84,7 +86,12 @@ void main() {
     await tmpDir.delete(recursive: true);
   });
 
-  test('enqueueAndKick advances pending→created in one shot', () async {
+  test('enqueueAndKick drives an upload to completed in one tick',
+      () async {
+    // Single tick walks the entire phase machine when nothing
+    // schedules a backoff retry. Without this the periodic 60s
+    // tick would pace each phase transition — see the loop in
+    // UploadQueueRunner._tick.
     final io = _FakeIo();
     final queue = UploadQueue(hiveBox: rawBox);
     final runner = UploadQueueRunner(
@@ -98,37 +105,41 @@ void main() {
 
     await runner.enqueueAndKick(_seed('a'));
 
+    final done = queue.getById('a')!;
+    expect(done.phase, UploadPhase.completed);
+    expect(done.sessionId, 'sess-1');
     expect(io.createCalls, 1);
-    expect(queue.getById('a')!.phase, UploadPhase.created);
+    expect(io.putCalls, 1);
+    expect(io.completeCalls, 1);
 
     await runner.dispose();
   });
 
-  test('subsequent kick() calls drive through all phases to completed',
-      () async {
-    final io = _FakeIo();
+  test('a retryable failure parks the row for a future tick', () async {
+    // When the worker schedules a backoff (nextAttemptAt in the
+    // future), the inner advance loop must bail so other rows can
+    // be processed and so we don't busy-loop.
+    final io = _FakeIo()..createUploadError = Exception('transient');
     final queue = UploadQueue(hiveBox: rawBox);
     final runner = UploadQueueRunner(
       queue: queue,
-      worker: UploadWorker(io: io, backoff: (_) => Duration.zero),
+      worker: UploadWorker(
+        io: io,
+        backoff: (_) => const Duration(minutes: 5),
+      ),
       periodicInterval: const Duration(hours: 1),
       connectivityStream: const Stream.empty(),
       hasNetwork: () async => true,
     );
     await runner.start();
 
-    await runner.enqueueAndKick(_seed('a')); // → created
-    expect(queue.getById('a')!.phase, UploadPhase.created);
+    await runner.enqueueAndKick(_seed('a'));
 
-    await runner.kick(); // → uploaded
-    expect(queue.getById('a')!.phase, UploadPhase.uploaded);
-
-    await runner.kick(); // → completed
-    final done = queue.getById('a')!;
-    expect(done.phase, UploadPhase.completed);
-    expect(done.sessionId, 'sess-1');
-    expect(io.putCalls, 1);
-    expect(io.completeCalls, 1);
+    final row = queue.getById('a')!;
+    expect(row.phase, UploadPhase.pending);
+    expect(row.attemptCount, 1);
+    expect(row.nextAttemptAt.isAfter(DateTime.now().toUtc()), isTrue);
+    expect(io.createCalls, 1, reason: 'no busy-loop on backoff');
 
     await runner.dispose();
   });

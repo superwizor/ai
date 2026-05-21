@@ -170,13 +170,35 @@ class UploadQueueRunner {
       // Process each due row in order. We process serially rather
       // than in parallel so a slow upload doesn't starve CPU /
       // bandwidth, and so progress UI for one upload is meaningful.
+      //
+      // For each row, keep advancing through phases in one tick
+      // until the row terminates OR the worker schedules a future
+      // retry (nextAttemptAt in the future). Without this loop the
+      // periodic 60s tick would pace each phase transition — a
+      // typical upload would take 4+ minutes to walk from pending
+      // through completed even on a fast network. We still emit
+      // snapshots between phases so the UI updates in real time.
       final due = _queue.dueNow();
-      for (final u in due) {
+      for (final initial in due) {
         if (!_running) break;
-        final next = await _worker.runOne(u);
-        if (!identical(next, u)) {
+        var current = initial;
+        while (_running) {
+          final next = await _worker.runOne(current);
+          if (identical(next, current)) break; // worker no-op (terminal)
           await _queue.update(next);
           changed = true;
+          // Emit a snapshot mid-row so the SessionStatusScreen sees
+          // each phase transition (pending → created → uploaded → …)
+          // without waiting for the whole pipeline to finish.
+          _emitSnapshot();
+
+          if (next.isTerminal) break;
+          // Worker scheduled a backoff retry — let a future tick
+          // (periodic or connectivity-triggered) pick it up.
+          if (next.nextAttemptAt.isAfter(DateTime.now().toUtc())) {
+            break;
+          }
+          current = next;
         }
       }
     } catch (e, st) {
