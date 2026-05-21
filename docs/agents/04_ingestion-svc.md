@@ -70,6 +70,46 @@ Flow:
 
 **Implementation:** `services/ingestion-svc/internal/adapters/storage/converter.go` (the ffmpeg shell-out + GCS streaming) + handler in `services/ingestion-svc/internal/adapters/grpc/server.go::ConvertAudio`.
 
+### Client-side resilience: the Flutter upload queue (2026-05-21)
+
+The Flutter app no longer drives the five RPC sequence inline. Every
+upload — file-picker and live-recording — is enqueued into
+`lib/uploads/upload_queue.dart` (durable Hive box) and walked
+forward by `UploadWorker.runOne` one phase at a time. Implications
+for this service:
+
+- **`idempotencyKey` is contract-critical.** The Flutter client
+  reuses the same key across CreateAudioUpload retries (it's stored
+  on the `PendingUpload` row). The server MUST return the same
+  `upload_id` + a fresh `signed_url` when called twice with the
+  same key — that's how the client recovers from an expired URL
+  without creating a duplicate `audio_uploads` row. Verified
+  against migration 000007's `UNIQUE (idempotency_key)`.
+
+- **Signed-URL refresh path.** When GCS returns 401/403/410 on PUT
+  the client classifies as `signedUrlExpired`, clears the row's
+  uploadId/signedUrl, and re-runs CreateAudioUpload. Don't break
+  the idempotent return; don't issue a new upload_id.
+
+- **ConvertAudio is idempotent on the client too.** The worker may
+  call ConvertAudio more than once for the same `upload_id` if the
+  app is killed between ConvertAudio and CompleteAudioUpload. The
+  no-op return (`converted=false` when source is already
+  Chirp-supported) handles this.
+
+- **CompleteAudioUpload retries.** Same — the client retries with
+  the same `upload_id` if the network drops between PUT/Convert and
+  Complete. Don't fail-loud on "already completed"; surface
+  `codes.AlreadyExists` only when the row genuinely transitioned
+  past UPLOADED into TRANSCRIBING/TRANSCRIBED.
+
+The client surfaces queue rows in a home-screen pill and a list
+view (`lib/screens/pending_uploads_screen.dart`) so the user can
+retry / dismiss failed rows manually. Errors that classify as
+**terminal** (FAILED_PRECONDITION, INVALID_ARGUMENT, etc.) land
+there with the gRPC error message intact — keep your error messages
+actionable for the therapist who'll read them.
+
 ### CompleteAudioUpload codec gate (added 2026-05-20)
 
 Defense in depth for the M4A flow. `CompleteAudioUpload` now fetches

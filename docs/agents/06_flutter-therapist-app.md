@@ -6,34 +6,65 @@
 
 Mobile (iOS/Android) and web app for therapists. Records sessions, lists patients/sessions, displays AI-generated reports. **Read-only on AI reports** (P4 + P5 in architecture).
 
-## Status (2026-05-07)
+## Status (2026-05-21)
 
 - Phase 1 — login + patient files list working against staging.
 - Phase 2 — audio recording → upload via signed URL → poll/subscribe for report → display report being iterated.
 - Web build hits gRPC-Web limitations (see "Web vs native" below).
+- **Local cache + offline upload queue shipped** (2026-05-21) — see new section below. Patients/sessions/transcripts/reports now cached client-side; both file-upload and live-recording paths flow through a durable Hive queue that survives app kill and resumes on connectivity restore.
 
 ## Repo paths
 
 ```
 flutter-app/superwizor/
 ├── lib/
-│   ├── main.dart                     # entry point
+│   ├── main.dart                     # entry point + UploadQueueLifecycleObserver
 │   ├── firebase_options.dart         # FlutterFire config
 │   ├── constants/
-│   ├── generated/                    # proto stubs (clinical, identity, ingestion)
-│   ├── models/
+│   ├── generated/                    # proto stubs (clinical, identity, ingestion, notification)
+│   ├── models/                       # UI-facing Patient/Session
+│   ├── cache/                        # encrypted Hive cache + DTOs (added 2026-05-21)
+│   │   ├── cache_keys.dart           # therapist-scoped box names
+│   │   ├── cache_cipher.dart         # per-therapist AES-256 via flutter_secure_storage
+│   │   ├── cache_envelope.dart       # TTL + LRU metadata wrapper
+│   │   ├── cache_box.dart            # generic CacheBox<T>
+│   │   ├── cache_manager.dart        # 300 MB cross-box LRU + evictPatient cascade
+│   │   ├── cache_provider.dart       # Riverpod gateway (opens boxes on sign-in)
+│   │   └── dto/                      # PatientDto, SessionDto, TranscriptDto, ReportDto, SessionDetailsDto
+│   ├── repositories/                 # stale-while-revalidate over cache + gRPC (added 2026-05-21)
+│   │   ├── patient_repository.dart
+│   │   ├── session_repository.dart
+│   │   └── session_details_repository.dart
+│   ├── uploads/                      # durable offline upload queue (added 2026-05-21)
+│   │   ├── pending_upload.dart       # DTO + phase state machine
+│   │   ├── upload_queue.dart         # Hive-backed durable store + 7d age sweep
+│   │   ├── upload_worker.dart        # phase advance + 3-bucket error classifier
+│   │   ├── upload_error.dart         # retryable / signedUrlExpired / terminal classifier
+│   │   ├── upload_io.dart            # injectable side-effect surface
+│   │   ├── upload_io_grpc.dart       # production gRPC + HTTP impl
+│   │   ├── upload_queue_runner.dart  # tick loop + connectivity + Firestore-status subs
+│   │   └── upload_queue_provider.dart # Riverpod gateway + lifecycle observer
 │   ├── providers/
 │   │   ├── grpc_provider.dart        # GrpcClients riverpod provider
-│   │   └── ...
+│   │   ├── current_user_provider.dart # Firebase UID → users.id (UUID)
+│   │   ├── patient_provider.dart     # PatientsNotifier / SessionsNotifier (cache-aware)
+│   │   ├── session_details_provider.dart # returns SessionDetailsDto via repo
+│   │   └── services_provider.dart
 │   ├── screens/
 │   │   ├── login_screen.dart
+│   │   ├── home_screen.dart          # hosts PendingUploadsPill in header
+│   │   ├── pending_uploads_screen.dart # list view with retry/dismiss
+│   │   ├── session_status_screen.dart # accepts sessionId OR queue localId
 │   │   └── ...
 │   ├── services/
-│   │   └── grpc_client.dart          # GrpcClients class + AuthInterceptor
+│   │   ├── grpc_client.dart          # GrpcClients class + AuthInterceptor
+│   │   ├── secure_audio_storage_service.dart # AES-256-GCM chunk store
+│   │   └── session_state_listener.dart # Firestore session_states stream
 │   ├── theme/
 │   └── widgets/
+│       └── pending_uploads_pill.dart # home-header status chip
 ├── ios/, android/, web/, macos/, ...
-└── pubspec.yaml
+└── pubspec.yaml                       # connectivity_plus added 2026-05-21
 ```
 
 ## gRPC client setup
@@ -143,6 +174,145 @@ adds an `ext == '.m4a' || ext == '.mp4' || ext == '.aac'` branch with
 a try/catch that flips `needsServerSideConversion=true` on iOS
 decode failure or non-iOS platforms.
 
+## Local cache (added 2026-05-21)
+
+Encrypted Hive cache scoped per therapist. Three domain boxes
+(`patients_v1__<uid>`, `sessions_v1__<uid>`, `session_details_v1__<uid>`)
+backed by AES-256 keys held in `flutter_secure_storage`. Per-therapist
+box-name suffix is belt-and-suspenders to the per-user key — a stale
+handle physically cannot see another therapist's data.
+
+**Layers:**
+
+```
+UI screens / Riverpod notifiers
+      ↓
+PatientRepository / SessionRepository / SessionDetailsRepository
+      ↓                                ↓
+   CacheBox<T>                     PatientFetcher / SessionFetcher
+   (TTL + LRU)                     (gRPC ClinicalServiceClient)
+      ↓
+CacheManager (300 MB cross-box LRU + evictPatient cascade)
+      ↓
+encrypted Hive boxes (lib/cache/)
+```
+
+**Read contract (stale-while-revalidate):**
+- Cache hit fresh → return immediately, no network.
+- Cache hit stale → return cached for fast UI; background refresh updates state when it lands.
+- Cache miss → block on network, write through.
+
+**TTLs (soft / hard):** patients 24h / 30d • sessions 1h / 30d •
+session_details 1h / 30d. Hard expiry deletes the entry on read.
+Corrupt or schema-mismatched entries are self-healed (dropped) so
+DTO field drift never blows up `fromJson`.
+
+**Per-therapist key & logout:** `CacheCipher.forgetKeyFor(therapistId)`
+deletes the secure-storage key — Hive box files on disk become
+permanently undecodable. `CacheManager.clearForUser` then deletes the
+box files; the key-delete is the second wall. Call both on hard
+sign-out.
+
+**Cascade-evict on patient delete:** `PatientRepository.evictPatient`
+delegates to `CacheManager.evictPatient` which drops the patient row,
+their session list, and every cached session_details where
+`session.patientFileId` matches. Wired into `PatientsNotifier.deletePatientUser`
+before the refresh fires.
+
+**`TranscriptCacheStore` retired** — the legacy per-screen
+transcript cache was removed in favour of `SessionDetailsRepository`,
+which stores the whole `GetSessionDetails` composite and integrates
+with the cross-box LRU.
+
+## Offline upload queue (added 2026-05-21)
+
+Both upload paths — `lib/screens/new_session_screen.dart` (file
+picker) and `lib/screens/recording_screen.dart` (live recording) —
+now build a `PendingUpload` and `enqueueAndKick` the queue runner,
+then navigate to `SessionStatusScreen(localId: ...)`. The five-step
+ingestion pipeline (CreateAudioUpload → PUT → ConvertAudio →
+CompleteAudioUpload → cleanup) runs entirely in the background.
+
+**Durable state shape (`PendingUpload`):**
+- `UploadSourceKind.encryptedChunks` — live recording. Chunks at
+  `<docs>/sessions/<sessionId>/chunk_NNNNN.enc` (existing
+  SecureAudioStorageService format). Worker decrypts to temp at PUT
+  time, deletes temp in `finally`.
+- `UploadSourceKind.plainFile` — file picker. Picked file is copied
+  to `<docs>/queued_uploads/<localId>/<basename>` (stable across app
+  kill — file_picker's OS cache path can be purged). Worker deletes
+  the staging dir on terminal-success.
+
+**Phase machine** (`UploadPhase`): `pending → created → uploaded →
+[converted] → completed`. Terminal: `completed`, `failed`. Runner
+advances rows to terminal in one tick (within bounds of a scheduled
+backoff) so the SessionStatusScreen stepper updates in real time
+rather than waiting 60s between phases.
+
+**Error classification** (`upload_error.dart`):
+- **retryable** — gRPC UNAVAILABLE/DEADLINE_EXCEEDED/INTERNAL,
+  network plumbing (Socket/Http/Timeout/ClientException), HTTP 5xx.
+  Worker schedules exponential backoff with jitter
+  (`min(60s × 2^n, 30min) ± 25%`).
+- **signedUrlExpired** — HTTP 401/403/410 on PUT. Worker bounces row
+  back to `pending` and clears uploadId/signedUrl; next tick re-runs
+  CreateAudioUpload with the SAME `idempotencyKey` so the server
+  returns the existing uploadId + a fresh URL (no duplicate
+  audio_uploads row).
+- **terminal** — gRPC FAILED_PRECONDITION (the MP3 codec gate shape),
+  INVALID_ARGUMENT, NOT_FOUND, PERMISSION_DENIED, etc.; HTTP 4xx
+  non-auth. Row marked `failed` with `terminatedAt`; user sees the
+  worker's `lastError` in the failure sheet and the pill turns red.
+
+Conservative default: unrecognised errors classify as **retryable**.
+Worst case is wasted attempts on a permanent failure — the 7-day
+max-age sweep eventually reaps it. The opposite mistake (silently
+giving up on a transient blip) is a lost recording.
+
+**Triggers** (runner picks up due rows on):
+- `connectivity_plus.onConnectivityChanged` → kick the moment Wi-Fi
+  or cellular returns.
+- 60-second periodic timer while the runner is foregrounded.
+- `AppLifecycleState.resumed` via `UploadQueueLifecycleObserver`
+  installed in `main.dart`.
+- Explicit `enqueueAndKick` from screens (synchronous; advances
+  through phases in one tick).
+
+**Kartoteka refresh on push events** — no polling. The runner
+subscribes to Firestore `session_states/{sessionId}` (the doc that
+notification-svc mirrors per Pub/Sub event) for every row whose
+upload reached `phase=completed`. Two refresh callbacks fire to keep
+the kartoteka in sync:
+
+- `onUploadComplete(row)` — fires the instant the row hits
+  `phase=completed`. The server has a real session in PROCESSING
+  state; we `refresh()` both `PatientRepository` and
+  `SessionRepository` so the new session appears in the kartoteka
+  with "W trakcie analizy" instead of hiding behind a stale cached
+  list.
+- `onAnalysisComplete(row)` — fires when the Firestore subscription
+  emits `status='done'` or `'failed'`. Refreshes the same
+  repositories so the status flips to "Wgrane", then removes the
+  row from the queue (pill on home disappears).
+
+**Pending uploads UI** — `PendingUploadsPill` on the home header
+(empty → hidden, has rows → "N w toku" / "N analiza" / "N błąd"
+with distinct icons). Tap → `PendingUploadsScreen` list view with
+per-row phase label, attempt count, error string, and retry / dismiss
+buttons. Live-updates via `pendingUploadsStreamProvider`.
+
+**SessionStatusScreen** accepts either:
+- `sessionId` (legacy direct-result entry point), or
+- `localId` (queue row ID) — watches the queue snapshot, surfaces
+  phase-specific copy under the stepper ("Przesyłam plik na
+  serwer...", "Plik na serwerze, finalizuję..."), then transparently
+  switches to the sessionId-driven Firestore + clinical-svc
+  listeners the moment CompleteAudioUpload returns.
+
+**Max queue age:** 7 days. `UploadQueue.pruneStale` force-terminates
+older rows with sentinel `lastError='queue.max_age_exceeded'`. User
+can dismiss the failed row from the list view.
+
 ## Recording → upload flow
 
 We must switch the recording encoder to a format natively supported by chirp_3 (e.g., FLAC, WAV, or OPUS).
@@ -181,6 +351,11 @@ User taps Record
 - Cache the Firebase ID token statically — it expires hourly. Use `getIdToken()` each call.
 - Read or write Firestore documents that aren't `session_state/{id}` — others have write-restricted rules.
 - Embed long-lived secrets in the app bundle. There aren't any (Firebase config is fine to ship).
+- **Run the ingestion pipeline inline from a screen.** All audio uploads go through `uploadQueueRunnerProvider.enqueueAndKick(...)` — keeps crash-safe durable state and gives the runner a chance to retry. The five-step pipeline (CreateAudioUpload → PUT → ConvertAudio → CompleteAudioUpload → cleanup) is exclusively the runner's job via `UploadIo`.
+- **Poll clinical-svc for session status.** notification-svc mirrors all status transitions to Firestore `session_states/{sessionId}`. Subscribe; do not poll. The 60s clinical-svc fallback in `SessionStatusScreen` is for statuses not yet mirrored to Firestore (`transcribing`, `failed` — ADR-IMPL-012 deferred); not a general escape hatch.
+- **Generate a new `idempotencyKey` on retry.** The same key for the lifetime of a `PendingUpload` is what lets CreateAudioUpload return the original `upload_id` + a fresh signed URL when the previous URL expired. New key = duplicate audio_uploads row.
+- **Add a fourth cache box without going through `CacheManager`.** Box names are therapist-scoped and the cipher is per-therapist; reach for `CacheManager.openForUser` semantics, don't open Hive boxes ad hoc.
+- **Store DTOs as proto messages directly in Hive.** Generated proto classes are not designed for stable on-disk serialization (field-number renames, reserved-tag promotions silently shift bytes). Every cached entity gets a thin Dart DTO with explicit `toJson` / `fromJson` + `fromProto` adapter (lib/cache/dto/) — schema diffs surface at compile time.
 
 ## Common gotchas
 
@@ -189,8 +364,15 @@ User taps Record
 - **Firebase ID token: `audience` mismatch** — Firebase project ID in `firebase_options.dart` doesn't match what backend expects. Both sides must reference `superwizor-ai-25ecd`.
 - **`flutter pub get` fails after proto changes** — make sure `lib/generated/` is up to date; run `protoc` (Flutter doesn't do this automatically).
 - **Web build doesn't connect to backend** — backend is not yet `grpcweb.WrapServer`-wrapped. Use iOS simulator for now, or add the wrapper to identity/clinical/ingestion main.go.
+- **Kartoteka shows session as "W trakcie analizy" forever** — the cache `onAnalysisComplete` callback isn't firing because the runner hasn't subscribed to `session_states/{sessionId}` for that row. Check `_sessionStatusStream` is wired in `upload_queue_provider.dart`. Confirm with `[upload-runner] subscribing to analysis status localId=...` debug log.
+- **Upload pipeline stuck at "Przesyłam plik..." for 60s** — was a bug pre-2026-05-21 where the tick advanced only one phase per call. `_tick` now loops `runOne` until terminal or backoff. If a regression: check the inner `while (_running)` loop in `UploadQueueRunner._tick`.
+- **New session missing from kartoteka during processing** — was a bug pre-2026-05-21 where the cache only refreshed on `onAnalysisComplete`. Both `onUploadComplete` (fires on `phase=completed`) AND `onAnalysisComplete` (fires on Firestore `done`/`failed`) now refresh `PatientRepository` + `SessionRepository`. If a regression: verify both callbacks fire by adding a debug log in `_refreshKartoteka`.
+- **Pill never disappears after analysis finishes** — Firestore subscription not firing or `onAnalysisComplete` not running. Two causes: (1) notification-svc never wrote `session_states/{sessionId}` with `status='done'` (check the worker logs), (2) the runner's analysis subscription was created before the sessionId materialized (defensive: `_reconcileAnalysisSubscriptions` runs on every tick).
+- **`HiveError: Box has already been closed`** during therapist switch — the previous runner's tick is mid-flight when the box closes. Benign; the new tick on the new box reseeds state.
 
 ## Source-doc pointers
 
 - `docs/05_FAZA_1_TOZSAMOSC_DANE.md` Sprint 1.4 (lines 2976–3375) — Flutter project init, Firebase setup, generated proto stubs, minimal app: login + patient files list, smoke test.
 - `docs/02_ARCHITEKTURA_TECHNICZNA.md` §6 (Firestore as sync layer, lines 631–724).
+- `docs/08_FAZA_3_NOTIFICATIONS.md` — Firestore `session_states` doc shape, status transitions, FCM payload (the queue runner subscribes to the same doc).
+- `docs/agents/10_notification-svc.md` — backend writer for `session_states`. Source of truth on which statuses are mirrored (`uploaded`, `analyzing`, `done`); `transcribing` + `failed` deferred per ADR-IMPL-012.

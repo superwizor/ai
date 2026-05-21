@@ -97,6 +97,29 @@ Flutter has `allow write: if false` on both — Firestore rules enforce this. Se
 - **Firebase project** (`superwizor-ai-25ecd`) for FCM messaging.
 - **Cloud SQL** for fcm_tokens / notification_deliveries.
 
+## Consumers of `session_states/{sessionId}` (2026-05-21)
+
+Two distinct Flutter subscribers read this doc — both via
+`SessionStateListener.watchSession(sessionId)`:
+
+1. **`SessionStatusScreen`** — visible while the user waits for
+   the report. Drives the stepper UI (`uploaded → analyzing →
+   done`) and runs the success cascade on `done`.
+
+2. **`UploadQueueRunner`** (lib/uploads/) — invisible. For every
+   queued row whose upload succeeded (phase=completed + sessionId
+   set), the runner opens a Firestore subscription to dismiss the
+   row when status flips to `done` or `failed`. This is what makes
+   the pending-uploads pill on the home screen disappear without
+   the user needing to revisit `SessionStatusScreen`.
+
+   Implication: every reliable Firestore status transition needs
+   to happen exactly once. If the worker writes `done` then later
+   writes another `done` (e.g. a retried Pub/Sub message), the
+   runner's listener is idempotent — `_queue.removeById` is a
+   no-op on the second fire. Don't rely on this; idempotency at
+   the writer side is still correct.
+
 ## Constraining ADRs
 
 | ADR | What it forces |

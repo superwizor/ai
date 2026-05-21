@@ -16,9 +16,20 @@ Verify the system works as a **whole**, not just per-service. E2E tests exercise
 | **E2E (full pipeline)** | Audio upload → transcript → report end-to-end | **NOT YET** — to be built |
 | **Manual UI** | Flutter app against staging | iOS simulator + therapist test account |
 
-## Status (2026-05-07)
+## Status (2026-05-21)
 
-- **Unit tests** exist for: `pkg/cryptobox`, `pkg/transcription/chunker`, `pkg/i18n/speakerlabels`, `cmd/stt-worker` (parser), `identity-svc/internal/adapters/grpc` (server).
+- **Go unit tests** exist for: `pkg/cryptobox`, `pkg/transcription/chunker`, `pkg/i18n/speakerlabels`, `cmd/stt-worker` (parser), `identity-svc/internal/adapters/grpc` (server).
+- **Flutter unit tests — 104 tests** (added 2026-05-21 with the local-cache + offline-upload-queue work). Run via `flutter test --timeout 30s` from `flutter-app/superwizor/`. Coverage by module:
+  - `test/cache/dto/` — JSON round-trip with field-count guards for every DTO (PatientDto, SessionDto, TranscriptDto, ReportDto, SessionDetailsDto)
+  - `test/cache/cache_box_test.dart` — TTL gates, schema-version drop, corrupt entry self-heal, LRU index
+  - `test/cache/cache_manager_test.dart` — open/close lifecycle, LRU eviction across boxes, evictPatient cascade, therapist switch
+  - `test/cache/eviction_cascade_test.dart` — full delete-patient cascade through PatientRepository
+  - `test/repositories/` — miss/hit/stale/invalidate per repo, per-therapist scoping
+  - `test/uploads/pending_upload_test.dart` — JSON round-trip + state machine invariants
+  - `test/uploads/upload_queue_test.dart` — dueNow ordering, pruneStale (7-day max age), corrupt-row skip
+  - `test/uploads/upload_worker_test.dart` — every phase transition + every error classifier branch
+  - `test/uploads/upload_queue_runner_test.dart` — connectivity restore, snapshot stream, retryFailed/dismiss
+  - `test/uploads/upload_state_transitions_test.dart` — end-to-end happy/sad paths through the runner + worker + Firestore-status callbacks (onUploadComplete fires exactly once per row, onAnalysisComplete on 'done'/'failed')
 - **Phase 1 smoke** works: [`tests/e2e/test_create_patient_file.sh`](../../tests/e2e/test_create_patient_file.sh), [`tests/e2e/get_test_user.sh`](../../tests/e2e/get_test_user.sh) — create user, list modalities, create patient file, list.
 - **Phase 2 E2E (audio + AI pipeline) — gap.** To verify, you currently use the Flutter app manually. This doc lays out what an automated E2E suite should look like.
 
@@ -32,8 +43,13 @@ tests/                                    ← shell-based E2E tests
 
 superwizor-backend/tests/e2e/             ← duplicates above (legacy)
 
-superwizor-backend/pkg/<pkg>/*_test.go    ← unit tests
-superwizor-backend/services/<svc>/internal/.../*_test.go  ← unit tests
+superwizor-backend/pkg/<pkg>/*_test.go    ← Go unit tests
+superwizor-backend/services/<svc>/internal/.../*_test.go  ← Go unit tests
+
+flutter-app/superwizor/test/              ← Flutter unit tests (104, added 2026-05-21)
+├── cache/                                ← DTOs, box, manager, eviction cascade
+├── repositories/                          ← patient / session / session-details repos
+└── uploads/                              ← queue, worker, runner, transitions
 
 superwizor-backend/Makefile               ← `make test` runs `go test ./...` per module
 .github/workflows/ci.yml                  ← CI runs `make test` on every push
