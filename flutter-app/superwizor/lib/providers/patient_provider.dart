@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/patient.dart';
 import '../models/session.dart';
 import '../repositories/patient_repository.dart';
+import '../repositories/session_repository.dart';
 import 'current_user_provider.dart';
 import 'grpc_provider.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as grpc_clinical;
@@ -187,56 +188,122 @@ final sessionsProvider = AsyncNotifierProvider<SessionsNotifier, Map<String, Lis
 });
 
 class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
+  SessionRepository? _repo;
+
   @override
   Future<Map<String, List<Session>>> build() async {
     // Same auth-tie as PatientsNotifier — invalidate session cache
     // on therapist switch so we don't show ex-user's sessions.
     final user = await ref.watch(firebaseUserProvider.future);
     if (user == null) return const {};
+    _repo = await ref.watch(sessionRepositoryProvider.future);
     return const {};
   }
 
+  /// Loads sessions for a patient: returns a fresh cache hit immediately,
+  /// or serves stale + refreshes in the background, or blocks on network
+  /// when the cache is cold. The `Map<patientId, sessions>` shape is kept
+  /// for backward compatibility with widgets that watch the whole map.
   Future<void> fetchSessions(String patientId) async {
+    final repo = _repo;
+    if (repo != null) {
+      try {
+        final cached = await repo.getCachedAsModels(patientId);
+
+        // Serve cached (fresh or stale) immediately.
+        if (cached.hasData) {
+          _publish(patientId, cached.data!);
+
+          // If stale, kick off a background refresh.
+          if (cached.isStale) {
+            _backgroundRefresh(patientId);
+          }
+          return;
+        }
+
+        // Cold cache — block on network, then publish.
+        final fresh = await repo.refresh(patientId);
+        _publish(patientId, fresh.map((d) => d.toModel()).toList());
+        return;
+      } catch (e) {
+        debugPrint('[sessions] cache-aware fetch failed, '
+            'falling back to direct gRPC: $e');
+        // fall through to the legacy path
+      }
+    }
+
+    // Fallback path — repo unavailable (cache still opening) or
+    // refresh threw. Hits gRPC directly without caching.
+    await _fetchDirectFallback(patientId);
+  }
+
+  void _backgroundRefresh(String patientId) async {
+    final repo = _repo;
+    if (repo == null) return;
+    try {
+      final fresh = await repo.refresh(patientId);
+      _publish(patientId, fresh.map((d) => d.toModel()).toList());
+    } catch (e) {
+      debugPrint('[sessions] background refresh for $patientId failed: $e');
+    }
+  }
+
+  Future<void> _fetchDirectFallback(String patientId) async {
     final client = ref.read(grpcClientsProvider).clinical;
     try {
-      final req = grpc_clinical.ListSessionsRequest(patientFileId: patientId);
-      final res = await client.listSessions(req);
-      
+      final res = await client.listSessions(
+        grpc_clinical.ListSessionsRequest(patientFileId: patientId),
+      );
       final fetched = res.sessions.map((s) {
         return Session(
           id: s.id,
           patientId: s.patientFileId,
-          modality: s.name.isNotEmpty ? s.name : 'Rozmowa', // zaktualizowane z backendu
+          modality: s.name.isNotEmpty ? s.name : 'Rozmowa',
           date: s.createdAt.toDateTime().toLocal(),
           duration: Duration(seconds: s.durationSeconds),
-          status: s.status == 'COMPLETED' ? SessionStatus.completed : SessionStatus.inProgress,
+          status: s.status == 'COMPLETED'
+              ? SessionStatus.completed
+              : SessionStatus.inProgress,
         );
       }).toList();
-
-      final current = state.whenOrNull(data: (d) => d) ?? {};
-      state = AsyncValue.data({...current, patientId: fetched});
+      _publish(patientId, fetched);
     } catch (e) {
-      debugPrint('Error fetching sessions: $e');
+      debugPrint('[sessions] direct fetch fallback failed: $e');
     }
+  }
+
+  void _publish(String patientId, List<Session> sessions) {
+    final current = state.whenOrNull(data: (d) => d) ?? {};
+    state = AsyncValue.data({...current, patientId: sessions});
   }
 
   Future<void> addSession(Session session) async {
     final current = state.whenOrNull(data: (d) => d) ?? {};
     final patientSessions = current[session.patientId] ?? [];
-    state = AsyncValue.data({...current, session.patientId: [...patientSessions, session]});
+    state = AsyncValue.data(
+        {...current, session.patientId: [...patientSessions, session]});
+    // Refresh from network in the background so the cache picks up
+    // the server-canonical row (with proper session_number, status,
+    // audio_upload_id, etc).
+    _backgroundRefresh(session.patientId);
   }
 
   Future<void> deleteSession(String patientId, String sessionId) async {
     final client = ref.read(grpcClientsProvider).clinical;
     try {
-      await client.deleteSession(grpc_clinical.DeleteSessionRequest(sessionId: sessionId));
-      
+      await client.deleteSession(
+          grpc_clinical.DeleteSessionRequest(sessionId: sessionId));
+
+      // Local optimistic update: drop the row from both the live
+      // state and the cached DTO list. The cache mutation keeps
+      // subsequent reads consistent without a refresh round-trip.
+      await _repo?.removeSessionLocally(patientId, sessionId);
+
       final current = state.whenOrNull(data: (d) => d);
       if (current == null) return;
-      
       final sessions = current[patientId] ?? [];
-      final updatedSessions = sessions.where((s) => s.id != sessionId).toList();
-      
+      final updatedSessions =
+          sessions.where((s) => s.id != sessionId).toList();
       state = AsyncValue.data({...current, patientId: updatedSessions});
     } catch (e) {
       debugPrint('Error deleting session: $e');
@@ -244,7 +311,8 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
     }
   }
 
-  Future<void> renameSession(String patientId, String sessionId, String newName) async {
+  Future<void> renameSession(
+      String patientId, String sessionId, String newName) async {
     final client = ref.read(grpcClientsProvider).clinical;
     try {
       await client.updateSession(grpc_clinical.UpdateSessionRequest(
@@ -252,9 +320,10 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
         name: newName,
       ));
 
+      await _repo?.renameSessionLocally(patientId, sessionId, newName);
+
       final current = state.whenOrNull(data: (d) => d);
       if (current == null) return;
-      
       final sessions = current[patientId] ?? [];
       final updatedSessions = sessions.map((s) {
         if (s.id == sessionId) {
@@ -262,7 +331,6 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
         }
         return s;
       }).toList();
-      
       state = AsyncValue.data({...current, patientId: updatedSessions});
     } catch (e) {
       debugPrint('Error renaming session: $e');
