@@ -462,8 +462,12 @@ func (s *Server) ConvertAudio(ctx context.Context, req *ingestionv1.ConvertAudio
 		return nil, status.Error(codes.NotFound, "audio upload not found")
 	}
 
-	// Idempotent no-op: already in a Chirp-supported codec.
-	if storage.IsChirpSupported(upload.ContentType) {
+	// Idempotent no-op for the codec normalization step when the
+	// source is already Chirp-supported. We still fall through to
+	// the chunking branch below if the caller asked for it — long
+	// FLAC uploads need chunking even though no transcode is needed.
+	skipTranscode := storage.IsChirpSupported(upload.ContentType)
+	if skipTranscode && !req.ChunkForChirp {
 		return &ingestionv1.ConvertAudioResponse{
 			ContentType: upload.ContentType,
 			ObjectPath:  upload.ObjectPath,
@@ -481,81 +485,80 @@ func (s *Server) ConvertAudio(ctx context.Context, req *ingestionv1.ConvertAudio
 			"unsupported target_content_type: %s", target)
 	}
 
-	// Transcode on disk. Bound by the gRPC deadline — Cloud Run's
-	// per-request timeout must be ≥ 300s (configured at deploy time;
-	// see infra/.../cloud-run.tf). The converter streams into ffmpeg,
-	// so RSS stays bounded at ~150 MB even for hour-long inputs.
-	slog.Info("convert_audio: starting",
-		"upload_id", req.AudioUploadId,
-		"src_object", upload.ObjectPath,
-		"src_content_type", upload.ContentType,
-		"target", target,
-	)
-	t0 := time.Now()
-	result, err := s.converter.Convert(
-		ctx,
-		upload.BucketName,
-		upload.ObjectPath,
-		upload.ContentType,
-		target,
-	)
-	if err != nil {
-		slog.Error("convert_audio: ffmpeg failed",
+	// Transcode path. Only runs when the source codec needs
+	// normalization (M4A / AAC / etc.). FLAC sources skip directly
+	// to the chunking branch with `updated` synthesized below.
+	var updated db.AudioUpload
+	if skipTranscode {
+		// Source is already Chirp-supported (typically FLAC).
+		// `updated` is the existing audio_uploads row — no DB write
+		// needed, but we still need its fields for the chunking
+		// branch downstream.
+		updated = upload
+		slog.Info("convert_audio: skipping transcode (codec already supported)",
 			"upload_id", req.AudioUploadId,
-			"error", err,
+			"content_type", upload.ContentType,
 		)
-		// ffmpeg failure on a real input is almost always a corrupt
-		// source — surface as InvalidArgument so the client can
-		// distinguish "you uploaded garbage" from "the server is
-		// down" (the latter would be Internal/Unavailable).
-		return nil, status.Errorf(codes.InvalidArgument,
-			"transcode failed: %v", err)
-	}
-	slog.Info("convert_audio: ffmpeg done",
-		"upload_id", req.AudioUploadId,
-		"new_object", result.ObjectPath,
-		"new_content_type", result.ContentType,
-		"duration_ms", time.Since(t0).Milliseconds(),
-	)
-
-	// Atomic DB rewrite. If this fails after the new GCS object is
-	// uploaded, the row still points at the original M4A — but we've
-	// already deleted the M4A in Converter.Convert. That leaves an
-	// orphan: row says <path>.m4a, GCS has only <path>.flac. The
-	// caller will retry; ConvertAudio is idempotent on already-supported
-	// codecs, so the retry will still try to convert again — failing
-	// the GCS download because the source is gone. Mitigation: log
-	// loudly here so Sentry surfaces it; manual repair = update the
-	// row to point at .flac. Not great, but RODO-acceptable (audio is
-	// disposable, content-type field is the only loss).
-	updated, err := s.queries.UpdateAudioUploadAfterConversion(
-		ctx,
-		db.UpdateAudioUploadAfterConversionParams{
-			ID:          uploadIDPg,
-			ObjectPath:  result.ObjectPath,
-			ContentType: result.ContentType,
-			BucketName:  result.BucketName,
-		},
-	)
-	if err != nil {
-		slog.Error("convert_audio: db update failed after gcs success",
+	} else {
+		// Transcode on disk. Bound by the gRPC deadline — Cloud Run's
+		// per-request timeout must be ≥ 300s. The converter streams
+		// into ffmpeg, so RSS stays bounded at ~150 MB.
+		slog.Info("convert_audio: starting",
+			"upload_id", req.AudioUploadId,
+			"src_object", upload.ObjectPath,
+			"src_content_type", upload.ContentType,
+			"target", target,
+		)
+		t0 := time.Now()
+		result, err := s.converter.Convert(
+			ctx,
+			upload.BucketName,
+			upload.ObjectPath,
+			upload.ContentType,
+			target,
+		)
+		if err != nil {
+			slog.Error("convert_audio: ffmpeg failed",
+				"upload_id", req.AudioUploadId,
+				"error", err,
+			)
+			return nil, status.Errorf(codes.InvalidArgument,
+				"transcode failed: %v", err)
+		}
+		slog.Info("convert_audio: ffmpeg done",
 			"upload_id", req.AudioUploadId,
 			"new_object", result.ObjectPath,
-			"error", err,
+			"new_content_type", result.ContentType,
+			"duration_ms", time.Since(t0).Milliseconds(),
 		)
-		return nil, status.Errorf(codes.Internal,
-			"db update after conversion: %v", err)
-	}
 
-	// Belt-and-suspenders: emit a structured event so ops dashboards
-	// can chart conversion rate without scraping ffmpeg logs.
-	slog.Info("convert_audio: done",
-		"upload_id", req.AudioUploadId,
-		"src_ext", filepath.Ext(upload.ObjectPath),
-		"dst_ext", filepath.Ext(updated.ObjectPath),
-		"src_content_type", upload.ContentType,
-		"dst_content_type", updated.ContentType,
-	)
+		updated, err = s.queries.UpdateAudioUploadAfterConversion(
+			ctx,
+			db.UpdateAudioUploadAfterConversionParams{
+				ID:          uploadIDPg,
+				ObjectPath:  result.ObjectPath,
+				ContentType: result.ContentType,
+				BucketName:  result.BucketName,
+			},
+		)
+		if err != nil {
+			slog.Error("convert_audio: db update failed after gcs success",
+				"upload_id", req.AudioUploadId,
+				"new_object", result.ObjectPath,
+				"error", err,
+			)
+			return nil, status.Errorf(codes.Internal,
+				"db update after conversion: %v", err)
+		}
+
+		slog.Info("convert_audio: done",
+			"upload_id", req.AudioUploadId,
+			"src_ext", filepath.Ext(upload.ObjectPath),
+			"dst_ext", filepath.Ext(updated.ObjectPath),
+			"src_content_type", upload.ContentType,
+			"dst_content_type", updated.ContentType,
+		)
+	}
 
 	// Stage 2 chunking branch (feat/stt-long_audio_support). When the
 	// caller asked for chunking AND the source exceeds the
@@ -570,7 +573,7 @@ func (s *Server) ConvertAudio(ctx context.Context, req *ingestionv1.ConvertAudio
 	return &ingestionv1.ConvertAudioResponse{
 		ContentType: updated.ContentType,
 		ObjectPath:  updated.ObjectPath,
-		Converted:   true,
+		Converted:   !skipTranscode,
 		ChunkCount:  int32(chunkCount),
 	}, nil
 }
