@@ -59,25 +59,38 @@ Edit `ifs.json` (Internal Family Systems used as the example below):
   "display_name": "Internal Family Systems",
   "general_instructions": "Jesteś Superwizorem AI ...",
   "category_prompts": {
-    "Podsumowanie sesji":             "Cel: ...",
-    "Wnikliwe obserwacje":            "Cel: ...",
-    "Plan działania klienta":         "Cel: ...",
-    "Propozycje interwencji":         "Cel: ...",
-    "Wątki do pogłębienia":           "Cel: ...",
-    "Wskazówki superwizyjne":         "Cel: ...",
-    "Wstępne hipotezy diagnostyczne": "Cel: ..."
+    "<section name 1>": "Cel: ...",
+    "<section name 2>": "Cel: ...",
+    "<section name 3>": "Cel: ..."
   }
 }
 ```
 
-**All 7 category names are required and must be spelled exactly as above** —
-the llm-worker dispatcher and the report-rendering UI both rely on a fixed
-set. Renaming a category is a system-wide change, not a modality change.
+**Section names are per-modality** — there is no globally-fixed set.
+UNIV/CBT/PSYCHO/Gestalt use "Podsumowanie sesji", "Wnikliwe obserwacje",
+"Plan działania klienta", "Propozycje interwencji", "Wątki do pogłębienia",
+"Wskazówki superwizyjne", "Wstępne hipotezy diagnostyczne". PPT uses
+"Bilans Sesji", "Analiza w Modelu Równowagi", "Inspiracje Między Sesjami",
+"Konflikty i Ukryte Potencjalności", "Pozytywna Konceptualizacja", etc.
+Each modality picks the framing that fits its theoretical model. Names
+surface verbatim as `## Section` headers in `report_markdown`.
 
-`footer` is optional; omit it to inherit the standard footer (the three
-lines: `Speaker Role Inference`, `HiTOP Dimensions`, `RAG Summary Chunk`)
-that llm-worker downstream code parses. Override only if you have a
-modality-specific reason.
+**Do NOT add a `footer` field.** The script auto-builds the prompt
+without one. Migration `000016` explicitly stripped three legacy bullets
+(`Speaker Role Inference`, `HiTOP Dimensions`, `RAG Summary Chunk`) from
+every existing modality because the LLM was emitting them as section
+headers in `report_markdown` — a pre-call-1/call-2-split residue. Those
+three values are now produced by call 1 as structured columns
+(`speaker_role_inference`, `hitop_dimensions`, `rag_summary_chunk`); the
+modality prompt's job is the prose report only. The validator rejects
+the three bullets if they appear in `general_instructions` or any
+`category_prompts` body — no accidental copy-paste from an old prompt.
+
+Avoid:
+- `(TL;DR)` and other English internet shorthand — write Polish prose
+  matching the register of UNIV/CBT/PSYCHO/PPT.
+- Section names longer than 100 chars (UI header truncation).
+- Newlines inside section name keys.
 
 ### Step 2 — Generate the SQL migration
 
@@ -226,9 +239,11 @@ The rules:
 | `system_code` | Required, `^[A-Z][A-Z0-9_]{1,15}$` | Matches the immutable-after-create ADR; rejects lowercase / hyphens early. Stored in `patient_files.modality_code` so the regex also matches the proto's expected shape. |
 | `display_name` | Required, non-empty string, ≤255 chars | Goes into the `modalities.display_name` column. ARB localisation owns the UI label; this is the fallback. |
 | `general_instructions` | Required, non-empty string | The preamble — first thing the LLM sees. Empty here would give the worst possible report. |
-| `category_prompts` | Required dict; **exactly** these 7 keys, no extras | llm-worker dispatcher and report UI both rely on the fixed set. Adding an 8th key requires a system-wide change, not a per-modality one. |
+| `category_prompts` | Required dict; **at least 1** entry; names are per-modality | Each modality picks its own section labels; names surface verbatim in `report_markdown` headers. Order is preserved from the JSON. |
+| Each `category_prompts` key | Non-empty string, ≤100 chars, no newlines | Long names or newlines break the markdown header rendering in the report UI. |
 | Each `category_prompts[name]` | Non-empty string | Prevents half-filled specs from shipping. |
-| `footer` | Optional. If present, non-empty string. | Default footer (Speaker Role / HiTOP / RAG) is used when omitted. |
+| **Anywhere** in `general_instructions` or any category body | Must NOT contain `Speaker Role Inference`, `HiTOP Dimensions`, or `RAG Summary Chunk` | Migration `000016` explicitly stripped these from every existing modality (they made the LLM emit duplicate section headers; the values are now structured call-1 columns). The validator rejects on sight to keep the bug from coming back via copy-paste. |
+| `footer` | Optional. If present, non-empty string. | **Recommended: omit entirely.** Only add a footer if you have a genuinely modality-specific closing instruction that belongs in the system prompt rather than the call-1 metadata pass. |
 
 Test the validator yourself by feeding it a broken spec and seeing the
 error message — it'll point at the exact field and offending value.

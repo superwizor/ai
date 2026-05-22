@@ -13,17 +13,18 @@ JSON shape (see modality_prompts/gestalt.json for a worked example):
       "system_code":   "GESTALT",            // required, uppercase
       "display_name":  "Gestalt",            // required, UI label
       "general_instructions": "...",         // required, preamble text
-      "category_prompts": {                  // required, 7 categories
-        "Podsumowanie sesji":          "Cel: ...",
-        "Wnikliwe obserwacje":         "Cel: ...",
-        "Plan działania klienta":      "Cel: ...",
-        "Propozycje interwencji":      "Cel: ...",
-        "Wątki do pogłębienia":        "Cel: ...",
-        "Wskazówki superwizyjne":      "Cel: ...",
-        "Wstępne hipotezy diagnostyczne": "Cel: ..."
-      },
-      "footer": "..."                        // optional; default used if absent
+      "category_prompts": {                  // required, ≥1 section
+        "<section name 1>": "Cel: ...",      // section names are per-modality;
+        "<section name 2>": "Cel: ...",      // see PPT for an example using
+        ...                                   // PPT-specific section labels
+      }
     }
+
+Each modality picks its own section names — there is NO globally-fixed
+set. PPT uses "Bilans Sesji", "Analiza w Modelu Równowagi", etc.;
+UNIV/CBT/PSYCHO/Gestalt use "Podsumowanie sesji", "Wnikliwe obserwacje",
+etc. The downstream llm-worker takes the modality prompt verbatim;
+section names surface in `report_markdown` headers as-is.
 
 Why JSON, not inline Python: each modality is a standalone artefact
 the prompt-engineering team can version, diff, and re-generate
@@ -66,34 +67,21 @@ from typing import Any
 # Constants
 # ───────────────────────────────────────────────────────────────────
 
-# The 7 category names every modality must define. Order matters —
-# downstream llm-worker dispatcher and the report-rendering UI both
-# rely on this order matching the existing seed migrations (000006,
-# 000008). New modalities MUST conform.
-REQUIRED_CATEGORIES = (
-    "Podsumowanie sesji",
-    "Wnikliwe obserwacje",
-    "Plan działania klienta",
-    "Propozycje interwencji",
-    "Wątki do pogłębienia",
-    "Wskazówki superwizyjne",
-    "Wstępne hipotezy diagnostyczne",
-)
-
-# Boilerplate every modality's prompt carries at the end. llm-worker
-# downstream code looks for these three lines verbatim to dispatch
-# the speaker-role / HiTOP / RAG sub-tasks. If a modality JSON omits
-# `footer`, this default is used; pass an explicit footer only if you
-# need a modality-specific override.
-DEFAULT_FOOTER = (
-    "- Speaker Role Inference: Wywnioskuj role rozmówców z transkryptu "
-    "(np. 'therapist', 'patient').\n"
-    "- HiTOP Dimensions: Wskaż wymiary HiTOP, jeśli obecne w materiale klinicznym.\n"
-    "- RAG Summary Chunk: Utwórz syntetyczne podsumowanie najważniejszych "
-    "klinicznie faktów do bazy wektorowej (1-2 akapity, gęste informacyjnie)."
-)
+# DELIBERATELY NO LEGACY FOOTER. Migration 000016 stripped three
+# legacy bullets — "Speaker Role Inference", "HiTOP Dimensions",
+# "RAG Summary Chunk" — from every existing modality's
+# therapist_ai_general_prompt because the LLM was emitting them as
+# section headers in report_markdown (the pre-call-1/call-2-split
+# residue, ADR-IMPL-007). New modalities MUST NOT reintroduce them
+# via this script; the worker derives speaker_role_inference,
+# hitop_dimensions, and rag_summary_chunk as STRUCTURED columns from
+# the call-1 metadata pass. If a modality JSON does provide a
+# `footer` field, it's appended verbatim — but the canonical answer
+# is "no footer".
 
 VALID_SYSTEM_CODE = re.compile(r"^[A-Z][A-Z0-9_]{1,15}$")
+MIN_CATEGORIES = 1
+MAX_CATEGORY_NAME_CHARS = 100
 
 # ───────────────────────────────────────────────────────────────────
 # Validation
@@ -145,32 +133,59 @@ def validate_spec(spec: dict[str, Any], source: Path) -> None:
     cats = spec.get("category_prompts")
     if not isinstance(cats, dict):
         raise ModalitySpecError(f"{source}: 'category_prompts' must be an object")
-
-    missing = [c for c in REQUIRED_CATEGORIES if c not in cats]
-    if missing:
+    if len(cats) < MIN_CATEGORIES:
         raise ModalitySpecError(
-            f"{source}: category_prompts is missing required keys: {missing}"
+            f"{source}: category_prompts must contain at least "
+            f"{MIN_CATEGORIES} entry; got {len(cats)}"
         )
 
-    extra = [c for c in cats if c not in REQUIRED_CATEGORIES]
-    if extra:
-        raise ModalitySpecError(
-            f"{source}: category_prompts has unexpected keys: {extra}. "
-            f"Allowed: {list(REQUIRED_CATEGORIES)}"
-        )
-
-    for cat_name in REQUIRED_CATEGORIES:
-        body = cats[cat_name]
+    # Each modality picks its own section names — PPT uses
+    # "Bilans Sesji" etc., Gestalt uses "Podsumowanie sesji" etc.
+    # We only enforce that names are sane and bodies are present.
+    for cat_name, body in cats.items():
+        if not isinstance(cat_name, str) or not cat_name.strip():
+            raise ModalitySpecError(
+                f"{source}: category_prompts has an empty key"
+            )
+        if len(cat_name) > MAX_CATEGORY_NAME_CHARS:
+            raise ModalitySpecError(
+                f"{source}: category name {cat_name!r} exceeds "
+                f"{MAX_CATEGORY_NAME_CHARS} chars; report-rendering UI "
+                "won't truncate header lines gracefully"
+            )
+        if "\n" in cat_name or "\r" in cat_name:
+            raise ModalitySpecError(
+                f"{source}: category name {cat_name!r} contains newlines"
+            )
         if not isinstance(body, str) or not body.strip():
             raise ModalitySpecError(
                 f"{source}: category_prompts[{cat_name!r}] must be a non-empty string"
+            )
+
+    # Block the legacy bullets that 000016 explicitly stripped — if
+    # someone copy-pastes an old prompt into a new JSON spec, fail
+    # fast so the bug doesn't get reintroduced.
+    for legacy in ("Speaker Role Inference", "HiTOP Dimensions", "RAG Summary Chunk"):
+        if any(legacy in body for body in cats.values()):
+            raise ModalitySpecError(
+                f"{source}: category body mentions {legacy!r} — these are "
+                "structured call-1 metadata columns post-ADR-IMPL-007. "
+                "Migration 000016 stripped them from every existing modality. "
+                "Don't reintroduce in new specs."
+            )
+        if legacy in spec.get("general_instructions", ""):
+            raise ModalitySpecError(
+                f"{source}: general_instructions mentions {legacy!r} — "
+                "same reason: this would land verbatim in the LLM prompt "
+                "and the model would echo it back as a report header. "
+                "Remove the reference."
             )
 
     footer = spec.get("footer")
     if footer is not None and (not isinstance(footer, str) or not footer.strip()):
         raise ModalitySpecError(
             f"{source}: 'footer' (when set) must be a non-empty string; "
-            "omit the key to use the default footer"
+            "omit the key entirely if you don't want a footer (recommended)"
         )
 
 
@@ -182,14 +197,21 @@ def validate_spec(spec: dict[str, Any], source: Path) -> None:
 def build_system_prompt(spec: dict[str, Any]) -> str:
     parts: list[str] = [spec["general_instructions"].rstrip(), ""]
     parts.append("Wytyczne do poszczególnych sekcji raportu:")
-    cats = spec["category_prompts"]
-    for name in REQUIRED_CATEGORIES:
-        parts.append(f"- {name}: {cats[name]}")
-    footer = spec.get("footer") or DEFAULT_FOOTER
-    # Footer is preceded by a blank line for readability; matches the
-    # spacing in the legacy 000008_modality_prompts_pl.up.sql rows.
-    parts.append("")
-    parts.append(footer.strip())
+    # Iterate in the JSON's declared order — Python 3.7+ dicts preserve
+    # insertion order, and our load_spec uses json.loads which honours
+    # that. Section ordering matters for the rendered report layout.
+    for name, body in spec["category_prompts"].items():
+        parts.append(f"- {name}: {body}")
+    footer = spec.get("footer")
+    if footer:
+        # Optional, modality-specific. The canonical answer is "no
+        # footer" — see DELIBERATELY NO LEGACY FOOTER comment at top
+        # of this file. A footer is only appropriate if the modality
+        # has a genuinely modality-specific closing instruction that
+        # belongs in the system prompt rather than the call-1 metadata
+        # pass.
+        parts.append("")
+        parts.append(footer.strip())
     return "\n".join(parts)
 
 
