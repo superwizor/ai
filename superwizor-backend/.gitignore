@@ -44,6 +44,9 @@ Thumbs.db
 *.json
 !buf.gen.yaml
 !*.example.json
+# Modality prompt specs are source-of-truth for the migration generator
+# (see migrations/add_modality.py). Not secrets — must be tracked.
+!migrations/modality_prompts/*.json
 .env
 .env.local
 
