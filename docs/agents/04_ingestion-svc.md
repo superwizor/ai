@@ -206,7 +206,7 @@ The bucket has a **dead-man-switch** policy: every object is auto-deleted after 
 | Cloud Run `ingestion-svc` | public, VPC connector, min=1, max=20, `DATABASE_URL` from secret |
 | GCS bucket `${PROJECT}-audio-uploads` | lifecycle 48h, CMEK |
 | Pub/Sub `audio.uploaded` | with DLQ `audio.uploaded.dlq`, retry 6 attempts |
-| Eventarc trigger | `OBJECT_FINALIZE` on bucket → `audio.uploaded` topic → `stt-worker` Cloud Function |
+| Pub/Sub `audio.uploaded` | published by `ingestion-svc.PublishAudioUploaded` inside `CompleteAudioUpload`; consumed by `stt-worker` + `notification-worker-on-uploaded`. (No bucket notification — the GCS object path has no `session_id` since the session is created during CompleteAudioUpload, *after* OBJECT_FINALIZE fires, so a raw GCS event could never carry one.) |
 
 ## Local dev loop
 

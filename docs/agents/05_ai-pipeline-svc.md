@@ -64,13 +64,18 @@ pkg/cryptobox/                       # envelope encryption
 ## Pipeline flow
 
 ```
-ingestion-svc CompleteAudioUpload:
+Flutter PUT to GCS (via signed URL from ingestion-svc CreateAudioUpload)
+       ↓
+Flutter calls ingestion-svc CompleteAudioUpload, which:
+  - probes ffprobe duration (authoritative, ignores client-claimed value)
   - copies patient_user.ui_language → session.language_code (BCP47-ized)
-  - creates audio_upload + signed URL
+  - creates the session row (this is where session_id is first assigned)
+  - on long audio: invokes ConvertAudio → server-side ffmpeg chunking
+  - calls PublishAudioUploaded({session_id, upload_id, object_path})
        ↓
-Flutter PUT to GCS
-       ↓
-GCS OBJECT_FINALIZE → Eventarc → Pub/Sub audio.uploaded
+Pub/Sub topic audio.uploaded   (NOT a GCS bucket notification — the raw
+  GCS object path has no session_id since the session is created
+  *during* CompleteAudioUpload, after OBJECT_FINALIZE has already fired)
        ↓
 stt-submit (ProcessAudio, refactored 2026-05-22 in feat/stt-long_audio_support):
   1. update sessions.status = TRANSCRIBING
