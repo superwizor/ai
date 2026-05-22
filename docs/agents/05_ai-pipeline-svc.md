@@ -121,7 +121,8 @@ llm-worker (ProcessTranscript):
        Non-fatal on every error: returns "" + nil, worker continues.
        Result threaded into call-2 ONLY (not call-1) — see RAG
        section below for rationale.
-  5. loadModalityPrompt (from modalities.therapist_ai_general_prompt JSONB)
+  5. loadModalityPrompt (from modalities.therapist_ai_general_prompt JSONB —
+     row seeded by add_modality.py, see docs/12_ADDING_NEW_MODALITY.md)
   6. Call 1 (metadata + diarization):
        a. transcript text:
             - hasNativeSpeakers → Format B (## Speaker N [00:01.20 – ...])

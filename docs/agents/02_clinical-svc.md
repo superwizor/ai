@@ -64,7 +64,7 @@ service ClinicalService {
 
 | Domain | Tables | Owner |
 |---|---|---|
-| **Clinical** | `modalities`, `patient_files`, `therapist_patient_relations` | clinical-svc CRUD |
+| **Clinical** | `modalities`, `patient_files`, `therapist_patient_relations` | clinical-svc CRUD. See `docs/12_ADDING_NEW_MODALITY.md` for the JSON-driven migration generator that seeds new modality rows. |
 | **Sessions** | `sessions`, `transcripts`, `transcript_segments`, `therapist_reports`, `patient_views`, `audio_uploads`, `upload_tickets` | clinical-svc reads + ai-pipeline-svc writes |
 | **Feedback** | `report_feedback`, `feedback_categories`, `report_feedback_categories` | clinical-svc (not yet implemented) |
 | **Report ratings** | `report_ratings`, `preference_suggestions_log` (since migration 000015) | clinical-svc (since feat/report-customization, 2026-05-18) |
