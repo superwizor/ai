@@ -38,27 +38,21 @@ resource "google_storage_bucket" "audio_uploads" {
   }
 }
 
-variable "pubsub_topic_id" {
-  type = string
-}
-
-data "google_storage_project_service_account" "gcs_account" {
-  project = var.project_id
-}
-
-resource "google_pubsub_topic_iam_member" "binding" {
-  topic   = var.pubsub_topic_id
-  role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"
-}
-
-resource "google_storage_notification" "notification" {
-  bucket         = google_storage_bucket.audio_uploads.name
-  payload_format = "JSON_API_V1"
-  topic          = var.pubsub_topic_id
-  event_types    = ["OBJECT_FINALIZE"]
-  depends_on     = [google_pubsub_topic_iam_member.binding]
-}
+# NOTE: the audio_uploads bucket used to have a google_storage_notification
+# fan-out to the `audio.uploaded` Pub/Sub topic. That was the legacy way to
+# kick off STT — but ingestion-svc.PublishAudioUploaded is now the sole
+# legitimate publisher, emitting structured {session_id, upload_id, ...}
+# JSON. The bucket notification was a duplicate publisher emitting raw
+# storage#object events that no downstream subscriber could parse:
+# stt-worker logged "missing session_id or object_path, ignoring event"
+# and ack'd, but notification-worker-on-uploaded *returned* an error,
+# so Pub/Sub kept redelivering with backoff. Under load that backlog
+# delayed the legitimate event by minutes and, combined with the lack
+# of monotonic ordering in firestore/writer.go::WriteSessionState,
+# caused sessions to silently regress status="done" → "uploaded" in
+# Firestore — leaving Flutter stuck on the transcription stepper.
+# Removed 2026-05-23. See worker fan-out in cmd/worker/main.go and
+# monotonic guard in firestore/writer.go.
 
 output "audio_uploads_bucket_name" {
   value = google_storage_bucket.audio_uploads.name

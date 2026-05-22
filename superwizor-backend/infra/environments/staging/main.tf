@@ -43,7 +43,8 @@ module "storage" {
   source          = "../../modules/storage"
   project_id      = var.project_id
   app_data_key_id = module.kms.app_data_key_id
-  pubsub_topic_id = module.pubsub.audio_uploaded_topic
+  # pubsub_topic_id removed: bucket notification deleted in favour of
+  # ingestion-svc.PublishAudioUploaded as sole publisher (see storage/main.tf).
 }
 
 module "pubsub" {
