@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/cupertino.dart';
 
+import '../constants/modalities.dart';
 import '../theme/euphire_theme.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
@@ -327,18 +328,10 @@ class _PatientGlassCard extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Builder(
                         builder: (context) {
-                          String modName = 'Uniwersalna';
-                          switch (modalityCode.toUpperCase()) {
-                            case 'UNIV': modName = 'Uniwersalna'; break;
-                            case 'CBT': modName = 'Beh-Pozn'; break;
-                            case 'PSYCHO': modName = 'Psychodynamiczna'; break;
-                            case 'PPT': modName = 'Pozytywna'; break;
-                            case 'ST': modName = 'Schematów'; break;
-                            case 'SYS': modName = 'Systemowa'; break;
-                            case 'EFT': modName = 'Skon. na emocjach'; break;
-                            case 'COACH': modName = 'Coaching'; break;
-                            default: if (modalityCode.isNotEmpty) modName = modalityCode;
-                          }
+                          final modName = modalityCode.isEmpty
+                              ? 'Uniwersalna'
+                              : modalityShortLabelFor(
+                                  modalityCode.toUpperCase());
                           return Text(
                             'Ilość Sesji: $sessionCount  /  MOD: $modName',
                             style: TextStyle(

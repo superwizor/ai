@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../constants/modalities.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_header.dart';
 import '../widgets/euphire_bottom_sheet.dart';
@@ -272,7 +273,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                 .trim(),
                         subtitle:
                             '${patient.sessionCount} sesji${patient.modalityCode.isNotEmpty
-                                    ? ' • ${patient.modalityCode}'
+                                    ? ' • ${modalityShortLabelFor(patient.modalityCode.toUpperCase())}'
                                     : ''}',
                       ),
                       const SizedBox(height: 32),

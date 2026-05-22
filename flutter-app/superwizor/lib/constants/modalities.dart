@@ -48,3 +48,26 @@ String? modalityDisplayKeyFor(String code) {
   }
   return null;
 }
+
+/// Short Polish display label used in patient cards (home screen,
+/// kartoteka header) where ARB localisation isn't wired through.
+/// Returns `code` unchanged for unknown modalities so a missing
+/// mapping degrades gracefully rather than silently renaming.
+///
+/// Kept as a single source of truth so adding a 10th/11th modality
+/// only requires updating this map + `kModalities` — not the
+/// hardcoded switches that used to live in screen files.
+const Map<String, String> _kModalityShortLabel = {
+  'UNIV': 'Uniwersalna',
+  'CBT': 'Beh-Pozn',
+  'PSYCHO': 'Psychodynamiczna',
+  'GESTALT': 'Gestalt',
+  'PPT': 'Pozytywna',
+  'ST': 'Schematów',
+  'SYS': 'Systemowa',
+  'EFT': 'Skon. na emocjach',
+  'COACH': 'Coaching',
+};
+
+String modalityShortLabelFor(String code) =>
+    _kModalityShortLabel[code] ?? code;
