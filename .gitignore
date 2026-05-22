@@ -1,5 +1,8 @@
 # macOS
 .DS_Store
+# Spotlight exclusion sentinel — placed in heavy build dirs to keep
+# mdsync off the build artifacts. Should never go into git.
+.metadata_never_index
 
 # General
 .env
