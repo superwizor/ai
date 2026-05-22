@@ -115,12 +115,44 @@ func rescueOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) erro
 		return nil
 	}
 
+	// Per-file error inspection (added 2026-05-22 after the
+	// 3f656c04 incident).
+	//
+	// Chirp's BatchRecognize can complete the *operation*
+	// successfully while one or more files inside that operation
+	// failed (e.g. "file is too long", codec rejected). The
+	// failure surfaces inline in resp.Results[fileURI].Error —
+	// NOT in the operation's top-level error AND NOT as a GCS
+	// output file. If we skip this check and try to drive finalize
+	// manually, findTranscriptObject will loop forever on
+	// "no transcript file at prefix" because Chirp never wrote one.
+	//
+	// Match: any per-file Error with non-zero code → mark FAILED.
+	// Same classification as isTerminalSTTError (file-level Chirp
+	// rejections are always terminal).
+	if resp != nil {
+		for fileURI, fr := range resp.Results {
+			if fr == nil || fr.Error == nil || fr.Error.Code == 0 {
+				continue
+			}
+			msg := fmt.Sprintf(
+				"chirp 3 returned per-file error: code=%d %s (file=%s)",
+				fr.Error.Code, fr.Error.Message, fileURI,
+			)
+			recordFinalizeError(ctx, op.SessionID, op.ChunkIndex, truncateOpError(msg))
+			_ = updateSessionStatus(ctx, op.SessionID.String(), "FAILED")
+			_, _ = markChunkFinalized(ctx, op.SessionID, op.ChunkIndex)
+			logger.Error("Chirp per-file error; session FAILED",
+				"error_code", fr.Error.Code,
+				"error_message", fr.Error.Message)
+			return nil
+		}
+	}
+
 	// Success — Chirp wrote the transcript to GCS. Either
 	// OBJECT_FINALIZE will fire (or already fired and we'd have
 	// finalized_at set — but if we're here, that didn't happen).
 	// Drive finalize manually.
-	_ = resp // response itself is unused; finalize will re-read the GCS object
-
 	logger.Info("Chirp DONE; driving finalize manually")
 	bucket := bucketFromGCSURI(op.GCSOutputURI)
 	// markChunkFinalized's IS NULL guard makes this idempotent against

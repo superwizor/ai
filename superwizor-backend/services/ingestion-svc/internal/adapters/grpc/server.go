@@ -271,26 +271,45 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 	// into ≤ 19-min segments. stt-submit will fan out
 	// BatchRecognize per chunk.
 	//
-	// We call the handler through s.ConvertAudio (same code path,
-	// in-process) rather than the client SDK — no network hop,
-	// shares the same SA + DB pool.
+	// Duration source: ffprobe the GCS object directly. Discovered
+	// 2026-05-22 — the Flutter client passes actual_duration_seconds=0
+	// from the file-upload path (lib/screens/new_session_screen.dart),
+	// so trusting the client missed every real long-audio upload and
+	// the file went uncut to Chirp → file-level "is too long" reject.
+	// Server-side probe is client-implementation-independent. ffprobe
+	// is in the ingestion-svc image alongside ffmpeg.
+	//
+	// Fallback: if ffprobe errors (rare; corrupt file or download
+	// hiccup) we fall back to whatever the client claimed. Better to
+	// over-trigger chunking on suspicious input than to skip it.
 	const longAudioThresholdSec = 1140
-	if req.ActualDurationSeconds > longAudioThresholdSec && s.converter != nil {
+	durationSec := int(req.ActualDurationSeconds)
+	if s.converter != nil {
+		probed, probeErr := s.converter.ProbeDuration(ctx, upload.BucketName, upload.ObjectPath)
+		if probeErr != nil {
+			slog.Warn("complete_audio_upload: ffprobe failed; using client-provided duration",
+				"upload_id", req.UploadId,
+				"client_duration_sec", req.ActualDurationSeconds,
+				"error", probeErr)
+		} else if probed > 0 {
+			slog.Info("complete_audio_upload: probed duration",
+				"upload_id", req.UploadId,
+				"probed_sec", probed,
+				"client_claimed_sec", req.ActualDurationSeconds)
+			durationSec = probed
+		}
+	}
+
+	if durationSec > longAudioThresholdSec && s.converter != nil {
 		slog.Info("complete_audio_upload: triggering chunking",
 			"upload_id", req.UploadId,
-			"duration_sec", req.ActualDurationSeconds)
+			"duration_sec", durationSec)
 		if _, err := s.ConvertAudio(ctx, &ingestionv1.ConvertAudioRequest{
 			AudioUploadId:         req.UploadId,
 			ChunkForChirp:         true,
 			MaxChunkSeconds:       longAudioThresholdSec,
-			SourceDurationSeconds: req.ActualDurationSeconds,
+			SourceDurationSeconds: int32(durationSec),
 		}); err != nil {
-			// Chunking failed — fail the whole CompleteAudioUpload
-			// rather than ship a session that stt-worker can't process.
-			// The client sees a clean failure; the audio_uploads row
-			// is already marked UPLOADED (the CompleteAudioUpload SQL
-			// above committed) so they can retry CompleteAudioUpload
-			// and trigger a fresh chunking attempt.
 			slog.Error("complete_audio_upload: chunking failed",
 				"upload_id", req.UploadId, "error", err)
 			return nil, err

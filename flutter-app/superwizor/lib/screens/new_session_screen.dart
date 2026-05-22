@@ -648,6 +648,17 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
         throw StateError('Upload queue not available — user not signed in?');
       }
 
+      // Probe duration so the server-side chunking trigger for
+      // > 19-min files (Chirp 3's word-timestamp limit) fires
+      // without depending on ingestion-svc's ffprobe fallback.
+      // probeDurationSeconds returns 0 on any failure; the server
+      // re-probes on CompleteAudioUpload either way (defense in
+      // depth — see services/ingestion-svc/internal/adapters/grpc/
+      // server.go::CompleteAudioUpload).
+      final probedDurationSec = await AudioConverterService()
+          .probeDurationSeconds(stagedFile.path);
+      debugPrint('[file-upload] probed duration: ${probedDurationSec}s');
+
       final pending = PendingUpload.initial(
         localId: localId,
         therapistId: widget.therapistId,
@@ -658,7 +669,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
         contentType: contentType,
         sizeBytes: uploadSize,
         chunkCount: 1,
-        actualDurationSeconds: 0,
+        actualDurationSeconds: probedDurationSec,
         needsServerSideConversion: needsServerSideConversion,
         idempotencyKey: localId,
         now: DateTime.now().toUtc(),

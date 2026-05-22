@@ -14,6 +14,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -234,6 +235,38 @@ class AudioConverterService {
     final bd = ByteData(2);
     bd.setUint16(0, value, Endian.little);
     return bd.buffer.asUint8List();
+  }
+
+  /// Probes the duration of a local audio file in seconds. Used by
+  /// the upload flow to pass `actualDurationSeconds` to
+  /// CompleteAudioUpload — the server's chunking trigger depends on
+  /// it for files > 19 min (Chirp 3's word-timestamp limit).
+  ///
+  /// Returns 0 on any failure. Server-side ffprobe is the
+  /// authoritative fallback; this Flutter-side probe is the
+  /// fast-path so the chunking trigger fires from the client too.
+  Future<int> probeDurationSeconds(String localPath) async {
+    final player = AudioPlayer();
+    try {
+      await player.setSourceDeviceFile(localPath);
+      // setSource is async on iOS — sometimes getDuration races and
+      // returns null. Allow a couple of poll iterations.
+      Duration? d;
+      for (var i = 0; i < 10; i++) {
+        d = await player.getDuration();
+        if (d != null && d.inMilliseconds > 0) {
+          return d.inSeconds;
+        }
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      debugPrint('[duration-probe] gave up on $localPath (got $d)');
+      return 0;
+    } catch (e) {
+      debugPrint('[duration-probe] failed for $localPath: $e');
+      return 0;
+    } finally {
+      await player.dispose();
+    }
   }
 
   /// Converts an M4A/AAC/MP4 file to FLAC 16 kHz mono 16-bit via the
