@@ -159,7 +159,32 @@ resource "google_cloudfunctions2_function" "stt_worker" {
     min_instance_count    = 0
     available_memory      = "1Gi"
     available_cpu         = "1"
-    timeout_seconds       = 540
+    # 1800s (30 min) — bumped from the Cloud Run default 540s on
+    # 2026-05-22 after Chirp 3 `locations/eu` BatchRecognize
+    # operations started routinely exceeding 9 min during a
+    # multi-hour outage (zero successful transcriptions for 12 h,
+    # every invocation hit HTTP 504 with latency=540.001s, app log
+    # "await: context canceled" from op.Wait(ctx) at
+    # stt-worker/main.go:386). Bumping the request timeout lets
+    # op.Wait sit on long-running operations long enough to ride
+    # out slow Chirp days.
+    #
+    # Trade-off: a stuck Pub/Sub message now occupies one instance
+    # for up to 30 min instead of 9 min. With max_instance_count=10
+    # we still have 9 free slots; runaway cost is bounded by the
+    # eventual ack from Pub/Sub or the 30 min cap.
+    #
+    # Eventarc auto-tracks the function timeout for the trigger
+    # subscription's ack_deadline_seconds — no separate Pub/Sub
+    # change needed.
+    #
+    # Right architectural fix (deferred): switch BatchRecognize to
+    # write its result to a GCS bucket via
+    # RecognitionOutputConfig.GcsOutputConfig, then ack Pub/Sub
+    # immediately and let GCS OBJECT_FINALIZE on the transcripts
+    # bucket trigger the parse-and-publish step. That decouples
+    # Chirp latency from any in-process wait. Tracked separately.
+    timeout_seconds       = 1800
     service_account_email = var.stt_worker_sa_email
 
     environment_variables = {
