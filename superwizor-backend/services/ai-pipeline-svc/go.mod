@@ -6,10 +6,12 @@ require (
 	cloud.google.com/go/aiplatform v1.122.0
 	cloud.google.com/go/kms v1.30.0
 	cloud.google.com/go/speech v1.34.0
+	cloud.google.com/go/storage v1.56.0
 	github.com/GoogleCloudPlatform/functions-framework-go v1.9.2
 	github.com/cloudevents/sdk-go/v2 v2.16.2
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
+	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/stretchr/testify v1.11.1
 	github.com/superwizor-ai/backend/pkg/i18n v0.0.0-00010101000000-000000000000
@@ -18,8 +20,22 @@ require (
 )
 
 require (
+	cel.dev/expr v0.25.1 // indirect
+	cloud.google.com/go/monitoring v1.24.3 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.31.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.53.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.53.0 // indirect
+	github.com/cncf/xds/go v0.0.0-20251210132809-ee656c7534f5 // indirect
+	github.com/envoyproxy/go-control-plane/envoy v1.36.0 // indirect
+	github.com/envoyproxy/protoc-gen-validate v1.3.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
+	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
+	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
 	go.einride.tech/aip v0.83.0 // indirect
+	go.opentelemetry.io/contrib/detectors/gcp v1.39.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.43.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.43.0 // indirect
 )
 
 require (
@@ -90,7 +106,7 @@ require (
 	google.golang.org/genproto v0.0.0-20260319201613-d00831a3d3e7 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d
-	google.golang.org/grpc v1.80.0 // indirect
+	google.golang.org/grpc v1.80.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 

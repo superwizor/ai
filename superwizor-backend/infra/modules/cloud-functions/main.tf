@@ -159,38 +159,23 @@ resource "google_cloudfunctions2_function" "stt_worker" {
     min_instance_count    = 0
     available_memory      = "1Gi"
     available_cpu         = "1"
-    # 1800s (30 min) — bumped from the Cloud Run default 540s on
-    # 2026-05-22 after Chirp 3 `locations/eu` BatchRecognize
-    # operations started routinely exceeding 9 min during a
-    # multi-hour outage (zero successful transcriptions for 12 h,
-    # every invocation hit HTTP 504 with latency=540.001s, app log
-    # "await: context canceled" from op.Wait(ctx) at
-    # stt-worker/main.go:386). Bumping the request timeout lets
-    # op.Wait sit on long-running operations long enough to ride
-    # out slow Chirp days.
-    #
-    # Trade-off: a stuck Pub/Sub message now occupies one instance
-    # for up to 30 min instead of 9 min. With max_instance_count=10
-    # we still have 9 free slots; runaway cost is bounded by the
-    # eventual ack from Pub/Sub or the 30 min cap.
-    #
-    # Eventarc auto-tracks the function timeout for the trigger
-    # subscription's ack_deadline_seconds — no separate Pub/Sub
-    # change needed.
-    #
-    # Right architectural fix (deferred): switch BatchRecognize to
-    # write its result to a GCS bucket via
-    # RecognitionOutputConfig.GcsOutputConfig, then ack Pub/Sub
-    # immediately and let GCS OBJECT_FINALIZE on the transcripts
-    # bucket trigger the parse-and-publish step. That decouples
-    # Chirp latency from any in-process wait. Tracked separately.
-    timeout_seconds       = 1800
+    # 120s — reverted from the 1800s band-aid (commit on 2026-05-22)
+    # now that BatchRecognize uses GcsOutputConfig and stt-submit
+    # returns in ~5s without waiting on Chirp. The 540s timeout
+    # exceeded that was the symptom of the inline-output coupling
+    # this branch removes. See
+    # docs/13_STT_GCS_CALLBACK_AND_CHUNKING.md Stage 1.
+    timeout_seconds       = 120
     service_account_email = var.stt_worker_sa_email
 
     environment_variables = {
-      GCP_PROJECT_ID    = var.project_id
-      AUDIO_BUCKET_NAME = var.audio_bucket_name
-      KMS_KEY_URI       = var.app_data_key_id
+      GCP_PROJECT_ID         = var.project_id
+      AUDIO_BUCKET_NAME      = var.audio_bucket_name
+      # Destination prefix for Chirp BatchRecognize output (Stage 1).
+      # stt-submit writes GcsOutputConfig.Uri = gs://${TRANSCRIPTS_RAW_BUCKET}/{sid}/chunk_{i}/
+      # and OBJECT_FINALIZE on this bucket triggers stt-finalize.
+      TRANSCRIPTS_RAW_BUCKET = var.transcripts_raw_bucket_name
+      KMS_KEY_URI            = var.app_data_key_id
       # PHI exposure: when "true", logs the full plaintext transcript
       # to Cloud Logging. Staging-only debugging; never set on prod.
       DEV_LOG_PLAINTEXT_TRANSCRIPT = var.dev_log_plaintext_transcript ? "true" : "false"
@@ -337,6 +322,198 @@ resource "google_pubsub_subscription" "llm_worker_dlq_reader" {
   expiration_policy {
     ttl = ""
   }
+}
+
+# ============================================================================
+# stt-finalize + stt-watchdog (Stage 1 of feat/stt-long_audio_support)
+#
+# Both functions share the SAME source zip as stt-worker — they live
+# in package sttworker (cmd/stt-worker/) and register entry points
+# via init():
+#   - ProcessAudio (existing)        → stt-worker (the original
+#                                       Pub/Sub-triggered submit)
+#   - ProcessTranscriptObject (new)  → stt-finalize (Storage
+#                                       OBJECT_FINALIZE-triggered)
+#   - ProcessWatchdog (new)          → stt-watchdog (HTTP-triggered)
+#
+# Per Open Q4 resolution in docs/13_STT_GCS_CALLBACK_AND_CHUNKING.md.
+# ============================================================================
+
+# IAM: stt-worker SA needs to write into transcripts-raw (it sets
+# GcsOutputConfig.Uri there) AND read from it (stt-finalize). The
+# shared SA model means one binding covers all three entry points.
+resource "google_storage_bucket_iam_member" "stt_worker_transcripts_raw" {
+  bucket = var.transcripts_raw_bucket_name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${var.stt_worker_sa_email}"
+}
+
+# stt-finalize: Eventarc OBJECT_FINALIZE on transcripts-raw bucket.
+resource "google_cloudfunctions2_function" "stt_finalize" {
+  name        = "stt-finalize"
+  location    = var.region
+  project     = var.project_id
+  description = "Reads Chirp output from GCS, merges chunks, persists transcript"
+
+  build_config {
+    runtime     = "go126"
+    entry_point = "ProcessTranscriptObject"
+    source {
+      storage_source {
+        bucket = google_storage_bucket.functions_source.name
+        object = google_storage_bucket_object.stt_worker_zip.name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count = 10
+    min_instance_count = 0
+    available_memory   = "1Gi"
+    available_cpu      = "1"
+    # Finalize work: GCS download (~few MB), JSON unmarshal,
+    # ParseChirp3Results, chunker, persistTranscript,
+    # publishTranscriptCompleted. ~30s p99 for Stage 1 single-chunk;
+    # Stage 2 grows to ~60s for 4-chunk sessions. 300s is conservative.
+    timeout_seconds       = 300
+    service_account_email = var.stt_worker_sa_email
+
+    environment_variables = {
+      GCP_PROJECT_ID         = var.project_id
+      AUDIO_BUCKET_NAME      = var.audio_bucket_name
+      TRANSCRIPTS_RAW_BUCKET = var.transcripts_raw_bucket_name
+      KMS_KEY_URI            = var.app_data_key_id
+      DEV_LOG_PLAINTEXT_TRANSCRIPT = var.dev_log_plaintext_transcript ? "true" : "false"
+      STT_NATIVE_DIARIZATION = "on"
+    }
+
+    secret_environment_variables {
+      key        = "DATABASE_URL"
+      project_id = var.project_id
+      secret     = var.db_url_secret_id
+      version    = "latest"
+    }
+
+    vpc_connector                 = var.vpc_connector_id
+    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
+  }
+
+  event_trigger {
+    trigger_region = var.region
+    event_type     = "google.cloud.storage.object.v1.finalized"
+    event_filters {
+      attribute = "bucket"
+      value     = var.transcripts_raw_bucket_name
+    }
+    retry_policy          = "RETRY_POLICY_RETRY"
+    service_account_email = var.stt_worker_sa_email
+  }
+
+  depends_on = [
+    google_project_iam_member.stt_worker_eventarc,
+    google_project_iam_member.stt_worker_sql,
+    google_kms_crypto_key_iam_member.stt_worker_kms,
+    google_storage_bucket_iam_member.stt_worker_transcripts_raw,
+  ]
+}
+
+resource "google_cloud_run_service_iam_member" "stt_finalize_invoker" {
+  location = var.region
+  project  = var.project_id
+  service  = google_cloudfunctions2_function.stt_finalize.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.stt_worker_sa_email}"
+}
+
+# stt-watchdog: HTTP-triggered, invoked by Cloud Scheduler every 15 min.
+resource "google_cloudfunctions2_function" "stt_watchdog" {
+  name        = "stt-watchdog"
+  location    = var.region
+  project     = var.project_id
+  description = "Polls stuck stt_operations rows. Recovers when Eventarc dropped OBJECT_FINALIZE."
+
+  build_config {
+    runtime     = "go126"
+    entry_point = "ProcessWatchdog"
+    source {
+      storage_source {
+        bucket = google_storage_bucket.functions_source.name
+        object = google_storage_bucket_object.stt_worker_zip.name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count    = 2
+    min_instance_count    = 0
+    available_memory      = "512Mi"
+    available_cpu         = "1"
+    timeout_seconds       = 300
+    service_account_email = var.stt_worker_sa_email
+    # Gated by run.invoker IAM (only stt-worker SA can call it via
+    # OIDC); no need for ALLOW_INTERNAL_ONLY ingress restriction
+    # which would also block Cloud Scheduler.
+
+    environment_variables = {
+      GCP_PROJECT_ID         = var.project_id
+      AUDIO_BUCKET_NAME      = var.audio_bucket_name
+      TRANSCRIPTS_RAW_BUCKET = var.transcripts_raw_bucket_name
+      KMS_KEY_URI            = var.app_data_key_id
+      STT_NATIVE_DIARIZATION = "on"
+    }
+
+    secret_environment_variables {
+      key        = "DATABASE_URL"
+      project_id = var.project_id
+      secret     = var.db_url_secret_id
+      version    = "latest"
+    }
+
+    vpc_connector                 = var.vpc_connector_id
+    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
+  }
+}
+
+resource "google_cloud_run_service_iam_member" "stt_watchdog_invoker" {
+  location = var.region
+  project  = var.project_id
+  service  = google_cloudfunctions2_function.stt_watchdog.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.stt_worker_sa_email}"
+}
+
+# Cloud Scheduler hits the watchdog every 15 min. Uses OIDC to
+# authenticate as the stt-worker SA (which already has run.invoker on
+# the stt_watchdog Cloud Run service via the binding above).
+resource "google_cloud_scheduler_job" "stt_watchdog_cron" {
+  name        = "stt-watchdog-cron"
+  project     = var.project_id
+  region      = var.region
+  description = "Every 15 min: scan stt_operations for stuck submits"
+  schedule    = "*/15 * * * *"
+  time_zone   = "Europe/Warsaw"
+
+  http_target {
+    http_method = "POST"
+    uri         = google_cloudfunctions2_function.stt_watchdog.service_config[0].uri
+
+    oidc_token {
+      service_account_email = var.stt_worker_sa_email
+      # Cloud Functions Gen2 verifies the audience claim matches the
+      # function's URI.
+      audience = google_cloudfunctions2_function.stt_watchdog.service_config[0].uri
+    }
+  }
+
+  retry_config {
+    retry_count          = 1
+    min_backoff_duration = "30s"
+    max_backoff_duration = "120s"
+  }
+
+  depends_on = [
+    google_cloud_run_service_iam_member.stt_watchdog_invoker,
+  ]
 }
 
 # ============================================================================

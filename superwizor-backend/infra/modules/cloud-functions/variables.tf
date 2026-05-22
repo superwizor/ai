@@ -5,6 +5,10 @@ variable "vpc_connector_id" { type = string }
 variable "db_connection_name" { type = string }
 variable "db_url_secret_id" { type = string }
 variable "audio_bucket_name" { type = string }
+variable "transcripts_raw_bucket_name" {
+  type        = string
+  description = "GCS bucket where Chirp BatchRecognize writes its output (Stage 1 of feat/stt-long_audio_support). stt-submit sets GcsOutputConfig.Uri here; stt-finalize OBJECT_FINALIZE triggers off it."
+}
 variable "audio_uploaded_topic" { type = string }
 variable "transcript_completed_topic" { type = string }
 variable "stt_worker_source_dir" { type = string }

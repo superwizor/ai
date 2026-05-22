@@ -150,7 +150,7 @@ today, but ~5s instead of 30s, and zero re-bills.
 
 ### Data model
 
-New migration `migrations/000019_stt_operations.up.sql`:
+New migration `migrations/000021_stt_operations.up.sql`:
 
 ```sql
 CREATE TABLE stt_operations (
@@ -213,7 +213,7 @@ through `sessions(id)`. This is the same pattern used by `transcripts` and
 
 | Path | Change |
 |---|---|
-| `migrations/000019_stt_operations.up.sql` + `.down.sql` | NEW (above). |
+| `migrations/000021_stt_operations.up.sql` + `.down.sql` | NEW (above). |
 | `services/ai-pipeline-svc/cmd/stt-worker/main.go` | Refactored. `ProcessAudio` now submits + writes `stt_operations`, returns immediately. Helper functions for chunked input (Stage 2). |
 | `services/ai-pipeline-svc/cmd/stt-finalize/main.go` | NEW. Cloud Function entry `ProcessTranscriptObject`. Idempotent finalize logic. |
 | `services/ai-pipeline-svc/cmd/stt-finalize/main_test.go` | NEW. Unit tests for path parsing, idempotent finalize, merge ordering. |
@@ -900,7 +900,7 @@ $0.012 per session. Negligible.
 
 ### Data model
 
-New migration `migrations/000020_audio_chunks.up.sql`:
+New migration `migrations/000022_audio_chunks.up.sql`:
 
 ```sql
 CREATE TABLE audio_chunks (
@@ -1009,7 +1009,7 @@ Two failure modes to design out:
 | Eventarc drops OBJECT_FINALIZE | Same as above — watchdog rescues. | Same. |
 | Two OBJECT_FINALIZE events for the same chunk (Pub/Sub at-least-once) | First UPDATE flips finalized_at, second UPDATE's `RowsAffected = 0` → no-op return. | Same. |
 | All chunks finalize simultaneously | Each invocation queries pending count; one or more see "0 pending"; `SELECT FOR UPDATE` on sessions row serializes the merge attempt. Only one wins the status flip from `TRANSCRIBING → MERGING`. | Same. |
-| Merge fails partway (DB write or KMS encrypt) | Deferred handler in `mergeAndPersist` reverts `sessions.status` to TRANSCRIBING for transient errors, FAILED for terminal (via `isTerminalSTTError`). Pub/Sub retries the finalize event; the idempotent `finalized_at IS NULL` guard means we won't double-process individual chunks; we WILL re-run the merge end-to-end. The new UNIQUE constraint on `transcripts(session_id)` (migration 000019) catches the case where the prior attempt committed transcripts but crashed before publishing — finalize fetches the existing row and proceeds to publish. | Same. |
+| Merge fails partway (DB write or KMS encrypt) | Deferred handler in `mergeAndPersist` reverts `sessions.status` to TRANSCRIBING for transient errors, FAILED for terminal (via `isTerminalSTTError`). Pub/Sub retries the finalize event; the idempotent `finalized_at IS NULL` guard means we won't double-process individual chunks; we WILL re-run the merge end-to-end. The new UNIQUE constraint on `transcripts(session_id)` (migration 000021) catches the case where the prior attempt committed transcripts but crashed before publishing — finalize fetches the existing row and proceeds to publish. | Same. |
 | Concurrent stt-submit invocations (Pub/Sub at-least-once during true concurrency) | Pre-flight SELECT on `stt_operations` lets the second invocation skip already-submitted chunks. Tight race window remains where both pass SELECT before either INSERTs; the UNIQUE catch is the second line of defense. Loser's orphan Chirp operation eventually writes to the same GCS prefix under a different filename; stt-finalize's idempotent UPDATE returns 0 rows on the duplicate event, leaving an unread file that OLM 7d cleans up. Cost: one extra Chirp call per concurrent-retry race. | Same per chunk. |
 | Some chunks finalize, then session deleted | `ON DELETE CASCADE` on stt_operations cleans up. GCS objects survive until OLM 7d. | Same — plus audio_chunks rows cascade too. |
 
@@ -1019,7 +1019,7 @@ Two failure modes to design out:
 
 ### Pre-deployment
 
-1. Migration `000019_stt_operations.up.sql` lands in main. Doesn't affect
+1. Migration `000021_stt_operations.up.sql` lands in main. Doesn't affect
    any running code. Migrator runs on next deploy.
 2. New bucket `<project>-transcripts-raw` provisioned via terragrunt apply
    on `module.storage`. IAM grants in place (stt-worker SA can write).
@@ -1055,7 +1055,7 @@ rows finalize on their own. Bucket stays in place (cheap).
 
 **Rollout steps:**
 
-1. Migration `000020_audio_chunks.up.sql`.
+1. Migration `000022_audio_chunks.up.sql`.
 2. Deploy ingestion-svc with extended `ConvertAudio` (chunking enabled).
 3. Deploy refactored stt-submit + stt-finalize with the new alignment
    merger active. (Stage 1's stt-submit/stt-finalize binary is updated
@@ -1244,7 +1244,8 @@ is reliability, not cost.
 
 3. **`transcripts` table UNIQUE constraint.** **Resolved 2026-05-22**:
    - **Option (a) selected.** We add a UNIQUE constraint to `transcripts(session_id)` in
-     migration `000019`.
+     migration `000021` (renumbered from `000019` because migrations 000019/000020 were
+     already taken by recent modality work).
    - `stt-finalize` is updated to catch the unique violation error (`23505`). If it hits,
      it fetches the existing transcript ID and skips the insert, continuing to publish the
      `transcript.completed` event. This enables robust crash recovery during retries.
@@ -1372,7 +1373,7 @@ in production.
 - 1800s timeout patch + deferred-fix marker:
   `infra/modules/cloud-functions/main.tf:163-187`.
 - Cloud Functions packaging: `infra/modules/cloud-functions/package.sh`.
-- Migrations: `migrations/000019_*`, `migrations/000020_*` (new).
+- Migrations: `migrations/000021_*`, `migrations/000022_*` (new).
 - Original duration band-aid + classifier work:
   commit `a5e8f4c` (`feat(audio): iPhone M4A → FLAC conversion + codec
   defense-in-depth`).
