@@ -133,6 +133,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get modality_psychodynamic => 'Psychodynamiczny';
 
   @override
+  String get modality_gestalt => 'Gestalt';
+
+  @override
   String get modality_positive => 'Pozytywny (PPT)';
 
   @override
@@ -678,6 +681,9 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get modality_abbr_psycho => 'Psychod.';
+
+  @override
+  String get modality_abbr_gestalt => 'Gestalt';
 
   @override
   String get modality_abbr_ppt => 'PPT';

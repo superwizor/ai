@@ -32,6 +32,7 @@ class ModalitySheet extends ConsumerWidget {
       case 'UNIV': return t.modality_integrative;
       case 'CBT': return t.modality_cbt;
       case 'PSYCHO': return t.modality_psychodynamic;
+      case 'GESTALT': return t.modality_gestalt;
       case 'PPT': return t.modality_positive;
       case 'ST': return t.modality_schema;
       case 'SYS': return t.modality_systemic;

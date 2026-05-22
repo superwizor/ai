@@ -406,7 +406,7 @@ erDiagram
 
         uuid id PK
 
-        varchar system\_code UK "UNIV|CBT|PSYCHO|SCHEMA|SYSTEM|EFT"
+        varchar system\_code UK "UNIV|CBT|PSYCHO|GESTALT|PPT|ST|SYS|EFT|COACH"
 
         varchar display\_name
 

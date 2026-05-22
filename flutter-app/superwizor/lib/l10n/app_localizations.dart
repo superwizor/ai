@@ -326,6 +326,12 @@ abstract class AppLocalizations {
   /// **'Psychodynamiczny'**
   String get modality_psychodynamic;
 
+  /// No description provided for @modality_gestalt.
+  ///
+  /// In pl, this message translates to:
+  /// **'Gestalt'**
+  String get modality_gestalt;
+
   /// No description provided for @modality_positive.
   ///
   /// In pl, this message translates to:
@@ -1309,6 +1315,12 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Psychod.'**
   String get modality_abbr_psycho;
+
+  /// No description provided for @modality_abbr_gestalt.
+  ///
+  /// In pl, this message translates to:
+  /// **'Gestalt'**
+  String get modality_abbr_gestalt;
 
   /// No description provided for @modality_abbr_ppt.
   ///
