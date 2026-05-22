@@ -2,11 +2,6 @@ variable "project_id" {
   type = string
 }
 
-variable "project_number" {
-  type        = string
-  description = "GCP project number. Used to construct the Speech-to-Text Service Agent principal that needs write access to the transcripts-raw bucket (Chirp writes BatchRecognize output there on the caller's behalf)."
-}
-
 variable "location" {
   type    = string
   default = "europe-central2"
@@ -81,6 +76,44 @@ output "audio_uploads_bucket_name" {
 # of debugging; well under the 30d residence ceiling.
 # ============================================================================
 
+# Cloud Storage service account — needs Encrypter/Decrypter on
+# app_data_key so the CMEK-encrypted transcripts_raw bucket can be
+# created. modules/kms already grants this for audio_bucket_key on
+# the audio uploads bucket, but app_data_key has a separate IAM
+# policy. Without this binding, bucket creation 403s on the KMS key.
+data "google_storage_project_service_account" "gcs_account_for_transcripts" {
+  project = var.project_id
+}
+
+resource "google_kms_crypto_key_iam_member" "transcripts_raw_gcs_kms" {
+  crypto_key_id = var.app_data_key_id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${data.google_storage_project_service_account.gcs_account_for_transcripts.email_address}"
+}
+
+# Speech-to-Text Service Agent identity. Auto-provisioned by GCP when
+# the project first uses speech.googleapis.com — but the IAM binding
+# below references it BEFORE it has reason to exist on a fresh
+# project. Forcing creation via google_project_service_identity makes
+# the binding work on the first apply.
+resource "google_project_service_identity" "speech_agent" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "speech.googleapis.com"
+}
+
+# GCS service account → Pub/Sub publisher (project-wide). Eventarc
+# OBJECT_FINALIZE triggers create an internal Pub/Sub topic that the
+# GCS service account publishes to whenever objects land in the
+# transcripts_raw bucket. Without this, Eventarc trigger creation
+# fails with "Cloud Storage service account ... is unable to publish".
+# See: https://cloud.google.com/eventarc/docs/run/quickstart-storage#before-you-begin
+resource "google_project_iam_member" "gcs_eventarc_publisher" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${data.google_storage_project_service_account.gcs_account_for_transcripts.email_address}"
+}
+
 resource "google_storage_bucket" "transcripts_raw" {
   name          = "${var.project_id}-transcripts-raw"
   project       = var.project_id
@@ -106,17 +139,19 @@ resource "google_storage_bucket" "transcripts_raw" {
       type = "Delete"
     }
   }
+
+  # Order matters: KMS IAM must land before the bucket because
+  # the bucket creation requires the Cloud Storage SA to be able
+  # to use the key.
+  depends_on = [google_kms_crypto_key_iam_member.transcripts_raw_gcs_kms]
 }
 
-# IAM grant: Speech-to-Text Service Agent needs to write to the bucket
-# on the caller's behalf when GcsOutputConfig is set on
-# BatchRecognize. The agent principal follows the convention
-# `service-{project-number}@gcp-sa-v2-speech.iam.gserviceaccount.com`
-# — auto-provisioned the first time the project enables speech.googleapis.com.
+# Speech-to-Text Service Agent needs to write to the bucket on the
+# caller's behalf when GcsOutputConfig is set on BatchRecognize.
 resource "google_storage_bucket_iam_member" "transcripts_raw_speech_agent" {
   bucket = google_storage_bucket.transcripts_raw.name
   role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:service-${var.project_number}@gcp-sa-v2-speech.iam.gserviceaccount.com"
+  member = "serviceAccount:${google_project_service_identity.speech_agent.email}"
 }
 
 # Speech agent also needs KMS encrypt/decrypt to write CMEK objects.
@@ -125,7 +160,7 @@ resource "google_storage_bucket_iam_member" "transcripts_raw_speech_agent" {
 resource "google_kms_crypto_key_iam_member" "transcripts_raw_speech_agent_kms" {
   crypto_key_id = var.app_data_key_id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:service-${var.project_number}@gcp-sa-v2-speech.iam.gserviceaccount.com"
+  member        = "serviceAccount:${google_project_service_identity.speech_agent.email}"
 }
 
 output "transcripts_raw_bucket_name" {

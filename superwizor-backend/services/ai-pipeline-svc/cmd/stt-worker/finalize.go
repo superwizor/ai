@@ -326,14 +326,36 @@ func loadChunkResults(
 			return nil, fmt.Errorf("downloadGCSObject chunk %d (%s): %w", op.ChunkIndex, objectName, err)
 		}
 
-		var resp speechpb.BatchRecognizeResponse
-		// protojson handles the JSON encoding Chirp uses for the
-		// proto. Standard json.Unmarshal would mangle enum/oneof fields.
-		if err := protojson.Unmarshal(blob, &resp); err != nil {
+		// Chirp's GCS output is a serialized `BatchRecognizeResults`
+		// (the per-file payload), NOT a `BatchRecognizeResponse` (the
+		// outer wrapper used by the inline-output path). Captured
+		// 2026-05-22 from real staging output: the JSON top-level is
+		// `{"results":[...], "metadata":{...}}` — equivalent to
+		// `BatchRecognizeFileResult.InlineResult.Transcript`.
+		//
+		// We unmarshal into BatchRecognizeResults directly and then
+		// synthesize a BatchRecognizeResponse so ParseChirp3Results
+		// works unchanged. Trade-off: the synthetic file key "_" is
+		// arbitrary — ParseChirp3Results iterates the map and
+		// doesn't key on URI.
+		var results speechpb.BatchRecognizeResults
+		if err := protojson.Unmarshal(blob, &results); err != nil {
 			return nil, fmt.Errorf("protojson.Unmarshal chunk %d: %w", op.ChunkIndex, err)
 		}
 
-		tr, err := ParseChirp3Results(&resp, op.UsedNativeDiarization, op.LanguageCode)
+		synthetic := &speechpb.BatchRecognizeResponse{
+			Results: map[string]*speechpb.BatchRecognizeFileResult{
+				"_": {
+					Result: &speechpb.BatchRecognizeFileResult_InlineResult{
+						InlineResult: &speechpb.InlineResult{
+							Transcript: &results,
+						},
+					},
+				},
+			},
+		}
+
+		tr, err := ParseChirp3Results(synthetic, op.UsedNativeDiarization, op.LanguageCode)
 		if err != nil {
 			// File-level error from Chirp lands here (codec rejected,
 			// "is too long", etc.). isTerminalSTTError will classify
@@ -374,7 +396,12 @@ func findTranscriptObject(ctx context.Context, bucket string, op sttOpRow) (stri
 			return "", err
 		}
 		leaf := stripPrefix(attrs.Name, prefix)
-		if strings.HasPrefix(leaf, "transcript_") && strings.HasSuffix(leaf, ".json") {
+		// Chirp's actual leaf filename is e.g.
+		// `1779458535_transcript_{op_hash}.json` — a unix-timestamp
+		// prefix the SDK doesn't document. Match by Contains so a
+		// future Chirp tweak that adds/removes that prefix doesn't
+		// silently break us.
+		if strings.Contains(leaf, "transcript_") && strings.HasSuffix(leaf, ".json") {
 			return attrs.Name, nil
 		}
 	}

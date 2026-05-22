@@ -44,13 +44,24 @@ type OutputObjectPath struct {
 //
 // Expected shape:
 //
-//	{session_uuid}/chunk_{int}/transcript_{anything}.json
+//	{session_uuid}/chunk_{int}/{leaf}.json
+//
+// where {leaf} must contain "transcript_" anywhere in the name.
+// Empirically Chirp 3 writes:
+//
+//	{session_uuid}/chunk_{int}/{unix_ts}_transcript_{op_hash}.json
+//
+// e.g. `1779458535_transcript_79839eb4-0000-...json` — captured from
+// a real BatchRecognize call on 2026-05-22. The unix_ts prefix isn't
+// documented but is stable; we match by Contains rather than
+// HasPrefix to survive Chirp tweaking the prefix later. Open Q6 in
+// docs/13_STT_GCS_CALLBACK_AND_CHUNKING.md.
 //
 // Rejected (ok=false):
 //   - fewer than 3 path components
 //   - top-level segment not a valid UUID
 //   - middle segment not "chunk_<int>"
-//   - leaf filename not "transcript_*.json"
+//   - leaf filename doesn't contain "transcript_" or isn't .json
 func ParseOutputObjectPath(objectName string) (OutputObjectPath, bool) {
 	// Strip a leading slash if some Eventarc payload variant adds one.
 	objectName = strings.TrimPrefix(objectName, "/")
@@ -75,7 +86,7 @@ func ParseOutputObjectPath(objectName string) (OutputObjectPath, bool) {
 	}
 
 	leaf := parts[2]
-	if !strings.HasPrefix(leaf, "transcript_") || path.Ext(leaf) != ".json" {
+	if !strings.Contains(leaf, "transcript_") || path.Ext(leaf) != ".json" {
 		return OutputObjectPath{}, false
 	}
 

@@ -42,7 +42,6 @@ module "audit_logs" {
 module "storage" {
   source          = "../../modules/storage"
   project_id      = var.project_id
-  project_number  = var.project_number
   app_data_key_id = module.kms.app_data_key_id
   pubsub_topic_id = module.pubsub.audio_uploaded_topic
 }

@@ -25,6 +25,14 @@ func TestParseOutputObjectPath(t *testing.T) {
 			"/30e28aaf-7c87-4c63-a90e-107ab841cf1f/chunk_0/transcript_a.json",
 			true, 0,
 		},
+		{
+			// REAL Chirp 3 filename observed 2026-05-22 in staging:
+			// chirp prefixes the leaf with a unix-timestamp. Must
+			// still parse — see ParseOutputObjectPath comment.
+			"chirp's actual filename pattern (unix-ts prefix)",
+			"30e28aaf-7c87-4c63-a90e-107ab841cf1f/chunk_0/1779458535_transcript_79839eb4-0000-2c3b-b460-089e08295ed8.json",
+			true, 0,
+		},
 
 		// Rejects — wrong segment count.
 		{"empty", "", false, 0},
