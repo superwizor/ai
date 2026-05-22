@@ -4,7 +4,19 @@
 
 ## Mission
 
-The "secure upload door". Issues V4 signed URLs to GCS so the Flutter app uploads audio **directly to Cloud Storage** (not through this service). Records `upload_tickets`, then a GCS `OBJECT_FINALIZE` event flows through Eventarc → Pub/Sub `audio.uploaded` → ai-pipeline-svc's `stt-worker`.
+The "secure upload door". Issues V4 signed URLs to GCS so the Flutter app uploads audio **directly to Cloud Storage** (not through this service). Records `upload_tickets`, then on `CompleteAudioUpload` this service publishes a structured `{session_id, upload_id, object_path}` event to Pub/Sub topic `audio.uploaded` via `internal/adapters/pubsub/publisher.go::PublishAudioUploaded`. Downstream subscribers (ai-pipeline-svc `stt-worker`, notification-svc `notification-worker-on-uploaded`) pick that up.
+
+> Historical note (removed 2026-05-23): the `audio_uploads` GCS bucket
+> used to also have a `google_storage_notification` fan-out to the
+> same `audio.uploaded` topic. That was the legacy STT-kickoff path
+> from before ingestion-svc grew the explicit publisher, and it
+> emitted raw `storage#object` JSON that no downstream subscriber
+> could parse. `stt-worker` ack'd-and-ignored cleanly, but
+> `notification-worker-on-uploaded` returned an error → Pub/Sub
+> redelivered with backoff → the backlog delayed legitimate events
+> by minutes on busy days. Removed via `infra/modules/storage/main.tf`.
+> If you ever re-introduce a bucket notification, route it to a
+> different topic.
 
 Why direct upload: 300 MB through Cloud Run = ~10 GB egress per 100 sessions + 15-minute request timeout. Both unacceptable.
 
