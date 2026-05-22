@@ -287,6 +287,19 @@ re-apply in staging). On prod, the migrator only applies new files —
 to update an existing modality, generate a fresh migration with a new
 6-digit prefix that re-INSERTs.
 
+**8. Never edit the content of an already-applied migration.** The
+migrator service tracks `schema_migrations.version` — once a number
+is recorded, re-running the same version is a no-op. Editing the
+`.up.sql` body in-place leaves the DB stuck on the original content
+while git carries the corrected version. This actually happened on
+2026-05-22: `000019_seed_gestalt_modality.up.sql` shipped with the
+legacy footer bullets, the file was corrected in-place, and only an
+explicit DB query showed staging was still buggy. **Fix:** add a
+new numbered migration that re-UPSERTs the row. See
+`000020_fix_gestalt_prompt.up.sql` for the canonical shape —
+comment header explains the situation, body is the corrected
+UPSERT, down migration is a no-op to avoid re-introducing the bug.
+
 ---
 
 ## Rolling back

@@ -1,0 +1,13 @@
+-- No-op reversal.
+--
+-- This migration corrects buggy prompt content for the GESTALT
+-- modality. Rolling back would re-introduce the bug ("Speaker Role
+-- Inference" / "HiTOP Dimensions" / "RAG Summary Chunk" bullets +
+-- "(TL;DR)" anglicism). Intentionally a no-op so `migrate down -1`
+-- doesn't undo the fix on the same instance the up just ran on.
+--
+-- To genuinely delete the GESTALT row (if you really want to),
+-- apply the down migration of 000019 (which DELETEs by code), then
+-- this one becomes a no-op anyway.
+
+-- (intentionally empty)
