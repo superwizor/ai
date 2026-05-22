@@ -51,24 +51,22 @@ type MergeStats struct {
 // MergeChirpResults stitches per-chunk Chirp outputs into a single
 // word stream with absolute-time offsets.
 //
-// Stage 1 contract: len(parts) == 1 (single chunk per session,
-// chunk_index = 0, start_offset_ms = 0). Words are passed through
-// with their original timestamps; summary is computed from the
-// single ChunkResult.
+// Stage 1 (len(parts) == 1): pass-through. Words emitted with their
+// original timestamps; summary computed from the single ChunkResult.
 //
-// Stage 2 contract: len(parts) >= 1. For each parts[i > 0]:
-//   1. Run time-anchored speaker-label alignment across the
-//      [parts[i].StartOffsetMS, parts[i-1].SeamOffsetMS] overlap
-//      window with parts[i-1].Words (already in absolute time).
-//   2. Rewrite parts[i].Words speaker labels via the translation map.
-//   3. Discard parts[i] words whose absolute StartMS falls inside
-//      the overlap (dedup against parts[i-1]'s tail).
-//   4. Add parts[i].StartOffsetMS to remaining words' StartMS/EndMS
-//      and append.
+// Stage 2 (len(parts) > 1): for each parts[i > 0]:
+//   1. Run AlignAndMapSpeakers across the [parts[i].StartOffsetMS,
+//      parts[i-1].SeamOffsetMS] overlap window, using the prior
+//      chunk's IMMEDIATELY-MERGED absolute-time words (priorAbsWords)
+//      — NOT the entire merged stream so far. The bug-fix from the
+//      v1 design sketch.
+//   2. Discard current-chunk words whose ABSOLUTE StartMS falls
+//      inside the overlap window (dedup against priorAbsWords).
+//   3. Re-relativize remaining words by parts[i].StartOffsetMS and
+//      append.
 //
-// In Stage 1 the alignment / dedup steps are skipped; this function
-// is a thin shim. Keeping the signature stable lets Stage 2 land
-// without touching the caller in stt-finalize.
+// stats.FallbackCount counts seams where alignment fell back to the
+// label-by-ordinal-offset path — observability for production drift.
 func MergeChirpResults(parts []ChunkResult) ([]chunker.Word, *MergeSummary, MergeStats) {
 	var stats MergeStats
 	if len(parts) == 0 {
@@ -81,21 +79,56 @@ func MergeChirpResults(parts []ChunkResult) ([]chunker.Word, *MergeSummary, Merg
 	var totalConfidence float32
 	var confidenceWords int
 
-	for i, p := range parts {
-		// Stage 1: only chunk 0 ever lands here. Stage 2: i > 0
-		// chunks would go through AlignAndMapSpeakers + overlap dedup
-		// before this loop. Keep the per-word loop ready for that.
-		_ = i
+	// Rolling state across chunks. priorAbsWords is the IMMEDIATELY
+	// PRIOR chunk's words in absolute time (post-alignment). The
+	// next iteration's AlignAndMapSpeakers uses only this slice —
+	// O(overlap_size) alignment cost, not O(N²).
+	var priorAbsWords []chunker.Word
+	var priorSeamMS int64
+	prevMaxLabel := 0
 
-		for _, w := range p.Words {
+	for i, p := range parts {
+		// 1. Take chunk's local words (relative to its own start).
+		localWords := p.Words
+
+		// 2. Cross-chunk alignment: only for i > 0 AND when both
+		//    sides have native diarization labels.
+		var mappedLocal []chunker.Word
+		if i == 0 || !p.UsedNativeDiarization {
+			mappedLocal = localWords
+		} else {
+			var fellBack bool
+			mappedLocal, prevMaxLabel, fellBack = AlignAndMapSpeakers(
+				priorAbsWords,
+				localWords,
+				p.StartOffsetMS,
+				priorSeamMS,
+				prevMaxLabel,
+			)
+			if fellBack {
+				stats.FallbackCount++
+			}
+		}
+
+		// 3. Dedup: discard current-chunk words whose ABSOLUTE
+		//    StartMS falls inside the overlap with the prior chunk.
+		//    (Chunk 0 has no prior, so priorSeamMS = 0 and the
+		//    condition trivially fails — nothing dropped.)
+		overlapAbsEnd := priorSeamMS
+		absChunkWords := make([]chunker.Word, 0, len(mappedLocal))
+		for _, w := range mappedLocal {
+			absStart := w.StartMS + p.StartOffsetMS
+			if i > 0 && absStart < overlapAbsEnd {
+				continue // duplicate from prior chunk's tail
+			}
 			abs := chunker.Word{
 				Text:         w.Text,
-				StartMS:      w.StartMS + p.StartOffsetMS,
+				StartMS:      absStart,
 				EndMS:        w.EndMS + p.StartOffsetMS,
 				Confidence:   w.Confidence,
 				SpeakerLabel: w.SpeakerLabel,
 			}
-			merged = append(merged, abs)
+			absChunkWords = append(absChunkWords, abs)
 			if w.SpeakerLabel != "" {
 				speakerSet[w.SpeakerLabel] = true
 			}
@@ -104,9 +137,27 @@ func MergeChirpResults(parts []ChunkResult) ([]chunker.Word, *MergeSummary, Merg
 				confidenceWords++
 			}
 		}
+
+		merged = append(merged, absChunkWords...)
 		if languageCode == "" && p.LanguageCode != "" {
 			languageCode = p.LanguageCode
 		}
+
+		// 4. Advance the rolling state — use THIS chunk's words
+		//    (not the cumulative merged) so the next alignment
+		//    only searches a bounded overlap window.
+		//
+		//    KEY: for chunk 0, priorAbsWords is the chunk-0 stream
+		//    (no alignment was performed); for i > 0 it's the
+		//    post-alignment current chunk. Either way the next
+		//    iteration sees only one chunk's worth of words.
+		priorAbsWords = absChunkWords
+		// SeamOffsetMS is already absolute (audio_chunks stores
+		// absolute offsets per migration 000023). For the Stage 1
+		// virtual single-chunk case SeamOffsetMS is 0 — but the
+		// i == 0 branch above never triggers alignment so the
+		// value doesn't matter.
+		priorSeamMS = p.SeamOffsetMS
 	}
 
 	stats.TotalWordCount = len(merged)

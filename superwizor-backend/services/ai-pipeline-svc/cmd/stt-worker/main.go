@@ -205,19 +205,30 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 		"operator_opt_in", operatorOptIn,
 		"native_diarization", useNativeDiarization)
 
-	// Stage 1: always one virtual chunk covering the whole upload.
-	// Stage 2: this list comes from audio_chunks (post-ffmpeg split).
 	sessionUUID, err := uuid.Parse(event.SessionID)
 	if err != nil {
 		// Should never happen — sessionUUID came from a valid
 		// CloudEvent payload — but defend defensively.
 		return nil
 	}
-	chunks := []ChunkPlan{{
-		ChunkIndex:    0,
-		GCSUri:        fmt.Sprintf("gs://%s/%s", bucketName, event.ObjectPath),
-		StartOffsetMS: 0,
-	}}
+
+	// Stage 2: read audio_chunks for this upload. If ingestion-svc
+	// ran the chunker (long audio path), N rows exist with
+	// chunk_index 0..N-1. Otherwise synthesize a single virtual
+	// chunk covering the whole upload (Stage 1 behavior).
+	chunks, err := loadChunkPlan(ctx, event.UploadID, event.ObjectPath)
+	if err != nil {
+		logger.Warn("loadChunkPlan failed; falling back to single virtual chunk",
+			"error", err)
+		chunks = []ChunkPlan{{
+			ChunkIndex:    0,
+			GCSUri:        fmt.Sprintf("gs://%s/%s", bucketName, event.ObjectPath),
+			StartOffsetMS: 0,
+		}}
+	}
+	logger.Info("chunk plan loaded",
+		"chunk_count", len(chunks),
+		"upload_id", event.UploadID)
 
 	// Pre-flight: skip chunks already submitted by a prior (now-
 	// redelivered) Pub/Sub event. Eliminates the common case of
@@ -287,16 +298,91 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 	return nil
 }
 
-// ChunkPlan describes one BatchRecognize submission target. Stage 1
-// builds a single ChunkPlan covering the whole audio_upload object
-// (StartOffsetMS = 0). Stage 2 will read audio_chunks rows to fan
-// out N chunks per session.
+// ChunkPlan describes one BatchRecognize submission target.
+//
+// Stage 1: a single ChunkPlan covering the whole audio_upload
+// object (StartOffsetMS=0). Synthesized when audio_chunks is empty.
+//
+// Stage 2: one ChunkPlan per audio_chunks row when ingestion-svc
+// ran the ffmpeg silence-detect chunker (long audio path).
 type ChunkPlan struct {
 	ChunkIndex    int
 	GCSUri        string // gs://bucket/path of the audio file
 	StartOffsetMS int64  // chunk's start in the ORIGINAL audio timeline
-	SeamOffsetMS  int64  // Stage 2 only; logical cut point
-	OverlapMS     int    // Stage 2 only; overlap with prior chunk
+	SeamOffsetMS  int64  // logical cut point shared with chunk_{i+1}; 0 for the virtual chunk
+	EndOffsetMS   int64  // chunk's end in the ORIGINAL audio timeline; 0 for the virtual chunk
+	OverlapMS     int    // overlap with prior chunk; 0 for chunk 0
+}
+
+// loadChunkPlan returns the BatchRecognize fan-out plan for this
+// audio_upload. When ingestion-svc ran the Stage 2 chunker, the
+// audio_chunks table has one row per chunk; otherwise empty and we
+// synthesize a single virtual chunk pointing at the original
+// audio_uploads object_path.
+//
+// Both paths are correct and observationally indistinguishable to
+// the caller; the consumer just gets a different `len(chunks)`.
+func loadChunkPlan(ctx context.Context, uploadIDStr string, fallbackObjectPath string) ([]ChunkPlan, error) {
+	if dbPool == nil {
+		return defaultChunkPlan(fallbackObjectPath), nil
+	}
+	uploadID, err := uuid.Parse(uploadIDStr)
+	if err != nil {
+		return defaultChunkPlan(fallbackObjectPath), nil
+	}
+
+	rows, err := dbPool.Query(ctx, `
+		SELECT chunk_index, bucket_name, object_path,
+		       start_offset_ms, seam_offset_ms, end_offset_ms, overlap_ms
+		FROM audio_chunks
+		WHERE audio_upload_id = $1
+		ORDER BY chunk_index`,
+		uploadID)
+	if err != nil {
+		return nil, fmt.Errorf("query audio_chunks: %w", err)
+	}
+	defer rows.Close()
+
+	var out []ChunkPlan
+	for rows.Next() {
+		var (
+			idx                                int32
+			bkt, obj                           string
+			start, seam, end                   int64
+			overlap                            int32
+		)
+		if err := rows.Scan(&idx, &bkt, &obj, &start, &seam, &end, &overlap); err != nil {
+			return nil, fmt.Errorf("scan audio_chunks: %w", err)
+		}
+		out = append(out, ChunkPlan{
+			ChunkIndex:    int(idx),
+			GCSUri:        fmt.Sprintf("gs://%s/%s", bkt, obj),
+			StartOffsetMS: start,
+			SeamOffsetMS:  seam,
+			EndOffsetMS:   end,
+			OverlapMS:     int(overlap),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(out) == 0 {
+		return defaultChunkPlan(fallbackObjectPath), nil
+	}
+	return out, nil
+}
+
+// defaultChunkPlan synthesizes the Stage 1 single-virtual-chunk
+// plan: one ChunkPlan over the entire audio_upload object. Used
+// when audio_chunks has no rows for this upload (short audio,
+// pre-Stage 2 sessions, or DB unavailable).
+func defaultChunkPlan(objectPath string) []ChunkPlan {
+	return []ChunkPlan{{
+		ChunkIndex:    0,
+		GCSUri:        fmt.Sprintf("gs://%s/%s", bucketName, objectPath),
+		StartOffsetMS: 0,
+	}}
 }
 
 // TranscriptResult zawiera płaską listę słów (bez speaker_tag w default flow).

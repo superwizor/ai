@@ -217,13 +217,25 @@ const ConvertAudioRequest$json = {
       '5': 9,
       '10': 'targetContentType'
     },
+    {'1': 'chunk_for_chirp', '3': 3, '4': 1, '5': 8, '10': 'chunkForChirp'},
+    {'1': 'max_chunk_seconds', '3': 4, '4': 1, '5': 5, '10': 'maxChunkSeconds'},
+    {
+      '1': 'source_duration_seconds',
+      '3': 5,
+      '4': 1,
+      '5': 5,
+      '10': 'sourceDurationSeconds'
+    },
   ],
 };
 
 /// Descriptor for `ConvertAudioRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List convertAudioRequestDescriptor = $convert.base64Decode(
     'ChNDb252ZXJ0QXVkaW9SZXF1ZXN0EiYKD2F1ZGlvX3VwbG9hZF9pZBgBIAEoCVINYXVkaW9VcG'
-    'xvYWRJZBIuChN0YXJnZXRfY29udGVudF90eXBlGAIgASgJUhF0YXJnZXRDb250ZW50VHlwZQ==');
+    'xvYWRJZBIuChN0YXJnZXRfY29udGVudF90eXBlGAIgASgJUhF0YXJnZXRDb250ZW50VHlwZRIm'
+    'Cg9jaHVua19mb3JfY2hpcnAYAyABKAhSDWNodW5rRm9yQ2hpcnASKgoRbWF4X2NodW5rX3NlY2'
+    '9uZHMYBCABKAVSD21heENodW5rU2Vjb25kcxI2Chdzb3VyY2VfZHVyYXRpb25fc2Vjb25kcxgF'
+    'IAEoBVIVc291cmNlRHVyYXRpb25TZWNvbmRz');
 
 @$core.Deprecated('Use convertAudioResponseDescriptor instead')
 const ConvertAudioResponse$json = {
@@ -232,6 +244,7 @@ const ConvertAudioResponse$json = {
     {'1': 'content_type', '3': 1, '4': 1, '5': 9, '10': 'contentType'},
     {'1': 'object_path', '3': 2, '4': 1, '5': 9, '10': 'objectPath'},
     {'1': 'converted', '3': 3, '4': 1, '5': 8, '10': 'converted'},
+    {'1': 'chunk_count', '3': 4, '4': 1, '5': 5, '10': 'chunkCount'},
   ],
 };
 
@@ -239,4 +252,4 @@ const ConvertAudioResponse$json = {
 final $typed_data.Uint8List convertAudioResponseDescriptor = $convert.base64Decode(
     'ChRDb252ZXJ0QXVkaW9SZXNwb25zZRIhCgxjb250ZW50X3R5cGUYASABKAlSC2NvbnRlbnRUeX'
     'BlEh8KC29iamVjdF9wYXRoGAIgASgJUgpvYmplY3RQYXRoEhwKCWNvbnZlcnRlZBgDIAEoCFIJ'
-    'Y29udmVydGVk');
+    'Y29udmVydGVkEh8KC2NodW5rX2NvdW50GAQgASgFUgpjaHVua0NvdW50');

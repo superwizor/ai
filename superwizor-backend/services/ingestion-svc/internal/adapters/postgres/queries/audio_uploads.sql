@@ -43,3 +43,30 @@ UPDATE audio_uploads SET
     bucket_name  = $4
 WHERE id = $1
 RETURNING *;
+
+-- name: CountAudioChunksByUpload :one
+-- Stage 2 of feat/stt-long_audio_support: stt-submit + ConvertAudio
+-- both use this to detect "this upload was already chunked" — the
+-- COUNT must equal expected_chunk_count for the second call to
+-- short-circuit. See chunker.go.
+SELECT COUNT(*) FROM audio_chunks WHERE audio_upload_id = $1;
+
+-- name: CreateAudioChunk :exec
+-- One audio_chunks row. Wrapped in a single tx by the
+-- ConvertAudio handler so partial inserts don't survive a crash.
+-- UNIQUE on (audio_upload_id, chunk_index) prevents the
+-- concurrent-ConvertAudio race (the pg_advisory_xact_lock in the
+-- handler is the primary serialization mechanism).
+INSERT INTO audio_chunks (
+    audio_upload_id, chunk_index,
+    bucket_name, object_path,
+    start_offset_ms, seam_offset_ms, end_offset_ms,
+    overlap_ms, cut_on_silence
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+
+-- name: DeleteAudioChunksByUpload :exec
+-- Used by the recovery path: if a prior ConvertAudio crashed mid-
+-- chunking (some rows landed, some didn't), the retry detects
+-- partial state, deletes everything, and redoes the split. GCS
+-- objects from the partial run are left to OLM 48h.
+DELETE FROM audio_chunks WHERE audio_upload_id = $1;

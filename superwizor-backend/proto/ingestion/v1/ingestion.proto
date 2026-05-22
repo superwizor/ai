@@ -88,6 +88,30 @@ message ConvertAudioRequest {
   // empty. Supported: "audio/flac", "audio/wav" (LINEAR16). Other
   // values return InvalidArgument.
   string target_content_type = 2;
+
+  // Stage 2 of feat/stt-long_audio_support. When true, after the
+  // codec normalization (if any) ingestion-svc also splits the
+  // resulting FLAC into ≤ max_chunk_seconds segments via ffmpeg
+  // silencedetect, writes one row per chunk to audio_chunks, and
+  // returns chunk_count > 0 in the response. stt-submit then reads
+  // those rows and submits one BatchRecognize per chunk.
+  //
+  // Default false preserves Stage 1 semantics (single output file,
+  // no audio_chunks row). Long-audio handling skipped when false.
+  bool chunk_for_chirp = 3;
+
+  // Maximum chunk length in seconds for the chunk_for_chirp path.
+  // Default 1140 (19 minutes — safe margin under Chirp 3's 20-min
+  // word-timestamp limit) when 0. Bounded server-side at 1200.
+  // Ignored when chunk_for_chirp = false.
+  int32 max_chunk_seconds = 4;
+
+  // Source audio duration in seconds. Required when chunk_for_chirp
+  // is true (the chunker needs to know the total length to plan cut
+  // points; we don't want to ffprobe the GCS object on every call).
+  // 0 with chunk_for_chirp=true returns InvalidArgument. Ignored
+  // when chunk_for_chirp = false.
+  int32 source_duration_seconds = 5;
 }
 
 message ConvertAudioResponse {
@@ -102,4 +126,10 @@ message ConvertAudioResponse {
   // True if ffmpeg actually ran. False on idempotent no-op
   // (already-supported codec).
   bool converted = 3;
+
+  // Stage 2: number of audio_chunks rows produced. 0 means the
+  // upload was not chunked (either chunk_for_chirp=false, or
+  // duration ≤ max_chunk_seconds and the splitter short-circuited).
+  // When > 0, stt-submit will fan out N BatchRecognize calls.
+  int32 chunk_count = 4;
 }

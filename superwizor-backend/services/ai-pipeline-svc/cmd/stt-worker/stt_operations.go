@@ -10,14 +10,19 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// sttOpRow is the read-side projection of a stt_operations row.
-// Mirrors the migration 000021 schema.
+// sttOpRow is the read-side projection of a stt_operations row,
+// optionally enriched with the matching audio_chunks columns
+// (seam_offset_ms, end_offset_ms, overlap_ms) when loaded for the
+// merger. Single-chunk Stage 1 sessions have all three at zero.
 type sttOpRow struct {
 	ID                    uuid.UUID
 	SessionID             uuid.UUID
 	ChunkIndex            int
 	ChunkCount            int
 	StartOffsetMS         int64
+	SeamOffsetMS          int64 // Stage 2 only; 0 when no audio_chunks row
+	EndOffsetMS           int64 // Stage 2 only; 0 when no audio_chunks row
+	OverlapMS             int   // Stage 2 only; 0 for chunk 0 OR Stage 1
 	OperationID           string
 	GCSOutputURI          string
 	LanguageCode          string
@@ -120,18 +125,32 @@ func countPendingChunks(ctx context.Context, sessionID uuid.UUID) (int, error) {
 }
 
 // loadOperationsForSession returns all stt_operations rows for the
-// session in chunk_index order. Used by stt-finalize's merge step.
+// session in chunk_index order, enriched with the matching
+// audio_chunks columns (seam/end/overlap) so the merger has all
+// the offsets it needs to do cross-chunk alignment.
+//
+// The LEFT JOIN through sessions → audio_uploads → audio_chunks
+// keeps Stage 1 sessions (no audio_chunks row) returning zeroed
+// seam/end/overlap — the merger's len(parts)==1 branch then
+// degenerates to the passthrough path.
 func loadOperationsForSession(ctx context.Context, sessionID uuid.UUID) ([]sttOpRow, error) {
 	if dbPool == nil {
 		return nil, nil
 	}
 	rows, err := dbPool.Query(ctx, `
-		SELECT id, chunk_index, chunk_count, start_offset_ms,
-		       operation_id, gcs_output_uri,
-		       language_code, used_native_diarization, finalize_error
-		FROM stt_operations
-		WHERE session_id = $1
-		ORDER BY chunk_index`,
+		SELECT op.id, op.chunk_index, op.chunk_count, op.start_offset_ms,
+		       op.operation_id, op.gcs_output_uri,
+		       op.language_code, op.used_native_diarization, op.finalize_error,
+		       COALESCE(ch.seam_offset_ms, 0) AS seam_offset_ms,
+		       COALESCE(ch.end_offset_ms, 0)  AS end_offset_ms,
+		       COALESCE(ch.overlap_ms, 0)     AS overlap_ms
+		FROM stt_operations op
+		JOIN sessions s ON s.id = op.session_id
+		LEFT JOIN audio_chunks ch
+		       ON ch.audio_upload_id = s.audio_upload_id
+		      AND ch.chunk_index    = op.chunk_index
+		WHERE op.session_id = $1
+		ORDER BY op.chunk_index`,
 		sessionID)
 	if err != nil {
 		return nil, err
@@ -145,6 +164,7 @@ func loadOperationsForSession(ctx context.Context, sessionID uuid.UUID) ([]sttOp
 			&r.ID, &r.ChunkIndex, &r.ChunkCount, &r.StartOffsetMS,
 			&r.OperationID, &r.GCSOutputURI,
 			&r.LanguageCode, &r.UsedNativeDiarization, &r.FinalizeError,
+			&r.SeamOffsetMS, &r.EndOffsetMS, &r.OverlapMS,
 		); err != nil {
 			return nil, err
 		}

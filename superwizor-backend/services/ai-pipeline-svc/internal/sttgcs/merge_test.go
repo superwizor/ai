@@ -60,6 +60,122 @@ func TestMergeChirpResults_EmptyParts(t *testing.T) {
 	}
 }
 
+// TestMergeChirpResults_TwoChunk_AlignmentAndDedup exercises the
+// Stage 2 critical path: two overlapping chunks with independent
+// native-diarization labels. The merger should:
+//
+//   1. Align chunk-1's labels to chunk-0's space via
+//      AlignAndMapSpeakers (A→1, B→2 in this fixture).
+//   2. Discard chunk-1 words whose absolute timestamp falls inside
+//      the [chunk-1.start, chunk-0.seam] overlap window.
+//   3. Re-relativize remaining chunk-1 words to absolute time.
+func TestMergeChirpResults_TwoChunk_AlignmentAndDedup(t *testing.T) {
+	// Layout (ms):
+	//   chunk 0: [0,         12_000]  seam=12_000
+	//   chunk 1: [10_000,    20_000]  seam=20_000  overlap_ms=2000
+	//
+	// chunk 0 has labeled words from 0..12000 (last 2s = overlap).
+	// chunk 1 has the same overlap words (10000..12000) as locals
+	// 0..2000, plus 2000..10000 of unique words.
+
+	// chunk 0 absolute words (already in absolute time):
+	chunk0 := []chunker.Word{
+		{Text: "first", StartMS: 0, EndMS: 500, Confidence: 0.9, SpeakerLabel: "1"},
+		{Text: "thing", StartMS: 1000, EndMS: 1500, Confidence: 0.9, SpeakerLabel: "1"},
+		// ... overlap region 10000..12000:
+		{Text: "yes", StartMS: 10_000, EndMS: 10_300, Confidence: 0.9, SpeakerLabel: "1"},
+		{Text: "ok", StartMS: 10_500, EndMS: 10_800, Confidence: 0.9, SpeakerLabel: "2"},
+		{Text: "yes", StartMS: 11_000, EndMS: 11_300, Confidence: 0.9, SpeakerLabel: "1"},
+		{Text: "ok", StartMS: 11_500, EndMS: 11_800, Confidence: 0.9, SpeakerLabel: "2"},
+		// (continue for 6 more words to clear the 10-pair threshold)
+		{Text: "a", StartMS: 10_100, EndMS: 10_200, Confidence: 0.9, SpeakerLabel: "1"},
+		{Text: "b", StartMS: 10_300, EndMS: 10_400, Confidence: 0.9, SpeakerLabel: "2"},
+		{Text: "c", StartMS: 10_700, EndMS: 10_800, Confidence: 0.9, SpeakerLabel: "1"},
+		{Text: "d", StartMS: 10_900, EndMS: 11_000, Confidence: 0.9, SpeakerLabel: "2"},
+		{Text: "e", StartMS: 11_100, EndMS: 11_200, Confidence: 0.9, SpeakerLabel: "1"},
+		{Text: "f", StartMS: 11_400, EndMS: 11_500, Confidence: 0.9, SpeakerLabel: "2"},
+	}
+
+	// chunk 1 LOCAL words. start_offset = 10_000, so local = abs - 10_000.
+	chunk1Local := []chunker.Word{
+		// Overlap (local 0..2000): same words as chunk 0's tail, but
+		// labeled "A" / "B" instead of "1" / "2".
+		{Text: "yes", StartMS: 0, EndMS: 300, Confidence: 0.9, SpeakerLabel: "A"},
+		{Text: "ok", StartMS: 500, EndMS: 800, Confidence: 0.9, SpeakerLabel: "B"},
+		{Text: "yes", StartMS: 1000, EndMS: 1300, Confidence: 0.9, SpeakerLabel: "A"},
+		{Text: "ok", StartMS: 1500, EndMS: 1800, Confidence: 0.9, SpeakerLabel: "B"},
+		{Text: "a", StartMS: 100, EndMS: 200, Confidence: 0.9, SpeakerLabel: "A"},
+		{Text: "b", StartMS: 300, EndMS: 400, Confidence: 0.9, SpeakerLabel: "B"},
+		{Text: "c", StartMS: 700, EndMS: 800, Confidence: 0.9, SpeakerLabel: "A"},
+		{Text: "d", StartMS: 900, EndMS: 1000, Confidence: 0.9, SpeakerLabel: "B"},
+		{Text: "e", StartMS: 1100, EndMS: 1200, Confidence: 0.9, SpeakerLabel: "A"},
+		{Text: "f", StartMS: 1400, EndMS: 1500, Confidence: 0.9, SpeakerLabel: "B"},
+		// Post-overlap (local 2000..10000): unique chunk-1 content.
+		{Text: "more", StartMS: 3000, EndMS: 3500, Confidence: 0.9, SpeakerLabel: "A"},
+		{Text: "stuff", StartMS: 5000, EndMS: 5500, Confidence: 0.9, SpeakerLabel: "B"},
+	}
+
+	parts := []ChunkResult{
+		{
+			ChunkIndex:            0,
+			StartOffsetMS:         0,
+			SeamOffsetMS:          12_000, // absolute seam
+			EndOffsetMS:           12_000,
+			OverlapMS:             0,
+			LanguageCode:          "en-US",
+			UsedNativeDiarization: true,
+			Words:                 chunk0,
+		},
+		{
+			ChunkIndex:            1,
+			StartOffsetMS:         10_000,
+			SeamOffsetMS:          20_000,
+			EndOffsetMS:           20_000,
+			OverlapMS:             2000,
+			LanguageCode:          "en-US",
+			UsedNativeDiarization: true,
+			Words:                 chunk1Local,
+		},
+	}
+
+	merged, summary, stats := MergeChirpResults(parts)
+
+	// Expectations:
+	//   chunk 0 contributes all 12 words.
+	//   chunk 1's overlap words (local 0..2000 → abs 10000..12000) are
+	//   discarded. Only "more" and "stuff" remain.
+	wantCount := 12 + 2
+	if len(merged) != wantCount {
+		t.Fatalf("len = %d, want %d", len(merged), wantCount)
+	}
+	// "more" should land at absolute time 13_000ms (local 3000 + 10000).
+	moreFound := false
+	for _, w := range merged {
+		if w.Text == "more" {
+			moreFound = true
+			if w.StartMS != 13_000 {
+				t.Errorf("'more' abs StartMS = %d, want 13_000", w.StartMS)
+			}
+			// Translation should have mapped A → 1.
+			if w.SpeakerLabel != "1" {
+				t.Errorf("'more' label = %q, want '1' (A→1 mapping)", w.SpeakerLabel)
+			}
+		}
+	}
+	if !moreFound {
+		t.Fatal("'more' word not in merged stream")
+	}
+
+	if stats.FallbackCount != 0 {
+		t.Errorf("happy path should not fall back; stats.FallbackCount = %d", stats.FallbackCount)
+	}
+	// chunk 0 had labels {1, 2}, chunk 1's A/B mapped to 1/2 — total
+	// speaker set is still 2.
+	if summary.SpeakerCount != 2 {
+		t.Errorf("SpeakerCount = %d, want 2", summary.SpeakerCount)
+	}
+}
+
 // TestMergeChirpResults_MultiChunk_RelativizesOffsets validates the
 // Stage 2 contract: words from later chunks get their offsets shifted
 // by StartOffsetMS. Stage 1 only ever passes len==1, but the loop

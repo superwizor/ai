@@ -62,6 +62,62 @@ func (q *Queries) CompleteAudioUpload(ctx context.Context, arg CompleteAudioUplo
 	return i, err
 }
 
+const countAudioChunksByUpload = `-- name: CountAudioChunksByUpload :one
+SELECT COUNT(*) FROM audio_chunks WHERE audio_upload_id = $1
+`
+
+// Stage 2 of feat/stt-long_audio_support: stt-submit + ConvertAudio
+// both use this to detect "this upload was already chunked" — the
+// COUNT must equal expected_chunk_count for the second call to
+// short-circuit. See chunker.go.
+func (q *Queries) CountAudioChunksByUpload(ctx context.Context, audioUploadID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countAudioChunksByUpload, audioUploadID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createAudioChunk = `-- name: CreateAudioChunk :exec
+INSERT INTO audio_chunks (
+    audio_upload_id, chunk_index,
+    bucket_name, object_path,
+    start_offset_ms, seam_offset_ms, end_offset_ms,
+    overlap_ms, cut_on_silence
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+`
+
+type CreateAudioChunkParams struct {
+	AudioUploadID pgtype.UUID
+	ChunkIndex    int32
+	BucketName    string
+	ObjectPath    string
+	StartOffsetMs int64
+	SeamOffsetMs  int64
+	EndOffsetMs   int64
+	OverlapMs     int32
+	CutOnSilence  bool
+}
+
+// One audio_chunks row. Wrapped in a single tx by the
+// ConvertAudio handler so partial inserts don't survive a crash.
+// UNIQUE on (audio_upload_id, chunk_index) prevents the
+// concurrent-ConvertAudio race (the pg_advisory_xact_lock in the
+// handler is the primary serialization mechanism).
+func (q *Queries) CreateAudioChunk(ctx context.Context, arg CreateAudioChunkParams) error {
+	_, err := q.db.Exec(ctx, createAudioChunk,
+		arg.AudioUploadID,
+		arg.ChunkIndex,
+		arg.BucketName,
+		arg.ObjectPath,
+		arg.StartOffsetMs,
+		arg.SeamOffsetMs,
+		arg.EndOffsetMs,
+		arg.OverlapMs,
+		arg.CutOnSilence,
+	)
+	return err
+}
+
 const createAudioUpload = `-- name: CreateAudioUpload :one
 INSERT INTO audio_uploads (
     therapist_id, patient_file_id, bucket_name, object_path,
@@ -116,6 +172,19 @@ func (q *Queries) CreateAudioUpload(ctx context.Context, arg CreateAudioUploadPa
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const deleteAudioChunksByUpload = `-- name: DeleteAudioChunksByUpload :exec
+DELETE FROM audio_chunks WHERE audio_upload_id = $1
+`
+
+// Used by the recovery path: if a prior ConvertAudio crashed mid-
+// chunking (some rows landed, some didn't), the retry detects
+// partial state, deletes everything, and redoes the split. GCS
+// objects from the partial run are left to OLM 48h.
+func (q *Queries) DeleteAudioChunksByUpload(ctx context.Context, audioUploadID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAudioChunksByUpload, audioUploadID)
+	return err
 }
 
 const getAudioUpload = `-- name: GetAudioUpload :one

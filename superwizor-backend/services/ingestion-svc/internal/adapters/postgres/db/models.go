@@ -415,6 +415,7 @@ const (
 	SessionStatusRECORDING    SessionStatus = "RECORDING"
 	SessionStatusUPLOADING    SessionStatus = "UPLOADING"
 	SessionStatusTRANSCRIBING SessionStatus = "TRANSCRIBING"
+	SessionStatusMERGING      SessionStatus = "MERGING"
 	SessionStatusANALYZING    SessionStatus = "ANALYZING"
 	SessionStatusCOMPLETED    SessionStatus = "COMPLETED"
 	SessionStatusFAILED       SessionStatus = "FAILED"
@@ -600,6 +601,20 @@ type Address struct {
 	UnitNumber     *string
 	Directions     *string
 	CreatedAt      pgtype.Timestamptz
+}
+
+type AudioChunk struct {
+	ID            pgtype.UUID
+	AudioUploadID pgtype.UUID
+	ChunkIndex    int32
+	BucketName    string
+	ObjectPath    string
+	StartOffsetMs int64
+	SeamOffsetMs  int64
+	EndOffsetMs   int64
+	OverlapMs     int32
+	CutOnSilence  bool
+	CreatedAt     pgtype.Timestamptz
 }
 
 type AudioUpload struct {
@@ -820,6 +835,21 @@ type Session struct {
 	DeletedAt             pgtype.Timestamptz
 	ReportLanguage        string
 	Name                  *string
+}
+
+type SttOperation struct {
+	ID                    pgtype.UUID
+	SessionID             pgtype.UUID
+	ChunkIndex            int32
+	ChunkCount            int32
+	StartOffsetMs         int64
+	OperationID           string
+	GcsOutputUri          string
+	LanguageCode          string
+	UsedNativeDiarization bool
+	SubmittedAt           pgtype.Timestamptz
+	FinalizedAt           pgtype.Timestamptz
+	FinalizeError         *string
 }
 
 type TherapistPatientRelation struct {

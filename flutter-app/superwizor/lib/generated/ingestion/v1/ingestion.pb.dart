@@ -645,10 +645,17 @@ class ConvertAudioRequest extends $pb.GeneratedMessage {
   factory ConvertAudioRequest({
     $core.String? audioUploadId,
     $core.String? targetContentType,
+    $core.bool? chunkForChirp,
+    $core.int? maxChunkSeconds,
+    $core.int? sourceDurationSeconds,
   }) {
     final result = create();
     if (audioUploadId != null) result.audioUploadId = audioUploadId;
     if (targetContentType != null) result.targetContentType = targetContentType;
+    if (chunkForChirp != null) result.chunkForChirp = chunkForChirp;
+    if (maxChunkSeconds != null) result.maxChunkSeconds = maxChunkSeconds;
+    if (sourceDurationSeconds != null)
+      result.sourceDurationSeconds = sourceDurationSeconds;
     return result;
   }
 
@@ -667,6 +674,9 @@ class ConvertAudioRequest extends $pb.GeneratedMessage {
       createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'audioUploadId')
     ..aOS(2, _omitFieldNames ? '' : 'targetContentType')
+    ..aOB(3, _omitFieldNames ? '' : 'chunkForChirp')
+    ..aI(4, _omitFieldNames ? '' : 'maxChunkSeconds')
+    ..aI(5, _omitFieldNames ? '' : 'sourceDurationSeconds')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -709,6 +719,51 @@ class ConvertAudioRequest extends $pb.GeneratedMessage {
   $core.bool hasTargetContentType() => $_has(1);
   @$pb.TagNumber(2)
   void clearTargetContentType() => $_clearField(2);
+
+  /// Stage 2 of feat/stt-long_audio_support. When true, after the
+  /// codec normalization (if any) ingestion-svc also splits the
+  /// resulting FLAC into ≤ max_chunk_seconds segments via ffmpeg
+  /// silencedetect, writes one row per chunk to audio_chunks, and
+  /// returns chunk_count > 0 in the response. stt-submit then reads
+  /// those rows and submits one BatchRecognize per chunk.
+  ///
+  /// Default false preserves Stage 1 semantics (single output file,
+  /// no audio_chunks row). Long-audio handling skipped when false.
+  @$pb.TagNumber(3)
+  $core.bool get chunkForChirp => $_getBF(2);
+  @$pb.TagNumber(3)
+  set chunkForChirp($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasChunkForChirp() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearChunkForChirp() => $_clearField(3);
+
+  /// Maximum chunk length in seconds for the chunk_for_chirp path.
+  /// Default 1140 (19 minutes — safe margin under Chirp 3's 20-min
+  /// word-timestamp limit) when 0. Bounded server-side at 1200.
+  /// Ignored when chunk_for_chirp = false.
+  @$pb.TagNumber(4)
+  $core.int get maxChunkSeconds => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set maxChunkSeconds($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasMaxChunkSeconds() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMaxChunkSeconds() => $_clearField(4);
+
+  /// Source audio duration in seconds. Required when chunk_for_chirp
+  /// is true (the chunker needs to know the total length to plan cut
+  /// points; we don't want to ffprobe the GCS object on every call).
+  /// 0 with chunk_for_chirp=true returns InvalidArgument. Ignored
+  /// when chunk_for_chirp = false.
+  @$pb.TagNumber(5)
+  $core.int get sourceDurationSeconds => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set sourceDurationSeconds($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSourceDurationSeconds() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSourceDurationSeconds() => $_clearField(5);
 }
 
 class ConvertAudioResponse extends $pb.GeneratedMessage {
@@ -716,11 +771,13 @@ class ConvertAudioResponse extends $pb.GeneratedMessage {
     $core.String? contentType,
     $core.String? objectPath,
     $core.bool? converted,
+    $core.int? chunkCount,
   }) {
     final result = create();
     if (contentType != null) result.contentType = contentType;
     if (objectPath != null) result.objectPath = objectPath;
     if (converted != null) result.converted = converted;
+    if (chunkCount != null) result.chunkCount = chunkCount;
     return result;
   }
 
@@ -740,6 +797,7 @@ class ConvertAudioResponse extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'contentType')
     ..aOS(2, _omitFieldNames ? '' : 'objectPath')
     ..aOB(3, _omitFieldNames ? '' : 'converted')
+    ..aI(4, _omitFieldNames ? '' : 'chunkCount')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -795,6 +853,19 @@ class ConvertAudioResponse extends $pb.GeneratedMessage {
   $core.bool hasConverted() => $_has(2);
   @$pb.TagNumber(3)
   void clearConverted() => $_clearField(3);
+
+  /// Stage 2: number of audio_chunks rows produced. 0 means the
+  /// upload was not chunked (either chunk_for_chirp=false, or
+  /// duration ≤ max_chunk_seconds and the splitter short-circuited).
+  /// When > 0, stt-submit will fan out N BatchRecognize calls.
+  @$pb.TagNumber(4)
+  $core.int get chunkCount => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set chunkCount($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasChunkCount() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearChunkCount() => $_clearField(4);
 }
 
 const $core.bool _omitFieldNames =

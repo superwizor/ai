@@ -365,11 +365,14 @@ func loadChunkResults(
 		}
 
 		parts = append(parts, sttgcs.ChunkResult{
-			ChunkIndex:           op.ChunkIndex,
-			StartOffsetMS:        op.StartOffsetMS,
+			ChunkIndex:            op.ChunkIndex,
+			StartOffsetMS:         op.StartOffsetMS,
+			SeamOffsetMS:          op.SeamOffsetMS,
+			EndOffsetMS:           op.EndOffsetMS,
+			OverlapMS:             op.OverlapMS,
 			UsedNativeDiarization: op.UsedNativeDiarization,
-			LanguageCode:         tr.LanguageCode,
-			Words:                tr.Words,
+			LanguageCode:          tr.LanguageCode,
+			Words:                 tr.Words,
 		})
 	}
 

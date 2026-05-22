@@ -11,8 +11,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -26,10 +28,11 @@ import (
 type Server struct {
 	ingestionv1.UnimplementedIngestionServiceServer
 	queries    *db.Queries
+	pool       *pgxpool.Pool // raw pool for advisory locks + ad-hoc tx
 	signer     *storage.Signer
 	converter  *storage.Converter // shells out to ffmpeg; used by ConvertAudio
 	bucketName string
-	pubsub     PubsubPublisher  // interface — concrete impl w main
+	pubsub     PubsubPublisher // interface — concrete impl w main
 }
 
 type PubsubPublisher interface {
@@ -38,6 +41,7 @@ type PubsubPublisher interface {
 
 func NewServer(
 	queries *db.Queries,
+	pool *pgxpool.Pool,
 	signer *storage.Signer,
 	converter *storage.Converter,
 	bucketName string,
@@ -45,11 +49,23 @@ func NewServer(
 ) *Server {
 	return &Server{
 		queries:    queries,
+		pool:       pool,
 		signer:     signer,
 		converter:  converter,
 		bucketName: bucketName,
 		pubsub:     pubsub,
 	}
+}
+
+// pgxBegin is the bridge between Stage 1's `s.queries` (sqlc-bound)
+// and Stage 2's need for ad-hoc transactional work (pg_advisory_xact_lock
+// + multi-row INSERT). Returns a pgx.Tx the caller wraps with
+// s.queries.WithTx(tx) for sqlc-flavored statements.
+func (s *Server) pgxBegin(ctx context.Context) (pgx.Tx, error) {
+	if s.pool == nil {
+		return nil, fmt.Errorf("pgxBegin: server has no pool (test wiring?)")
+	}
+	return s.pool.Begin(ctx)
 }
 
 func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateAudioUploadRequest) (*ingestionv1.CreateAudioUploadResponse, error) {
@@ -247,6 +263,38 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Stage 2 of feat/stt-long_audio_support: when the duration
+	// exceeds Chirp 3's word-timestamp limit, internally invoke
+	// ConvertAudio with chunk_for_chirp=true to split the FLAC
+	// into ≤ 19-min segments. stt-submit will fan out
+	// BatchRecognize per chunk.
+	//
+	// We call the handler through s.ConvertAudio (same code path,
+	// in-process) rather than the client SDK — no network hop,
+	// shares the same SA + DB pool.
+	const longAudioThresholdSec = 1140
+	if req.ActualDurationSeconds > longAudioThresholdSec && s.converter != nil {
+		slog.Info("complete_audio_upload: triggering chunking",
+			"upload_id", req.UploadId,
+			"duration_sec", req.ActualDurationSeconds)
+		if _, err := s.ConvertAudio(ctx, &ingestionv1.ConvertAudioRequest{
+			AudioUploadId:         req.UploadId,
+			ChunkForChirp:         true,
+			MaxChunkSeconds:       longAudioThresholdSec,
+			SourceDurationSeconds: req.ActualDurationSeconds,
+		}); err != nil {
+			// Chunking failed — fail the whole CompleteAudioUpload
+			// rather than ship a session that stt-worker can't process.
+			// The client sees a clean failure; the audio_uploads row
+			// is already marked UPLOADED (the CompleteAudioUpload SQL
+			// above committed) so they can retry CompleteAudioUpload
+			// and trigger a fresh chunking attempt.
+			slog.Error("complete_audio_upload: chunking failed",
+				"upload_id", req.UploadId, "error", err)
+			return nil, err
+		}
 	}
 
 	// Auto-create session
@@ -509,9 +557,160 @@ func (s *Server) ConvertAudio(ctx context.Context, req *ingestionv1.ConvertAudio
 		"dst_content_type", updated.ContentType,
 	)
 
+	// Stage 2 chunking branch (feat/stt-long_audio_support). When the
+	// caller asked for chunking AND the source exceeds the
+	// max_chunk_seconds threshold, run ffmpeg silencedetect, split the
+	// (now-converted) FLAC into N pieces, write one audio_chunks row
+	// per piece. stt-submit will fan out N BatchRecognize calls.
+	chunkCount, err := s.maybeChunkForChirp(ctx, req, updated, uploadIDPg)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ingestionv1.ConvertAudioResponse{
 		ContentType: updated.ContentType,
 		ObjectPath:  updated.ObjectPath,
 		Converted:   true,
+		ChunkCount:  int32(chunkCount),
 	}, nil
+}
+
+// maybeChunkForChirp is the Stage 2 chunking branch of ConvertAudio.
+// Called after the codec normalization step has settled. Short-
+// circuits when:
+//   - req.ChunkForChirp = false (Stage 1 single-output path)
+//   - source duration ≤ max_chunk_seconds (no chunking needed)
+//   - audio_chunks already exist for this upload AND the count
+//     matches the expected fan-out (idempotent retry — earlier
+//     attempt landed all chunks; caller is just re-querying)
+//
+// Otherwise:
+//   1. Acquire pg_advisory_xact_lock on audio_upload_id to
+//      serialize concurrent ConvertAudio calls.
+//   2. Re-check audio_chunks state inside the lock (avoid double-
+//      work).
+//   3. If partial state exists, delete and start fresh — GCS
+//      objects from the partial attempt are left to OLM 48h.
+//   4. Call converter.ChunkForChirp.
+//   5. INSERT one row per chunk.
+//
+// Returns the number of audio_chunks rows produced (0 when no
+// chunking was needed).
+func (s *Server) maybeChunkForChirp(
+	ctx context.Context,
+	req *ingestionv1.ConvertAudioRequest,
+	upload db.AudioUpload,
+	uploadIDPg pgtype.UUID,
+) (int, error) {
+	if !req.ChunkForChirp {
+		return 0, nil
+	}
+	if req.SourceDurationSeconds <= 0 {
+		return 0, status.Error(codes.InvalidArgument,
+			"chunk_for_chirp=true requires source_duration_seconds > 0")
+	}
+
+	maxSec := int(req.MaxChunkSeconds)
+	// 19 min default (with safety margin under Chirp 3's 20-min word-
+	// timestamp limit). ChunkForChirp clamps to its own hard cap.
+	if maxSec <= 0 {
+		maxSec = 1140
+	}
+
+	// Short audio — skip without touching the DB.
+	if int(req.SourceDurationSeconds) <= maxSec {
+		return 0, nil
+	}
+
+	// Serialize concurrent ConvertAudio calls for this upload. The
+	// hash of audio_upload_id is a non-blocking integer key for
+	// pg_advisory_xact_lock. Lock auto-releases at transaction end
+	// — we wrap the whole chunking + INSERT in one tx.
+	tx, err := s.pgxBegin(ctx)
+	if err != nil {
+		return 0, status.Errorf(codes.Internal, "begin tx: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	uploadIDStr := uuid.UUID(uploadIDPg.Bytes).String()
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+		uploadIDStr,
+	); err != nil {
+		return 0, status.Errorf(codes.Internal, "advisory lock: %v", err)
+	}
+
+	// Inside the lock: re-check current audio_chunks state.
+	txq := s.queries.WithTx(tx)
+	existing, err := txq.CountAudioChunksByUpload(ctx, uploadIDPg)
+	if err != nil {
+		return 0, status.Errorf(codes.Internal, "count chunks: %v", err)
+	}
+	if existing > 0 {
+		// Idempotency: earlier attempt either fully or partially
+		// landed chunks. We can't cheaply verify GCS object presence
+		// here. Safe choice: trust the row count. If a partial set
+		// exists, delete and redo — better to spend ffmpeg cycles
+		// than to ship a split with missing chunks.
+		//
+		// But: if the existing count is exactly the expected one for
+		// this source duration, the previous attempt completed and
+		// this is a benign retry. Recompute expected count and
+		// compare.
+		expectedN := int64((int(req.SourceDurationSeconds) + maxSec - 1) / maxSec)
+		if existing == expectedN {
+			if err := tx.Commit(ctx); err != nil {
+				return 0, status.Errorf(codes.Internal, "commit (idempotent path): %v", err)
+			}
+			return int(existing), nil
+		}
+		// Partial state — wipe and redo.
+		if err := txq.DeleteAudioChunksByUpload(ctx, uploadIDPg); err != nil {
+			return 0, status.Errorf(codes.Internal, "delete partial chunks: %v", err)
+		}
+	}
+
+	chunks, err := s.converter.ChunkForChirp(
+		ctx,
+		upload.BucketName,
+		upload.ObjectPath,
+		int(req.SourceDurationSeconds),
+		maxSec,
+	)
+	if err != nil {
+		// ffmpeg or upload failure. The caller (CompleteAudioUpload)
+		// will see this and fail the session before publishing
+		// audio.uploaded — no orphan audio_uploads.status flip.
+		slog.Error("convert_audio: chunking failed",
+			"upload_id", req.AudioUploadId, "error", err)
+		return 0, status.Errorf(codes.Internal, "chunk_for_chirp: %v", err)
+	}
+
+	for _, ch := range chunks {
+		if err := txq.CreateAudioChunk(ctx, db.CreateAudioChunkParams{
+			AudioUploadID: uploadIDPg,
+			ChunkIndex:    int32(ch.ChunkIndex),
+			BucketName:    ch.BucketName,
+			ObjectPath:    ch.ObjectPath,
+			StartOffsetMs: ch.StartOffsetMS,
+			SeamOffsetMs:  ch.SeamOffsetMS,
+			EndOffsetMs:   ch.EndOffsetMS,
+			OverlapMs:     int32(ch.OverlapMS),
+			CutOnSilence:  ch.CutOnSilence,
+		}); err != nil {
+			return 0, status.Errorf(codes.Internal, "insert chunk row: %v", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, status.Errorf(codes.Internal, "commit chunks: %v", err)
+	}
+
+	slog.Info("convert_audio: chunked",
+		"upload_id", req.AudioUploadId,
+		"chunk_count", len(chunks),
+		"source_duration_sec", req.SourceDurationSeconds,
+		"max_chunk_sec", maxSec,
+	)
+	return len(chunks), nil
 }
