@@ -365,6 +365,15 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 		reportLang = "pl"
 	}
 
+	// Idempotent-retry path (Fix 1, 2026-05-23). CompleteAudioUpload is a
+	// multi-phase handler with no outer transaction (ffprobe → ConvertAudio
+	// commit → CreateSession commit → Pub/Sub publish). A crash between
+	// the ConvertAudio commit and the CreateSession commit, OR between
+	// CreateSession and the publish, causes Flutter (or any retry path)
+	// to re-enter here with the same upload_id. Before migration 000024
+	// added `ux_sessions_audio_upload_id`, the retry's CreateSession
+	// happily INSERTed a duplicate session row, leaving the first row as
+	// a permanent orphan. Now we catch the 23505 and reuse the prior row.
 	session, err := s.queries.CreateSession(ctx, db.CreateSessionParams{
 		TherapistID:     upload.TherapistID,
 		PatientFileID:   upload.PatientFileID,
@@ -378,7 +387,21 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 		LanguageCode:    audioLang,
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		if uniqueViolationConstraint(err) == "ux_sessions_audio_upload_id" {
+			existing, fetchErr := s.queries.GetSessionByAudioUploadID(ctx, upload.ID)
+			if fetchErr != nil {
+				return nil, status.Errorf(codes.Internal,
+					"CreateSession hit ux_sessions_audio_upload_id but follow-up GetSessionByAudioUploadID failed: %v",
+					fetchErr)
+			}
+			slog.Info("complete_audio_upload: reusing existing session row on idempotent retry",
+				"upload_id", req.UploadId,
+				"session_id", uuid.UUID(existing.ID.Bytes).String(),
+				"session_number", existing.SessionNumber)
+			session = existing
+		} else {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	var sessionIDStr string
@@ -386,10 +409,23 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 		sessionIDStr = uuid.UUID(session.ID.Bytes).String()
 	}
 
-	// Publish do Pub/Sub → trigger STT worker
+	// Publish to Pub/Sub → triggers stt-worker.
+	//
+	// Fix 2 (2026-05-23): if the publish fails, we now FAIL the request
+	// with codes.Internal instead of swallowing the error as a warning.
+	// Previously a failed publish meant Flutter saw success, dropped the
+	// row from its queue, and the audio sat in GCS with a session row
+	// but no STT trigger — orphan, recovery-gap case. With Fix 1 in
+	// place, the retry path is now idempotent (a re-run of CompleteAudioUpload
+	// will reuse the existing session via the 23505 → GetSessionByAudioUploadID
+	// branch above and re-attempt the publish), so failing loud is the
+	// safe move.
 	if err := s.pubsub.PublishAudioUploaded(ctx, sessionIDStr, req.UploadId, upload.ObjectPath); err != nil {
-		// Log warning ale nie failuj request — workflow można retry'ować
-		slog.Warn("failed to publish audio.uploaded", "error", err, "session_id", sessionIDStr)
+		slog.Error("failed to publish audio.uploaded; returning Internal so client retries",
+			"error", err,
+			"session_id", sessionIDStr,
+			"upload_id", req.UploadId)
+		return nil, status.Errorf(codes.Internal, "publish audio.uploaded: %v", err)
 	}
 
 	return &ingestionv1.CompleteAudioUploadResponse{

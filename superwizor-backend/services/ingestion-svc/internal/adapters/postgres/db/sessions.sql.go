@@ -106,6 +106,46 @@ func (q *Queries) GetNextSessionNumber(ctx context.Context, patientFileID pgtype
 	return next_number, err
 }
 
+const getSessionByAudioUploadID = `-- name: GetSessionByAudioUploadID :one
+SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name FROM sessions
+WHERE audio_upload_id = $1
+  AND deleted_at IS NULL
+LIMIT 1
+`
+
+// Idempotent-retry helper for CompleteAudioUpload (migration 000024
+// adds ux_sessions_audio_upload_id partial UNIQUE INDEX). When
+// CreateSession hits 23505, the handler looks up the existing row
+// via this query and proceeds with that session instead of
+// creating a duplicate.
+func (q *Queries) GetSessionByAudioUploadID(ctx context.Context, audioUploadID pgtype.UUID) (Session, error) {
+	row := q.db.QueryRow(ctx, getSessionByAudioUploadID, audioUploadID)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.TherapistID,
+		&i.PatientFileID,
+		&i.AudioUploadID,
+		&i.SessionDate,
+		&i.SessionNumber,
+		&i.DurationSeconds,
+		&i.ContactForm,
+		&i.SpeakerLabelMapping,
+		&i.LanguageCode,
+		&i.TherapistObservations,
+		&i.IsConsentConfirmed,
+		&i.Status,
+		&i.StatusUpdatedAt,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.ReportLanguage,
+		&i.Name,
+	)
+	return i, err
+}
+
 const getSessionDefaultsForPatientFile = `-- name: GetSessionDefaultsForPatientFile :one
 SELECT
   COALESCE(m.display_name, '')                    AS display_name,

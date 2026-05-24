@@ -30,6 +30,17 @@ SELECT COALESCE(MAX(session_number), 0) + 1 AS next_number
 FROM sessions
 WHERE patient_file_id = $1 AND deleted_at IS NULL;
 
+-- name: GetSessionByAudioUploadID :one
+-- Idempotent-retry helper for CompleteAudioUpload (migration 000024
+-- adds ux_sessions_audio_upload_id partial UNIQUE INDEX). When
+-- CreateSession hits 23505, the handler looks up the existing row
+-- via this query and proceeds with that session instead of
+-- creating a duplicate.
+SELECT * FROM sessions
+WHERE audio_upload_id = $1
+  AND deleted_at IS NULL
+LIMIT 1;
+
 -- name: GetSessionDefaultsForPatientFile :one
 -- Used by CompleteAudioUpload to compute the initial session.name
 -- (from modality display_name) AND the session.language_code (from
