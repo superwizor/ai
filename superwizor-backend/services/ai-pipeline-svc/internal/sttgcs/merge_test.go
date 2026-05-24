@@ -176,6 +176,114 @@ func TestMergeChirpResults_TwoChunk_AlignmentAndDedup(t *testing.T) {
 	}
 }
 
+// TestMergeChirpResults_PrevMaxLabel_NoCollisionAcrossChunks is the
+// regression test for the chunk-0 → chunk-1 collision bug
+// (2026-05-24, found alongside the Janek Johny session). The
+// scenario:
+//
+//   - chunk 0 has speakers "1" and "2" (no alignment, i==0 branch).
+//     prevMaxLabel previously stayed at 0 going into chunk 1.
+//   - chunk 1 has fresh Chirp-numbered labels "1" and "2" that
+//     represent DIFFERENT people, with NO timestamp overlap with
+//     chunk 0 (so AlignAndMapSpeakers gets zero matched pairs and
+//     falls back to offsetLabels).
+//   - In the buggy code, offsetLabels started maxLabel at
+//     prevMaxLabel=0 and assigned chunk 1's "1" → "1" (collision
+//     with chunk 0's actual speaker 1) and "2" → "2" (collision
+//     with chunk 0's actual speaker 2).
+//   - Correct behaviour: chunk 1's "1" → "3" and "2" → "4",
+//     preserving the identity separation. Final speaker set: 4.
+func TestMergeChirpResults_PrevMaxLabel_NoCollisionAcrossChunks(t *testing.T) {
+	// chunk 0: two speakers, both labelled by Chirp as "1" / "2".
+	chunk0 := []chunker.Word{
+		{Text: "alpha", StartMS: 0, EndMS: 500, Confidence: 0.9, SpeakerLabel: "1"},
+		{Text: "beta", StartMS: 1000, EndMS: 1500, Confidence: 0.9, SpeakerLabel: "2"},
+		{Text: "gamma", StartMS: 2000, EndMS: 2500, Confidence: 0.9, SpeakerLabel: "1"},
+		{Text: "delta", StartMS: 3000, EndMS: 3500, Confidence: 0.9, SpeakerLabel: "2"},
+	}
+	// chunk 1: two DIFFERENT speakers, also labelled "1" / "2" by
+	// Chirp (independent per-call labelling). All chunk-1 words sit
+	// AFTER chunk 0's seam at 12_000 ms → zero overlap → alignment
+	// must fall back to offsetLabels.
+	chunk1Local := []chunker.Word{
+		// local 0..1000 = absolute 13_000..14_000 (post-seam).
+		{Text: "epsilon", StartMS: 0, EndMS: 500, Confidence: 0.9, SpeakerLabel: "1"},
+		{Text: "zeta", StartMS: 1000, EndMS: 1500, Confidence: 0.9, SpeakerLabel: "2"},
+		{Text: "eta", StartMS: 2000, EndMS: 2500, Confidence: 0.9, SpeakerLabel: "1"},
+		{Text: "theta", StartMS: 3000, EndMS: 3500, Confidence: 0.9, SpeakerLabel: "2"},
+	}
+
+	parts := []ChunkResult{
+		{
+			ChunkIndex:            0,
+			StartOffsetMS:         0,
+			SeamOffsetMS:          12_000,
+			EndOffsetMS:           12_000,
+			OverlapMS:             0,
+			LanguageCode:          "en-US",
+			UsedNativeDiarization: true,
+			Words:                 chunk0,
+		},
+		{
+			ChunkIndex:            1,
+			StartOffsetMS:         13_000, // post-seam → no overlap with chunk 0
+			SeamOffsetMS:          17_000,
+			EndOffsetMS:           17_000,
+			OverlapMS:             0,
+			LanguageCode:          "en-US",
+			UsedNativeDiarization: true,
+			Words:                 chunk1Local,
+		},
+	}
+
+	merged, summary, stats := MergeChirpResults(parts)
+
+	// Sparse-overlap fallback must have fired — alignment had nothing
+	// to align against.
+	if stats.FallbackCount != 1 {
+		t.Errorf("expected 1 alignment fallback (no overlap); got %d",
+			stats.FallbackCount)
+	}
+
+	// Speaker set MUST be {1, 2, 3, 4}. Pre-fix, chunk 1's labels
+	// would have collided onto {1, 2} producing a 2-speaker total
+	// with WRONG identity assignment.
+	if summary.SpeakerCount != 4 {
+		t.Errorf("expected 4 distinct speakers after non-overlapping "+
+			"chunk merge; got %d (collision regression?)",
+			summary.SpeakerCount)
+	}
+
+	// Verify chunk 0's words kept their original labels.
+	gotChunk0Labels := map[string]string{}
+	for _, w := range merged {
+		if w.StartMS < 12_000 {
+			gotChunk0Labels[w.Text] = w.SpeakerLabel
+		}
+	}
+	if gotChunk0Labels["alpha"] != "1" || gotChunk0Labels["gamma"] != "1" {
+		t.Errorf("chunk 0 speaker '1' words got remapped: alpha=%q gamma=%q",
+			gotChunk0Labels["alpha"], gotChunk0Labels["gamma"])
+	}
+	if gotChunk0Labels["beta"] != "2" || gotChunk0Labels["delta"] != "2" {
+		t.Errorf("chunk 0 speaker '2' words got remapped: beta=%q delta=%q",
+			gotChunk0Labels["beta"], gotChunk0Labels["delta"])
+	}
+
+	// Verify chunk 1's words got offset to new labels (NOT colliding
+	// with chunk 0's "1"/"2"). Allowed range: anything >= 3.
+	for _, w := range merged {
+		if w.StartMS < 12_000 {
+			continue
+		}
+		if w.SpeakerLabel == "1" || w.SpeakerLabel == "2" {
+			t.Errorf("chunk 1 word %q collided onto chunk-0 label %q "+
+				"(prevMaxLabel regression — should offset to >=3)",
+				w.Text, w.SpeakerLabel)
+		}
+	}
+}
+
 // TestMergeChirpResults_MultiChunk_RelativizesOffsets validates the
 // Stage 2 contract: words from later chunks get their offsets shifted
 // by StartOffsetMS. Stage 1 only ever passes len==1, but the loop

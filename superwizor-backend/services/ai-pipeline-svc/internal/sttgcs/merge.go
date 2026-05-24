@@ -143,7 +143,36 @@ func MergeChirpResults(parts []ChunkResult) ([]chunker.Word, *MergeSummary, Merg
 			languageCode = p.LanguageCode
 		}
 
-		// 4. Advance the rolling state — use THIS chunk's words
+		// 4. Update prevMaxLabel to the actual maximum numeric
+		//    label observed in the merged stream so far. This
+		//    closes a chunk-0 → chunk-1 collision (regression
+		//    bug 2026-05-24): for chunk 0 the `if i == 0` branch
+		//    above skips AlignAndMapSpeakers, so prevMaxLabel
+		//    stays at 0 going into chunk 1. If chunk 1 then
+		//    encounters an unmapped label and falls into
+		//    alignment.go's offset path, `maxLabel++` runs from
+		//    0 and produces label "1" — colliding with chunk 0's
+		//    existing speaker 1. Same hazard applies on i>1 if
+		//    chunk i's first unmapped word is processed BEFORE
+		//    any successful translation bumps maxLabel.
+		//
+		//    Scanning absChunkWords (the chunk's words in the
+		//    final merged-stream label space, post-mapping and
+		//    post-overlap-dedup) is symmetric: for chunk 0 we
+		//    pick up Chirp's original labels; for chunk N>0 we
+		//    pick up the post-alignment labels. Either way
+		//    prevMaxLabel becomes the global maximum any
+		//    downstream caller could collide with.
+		for _, w := range absChunkWords {
+			if w.SpeakerLabel == "" {
+				continue
+			}
+			if num := parseLabelNum(w.SpeakerLabel); num > prevMaxLabel {
+				prevMaxLabel = num
+			}
+		}
+
+		// 5. Advance the rolling state — use THIS chunk's words
 		//    (not the cumulative merged) so the next alignment
 		//    only searches a bounded overlap window.
 		//
