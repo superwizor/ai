@@ -230,6 +230,38 @@ func mergeAndPersist(ctx context.Context, logger *slog.Logger, sessionID uuid.UU
 			"chunk_count", len(parts))
 	}
 
+	// Ghost-speaker collapse (added 2026-05-24 after the Janek
+	// Johny session e7a1031c-…). Cross-chunk alignment in
+	// internal/sttgcs/alignment.go can offset a borderline-ambiguous
+	// label into a fresh integer (label "3" for a 2-speaker
+	// session) when the majority-fraction threshold isn't met. The
+	// llm-worker reattach from commit fa9ee48 only catches the
+	// case where the LLM correctly counts 2 speakers; when the LLM
+	// is shown 3 numbered turn-groups it dutifully reports 3
+	// speakers, the reattach branch doesn't fire, and the ghost
+	// passes through to the report. Collapsing here — before
+	// chunker.ChunkByPauses and before the LLM ever sees the
+	// stream — eliminates the artifact at the source.
+	//
+	// No-op for 1- or 2-speaker sessions (the common case) and
+	// for genuinely 3+-speaker sessions where every label clears
+	// the absolute / fractional thresholds. See collapse.go for
+	// the heuristic + threshold rationale.
+	if parts[0].UsedNativeDiarization {
+		collapseStats := sttgcs.CollapseGhostSpeakers(merged)
+		if len(collapseStats.RemovedLabels) > 0 {
+			logger.Info("stt_ghost_speaker_collapse",
+				"initial_speakers", collapseStats.InitialSpeakers,
+				"final_speakers", collapseStats.FinalSpeakers,
+				"removed_labels", collapseStats.RemovedLabels,
+				"removed_word_counts", collapseStats.RemovedWordCounts)
+			// Update the summary's SpeakerCount so the
+			// downstream log line + the persisted record
+			// reflect the post-collapse reality.
+			summary.SpeakerCount = collapseStats.FinalSpeakers
+		}
+	}
+
 	chunkerCfg := chunker.DefaultConfig()
 	chunks := chunker.ChunkByPauses(merged, chunkerCfg)
 	chunkStats := chunker.ComputeStats(chunks)
