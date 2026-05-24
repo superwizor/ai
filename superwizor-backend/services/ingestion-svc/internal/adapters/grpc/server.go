@@ -159,7 +159,9 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	signedURL, expires, err := s.signer.GenerateUploadURL(ctx, objectPath, req.ContentType)
+	signedURL, expires, err := s.signer.GenerateUploadURL(
+		ctx, objectPath, req.ContentType, req.EstimatedSizeBytes,
+	)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -187,7 +189,19 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 // stateless, so the URL is fresh but the object_path is the cached
 // one from the original create.
 func (s *Server) cachedAudioUploadResponse(ctx context.Context, existing db.AudioUpload) (*ingestionv1.CreateAudioUploadResponse, error) {
-	signedURL, expires, err := s.signer.GenerateUploadURL(ctx, existing.ObjectPath, existing.ContentType)
+	// On idempotent retry we don't have the request's
+	// estimated_size_bytes anymore — use the audio_uploads row's
+	// actual file_size_bytes if known (post-PUT retry), else 0
+	// which falls back to the default 30 min TTL. The retry case is
+	// usually a signed-URL refresh request and the row may or may
+	// not have the actual size yet.
+	var estSize int64
+	if existing.FileSizeBytes != nil {
+		estSize = *existing.FileSizeBytes
+	}
+	signedURL, expires, err := s.signer.GenerateUploadURL(
+		ctx, existing.ObjectPath, existing.ContentType, estSize,
+	)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

@@ -70,13 +70,31 @@ ClassifiedError classifyUploadError(Object error) {
     final msg = 'HTTP $s: ${error.body}';
     if (s == 403 || s == 410 || s == 401) {
       // Signed URL expired or unauthorized — refresh and retry.
-      // GCS signed URLs return 403 SignatureDoesNotMatch /
-      // ExpiredToken; 410 Gone for resumable-session-style URLs.
+      // 410 Gone for resumable-session-style URLs.
+      return ClassifiedError(UploadErrorClass.signedUrlExpired, msg);
+    }
+    // GCS V4 signed URLs return HTTP **400** with body
+    // `<Code>ExpiredToken</Code>` (or `SignatureDoesNotMatch`) on
+    // signature expiration — empirically confirmed from Marcin's
+    // 111.7 MB upload on 2026-05-22:
+    //   HTTP 400: <?xml version='1.0' encoding='UTF-8'?>
+    //   <Error><Code>ExpiredToken</Code><Message>Invalid
+    //   argument.</Message><Details>The provided token has exp…
+    // Pre-fix the classifier dropped this into `terminal`, the UI
+    // showed "Błąd / Ponów / Anuluj", and Ponów retried with the
+    // SAME expired URL → same 400 → permanent stuck state. We
+    // inspect the body so genuinely-bad-request 400s (object size
+    // mismatch, malformed body) still terminate, while expired
+    // tokens correctly route into the refresh-and-retry path.
+    if (s == 400 &&
+        (error.body.contains('<Code>ExpiredToken</Code>') ||
+            error.body.contains('<Code>SignatureDoesNotMatch</Code>'))) {
       return ClassifiedError(UploadErrorClass.signedUrlExpired, msg);
     }
     if (s >= 500) return ClassifiedError(UploadErrorClass.retryable, msg);
-    // Any other 4xx (400 bad request, 404, 413 payload too large,
-    // etc.) is terminal — re-uploading the same bytes won't fix it.
+    // Any other 4xx (genuine 400 bad request, 404, 413 payload too
+    // large, etc.) is terminal — re-uploading the same bytes won't
+    // fix it.
     return ClassifiedError(UploadErrorClass.terminal, msg);
   }
 
