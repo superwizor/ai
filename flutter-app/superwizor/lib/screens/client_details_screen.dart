@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/modalities.dart';
@@ -201,15 +203,19 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     final pendingUploads =
         ref.watch(pendingUploadsForPatientProvider(widget.patientId));
 
-    // Always re-fetch sessions on entry. Backend is the source of
-    // truth for session.status (CREATED → TRANSCRIBING → ANALYZING →
-    // COMPLETED), and we may be returning here from RecordingScreen
-    // /SessionStatusScreen where status just transitioned. The
-    // previous "only fetch if not cached" check kept stale state
-    // forever — caused the bug where finished sessions kept routing
-    // to SessionStatusScreen instead of TranscriptScreen.
+    // Force a fresh ListSessions fetch on every screen entry. The
+    // SWR cached-read path served by `fetchSessions` can return a
+    // pre-completion snapshot when an upload finished while the
+    // user was on a different screen — _refreshKartoteka in
+    // upload_queue_provider runs at completion but the resulting
+    // cache write can race against app-lifecycle events (force-
+    // kill, background eviction). Doing a force refresh here costs
+    // one gRPC per entry and bounds the "ghost upload" UX bug
+    // confirmed on session 18d1b6d6 (2026-05-24).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(sessionsProvider.notifier).fetchSessions(widget.patientId);
+      unawaited(
+        ref.read(sessionsProvider.notifier).forceRefresh(widget.patientId),
+      );
     });
 
     // Auto-refresh hook: when any in-flight upload for THIS patient
@@ -219,18 +225,23 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     // session row appears immediately. Without this, the user has
     // to manually pull-to-refresh or navigate away+back to see the
     // session after long-audio chunking finishes server-side.
+    //
+    // Note: we deliberately treat the first emission (prev=null) as
+    // prevLen=0 and still react when the list shrinks. Combined with
+    // the forceRefresh on entry above, this catches the case "an
+    // upload completes while the user is mid-navigation".
     ref.listen<List<PendingUpload>>(
       pendingUploadsForPatientProvider(widget.patientId),
       (prev, next) {
-        if (prev == null) return;
-        if (prev.length > next.length) {
+        final prevLen = prev?.length ?? 0;
+        if (prevLen > next.length) {
           // At least one row left the active set — either completed
           // (good, refresh) or failed (also refresh so any partial
-          // status the server may have stamped surfaces). The list
-          // shrinking is the unambiguous signal.
+          // status the server may have stamped surfaces). Use the
+          // force variant so we don't trust the cache here either.
           ref
               .read(sessionsProvider.notifier)
-              .fetchSessions(widget.patientId);
+              .forceRefresh(widget.patientId);
         }
       },
     );

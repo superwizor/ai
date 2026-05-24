@@ -259,6 +259,38 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
     }
   }
 
+  /// Forces a network fetch (bypassing the SWR cached-read path) and
+  /// republishes. Use this when correctness matters more than cache
+  /// economy — typically on screen entry where a just-completed
+  /// upload may not have survived the in-flight cache write.
+  ///
+  /// Context: `_refreshKartoteka` in upload_queue_provider.dart fires
+  /// `onUploadComplete` to invalidate the Hive cache when a queued
+  /// row transitions to `phase=completed`. That works when the user
+  /// is on the screen at completion time. When the user is elsewhere
+  /// (or the app is backgrounded) the cache write happens but the
+  /// screen, on later entry, calls `fetchSessions` which serves
+  /// whatever was in the cache — including the pre-completion list
+  /// if the post-completion write got dropped (force-kill, race).
+  ///
+  /// Cost: one gRPC roundtrip per ClientDetailsScreen entry.
+  /// Warm Cloud Run: ~50-100 ms. Cold: up to ~5s; UI shows cached
+  /// stale data in the meantime so it's not user-visible latency.
+  Future<void> forceRefresh(String patientId) async {
+    final repo = _repo;
+    if (repo != null) {
+      try {
+        final fresh = await repo.refresh(patientId);
+        _publish(patientId, fresh.map((d) => d.toModel()).toList());
+        return;
+      } catch (e) {
+        debugPrint(
+            '[sessions] forceRefresh failed, falling back to direct gRPC: $e');
+      }
+    }
+    await _fetchDirectFallback(patientId);
+  }
+
   Future<void> _fetchDirectFallback(String patientId) async {
     final client = ref.read(grpcClientsProvider).clinical;
     try {
