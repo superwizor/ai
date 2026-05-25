@@ -1096,6 +1096,70 @@ func markdownResultToPayload(r diarization.Result, chunks []transcriptfmt.Chunk,
 		}
 	}
 
+	// Stage-2-alignment orphan reattach (added 2026-05-23 after the
+	// Gabriela En test session 78679bff-…). Cross-chunk speaker-label
+	// alignment in internal/sttgcs/alignment.go::AlignAndMapSpeakers
+	// can offset a borderline-ambiguous label into a fresh integer
+	// (e.g. "3" in a 2-speaker session) when the majority-fraction
+	// threshold (alignMajorityFraction=0.6) isn't met. The LLM has
+	// already inferred the true speaker count N from transcript
+	// content; any chunk whose SpeakerTag is outside the LLM's
+	// Speaker.Index set is an alignment artifact representing
+	// continuation of one of the LLM-identified speakers — not a
+	// genuine extra person. Without this reattach those chunks
+	// silently disappear from the report ("missing person"), since
+	// the loop above only matches chunks by exact Index ↔ SpeakerTag
+	// equality.
+	//
+	// Strategy: for each extra-tag chunk, scan forward and backward
+	// in chunk-index order for the nearest chunk whose tag IS in
+	// knownTags; attribute the orphan to that LLM speaker. Adjacency
+	// is the right signal because alignment artifacts cluster
+	// temporally — a misaligned label run usually appears inside
+	// one speaker's continuous utterance.
+	if native && len(groups) >= 2 {
+		knownTags := make(map[int32]int, len(r.Speakers))
+		for i, sp := range r.Speakers {
+			knownTags[int32(sp.Index)] = i
+		}
+		// Track which chunk indices have already been assigned (either through
+		// exact native speaker matching or the emptyCount==1 reattach layer)
+		// to prevent double assignment of tag=0 chunks.
+		assignedIndices := make(map[int]bool)
+		for _, g := range groups {
+			for _, idx := range g.ChunkIndices {
+				assignedIndices[idx] = true
+			}
+		}
+		extraTagCount := 0
+		extraTagSet := map[int32]bool{}
+		for i, c := range chunks {
+			if _, ok := knownTags[c.SpeakerTag]; ok {
+				continue
+			}
+			if assignedIndices[c.ChunkIdx] {
+				continue
+			}
+			gIdx := nearestKnownGroupIndex(chunks, i, knownTags)
+			if gIdx < 0 {
+				continue
+			}
+			groups[gIdx].ChunkIndices = append(groups[gIdx].ChunkIndices, c.ChunkIdx)
+			extraTagCount++
+			extraTagSet[c.SpeakerTag] = true
+		}
+		if extraTagCount > 0 {
+			tags := make([]int, 0, len(extraTagSet))
+			for t := range extraTagSet {
+				tags = append(tags, int(t))
+			}
+			slog.Info("stt_stage2_alignment_orphan_reattach",
+				"reattached_chunks", extraTagCount,
+				"orphan_tags", tags,
+				"known_tags", knownTagsAsInts(knownTags))
+		}
+	}
+
 	// RAGSummaryChunk fall-through: prefer the dedicated RAG_Summary
 	// line from the parser; fall back to SummaryShort when the model
 	// didn't emit one (small sessions, parser leniency). Empty stays
@@ -1115,6 +1179,49 @@ func markdownResultToPayload(r diarization.Result, chunks []transcriptfmt.Chunk,
 			OverallDiarizationConfidence: r.OverallDiarizationConfidence,
 		},
 	}
+}
+
+// nearestKnownGroupIndex returns the groups[] index for the LLM
+// speaker whose chunks are temporally closest (in chunk-index order)
+// to chunks[i]. Used by the Stage-2-alignment orphan reattach in
+// markdownResultToPayload to assign chunks whose SpeakerTag is not
+// in the LLM's Index set to one of the LLM-inferred speakers.
+//
+// Scans symmetrically outward from i. The first chunk found whose
+// SpeakerTag is in knownTags wins. Ties (same distance forward and
+// backward) prefer backward — matches the common case where a
+// misaligned label run is a continuation of the immediately-prior
+// speaker's utterance after a brief pause.
+//
+// Returns -1 if no neighbouring chunk has a known tag (degenerate:
+// the entire chunk array consists of unknown-tag chunks; nothing
+// reasonable to do).
+func nearestKnownGroupIndex(chunks []transcriptfmt.Chunk, i int, knownTags map[int32]int) int {
+	for off := 1; off < len(chunks); off++ {
+		if b := i - off; b >= 0 {
+			if gIdx, ok := knownTags[chunks[b].SpeakerTag]; ok {
+				return gIdx
+			}
+		}
+		if f := i + off; f < len(chunks) {
+			if gIdx, ok := knownTags[chunks[f].SpeakerTag]; ok {
+				return gIdx
+			}
+		}
+	}
+	return -1
+}
+
+// knownTagsAsInts is a small helper for the slog.Info call in the
+// Stage-2 reattach. Renders the map's keys as a []int so the log
+// line gets a stable, ordered representation of which SpeakerTag
+// values the LLM expects to see.
+func knownTagsAsInts(knownTags map[int32]int) []int {
+	out := make([]int, 0, len(knownTags))
+	for t := range knownTags {
+		out = append(out, int(t))
+	}
+	return out
 }
 
 // annotateChunksWithSpeakers stamps the just-resolved speaker tags

@@ -14,6 +14,7 @@ import (
 	"cloud.google.com/go/pubsub/v2"
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
+	gcs "cloud.google.com/go/storage"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/uuid"
@@ -25,6 +26,7 @@ import (
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/pkg/i18n/lang"
 	"github.com/superwizor-ai/backend/pkg/transcription/chunker"
+	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/sttgcs"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
 )
 
@@ -46,12 +48,14 @@ type PubSubMessage struct {
 }
 
 var (
-	dbPool       *pgxpool.Pool
-	speechClient *speech.Client
-	pubsubClient *pubsub.Client
-	crypto       cryptobox.CryptoBox
-	bucketName   string
-	projectID    string
+	dbPool             *pgxpool.Pool
+	speechClient       *speech.Client
+	pubsubClient       *pubsub.Client
+	gcsClient          *gcs.Client
+	crypto             cryptobox.CryptoBox
+	bucketName         string // audio uploads bucket (Chirp input source)
+	transcriptsRawBkt  string // Chirp output destination (Stage 1)
+	projectID          string
 )
 
 func init() {
@@ -61,6 +65,7 @@ func init() {
 
 	projectID = os.Getenv("GCP_PROJECT_ID")
 	bucketName = os.Getenv("AUDIO_BUCKET_NAME")
+	transcriptsRawBkt = os.Getenv("TRANSCRIPTS_RAW_BUCKET")
 	dbDSN := os.Getenv("DATABASE_URL")
 	kmsKeyURI := os.Getenv("KMS_KEY_URI")
 
@@ -86,6 +91,17 @@ func init() {
 		pubsubClient, err = pubsub.NewClient(ctx, projectID)
 		if err != nil {
 			slog.Error("pubsub client", "error", err)
+			os.Exit(1)
+		}
+
+		// GCS client. Used by stt-finalize for downloading Chirp's
+		// output JSON from the transcripts-raw bucket and by the
+		// watchdog when manually driving a stuck finalize. Shared
+		// across the three entry points in this package via the
+		// gcsClient global.
+		gcsClient, err = gcs.NewClient(ctx)
+		if err != nil {
+			slog.Error("gcs client", "error", err)
 			os.Exit(1)
 		}
 
@@ -156,37 +172,30 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 		return nil
 	}
 
-	startTime := time.Now()
-
 	if err := updateSessionStatus(ctx, event.SessionID, "TRANSCRIBING"); err != nil {
 		logger.Error("status update", "error", err)
 		return err
 	}
 
-	// 2. Resolve language from session.language_code (populated by
-	//    ingestion-svc.CompleteAudioUpload from patient_user.ui_language).
-	//    Empty means orphan session / pre-feat/llm-optimisation row →
-	//    fall back to multi-language auto-detect (preserves the old
-	//    behavior for legacy data).
+	// Resolve language from session.language_code (populated by
+	// ingestion-svc.CompleteAudioUpload from patient_user.ui_language).
+	// Empty means orphan session / pre-feat/llm-optimisation row →
+	// fall back to multi-language auto-detect (preserves the old
+	// behavior for legacy data).
 	sessionLanguage, err := loadSessionLanguage(ctx, event.SessionID)
 	if err != nil {
 		logger.Warn("session language lookup", "error", err)
-		sessionLanguage = "" // fall through to multi-detect
+		sessionLanguage = ""
 	}
 	// BCP47-ize so callers can pass "pl" or "pl-PL"; both end up
 	// "pl-PL" on the wire to Chirp.
 	bcp47Lang := lang.BCP47ize(sessionLanguage)
 
-	// 3. Native diarization gate (ADR-IMPL-007). Two-key system:
-	//    (a) operator opt-in via STT_NATIVE_DIARIZATION=on env var
-	//        (legacy USE_NATIVE_DIARIZATION=true also accepted), AND
-	//    (b) language is flagged true in
-	//        transcriptfmt.Chirp3DiarizationLanguages (all start false,
-	//        flip per-language only with probe evidence).
-	//    Both must hold; either off → flat words + LLM clustering (current
-	//    production behavior). When both on → Chirp emits speaker_tag per
-	//    word, downstream llm-worker uses role-only call-1 path.
-	gcsURI := fmt.Sprintf("gs://%s/%s", bucketName, event.ObjectPath)
+	// Native diarization gate (ADR-IMPL-007). Two-key system:
+	//   (a) operator opt-in via STT_NATIVE_DIARIZATION=on env var
+	//       (legacy USE_NATIVE_DIARIZATION=true also accepted), AND
+	//   (b) language is flagged true in
+	//       transcriptfmt.Chirp3DiarizationLanguages.
 	operatorOptIn := os.Getenv("STT_NATIVE_DIARIZATION") == "on" || os.Getenv("USE_NATIVE_DIARIZATION") == "true"
 	useNativeDiarization := operatorOptIn && transcriptfmt.NativeDiarizationSupported(bcp47Lang)
 
@@ -196,116 +205,184 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 		"operator_opt_in", operatorOptIn,
 		"native_diarization", useNativeDiarization)
 
-	transcriptResult, err := transcribeAudio(ctx, gcsURI, bcp47Lang, useNativeDiarization)
+	sessionUUID, err := uuid.Parse(event.SessionID)
 	if err != nil {
-		// Route through the terminal/transient classifier. Terminal
-		// errors (bad codec, file too large, missing object) ack the
-		// Pub/Sub message and stop the retry storm; transient errors
-		// return non-nil so Pub/Sub retries per topic policy.
-		return handleSTTError(ctx, logger, event.SessionID, err)
+		// Should never happen — sessionUUID came from a valid
+		// CloudEvent payload — but defend defensively.
+		return nil
 	}
 
-	// 3. Chunkowanie słów na podstawie pauz (zob. pkg/transcription/chunker).
-	//    LLM przypisze chunki do mówców w Sprint 2.6.
-	chunkerCfg := chunker.DefaultConfig()
-	// Forward/backward-fill missing per-word speaker labels before
-	// chunking. Chirp 3's native diarization occasionally drops labels
-	// on individual words (or sustained runs) while still labeling
-	// adjacent words — without this pass those gaps become orphan
-	// SpeakerTag=0 chunks that downstream LLM clustering can't
-	// reattach to either speaker. The 2026-05-15 regression
-	// (session 26ecf316) had 8 chunks correctly labeled "1"/therapist
-	// and 12 interleaved chunks orphaned as tag=0 — those were
-	// actually the patient, but the UI only displayed Person 1.
-	// Bounded by the chunker's pause threshold so we never propagate
-	// a label across a pause where the speaker may have changed.
-	if useNativeDiarization {
-		fillSpeakerLabels(transcriptResult.Words, int64(chunkerCfg.PauseThresholdMS))
-	}
-	chunks := chunker.ChunkByPauses(transcriptResult.Words, chunkerCfg)
-	stats := chunker.ComputeStats(chunks)
-
-	// Always-on stats (no PHI). Surfaces silent / undecodable audio fast —
-	// total_words=0 means Chirp 3 returned nothing recognizable.
-	//
-	// session_id and upload_id come from logger.With() at the top of
-	// ProcessAudio — don't pass them again or slog/Cloud Logging
-	// concatenates the duplicate keys into one mangled field.
-	logger.Info("chunked transcript",
-		"language", transcriptResult.LanguageCode,
-		"raw_word_count", transcriptResult.WordCount,
-		"chunk_count", stats.ChunkCount,
-		"total_words", stats.TotalWords,
-		"avg_chunk_duration_ms", stats.AvgChunkLength.Milliseconds(),
-		"avg_confidence", stats.AvgConfidence,
-		"speaker_count", transcriptResult.SpeakerCount,
-		"native_diarization", transcriptResult.HasNativeDiarization)
-
-	if transcriptResult.WordCount == 0 {
-		logger.Warn("empty transcript — Chirp 3 returned no words",
-			"language", transcriptResult.LanguageCode,
-			"hint", "check audio quality (silent / non-Polish / unsupported codec) and Chirp 3 model availability")
-	}
-
-	// DEV MODE ONLY: log the plaintext transcript before encryption so a
-	// developer can verify what Chirp 3 actually returned.
-	//
-	// **PHI EXPOSURE** — this dumps the raw transcript text to Cloud
-	// Logging in cleartext. NEVER set this env var on a function instance
-	// that processes real patient sessions. Use only in staging with
-	// fixture audio. Cloud Logging entries land in
-	// `projects/<project>/logs/...stt-worker` and are visible to anyone
-	// with `roles/logging.viewer` on the project.
-	//
-	// Activate by deploying with:
-	//   environment_variables = {
-	//     ...
-	//     DEV_LOG_PLAINTEXT_TRANSCRIPT = "true"
-	//   }
-	// in module.cloud_functions, then `terragrunt apply`.
-	if os.Getenv("DEV_LOG_PLAINTEXT_TRANSCRIPT") == "true" {
-		logPlaintextTranscript(logger, event.SessionID, transcriptResult, chunks)
-	}
-
-	// 4. Persist blob (kanoniczny, ADR-IMPL-006) — chunki bez speaker labels.
-	transcriptID, err := persistTranscript(ctx, event.SessionID, transcriptResult, chunks, time.Since(startTime))
+	// Stage 2: read audio_chunks for this upload. If ingestion-svc
+	// ran the chunker (long audio path), N rows exist with
+	// chunk_index 0..N-1. Otherwise synthesize a single virtual
+	// chunk covering the whole upload (Stage 1 behavior).
+	chunks, err := loadChunkPlan(ctx, event.UploadID, event.ObjectPath)
 	if err != nil {
-		// persistTranscript failures are almost always DB transient
-		// (Cloud SQL connection, KMS encrypt hiccup). Default to
-		// retry; isTerminalSTTError returns false for unrecognized
-		// errors, which is the safe default here.
-		logger.Error("persist", "error", err)
-		return handleSTTError(ctx, logger, event.SessionID, err)
+		logger.Warn("loadChunkPlan failed; falling back to single virtual chunk",
+			"error", err)
+		chunks = []ChunkPlan{{
+			ChunkIndex:    0,
+			GCSUri:        fmt.Sprintf("gs://%s/%s", bucketName, event.ObjectPath),
+			StartOffsetMS: 0,
+		}}
+	}
+	logger.Info("chunk plan loaded",
+		"chunk_count", len(chunks),
+		"upload_id", event.UploadID)
+
+	// Pre-flight: skip chunks already submitted by a prior (now-
+	// redelivered) Pub/Sub event. Eliminates the common case of
+	// re-billing Chirp on every retry. The UNIQUE constraint on
+	// (session_id, chunk_index) is the second-line defense for the
+	// true-concurrency race that this SELECT can't close.
+	submitted, err := loadSubmittedChunks(ctx, sessionUUID)
+	if err != nil {
+		logger.Warn("pre-flight loadSubmittedChunks failed; proceeding without skip", "error", err)
+		submitted = map[int]bool{}
 	}
 
-	// 5. Update session: language_code (speaker_label_mapping zostanie wypełniony
-	//    przez llm-worker.generateAndSaveSpeakerLabels po analizie LLM).
-	//
-	// Guard: only write language_code when the DB didn't already have
-	// one. ingestion-svc.CompleteAudioUpload (since feat/llm-optimisation)
-	// writes it from patient_user.ui_language at session-create time —
-	// that value is the source of truth for the audio language and
-	// shouldn't be overwritten by whatever Chirp detected. The write
-	// is still useful for legacy / orphan sessions where the column
-	// is NULL and we used the multi-language auto-detect fallback.
-	if sessionLanguage == "" && transcriptResult.LanguageCode != "" {
-		if err := updateSessionLanguage(ctx, event.SessionID, transcriptResult.LanguageCode); err != nil {
-			logger.Warn("session language update", "error", err)
+	for _, ch := range chunks {
+		if submitted[ch.ChunkIndex] {
+			logger.Info("chunk already submitted; skipping",
+				"chunk_index", ch.ChunkIndex)
+			continue
 		}
+		outputPrefix := fmt.Sprintf("gs://%s/%s",
+			transcriptsRawBkt,
+			sttgcs.OutputPrefixFor(sessionUUID, ch.ChunkIndex))
+
+		opName, err := submitBatchRecognize(ctx, ch.GCSUri, outputPrefix, bcp47Lang, useNativeDiarization)
+		if err != nil {
+			// Terminal errors (e.g. malformed request, IAM denied)
+			// ack and stop; transient errors return non-nil and
+			// Pub/Sub retries.
+			return handleSTTError(ctx, logger, event.SessionID, err)
+		}
+
+		insertErr := insertSTTOperation(ctx, insertSTTOpParams{
+			SessionID:             sessionUUID,
+			ChunkIndex:            ch.ChunkIndex,
+			ChunkCount:            len(chunks),
+			StartOffsetMS:         ch.StartOffsetMS,
+			OperationID:           opName,
+			GCSOutputURI:          outputPrefix,
+			LanguageCode:          bcp47Lang,
+			UsedNativeDiarization: useNativeDiarization,
+		})
+		if insertErr != nil {
+			if isUniqueViolation(insertErr) {
+				// Race: another worker INSERTed first. Our
+				// BatchRecognize call already submitted an operation
+				// to Chirp — that's a small, accepted cost. Their
+				// row is the canonical one; OBJECT_FINALIZE on our
+				// orphan output will be a no-op (RowsAffected = 0).
+				logger.Warn("submit race; another worker won the chunk",
+					"chunk_index", ch.ChunkIndex,
+					"orphan_operation_id", opName)
+				continue
+			}
+			return handleSTTError(ctx, logger, event.SessionID, insertErr)
+		}
+
+		logger.Info("submitted",
+			"chunk_index", ch.ChunkIndex,
+			"operation_id", opName,
+			"output_prefix", outputPrefix,
+			"chunk_count", len(chunks))
 	}
-	_ = updateSessionStatus(ctx, event.SessionID, "ANALYZING")
 
-	if err := publishTranscriptCompleted(ctx, event.SessionID, transcriptID); err != nil {
-		logger.Error("publish completed", "error", err)
-		return err
-	}
-
-	logger.Info("done",
-		"transcript_id", transcriptID,
-		"duration_ms", time.Since(startTime).Milliseconds(),
-		"chunks", len(chunks))
-
+	// Pub/Sub acks. Chirp does its work async; the result lands in
+	// gs://transcriptsRawBkt/{session_id}/chunk_{i}/transcript_*.json
+	// and OBJECT_FINALIZE triggers stt-finalize (ProcessTranscriptObject)
+	// from finalize.go in this same package.
 	return nil
+}
+
+// ChunkPlan describes one BatchRecognize submission target.
+//
+// Stage 1: a single ChunkPlan covering the whole audio_upload
+// object (StartOffsetMS=0). Synthesized when audio_chunks is empty.
+//
+// Stage 2: one ChunkPlan per audio_chunks row when ingestion-svc
+// ran the ffmpeg silence-detect chunker (long audio path).
+type ChunkPlan struct {
+	ChunkIndex    int
+	GCSUri        string // gs://bucket/path of the audio file
+	StartOffsetMS int64  // chunk's start in the ORIGINAL audio timeline
+	SeamOffsetMS  int64  // logical cut point shared with chunk_{i+1}; 0 for the virtual chunk
+	EndOffsetMS   int64  // chunk's end in the ORIGINAL audio timeline; 0 for the virtual chunk
+	OverlapMS     int    // overlap with prior chunk; 0 for chunk 0
+}
+
+// loadChunkPlan returns the BatchRecognize fan-out plan for this
+// audio_upload. When ingestion-svc ran the Stage 2 chunker, the
+// audio_chunks table has one row per chunk; otherwise empty and we
+// synthesize a single virtual chunk pointing at the original
+// audio_uploads object_path.
+//
+// Both paths are correct and observationally indistinguishable to
+// the caller; the consumer just gets a different `len(chunks)`.
+func loadChunkPlan(ctx context.Context, uploadIDStr string, fallbackObjectPath string) ([]ChunkPlan, error) {
+	if dbPool == nil {
+		return defaultChunkPlan(fallbackObjectPath), nil
+	}
+	uploadID, err := uuid.Parse(uploadIDStr)
+	if err != nil {
+		return defaultChunkPlan(fallbackObjectPath), nil
+	}
+
+	rows, err := dbPool.Query(ctx, `
+		SELECT chunk_index, bucket_name, object_path,
+		       start_offset_ms, seam_offset_ms, end_offset_ms, overlap_ms
+		FROM audio_chunks
+		WHERE audio_upload_id = $1
+		ORDER BY chunk_index`,
+		uploadID)
+	if err != nil {
+		return nil, fmt.Errorf("query audio_chunks: %w", err)
+	}
+	defer rows.Close()
+
+	var out []ChunkPlan
+	for rows.Next() {
+		var (
+			idx                                int32
+			bkt, obj                           string
+			start, seam, end                   int64
+			overlap                            int32
+		)
+		if err := rows.Scan(&idx, &bkt, &obj, &start, &seam, &end, &overlap); err != nil {
+			return nil, fmt.Errorf("scan audio_chunks: %w", err)
+		}
+		out = append(out, ChunkPlan{
+			ChunkIndex:    int(idx),
+			GCSUri:        fmt.Sprintf("gs://%s/%s", bkt, obj),
+			StartOffsetMS: start,
+			SeamOffsetMS:  seam,
+			EndOffsetMS:   end,
+			OverlapMS:     int(overlap),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(out) == 0 {
+		return defaultChunkPlan(fallbackObjectPath), nil
+	}
+	return out, nil
+}
+
+// defaultChunkPlan synthesizes the Stage 1 single-virtual-chunk
+// plan: one ChunkPlan over the entire audio_upload object. Used
+// when audio_chunks has no rows for this upload (short audio,
+// pre-Stage 2 sessions, or DB unavailable).
+func defaultChunkPlan(objectPath string) []ChunkPlan {
+	return []ChunkPlan{{
+		ChunkIndex:    0,
+		GCSUri:        fmt.Sprintf("gs://%s/%s", bucketName, objectPath),
+		StartOffsetMS: 0,
+	}}
 }
 
 // TranscriptResult zawiera płaską listę słów (bez speaker_tag w default flow).
@@ -331,7 +408,27 @@ type TranscriptResult struct {
 // Chirp3DiarizationLanguages allow-list. When true, Chirp emits
 // per-word speaker_tag; when false (current default for every
 // language), words come back flat and llm-worker clusters them.
-func transcribeAudio(ctx context.Context, gcsURI string, languageCode string, useNativeDiarization bool) (*TranscriptResult, error) {
+// submitBatchRecognize fires a BatchRecognize call to Chirp 3 with
+// GcsOutputConfig pointing at outputPrefix. Returns the long-running
+// operation's name (used as a handle by the watchdog) without
+// waiting for the operation to complete — the result will land in
+// GCS at outputPrefix and OBJECT_FINALIZE will trigger stt-finalize.
+//
+// Replaces the old transcribeAudio path which used
+// InlineResponseConfig + op.Wait(ctx). The wait coupled Cloud
+// Function runtime to Chirp's latency; with the GCS callback model
+// the worker hangs up immediately and the result-handling is
+// asynchronous. See docs/13_STT_GCS_CALLBACK_AND_CHUNKING.md.
+//
+// outputPrefix is a `gs://bucket/{sid}/chunk_{i}/` URI; Chirp picks
+// the filename inside it.
+func submitBatchRecognize(
+	ctx context.Context,
+	gcsURI string,
+	outputPrefix string,
+	languageCode string,
+	useNativeDiarization bool,
+) (operationName string, err error) {
 	features := &speechpb.RecognitionFeatures{
 		EnableAutomaticPunctuation: true,
 		EnableWordTimeOffsets:      true,
@@ -367,28 +464,24 @@ func transcribeAudio(ctx context.Context, gcsURI string, languageCode string, us
 			Features:      features,
 		},
 		Files: []*speechpb.BatchRecognizeFileMetadata{
-			{
-				AudioSource: &speechpb.BatchRecognizeFileMetadata_Uri{Uri: gcsURI},
-			},
+			{AudioSource: &speechpb.BatchRecognizeFileMetadata_Uri{Uri: gcsURI}},
 		},
 		RecognitionOutputConfig: &speechpb.RecognitionOutputConfig{
-			Output: &speechpb.RecognitionOutputConfig_InlineResponseConfig{
-				InlineResponseConfig: &speechpb.InlineOutputConfig{},
+			Output: &speechpb.RecognitionOutputConfig_GcsOutputConfig{
+				GcsOutputConfig: &speechpb.GcsOutputConfig{
+					Uri: outputPrefix,
+				},
 			},
 		},
 	}
 
 	op, err := speechClient.BatchRecognize(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("batch recognize: %w", err)
+		return "", fmt.Errorf("batch recognize: %w", err)
 	}
-
-	resp, err := op.Wait(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("await: %w", err)
-	}
-
-	return ParseChirp3Results(resp, useNativeDiarization, languageCode)
+	// No op.Wait(ctx). Chirp will write the result to outputPrefix
+	// and OBJECT_FINALIZE will pick up the work in stt-finalize.
+	return op.Name(), nil
 }
 
 // ParseChirp3Results extracts words and confidence from the Speech API response.

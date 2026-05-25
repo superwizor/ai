@@ -142,6 +142,46 @@ final pendingUploadCountProvider = Provider<int>((ref) {
   );
 });
 
+/// Per-patient view onto the upload queue: the active (non-terminal,
+/// non-completed, non-failed) rows whose patientFileId matches.
+///
+/// Why this exists: the patient sessions view (`ClientDetailsScreen`)
+/// reads the server-side session list from `sessionsProvider`. For
+/// long-audio "Wgraj Plik z Dysku" uploads, the server's
+/// `CompleteAudioUpload` blocks on ffmpeg chunking for several minutes
+/// before it INSERTs the sessions row, so the user navigates back to
+/// the patient view and sees NOTHING until the RPC finally returns.
+/// This provider gives the screen a stream of in-flight uploads for
+/// that patient so we can render placeholder cards while the
+/// background work runs — concrete user-visible signal that "the
+/// session is being processed" instead of an empty list.
+///
+/// The placeholder lifecycle:
+///   queued (pending/created/uploaded/converted) → visible here
+///   completed                                   → drops from this list;
+///                                                 sessionsProvider gets
+///                                                 a refresh push and
+///                                                 the real session
+///                                                 replaces the
+///                                                 placeholder
+///   failed                                      → drops from here too;
+///                                                 the upload-list /
+///                                                 home-screen pill UIs
+///                                                 surface the error
+final pendingUploadsForPatientProvider =
+    Provider.family<List<PendingUpload>, String>((ref, patientFileId) {
+  final async = ref.watch(pendingUploadsStreamProvider);
+  return async.maybeWhen(
+    data: (list) => list
+        .where((u) =>
+            u.patientFileId == patientFileId &&
+            u.phase != UploadPhase.completed &&
+            u.phase != UploadPhase.failed)
+        .toList(growable: false),
+    orElse: () => const [],
+  );
+});
+
 /// Refreshes both repositories' caches for [patientFileId]. Used by
 /// the upload-runner callbacks (onUploadComplete + onAnalysisComplete)
 /// to keep the kartoteka in sync with server state without polling.

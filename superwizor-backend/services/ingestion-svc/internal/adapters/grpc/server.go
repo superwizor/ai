@@ -11,8 +11,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -26,10 +28,11 @@ import (
 type Server struct {
 	ingestionv1.UnimplementedIngestionServiceServer
 	queries    *db.Queries
+	pool       *pgxpool.Pool // raw pool for advisory locks + ad-hoc tx
 	signer     *storage.Signer
 	converter  *storage.Converter // shells out to ffmpeg; used by ConvertAudio
 	bucketName string
-	pubsub     PubsubPublisher  // interface — concrete impl w main
+	pubsub     PubsubPublisher // interface — concrete impl w main
 }
 
 type PubsubPublisher interface {
@@ -38,6 +41,7 @@ type PubsubPublisher interface {
 
 func NewServer(
 	queries *db.Queries,
+	pool *pgxpool.Pool,
 	signer *storage.Signer,
 	converter *storage.Converter,
 	bucketName string,
@@ -45,6 +49,7 @@ func NewServer(
 ) *Server {
 	return &Server{
 		queries:    queries,
+		pool:       pool,
 		signer:     signer,
 		converter:  converter,
 		bucketName: bucketName,
@@ -52,7 +57,26 @@ func NewServer(
 	}
 }
 
+// pgxBegin is the bridge between Stage 1's `s.queries` (sqlc-bound)
+// and Stage 2's need for ad-hoc transactional work (pg_advisory_xact_lock
+// + multi-row INSERT). Returns a pgx.Tx the caller wraps with
+// s.queries.WithTx(tx) for sqlc-flavored statements.
+func (s *Server) pgxBegin(ctx context.Context) (pgx.Tx, error) {
+	if s.pool == nil {
+		return nil, fmt.Errorf("pgxBegin: server has no pool (test wiring?)")
+	}
+	return s.pool.Begin(ctx)
+}
+
 func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateAudioUploadRequest) (*ingestionv1.CreateAudioUploadResponse, error) {
+	// Option E (2026-05-25, see docs/14_INGESTION_EARLY_SESSION_CREATION.md):
+	// session row is created at THIS RPC instead of CompleteAudioUpload.
+	// Under the old flow the sessions table didn't get a row until after
+	// ffprobe + chunking finished — 3-10 min for long audio. Therapists
+	// returned to the kartoteka before that and saw an empty session
+	// list. Now the session exists from the moment Flutter gets the
+	// signed URL, in PENDING_UPLOAD status. CompleteAudioUpload flips
+	// it to CREATED once the audio + chunks are confirmed.
 	fmt.Printf("Received CreateAudioUpload request\n")
 	therapistID, err := uuid.Parse(req.TherapistId)
 	if err != nil {
@@ -105,32 +129,85 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		ext = ".wma"
 	}
 
+	// Option E: session-defaults lookup + session creation now happen
+	// here. Wrapped in a tx with the audio_uploads INSERT so a crash
+	// between the two never leaves a half-created state.
+	tx, err := s.pgxBegin(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "begin tx: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	txq := s.queries.WithTx(tx)
+
+	// Session number + modality display name + audio language.
+	// Mirrors the lookup that used to live in CompleteAudioUpload.
+	nextNumber, err := txq.GetNextSessionNumber(ctx, patientFileIDPg)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defaults, lookupErr := txq.GetSessionDefaultsForPatientFile(ctx, patientFileIDPg)
+	var defaultName string
+	if lookupErr == nil && defaults.DisplayName != "" {
+		defaultName = fmt.Sprintf("%s %d", defaults.DisplayName, nextNumber)
+	}
+	audioLang := ""
+	if lookupErr == nil {
+		audioLang = lang.BCP47ize(defaults.PatientLanguage)
+	}
+	reportLang := req.ReportLanguage
+	if reportLang == "" && lookupErr == nil {
+		reportLang = defaults.PatientLanguage
+	}
+	if reportLang == "" {
+		reportLang = "pl"
+	}
+	t := time.Now()
+	datePg := pgtype.Date{Time: t, Valid: true}
+	// duration_seconds is not yet known — pass nil; CompleteAudioUpload
+	// will overwrite if needed.
+	session, err := txq.CreateSessionPendingUpload(ctx, db.CreateSessionPendingUploadParams{
+		TherapistID:     therapistIDPg,
+		PatientFileID:   patientFileIDPg,
+		SessionDate:     datePg,
+		SessionNumber:   nextNumber,
+		DurationSeconds: nil,
+		ContactForm:     "OFFICE",
+		ReportLanguage:  reportLang,
+		NameDefault:     defaultName,
+		LanguageCode:    audioLang,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "CreateSessionPendingUpload: %v", err)
+	}
+
+	// Object path now uses session_id (replacing patient_file_id).
+	// This makes the GCS path the canonical session identifier and
+	// enables the future bucket-notification-based recovery work
+	// described in docs/14.
+	sessionUUID := uuid.UUID(session.ID.Bytes)
 	objectPath := fmt.Sprintf("%s/%s/%d%s",
 		therapistID.String(),
-		patientFileID.String(),
+		sessionUUID.String(),
 		time.Now().Unix(),
 		ext,
 	)
 
-	upload, err := s.queries.CreateAudioUpload(ctx, db.CreateAudioUploadParams{
-		TherapistID:       therapistIDPg,
-		PatientFileID:     patientFileIDPg,
-		BucketName:        s.bucketName,
-		ObjectPath:        objectPath,
-		ContentType:       req.ContentType,
-		IdempotencyKey:    &req.IdempotencyKey,
-		ClientAppVersion:  &req.ClientAppVersion,
-		ClientPlatform:    &req.ClientPlatform,
+	upload, err := txq.CreateAudioUpload(ctx, db.CreateAudioUploadParams{
+		TherapistID:      therapistIDPg,
+		PatientFileID:    patientFileIDPg,
+		SessionID:        session.ID,
+		BucketName:       s.bucketName,
+		ObjectPath:       objectPath,
+		ContentType:      req.ContentType,
+		IdempotencyKey:   &req.IdempotencyKey,
+		ClientAppVersion: &req.ClientAppVersion,
+		ClientPlatform:   &req.ClientPlatform,
 	})
 	if err != nil {
-		// Race window: two concurrent requests with the same
-		// idempotency_key both passed the pre-check (lines 56–82) and
-		// reached this INSERT. Migration 000018 added
-		// ux_audio_uploads_idempotency partial unique index on
-		// (therapist_id, idempotency_key); the loser of the race hits
-		// this branch. Re-fetch by key + return the winner's row, same
-		// shape as the cache-hit response above.
 		if cname := uniqueViolationConstraint(err); cname == "ux_audio_uploads_idempotency" {
+			// Roll back the session INSERT — race winner already
+			// owns one. Re-fetch and respond from the winner's row.
+			_ = tx.Rollback(ctx)
 			existing, gerr := s.queries.GetAudioUploadByIdempotency(ctx, db.GetAudioUploadByIdempotencyParams{
 				IdempotencyKey: &req.IdempotencyKey,
 				TherapistID:    therapistIDPg,
@@ -143,7 +220,24 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	signedURL, expires, err := s.signer.GenerateUploadURL(ctx, objectPath, req.ContentType)
+	// Close the circular link sessions.audio_upload_id →
+	// audio_uploads.id now that the audio_uploads row exists. The
+	// partial UNIQUE INDEX from migration 000024 (added by Fix 1)
+	// enforces 1:1 on the session side.
+	if err := txq.SetSessionAudioUploadID(ctx, db.SetSessionAudioUploadIDParams{
+		ID:            session.ID,
+		AudioUploadID: upload.ID,
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "SetSessionAudioUploadID: %v", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, status.Errorf(codes.Internal, "commit CreateAudioUpload tx: %v", err)
+	}
+
+	signedURL, expires, err := s.signer.GenerateUploadURL(
+		ctx, objectPath, req.ContentType, req.EstimatedSizeBytes,
+	)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -161,6 +255,7 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		RequiredHeaders: map[string]string{
 			"x-goog-meta-source": "superwizor-mobile",
 		},
+		SessionId: sessionUUID.String(),
 	}, nil
 }
 
@@ -171,13 +266,32 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 // stateless, so the URL is fresh but the object_path is the cached
 // one from the original create.
 func (s *Server) cachedAudioUploadResponse(ctx context.Context, existing db.AudioUpload) (*ingestionv1.CreateAudioUploadResponse, error) {
-	signedURL, expires, err := s.signer.GenerateUploadURL(ctx, existing.ObjectPath, existing.ContentType)
+	// On idempotent retry we don't have the request's
+	// estimated_size_bytes anymore — use the audio_uploads row's
+	// actual file_size_bytes if known (post-PUT retry), else 0
+	// which falls back to the default 30 min TTL. The retry case is
+	// usually a signed-URL refresh request and the row may or may
+	// not have the actual size yet.
+	var estSize int64
+	if existing.FileSizeBytes != nil {
+		estSize = *existing.FileSizeBytes
+	}
+	signedURL, expires, err := s.signer.GenerateUploadURL(
+		ctx, existing.ObjectPath, existing.ContentType, estSize,
+	)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	var existingID uuid.UUID
 	if existing.ID.Valid {
 		existingID = existing.ID.Bytes
+	}
+	// Option E (2026-05-25): every audio_uploads row now carries a
+	// session_id from creation. Return it so the client gets the
+	// same answer whether this is a first call or an idempotent retry.
+	var sessionIDStr string
+	if existing.SessionID.Valid {
+		sessionIDStr = uuid.UUID(existing.SessionID.Bytes).String()
 	}
 	return &ingestionv1.CreateAudioUploadResponse{
 		UploadId:           existingID.String(),
@@ -187,6 +301,7 @@ func (s *Server) cachedAudioUploadResponse(ctx context.Context, existing db.Audi
 		RequiredHeaders: map[string]string{
 			"x-goog-meta-source": "superwizor-mobile",
 		},
+		SessionId: sessionIDStr,
 	}, nil
 }
 
@@ -249,69 +364,87 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// Auto-create session
-	nextNumber, err := s.queries.GetNextSessionNumber(ctx, upload.PatientFileID)
+	// Stage 2 of feat/stt-long_audio_support: when the duration
+	// exceeds Chirp 3's word-timestamp limit, internally invoke
+	// ConvertAudio with chunk_for_chirp=true to split the FLAC
+	// into ≤ 19-min segments. stt-submit will fan out
+	// BatchRecognize per chunk.
+	//
+	// Duration source: ffprobe the GCS object directly. Discovered
+	// 2026-05-22 — the Flutter client passes actual_duration_seconds=0
+	// from the file-upload path (lib/screens/new_session_screen.dart),
+	// so trusting the client missed every real long-audio upload and
+	// the file went uncut to Chirp → file-level "is too long" reject.
+	// Server-side probe is client-implementation-independent. ffprobe
+	// is in the ingestion-svc image alongside ffmpeg.
+	//
+	// Fallback: if ffprobe errors (rare; corrupt file or download
+	// hiccup) we fall back to whatever the client claimed. Better to
+	// over-trigger chunking on suspicious input than to skip it.
+	const longAudioThresholdSec = 1140
+	durationSec := int(req.ActualDurationSeconds)
+	if s.converter != nil {
+		probed, probeErr := s.converter.ProbeDuration(ctx, upload.BucketName, upload.ObjectPath)
+		if probeErr != nil {
+			slog.Warn("complete_audio_upload: ffprobe failed; using client-provided duration",
+				"upload_id", req.UploadId,
+				"client_duration_sec", req.ActualDurationSeconds,
+				"error", probeErr)
+		} else if probed > 0 {
+			slog.Info("complete_audio_upload: probed duration",
+				"upload_id", req.UploadId,
+				"probed_sec", probed,
+				"client_claimed_sec", req.ActualDurationSeconds)
+			durationSec = probed
+		}
+	}
+
+	if durationSec > longAudioThresholdSec && s.converter != nil {
+		slog.Info("complete_audio_upload: triggering chunking",
+			"upload_id", req.UploadId,
+			"duration_sec", durationSec)
+		if _, err := s.ConvertAudio(ctx, &ingestionv1.ConvertAudioRequest{
+			AudioUploadId:         req.UploadId,
+			ChunkForChirp:         true,
+			MaxChunkSeconds:       longAudioThresholdSec,
+			SourceDurationSeconds: int32(durationSec),
+		}); err != nil {
+			slog.Error("complete_audio_upload: chunking failed",
+				"upload_id", req.UploadId, "error", err)
+			return nil, err
+		}
+	}
+
+	// Option E (2026-05-25): the session row already exists from
+	// CreateAudioUpload time in status='PENDING_UPLOAD'. Flip it to
+	// 'CREATED' so downstream filters (status != PENDING_UPLOAD)
+	// pick it up and the STT pipeline can advance state from here.
+	//
+	// Idempotent: the UPDATE is a no-op on a row that's already
+	// CREATED (or further along — TRANSCRIBING/etc).
+	//
+	// We also re-fetch the session row to obtain session_id for
+	// the publish below. This is one extra SELECT per CompleteAudioUpload
+	// — negligible cost (<5 ms) compared to ffprobe + chunking.
+	session, err := s.queries.GetSessionByAudioUploadID(ctx, upload.ID)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal,
+			"GetSessionByAudioUploadID: %v (Option E: session should already exist from CreateAudioUpload)",
+			err)
 	}
-    
-	nextNum := nextNumber
-
-    t := time.Now()
-	datePg := pgtype.Date{Time: t, Valid: true}
-
-	// Single round-trip: pull the modality display_name (for the
-	// default session.name) AND the patient_user's ui_language (for
-	// session.language_code that stt-worker reads, AND the
-	// report_language fallback below). Both columns degrade to ""
-	// on join misses; the InsertSession SQL NULLIFs each so a
-	// missing modality or orphan patient_files row stores NULL and
-	// downstream falls back appropriately.
-	defaults, lookupErr := s.queries.GetSessionDefaultsForPatientFile(ctx, upload.PatientFileID)
-	var defaultName string
-	if lookupErr == nil && defaults.DisplayName != "" {
-		defaultName = fmt.Sprintf("%s %d", defaults.DisplayName, nextNum)
-	}
-	// BCP47-ize the patient's ui_language for STT (Chirp wants pl-PL,
-	// not pl). Empty → BCP47ize returns "" → SQL NULLIF stores NULL →
-	// stt-worker falls back to its multi-language auto-detect list.
-	audioLang := ""
-	if lookupErr == nil {
-		audioLang = lang.BCP47ize(defaults.PatientLanguage)
-	}
-	// report_language resolution — three-tier fallback so an English
-	// patient's report doesn't silently come out in Polish (the bug
-	// surfaced 2026-05-15 on session 7da68e6c):
-	//   1. explicit req.ReportLanguage (Flutter passes it for sessions
-	//      where therapist wants a different output language than the
-	//      patient speaks)
-	//   2. patient_user.ui_language from the JOIN above (mirrors the
-	//      STT side — if patient's audio is en-US, default the report
-	//      to English unless overridden)
-	//   3. "pl" hardcoded fallback for orphan rows / pre-feat sessions
-	//      where neither source is available
-	reportLang := req.ReportLanguage
-	if reportLang == "" && lookupErr == nil {
-		reportLang = defaults.PatientLanguage
-	}
-	if reportLang == "" {
-		reportLang = "pl"
-	}
-
-	session, err := s.queries.CreateSession(ctx, db.CreateSessionParams{
-		TherapistID:     upload.TherapistID,
-		PatientFileID:   upload.PatientFileID,
-		AudioUploadID:   upload.ID,
-		SessionDate:     datePg,
-		SessionNumber:   nextNum,
-		DurationSeconds: &req.ActualDurationSeconds,
-		ContactForm:     "OFFICE",
-		ReportLanguage:  reportLang,
-		NameDefault:     defaultName,
-		LanguageCode:    audioLang,
-	})
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	if err := s.queries.UpdateSessionStatus(ctx, db.UpdateSessionStatusParams{
+		ID:     session.ID,
+		Status: "CREATED",
+	}); err != nil {
+		// Non-fatal — log + continue. The session row exists; STT
+		// can still proceed even if the status flip raced with
+		// itself. Worst case the row stays PENDING_UPLOAD and the
+		// orphan-cleanup job's status-check skips it (audio_uploads
+		// is UPLOADED so it won't be reaped).
+		slog.Warn("complete_audio_upload: status flip failed",
+			"session_id", uuid.UUID(session.ID.Bytes).String(),
+			"upload_id", req.UploadId,
+			"error", err)
 	}
 
 	var sessionIDStr string
@@ -319,10 +452,35 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 		sessionIDStr = uuid.UUID(session.ID.Bytes).String()
 	}
 
-	// Publish do Pub/Sub → trigger STT worker
+	// Persist actual duration if we now know it — overwrites the
+	// NULL initial value from CreateAudioUpload. Best-effort.
+	if req.ActualDurationSeconds > 0 {
+		if _, dErr := s.queries.UpdateSessionDuration(ctx, db.UpdateSessionDurationParams{
+			ID:              session.ID,
+			DurationSeconds: &req.ActualDurationSeconds,
+		}); dErr != nil {
+			slog.Warn("complete_audio_upload: duration update failed",
+				"session_id", sessionIDStr, "error", dErr)
+		}
+	}
+
+	// Publish to Pub/Sub → triggers stt-worker.
+	//
+	// Fix 2 (2026-05-23): if the publish fails, we now FAIL the request
+	// with codes.Internal instead of swallowing the error as a warning.
+	// Previously a failed publish meant Flutter saw success, dropped the
+	// row from its queue, and the audio sat in GCS with a session row
+	// but no STT trigger — orphan, recovery-gap case. With Fix 1 in
+	// place, the retry path is now idempotent (a re-run of CompleteAudioUpload
+	// will reuse the existing session via the 23505 → GetSessionByAudioUploadID
+	// branch above and re-attempt the publish), so failing loud is the
+	// safe move.
 	if err := s.pubsub.PublishAudioUploaded(ctx, sessionIDStr, req.UploadId, upload.ObjectPath); err != nil {
-		// Log warning ale nie failuj request — workflow można retry'ować
-		slog.Warn("failed to publish audio.uploaded", "error", err, "session_id", sessionIDStr)
+		slog.Error("failed to publish audio.uploaded; returning Internal so client retries",
+			"error", err,
+			"session_id", sessionIDStr,
+			"upload_id", req.UploadId)
+		return nil, status.Errorf(codes.Internal, "publish audio.uploaded: %v", err)
 	}
 
 	return &ingestionv1.CompleteAudioUploadResponse{
@@ -414,8 +572,12 @@ func (s *Server) ConvertAudio(ctx context.Context, req *ingestionv1.ConvertAudio
 		return nil, status.Error(codes.NotFound, "audio upload not found")
 	}
 
-	// Idempotent no-op: already in a Chirp-supported codec.
-	if storage.IsChirpSupported(upload.ContentType) {
+	// Idempotent no-op for the codec normalization step when the
+	// source is already Chirp-supported. We still fall through to
+	// the chunking branch below if the caller asked for it — long
+	// FLAC uploads need chunking even though no transcode is needed.
+	skipTranscode := storage.IsChirpSupported(upload.ContentType)
+	if skipTranscode && !req.ChunkForChirp {
 		return &ingestionv1.ConvertAudioResponse{
 			ContentType: upload.ContentType,
 			ObjectPath:  upload.ObjectPath,
@@ -433,85 +595,235 @@ func (s *Server) ConvertAudio(ctx context.Context, req *ingestionv1.ConvertAudio
 			"unsupported target_content_type: %s", target)
 	}
 
-	// Transcode on disk. Bound by the gRPC deadline — Cloud Run's
-	// per-request timeout must be ≥ 300s (configured at deploy time;
-	// see infra/.../cloud-run.tf). The converter streams into ffmpeg,
-	// so RSS stays bounded at ~150 MB even for hour-long inputs.
-	slog.Info("convert_audio: starting",
-		"upload_id", req.AudioUploadId,
-		"src_object", upload.ObjectPath,
-		"src_content_type", upload.ContentType,
-		"target", target,
-	)
-	t0 := time.Now()
-	result, err := s.converter.Convert(
-		ctx,
-		upload.BucketName,
-		upload.ObjectPath,
-		upload.ContentType,
-		target,
-	)
-	if err != nil {
-		slog.Error("convert_audio: ffmpeg failed",
+	// Transcode path. Only runs when the source codec needs
+	// normalization (M4A / AAC / etc.). FLAC sources skip directly
+	// to the chunking branch with `updated` synthesized below.
+	var updated db.AudioUpload
+	if skipTranscode {
+		// Source is already Chirp-supported (typically FLAC).
+		// `updated` is the existing audio_uploads row — no DB write
+		// needed, but we still need its fields for the chunking
+		// branch downstream.
+		updated = upload
+		slog.Info("convert_audio: skipping transcode (codec already supported)",
 			"upload_id", req.AudioUploadId,
-			"error", err,
+			"content_type", upload.ContentType,
 		)
-		// ffmpeg failure on a real input is almost always a corrupt
-		// source — surface as InvalidArgument so the client can
-		// distinguish "you uploaded garbage" from "the server is
-		// down" (the latter would be Internal/Unavailable).
-		return nil, status.Errorf(codes.InvalidArgument,
-			"transcode failed: %v", err)
-	}
-	slog.Info("convert_audio: ffmpeg done",
-		"upload_id", req.AudioUploadId,
-		"new_object", result.ObjectPath,
-		"new_content_type", result.ContentType,
-		"duration_ms", time.Since(t0).Milliseconds(),
-	)
-
-	// Atomic DB rewrite. If this fails after the new GCS object is
-	// uploaded, the row still points at the original M4A — but we've
-	// already deleted the M4A in Converter.Convert. That leaves an
-	// orphan: row says <path>.m4a, GCS has only <path>.flac. The
-	// caller will retry; ConvertAudio is idempotent on already-supported
-	// codecs, so the retry will still try to convert again — failing
-	// the GCS download because the source is gone. Mitigation: log
-	// loudly here so Sentry surfaces it; manual repair = update the
-	// row to point at .flac. Not great, but RODO-acceptable (audio is
-	// disposable, content-type field is the only loss).
-	updated, err := s.queries.UpdateAudioUploadAfterConversion(
-		ctx,
-		db.UpdateAudioUploadAfterConversionParams{
-			ID:          uploadIDPg,
-			ObjectPath:  result.ObjectPath,
-			ContentType: result.ContentType,
-			BucketName:  result.BucketName,
-		},
-	)
-	if err != nil {
-		slog.Error("convert_audio: db update failed after gcs success",
+	} else {
+		// Transcode on disk. Bound by the gRPC deadline — Cloud Run's
+		// per-request timeout must be ≥ 300s. The converter streams
+		// into ffmpeg, so RSS stays bounded at ~150 MB.
+		slog.Info("convert_audio: starting",
+			"upload_id", req.AudioUploadId,
+			"src_object", upload.ObjectPath,
+			"src_content_type", upload.ContentType,
+			"target", target,
+		)
+		t0 := time.Now()
+		result, err := s.converter.Convert(
+			ctx,
+			upload.BucketName,
+			upload.ObjectPath,
+			upload.ContentType,
+			target,
+		)
+		if err != nil {
+			slog.Error("convert_audio: ffmpeg failed",
+				"upload_id", req.AudioUploadId,
+				"error", err,
+			)
+			return nil, status.Errorf(codes.InvalidArgument,
+				"transcode failed: %v", err)
+		}
+		slog.Info("convert_audio: ffmpeg done",
 			"upload_id", req.AudioUploadId,
 			"new_object", result.ObjectPath,
-			"error", err,
+			"new_content_type", result.ContentType,
+			"duration_ms", time.Since(t0).Milliseconds(),
 		)
-		return nil, status.Errorf(codes.Internal,
-			"db update after conversion: %v", err)
+
+		updated, err = s.queries.UpdateAudioUploadAfterConversion(
+			ctx,
+			db.UpdateAudioUploadAfterConversionParams{
+				ID:          uploadIDPg,
+				ObjectPath:  result.ObjectPath,
+				ContentType: result.ContentType,
+				BucketName:  result.BucketName,
+			},
+		)
+		if err != nil {
+			slog.Error("convert_audio: db update failed after gcs success",
+				"upload_id", req.AudioUploadId,
+				"new_object", result.ObjectPath,
+				"error", err,
+			)
+			return nil, status.Errorf(codes.Internal,
+				"db update after conversion: %v", err)
+		}
+
+		slog.Info("convert_audio: done",
+			"upload_id", req.AudioUploadId,
+			"src_ext", filepath.Ext(upload.ObjectPath),
+			"dst_ext", filepath.Ext(updated.ObjectPath),
+			"src_content_type", upload.ContentType,
+			"dst_content_type", updated.ContentType,
+		)
 	}
 
-	// Belt-and-suspenders: emit a structured event so ops dashboards
-	// can chart conversion rate without scraping ffmpeg logs.
-	slog.Info("convert_audio: done",
-		"upload_id", req.AudioUploadId,
-		"src_ext", filepath.Ext(upload.ObjectPath),
-		"dst_ext", filepath.Ext(updated.ObjectPath),
-		"src_content_type", upload.ContentType,
-		"dst_content_type", updated.ContentType,
-	)
+	// Stage 2 chunking branch (feat/stt-long_audio_support). When the
+	// caller asked for chunking AND the source exceeds the
+	// max_chunk_seconds threshold, run ffmpeg silencedetect, split the
+	// (now-converted) FLAC into N pieces, write one audio_chunks row
+	// per piece. stt-submit will fan out N BatchRecognize calls.
+	chunkCount, err := s.maybeChunkForChirp(ctx, req, updated, uploadIDPg)
+	if err != nil {
+		return nil, err
+	}
 
 	return &ingestionv1.ConvertAudioResponse{
 		ContentType: updated.ContentType,
 		ObjectPath:  updated.ObjectPath,
-		Converted:   true,
+		Converted:   !skipTranscode,
+		ChunkCount:  int32(chunkCount),
 	}, nil
+}
+
+// maybeChunkForChirp is the Stage 2 chunking branch of ConvertAudio.
+// Called after the codec normalization step has settled. Short-
+// circuits when:
+//   - req.ChunkForChirp = false (Stage 1 single-output path)
+//   - source duration ≤ max_chunk_seconds (no chunking needed)
+//   - audio_chunks already exist for this upload AND the count
+//     matches the expected fan-out (idempotent retry — earlier
+//     attempt landed all chunks; caller is just re-querying)
+//
+// Otherwise:
+//   1. Acquire pg_advisory_xact_lock on audio_upload_id to
+//      serialize concurrent ConvertAudio calls.
+//   2. Re-check audio_chunks state inside the lock (avoid double-
+//      work).
+//   3. If partial state exists, delete and start fresh — GCS
+//      objects from the partial attempt are left to OLM 48h.
+//   4. Call converter.ChunkForChirp.
+//   5. INSERT one row per chunk.
+//
+// Returns the number of audio_chunks rows produced (0 when no
+// chunking was needed).
+func (s *Server) maybeChunkForChirp(
+	ctx context.Context,
+	req *ingestionv1.ConvertAudioRequest,
+	upload db.AudioUpload,
+	uploadIDPg pgtype.UUID,
+) (int, error) {
+	if !req.ChunkForChirp {
+		return 0, nil
+	}
+	if req.SourceDurationSeconds <= 0 {
+		return 0, status.Error(codes.InvalidArgument,
+			"chunk_for_chirp=true requires source_duration_seconds > 0")
+	}
+
+	maxSec := int(req.MaxChunkSeconds)
+	// 19 min default (with safety margin under Chirp 3's 20-min word-
+	// timestamp limit). ChunkForChirp clamps to its own hard cap.
+	if maxSec <= 0 {
+		maxSec = 1140
+	}
+
+	// Short audio — skip without touching the DB.
+	if int(req.SourceDurationSeconds) <= maxSec {
+		return 0, nil
+	}
+
+	// Serialize concurrent ConvertAudio calls for this upload. The
+	// hash of audio_upload_id is a non-blocking integer key for
+	// pg_advisory_xact_lock. Lock auto-releases at transaction end
+	// — we wrap the whole chunking + INSERT in one tx.
+	tx, err := s.pgxBegin(ctx)
+	if err != nil {
+		return 0, status.Errorf(codes.Internal, "begin tx: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	uploadIDStr := uuid.UUID(uploadIDPg.Bytes).String()
+	if _, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+		uploadIDStr,
+	); err != nil {
+		return 0, status.Errorf(codes.Internal, "advisory lock: %v", err)
+	}
+
+	// Inside the lock: re-check current audio_chunks state.
+	txq := s.queries.WithTx(tx)
+	existing, err := txq.CountAudioChunksByUpload(ctx, uploadIDPg)
+	if err != nil {
+		return 0, status.Errorf(codes.Internal, "count chunks: %v", err)
+	}
+	if existing > 0 {
+		// Idempotency: earlier attempt either fully or partially
+		// landed chunks. We can't cheaply verify GCS object presence
+		// here. Safe choice: trust the row count. If a partial set
+		// exists, delete and redo — better to spend ffmpeg cycles
+		// than to ship a split with missing chunks.
+		//
+		// But: if the existing count is exactly the expected one for
+		// this source duration, the previous attempt completed and
+		// this is a benign retry. Recompute expected count and
+		// compare.
+		expectedN := int64((int(req.SourceDurationSeconds) + maxSec - 1) / maxSec)
+		if existing == expectedN {
+			if err := tx.Commit(ctx); err != nil {
+				return 0, status.Errorf(codes.Internal, "commit (idempotent path): %v", err)
+			}
+			return int(existing), nil
+		}
+		// Partial state — wipe and redo.
+		if err := txq.DeleteAudioChunksByUpload(ctx, uploadIDPg); err != nil {
+			return 0, status.Errorf(codes.Internal, "delete partial chunks: %v", err)
+		}
+	}
+
+	chunks, err := s.converter.ChunkForChirp(
+		ctx,
+		upload.BucketName,
+		upload.ObjectPath,
+		int(req.SourceDurationSeconds),
+		maxSec,
+	)
+	if err != nil {
+		// ffmpeg or upload failure. The caller (CompleteAudioUpload)
+		// will see this and fail the session before publishing
+		// audio.uploaded — no orphan audio_uploads.status flip.
+		slog.Error("convert_audio: chunking failed",
+			"upload_id", req.AudioUploadId, "error", err)
+		return 0, status.Errorf(codes.Internal, "chunk_for_chirp: %v", err)
+	}
+
+	for _, ch := range chunks {
+		if err := txq.CreateAudioChunk(ctx, db.CreateAudioChunkParams{
+			AudioUploadID: uploadIDPg,
+			ChunkIndex:    int32(ch.ChunkIndex),
+			BucketName:    ch.BucketName,
+			ObjectPath:    ch.ObjectPath,
+			StartOffsetMs: ch.StartOffsetMS,
+			SeamOffsetMs:  ch.SeamOffsetMS,
+			EndOffsetMs:   ch.EndOffsetMS,
+			OverlapMs:     int32(ch.OverlapMS),
+			CutOnSilence:  ch.CutOnSilence,
+		}); err != nil {
+			return 0, status.Errorf(codes.Internal, "insert chunk row: %v", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, status.Errorf(codes.Internal, "commit chunks: %v", err)
+	}
+
+	slog.Info("convert_audio: chunked",
+		"upload_id", req.AudioUploadId,
+		"chunk_count", len(chunks),
+		"source_duration_sec", req.SourceDurationSeconds,
+		"max_chunk_sec", maxSec,
+	)
+	return len(chunks), nil
 }

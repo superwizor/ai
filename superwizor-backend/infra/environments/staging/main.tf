@@ -42,7 +42,9 @@ module "audit_logs" {
 module "storage" {
   source          = "../../modules/storage"
   project_id      = var.project_id
-  pubsub_topic_id = module.pubsub.audio_uploaded_topic
+  app_data_key_id = module.kms.app_data_key_id
+  # pubsub_topic_id removed: bucket notification deleted in favour of
+  # ingestion-svc.PublishAudioUploaded as sole publisher (see storage/main.tf).
 }
 
 module "pubsub" {
@@ -73,7 +75,8 @@ module "cloud_functions" {
   db_connection_name         = module.cloud_sql.instance_connection_name
   db_url_secret_id           = "postgres-database-url"
   vpc_connector_id           = module.vpc.vpc_connector_id
-  audio_bucket_name          = module.storage.audio_uploads_bucket_name
+  audio_bucket_name           = module.storage.audio_uploads_bucket_name
+  transcripts_raw_bucket_name = module.storage.transcripts_raw_bucket_name
   audio_uploaded_topic              = module.pubsub.audio_uploaded_topic
   transcript_completed_topic        = module.pubsub.transcript_completed_topic
   report_generated_topic            = module.pubsub.report_generated_topic

@@ -1,0 +1,31 @@
+-- Option E (docs/14_INGESTION_EARLY_SESSION_CREATION.md, 2026-05-25).
+--
+-- Adds PENDING_UPLOAD at the very start of the session lifecycle.
+-- Under Option E, ingestion-svc.CreateAudioUpload now INSERTs the
+-- session row immediately (rather than waiting for
+-- CompleteAudioUpload at the tail of the upload-and-chunk pipeline).
+-- Session rows therefore exist for the duration of the actual
+-- Flutter PUT + server-side chunking — minutes for long audio.
+--
+-- New lifecycle:
+--   PENDING_UPLOAD → CREATED → TRANSCRIBING → MERGING → ANALYZING → COMPLETED
+--                ↘                       ↘ FAILED
+--
+-- - PENDING_UPLOAD: row exists, no audio confirmed yet, no STT work
+--   has started. Flutter renders these as the same placeholder
+--   style the Hive upload queue already drives (client_details_screen).
+-- - CREATED: existing meaning preserved — CompleteAudioUpload has
+--   landed; STT pipeline is about to kick off.
+--
+-- PENDING_UPLOAD rows whose audio_uploads.uploaded_at is still
+-- NULL after a debounce window get garbage-collected by a separate
+-- scheduler job (Option E follow-up).
+--
+-- The constraint is enum-value-only — no schema changes to
+-- sessions or audio_uploads columns. Migration is fully forward-
+-- only: existing rows keep their current statuses. Postgres
+-- ALTER TYPE ... ADD VALUE is non-blocking in modern versions
+-- (>= 12).
+
+ALTER TYPE session_status ADD VALUE IF NOT EXISTS 'PENDING_UPLOAD'
+    BEFORE 'CREATED';

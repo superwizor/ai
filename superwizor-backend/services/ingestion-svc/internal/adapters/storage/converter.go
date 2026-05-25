@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -158,6 +159,62 @@ func (c *Converter) Convert(
 		ObjectPath:  dstObjectPath,
 		ContentType: targetContentType,
 	}, nil
+}
+
+// ProbeDuration returns the duration in seconds of the audio object
+// at (bucketName, objectPath). Downloads the file into a tmp dir,
+// runs `ffprobe -show_format`, parses the `duration=` line.
+//
+// This is the AUTHORITATIVE duration source — Flutter clients vary
+// in what they report (0 for some upload flows; the actual recording
+// elapsed time for live recordings). Server-side probing makes the
+// long-audio chunking trigger client-implementation-independent.
+//
+// Cost: ~5s for a 100 MB FLAC (download + parse). Acceptable since
+// it runs once per CompleteAudioUpload.
+//
+// Returns 0 + nil error when ffprobe succeeds but reports no duration
+// (rare; broken media). Caller treats 0 as "skip chunking" and lets
+// Chirp see whatever it sees.
+func (c *Converter) ProbeDuration(ctx context.Context, bucketName, objectPath string) (int, error) {
+	ext := filepath.Ext(objectPath)
+	if ext == "" {
+		ext = ".bin"
+	}
+	tmpDir, err := os.MkdirTemp("", "audioprobe-*")
+	if err != nil {
+		return 0, fmt.Errorf("mktmp: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	local := filepath.Join(tmpDir, "input"+ext)
+	if err := c.downloadObject(ctx, bucketName, objectPath, local); err != nil {
+		return 0, fmt.Errorf("download src: %w", err)
+	}
+
+	cmd := exec.CommandContext(ctx, "ffprobe",
+		"-v", "error",
+		"-show_entries", "format=duration",
+		"-of", "default=noprint_wrappers=1:nokey=1",
+		local,
+	)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return 0, fmt.Errorf("ffprobe: %w (stderr: %s)", err, stderr.String())
+	}
+
+	// Output is e.g. "1320.026000\n" — seconds with fractional part.
+	raw := strings.TrimSpace(stdout.String())
+	if raw == "" || raw == "N/A" {
+		return 0, nil
+	}
+	secs, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse duration %q: %w", raw, err)
+	}
+	return int(secs), nil
 }
 
 // downloadObject pulls the GCS object into a local file. We stream to

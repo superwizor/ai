@@ -1,5 +1,11 @@
 
 enum SessionStatus {
+  /// Option E (2026-05-25): server-side session row exists but the
+  /// audio upload hasn't been confirmed yet. ClientDetailsScreen
+  /// renders these as the same placeholder card the local Hive
+  /// queue uses so the visible affordance is identical regardless
+  /// of which device the upload was initiated from.
+  pendingUpload,
   inProgress,
   completed,
   error,

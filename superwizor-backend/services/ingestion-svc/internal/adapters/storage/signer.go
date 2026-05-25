@@ -25,10 +25,44 @@ func NewSigner(ctx context.Context, bucketName string) (*Signer, error) {
 	return &Signer{client: client, bucketName: bucketName}, nil
 }
 
+// signedURLTTLFor picks an expiration window appropriate for an
+// estimated upload size. The default 30 min covers ~95% of uploads
+// (short sessions on healthy networks), but large files on poor
+// connections can easily exceed it — empirically confirmed when
+// Marcin's 111.7 MB upload hit HTTP 400 ExpiredToken (2026-05-22).
+//
+// Even with Flutter's signedUrlExpired classifier handling the
+// 400+ExpiredToken body correctly, a longer TTL up-front reduces
+// the bandwidth churn from re-issuing URLs + retrying from byte 0.
+//
+// Thresholds:
+//   - default      30 min (existing behavior preserved for small uploads)
+//   - >= 50 MB     2 h
+//   - >= 200 MB    4 h
+//
+// Cap at 4 h to keep the leaked-credential blast radius bounded;
+// GCS V4 signed URLs allow up to 7 days but we don't need that.
+// `estimatedSizeBytes` may be 0 if the caller doesn't know — falls
+// back to the default 30 min.
+func signedURLTTLFor(estimatedSizeBytes int64) time.Duration {
+	const (
+		mediumThreshold = 50 * 1024 * 1024  // 50 MB
+		largeThreshold  = 200 * 1024 * 1024 // 200 MB
+	)
+	switch {
+	case estimatedSizeBytes >= largeThreshold:
+		return 4 * time.Hour
+	case estimatedSizeBytes >= mediumThreshold:
+		return 2 * time.Hour
+	default:
+		return 30 * time.Minute
+	}
+}
+
 // GenerateUploadURL creates a V4 signed URL for PUT operation.
-// Returns URL valid for 30 minutes.
-func (s *Signer) GenerateUploadURL(ctx context.Context, objectPath, contentType string) (string, time.Time, error) {
-	expires := time.Now().Add(30 * time.Minute)
+// TTL scales with estimatedSizeBytes — see signedURLTTLFor.
+func (s *Signer) GenerateUploadURL(ctx context.Context, objectPath, contentType string, estimatedSizeBytes int64) (string, time.Time, error) {
+	expires := time.Now().Add(signedURLTTLFor(estimatedSizeBytes))
 
 	opts := &storage.SignedURLOptions{
 		Scheme:      storage.SigningSchemeV4,

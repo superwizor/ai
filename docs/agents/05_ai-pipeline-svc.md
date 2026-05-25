@@ -4,10 +4,12 @@
 
 ## Mission
 
-The most critical service. Three workloads under one Go module:
-1. **`stt-worker`** (Cloud Functions Gen2) — Pub/Sub-triggered. Calls Chirp 3 STT in the session's audio language, optionally enables native diarization per a static language allow-list, persists transcript, publishes `transcript.completed`, deletes audio (P1 + ADR-IMPL-006).
-2. **`llm-worker`** (Cloud Functions Gen2) — Pub/Sub-triggered. Loads transcript, runs LLM diarization + clinical analysis (Gemini 2.5 Flash-Lite today), persists report + HiTOP measurements, publishes `report.generated`. Branches at call-1 between "cluster + label" (no native speakers) and "label only" (native speakers from Chirp).
-3. **`ai-pipeline-svc` Cloud Run service** — `/health` only since `feat/llm-optimisation`. Historical Gin worker stubs (`STTWorkerHandler` / `LLMWorkerHandler`) were dead code; removed.
+The most critical service. Five workloads under one Go module:
+1. **`stt-worker`** aka `stt-submit` (Cloud Functions Gen2) — Pub/Sub-triggered. Submits Chirp 3 BatchRecognize with `GcsOutputConfig`, INSERTs a row into `stt_operations`, and acks immediately. Does NOT wait for Chirp. Entry point: `ProcessAudio`.
+2. **`stt-finalize`** (Cloud Functions Gen2; Stage 1 of feat/stt-long_audio_support, 2026-05-22) — Eventarc OBJECT_FINALIZE-triggered on `<project>-transcripts-raw` bucket. Reads Chirp's output JSON, runs `pkg/transcription/chunker`, persistTranscript (encrypted blob, ADR-IMPL-006), publishes `transcript.completed`. Shares the same source zip + SA as stt-worker (same package `sttworker`); entry point: `ProcessTranscriptObject`.
+3. **`stt-watchdog`** (Cloud Functions Gen2 HTTP) — Cloud Scheduler-invoked every 15 min. Polls `stt_operations` rows older than 30 min with `finalized_at IS NULL`, asks Chirp's Operations API for status, and either drives finalize manually (DONE) or marks the session FAILED (ERROR). Belt-and-suspenders for dropped OBJECT_FINALIZE events. Shared source zip; entry point: `ProcessWatchdog`.
+4. **`llm-worker`** (Cloud Functions Gen2) — Pub/Sub-triggered on `transcript.completed`. Loads transcript, runs LLM diarization + clinical analysis (Gemini 2.5 Flash-Lite today), persists report + HiTOP measurements, publishes `report.generated`. Branches at call-1 between "cluster + label" (no native speakers) and "label only" (native speakers from Chirp).
+5. **`ai-pipeline-svc` Cloud Run service** — `/health` only since `feat/llm-optimisation`. Historical Gin worker stubs (`STTWorkerHandler` / `LLMWorkerHandler`) were dead code; removed.
 
 ## Status (2026-05-14)
 
@@ -62,45 +64,95 @@ pkg/cryptobox/                       # envelope encryption
 ## Pipeline flow
 
 ```
-ingestion-svc CompleteAudioUpload:
+Flutter PUT to GCS (via signed URL from ingestion-svc CreateAudioUpload)
+       ↓
+Flutter calls ingestion-svc CompleteAudioUpload, which:
+  - probes ffprobe duration (authoritative, ignores client-claimed value)
   - copies patient_user.ui_language → session.language_code (BCP47-ized)
-  - creates audio_upload + signed URL
+  - creates the session row (this is where session_id is first assigned)
+  - on long audio: invokes ConvertAudio → server-side ffmpeg chunking
+  - calls PublishAudioUploaded({session_id, upload_id, object_path})
        ↓
-Flutter PUT to GCS
+Pub/Sub topic audio.uploaded   (NOT a GCS bucket notification — the raw
+  GCS object path has no session_id since the session is created
+  *during* CompleteAudioUpload, after OBJECT_FINALIZE has already fired)
        ↓
-GCS OBJECT_FINALIZE → Eventarc → Pub/Sub audio.uploaded
-       ↓
-stt-worker (ProcessAudio):
+stt-submit (ProcessAudio, refactored 2026-05-22 in feat/stt-long_audio_support):
   1. update sessions.status = TRANSCRIBING
-  2. lang := session.language_code (was hardcoded "pl-PL"; now from patient)
-  3. nativeDiarize := chirp3DiarizationLanguages[lang]    (static map, defaults all-false)
-  4. transcribeAudio(gcsURI, lang, useNativeDiarization=nativeDiarize)
-       → Chirp 3 BatchRecognize, eu-speech.googleapis.com endpoint
-       → returns []chunker.Word (with timestamps + confidence;
-         speaker_tag populated when native diarization is on)
-  5. chunker.ChunkByPauses(words, DefaultConfig{600ms, 300ms, 60s})
-       → []chunker.Chunk (speaker_tag flows through chunk grouping)
-  6. persistTranscript: encrypt blob → transcripts row + transcript_segments
-       (per ADR-IMPL-006, blob is canonical; segments.speaker_tag = native or 0)
-  7. update sessions.status = ANALYZING
-  8. publishTranscriptCompleted on transcript.completed
-  9. (TODO: delete audio object — currently relies on GCS OLM 48h)
- 10. ACK Pub/Sub
+  2. lang := session.language_code (from ingestion-svc patient-user copy)
+  3. nativeDiarize := operator opt-in AND chirp3DiarizationLanguages[lang]
+  4. Pre-flight SELECT chunk_index FROM stt_operations WHERE session_id = $1
+       — lets a redelivery skip already-submitted chunks
+  5. For each chunk plan (Stage 1: always one virtual chunk; Stage 2
+     will read audio_chunks rows after server-side ffmpeg split):
+       a. submitBatchRecognize(gcsURI, outputPrefix=
+            gs://transcripts-raw/{sid}/chunk_{i}/, lang, nativeDiarize)
+            → Chirp 3 BatchRecognize, eu-speech endpoint
+            → GcsOutputConfig.Uri = outputPrefix (NO op.Wait)
+            → returns operation_name (Chirp processes async)
+       b. INSERT INTO stt_operations (...) — UNIQUE on
+            (session_id, chunk_index); 23505 races silently dropped
+  6. ACK Pub/Sub (return nil)
+       ↓
+   Chirp does its work async (1-30 min). When it finishes it writes
+   `transcript_{op_hash}.json` to the prefix configured above.
+       ↓
+GCS OBJECT_FINALIZE on transcripts-raw → Eventarc → stt-finalize
+       ↓
+stt-finalize (ProcessTranscriptObject):
+  1. ParseOutputObjectPath(object_name) → (session_id, chunk_index).
+     Sidecar metadata files / unrelated uploads: silently skip.
+  2. UPDATE stt_operations SET finalized_at = now()
+       WHERE (session_id, chunk_index) AND finalized_at IS NULL
+       — 0 rows affected (Pub/Sub redelivery) → ack and return
+  3. countPendingChunks(session_id) > 0 → ack (waiting on siblings)
+  4. acquireMergeLock(): SELECT status FROM sessions FOR UPDATE.
+       If TRANSCRIBING → flip to MERGING. Else (already merged /
+       failed) → ack. Only one finalize invocation wins the lock.
+  5. loadOperationsForSession → for each chunk:
+       a. List GCS prefix → find transcript_*.json
+       b. protojson.Unmarshal into speechpb.BatchRecognizeResponse
+       c. ParseChirp3Results (unchanged) — propagates file-level
+          Chirp errors via the "chirp 3 returned" prefix that
+          isTerminalSTTError already catches
+       d. fillSpeakerLabels (ADR-IMPL-007a sparse-label recovery,
+          per chunk, before merge)
+  6. sttgcs.MergeChirpResults(parts) — Stage 1 single-chunk passthrough;
+     Stage 2 will overlay time-anchored cross-chunk label alignment
+  7. chunker.ChunkByPauses(words, DefaultConfig{600ms, 300ms, 60s})
+  8. persistTranscript: encrypt blob → transcripts row +
+       transcript_segments. On 23505 against
+       transcripts(session_id) UNIQUE (migration 000021) →
+       fetch the existing row's id and continue. Recovers from a
+       prior attempt that committed transcripts but crashed before
+       publishTranscriptCompleted.
+  9. update sessions.status = ANALYZING
+ 10. publishTranscriptCompleted on transcript.completed
+ 11. ACK
 
-  On error:
-    - Classify via isTerminalSTTError (added 2026-05-20):
-      - Terminal (InvalidArgument / OutOfRange / NotFound /
-        PermissionDenied / Unauthenticated / file-level chirp errors /
-        codec-rejection signatures) → mark FAILED + return nil → ACK
-        the Pub/Sub message → no retry. Prevents the 6× cold-start
-        retry storm on unrecoverable inputs (bad codec, oversized file,
-        missing GCS object).
-      - Transient (Internal / Unavailable / DeadlineExceeded / DB or
-        KMS hiccups / unknown errors) → mark FAILED + return err →
-        Pub/Sub retries per topic policy.
-    - The session-status poison guard at handler entry remains as a
-      second line of defense for the edge case where the first attempt
-      crashes before reaching isTerminalSTTError.
+  On error in mergeAndPersist (deferred handler):
+    - Terminal (Chirp file-level error / codec rejection): mark
+      sessions.status = FAILED, record finalize_error on the chunk
+      row. The session is dead.
+    - Transient (DB / KMS / GCS 5xx / unknown): revert
+      sessions.status = TRANSCRIBING. Pub/Sub will redeliver the
+      OBJECT_FINALIZE event (or the watchdog will rescue); the
+      idempotent `finalized_at IS NULL` guard makes that safe.
+
+  Without the revert, a transient failure mid-merge would leave the
+  session in MERGING forever — the status guard in acquireMergeLock
+  would never let any worker re-enter.
+
+stt-watchdog (ProcessWatchdog, HTTP, Cloud Scheduler */15 min):
+  - SELECT * FROM stt_operations WHERE submitted_at < now()-30min
+       AND finalized_at IS NULL
+  - For each row: speechClient.BatchRecognizeOperation(op.OperationID).Poll
+       - Pending → log + leave alone
+       - Error → record_finalize_error, mark session FAILED
+       - Done → drive finalize manually (markChunkFinalized +
+              finalizeIfReady)
+  - Returns 200 unconditionally (Cloud Scheduler non-2xx retry is
+    redundant with the next-tick scan)
        ↓
 Pub/Sub transcript.completed
        ↓
@@ -566,6 +618,7 @@ Migration `000008_modality_prompts_pl.up.sql` populates the Polish prompts. If p
 | `hitop_measurements` | — | yes (insert in llm-worker) |
 | `modalities` | yes (read prompt JSON) | — |
 | `audio_uploads` | yes (status check) | yes (status update on success) |
+| `stt_operations` | yes (stt-finalize merger + stt-watchdog scan) | yes (insert in stt-submit, finalize_at flip in stt-finalize, finalize_error stamp on terminal Chirp errors) |
 | `clinical_memory`, `rag_memories` | yes (RAG retrieval — Phase 3) | yes (Phase 3) |
 | `users.report_preferences` | yes (JSONB JOIN'd in `loadSessionContext` since 2026-05-18) | — |
 

@@ -197,6 +197,18 @@ func recursiveSplit(words []Word, maxDurationMS int) []Chunk {
 		return []Chunk{}
 	}
 
+	// Single-word base case: emit even when the word's own duration
+	// exceeds maxDurationMS. Without this guard, a Chirp-emitted word
+	// with a > 60s timestamp (rare — only seen on silence-padded
+	// noise inputs, e.g. an all-quiet 22-min stream) would cause
+	// infinite recursion: the size-1 splitIdx=0 path produces a
+	// (words[:1], words[1:]) split where words[1:] is empty and
+	// words[:1] is identical to the input. Surfaced 2026-05-22 on
+	// the feat/stt-long_audio_support long-session e2e.
+	if len(words) == 1 {
+		return []Chunk{wordsToChunk(words)}
+	}
+
 	duration := words[len(words)-1].EndMS - words[0].StartMS
 	if duration <= int64(maxDurationMS) {
 		return []Chunk{wordsToChunk(words)}

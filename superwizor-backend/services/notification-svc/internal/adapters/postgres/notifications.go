@@ -247,13 +247,24 @@ type UpdateDeliveryStatusParams struct {
 }
 
 func (s *Store) UpdateNotificationDeliveryStatus(ctx context.Context, p UpdateDeliveryStatusParams) error {
+	// $2 is referenced twice in the statement — once as the value
+	// written to the `status` column (type: notification_status enum),
+	// and once inside a CASE expression compared against the text
+	// literal 'sent'. Without explicit casts, pgx fails type inference
+	// with: ERROR: inconsistent types deduced for parameter $2
+	// (SQLSTATE 42P08). Casting both occurrences pins the type to the
+	// enum and lets Postgres coerce the literal 'sent' through the
+	// enum's implicit text-from-enum cast.
 	_, err := s.Pool.Exec(ctx, `
 		UPDATE notification_deliveries
-		SET status         = $2,
+		SET status         = $2::notification_status,
 		    fcm_message_id = $3,
 		    error_code     = $4,
 		    error_message  = $5,
-		    sent_at        = CASE WHEN $2 = 'sent' THEN now() ELSE sent_at END
+		    sent_at        = CASE WHEN $2::notification_status = 'sent'::notification_status
+		                            THEN now()
+		                            ELSE sent_at
+		                     END
 		WHERE id = $1`,
 		p.ID, p.Status, p.FCMMessageID, p.ErrorCode, p.ErrorMessage)
 	return err

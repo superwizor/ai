@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/modalities.dart';
@@ -8,6 +10,8 @@ import '../models/patient.dart';
 import '../models/session.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
+import '../uploads/pending_upload.dart';
+import '../uploads/upload_queue_provider.dart';
 import '../widgets/edit_patient_modal.dart';
 import 'new_session_screen.dart';
 import 'recording_screen.dart';
@@ -196,17 +200,51 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
   Widget build(BuildContext context) {
     final patientAsync = ref.watch(patientsProvider);
     final sessionsAsync = ref.watch(sessionsProvider);
+    final pendingUploads =
+        ref.watch(pendingUploadsForPatientProvider(widget.patientId));
 
-    // Always re-fetch sessions on entry. Backend is the source of
-    // truth for session.status (CREATED → TRANSCRIBING → ANALYZING →
-    // COMPLETED), and we may be returning here from RecordingScreen
-    // /SessionStatusScreen where status just transitioned. The
-    // previous "only fetch if not cached" check kept stale state
-    // forever — caused the bug where finished sessions kept routing
-    // to SessionStatusScreen instead of TranscriptScreen.
+    // Force a fresh ListSessions fetch on every screen entry. The
+    // SWR cached-read path served by `fetchSessions` can return a
+    // pre-completion snapshot when an upload finished while the
+    // user was on a different screen — _refreshKartoteka in
+    // upload_queue_provider runs at completion but the resulting
+    // cache write can race against app-lifecycle events (force-
+    // kill, background eviction). Doing a force refresh here costs
+    // one gRPC per entry and bounds the "ghost upload" UX bug
+    // confirmed on session 18d1b6d6 (2026-05-24).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(sessionsProvider.notifier).fetchSessions(widget.patientId);
+      unawaited(
+        ref.read(sessionsProvider.notifier).forceRefresh(widget.patientId),
+      );
     });
+
+    // Auto-refresh hook: when any in-flight upload for THIS patient
+    // transitions to a terminal state (drops from
+    // pendingUploadsForPatientProvider, which excludes completed +
+    // failed), invalidate sessionsProvider so the freshly-created
+    // session row appears immediately. Without this, the user has
+    // to manually pull-to-refresh or navigate away+back to see the
+    // session after long-audio chunking finishes server-side.
+    //
+    // Note: we deliberately treat the first emission (prev=null) as
+    // prevLen=0 and still react when the list shrinks. Combined with
+    // the forceRefresh on entry above, this catches the case "an
+    // upload completes while the user is mid-navigation".
+    ref.listen<List<PendingUpload>>(
+      pendingUploadsForPatientProvider(widget.patientId),
+      (prev, next) {
+        final prevLen = prev?.length ?? 0;
+        if (prevLen > next.length) {
+          // At least one row left the active set — either completed
+          // (good, refresh) or failed (also refresh so any partial
+          // status the server may have stamped surfaces). Use the
+          // force variant so we don't trust the cache here either.
+          ref
+              .read(sessionsProvider.notifier)
+              .forceRefresh(widget.patientId);
+        }
+      },
+    );
 
     return Scaffold(
       backgroundColor: EuphireColors.obsidianBlack,
@@ -290,7 +328,31 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                               sessionsMap[widget.patientId] ?? [];
                           final reversedSessions =
                               sessions.reversed.toList();
-                          if (reversedSessions.isEmpty) {
+                          // Dedup: if a pending upload already has a
+                          // sessionId AND that session is in the server
+                          // list, drop the placeholder. The Hive-queue
+                          // placeholder is for the gap BEFORE the
+                          // session row exists in ListSessions; once
+                          // it does (Option E: from CreateAudioUpload
+                          // onward, in PENDING_UPLOAD status), the
+                          // server-side card supersedes.
+                          //
+                          // Option E note: under Option E the server
+                          // returns a PENDING_UPLOAD card for every
+                          // active upload, so this dedup turns the
+                          // Hive placeholder into a "fallback for
+                          // legacy / offline" affordance — Hive shows
+                          // it only when ListSessions hasn't been
+                          // refreshed yet.
+                          final knownSessionIds = sessions
+                              .map((s) => s.id)
+                              .toSet();
+                          final visiblePending = pendingUploads
+                              .where((u) => u.sessionId == null
+                                  ? true
+                                  : !knownSessionIds.contains(u.sessionId))
+                              .toList(growable: false);
+                          if (reversedSessions.isEmpty && visiblePending.isEmpty) {
                             return Center(
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 120.0, left: 32.0, right: 32.0),
@@ -336,13 +398,38 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                               ),
                             );
                           }
+                          // Placeholders sit at the TOP of the list:
+                          // newest activity first, matching the
+                          // reversed real-sessions ordering below.
+                          final totalCount =
+                              visiblePending.length + reversedSessions.length;
                           return ListView.builder(
                             shrinkWrap: true,
                             physics:
                                 const NeverScrollableScrollPhysics(),
-                            itemCount: reversedSessions.length,
+                            itemCount: totalCount,
                             itemBuilder: (context, index) {
-                              final session = reversedSessions[index];
+                              if (index < visiblePending.length) {
+                                return _PendingUploadCard(
+                                  upload: visiblePending[index],
+                                );
+                              }
+                              final session = reversedSessions[
+                                  index - visiblePending.length];
+                              // Option E (2026-05-25): server-side
+                              // PENDING_UPLOAD sessions render with
+                              // the same placeholder style as the
+                              // Hive-queue-driven _PendingUploadCard.
+                              // Single visible affordance whether
+                              // the row was created server-side
+                              // (Flutter restart, cross-device) or
+                              // is mid-flight client-side.
+                              if (session.status ==
+                                  SessionStatus.pendingUpload) {
+                                return _PendingUploadServerCard(
+                                  session: session,
+                                );
+                              }
                               return _SessionCard(
                                 session: session,
                                 patientId: widget.patientId,
@@ -749,6 +836,199 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
 }
 
 // ─── Session Card (extracted from inline builder) ────────────────────
+
+/// Card shown for an in-flight upload before its sessions row exists
+/// server-side. Long-audio "Wgraj Plik z Dysku" can take several
+/// minutes between PUT and CompleteAudioUpload finishing its ffmpeg
+/// chunking — without this card the user sees an empty session list
+/// during that window. Disappears the instant the queue row reaches
+/// `completed` and the real `_SessionCard` takes its place.
+///
+/// Intentionally non-clickable: tapping a row that has no session_id
+/// yet would have nowhere meaningful to navigate to (the
+/// `SessionStatusScreen` is keyed on session_id). When `sessionId` is
+/// populated (which happens at the very end of the upload, briefly
+/// before the row flips to `completed`), the card becomes tappable
+/// and routes to the status screen.
+class _PendingUploadCard extends StatelessWidget {
+  final PendingUpload upload;
+
+  const _PendingUploadCard({required this.upload});
+
+  String get _statusLabel {
+    switch (upload.phase) {
+      case UploadPhase.pending:
+        return 'W kolejce…';
+      case UploadPhase.created:
+        return 'Wysyłanie audio…';
+      case UploadPhase.uploaded:
+        return 'Przetwarzanie audio…';
+      case UploadPhase.converted:
+        return 'Finalizowanie sesji…';
+      case UploadPhase.completed:
+      case UploadPhase.failed:
+        // Shouldn't reach this widget — pendingUploadsForPatientProvider
+        // filters terminal states out. Kept exhaustive so future
+        // enum additions trigger a compile warning.
+        return '';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sessionId = upload.sessionId;
+    final canNavigate = sessionId != null && sessionId.isNotEmpty;
+    return InkWell(
+      onTap: canNavigate
+          ? () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => SessionStatusScreen(sessionId: sessionId),
+                ),
+              );
+            }
+          : null,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: EuphireColors.frostWhite.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: EuphireColors.ember.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: EuphireColors.ember,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Nowa sesja',
+                    style: TextStyle(
+                      fontFamily: 'Merriweather',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: EuphireColors.frostWhite,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _statusLabel,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 13,
+                      color: EuphireColors.mist,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (canNavigate)
+              const Icon(
+                Icons.chevron_right,
+                color: EuphireColors.mist,
+                size: 20,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Server-side PENDING_UPLOAD session card. Visually identical to
+/// the Hive-queue-driven _PendingUploadCard so the user gets the
+/// same affordance regardless of which device started the upload.
+/// Tapping routes to SessionStatusScreen (we have a real sessionId
+/// from the server). Option E (2026-05-25,
+/// docs/14_INGESTION_EARLY_SESSION_CREATION.md).
+class _PendingUploadServerCard extends StatelessWidget {
+  final Session session;
+
+  const _PendingUploadServerCard({required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SessionStatusScreen(sessionId: session.id),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: EuphireColors.frostWhite.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: EuphireColors.ember.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: EuphireColors.ember,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    session.modality.isNotEmpty
+                        ? session.modality
+                        : 'Nowa sesja',
+                    style: const TextStyle(
+                      fontFamily: 'Merriweather',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: EuphireColors.frostWhite,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Oczekiwanie na audio…',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 13,
+                      color: EuphireColors.mist,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              color: EuphireColors.mist,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _SessionCard extends StatelessWidget {
   final Session session;

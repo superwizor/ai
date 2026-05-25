@@ -10,16 +10,25 @@
 // plan v1.4 §Etap 5b.
 //
 // We do NOT consume reports.speaker_role_inference (per plan).
+//
+// Cache: SessionDetailsRepository reads from Hive first (mirroring
+// TranscriptScreen — both screens share the same SessionDetailsDto
+// row, so navigating between them hits the cache instead of firing
+// duplicate GetSessionDetails RPCs). Background refresh on stale.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../cache/dto/report_dto.dart';
+import '../cache/dto/session_details_dto.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
+import '../repositories/session_details_repository.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_segmented_control.dart';
 import '../widgets/report_rating_widget.dart';
@@ -39,7 +48,7 @@ class ReportScreen extends ConsumerStatefulWidget {
 class _ReportScreenState extends ConsumerState<ReportScreen> {
   bool _loading = true;
   String? _error;
-  clinical_pb.GetSessionDetailsResponse? _data;
+  SessionDetailsDto? _data;
   List<_ReportSection>? _sections;
 
   final ScrollController _mainScrollController = ScrollController();
@@ -49,7 +58,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   void initState() {
     super.initState();
     _mainScrollController.addListener(_onScroll);
-    _load();
+    _loadInitial();
   }
 
   @override
@@ -101,16 +110,49 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     }
   }
 
-  Future<void> _load() async {
+  Future<void> _loadInitial() async {
+    // Cache-first: paint any hit immediately so navigating
+    // Transcript → Report (or vice versa) doesn't fire a second
+    // GetSessionDetails RPC. The TranscriptScreen-side cache is the
+    // same SessionDetailsDto row, keyed by sessionId, so the hit
+    // rate is effectively 100% for the common back-and-forth flow.
+    final repo = await ref.read(sessionDetailsRepositoryProvider.future);
+    if (repo == null) {
+      // Cache layer not ready (cold start before auth resolves). Go
+      // straight to network — repository will populate cache on a
+      // later rebuild.
+      await _refreshFromBackend(showLoaderIfEmpty: true);
+      return;
+    }
+
+    final cached = await repo.getCached(widget.sessionId);
+    if (cached.hasData && mounted) {
+      _applyData(cached.data!);
+      if (cached.isStale) {
+        // Schedule a background refresh; the user keeps reading
+        // the cached report while we update.
+        unawaited(_refreshFromBackend(showLoaderIfEmpty: false));
+      }
+      return;
+    }
+
+    await _refreshFromBackend(showLoaderIfEmpty: true);
+  }
+
+  Future<void> _refreshFromBackend({required bool showLoaderIfEmpty}) async {
     try {
-      final res = await ref.read(grpcClientsProvider).clinical.getSessionDetails(
-            clinical_pb.GetSessionDetailsRequest(sessionId: widget.sessionId),
-          );
+      if (showLoaderIfEmpty && mounted) setState(() => _loading = true);
+
+      final repo = await ref.read(sessionDetailsRepositoryProvider.future);
+      late final SessionDetailsDto fresh;
+      if (repo != null) {
+        fresh = await repo.refresh(widget.sessionId);
+      } else {
+        fresh = await _directFetchFallback();
+      }
+
       if (!mounted) return;
-      setState(() {
-        _data = res;
-        _loading = false;
-      });
+      _applyData(fresh);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -119,6 +161,29 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         });
       }
     }
+  }
+
+  /// Direct gRPC fetch used only when the repository isn't available
+  /// yet (cache still opening). Doesn't write to cache — that's the
+  /// repository's job and will happen on the next provider rebuild.
+  Future<SessionDetailsDto> _directFetchFallback() async {
+    final clients = ref.read(grpcClientsProvider);
+    final res = await clients.clinical.getSessionDetails(
+      clinical_pb.GetSessionDetailsRequest(sessionId: widget.sessionId),
+    );
+    return SessionDetailsDto.fromProto(res);
+  }
+
+  void _applyData(SessionDetailsDto fresh) {
+    setState(() {
+      _data = fresh;
+      // Re-derive sections on each successful fetch — a stale-then-
+      // fresh refresh could change the report markdown if the user
+      // re-ran analysis.
+      _sections = null;
+      _loading = false;
+      _error = null;
+    });
   }
 
   @override
@@ -189,7 +254,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   textAlign: TextAlign.center),
               const SizedBox(height: 24),
               ElevatedButton(
-                  onPressed: _load, child: Text(t.common_retry)),
+                  onPressed: () => _refreshFromBackend(showLoaderIfEmpty: true),
+                  child: Text(t.common_retry)),
             ],
           ),
         ),
@@ -349,7 +415,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 }
 
 class _SummaryCard extends StatelessWidget {
-  final clinical_pb.Report report;
+  final ReportDto report;
   final _ReportPayload payload;
 
   const _SummaryCard({required this.report, required this.payload});
@@ -397,7 +463,7 @@ class _ReportPayload {
         reportMarkdown: '',
       );
 
-  static _ReportPayload parse(clinical_pb.Report report) {
+  static _ReportPayload parse(ReportDto report) {
     if (report.content.isEmpty) {
       return empty();
     }

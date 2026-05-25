@@ -1,0 +1,14 @@
+-- Reverse of 000022_session_status_merging.up.sql.
+--
+-- Postgres doesn't support removing values from an enum directly.
+-- The canonical "down" path is:
+--   1. UPDATE sessions SET status = 'FAILED' WHERE status = 'MERGING';
+--   2. CREATE TYPE session_status_new AS ENUM (...) without MERGING;
+--   3. ALTER TABLE sessions ALTER COLUMN status TYPE session_status_new
+--        USING status::text::session_status_new;
+--   4. DROP TYPE session_status; ALTER TYPE session_status_new RENAME ...
+--
+-- For staging rollback this is destructive. Don't run down without
+-- approval. Empty migration body — manual recovery if absolutely
+-- needed.
+SELECT 1; -- no-op

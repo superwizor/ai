@@ -4,7 +4,19 @@
 
 ## Mission
 
-The "secure upload door". Issues V4 signed URLs to GCS so the Flutter app uploads audio **directly to Cloud Storage** (not through this service). Records `upload_tickets`, then a GCS `OBJECT_FINALIZE` event flows through Eventarc → Pub/Sub `audio.uploaded` → ai-pipeline-svc's `stt-worker`.
+The "secure upload door". Issues V4 signed URLs to GCS so the Flutter app uploads audio **directly to Cloud Storage** (not through this service). Records `upload_tickets`, then on `CompleteAudioUpload` this service publishes a structured `{session_id, upload_id, object_path}` event to Pub/Sub topic `audio.uploaded` via `internal/adapters/pubsub/publisher.go::PublishAudioUploaded`. Downstream subscribers (ai-pipeline-svc `stt-worker`, notification-svc `notification-worker-on-uploaded`) pick that up.
+
+> Historical note (removed 2026-05-23): the `audio_uploads` GCS bucket
+> used to also have a `google_storage_notification` fan-out to the
+> same `audio.uploaded` topic. That was the legacy STT-kickoff path
+> from before ingestion-svc grew the explicit publisher, and it
+> emitted raw `storage#object` JSON that no downstream subscriber
+> could parse. `stt-worker` ack'd-and-ignored cleanly, but
+> `notification-worker-on-uploaded` returned an error → Pub/Sub
+> redelivered with backoff → the backlog delayed legitimate events
+> by minutes on busy days. Removed via `infra/modules/storage/main.tf`.
+> If you ever re-introduce a bucket notification, route it to a
+> different topic.
 
 Why direct upload: 300 MB through Cloud Run = ~10 GB egress per 100 sessions + 15-minute request timeout. Both unacceptable.
 
@@ -110,6 +122,64 @@ retry / dismiss failed rows manually. Errors that classify as
 there with the gRPC error message intact — keep your error messages
 actionable for the therapist who'll read them.
 
+### Known recovery gap: orphaned GCS objects (2026-05-23)
+
+There is **no server-side reaper** for the narrow case where the
+GCS PUT succeeds but `CompleteAudioUpload` is never called *and*
+the Flutter Hive box is also lost (uninstall, app-data wipe,
+device switch). In that case:
+
+- The file sits in `gs://<project>-audio-uploads/...` until the
+  bucket's 48h OLM rule deletes it.
+- `audio_uploads.session_id` stays NULL forever (the row exists
+  from `CreateAudioUpload` but never advances).
+- Nothing publishes `audio.uploaded` — the topic only carries
+  events that ingestion-svc emits from inside `CompleteAudioUpload`.
+- The recording is silently lost.
+
+What **is** covered (no further work needed):
+- App crash / OS kill / network drop / phone reboot between PUT
+  and `CompleteAudioUpload`. Hive box persists every phase
+  transition (see `upload_worker.dart:77-95`); on next launch
+  `UploadQueueRunner` re-walks the queue and calls the missing
+  RPC. This is the ≥99% case.
+
+What is **NOT** covered:
+- Hive box loss (uninstall / clear-app-data / new device with
+  same account but no migration).
+- `ingestion-svc.PublishAudioUploaded` failing silently while
+  the row + GCS object are otherwise consistent (it logs+continues
+  at server.go:391-393 today; no retry, no Pub/Sub publish
+  exactly-once guarantee).
+
+Historical note: the `audio_uploads` bucket used to have a
+`google_storage_notification` fan-out to the same `audio.uploaded`
+topic. That was sometimes mistaken for a recovery hook, but it
+never functioned as one — the raw `storage#object` payload has
+no `session_id` (the session row isn't created until
+`CompleteAudioUpload`, which fires *after* OBJECT_FINALIZE), so
+`stt-worker` always dropped these events (`main.go:140-143`) and
+`notification-worker` choked on them. Removed 2026-05-23.
+
+If/when this gap matters, the symmetric solution is a Cloud
+Scheduler "ingestion-reaper" job (analogous to `stt-watchdog`):
+
+```sql
+SELECT id, bucket_name, object_path, therapist_id, patient_file_id
+FROM audio_uploads
+WHERE created_at < now() - interval '1 hour'
+  AND session_id IS NULL
+```
+
+For each row: confirm the GCS object exists (it does → PUT
+landed but Complete didn't), then run the same server-side
+finalize that `CompleteAudioUpload` would have done (create
+session, publish structured `audio.uploaded`, mark
+`audio_uploads.session_id`). Idempotent against a late Flutter
+queue retry because the `session_id IS NULL` filter naturally
+drops rows the client already finished. Not built yet — file an
+issue if the orphan rate becomes nonzero.
+
 ### CompleteAudioUpload codec gate (added 2026-05-20)
 
 Defense in depth for the M4A flow. `CompleteAudioUpload` now fetches
@@ -194,7 +264,7 @@ The bucket has a **dead-man-switch** policy: every object is auto-deleted after 
 | Cloud Run `ingestion-svc` | public, VPC connector, min=1, max=20, `DATABASE_URL` from secret |
 | GCS bucket `${PROJECT}-audio-uploads` | lifecycle 48h, CMEK |
 | Pub/Sub `audio.uploaded` | with DLQ `audio.uploaded.dlq`, retry 6 attempts |
-| Eventarc trigger | `OBJECT_FINALIZE` on bucket → `audio.uploaded` topic → `stt-worker` Cloud Function |
+| Pub/Sub `audio.uploaded` | published by `ingestion-svc.PublishAudioUploaded` inside `CompleteAudioUpload`; consumed by `stt-worker` + `notification-worker-on-uploaded`. (No bucket notification — the GCS object path has no `session_id` since the session is created during CompleteAudioUpload, *after* OBJECT_FINALIZE fires, so a raw GCS event could never carry one.) |
 
 ## Local dev loop
 

@@ -13,10 +13,21 @@ STT_DIR="$AI_SVC_DIR/cmd/stt-worker"
 LLM_DIR="$AI_SVC_DIR/cmd/llm-worker"
 NOTIFICATION_WORKER_DIR="$NOTIFICATION_SVC_DIR/cmd/worker"
 
-echo "Packaging STT worker..."
+echo "Packaging STT worker (shared zip: stt-submit + stt-finalize + stt-watchdog)..."
+# Single zip bundles three Cloud Function entry points registered in
+# the sttworker package via init() — see cmd/stt-worker/{main.go,
+# finalize.go, watchdog.go}. Each Cloud Functions Gen2 resource in
+# terraform points at the same zip but with a different
+# build_config.entry_point. Per Open Q4 in
+# docs/13_STT_GCS_CALLBACK_AND_CHUNKING.md.
 rm -rf "$OUT_DIR/.tmp/stt-worker"
 mkdir -p "$OUT_DIR/.tmp/stt-worker"
-cp "$STT_DIR/main.go" "$OUT_DIR/.tmp/stt-worker/"
+# Glob all .go files (main.go, finalize.go, watchdog.go, stt_operations.go).
+# Excludes _test.go via the shell glob behavior + post-copy cleanup.
+cp "$STT_DIR"/*.go "$OUT_DIR/.tmp/stt-worker/"
+# Test files don't belong in the deploy zip — they import testing and
+# inflate the dependency graph.
+rm -f "$OUT_DIR/.tmp/stt-worker/"*_test.go
 cp "$AI_SVC_DIR/go.mod" "$OUT_DIR/.tmp/stt-worker/"
 cp "$AI_SVC_DIR/go.sum" "$OUT_DIR/.tmp/stt-worker/"
 

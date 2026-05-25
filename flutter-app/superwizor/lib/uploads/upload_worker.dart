@@ -115,10 +115,19 @@ class UploadWorker {
   Future<PendingUpload> _doCreate(PendingUpload u) async {
     try {
       final res = await _io.createUpload(u);
+      // Option E (2026-05-25): server returns session_id from this
+      // point onward. Capture it immediately so the patient sessions
+      // screen can resolve the new row (status=PENDING_UPLOAD) the
+      // very next time it pulls ListSessions. Empty string ↔ legacy
+      // server during migration window — leave PendingUpload.sessionId
+      // unset, fall back to the phase=completed pickup as before.
+      final newSessionId =
+          res.sessionId.isNotEmpty ? res.sessionId : u.sessionId;
       return u.copyWith(
         phase: UploadPhase.created,
         uploadId: res.uploadId,
         signedUrl: res.signedUrl,
+        sessionId: newSessionId,
         attemptCount: 0,
         clearLastError: true,
       );

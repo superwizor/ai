@@ -6,6 +6,16 @@ Tracked-but-not-yet-scheduled items. Each entry: what's broken, why it matters, 
 
 ## High priority
 
+### Early session creation (Option E) — patient sessions list shows new session immediately
+
+**Status**: design complete, not started. Tracked in [`docs/14_INGESTION_EARLY_SESSION_CREATION.md`](../14_INGESTION_EARLY_SESSION_CREATION.md). Estimated 1 week, one engineer.
+
+**What's broken**: `ingestion-svc.CompleteAudioUpload` calls `CreateSession` at the END of the handler — after ffprobe + chunking — so for a long audio (>1140s) the `sessions` row doesn't exist for 3-10 min after Flutter's PUT finishes. Therapist returns to kartoteka, sees an empty session list, gets confused. Band-aid (`_PendingUploadCard` from commit `0d48eed`) bridges the gap visually but the DB still doesn't have a row.
+
+**Why it matters**: same code path serves both "Wgraj Plik z Dysku" and live recording — both paths hit the same gap. The longer audio is, the more visible the gap. Also blocks the bucket-notification-based orphan-recovery path because the GCS object path doesn't yet contain `session_id`.
+
+**Where the fix is**: move `CreateSession` from `CompleteAudioUpload` to `CreateAudioUpload`. Change object path to `{therapist}/{session_id}/{ts}.{ext}`. Add `session_id` to `CreateAudioUploadResponse`. Migration adds `PENDING_UPLOAD` to `session_status` enum. Full design doc has the migration plan, failure-mode table, and follow-on bucket-notification work that this unlocks.
+
 ### Idempotency keys are silently ignored on every RPC that declares one
 
 **Status**: not started. Plan written in commit conversation 2026-05-12 (see "Plan: Fix broken idempotency_key on CreatePatientFile"). Spawned ccd task exists but hasn't been executed.

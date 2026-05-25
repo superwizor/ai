@@ -85,10 +85,12 @@ class SessionDto {
         modality: name.isNotEmpty ? name : 'Rozmowa',
         date: createdAt.toLocal(),
         duration: Duration(seconds: durationSeconds),
-        status: status == 'COMPLETED'
-            ? SessionStatus.completed
-            : status == 'ERROR' || status == 'FAILED'
-                ? SessionStatus.error
-                : SessionStatus.inProgress,
+        status: status == 'PENDING_UPLOAD'
+            ? SessionStatus.pendingUpload
+            : status == 'COMPLETED'
+                ? SessionStatus.completed
+                : status == 'ERROR' || status == 'FAILED'
+                    ? SessionStatus.error
+                    : SessionStatus.inProgress,
       );
 }

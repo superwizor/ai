@@ -19,6 +19,8 @@ import (
 
 	fs "cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 type Writer struct {
@@ -43,20 +45,77 @@ type SessionState struct {
 	UpdatedAt            time.Time `firestore:"updatedAt,serverTimestamp"`
 }
 
-// WriteSessionState merges the status field into session_states/{sessionId}.
-// MergeAll is intentional: status updates arrive incrementally (uploaded →
-// analyzing → done) and we only want to overwrite the fields we set.
+// sessionStatusRank gives a total order on the lifecycle states a session
+// goes through. The notification-worker is fanned out across three
+// independent Cloud Functions (on-uploaded / on-transcribed / on-report)
+// subscribed to three independent Pub/Sub topics. Pub/Sub is at-least-once
+// and unordered, so the events can arrive out of order — most commonly
+// when an `audio.uploaded` redelivery from a backlog lands after the
+// session has already advanced to "analyzing" or "done". Without a guard
+// here, the late event would overwrite the more-advanced status and the
+// Flutter listener would see the stepper jump backwards.
+//
+// 0 is the default for any unknown / unset status — that way a new doc
+// (where the current rank is 0) always accepts the first write.
+var sessionStatusRank = map[string]int{
+	"":          0,
+	"uploaded":  1,
+	"analyzing": 2,
+	"done":      3,
+}
+
+// WriteSessionState merges the status field into session_states/{sessionId}
+// IF AND ONLY IF the new status outranks (>=) the currently-stored status.
+// A read-modify-write inside a Firestore transaction prevents the lost-
+// update race even under concurrent invocations of the three notification
+// Cloud Functions.
+//
+// MergeAll-style behaviour is preserved on the write side: only the fields
+// we set here get touched; other fields on the doc are left alone.
 func (w *Writer) WriteSessionState(ctx context.Context, st SessionState) error {
 	if w == nil || w.client == nil {
 		return nil
 	}
-	_, err := w.client.Doc("session_states/" + st.SessionID).Set(ctx, map[string]any{
-		"sessionId":            st.SessionID,
-		"therapistFirebaseUid": st.TherapistFirebaseUID,
-		"status":               st.Status,
-		"progressPercent":      st.ProgressPercent,
-		"updatedAt":            fs.ServerTimestamp,
-	}, fs.MergeAll)
+	docRef := w.client.Doc("session_states/" + st.SessionID)
+	newRank, ok := sessionStatusRank[st.Status]
+	if !ok {
+		// Defensive: unknown status string. Don't block — write it
+		// through but log so we notice schema drift.
+		slog.Warn("firestore session_states: unknown status — writing anyway",
+			"session_id", st.SessionID, "status", st.Status)
+	}
+
+	err := w.client.RunTransaction(ctx, func(ctx context.Context, tx *fs.Transaction) error {
+		snap, getErr := tx.Get(docRef)
+		if getErr != nil && grpcstatus.Code(getErr) != codes.NotFound {
+			// Some other error — surface it.
+			return getErr
+		}
+		if snap != nil && snap.Exists() {
+			var currStatus string
+			if v, err := snap.DataAt("status"); err == nil {
+				if s, ok := v.(string); ok {
+					currStatus = s
+				}
+			}
+			currRank := sessionStatusRank[currStatus]
+			if ok && newRank < currRank {
+				// Skip: the doc is already at a more-advanced state.
+				slog.Info("firestore session_states: skipping monotonic regress",
+					"session_id", st.SessionID,
+					"current_status", currStatus,
+					"new_status", st.Status)
+				return nil
+			}
+		}
+		return tx.Set(docRef, map[string]any{
+			"sessionId":            st.SessionID,
+			"therapistFirebaseUid": st.TherapistFirebaseUID,
+			"status":               st.Status,
+			"progressPercent":      st.ProgressPercent,
+			"updatedAt":            fs.ServerTimestamp,
+		}, fs.MergeAll)
+	})
 	if err != nil {
 		// Log here, not just at the call site, so reader of Cloud Logging
 		// sees the doc path that failed without grep'ing call stacks.
