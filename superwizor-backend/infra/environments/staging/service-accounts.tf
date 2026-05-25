@@ -185,7 +185,7 @@ resource "google_project_iam_member" "billing_sql_client" {
 
 resource "google_secret_manager_secret_iam_member" "billing_db_pwd" {
   project   = var.project_id
-  secret_id = "db-password"
+  secret_id = "postgres-database-url"
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.billing_svc.email}"
 }
@@ -194,7 +194,7 @@ resource "google_secret_manager_secret_iam_member" "billing_db_pwd" {
 # Slice 1 nie używa cryptobox, ale binding zostawiamy ready — slice 2 będzie
 # bezpośrednio go używał.
 resource "google_kms_crypto_key_iam_member" "billing_kms" {
-  crypto_key_id = "projects/${var.project_id}/locations/europe-central2/keyRings/superwizor-prod/cryptoKeys/app_data"
+  crypto_key_id = module.kms.app_data_key_id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${google_service_account.billing_svc.email}"
 }
