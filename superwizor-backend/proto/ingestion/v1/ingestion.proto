@@ -52,6 +52,12 @@ message CreateAudioUploadResponse {
   google.protobuf.Timestamp signed_url_expires_at = 3;
   string object_path = 4;
   map<string, string> required_headers = 5;  // x-goog-content-md5, etc.
+  // session_id assigned at upload-creation time (Option E,
+  // 2026-05-25). Sessions table now has a row in PENDING_UPLOAD
+  // status from this point. Lets Flutter render the kartoteka
+  // entry immediately rather than waiting for CompleteAudioUpload
+  // to finish ffprobe + chunking (3-10 min for long audio).
+  string session_id = 6;
 }
 
 message CompleteAudioUploadRequest {

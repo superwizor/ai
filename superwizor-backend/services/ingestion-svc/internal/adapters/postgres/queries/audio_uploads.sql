@@ -1,8 +1,14 @@
 -- name: CreateAudioUpload :one
+-- Option E (2026-05-25): session_id is set at upload-creation
+-- time. The session row in PENDING_UPLOAD status is created by
+-- the same gRPC handler in the same transaction, so the
+-- audio_uploads row never exists without a linked session. The
+-- partial UNIQUE INDEX from migration 000024
+-- (ux_sessions_audio_upload_id) enforces 1:1 on the session side.
 INSERT INTO audio_uploads (
-    therapist_id, patient_file_id, bucket_name, object_path,
+    therapist_id, patient_file_id, session_id, bucket_name, object_path,
     content_type, idempotency_key, client_app_version, client_platform
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: GetAudioUploadByIdempotency :one

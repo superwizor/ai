@@ -120,15 +120,16 @@ func (q *Queries) CreateAudioChunk(ctx context.Context, arg CreateAudioChunkPara
 
 const createAudioUpload = `-- name: CreateAudioUpload :one
 INSERT INTO audio_uploads (
-    therapist_id, patient_file_id, bucket_name, object_path,
+    therapist_id, patient_file_id, session_id, bucket_name, object_path,
     content_type, idempotency_key, client_app_version, client_platform
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id, therapist_id, patient_file_id, session_id, bucket_name, object_path, content_type, file_size_bytes, duration_seconds, sample_rate_hz, chunk_count, status, upload_started_at, upload_completed_at, expires_at, idempotency_key, client_app_version, client_platform, error_message, created_at
 `
 
 type CreateAudioUploadParams struct {
 	TherapistID      pgtype.UUID
 	PatientFileID    pgtype.UUID
+	SessionID        pgtype.UUID
 	BucketName       string
 	ObjectPath       string
 	ContentType      string
@@ -137,10 +138,17 @@ type CreateAudioUploadParams struct {
 	ClientPlatform   *string
 }
 
+// Option E (2026-05-25): session_id is set at upload-creation
+// time. The session row in PENDING_UPLOAD status is created by
+// the same gRPC handler in the same transaction, so the
+// audio_uploads row never exists without a linked session. The
+// partial UNIQUE INDEX from migration 000024
+// (ux_sessions_audio_upload_id) enforces 1:1 on the session side.
 func (q *Queries) CreateAudioUpload(ctx context.Context, arg CreateAudioUploadParams) (AudioUpload, error) {
 	row := q.db.QueryRow(ctx, createAudioUpload,
 		arg.TherapistID,
 		arg.PatientFileID,
+		arg.SessionID,
 		arg.BucketName,
 		arg.ObjectPath,
 		arg.ContentType,

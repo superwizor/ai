@@ -80,6 +80,13 @@ func ProcessWatchdog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Second responsibility (Option E, 2026-05-25): clean up orphan
+	// PENDING_UPLOAD session rows whose upload never completed.
+	// Runs after the stt_operations rescue so a transient DB error
+	// here doesn't block the more time-sensitive Chirp poll. Errors
+	// logged and ignored — next tick will retry.
+	_ = runOrphanSessionCleanup(ctx, logger)
+
 	w.WriteHeader(http.StatusOK)
 	_, _ = fmt.Fprintf(w, "watchdog: processed %d stuck operations\n", len(rows))
 }

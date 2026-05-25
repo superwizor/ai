@@ -67,6 +67,11 @@ class GrpcUploadIo implements UploadIo {
     return CreateAudioUploadResult(
       uploadId: res.uploadId,
       signedUrl: res.signedUrl,
+      // Option E (2026-05-25): server now returns session_id at
+      // upload-creation time. Empty string for legacy server
+      // revisions, which the worker treats as "not known yet"
+      // (existing semantics preserved for the migration window).
+      sessionId: res.sessionId,
     );
   }
 

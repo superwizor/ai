@@ -83,6 +83,7 @@ const CreateAudioUploadResponse$json = {
       '6': '.ingestion.v1.CreateAudioUploadResponse.RequiredHeadersEntry',
       '10': 'requiredHeaders'
     },
+    {'1': 'session_id', '3': 6, '4': 1, '5': 9, '10': 'sessionId'},
   ],
   '3': [CreateAudioUploadResponse_RequiredHeadersEntry$json],
 };
@@ -104,8 +105,9 @@ final $typed_data.Uint8List createAudioUploadResponseDescriptor = $convert.base6
     'dBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSEnNpZ25lZFVybEV4cGlyZXNBdB'
     'IfCgtvYmplY3RfcGF0aBgEIAEoCVIKb2JqZWN0UGF0aBJnChByZXF1aXJlZF9oZWFkZXJzGAUg'
     'AygLMjwuaW5nZXN0aW9uLnYxLkNyZWF0ZUF1ZGlvVXBsb2FkUmVzcG9uc2UuUmVxdWlyZWRIZW'
-    'FkZXJzRW50cnlSD3JlcXVpcmVkSGVhZGVycxpCChRSZXF1aXJlZEhlYWRlcnNFbnRyeRIQCgNr'
-    'ZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
+    'FkZXJzRW50cnlSD3JlcXVpcmVkSGVhZGVycxIdCgpzZXNzaW9uX2lkGAYgASgJUglzZXNzaW9u'
+    'SWQaQgoUUmVxdWlyZWRIZWFkZXJzRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAi'
+    'ABKAlSBXZhbHVlOgI4AQ==');
 
 @$core.Deprecated('Use completeAudioUploadRequestDescriptor instead')
 const CompleteAudioUploadRequest$json = {

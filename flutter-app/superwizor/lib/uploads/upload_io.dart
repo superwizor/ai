@@ -16,8 +16,18 @@ import 'pending_upload.dart';
 class CreateAudioUploadResult {
   final String uploadId;
   final String signedUrl;
-  const CreateAudioUploadResult(
-      {required this.uploadId, required this.signedUrl});
+  /// Option E (2026-05-25): the server now allocates a session row
+  /// at CreateAudioUpload time, so the response carries session_id
+  /// from this point onward (was only available in
+  /// CompleteAudioUploadResult before). May be empty for legacy
+  /// server revisions during the migration window — UploadWorker
+  /// treats that as "session_id not known yet" same as before.
+  final String sessionId;
+  const CreateAudioUploadResult({
+    required this.uploadId,
+    required this.signedUrl,
+    this.sessionId = '',
+  });
 }
 
 class ConvertAudioResult {

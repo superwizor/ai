@@ -304,7 +304,9 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
           modality: s.name.isNotEmpty ? s.name : 'Rozmowa',
           date: s.createdAt.toDateTime().toLocal(),
           duration: Duration(seconds: s.durationSeconds),
-          status: s.status == 'COMPLETED'
+          status: s.status == 'PENDING_UPLOAD'
+              ? SessionStatus.pendingUpload
+              : s.status == 'COMPLETED'
               ? SessionStatus.completed
               : SessionStatus.inProgress,
         );

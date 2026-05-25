@@ -106,7 +106,10 @@ class PendingUpload {
   /// a retry of step 1 returns the same uploadId + a fresh URL
   /// rather than creating a duplicate audio_uploads row.
   final String idempotencyKey;
-  final String? sessionId; // populated after CompleteAudioUpload
+  /// Populated at phase=created (Option E, 2026-05-25). Pre-Option-E
+  /// servers don't return session_id in CreateAudioUploadResponse;
+  /// against those, this stays NULL until phase=completed.
+  final String? sessionId;
 
   // ── Retry bookkeeping ─────────────────────────────────────────
   final int attemptCount;

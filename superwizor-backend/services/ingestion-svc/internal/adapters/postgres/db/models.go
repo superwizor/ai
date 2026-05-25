@@ -411,15 +411,16 @@ func (ns NullRelationStatus) Value() (driver.Value, error) {
 type SessionStatus string
 
 const (
-	SessionStatusCREATED      SessionStatus = "CREATED"
-	SessionStatusRECORDING    SessionStatus = "RECORDING"
-	SessionStatusUPLOADING    SessionStatus = "UPLOADING"
-	SessionStatusTRANSCRIBING SessionStatus = "TRANSCRIBING"
-	SessionStatusMERGING      SessionStatus = "MERGING"
-	SessionStatusANALYZING    SessionStatus = "ANALYZING"
-	SessionStatusCOMPLETED    SessionStatus = "COMPLETED"
-	SessionStatusFAILED       SessionStatus = "FAILED"
-	SessionStatusCANCELED     SessionStatus = "CANCELED"
+	SessionStatusPENDINGUPLOAD SessionStatus = "PENDING_UPLOAD"
+	SessionStatusCREATED       SessionStatus = "CREATED"
+	SessionStatusRECORDING     SessionStatus = "RECORDING"
+	SessionStatusUPLOADING     SessionStatus = "UPLOADING"
+	SessionStatusTRANSCRIBING  SessionStatus = "TRANSCRIBING"
+	SessionStatusMERGING       SessionStatus = "MERGING"
+	SessionStatusANALYZING     SessionStatus = "ANALYZING"
+	SessionStatusCOMPLETED     SessionStatus = "COMPLETED"
+	SessionStatusFAILED        SessionStatus = "FAILED"
+	SessionStatusCANCELED      SessionStatus = "CANCELED"
 )
 
 func (e *SessionStatus) Scan(src interface{}) error {

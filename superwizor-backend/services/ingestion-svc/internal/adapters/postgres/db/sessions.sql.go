@@ -93,6 +93,82 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 	return i, err
 }
 
+const createSessionPendingUpload = `-- name: CreateSessionPendingUpload :one
+INSERT INTO sessions (
+    therapist_id, patient_file_id, audio_upload_id,
+    session_date, session_number, duration_seconds, contact_form,
+    report_language, name, language_code, status
+) VALUES (
+    $1, $2, NULL, $3, $4, $5, $6,
+    $7,
+    NULLIF($8::text, ''),
+    NULLIF($9::text, ''),
+    'PENDING_UPLOAD'
+)
+RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name
+`
+
+type CreateSessionPendingUploadParams struct {
+	TherapistID     pgtype.UUID
+	PatientFileID   pgtype.UUID
+	SessionDate     pgtype.Date
+	SessionNumber   int32
+	DurationSeconds *int32
+	ContactForm     ContactForm
+	ReportLanguage  string
+	NameDefault     string
+	LanguageCode    string
+}
+
+// Option E (2026-05-25, migration 000025): session row created
+// at CreateAudioUpload time, in PENDING_UPLOAD status. The
+// linked audio_uploads row is INSERTed in the same transaction
+// right after. CompleteAudioUpload later flips status to
+// 'CREATED' once ffprobe + chunking + publish succeed.
+//
+// audio_upload_id is left NULL initially; the audio_uploads
+// INSERT happens in the same transaction and uses the returned
+// session.id. The full circular link (sessions ↔ audio_uploads)
+// is closed when CompleteAudioUpload sets sessions.status =
+// 'CREATED' — by then both columns are populated.
+func (q *Queries) CreateSessionPendingUpload(ctx context.Context, arg CreateSessionPendingUploadParams) (Session, error) {
+	row := q.db.QueryRow(ctx, createSessionPendingUpload,
+		arg.TherapistID,
+		arg.PatientFileID,
+		arg.SessionDate,
+		arg.SessionNumber,
+		arg.DurationSeconds,
+		arg.ContactForm,
+		arg.ReportLanguage,
+		arg.NameDefault,
+		arg.LanguageCode,
+	)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.TherapistID,
+		&i.PatientFileID,
+		&i.AudioUploadID,
+		&i.SessionDate,
+		&i.SessionNumber,
+		&i.DurationSeconds,
+		&i.ContactForm,
+		&i.SpeakerLabelMapping,
+		&i.LanguageCode,
+		&i.TherapistObservations,
+		&i.IsConsentConfirmed,
+		&i.Status,
+		&i.StatusUpdatedAt,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.ReportLanguage,
+		&i.Name,
+	)
+	return i, err
+}
+
 const getNextSessionNumber = `-- name: GetNextSessionNumber :one
 SELECT COALESCE(MAX(session_number), 0) + 1 AS next_number
 FROM sessions
@@ -179,4 +255,82 @@ func (q *Queries) GetSessionDefaultsForPatientFile(ctx context.Context, id pgtyp
 	var i GetSessionDefaultsForPatientFileRow
 	err := row.Scan(&i.DisplayName, &i.PatientLanguage)
 	return i, err
+}
+
+const setSessionAudioUploadID = `-- name: SetSessionAudioUploadID :exec
+UPDATE sessions SET audio_upload_id = $2 WHERE id = $1
+`
+
+type SetSessionAudioUploadIDParams struct {
+	ID            pgtype.UUID
+	AudioUploadID pgtype.UUID
+}
+
+// Option E (2026-05-25): closes the circular link
+// sessions.audio_upload_id → audio_uploads.id once the
+// audio_uploads row has been INSERTed. Called inside the
+// CreateAudioUpload tx right after the audio_uploads INSERT.
+func (q *Queries) SetSessionAudioUploadID(ctx context.Context, arg SetSessionAudioUploadIDParams) error {
+	_, err := q.db.Exec(ctx, setSessionAudioUploadID, arg.ID, arg.AudioUploadID)
+	return err
+}
+
+const updateSessionDuration = `-- name: UpdateSessionDuration :one
+UPDATE sessions SET duration_seconds = $2 WHERE id = $1
+RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name
+`
+
+type UpdateSessionDurationParams struct {
+	ID              pgtype.UUID
+	DurationSeconds *int32
+}
+
+// Option E (2026-05-25): sessions.duration_seconds is NULL at
+// CreateAudioUpload time (we don't know it until the upload
+// completes + ffprobe runs). CompleteAudioUpload calls this with
+// the client-provided OR ffprobe-resolved actual duration.
+func (q *Queries) UpdateSessionDuration(ctx context.Context, arg UpdateSessionDurationParams) (Session, error) {
+	row := q.db.QueryRow(ctx, updateSessionDuration, arg.ID, arg.DurationSeconds)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.TherapistID,
+		&i.PatientFileID,
+		&i.AudioUploadID,
+		&i.SessionDate,
+		&i.SessionNumber,
+		&i.DurationSeconds,
+		&i.ContactForm,
+		&i.SpeakerLabelMapping,
+		&i.LanguageCode,
+		&i.TherapistObservations,
+		&i.IsConsentConfirmed,
+		&i.Status,
+		&i.StatusUpdatedAt,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.ReportLanguage,
+		&i.Name,
+	)
+	return i, err
+}
+
+const updateSessionStatus = `-- name: UpdateSessionStatus :exec
+UPDATE sessions SET status = $2 WHERE id = $1
+`
+
+type UpdateSessionStatusParams struct {
+	ID     pgtype.UUID
+	Status SessionStatus
+}
+
+// Option E (2026-05-25): used by CompleteAudioUpload to flip
+// PENDING_UPLOAD → CREATED once the audio is confirmed and
+// chunking is done. Used by the orphan-cleanup job too (set to
+// FAILED before cascade-delete).
+func (q *Queries) UpdateSessionStatus(ctx context.Context, arg UpdateSessionStatusParams) error {
+	_, err := q.db.Exec(ctx, updateSessionStatus, arg.ID, arg.Status)
+	return err
 }

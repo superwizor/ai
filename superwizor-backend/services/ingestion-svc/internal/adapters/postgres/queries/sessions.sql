@@ -41,6 +41,53 @@ WHERE audio_upload_id = $1
   AND deleted_at IS NULL
 LIMIT 1;
 
+-- name: CreateSessionPendingUpload :one
+-- Option E (2026-05-25, migration 000025): session row created
+-- at CreateAudioUpload time, in PENDING_UPLOAD status. The
+-- linked audio_uploads row is INSERTed in the same transaction
+-- right after. CompleteAudioUpload later flips status to
+-- 'CREATED' once ffprobe + chunking + publish succeed.
+--
+-- audio_upload_id is left NULL initially; the audio_uploads
+-- INSERT happens in the same transaction and uses the returned
+-- session.id. The full circular link (sessions ↔ audio_uploads)
+-- is closed when CompleteAudioUpload sets sessions.status =
+-- 'CREATED' — by then both columns are populated.
+INSERT INTO sessions (
+    therapist_id, patient_file_id, audio_upload_id,
+    session_date, session_number, duration_seconds, contact_form,
+    report_language, name, language_code, status
+) VALUES (
+    $1, $2, NULL, $3, $4, $5, $6,
+    $7,
+    NULLIF(sqlc.arg(name_default)::text, ''),
+    NULLIF(sqlc.arg(language_code)::text, ''),
+    'PENDING_UPLOAD'
+)
+RETURNING *;
+
+-- name: UpdateSessionStatus :exec
+-- Option E (2026-05-25): used by CompleteAudioUpload to flip
+-- PENDING_UPLOAD → CREATED once the audio is confirmed and
+-- chunking is done. Used by the orphan-cleanup job too (set to
+-- FAILED before cascade-delete).
+UPDATE sessions SET status = $2 WHERE id = $1;
+
+-- name: UpdateSessionDuration :one
+-- Option E (2026-05-25): sessions.duration_seconds is NULL at
+-- CreateAudioUpload time (we don't know it until the upload
+-- completes + ffprobe runs). CompleteAudioUpload calls this with
+-- the client-provided OR ffprobe-resolved actual duration.
+UPDATE sessions SET duration_seconds = $2 WHERE id = $1
+RETURNING *;
+
+-- name: SetSessionAudioUploadID :exec
+-- Option E (2026-05-25): closes the circular link
+-- sessions.audio_upload_id → audio_uploads.id once the
+-- audio_uploads row has been INSERTed. Called inside the
+-- CreateAudioUpload tx right after the audio_uploads INSERT.
+UPDATE sessions SET audio_upload_id = $2 WHERE id = $1;
+
 -- name: GetSessionDefaultsForPatientFile :one
 -- Used by CompleteAudioUpload to compute the initial session.name
 -- (from modality display_name) AND the session.language_code (from

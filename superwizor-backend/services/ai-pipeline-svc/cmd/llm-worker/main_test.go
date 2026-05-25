@@ -170,3 +170,45 @@ func sliceEq(a, b []int) bool {
 	}
 	return true
 }
+
+func TestMarkdownResultToPayload_Stage2OrphanTag0Reattach(t *testing.T) {
+	// Chunks 0,1 are tag=1 (therapist).
+	// Chunk 2 is tag=0 (orphan, sparse Chirp label).
+	// Chunks 3,4 are tag=2 (patient).
+	// Since emptyCount == 0 (both tag=1 and tag=2 have non-empty groups),
+	// chunk 2 (tag=0) should reattach to the nearest known speaker group.
+	// Adjacency to chunk 1 (tag=1) or chunk 3 (tag=2) — tie prefers backward (therapist).
+	chunks := []transcriptfmt.Chunk{
+		ch(0, 0, 1),
+		ch(1, 1000, 1),
+		ch(2, 2000, 0), // tag=0 orphan
+		ch(3, 3000, 2),
+		ch(4, 4000, 2),
+	}
+
+	r := diarization.Result{
+		Speakers: []diarization.Speaker{
+			{Index: 1, Role: "therapist"},
+			{Index: 2, Role: "patient"},
+		},
+	}
+
+	payload := markdownResultToPayload(r, chunks, true)
+	g := payload.SpeakerRoleInference.SpeakerGroups
+	if len(g) != 2 {
+		t.Fatalf("expected 2 groups, got %d", len(g))
+	}
+	sort.Ints(g[0].ChunkIndices)
+	sort.Ints(g[1].ChunkIndices)
+
+	// therapist gets [0, 1] plus reattached chunk 2.
+	if got, want := g[0].ChunkIndices, []int{0, 1, 2}; !sliceEq(got, want) {
+		t.Errorf("therapist.ChunkIndices = %v; want %v (orphan chunk 2 should reattach to therapist)", got, want)
+	}
+
+	// patient gets [3, 4].
+	if got, want := g[1].ChunkIndices, []int{3, 4}; !sliceEq(got, want) {
+		t.Errorf("patient.ChunkIndices = %v; want %v", got, want)
+	}
+}
+

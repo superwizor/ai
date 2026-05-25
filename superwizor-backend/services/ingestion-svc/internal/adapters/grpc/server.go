@@ -69,6 +69,14 @@ func (s *Server) pgxBegin(ctx context.Context) (pgx.Tx, error) {
 }
 
 func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateAudioUploadRequest) (*ingestionv1.CreateAudioUploadResponse, error) {
+	// Option E (2026-05-25, see docs/14_INGESTION_EARLY_SESSION_CREATION.md):
+	// session row is created at THIS RPC instead of CompleteAudioUpload.
+	// Under the old flow the sessions table didn't get a row until after
+	// ffprobe + chunking finished — 3-10 min for long audio. Therapists
+	// returned to the kartoteka before that and saw an empty session
+	// list. Now the session exists from the moment Flutter gets the
+	// signed URL, in PENDING_UPLOAD status. CompleteAudioUpload flips
+	// it to CREATED once the audio + chunks are confirmed.
 	fmt.Printf("Received CreateAudioUpload request\n")
 	therapistID, err := uuid.Parse(req.TherapistId)
 	if err != nil {
@@ -121,32 +129,85 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		ext = ".wma"
 	}
 
+	// Option E: session-defaults lookup + session creation now happen
+	// here. Wrapped in a tx with the audio_uploads INSERT so a crash
+	// between the two never leaves a half-created state.
+	tx, err := s.pgxBegin(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "begin tx: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	txq := s.queries.WithTx(tx)
+
+	// Session number + modality display name + audio language.
+	// Mirrors the lookup that used to live in CompleteAudioUpload.
+	nextNumber, err := txq.GetNextSessionNumber(ctx, patientFileIDPg)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defaults, lookupErr := txq.GetSessionDefaultsForPatientFile(ctx, patientFileIDPg)
+	var defaultName string
+	if lookupErr == nil && defaults.DisplayName != "" {
+		defaultName = fmt.Sprintf("%s %d", defaults.DisplayName, nextNumber)
+	}
+	audioLang := ""
+	if lookupErr == nil {
+		audioLang = lang.BCP47ize(defaults.PatientLanguage)
+	}
+	reportLang := req.ReportLanguage
+	if reportLang == "" && lookupErr == nil {
+		reportLang = defaults.PatientLanguage
+	}
+	if reportLang == "" {
+		reportLang = "pl"
+	}
+	t := time.Now()
+	datePg := pgtype.Date{Time: t, Valid: true}
+	// duration_seconds is not yet known — pass nil; CompleteAudioUpload
+	// will overwrite if needed.
+	session, err := txq.CreateSessionPendingUpload(ctx, db.CreateSessionPendingUploadParams{
+		TherapistID:     therapistIDPg,
+		PatientFileID:   patientFileIDPg,
+		SessionDate:     datePg,
+		SessionNumber:   nextNumber,
+		DurationSeconds: nil,
+		ContactForm:     "OFFICE",
+		ReportLanguage:  reportLang,
+		NameDefault:     defaultName,
+		LanguageCode:    audioLang,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "CreateSessionPendingUpload: %v", err)
+	}
+
+	// Object path now uses session_id (replacing patient_file_id).
+	// This makes the GCS path the canonical session identifier and
+	// enables the future bucket-notification-based recovery work
+	// described in docs/14.
+	sessionUUID := uuid.UUID(session.ID.Bytes)
 	objectPath := fmt.Sprintf("%s/%s/%d%s",
 		therapistID.String(),
-		patientFileID.String(),
+		sessionUUID.String(),
 		time.Now().Unix(),
 		ext,
 	)
 
-	upload, err := s.queries.CreateAudioUpload(ctx, db.CreateAudioUploadParams{
-		TherapistID:       therapistIDPg,
-		PatientFileID:     patientFileIDPg,
-		BucketName:        s.bucketName,
-		ObjectPath:        objectPath,
-		ContentType:       req.ContentType,
-		IdempotencyKey:    &req.IdempotencyKey,
-		ClientAppVersion:  &req.ClientAppVersion,
-		ClientPlatform:    &req.ClientPlatform,
+	upload, err := txq.CreateAudioUpload(ctx, db.CreateAudioUploadParams{
+		TherapistID:      therapistIDPg,
+		PatientFileID:    patientFileIDPg,
+		SessionID:        session.ID,
+		BucketName:       s.bucketName,
+		ObjectPath:       objectPath,
+		ContentType:      req.ContentType,
+		IdempotencyKey:   &req.IdempotencyKey,
+		ClientAppVersion: &req.ClientAppVersion,
+		ClientPlatform:   &req.ClientPlatform,
 	})
 	if err != nil {
-		// Race window: two concurrent requests with the same
-		// idempotency_key both passed the pre-check (lines 56–82) and
-		// reached this INSERT. Migration 000018 added
-		// ux_audio_uploads_idempotency partial unique index on
-		// (therapist_id, idempotency_key); the loser of the race hits
-		// this branch. Re-fetch by key + return the winner's row, same
-		// shape as the cache-hit response above.
 		if cname := uniqueViolationConstraint(err); cname == "ux_audio_uploads_idempotency" {
+			// Roll back the session INSERT — race winner already
+			// owns one. Re-fetch and respond from the winner's row.
+			_ = tx.Rollback(ctx)
 			existing, gerr := s.queries.GetAudioUploadByIdempotency(ctx, db.GetAudioUploadByIdempotencyParams{
 				IdempotencyKey: &req.IdempotencyKey,
 				TherapistID:    therapistIDPg,
@@ -157,6 +218,21 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 			return s.cachedAudioUploadResponse(ctx, existing)
 		}
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Close the circular link sessions.audio_upload_id →
+	// audio_uploads.id now that the audio_uploads row exists. The
+	// partial UNIQUE INDEX from migration 000024 (added by Fix 1)
+	// enforces 1:1 on the session side.
+	if err := txq.SetSessionAudioUploadID(ctx, db.SetSessionAudioUploadIDParams{
+		ID:            session.ID,
+		AudioUploadID: upload.ID,
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "SetSessionAudioUploadID: %v", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, status.Errorf(codes.Internal, "commit CreateAudioUpload tx: %v", err)
 	}
 
 	signedURL, expires, err := s.signer.GenerateUploadURL(
@@ -179,6 +255,7 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		RequiredHeaders: map[string]string{
 			"x-goog-meta-source": "superwizor-mobile",
 		},
+		SessionId: sessionUUID.String(),
 	}, nil
 }
 
@@ -209,6 +286,13 @@ func (s *Server) cachedAudioUploadResponse(ctx context.Context, existing db.Audi
 	if existing.ID.Valid {
 		existingID = existing.ID.Bytes
 	}
+	// Option E (2026-05-25): every audio_uploads row now carries a
+	// session_id from creation. Return it so the client gets the
+	// same answer whether this is a first call or an idempotent retry.
+	var sessionIDStr string
+	if existing.SessionID.Valid {
+		sessionIDStr = uuid.UUID(existing.SessionID.Bytes).String()
+	}
 	return &ingestionv1.CreateAudioUploadResponse{
 		UploadId:           existingID.String(),
 		SignedUrl:          signedURL,
@@ -217,6 +301,7 @@ func (s *Server) cachedAudioUploadResponse(ctx context.Context, existing db.Audi
 		RequiredHeaders: map[string]string{
 			"x-goog-meta-source": "superwizor-mobile",
 		},
+		SessionId: sessionIDStr,
 	}, nil
 }
 
@@ -330,97 +415,53 @@ func (s *Server) CompleteAudioUpload(ctx context.Context, req *ingestionv1.Compl
 		}
 	}
 
-	// Auto-create session
-	nextNumber, err := s.queries.GetNextSessionNumber(ctx, upload.PatientFileID)
+	// Option E (2026-05-25): the session row already exists from
+	// CreateAudioUpload time in status='PENDING_UPLOAD'. Flip it to
+	// 'CREATED' so downstream filters (status != PENDING_UPLOAD)
+	// pick it up and the STT pipeline can advance state from here.
+	//
+	// Idempotent: the UPDATE is a no-op on a row that's already
+	// CREATED (or further along — TRANSCRIBING/etc).
+	//
+	// We also re-fetch the session row to obtain session_id for
+	// the publish below. This is one extra SELECT per CompleteAudioUpload
+	// — negligible cost (<5 ms) compared to ffprobe + chunking.
+	session, err := s.queries.GetSessionByAudioUploadID(ctx, upload.ID)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal,
+			"GetSessionByAudioUploadID: %v (Option E: session should already exist from CreateAudioUpload)",
+			err)
 	}
-    
-	nextNum := nextNumber
-
-    t := time.Now()
-	datePg := pgtype.Date{Time: t, Valid: true}
-
-	// Single round-trip: pull the modality display_name (for the
-	// default session.name) AND the patient_user's ui_language (for
-	// session.language_code that stt-worker reads, AND the
-	// report_language fallback below). Both columns degrade to ""
-	// on join misses; the InsertSession SQL NULLIFs each so a
-	// missing modality or orphan patient_files row stores NULL and
-	// downstream falls back appropriately.
-	defaults, lookupErr := s.queries.GetSessionDefaultsForPatientFile(ctx, upload.PatientFileID)
-	var defaultName string
-	if lookupErr == nil && defaults.DisplayName != "" {
-		defaultName = fmt.Sprintf("%s %d", defaults.DisplayName, nextNum)
-	}
-	// BCP47-ize the patient's ui_language for STT (Chirp wants pl-PL,
-	// not pl). Empty → BCP47ize returns "" → SQL NULLIF stores NULL →
-	// stt-worker falls back to its multi-language auto-detect list.
-	audioLang := ""
-	if lookupErr == nil {
-		audioLang = lang.BCP47ize(defaults.PatientLanguage)
-	}
-	// report_language resolution — three-tier fallback so an English
-	// patient's report doesn't silently come out in Polish (the bug
-	// surfaced 2026-05-15 on session 7da68e6c):
-	//   1. explicit req.ReportLanguage (Flutter passes it for sessions
-	//      where therapist wants a different output language than the
-	//      patient speaks)
-	//   2. patient_user.ui_language from the JOIN above (mirrors the
-	//      STT side — if patient's audio is en-US, default the report
-	//      to English unless overridden)
-	//   3. "pl" hardcoded fallback for orphan rows / pre-feat sessions
-	//      where neither source is available
-	reportLang := req.ReportLanguage
-	if reportLang == "" && lookupErr == nil {
-		reportLang = defaults.PatientLanguage
-	}
-	if reportLang == "" {
-		reportLang = "pl"
-	}
-
-	// Idempotent-retry path (Fix 1, 2026-05-23). CompleteAudioUpload is a
-	// multi-phase handler with no outer transaction (ffprobe → ConvertAudio
-	// commit → CreateSession commit → Pub/Sub publish). A crash between
-	// the ConvertAudio commit and the CreateSession commit, OR between
-	// CreateSession and the publish, causes Flutter (or any retry path)
-	// to re-enter here with the same upload_id. Before migration 000024
-	// added `ux_sessions_audio_upload_id`, the retry's CreateSession
-	// happily INSERTed a duplicate session row, leaving the first row as
-	// a permanent orphan. Now we catch the 23505 and reuse the prior row.
-	session, err := s.queries.CreateSession(ctx, db.CreateSessionParams{
-		TherapistID:     upload.TherapistID,
-		PatientFileID:   upload.PatientFileID,
-		AudioUploadID:   upload.ID,
-		SessionDate:     datePg,
-		SessionNumber:   nextNum,
-		DurationSeconds: &req.ActualDurationSeconds,
-		ContactForm:     "OFFICE",
-		ReportLanguage:  reportLang,
-		NameDefault:     defaultName,
-		LanguageCode:    audioLang,
-	})
-	if err != nil {
-		if uniqueViolationConstraint(err) == "ux_sessions_audio_upload_id" {
-			existing, fetchErr := s.queries.GetSessionByAudioUploadID(ctx, upload.ID)
-			if fetchErr != nil {
-				return nil, status.Errorf(codes.Internal,
-					"CreateSession hit ux_sessions_audio_upload_id but follow-up GetSessionByAudioUploadID failed: %v",
-					fetchErr)
-			}
-			slog.Info("complete_audio_upload: reusing existing session row on idempotent retry",
-				"upload_id", req.UploadId,
-				"session_id", uuid.UUID(existing.ID.Bytes).String(),
-				"session_number", existing.SessionNumber)
-			session = existing
-		} else {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+	if err := s.queries.UpdateSessionStatus(ctx, db.UpdateSessionStatusParams{
+		ID:     session.ID,
+		Status: "CREATED",
+	}); err != nil {
+		// Non-fatal — log + continue. The session row exists; STT
+		// can still proceed even if the status flip raced with
+		// itself. Worst case the row stays PENDING_UPLOAD and the
+		// orphan-cleanup job's status-check skips it (audio_uploads
+		// is UPLOADED so it won't be reaped).
+		slog.Warn("complete_audio_upload: status flip failed",
+			"session_id", uuid.UUID(session.ID.Bytes).String(),
+			"upload_id", req.UploadId,
+			"error", err)
 	}
 
 	var sessionIDStr string
 	if session.ID.Valid {
 		sessionIDStr = uuid.UUID(session.ID.Bytes).String()
+	}
+
+	// Persist actual duration if we now know it — overwrites the
+	// NULL initial value from CreateAudioUpload. Best-effort.
+	if req.ActualDurationSeconds > 0 {
+		if _, dErr := s.queries.UpdateSessionDuration(ctx, db.UpdateSessionDurationParams{
+			ID:              session.ID,
+			DurationSeconds: &req.ActualDurationSeconds,
+		}); dErr != nil {
+			slog.Warn("complete_audio_upload: duration update failed",
+				"session_id", sessionIDStr, "error", dErr)
+		}
 	}
 
 	// Publish to Pub/Sub → triggers stt-worker.

@@ -179,6 +179,7 @@ class CreateAudioUploadResponse extends $pb.GeneratedMessage {
     $1.Timestamp? signedUrlExpiresAt,
     $core.String? objectPath,
     $core.Iterable<$core.MapEntry<$core.String, $core.String>>? requiredHeaders,
+    $core.String? sessionId,
   }) {
     final result = create();
     if (uploadId != null) result.uploadId = uploadId;
@@ -188,6 +189,7 @@ class CreateAudioUploadResponse extends $pb.GeneratedMessage {
     if (objectPath != null) result.objectPath = objectPath;
     if (requiredHeaders != null)
       result.requiredHeaders.addEntries(requiredHeaders);
+    if (sessionId != null) result.sessionId = sessionId;
     return result;
   }
 
@@ -214,6 +216,7 @@ class CreateAudioUploadResponse extends $pb.GeneratedMessage {
         keyFieldType: $pb.PbFieldType.OS,
         valueFieldType: $pb.PbFieldType.OS,
         packageName: const $pb.PackageName('ingestion.v1'))
+    ..aOS(6, _omitFieldNames ? '' : 'sessionId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -276,6 +279,20 @@ class CreateAudioUploadResponse extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(5)
   $pb.PbMap<$core.String, $core.String> get requiredHeaders => $_getMap(4);
+
+  /// session_id assigned at upload-creation time (Option E,
+  /// 2026-05-25). Sessions table now has a row in PENDING_UPLOAD
+  /// status from this point. Lets Flutter render the kartoteka
+  /// entry immediately rather than waiting for CompleteAudioUpload
+  /// to finish ffprobe + chunking (3-10 min for long audio).
+  @$pb.TagNumber(6)
+  $core.String get sessionId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set sessionId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSessionId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSessionId() => $_clearField(6);
 }
 
 class CompleteAudioUploadRequest extends $pb.GeneratedMessage {

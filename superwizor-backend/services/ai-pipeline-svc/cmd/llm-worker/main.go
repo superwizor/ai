@@ -1122,18 +1122,22 @@ func markdownResultToPayload(r diarization.Result, chunks []transcriptfmt.Chunk,
 		for i, sp := range r.Speakers {
 			knownTags[int32(sp.Index)] = i
 		}
+		// Track which chunk indices have already been assigned (either through
+		// exact native speaker matching or the emptyCount==1 reattach layer)
+		// to prevent double assignment of tag=0 chunks.
+		assignedIndices := make(map[int]bool)
+		for _, g := range groups {
+			for _, idx := range g.ChunkIndices {
+				assignedIndices[idx] = true
+			}
+		}
 		extraTagCount := 0
 		extraTagSet := map[int32]bool{}
 		for i, c := range chunks {
 			if _, ok := knownTags[c.SpeakerTag]; ok {
 				continue
 			}
-			// SpeakerTag=0 has already been handled by the
-			// emptyCount==1 reattach above (if it applied); don't
-			// double-assign. Anything still tag=0 here is a chunk
-			// the previous block deliberately left alone (e.g.
-			// emptyCount==0 because both groups had chunks).
-			if c.SpeakerTag == 0 {
+			if assignedIndices[c.ChunkIdx] {
 				continue
 			}
 			gIdx := nearestKnownGroupIndex(chunks, i, knownTags)

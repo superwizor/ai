@@ -330,10 +330,20 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                               sessions.reversed.toList();
                           // Dedup: if a pending upload already has a
                           // sessionId AND that session is in the server
-                          // list, drop the placeholder. The placeholder
-                          // is for the gap BEFORE the session row
-                          // exists server-side; once it does, the real
-                          // card supersedes.
+                          // list, drop the placeholder. The Hive-queue
+                          // placeholder is for the gap BEFORE the
+                          // session row exists in ListSessions; once
+                          // it does (Option E: from CreateAudioUpload
+                          // onward, in PENDING_UPLOAD status), the
+                          // server-side card supersedes.
+                          //
+                          // Option E note: under Option E the server
+                          // returns a PENDING_UPLOAD card for every
+                          // active upload, so this dedup turns the
+                          // Hive placeholder into a "fallback for
+                          // legacy / offline" affordance — Hive shows
+                          // it only when ListSessions hasn't been
+                          // refreshed yet.
                           final knownSessionIds = sessions
                               .map((s) => s.id)
                               .toSet();
@@ -406,6 +416,20 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                               }
                               final session = reversedSessions[
                                   index - visiblePending.length];
+                              // Option E (2026-05-25): server-side
+                              // PENDING_UPLOAD sessions render with
+                              // the same placeholder style as the
+                              // Hive-queue-driven _PendingUploadCard.
+                              // Single visible affordance whether
+                              // the row was created server-side
+                              // (Flutter restart, cross-device) or
+                              // is mid-flight client-side.
+                              if (session.status ==
+                                  SessionStatus.pendingUpload) {
+                                return _PendingUploadServerCard(
+                                  session: session,
+                                );
+                              }
                               return _SessionCard(
                                 session: session,
                                 patientId: widget.patientId,
@@ -917,6 +941,88 @@ class _PendingUploadCard extends StatelessWidget {
                 color: EuphireColors.mist,
                 size: 20,
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Server-side PENDING_UPLOAD session card. Visually identical to
+/// the Hive-queue-driven _PendingUploadCard so the user gets the
+/// same affordance regardless of which device started the upload.
+/// Tapping routes to SessionStatusScreen (we have a real sessionId
+/// from the server). Option E (2026-05-25,
+/// docs/14_INGESTION_EARLY_SESSION_CREATION.md).
+class _PendingUploadServerCard extends StatelessWidget {
+  final Session session;
+
+  const _PendingUploadServerCard({required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SessionStatusScreen(sessionId: session.id),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: EuphireColors.frostWhite.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: EuphireColors.ember.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: EuphireColors.ember,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    session.modality.isNotEmpty
+                        ? session.modality
+                        : 'Nowa sesja',
+                    style: const TextStyle(
+                      fontFamily: 'Merriweather',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: EuphireColors.frostWhite,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Oczekiwanie na audio…',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 13,
+                      color: EuphireColors.mist,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              color: EuphireColors.mist,
+              size: 20,
+            ),
           ],
         ),
       ),
