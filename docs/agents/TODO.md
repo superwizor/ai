@@ -6,9 +6,19 @@ Tracked-but-not-yet-scheduled items. Each entry: what's broken, why it matters, 
 
 ## High priority
 
-### Early session creation (Option E) — patient sessions list shows new session immediately
+### Hybrid Eventarc-driven ingestion finalization (Option F)
 
-**Status**: design complete, not started. Tracked in [`docs/14_INGESTION_EARLY_SESSION_CREATION.md`](../14_INGESTION_EARLY_SESSION_CREATION.md). Estimated 1 week, one engineer.
+**Status**: design complete, not started, **don't ship now**. Tracked in [`docs/15_HYBRID_EVENTARC_FINALIZATION.md`](../15_HYBRID_EVENTARC_FINALIZATION.md). Estimated ~2 weeks including deprecation window.
+
+**What's broken**: Nothing user-facing. The post-PUT path is still synchronous (Flutter blocks on `CompleteAudioUpload` for 3–10 min on long audio), and the orphan-recovery for the Hive-loss case relies on a 15-min watchdog tick.
+
+**Why it matters**: Removes Flutter from the critical path after the PUT, closes the orphan-Hive-loss gap structurally instead of via reaper, enables cross-device upload-completion observability, and matches stt-finalize's Eventarc pattern symmetrically.
+
+**Trigger to schedule**: production reports of orphan uploads beyond watchdog reach, OR introduction of a web/iPad therapist client, OR resumable-upload work. Until any of those fire, the current Option E (E-lite) architecture is the right operating point.
+
+### Early session creation (Option E) — ✅ shipped 2026-05-25 in merge `fae7c1a`
+
+**Status**: shipped. Tracked in [`docs/14_INGESTION_EARLY_SESSION_CREATION.md`](../14_INGESTION_EARLY_SESSION_CREATION.md).
 
 **What's broken**: `ingestion-svc.CompleteAudioUpload` calls `CreateSession` at the END of the handler — after ffprobe + chunking — so for a long audio (>1140s) the `sessions` row doesn't exist for 3-10 min after Flutter's PUT finishes. Therapist returns to kartoteka, sees an empty session list, gets confused. Band-aid (`_PendingUploadCard` from commit `0d48eed`) bridges the gap visually but the DB still doesn't have a row.
 
