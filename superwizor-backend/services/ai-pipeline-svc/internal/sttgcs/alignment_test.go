@@ -192,3 +192,189 @@ func floatNear(a, b, eps float64) bool {
 	}
 	return d <= eps
 }
+
+// TestAlignAndMapSpeakers_MissingPriorReassignment is the Path B
+// regression test (2026-05-25). The scenario mirrors the Janek
+// Johny session that repeatedly produced a substantive ghost:
+//
+//   - chunk_0 had speakers {"1": therapist (loud), "2": patient (briefly)}
+//   - The overlap window between chunk_0 and chunk_1 happened to
+//     contain ONLY the therapist's speech. Translation map gets
+//     populated for the therapist (chunk_1's "1" → "1") but
+//     chunk_1's "2" has zero co-occurrences against chunk_0's "2".
+//   - Pre-fix: chunk_1's "2" gets offset to "3" (one above
+//     prevMaxLabel=2). That "3" is the SAME PERSON as the
+//     prior "2" — a substantive ghost survives downstream.
+//   - Post-fix: smart fallback assigns chunk_1's "2" to the
+//     missing prior "2" (which DID exist in chunk_0 but didn't
+//     show up in translation). Result: no ghost.
+func TestAlignAndMapSpeakers_MissingPriorReassignment(t *testing.T) {
+	// Prior chunk: 11 therapist words, 1 patient word — patient
+	// was quiet during the overlap window. (1 because we still
+	// need it to appear as a chunk_0 label so the prior label set
+	// includes "2".)
+	prior := []chunker.Word{}
+	for i := 0; i < 11; i++ {
+		prior = append(prior, chunker.Word{
+			Text: "hello", StartMS: int64(i)*100, EndMS: int64(i)*100 + 50,
+			SpeakerLabel: "1",
+		})
+	}
+	prior = append(prior, chunker.Word{
+		Text: "yes", StartMS: 1500, EndMS: 1550, SpeakerLabel: "2",
+	})
+
+	// Current chunk: therapist's same "hello" words at matching
+	// times (so alignment maps chunk_1's "1" → "1"), plus the
+	// patient saying a lot of stuff that has ZERO co-occurrence
+	// with the prior chunk's "2" (because Chirp put the patient
+	// in a different position in chunk_1).
+	curr := []chunker.Word{}
+	for i := 0; i < 11; i++ {
+		curr = append(curr, chunker.Word{
+			Text: "hello", StartMS: int64(i)*100, EndMS: int64(i)*100 + 50,
+			SpeakerLabel: "1",
+		})
+	}
+	// Patient at LOCAL times far from any prior "2" word — no
+	// match possible in time-anchor scan. Note: in real Stage 2,
+	// these are local times; the test reuses local==abs to keep
+	// the fixture small.
+	patientStarts := []int64{2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500}
+	for _, ms := range patientStarts {
+		curr = append(curr, chunker.Word{
+			Text: "patient", StartMS: ms, EndMS: ms + 50,
+			SpeakerLabel: "2",
+		})
+	}
+
+	// currStartOffsetMS=0 so the time-anchor check sees curr
+	// words in the prior's space. priorSeamMS large enough that
+	// the 0..1100ms region is "in the overlap window" for the
+	// timeAnchorPairs scan.
+	mapped, newMax, fellBack := AlignAndMapSpeakers(
+		prior, curr,
+		/*currStartOffsetMS=*/ 0,
+		/*priorSeamMS=*/ 10_000,
+		/*prevMaxLabel=*/ 2,
+	)
+	if fellBack {
+		t.Errorf("expected normal alignment path (10+ matched pairs); fell back")
+	}
+
+	// Therapist words (chunk_1 "1") should map to "1".
+	for i := 0; i < 11; i++ {
+		if mapped[i].SpeakerLabel != "1" {
+			t.Errorf("therapist word %d: got label %q, want \"1\"",
+				i, mapped[i].SpeakerLabel)
+		}
+	}
+
+	// Patient words (chunk_1 "2") MUST map back to "2" (the
+	// missing prior), NOT to "3" (fresh offset). This is the
+	// regression assertion.
+	for i := 11; i < len(mapped); i++ {
+		if mapped[i].SpeakerLabel != "2" {
+			t.Errorf("patient word %d: got label %q, want \"2\" "+
+				"(missing-prior reassignment regression — pre-fix "+
+				"this would have been \"3\")",
+				i, mapped[i].SpeakerLabel)
+		}
+	}
+
+	// newMax should be at most prevMaxLabel (=2) since we didn't
+	// mint any new offsets.
+	if newMax > 2 {
+		t.Errorf("newMax=%d > prevMaxLabel=2 — should not have minted "+
+			"new offset labels", newMax)
+	}
+}
+
+// TestAlignAndMapSpeakers_GenuineNewSpeakerStillGetsOffset covers
+// the converse: when chunk_i has an unmapped label AND no prior
+// label was unused in the translation map, the speaker is genuinely
+// new and must still get a fresh offset (couple's-therapy /
+// late-arriving participant case).
+func TestAlignAndMapSpeakers_GenuineNewSpeakerStillGetsOffset(t *testing.T) {
+	// Prior: only ONE speaker labeled "1".
+	prior := []chunker.Word{}
+	for i := 0; i < 12; i++ {
+		prior = append(prior, chunker.Word{
+			Text: "hello", StartMS: int64(i)*100, EndMS: int64(i)*100 + 50,
+			SpeakerLabel: "1",
+		})
+	}
+
+	// Current: same speaker maps to "1", PLUS a new "2" that
+	// represents a never-before-seen speaker (no missing-prior to
+	// claim it).
+	curr := []chunker.Word{}
+	for i := 0; i < 12; i++ {
+		curr = append(curr, chunker.Word{
+			Text: "hello", StartMS: int64(i)*100, EndMS: int64(i)*100 + 50,
+			SpeakerLabel: "1",
+		})
+	}
+	// New-speaker words at non-overlapping positions.
+	for _, ms := range []int64{3000, 3500, 4000} {
+		curr = append(curr, chunker.Word{
+			Text: "newspeaker", StartMS: ms, EndMS: ms + 50,
+			SpeakerLabel: "2",
+		})
+	}
+
+	mapped, newMax, _ := AlignAndMapSpeakers(
+		prior, curr, 0, 10_000, 1, // prevMaxLabel=1 (prior had only "1")
+	)
+
+	// First 12 stay "1".
+	for i := 0; i < 12; i++ {
+		if mapped[i].SpeakerLabel != "1" {
+			t.Errorf("therapist word %d: got %q, want \"1\"",
+				i, mapped[i].SpeakerLabel)
+		}
+	}
+	// New-speaker words must get a FRESH offset — there's no
+	// missing prior to claim. Expected: "2" (prevMaxLabel + 1).
+	for i := 12; i < len(mapped); i++ {
+		if mapped[i].SpeakerLabel != "2" {
+			t.Errorf("new-speaker word %d: got %q, want \"2\" "+
+				"(prevMaxLabel=1 + 1) — genuine new speakers must "+
+				"still mint a fresh label",
+				i, mapped[i].SpeakerLabel)
+		}
+	}
+	if newMax != 2 {
+		t.Errorf("newMax = %d, want 2 (prevMaxLabel + 1 for the new speaker)",
+			newMax)
+	}
+}
+
+// TestComputeMissingPriors verifies the helper directly.
+func TestComputeMissingPriors(t *testing.T) {
+	prior := []chunker.Word{
+		{SpeakerLabel: "1"}, {SpeakerLabel: "2"}, {SpeakerLabel: "3"},
+		{SpeakerLabel: "1"}, {SpeakerLabel: ""},
+	}
+
+	// translation populates "1" and "3"; "2" is missing.
+	translation := map[string]string{"A": "1", "B": "3"}
+	got := computeMissingPriors(prior, translation)
+	if len(got) != 1 || got[0] != "2" {
+		t.Errorf("missing priors = %v, want [\"2\"]", got)
+	}
+
+	// All priors used → empty result.
+	translation2 := map[string]string{"A": "1", "B": "2", "C": "3"}
+	got2 := computeMissingPriors(prior, translation2)
+	if len(got2) != 0 {
+		t.Errorf("missing priors when all used = %v, want []", got2)
+	}
+
+	// No translation populated → all priors are "missing".
+	got3 := computeMissingPriors(prior, map[string]string{})
+	if len(got3) != 3 || got3[0] != "1" || got3[1] != "2" || got3[2] != "3" {
+		t.Errorf("missing priors with empty translation = %v, want [1 2 3] "+
+			"(numeric sort)", got3)
+	}
+}

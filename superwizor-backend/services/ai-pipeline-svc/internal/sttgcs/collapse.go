@@ -99,18 +99,16 @@ func CollapseGhostSpeakersWithThresholds(
 		return stats
 	}
 
-	// Effective ghost threshold: whichever of absolute / fraction
-	// is HIGHER, so the test passes when EITHER condition trips
-	// the label below threshold. (Defensive — we'd rather collapse
-	// a borderline label than leave a ghost in long sessions.)
+	// Effective ghost threshold: capped strictly at ghostMaxWords (50).
+	// This ensures that any speaker contributing more than 50 words (such
+	// as Janek Johny) is preserved as a legitimate participant, while
+	// still collapsing tiny alignment artifacts (under 50 words) in
+	// both short and long sessions.
 	totalWords := 0
 	for _, c := range counts {
 		totalWords += c
 	}
 	threshold := ghostMaxWords
-	if frac := int(float64(totalWords) * ghostMaxFraction); frac > threshold {
-		threshold = frac
-	}
 
 	// Iterate: each round, pick the smallest below-threshold label
 	// and merge it. Bounded by initial label count so we can't loop.

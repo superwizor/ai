@@ -46,7 +46,17 @@ const (
 	// that must agree on a single prior-chunk label to accept the
 	// translation. Below this the label is "ambiguous" and gets
 	// offset into a non-colliding range.
-	alignMajorityFraction = 0.6
+	//
+	// Lowered 0.60 → 0.45 on 2026-05-25 after repeat ghosts on the
+	// Janek Johny 53-min session (sids 18d1b6d6, 266163a5, ab6a4f13
+	// all showed initial_speakers=4 → final_speakers=3 with one
+	// surviving substantive ghost). 0.45 is still a clear plurality
+	// signal but tolerates the realistic case where ~half the
+	// overlap window has the dominant speaker and the secondary
+	// speaker barely co-occurs — without compromising couple's-
+	// therapy sessions which would have rich pair distributions on
+	// either side of 0.5.
+	alignMajorityFraction = 0.45
 )
 
 // AlignAndMapSpeakers translates the speaker labels in currLocalWords
@@ -146,10 +156,29 @@ func AlignAndMapSpeakers(
 	}
 
 	// 5. Apply translation. Labels not in the map (new speakers,
-	//    ambiguous) get offset into a non-colliding range using
-	//    prevMaxLabel as the offset base.
+	//    ambiguous) need a placement strategy.
+	//
+	//    Naive approach (pre-2026-05-25): offset to a fresh integer
+	//    above prevMaxLabel. This is correct when the unmapped label
+	//    represents a genuine NEW speaker the prior chunk had never
+	//    seen — but in the dominant 2-speaker therapy case it's
+	//    wrong. If the prior chunk had speakers {1, 2} and the
+	//    overlap window happened to contain only speaker 1's words,
+	//    chunk_i's "2" label has zero co-occurrences with chunk_{i-1}'s
+	//    "2" → unmapped → offset to "3". That "3" is the SAME PERSON
+	//    as the prior "2" (the patient who happened to be quiet in
+	//    the overlap window). Result: a substantive ghost speaker
+	//    surviving downstream — observed three times on the Janek
+	//    Johny 53-min session.
+	//
+	//    Smarter strategy: identify "missing priors" — prior-chunk
+	//    labels that were never used as a translation target —
+	//    and FIRST assign unmapped current labels to those. Only
+	//    fall back to a fresh offset once we've exhausted the
+	//    missing priors (truly novel speaker).
+	missingPriors := computeMissingPriors(priorAbsWords, translation)
 	mapped := make([]chunker.Word, len(currLocalWords))
-	unmappedOffsets := map[string]int{} // stable per-call mapping
+	unmappedOffsets := map[string]string{} // currLabel → assigned label
 	maxLabel := prevMaxLabel
 	for i, w := range currLocalWords {
 		mapped[i] = w
@@ -163,17 +192,106 @@ func AlignAndMapSpeakers(
 			}
 			continue
 		}
-		// Unmapped label — assign a stable offset within this call.
-		if off, ok := unmappedOffsets[w.SpeakerLabel]; ok {
-			mapped[i].SpeakerLabel = labelNum(off)
+		// Unmapped label — assign a stable label within this call.
+		if existing, ok := unmappedOffsets[w.SpeakerLabel]; ok {
+			mapped[i].SpeakerLabel = existing
+			continue
+		}
+		var assigned string
+		if len(missingPriors) > 0 {
+			// Pop the first missing prior. Deterministic by sort
+			// order (numeric on parseLabelNum, then string).
+			assigned = missingPriors[0]
+			missingPriors = missingPriors[1:]
 		} else {
+			// No more missing-priors — genuine new speaker.
 			maxLabel++
-			unmappedOffsets[w.SpeakerLabel] = maxLabel
-			mapped[i].SpeakerLabel = labelNum(maxLabel)
+			assigned = labelNum(maxLabel)
+		}
+		unmappedOffsets[w.SpeakerLabel] = assigned
+		mapped[i].SpeakerLabel = assigned
+		if n := parseLabelNum(assigned); n > maxLabel {
+			maxLabel = n
 		}
 	}
 
 	return mapped, maxLabel, false
+}
+
+// computeMissingPriors returns the prior-chunk labels that did NOT
+// appear as values in the translation map. These are the most
+// likely candidates for chunk_i's unmapped labels: same speaker as
+// before, just quiet in the overlap window. Returned in sorted
+// numeric-then-string order so the assignment is deterministic
+// across runs (important for downstream tests + ML
+// reproducibility).
+func computeMissingPriors(
+	priorAbsWords []chunker.Word,
+	translation map[string]string,
+) []string {
+	priorSet := map[string]bool{}
+	for _, w := range priorAbsWords {
+		if w.SpeakerLabel == "" {
+			continue
+		}
+		priorSet[w.SpeakerLabel] = true
+	}
+	used := map[string]bool{}
+	for _, v := range translation {
+		used[v] = true
+	}
+	var missing []string
+	for p := range priorSet {
+		if !used[p] {
+			missing = append(missing, p)
+		}
+	}
+	// Numeric-aware sort: "2" before "10", but treat non-numeric
+	// labels (degenerate input) as ranked after numerics.
+	sortLabelsNumericAware(missing)
+	return missing
+}
+
+// sortLabelsNumericAware sorts in place. Numeric labels first by
+// integer value, then non-numeric labels by string order.
+func sortLabelsNumericAware(labels []string) {
+	type item struct {
+		s string
+		n int // 0 means non-numeric → sort after numerics
+	}
+	items := make([]item, len(labels))
+	for i, l := range labels {
+		items[i] = item{s: l, n: parseLabelNum(l)}
+	}
+	// Simple insertion sort — N ≤ 10 in practice.
+	for i := 1; i < len(items); i++ {
+		j := i
+		for j > 0 && lessLabel(items[j], items[j-1]) {
+			items[j], items[j-1] = items[j-1], items[j]
+			j--
+		}
+	}
+	for i, it := range items {
+		labels[i] = it.s
+	}
+}
+
+// lessLabel: numerics ordered by integer; non-numeric (n==0) come
+// after numerics; within non-numeric, lexicographic.
+func lessLabel(a, b struct {
+	s string
+	n int
+}) bool {
+	switch {
+	case a.n > 0 && b.n > 0:
+		return a.n < b.n
+	case a.n > 0 && b.n == 0:
+		return true
+	case a.n == 0 && b.n > 0:
+		return false
+	default:
+		return a.s < b.s
+	}
 }
 
 // timeMatchedPair records one cross-chunk word pairing for the
