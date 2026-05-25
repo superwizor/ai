@@ -140,13 +140,30 @@ func loadBillingEnv(t *testing.T) *billingTestEnv {
 	return env
 }
 
-// mintBillingOIDCToken — `gcloud auth print-identity-token --audiences=<URL>`.
+// mintBillingOIDCToken — `gcloud auth print-identity-token --impersonate-service-account=<SA> --audiences=<URL>`.
 // Cloud Run waliduje audience claim, więc musi być EXACT URL z https://.
+//
+// SA musi mieć:
+//   - run.invoker na billing-svc (do faktycznego wywołania)
+//   - user musi mieć iam.serviceAccountTokenCreator na tym SA
+//
+// Default: billing-svc@<project>.iam — własna SA usługi, do której granty IAM
+// można dodać bez naruszania innych ścieżek.
+// Override przez env: BILLING_IMPERSONATE_SA.
 func mintBillingOIDCToken(t *testing.T, audienceURL string) string {
 	t.Helper()
-	out, err := exec.Command("gcloud", "auth", "print-identity-token",
-		"--audiences="+audienceURL).Output()
-	require.NoError(t, err, "gcloud print-identity-token (run `gcloud auth login`)")
+	impersonateSA := os.Getenv("BILLING_IMPERSONATE_SA")
+	if impersonateSA == "" {
+		project := envOr("GCP_PROJECT_ID", "superwizor-ai-25ecd")
+		impersonateSA = "billing-svc@" + project + ".iam.gserviceaccount.com"
+	}
+	args := []string{
+		"auth", "print-identity-token",
+		"--impersonate-service-account=" + impersonateSA,
+		"--audiences=" + audienceURL,
+	}
+	out, err := exec.Command("gcloud", args...).Output()
+	require.NoErrorf(t, err, "gcloud print-identity-token (impersonate=%s)", impersonateSA)
 	return strings.TrimSpace(string(out))
 }
 
