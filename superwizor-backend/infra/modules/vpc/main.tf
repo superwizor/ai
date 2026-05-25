@@ -49,7 +49,7 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   network                 = google_compute_network.main.id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_service_range.name]
-  deletion_policy = "ABANDON"
+  deletion_policy         = "ABANDON"
 }
 
 # Serverless VPC Access Connector dla Cloud Run → Cloud SQL

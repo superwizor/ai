@@ -76,3 +76,9 @@ variable "session_deleted_topic" {
   type        = string
   description = "Pub/Sub topic ID for session.deleted (clinical-svc → notification-worker-on-deleted cleanup of Firestore mirror + inbox)"
 }
+
+variable "billing_outbox_topic" {
+  type        = string
+  description = "Pub/Sub topic ID for billing.outbox (billing-svc poller → notification-worker-on-billing FCM dispatch for quota.warning / quota.exhausted / etc.)"
+  default     = ""
+}

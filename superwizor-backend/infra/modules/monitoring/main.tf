@@ -46,7 +46,7 @@ resource "google_monitoring_alert_policy" "firestore_sync_dlq_nonempty" {
   combiner     = "OR"
 
   documentation {
-    content = <<-EOT
+    content   = <<-EOT
       The notification-svc worker forwards failed Firestore writes to the
       firestore-sync.dlq subscription. Any message here means a session_state
       or inbox doc did NOT make it to Firestore — Flutter falls back to
@@ -107,7 +107,7 @@ resource "google_monitoring_alert_policy" "notification_worker_on_report_errors"
   combiner     = "OR"
 
   documentation {
-    content = <<-EOT
+    content   = <<-EOT
       Cloud Function `notification-worker-on-report` is failing > 10% of
       invocations over a 15 min window. This is the FCM-sending function;
       its failure means therapists are not getting "Report ready" pushes.
@@ -131,7 +131,7 @@ resource "google_monitoring_alert_policy" "notification_worker_on_report_errors"
       # MQL note: `0.0` (not `0`) — MQL is strict about Int vs Double in
       # if() branches. With `0` the API returns:
       #   "Operands of 'if' do not have same type: 'Double' and 'Int'."
-      query = <<-EOQ
+      query    = <<-EOQ
         fetch cloud_function
         | metric 'cloudfunctions.googleapis.com/function/execution_count'
         | filter (resource.function_name == 'notification-worker-on-report')
@@ -170,7 +170,7 @@ resource "google_monitoring_alert_policy" "notification_svc_5xx" {
   combiner     = "OR"
 
   documentation {
-    content = <<-EOT
+    content   = <<-EOT
       Cloud Run service `notification-svc` is returning 5xx for > 5% of
       requests over 15 min. Flutter login / token-refresh flows are
       affected — users register but never get pushes.
@@ -191,7 +191,7 @@ resource "google_monitoring_alert_policy" "notification_svc_5xx" {
   conditions {
     display_name = "5xx ratio > 5%"
     condition_monitoring_query_language {
-      query = <<-EOQ
+      query    = <<-EOQ
         fetch cloud_run_revision
         | metric 'run.googleapis.com/request_count'
         | filter (resource.service_name == 'notification-svc')

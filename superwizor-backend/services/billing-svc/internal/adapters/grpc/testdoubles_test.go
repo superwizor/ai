@@ -26,6 +26,7 @@ type fakeQuerier struct {
 	markReservationReleaseFn func(ctx context.Context, sessionID uuid.UUID) error
 	getUsageEventFn        func(ctx context.Context, sessionID uuid.UUID) (db.UsageEvent, error)
 	createUsageEventFn     func(ctx context.Context, arg db.CreateUsageEventParams) (db.UsageEvent, error)
+	appendOutboxFn         func(ctx context.Context, arg db.AppendOutboxEventParams) (db.OutboxEvent, error)
 
 	// Call recorders
 	createReservationCalls []db.CreateReservationParams
@@ -34,6 +35,7 @@ type fakeQuerier struct {
 	releaseReservedCalls   []db.ReleaseReservedTokensParams
 	commitTokensCalls      []db.CommitTokensParams
 	advisoryLockCalls      []string
+	appendOutboxCalls      []db.AppendOutboxEventParams
 }
 
 func (f *fakeQuerier) GetActiveSubscriptionByOrg(ctx context.Context, orgID uuid.UUID) (db.GetActiveSubscriptionByOrgRow, error) {
@@ -113,6 +115,14 @@ func (f *fakeQuerier) GetUsageEventBySession(ctx context.Context, sessionID uuid
 func (f *fakeQuerier) CreateUsageEvent(ctx context.Context, arg db.CreateUsageEventParams) (db.UsageEvent, error) {
 	f.createUsageEventCalls = append(f.createUsageEventCalls, arg)
 	return f.createUsageEventFn(ctx, arg)
+}
+
+func (f *fakeQuerier) AppendOutboxEvent(ctx context.Context, arg db.AppendOutboxEventParams) (db.OutboxEvent, error) {
+	f.appendOutboxCalls = append(f.appendOutboxCalls, arg)
+	if f.appendOutboxFn != nil {
+		return f.appendOutboxFn(ctx, arg)
+	}
+	return db.OutboxEvent{}, nil
 }
 
 // ---------- fakeTxOpener ----------

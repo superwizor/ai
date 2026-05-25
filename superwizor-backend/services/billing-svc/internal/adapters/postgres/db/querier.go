@@ -23,13 +23,23 @@ type Querier interface {
 	// Inkrementuje tokens_reserved. Wywoływane PO sprawdzeniu dostępności
 	// w transakcji ReserveCredit.
 	AddReservedTokens(ctx context.Context, arg AddReservedTokensParams) error
+	// Wstawiany wewnątrz transakcji razem z mutacją stanu (np. CommitTokens),
+	// żeby Pub/Sub publish był transactionally spójny z DB writem (ADR-DM-009).
+	AppendOutboxEvent(ctx context.Context, arg AppendOutboxEventParams) (OutboxEvent, error)
 	// Atomic: inkrement tokens_used + dekrement tokens_reserved.
 	// Używane w CommitUsage tylko jeśli usage_events INSERT zwrócił nowy row.
 	CommitTokens(ctx context.Context, arg CommitTokensParams) error
+	// Insert webhook event jako IGNORED (stub mode). UNIQUE constraint na
+	// (provider, provider_event_id) zwróci unique-violation przy duplikacie —
+	// caller (StripeStubHandler) używa tego do idempotency check.
+	CreatePaymentEventStub(ctx context.Context, arg CreatePaymentEventStubParams) (CreatePaymentEventStubRow, error)
 	// Tworzy rezerwację. UNIQUE constraint na session_id zapewnia że nawet
 	// równoczesny ReserveCredit z różnymi idempotency_keys da tylko jedną
 	// rezerwację — drugi dostanie unique-violation i handler przechwyci.
 	CreateReservation(ctx context.Context, arg CreateReservationParams) (PendingReservation, error)
+	// Tworzy nowy bucket licznika dla rozpoczętego okresu. UNIQUE (subscription_id,
+	// period_start) chroni przed double-create przy concurrent renewal.
+	CreateUsageCounter(ctx context.Context, arg CreateUsageCounterParams) (UsageCounter, error)
 	// Insert idempotent po session_id (UNIQUE constraint). Race: dwóch równoczesnych
 	// CommitUsage z tym samym session_id — jeden wygrywa INSERT, drugi dostaje
 	// unique-violation. Handler przechwytuje i refetchuje przez GetUsageEventBySession.
@@ -37,6 +47,12 @@ type Querier interface {
 	// Nie używamy ON CONFLICT DO NOTHING bo chcemy rozróżnić "świeży insert"
 	// (zwiększyć counter) od "duplikatu" (no-op).
 	CreateUsageEvent(ctx context.Context, arg CreateUsageEventParams) (UsageEvent, error)
+	// Poller: pobiera oldest unprocessed events. FOR UPDATE SKIP LOCKED pozwala
+	// multiple poller instances pracować równolegle bez double-publishu
+	// (każda instancja bierze "swój" subset).
+	//
+	// LIMIT zarządzany z aplikacji żeby kontrolować batch size.
+	FetchUnpublishedOutboxBatch(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxBatchRow, error)
 	// Pobiera bieżący usage_counters row dla subskrypcji.
 	// Zakładamy że istnieje dokładnie jeden aktywny okres na timestamp now()
 	// (gwarancja ze §9 — webhook/cron tworzy nowy row przy renewal).
@@ -55,6 +71,14 @@ type Querier interface {
 	// Idempotency lookup. Zwraca już zaistniały event jeśli był (no-op path
 	// w CommitUsage).
 	GetUsageEventBySession(ctx context.Context, sessionID uuid.UUID) (UsageEvent, error)
+	// Cron daily o 00:05 UTC — znajduje MANUAL ACTIVE subskrypcje, których
+	// bieżący okres rozliczeniowy się skończył (period_end < now).
+	// Per row musimy: shift current_period_*, utworzyć nowy usage_counters.
+	ListExpiredManualSubscriptions(ctx context.Context) ([]ListExpiredManualSubscriptionsRow, error)
+	// Weekly safety-check — znajdź ACTIVE/TRIALING subskrypcje, które nie mają
+	// aktywnego usage_counters dla bieżącego momentu. Jeśli się pojawi
+	// którakolwiek — alert (cron triggeruje monitoring).
+	ListSubscriptionsMissingCounter(ctx context.Context) ([]ListSubscriptionsMissingCounterRow, error)
 	// Wersja z FOR UPDATE — używana wewnątrz transakcji ReserveCredit / CommitUsage,
 	// po pg_advisory_xact_lock. SELECT FOR UPDATE chroni przed równoległym
 	// modyfikowaniem TEGO konkretnego row (advisory lock chroni przed równoległą
@@ -64,6 +88,12 @@ type Querier interface {
 	// tokens_reserved per row, żeby handler mógł zaktualizować odpowiednie
 	// usage_counters w tej samej transakcji.
 	MarkExpiredReservations(ctx context.Context) ([]MarkExpiredReservationsRow, error)
+	// Wywoływane PO failed publish. Inkrementuje attempts; po 10 próbach
+	// (chk constraint FetchUnpublished) event nie będzie więcej fetchowany —
+	// DLQ-equivalent.
+	MarkOutboxEventFailed(ctx context.Context, arg MarkOutboxEventFailedParams) error
+	// Wywoływane PO udanym publish do Pub/Sub.
+	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
 	// Wywoływane wewnątrz transakcji CommitUsage, po insert do usage_events.
 	MarkReservationCommitted(ctx context.Context, sessionID uuid.UUID) error
 	// Wywoływane przez ReleaseCredit (jawne anulowanie sesji).
@@ -71,6 +101,9 @@ type Querier interface {
 	// Dekrementuje tokens_reserved (clamp do 0). Wywoływane przy ReleaseCredit
 	// i przy CommitUsage (transfer rezerwacja → used).
 	ReleaseReservedTokens(ctx context.Context, arg ReleaseReservedTokensParams) error
+	// Atomic shift okresu rozliczeniowego — używane przez manual renewal cron
+	// ORAZ (w slice 2) przez Stripe invoice.paid handler.
+	ShiftSubscriptionPeriod(ctx context.Context, arg ShiftSubscriptionPeriodParams) error
 }
 
 var _ Querier = (*Queries)(nil)

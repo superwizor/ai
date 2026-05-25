@@ -290,8 +290,8 @@ resource "google_pubsub_subscription" "audio_uploaded_debug" {
   project = var.project_id
   topic   = google_pubsub_topic.audio_uploaded.id
 
-  ack_deadline_seconds = 60
-  message_retention_duration = "604800s"  # 7 days
+  ack_deadline_seconds       = 60
+  message_retention_duration = "604800s" # 7 days
 
   retry_policy {
     minimum_backoff = "10s"
@@ -338,6 +338,55 @@ resource "google_pubsub_topic_iam_member" "clinical_session_deleted_publisher" {
   member  = "serviceAccount:clinical-svc@${var.project_id}.iam.gserviceaccount.com"
 }
 
+# ============================================
+# BILLING OUTBOX (Phase 3, slice 3)
+# ============================================
+# billing.outbox carries all events emitted by billing-svc — quota.warning,
+# quota.critical, quota.exhausted, subscription.period_renewed,
+# subscription.payment_failed, subscription.canceled.
+#
+# Producer: billing-svc outbox poller (in-process goroutine that drains
+# the outbox_events DB table and publishes here).
+#
+# Consumer: notification-svc-on-billing (Cloud Function Gen2) — sends FCM
+# push to organization primary admin.
+#
+# Reference: docs/16_BILLING_SERVICE_PHASE_3.md §3.8.
+resource "google_pubsub_topic" "billing_outbox" {
+  name    = "billing.outbox"
+  project = var.project_id
+}
+
+resource "google_pubsub_topic" "billing_outbox_dlq" {
+  name    = "billing.outbox.dlq"
+  project = var.project_id
+}
+
+resource "google_pubsub_topic_iam_member" "pubsub_agent_billing_outbox_dlq_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.billing_outbox_dlq.name
+  role    = "roles/pubsub.publisher"
+  member  = local.pubsub_service_agent
+}
+
+# IAM: billing-svc może publishować na billing.outbox.
+resource "google_pubsub_topic_iam_member" "billing_outbox_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.billing_outbox.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:billing-svc@${var.project_id}.iam.gserviceaccount.com"
+}
+
+# DLQ subscription dla manual inspection / replay przez gcloud.
+resource "google_pubsub_subscription" "billing_outbox_dlq_reader" {
+  name    = "billing-outbox-dlq-reader"
+  project = var.project_id
+  topic   = google_pubsub_topic.billing_outbox_dlq.id
+
+  ack_deadline_seconds       = 60
+  message_retention_duration = "604800s"
+}
+
 output "audio_uploaded_topic" { value = google_pubsub_topic.audio_uploaded.id }
 output "audio_object_finalized_topic" { value = google_pubsub_topic.audio_object_finalized.id }
 output "audio_object_finalized_topic_name" { value = google_pubsub_topic.audio_object_finalized.name }
@@ -353,3 +402,7 @@ output "session_deleted_dlq_topic" { value = google_pubsub_topic.session_deleted
 output "firestore_sync_dlq_topic" { value = google_pubsub_topic.firestore_sync_dlq.id }
 output "firestore_sync_dlq_subscription" { value = google_pubsub_subscription.firestore_sync_dlq_reader.id }
 output "firestore_sync_dlq_subscription_name" { value = google_pubsub_subscription.firestore_sync_dlq_reader.name }
+output "billing_outbox_topic" { value = google_pubsub_topic.billing_outbox.id }
+output "billing_outbox_topic_name" { value = google_pubsub_topic.billing_outbox.name }
+output "billing_outbox_dlq_topic" { value = google_pubsub_topic.billing_outbox_dlq.id }
+output "billing_outbox_dlq_topic_name" { value = google_pubsub_topic.billing_outbox_dlq.name }

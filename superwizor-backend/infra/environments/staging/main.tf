@@ -73,28 +73,29 @@ module "migrations" {
 }
 
 module "cloud_functions" {
-  source                     = "../../modules/cloud-functions"
-  project_id                 = var.project_id
-  region                     = "europe-central2"
-  network_id                 = module.vpc.network_id
-  db_connection_name         = module.cloud_sql.instance_connection_name
-  db_url_secret_id           = "postgres-database-url"
-  vpc_connector_id           = module.vpc.vpc_connector_id
-  audio_bucket_name           = module.storage.audio_uploads_bucket_name
-  transcripts_raw_bucket_name = module.storage.transcripts_raw_bucket_name
-  audio_uploaded_topic              = module.pubsub.audio_uploaded_topic
-  transcript_completed_topic        = module.pubsub.transcript_completed_topic
-  report_generated_topic            = module.pubsub.report_generated_topic
-  session_deleted_topic             = module.pubsub.session_deleted_topic
-  audio_uploaded_dlq_topic          = module.pubsub.audio_uploaded_dlq_topic
-  transcript_completed_dlq_topic    = module.pubsub.transcript_completed_dlq_topic
+  source                         = "../../modules/cloud-functions"
+  project_id                     = var.project_id
+  region                         = "europe-central2"
+  network_id                     = module.vpc.network_id
+  db_connection_name             = module.cloud_sql.instance_connection_name
+  db_url_secret_id               = "postgres-database-url"
+  vpc_connector_id               = module.vpc.vpc_connector_id
+  audio_bucket_name              = module.storage.audio_uploads_bucket_name
+  transcripts_raw_bucket_name    = module.storage.transcripts_raw_bucket_name
+  audio_uploaded_topic           = module.pubsub.audio_uploaded_topic
+  transcript_completed_topic     = module.pubsub.transcript_completed_topic
+  report_generated_topic         = module.pubsub.report_generated_topic
+  session_deleted_topic          = module.pubsub.session_deleted_topic
+  billing_outbox_topic           = module.pubsub.billing_outbox_topic
+  audio_uploaded_dlq_topic       = module.pubsub.audio_uploaded_dlq_topic
+  transcript_completed_dlq_topic = module.pubsub.transcript_completed_dlq_topic
   stt_worker_source_dir          = "${path.cwd}/../../../services/ai-pipeline-svc/cmd/stt-worker"
   llm_worker_source_dir          = "${path.cwd}/../../../services/ai-pipeline-svc/cmd/llm-worker"
   notification_worker_source_dir = "${path.cwd}/../../../services/notification-svc"
-  stt_worker_sa_email          = google_service_account.stt_worker.email
-  llm_worker_sa_email          = google_service_account.llm_worker.email
-  notification_worker_sa_email = google_service_account.notification_svc.email
-  app_data_key_id            = module.kms.app_data_key_id
+  stt_worker_sa_email            = google_service_account.stt_worker.email
+  llm_worker_sa_email            = google_service_account.llm_worker.email
+  notification_worker_sa_email   = google_service_account.notification_svc.email
+  app_data_key_id                = module.kms.app_data_key_id
   # PHI exposure: only flip to true for hands-on debugging in staging,
   # and turn back off the moment you're done. Each invocation logs a
   # loud "DEV_LOG_PLAINTEXT_TRANSCRIPT=true" warning — handy as an audit

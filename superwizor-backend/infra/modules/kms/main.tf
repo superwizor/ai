@@ -13,10 +13,10 @@ resource "google_kms_key_ring" "main" {
 
 # Klucz dla bucketu audio
 resource "google_kms_crypto_key" "audio_bucket" {
-  name     = "audio-bucket-key"
-  key_ring = google_kms_key_ring.main.id
-  purpose  = "ENCRYPT_DECRYPT"
-  rotation_period = "7776000s"  # 90 dni
+  name            = "audio-bucket-key"
+  key_ring        = google_kms_key_ring.main.id
+  purpose         = "ENCRYPT_DECRYPT"
+  rotation_period = "7776000s" # 90 dni
 
   lifecycle {
     prevent_destroy = true
@@ -25,9 +25,9 @@ resource "google_kms_crypto_key" "audio_bucket" {
 
 # Klucz dla Cloud SQL
 resource "google_kms_crypto_key" "database" {
-  name     = "database-key"
-  key_ring = google_kms_key_ring.main.id
-  purpose  = "ENCRYPT_DECRYPT"
+  name            = "database-key"
+  key_ring        = google_kms_key_ring.main.id
+  purpose         = "ENCRYPT_DECRYPT"
   rotation_period = "7776000s"
 
   lifecycle {
@@ -37,9 +37,9 @@ resource "google_kms_crypto_key" "database" {
 
 # Klucz dla Secret Manager
 resource "google_kms_crypto_key" "secrets" {
-  name     = "secrets-key"
-  key_ring = google_kms_key_ring.main.id
-  purpose  = "ENCRYPT_DECRYPT"
+  name            = "secrets-key"
+  key_ring        = google_kms_key_ring.main.id
+  purpose         = "ENCRYPT_DECRYPT"
   rotation_period = "7776000s"
 
   lifecycle {
@@ -49,9 +49,9 @@ resource "google_kms_crypto_key" "secrets" {
 
 # Klucz aplikacyjny (envelope encryption dla PHI)
 resource "google_kms_crypto_key" "app_data" {
-  name     = "app-data-key"
-  key_ring = google_kms_key_ring.main.id
-  purpose  = "ENCRYPT_DECRYPT"
+  name            = "app-data-key"
+  key_ring        = google_kms_key_ring.main.id
+  purpose         = "ENCRYPT_DECRYPT"
   rotation_period = "7776000s"
 
   lifecycle {

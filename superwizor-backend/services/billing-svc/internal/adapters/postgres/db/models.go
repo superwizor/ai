@@ -820,6 +820,20 @@ type Organization struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type OutboxEvent struct {
+	ID             uuid.UUID          `json:"id"`
+	AggregateType  string             `json:"aggregate_type"`
+	EventType      string             `json:"event_type"`
+	AggregateID    uuid.UUID          `json:"aggregate_id"`
+	OrganizationID uuid.UUID          `json:"organization_id"`
+	Payload        []byte             `json:"payload"`
+	Processed      bool               `json:"processed"`
+	PublishedAt    pgtype.Timestamptz `json:"published_at"`
+	Attempts       int32              `json:"attempts"`
+	LastError      *string            `json:"last_error"`
+	CreatedAt      time.Time          `json:"created_at"`
+}
+
 type PatientFile struct {
 	ID                    uuid.UUID          `json:"id"`
 	TherapistID           uuid.UUID          `json:"therapist_id"`

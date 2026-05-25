@@ -133,6 +133,21 @@ func init() {
 	functions.CloudEvent("ProcessTranscriptCompleted", ProcessTranscriptCompleted)
 	functions.CloudEvent("ProcessAudioUploaded", ProcessAudioUploaded)
 	functions.CloudEvent("ProcessSessionDeleted", ProcessSessionDeleted)
+	functions.CloudEvent("ProcessBillingEvent", ProcessBillingEvent)
+}
+
+// BillingEventPayload — schema dla billing.outbox messages. Mapuje 1:1 na
+// billing-svc/internal/domain/outbox.QuotaPayload. Jeśli dodajesz pole tam,
+// dodaj też tutaj (loose coupling: zostawiamy unknown fields ignored przez
+// json.Unmarshal, ale znane fields muszą być spójne).
+type BillingEventPayload struct {
+	SubscriptionID  string `json:"subscription_id"`
+	OrganizationID  string `json:"organization_id"`
+	PlanTier        string `json:"plan_tier"`
+	TokensUsed      int32  `json:"tokens_used"`
+	TokensReserved  int32  `json:"tokens_reserved"`
+	TokensRemaining int32  `json:"tokens_remaining"`
+	TokensLimit     int32  `json:"tokens_limit"`
 }
 
 // ---------------------------------------------------------------------------
@@ -534,4 +549,241 @@ func ProcessSessionDeleted(ctx context.Context, e event.Event) error {
 	// notification_deliveries.session_id FK gets SET NULL via migration
 	// 000012 when the PG cascade runs, so audit history survives).
 	return nil
+}
+
+// ---------------------------------------------------------------------------
+// ProcessBillingEvent — billing-svc → notification-svc fan-out.
+//
+// Routes outbox events (quota.warning / quota.critical / quota.exhausted /
+// subscription.period_renewed / subscription.payment_failed / subscription.canceled)
+// to the organization's primary admin therapist via FCM push.
+//
+// Idempotency: outbox poller publishes with `idempotency_key` Pub/Sub
+// attribute = aggregate_type:event_type:aggregate_id:created_at.nano.
+// We use that as the notification_deliveries.idempotency_key — duplicate
+// Pub/Sub deliveries short-circuit at the DB layer.
+//
+// No PHI in push body (ADR-IMPL-013): only counts/dates.
+//
+// Reference: docs/16_BILLING_SERVICE_PHASE_3.md §16.2.
+func ProcessBillingEvent(ctx context.Context, e event.Event) error {
+	logger := slog.With("function", "notification-worker", "trigger", "billing.outbox")
+
+	var msgData MessagePublishedData
+	if err := e.DataAs(&msgData); err != nil {
+		logger.Error("decode cloudevent", "error", err)
+		return err
+	}
+
+	eventType := msgData.Message.Attributes["event_type"]
+	orgIDStr := msgData.Message.Attributes["organization_id"]
+	idempotencyKey := msgData.Message.Attributes["idempotency_key"]
+	if eventType == "" || orgIDStr == "" || idempotencyKey == "" {
+		logger.Error("billing event missing required attributes",
+			"event_type", eventType,
+			"organization_id", orgIDStr,
+			"has_idempotency_key", idempotencyKey != "")
+		return nil // ACK — bez wymaganych atrybutów nic nie zrobimy, retry nie pomoże.
+	}
+	logger = logger.With("event_type", eventType, "organization_id", orgIDStr)
+
+	var payload BillingEventPayload
+	if err := json.Unmarshal(msgData.Message.Data, &payload); err != nil {
+		logger.Error("parse billing payload", "error", err,
+			"raw", string(msgData.Message.Data))
+		return err
+	}
+
+	if store == nil {
+		logger.Warn("no store — skipping (mock mode)")
+		return nil
+	}
+
+	orgID, err := uuid.Parse(orgIDStr)
+	if err != nil {
+		logger.Error("invalid organization_id", "error", err)
+		return nil // ACK — bad UUID, retry też zawiedzie.
+	}
+
+	target, err := store.LookupBillingNotificationTarget(ctx, orgID)
+	if err != nil {
+		logger.Error("lookup notification target", "error", err)
+		return fmt.Errorf("lookup target: %w", err)
+	}
+	logger = logger.With("user_id", target.UserID)
+
+	deliveryID, err := store.InsertNotificationDelivery(ctx, pgstore.InsertDeliveryParams{
+		UserID:           target.UserID,
+		NotificationType: eventType,
+		IdempotencyKey:   idempotencyKey,
+	})
+	if err != nil {
+		if isAlreadyDelivered(err) {
+			logger.Info("duplicate billing event — already processed")
+			return nil
+		}
+		logger.Error("insert delivery", "error", err)
+		return err
+	}
+	logger = logger.With("delivery_id", deliveryID)
+
+	title, body := localizeBillingEvent(target.Locale, eventType, payload)
+	if title == "" {
+		// Nieznany event_type — zapisaliśmy delivery row dla audytu,
+		// nic nie wysyłamy (defensive: nowy event type w billing-svc
+		// nie powinien zawiesić workera).
+		logger.Warn("unknown billing event_type, skipping push", "event_type", eventType)
+		_ = store.UpdateNotificationDeliveryStatus(ctx, pgstore.UpdateDeliveryStatusParams{
+			ID: deliveryID, Status: "failed",
+			ErrorCode: strPtr("unknown_event_type"),
+		})
+		return nil
+	}
+
+	tokens, err := store.ListActiveFCMTokensByUser(ctx, target.UserID)
+	if err != nil {
+		logger.Error("list fcm tokens", "error", err)
+		return err
+	}
+
+	pushStatus := "sent"
+	var fcmMsgID *string
+	var pushErrCode, pushErrMsg *string
+
+	if len(tokens) == 0 {
+		logger.Warn("target has no active FCM tokens")
+		pushStatus = "failed"
+		c := "no_active_tokens"
+		pushErrCode = &c
+	} else if fcmSender == nil {
+		logger.Warn("fcm sender disabled (no project ID) — skipping push")
+		pushStatus = "failed"
+		c := "fcm_disabled"
+		pushErrCode = &c
+	} else {
+		tokenStrings := make([]string, len(tokens))
+		for i, t := range tokens {
+			tokenStrings[i] = t.Token
+		}
+		results, sendErr := fcmSender.Send(ctx, fcm.Push{
+			Tokens:           tokenStrings,
+			Title:            title,
+			Body:             body,
+			SessionID:        "", // billing eventy nie są związane z konkretną sesją
+			NotificationType: eventType,
+		})
+		if sendErr != nil {
+			logger.Error("fcm send", "error", sendErr)
+			pushStatus = "failed"
+			c := "fcm_error"
+			m := sendErr.Error()
+			pushErrCode, pushErrMsg = &c, &m
+		} else {
+			anySuccess := false
+			for i, r := range results {
+				if r.Success {
+					anySuccess = true
+					if fcmMsgID == nil {
+						id := r.MessageID
+						fcmMsgID = &id
+					}
+					continue
+				}
+				if r.TokenInvalidated {
+					_ = store.InvalidateFCMToken(ctx, tokens[i].ID, "fcm_not_registered")
+				}
+			}
+			if !anySuccess {
+				pushStatus = "token_invalid"
+				c := "all_tokens_failed"
+				pushErrCode = &c
+			}
+		}
+	}
+
+	if err := store.UpdateNotificationDeliveryStatus(ctx, pgstore.UpdateDeliveryStatusParams{
+		ID:           deliveryID,
+		Status:       pushStatus,
+		FCMMessageID: fcmMsgID,
+		ErrorCode:    pushErrCode,
+		ErrorMessage: pushErrMsg,
+	}); err != nil {
+		logger.Warn("update delivery status", "error", err)
+	}
+
+	// Inbox doc (best-effort; bez session_id bo eventy billingowe są org-scoped).
+	if fsWriter != nil {
+		_ = fsWriter.WriteInboxNotification(ctx, fswriter.InboxNotification{
+			NotificationID:   deliveryID.String(),
+			FirebaseUID:      target.TherapistFirebaseUID,
+			NotificationType: eventType,
+			Title:            title,
+			Body:             body,
+			SessionID:        "",
+			CreatedAt:        time.Now().UTC(),
+		})
+	}
+
+	logger.Info("billing event handled", "push_status", pushStatus, "tokens", len(tokens))
+	return nil
+}
+
+// localizeBillingEvent — tłumaczenia per design §16.2. Pusty tytuł oznacza
+// "nieznany event type" → worker pomija push.
+//
+// Body NIE zawiera PHI: tylko liczby tokenów i bardzo generyczne sformułowania.
+// Kropki dziesiętne dla zgodności z PL.
+func localizeBillingEvent(locale, eventType string, p BillingEventPayload) (title, body string) {
+	pl := locale != "en" && locale != "en-US" && locale != "en-GB"
+
+	switch eventType {
+	case "quota.warning":
+		if pl {
+			return "Zostało Ci niewiele tokenów",
+				fmt.Sprintf("Pozostało %d tokenów do końca okresu rozliczeniowego.", p.TokensRemaining)
+		}
+		return "Running low on tokens",
+			fmt.Sprintf("%d tokens left in the current billing period.", p.TokensRemaining)
+
+	case "quota.critical":
+		if pl {
+			return "Ostatni token", "Został Ci 1 token. Rozważ rozszerzenie planu."
+		}
+		return "Last token", "Only 1 token left. Consider upgrading your plan."
+
+	case "quota.exhausted":
+		if pl {
+			return "Wyczerpano pulę tokenów",
+				"Nagrywaj dalej — sesje zostaną zachowane lokalnie i przetworzone po odnowieniu puli."
+		}
+		return "Token pool exhausted",
+			"Keep recording — sessions will be saved locally and processed after renewal."
+
+	case "subscription.period_renewed":
+		if pl {
+			return "Pula tokenów odnowiona",
+				fmt.Sprintf("Masz znów %d tokenów na nowy okres rozliczeniowy.", p.TokensLimit)
+		}
+		return "Token pool renewed",
+			fmt.Sprintf("You now have %d tokens for the new billing period.", p.TokensLimit)
+
+	case "subscription.payment_failed":
+		if pl {
+			return "Problem z płatnością",
+				"Nie udało się pobrać opłaty. Sprawdź metodę płatności w ustawieniach."
+		}
+		return "Payment failed",
+			"Could not process payment. Please check your payment method in settings."
+
+	case "subscription.canceled":
+		if pl {
+			return "Subskrypcja zakończona",
+				"Twoja subskrypcja kończy się. Do tego czasu możesz dalej korzystać z aplikacji."
+		}
+		return "Subscription ended",
+			"Your subscription is ending. You can continue using the app until that date."
+
+	default:
+		return "", ""
+	}
 }

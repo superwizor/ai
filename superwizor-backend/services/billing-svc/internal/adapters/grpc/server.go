@@ -33,6 +33,7 @@ import (
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	"github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/postgres/db"
+	"github.com/superwizor-ai/backend/services/billing-svc/internal/domain/outbox"
 	"github.com/superwizor-ai/backend/services/billing-svc/internal/domain/tokens"
 )
 
@@ -86,6 +87,7 @@ type Server struct {
 	queries        db.Querier
 	tx             TxOpener
 	reservationTTL time.Duration
+	thresholds     outbox.Thresholds
 	version        string
 }
 
@@ -95,6 +97,7 @@ func NewServer(pool *pgxpool.Pool, version string) *Server {
 		queries:        db.New(pool),
 		tx:             NewPgxTxOpener(pool),
 		reservationTTL: DefaultReservationTTL,
+		thresholds:     outbox.DefaultThresholds(),
 		version:        version,
 	}
 }
@@ -104,7 +107,19 @@ func NewServerWithDeps(q db.Querier, tx TxOpener, ttl time.Duration, version str
 	if ttl == 0 {
 		ttl = DefaultReservationTTL
 	}
-	return &Server{queries: q, tx: tx, reservationTTL: ttl, version: version}
+	return &Server{
+		queries:        q,
+		tx:             tx,
+		reservationTTL: ttl,
+		thresholds:     outbox.DefaultThresholds(),
+		version:        version,
+	}
+}
+
+// WithThresholds — opcjonalny override progów (env vars w main.go).
+func (s *Server) WithThresholds(warn, critical int32) *Server {
+	s.thresholds = outbox.Thresholds{Warn: warn, Critical: critical}
+	return s
 }
 
 // ---------- helpers ----------
@@ -464,6 +479,53 @@ func (s *Server) commitInternal(ctx context.Context, in commitInput) (*billingv1
 	}); err != nil {
 		slog.ErrorContext(ctx, "CommitUsage: CommitTokens", "error", err)
 		return nil, status.Errorf(codes.Internal, "counter commit failed")
+	}
+
+	// Edge-triggered quota notification (§16.1). remainingBefore liczone
+	// z locked counter PRZED UPDATE-em; remainingAfter to remainingBefore
+	// minus tokens skonsumowanych + tokens zwolnionych z rezerwacji
+	// (które już były w "reserved" więc nie są nową konsumpcją widoczną
+	// dla terapeuty — patrz definicja remainingTokens).
+	//
+	// Definicja remaining = limit - used - reserved.
+	// Po commit: used' = used + tokensToCharge, reserved' = reserved - reservedToRelease.
+	// remaining' = limit - used' - reserved' = remaining + reservedToRelease - tokensToCharge.
+	remainingBefore := counter.TokensLimit - counter.TokensUsed - counter.TokensReserved
+	if remainingBefore < 0 {
+		remainingBefore = 0
+	}
+	remainingAfter := remainingBefore + reservedToRelease - tokensToCharge
+	if remainingAfter < 0 {
+		remainingAfter = 0
+	}
+	if eventType := s.thresholds.QuotaEdgeEventType(remainingBefore, remainingAfter); eventType != "" {
+		payload := outbox.QuotaPayload{
+			SubscriptionID:  sub.ID,
+			OrganizationID:  orgID,
+			PlanTier:        string(sub.PlanTier),
+			TokensUsed:      counter.TokensUsed + tokensToCharge,
+			TokensReserved:  counter.TokensReserved - reservedToRelease,
+			TokensRemaining: remainingAfter,
+			TokensLimit:     counter.TokensLimit,
+			PeriodStart:     counter.PeriodStart,
+			PeriodEnd:       counter.PeriodEnd,
+		}
+		payloadBytes, mErr := payload.Marshal()
+		if mErr != nil {
+			// Niemożliwe (struct → JSON, fields są bezpieczne), ale obsłużone defensive.
+			slog.ErrorContext(ctx, "CommitUsage: outbox payload marshal", "error", mErr)
+			return nil, status.Errorf(codes.Internal, "outbox payload encode failed")
+		}
+		if _, err := q.AppendOutboxEvent(ctx, db.AppendOutboxEventParams{
+			AggregateType:  outbox.AggregateQuota,
+			EventType:      eventType,
+			AggregateID:    sub.ID,
+			OrganizationID: orgID,
+			Payload:        payloadBytes,
+		}); err != nil {
+			slog.ErrorContext(ctx, "CommitUsage: outbox append", "error", err, "event_type", eventType)
+			return nil, status.Errorf(codes.Internal, "outbox append failed")
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
