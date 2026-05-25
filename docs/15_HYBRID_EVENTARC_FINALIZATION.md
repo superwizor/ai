@@ -1,7 +1,16 @@
-# 15 — Hybrid Eventarc-driven ingestion finalization (Option F)
+# 15 — Hybrid event-driven ingestion finalization (Option F)
 
 **Status:** design (2026-05-25). Not started. Branch will be
 `feat/ingestion-eventarc-finalize` when picked up.
+
+**Note on the title:** the original draft of this doc used
+"Eventarc-driven". The finalized design uses a plain
+`google_storage_notification` → Pub/Sub topic → pull subscription
+consumed by a background goroutine inside ingestion-svc — not the
+Eventarc managed primitive. "Hybrid event-driven" is the more
+honest label. The trigger source is still a GCS object event; we
+just skip the Eventarc-to-Cloud-Function dance because the
+consumer lives in Cloud Run.
 
 **Predecessor:** `docs/14_INGESTION_EARLY_SESSION_CREATION.md`
 (Option E "E-lite", shipped 2026-05-25 in merge `fae7c1a`). Option F
@@ -44,10 +53,16 @@ Flutter:  CreateAudioUpload  ─────────→  PUT → GCS (audio-
   session (PENDING_UPLOAD)                  OBJECT_FINALIZE
   audio_uploads (PENDING)                          │
                                                    ▼
+                                          Pub/Sub topic
+                                          audio.objectFinalized
+                                                   │
+                                                   ▼
                                   ┌────────────────────────────────┐
-                                  │  ingestion-finalize            │
-                                  │  (Cloud Functions Gen2,        │
-                                  │   Eventarc-triggered)          │
+                                  │  ingestion-svc                 │
+                                  │  (existing Cloud Run service,  │
+                                  │   new Pub/Sub pull consumer    │
+                                  │   running in background        │
+                                  │   alongside the gRPC server)   │
                                   │                                │
                                   │  1. lookup audio_uploads by    │
                                   │     (bucket, object_path)      │
@@ -57,8 +72,9 @@ Flutter:  CreateAudioUpload  ─────────→  PUT → GCS (audio-
                                   │  3. ffprobe duration           │
                                   │  4. if >19 min → ffmpeg        │
                                   │     silence-detect → write     │
-                                  │     chunks to NEW chunked      │
-                                  │     bucket; INSERT audio_chunks│
+                                  │     chunks to audio-chunks-    │
+                                  │     staging bucket; INSERT     │
+                                  │     audio_chunks rows          │
                                   │  5. flip sessions.status       │
                                   │     PENDING_UPLOAD → CREATED   │
                                   │  6. publish audio.uploaded     │
@@ -261,6 +277,90 @@ invocations short-circuit at the claim step. This is the same
 contract `stt-finalize` already enforces against multi-chunk
 finalize races; we're just extending the pattern.
 
+### 4. Host the background subscriber inside ingestion-svc (Cloud Run)
+
+The subscriber lives **in the existing `ingestion-svc` Cloud Run
+container**, not as a separate Cloud Functions Gen2 deployment.
+
+Implementation pattern: ingestion-svc startup spins up a Pub/Sub
+**pull subscription** consumer as a background goroutine alongside
+the existing gRPC server. The bucket notification on
+`audio-uploads` publishes to a new `audio.objectFinalized` topic;
+ingestion-svc has a pull subscription on that topic and processes
+each delivery via the same `Finalize(...)` function used by the
+gRPC `CompleteAudioUpload` shim during the deprecation window.
+
+```go
+// cmd/server/main.go (sketch)
+func main() {
+    // ... existing setup, db pool, signer, etc. ...
+
+    srv := grpc.NewServer(/* ... */)
+    ingestionv1.RegisterIngestionServiceServer(srv, handler)
+
+    // NEW: background Pub/Sub consumer.
+    consumerCtx, cancel := context.WithCancel(context.Background())
+    defer cancel()
+    go runFinalizeConsumer(consumerCtx, handler.Finalize)
+
+    listenAndServeGrpc(srv, port)
+}
+
+func runFinalizeConsumer(ctx context.Context, finalize FinalizeFn) {
+    sub := pubsubClient.Subscription("ingestion-finalize")
+    err := sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
+        if err := handleObjectFinalized(ctx, msg, finalize); err != nil {
+            // Don't Ack — Pub/Sub retries with backoff. Idempotent
+            // handler covers redeliveries (§3 above).
+            msg.Nack()
+            return
+        }
+        msg.Ack()
+    })
+    if err != nil { slog.Error("finalize consumer crashed", "error", err) }
+}
+```
+
+Why this beats a separate Cloud Function:
+
+| Concern | Separate Cloud Function | In-process in ingestion-svc |
+|---|---|---|
+| Container image / Dockerfile | New custom-image build needed (ffmpeg layer ≈ 80 MB). Two Dockerfiles to maintain. | Already has ffmpeg. **Zero image work.** |
+| Code reuse (`ConvertAudio` body, chunker, signer, db pool) | Requires extracting shared internal package — `internal/adapters/storage/finalize.go` — that both binaries import. Mechanical but non-trivial. | Handler is just another method on the existing `Server` struct. **Zero refactor.** |
+| Cold start | ~1–2 s per invocation (Cloud Functions Gen2). | Zero — Cloud Run keeps `min_instance_count = 1`. |
+| Service account | New SA + new IAM bindings (KMS, GCS, Pub/Sub publisher, Cloud SQL). | Existing `ingestion-svc@` SA already has everything needed. |
+| Terraform surface | ~80 LoC: function resource, Eventarc trigger, IAM bindings, image build pipeline. | ~30 LoC: new Pub/Sub topic, new pull subscription on that topic, GCS bucket notification, one IAM binding (existing SA → subscriber). |
+| Logging / observability | Separate log stream, separate error budget, separate alerts. | Single log stream tagged by `function="ingestion-finalize"` slog attribute. Existing alerts cover it. |
+| Concurrency / load isolation | Cloud Functions scales horizontally per invocation. Two concurrent uploads = two function instances. | Cloud Run scales horizontally per instance load. `pubsub.Receive` defaults to processing up to `MaxOutstandingMessages = 1000` concurrently via goroutines; configure `NumGoroutines` / `MaxOutstandingMessages` to bound CPU contention with the gRPC server. **Not a problem in practice** — ffmpeg jobs are I/O-bound during download/upload and CPU-bound during transcode; with a sensible cap (say 4 concurrent finalize goroutines per instance) the gRPC latency-sensitive path is unaffected. |
+| Crash blast radius | A finalize panic only kills the function instance; the gRPC service is unaffected. | A finalize panic killed by `recover()` middleware (already in place) doesn't propagate to the gRPC handlers. We need to verify the recovery middleware wraps the pubsub consumer goroutine too — it doesn't by default. **Action item.** |
+
+Eventarc-to-Cloud-Run via HTTP push (the other in-process pattern)
+would require adding an HTTP listener to a currently-gRPC-only
+service — extra complexity for no benefit. Pull subscription
+removes that: ingestion-svc speaks GCS / Pub/Sub / Postgres
+outbound; no new inbound surface beyond the existing gRPC.
+
+**One nuance: the bucket notification mechanism, not Eventarc.**
+GCS supports two ways to publish object events to Pub/Sub:
+- **Eventarc trigger** (managed; creates an internal topic, routes
+  events through CloudEvents). Required for Cloud Functions; not
+  required for Cloud Run with pull.
+- **`google_storage_notification`** (direct; the bucket publishes
+  raw `storage#object` JSON to a topic you own). Simpler, fewer
+  moving parts, no CloudEvent wrapper to unmarshal.
+
+We use **`google_storage_notification`** here. The same primitive
+we removed earlier (when bucket-notification events flooded
+`audio.uploaded` with raw GCS events nothing parsed; see
+`04_ingestion-svc` "Historical note"). This time it's safe because:
+- It publishes to a dedicated `audio.objectFinalized` topic, not
+  the structured `audio.uploaded` topic.
+- Only ingestion-svc subscribes; the consumer expects raw
+  `storage#object` payloads (which is what GCS sends) and parses
+  them into the `bucket, object_path` lookup.
+- The chunked bucket (`audio-chunks-staging`) has no notification
+  — chunk writes can't trigger this code path.
+
 ## Pipeline failure-mode comparison
 
 | Scenario | Current (Option E-lite, shipped) | Option F |
@@ -269,7 +369,7 @@ finalize races; we're just extending the pattern.
 | Flutter dies between PUT and CompleteAudioUpload | audio_uploads UPLOADED, GCS file present, session PENDING_UPLOAD. Hive recovers on relaunch → retries Complete. Hive-lost → stt-watchdog reaps the orphan PENDING_UPLOAD in ≤15 min. | **Closed structurally.** Eventarc fires on PUT regardless of Flutter state. ingestion-finalize completes the work even if the user uninstalls the app immediately after PUT. |
 | Flutter dies between PUT and Convert | Same as above for Convert-needed clients (Android, web). | Same. ConvertAudio is now part of ingestion-finalize; no client involvement. |
 | ConvertAudio retries fire concurrently | Server-side advisory lock in `maybeChunkForChirp` already handles concurrent calls. | Same lock + the new `ClaimUploadForFinalize` row-level guard. Two layers of protection. |
-| Cloud Functions Gen2 cold start | N/A (Cloud Run keeps warm) | ~1–2 s added latency per upload. For a 30 s upload, ~5% impact on time-to-stt-start. For a 60 min upload, ~0.05%. |
+| Cold-start latency added per upload | N/A | **None** — host stays on warm ingestion-svc Cloud Run instance (min=1). |
 | Eventarc storm on chunk writes | N/A | Mitigated by dedicated `audio-chunks-staging` bucket — Eventarc only listens to `audio-uploads`. |
 | Cross-device upload completion | Phone A's CompleteAudioUpload return is the only signal that finalization started. Phone B sees PENDING_UPLOAD via Firestore mirror but no progression until A is done. | Eventarc finalize is server-driven. Phone B's Firestore listener observes `PENDING_UPLOAD → CREATED → TRANSCRIBING → …` independent of which device originated the upload. |
 
@@ -286,33 +386,45 @@ finalize races; we're just extending the pattern.
 
 ## What gains complexity
 
-- New `ingestion-finalize` Cloud Function. Container-image build
-  (custom Dockerfile) so it can ship ffmpeg.
-- New `audio-chunks-staging` GCS bucket + IAM for the
-  ingestion-finalize SA.
-- New Eventarc trigger on `audio-uploads` (OBJECT_FINALIZE).
+- A new Pub/Sub topic (`audio.objectFinalized`) and pull
+  subscription (`ingestion-finalize`) on it.
+- A new `google_storage_notification` on `audio-uploads` pointing at
+  that topic.
+- New `audio-chunks-staging` GCS bucket + IAM binding for the
+  existing `ingestion-svc@` SA.
+- A new background goroutine inside ingestion-svc (`runFinalizeConsumer`)
+  that pulls from the subscription. Must be wrapped in panic recovery
+  matching the gRPC interceptor.
 - Migration `000026` for `audio_uploads.finalize_started_at` +
   unique index on `(bucket_name, object_path)`.
 - Refactor of ffprobe + ConvertAudio + chunking out of
-  `services/ingestion-svc/internal/adapters/grpc/server.go` into a
-  reusable helper that both the legacy gRPC handler and the new
-  Cloud Function import.
+  `CompleteAudioUpload` into a `Finalize(uploadID)` method on the
+  existing `Server` struct, callable from both the legacy gRPC
+  handler (during deprecation window) and the new pull-consumer
+  goroutine.
+
+What does **NOT** gain complexity vs. the separate-function variant:
+no new container image, no new SA, no Eventarc trigger, no
+CloudEvent unmarshaling code path. The shared-package extraction
+becomes a same-package method extraction — much smaller PR.
 
 ## Migration plan
 
 | Day | Work |
 |---|---|
-| 1 | Migration `000026`: `finalize_started_at` column + `ux_audio_uploads_bucket_object`. Sqlc regen. |
-| 2 | New shared `internal/adapters/storage/finalize.go` package — moves the body of `CompleteAudioUpload` into a function that takes `audio_uploads.ID` and runs the same ffprobe + Convert + chunking + publish sequence. Used by both the legacy gRPC handler and the new function. |
-| 3 | `cmd/ingestion-finalize/main.go` — Cloud Functions Gen2 entrypoint. Eventarc → `ClaimUploadForFinalize` → call into shared finalize helper. |
-| 4 | Terraform: new `audio-chunks-staging` bucket + IAM. New `google_cloudfunctions2_function "ingestion_finalize"` with Eventarc trigger on `audio-uploads`. Custom container source (Dockerfile mirrors ingestion-svc). |
-| 5 | Update chunker (`storage/chunker.go`) to write to the staging bucket. stt-worker's chunk-plan reads `audio_chunks.bucket_name` already — no change needed there. |
-| 6 | Flutter: collapse UploadWorker state machine to terminate at `uploaded`. Remove `CompleteAudioUpload` call from `upload_io_grpc.dart`. Update `_PendingUploadCard` status text to reflect the new shorter client-side flow. |
-| 7 | Coordinated deploy: backend (ingestion-svc + ingestion-finalize + stt-worker) in one terragrunt apply, Flutter binary push after. Server keeps `CompleteAudioUpload` handler for ≥1 week so legacy clients work; new clients never call it. Watch logs for `legacy_complete_audio_upload_called` metric. |
-| 8–14 | Deprecation window. After 7 days of zero `legacy_complete_audio_upload_called`, follow-up commit removes the handler + the proto field. |
+| 1 | Migration `000026`: `finalize_started_at` column + `ux_audio_uploads_bucket_object` unique index. New sqlc query `ClaimUploadForFinalize`. Sqlc regen. |
+| 2 | Refactor: extract the body of `CompleteAudioUpload` (ffprobe → Convert → chunking → status flip → publish) into a `Server.Finalize(ctx, uploadID)` method. The existing gRPC handler becomes a thin shim that calls this method (kept during deprecation window). |
+| 3 | New file `cmd/server/finalize_consumer.go`: `runFinalizeConsumer(ctx, finalizeFn)` — Pub/Sub pull subscription loop with panic recovery, configurable `MaxOutstandingMessages` (start with 4). Wire startup in `cmd/server/main.go` to spin up the goroutine alongside the gRPC listener. |
+| 4 | Update chunker (`storage/chunker.go`) to write to the `audio-chunks-staging` bucket — accepts a `targetBucket string` parameter, defaults to the staging bucket name from env. stt-worker reads `audio_chunks.bucket_name` per-row already, so no change there. |
+| 5 | Terraform: new `audio-chunks-staging` bucket, new `audio.objectFinalized` Pub/Sub topic (+ DLQ), new pull subscription `ingestion-finalize`, new `google_storage_notification` on `audio-uploads` → topic. IAM: `ingestion-svc@` gains `roles/pubsub.subscriber` on the new subscription and `roles/storage.objectAdmin` on `audio-chunks-staging`. |
+| 6 | Flutter: collapse UploadWorker state machine to terminate at `uploaded`. Remove `CompleteAudioUpload` (and `ConvertAudio`) calls from `upload_io_grpc.dart`. Update `_PendingUploadCard` / `_PendingUploadServerCard` status text to reflect the new shorter client-side flow. |
+| 7 | Coordinated deploy: one Cloud Build of ingestion-svc with the new consumer wired in, one terragrunt apply for the new TF resources, one Flutter binary push. Server keeps the `CompleteAudioUpload` and `ConvertAudio` gRPC handlers for ≥1 week so legacy clients work. Watch logs for `legacy_complete_audio_upload_called` + `legacy_convert_audio_called` counters. |
+| 8–14 | Deprecation window. After 7 days of zero legacy-RPC counters, follow-up commit removes the handlers + the proto fields. |
 
-Total: ~2 weeks of effort for one engineer including the deprecation
-window. Roughly double Option E-lite's scope.
+Total: ~1.5 weeks of focused work for one engineer including the
+deprecation window. Faster than the separate-Cloud-Function variant
+(saved on Dockerfile, shared-package extraction, function-resource
+TF) by ~3 days.
 
 ## When to ship
 
@@ -352,13 +464,38 @@ Don't ship now. Triggers that would re-prioritize:
   one-line e2e check during day 7 validation.
 
 - **Dead-letter queue / human-in-the-loop for finalize failures.**
-  Eventarc supports DLQs; we have one for the existing
-  `audio.uploaded` topic. Should we wire a separate DLQ for
-  `ingestion-finalize` events that exhaust retries (24 h, ~5
-  attempts at exponential backoff)? Probably yes — surfaces
-  "this upload's chunking can't succeed" cases for manual
+  Pub/Sub supports DLQs at the subscription level. We have one for
+  the existing `audio.uploaded` topic. Wire a separate DLQ for the
+  new `ingestion-finalize` pull subscription that exhausts retries
+  (`maxDeliveryAttempts = 6`, exponential backoff up to 600s).
+  Surfaces "this upload's chunking can't succeed" cases for manual
   inspection. Same dashboard pattern we already have for
   `audio.uploaded.dlq.reader`.
+
+- **Concurrency cap inside ingestion-svc.** With the consumer
+  running in-process, ffmpeg jobs compete for CPU with the gRPC
+  request handlers. Start with `MaxOutstandingMessages = 4` so at
+  most 4 chunkings run concurrently per Cloud Run instance.
+  Increase via env var if Cloud Run autoscaling needs the headroom.
+  At the default cap, a typical 60-min FLAC chunking uses ~80% of
+  one vCPU during silence-detect and ~120% during chunk extract +
+  upload (the latter is I/O-bound + ffmpeg). With Cloud Run's
+  `concurrency = 80` on the gRPC path, a single instance handling
+  4 concurrent finalizes still has headroom for gRPC traffic. If
+  this becomes a bottleneck, the path forward is bumping
+  `min_instance_count` (already at 1) or breaking the consumer out
+  into its own Cloud Run service (still no Cloud Function — just
+  service split, same image).
+
+- **Pull subscription liveness vs. Cloud Run scale-to-zero.** We
+  keep `min_instance_count = 1` on ingestion-svc, so there's
+  always one instance running the consumer goroutine. If the
+  service ever scaled to zero (we shouldn't, but defensively), the
+  Pub/Sub messages would queue on the topic with the subscription's
+  default 7-day retention — no message loss, but no progress
+  either. The min=1 invariant is load-bearing for Option F; a
+  follow-up safety check in CI could assert `min_instance_count
+  >= 1` on the ingestion-svc TF resource.
 
 ## Related
 
