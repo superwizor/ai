@@ -6,15 +6,40 @@ Tracked-but-not-yet-scheduled items. Each entry: what's broken, why it matters, 
 
 ## High priority
 
-### Hybrid Eventarc-driven ingestion finalization (Option F)
+### Hybrid Eventarc-driven ingestion finalization (Option F) — ✅ shipped 2026-05-25 on `feat/refactor-stt-architecture`
 
-**Status**: design complete, not started, **don't ship now**. Tracked in [`docs/15_HYBRID_EVENTARC_FINALIZATION.md`](../15_HYBRID_EVENTARC_FINALIZATION.md). Estimated ~2 weeks including deprecation window.
+**Status**: shipped. Design + final state documented in
+[`docs/15_HYBRID_EVENTARC_FINALIZATION.md`](../15_HYBRID_EVENTARC_FINALIZATION.md).
+Branch staging-deployed; full + long e2e green.
 
-**What's broken**: Nothing user-facing. The post-PUT path is still synchronous (Flutter blocks on `CompleteAudioUpload` for 3–10 min on long audio), and the orphan-recovery for the Hive-loss case relies on a 15-min watchdog tick.
+**What landed**:
+- New `audio.objectFinalized` Pub/Sub topic + DLQ + pull
+  subscription, fed by a `google_storage_notification` on the
+  `audio-uploads` bucket.
+- ingestion-svc grew an in-process pull-subscriber goroutine
+  (`internal/adapters/pubsub/subscriber.go`) that consumes the
+  feed: parse session_id from object path → `pg_advisory_xact_lock`
+  → status-branch idempotency (PENDING_UPLOAD / CREATED /
+  post-CREATED) → ffprobe → fallback transcode → chunk if > 19 min
+  → flip session to CREATED → publish `audio.uploaded`.
+- `CompleteAudioUpload` and `ConvertAudio` gRPC RPCs were
+  **deleted** from the proto + handlers (no deprecation window;
+  app is pre-launch and every Flutter client got the simplified
+  build in lockstep). Flutter `UploadWorker` now terminates at
+  HTTP PUT success.
+- Cloud Run revision deployed with
+  `--no-cpu-throttling --cpu=2 --memory=2Gi` so the goroutine has
+  sustained CPU between requests (default CPU-throttling stalls
+  ffmpeg mid-flight and triggers Pub/Sub redelivery storms).
 
-**Why it matters**: Removes Flutter from the critical path after the PUT, closes the orphan-Hive-loss gap structurally instead of via reaper, enables cross-device upload-completion observability, and matches stt-finalize's Eventarc pattern symmetrically.
-
-**Trigger to schedule**: production reports of orphan uploads beyond watchdog reach, OR introduction of a web/iPad therapist client, OR resumable-upload work. Until any of those fire, the current Option E (E-lite) architecture is the right operating point.
+**What's still open**:
+- Orphan-reaper Cloud Scheduler job remains unbuilt — the DLQ on
+  `audio.objectFinalized.sub` is the safety net for poison messages,
+  and Pub/Sub's 7-day retention covers transient outages. Build the
+  reaper if the DLQ ever accumulates without operator action.
+- Resumable uploads (XHR multipart) for unreliable mobile networks
+  are still a follow-up. The current 60-min signed URL TTL on
+  300 MB uploads covers most cases.
 
 ### Early session creation (Option E) — ✅ shipped 2026-05-25 in merge `fae7c1a`
 

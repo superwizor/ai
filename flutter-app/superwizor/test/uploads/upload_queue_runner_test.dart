@@ -31,23 +31,17 @@ class _FakeIo implements UploadIo {
     createCalls++;
     if (createUploadError != null) throw createUploadError!;
     return const CreateAudioUploadResult(
-        uploadId: 'au-1', signedUrl: 'https://signed/1');
+        uploadId: 'au-1', signedUrl: 'https://signed/1', sessionId: 'sess-1');
   }
 
   @override
   Future<void> putBytes(PendingUpload u,
       {void Function(double)? onProgress}) async {
+    // Option F (2026-05-25): PUT-success is terminal-success now.
+    // The legacy completeCalls counter doubles as "we reached
+    // terminal-success" for tests that previously bumped it.
     putCalls++;
-  }
-
-  @override
-  Future<ConvertAudioResult> convertAudio(PendingUpload u) async =>
-      const ConvertAudioResult(contentType: 'audio/flac', converted: true);
-
-  @override
-  Future<CompleteAudioUploadResult> completeUpload(PendingUpload u) async {
     completeCalls++;
-    return const CompleteAudioUploadResult(sessionId: 'sess-1');
   }
 
   @override

@@ -102,6 +102,48 @@ func (ns NullContactForm) Value() (driver.Value, error) {
 	return string(ns.ContactForm), nil
 }
 
+type ModalityType string
+
+const (
+	ModalityTypeTherapy  ModalityType = "therapy"
+	ModalityTypeCoaching ModalityType = "coaching"
+)
+
+func (e *ModalityType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ModalityType(s)
+	case string:
+		*e = ModalityType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ModalityType: %T", src)
+	}
+	return nil
+}
+
+type NullModalityType struct {
+	ModalityType ModalityType `json:"modality_type"`
+	Valid        bool         `json:"valid"` // Valid is true if ModalityType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullModalityType) Scan(value interface{}) error {
+	if value == nil {
+		ns.ModalityType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ModalityType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullModalityType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ModalityType), nil
+}
+
 type NotificationStatus string
 
 const (
@@ -413,14 +455,16 @@ func (ns NullRelationStatus) Value() (driver.Value, error) {
 type SessionStatus string
 
 const (
-	SessionStatusCREATED      SessionStatus = "CREATED"
-	SessionStatusRECORDING    SessionStatus = "RECORDING"
-	SessionStatusUPLOADING    SessionStatus = "UPLOADING"
-	SessionStatusTRANSCRIBING SessionStatus = "TRANSCRIBING"
-	SessionStatusANALYZING    SessionStatus = "ANALYZING"
-	SessionStatusCOMPLETED    SessionStatus = "COMPLETED"
-	SessionStatusFAILED       SessionStatus = "FAILED"
-	SessionStatusCANCELED     SessionStatus = "CANCELED"
+	SessionStatusPENDINGUPLOAD SessionStatus = "PENDING_UPLOAD"
+	SessionStatusCREATED       SessionStatus = "CREATED"
+	SessionStatusRECORDING     SessionStatus = "RECORDING"
+	SessionStatusUPLOADING     SessionStatus = "UPLOADING"
+	SessionStatusTRANSCRIBING  SessionStatus = "TRANSCRIBING"
+	SessionStatusMERGING       SessionStatus = "MERGING"
+	SessionStatusANALYZING     SessionStatus = "ANALYZING"
+	SessionStatusCOMPLETED     SessionStatus = "COMPLETED"
+	SessionStatusFAILED        SessionStatus = "FAILED"
+	SessionStatusCANCELED      SessionStatus = "CANCELED"
 )
 
 func (e *SessionStatus) Scan(src interface{}) error {
@@ -604,6 +648,20 @@ type Address struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type AudioChunk struct {
+	ID            uuid.UUID `json:"id"`
+	AudioUploadID uuid.UUID `json:"audio_upload_id"`
+	ChunkIndex    int32     `json:"chunk_index"`
+	BucketName    string    `json:"bucket_name"`
+	ObjectPath    string    `json:"object_path"`
+	StartOffsetMs int64     `json:"start_offset_ms"`
+	SeamOffsetMs  int64     `json:"seam_offset_ms"`
+	EndOffsetMs   int64     `json:"end_offset_ms"`
+	OverlapMs     int32     `json:"overlap_ms"`
+	CutOnSilence  bool      `json:"cut_on_silence"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
 type AudioUpload struct {
 	ID                uuid.UUID          `json:"id"`
 	TherapistID       uuid.UUID          `json:"therapist_id"`
@@ -620,11 +678,12 @@ type AudioUpload struct {
 	UploadStartedAt   time.Time          `json:"upload_started_at"`
 	UploadCompletedAt pgtype.Timestamptz `json:"upload_completed_at"`
 	ExpiresAt         time.Time          `json:"expires_at"`
-	IdempotencyKey    *string            `json:"idempotency_key"`
-	ClientAppVersion  *string            `json:"client_app_version"`
-	ClientPlatform    *string            `json:"client_platform"`
-	ErrorMessage      *string            `json:"error_message"`
-	CreatedAt         time.Time          `json:"created_at"`
+	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out.
+	IdempotencyKey   *string   `json:"idempotency_key"`
+	ClientAppVersion *string   `json:"client_app_version"`
+	ClientPlatform   *string   `json:"client_platform"`
+	ErrorMessage     *string   `json:"error_message"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 type AuditEvent struct {
@@ -677,16 +736,17 @@ type HitopMeasurement struct {
 }
 
 type Modality struct {
-	ID                        uuid.UUID `json:"id"`
-	SystemCode                string    `json:"system_code"`
-	DisplayName               string    `json:"display_name"`
-	TherapistAiGeneralPrompt  []byte    `json:"therapist_ai_general_prompt"`
-	TherapistAiSectionPrompts []byte    `json:"therapist_ai_section_prompts"`
-	PatientAiGeneralPrompt    []byte    `json:"patient_ai_general_prompt"`
-	PatientAiSectionPrompts   []byte    `json:"patient_ai_section_prompts"`
-	IsSupported               bool      `json:"is_supported"`
-	CreatedAt                 time.Time `json:"created_at"`
-	UpdatedAt                 time.Time `json:"updated_at"`
+	ID                        uuid.UUID    `json:"id"`
+	SystemCode                string       `json:"system_code"`
+	DisplayName               string       `json:"display_name"`
+	TherapistAiGeneralPrompt  []byte       `json:"therapist_ai_general_prompt"`
+	TherapistAiSectionPrompts []byte       `json:"therapist_ai_section_prompts"`
+	PatientAiGeneralPrompt    []byte       `json:"patient_ai_general_prompt"`
+	PatientAiSectionPrompts   []byte       `json:"patient_ai_section_prompts"`
+	IsSupported               bool         `json:"is_supported"`
+	CreatedAt                 time.Time    `json:"created_at"`
+	UpdatedAt                 time.Time    `json:"updated_at"`
+	ModalityType              ModalityType `json:"modality_type"`
 }
 
 type NotificationDelivery struct {
@@ -821,6 +881,21 @@ type Session struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	ReportLanguage        string             `json:"report_language"`
 	Name                  *string            `json:"name"`
+}
+
+type SttOperation struct {
+	ID                    uuid.UUID          `json:"id"`
+	SessionID             uuid.UUID          `json:"session_id"`
+	ChunkIndex            int32              `json:"chunk_index"`
+	ChunkCount            int32              `json:"chunk_count"`
+	StartOffsetMs         int64              `json:"start_offset_ms"`
+	OperationID           string             `json:"operation_id"`
+	GcsOutputUri          string             `json:"gcs_output_uri"`
+	LanguageCode          string             `json:"language_code"`
+	UsedNativeDiarization bool               `json:"used_native_diarization"`
+	SubmittedAt           time.Time          `json:"submitted_at"`
+	FinalizedAt           pgtype.Timestamptz `json:"finalized_at"`
+	FinalizeError         *string            `json:"finalize_error"`
 }
 
 type TherapistPatientRelation struct {

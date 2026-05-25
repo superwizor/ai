@@ -312,12 +312,14 @@ class Modality extends $pb.GeneratedMessage {
     $core.String? systemCode,
     $core.String? displayName,
     $core.bool? isSupported,
+    $core.String? modalityType,
   }) {
     final result = create();
     if (id != null) result.id = id;
     if (systemCode != null) result.systemCode = systemCode;
     if (displayName != null) result.displayName = displayName;
     if (isSupported != null) result.isSupported = isSupported;
+    if (modalityType != null) result.modalityType = modalityType;
     return result;
   }
 
@@ -338,6 +340,7 @@ class Modality extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'systemCode')
     ..aOS(3, _omitFieldNames ? '' : 'displayName')
     ..aOB(4, _omitFieldNames ? '' : 'isSupported')
+    ..aOS(5, _omitFieldNames ? '' : 'modalityType')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -393,6 +396,19 @@ class Modality extends $pb.GeneratedMessage {
   $core.bool hasIsSupported() => $_has(3);
   @$pb.TagNumber(4)
   void clearIsSupported() => $_clearField(4);
+
+  /// "therapy" or "coaching". Drives downstream label semantics
+  /// (clinical vs coaching role vocabulary in transcripts). Added
+  /// in migration 000026 (2026-05-25). Empty string for any pre-
+  /// migration consumer that hasn't regenerated stubs.
+  @$pb.TagNumber(5)
+  $core.String get modalityType => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set modalityType($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasModalityType() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearModalityType() => $_clearField(5);
 }
 
 class CreatePatientFileRequest extends $pb.GeneratedMessage {

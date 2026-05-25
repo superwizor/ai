@@ -1,10 +1,15 @@
 // GrpcUploadIo — production implementation of UploadIo.
 //
-// Wires the four ingestion-svc RPCs and the GCS PUT against the
-// existing app singletons (gRPC clients, SecureAudioStorageService).
-// All errors fall through unwrapped so the worker's classifier can
-// see GrpcError / SocketException / our httpStatusError() helper
-// without losing their identity.
+// Wires the single ingestion-svc CreateAudioUpload RPC + the
+// direct GCS PUT against the existing app singletons (gRPC client,
+// SecureAudioStorageService). All errors fall through unwrapped so
+// the worker's classifier can see GrpcError / SocketException /
+// our httpStatusError() helper without losing their identity.
+//
+// Option F (feat/refactor-stt-architecture, 2026-05-25):
+// `convertAudio` and `completeUpload` were removed once
+// ingestion-svc started driving finalize asynchronously off a
+// bucket notification. The client now terminates at PUT.
 //
 // Source materialisation differs by UploadSourceKind:
 //
@@ -135,46 +140,6 @@ class GrpcUploadIo implements UploadIo {
   }
 
   // ── step 3 ────────────────────────────────────────────────────
-
-  @override
-  Future<ConvertAudioResult> convertAudio(PendingUpload u) async {
-    final uploadId = u.uploadId;
-    if (uploadId == null) {
-      throw StateError('GrpcUploadIo.convertAudio: uploadId is null');
-    }
-    final res = await _ingestion.convertAudio(
-      ingestion_pb.ConvertAudioRequest(
-        audioUploadId: uploadId,
-        targetContentType: 'audio/flac',
-      ),
-    );
-    return ConvertAudioResult(
-      contentType: res.contentType,
-      converted: res.converted,
-    );
-  }
-
-  // ── step 4 ────────────────────────────────────────────────────
-
-  @override
-  Future<CompleteAudioUploadResult> completeUpload(PendingUpload u) async {
-    final uploadId = u.uploadId;
-    if (uploadId == null) {
-      throw StateError('GrpcUploadIo.completeUpload: uploadId is null');
-    }
-    final res = await _ingestion.completeAudioUpload(
-      ingestion_pb.CompleteAudioUploadRequest(
-        uploadId: uploadId,
-        actualDurationSeconds: u.actualDurationSeconds,
-        actualSizeBytes: Int64(u.sizeBytes),
-        chunkCount: u.chunkCount,
-        reportLanguage: u.patientLanguageCode,
-      ),
-    );
-    return CompleteAudioUploadResult(sessionId: res.sessionId);
-  }
-
-  // ── step 5 ────────────────────────────────────────────────────
 
   @override
   Future<void> cleanupSource(PendingUpload u) async {

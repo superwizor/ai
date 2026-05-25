@@ -12,16 +12,17 @@ import (
 )
 
 const getModalityByCode = `-- name: GetModalityByCode :one
-SELECT id, system_code, display_name, is_supported
+SELECT id, system_code, display_name, is_supported, modality_type
 FROM modalities
 WHERE system_code = $1 AND is_supported = TRUE
 `
 
 type GetModalityByCodeRow struct {
-	ID          uuid.UUID `json:"id"`
-	SystemCode  string    `json:"system_code"`
-	DisplayName string    `json:"display_name"`
-	IsSupported bool      `json:"is_supported"`
+	ID           uuid.UUID    `json:"id"`
+	SystemCode   string       `json:"system_code"`
+	DisplayName  string       `json:"display_name"`
+	IsSupported  bool         `json:"is_supported"`
+	ModalityType ModalityType `json:"modality_type"`
 }
 
 func (q *Queries) GetModalityByCode(ctx context.Context, systemCode string) (GetModalityByCodeRow, error) {
@@ -32,22 +33,24 @@ func (q *Queries) GetModalityByCode(ctx context.Context, systemCode string) (Get
 		&i.SystemCode,
 		&i.DisplayName,
 		&i.IsSupported,
+		&i.ModalityType,
 	)
 	return i, err
 }
 
 const listSupportedModalities = `-- name: ListSupportedModalities :many
-SELECT id, system_code, display_name, is_supported
+SELECT id, system_code, display_name, is_supported, modality_type
 FROM modalities
 WHERE is_supported = TRUE
 ORDER BY display_name
 `
 
 type ListSupportedModalitiesRow struct {
-	ID          uuid.UUID `json:"id"`
-	SystemCode  string    `json:"system_code"`
-	DisplayName string    `json:"display_name"`
-	IsSupported bool      `json:"is_supported"`
+	ID           uuid.UUID    `json:"id"`
+	SystemCode   string       `json:"system_code"`
+	DisplayName  string       `json:"display_name"`
+	IsSupported  bool         `json:"is_supported"`
+	ModalityType ModalityType `json:"modality_type"`
 }
 
 func (q *Queries) ListSupportedModalities(ctx context.Context) ([]ListSupportedModalitiesRow, error) {
@@ -64,6 +67,7 @@ func (q *Queries) ListSupportedModalities(ctx context.Context) ([]ListSupportedM
 			&i.SystemCode,
 			&i.DisplayName,
 			&i.IsSupported,
+			&i.ModalityType,
 		); err != nil {
 			return nil, err
 		}

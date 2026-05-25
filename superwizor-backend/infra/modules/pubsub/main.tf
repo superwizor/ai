@@ -19,6 +19,33 @@ resource "google_pubsub_topic" "audio_uploaded" {
   project = var.project_id
 }
 
+# Option F (feat/refactor-stt-architecture, 2026-05-25).
+# Raw GCS OBJECT_FINALIZE events from the audio-uploads bucket land
+# here. ingestion-svc's in-process pull subscriber consumes from
+# `audio.objectFinalized.sub` below, runs ffprobe + optional
+# transcode + optional chunking, then republishes the structured
+# `audio.uploaded` event for downstream STT.
+#
+# Why a separate topic (not direct routing to audio.uploaded): the
+# old google_storage_notification on the audio-uploads bucket used
+# to point at audio.uploaded directly, but emitted raw storage#object
+# events that no downstream subscriber could parse — causing the
+# 2026-05-23 backlog incident that masked monotonic-ordering bugs in
+# Firestore writes (see modules/storage/main.tf:41-55). Keeping
+# OBJECT_FINALIZE on its own topic makes ingestion-svc the sole
+# legitimate publisher of audio.uploaded, preserving the structured
+# {session_id, upload_id, object_path} contract downstream workers
+# rely on.
+resource "google_pubsub_topic" "audio_object_finalized" {
+  name    = "audio.objectFinalized"
+  project = var.project_id
+}
+
+resource "google_pubsub_topic" "audio_object_finalized_dlq" {
+  name    = "audio.objectFinalized.dlq"
+  project = var.project_id
+}
+
 resource "google_pubsub_topic" "transcript_completed" {
   name    = "transcript.completed"
   project = var.project_id
@@ -109,6 +136,15 @@ resource "google_pubsub_topic_iam_member" "pubsub_agent_session_deleted_dlq_publ
   member  = local.pubsub_service_agent
 }
 
+# Option F: Pub/Sub service agent publishes to the audio.objectFinalized
+# DLQ when the pull subscriber exhausts max_delivery_attempts.
+resource "google_pubsub_topic_iam_member" "pubsub_agent_audio_object_finalized_dlq_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.audio_object_finalized_dlq.name
+  role    = "roles/pubsub.publisher"
+  member  = local.pubsub_service_agent
+}
+
 # Pull subscriptions on each DLQ so operators can inspect dead messages
 # (`gcloud pubsub subscriptions pull <name> --auto-ack`) without
 # attaching a consumer. Mirrors firestore_sync_dlq_reader below — same
@@ -151,6 +187,63 @@ resource "google_pubsub_subscription" "session_deleted_dlq_reader" {
   ack_deadline_seconds       = 60
   message_retention_duration = "604800s"
   expiration_policy { ttl = "" }
+}
+
+# Option F: pull-subscription reader on the audio.objectFinalized DLQ.
+# Operator inspection only — mirrors the audio.uploaded.dlq.reader pattern.
+resource "google_pubsub_subscription" "audio_object_finalized_dlq_reader" {
+  name    = "audio.objectFinalized.dlq.reader"
+  project = var.project_id
+  topic   = google_pubsub_topic.audio_object_finalized_dlq.id
+
+  ack_deadline_seconds       = 60
+  message_retention_duration = "604800s" # 7 days
+  expiration_policy { ttl = "" }
+}
+
+# Option F: the primary pull subscription that ingestion-svc's in-process
+# subscriber goroutine consumes from. Carries the GCS OBJECT_FINALIZE
+# event payload and routes it to handleMessage in
+# services/ingestion-svc/internal/adapters/pubsub/subscriber.go.
+#
+# ack_deadline_seconds = 600 (10 min) because the worst-case handler
+# path is ffprobe → download → transcode → upload → silence-detect →
+# chunk-write — bounded by the size of a 90-minute audio file.
+# Pub/Sub auto-extends the lease while the handler is still running.
+#
+# max_delivery_attempts = 5 lets transient network blips (Chirp,
+# GCS, Cloud SQL) self-heal. Terminal errors (corrupt audio, missing
+# session row) are ack'd by the handler itself so they don't burn
+# delivery budget.
+resource "google_pubsub_subscription" "audio_object_finalized_sub" {
+  name    = "audio.objectFinalized.sub"
+  project = var.project_id
+  topic   = google_pubsub_topic.audio_object_finalized.id
+
+  ack_deadline_seconds       = 600
+  message_retention_duration = "604800s" # 7 days
+  expiration_policy { ttl = "" }
+
+  retry_policy {
+    minimum_backoff = "10s"
+    maximum_backoff = "600s"
+  }
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.audio_object_finalized_dlq.id
+    max_delivery_attempts = 5
+  }
+}
+
+# Option F: ingestion-svc reads the OBJECT_FINALIZE feed. Without this
+# binding, sub.Receive() in subscriber.go returns PERMISSION_DENIED on
+# first pull. Subscriber + ack permissions are bundled in the
+# `pubsub.subscriber` role.
+resource "google_pubsub_subscription_iam_member" "ingestion_subscriber_audio_object_finalized" {
+  project      = var.project_id
+  subscription = google_pubsub_subscription.audio_object_finalized_sub.name
+  role         = "roles/pubsub.subscriber"
+  member       = "serviceAccount:ingestion-svc@${var.project_id}.iam.gserviceaccount.com"
 }
 
 # DLQ for best-effort Firestore writes from notification-svc worker
@@ -246,6 +339,10 @@ resource "google_pubsub_topic_iam_member" "clinical_session_deleted_publisher" {
 }
 
 output "audio_uploaded_topic" { value = google_pubsub_topic.audio_uploaded.id }
+output "audio_object_finalized_topic" { value = google_pubsub_topic.audio_object_finalized.id }
+output "audio_object_finalized_topic_name" { value = google_pubsub_topic.audio_object_finalized.name }
+output "audio_object_finalized_subscription_id" { value = google_pubsub_subscription.audio_object_finalized_sub.id }
+output "audio_object_finalized_subscription_name" { value = google_pubsub_subscription.audio_object_finalized_sub.name }
 output "transcript_completed_topic" { value = google_pubsub_topic.transcript_completed.id }
 output "report_generated_topic" { value = google_pubsub_topic.report_generated.id }
 output "session_deleted_topic" { value = google_pubsub_topic.session_deleted.id }

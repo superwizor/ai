@@ -1,6 +1,12 @@
 // UploadWorker tests. Drives the state machine through every phase
 // transition using a FakeUploadIo. Also exercises every branch of
 // the error classifier (retryable, terminal, signed-URL expired).
+//
+// Option F (feat/refactor-stt-architecture, 2026-05-25) shrank the
+// state machine: PUT-success is now terminal-success and the
+// `uploaded` / `converted` intermediate phases were retired. Tests
+// keep coverage on the legacy phases too — pre-Option-F rows still
+// in Hive must walk forward to `completed` on the first new tick.
 
 import 'dart:io';
 
@@ -16,13 +22,9 @@ class FakeUploadIo implements UploadIo {
 
   Object? createUploadError;
   Object? putBytesError;
-  Object? convertAudioError;
-  Object? completeUploadError;
   Object? cleanupError;
 
   CreateAudioUploadResult? createUploadResult;
-  ConvertAudioResult? convertAudioResult;
-  CompleteAudioUploadResult? completeUploadResult;
 
   @override
   Future<CreateAudioUploadResult> createUpload(PendingUpload u) async {
@@ -30,7 +32,9 @@ class FakeUploadIo implements UploadIo {
     if (createUploadError != null) throw createUploadError!;
     return createUploadResult ??
         const CreateAudioUploadResult(
-            uploadId: 'au-1', signedUrl: 'https://signed/1');
+            uploadId: 'au-1',
+            signedUrl: 'https://signed/1',
+            sessionId: 'sess-1');
   }
 
   @override
@@ -38,22 +42,6 @@ class FakeUploadIo implements UploadIo {
       {void Function(double)? onProgress}) async {
     calls.add('putBytes');
     if (putBytesError != null) throw putBytesError!;
-  }
-
-  @override
-  Future<ConvertAudioResult> convertAudio(PendingUpload u) async {
-    calls.add('convertAudio');
-    if (convertAudioError != null) throw convertAudioError!;
-    return convertAudioResult ??
-        const ConvertAudioResult(contentType: 'audio/flac', converted: true);
-  }
-
-  @override
-  Future<CompleteAudioUploadResult> completeUpload(PendingUpload u) async {
-    calls.add('completeUpload');
-    if (completeUploadError != null) throw completeUploadError!;
-    return completeUploadResult ??
-        const CompleteAudioUploadResult(sessionId: 'sess-1');
   }
 
   @override
@@ -111,11 +99,14 @@ void main() {
       expect(next.phase, UploadPhase.created);
       expect(next.uploadId, 'au-1');
       expect(next.signedUrl, 'https://signed/1');
+      expect(next.sessionId, 'sess-1',
+          reason: 'Option E: session_id captured at create');
       expect(next.attemptCount, 0);
       expect(io.calls, ['createUpload']);
     });
 
-    test('created → uploaded on successful PUT', () async {
+    test('created → completed (terminal) on successful PUT', () async {
+      // Option F: PUT-success is terminal-success. No follow-up RPC.
       final io = FakeUploadIo();
       final u = _seed(
         phase: UploadPhase.created,
@@ -125,11 +116,17 @@ void main() {
 
       final next = await _worker(io).runOne(u);
 
-      expect(next.phase, UploadPhase.uploaded);
-      expect(io.calls, ['putBytes']);
+      expect(next.phase, UploadPhase.completed);
+      expect(next.terminatedAt, isNotNull);
+      expect(io.calls, ['putBytes', 'cleanupSource']);
     });
 
-    test('uploaded → completed when no conversion needed', () async {
+    test('legacy `uploaded` phase walks to completed (post-upgrade)',
+        () async {
+      // A pre-Option-F build of the app left this row in Hive.
+      // After upgrade, the next tick must terminate it cleanly —
+      // there's no completeUpload RPC to call anymore, the server
+      // is independently finalizing via the bucket notification.
       final io = FakeUploadIo();
       final u = _seed(
         phase: UploadPhase.uploaded,
@@ -140,27 +137,12 @@ void main() {
       final next = await _worker(io).runOne(u);
 
       expect(next.phase, UploadPhase.completed);
-      expect(next.sessionId, 'sess-1');
       expect(next.terminatedAt, isNotNull);
-      expect(io.calls, ['completeUpload', 'cleanupSource']);
+      expect(io.calls, ['cleanupSource'],
+          reason: 'no RPC calls; only the source cleanup hook fires');
     });
 
-    test('uploaded → converted when conversion needed', () async {
-      final io = FakeUploadIo();
-      final u = _seed(
-        phase: UploadPhase.uploaded,
-        uploadId: 'au-1',
-        signedUrl: 'https://signed/1',
-        needsServerSideConversion: true,
-      );
-
-      final next = await _worker(io).runOne(u);
-
-      expect(next.phase, UploadPhase.converted);
-      expect(io.calls, ['convertAudio']);
-    });
-
-    test('converted → completed', () async {
+    test('legacy `converted` phase also walks to completed', () async {
       final io = FakeUploadIo();
       final u = _seed(
         phase: UploadPhase.converted,
@@ -171,7 +153,7 @@ void main() {
       final next = await _worker(io).runOne(u);
 
       expect(next.phase, UploadPhase.completed);
-      expect(io.calls, ['completeUpload', 'cleanupSource']);
+      expect(io.calls, ['cleanupSource']);
     });
 
     test('terminal phases are no-ops', () async {
@@ -240,16 +222,12 @@ void main() {
   });
 
   group('error classification → terminal', () {
-    test('gRPC FAILED_PRECONDITION marks failed', () async {
+    test('gRPC FAILED_PRECONDITION on create marks failed', () async {
       final io = FakeUploadIo()
-        ..completeUploadError = grpc.GrpcError.failedPrecondition(
-            'audio_uploads.content_type=mpeg not Chirp');
+        ..createUploadError =
+            grpc.GrpcError.failedPrecondition('quota exhausted');
 
-      final next = await _worker(io).runOne(_seed(
-        phase: UploadPhase.uploaded,
-        uploadId: 'a',
-        signedUrl: 'b',
-      ));
+      final next = await _worker(io).runOne(_seed());
 
       expect(next.phase, UploadPhase.failed);
       expect(next.terminatedAt, isNotNull);
@@ -326,15 +304,14 @@ void main() {
       expect(io.calls, isEmpty);
     });
 
-    test('cleanup failure does not unwind a successful complete', () async {
+    test('cleanup failure does not unwind a successful PUT', () async {
       final io = FakeUploadIo()..cleanupError = Exception('disk full');
       final next = await _worker(io).runOne(_seed(
-        phase: UploadPhase.uploaded,
+        phase: UploadPhase.created,
         uploadId: 'a',
         signedUrl: 'b',
       ));
       expect(next.phase, UploadPhase.completed);
-      expect(next.sessionId, 'sess-1');
     });
   });
 
@@ -345,8 +322,6 @@ void main() {
     });
 
     test('classifies http.ClientException as retryable', () {
-      // Construct via a generic exception that has the right type;
-      // we don't actually need an http.Client to do this.
       final c = classifyUploadError(const SocketException('x'));
       expect(c.kind, UploadErrorClass.retryable);
     });

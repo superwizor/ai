@@ -156,6 +156,7 @@ const Modality$json = {
     {'1': 'system_code', '3': 2, '4': 1, '5': 9, '10': 'systemCode'},
     {'1': 'display_name', '3': 3, '4': 1, '5': 9, '10': 'displayName'},
     {'1': 'is_supported', '3': 4, '4': 1, '5': 8, '10': 'isSupported'},
+    {'1': 'modality_type', '3': 5, '4': 1, '5': 9, '10': 'modalityType'},
   ],
 };
 
@@ -163,7 +164,8 @@ const Modality$json = {
 final $typed_data.Uint8List modalityDescriptor = $convert.base64Decode(
     'CghNb2RhbGl0eRIOCgJpZBgBIAEoCVICaWQSHwoLc3lzdGVtX2NvZGUYAiABKAlSCnN5c3RlbU'
     'NvZGUSIQoMZGlzcGxheV9uYW1lGAMgASgJUgtkaXNwbGF5TmFtZRIhCgxpc19zdXBwb3J0ZWQY'
-    'BCABKAhSC2lzU3VwcG9ydGVk');
+    'BCABKAhSC2lzU3VwcG9ydGVkEiMKDW1vZGFsaXR5X3R5cGUYBSABKAlSDG1vZGFsaXR5VHlwZQ'
+    '==');
 
 @$core.Deprecated('Use createPatientFileRequestDescriptor instead')
 const CreatePatientFileRequest$json = {

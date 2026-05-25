@@ -39,18 +39,23 @@ module "audit_logs" {
   project_id = var.project_id
 }
 
-module "storage" {
-  source          = "../../modules/storage"
-  project_id      = var.project_id
-  app_data_key_id = module.kms.app_data_key_id
-  # pubsub_topic_id removed: bucket notification deleted in favour of
-  # ingestion-svc.PublishAudioUploaded as sole publisher (see storage/main.tf).
-}
-
 module "pubsub" {
   source         = "../../modules/pubsub"
   project_id     = var.project_id
   project_number = var.project_number
+}
+
+module "storage" {
+  source          = "../../modules/storage"
+  project_id      = var.project_id
+  app_data_key_id = module.kms.app_data_key_id
+  # Option F (2026-05-25): re-introduce bucket notification, this
+  # time onto its own dedicated topic so ingestion-svc's in-process
+  # subscriber is the sole consumer. See modules/pubsub/main.tf and
+  # services/ingestion-svc/internal/adapters/pubsub/subscriber.go.
+  audio_object_finalized_topic_name = module.pubsub.audio_object_finalized_topic_name
+
+  depends_on = [module.pubsub]
 }
 
 module "migrations" {

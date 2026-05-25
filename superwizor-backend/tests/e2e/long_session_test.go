@@ -171,21 +171,19 @@ func TestLongSession_Chunked(t *testing.T) {
 	require.Equalf(t, http.StatusOK, resp.StatusCode, "PUT: %d %s", resp.StatusCode, string(respBody))
 	t.Logf("Uploaded %d bytes", longInfo.Size())
 
-	// 6. CompleteAudioUpload — this is where ingestion-svc fires the
-	//    in-process ConvertAudio(chunk_for_chirp=true), runs ffmpeg
+	// 6. Async ingestion subscriber takes over (Option F, 2026-05-25).
+	//    No client-driven CompleteAudioUpload anymore — the bucket
+	//    notification fires audio.objectFinalized → ingestion-svc's
+	//    in-process subscriber probes duration, runs ffmpeg
 	//    silencedetect, splits into N chunks, INSERTs audio_chunks rows,
-	//    and publishes audio.uploaded.
-	t.Log("CompleteAudioUpload (triggers Stage 2 chunking) ...")
+	//    flips session status PENDING_UPLOAD → CREATED, and publishes
+	//    audio.uploaded.
+	t.Log("Waiting for async ingestion subscriber to finalize ...")
 	t0 := time.Now()
-	complete, err := ingestionClient.CompleteAudioUpload(ctx, &ingestionv1.CompleteAudioUploadRequest{
-		UploadId:              upload.UploadId,
-		ActualDurationSeconds: int32(longDurationSec),
-		ActualSizeBytes:       longInfo.Size(),
-		ChunkCount:            1, // unrelated to audio_chunks; this is a legacy "client-side chunked upload" counter
-	})
-	require.NoError(t, err)
-	require.NotEmpty(t, complete.SessionId)
-	t.Logf("Session created in %s: id=%s", time.Since(t0).Round(time.Millisecond), complete.SessionId)
+	require.NotEmpty(t, upload.SessionId, "Option E: CreateAudioUpload should have returned session_id")
+	sessionID := upload.SessionId
+	t.Logf("Session id (from CreateAudioUpload): %s — subscriber will finalize asynchronously", sessionID)
+	_ = t0
 
 	// 7. Poll for terminal status.
 	terminal := map[string]bool{"COMPLETED": true, "ERRORED": true, "FAILED": true}
@@ -193,7 +191,7 @@ func TestLongSession_Chunked(t *testing.T) {
 	var lastStatus, finalStatus string
 	for time.Now().Before(deadline) {
 		details, err := clinicalClient.GetSessionDetails(ctx,
-			&clinicalv1.GetSessionDetailsRequest{SessionId: complete.SessionId})
+			&clinicalv1.GetSessionDetailsRequest{SessionId: sessionID})
 		if err == nil {
 			st := details.Session.Status
 			if st != lastStatus {

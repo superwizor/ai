@@ -6,38 +6,42 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/superwizor-ai/backend/gen/go/ingestion/v1;ingestionv1";
 
+// IngestionService — secure upload door for therapist audio.
+//
+// As of 2026-05-25 (Option F, hybrid Eventarc-driven async ingestion
+// finalization on `feat/refactor-stt-architecture`), the upload flow
+// is a clean two-RPC contract:
+//
+//   1. CreateAudioUpload  → signed URL + session_id (PENDING_UPLOAD)
+//   2. PUT to GCS         → bucket notification fires
+//                           audio.objectFinalized topic; ingestion-svc's
+//                           in-process subscriber probes duration,
+//                           transcodes if needed, chunks if > 19 min,
+//                           flips session to CREATED, publishes
+//                           audio.uploaded for STT.
+//
+// The legacy `CompleteAudioUpload` and `ConvertAudio` RPCs were
+// REMOVED in the same change — they're entirely server-side now,
+// triggered by the bucket notification. Pre-launch, so no
+// deprecation window; Flutter terminates uploads at `phase=completed`
+// the moment the HTTP PUT returns 2xx. See
+// `docs/15_HYBRID_EVENTARC_FINALIZATION.md` for the design.
 service IngestionService {
-  // Inicjuje upload — zwraca signed URL i upload ID
+  // Issues a V4 signed URL the client uses to PUT audio directly
+  // to GCS, and creates the session row in PENDING_UPLOAD state.
   rpc CreateAudioUpload(CreateAudioUploadRequest) returns (CreateAudioUploadResponse);
 
-  // Notyfikuje że upload się zakończył (Flutter wysyła po PUT do GCS)
-  rpc CompleteAudioUpload(CompleteAudioUploadRequest) returns (CompleteAudioUploadResponse);
-
-  // Stan uploadu
+  // Polling helper for the upload row state. Rarely needed now that
+  // the Firestore session_states mirror is the canonical client
+  // status feed, but kept for debugging + the existing pending-uploads
+  // screen on Flutter.
   rpc GetAudioUploadStatus(GetAudioUploadStatusRequest) returns (AudioUploadStatus);
-
-  // ConvertAudio transcodes an uploaded audio file to FLAC 16 kHz mono
-  // in place on GCS. Used as a fallback for client-side conversion
-  // failures (iOS pre-15 edge cases, Android pre-platform-channel-impl,
-  // corrupt M4A that AVAudioFile can't decode, web uploads). Synchronous:
-  // returns when the GCS object has been replaced and the
-  // audio_uploads row updated. ~30-60s for typical session length.
-  //
-  // No-op when audio_uploads.content_type is already a Chirp-supported
-  // codec (FLAC/WAV/OGG-OPUS/...). Re-callable; idempotent on the
-  // already-converted state.
-  //
-  // Caller flow:
-  //   1. CreateAudioUpload (content_type=audio/m4a) → PUT to GCS
-  //   2. ConvertAudio(audio_upload_id) → server transcodes
-  //   3. CompleteAudioUpload (unchanged)
-  rpc ConvertAudio(ConvertAudioRequest) returns (ConvertAudioResponse);
 }
 
 message CreateAudioUploadRequest {
   string therapist_id = 1;
   string patient_file_id = 2;
-  string content_type = 3;        // 'audio/m4a'
+  string content_type = 3;        // 'audio/flac', 'audio/m4a', 'audio/wav', ...
   int64 estimated_size_bytes = 4;
   int32 estimated_duration_seconds = 5;
   string idempotency_key = 6;
@@ -55,24 +59,8 @@ message CreateAudioUploadResponse {
   // session_id assigned at upload-creation time (Option E,
   // 2026-05-25). Sessions table now has a row in PENDING_UPLOAD
   // status from this point. Lets Flutter render the kartoteka
-  // entry immediately rather than waiting for CompleteAudioUpload
-  // to finish ffprobe + chunking (3-10 min for long audio).
+  // entry immediately rather than waiting on async finalize.
   string session_id = 6;
-}
-
-message CompleteAudioUploadRequest {
-  string upload_id = 1;
-  int32 actual_duration_seconds = 2;
-  int64 actual_size_bytes = 3;
-  int32 chunk_count = 4;
-  string md5_hash = 5;
-  string report_language = 6;
-}
-
-message CompleteAudioUploadResponse {
-  string upload_id = 1;
-  string session_id = 2;          // utworzona sesja
-  bool processing_started = 3;
 }
 
 message GetAudioUploadStatusRequest {
@@ -85,57 +73,4 @@ message AudioUploadStatus {
   google.protobuf.Timestamp created_at = 3;
   google.protobuf.Timestamp expires_at = 4;
   string error_message = 5;
-}
-
-message ConvertAudioRequest {
-  // audio_uploads.id of the PENDING upload to transcode.
-  string audio_upload_id = 1;
-  // Optional: explicit target format. Defaults to "audio/flac" when
-  // empty. Supported: "audio/flac", "audio/wav" (LINEAR16). Other
-  // values return InvalidArgument.
-  string target_content_type = 2;
-
-  // Stage 2 of feat/stt-long_audio_support. When true, after the
-  // codec normalization (if any) ingestion-svc also splits the
-  // resulting FLAC into ≤ max_chunk_seconds segments via ffmpeg
-  // silencedetect, writes one row per chunk to audio_chunks, and
-  // returns chunk_count > 0 in the response. stt-submit then reads
-  // those rows and submits one BatchRecognize per chunk.
-  //
-  // Default false preserves Stage 1 semantics (single output file,
-  // no audio_chunks row). Long-audio handling skipped when false.
-  bool chunk_for_chirp = 3;
-
-  // Maximum chunk length in seconds for the chunk_for_chirp path.
-  // Default 1140 (19 minutes — safe margin under Chirp 3's 20-min
-  // word-timestamp limit) when 0. Bounded server-side at 1200.
-  // Ignored when chunk_for_chirp = false.
-  int32 max_chunk_seconds = 4;
-
-  // Source audio duration in seconds. Required when chunk_for_chirp
-  // is true (the chunker needs to know the total length to plan cut
-  // points; we don't want to ffprobe the GCS object on every call).
-  // 0 with chunk_for_chirp=true returns InvalidArgument. Ignored
-  // when chunk_for_chirp = false.
-  int32 source_duration_seconds = 5;
-}
-
-message ConvertAudioResponse {
-  // Final content_type after conversion. Always FLAC unless the
-  // caller asked for WAV (or the original was already Chirp-supported
-  // and the call was a no-op).
-  string content_type = 1;
-  // GCS object_path of the converted file. May equal the original
-  // path if the file was already in a supported format and conversion
-  // was a no-op.
-  string object_path = 2;
-  // True if ffmpeg actually ran. False on idempotent no-op
-  // (already-supported codec).
-  bool converted = 3;
-
-  // Stage 2: number of audio_chunks rows produced. 0 means the
-  // upload was not chunked (either chunk_for_chirp=false, or
-  // duration ≤ max_chunk_seconds and the splitter short-circuited).
-  // When > 0, stt-submit will fan out N BatchRecognize calls.
-  int32 chunk_count = 4;
 }

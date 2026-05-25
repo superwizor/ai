@@ -252,8 +252,20 @@ jobs:
             --vpc-egress private-ranges-only \
             --min-instances 1 \
             --max-instances 20 \
+            --cpu 2 \
+            --memory 2Gi \
+            --no-cpu-throttling \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},AUDIO_BUCKET_NAME=${{ env.PROJECT_ID }}-audio-uploads,VERSION=${{ github.sha }}"
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},AUDIO_BUCKET_NAME=${{ env.PROJECT_ID }}-audio-uploads,VERSION=${{ github.sha }},GCS_FINALIZE_SUB_ID=audio.objectFinalized.sub"
+          # CPU/memory + --no-cpu-throttling are required for Option F
+          # (feat/refactor-stt-architecture, 2026-05-25): the in-process
+          # Pub/Sub pull subscriber goroutine runs ffprobe + ffmpeg
+          # silence-detect on long audio uploads. Default CPU-throttled
+          # Cloud Run starves the goroutine once the gRPC request that
+          # spawned the instance ends → message ack-deadline elapses
+          # → Pub/Sub redelivers indefinitely. Always-allocated CPU
+          # keeps the goroutine alive between requests. See
+          # docs/15_HYBRID_EVENTARC_FINALIZATION.md.
           gcloud run services add-iam-policy-binding ingestion-svc \
             --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
             --member=allUsers --role=roles/run.invoker

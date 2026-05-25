@@ -17,6 +17,18 @@
 //     and folded into the returned PendingUpload state — runOne
 //     itself never throws (modulo bugs in our own code, which
 //     would be programmer errors and should surface).
+//
+// Phase map after Option F (feat/refactor-stt-architecture, 2026-05-25):
+//
+//   pending  ─CreateAudioUpload─►  created  ─HTTP PUT─►  completed
+//
+// The previous `uploaded` and `converted` intermediate phases are
+// terminated immediately at PUT success — the server's in-process
+// pull subscriber owns transcode + chunking + status flip from
+// here. Old Hive rows that landed in `uploaded` / `converted`
+// before the upgrade are walked to `completed` on the next tick
+// without re-uploading (the GCS PUT either succeeded or the row
+// would still be in `created`).
 
 import 'dart:async';
 import 'dart:math' as math;
@@ -83,14 +95,16 @@ class UploadWorker {
           next = await _doUpload(u);
           break;
         case UploadPhase.uploaded:
-          if (u.needsServerSideConversion) {
-            next = await _doConvert(u);
-          } else {
-            next = await _doComplete(u);
-          }
-          break;
         case UploadPhase.converted:
-          next = await _doComplete(u);
+          // Option F (2026-05-25): legacy in-flight rows that
+          // landed in `uploaded` / `converted` BEFORE the upgrade
+          // would otherwise stall here — there are no convert /
+          // complete handlers anymore. Treat as success: the GCS
+          // PUT did finish (the only way to leave `created`), and
+          // the server-side subscriber will pick up the object
+          // notification independently of us. Run the source
+          // cleanup hook and terminate.
+          next = await _doFinalize(u);
           break;
         case UploadPhase.completed:
         case UploadPhase.failed:
@@ -118,9 +132,9 @@ class UploadWorker {
       // Option E (2026-05-25): server returns session_id from this
       // point onward. Capture it immediately so the patient sessions
       // screen can resolve the new row (status=PENDING_UPLOAD) the
-      // very next time it pulls ListSessions. Empty string ↔ legacy
-      // server during migration window — leave PendingUpload.sessionId
-      // unset, fall back to the phase=completed pickup as before.
+      // very next time it pulls ListSessions. Under Option F this
+      // is the canonical session_id; no follow-up RPC ever returns
+      // a different one.
       final newSessionId =
           res.sessionId.isNotEmpty ? res.sessionId : u.sessionId;
       return u.copyWith(
@@ -147,56 +161,44 @@ class UploadWorker {
     }
     try {
       await _io.putBytes(u);
-      return u.copyWith(
-        phase: UploadPhase.uploaded,
-        attemptCount: 0,
-        clearLastError: true,
-      );
-    } catch (e) {
-      return _classify(u, e);
-    }
-  }
-
-  Future<PendingUpload> _doConvert(PendingUpload u) async {
-    try {
-      final res = await _io.convertAudio(u);
-      // Server can no-op the conversion if the content type was
-      // already supported (idempotency). Either way, advance.
-      return u.copyWith(
-        phase: UploadPhase.converted,
-        attemptCount: 0,
-        clearLastError: true,
-        // If the server normalized the content type, reflect it
-        // so subsequent CompleteAudioUpload sees the same shape
-        // the server sees. The contentType field on PendingUpload
-        // is informational at this stage; not persisted back to
-        // the original file.
-        needsServerSideConversion: !res.converted ? false : false,
-      );
-    } catch (e) {
-      return _classify(u, e);
-    }
-  }
-
-  Future<PendingUpload> _doComplete(PendingUpload u) async {
-    try {
-      final res = await _io.completeUpload(u);
-      // Fire-and-forget cleanup of on-disk material. If purge fails
-      // (rare; disk full while deleting?) we don't unwind the
-      // upload — the row is already terminal-success on the server.
-      try {
-        await _io.cleanupSource(u);
-      } catch (e) {
-        debugPrint('[upload-worker] cleanupSource failed (ignored): $e');
-      }
+      // Option F (2026-05-25): success at PUT is terminal-success
+      // from the client's POV. The bucket notification + in-process
+      // subscriber on ingestion-svc owns transcode / chunking /
+      // status-flip from here. Clean up source material and mark
+      // completed in the same step — no follow-up RPC, no
+      // intermediate `uploaded` phase the runner has to advance
+      // past.
+      await _cleanupQuiet(u);
       return u.copyWith(
         phase: UploadPhase.completed,
-        sessionId: res.sessionId,
         terminatedAt: _clock(),
         clearLastError: true,
       );
     } catch (e) {
       return _classify(u, e);
+    }
+  }
+
+  /// Walk a legacy in-flight row (phase=uploaded or phase=converted,
+  /// produced by a pre-Option-F build of the app) to phase=completed.
+  /// The GCS PUT already landed; the server is independently driving
+  /// finalize via the bucket notification.
+  Future<PendingUpload> _doFinalize(PendingUpload u) async {
+    await _cleanupQuiet(u);
+    return u.copyWith(
+      phase: UploadPhase.completed,
+      terminatedAt: _clock(),
+      clearLastError: true,
+    );
+  }
+
+  // Source-cleanup is fire-and-forget. If purge fails (rare; disk full
+  // while deleting?) we don't unwind — the row is already success.
+  Future<void> _cleanupQuiet(PendingUpload u) async {
+    try {
+      await _io.cleanupSource(u);
+    } catch (e) {
+      debugPrint('[upload-worker] cleanupSource failed (ignored): $e');
     }
   }
 

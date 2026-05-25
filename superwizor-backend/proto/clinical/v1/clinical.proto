@@ -105,6 +105,11 @@ message Modality {
     string system_code = 2;
     string display_name = 3;
     bool is_supported = 4;
+    // "therapy" or "coaching". Drives downstream label semantics
+    // (clinical vs coaching role vocabulary in transcripts). Added
+    // in migration 000026 (2026-05-25). Empty string for any pre-
+    // migration consumer that hasn't regenerated stubs.
+    string modality_type = 5;
 }
 
 message CreatePatientFileRequest {

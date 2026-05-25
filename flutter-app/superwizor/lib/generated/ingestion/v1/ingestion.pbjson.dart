@@ -109,56 +109,6 @@ final $typed_data.Uint8List createAudioUploadResponseDescriptor = $convert.base6
     'SWQaQgoUUmVxdWlyZWRIZWFkZXJzRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAi'
     'ABKAlSBXZhbHVlOgI4AQ==');
 
-@$core.Deprecated('Use completeAudioUploadRequestDescriptor instead')
-const CompleteAudioUploadRequest$json = {
-  '1': 'CompleteAudioUploadRequest',
-  '2': [
-    {'1': 'upload_id', '3': 1, '4': 1, '5': 9, '10': 'uploadId'},
-    {
-      '1': 'actual_duration_seconds',
-      '3': 2,
-      '4': 1,
-      '5': 5,
-      '10': 'actualDurationSeconds'
-    },
-    {'1': 'actual_size_bytes', '3': 3, '4': 1, '5': 3, '10': 'actualSizeBytes'},
-    {'1': 'chunk_count', '3': 4, '4': 1, '5': 5, '10': 'chunkCount'},
-    {'1': 'md5_hash', '3': 5, '4': 1, '5': 9, '10': 'md5Hash'},
-    {'1': 'report_language', '3': 6, '4': 1, '5': 9, '10': 'reportLanguage'},
-  ],
-};
-
-/// Descriptor for `CompleteAudioUploadRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List completeAudioUploadRequestDescriptor = $convert.base64Decode(
-    'ChpDb21wbGV0ZUF1ZGlvVXBsb2FkUmVxdWVzdBIbCgl1cGxvYWRfaWQYASABKAlSCHVwbG9hZE'
-    'lkEjYKF2FjdHVhbF9kdXJhdGlvbl9zZWNvbmRzGAIgASgFUhVhY3R1YWxEdXJhdGlvblNlY29u'
-    'ZHMSKgoRYWN0dWFsX3NpemVfYnl0ZXMYAyABKANSD2FjdHVhbFNpemVCeXRlcxIfCgtjaHVua1'
-    '9jb3VudBgEIAEoBVIKY2h1bmtDb3VudBIZCghtZDVfaGFzaBgFIAEoCVIHbWQ1SGFzaBInCg9y'
-    'ZXBvcnRfbGFuZ3VhZ2UYBiABKAlSDnJlcG9ydExhbmd1YWdl');
-
-@$core.Deprecated('Use completeAudioUploadResponseDescriptor instead')
-const CompleteAudioUploadResponse$json = {
-  '1': 'CompleteAudioUploadResponse',
-  '2': [
-    {'1': 'upload_id', '3': 1, '4': 1, '5': 9, '10': 'uploadId'},
-    {'1': 'session_id', '3': 2, '4': 1, '5': 9, '10': 'sessionId'},
-    {
-      '1': 'processing_started',
-      '3': 3,
-      '4': 1,
-      '5': 8,
-      '10': 'processingStarted'
-    },
-  ],
-};
-
-/// Descriptor for `CompleteAudioUploadResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List completeAudioUploadResponseDescriptor =
-    $convert.base64Decode(
-        'ChtDb21wbGV0ZUF1ZGlvVXBsb2FkUmVzcG9uc2USGwoJdXBsb2FkX2lkGAEgASgJUgh1cGxvYW'
-        'RJZBIdCgpzZXNzaW9uX2lkGAIgASgJUglzZXNzaW9uSWQSLQoScHJvY2Vzc2luZ19zdGFydGVk'
-        'GAMgASgIUhFwcm9jZXNzaW5nU3RhcnRlZA==');
-
 @$core.Deprecated('Use getAudioUploadStatusRequestDescriptor instead')
 const GetAudioUploadStatusRequest$json = {
   '1': 'GetAudioUploadStatusRequest',
@@ -206,52 +156,3 @@ final $typed_data.Uint8List audioUploadStatusDescriptor = $convert.base64Decode(
     'VGltZXN0YW1wUgljcmVhdGVkQXQSOQoKZXhwaXJlc19hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2'
     'J1Zi5UaW1lc3RhbXBSCWV4cGlyZXNBdBIjCg1lcnJvcl9tZXNzYWdlGAUgASgJUgxlcnJvck1l'
     'c3NhZ2U=');
-
-@$core.Deprecated('Use convertAudioRequestDescriptor instead')
-const ConvertAudioRequest$json = {
-  '1': 'ConvertAudioRequest',
-  '2': [
-    {'1': 'audio_upload_id', '3': 1, '4': 1, '5': 9, '10': 'audioUploadId'},
-    {
-      '1': 'target_content_type',
-      '3': 2,
-      '4': 1,
-      '5': 9,
-      '10': 'targetContentType'
-    },
-    {'1': 'chunk_for_chirp', '3': 3, '4': 1, '5': 8, '10': 'chunkForChirp'},
-    {'1': 'max_chunk_seconds', '3': 4, '4': 1, '5': 5, '10': 'maxChunkSeconds'},
-    {
-      '1': 'source_duration_seconds',
-      '3': 5,
-      '4': 1,
-      '5': 5,
-      '10': 'sourceDurationSeconds'
-    },
-  ],
-};
-
-/// Descriptor for `ConvertAudioRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List convertAudioRequestDescriptor = $convert.base64Decode(
-    'ChNDb252ZXJ0QXVkaW9SZXF1ZXN0EiYKD2F1ZGlvX3VwbG9hZF9pZBgBIAEoCVINYXVkaW9VcG'
-    'xvYWRJZBIuChN0YXJnZXRfY29udGVudF90eXBlGAIgASgJUhF0YXJnZXRDb250ZW50VHlwZRIm'
-    'Cg9jaHVua19mb3JfY2hpcnAYAyABKAhSDWNodW5rRm9yQ2hpcnASKgoRbWF4X2NodW5rX3NlY2'
-    '9uZHMYBCABKAVSD21heENodW5rU2Vjb25kcxI2Chdzb3VyY2VfZHVyYXRpb25fc2Vjb25kcxgF'
-    'IAEoBVIVc291cmNlRHVyYXRpb25TZWNvbmRz');
-
-@$core.Deprecated('Use convertAudioResponseDescriptor instead')
-const ConvertAudioResponse$json = {
-  '1': 'ConvertAudioResponse',
-  '2': [
-    {'1': 'content_type', '3': 1, '4': 1, '5': 9, '10': 'contentType'},
-    {'1': 'object_path', '3': 2, '4': 1, '5': 9, '10': 'objectPath'},
-    {'1': 'converted', '3': 3, '4': 1, '5': 8, '10': 'converted'},
-    {'1': 'chunk_count', '3': 4, '4': 1, '5': 5, '10': 'chunkCount'},
-  ],
-};
-
-/// Descriptor for `ConvertAudioResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List convertAudioResponseDescriptor = $convert.base64Decode(
-    'ChRDb252ZXJ0QXVkaW9SZXNwb25zZRIhCgxjb250ZW50X3R5cGUYASABKAlSC2NvbnRlbnRUeX'
-    'BlEh8KC29iamVjdF9wYXRoGAIgASgJUgpvYmplY3RQYXRoEhwKCWNvbnZlcnRlZBgDIAEoCFIJ'
-    'Y29udmVydGVkEh8KC2NodW5rX2NvdW50GAQgASgFUgpjaHVua0NvdW50');

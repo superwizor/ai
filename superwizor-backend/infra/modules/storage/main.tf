@@ -12,6 +12,17 @@ variable "app_data_key_id" {
   description = "KMS key for CMEK on the transcripts-raw bucket. Same key as the transcripts.transcript_ciphertext column + audio_uploads encryption (ADR-DM-002). Chirp output is briefly-resident PHI."
 }
 
+# Option F (feat/refactor-stt-architecture, 2026-05-25). When set, a
+# google_storage_notification on the audio-uploads bucket fans OBJECT_FINALIZE
+# events into this Pub/Sub topic. ingestion-svc's in-process pull subscriber
+# consumes them and drives the async ingestion finalization pipeline.
+# Empty string disables the wiring (legacy synchronous path).
+variable "audio_object_finalized_topic_name" {
+  type        = string
+  description = "Pub/Sub topic name (NOT id) for OBJECT_FINALIZE events fanned out from the audio-uploads bucket. See modules/pubsub/main.tf."
+  default     = ""
+}
+
 resource "google_storage_bucket" "audio_uploads" {
   name          = "${var.project_id}-audio-uploads"
   project       = var.project_id
@@ -56,6 +67,35 @@ resource "google_storage_bucket" "audio_uploads" {
 
 output "audio_uploads_bucket_name" {
   value = google_storage_bucket.audio_uploads.name
+}
+
+# Option F: re-introduce a bucket notification on audio-uploads, this time
+# routed to the dedicated audio.objectFinalized topic (NOT the structured
+# audio.uploaded topic). The 2026-05-23 incident that motivated removing
+# the original notification was caused by routing raw bucket events at
+# `audio.uploaded`, where downstream workers expected structured payloads
+# and couldn't parse them. With a dedicated topic, ingestion-svc's
+# in-process subscriber is the sole consumer and republishes a structured
+# audio.uploaded after probing + chunking.
+#
+# Gated by audio_object_finalized_topic_name to keep the legacy synchronous
+# path intact when the variable is empty. The Pub/Sub service agent must
+# already be a pubsub.publisher on the target topic (granted via
+# gcs_eventarc_publisher above, which is project-wide).
+resource "google_storage_notification" "audio_uploads_object_finalized" {
+  count          = var.audio_object_finalized_topic_name == "" ? 0 : 1
+  bucket         = google_storage_bucket.audio_uploads.name
+  payload_format = "JSON_API_V1"
+  # google_storage_notification accepts EITHER a bare topic name or a
+  # fully-qualified projects/<id>/topics/<name>. The bare name form
+  # currently trips a "project: required field is not set" terraform
+  # error in google-provider 6.50 (it tries to default but the bucket
+  # resource is in a different module scope). The fully-qualified
+  # form bypasses that path entirely.
+  topic       = "projects/${var.project_id}/topics/${var.audio_object_finalized_topic_name}"
+  event_types = ["OBJECT_FINALIZE"]
+
+  depends_on = [google_project_iam_member.gcs_eventarc_publisher]
 }
 
 # ============================================================================

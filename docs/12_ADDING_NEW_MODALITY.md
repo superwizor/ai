@@ -55,8 +55,9 @@ Edit `ifs.json` (Internal Family Systems used as the example below):
 
 ```json
 {
-  "system_code":  "IFS",
-  "display_name": "Internal Family Systems",
+  "system_code":   "IFS",
+  "display_name":  "Internal Family Systems",
+  "modality_type": "therapy",
   "general_instructions": "Jesteś Superwizorem AI ...",
   "category_prompts": {
     "<section name 1>": "Cel: ...",
@@ -65,6 +66,18 @@ Edit `ifs.json` (Internal Family Systems used as the example below):
   }
 }
 ```
+
+**`modality_type`** must be `"therapy"` or `"coaching"`. Drives the
+localized speaker-label vocabulary in transcripts:
+
+- `therapy` → therapist label is "Terapeuta" (PL) / "Therapist" (EN),
+  patient label is "Pacjent" (PL) / "Patient" (EN).
+- `coaching` → "Trener" / "Coach" + "Klient" / "Client".
+
+Almost every modality is therapy. Use `coaching` only for explicitly
+non-clinical engagements (ICF-style coaching frameworks). See
+`pkg/i18n/rolelabels` for the full localization table and migration
+000026 for the underlying enum + backfill.
 
 **Section names are per-modality** — there is no globally-fixed set.
 UNIV/CBT/PSYCHO/Gestalt use "Podsumowanie sesji", "Wnikliwe obserwacje",

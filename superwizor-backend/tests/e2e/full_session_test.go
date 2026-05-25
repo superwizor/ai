@@ -32,7 +32,8 @@
 //  3. CreatePatientFile     (clinical-svc)   — first patient + idempotency
 //  4. CreateAudioUpload     (ingestion-svc)  — request signed URL
 //  5. PUT to GCS                              — direct upload
-//  6. CompleteAudioUpload   (ingestion-svc)  — implicitly creates session
+//  6. Async ingestion subscriber finalizes — flips PENDING_UPLOAD → CREATED
+//     (Option F, 2026-05-25). No client RPC; bucket-notification-driven.
 //  7. Poll GetSessionDetails until terminal — verify STT + LLM transitions
 //     - speaker_label_mapping populated, keys are STRING-typed (gotcha!)
 //     - transcript segments present and chronologically ordered
@@ -534,20 +535,17 @@ func TestFullSession_HappyPath(t *testing.T) {
 	t.Logf("✓ Audio uploaded: HTTP %d, %d bytes", resp.StatusCode, audioSize)
 
 	// ------------------------------------------------------------------------
-	// Step 6 — Confirm upload (creates session)
+	// Step 6 — Wait for the async ingestion subscriber to take over
 	// ------------------------------------------------------------------------
-	t.Log("\n═══ Step 6/8: CompleteAudioUpload (creates session) ═══")
-	complete, err := ingestionClient.CompleteAudioUpload(ctx, &ingestionv1.CompleteAudioUploadRequest{
-		UploadId:              upload.UploadId,
-		ActualDurationSeconds: 600,
-		ActualSizeBytes:       audioSize,
-		ChunkCount:            1,
-		Md5Hash:               "",
-	})
-	require.NoError(t, err, "CompleteAudioUpload")
-	require.NotEmpty(t, complete.SessionId, "session_id not returned")
-	t.Logf("✓ Session created: id=%s, processing_started=%v",
-		complete.SessionId, complete.ProcessingStarted)
+	// Option F (2026-05-25, feat/refactor-stt-architecture): there is
+	// no longer a client-driven CompleteAudioUpload RPC. The bucket
+	// notification on audio-uploads → audio.objectFinalized topic →
+	// ingestion-svc's in-process subscriber takes over. session_id was
+	// already returned in CreateAudioUploadResponse (Step 4), so we
+	// just hold on to it and let Step 7's polling drive the wait.
+	require.NotEmpty(t, upload.SessionId, "Option E: session_id should have been returned from CreateAudioUpload")
+	sessionID := upload.SessionId
+	t.Logf("✓ Session id (from CreateAudioUploadResponse): %s — subscriber will finalize asynchronously", sessionID)
 
 	// ------------------------------------------------------------------------
 	// Step 7 — Poll for terminal status
@@ -566,7 +564,7 @@ func TestFullSession_HappyPath(t *testing.T) {
 
 	for time.Now().Before(deadline) {
 		details, err = clinicalClient.GetSessionDetails(ctx,
-			&clinicalv1.GetSessionDetailsRequest{SessionId: complete.SessionId})
+			&clinicalv1.GetSessionDetailsRequest{SessionId: sessionID})
 		if err == nil && details != nil && details.Session != nil {
 			if details.Session.Status != lastStatus {
 				t.Logf("  %s status: %s",
@@ -605,7 +603,7 @@ func TestFullSession_HappyPath(t *testing.T) {
 		// `report.generated`. We give it a short window (the worker
 		// runs in parallel with our PG poll, so it's usually already
 		// there; cold start can take a few seconds).
-		assertFirestoreSessionStateDone(t, ctx, cfg.projectID, complete.SessionId, firebaseUID)
+		assertFirestoreSessionStateDone(t, ctx, cfg.projectID, sessionID, firebaseUID)
 
 		// --------------------------------------------------------------
 		// Step 8.6 — Report rating happy-path (feat/report-customization)
@@ -760,9 +758,9 @@ func TestFullSession_HappyPath(t *testing.T) {
 		// 8.7c — Republish transcript.completed → llm-worker reprocesses
 		// with the new preferences. New report row appears in the
 		// reports table for the same session.
-		publishTranscriptCompletedRetry(t, ctx, cfg.projectID, complete.SessionId, transcriptID)
+		publishTranscriptCompletedRetry(t, ctx, cfg.projectID, sessionID, transcriptID)
 		t.Logf("  ✓ republished transcript.completed for session %s",
-			complete.SessionId[:8])
+			sessionID[:8])
 
 		// 8.7d — Poll for the second report (the one whose id differs
 		// from report1's). Re-run typically completes in 10-30s; give
@@ -771,7 +769,7 @@ func TestFullSession_HappyPath(t *testing.T) {
 		var report2 *clinicalv1.Report
 		for time.Now().Before(report2Deadline) {
 			details2, err := clinicalClient.GetSessionDetails(ctx,
-				&clinicalv1.GetSessionDetailsRequest{SessionId: complete.SessionId})
+				&clinicalv1.GetSessionDetailsRequest{SessionId: sessionID})
 			if err == nil && len(details2.Reports) >= 2 {
 				for _, r := range details2.Reports {
 					if r.Id != report1.Id {
@@ -841,7 +839,7 @@ func TestFullSession_HappyPath(t *testing.T) {
 		// behind patient_files; if the FK didn't cascade properly the
 		// session row would still be readable).
 		_, gsdErr := clinicalClient.GetSessionDetails(ctx, &clinicalv1.GetSessionDetailsRequest{
-			SessionId: complete.SessionId,
+			SessionId: sessionID,
 		})
 		require.Error(t, gsdErr, "GetSessionDetails must NotFound after cascade")
 		if st, ok := status.FromError(gsdErr); ok {
@@ -1126,6 +1124,32 @@ func assertCompletedSessionShape(t *testing.T, d *clinicalv1.GetSessionDetailsRe
 		_, err := strconv.Atoi(k)
 		assert.NoErrorf(t, err, "speaker_label_mapping key %q must parse as int", k)
 	}
+
+	// Migration 000026: therapy modality (default for the test
+	// patient) should yield "Terapeuta" + "Pacjent" labels (in
+	// Polish, the default report language) instead of the legacy
+	// "Osoba 1" / "Osoba 2". We tolerate "Osoba" as a fall-through
+	// only when the LLM classified the speaker as non-dyadic
+	// (couple_partner / family_member / etc.) — but in this
+	// single-therapist + single-patient fixture session we expect
+	// BOTH role-named labels to be present. Allow numeric suffix
+	// ("Terapeuta 2") for edge cases where the LLM over-clusters.
+	hasTherapist := false
+	hasPatient := false
+	for _, v := range s.SpeakerLabelMapping {
+		if strings.HasPrefix(v, "Terapeuta") {
+			hasTherapist = true
+		}
+		if strings.HasPrefix(v, "Pacjent") {
+			hasPatient = true
+		}
+	}
+	assert.Truef(t, hasTherapist,
+		"expected at least one 'Terapeuta…' label in %v (migration 000026 role-aware labels)",
+		s.SpeakerLabelMapping)
+	assert.Truef(t, hasPatient,
+		"expected at least one 'Pacjent…' label in %v (migration 000026 role-aware labels)",
+		s.SpeakerLabelMapping)
 
 	// Confirm it's at least round-trippable as JSON to catch any oddities.
 	if b, err := json.Marshal(s.SpeakerLabelMapping); assert.NoError(t, err) {

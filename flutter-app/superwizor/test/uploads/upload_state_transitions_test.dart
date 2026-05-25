@@ -32,18 +32,22 @@ import 'package:superwizor/uploads/upload_worker.dart';
 class _FakeIo implements UploadIo {
   int createCalls = 0;
   int putCalls = 0;
-  int convertCalls = 0;
+  // Option F (2026-05-25): convert + complete RPCs are gone. The
+  // worker terminates at PUT. completeCalls is incremented from
+  // inside putBytes for tests that previously asserted on it as a
+  // "did we reach terminal-success" signal.
   int completeCalls = 0;
   Object? createUploadError;
   Object? putBytesError;
-  ConvertAudioResult? convertResult;
 
   @override
   Future<CreateAudioUploadResult> createUpload(PendingUpload u) async {
     createCalls++;
     if (createUploadError != null) throw createUploadError!;
     return CreateAudioUploadResult(
-        uploadId: 'au-${u.localId}', signedUrl: 'https://signed/${u.localId}');
+        uploadId: 'au-${u.localId}',
+        signedUrl: 'https://signed/${u.localId}',
+        sessionId: 'sess-${u.localId}');
   }
 
   @override
@@ -55,19 +59,7 @@ class _FakeIo implements UploadIo {
       putBytesError = null; // one-shot — clear so subsequent attempts succeed
       throw err;
     }
-  }
-
-  @override
-  Future<ConvertAudioResult> convertAudio(PendingUpload u) async {
-    convertCalls++;
-    return convertResult ??
-        const ConvertAudioResult(contentType: 'audio/flac', converted: true);
-  }
-
-  @override
-  Future<CompleteAudioUploadResult> completeUpload(PendingUpload u) async {
     completeCalls++;
-    return CompleteAudioUploadResult(sessionId: 'sess-${u.localId}');
   }
 
   @override
@@ -130,7 +122,7 @@ void main() {
   });
 
   group('happy paths', () {
-    test('Chirp-native: pending → created → uploaded → completed in one tick',
+    test('Chirp-native: pending → created → completed in one tick (Option F)',
         () async {
       final queue = UploadQueue(hiveBox: rawBox);
       final io = _FakeIo();
@@ -140,17 +132,23 @@ void main() {
 
       final row = queue.getById('a')!;
       expect(row.phase, UploadPhase.completed);
-      expect(row.sessionId, 'sess-a');
+      expect(row.sessionId, 'sess-a',
+          reason: 'session_id captured from CreateAudioUploadResponse');
       expect(io.createCalls, 1);
       expect(io.putCalls, 1);
-      expect(io.convertCalls, 0);
-      expect(io.completeCalls, 1);
+      expect(io.completeCalls, 1,
+          reason:
+              'Option F: putBytes bumps the same counter — PUT-success is terminal-success');
 
       await runner.dispose();
     });
 
-    test('needs conversion: pending → created → uploaded → converted → completed',
+    test(
+        'needs server-side conversion: client still terminates at PUT (server handles it)',
         () async {
+      // Option F (2026-05-25): the client uploads the original codec
+      // and stops. The server-side subscriber transcodes if needed —
+      // there is no longer a client RPC for that.
       final queue = UploadQueue(hiveBox: rawBox);
       final io = _FakeIo();
       final runner = _runner(queue: queue, io: io);
@@ -159,7 +157,6 @@ void main() {
 
       final row = queue.getById('b')!;
       expect(row.phase, UploadPhase.completed);
-      expect(io.convertCalls, 1, reason: 'conversion ran exactly once');
       expect(io.completeCalls, 1);
 
       await runner.dispose();

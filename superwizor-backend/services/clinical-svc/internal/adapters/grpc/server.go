@@ -147,6 +147,11 @@ func (s *Server) ListModalities(ctx context.Context, _ *emptypb.Empty) (*clinica
 			SystemCode:  m.SystemCode,
 			DisplayName: m.DisplayName,
 			IsSupported: m.IsSupported,
+			// "therapy" | "coaching" — migration 000026. Drives
+			// llm-worker's role-label vocabulary; Flutter doesn't
+			// branch on it yet but the field is exposed for future
+			// UI cues ("Coaching" badge on cards, etc.).
+			ModalityType: string(m.ModalityType),
 		})
 	}
 	return resp, nil

@@ -1,23 +1,41 @@
 # 15 — Hybrid event-driven ingestion finalization (Option F)
 
-**Status:** design (2026-05-25). Not started. Branch will be
-`feat/ingestion-eventarc-finalize` when picked up.
+**Status:** ✅ **shipped 2026-05-25** on
+`feat/refactor-stt-architecture`. Backend + Flutter + terraform +
+e2e all landed in the same change. `CompleteAudioUpload` and
+`ConvertAudio` gRPC RPCs were **deleted** (no deprecation window;
+app pre-launch).
 
 **Note on the title:** the original draft of this doc used
-"Eventarc-driven". The finalized design uses a plain
-`google_storage_notification` → Pub/Sub topic → pull subscription
-consumed by a background goroutine inside ingestion-svc — not the
-Eventarc managed primitive. "Hybrid event-driven" is the more
-honest label. The trigger source is still a GCS object event; we
-just skip the Eventarc-to-Cloud-Function dance because the
-consumer lives in Cloud Run.
+"Eventarc-driven". The shipped implementation uses a plain
+`google_storage_notification` → `audio.objectFinalized` Pub/Sub
+topic → `audio.objectFinalized.sub` pull subscription consumed by
+a background goroutine inside ingestion-svc — not the Eventarc
+managed primitive. "Hybrid event-driven" is the more honest label.
+The trigger source is still a GCS object event; we just skip the
+Eventarc-to-Cloud-Function dance because the consumer lives in
+Cloud Run.
 
 **Predecessor:** `docs/14_INGESTION_EARLY_SESSION_CREATION.md`
 (Option E "E-lite", shipped 2026-05-25 in merge `fae7c1a`). Option F
 is the natural follow-up — the "E-full" variant called out as future
 work in §"Open design choices" of the predecessor doc.
 
-**Owner:** unassigned. Trigger to schedule: see §"When to ship" below.
+**Verification:**
+- `TestFullSession_HappyPath` (40 s FLAC) — 215 s, PENDING_UPLOAD →
+  TRANSCRIBING → MERGING → ANALYZING → COMPLETED, no client RPC after
+  PUT.
+- `TestLongSession_Chunked` (22-min, 103 MB FLAC) — 386 s end-to-end
+  via the subscriber's silence-detect chunking path.
+- All Patient lifecycle + Report preferences e2e green.
+- 112 Flutter unit tests green.
+
+**Operational note:** the Cloud Run service was deployed with
+`--no-cpu-throttling --cpu=2 --memory=2Gi`. Default CPU-throttling
+stalls the pull-subscriber goroutine between requests, which on
+long audio causes Pub/Sub redeliveries without progress. Both the
+CI workflow (`.github/workflows/ci.yml`) and the ingestion-svc
+agent doc (`docs/agents/04_ingestion-svc.md`) call this out.
 
 ---
 

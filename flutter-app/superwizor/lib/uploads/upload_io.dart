@@ -10,39 +10,31 @@
 // classified via the static helpers in upload_error.dart — so
 // implementations can throw freely (GrpcError, HttpException,
 // SocketException, etc.) and the worker decides retry vs. terminal.
+//
+// Option F (feat/refactor-stt-architecture, 2026-05-25): the
+// surface shrank from five operations to three. `convertAudio`
+// and `completeUpload` were removed once ingestion-svc started
+// driving finalize asynchronously off a GCS bucket notification;
+// the client now terminates at HTTP PUT success and lets the
+// server take it from there. See
+// `docs/15_HYBRID_EVENTARC_FINALIZATION.md` for the design.
 
 import 'pending_upload.dart';
 
 class CreateAudioUploadResult {
   final String uploadId;
   final String signedUrl;
-  /// Option E (2026-05-25): the server now allocates a session row
-  /// at CreateAudioUpload time, so the response carries session_id
-  /// from this point onward (was only available in
-  /// CompleteAudioUploadResult before). May be empty for legacy
-  /// server revisions during the migration window — UploadWorker
-  /// treats that as "session_id not known yet" same as before.
+  /// Option E (2026-05-25): the server allocates the session row at
+  /// CreateAudioUpload time, so the response carries session_id from
+  /// this point onward. Under Option F (2026-05-25) this is the
+  /// session_id the client surfaces to the UI forever — there's no
+  /// follow-up RPC that could return a different one.
   final String sessionId;
   const CreateAudioUploadResult({
     required this.uploadId,
     required this.signedUrl,
     this.sessionId = '',
   });
-}
-
-class ConvertAudioResult {
-  /// Final content type after server-side conversion (e.g. "audio/flac").
-  final String contentType;
-
-  /// True if ffmpeg actually ran; false on no-op (already supported).
-  final bool converted;
-  const ConvertAudioResult(
-      {required this.contentType, required this.converted});
-}
-
-class CompleteAudioUploadResult {
-  final String sessionId;
-  const CompleteAudioUploadResult({required this.sessionId});
 }
 
 abstract class UploadIo {
@@ -60,15 +52,7 @@ abstract class UploadIo {
     void Function(double progressFraction)? onProgress,
   });
 
-  /// Step 3: ConvertAudio (only called when
-  /// [u.needsServerSideConversion] is true). Idempotent — re-running
-  /// after success is a server-side no-op.
-  Future<ConvertAudioResult> convertAudio(PendingUpload u);
-
-  /// Step 4: CompleteAudioUpload. Triggers STT pipeline.
-  Future<CompleteAudioUploadResult> completeUpload(PendingUpload u);
-
-  /// Step 5 (terminal-success only): wipe any on-disk source
+  /// Step 3 (terminal-success only): wipe any on-disk source
   /// material the upload owns — encrypted chunks for the recording
   /// path. For plainFile this is a no-op (we never own the user's
   /// picked file).

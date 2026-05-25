@@ -915,7 +915,13 @@ class _PendingUploadCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Nowa sesja',
+                    // Mirrors the server-side in-progress card's title
+                    // ("Przetwarzanie") so the kartoteka reads
+                    // consistently regardless of whether the row is
+                    // backed by a Hive-queue entry (very early phase)
+                    // or a server-side session in PENDING_UPLOAD /
+                    // CREATED / TRANSCRIBING / ANALYZING.
+                    'Przetwarzanie',
                     style: TextStyle(
                       fontFamily: 'Merriweather',
                       fontSize: 16,
@@ -1096,9 +1102,13 @@ class _SessionCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Raport z sesji',
-                      style: TextStyle(
+                    Text(
+                      // While the analysis pipeline is still running the
+                      // session has no report to show — surface that
+                      // honestly in the card title rather than pretending
+                      // a "Raport z sesji" already exists.
+                      isCompleted ? 'Raport z sesji' : 'Przetwarzanie',
+                      style: const TextStyle(
                         fontFamily: 'Montserrat',
                         fontSize: 20,
                         fontWeight: FontWeight.w600,

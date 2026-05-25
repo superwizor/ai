@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
+import 'session_status_screen.dart';
 
 class PendingUploadsScreen extends ConsumerWidget {
   const PendingUploadsScreen({super.key});
@@ -116,16 +117,40 @@ class _UploadRow extends ConsumerWidget {
             ? Colors.greenAccent.shade200
             : EuphireColors.ember;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+    // Tap-through to the live session/upload screen. When the worker
+    // has already resolved a server-side session_id (Option E — every
+    // upload row carries one from CreateAudioUpload onward), navigate
+    // directly to the session by id. Pre-Option-E rows that never got
+    // a session_id (server didn't return one) fall back to driving the
+    // status screen off the queue's localId.
+    final hasSessionId =
+        upload.sessionId != null && upload.sessionId!.isNotEmpty;
+    final canTap = !isFailed; // failed rows: actions only, no nav
+
+    return Material(
+      color: Colors.white.withValues(alpha: 0.05),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        onTap: canTap
+            ? () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => SessionStatusScreen(
+                    sessionId: hasSessionId ? upload.sessionId : null,
+                    localId: hasSessionId ? null : upload.localId,
+                  ),
+                ));
+              }
+            : null,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           Row(
             children: [
               Icon(_phaseIcon(upload.phase), color: color, size: 18),
@@ -198,7 +223,9 @@ class _UploadRow extends ConsumerWidget {
               ),
             ],
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

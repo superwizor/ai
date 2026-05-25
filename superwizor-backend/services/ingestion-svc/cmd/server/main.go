@@ -71,6 +71,28 @@ func main() {
 	queries := db.New(pool)
 	srv := grpcadapter.NewServer(queries, pool, signer, converter, bucketName, publisher)
 
+	// Option F (2026-05-25, feat/refactor-stt-architecture):
+	// Start the in-process Pub/Sub pull subscriber for GCS
+	// OBJECT_FINALIZE events. The subscriber processes audio
+	// uploads asynchronously (probe duration, fallback transcode,
+	// chunk if > 19min, flip session to CREATED, publish
+	// audio.uploaded). When GCS_FINALIZE_SUB_ID is unset we skip
+	// boot — this lets the same binary run on environments that
+	// haven't been migrated to the hybrid path yet (the synchronous
+	// CompleteAudioUpload handler remains the fallback).
+	subID := os.Getenv("GCS_FINALIZE_SUB_ID")
+	if subID != "" {
+		subscriber, subErr := pubsub.NewSubscriber(ctx, projectID, subID, queries, pool, signer, converter, bucketName, publisher)
+		if subErr != nil {
+			slog.Error("subscriber init", "error", subErr)
+			os.Exit(1)
+		}
+		go subscriber.Start(ctx)
+		slog.Info("ingestion-svc: GCS finalize subscriber started", "subscription", subID)
+	} else {
+		slog.Info("ingestion-svc: GCS_FINALIZE_SUB_ID unset, skipping background subscriber")
+	}
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
 		slog.Error("listen", "error", err)

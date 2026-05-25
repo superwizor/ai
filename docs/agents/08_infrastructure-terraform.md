@@ -78,16 +78,33 @@ infra/
 - Auto-rotation: 90 days
 
 ### `module.pubsub`
-- Topics: `audio.uploaded`, `transcript.completed`, `report.generated`
-- DLQ: `audio.uploaded.dlq`, `transcript.completed.dlq`
+- Topics: `audio.objectFinalized`, `audio.uploaded`, `transcript.completed`, `report.generated`, `session.deleted`, `firestore-sync.dlq`
+- DLQs: `audio.objectFinalized.dlq`, `audio.uploaded.dlq`, `transcript.completed.dlq`, `report.generated.dlq`, `session.deleted.dlq`
+- Option F (2026-05-25) added the `audio.objectFinalized` topic +
+  `audio.objectFinalized.sub` pull subscription. The bucket
+  notification on `audio-uploads` (see `module.storage`) fans
+  OBJECT_FINALIZE events into this topic; ingestion-svc's in-process
+  pull subscriber consumes them. ack_deadline=600s, max_attempts=5,
+  retry 10s–600s, DLQ wired.
 - Debug subscription `audio.uploaded.debug` (with `dead_letter_policy → audio.uploaded.dlq`, max_delivery_attempts=5)
-- IAM: ingestion-svc → publisher on audio.uploaded; stt-worker → publisher on transcript.completed; llm-worker → publisher on report.generated
+- IAM: ingestion-svc → publisher on `audio.uploaded` + subscriber on `audio.objectFinalized.sub`; stt-worker → publisher on `transcript.completed`; llm-worker → publisher on `report.generated`; clinical-svc → publisher on `session.deleted`
 
 ### `module.storage`
 - Audio uploads bucket: `${PROJECT}-audio-uploads`
 - Lifecycle: delete after 48 hours (P1 backstop)
 - CMEK via `module.kms.app_data_key_id`
 - IAM: ingestion-svc storage admin, stt-worker object viewer
+- Transcripts-raw bucket: `${PROJECT}-transcripts-raw`. CMEK + OLM
+  7 d. Owned by stt-submit / stt-finalize (Stage 1 of
+  feat/stt-long_audio_support).
+- **Option F (2026-05-25)**: `google_storage_notification` on
+  `audio-uploads` routes OBJECT_FINALIZE events to the
+  `audio.objectFinalized` Pub/Sub topic. Gated by the
+  `audio_object_finalized_topic_name` variable so the wiring stays
+  off in environments that haven't migrated. Replaces (in spirit)
+  the legacy notification removed 2026-05-23 — this time on a
+  dedicated topic to avoid the duplicate-publisher-on-`audio.uploaded`
+  problem.
 
 ### `module.cloud_functions`
 - `stt-worker` (entry: `ProcessAudio`, runtime `go126`, 1Gi mem, 1 CPU, 540s timeout, max 10 instances)

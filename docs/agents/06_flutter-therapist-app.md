@@ -150,7 +150,7 @@ Firestore rules enforce read-only for clients; backend writes via Admin SDK (not
 | **ADR-005 (gRPC sync)** | All sync calls are gRPC, not REST. If a future endpoint is REST (e.g., the therapist registration form), it must be a separate, declared exception. |
 | **ADR-IMPL-002** | Display speaker labels from `sessions.speaker_label_mapping` (e.g. "Osoba 1") OR allow therapist to rename them via `clinical-svc.UpdateSpeakerLabels`. Never hard-code "Therapist"/"Patient" in the UI. |
 
-## iPhone M4A upload flow (added 2026-05-20)
+## iPhone M4A upload flow (updated 2026-05-25)
 
 iPhone Voice Memos / WhatsApp voice notes / iOS share-sheet exports
 all land as AAC-in-MP4. Chirp 3 rejects this codec. Two-layer fix:
@@ -162,17 +162,22 @@ all land as AAC-in-MP4. Chirp 3 rejects this codec. Two-layer fix:
    `ai.superwizor/audio_converter` plus a sibling
    `EventChannel` for progress. Dart wrapper lives at
    `lib/services/audio_converter_service.dart::convertM4aToFlac`.
+   Battery and egress savings: 100 MB M4A → ~30 MB FLAC.
 
 2. **Server-side fallback** — on Android/web/iOS-decode-failure,
-   the client uploads the original M4A then calls
-   `ingestion.ConvertAudio(audio_upload_id)`. Server transcodes via
-   ffmpeg in the ingestion-svc Cloud Run image. See
-   `docs/agents/04_ingestion-svc.md#ConvertAudio`.
+   the client uploads the original M4A as-is. The server's in-process
+   ingestion subscriber detects the non-Chirp-supported codec and
+   runs ffmpeg to transcode in place on GCS before publishing
+   `audio.uploaded`. No client-driven RPC; entirely async. See
+   `docs/agents/04_ingestion-svc.md` (subscriber transcode-fallback
+   path).
 
 The wiring in `lib/screens/new_session_screen.dart::_convertAndUploadFile`
 adds an `ext == '.m4a' || ext == '.mp4' || ext == '.aac'` branch with
 a try/catch that flips `needsServerSideConversion=true` on iOS
-decode failure or non-iOS platforms.
+decode failure or non-iOS platforms — the flag is informational
+only (used for UI copy + queue analytics), since the upload phase
+is the same regardless: PUT to GCS, done.
 
 ## Local cache (added 2026-05-21)
 
@@ -224,14 +229,26 @@ transcript cache was removed in favour of `SessionDetailsRepository`,
 which stores the whole `GetSessionDetails` composite and integrates
 with the cross-box LRU.
 
-## Offline upload queue (added 2026-05-21)
+## Offline upload queue (added 2026-05-21, simplified 2026-05-25)
 
 Both upload paths — `lib/screens/new_session_screen.dart` (file
 picker) and `lib/screens/recording_screen.dart` (live recording) —
 now build a `PendingUpload` and `enqueueAndKick` the queue runner,
-then navigate to `SessionStatusScreen(localId: ...)`. The five-step
-ingestion pipeline (CreateAudioUpload → PUT → ConvertAudio →
-CompleteAudioUpload → cleanup) runs entirely in the background.
+then navigate to `SessionStatusScreen(localId: ...)`. After Option
+F (2026-05-25, feat/refactor-stt-architecture) the client-driven
+pipeline shrank from five steps to **two**:
+
+1. `CreateAudioUpload` — gRPC; returns `upload_id`, signed URL,
+   and `session_id` (Option E).
+2. HTTP PUT to GCS → terminal-success. Queue row flips to
+   `phase=completed`, source cleanup runs, the runner removes the
+   row once the server-side Firestore mirror confirms processing
+   started.
+
+The old `ConvertAudio` and `CompleteAudioUpload` calls are gone
+entirely — ingestion-svc's in-process subscriber drives finalize
+off the GCS bucket notification. Removed RPCs are not in the proto
+anymore; clients calling them would get `codes.Unimplemented`.
 
 **Durable state shape (`PendingUpload`):**
 - `UploadSourceKind.encryptedChunks` — live recording. Chunks at
@@ -243,11 +260,16 @@ CompleteAudioUpload → cleanup) runs entirely in the background.
   kill — file_picker's OS cache path can be purged). Worker deletes
   the staging dir on terminal-success.
 
-**Phase machine** (`UploadPhase`): `pending → created → uploaded →
-[converted] → completed`. Terminal: `completed`, `failed`. Runner
-advances rows to terminal in one tick (within bounds of a scheduled
-backoff) so the SessionStatusScreen stepper updates in real time
-rather than waiting 60s between phases.
+**Phase machine** (`UploadPhase`): `pending → created → completed`.
+Legacy values `uploaded` / `converted` survive in the enum so old
+Hive rows from pre-Option-F builds decode cleanly; the worker walks
+any such row directly to `completed` on the first new tick
+(`_doFinalize`) — the GCS PUT had already happened, the server's
+subscriber will pick up the OBJECT_FINALIZE event independently.
+Terminal: `completed`, `failed`. Runner advances rows to terminal
+in one tick (within bounds of a scheduled backoff) so the
+SessionStatusScreen stepper updates in real time rather than
+waiting 60s between phases.
 
 **Error classification** (`upload_error.dart`):
 - **retryable** — gRPC UNAVAILABLE/DEADLINE_EXCEEDED/INTERNAL,
@@ -307,7 +329,8 @@ buttons. Live-updates via `pendingUploadsStreamProvider`.
   phase-specific copy under the stepper ("Przesyłam plik na
   serwer...", "Plik na serwerze, finalizuję..."), then transparently
   switches to the sessionId-driven Firestore + clinical-svc
-  listeners the moment CompleteAudioUpload returns.
+  listeners the moment the worker captures session_id from
+  CreateAudioUploadResponse (Option E, Option F).
 
 **Max queue age:** 7 days. `UploadQueue.pruneStale` force-terminates
 older rows with sentinel `lastError='queue.max_age_exceeded'`. User
@@ -351,7 +374,7 @@ User taps Record
 - Cache the Firebase ID token statically — it expires hourly. Use `getIdToken()` each call.
 - Read or write Firestore documents that aren't `session_state/{id}` — others have write-restricted rules.
 - Embed long-lived secrets in the app bundle. There aren't any (Firebase config is fine to ship).
-- **Run the ingestion pipeline inline from a screen.** All audio uploads go through `uploadQueueRunnerProvider.enqueueAndKick(...)` — keeps crash-safe durable state and gives the runner a chance to retry. The five-step pipeline (CreateAudioUpload → PUT → ConvertAudio → CompleteAudioUpload → cleanup) is exclusively the runner's job via `UploadIo`.
+- **Run the ingestion pipeline inline from a screen.** All audio uploads go through `uploadQueueRunnerProvider.enqueueAndKick(...)` — keeps crash-safe durable state and gives the runner a chance to retry. The two-step pipeline (CreateAudioUpload → PUT) is exclusively the runner's job via `UploadIo`. Server-side finalize is **not** the client's job; do not re-add convert / complete RPCs.
 - **Poll clinical-svc for session status.** notification-svc mirrors all status transitions to Firestore `session_states/{sessionId}`. Subscribe; do not poll. The 60s clinical-svc fallback in `SessionStatusScreen` is for statuses not yet mirrored to Firestore (`transcribing`, `failed` — ADR-IMPL-012 deferred); not a general escape hatch.
 - **Generate a new `idempotencyKey` on retry.** The same key for the lifetime of a `PendingUpload` is what lets CreateAudioUpload return the original `upload_id` + a fresh signed URL when the previous URL expired. New key = duplicate audio_uploads row.
 - **Add a fourth cache box without going through `CacheManager`.** Box names are therapist-scoped and the cipher is per-therapist; reach for `CacheManager.openForUser` semantics, don't open Hive boxes ad hoc.

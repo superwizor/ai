@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/diarization"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/reportprefs"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
+	"github.com/superwizor-ai/backend/pkg/i18n/rolelabels"
 	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 )
 
@@ -374,6 +376,13 @@ type SessionContext struct {
 	PatientFileID       uuid.UUID
 	TherapistID         uuid.UUID
 	ModalityID          uuid.UUID
+	// ModalityType discriminates the modalities catalog into
+	// therapy vs coaching (migration 000026). Drives the localized
+	// role-label vocabulary in generateAndSaveSpeakerLabels:
+	// therapy → "Terapeuta"/"Pacjent", coaching → "Trener"/"Klient".
+	// Unknown / NULL falls back to "therapy" (conservative; almost
+	// every modality in the catalog is clinical).
+	ModalityType        string
 	LanguageCode        string
 	SpeakerLabelMapping map[int32]string
 	ReportLanguage      string
@@ -1317,9 +1326,21 @@ func schemaToVertexSchema(s map[string]any) *genai.Schema {
 // Strategia:
 //  1. Z report.SpeakerRoleInference.SpeakerGroups dostajemy listę grup z chunk_indices.
 //  2. Dla każdej grupy: przypisujemy kolejny speaker_tag (1, 2, 3...).
-//  3. Generujemy lokalizowany label (z pkg/i18n/speakerlabels) per tag.
+//  3. Generujemy lokalizowany label per tag — role-aware via
+//     pkg/i18n/rolelabels (which branches on session.ModalityType
+//     and falls through to speakerlabels.Generate for non-dyadic
+//     roles like couple_partner / family_member / third_party).
 //  4. UPDATE transcript_segments — wszystkie segmenty należące do chunków z grupy.
-//  5. UPDATE sessions.speaker_label_mapping = {1: "Osoba 1", 2: "Osoba 2"}.
+//  5. UPDATE sessions.speaker_label_mapping = {1: "Terapeuta", 2: "Pacjent"}
+//     (or "Trener"/"Klient" for coaching modality, or "Osoba N" for
+//     non-dyadic roles, or numeric suffix for collisions).
+//
+// Iteration order is the order the LLM emitted the SpeakerGroups —
+// stable across runs given the same response. The first speaker
+// classified as `therapist` claims the bare "Terapeuta" label;
+// the second claims "Terapeuta 2"; same for `patient`. Independent
+// counters are maintained by rolelabels.Generate via the
+// `takenRoles` map we pass in.
 func generateAndSaveSpeakerLabels(ctx context.Context, session *SessionContext, transcriptID string, report *ReportPayload) error {
 	if dbPool == nil {
 		return nil
@@ -1344,10 +1365,33 @@ func generateAndSaveSpeakerLabels(ctx context.Context, session *SessionContext, 
 		tag++
 	}
 
+	// Walk tags in insertion order so the first "therapist" /
+	// "patient" group gets the bare label and subsequent groups of
+	// the same role get the numeric suffix. Sorting by tag (which
+	// equals insertion order) gives us that determinism without
+	// relying on Go map iteration order.
 	tagToLabel := map[int32]string{}
+	takenRoles := map[string]int{}
+	orderedTags := make([]int32, 0, len(tagToRole))
 	for t := range tagToRole {
-		tagToLabel[t] = speakerlabels.Generate(session.LanguageCode, int(t))
+		orderedTags = append(orderedTags, t)
 	}
+	sort.Slice(orderedTags, func(i, j int) bool { return orderedTags[i] < orderedTags[j] })
+	for _, t := range orderedTags {
+		label, _ := rolelabels.Generate(
+			session.LanguageCode,
+			session.ModalityType,
+			tagToRole[t],
+			int(t),
+			takenRoles,
+		)
+		tagToLabel[t] = label
+	}
+	// speakerlabels stays imported for the fallthrough path inside
+	// rolelabels.Generate. Touch a no-op reference here so a
+	// future refactor that removes it from rolelabels still has a
+	// compile-time pointer to the right place.
+	_ = speakerlabels.Generate
 
 	tx, err := dbPool.Begin(ctx)
 	if err != nil {
@@ -1469,17 +1513,29 @@ func loadSession(ctx context.Context, sessionID string) (*SessionContext, error)
 	// JSONB column on users; empty {} is the common case for users
 	// who haven't customized — the renderer treats that as no-op.
 	var prefsRaw []byte
+	var modalityType *string
 	row := dbPool.QueryRow(ctx, `
 		SELECT s.patient_file_id, pf.therapist_id, pf.modality_id,
+		       m.modality_type::text,
 		       s.speaker_label_mapping, s.language_code, s.report_language,
 		       COALESCE(u.report_preferences, '{}'::jsonb)
 		FROM sessions s
 		JOIN patient_files pf ON pf.id = s.patient_file_id
 		JOIN users u ON u.id = pf.therapist_id
+		LEFT JOIN modalities m ON m.id = pf.modality_id
 		WHERE s.id = $1`, id)
 	if err := row.Scan(&sc.PatientFileID, &sc.TherapistID, &sc.ModalityID,
+		&modalityType,
 		&mappingJSON, &langCode, &reportLang, &prefsRaw); err != nil {
 		return nil, err
+	}
+	// LEFT JOIN guards against a patient_file with a NULL or
+	// dangling modality_id (shouldn't happen but harmless). Fall
+	// back to therapy — the catalog is overwhelmingly clinical.
+	if modalityType != nil {
+		sc.ModalityType = *modalityType
+	} else {
+		sc.ModalityType = "therapy"
 	}
 
 	if prefs, err := reportprefs.Decode(prefsRaw); err != nil {
