@@ -685,7 +685,6 @@ resource "google_cloudfunctions2_function" "notification_worker_on_report" {
 # the status-mirror workers; the only heavy thing is the CollectionGroup
 # query for inbox cleanup, which Firestore evaluates server-side.
 resource "google_cloudfunctions2_function" "notification_worker_on_billing" {
-  count       = var.billing_outbox_topic != "" ? 1 : 0
   name        = "notification-worker-on-billing"
   location    = var.region
   project     = var.project_id
@@ -735,10 +734,9 @@ resource "google_cloudfunctions2_function" "notification_worker_on_billing" {
 }
 
 resource "google_cloud_run_service_iam_member" "notification_on_billing_invoker" {
-  count    = var.billing_outbox_topic != "" ? 1 : 0
   location = var.region
   project  = var.project_id
-  service  = google_cloudfunctions2_function.notification_worker_on_billing[0].name
+  service  = google_cloudfunctions2_function.notification_worker_on_billing.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${var.notification_worker_sa_email}"
 }

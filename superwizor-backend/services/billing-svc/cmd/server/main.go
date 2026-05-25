@@ -1,3 +1,16 @@
+// billing-svc Phase 3 entrypoint.
+//
+// Jeden HTTP/2 listener na PORT (default :8080) obsługujący:
+//   - gRPC requests (Content-Type: application/grpc) → BillingService
+//   - HTTP/1.1 + HTTP/2 plaintext → admin cron endpoints + Stripe stub
+//
+// Cloud Run akceptuje jeden port per service, więc nie można rozdzielić
+// na dwa listenery (jak w sample architekturze gdzie wszystko ma osobne
+// rejestrowane SAs). Używamy h2c muxa: handler dispatcher patrzy na
+// Content-Type i routuje do grpcServer.ServeHTTP albo zwykłego HTTP muxa.
+//
+// Pattern (oficjalny gRPC docs / Cloud Run docs): kompatybilny zarówno z
+// `gcloud run deploy --use-http2` jak i z Cloud Scheduler OIDC POSTami.
 package main
 
 import (
@@ -5,24 +18,26 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	nethttp "net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
-	httpadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/http"
 	grpcadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/grpc"
+	httpadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/http"
 	psadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/pubsub"
 	"github.com/superwizor-ai/backend/services/billing-svc/internal/outboxpoller"
 )
@@ -32,7 +47,6 @@ func main() {
 	slog.SetDefault(logger)
 
 	port := getEnv("PORT", "8080")
-	httpPort := getEnv("HTTP_PORT", "8081")
 	version := getEnv("VERSION", "phase3-v1")
 
 	dbDSN := os.Getenv("DATABASE_URL")
@@ -76,61 +90,60 @@ func main() {
 		slog.Warn("GCP_PROJECT_ID unset — outbox poller disabled (local dev mode)")
 	}
 
-	srv := grpcadapter.NewServer(pool, version)
+	billingServer := grpcadapter.NewServer(pool, version)
 	if w := getEnvInt32("BILLING_WARN_REMAINING", 0); w > 0 {
 		c := getEnvInt32("BILLING_CRITICAL_REMAINING", 1)
-		srv.WithThresholds(w, c)
+		billingServer.WithThresholds(w, c)
 		slog.Info("custom thresholds set", "warn", w, "critical", c)
 	}
 
-	// gRPC server
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		slog.Error("grpc listen failed", "error", err)
-		os.Exit(1)
-	}
-
+	// gRPC server (in-process — handler reused via ServeHTTP).
 	gs := grpc.NewServer()
-	billingv1.RegisterBillingServiceServer(gs, srv)
+	billingv1.RegisterBillingServiceServer(gs, billingServer)
 	hs := health.NewServer()
 	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(gs, hs)
 	reflection.Register(gs)
 
-	// HTTP server (admin crons + Stripe stub).
-	mux := nethttp.NewServeMux()
-	httpadapter.NewAdminHandler(pool, logger).RegisterRoutes(mux)
-	httpadapter.NewStripeStubHandler(pool, logger).RegisterRoutes(mux)
-	mux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
+	// HTTP mux (admin crons + Stripe stub + /healthz).
+	httpMux := nethttp.NewServeMux()
+	httpadapter.NewAdminHandler(pool, logger).RegisterRoutes(httpMux)
+	httpadapter.NewStripeStubHandler(pool, logger).RegisterRoutes(httpMux)
+	httpMux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
 		w.WriteHeader(nethttp.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+
+	// Mixed handler: gRPC requests trafiają do grpc.Server, reszta do http mux.
+	// Content-Type "application/grpc" jest deterministic indicator gRPC traffic
+	// (gRPC wire format + HTTP/2 wymagane).
+	mixedHandler := nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
+			gs.ServeHTTP(w, r)
+			return
+		}
+		httpMux.ServeHTTP(w, r)
+	})
+
+	// h2c (HTTP/2 cleartext) — Cloud Run terminuje TLS przed kontenerem,
+	// więc po naszej stronie ruch jest HTTP/2 plaintext.
+	h2s := &http2.Server{}
 	httpSrv := &nethttp.Server{
-		Addr:              ":" + httpPort,
-		Handler:           mux,
+		Addr:              ":" + port,
+		Handler:           h2c.NewHandler(mixedHandler, h2s),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	// Coordinated shutdown.
 	var wg sync.WaitGroup
 
-	// gRPC server goroutine.
+	// Mixed listener goroutine.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		slog.Info("billing-svc gRPC starting", "port", port, "version", version)
-		if err := gs.Serve(lis); err != nil {
-			slog.Error("grpc serve failed", "error", err)
-		}
-	}()
-
-	// HTTP server goroutine.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		slog.Info("billing-svc HTTP starting", "port", httpPort)
+		slog.Info("billing-svc starting (gRPC + HTTP mixed)",
+			"port", port, "version", version)
 		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, nethttp.ErrServerClosed) {
-			slog.Error("http serve failed", "error", err)
+			slog.Error("serve failed", "error", err)
 		}
 	}()
 
@@ -152,7 +165,6 @@ func main() {
 	<-rootCtx.Done()
 	slog.Info("shutdown signal received")
 
-	// Graceful shutdown.
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
 

@@ -80,5 +80,4 @@ variable "session_deleted_topic" {
 variable "billing_outbox_topic" {
   type        = string
   description = "Pub/Sub topic ID for billing.outbox (billing-svc poller → notification-worker-on-billing FCM dispatch for quota.warning / quota.exhausted / etc.)"
-  default     = ""
 }
