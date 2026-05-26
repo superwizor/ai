@@ -13,6 +13,8 @@ import '../providers/patient_provider.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
 import '../widgets/edit_patient_modal.dart';
+import '../widgets/pending_quota_sessions_widget.dart';
+import '../widgets/quota_warning_banner.dart';
 import 'new_session_screen.dart';
 import 'recording_screen.dart';
 import 'session_status_screen.dart';
@@ -314,7 +316,13 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                     ? ' • ${modalityShortLabelFor(patient.modalityCode.toUpperCase())}'
                                     : ''}',
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 16),
+                      // Billing quota signals (Phase 3 §16):
+                      //   1) Pending sessions stuck on quota — highest priority, shown first
+                      //   2) Active quota warning/critical/exhausted banner
+                      PendingQuotaSessionsWidget(patientFileId: widget.patientId),
+                      const QuotaWarningBanner(),
+                      const SizedBox(height: 16),
                       sessionsAsync.when(
                         loading: () => const Center(
                             child: CircularProgressIndicator(

@@ -6,17 +6,20 @@ import '../generated/identity/v1/identity.pbgrpc.dart';
 import '../generated/clinical/v1/clinical.pbgrpc.dart';
 import '../generated/ingestion/v1/ingestion.pbgrpc.dart';
 import '../generated/notification/v1/notification.pbgrpc.dart';
+import '../generated/billing/v1/billing.pbgrpc.dart';
 
 class GrpcClients {
   late final GrpcOrGrpcWebClientChannel identityChannel;
   late final GrpcOrGrpcWebClientChannel clinicalChannel;
   late final GrpcOrGrpcWebClientChannel ingestionChannel;
   late final GrpcOrGrpcWebClientChannel notificationChannel;
+  late final GrpcOrGrpcWebClientChannel? billingChannel;
 
   late final IdentityServiceClient identity;
   late final ClinicalServiceClient clinical;
   late final IngestionServiceClient ingestion;
   late final NotificationServiceClient notification;
+  late final BillingServiceClient? billing;
 
   GrpcClients({
     required String identityUrl,
@@ -27,6 +30,8 @@ class GrpcClients {
     required int ingestionPort,
     required String notificationUrl,
     required int notificationPort,
+    String? billingUrl,
+    int billingPort = 443,
   }) {
     identityChannel = GrpcOrGrpcWebClientChannel.toSingleEndpoint(
       host: identityUrl,
@@ -54,6 +59,22 @@ class GrpcClients {
     clinical = ClinicalServiceClient(clinicalChannel, interceptors: interceptors);
     ingestion = IngestionServiceClient(ingestionChannel, interceptors: interceptors);
     notification = NotificationServiceClient(notificationChannel, interceptors: interceptors);
+
+    // billing-svc jest internal (no allUsers). W obecnej fazie 3 Flutter NIE
+    // wywołuje go bezpośrednio — clinical-svc/ingestion-svc proxy'ują quota
+    // checks. Klient jest opcjonalny i wpinany tylko jeśli backend wystawi
+    // public proxy lub mamy custom auth proxy. Zostawiamy szkielet ready.
+    if (billingUrl != null && billingUrl.isNotEmpty) {
+      billingChannel = GrpcOrGrpcWebClientChannel.toSingleEndpoint(
+        host: billingUrl,
+        port: billingPort,
+        transportSecure: billingPort == 443,
+      );
+      billing = BillingServiceClient(billingChannel!, interceptors: interceptors);
+    } else {
+      billingChannel = null;
+      billing = null;
+    }
   }
 
   void dispose() {
@@ -61,6 +82,7 @@ class GrpcClients {
     clinicalChannel.shutdown();
     ingestionChannel.shutdown();
     notificationChannel.shutdown();
+    billingChannel?.shutdown();
   }
 }
 

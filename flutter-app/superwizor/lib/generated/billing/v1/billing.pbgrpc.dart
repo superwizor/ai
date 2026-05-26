@@ -21,6 +21,13 @@ import 'billing.pb.dart' as $0;
 
 export 'billing.pb.dart';
 
+/// BillingService — quota i lifecycle subskrypcji (Phase 3).
+///
+/// Model tokenów (ADR-DM-017): 1 token = ≤60min audio + 180s grace.
+/// Pula trzymana per organizacja, debet idzie dwuetapowo:
+/// ReserveCredit (przy CreateAudioUpload) → CommitUsage (po STT, znany duration).
+///
+/// Reference: docs/16_BILLING_SERVICE_PHASE_3.md
 @$pb.GrpcServiceName('billing.v1.BillingService')
 class BillingServiceClient extends $grpc.Client {
   /// The hostname for this service.
@@ -33,7 +40,7 @@ class BillingServiceClient extends $grpc.Client {
 
   BillingServiceClient(super.channel, {super.options, super.interceptors});
 
-  /// Sprawdza czy organizacja ma quotę na nową sesję
+  /// Sprawdza dostępną pulę tokenów (read-only, nie blokuje).
   $grpc.ResponseFuture<$0.QuotaDecision> checkQuota(
     $0.CheckQuotaRequest request, {
     $grpc.CallOptions? options,
@@ -41,7 +48,38 @@ class BillingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$checkQuota, request, options: options);
   }
 
-  /// Inkrementuje usage po zakończonej analizie
+  /// Rezerwuje token na sesję (ADR-BL-001). TTL 4h.
+  /// Idempotent po session_id: powtórne wywołanie zwraca tę samą rezerwację.
+  $grpc.ResponseFuture<$0.Reservation> reserveCredit(
+    $0.ReserveCreditRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$reserveCredit, request, options: options);
+  }
+
+  /// Commituje token po STT, ze znanym duration_seconds.
+  /// Idempotent po session_id (usage_events.session_id UNIQUE).
+  $grpc.ResponseFuture<$0.UsageCommit> commitUsage(
+    $0.CommitUsageRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$commitUsage, request, options: options);
+  }
+
+  /// Zwalnia rezerwację (np. upload failed, manual cancel przed STT).
+  /// Idempotent: re-call na RELEASED/COMMITTED zwraca OK bez zmian.
+  $grpc.ResponseFuture<$1.Empty> releaseCredit(
+    $0.ReleaseCreditRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$releaseCredit, request, options: options);
+  }
+
+  /// DEPRECATED: użyj CommitUsage. Zachowane dla Phase 2 callers.
+  /// Internal mapping: amount → tokens (1:1), duration_seconds = 0,
+  /// co oznacza że advisory lock + counter update działają jak commit
+  /// ale bez weryfikacji formuły grace period.
+  @$core.Deprecated('This method is deprecated')
   $grpc.ResponseFuture<$1.Empty> incrementUsage(
     $0.IncrementUsageRequest request, {
     $grpc.CallOptions? options,
@@ -49,7 +87,7 @@ class BillingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$incrementUsage, request, options: options);
   }
 
-  /// Stan subskrypcji
+  /// Stan subskrypcji + bieżące zużycie.
   $grpc.ResponseFuture<$0.Subscription> getSubscription(
     $0.GetSubscriptionRequest request, {
     $grpc.CallOptions? options,
@@ -64,6 +102,21 @@ class BillingServiceClient extends $grpc.Client {
           '/billing.v1.BillingService/CheckQuota',
           ($0.CheckQuotaRequest value) => value.writeToBuffer(),
           $0.QuotaDecision.fromBuffer);
+  static final _$reserveCredit =
+      $grpc.ClientMethod<$0.ReserveCreditRequest, $0.Reservation>(
+          '/billing.v1.BillingService/ReserveCredit',
+          ($0.ReserveCreditRequest value) => value.writeToBuffer(),
+          $0.Reservation.fromBuffer);
+  static final _$commitUsage =
+      $grpc.ClientMethod<$0.CommitUsageRequest, $0.UsageCommit>(
+          '/billing.v1.BillingService/CommitUsage',
+          ($0.CommitUsageRequest value) => value.writeToBuffer(),
+          $0.UsageCommit.fromBuffer);
+  static final _$releaseCredit =
+      $grpc.ClientMethod<$0.ReleaseCreditRequest, $1.Empty>(
+          '/billing.v1.BillingService/ReleaseCredit',
+          ($0.ReleaseCreditRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
   static final _$incrementUsage =
       $grpc.ClientMethod<$0.IncrementUsageRequest, $1.Empty>(
           '/billing.v1.BillingService/IncrementUsage',
@@ -88,6 +141,30 @@ abstract class BillingServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.CheckQuotaRequest.fromBuffer(value),
         ($0.QuotaDecision value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ReserveCreditRequest, $0.Reservation>(
+        'ReserveCredit',
+        reserveCredit_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ReserveCreditRequest.fromBuffer(value),
+        ($0.Reservation value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.CommitUsageRequest, $0.UsageCommit>(
+        'CommitUsage',
+        commitUsage_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.CommitUsageRequest.fromBuffer(value),
+        ($0.UsageCommit value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ReleaseCreditRequest, $1.Empty>(
+        'ReleaseCredit',
+        releaseCredit_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ReleaseCreditRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.IncrementUsageRequest, $1.Empty>(
         'IncrementUsage',
         incrementUsage_Pre,
@@ -113,6 +190,30 @@ abstract class BillingServiceBase extends $grpc.Service {
 
   $async.Future<$0.QuotaDecision> checkQuota(
       $grpc.ServiceCall call, $0.CheckQuotaRequest request);
+
+  $async.Future<$0.Reservation> reserveCredit_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ReserveCreditRequest> $request) async {
+    return reserveCredit($call, await $request);
+  }
+
+  $async.Future<$0.Reservation> reserveCredit(
+      $grpc.ServiceCall call, $0.ReserveCreditRequest request);
+
+  $async.Future<$0.UsageCommit> commitUsage_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.CommitUsageRequest> $request) async {
+    return commitUsage($call, await $request);
+  }
+
+  $async.Future<$0.UsageCommit> commitUsage(
+      $grpc.ServiceCall call, $0.CommitUsageRequest request);
+
+  $async.Future<$1.Empty> releaseCredit_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ReleaseCreditRequest> $request) async {
+    return releaseCredit($call, await $request);
+  }
+
+  $async.Future<$1.Empty> releaseCredit(
+      $grpc.ServiceCall call, $0.ReleaseCreditRequest request);
 
   $async.Future<$1.Empty> incrementUsage_Pre($grpc.ServiceCall $call,
       $async.Future<$0.IncrementUsageRequest> $request) async {

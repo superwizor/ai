@@ -1019,4 +1019,113 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get suggestion_banner_apply_error =>
       'Nie udało się zmienić ustawienia.';
+
+  @override
+  String billing_quota_warning_short(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Zostało Ci $n tokenów.',
+      many: 'Zostało Ci $n tokenów.',
+      few: 'Zostały Ci $n tokeny.',
+      one: 'Został Ci 1 token.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get billing_quota_critical_short => 'Został Ci ostatni token.';
+
+  @override
+  String get billing_quota_exhausted_short => 'Pula tokenów wyczerpana.';
+
+  @override
+  String get billing_quota_exhausted_subtitle =>
+      'Nowe sesje zapiszą się lokalnie do dnia odnowienia.';
+
+  @override
+  String billing_period_end_label(String date) {
+    return 'Pula odnawia się $date.';
+  }
+
+  @override
+  String get billing_expand_plan_cta => 'Rozszerz plan';
+
+  @override
+  String get billing_dismiss_cta => 'Rozumiem, kontynuuj';
+
+  @override
+  String get billing_exhausted_dialog_title => 'Pula tokenów wyczerpana';
+
+  @override
+  String get billing_exhausted_dialog_body =>
+      'Możesz nadal nagrywać sesję — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie na Twoim urządzeniu. Po rozszerzeniu planu lub odnowieniu puli możesz wznowić przetwarzanie sesji z poziomu Kartoteki.';
+
+  @override
+  String get billing_exhausted_dialog_record_locally => 'Nagrywaj lokalnie';
+
+  @override
+  String billing_pending_sessions_title(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Sesji oczekujących na przetworzenie ($n)',
+      many: 'Sesji oczekujących na przetworzenie ($n)',
+      few: 'Sesje oczekujące na przetworzenie ($n)',
+      one: 'Sesja oczekująca na przetworzenie',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get billing_pending_session_subtitle =>
+      'Audio zapisane lokalnie · Czeka na tokeny';
+
+  @override
+  String billing_pending_session_card_meta(
+    String date,
+    String time,
+    int duration,
+  ) {
+    return 'Sesja z $date, $time ($duration min)';
+  }
+
+  @override
+  String get billing_resume_processing => 'Wznów przetwarzanie';
+
+  @override
+  String get billing_delete_local_audio => 'Usuń';
+
+  @override
+  String billing_tokens_available_required(int available, int required) {
+    return 'Tokeny dostępne: $available / Wymagane: $required';
+  }
+
+  @override
+  String get billing_delete_confirm_title => 'Usunąć nagranie sesji?';
+
+  @override
+  String get billing_delete_confirm_body =>
+      'Audio zostanie trwale usunięte z tego urządzenia. Tej operacji nie można cofnąć.';
+
+  @override
+  String get billing_delete_confirm_action => 'Usuń trwale';
+
+  @override
+  String get billing_reservation_expired_title =>
+      'Przetwarzanie nie powiodło się';
+
+  @override
+  String get billing_reservation_expired_body =>
+      'Rezerwacja tokena wygasła po 4 godzinach. Audio jest nadal zapisane lokalnie.';
+
+  @override
+  String get billing_retry_cta => 'Spróbuj ponownie';
+
+  @override
+  String get billing_past_due_title => 'Problem z płatnością';
+
+  @override
+  String get billing_past_due_body =>
+      'Nie udało się pobrać opłaty za subskrypcję. Do czasu rozwiązania problemu nie będziemy przetwarzać nowych sesji.';
 }
