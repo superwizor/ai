@@ -18,6 +18,7 @@ import (
 	"google.golang.org/genai"
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
@@ -1445,7 +1446,116 @@ func generateAndSaveSpeakerLabels(ctx context.Context, session *SessionContext, 
 		return err
 	}
 
+	// Rebuild the canonical transcript blob (transcripts.transcript_ciphertext)
+	// so the per-line speaker_tag + speaker_label written above are reflected
+	// in the blob too. Without this step the blob keeps stt-worker's
+	// "no diarization" defaults (speaker_tag=null, speaker_label=null) and
+	// any consumer reading the blob (e.g. clinical-svc.GetSessionDetails
+	// optimized path) sees text without role assignment. The blob is the
+	// source of truth (ADR-IMPL-006); segments are derived. We mirror what
+	// labels.go::UpdateSpeakerLabels does — same shape, same transaction —
+	// minus the user-supplied label remap. Cost: 1 KMS decrypt + 1 KMS
+	// encrypt total, independent of segment count.
+	if err := rebuildBlobWithRoles(ctx, tx, transID, chunkToTag, tagToLabel); err != nil {
+		// Soft-fail: surfaces in logs but doesn't roll back the segment
+		// + mapping writes. Per-segment data is still correct; only the
+		// blob lags. A retry of the whole label step (Pub/Sub redelivery)
+		// would re-write everything.
+		slog.WarnContext(ctx, "rebuild transcript blob failed", "error", err, "transcript_id", transID)
+	}
+
 	return tx.Commit(ctx)
+}
+
+// rebuildBlobWithRoles reads transcripts.transcript_ciphertext, applies the
+// freshly-inferred chunk_idx → speaker_tag → speaker_label mapping to each
+// blob line, and writes the result back. Runs inside the supplied tx so
+// the blob stays consistent with transcript_segments at commit time.
+//
+// Why we read the blob here rather than reusing the already-decrypted
+// `chunks` from ProcessTranscript: the on-disk blob carries fields the
+// caller's transcriptfmt.Chunk type strips (confidence, word_count), and
+// keeping them preserves debugging context for the long term. Single KMS
+// decrypt is cheap.
+func rebuildBlobWithRoles(ctx context.Context, tx pgx.Tx, transcriptID uuid.UUID, chunkToTag map[int]int32, tagToLabel map[int32]string) error {
+	var ciphertext, encryptedDEK []byte
+	if err := tx.QueryRow(ctx,
+		"SELECT transcript_ciphertext, transcript_encrypted_dek FROM transcripts WHERE id = $1 FOR UPDATE",
+		transcriptID).Scan(&ciphertext, &encryptedDEK); err != nil {
+		return fmt.Errorf("read transcript: %w", err)
+	}
+	if len(ciphertext) == 0 {
+		// No blob to rebuild (legacy / mock-mode rows). Skip silently;
+		// the segment + sessions writes above already happened.
+		return nil
+	}
+
+	plain, err := crypto.Decrypt(ctx, ciphertext, encryptedDEK)
+	if err != nil {
+		return fmt.Errorf("decrypt blob: %w", err)
+	}
+
+	// Preserve the stt-worker BlobLine schema (pointers on speaker_*
+	// stay, but we always populate them now). Old consumers (llm-worker
+	// loadTranscriptBlob, clinical-svc when it learns to use the blob)
+	// keep working — only the speaker_* fields change from null to set.
+	type blobLine struct {
+		ChunkIdx     int     `json:"chunk_idx"`
+		Text         string  `json:"text"`
+		StartMS      int64   `json:"start_ms"`
+		EndMS        int64   `json:"end_ms"`
+		WordCount    int     `json:"word_count"`
+		Confidence   float32 `json:"confidence"`
+		SpeakerTag   *int32  `json:"speaker_tag,omitempty"`
+		SpeakerLabel *string `json:"speaker_label,omitempty"`
+	}
+	var lines []blobLine
+	if err := json.Unmarshal(plain, &lines); err != nil {
+		return fmt.Errorf("unmarshal blob: %w", err)
+	}
+
+	for i := range lines {
+		// Use chunk_idx if present and within range, otherwise positional
+		// fallback (the blob is written in chunk_idx order at persist time).
+		idx := lines[i].ChunkIdx
+		if idx <= 0 && i > 0 {
+			idx = i
+		}
+		tag, ok := chunkToTag[idx]
+		if !ok {
+			// Chunk didn't end up in any inferred speaker group
+			// (filler/unknown/silence). Clear the speaker fields so
+			// downstream consumers see the absence rather than stale
+			// labels from a prior rebuild.
+			lines[i].SpeakerTag = nil
+			lines[i].SpeakerLabel = nil
+			continue
+		}
+		t := tag
+		lbl := tagToLabel[tag]
+		lines[i].SpeakerTag = &t
+		lines[i].SpeakerLabel = &lbl
+	}
+
+	newJSON, err := json.Marshal(lines)
+	if err != nil {
+		return fmt.Errorf("marshal blob: %w", err)
+	}
+	newCiphertext, newDEK, err := crypto.Encrypt(ctx, newJSON)
+	if err != nil {
+		return fmt.Errorf("encrypt blob: %w", err)
+	}
+	if _, err := tx.Exec(ctx,
+		`UPDATE transcripts
+		   SET transcript_ciphertext   = $1,
+		       transcript_encrypted_dek = $2,
+		       blob_rebuilt_at          = NOW(),
+		       blob_rebuild_count       = COALESCE(blob_rebuild_count, 0) + 1
+		 WHERE id = $3`,
+		newCiphertext, newDEK, transcriptID); err != nil {
+		return fmt.Errorf("update transcript: %w", err)
+	}
+	return nil
 }
 
 // generateEmbedding calls Vertex AI's text-embedding-005 to produce a

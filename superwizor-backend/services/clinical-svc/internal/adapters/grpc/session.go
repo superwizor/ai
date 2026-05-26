@@ -57,38 +57,78 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 			Id: transcript.ID.String(),
 		}
 
-		// Prefer canonical blob path: 1 KMS decrypt instead of N (per-segment).
-		// Per ADR-IMPL-006, `transcripts.transcript_ciphertext` is the
-		// source of truth; per-segment rows are derived and kept in sync
-		// by UpdateSpeakerLabels (see labels.go). Long sessions (e.g.
-		// Marcin's 107-min audio = 1182 segments) blew through the gRPC
-		// 30s deadline on the old per-segment loop because each call to
-		// Cloud KMS adds ~80-200ms of network — 1182 of those serially
-		// is multiple minutes. The canonical blob path collapses that
-		// to a single KMS round-trip + one local AES-GCM decrypt.
-		segs, err := loadCanonicalTranscriptSegments(ctx, s.crypto, transcript)
-		switch {
-		case err == nil && len(segs) > 0:
-			protoTranscript.Segments = segs
-			protoTranscript.Turns = grouping.GroupSegmentsIntoTurns(segs)
-		default:
-			if err != nil {
-				slog.Warn("canonical transcript blob decrypt/parse failed — falling back to per-segment",
+		// 2. Fetch transcript segments
+		//
+		// NOTE on the canonical blob: ADR-IMPL-006 names
+		// `transcripts.transcript_ciphertext` as the source of truth and
+		// transcript_segments as derived. An earlier optimization read
+		// the blob directly (1 KMS call vs N) but produced segments
+		// without role assignment for pre-relabel sessions — stt-worker
+		// writes the blob with `speaker_tag=null, speaker_label=null`
+		// for the Polish / non-native-diarization path, and llm-worker
+		// only updates transcript_segments (not the blob) when it
+		// assigns roles. The blob's per-segment-with-roles shape is
+		// only produced by labels.go::UpdateSpeakerLabels — manual
+		// therapist relabel. Reading the blob without that step strips
+		// diarization. Fast canonical-blob read can come back once
+		// llm-worker also rebuilds the blob after speaker label
+		// assignment (see ai-pipeline-svc/cmd/llm-worker/main.go::
+		// rebuildTranscriptBlob).
+		segments, err := s.queries.ListTranscriptSegments(ctx, transcript.ID)
+		if err == nil {
+			var segDecryptErrs int
+			for _, seg := range segments {
+				textBytes, err := s.crypto.Decrypt(ctx, seg.TextCiphertext, seg.TextEncryptedDek)
+				if err != nil {
+					// Log loudly — silently dropping segments was the bug
+					// behind "GetSessionDetails returns empty data" when
+					// KMS_KEY_URI was missing and cryptobox fell back to
+					// MockBox. The handler still returns a partial response
+					// rather than failing — caller can compare segment
+					// count to transcript_segments table to detect drift.
+					segDecryptErrs++
+					slog.Error("decrypt transcript segment",
+						"session_id", req.SessionId,
+						"transcript_id", transcript.ID.String(),
+						"segment_id", seg.ID.String(),
+						"error", err)
+					continue
+				}
+				text := string(textBytes)
+
+				var conf float32
+				if seg.Confidence.Valid {
+					c, _ := seg.Confidence.Float64Value()
+					conf = float32(c.Float64)
+				}
+				protoTranscript.Segments = append(protoTranscript.Segments, &clinicalv1.TranscriptSegment{
+					SpeakerTag:    seg.SpeakerTag,
+					SpeakerLabel:  seg.SpeakerLabel,
+					StartOffsetMs: seg.StartOffsetMs,
+					EndOffsetMs:   seg.EndOffsetMs,
+					Text:          text,
+					Confidence:    conf,
+				})
+			}
+			// If we couldn't decrypt ANY segment but had segments, that's
+			// almost certainly a KMS misconfig (missing KMS_KEY_URI env
+			// var, missing roles/cloudkms.cryptoKeyEncrypterDecrypter on
+			// the runtime SA). Fail loud rather than return an empty
+			// transcript that callers will report as an empty session.
+			if len(segments) > 0 && len(protoTranscript.Segments) == 0 {
+				slog.Error("all transcript segments failed to decrypt — likely KMS misconfig",
 					"session_id", req.SessionId,
 					"transcript_id", transcript.ID.String(),
-					"error", err)
-			}
-			// Fallback: per-segment loop. Kept for safety net (and
-			// historic blobs that may not exist yet, though all
-			// stt-worker writes since 2026 include the blob).
-			protoTranscript.Segments, protoTranscript.Turns = decryptPerSegmentFallback(
-				ctx, s.queries, s.crypto, transcript.ID, req.SessionId,
-			)
-			if len(protoTranscript.Segments) == 0 {
-				// Loud fail — see comment on the old code path.
+					"segment_count", len(segments),
+					"decrypt_errors", segDecryptErrs)
 				return nil, status.Error(codes.Internal,
 					"transcript present but no segments could be decrypted; check clinical-svc KMS config")
 			}
+			// Derive speaker-grouped view from the (decrypted) segments.
+			// Read-only views in Flutter bind to Turns; the per-chunk
+			// Segments slice stays for the speaker-label edit UI.
+			// O(n) over segments; trivial vs the decrypt loop above.
+			protoTranscript.Turns = grouping.GroupSegmentsIntoTurns(protoTranscript.Segments)
 		}
 		resp.Transcript = protoTranscript
 	}
@@ -298,99 +338,3 @@ func (s *Server) DeleteSession(ctx context.Context, req *clinicalv1.DeleteSessio
 	return &emptypb.Empty{}, nil
 }
 
-// transcriptBlobLine matches the JSON shape stt-worker writes to
-// transcripts.transcript_ciphertext (services/ai-pipeline-svc/cmd/
-// stt-worker/main.go BlobLine + labels.go BlobLine). Kept private and
-// duplicated to keep this package self-contained.
-type transcriptBlobLine struct {
-	ChunkIdx     int     `json:"chunk_idx"`
-	Text         string  `json:"text"`
-	StartMS      int64   `json:"start_ms"`
-	EndMS        int64   `json:"end_ms"`
-	WordCount    int     `json:"word_count"`
-	Confidence   float32 `json:"confidence"`
-	SpeakerTag   *int32  `json:"speaker_tag,omitempty"`
-	SpeakerLabel *string `json:"speaker_label,omitempty"`
-}
-
-// cryptoBoxIface — narrow surface of cryptobox.CryptoBox used here.
-// Avoids pulling the import path; tests can fake.
-type cryptoBoxIface interface {
-	Decrypt(ctx context.Context, ciphertext, encryptedDEK []byte) ([]byte, error)
-}
-
-// loadCanonicalTranscriptSegments decrypts the single canonical
-// transcript_ciphertext blob and maps it to proto TranscriptSegment.
-// Returns nil + error if blob is missing/empty or decrypt/parse fails;
-// caller falls back to per-segment loop in that case.
-func loadCanonicalTranscriptSegments(ctx context.Context, crypto cryptoBoxIface, transcript db.Transcript) ([]*clinicalv1.TranscriptSegment, error) {
-	if len(transcript.TranscriptCiphertext) == 0 {
-		return nil, nil
-	}
-	blobJSON, err := crypto.Decrypt(ctx, transcript.TranscriptCiphertext, transcript.TranscriptEncryptedDek)
-	if err != nil {
-		return nil, err
-	}
-	var lines []transcriptBlobLine
-	if err := json.Unmarshal(blobJSON, &lines); err != nil {
-		return nil, err
-	}
-	out := make([]*clinicalv1.TranscriptSegment, 0, len(lines))
-	for _, l := range lines {
-		var tag int32
-		if l.SpeakerTag != nil {
-			tag = *l.SpeakerTag
-		}
-		var label string
-		if l.SpeakerLabel != nil {
-			label = *l.SpeakerLabel
-		}
-		out = append(out, &clinicalv1.TranscriptSegment{
-			SpeakerTag:    tag,
-			SpeakerLabel:  label,
-			StartOffsetMs: int32(l.StartMS),
-			EndOffsetMs:   int32(l.EndMS),
-			Text:          l.Text,
-			Confidence:    l.Confidence,
-		})
-	}
-	return out, nil
-}
-
-// decryptPerSegmentFallback is the legacy code path — kept as a safety
-// net for transcripts written before the canonical blob became the
-// source of truth, or for environments where the blob field is empty
-// for some reason. Same N×KMS-call cost the canonical path avoids, so
-// don't rely on this for long sessions.
-func decryptPerSegmentFallback(ctx context.Context, queries db.Querier, crypto cryptoBoxIface, transcriptID uuid.UUID, sessionIDStr string) ([]*clinicalv1.TranscriptSegment, []*clinicalv1.SpeakerTurn) {
-	segments, err := queries.ListTranscriptSegments(ctx, transcriptID)
-	if err != nil {
-		return nil, nil
-	}
-	segs := make([]*clinicalv1.TranscriptSegment, 0, len(segments))
-	for _, seg := range segments {
-		textBytes, derr := crypto.Decrypt(ctx, seg.TextCiphertext, seg.TextEncryptedDek)
-		if derr != nil {
-			slog.Error("decrypt transcript segment",
-				"session_id", sessionIDStr,
-				"transcript_id", transcriptID.String(),
-				"segment_id", seg.ID.String(),
-				"error", derr)
-			continue
-		}
-		var conf float32
-		if seg.Confidence.Valid {
-			c, _ := seg.Confidence.Float64Value()
-			conf = float32(c.Float64)
-		}
-		segs = append(segs, &clinicalv1.TranscriptSegment{
-			SpeakerTag:    seg.SpeakerTag,
-			SpeakerLabel:  seg.SpeakerLabel,
-			StartOffsetMs: seg.StartOffsetMs,
-			EndOffsetMs:   seg.EndOffsetMs,
-			Text:          string(textBytes),
-			Confidence:    conf,
-		})
-	}
-	return segs, grouping.GroupSegmentsIntoTurns(segs)
-}
