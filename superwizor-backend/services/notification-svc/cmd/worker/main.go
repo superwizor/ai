@@ -141,13 +141,32 @@ func init() {
 // dodaj też tutaj (loose coupling: zostawiamy unknown fields ignored przez
 // json.Unmarshal, ale znane fields muszą być spójne).
 type BillingEventPayload struct {
-	SubscriptionID  string `json:"subscription_id"`
-	OrganizationID  string `json:"organization_id"`
-	PlanTier        string `json:"plan_tier"`
-	TokensUsed      int32  `json:"tokens_used"`
-	TokensReserved  int32  `json:"tokens_reserved"`
-	TokensRemaining int32  `json:"tokens_remaining"`
-	TokensLimit     int32  `json:"tokens_limit"`
+	SubscriptionID  string    `json:"subscription_id"`
+	OrganizationID  string    `json:"organization_id"`
+	PlanTier        string    `json:"plan_tier"`
+	TokensUsed      int32     `json:"tokens_used"`
+	TokensReserved  int32     `json:"tokens_reserved"`
+	TokensRemaining int32     `json:"tokens_remaining"`
+	TokensLimit     int32     `json:"tokens_limit"`
+	PeriodStart     time.Time `json:"period_start"`
+	PeriodEnd       time.Time `json:"period_end"`
+}
+
+// computeWarningLevel — taka sama logika jak w Flutter QuotaState.computeLevel.
+// Backend pisze ten string do Firestore, więc klient ma 1 źródło prawdy.
+// Progi spójne z billing-svc env defaults (BILLING_WARN_REMAINING=5,
+// BILLING_CRITICAL_REMAINING=1, docs/16 §16.1).
+func computeWarningLevel(remaining int32) string {
+	switch {
+	case remaining <= 0:
+		return "exhausted"
+	case remaining <= 1:
+		return "critical"
+	case remaining <= 5:
+		return "warning"
+	default:
+		return "none"
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -722,6 +741,30 @@ func ProcessBillingEvent(ctx context.Context, e event.Event) error {
 			SessionID:        "",
 			CreatedAt:        time.Now().UTC(),
 		})
+
+		// Slice 4: mirror current quota state to Firestore
+		// organization_quota/{orgId}. Flutter QuotaWarningBanner reads
+		// this doc. Best-effort: errors don't fail the event handler.
+		warningLevel := computeWarningLevel(payload.TokensRemaining)
+		if mErr := fsWriter.WriteOrganizationQuota(ctx, fswriter.OrganizationQuota{
+			OrganizationID:  payload.OrganizationID,
+			TokensUsed:      payload.TokensUsed,
+			TokensReserved:  payload.TokensReserved,
+			TokensLimit:     payload.TokensLimit,
+			TokensRemaining: payload.TokensRemaining,
+			WarningLevel:    warningLevel,
+			PlanTier:        payload.PlanTier,
+			PeriodStart:     payload.PeriodStart,
+			PeriodEnd:       payload.PeriodEnd,
+		}); mErr != nil {
+			logger.Warn("organization_quota mirror write failed",
+				"organization_id", payload.OrganizationID, "error", mErr)
+		} else {
+			logger.Debug("organization_quota mirror written",
+				"organization_id", payload.OrganizationID,
+				"warning_level", warningLevel,
+				"tokens_remaining", payload.TokensRemaining)
+		}
 	}
 
 	logger.Info("billing event handled", "push_status", pushStatus, "tokens", len(tokens))
