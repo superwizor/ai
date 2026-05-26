@@ -55,6 +55,12 @@ typedef OnUploadComplete = Future<void> Function(PendingUpload row);
 /// caches so the kartoteka picks up the new status string.
 typedef OnAnalysisComplete = Future<void> Function(PendingUpload row);
 
+/// Fires once per successful CreateAudioUpload (transition pending→created).
+/// UI uses this to apply a local decrement on billingQuotaProvider so the
+/// SubscriptionPlanScreen shows the reservation immediately without waiting
+/// for the Firestore mirror to catch up.
+typedef OnReservationCreated = void Function(PendingUpload row);
+
 class UploadQueueRunner {
   UploadQueueRunner({
     required UploadQueue queue,
@@ -65,6 +71,7 @@ class UploadQueueRunner {
     SessionStatusStream? sessionStatusStream,
     OnUploadComplete? onUploadComplete,
     OnAnalysisComplete? onAnalysisComplete,
+    OnReservationCreated? onReservationCreated,
   })  : _queue = queue,
         _worker = worker,
         _periodicInterval = periodicInterval ?? const Duration(seconds: 60),
@@ -73,7 +80,8 @@ class UploadQueueRunner {
         _hasNetwork = hasNetwork ?? _defaultHasNetwork,
         _sessionStatusStream = sessionStatusStream,
         _onUploadComplete = onUploadComplete,
-        _onAnalysisComplete = onAnalysisComplete;
+        _onAnalysisComplete = onAnalysisComplete,
+        _onReservationCreated = onReservationCreated;
 
   final UploadQueue _queue;
   final UploadWorker _worker;
@@ -83,6 +91,7 @@ class UploadQueueRunner {
   final SessionStatusStream? _sessionStatusStream;
   final OnUploadComplete? _onUploadComplete;
   final OnAnalysisComplete? _onAnalysisComplete;
+  final OnReservationCreated? _onReservationCreated;
 
   /// Active per-sessionId Firestore subscriptions for completed rows
   /// awaiting backend analysis. Keyed by localId so we can clean up
@@ -236,6 +245,20 @@ class UploadQueueRunner {
           // each phase transition (pending → created → uploaded → …)
           // without waiting for the whole pipeline to finish.
           _emitSnapshot();
+
+          // First transition into phase=created → CreateAudioUpload succeeded
+          // (and on the backend ingestion-svc.ReserveCredit took 1 token).
+          // Fire the callback so the SubscriptionPlanScreen can decrement
+          // its local view immediately — no waiting for the Firestore mirror
+          // update which only fires on edge thresholds.
+          if (current.phase == UploadPhase.pending &&
+              next.phase == UploadPhase.created) {
+            try {
+              _onReservationCreated?.call(next);
+            } catch (e) {
+              debugPrint('[upload-runner] onReservationCreated failed: $e');
+            }
+          }
 
           // First-time transition into phase=completed: the upload
           // pipeline finished and the server has a real session row

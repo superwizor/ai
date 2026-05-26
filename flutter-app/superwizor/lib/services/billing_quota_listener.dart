@@ -36,6 +36,8 @@ class QuotaState {
   final DateTime? periodEnd;
   final QuotaWarningLevel warningLevel;
   final DateTime? updatedAt;
+  final String planTier;  // 'SOLO' | 'PRO' | 'CLINIC' | ''
+  final String planCycle; // 'MONTHLY' | 'SEMI_ANNUAL' | 'ANNUAL' | ''
 
   const QuotaState({
     required this.organizationId,
@@ -47,7 +49,33 @@ class QuotaState {
     this.periodStart,
     this.periodEnd,
     this.updatedAt,
+    this.planTier = '',
+    this.planCycle = '',
   });
+
+  /// Lokalny offset rezerwacji — używane przez UI gdy ingestion-svc
+  /// CreateAudioUpload zwróciło sukces ale mirror w Firestore jeszcze
+  /// się nie zaktualizował (albo nigdy, bo nie przekroczyło edge thresholds).
+  ///
+  /// Zwraca nowy QuotaState z reserved += delta, remaining -= delta.
+  /// Warning level przeliczany zgodnie ze swoim default thresholdem.
+  QuotaState applyLocalReservation(int delta) {
+    final newReserved = (tokensReserved + delta).clamp(0, tokensLimit);
+    final newRemaining = (tokensLimit - tokensUsed - newReserved).clamp(0, tokensLimit);
+    return QuotaState(
+      organizationId: organizationId,
+      tokensUsed: tokensUsed,
+      tokensReserved: newReserved,
+      tokensLimit: tokensLimit,
+      tokensRemaining: newRemaining,
+      warningLevel: computeLevel(newRemaining),
+      periodStart: periodStart,
+      periodEnd: periodEnd,
+      updatedAt: updatedAt,
+      planTier: planTier,
+      planCycle: planCycle,
+    );
+  }
 
   static QuotaWarningLevel computeLevel(int remaining, {int warn = _kDefaultWarnRemaining, int critical = _kDefaultCriticalRemaining}) {
     if (remaining <= 0) return QuotaWarningLevel.exhausted;
@@ -95,6 +123,8 @@ class QuotaState {
       periodStart: (data['periodStart'] as Timestamp?)?.toDate(),
       periodEnd: (data['periodEnd'] as Timestamp?)?.toDate(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      planTier: (data['planTier'] ?? '').toString(),
+      planCycle: (data['planCycle'] ?? '').toString(),
     );
   }
 

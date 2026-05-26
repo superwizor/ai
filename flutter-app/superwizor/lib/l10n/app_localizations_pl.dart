@@ -1128,4 +1128,75 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get billing_past_due_body =>
       'Nie udało się pobrać opłaty za subskrypcję. Do czasu rozwiązania problemu nie będziemy przetwarzać nowych sesji.';
+
+  @override
+  String get subscription_screen_title => 'Subskrypcja';
+
+  @override
+  String get subscription_plan_section_header => 'Twój plan';
+
+  @override
+  String get subscription_tier_solo => 'Solo';
+
+  @override
+  String get subscription_tier_pro => 'Pro';
+
+  @override
+  String get subscription_tier_clinic => 'Klinika';
+
+  @override
+  String get subscription_cycle_monthly => 'miesięczny';
+
+  @override
+  String get subscription_cycle_semi_annual => 'półroczny';
+
+  @override
+  String get subscription_cycle_annual => 'roczny';
+
+  @override
+  String subscription_sessions_per_period(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n sesji w okresie',
+      many: '$n sesji w okresie',
+      few: '$n sesje w okresie',
+      one: '1 sesja w okresie',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String subscription_sessions_left(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n sesji do końca okresu',
+      many: '$n sesji do końca okresu',
+      few: '$n sesje do końca okresu',
+      one: '1 sesja do końca okresu',
+      zero: 'Brak sesji do końca okresu',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String subscription_sessions_used(int used, int limit) {
+    return 'Wykorzystano: $used z $limit';
+  }
+
+  @override
+  String subscription_period_ends(String date) {
+    return 'Okres kończy się $date';
+  }
+
+  @override
+  String get subscription_no_data_title => 'Brak danych o subskrypcji';
+
+  @override
+  String get subscription_no_data_body =>
+      'Nie udało się pobrać informacji o Twoim planie. Sprawdź połączenie internetowe i spróbuj ponownie.';
+
+  @override
+  String get subscription_refresh_cta => 'Odśwież';
 }

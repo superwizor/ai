@@ -29,6 +29,7 @@ type QuotaPayload struct {
 	SubscriptionID  uuid.UUID `json:"subscription_id"`
 	OrganizationID  uuid.UUID `json:"organization_id"`
 	PlanTier        string    `json:"plan_tier"`
+	PlanCycle       string    `json:"plan_cycle"`
 	TokensUsed      int32     `json:"tokens_used"`
 	TokensReserved  int32     `json:"tokens_reserved"`
 	TokensRemaining int32     `json:"tokens_remaining"`

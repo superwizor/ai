@@ -1117,4 +1117,71 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get billing_past_due_body =>
       'We could not process your subscription payment. New sessions will not be processed until this is resolved.';
+
+  @override
+  String get subscription_screen_title => 'Subscription';
+
+  @override
+  String get subscription_plan_section_header => 'Your plan';
+
+  @override
+  String get subscription_tier_solo => 'Solo';
+
+  @override
+  String get subscription_tier_pro => 'Pro';
+
+  @override
+  String get subscription_tier_clinic => 'Clinic';
+
+  @override
+  String get subscription_cycle_monthly => 'monthly';
+
+  @override
+  String get subscription_cycle_semi_annual => 'semi-annual';
+
+  @override
+  String get subscription_cycle_annual => 'annual';
+
+  @override
+  String subscription_sessions_per_period(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n sessions per period',
+      one: '1 session per period',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String subscription_sessions_left(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n sessions left in period',
+      one: '1 session left in period',
+      zero: 'No sessions left in period',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String subscription_sessions_used(int used, int limit) {
+    return 'Used: $used of $limit';
+  }
+
+  @override
+  String subscription_period_ends(String date) {
+    return 'Period ends $date';
+  }
+
+  @override
+  String get subscription_no_data_title => 'No subscription data';
+
+  @override
+  String get subscription_no_data_body =>
+      'Could not load your plan info. Check your connection and try again.';
+
+  @override
+  String get subscription_refresh_cta => 'Refresh';
 }

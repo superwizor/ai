@@ -15,6 +15,7 @@ import '../widgets/pending_uploads_pill.dart';
 import '../widgets/preference_suggestion_banner.dart';
 import 'client_details_screen.dart';
 import 'menu_screen.dart';
+import 'subscription_plan_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -73,7 +74,16 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     const Spacer(),
                     const PendingUploadsPill(),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      tooltip: 'Subskrypcja',
+                      icon: const Icon(Icons.card_membership, color: EuphireColors.frostWhite),
+                      onPressed: () {
+                        Navigator.of(context).push(CupertinoPageRoute(
+                          builder: (_) => const SubscriptionPlanScreen(),
+                        ));
+                      },
+                    ),
                     IconButton(
                       icon: const Icon(Icons.menu, color: EuphireColors.frostWhite),
                       onPressed: () {

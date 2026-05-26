@@ -144,6 +144,7 @@ type BillingEventPayload struct {
 	SubscriptionID  string    `json:"subscription_id"`
 	OrganizationID  string    `json:"organization_id"`
 	PlanTier        string    `json:"plan_tier"`
+	PlanCycle       string    `json:"plan_cycle"`
 	TokensUsed      int32     `json:"tokens_used"`
 	TokensReserved  int32     `json:"tokens_reserved"`
 	TokensRemaining int32     `json:"tokens_remaining"`
@@ -754,6 +755,7 @@ func ProcessBillingEvent(ctx context.Context, e event.Event) error {
 			TokensRemaining: payload.TokensRemaining,
 			WarningLevel:    warningLevel,
 			PlanTier:        payload.PlanTier,
+			PlanCycle:       payload.PlanCycle,
 			PeriodStart:     payload.PeriodStart,
 			PeriodEnd:       payload.PeriodEnd,
 		}); mErr != nil {

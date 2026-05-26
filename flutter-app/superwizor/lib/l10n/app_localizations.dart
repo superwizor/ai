@@ -2068,6 +2068,96 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Nie udało się pobrać opłaty za subskrypcję. Do czasu rozwiązania problemu nie będziemy przetwarzać nowych sesji.'**
   String get billing_past_due_body;
+
+  /// No description provided for @subscription_screen_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Subskrypcja'**
+  String get subscription_screen_title;
+
+  /// No description provided for @subscription_plan_section_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twój plan'**
+  String get subscription_plan_section_header;
+
+  /// No description provided for @subscription_tier_solo.
+  ///
+  /// In pl, this message translates to:
+  /// **'Solo'**
+  String get subscription_tier_solo;
+
+  /// No description provided for @subscription_tier_pro.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pro'**
+  String get subscription_tier_pro;
+
+  /// No description provided for @subscription_tier_clinic.
+  ///
+  /// In pl, this message translates to:
+  /// **'Klinika'**
+  String get subscription_tier_clinic;
+
+  /// No description provided for @subscription_cycle_monthly.
+  ///
+  /// In pl, this message translates to:
+  /// **'miesięczny'**
+  String get subscription_cycle_monthly;
+
+  /// No description provided for @subscription_cycle_semi_annual.
+  ///
+  /// In pl, this message translates to:
+  /// **'półroczny'**
+  String get subscription_cycle_semi_annual;
+
+  /// No description provided for @subscription_cycle_annual.
+  ///
+  /// In pl, this message translates to:
+  /// **'roczny'**
+  String get subscription_cycle_annual;
+
+  /// No description provided for @subscription_sessions_per_period.
+  ///
+  /// In pl, this message translates to:
+  /// **'{n, plural, =1{1 sesja w okresie} few{{n} sesje w okresie} many{{n} sesji w okresie} other{{n} sesji w okresie}}'**
+  String subscription_sessions_per_period(int n);
+
+  /// No description provided for @subscription_sessions_left.
+  ///
+  /// In pl, this message translates to:
+  /// **'{n, plural, =0{Brak sesji do końca okresu} =1{1 sesja do końca okresu} few{{n} sesje do końca okresu} many{{n} sesji do końca okresu} other{{n} sesji do końca okresu}}'**
+  String subscription_sessions_left(int n);
+
+  /// No description provided for @subscription_sessions_used.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wykorzystano: {used} z {limit}'**
+  String subscription_sessions_used(int used, int limit);
+
+  /// No description provided for @subscription_period_ends.
+  ///
+  /// In pl, this message translates to:
+  /// **'Okres kończy się {date}'**
+  String subscription_period_ends(String date);
+
+  /// No description provided for @subscription_no_data_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak danych o subskrypcji'**
+  String get subscription_no_data_title;
+
+  /// No description provided for @subscription_no_data_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się pobrać informacji o Twoim planie. Sprawdź połączenie internetowe i spróbuj ponownie.'**
+  String get subscription_no_data_body;
+
+  /// No description provided for @subscription_refresh_cta.
+  ///
+  /// In pl, this message translates to:
+  /// **'Odśwież'**
+  String get subscription_refresh_cta;
 }
 
 class _AppLocalizationsDelegate

@@ -418,5 +418,36 @@
   "billing_retry_cta": "Try again",
 
   "billing_past_due_title": "Payment issue",
-  "billing_past_due_body": "We could not process your subscription payment. New sessions will not be processed until this is resolved."
+  "billing_past_due_body": "We could not process your subscription payment. New sessions will not be processed until this is resolved.",
+
+  "subscription_screen_title": "Subscription",
+  "subscription_plan_section_header": "Your plan",
+  "subscription_tier_solo": "Solo",
+  "subscription_tier_pro": "Pro",
+  "subscription_tier_clinic": "Clinic",
+  "subscription_cycle_monthly": "monthly",
+  "subscription_cycle_semi_annual": "semi-annual",
+  "subscription_cycle_annual": "annual",
+  "subscription_sessions_per_period": "{n, plural, =1{1 session per period} other{{n} sessions per period}}",
+  "@subscription_sessions_per_period": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "subscription_sessions_left": "{n, plural, =0{No sessions left in period} =1{1 session left in period} other{{n} sessions left in period}}",
+  "@subscription_sessions_left": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "subscription_sessions_used": "Used: {used} of {limit}",
+  "@subscription_sessions_used": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "limit": { "type": "int" }
+    }
+  },
+  "subscription_period_ends": "Period ends {date}",
+  "@subscription_period_ends": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "subscription_no_data_title": "No subscription data",
+  "subscription_no_data_body": "Could not load your plan info. Check your connection and try again.",
+  "subscription_refresh_cta": "Refresh"
 }

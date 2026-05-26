@@ -10,6 +10,7 @@ SELECT
     s.cancel_at_period_end, s.canceled_at, s.trial_end_at,
     s.created_at, s.updated_at,
     p.tier AS plan_tier,
+    p.cycle AS plan_cycle,
     p.tokens_per_period AS plan_tokens_per_period,
     p.licenses_limit AS plan_licenses_limit
 FROM subscriptions s

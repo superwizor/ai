@@ -214,6 +214,7 @@ type OrganizationQuota struct {
 	TokensRemaining int32     `firestore:"tokensRemaining"`
 	WarningLevel    string    `firestore:"warningLevel"` // none|warning|critical|exhausted
 	PlanTier        string    `firestore:"planTier"`
+	PlanCycle       string    `firestore:"planCycle"` // MONTHLY|SEMI_ANNUAL|ANNUAL
 	PeriodStart     time.Time `firestore:"periodStart"`
 	PeriodEnd       time.Time `firestore:"periodEnd"`
 }
@@ -240,6 +241,7 @@ func (w *Writer) WriteOrganizationQuota(ctx context.Context, q OrganizationQuota
 		"tokensRemaining": q.TokensRemaining,
 		"warningLevel":    q.WarningLevel,
 		"planTier":        q.PlanTier,
+		"planCycle":       q.PlanCycle,
 		"periodStart":     q.PeriodStart,
 		"periodEnd":       q.PeriodEnd,
 		"updatedAt":       fs.ServerTimestamp,

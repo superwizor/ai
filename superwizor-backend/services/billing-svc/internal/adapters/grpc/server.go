@@ -503,6 +503,7 @@ func (s *Server) commitInternal(ctx context.Context, in commitInput) (*billingv1
 			SubscriptionID:  sub.ID,
 			OrganizationID:  orgID,
 			PlanTier:        string(sub.PlanTier),
+			PlanCycle:       string(sub.PlanCycle),
 			TokensUsed:      counter.TokensUsed + tokensToCharge,
 			TokensReserved:  counter.TokensReserved - reservedToRelease,
 			TokensRemaining: remainingAfter,

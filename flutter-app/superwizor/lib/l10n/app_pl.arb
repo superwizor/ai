@@ -419,5 +419,36 @@
   "billing_retry_cta": "Spróbuj ponownie",
 
   "billing_past_due_title": "Problem z płatnością",
-  "billing_past_due_body": "Nie udało się pobrać opłaty za subskrypcję. Do czasu rozwiązania problemu nie będziemy przetwarzać nowych sesji."
+  "billing_past_due_body": "Nie udało się pobrać opłaty za subskrypcję. Do czasu rozwiązania problemu nie będziemy przetwarzać nowych sesji.",
+
+  "subscription_screen_title": "Subskrypcja",
+  "subscription_plan_section_header": "Twój plan",
+  "subscription_tier_solo": "Solo",
+  "subscription_tier_pro": "Pro",
+  "subscription_tier_clinic": "Klinika",
+  "subscription_cycle_monthly": "miesięczny",
+  "subscription_cycle_semi_annual": "półroczny",
+  "subscription_cycle_annual": "roczny",
+  "subscription_sessions_per_period": "{n, plural, =1{1 sesja w okresie} few{{n} sesje w okresie} many{{n} sesji w okresie} other{{n} sesji w okresie}}",
+  "@subscription_sessions_per_period": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "subscription_sessions_left": "{n, plural, =0{Brak sesji do końca okresu} =1{1 sesja do końca okresu} few{{n} sesje do końca okresu} many{{n} sesji do końca okresu} other{{n} sesji do końca okresu}}",
+  "@subscription_sessions_left": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "subscription_sessions_used": "Wykorzystano: {used} z {limit}",
+  "@subscription_sessions_used": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "limit": { "type": "int" }
+    }
+  },
+  "subscription_period_ends": "Okres kończy się {date}",
+  "@subscription_period_ends": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "subscription_no_data_title": "Brak danych o subskrypcji",
+  "subscription_no_data_body": "Nie udało się pobrać informacji o Twoim planie. Sprawdź połączenie internetowe i spróbuj ponownie.",
+  "subscription_refresh_cta": "Odśwież"
 }
