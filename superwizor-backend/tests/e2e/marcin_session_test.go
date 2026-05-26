@@ -96,6 +96,22 @@ func TestVerifyMarcinSession(t *testing.T) {
 		"expected ~1182 segments after canonical decode")
 	require.GreaterOrEqual(t, len(resp.Reports), 1, "at least one report")
 
+	// Diarization regression guard — the canonical-blob fast path must
+	// only fire when the blob carries speaker roles. Asserting on Turns
+	// and on segments with non-empty labels catches the previous bug
+	// where the blob was read but contained null speaker_* fields,
+	// flattening every utterance into a single unlabeled wall of text.
+	require.Greater(t, len(resp.Transcript.Turns), 1,
+		"transcript must have multiple speaker turns (diarization preserved)")
+	var withLabel int
+	for _, seg := range resp.Transcript.Segments {
+		if seg.SpeakerLabel != "" {
+			withLabel++
+		}
+	}
+	require.Greater(t, withLabel, 0,
+		"at least one segment must carry a populated speaker_label")
+
 	if elapsed > 10*time.Second {
 		t.Logf("⚠ latency %s is higher than expected (<2s) — canonical path may have fallen back to per-segment", elapsed)
 	}
