@@ -62,6 +62,9 @@ import (
 	"google.golang.org/grpc/status"
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
+	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
+	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	ingestionv1 "github.com/superwizor-ai/backend/gen/go/ingestion/v1"
 )
 
 // billingTestEnv — wspólny setup dla wszystkich billing E2E testów.
@@ -73,6 +76,21 @@ type billingTestEnv struct {
 	orgID         uuid.UUID
 	therapistID   uuid.UUID
 	idToken       string // OIDC token z audience = billing-svc URL
+}
+
+// tryLoadBillingEnv — soft variant used by full_session_test for the
+// CommitUsage assertion. Returns (env, true) if DATABASE_URL is set and
+// connectable, (nil, false) otherwise (test infra not seeded — skip
+// silently rather than failing the whole full-session test).
+func tryLoadBillingEnv(t *testing.T) (*billingTestEnv, bool) {
+	t.Helper()
+	if os.Getenv("DATABASE_URL") == "" {
+		t.Logf("ℹ DATABASE_URL not set — skipping billing assertions")
+		return nil, false
+	}
+	defer func() { _ = recover() }() // loadBillingEnv require's; we swallow
+	env := loadBillingEnv(t)
+	return env, env != nil
 }
 
 func loadBillingEnv(t *testing.T) *billingTestEnv {
@@ -902,6 +920,196 @@ func TestBilling_StripeStub_Idempotency(t *testing.T) {
 
 	// Cleanup
 	_, _ = env.dbPool.Exec(ctx, `DELETE FROM payment_events WHERE provider_event_id = $1`, eventID)
+}
+
+// ============================================================================
+// Wiring tests — catch missing IAM bindings / unwired RPC callers
+// ============================================================================
+
+// TestBilling_ReserveOnUpload — REGRESSION TEST for the Dario bug (2026-05-26).
+//
+// Bug: ingestion-svc@ SA had no run.invoker on billing-svc → every
+// ReserveCredit returned 403 PermissionDenied → tokens_used/tokens_reserved
+// stayed 0 forever. App restart showed "0/20 sessions used" even after
+// multiple recorded sessions.
+//
+// What this test exercises end-to-end:
+//   1. Real Firebase user → CreateUser via identity-svc
+//   2. Create patient_file via clinical-svc
+//   3. CreateAudioUpload via ingestion-svc (which spawns the background
+//      reserveCreditAsync goroutine)
+//   4. Poll PG within 15s for pending_reservations row
+//
+// If the IAM binding / wiring is missing, no row appears within the
+// timeout → test fails with a clear "ReserveCredit was never called for
+// session X" message that points at the integration gap, not at
+// billing-svc internals.
+//
+// Skip: requires the FullSession test infrastructure (Firebase, gcloud,
+// audio fixture). Standalone — does NOT need a counter to be pre-seeded.
+func TestBilling_ReserveOnUpload(t *testing.T) {
+	cfg := loadConfig(t)
+	env := loadBillingEnv(t) // for DB pool
+
+	runID := time.Now().Unix()
+	firebaseUID := fmt.Sprintf("billing_reserve_uid_%d", runID)
+	firebaseEmail := fmt.Sprintf("billing_reserve_%d@example.com", runID)
+
+	t.Logf("══════════════════════════════════════════════════════════════")
+	t.Logf("  E2E billing-reserve wiring test")
+	t.Logf("  Run ID:  %d", runID)
+	t.Logf("══════════════════════════════════════════════════════════════")
+
+	tokenCtx, tokenCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer tokenCancel()
+	fbSession, err := mintFirebaseSession(tokenCtx, cfg.projectID, cfg.firebaseAPIKey, firebaseUID, firebaseEmail)
+	require.NoError(t, err, "mint Firebase token")
+	t.Cleanup(func() { _ = fbSession.cleanup() })
+
+	identityConn := dial(t, cfg.identityURL, fbSession.IDToken)
+	defer identityConn.Close()
+	clinicalConn := dial(t, cfg.clinicalURL, fbSession.IDToken)
+	defer clinicalConn.Close()
+	ingestionConn := dial(t, cfg.ingestionURL, fbSession.IDToken)
+	defer ingestionConn.Close()
+
+	identityClient := identityv1.NewIdentityServiceClient(identityConn)
+	clinicalClient := clinicalv1.NewClinicalServiceClient(clinicalConn)
+	ingestionClient := ingestionv1.NewIngestionServiceClient(ingestionConn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+
+	therapist, err := identityClient.CreateUser(ctx, &identityv1.CreateUserRequest{
+		FirebaseUid: firebaseUID, Email: firebaseEmail,
+		Role: identityv1.UserRole_USER_ROLE_THERAPIST,
+		FirstName: "BillingE2E", LastName: "Therapist",
+		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
+	})
+	require.NoError(t, err, "CreateUser")
+	t.Logf("✓ Therapist created: %s", therapist.Id)
+
+	// Pre-condition: therapist needs an organization with active subscription
+	// + usage_counter. This is what the bootstrap migration 000030 + the
+	// org-bootstrap seed does for all therapists. If your env is fresh
+	// (no orgs auto-created on CreateUser), this test will skip.
+	therapistUUID, _ := uuid.Parse(therapist.Id)
+	var orgIDStr string
+	err = env.dbPool.QueryRow(ctx,
+		`SELECT COALESCE(organization_id::text, '') FROM users WHERE id = $1`, therapistUUID,
+	).Scan(&orgIDStr)
+	require.NoError(t, err, "load therapist org")
+	if orgIDStr == "" {
+		t.Skip("therapist has no organization — run org bootstrap seed first " +
+			"(see /tmp/dbq/seed_orgs.go pattern). Test requires usage_counters.")
+	}
+
+	patient, err := clinicalClient.CreatePatientFile(ctx, &clinicalv1.CreatePatientFileRequest{
+		TherapistId: therapist.Id, ModalityCode: "CBT",
+		WorkingAlias: fmt.Sprintf("BillingE2E Patient %d", runID),
+		ProcessType: clinicalv1.ProcessType_PROCESS_TYPE_INDIVIDUAL,
+		HasRecordingConsent: true,
+		IdempotencyKey: fmt.Sprintf("billing-reserve-patient-%d", runID),
+		PatientFirstName: "BillingE2E", PatientLastName: "Patient", PatientLanguageCode: "pl",
+	})
+	require.NoError(t, err, "CreatePatientFile")
+	t.Logf("✓ PatientFile created: %s", patient.Id)
+	t.Cleanup(func() {
+		bgCtx, bgCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer bgCancel()
+		_, _ = clinicalClient.DeletePatientFile(bgCtx, &clinicalv1.DeletePatientFileRequest{PatientFileId: patient.Id})
+	})
+
+	upload, err := ingestionClient.CreateAudioUpload(ctx, &ingestionv1.CreateAudioUploadRequest{
+		TherapistId: therapist.Id, PatientFileId: patient.Id,
+		ContentType: "audio/flac", EstimatedSizeBytes: 100_000, EstimatedDurationSeconds: 60,
+		IdempotencyKey: fmt.Sprintf("billing-reserve-upload-%d", runID),
+		ClientAppVersion: "e2e-billing-1.0", ClientPlatform: "test",
+	})
+	require.NoError(t, err, "CreateAudioUpload")
+	require.NotEmpty(t, upload.SessionId, "session_id must be in response (Option E)")
+	sessionUUID := uuid.MustParse(upload.SessionId)
+	t.Logf("✓ CreateAudioUpload returned session_id=%s", sessionUUID)
+
+	t.Cleanup(func() {
+		// Reset DB rows we created. Best-effort.
+		bgCtx, bgCancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer bgCancel()
+		_, _ = env.dbPool.Exec(bgCtx, `DELETE FROM pending_reservations WHERE session_id = $1`, sessionUUID)
+		_, _ = env.dbPool.Exec(bgCtx, `DELETE FROM usage_events WHERE session_id = $1`, sessionUUID)
+	})
+
+	// Poll for pending_reservations row — ReserveCredit is fire-and-forget
+	// (goroutine kicked off after tx.Commit), so allow time for the gRPC
+	// round-trip + DB insert.
+	pollCtx, pollCancel := context.WithTimeout(ctx, 20*time.Second)
+	defer pollCancel()
+	deadline := time.Now().Add(20 * time.Second)
+	var found bool
+	var resStatus string
+	var tokensReserved int32
+	for time.Now().Before(deadline) {
+		err := env.dbPool.QueryRow(pollCtx,
+			`SELECT status::text, tokens_reserved FROM pending_reservations WHERE session_id = $1`,
+			sessionUUID,
+		).Scan(&resStatus, &tokensReserved)
+		if err == nil {
+			found = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	require.True(t, found,
+		"pending_reservations row never appeared for session %s within 20s — "+
+			"ingestion-svc.reserveCreditAsync did not complete. Check:\n"+
+			"  (1) ingestion-svc SA has run.invoker on billing-svc Cloud Run\n"+
+			"  (2) BILLING_SVC_URL env is set on ingestion-svc\n"+
+			"  (3) Cloud Logging for ingestion-svc: 'billing reserve' messages",
+		sessionUUID)
+	assert.Equal(t, "ACTIVE", resStatus, "reservation should be ACTIVE")
+	assert.Equal(t, int32(1), tokensReserved, "default 1 token per session")
+	t.Logf("✓ pending_reservations row appeared: status=%s tokens=%d",
+		resStatus, tokensReserved)
+}
+
+// AssertBillingCommittedAfterSession — helper for full-session E2E tests.
+// Polls for usage_events row + counter increment after STT finalize. Use
+// from TestFullSession_HappyPath after waiting for COMPLETED status.
+//
+// If this fails, the bug is most likely:
+//   - stt-worker SA missing run.invoker on billing-svc
+//   - BILLING_SVC_URL env not set on stt-worker function
+//   - stt-worker code path not hitting commitBillingUsageAsync (e.g.,
+//     never reached "ANALYZING" status due to prior pipeline failure).
+func AssertBillingCommittedAfterSession(t *testing.T, env *billingTestEnv, sessionID uuid.UUID, expectMinTokens int32) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	deadline := time.Now().Add(30 * time.Second)
+	var found bool
+	var tokensConsumed, durationSeconds int32
+	for time.Now().Before(deadline) {
+		err := env.dbPool.QueryRow(ctx,
+			`SELECT tokens_consumed, duration_seconds FROM usage_events WHERE session_id = $1`,
+			sessionID,
+		).Scan(&tokensConsumed, &durationSeconds)
+		if err == nil {
+			found = true
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+	require.True(t, found,
+		"usage_events row never appeared for session %s within 30s after COMPLETED — "+
+			"stt-worker.commitBillingUsageAsync did not complete. Check:\n"+
+			"  (1) stt-worker SA has run.invoker on billing-svc\n"+
+			"  (2) BILLING_SVC_URL env on stt-worker Cloud Function\n"+
+			"  (3) Cloud Logging for stt-worker: 'billing commit' messages",
+		sessionID)
+	assert.GreaterOrEqual(t, tokensConsumed, expectMinTokens,
+		"expected ≥%d tokens consumed", expectMinTokens)
+	assert.Greater(t, durationSeconds, int32(0), "duration_seconds must be > 0")
+	t.Logf("✓ usage_events row: tokens=%d duration=%ds", tokensConsumed, durationSeconds)
 }
 
 // ============================================================================
