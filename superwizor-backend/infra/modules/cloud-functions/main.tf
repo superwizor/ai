@@ -389,6 +389,14 @@ resource "google_cloudfunctions2_function" "stt_finalize" {
       KMS_KEY_URI                  = var.app_data_key_id
       DEV_LOG_PLAINTEXT_TRANSCRIPT = var.dev_log_plaintext_transcript ? "true" : "false"
       STT_NATIVE_DIARIZATION       = "on"
+      # billing-svc URL for fire-and-forget CommitUsage. The
+      # commitBillingUsageAsync helper lives in finalize.go and runs in
+      # this function (entry point ProcessTranscriptObject) — NOT in
+      # stt-worker. Without this env var the billing hook stays
+      # disabled and usage_events never get a row → counter never
+      # increments. Empty default keeps the hook disabled for
+      # environments not bootstrapped with billing-svc.
+      BILLING_SVC_URL = var.billing_svc_url
     }
 
     secret_environment_variables {
