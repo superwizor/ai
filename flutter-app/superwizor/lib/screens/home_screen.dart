@@ -13,6 +13,7 @@ import '../widgets/edit_patient_modal.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/pending_uploads_pill.dart';
 import '../widgets/preference_suggestion_banner.dart';
+import '../widgets/quota_warning_banner.dart';
 import 'client_details_screen.dart';
 import 'menu_screen.dart';
 import 'subscription_plan_screen.dart';
@@ -148,6 +149,13 @@ class HomeScreen extends ConsumerWidget {
                       // there's no active suggestion. Renders an ember-
                       // tinted card with Apply / Dismiss CTAs.
                       const PreferenceSuggestionBanner(),
+
+                      // ── Quota warning (Phase 3 §16.3) ───────────────
+                      // Moved up from client_details_screen — sits above
+                      // the kartoteki list so the therapist sees the
+                      // quota state before drilling into a patient file.
+                      // Self-hides when warning_level == "none".
+                      const QuotaWarningBanner(),
 
                       // ── Lista Kartotek ──────────────────────────────────
                       patientsAsync.when(
