@@ -317,6 +317,44 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 		return nil, status.Errorf(codes.Internal, "counter update failed")
 	}
 
+	// Outbox quota.updated — keeps Firestore mirror in sync with the
+	// post-reservation counter so Flutter's live stream picks it up
+	// without relying on the optimistic-local-decrement fallback. See
+	// CommitUsage for the parallel rationale.
+	remainingAfter := counter.TokensLimit - counter.TokensUsed - (counter.TokensReserved + estTokens)
+	if remainingAfter < 0 {
+		remainingAfter = 0
+	}
+	{
+		payload := outbox.QuotaPayload{
+			SubscriptionID:  sub.ID,
+			OrganizationID:  orgID,
+			PlanTier:        string(sub.PlanTier),
+			PlanCycle:       string(sub.PlanCycle),
+			TokensUsed:      counter.TokensUsed,
+			TokensReserved:  counter.TokensReserved + estTokens,
+			TokensRemaining: remainingAfter,
+			TokensLimit:     counter.TokensLimit,
+			PeriodStart:     counter.PeriodStart,
+			PeriodEnd:       counter.PeriodEnd,
+		}
+		payloadBytes, mErr := payload.Marshal()
+		if mErr != nil {
+			slog.ErrorContext(ctx, "ReserveCredit: outbox payload marshal", "error", mErr)
+			return nil, status.Errorf(codes.Internal, "outbox payload encode failed")
+		}
+		if _, err := q.AppendOutboxEvent(ctx, db.AppendOutboxEventParams{
+			AggregateType:  outbox.AggregateQuota,
+			EventType:      "quota.updated",
+			AggregateID:    sub.ID,
+			OrganizationID: orgID,
+			Payload:        payloadBytes,
+		}); err != nil {
+			slog.ErrorContext(ctx, "ReserveCredit: outbox append", "error", err)
+			return nil, status.Errorf(codes.Internal, "outbox append failed")
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		slog.ErrorContext(ctx, "ReserveCredit: commit", "error", err)
 		return nil, status.Errorf(codes.Internal, "commit failed")
@@ -498,7 +536,19 @@ func (s *Server) commitInternal(ctx context.Context, in commitInput) (*billingv1
 	if remainingAfter < 0 {
 		remainingAfter = 0
 	}
-	if eventType := s.thresholds.QuotaEdgeEventType(remainingBefore, remainingAfter); eventType != "" {
+	// Outbox emission: pick the most specific event type that fits.
+	// Edge transitions (warning / critical / exhausted) emit those event
+	// types — they trigger an FCM push downstream. When no threshold is
+	// crossed we still emit "quota.updated" as a non-push snapshot so the
+	// Firestore mirror in notification-svc gets refreshed on EVERY commit.
+	// Without this, Flutter saw stale counters until the user crossed a
+	// threshold; the mirror is the only data source the app reads on
+	// startup.
+	eventType := s.thresholds.QuotaEdgeEventType(remainingBefore, remainingAfter)
+	if eventType == "" {
+		eventType = "quota.updated"
+	}
+	{
 		payload := outbox.QuotaPayload{
 			SubscriptionID:  sub.ID,
 			OrganizationID:  orgID,

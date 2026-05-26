@@ -623,7 +623,7 @@ func TestCommitUsage(t *testing.T) {
 		}
 	})
 
-	t.Run("no outbox event when no edge crossed (20 → 19)", func(t *testing.T) {
+	t.Run("non-edge commit emits quota.updated (20 → 19)", func(t *testing.T) {
 		q := &fakeQuerier{}
 		sub := subRow(t, db.SubscriptionStatusACTIVE, 20)
 		q.getActiveSubFn = func(ctx context.Context, _ uuid.UUID) (db.GetActiveSubscriptionByOrgRow, error) {
@@ -651,8 +651,14 @@ func TestCommitUsage(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected: %v", err)
 		}
-		if len(q.appendOutboxCalls) != 0 {
-			t.Errorf("expected no outbox event, got %d", len(q.appendOutboxCalls))
+		// Phase 3 fix: even when no edge threshold is crossed we emit a
+		// quota.updated snapshot so the Firestore mirror keeps tracking
+		// every commit (not just the warning/critical/exhausted edges).
+		if len(q.appendOutboxCalls) != 1 {
+			t.Fatalf("expected 1 outbox event (quota.updated), got %d", len(q.appendOutboxCalls))
+		}
+		if got := q.appendOutboxCalls[0].EventType; got != "quota.updated" {
+			t.Errorf("expected event_type=quota.updated, got %q", got)
 		}
 	})
 

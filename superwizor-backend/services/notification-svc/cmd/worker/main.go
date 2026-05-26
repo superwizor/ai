@@ -647,15 +647,47 @@ func ProcessBillingEvent(ctx context.Context, e event.Event) error {
 	}
 	logger = logger.With("delivery_id", deliveryID)
 
+	// Firestore organization_quota mirror — write FIRST, regardless of
+	// event_type. The mirror is what Flutter reads on app open / via the
+	// live stream; it MUST track every quota change, not just FCM-pushable
+	// edge events. Previously this was nested inside the FCM block which
+	// meant non-edge events like quota.updated never refreshed Flutter's
+	// view and users saw stale counters until they crossed a threshold.
+	// Best-effort: errors here don't fail the handler.
+	if fsWriter != nil {
+		warningLevel := computeWarningLevel(payload.TokensRemaining)
+		if mErr := fsWriter.WriteOrganizationQuota(ctx, fswriter.OrganizationQuota{
+			OrganizationID:  payload.OrganizationID,
+			TokensUsed:      payload.TokensUsed,
+			TokensReserved:  payload.TokensReserved,
+			TokensLimit:     payload.TokensLimit,
+			TokensRemaining: payload.TokensRemaining,
+			WarningLevel:    warningLevel,
+			PlanTier:        payload.PlanTier,
+			PlanCycle:       payload.PlanCycle,
+			PeriodStart:     payload.PeriodStart,
+			PeriodEnd:       payload.PeriodEnd,
+		}); mErr != nil {
+			logger.Warn("organization_quota mirror write failed",
+				"organization_id", payload.OrganizationID, "error", mErr)
+		} else {
+			logger.Debug("organization_quota mirror written",
+				"organization_id", payload.OrganizationID,
+				"warning_level", warningLevel,
+				"tokens_remaining", payload.TokensRemaining)
+		}
+	}
+
 	title, body := localizeBillingEvent(target.Locale, eventType, payload)
 	if title == "" {
-		// Nieznany event_type — zapisaliśmy delivery row dla audytu,
-		// nic nie wysyłamy (defensive: nowy event type w billing-svc
-		// nie powinien zawiesić workera).
-		logger.Warn("unknown billing event_type, skipping push", "event_type", eventType)
+		// Event type unknown OR is intentionally push-less (quota.updated
+		// is a snapshot event used purely to refresh the Firestore mirror;
+		// it has no FCM body by design). The mirror write above already
+		// happened, so we ACK and return clean.
+		logger.Info("billing event_type has no push body — mirror-only", "event_type", eventType)
 		_ = store.UpdateNotificationDeliveryStatus(ctx, pgstore.UpdateDeliveryStatusParams{
-			ID: deliveryID, Status: "failed",
-			ErrorCode: strPtr("unknown_event_type"),
+			ID: deliveryID, Status: "skipped",
+			ErrorCode: strPtr("no_push_body"),
 		})
 		return nil
 	}
@@ -732,6 +764,8 @@ func ProcessBillingEvent(ctx context.Context, e event.Event) error {
 	}
 
 	// Inbox doc (best-effort; bez session_id bo eventy billingowe są org-scoped).
+	// (Firestore organization_quota mirror is already written earlier in
+	// this handler, before the title check, so non-edge events refresh it too.)
 	if fsWriter != nil {
 		_ = fsWriter.WriteInboxNotification(ctx, fswriter.InboxNotification{
 			NotificationID:   deliveryID.String(),
@@ -742,31 +776,6 @@ func ProcessBillingEvent(ctx context.Context, e event.Event) error {
 			SessionID:        "",
 			CreatedAt:        time.Now().UTC(),
 		})
-
-		// Slice 4: mirror current quota state to Firestore
-		// organization_quota/{orgId}. Flutter QuotaWarningBanner reads
-		// this doc. Best-effort: errors don't fail the event handler.
-		warningLevel := computeWarningLevel(payload.TokensRemaining)
-		if mErr := fsWriter.WriteOrganizationQuota(ctx, fswriter.OrganizationQuota{
-			OrganizationID:  payload.OrganizationID,
-			TokensUsed:      payload.TokensUsed,
-			TokensReserved:  payload.TokensReserved,
-			TokensLimit:     payload.TokensLimit,
-			TokensRemaining: payload.TokensRemaining,
-			WarningLevel:    warningLevel,
-			PlanTier:        payload.PlanTier,
-			PlanCycle:       payload.PlanCycle,
-			PeriodStart:     payload.PeriodStart,
-			PeriodEnd:       payload.PeriodEnd,
-		}); mErr != nil {
-			logger.Warn("organization_quota mirror write failed",
-				"organization_id", payload.OrganizationID, "error", mErr)
-		} else {
-			logger.Debug("organization_quota mirror written",
-				"organization_id", payload.OrganizationID,
-				"warning_level", warningLevel,
-				"tokens_remaining", payload.TokensRemaining)
-		}
 	}
 
 	logger.Info("billing event handled", "push_status", pushStatus, "tokens", len(tokens))
