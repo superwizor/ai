@@ -188,6 +188,10 @@ resource "google_cloudfunctions2_function" "stt_worker" {
       # Today: en-US is the only language flagged true; pl-PL stays
       # on the LLM-clustering path. Rollback: change to "off".
       STT_NATIVE_DIARIZATION = "on"
+      # billing-svc URL for fire-and-forget CommitUsage after STT
+      # finalize. Set via var.billing_svc_url (Phase 3, slice 5). Empty
+      # = billing hook disabled.
+      BILLING_SVC_URL = var.billing_svc_url
     }
 
     secret_environment_variables {

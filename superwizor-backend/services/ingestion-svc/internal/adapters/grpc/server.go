@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +17,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	ingestionv1 "github.com/superwizor-ai/backend/gen/go/ingestion/v1"
 	"github.com/superwizor-ai/backend/pkg/i18n/lang"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/postgres/db"
@@ -48,6 +50,7 @@ type Server struct {
 	converter  *storage.Converter // unused by RPCs post-Option F; kept for wiring symmetry
 	bucketName string
 	pubsub     PubsubPublisher // interface — concrete impl w main
+	billing    billingv1.BillingServiceClient // optional, nil = skip reservation step
 }
 
 type PubsubPublisher interface {
@@ -70,6 +73,14 @@ func NewServer(
 		bucketName: bucketName,
 		pubsub:     pubsub,
 	}
+}
+
+// WithBilling injects the billing-svc client; nil disables the reservation
+// hook (server runs as if quota didn't exist — useful for local dev or for
+// environments where billing-svc isn't reachable).
+func (s *Server) WithBilling(b billingv1.BillingServiceClient) *Server {
+	s.billing = b
+	return s
 }
 
 // pgxBegin is a thin wrapper around s.pool.Begin used by
@@ -253,6 +264,17 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		return nil, status.Errorf(codes.Internal, "commit CreateAudioUpload tx: %v", err)
 	}
 
+	// Billing hook (fail-soft): post-commit, reserve 1 token on billing-svc.
+	// We don't block the upload if billing-svc is down or quota check fails —
+	// the design's quota gate is enforced server-side at CommitUsage time
+	// (stt-worker) anyway. ReserveCredit gives us a live counter update
+	// (Firestore mirror picks up tokens_reserved++) so Flutter shows the
+	// token decrement immediately; missing this just means the live counter
+	// is briefly stale until CommitUsage runs.
+	if s.billing != nil {
+		go s.reserveCreditAsync(sessionUUID, therapistIDPg)
+	}
+
 	signedURL, expires, err := s.signer.GenerateUploadURL(
 		ctx, objectPath, req.ContentType, req.EstimatedSizeBytes,
 	)
@@ -367,4 +389,60 @@ func (s *Server) GetAudioUploadStatus(ctx context.Context, req *ingestionv1.GetA
 func errNoRows() error {
 	// pgx.ErrNoRows alias for testability
 	return fmt.Errorf("no rows")
+}
+
+// reserveCreditAsync — fire-and-forget billing reservation. Runs in its own
+// goroutine because (a) we don't want it blocking the CreateAudioUpload
+// response, (b) gRPC call to billing-svc takes ~50-200ms and the Flutter
+// client doesn't care about reservation success at this point.
+//
+// Resolves organizationId from PG (users table) then calls
+// billing-svc.ReserveCredit. All errors logged + swallowed — fail-soft.
+//
+// session_id is used both as the gRPC field AND as idempotency_key so
+// retries (if we ever add them) don't double-reserve.
+func (s *Server) reserveCreditAsync(sessionUUID uuid.UUID, therapistIDPg pgtype.UUID) {
+	// Independent context — caller's may be cancelled when CreateAudioUpload
+	// returns; we still want to complete the reservation.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	orgIDPg, err := s.queries.GetUserOrganizationID(ctx, therapistIDPg)
+	if err != nil {
+		slog.WarnContext(ctx, "billing reserve: lookup org failed",
+			"session_id", sessionUUID, "therapist_id", therapistIDPg, "error", err)
+		return
+	}
+	if !orgIDPg.Valid {
+		slog.InfoContext(ctx, "billing reserve: user has no org (skipping)",
+			"session_id", sessionUUID, "therapist_id", therapistIDPg)
+		return
+	}
+
+	therapistIDStr := ""
+	if therapistIDPg.Valid {
+		therapistIDStr = uuid.UUID(therapistIDPg.Bytes).String()
+	}
+	orgIDStr := uuid.UUID(orgIDPg.Bytes).String()
+
+	_, err = s.billing.ReserveCredit(ctx, &billingv1.ReserveCreditRequest{
+		SessionId:       sessionUUID.String(),
+		OrganizationId:  orgIDStr,
+		TherapistId:     therapistIDStr,
+		EstimatedTokens: 1,
+		IdempotencyKey:  "ingestion-reserve-" + sessionUUID.String(),
+	})
+	if err != nil {
+		// Fail-soft per design: log but don't propagate. Common codes:
+		//   ResourceExhausted   → quota over (real user-facing); we still
+		//                          allowed the upload — stt-worker will
+		//                          either commit anyway or skip per policy.
+		//   FailedPrecondition  → subscription PAST_DUE / INACTIVE
+		//   Unavailable         → billing-svc transient
+		slog.WarnContext(ctx, "billing reserve: ReserveCredit failed (fail-soft)",
+			"session_id", sessionUUID, "organization_id", orgIDStr, "error", err)
+		return
+	}
+	slog.InfoContext(ctx, "billing reserve: 1 token reserved",
+		"session_id", sessionUUID, "organization_id", orgIDStr)
 }

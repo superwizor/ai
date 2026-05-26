@@ -5,15 +5,21 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
 	"os"
 
 	gcs "cloud.google.com/go/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
+	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	ingestionv1 "github.com/superwizor-ai/backend/gen/go/ingestion/v1"
 	grpcadapter "github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/postgres/db"
@@ -71,6 +77,23 @@ func main() {
 	queries := db.New(pool)
 	srv := grpcadapter.NewServer(queries, pool, signer, converter, bucketName, publisher)
 
+	// Billing client (Phase 3 — optional). When BILLING_SVC_URL is set,
+	// CreateAudioUpload fires a fire-and-forget ReserveCredit per session.
+	// Without the env var, server runs as before (no reservation, no quota
+	// gate). The wiring mirrors clinical-svc's identity-svc dial.
+	if billingURL := os.Getenv("BILLING_SVC_URL"); billingURL != "" {
+		billingClient, bErr := newBillingClient(ctx, billingURL)
+		if bErr != nil {
+			slog.Error("billing client init failed", "url", billingURL, "error", bErr)
+			// Fail-soft — don't exit; server can still serve without billing.
+		} else {
+			srv = srv.WithBilling(billingClient)
+			slog.Info("ingestion-svc: billing-svc client wired", "url", billingURL)
+		}
+	} else {
+		slog.Info("ingestion-svc: BILLING_SVC_URL unset — billing hook disabled")
+	}
+
 	// Option F (2026-05-25, feat/refactor-stt-architecture):
 	// Start the in-process Pub/Sub pull subscriber for GCS
 	// OBJECT_FINALIZE events. The subscriber processes audio
@@ -119,4 +142,47 @@ func getenv(k, d string) string {
 		return v
 	}
 	return d
+}
+
+// newBillingClient dials billing-svc with Cloud Run service-to-service auth
+// when the URL is https://… (idtoken minted by metadata server, audience =
+// service URL). For http:// (local dev / docker-compose) it falls back to
+// insecure credentials. Mirrors clinical-svc's identity dial wiring.
+func newBillingClient(ctx context.Context, serviceURL string) (billingv1.BillingServiceClient, error) {
+	if len(serviceURL) >= 5 && serviceURL[:5] == "https" {
+		tokenSource, err := idtoken.NewTokenSource(ctx, serviceURL)
+		if err != nil {
+			return nil, fmt.Errorf("idtoken: %w", err)
+		}
+		u, err := url.Parse(serviceURL)
+		if err != nil {
+			return nil, fmt.Errorf("parse url: %w", err)
+		}
+		target := u.Host
+		if u.Port() == "" {
+			target = u.Host + ":443"
+		}
+		conn, err := grpc.NewClient(target,
+			grpc.WithTransportCredentials(credentials.NewTLS(nil)),
+			grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("dial: %w", err)
+		}
+		return billingv1.NewBillingServiceClient(conn), nil
+	}
+	// Plaintext fallback for local dev (BILLING_SVC_URL=localhost:8080 etc.)
+	u, err := url.Parse(serviceURL)
+	if err != nil {
+		return nil, err
+	}
+	target := u.Host
+	if target == "" {
+		target = serviceURL
+	}
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	return billingv1.NewBillingServiceClient(conn), nil
 }

@@ -87,6 +87,7 @@ module "cloud_functions" {
   report_generated_topic         = module.pubsub.report_generated_topic
   session_deleted_topic          = module.pubsub.session_deleted_topic
   billing_outbox_topic           = module.pubsub.billing_outbox_topic
+  billing_svc_url                = var.billing_svc_url
   audio_uploaded_dlq_topic       = module.pubsub.audio_uploaded_dlq_topic
   transcript_completed_dlq_topic = module.pubsub.transcript_completed_dlq_topic
   stt_worker_source_dir          = "${path.cwd}/../../../services/ai-pipeline-svc/cmd/stt-worker"
