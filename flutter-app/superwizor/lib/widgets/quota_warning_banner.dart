@@ -8,8 +8,8 @@
 //   - level=critical:   orange accent, dismissible
 //   - level=exhausted:  red accent, NOT dismissible (sticky until renewal)
 //
-// CTA "Rozszerz plan" jest zawsze widoczne — celowo BEZ aktywnej akcji w MVP
-// (slice 5 doda link do checkout flow). Tap = noop + log.
+// No upgrade CTA — the banner is informational only. Plan management lives
+// in subscription_plan_screen reached from the menu.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,10 +23,7 @@ import '../theme/euphire_theme.dart';
 final _dismissedLevels = <QuotaWarningLevel>{};
 
 class QuotaWarningBanner extends ConsumerWidget {
-  const QuotaWarningBanner({super.key, this.onUpgradeTap});
-
-  /// Override default CTA tap. Default: noop (logged in console).
-  final VoidCallback? onUpgradeTap;
+  const QuotaWarningBanner({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -142,26 +139,6 @@ class QuotaWarningBanner extends ConsumerWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.only(left: 32),
-                child: TextButton(
-                  onPressed: onUpgradeTap ?? () => debugPrint('quota: upgrade plan tapped'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: accentColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: Text(
-                    l.billing_expand_plan_cta,
-                    style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
