@@ -35,6 +35,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
+	billingv1connect "github.com/superwizor-ai/backend/gen/go/billing/v1/billingv1connect"
 	"github.com/superwizor-ai/backend/pkg/cors"
 	grpcadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/grpc"
 	httpadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/http"
@@ -100,10 +101,15 @@ func main() {
 	healthpb.RegisterHealthServer(gs, hs)
 	reflection.Register(gs)
 
-	// HTTP mux (admin crons + Stripe stub + /healthz).
+	// HTTP mux (admin crons + Stripe stub + /healthz + Connect-RPC).
 	httpMux := nethttp.NewServeMux()
 	httpadapter.NewAdminHandler(pool, logger).RegisterRoutes(httpMux)
 	httpadapter.NewStripeStubHandler(pool, logger).RegisterRoutes(httpMux)
+	// Connect-RPC surface — browser callers reach the same business
+	// logic as the gRPC path via the ConnectAdapter.
+	connectPath, connectHandler := billingv1connect.NewBillingServiceHandler(
+		grpcadapter.NewConnectAdapter(billingServer))
+	httpMux.Handle(connectPath, connectHandler)
 	httpMux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
 		w.WriteHeader(nethttp.StatusOK)
 		_, _ = w.Write([]byte("ok"))
