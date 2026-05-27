@@ -182,6 +182,44 @@ void main() {
     await runner.dispose();
   });
 
+  test('resetBackoffsForColdStart + kick processes a parked row mid-life',
+      () async {
+    // Models the quota-recovery path: app is already running, admin
+    // tops up tokens, billingQuotaCache fires its 0→>0 transition,
+    // upload_queue_provider calls runner.resetBackoffsForColdStart()
+    // followed by runner.kick(). The parked row should walk to
+    // completed without needing an app restart.
+    final io = _FakeIo();
+    final queue = UploadQueue(hiveBox: rawBox);
+    final runner = UploadQueueRunner(
+      queue: queue,
+      worker: UploadWorker(io: io, backoff: (_) => Duration.zero),
+      periodicInterval: const Duration(hours: 1),
+      connectivityStream: const Stream.empty(),
+      hasNetwork: () async => true,
+    );
+    await runner.start();
+
+    // Park a row in the future (simulating prior QUOTA_EXHAUSTED).
+    final parked = _seed('a').copyWith(
+      phase: UploadPhase.pending,
+      attemptCount: 4,
+      nextAttemptAt: DateTime.now().toUtc().add(const Duration(minutes: 25)),
+      lastError: 'gRPC ResourceExhausted: QUOTA_EXHAUSTED',
+    );
+    await queue.enqueue(parked);
+    expect(io.createCalls, 0, reason: 'parked row not yet due');
+
+    // Quota recovers — provider would call these two methods.
+    await runner.resetBackoffsForColdStart();
+    await runner.kick();
+
+    expect(queue.getById('a')!.phase, UploadPhase.completed);
+    expect(io.createCalls, 1);
+
+    await runner.dispose();
+  });
+
   test('resetBackoffsForColdStart preserves terminal rows + attemptCount',
       () async {
     final queue = UploadQueue(hiveBox: rawBox);

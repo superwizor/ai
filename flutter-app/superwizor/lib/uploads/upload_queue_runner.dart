@@ -160,11 +160,12 @@ class UploadQueueRunner {
   }
 
   /// Pulls future nextAttemptAt back to now for every non-terminal row.
-  /// Exposed for tests so they can assert behavior without dealing with
-  /// the full start() lifecycle. attemptCount is preserved — we want a
-  /// single retry attempt, not a clean slate that would invite spam if
-  /// the same problem recurs.
-  @visibleForTesting
+  /// Public so the Riverpod gateway can call it from the
+  /// BillingQuotaCache 0→>0 transition listener (admin tops up tokens
+  /// mid-session), and so tests can assert behavior without dealing
+  /// with the full start() lifecycle. attemptCount is preserved — we
+  /// want a single retry attempt, not a clean slate that would invite
+  /// spam if the same problem recurs.
   Future<void> resetBackoffsForColdStart() => _resetBackoffsForColdStart();
 
   Future<void> _resetBackoffsForColdStart() async {

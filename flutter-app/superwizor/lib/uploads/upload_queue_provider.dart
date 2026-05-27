@@ -13,6 +13,8 @@
 // changes), since the runner owns timers + stream subscriptions
 // that aren't free to recreate.
 
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,6 +24,8 @@ import '../providers/grpc_provider.dart';
 import '../providers/services_provider.dart';
 import '../repositories/patient_repository.dart';
 import '../repositories/session_repository.dart';
+import '../services/billing_quota_cache.dart';
+import '../services/billing_quota_state.dart';
 import 'pending_upload.dart';
 import 'upload_io_grpc.dart';
 import 'upload_queue.dart';
@@ -32,6 +36,15 @@ class _RunnerHolder {
   UploadQueueRunner? runner;
   UploadQueue? queue;
   String? therapistId;
+  /// Listener registered on BillingQuotaCache.listenable that kicks
+  /// the queue when tokensRemaining transitions 0 → >0 (admin tops
+  /// up tokens mid-session). Stored so it can be removed on
+  /// teardown.
+  VoidCallback? quotaListener;
+  /// Cache reference the listener is attached to. Held here so we
+  /// don't ref.read inside the teardown path (provider may already
+  /// be disposed).
+  BillingQuotaCache? quotaCache;
 }
 
 final _holder = _RunnerHolder();
@@ -44,6 +57,7 @@ final uploadQueueRunnerProvider =
 
   // Logged out — tear down any running instance.
   if (user == null) {
+    _detachQuotaListener();
     final old = _holder.runner;
     _holder.runner = null;
     final oldQueue = _holder.queue;
@@ -64,6 +78,7 @@ final uploadQueueRunnerProvider =
   }
 
   // Therapist switch (or first boot) — replace the runner.
+  _detachQuotaListener();
   if (_holder.runner != null) {
     await _holder.runner!.dispose();
   }
@@ -123,8 +138,59 @@ final uploadQueueRunnerProvider =
   _holder.therapistId = user.id;
 
   await runner.start();
+  _attachQuotaListener(ref, runner);
   return runner;
 });
+
+/// Subscribe to BillingQuotaCache and kick the queue when
+/// tokensRemaining transitions 0 → >0. This covers the mid-session
+/// "admin tops up tokens while the app is open" path: cache.refresh()
+/// observes the new balance, fires its ValueNotifier, and we reset
+/// any parked-on-QUOTA_EXHAUSTED rows so the next tick retries them.
+///
+/// The cold-start case is already handled by
+/// UploadQueueRunner.start() (resetBackoffsForColdStart); this
+/// listener is the "no app restart needed" complement.
+void _attachQuotaListener(Ref ref, UploadQueueRunner runner) {
+  final cache = ref.read(billingQuotaCacheProvider);
+  // Seed with the current value so the first listener invocation
+  // doesn't treat null → real-state as a 0 → >0 transition.
+  QuotaState? previous = cache.current;
+  void onCacheChange() {
+    final current = cache.current;
+    final prev = previous;
+    previous = current;
+    if (current == null || prev == null) return;
+    if (prev.tokensRemaining == 0 && current.tokensRemaining > 0) {
+      debugPrint('[upload-runner] quota recovered '
+          '(${prev.tokensRemaining} → ${current.tokensRemaining}) '
+          '— kicking parked rows');
+      // Reset backoffs first, then kick. Fire-and-forget; the reset
+      // is a small Hive write loop and the kick runs _tick() async.
+      // We don't await because the cache listener fires synchronously
+      // from a setter and we don't want to block notifier delivery.
+      unawaited(() async {
+        await runner.resetBackoffsForColdStart();
+        await runner.kick();
+      }());
+    }
+  }
+  cache.listenable.addListener(onCacheChange);
+  _holder.quotaListener = onCacheChange;
+  _holder.quotaCache = cache;
+}
+
+/// Symmetric teardown for [_attachQuotaListener]. Called on logout
+/// and therapist-switch paths.
+void _detachQuotaListener() {
+  final listener = _holder.quotaListener;
+  final cache = _holder.quotaCache;
+  _holder.quotaListener = null;
+  _holder.quotaCache = null;
+  if (listener != null && cache != null) {
+    cache.listenable.removeListener(listener);
+  }
+}
 
 /// Live stream of pending-upload rows for the current therapist.
 /// UI providers / widgets watch this to rebuild on every queue
