@@ -1,42 +1,80 @@
 {
-  "slice": "slice-2",
-  "branch": "feat/web-app-slice-2",
-  "features": [
+  "current_slice": "slice-2",
+  "current_branch": "feat/web-app-slice-2",
+  "slices": [
     {
-      "id": "marketing-site-scaffold",
-      "title": "Scaffold Next.js marketing-site (app router, pnpm, TS, Tailwind, next-intl)",
-      "status": "pending",
-      "evidence": []
+      "slice": "slice-2",
+      "name": "marketing-site-foundation",
+      "branch": "feat/web-app-slice-2",
+      "features": [
+        { "id": "nextjs-scaffold",         "title": "Next.js App Router scaffold with Tailwind + brand tokens",           "status": "pending", "evidence": [] },
+        { "id": "next-intl-pl-en",         "title": "next-intl wired with PL/EN, as-needed routing, hreflang",            "status": "pending", "evidence": [] },
+        { "id": "connect-rpc-client",      "title": "Connect-ES generated clients + Firebase ID-token interceptor",       "status": "pending", "evidence": [] },
+        { "id": "firebase-auth-init",      "title": "Firebase Web SDK init (Email/Password + Google) + emulator support", "status": "pending", "evidence": [] },
+        { "id": "landing-page",            "title": "Landing page (hero, screenshots, CTA) in PL+EN",                     "status": "pending", "evidence": [] },
+        { "id": "pricing-page",            "title": "Pricing page reading subscription_plans via Connect-RPC",            "status": "pending", "evidence": [] },
+        { "id": "legal-static-pages",      "title": "Terms / Privacy / DPA markdown pages in PL+EN",                      "status": "pending", "evidence": [] },
+        { "id": "firebase-hosting-deploy", "title": "Firebase Hosting site superwizor-www + CI deploy step",              "status": "pending", "evidence": [] }
+      ]
     },
     {
-      "id": "connect-es-client",
-      "title": "Connect-ES client wiring against identity-svc (gen/ts/ stubs)",
-      "status": "pending",
-      "evidence": []
+      "slice": "slice-3",
+      "name": "registration-flows",
+      "branch": "feat/web-app-slice-3",
+      "features": [
+        { "id": "register-therapist-email",    "title": "/register/therapist email+password form per §13.2",                     "status": "pending", "evidence": [] },
+        { "id": "register-therapist-google",   "title": "Google OAuth path + /register/therapist/finish profile page",           "status": "pending", "evidence": [] },
+        { "id": "register-organization-email", "title": "/register/organization email+pwd form per §13.3 (with address)",        "status": "pending", "evidence": [] },
+        { "id": "register-organization-google","title": "Google OAuth org path + /register/organization/finish page",            "status": "pending", "evidence": [] },
+        { "id": "email-verification-gate",     "title": "sendEmailVerification + verification-required interstitial",            "status": "pending", "evidence": [] },
+        { "id": "accept-invite-page",          "title": "/accept-invite token validation + password set + AcceptInvitation RPC", "status": "pending", "evidence": [] },
+        { "id": "login-redirect",              "title": "/login as <a> redirect to app.superwizor.ai/login (R3 origin)",         "status": "pending", "evidence": [] },
+        { "id": "registration-e2e-playwright", "title": "Playwright happy-path: therapist register → Trial → redirected",        "status": "pending", "evidence": [] }
+      ]
     },
     {
-      "id": "landing-page-pl-en",
-      "title": "Public landing page in PL + EN (hero, features, CTA)",
-      "status": "pending",
-      "evidence": []
+      "slice": "slice-4",
+      "name": "admin-console",
+      "branch": "feat/web-app-slice-4",
+      "features": [
+        { "id": "admin-auth-guard",   "title": "Next.js middleware gating /admin/* on role=SUPERWIZOR_ADMIN",          "status": "pending", "evidence": [] },
+        { "id": "admin-shell-nav",    "title": "Admin shell (sidebar, user menu, breadcrumbs) in PL+EN",               "status": "pending", "evidence": [] },
+        { "id": "admin-orgs-list",    "title": "Orgs list with filters, pagination, TanStack Table",                   "status": "pending", "evidence": [] },
+        { "id": "admin-org-detail",   "title": "Org detail: usage chart, therapist list, audit panel",                 "status": "pending", "evidence": [] },
+        { "id": "admin-org-actions",  "title": "Block/unblock, AdminResetTokens, AdminChangePlan with reason dialogs", "status": "pending", "evidence": [] },
+        { "id": "admin-org-edit",     "title": "AdminUpdateOrganization form per §13.7",                               "status": "pending", "evidence": [] },
+        { "id": "admin-user-crud",    "title": "User list + AdminUpdateUser / AdminDeleteUser per §13.8",              "status": "pending", "evidence": [] },
+        { "id": "admin-audit-log",    "title": "Global audit_events viewer with actor/action/date filters",            "status": "pending", "evidence": [] }
+      ]
     },
     {
-      "id": "therapist-registration",
-      "title": "Individual therapist registration (Firebase Email/Password + Google)",
-      "status": "pending",
-      "evidence": []
+      "slice": "slice-5",
+      "name": "flutter-web-consoles",
+      "branch": "feat/web-app-slice-5",
+      "features": [
+        { "id": "flutter-web-target",           "title": "flutter create --platforms web + kIsWeb branches",                     "status": "pending", "evidence": [] },
+        { "id": "flutter-web-login",            "title": "Login on app.superwizor.ai with Email/Pwd + Google",                   "status": "pending", "evidence": [] },
+        { "id": "flutter-web-therapist-console","title": "Kartoteki + sessions + transcript + report on web",                    "status": "pending", "evidence": [] },
+        { "id": "flutter-web-profile-edit",     "title": "Profile edit per §13.4 (UpdateMyProfile, avatar upload)",              "status": "pending", "evidence": [] },
+        { "id": "org-admin-route-guard",        "title": "/admin route gated on role=ORG_ADMIN in Flutter Web",                  "status": "pending", "evidence": [] },
+        { "id": "org-admin-therapists",         "title": "Therapists tab: list + InviteTherapist + RemoveTherapist",             "status": "pending", "evidence": [] },
+        { "id": "org-admin-org-settings",       "title": "Org settings form per §13.5 (UpdateMyOrganization with address)",      "status": "pending", "evidence": [] },
+        { "id": "org-admin-billing-readonly",   "title": "Billing view: subscription, tier, usage, reservations (read-only)",    "status": "pending", "evidence": [] }
+      ]
     },
     {
-      "id": "org-registration",
-      "title": "Organization registration with full CRUD form (docs/18 §13)",
-      "status": "pending",
-      "evidence": []
-    },
-    {
-      "id": "admin-shell",
-      "title": "Admin shell with SUPERWIZOR_ADMIN login + dashboard skeleton",
-      "status": "pending",
-      "evidence": []
+      "slice": "slice-6",
+      "name": "i18n-polish-launch",
+      "branch": "feat/web-app-slice-6",
+      "features": [
+        { "id": "notification-svc-i18n-templates", "title": "PL+EN templates for invitation/verify/quota emails",          "status": "pending", "evidence": [] },
+        { "id": "error-code-translation-map",      "title": "Frontend error-code → translation map",                        "status": "pending", "evidence": [] },
+        { "id": "empty-loading-error-states",      "title": "Empty states, skeletons, toasts across surfaces",              "status": "pending", "evidence": [] },
+        { "id": "l10n-parity-ci",                  "title": "scripts/check-l10n-parity.sh + §13.11 drift test",             "status": "pending", "evidence": [] },
+        { "id": "playwright-e2e-both-locales",     "title": "Playwright happy-path E2E run once per locale (PL + EN)",      "status": "pending", "evidence": [] },
+        { "id": "shared-machine-warning",          "title": "Flutter Web shared-machine login-screen notice",               "status": "pending", "evidence": [] },
+        { "id": "production-dns-cutover",          "title": "DNS cutover superwizor.ai + app.superwizor.ai to Firebase",    "status": "pending", "evidence": [] }
+      ]
     }
   ]
 }
