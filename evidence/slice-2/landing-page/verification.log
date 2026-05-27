@@ -1,0 +1,122 @@
+Feature: slice-2 / landing-page
+Branch: feat/web-app-slice-2
+Verified: 2026-05-28
+Anchored to: docs/18 §8.1 (Landing page composition)
+
+What was built
+==============
+Replaced the scaffold placeholder home with a full marketing landing,
+composed of six reusable sections. All copy routes through next-intl
+(messages/{pl,en}.json) — zero hard-coded strings.
+
+New components (marketing-site/src/components/marketing/):
+- Navbar.tsx — sticky top, brand mark + Cennik link + LocaleSwitcher
+  + Log-in (cross-origin to app.superwizor.ai per §5 R3) + Ember
+  "Zarejestruj się" CTA.
+- LocaleSwitcher.tsx — two-button PL/EN toggle preserving the current
+  path. Uses usePathname() + routing.locales; aware of the as-needed
+  routing convention.
+- Hero.tsx — overline + display heading with Ember accent + serif
+  subhead + primary/secondary CTA. Secondary CTA scrolls to
+  HowItWorks section via #how anchor.
+- HowItWorks.tsx — three numbered cards (01/02/03) describing
+  Record → AI processes → Get report. Roboto-Mono tags match the
+  label treatment used elsewhere.
+- Features.tsx — six-card 1/2/3 responsive grid: transcript, report,
+  supervision pointers, RODO, org mode, platform support.
+- Audience.tsx — three glass cards (gradient + glass-border) for
+  Therapists / Supervisors / Clinics. Aurora-coloured overline so the
+  section reads as distinct rhythm vs. Features.
+- CtaBand.tsx — full-width band with Ember→Aurora gradient pulling
+  the user to "Try 3 free sessions". Primary + secondary CTAs.
+- Footer.tsx — three-column nav (Product / Legal / Company) +
+  brand mark + tagline + copyright + "Made in Poland" mark.
+
+Modified:
+- src/app/[locale]/page.tsx — composition wires all 7 sections.
+- messages/pl.json + en.json — extended from feature 2's scaffold
+  to ~25 KB each: hero, how.steps.{record,process,report},
+  features.items.{6 keys}, audience.items.{3 keys}, cta, footer,
+  nav extensions.
+
+How verified
+============
+1. `pnpm build` exit 0 — both /pl and /en pre-render statically.
+   No new deprecation warnings, no TypeScript errors. Build output
+   captured implicitly in the dev-server start that followed.
+
+2. Live render at http://localhost:3000/ (Preview MCP):
+   - home-pl-{mobile,tablet,desktop}.png — 375x812, 768x1024,
+     1280x800 viewport-clipped views of the hero region.
+   - home-en-{mobile,tablet,desktop}.png — same dimensions, EN
+     locale.
+   - home-pl-full.png and home-en-full.png — fullPage screenshots
+     (1280 wide, document-height). These prove ALL six sections
+     compose correctly top-to-bottom: nav → hero → how → features
+     → audience → CTA band → footer.
+   - scripts/snap-full.mjs added to the project for full-page
+     captures going forward.
+
+3. Visual confirmation (every PNG opened with Read):
+   - PL desktop hero: "Drugi mózg superwizora." with Ember accent,
+     Polish overline "POLSKI CO-PILOT DLA PSYCHOTERAPEUTÓW",
+     subhead about RODO, two CTAs.
+   - EN desktop full: hero + "Three steps from session to report"
+     + "Everything a supervisor needs" + "Private practice,
+     clinics, supervisors" + "Try 3 free sessions" + footer with
+     Product/Legal/Company columns. All English.
+   - PL full: same composition, Polish copy throughout. Diacritics
+     (ż, ó, ę, ą, ć, ł) render cleanly via Montserrat latin-ext
+     subset.
+   - Mobile (375): nav collapses (Pricing + Login hidden behind
+     `hidden sm:inline`); hero stacks; CTAs full-width; sections
+     stack vertically.
+
+4. LocaleSwitcher: visible top-right in nav. PL chip Ember-filled
+   when locale=pl; EN chip Ember-filled when locale=en. Hrefs
+   point at the same path under the other locale (as-needed).
+
+5. preview_console_logs (error) returns "No console logs" — no
+   client-side errors after the rebuild.
+
+Compliance with docs/18
+=======================
+- ✓ §8.1: "Copy describing what Superwizor is, screenshots, CTA →
+  register" — copy ✓, CTAs ✓, screenshots deferred (placeholder
+  images can land alongside Slice 3 or marketing assets).
+- ✓ §5 R3: Log-in is `<a href="https://app.superwizor.ai/login">`
+  — no Firebase login flow on superwizor.ai origin.
+- ✓ §14.5: no hard-coded UI strings; every label/heading routes
+  through messages/*.json.
+- ✓ §14.4: hreflang alternates still emitted by the layout (the
+  layout from feature 2 is unchanged on this axis).
+
+Known gaps (deferred to subsequent features)
+============================================
+- Pricing page is wired in nav but its actual content lives in
+  feature 6 (`pricing-page`). /pricing currently 404s.
+- /register/therapist linked by Hero + Navbar + CtaBand — Slice 3
+  builds those forms.
+- /legal/{terms,privacy,dpa} linked by Footer — feature 7
+  (`legal-static-pages`) backfills.
+- Product screenshots / illustration art — placeholder text
+  describes what the screenshots would show; actual images can be
+  added without code churn (the Features/HowItWorks cards have
+  unused space ready).
+- AuthStatusBadge (feature 4) still visible in dev — flagged but
+  doesn't ship in production builds.
+
+Files touched
+=============
+- marketing-site/messages/pl.json (extended)
+- marketing-site/messages/en.json (extended)
+- marketing-site/src/app/[locale]/page.tsx (rewrote — composition)
+- marketing-site/src/components/marketing/Navbar.tsx (new)
+- marketing-site/src/components/marketing/LocaleSwitcher.tsx (new)
+- marketing-site/src/components/marketing/Hero.tsx (new)
+- marketing-site/src/components/marketing/HowItWorks.tsx (new)
+- marketing-site/src/components/marketing/Features.tsx (new)
+- marketing-site/src/components/marketing/Audience.tsx (new)
+- marketing-site/src/components/marketing/CtaBand.tsx (new)
+- marketing-site/src/components/marketing/Footer.tsx (new)
+- scripts/snap-full.mjs (new — full-page screenshot helper)
