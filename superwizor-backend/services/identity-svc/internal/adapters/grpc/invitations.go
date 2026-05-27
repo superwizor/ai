@@ -1,0 +1,351 @@
+package grpc
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"net/url"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+
+	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/postgres/db"
+)
+
+// invitationTTL = 7 days. Long enough for "I missed the email last
+// Friday, re-checking on Monday" but short enough that abandoned
+// invites don't pile up forever.
+const invitationTTL = 7 * 24 * time.Hour
+
+// InviteTherapist creates a magic-link invitation for an email address.
+// Org-admin only. Sends the email via the configured InvitationEmailer
+// (NoopEmailSender in 5b; ResendSender in commit 7).
+//
+// Idempotency: if a pending invitation already exists for (org_id,
+// email), the existing row is returned with a fresh token + email
+// re-sent. This lets the org-admin "Resend invite" button work
+// without manual token plumbing.
+func (s *Server) InviteTherapist(ctx context.Context, req *identityv1.InviteTherapistRequest) (*identityv1.Invitation, error) {
+	caller, err := s.requireOrgAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if caller.organizationID == nil {
+		return nil, status.Error(codes.FailedPrecondition, "caller has no organization")
+	}
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if email == "" {
+		return nil, status.Error(codes.InvalidArgument, "email required")
+	}
+
+	// Generate the cleartext token + SHA-256 hash. Per docs/18 R5,
+	// NOT Argon2 — high-entropy random tokens don't need slow KDFs
+	// and Argon2 on the AcceptInvitation hot path would be a CPU
+	// DoS vector.
+	token, tokenHash, err := generateInvitationToken()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "generate token: %v", err)
+	}
+	expiresAt := time.Now().Add(invitationTTL)
+
+	// Try CREATE first; on (org_id, email) unique violation, fall
+	// back to refreshing the existing pending row.
+	inv, err := s.queries.CreateInvitation(ctx, db.CreateInvitationParams{
+		OrganizationID:  *caller.organizationID,
+		InvitedByUser:   caller.userID,
+		Email:           email,
+		TokenHash:       tokenHash,
+		ExpiresAt:       expiresAt,
+	})
+	if err != nil {
+		// Refresh path: same email re-invited. Look up the existing
+		// row and update its token+expiry inline.
+		existing, lookupErr := s.queries.GetInvitationByOrgEmail(ctx, db.GetInvitationByOrgEmailParams{
+			OrganizationID: *caller.organizationID,
+			Email:          email,
+		})
+		if lookupErr != nil {
+			return nil, status.Errorf(codes.Internal, "create invitation: %v", err)
+		}
+		// Direct UPDATE (no sqlc method for this niche path).
+		if _, err := s.pool.Exec(ctx,
+			`UPDATE invitations
+			    SET token_hash = $2, expires_at = $3, invited_by_user = $4, created_at = now()
+			  WHERE id = $1`,
+			existing.ID, tokenHash, expiresAt, caller.userID,
+		); err != nil {
+			return nil, status.Errorf(codes.Internal, "refresh invitation: %v", err)
+		}
+		inv = existing
+		inv.TokenHash = tokenHash
+		inv.ExpiresAt = expiresAt
+	}
+
+	// Look up the inviter's org name + first_name for the email template.
+	// Best-effort — if these fail we still create the invite, the email
+	// will just have less context.
+	orgName := ""
+	if org, err := s.queries.GetOrganizationByID(ctx, *caller.organizationID); err == nil {
+		orgName = org.LegalName
+	}
+	inviterFirstName := ""
+	if u, err := s.queries.GetUserByID(ctx, caller.userID); err == nil {
+		inviterFirstName = u.FirstName
+	}
+
+	// Build the accept URL with the cleartext token. The token NEVER
+	// touches PG in cleartext (only its SHA-256 hash) — it only
+	// exists in the URL and the recipient's inbox.
+	acceptURL := fmt.Sprintf("%s/accept-invite?token=%s",
+		strings.TrimRight(s.acceptURLBase, "/"),
+		url.QueryEscape(token),
+	)
+
+	// Best-effort email send. Locale = inviter's ui_language (we look
+	// it up); falls back to "pl".
+	locale := "pl"
+	if u, err := s.queries.GetUserByID(ctx, caller.userID); err == nil && u.UiLanguage != "" {
+		locale = u.UiLanguage
+	}
+	_ = s.emailer.SendInvitation(ctx, InvitationEmailParams{
+		Recipient:        email,
+		OrgName:          orgName,
+		InviterFirstName: inviterFirstName,
+		AcceptURL:        acceptURL,
+		ExpiresAt:        expiresAt.Format(time.RFC3339),
+		Locale:           locale,
+	})
+
+	return toProtoInvitation(inv), nil
+}
+
+// AcceptInvitation is the invitee-side endpoint. Public — the caller
+// is authenticated to Firebase (just created the account via
+// createUserWithEmailAndPassword or via social OAuth) but has no User
+// row yet. The token in the URL proves they received the email.
+//
+// On success: a THERAPIST User row is created and attached to the
+// inviting organisation; the invitation is marked accepted.
+//
+// Replay safety: a second call with the same token (after accepted_at
+// is set) returns NotFound — the partial index excludes accepted rows.
+// Client should treat NotFound as "already accepted, sign in
+// normally".
+func (s *Server) AcceptInvitation(ctx context.Context, req *identityv1.AcceptInvitationRequest) (*identityv1.AcceptInvitationResponse, error) {
+	if req.Token == "" {
+		return nil, status.Error(codes.InvalidArgument, "token required")
+	}
+	if req.FirebaseUid == "" {
+		return nil, status.Error(codes.InvalidArgument, "firebase_uid required")
+	}
+	if !req.HasAcceptedTos {
+		return nil, status.Error(codes.FailedPrecondition, "must accept ToS")
+	}
+	if req.FirstName == "" || req.LastName == "" {
+		return nil, status.Error(codes.InvalidArgument, "first_name and last_name required")
+	}
+
+	verifiedUID, err := s.verifyFirebaseTokenFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if verifiedUID != req.FirebaseUid {
+		return nil, status.Error(codes.InvalidArgument,
+			"firebase_uid in payload does not match the authenticated token")
+	}
+
+	// Hash the incoming token + look up the matching invitation row.
+	// Partial index idx_invitations_token_hash gives us the fast path.
+	tokenHash := hashToken(req.Token)
+	inv, err := s.queries.GetUnacceptedInvitationByTokenHash(ctx, tokenHash)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, status.Error(codes.NotFound,
+				"invitation not found, expired, or already accepted")
+		}
+		return nil, status.Errorf(codes.Internal, "lookup invitation: %v", err)
+	}
+
+	// Tx: create User, link to org, mark invitation accepted.
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "tx begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.queries.WithTx(tx)
+
+	emailLC := strings.ToLower(strings.TrimSpace(inv.Email))
+	user, err := qtx.CreateUser(ctx, db.CreateUserParams{
+		Role:           "THERAPIST", // single-role MVP
+		FirebaseUid:    &verifiedUID,
+		Email:          &emailLC,
+		FirstName:      req.FirstName,
+		LastName:       req.LastName,
+		UiLanguage:     defaultStr(req.UiLanguage, "pl"),
+		Timezone:       defaultStr(req.Timezone, "Europe/Warsaw"),
+		HasAcceptedTos: req.HasAcceptedTos,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "create user: %v", err)
+	}
+	if err := qtx.LinkUserToOrganization(ctx, db.LinkUserToOrganizationParams{
+		ID:             user.ID,
+		OrganizationID: pgtype.UUID{Bytes: inv.OrganizationID, Valid: true},
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "link user→org: %v", err)
+	}
+	user.OrganizationID = pgtype.UUID{Bytes: inv.OrganizationID, Valid: true}
+
+	// Marketing consent + optional default modality.
+	if req.HasMarketingConsent || req.DefaultModalityId != "" {
+		updParams := db.UpdateProfileParams{ID: user.ID}
+		if req.HasMarketingConsent {
+			t := true
+			updParams.HasMarketingConsent = &t
+		}
+		if req.DefaultModalityId != "" {
+			modID, err := uuid.Parse(req.DefaultModalityId)
+			if err != nil {
+				return nil, status.Error(codes.InvalidArgument, "invalid default_modality_id")
+			}
+			updParams.DefaultModalityID = pgtype.UUID{Bytes: modID, Valid: true}
+		}
+		if updated, err := qtx.UpdateProfile(ctx, updParams); err == nil {
+			user = updated
+		}
+	}
+
+	if err := qtx.MarkInvitationAccepted(ctx, db.MarkInvitationAcceptedParams{
+		ID:             inv.ID,
+		AcceptedUserID: pgtype.UUID{Bytes: user.ID, Valid: true},
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "mark accepted: %v", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, status.Errorf(codes.Internal, "commit: %v", err)
+	}
+
+	// Load the org for the response so the welcome page can greet the
+	// user with the clinic name.
+	org, err := s.queries.GetOrganizationByID(ctx, inv.OrganizationID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "load org for response: %v", err)
+	}
+	var hq *db.Address
+	if org.HeadquartersAddressID.Valid {
+		a, err := s.queries.GetAddressByID(ctx, uuid.UUID(org.HeadquartersAddressID.Bytes))
+		if err == nil {
+			hq = &a
+		}
+	}
+
+	return &identityv1.AcceptInvitationResponse{
+		User:         toProtoUser(user),
+		Organization: toProtoOrganization(org, hq, false),
+	}, nil
+}
+
+// ListTherapistsInMyOrg returns active + pending therapists for the
+// caller's org. Org-admin only.
+func (s *Server) ListTherapistsInMyOrg(ctx context.Context, _ *emptypb.Empty) (*identityv1.ListTherapistsResponse, error) {
+	caller, err := s.requireOrgAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if caller.organizationID == nil {
+		return nil, status.Error(codes.FailedPrecondition, "caller has no organization")
+	}
+
+	active, err := s.queries.ListTherapistsByOrganization(ctx, pgtype.UUID{Bytes: *caller.organizationID, Valid: true})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list active therapists: %v", err)
+	}
+	pending, err := s.queries.ListPendingInvitationsByOrg(ctx, *caller.organizationID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list pending invitations: %v", err)
+	}
+
+	out := &identityv1.ListTherapistsResponse{
+		Therapists: make([]*identityv1.TherapistEntry, 0, len(active)+len(pending)),
+	}
+	for _, u := range active {
+		out.Therapists = append(out.Therapists, &identityv1.TherapistEntry{
+			User: toProtoUser(u),
+		})
+	}
+	for _, inv := range pending {
+		out.Therapists = append(out.Therapists, &identityv1.TherapistEntry{
+			PendingInvitation: toProtoInvitation(inv),
+		})
+	}
+	return out, nil
+}
+
+// RemoveTherapist soft-deletes a therapist from the caller's org.
+// Org-admin only. The therapist's data stays — kartoteki and sessions
+// they created are NOT cascaded; another therapist in the org can be
+// assigned ownership later (out of Slice 1 scope).
+func (s *Server) RemoveTherapist(ctx context.Context, req *identityv1.RemoveTherapistRequest) (*emptypb.Empty, error) {
+	caller, err := s.requireOrgAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if caller.organizationID == nil {
+		return nil, status.Error(codes.FailedPrecondition, "caller has no organization")
+	}
+	userID, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	// Scope check: target must be in the caller's org.
+	target, err := s.queries.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "user not found")
+	}
+	if !target.OrganizationID.Valid || uuid.UUID(target.OrganizationID.Bytes) != *caller.organizationID {
+		return nil, status.Error(codes.PermissionDenied, "user is not in your organization")
+	}
+	if target.Role != "THERAPIST" {
+		return nil, status.Error(codes.FailedPrecondition, "can only remove THERAPISTs from the org")
+	}
+	if err := s.queries.SoftDeleteUser(ctx, userID); err != nil {
+		return nil, status.Errorf(codes.Internal, "soft delete: %v", err)
+	}
+	return &emptypb.Empty{}, nil
+}
+
+// ─── Token helpers ─────────────────────────────────────────────
+
+// generateInvitationToken returns:
+//   - a URL-safe base64 cleartext token (32 bytes of crypto/rand)
+//   - its SHA-256 hash (32 bytes) — what we store in PG
+//
+// The cleartext NEVER touches PG; only the hash. The token lives in
+// the email + the recipient's inbox.
+func generateInvitationToken() (cleartext string, hash []byte, err error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", nil, fmt.Errorf("crypto/rand: %w", err)
+	}
+	cleartext = base64.RawURLEncoding.EncodeToString(raw)
+	h := sha256.Sum256([]byte(cleartext))
+	return cleartext, h[:], nil
+}
+
+// hashToken matches generateInvitationToken's hash — SHA-256 of the
+// URL-safe base64 cleartext. Used by AcceptInvitation.
+func hashToken(token string) []byte {
+	h := sha256.Sum256([]byte(token))
+	return h[:]
+}
