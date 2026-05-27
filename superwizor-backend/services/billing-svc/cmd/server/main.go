@@ -35,6 +35,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
+	"github.com/superwizor-ai/backend/pkg/cors"
 	grpcadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/grpc"
 	httpadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/http"
 )
@@ -119,12 +120,21 @@ func main() {
 		httpMux.ServeHTTP(w, r)
 	})
 
+	// CORS middleware for browser-facing Connect-RPC + admin HTTP routes.
+	// Origins come from CORS_ALLOWED_ORIGINS env (set by terraform on
+	// staging to superwizor.ai + app.superwizor.ai + localhost dev).
+	// Server-to-server callers (Cloud Scheduler OIDC) don't carry an
+	// Origin header and pass through untouched. See docs/18 §5 / R2.
+	corsOrigins := getEnv("CORS_ALLOWED_ORIGINS",
+		"https://superwizor.ai,https://app.superwizor.ai,http://localhost:3000,http://localhost:8080")
+	corsMW := cors.New(cors.FromEnv(corsOrigins))
+
 	// h2c (HTTP/2 cleartext) — Cloud Run terminuje TLS przed kontenerem,
 	// więc po naszej stronie ruch jest HTTP/2 plaintext.
 	h2s := &http2.Server{}
 	httpSrv := &nethttp.Server{
 		Addr:              ":" + port,
-		Handler:           h2c.NewHandler(mixedHandler, h2s),
+		Handler:           h2c.NewHandler(corsMW(mixedHandler), h2s),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

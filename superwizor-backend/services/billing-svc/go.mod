@@ -4,6 +4,8 @@ go 1.26.2
 
 replace github.com/superwizor-ai/backend/gen/go => ../../gen/go
 
+replace github.com/superwizor-ai/backend/pkg/cors => ../../pkg/cors
+
 require (
 	cloud.google.com/go/pubsub/v2 v2.6.0
 	github.com/google/uuid v1.6.0
@@ -11,6 +13,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/pgvector/pgvector-go v0.3.0
 	github.com/superwizor-ai/backend/gen/go v0.0.0-00010101000000-000000000000
+	github.com/superwizor-ai/backend/pkg/cors v0.0.0-00010101000000-000000000000
 	golang.org/x/net v0.52.0
 	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
