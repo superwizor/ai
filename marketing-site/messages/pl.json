@@ -1,0 +1,217 @@
+{
+  "metadata": {
+    "title": "Superwizor AI — drugi mózg superwizora",
+    "description": "Polski co-pilot dla terapeutów i superwizorów. Nagraj sesję, otrzymaj transkrypcję, raport i wskazówki w kilka minut.",
+    "ogSiteName": "Superwizor AI"
+  },
+  "nav": {
+    "skipToContent": "Przejdź do treści",
+    "brand": "Superwizor AI",
+    "login": "Zaloguj się",
+    "register": "Zarejestruj się",
+    "pricing": "Cennik",
+    "languageSwitcher": "Język",
+    "polish": "Polski",
+    "english": "English"
+  },
+  "hero": {
+    "overline": "Polski co-pilot dla psychoterapeutów",
+    "headingPrefix": "Drugi mózg",
+    "headingAccent": "superwizora",
+    "headingPunctuation": ".",
+    "subhead": "Nagraj sesję, otrzymaj transkrypcję, raport i wskazówki w kilka minut. Wszystko zgodnie z RODO, dane pacjentów nigdy nie opuszczają UE.",
+    "ctaPrimary": "Zarejestruj się",
+    "ctaSecondary": "Zobacz, jak działa"
+  },
+  "how": {
+    "overline": "Jak to działa",
+    "heading": "Trzy kroki od sesji do raportu",
+    "steps": {
+      "record": {
+        "tag": "01",
+        "title": "Nagraj",
+        "body": "Otwórz aplikację mobilną i włącz nagrywanie. Audio jest szyfrowane i przesyłane na nasze serwery w Europie."
+      },
+      "process": {
+        "tag": "02",
+        "title": "AI przetwarza",
+        "body": "Transkrypcja, podział na role, oznaczenie wątków klinicznych i ocena ryzyka — wszystko po polsku."
+      },
+      "report": {
+        "tag": "03",
+        "title": "Otrzymaj raport",
+        "body": "Pełny raport z sesji, wskazówki superwizyjne i propozycje interwencji — w kilka minut, gotowe do superwizji."
+      }
+    }
+  },
+  "features": {
+    "overline": "Co dostajesz",
+    "heading": "Wszystko, czego potrzebuje superwizor",
+    "items": {
+      "transcript": {
+        "title": "Pełna transkrypcja po polsku",
+        "body": "Diaryzacja, znaczniki czasu, łatwe wyszukiwanie. Eksport do PDF jednym kliknięciem."
+      },
+      "report": {
+        "title": "Raport kliniczny",
+        "body": "Sekcje gotowe pod superwizję: tematy sesji, hipotezy diagnostyczne, ocena ryzyka, sugerowane interwencje."
+      },
+      "supervisor": {
+        "title": "Wskazówki superwizyjne",
+        "body": "AI wskazuje miejsca, w których warto się zatrzymać — utracone okazje terapeutyczne, wzorce, alarmujące sygnały."
+      },
+      "rodo": {
+        "title": "RODO i bezpieczeństwo",
+        "body": "Dane szyfrowane end-to-end, hostowane w UE, dostęp wyłącznie dla terapeuty. Bez treningu modeli na Twoich danych."
+      },
+      "team": {
+        "title": "Tryb organizacyjny",
+        "body": "Dla gabinetów: zarządzanie zespołem, wspólne rozliczanie tokenów, faktura na klinikę."
+      },
+      "supports": {
+        "title": "iOS i web",
+        "body": "Nagrywaj z iPhona, czytaj raporty na komputerze. Wkrótce Android."
+      }
+    }
+  },
+  "audience": {
+    "overline": "Dla kogo",
+    "heading": "Praktyka prywatna, ośrodki, superwizorzy",
+    "items": {
+      "therapist": {
+        "title": "Psychoterapeuci",
+        "body": "Spędzaj mniej czasu na pisaniu notatek, więcej na sesji. Solidny materiał do własnej superwizji."
+      },
+      "supervisor": {
+        "title": "Superwizorzy",
+        "body": "Pełen transkrypt i raport przed sesją superwizyjną. Łatwiejsze omówienie, dokładniejsza informacja zwrotna."
+      },
+      "clinic": {
+        "title": "Ośrodki terapeutyczne",
+        "body": "Standard pracy z dokumentacją w całym zespole. Jeden rachunek, jasne rozliczenie."
+      }
+    }
+  },
+  "cta": {
+    "heading": "Wypróbuj 3 darmowe sesje",
+    "body": "Bez karty, bez zobowiązań. Trial obejmuje pełną funkcjonalność — transkrypcję, raport i wskazówki.",
+    "primary": "Zarejestruj się",
+    "secondary": "Zobacz cennik"
+  },
+  "legal": {
+    "lastUpdated": "Ostatnia aktualizacja:",
+    "draftBadge": "Wersja robocza · do weryfikacji prawnej",
+    "tableOfContents": "Spis treści",
+    "pages": {
+      "terms": {
+        "metaTitle": "Regulamin",
+        "title": "Regulamin",
+        "intro": "Niniejszy regulamin określa zasady korzystania z serwisu Superwizor AI."
+      },
+      "privacy": {
+        "metaTitle": "Polityka prywatności",
+        "title": "Polityka prywatności",
+        "intro": "Polityka opisuje, jakie dane osobowe przetwarzamy, w jakim celu i przez jak długo."
+      },
+      "dpa": {
+        "metaTitle": "Umowa powierzenia (DPA)",
+        "title": "Umowa powierzenia przetwarzania (DPA)",
+        "intro": "Postanowienia umowy powierzenia przetwarzania danych osobowych zgodnie z art. 28 RODO."
+      }
+    }
+  },
+  "pricing": {
+    "metaTitle": "Cennik",
+    "overline": "Cennik",
+    "heading": "Plan dopasowany do Twojej praktyki",
+    "subhead": "Wszystkie plany zawierają pełną funkcjonalność: transkrypcję, raport, wskazówki superwizyjne. Płacisz tylko za sesje, których realnie używasz.",
+    "cycle": {
+      "monthly": "Miesięcznie",
+      "annual": "Rocznie",
+      "annualNote": "~17% taniej"
+    },
+    "tiers": {
+      "trial": {
+        "name": "Trial",
+        "tagline": "Wypróbuj bez karty",
+        "tokensSuffix": "darmowe sesje",
+        "cta": "Zacznij teraz",
+        "features": [
+          "3 darmowe sesje",
+          "Pełna transkrypcja",
+          "Pełny raport sesji",
+          "Wskazówki superwizyjne",
+          "Bez karty kredytowej"
+        ]
+      },
+      "solo": {
+        "name": "Solo",
+        "tagline": "Dla terapeutów indywidualnych",
+        "tokensSuffixMonthly": "sesji miesięcznie",
+        "tokensSuffixAnnual": "sesji rocznie",
+        "cta": "Wybierz Solo",
+        "features": [
+          "Pełna transkrypcja",
+          "Raport kliniczny",
+          "Wskazówki superwizyjne",
+          "Eksport PDF",
+          "1 licencja"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "Dla intensywnie pracujących",
+        "tokensSuffixMonthly": "sesji miesięcznie",
+        "tokensSuffixAnnual": "sesji rocznie",
+        "cta": "Wybierz Pro",
+        "badge": "Najpopularniejszy",
+        "features": [
+          "Wszystko z planu Solo",
+          "Większa pula sesji",
+          "Priorytetowe wsparcie",
+          "Wczesny dostęp do nowych funkcji",
+          "1 licencja"
+        ]
+      },
+      "clinic": {
+        "name": "Klinika",
+        "tagline": "Dla ośrodków terapeutycznych",
+        "tokensSuffixMonthly": "sesji miesięcznie",
+        "tokensSuffixAnnual": "sesji rocznie",
+        "cta": "Wybierz Klinikę",
+        "features": [
+          "Wszystko z planu Pro",
+          "Pula współdzielona między 5 terapeutów",
+          "Panel administratora (B2B)",
+          "Jedna faktura na klinikę",
+          "Zarządzanie zespołem"
+        ]
+      }
+    },
+    "vatNote": "Ceny netto. VAT 23% doliczany na fakturze.",
+    "currency": "PLN",
+    "perMonth": "zł / miesiąc",
+    "perYear": "zł / rok",
+    "free": "0 zł",
+    "footnote": "Płatność kartą lub Przelewy24. Możesz zmienić lub anulować plan w dowolnym momencie z poziomu konta."
+  },
+  "footer": {
+    "tagline": "Drugi mózg superwizora.",
+    "copyright": "© 2026 Superwizor AI",
+    "made": "Zaprojektowane w Polsce",
+    "sections": {
+      "product": "Produkt",
+      "company": "Firma",
+      "legal": "Dokumenty"
+    },
+    "links": {
+      "pricing": "Cennik",
+      "register": "Zarejestruj się",
+      "login": "Zaloguj się",
+      "terms": "Regulamin",
+      "privacy": "Polityka prywatności",
+      "dpa": "DPA / RODO",
+      "contact": "Kontakt"
+    }
+  }
+}

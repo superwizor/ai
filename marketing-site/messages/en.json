@@ -1,0 +1,217 @@
+{
+  "metadata": {
+    "title": "Superwizor AI — a supervisor's second brain",
+    "description": "Polish-built co-pilot for therapists and supervisors. Record a session and receive transcript, report, and pointers in minutes.",
+    "ogSiteName": "Superwizor AI"
+  },
+  "nav": {
+    "skipToContent": "Skip to content",
+    "brand": "Superwizor AI",
+    "login": "Log in",
+    "register": "Sign up",
+    "pricing": "Pricing",
+    "languageSwitcher": "Language",
+    "polish": "Polski",
+    "english": "English"
+  },
+  "hero": {
+    "overline": "A Polish-built co-pilot for psychotherapists",
+    "headingPrefix": "A supervisor's",
+    "headingAccent": "second brain",
+    "headingPunctuation": ".",
+    "subhead": "Record a session and receive transcript, report, and pointers in minutes. All GDPR-compliant — patient data never leaves the EU.",
+    "ctaPrimary": "Sign up",
+    "ctaSecondary": "See how it works"
+  },
+  "how": {
+    "overline": "How it works",
+    "heading": "Three steps from session to report",
+    "steps": {
+      "record": {
+        "tag": "01",
+        "title": "Record",
+        "body": "Open the mobile app and start recording. Audio is encrypted in transit and stored in EU regions only."
+      },
+      "process": {
+        "tag": "02",
+        "title": "AI processes",
+        "body": "Transcript, speaker diarization, clinical-topic tagging and risk assessment — all in Polish."
+      },
+      "report": {
+        "tag": "03",
+        "title": "Get the report",
+        "body": "Full session report, supervision pointers and suggested interventions — minutes after the session ends, ready for review."
+      }
+    }
+  },
+  "features": {
+    "overline": "What you get",
+    "heading": "Everything a supervisor needs",
+    "items": {
+      "transcript": {
+        "title": "Full Polish transcript",
+        "body": "Diarization, timestamps, fast search. One-click PDF export."
+      },
+      "report": {
+        "title": "Clinical report",
+        "body": "Supervision-ready sections: session themes, diagnostic hypotheses, risk assessment, suggested interventions."
+      },
+      "supervisor": {
+        "title": "Supervision pointers",
+        "body": "AI flags moments worth pausing on — missed therapeutic opportunities, patterns, red flags."
+      },
+      "rodo": {
+        "title": "GDPR + security",
+        "body": "Data encrypted end-to-end, EU-only hosting, therapist-only access. Your data never trains a model."
+      },
+      "team": {
+        "title": "Organisation mode",
+        "body": "For clinics: team management, shared token billing, single invoice for the practice."
+      },
+      "supports": {
+        "title": "iOS + web",
+        "body": "Record from your iPhone, review reports on a laptop. Android soon."
+      }
+    }
+  },
+  "audience": {
+    "overline": "Who it's for",
+    "heading": "Private practice, clinics, supervisors",
+    "items": {
+      "therapist": {
+        "title": "Psychotherapists",
+        "body": "Spend less time on notes, more on sessions. Solid material for your own supervision."
+      },
+      "supervisor": {
+        "title": "Supervisors",
+        "body": "Full transcript and report before each supervision session. Easier review, more precise feedback."
+      },
+      "clinic": {
+        "title": "Therapy clinics",
+        "body": "Consistent documentation across the team. One invoice, clear billing."
+      }
+    }
+  },
+  "cta": {
+    "heading": "Try 3 free sessions",
+    "body": "No card, no strings. The trial includes the full product — transcripts, reports, and supervision pointers.",
+    "primary": "Sign up",
+    "secondary": "See pricing"
+  },
+  "legal": {
+    "lastUpdated": "Last updated:",
+    "draftBadge": "Draft · pending legal review",
+    "tableOfContents": "Table of contents",
+    "pages": {
+      "terms": {
+        "metaTitle": "Terms",
+        "title": "Terms of Service",
+        "intro": "These terms govern your use of Superwizor AI."
+      },
+      "privacy": {
+        "metaTitle": "Privacy",
+        "title": "Privacy Policy",
+        "intro": "This policy describes what personal data we process, why we process it, and for how long."
+      },
+      "dpa": {
+        "metaTitle": "DPA",
+        "title": "Data Processing Agreement (DPA)",
+        "intro": "Terms of the data processing agreement under Article 28 GDPR."
+      }
+    }
+  },
+  "pricing": {
+    "metaTitle": "Pricing",
+    "overline": "Pricing",
+    "heading": "A plan that fits your practice",
+    "subhead": "Every plan includes the full product: transcripts, reports, supervision pointers. You only pay for the sessions you actually use.",
+    "cycle": {
+      "monthly": "Monthly",
+      "annual": "Annual",
+      "annualNote": "~17% off"
+    },
+    "tiers": {
+      "trial": {
+        "name": "Trial",
+        "tagline": "Try without a card",
+        "tokensSuffix": "free sessions",
+        "cta": "Get started",
+        "features": [
+          "3 free sessions",
+          "Full transcript",
+          "Full session report",
+          "Supervision pointers",
+          "No credit card required"
+        ]
+      },
+      "solo": {
+        "name": "Solo",
+        "tagline": "For individual therapists",
+        "tokensSuffixMonthly": "sessions / month",
+        "tokensSuffixAnnual": "sessions / year",
+        "cta": "Choose Solo",
+        "features": [
+          "Full transcript",
+          "Clinical report",
+          "Supervision pointers",
+          "PDF export",
+          "1 license"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "For power users",
+        "tokensSuffixMonthly": "sessions / month",
+        "tokensSuffixAnnual": "sessions / year",
+        "cta": "Choose Pro",
+        "badge": "Most popular",
+        "features": [
+          "Everything in Solo",
+          "More sessions",
+          "Priority support",
+          "Early access to new features",
+          "1 license"
+        ]
+      },
+      "clinic": {
+        "name": "Clinic",
+        "tagline": "For therapy clinics",
+        "tokensSuffixMonthly": "sessions / month",
+        "tokensSuffixAnnual": "sessions / year",
+        "cta": "Choose Clinic",
+        "features": [
+          "Everything in Pro",
+          "Shared pool across 5 therapists",
+          "Admin dashboard (B2B)",
+          "Single invoice per clinic",
+          "Team management"
+        ]
+      }
+    },
+    "vatNote": "Prices are net. 23% VAT added on the invoice.",
+    "currency": "PLN",
+    "perMonth": "PLN / month",
+    "perYear": "PLN / year",
+    "free": "Free",
+    "footnote": "Card or Przelewy24. Change or cancel your plan any time from your account."
+  },
+  "footer": {
+    "tagline": "A supervisor's second brain.",
+    "copyright": "© 2026 Superwizor AI",
+    "made": "Made in Poland",
+    "sections": {
+      "product": "Product",
+      "company": "Company",
+      "legal": "Legal"
+    },
+    "links": {
+      "pricing": "Pricing",
+      "register": "Sign up",
+      "login": "Log in",
+      "terms": "Terms",
+      "privacy": "Privacy policy",
+      "dpa": "DPA / GDPR",
+      "contact": "Contact"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+[PASS] createClient() returned typed clients for identity/billing/clinical
+[PASS] identityClient has all expected methods: healthCheck, validateToken, registerOrganization, createUser, getMyProfile, inviteTherapist, acceptInvitation
+[PASS] billingClient has all expected methods: getSubscription, checkQuota, reserveCredit
+[PASS] clinicalClient has all expected methods: healthCheck, getMyBillingState
+[PASS] healthCheck on closed port → ConnectError code=2 (expected: unreachable transport surfaces as ConnectError, not raw fetch failure)
+
+Result: ALL PASS

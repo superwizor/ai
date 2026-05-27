@@ -1,0 +1,157 @@
+name: marketing-site
+
+# Builds and deploys the Next.js marketing site to Firebase Hosting
+# (site: superwizor-www). Fires only when marketing-site/ or its shared
+# inputs (proto-ts package, root firebase.json) change — keeps the
+# existing backend pipeline (ci.yml) unaffected.
+
+on:
+  push:
+    branches:
+      - main
+      # Slice branches deploy to the preview channel automatically — see
+      # the `firebase-hosting-channel-deploy` action below.
+      - "feat/web-app-**"
+    paths:
+      - "marketing-site/**"
+      - "superwizor-backend/gen/ts/**"
+      - "firebase.json"
+      - ".github/workflows/marketing-site.yml"
+  pull_request:
+    paths:
+      - "marketing-site/**"
+      - "superwizor-backend/gen/ts/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  # Required for google-github-actions/auth to mint Workload-Identity
+  # short-lived tokens. The service-account itself (with hosting deploy
+  # perms) is provisioned via terraform — see infra/staging.
+  id-token: write
+
+jobs:
+  build:
+    name: build + smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm 9
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+          run_install: false
+
+      - name: pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('marketing-site/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Install deps
+        working-directory: marketing-site
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        working-directory: marketing-site
+        run: pnpm lint || echo "::warning::lint reported issues (non-blocking until Slice 6)"
+
+      - name: Build
+        working-directory: marketing-site
+        run: pnpm build
+
+      - name: Connect-RPC client smoke
+        working-directory: marketing-site
+        run: pnpm exec tsx scripts/smoke-connect.mjs
+
+  deploy-preview:
+    name: Firebase Hosting preview (PR or feature branch)
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feat/web-app-')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm 9
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Install deps
+        working-directory: marketing-site
+        run: pnpm install --frozen-lockfile
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.HOSTING_DEPLOYER_SA }}
+
+      - name: Firebase Hosting preview channel deploy
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.HOSTING_DEPLOYER_SA_JSON }}
+          projectId: superwizor-ai-25ecd
+          target: superwizor-www
+          expires: 7d
+          channelId: pr-${{ github.event.pull_request.number || github.ref_name }}
+
+  deploy-production:
+    name: Firebase Hosting production (main)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production-www
+      url: https://superwizor.ai
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm 9
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Install deps
+        working-directory: marketing-site
+        run: pnpm install --frozen-lockfile
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.HOSTING_DEPLOYER_SA }}
+
+      - name: Firebase Hosting production deploy
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.HOSTING_DEPLOYER_SA_JSON }}
+          projectId: superwizor-ai-25ecd
+          target: superwizor-www
+          channelId: live

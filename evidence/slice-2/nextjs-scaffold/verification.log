@@ -1,0 +1,94 @@
+Feature: slice-2 / nextjs-scaffold
+Branch: feat/web-app-slice-2
+Commit-target: pending (will land with brand tokens + scaffold)
+Verified: 2026-05-27
+
+What was built
+==============
+- `marketing-site/` scaffolded via `pnpm dlx create-next-app@latest`:
+    Next.js 16.2.6, React 19.2.4, Tailwind 4.3.0, TypeScript 5.9.3,
+    App Router, src/ dir, ESLint, pnpm, no turbopack/rspack flags
+    (defaults to Turbopack in 16.x).
+- Brand tokens ported from `flutter-app/superwizor/lib/theme/
+  euphire_theme.dart` into `src/app/globals.css` via Tailwind 4
+  CSS-first config (@theme block):
+    ember/evergreen/nocturne/obsidian/frost/mist/aurora/magma + derived
+    surfaces + radius/shadow/tracking tokens.
+- Fonts wired via `next/font/google` in `src/app/layout.tsx`:
+    Montserrat (display + body), Merriweather (serif marketing reads),
+    Roboto Mono (technical labels). All with latin-ext subset for
+    Polish diacritics.
+- Root layout: lang="pl", Polish meta (title template, og:locale=pl_PL,
+  description). Gradient background (Evergreen → Nocturne) on body.
+- `src/app/page.tsx`: branded scaffold placeholder demonstrating every
+  token category — overline + display heading + body serif + Ember CTA
+  with glow shadow + outline secondary CTA + bottom marker. Responsive
+  at mobile/tablet/desktop breakpoints (text-3xl → text-5xl → text-6xl).
+- `scripts/snap.mjs`: puppeteer-based screenshot helper reused by every
+  Slice 2 feature. Captures mobile (375x812 @2x, isMobile), tablet
+  (768x1024 @2x, isMobile), desktop (1280x800 @1x).
+
+How verified
+============
+1. `pnpm build` in marketing-site/ — exit 0, "Compiled successfully in
+   3.9s", "Generating static pages 4/4" green.
+2. `pnpm dev` started via Preview MCP (bash wrapper to force node@20
+   PATH) — no console errors, no compile errors.
+3. `curl http://localhost:3000/` saved to `home.html` — Polish strings
+   present (Drugi mózg, superwizora, sesję, transkrypcję, terapeutów),
+   brand classes applied (text-ember, text-frost, bg-ember,
+   font-display, rounded-button), meta tags present (og:locale=pl_PL,
+   title "Superwizor AI — drugi mózg superwizora").
+4. Puppeteer screenshots at three breakpoints (`home-mobile.png`,
+   `home-tablet.png`, `home-desktop.png`) — opened with Read tool,
+   visually confirmed:
+    - Mobile: heading wraps to 2 lines, body wraps to 3 lines, both
+      CTAs stack full-width, bottom marker wraps to 2 lines, no
+      horizontal overflow.
+    - Tablet: 5xl heading on 2 lines, body on 2 lines, CTAs inline,
+      marker fits.
+    - Desktop: balanced hero composition, marker fits inline.
+5. Brand fidelity check (vs euphire_theme.dart):
+    - Ember #FCAE2F → matches CTA fill ✓
+    - Evergreen #004D54 → top of gradient ✓
+    - Nocturne #002E32 → bottom of gradient ✓
+    - Frost #FAFAFA → display heading text ✓
+    - Mist #B2CACC → body + overline + marker text ✓
+    - Roboto Mono uppercase tracking on labels ✓
+    - Ember Glow shadow (12px blur, 30% alpha) on primary CTA ✓
+
+Known gaps (deferred to later Slice 2 features)
+================================================
+- No i18n yet — Polish is hard-coded in `layout.tsx` metadata and
+  `page.tsx` strings. Feature 2 (next-intl-pl-en) will move all strings
+  through translation keys and add the [locale] segment.
+- No Connect-RPC client yet — feature 3.
+- No Firebase Auth yet — feature 4.
+- Scaffold page.tsx is a placeholder; real landing comes in feature 5.
+- Next.js dev indicator (the "N" badge bottom-left) is visible in
+  screenshots but is a dev-only overlay; doesn't ship to prod build.
+
+Toolchain footnotes
+===================
+- `marketing-site/AGENTS.md` warns "This is NOT the Next.js you know"
+  — relevant docs are in `node_modules/next/dist/docs/01-app/`.
+- Preview MCP launch.json lives at `/Users/dpiotrak/supervisorai_v2/
+  .claude/launch.json` (one dir above the project root). The
+  runtimeExecutable uses `/bin/bash -lc` to force node@20 + pnpm into
+  PATH — direct calls to /usr/local/bin/pnpm hit the corepack shim
+  that fails on Node 20.
+- puppeteer's Chromium download landed in
+  `~/.cache/puppeteer/chrome/`; total ~190MB. scripts/node_modules is
+  gitignored.
+
+Files touched
+=============
+- marketing-site/  (new, scaffolded — package.json, tsconfig, etc.)
+- marketing-site/src/app/globals.css  (overwrote default)
+- marketing-site/src/app/layout.tsx  (overwrote default)
+- marketing-site/src/app/page.tsx  (overwrote default)
+- scripts/snap.mjs  (new)
+- scripts/package.json  (new, for puppeteer dep)
+- .claude/launch.json  (new — local preview config)
+- /Users/dpiotrak/supervisorai_v2/.claude/launch.json  (new — Preview
+   MCP expected path)

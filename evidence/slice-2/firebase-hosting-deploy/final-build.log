@@ -1,0 +1,15 @@
+├ ● /[locale]/legal/[slug]
+│ ├ /pl/legal/terms
+│ ├ /pl/legal/privacy
+│ ├ /pl/legal/dpa
+│ └ [+3 more paths]
+└ ● /[locale]/pricing
+  ├ /pl/pricing
+  └ /en/pricing
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)  prerendered as static content
+●  (SSG)     prerendered as static HTML (uses generateStaticParams)
+

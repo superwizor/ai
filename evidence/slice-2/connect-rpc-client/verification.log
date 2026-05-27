@@ -1,0 +1,98 @@
+Feature: slice-2 / connect-rpc-client
+Branch: feat/web-app-slice-2
+Verified: 2026-05-27
+Anchored to: docs/18 §5 (Connect-RPC architecture)
+
+What was built
+==============
+Marketing-site/ now imports typed Connect-RPC clients for the three
+browser-callable backend services (identity, billing, clinical).
+
+Dependencies added:
+- @bufbuild/protobuf@2.12.0  — proto-es v2 runtime
+- @connectrpc/connect@2.1.1  — Connect-Web client core
+- @connectrpc/connect-web@2.1.1  — fetch-based transport
+- @superwizor/proto-ts@file:../superwizor-backend/gen/ts — generated
+  GenService descriptors. Picked up via Next's transpilePackages so
+  the package's raw .ts files compile inside the consumer.
+
+New files:
+- marketing-site/src/lib/connect/transport.ts — Connect transport
+  factory + bearer-token Interceptor. Service URLs come from
+  NEXT_PUBLIC_{IDENTITY,BILLING,CLINICAL}_URL env vars with localhost
+  defaults.
+- marketing-site/src/lib/connect/clients.ts — typed clients per
+  service via `createClient(IdentityService, transport)`. Exposes a
+  module-level `setTokenProvider(p)` mutator so feature 4
+  (firebase-auth-init) can swap in `getAuth().currentUser?.getIdToken()`
+  at app boot without rewiring transports. Default provider returns
+  null (anonymous calls — fine for landing/pricing reads).
+- marketing-site/scripts/smoke-connect.mjs — runtime smoke that
+  constructs all three clients, spot-checks the method bag, and
+  verifies that an unreachable transport surfaces as a typed
+  ConnectError rather than an uncaught fetch failure.
+
+Backend-side codegen fix (cross-cutting):
+- superwizor-backend/buf.gen.yaml — DROPPED the
+  `buf.build/connectrpc/es` v1 plugin. It was producing broken
+  imports (`./identity_pbjs` — the v1 plugin appends `js` without
+  the dot when `import_extension=js` is set, and assumes the v1
+  protoc-gen-es message shape, which doesn't match the protoc-gen-es
+  v2 output we already generate). Connect-Web v2 doesn't need a
+  separate plugin — it consumes the `GenService<…>` descriptors
+  exported by `*_pb.ts` directly. Regenerated:
+      buf generate proto/
+  All `*_connect.ts` files deleted. `*_pb.ts` unchanged.
+
+How verified
+============
+1. `pnpm build` (full Next.js production build) — exit 0,
+   "Compiled successfully in 5.8s", TypeScript pass in 7.1s. Both
+   /pl and /en pre-render. Full log: evidence/.../build.log.
+
+2. `pnpm exec tsx scripts/smoke-connect.mjs` — exit 0, all 5 checks
+   pass. Full log: evidence/.../smoke.log:
+      [PASS] createClient() returned typed clients for identity/billing/clinical
+      [PASS] identityClient has all expected methods: healthCheck,
+             validateToken, registerOrganization, createUser,
+             getMyProfile, inviteTherapist, acceptInvitation
+      [PASS] billingClient has all expected methods: getSubscription,
+             checkQuota, reserveCredit
+      [PASS] clinicalClient has all expected methods: healthCheck,
+             getMyBillingState
+      [PASS] healthCheck on closed port → ConnectError code=2
+             (expected: unreachable transport surfaces as
+             ConnectError, not raw fetch failure)
+
+3. Type-check passes: the smoke script's `await client.healthCheck({})`
+   line compiles only if the message bag, response, and method names
+   all match the proto. Drift between proto and TS would surface as
+   either a compile error or a smoke-test miss.
+
+Notes / non-blocking
+====================
+- Real end-to-end Connect handshake against a live identity-svc is
+  already proven on the backend side
+  (services/identity-svc/internal/adapters/grpc/connect_adapter_test.go,
+  Slice 1 commit 87e26de). The same generated descriptors are
+  consumed here; no need to re-prove the wire format.
+- ConnectError code=2 is `Code.Unknown` — under WHATWG fetch in Node,
+  a refused TCP connection arrives as a generic TypeError which the
+  Connect transport wraps into Unknown. In a browser it'd be Code
+  Unavailable (14). Both are "transport down" signals; either is fine
+  for the smoke purpose.
+- Auth token plumbing is the stub default `() => null` until
+  feature 4 plugs in Firebase. Calls to RPCs requiring auth will
+  return ConnectError code=Unauthenticated until then — expected.
+- check-l10n-parity.sh and a real call-through test against staging
+  will follow in Slices 3 and 6 respectively per PROGRESS.md.
+
+Files touched
+=============
+- marketing-site/package.json + pnpm-lock.yaml
+- marketing-site/next.config.ts (transpilePackages)
+- marketing-site/src/lib/connect/transport.ts (new)
+- marketing-site/src/lib/connect/clients.ts (new)
+- marketing-site/scripts/smoke-connect.mjs (new)
+- superwizor-backend/buf.gen.yaml (dropped connectrpc/es plugin)
+- superwizor-backend/gen/ts/*/v1/*_connect.ts (DELETED — broken)
