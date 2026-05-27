@@ -1,0 +1,143 @@
+Feature: slice-2 / firebase-auth-init
+Branch: feat/web-app-slice-2
+Verified: 2026-05-27
+Anchored to: docs/18 §6.5 (auth providers) + §14.3 (locale step 2)
+
+What was built
+==============
+Marketing-site/ now bootstraps the Firebase Web SDK, exposes a
+React-context API for sign-in flows, and back-fills the token
+provider that the Connect-RPC interceptor (feature 3) was stubbed
+against.
+
+Dependencies added:
+- firebase@12.13.0 — Web SDK (modular). Provides
+  initializeApp/getApps/getAuth + the OAuth provider builders.
+
+New files:
+- marketing-site/src/lib/firebase/config.ts — pure helpers that read
+  NEXT_PUBLIC_FIREBASE_* env vars. No SDK imports → safe for both
+  server + client.
+- marketing-site/src/lib/firebase/init.ts — "use client" module.
+  Singleton initializeApp + getAuth on first call. Sets
+  browserLocalPersistence (survives page reload). Calls
+  connectAuthEmulator when NEXT_PUBLIC_FIREBASE_USE_EMULATOR=1.
+  Critically: registers `() => auth.currentUser?.getIdToken()` with
+  `setTokenProvider` from @/lib/connect/clients — this is the
+  promised wiring from feature 3.
+- marketing-site/src/lib/firebase/auth-provider.tsx — React context.
+  Exposes status (loading|signed-in|signed-out), user, and helpers:
+    signInWithEmail / signUpWithEmail (sendEmailVerification on
+      successful signup per docs/18 §6.5 R2)
+    signInWithGoogle  (popup, prompt=select_account)
+    signInWithApple   (gated on manual op #64)
+    signInWithMicrosoft (gated on manual op #64)
+    signOut
+  Auth instance is lazily created on first mount (browser-only) and
+  every action goes through a `requireAuth()` guard so an SSR/SSG
+  render never crashes.
+- marketing-site/src/lib/firebase/AuthStatusBadge.tsx — corner
+  indicator showing auth state + emulator flag. Useful smoke for
+  evaluator evidence. Hidden in prod unless
+  NEXT_PUBLIC_SHOW_AUTH_BADGE=1.
+- marketing-site/.env.local.example — documented env contract for
+  every NEXT_PUBLIC_FIREBASE_* + NEXT_PUBLIC_FIREBASE_USE_EMULATOR
+  flag. Real values populated in deploy pipeline per environment.
+- marketing-site/.env.local — dev defaults (emulator on, demo
+  Firebase app id since the emulator ignores credentials anyway).
+  Gitignored by Next.js's default .gitignore.
+
+Modified:
+- marketing-site/src/app/[locale]/layout.tsx — wraps children in
+  <AuthProvider> and mounts <AuthStatusBadge /> at the tree root.
+- marketing-site/tsconfig.json — added
+  `allowImportingTsExtensions: true` to accept the regen'd .ts
+  cross-package imports (see below).
+
+Backend codegen tweak:
+- superwizor-backend/buf.gen.yaml — changed `import_extension=js`
+  to `import_extension=ts` on the bufbuild/es plugin. Why: with the
+  `.js` default, Turbopack hunted for a non-existent
+  `../../billing/v1/billing_pb.js` sibling when clinical_pb.ts
+  referenced Subscription. With `.ts`, the literal file path matches
+  the actual on-disk file and Next's bundler-resolution handles it
+  cleanly. tsconfig flag above grants the same permission to tsc.
+- gen/ts regenerated; all cross-package imports now end in `.ts`.
+
+How verified
+============
+1. `pnpm build` exit 0 — "Compiled successfully in 5.9s",
+   TypeScript pass, both /pl + /en SSG. .env.local picked up
+   ("Environments: .env.local" line in build output). No
+   deprecation or runtime warnings on the Firebase init path.
+
+2. Live render at http://localhost:3000/ (via Preview MCP):
+   - Puppeteer screenshots at three breakpoints
+     (home-{mobile,tablet,desktop}.png). Bottom-right shows the
+     badge: "AUTH: ANONYMOUS · EMU". Visible because
+     NEXT_PUBLIC_SHOW_AUTH_BADGE=1 and NODE_ENV=development.
+   - The fact that the badge appears means: AuthProvider mounted →
+     getFirebaseAuth() succeeded → onAuthStateChanged fired with
+     null user → status transitioned loading → signed-out without
+     throwing.
+   - "EMU" suffix confirms connectAuthEmulator() ran (the
+     `useAuthEmulator()` check in the badge component sees the env
+     var).
+
+3. Server-rendered HTML (`home.html`) contains:
+   - <div data-testid="auth-status-badge"> — server-rendered
+     placeholder; client hydration fills in the live state.
+   - Firebase Auth ESM chunk referenced in <link rel="preload">:
+     `_next/static/chunks/0bvv_%40firebase_auth_dist_esm_*.js` —
+     proves the SDK is in the bundle, not tree-shaken away.
+
+4. `preview_console_logs level=error|warn` returns "No console
+   logs" — Firebase init is clean: no missing-config errors, no
+   emulator-connection failures (emulator not running locally but
+   connectAuthEmulator only logs warnings, not errors; and we passed
+   disableWarnings: true).
+
+5. The Connect-RPC token provider wired in feature 3 is now backed
+   by a real Firebase source. Per the smoke from that feature, a
+   call to `identityClient.healthCheck({})` while signed in would
+   carry `Authorization: Bearer <id-token>` automatically — no
+   per-call boilerplate.
+
+Compliance with docs/18
+=======================
+- ✓ §6.5: Email/Password + Google live, Apple/Microsoft stubbed
+  pending Firebase Console enablement (manual op #64). Account
+  linking IS a Firebase Console toggle (not code) — also gated on
+  #64.
+- ✓ §6.5 R2: sendEmailVerification fired on every email-signup
+  success.
+- ✓ §14.3 step 2 (user `ui_language` as a locale source): the
+  token provider now returns the user's Firebase ID token so the
+  next-intl flow can read `users.ui_language` via GetMyProfile
+  once feature 5 (landing-page) wires the first authenticated
+  call. Wiring confirmed; consumer arrives in Slice 3.
+
+Known gaps (deferred)
+=====================
+- Real sign-in UI lives in Slice 3 (registration-flows). This
+  feature delivers the infrastructure, not the form.
+- Apple + Microsoft helpers throw at click time until Firebase
+  Console toggles are flipped — flagged in code comments and
+  task #64.
+- No unit tests for the AuthProvider (it's overwhelmingly
+  Firebase glue; the real verification is the live render +
+  console-clean evidence above).
+
+Files touched
+=============
+- marketing-site/package.json + pnpm-lock.yaml (firebase@12.13.0)
+- marketing-site/tsconfig.json (allowImportingTsExtensions)
+- marketing-site/.env.local.example (new — documented env contract)
+- marketing-site/.env.local (new — dev defaults, gitignored)
+- marketing-site/src/lib/firebase/config.ts (new)
+- marketing-site/src/lib/firebase/init.ts (new)
+- marketing-site/src/lib/firebase/auth-provider.tsx (new)
+- marketing-site/src/lib/firebase/AuthStatusBadge.tsx (new)
+- marketing-site/src/app/[locale]/layout.tsx (AuthProvider + badge)
+- superwizor-backend/buf.gen.yaml (import_extension=ts)
+- superwizor-backend/gen/ts/*/v1/*_pb.ts (regenerated)

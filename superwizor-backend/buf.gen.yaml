@@ -39,4 +39,10 @@ plugins:
     out: gen/ts
     opt:
       - target=ts
-      - import_extension=js
+      # `ts` extension on imports: Next.js + Turbopack's `transpilePackages`
+      # mode resolves `.ts` cleanly across package boundaries, but the
+      # plugin's default `.js` extension makes Webpack/Turbopack hunt for
+      # a non-existent `_pb.js` sibling in cross-package imports
+      # (e.g. clinical_pb.ts → ../../billing/v1/billing_pb.js). Switching
+      # to `.ts` aligns the literal file path with what the bundler sees.
+      - import_extension=ts

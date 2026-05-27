@@ -20,6 +20,8 @@ import { notFound } from "next/navigation";
 import { Montserrat, Merriweather, Roboto_Mono } from "next/font/google";
 import "../globals.css";
 import { routing } from "@/i18n/routing";
+import { AuthProvider } from "@/lib/firebase/auth-provider";
+import { AuthStatusBadge } from "@/lib/firebase/AuthStatusBadge";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -96,7 +98,12 @@ export default async function LocaleLayout({
       className={`${montserrat.variable} ${merriweather.variable} ${robotoMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <AuthProvider>
+            {children}
+            <AuthStatusBadge />
+          </AuthProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
