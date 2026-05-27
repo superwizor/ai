@@ -60,30 +60,14 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
-    // -------------------------------------------------------------------------
-    // organization_quota/{organizationId}
-    // -------------------------------------------------------------------------
-    // Backend (notification-svc.ProcessBillingEvent → fswriter
-    // WriteOrganizationQuota) mirrors current quota state here after every
-    // outbox quota.* event. Flutter QuotaWarningBanner subscribes for live
-    // updates of remaining tokens + warningLevel.
-    //
-    // Slice 4 access model: any authenticated user can read this doc. We
-    // accept this trade-off for MVP because:
-    //   * organizationId is a UUID (not enumerable)
-    //   * payload contains only counters (no PHI, no PII)
-    //   * Flutter currentUserProvider resolves the user's own organizationId
-    //     from identity-svc before subscribing — clients never see other
-    //     orgs' UUIDs.
-    //
-    // Slice 5 TODO: strict membership check via a parallel `organization_members/
-    // {orgId}/users/{firebaseUid}` collection populated by identity-svc, so
-    // rule becomes: exists(/databases/$(database)/documents/organization_members/
-    // $(organizationId)/users/$(request.auth.uid)).
-    match /organization_quota/{organizationId} {
-      allow read: if request.auth != null;
-      allow write: if false;  // Admin SDK on backend bypasses this
-    }
+    // organization_quota/{organizationId} was retired in Phase C of
+    // feat/billing-svc-refactor. Quota state now flows through direct
+    // RPCs (clinical-svc.GetMyBillingState + state_after on Reservation /
+    // UsageCommit) so Flutter no longer subscribes to a Firestore mirror.
+    // Existing docs (if any remain in prod) become read-orphans; the
+    // default-deny rule below blocks all access until they're swept by a
+    // one-shot cleanup script. Do NOT reintroduce a rule without first
+    // rewiring a writer.
 
     // -------------------------------------------------------------------------
     // Default deny — everything else.

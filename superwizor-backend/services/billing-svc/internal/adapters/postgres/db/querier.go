@@ -23,9 +23,6 @@ type Querier interface {
 	// Inkrementuje tokens_reserved. Wywoływane PO sprawdzeniu dostępności
 	// w transakcji ReserveCredit.
 	AddReservedTokens(ctx context.Context, arg AddReservedTokensParams) error
-	// Wstawiany wewnątrz transakcji razem z mutacją stanu (np. CommitTokens),
-	// żeby Pub/Sub publish był transactionally spójny z DB writem (ADR-DM-009).
-	AppendOutboxEvent(ctx context.Context, arg AppendOutboxEventParams) (OutboxEvent, error)
 	// Atomic: inkrement tokens_used + dekrement tokens_reserved.
 	// Używane w CommitUsage tylko jeśli usage_events INSERT zwrócił nowy row.
 	CommitTokens(ctx context.Context, arg CommitTokensParams) error
@@ -47,12 +44,6 @@ type Querier interface {
 	// Nie używamy ON CONFLICT DO NOTHING bo chcemy rozróżnić "świeży insert"
 	// (zwiększyć counter) od "duplikatu" (no-op).
 	CreateUsageEvent(ctx context.Context, arg CreateUsageEventParams) (UsageEvent, error)
-	// Poller: pobiera oldest unprocessed events. FOR UPDATE SKIP LOCKED pozwala
-	// multiple poller instances pracować równolegle bez double-publishu
-	// (każda instancja bierze "swój" subset).
-	//
-	// LIMIT zarządzany z aplikacji żeby kontrolować batch size.
-	FetchUnpublishedOutboxBatch(ctx context.Context, limit int32) ([]FetchUnpublishedOutboxBatchRow, error)
 	// Pobiera bieżący usage_counters row dla subskrypcji.
 	// Zakładamy że istnieje dokładnie jeden aktywny okres na timestamp now()
 	// (gwarancja ze §9 — webhook/cron tworzy nowy row przy renewal).
@@ -88,12 +79,6 @@ type Querier interface {
 	// tokens_reserved per row, żeby handler mógł zaktualizować odpowiednie
 	// usage_counters w tej samej transakcji.
 	MarkExpiredReservations(ctx context.Context) ([]MarkExpiredReservationsRow, error)
-	// Wywoływane PO failed publish. Inkrementuje attempts; po 10 próbach
-	// (chk constraint FetchUnpublished) event nie będzie więcej fetchowany —
-	// DLQ-equivalent.
-	MarkOutboxEventFailed(ctx context.Context, arg MarkOutboxEventFailedParams) error
-	// Wywoływane PO udanym publish do Pub/Sub.
-	MarkOutboxEventPublished(ctx context.Context, id uuid.UUID) error
 	// Wywoływane wewnątrz transakcji CommitUsage, po insert do usage_events.
 	MarkReservationCommitted(ctx context.Context, sessionID uuid.UUID) error
 	// Wywoływane przez ReleaseCredit (jawne anulowanie sesji).

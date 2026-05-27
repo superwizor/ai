@@ -33,7 +33,6 @@ import (
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	"github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/postgres/db"
-	"github.com/superwizor-ai/backend/services/billing-svc/internal/domain/outbox"
 	"github.com/superwizor-ai/backend/services/billing-svc/internal/domain/tokens"
 )
 
@@ -87,7 +86,6 @@ type Server struct {
 	queries        db.Querier
 	tx             TxOpener
 	reservationTTL time.Duration
-	thresholds     outbox.Thresholds
 	version        string
 }
 
@@ -97,7 +95,6 @@ func NewServer(pool *pgxpool.Pool, version string) *Server {
 		queries:        db.New(pool),
 		tx:             NewPgxTxOpener(pool),
 		reservationTTL: DefaultReservationTTL,
-		thresholds:     outbox.DefaultThresholds(),
 		version:        version,
 	}
 }
@@ -111,15 +108,8 @@ func NewServerWithDeps(q db.Querier, tx TxOpener, ttl time.Duration, version str
 		queries:        q,
 		tx:             tx,
 		reservationTTL: ttl,
-		thresholds:     outbox.DefaultThresholds(),
 		version:        version,
 	}
-}
-
-// WithThresholds — opcjonalny override progów (env vars w main.go).
-func (s *Server) WithThresholds(warn, critical int32) *Server {
-	s.thresholds = outbox.Thresholds{Warn: warn, Critical: critical}
-	return s
 }
 
 // ---------- helpers ----------
@@ -339,43 +329,10 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 	tokensReservedAfter := counter.TokensReserved + estTokens
 	tokensLimitAfter := counter.TokensLimit
 
-	// Outbox quota.updated — keeps Firestore mirror in sync with the
-	// post-reservation counter so Flutter's live stream picks it up
-	// without relying on the optimistic-local-decrement fallback. See
-	// CommitUsage for the parallel rationale.
-	remainingAfter := tokensLimitAfter - tokensUsedAfter - tokensReservedAfter
-	if remainingAfter < 0 {
-		remainingAfter = 0
-	}
-	{
-		payload := outbox.QuotaPayload{
-			SubscriptionID:  sub.ID,
-			OrganizationID:  orgID,
-			PlanTier:        string(sub.PlanTier),
-			PlanCycle:       string(sub.PlanCycle),
-			TokensUsed:      tokensUsedAfter,
-			TokensReserved:  tokensReservedAfter,
-			TokensRemaining: remainingAfter,
-			TokensLimit:     tokensLimitAfter,
-			PeriodStart:     counter.PeriodStart,
-			PeriodEnd:       counter.PeriodEnd,
-		}
-		payloadBytes, mErr := payload.Marshal()
-		if mErr != nil {
-			slog.ErrorContext(ctx, "ReserveCredit: outbox payload marshal", "error", mErr)
-			return nil, status.Errorf(codes.Internal, "outbox payload encode failed")
-		}
-		if _, err := q.AppendOutboxEvent(ctx, db.AppendOutboxEventParams{
-			AggregateType:  outbox.AggregateQuota,
-			EventType:      "quota.updated",
-			AggregateID:    sub.ID,
-			OrganizationID: orgID,
-			Payload:        payloadBytes,
-		}); err != nil {
-			slog.ErrorContext(ctx, "ReserveCredit: outbox append", "error", err)
-			return nil, status.Errorf(codes.Internal, "outbox append failed")
-		}
-	}
+	// Phase C of the client-cache refactor removed the outbox / Firestore-
+	// mirror branch entirely. Clients now read counter state via
+	// clinical-svc.GetMyBillingState (cold start) and via Reservation.
+	// state_after on the response below — no async fanout needed.
 
 	if err := tx.Commit(ctx); err != nil {
 		slog.ErrorContext(ctx, "ReserveCredit: commit", "error", err)
@@ -585,57 +542,12 @@ func (s *Server) commitInternal(ctx context.Context, in commitInput) (*billingv1
 	//
 	// Definicja remaining = limit - used - reserved.
 	// Po commit: used' = used + tokensToCharge, reserved' = reserved - reservedToRelease.
-	// remaining' = limit - used' - reserved' = remaining + reservedToRelease - tokensToCharge.
-	remainingBefore := counter.TokensLimit - counter.TokensUsed - counter.TokensReserved
-	if remainingBefore < 0 {
-		remainingBefore = 0
-	}
-	remainingAfter := remainingBefore + reservedToRelease - tokensToCharge
-	if remainingAfter < 0 {
-		remainingAfter = 0
-	}
-	// Outbox emission: pick the most specific event type that fits.
-	// Edge transitions (warning / critical / exhausted) emit those event
-	// types — they trigger an FCM push downstream. When no threshold is
-	// crossed we still emit "quota.updated" as a non-push snapshot so the
-	// Firestore mirror in notification-svc gets refreshed on EVERY commit.
-	// Without this, Flutter saw stale counters until the user crossed a
-	// threshold; the mirror is the only data source the app reads on
-	// startup.
-	eventType := s.thresholds.QuotaEdgeEventType(remainingBefore, remainingAfter)
-	if eventType == "" {
-		eventType = "quota.updated"
-	}
-	{
-		payload := outbox.QuotaPayload{
-			SubscriptionID:  sub.ID,
-			OrganizationID:  orgID,
-			PlanTier:        string(sub.PlanTier),
-			PlanCycle:       string(sub.PlanCycle),
-			TokensUsed:      counter.TokensUsed + tokensToCharge,
-			TokensReserved:  counter.TokensReserved - reservedToRelease,
-			TokensRemaining: remainingAfter,
-			TokensLimit:     counter.TokensLimit,
-			PeriodStart:     counter.PeriodStart,
-			PeriodEnd:       counter.PeriodEnd,
-		}
-		payloadBytes, mErr := payload.Marshal()
-		if mErr != nil {
-			// Niemożliwe (struct → JSON, fields są bezpieczne), ale obsłużone defensive.
-			slog.ErrorContext(ctx, "CommitUsage: outbox payload marshal", "error", mErr)
-			return nil, status.Errorf(codes.Internal, "outbox payload encode failed")
-		}
-		if _, err := q.AppendOutboxEvent(ctx, db.AppendOutboxEventParams{
-			AggregateType:  outbox.AggregateQuota,
-			EventType:      eventType,
-			AggregateID:    sub.ID,
-			OrganizationID: orgID,
-			Payload:        payloadBytes,
-		}); err != nil {
-			slog.ErrorContext(ctx, "CommitUsage: outbox append", "error", err, "event_type", eventType)
-			return nil, status.Errorf(codes.Internal, "outbox append failed")
-		}
-	}
+	// Phase C: the outbox + Firestore-mirror branch is gone. CommitUsage
+	// is async w.r.t. the client (stt-finalize calls it after STT
+	// completes), so we don't even need to return state_after timely —
+	// the client's next cold-start GetMyBillingState picks up the new
+	// tokens_used count. UsageCommit.state_after is still populated
+	// below from the post-tx counter for any caller that wants it.
 
 	if err := tx.Commit(ctx); err != nil {
 		slog.ErrorContext(ctx, "CommitUsage: commit", "error", err)

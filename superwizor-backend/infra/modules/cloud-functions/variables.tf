@@ -77,11 +77,6 @@ variable "session_deleted_topic" {
   description = "Pub/Sub topic ID for session.deleted (clinical-svc → notification-worker-on-deleted cleanup of Firestore mirror + inbox)"
 }
 
-variable "billing_outbox_topic" {
-  type        = string
-  description = "Pub/Sub topic ID for billing.outbox (billing-svc poller → notification-worker-on-billing FCM dispatch for quota.warning / quota.exhausted / etc.)"
-}
-
 variable "billing_svc_url" {
   type        = string
   description = "Cloud Run URL for billing-svc — passed to stt-worker as BILLING_SVC_URL env so post-STT finalize can call CommitUsage. Empty disables the billing hook."

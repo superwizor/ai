@@ -38,8 +38,6 @@ import (
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	grpcadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/grpc"
 	httpadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/http"
-	psadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/pubsub"
-	"github.com/superwizor-ai/backend/services/billing-svc/internal/outboxpoller"
 )
 
 func main() {
@@ -87,27 +85,12 @@ func main() {
 	}
 	defer pool.Close()
 
-	// Pub/Sub publisher (opcjonalnie — bez GCP_PROJECT_ID outbox poller
-	// jest wyłączony, useful dla local dev).
-	var pubPublisher *psadapter.Publisher
-	projectID := os.Getenv("GCP_PROJECT_ID")
-	if projectID != "" {
-		pubPublisher, err = psadapter.NewPublisher(rootCtx, projectID)
-		if err != nil {
-			slog.Error("pubsub publisher init failed", "error", err)
-			os.Exit(1)
-		}
-		defer func() { _ = pubPublisher.Close() }()
-	} else {
-		slog.Warn("GCP_PROJECT_ID unset — outbox poller disabled (local dev mode)")
-	}
+	// Phase C of feat/billing-svc-refactor removed the outbox poller +
+	// Pub/Sub publisher + edge-threshold WithThresholds wiring. The
+	// client-cache model (clinical-svc.GetMyBillingState + state_after
+	// on Reservation/UsageCommit) is the only way state propagates now.
 
 	billingServer := grpcadapter.NewServer(pool, version)
-	if w := getEnvInt32("BILLING_WARN_REMAINING", 0); w > 0 {
-		c := getEnvInt32("BILLING_CRITICAL_REMAINING", 1)
-		billingServer.WithThresholds(w, c)
-		slog.Info("custom thresholds set", "warn", w, "critical", c)
-	}
 
 	// gRPC server (in-process — handler reused via ServeHTTP).
 	gs := grpc.NewServer()
@@ -158,21 +141,6 @@ func main() {
 			slog.Error("serve failed", "error", err)
 		}
 	}()
-
-	// Outbox poller goroutine (jeśli Pub/Sub jest włączony).
-	if pubPublisher != nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			pollInterval := time.Duration(getEnvInt32("OUTBOX_POLL_INTERVAL_SEC", 5)) * time.Second
-			batchSize := getEnvInt32("OUTBOX_BATCH_SIZE", 100)
-			poller := outboxpoller.New(pool, pubPublisher, outboxpoller.Config{
-				PollInterval: pollInterval,
-				BatchSize:    batchSize,
-			}, logger)
-			poller.Run(rootCtx)
-		}()
-	}
 
 	<-rootCtx.Done()
 	slog.Info("shutdown signal received")

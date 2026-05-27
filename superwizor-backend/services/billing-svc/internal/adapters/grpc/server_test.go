@@ -569,114 +569,11 @@ func TestCommitUsage(t *testing.T) {
 		}
 	})
 
-	t.Run("emits quota.warning outbox event when crossing threshold (6 → 5)", func(t *testing.T) {
-		q := &fakeQuerier{}
-		sub := subRow(t, db.SubscriptionStatusACTIVE, 20)
-		q.getActiveSubFn = func(ctx context.Context, _ uuid.UUID) (db.GetActiveSubscriptionByOrgRow, error) {
-			return sub, nil
-		}
-		q.getUsageEventFn = func(ctx context.Context, _ uuid.UUID) (db.UsageEvent, error) {
-			return db.UsageEvent{}, pgx.ErrNoRows
-		}
-		q.getActiveCounterFn = func(ctx context.Context, _ uuid.UUID) (db.UsageCounter, error) {
-			// 6 tokens remaining (14 used + 0 reserved out of 20).
-			return counterRow(14, 0, 20), nil
-		}
-		q.getReservationFn = func(ctx context.Context, _ uuid.UUID) (db.PendingReservation, error) {
-			return db.PendingReservation{}, pgx.ErrNoRows
-		}
-		q.createUsageEventFn = func(ctx context.Context, arg db.CreateUsageEventParams) (db.UsageEvent, error) {
-			return db.UsageEvent{TokensConsumed: arg.TokensConsumed}, nil
-		}
-		s := newTestServer(q, nil)
-
-		_, err := s.CommitUsage(context.Background(), &billingv1.CommitUsageRequest{
-			SessionId:       sessionID.String(),
-			OrganizationId:  orgID.String(),
-			DurationSeconds: 2700, // 45min → 1 token
-		})
-		if err != nil {
-			t.Fatalf("unexpected: %v", err)
-		}
-		if len(q.appendOutboxCalls) != 1 {
-			t.Fatalf("expected 1 outbox event, got %d", len(q.appendOutboxCalls))
-		}
-		if q.appendOutboxCalls[0].EventType != "quota.warning" {
-			t.Errorf("event_type = %q, want quota.warning", q.appendOutboxCalls[0].EventType)
-		}
-	})
-
-	t.Run("emits quota.exhausted when last token consumed (1 → 0)", func(t *testing.T) {
-		q := &fakeQuerier{}
-		sub := subRow(t, db.SubscriptionStatusACTIVE, 20)
-		q.getActiveSubFn = func(ctx context.Context, _ uuid.UUID) (db.GetActiveSubscriptionByOrgRow, error) {
-			return sub, nil
-		}
-		q.getUsageEventFn = func(ctx context.Context, _ uuid.UUID) (db.UsageEvent, error) {
-			return db.UsageEvent{}, pgx.ErrNoRows
-		}
-		q.getActiveCounterFn = func(ctx context.Context, _ uuid.UUID) (db.UsageCounter, error) {
-			return counterRow(19, 0, 20), nil // 1 remaining
-		}
-		q.getReservationFn = func(ctx context.Context, _ uuid.UUID) (db.PendingReservation, error) {
-			return db.PendingReservation{}, pgx.ErrNoRows
-		}
-		q.createUsageEventFn = func(ctx context.Context, arg db.CreateUsageEventParams) (db.UsageEvent, error) {
-			return db.UsageEvent{TokensConsumed: arg.TokensConsumed}, nil
-		}
-		s := newTestServer(q, nil)
-
-		_, err := s.CommitUsage(context.Background(), &billingv1.CommitUsageRequest{
-			SessionId:       sessionID.String(),
-			OrganizationId:  orgID.String(),
-			DurationSeconds: 2700,
-		})
-		if err != nil {
-			t.Fatalf("unexpected: %v", err)
-		}
-		if len(q.appendOutboxCalls) != 1 || q.appendOutboxCalls[0].EventType != "quota.exhausted" {
-			t.Errorf("expected quota.exhausted, got %+v", q.appendOutboxCalls)
-		}
-	})
-
-	t.Run("non-edge commit emits quota.updated (20 → 19)", func(t *testing.T) {
-		q := &fakeQuerier{}
-		sub := subRow(t, db.SubscriptionStatusACTIVE, 20)
-		q.getActiveSubFn = func(ctx context.Context, _ uuid.UUID) (db.GetActiveSubscriptionByOrgRow, error) {
-			return sub, nil
-		}
-		q.getUsageEventFn = func(ctx context.Context, _ uuid.UUID) (db.UsageEvent, error) {
-			return db.UsageEvent{}, pgx.ErrNoRows
-		}
-		q.getActiveCounterFn = func(ctx context.Context, _ uuid.UUID) (db.UsageCounter, error) {
-			return counterRow(0, 0, 20), nil // 20 remaining, plenty
-		}
-		q.getReservationFn = func(ctx context.Context, _ uuid.UUID) (db.PendingReservation, error) {
-			return db.PendingReservation{}, pgx.ErrNoRows
-		}
-		q.createUsageEventFn = func(ctx context.Context, arg db.CreateUsageEventParams) (db.UsageEvent, error) {
-			return db.UsageEvent{TokensConsumed: arg.TokensConsumed}, nil
-		}
-		s := newTestServer(q, nil)
-
-		_, err := s.CommitUsage(context.Background(), &billingv1.CommitUsageRequest{
-			SessionId:       sessionID.String(),
-			OrganizationId:  orgID.String(),
-			DurationSeconds: 2700,
-		})
-		if err != nil {
-			t.Fatalf("unexpected: %v", err)
-		}
-		// Phase 3 fix: even when no edge threshold is crossed we emit a
-		// quota.updated snapshot so the Firestore mirror keeps tracking
-		// every commit (not just the warning/critical/exhausted edges).
-		if len(q.appendOutboxCalls) != 1 {
-			t.Fatalf("expected 1 outbox event (quota.updated), got %d", len(q.appendOutboxCalls))
-		}
-		if got := q.appendOutboxCalls[0].EventType; got != "quota.updated" {
-			t.Errorf("expected event_type=quota.updated, got %q", got)
-		}
-	})
+	// Phase C of the client-cache refactor removed outbox emission
+	// entirely. The previous "emits quota.warning/critical/exhausted/updated"
+	// subtests are gone with it; the client now reads counter state
+	// directly via clinical-svc.GetMyBillingState + state_after on
+	// Reservation/UsageCommit.
 
 	t.Run("legacy IncrementUsage maps amount → tokens", func(t *testing.T) {
 		q := &fakeQuerier{}

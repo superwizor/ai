@@ -327,6 +327,7 @@ const (
 	PlanTierPRO     PlanTier = "PRO"
 	PlanTierCLINIC  PlanTier = "CLINIC"
 	PlanTierPATIENT PlanTier = "PATIENT"
+	PlanTierTRIAL   PlanTier = "TRIAL"
 )
 
 func (e *PlanTier) Scan(src interface{}) error {
@@ -818,20 +819,6 @@ type Organization struct {
 	Type                  OrganizationType   `json:"type"`
 	CreatedAt             time.Time          `json:"created_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
-}
-
-type OutboxEvent struct {
-	ID             uuid.UUID          `json:"id"`
-	AggregateType  string             `json:"aggregate_type"`
-	EventType      string             `json:"event_type"`
-	AggregateID    uuid.UUID          `json:"aggregate_id"`
-	OrganizationID uuid.UUID          `json:"organization_id"`
-	Payload        []byte             `json:"payload"`
-	Processed      bool               `json:"processed"`
-	PublishedAt    pgtype.Timestamptz `json:"published_at"`
-	Attempts       int32              `json:"attempts"`
-	LastError      *string            `json:"last_error"`
-	CreatedAt      time.Time          `json:"created_at"`
 }
 
 type PatientFile struct {

@@ -691,68 +691,19 @@ resource "google_cloudfunctions2_function" "notification_worker_on_report" {
   }
 }
 
+# notification-worker-on-billing was removed in Phase C of
+# feat/billing-svc-refactor. Quota state now propagates via direct RPC
+# (clinical-svc.GetMyBillingState + state_after on Reservation /
+# UsageCommit responses) — no Pub/Sub fan-out, no Firestore mirror, no
+# Cloud Function consumer. See migrations/000034_drop_outbox_events.up.sql
+# for the rationale; the billing.outbox topic + DLQ are torn down by
+# modules/pubsub.
+
 # 4) on-deleted: hard-delete cleanup — wipes session_states/{id} and
 # inbox notifications referencing the gone session. Triggered by
 # clinical-svc's session.deleted Pub/Sub publishes. Light memory like
 # the status-mirror workers; the only heavy thing is the CollectionGroup
 # query for inbox cleanup, which Firestore evaluates server-side.
-resource "google_cloudfunctions2_function" "notification_worker_on_billing" {
-  name        = "notification-worker-on-billing"
-  location    = var.region
-  project     = var.project_id
-  description = "Fan-out billing.outbox events (quota warnings, subscription lifecycle) → FCM push"
-
-  build_config {
-    runtime     = "go126"
-    entry_point = "ProcessBillingEvent"
-    source {
-      storage_source {
-        bucket = google_storage_bucket.functions_source.name
-        object = google_storage_bucket_object.notification_worker_zip.name
-      }
-    }
-  }
-
-  service_config {
-    max_instance_count    = 5
-    min_instance_count    = 0
-    available_memory      = "256Mi"
-    available_cpu         = "1"
-    timeout_seconds       = 60
-    service_account_email = var.notification_worker_sa_email
-
-    environment_variables = {
-      GCP_PROJECT_ID = var.project_id
-    }
-
-    secret_environment_variables {
-      key        = "DATABASE_URL"
-      project_id = var.project_id
-      secret     = var.db_url_secret_id
-      version    = "latest"
-    }
-
-    vpc_connector                 = var.vpc_connector_id
-    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
-  }
-
-  event_trigger {
-    trigger_region        = var.region
-    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
-    pubsub_topic          = var.billing_outbox_topic
-    retry_policy          = "RETRY_POLICY_RETRY"
-    service_account_email = var.notification_worker_sa_email
-  }
-}
-
-resource "google_cloud_run_service_iam_member" "notification_on_billing_invoker" {
-  location = var.region
-  project  = var.project_id
-  service  = google_cloudfunctions2_function.notification_worker_on_billing.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${var.notification_worker_sa_email}"
-}
-
 resource "google_cloudfunctions2_function" "notification_worker_on_deleted" {
   name        = "notification-worker-on-deleted"
   location    = var.region

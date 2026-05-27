@@ -191,69 +191,6 @@ func (w *Writer) DeleteInboxNotificationsBySession(ctx context.Context, sessionI
 	}
 }
 
-// OrganizationQuota is the Firestore mirror shape for billing-quota state.
-// Path: organization_quota/{organizationId}. Slice 4 of Phase 3 — written
-// by notification-svc ProcessBillingEvent handler after every quota.*
-// outbox event arrives via Pub/Sub.
-//
-// Reference: docs/16_BILLING_SERVICE_PHASE_3.md §16.3.
-//
-// Flutter (lib/services/billing_quota_listener.dart) subscribes to this
-// doc and renders QuotaWarningBanner. Backend is the ONLY writer; client
-// is read-only via Firestore rules.
-//
-// `warningLevel` is a denormalized convenience — Flutter can compute the
-// same from tokensRemaining, but writing it explicitly here means the
-// thresholds live in one place (backend) and any future tuning doesn't
-// need a client release.
-type OrganizationQuota struct {
-	OrganizationID  string    `firestore:"organizationId"`
-	TokensUsed      int32     `firestore:"tokensUsed"`
-	TokensReserved  int32     `firestore:"tokensReserved"`
-	TokensLimit     int32     `firestore:"tokensLimit"`
-	TokensRemaining int32     `firestore:"tokensRemaining"`
-	WarningLevel    string    `firestore:"warningLevel"` // none|warning|critical|exhausted
-	PlanTier        string    `firestore:"planTier"`
-	PlanCycle       string    `firestore:"planCycle"` // MONTHLY|SEMI_ANNUAL|ANNUAL
-	PeriodStart     time.Time `firestore:"periodStart"`
-	PeriodEnd       time.Time `firestore:"periodEnd"`
-}
-
-// WriteOrganizationQuota mirrors current quota state to Firestore. Best-effort
-// — errors are logged and returned, ale caller (ProcessBillingEvent) NIE
-// blokuje ACK Pub/Sub bo to mirror, nie autorytatywne źródło.
-//
-// MergeAll semantyka: tylko podane pola updateowane, reszta dokumentu zostaje.
-// updatedAt zawsze odświeżany przez fs.ServerTimestamp.
-func (w *Writer) WriteOrganizationQuota(ctx context.Context, q OrganizationQuota) error {
-	if w == nil || w.client == nil {
-		return nil
-	}
-	if q.OrganizationID == "" {
-		return errors.New("organizationQuota: empty organizationId")
-	}
-	docRef := w.client.Doc("organization_quota/" + q.OrganizationID)
-	_, err := docRef.Set(ctx, map[string]any{
-		"organizationId":  q.OrganizationID,
-		"tokensUsed":      q.TokensUsed,
-		"tokensReserved":  q.TokensReserved,
-		"tokensLimit":     q.TokensLimit,
-		"tokensRemaining": q.TokensRemaining,
-		"warningLevel":    q.WarningLevel,
-		"planTier":        q.PlanTier,
-		"planCycle":       q.PlanCycle,
-		"periodStart":     q.PeriodStart,
-		"periodEnd":       q.PeriodEnd,
-		"updatedAt":       fs.ServerTimestamp,
-	}, fs.MergeAll)
-	if err != nil {
-		slog.Warn("firestore organization_quota write failed",
-			"organization_id", q.OrganizationID, "error", err)
-		return fmt.Errorf("firestore organization_quota: %w", err)
-	}
-	return nil
-}
-
 // InboxNotification is the document shape for
 // user_notifications/{uid}/inbox/{notifId}. The Flutter client subscribes
 // to this collection for the in-app notification tray and may set readAt
