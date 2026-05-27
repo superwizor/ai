@@ -284,27 +284,8 @@ func (s *Server) provisionTrialOrgAndSub(ctx context.Context, tx pgx.Tx, user *d
 	return nil
 }
 
-func (s *Server) UpdateProfile(ctx context.Context, req *identityv1.UpdateProfileRequest) (*identityv1.User, error) {
-	id, err := uuid.Parse(req.UserId)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
-	}
-
-	user, err := s.queries.UpdateProfile(ctx, db.UpdateProfileParams{
-		ID:                id,
-		FirstName:         &req.FirstName,
-		LastName:          &req.LastName,
-		ProfessionalTitle: &req.ProfessionalTitle,
-		CredentialsNumber: &req.CredentialsNumber,
-		Biography:         &req.Biography,
-		PhoneNumber:       &req.PhoneNumber,
-	})
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	return toProtoUser(user), nil
-}
+// UpdateProfile moved to profile.go with the docs/18 D2 contract
+// (selective UPDATE; empty-string-on-legacy-fields = "don't change").
 
 func (s *Server) CheckPermission(ctx context.Context, req *identityv1.CheckPermissionRequest) (*identityv1.PermissionDecision, error) {
 	// Faza 1: tylko basic checks
