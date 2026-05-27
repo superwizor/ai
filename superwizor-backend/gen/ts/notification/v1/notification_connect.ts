@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { GetUnreadCountResponse, HealthCheckResponse, RegisterFCMTokenRequest, RegisterFCMTokenResponse, RemoveFCMTokenRequest } from "./notification_pbjs";
+import { GetUnreadCountResponse, HealthCheckResponse, RegisterFCMTokenRequest, RegisterFCMTokenResponse, RemoveFCMTokenRequest, SendInvitationEmailRequest } from "./notification_pbjs";
 import { Empty, MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -49,6 +49,21 @@ export const NotificationService = {
       name: "GetUnreadCount",
       I: Empty,
       O: GetUnreadCountResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Web-app: send a transactional email (invitation magic-link).
+     * Internal RPC — callers are other backend services (identity-svc
+     * fires this from InviteTherapist), never the Flutter client.
+     * Locale picks the right body under
+     * services/notification-svc/internal/i18n/templates/{locale}/invitation.md.
+     *
+     * @generated from rpc notification.v1.NotificationService.SendInvitationEmail
+     */
+    sendInvitationEmail: {
+      name: "SendInvitationEmail",
+      I: SendInvitationEmailRequest,
+      O: Empty,
       kind: MethodKind.Unary,
     },
     /**

@@ -12,7 +12,61 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file notification/v1/notification.proto.
  */
 export const file_notification_v1_notification: GenFile = /*@__PURE__*/
-  fileDesc("CiJub3RpZmljYXRpb24vdjEvbm90aWZpY2F0aW9uLnByb3RvEg9ub3RpZmljYXRpb24udjEikAEKF1JlZ2lzdGVyRkNNVG9rZW5SZXF1ZXN0Eg0KBXRva2VuGAEgASgJEisKCHBsYXRmb3JtGAIgASgOMhkubm90aWZpY2F0aW9uLnYxLlBsYXRmb3JtEhMKC2FwcF92ZXJzaW9uGAMgASgJEhQKDGRldmljZV9tb2RlbBgEIAEoCRIOCgZsb2NhbGUYBSABKAkiSAoYUmVnaXN0ZXJGQ01Ub2tlblJlc3BvbnNlEhAKCHRva2VuX2lkGAEgASgJEhoKEmFscmVhZHlfcmVnaXN0ZXJlZBgCIAEoCCImChVSZW1vdmVGQ01Ub2tlblJlcXVlc3QSDQoFdG9rZW4YASABKAkiJwoWR2V0VW5yZWFkQ291bnRSZXNwb25zZRINCgVjb3VudBgBIAEoBSIyChNIZWFsdGhDaGVja1Jlc3BvbnNlEgoKAm9rGAEgASgIEg8KB3ZlcnNpb24YAiABKAkqXgoIUGxhdGZvcm0SGAoUUExBVEZPUk1fVU5TUEVDSUZJRUQQABIQCgxQTEFURk9STV9JT1MQARIUChBQTEFURk9STV9BTkRST0lEEAISEAoMUExBVEZPUk1fV0VCEAMy8AIKE05vdGlmaWNhdGlvblNlcnZpY2USZwoQUmVnaXN0ZXJGQ01Ub2tlbhIoLm5vdGlmaWNhdGlvbi52MS5SZWdpc3RlckZDTVRva2VuUmVxdWVzdBopLm5vdGlmaWNhdGlvbi52MS5SZWdpc3RlckZDTVRva2VuUmVzcG9uc2USUAoOUmVtb3ZlRkNNVG9rZW4SJi5ub3RpZmljYXRpb24udjEuUmVtb3ZlRkNNVG9rZW5SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5ElEKDkdldFVucmVhZENvdW50EhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Gicubm90aWZpY2F0aW9uLnYxLkdldFVucmVhZENvdW50UmVzcG9uc2USSwoLSGVhbHRoQ2hlY2sSFi5nb29nbGUucHJvdG9idWYuRW1wdHkaJC5ub3RpZmljYXRpb24udjEuSGVhbHRoQ2hlY2tSZXNwb25zZULNAQoTY29tLm5vdGlmaWNhdGlvbi52MUIRTm90aWZpY2F0aW9uUHJvdG9QAVpGZ2l0aHViLmNvbS9zdXBlcndpem9yLWFpL2JhY2tlbmQvZ2VuL2dvL25vdGlmaWNhdGlvbi92MTtub3RpZmljYXRpb252MaICA05YWKoCD05vdGlmaWNhdGlvbi5WMcoCD05vdGlmaWNhdGlvblxWMeICG05vdGlmaWNhdGlvblxWMVxHUEJNZXRhZGF0YeoCEE5vdGlmaWNhdGlvbjo6VjFiBnByb3RvMw", [file_google_protobuf_empty]);
+  fileDesc("CiJub3RpZmljYXRpb24vdjEvbm90aWZpY2F0aW9uLnByb3RvEg9ub3RpZmljYXRpb24udjEiqAEKGlNlbmRJbnZpdGF0aW9uRW1haWxSZXF1ZXN0EhcKD3JlY2lwaWVudF9lbWFpbBgBIAEoCRIZChFvcmdhbml6YXRpb25fbmFtZRgCIAEoCRIaChJpbnZpdGVyX2ZpcnN0X25hbWUYAyABKAkSEgoKYWNjZXB0X3VybBgEIAEoCRIWCg5leHBpcmVzX2F0X2lzbxgFIAEoCRIOCgZsb2NhbGUYBiABKAkikAEKF1JlZ2lzdGVyRkNNVG9rZW5SZXF1ZXN0Eg0KBXRva2VuGAEgASgJEisKCHBsYXRmb3JtGAIgASgOMhkubm90aWZpY2F0aW9uLnYxLlBsYXRmb3JtEhMKC2FwcF92ZXJzaW9uGAMgASgJEhQKDGRldmljZV9tb2RlbBgEIAEoCRIOCgZsb2NhbGUYBSABKAkiSAoYUmVnaXN0ZXJGQ01Ub2tlblJlc3BvbnNlEhAKCHRva2VuX2lkGAEgASgJEhoKEmFscmVhZHlfcmVnaXN0ZXJlZBgCIAEoCCImChVSZW1vdmVGQ01Ub2tlblJlcXVlc3QSDQoFdG9rZW4YASABKAkiJwoWR2V0VW5yZWFkQ291bnRSZXNwb25zZRINCgVjb3VudBgBIAEoBSIyChNIZWFsdGhDaGVja1Jlc3BvbnNlEgoKAm9rGAEgASgIEg8KB3ZlcnNpb24YAiABKAkqXgoIUGxhdGZvcm0SGAoUUExBVEZPUk1fVU5TUEVDSUZJRUQQABIQCgxQTEFURk9STV9JT1MQARIUChBQTEFURk9STV9BTkRST0lEEAISEAoMUExBVEZPUk1fV0VCEAMyzAMKE05vdGlmaWNhdGlvblNlcnZpY2USZwoQUmVnaXN0ZXJGQ01Ub2tlbhIoLm5vdGlmaWNhdGlvbi52MS5SZWdpc3RlckZDTVRva2VuUmVxdWVzdBopLm5vdGlmaWNhdGlvbi52MS5SZWdpc3RlckZDTVRva2VuUmVzcG9uc2USUAoOUmVtb3ZlRkNNVG9rZW4SJi5ub3RpZmljYXRpb24udjEuUmVtb3ZlRkNNVG9rZW5SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5ElEKDkdldFVucmVhZENvdW50EhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Gicubm90aWZpY2F0aW9uLnYxLkdldFVucmVhZENvdW50UmVzcG9uc2USWgoTU2VuZEludml0YXRpb25FbWFpbBIrLm5vdGlmaWNhdGlvbi52MS5TZW5kSW52aXRhdGlvbkVtYWlsUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJLCgtIZWFsdGhDaGVjaxIWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRokLm5vdGlmaWNhdGlvbi52MS5IZWFsdGhDaGVja1Jlc3BvbnNlQs0BChNjb20ubm90aWZpY2F0aW9uLnYxQhFOb3RpZmljYXRpb25Qcm90b1ABWkZnaXRodWIuY29tL3N1cGVyd2l6b3ItYWkvYmFja2VuZC9nZW4vZ28vbm90aWZpY2F0aW9uL3YxO25vdGlmaWNhdGlvbnYxogIDTlhYqgIPTm90aWZpY2F0aW9uLlYxygIPTm90aWZpY2F0aW9uXFYx4gIbTm90aWZpY2F0aW9uXFYxXEdQQk1ldGFkYXRh6gIQTm90aWZpY2F0aW9uOjpWMWIGcHJvdG8z", [file_google_protobuf_empty]);
+
+/**
+ * @generated from message notification.v1.SendInvitationEmailRequest
+ */
+export type SendInvitationEmailRequest = Message<"notification.v1.SendInvitationEmailRequest"> & {
+  /**
+   * recipient (lowercased)
+   *
+   * @generated from field: string recipient_email = 1;
+   */
+  recipientEmail: string;
+
+  /**
+   * for the "you've been invited to X" line
+   *
+   * @generated from field: string organization_name = 2;
+   */
+  organizationName: string;
+
+  /**
+   * who sent the invite
+   *
+   * @generated from field: string inviter_first_name = 3;
+   */
+  inviterFirstName: string;
+
+  /**
+   * full URL incl. token
+   *
+   * @generated from field: string accept_url = 4;
+   */
+  acceptUrl: string;
+
+  /**
+   * ISO-8601 expiry timestamp; renderer formats
+   *
+   * @generated from field: string expires_at_iso = 5;
+   */
+  expiresAtIso: string;
+
+  /**
+   * 'pl' | 'en'; falls back to 'pl' if unknown
+   *
+   * @generated from field: string locale = 6;
+   */
+  locale: string;
+};
+
+/**
+ * Describes the message notification.v1.SendInvitationEmailRequest.
+ * Use `create(SendInvitationEmailRequestSchema)` to create a new message.
+ */
+export const SendInvitationEmailRequestSchema: GenMessage<SendInvitationEmailRequest> = /*@__PURE__*/
+  messageDesc(file_notification_v1_notification, 0);
 
 /**
  * RegisterFCMToken upserts an FCM token for the authenticated user.
@@ -67,7 +121,7 @@ export type RegisterFCMTokenRequest = Message<"notification.v1.RegisterFCMTokenR
  * Use `create(RegisterFCMTokenRequestSchema)` to create a new message.
  */
 export const RegisterFCMTokenRequestSchema: GenMessage<RegisterFCMTokenRequest> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 0);
+  messageDesc(file_notification_v1_notification, 1);
 
 /**
  * @generated from message notification.v1.RegisterFCMTokenResponse
@@ -93,7 +147,7 @@ export type RegisterFCMTokenResponse = Message<"notification.v1.RegisterFCMToken
  * Use `create(RegisterFCMTokenResponseSchema)` to create a new message.
  */
 export const RegisterFCMTokenResponseSchema: GenMessage<RegisterFCMTokenResponse> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 1);
+  messageDesc(file_notification_v1_notification, 2);
 
 /**
  * RemoveFCMToken soft-deletes a token (sets invalidated_at). Called on user
@@ -114,7 +168,7 @@ export type RemoveFCMTokenRequest = Message<"notification.v1.RemoveFCMTokenReque
  * Use `create(RemoveFCMTokenRequestSchema)` to create a new message.
  */
 export const RemoveFCMTokenRequestSchema: GenMessage<RemoveFCMTokenRequest> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 2);
+  messageDesc(file_notification_v1_notification, 3);
 
 /**
  * @generated from message notification.v1.GetUnreadCountResponse
@@ -131,7 +185,7 @@ export type GetUnreadCountResponse = Message<"notification.v1.GetUnreadCountResp
  * Use `create(GetUnreadCountResponseSchema)` to create a new message.
  */
 export const GetUnreadCountResponseSchema: GenMessage<GetUnreadCountResponse> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 3);
+  messageDesc(file_notification_v1_notification, 4);
 
 /**
  * @generated from message notification.v1.HealthCheckResponse
@@ -153,7 +207,7 @@ export type HealthCheckResponse = Message<"notification.v1.HealthCheckResponse">
  * Use `create(HealthCheckResponseSchema)` to create a new message.
  */
 export const HealthCheckResponseSchema: GenMessage<HealthCheckResponse> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 4);
+  messageDesc(file_notification_v1_notification, 5);
 
 /**
  * @generated from enum notification.v1.Platform
@@ -225,6 +279,20 @@ export const NotificationService: GenService<{
     methodKind: "unary";
     input: typeof EmptySchema;
     output: typeof GetUnreadCountResponseSchema;
+  },
+  /**
+   * Web-app: send a transactional email (invitation magic-link).
+   * Internal RPC — callers are other backend services (identity-svc
+   * fires this from InviteTherapist), never the Flutter client.
+   * Locale picks the right body under
+   * services/notification-svc/internal/i18n/templates/{locale}/invitation.md.
+   *
+   * @generated from rpc notification.v1.NotificationService.SendInvitationEmail
+   */
+  sendInvitationEmail: {
+    methodKind: "unary";
+    input: typeof SendInvitationEmailRequestSchema;
+    output: typeof EmptySchema;
   },
   /**
    * @generated from rpc notification.v1.NotificationService.HealthCheck

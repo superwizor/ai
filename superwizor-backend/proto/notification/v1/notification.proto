@@ -21,7 +21,23 @@ service NotificationService {
   // Inbox count (badge support). Detail listing is Firestore-direct from Flutter.
   rpc GetUnreadCount(google.protobuf.Empty) returns (GetUnreadCountResponse);
 
+  // Web-app: send a transactional email (invitation magic-link).
+  // Internal RPC — callers are other backend services (identity-svc
+  // fires this from InviteTherapist), never the Flutter client.
+  // Locale picks the right body under
+  // services/notification-svc/internal/i18n/templates/{locale}/invitation.md.
+  rpc SendInvitationEmail(SendInvitationEmailRequest) returns (google.protobuf.Empty);
+
   rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
+}
+
+message SendInvitationEmailRequest {
+  string recipient_email     = 1;  // recipient (lowercased)
+  string organization_name   = 2;  // for the "you've been invited to X" line
+  string inviter_first_name  = 3;  // who sent the invite
+  string accept_url          = 4;  // full URL incl. token
+  string expires_at_iso      = 5;  // ISO-8601 expiry timestamp; renderer formats
+  string locale              = 6;  // 'pl' | 'en'; falls back to 'pl' if unknown
 }
 
 // RegisterFCMToken upserts an FCM token for the authenticated user.
