@@ -2,15 +2,22 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
-	"net"
+	nethttp "net/http"
 	"net/url"
 	"os"
+	"os/signal"
+	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -22,7 +29,9 @@ import (
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
+	clinicalv1connect "github.com/superwizor-ai/backend/gen/go/clinical/v1/clinicalv1connect"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	"github.com/superwizor-ai/backend/pkg/cors"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	grpcadapter "github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
@@ -215,33 +224,77 @@ func main() {
 
 	srv := grpcadapter.NewServer(pool, queries, identityClient, billingClient, crypto, sessionEvents, version)
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		slog.Error("listen failed", "error", err)
-		os.Exit(1)
-	}
-
 	tp := initTracer()
 	defer func() { _ = tp.Shutdown(ctx) }()
 
+	// gRPC surface — iOS + server-to-server callers.
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		grpc.UnaryInterceptor(grpcadapter.UnaryAuthInterceptor(identityClient)),
 	)
 	clinicalv1.RegisterClinicalServiceServer(grpcServer, srv)
-
-	// Health
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(grpcServer, healthServer)
-
 	reflection.Register(grpcServer)
 
-	slog.Info("clinical-svc starting", "port", port)
-	if err := grpcServer.Serve(lis); err != nil {
-		slog.Error("serve failed", "error", err)
-		os.Exit(1)
+	// Connect-RPC surface — browser callers via ConnectAdapter. Note:
+	// the UnaryAuthInterceptor above only applies to the gRPC path.
+	// Browser callers will need an equivalent interceptor wired through
+	// connect.WithInterceptors when the first browser-facing RPC ships
+	// in Slice 2 — for now the only authenticated browser RPC paths
+	// (RegisterOrganization, AcceptInvitation) hit identity-svc, not
+	// clinical-svc, so this is fine.
+	httpMux := nethttp.NewServeMux()
+	connectPath, connectHandler := clinicalv1connect.NewClinicalServiceHandler(
+		grpcadapter.NewConnectAdapter(srv))
+	httpMux.Handle(connectPath, connectHandler)
+	httpMux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
+		w.WriteHeader(nethttp.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	mixedHandler := nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
+			grpcServer.ServeHTTP(w, r)
+			return
+		}
+		httpMux.ServeHTTP(w, r)
+	})
+
+	corsOrigins := getEnv("CORS_ALLOWED_ORIGINS",
+		"https://superwizor.ai,https://app.superwizor.ai,http://localhost:3000,http://localhost:8080")
+	corsMW := cors.New(cors.FromEnv(corsOrigins))
+
+	h2s := &http2.Server{}
+	httpSrv := &nethttp.Server{
+		Addr:              ":" + port,
+		Handler:           h2c.NewHandler(corsMW(mixedHandler), h2s),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
+
+	rootCtx, cancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		slog.Info("clinical-svc starting (gRPC + Connect + HTTP mixed)",
+			"port", port)
+		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, nethttp.ErrServerClosed) {
+			slog.Error("serve failed", "error", err)
+		}
+	}()
+
+	<-rootCtx.Done()
+	slog.Info("clinical-svc shutdown signal received")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+	grpcServer.GracefulStop()
+	_ = httpSrv.Shutdown(shutdownCtx)
+	wg.Wait()
+	slog.Info("clinical-svc stopped")
 }
 
 func getEnv(key, fallback string) string {
