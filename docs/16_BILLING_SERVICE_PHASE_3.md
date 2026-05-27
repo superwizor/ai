@@ -1,9 +1,11 @@
 # 16. Billing Service (Faza 3) — Pełny Design
 
-**Wersja:** 1.0 (2026-05-25)
-**Status:** Canonical design. Zastępuje wstępny plan z `b371abbd-fe69-4093-a063-9af7dab67354/implementation_plan.md`.
-**Powiązane dokumenty:** `02_ARCHITEKTURA_TECHNICZNA.md §4.2.2`, `03_DATA_MODEL.md §4.4`, `agents/00_GLOBAL_CONTEXT.md`, `agents/03_billing-svc.md`.
+**Wersja:** 1.0 (2026-05-25); częściowo zastąpiona przez Phase C refactor (2026-05-27)
+**Status:** Canonical design dla rdzenia (DB schema, gRPC contract, quota arithmetic, Stripe stub). Zastępuje wstępny plan z `b371abbd-fe69-4093-a063-9af7dab67354/implementation_plan.md`.
+**Powiązane dokumenty:** `02_ARCHITEKTURA_TECHNICZNA.md §4.2.2`, `03_DATA_MODEL.md §4.4`, `agents/00_GLOBAL_CONTEXT.md`, `agents/03_billing-svc.md`, **`17_BILLING_IMPLEMENTATION_FLOW.md` v2.0** (canonical opis aktualnego flow po Phase C — w razie konfliktu wygrywa).
 **Zasada nadrzędna:** W razie konfliktu z Konstytucją (`P1` Zero Data Loss, `P4` Flutter read-only, `Świętość Nagrania`) — Konstytucja wygrywa.
+
+> **⚠️ Phase C update (2026-05-27, branch `feat/billing-svc-refactor`):** Mechanizm propagacji stanu kwoty został uproszczony. Sekcje opisujące **outbox + Pub/Sub `billing.outbox` + Firestore `organization_quota` mirror + notification-worker-on-billing CF + edge-threshold FCM push** są **SUPERSEDED** — patrz `17_BILLING_IMPLEMENTATION_FLOW.md` §5. Krótko: Flutter teraz pobiera stan przez `clinical-svc.GetMyBillingState` (cold start) plus `state_after` na każdej odpowiedzi `ReserveCredit` / `CommitUsage`. Tabela `outbox_events`, topic `billing.outbox`, mirror Firestore i Cloud Function `notification-worker-on-billing` zostały usunięte (migracja 000034, terragrunt apply 2026-05-27). Konkretne fragmenty oznaczono inline poniżej.
 
 ---
 
@@ -275,7 +277,13 @@ CREATE INDEX idx_payment_events_unprocessed
     ON payment_events(received_at) WHERE processing_status = 'PENDING';
 ```
 
-### 3.8 Outbox integration
+### 3.8 Outbox integration — **SUPERSEDED (Phase C, 2026-05-27)**
+
+> Tabela `outbox_events` została usunięta migracją `000034_drop_outbox_events.up.sql`. Topic `billing.outbox` + DLQ + IAM + Cloud Function `notification-worker-on-billing` zostały zniszczone przez `terragrunt apply staging`. Quota state propaguje teraz wyłącznie przez `state_after` na odpowiedziach `ReserveCredit` / `CommitUsage` oraz `clinical-svc.GetMyBillingState` na cold start. Patrz `17_BILLING_IMPLEMENTATION_FLOW.md` §5.
+>
+> Subscription-lifecycle events (`subscription.created`, `subscription.period_renewed`, `subscription.canceled`, `subscription.payment_failed`) były zaprojektowane ale w v1.0 były wysyłane tylko jako konsekwencja CommitUsage (quota events). Po Phase C żadne z nich nie istnieje na wire. Jeśli wrócimy do wymagania notyfikacji "Twoja subskrypcja została odnowiona", trzeba je dodać świeżo (najprawdopodobniej jako bezpośredni `notification-svc.EnqueueNotification` RPC z `billing-svc` cron handlerów — nie wskrzeszać outbox).
+
+Sekcja oryginalna (referencyjna, dla zrozumienia poprzedniego designu):
 
 `billing-svc` używa współdzielonej tabeli `outbox_events` (ADR-DM-009) do publikacji eventów do Pub/Sub:
 
@@ -436,6 +444,8 @@ message Subscription {
 ---
 
 ## 5. Lifecycle: jedna sesja end-to-end
+
+> **⚠️ Aktualny flow:** patrz `17_BILLING_IMPLEMENTATION_FLOW.md` §2-§5. Poniższy diagram opisuje v1.0 (z outbox-em i T3). T3 już nie istnieje — billing-svc kończy się na T2 (CommitUsage zwraca `state_after`, koniec). Flutter widzi nowy stan na cold start lub na następnym ReserveCredit, nie przez Pub/Sub push.
 
 ```
 T0  Flutter: tap "Rozpocznij sesję"
@@ -913,7 +923,11 @@ Ta sekcja pinuje **dokładnie** co użytkownik widzi w jakim momencie, jaki even
 
 > **Zasada:** Backend NIE wysyła stringów do wyświetlenia. Backend wysyła **kody** (`error_code_ui`, `notification_type`); Flutter mapuje kod → tłumaczenie. To pozwala zmieniać copy bez deploy backendu.
 
-### 16.1 Thresholds (konfigurowane)
+### 16.1 Thresholds (konfigurowane) — **SUPERSEDED (Phase C)**
+
+> Edge-triggered thresholds zostały usunięte z `billing-svc`. Backend nie emituje już `quota.warning` / `quota.critical` / `quota.exhausted` jako oddzielnych events — żaden Pub/Sub topic ich nie odbiera, żaden konsument nie istnieje. Próg "który warning level pokazać" jest teraz wyliczany **klientowo** w `flutter-app/superwizor/lib/services/billing_quota_state.dart::QuotaState.computeLevel`: `none` (>5), `warning` (≤5), `critical` (≤1), `exhausted` (==0). To pozwala zmieniać progi przez release Flutter bez deploy backendu.
+>
+> `BILLING_RESERVATION_TTL_HOURS=4` (sekcja niżej w tabeli) jest dalej aktualna — używana przez reservation-expiry cron.
 
 Zaszyte w `billing-svc` jako env vars (default values poniżej). Wszystkie wyrażone **w pozostałych tokenach**, nie procentowo — terapeuta myśli "ile mam sesji do końca miesiąca", nie "ile %".
 
@@ -942,7 +956,13 @@ FROM new_state;
 
 Bez edge-trigger: każde `CommitUsage` poniżej 5 tokenów spamowałoby push. Z edge-trigger: jeden push przy przejściu progu.
 
-### 16.2 Outbox → FCM notification types
+### 16.2 Outbox → FCM notification types — **SUPERSEDED (Phase C)**
+
+> Cała mapa outbox-event → FCM-push została usunięta wraz z Cloud Function `notification-worker-on-billing`. Nie ma już billing-driven push notyfikacji. `notification-svc` dalej obsługuje session-lifecycle push (audio uploaded, transcript ready, report ready) — to inne CFs (`notification-worker-on-uploaded/transcribed/report/deleted`).
+>
+> Jeśli wrócimy do wymagania "push, gdy zostaje 1 token" — to wracamy do designu (najprawdopodobniej jako bezpośredni `notification-svc` RPC z `billing-svc` po CommitUsage, bez Pub/Sub).
+
+Sekcja oryginalna (referencyjna):
 
 `notification-svc` mapuje outbox events na FCM `notification_type` per ADR-IMPL-013 (data-only payload, bez PHI):
 
@@ -959,7 +979,15 @@ Bez edge-trigger: każde `CommitUsage` poniżej 5 tokenów spamowałoby push. Z 
 
 **Lokalizacja:** push body tłumaczone backendowo z `users.ui_language`. Backend popełnia tu **wyjątek** od zasady "Flutter mapuje kody" — bo notyfikacja FCM jest renderowana przez OS poza aplikacją. Tłumaczenia żyją w `notification-svc/internal/i18n/`.
 
-### 16.3 Firestore mirror (live UI state)
+### 16.3 Firestore mirror (live UI state) — **SUPERSEDED (Phase C)**
+
+> Firestore mirror `organization_quota/{organizationId}` został wycofany. `OrganizationQuota` struct + `WriteOrganizationQuota` method usunięte z `services/notification-svc/internal/adapters/firestore/writer.go`. Reguła `match /organization_quota/{orgId}` w `firestore.rules` usunięta (deploy: `firebase deploy --only firestore:rules`, 2026-05-27). Default-deny pokrywa wszystkie pozostałe sieroce dokumenty.
+>
+> Flutter teraz pobiera ten sam payload przez gRPC: `clinical-svc.GetMyBillingState` (cold start) lub `state_after` na każdej odpowiedzi `ReserveCredit`/`CommitUsage`. Cache żyje w `lib/services/billing_quota_cache.dart` jako `ValueNotifier<QuotaState?>`. `lib/services/billing_quota_listener.dart` (Firestore subscriber) usunięty.
+>
+> Schema poniżej jest dalej dokładna jako **shape** danych — to samo pole-po-polu wraca w `billing.v1.Subscription` proto, więc zostaje jako reference.
+
+Sekcja oryginalna (referencyjna):
 
 Per `02_*.md §6`, Firestore jest **read-only** mirror wybranych pól. Dla billing, każdy `usage_counters` write triggeruje (przez outbox) update do Firestore w kolekcji `organization_quota/{organization_id}`:
 

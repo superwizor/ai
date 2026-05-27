@@ -46,7 +46,7 @@ The schema is split into **8 logical domains**, each owned by a specific microse
 | **Memory (RAG)** | `ai-pipeline-svc` | `clinical_memory`, `memory_revisions`, `embedding_chunks` |
 | **Analytics (HiTOP)** | `analytics-svc` | `hitop_dimensions`, `hitop_symptoms`, `hitop_measurements`, `process_metrics` |
 | **Feedback** | `clinical-svc` | `report_feedback`, `feedback_categories`, `report_feedback_categories` |
-| **Audit & Ops** | shared | `audit_events`, `idempotency_keys`, `outbox_events` |
+| **Audit & Ops** | shared | `audit_events`, `idempotency_keys` (the `outbox_events` table was retired 2026-05-27 with billing-svc Phase C — migration 000034 dropped it) |
 
 **Note on invoicing:** Invoice generation, KSeF submission, VAT records and PDF rendering are handled by an **external invoicing system** (e.g. Fakturownia, iFirma, or similar SaaS). This database stores only the **`payment_events`** stream from Stripe/P24 webhooks — sufficient for subscription state management, revenue reporting, and reconciliation. The external system is the source of truth for legal accounting documents.
 
@@ -3481,7 +3481,11 @@ SELECT EXISTS(
 
 );
 
-### 7.5 Outbox pattern for events
+### 7.5 Outbox pattern for events — **retired 2026-05-27**
+
+> The `outbox_events` table + in-process poller pattern was introduced for billing-svc fan-out and retired with Phase C of `feat/billing-svc-refactor`. Migration 000034 dropped the table; no service in the current codebase writes to it. The pattern documentation below stays as reference — if a future service needs transactional Pub/Sub guarantees, ADR-DM-009 is still the right shape, just recreate the table fresh.
+>
+> Current quota-state propagation: `state_after` embedded on every `ReserveCredit` / `CommitUsage` response + `clinical-svc.GetMyBillingState` on Flutter cold start. See `docs/17_BILLING_IMPLEMENTATION_FLOW.md` §5.
 
 \-- name: EnqueueOutboxEvent :one
 

@@ -117,13 +117,13 @@ superwizor_v2/
 | Domain | Tables | Owner |
 |---|---|---|
 | **Identity** | `users`, `organizations`, `addresses`, `user_roles` | `identity-svc` |
-| **Billing** | `subscription_plans`, `subscriptions`, `payment_events`, `usage_counters` | `billing-svc` (stub in Phase 2) |
+| **Billing** | `subscription_plans`, `subscriptions`, `payment_events`, `usage_counters`, `pending_reservations`, `usage_events` | `billing-svc` (Phase 3 live; `outbox_events` table dropped 2026-05-27 by migration 000034) |
 | **Clinical** | `modalities`, `patient_files`, `therapist_patient_relations` | `clinical-svc` |
 | **Sessions** | `sessions`, `transcripts`, `transcript_segments`, `therapist_reports`, `patient_views`, `audio_uploads`, `upload_tickets` | `clinical-svc` (CRUD), `ai-pipeline-svc` (writes from pipeline) |
 | **Memory (RAG)** | `clinical_memory`, `memory_revisions`, `embedding_chunks`, `rag_memories` | `ai-pipeline-svc` |
 | **Analytics (HiTOP)** | `hitop_dimensions`, `hitop_symptoms`, `hitop_measurements`, `process_metrics` | `analytics-svc` (read), `ai-pipeline-svc` (write) |
 | **Feedback** | `report_feedback`, `feedback_categories`, `report_feedback_categories` | `clinical-svc` |
-| **Audit & Ops** | `audit_events`, `idempotency_keys`, `outbox_events` | shared (every service writes audit) |
+| **Audit & Ops** | `audit_events`, `idempotency_keys` | shared (every service writes audit). The `outbox_events` shared infrastructure table was retired with billing-svc Phase C; nothing remaining uses it. |
 
 > Source: `docs/03_DATA_MODEL.md` §1.1.
 
@@ -168,14 +168,13 @@ SELECT status FROM sessions WHERE id = $1 FOR UPDATE SKIP LOCKED;
 -- if status already advanced, ACK Pub/Sub without doing the work
 ```
 
-## Cross-cutting: outbox pattern (ADR-DM-009)
+## Cross-cutting: outbox pattern (ADR-DM-009) — **retired 2026-05-27**
 
-Pub/Sub publishes are **transactional** with DB writes via the `outbox_events` table:
-1. Inside the same transaction that mutates state, INSERT a row into `outbox_events`.
-2. A separate poller reads `outbox_events`, publishes to Pub/Sub, marks delivered.
-3. This guarantees no event is lost on DB rollback and no event is published without a corresponding state change.
-
-> Source: `docs/03_DATA_MODEL.md` §7.5.
+> The shared `outbox_events` table + in-process poller pattern was originally introduced for billing-svc fan-out. Phase C (`feat/billing-svc-refactor`) replaced that path with direct-RPC propagation (`state_after` on every state-mutating response + `clinical-svc.GetMyBillingState` on cold start). Migration 000034 dropped the table. No other service ever wrote to it.
+>
+> If a new service needs transactional Pub/Sub, the original pattern is still valid and ADR-DM-009 remains the reference design — just recreate the table fresh with whatever schema fits. Don't try to reanimate the dropped table from `git log`; the calling code (poller goroutine, AppendOutboxEvent helpers, notification-worker-on-billing CF) has been deleted from the repo.
+>
+> Source: `docs/03_DATA_MODEL.md` §7.5, `docs/17_BILLING_IMPLEMENTATION_FLOW.md` §5.
 
 ## Cross-cutting: auth model
 
