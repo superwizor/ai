@@ -108,11 +108,17 @@ DNS cutover. Unblocks production launch.
 
 ## Notes / gotchas
 
-- **Toolchain prerequisite:** Node 20 is installed at
-  `/usr/local/opt/node@20/bin/node` (keg-only Homebrew). pnpm install was
-  interrupted — the next session needs to choose how to install pnpm
-  (`corepack prepare pnpm@9.15.5 --activate` works on Node 20; corepack
-  latest needs Node 22). Persist PATH via shell rc or use absolute paths.
+- **Toolchain ready:** Node 20.20.2 + pnpm 9.15.9 installed. Node 20 is
+  keg-only at `/usr/local/opt/node@20/bin/node`; PATH is persisted in
+  `~/.bash_profile` so every new login shell sees it. Corepack's pnpm
+  shim was disabled (`corepack disable pnpm`) and pnpm@9 installed via
+  npm-global so it resolves through `/usr/local/bin/pnpm` →
+  `pnpm.cjs` running under node@20. `bash -lc 'node --version && pnpm
+  --version'` should print `v20.20.2` and `9.15.9` from any new shell.
+  The legacy 2017 Node v6 at `/usr/local/bin/node` is left in place but
+  shadowed by node@20 via PATH order. Do NOT call `node` by absolute
+  path `/usr/local/bin/node` — that hits v6 and will SyntaxError on
+  modern JS.
 - `feat/web-app` does NOT merge to main until end-to-end web is verified.
   Per-slice branches merge back into `feat/web-app`.
 - Manual ops still pending: Firebase Console — enable Apple + Microsoft
