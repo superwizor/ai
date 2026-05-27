@@ -138,6 +138,92 @@ void main() {
     await runner.dispose();
   });
 
+  test('start() pulls future nextAttemptAt back to now (cold-start reset)',
+      () async {
+    // Repro for the "Audio czeka w kolejce do uploadu" stuck-after-restart
+    // bug. A row that hit QUOTA_EXHAUSTED in a previous app session gets
+    // nextAttemptAt parked ~30 minutes ahead by exponential backoff. On
+    // app cold-start we want it to try again immediately — the user has
+    // probably fixed the underlying problem and is reopening the app
+    // expecting action. If the same error recurs the worker re-applies
+    // backoff, so this isn't a busy-loop.
+    final io = _FakeIo();
+    final queue = UploadQueue(hiveBox: rawBox);
+
+    // Seed the queue directly (not via the runner) so we can install
+    // a stuck row before start() is called — mirroring the on-disk
+    // state after a force-quit while the previous session was
+    // back-off-parked.
+    final stuck = _seed('a').copyWith(
+      phase: UploadPhase.pending,
+      attemptCount: 5,
+      nextAttemptAt: DateTime.now().toUtc().add(const Duration(minutes: 25)),
+      lastError: 'gRPC ResourceExhausted: QUOTA_EXHAUSTED',
+    );
+    await queue.enqueue(stuck);
+
+    final runner = UploadQueueRunner(
+      queue: queue,
+      worker: UploadWorker(io: io, backoff: (_) => Duration.zero),
+      periodicInterval: const Duration(hours: 1),
+      connectivityStream: const Stream.empty(),
+      hasNetwork: () async => true,
+    );
+
+    await runner.start();
+
+    // Worker should have processed the row exactly once — start()
+    // reset the backoff window, _tick() picked it up, the upload
+    // walked all the way to completed.
+    expect(io.createCalls, 1,
+        reason: 'cold-start reset should give the parked row one attempt');
+    expect(queue.getById('a')!.phase, UploadPhase.completed);
+
+    await runner.dispose();
+  });
+
+  test('resetBackoffsForColdStart preserves terminal rows + attemptCount',
+      () async {
+    final queue = UploadQueue(hiveBox: rawBox);
+    final far = DateTime.now().toUtc().add(const Duration(hours: 1));
+
+    final parked = _seed('a').copyWith(
+      phase: UploadPhase.pending,
+      attemptCount: 3,
+      nextAttemptAt: far,
+    );
+    final failed = _seed('b').copyWith(
+      phase: UploadPhase.failed,
+      attemptCount: 1,
+      nextAttemptAt: far,
+      terminatedAt: DateTime.now().toUtc(),
+    );
+    await queue.enqueue(parked);
+    await queue.enqueue(failed);
+
+    final runner = UploadQueueRunner(
+      queue: queue,
+      worker: UploadWorker(io: _FakeIo()),
+      periodicInterval: const Duration(hours: 1),
+      connectivityStream: const Stream.empty(),
+      hasNetwork: () async => false, // skip the tick side-effect
+    );
+
+    await runner.resetBackoffsForColdStart();
+
+    final after = queue.getById('a')!;
+    expect(after.nextAttemptAt.isAfter(DateTime.now().toUtc()), isFalse,
+        reason: 'non-terminal parked row should be due now');
+    expect(after.attemptCount, 3,
+        reason: 'attemptCount preserved — fresh attempt, not clean slate');
+
+    final stillFailed = queue.getById('b')!;
+    expect(stillFailed.nextAttemptAt, far,
+        reason: 'terminal failed rows are left alone');
+
+    await runner.dispose();
+  });
+
   test('tick is a no-op when hasNetwork() returns false', () async {
     final io = _FakeIo();
     final queue = UploadQueue(hiveBox: rawBox);

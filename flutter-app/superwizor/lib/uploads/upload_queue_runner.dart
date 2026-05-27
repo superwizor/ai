@@ -130,6 +130,26 @@ class UploadQueueRunner {
             debugPrint('[upload-runner] connectivity stream error: $e'));
     _periodicTimer = Timer.periodic(_periodicInterval, (_) => _tick());
 
+    // Cold-start backoff reset.
+    //
+    // When the previous app session got QUOTA_EXHAUSTED (or any other
+    // retryable error) on a row, the worker pushes nextAttemptAt up to
+    // ~30 minutes into the future via exponential backoff. If the user
+    // then fixes the underlying problem (admin tops up tokens, a new
+    // billing period rolls over, Wi-Fi comes back) and restarts the
+    // app, the runner's _tick() still skips that row because
+    // _queue.dueNow() filters on nextAttemptAt > now — so the user
+    // sees "Audio czeka w kolejce do uploadu" stuck until the backoff
+    // window finally elapses, with no visible affordance that anything
+    // will happen.
+    //
+    // App cold-start is a strong "try again now" signal. We pull any
+    // future nextAttemptAt back to now so the initial _tick() below
+    // gives every parked row one fresh attempt. If the same error
+    // recurs, the worker re-applies the backoff schedule via
+    // _scheduleRetry, so we don't trade idle for spam.
+    await _resetBackoffsForColdStart();
+
     _emitSnapshot();
     // Initial tick: drain anything that's already due (e.g. queued
     // before this runner existed because we just resumed from
@@ -137,6 +157,23 @@ class UploadQueueRunner {
     // time start() returns, any pre-existing queue items have had
     // at least one phase advanced (or been deferred for offline).
     await _tick();
+  }
+
+  /// Pulls future nextAttemptAt back to now for every non-terminal row.
+  /// Exposed for tests so they can assert behavior without dealing with
+  /// the full start() lifecycle. attemptCount is preserved — we want a
+  /// single retry attempt, not a clean slate that would invite spam if
+  /// the same problem recurs.
+  @visibleForTesting
+  Future<void> resetBackoffsForColdStart() => _resetBackoffsForColdStart();
+
+  Future<void> _resetBackoffsForColdStart() async {
+    final now = DateTime.now().toUtc();
+    for (final row in _queue.all()) {
+      if (row.isTerminal) continue;
+      if (!row.nextAttemptAt.isAfter(now)) continue;
+      await _queue.update(row.copyWith(nextAttemptAt: now));
+    }
   }
 
   Future<void> stop() async {
