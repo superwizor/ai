@@ -29,3 +29,6 @@ firebase-debug.*.log
 /build/
 *.DS_Store
 *.swp
+
+# Slice 2 — scripts/node_modules holds puppeteer (~190MB Chromium)
+scripts/node_modules/
