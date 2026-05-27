@@ -2,14 +2,21 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
-	"net"
+	nethttp "net/http"
 	"net/url"
 	"os"
+	"os/signal"
+	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -20,7 +27,9 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	identityv1connect "github.com/superwizor-ai/backend/gen/go/identity/v1/identityv1connect"
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
+	"github.com/superwizor-ai/backend/pkg/cors"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/firebase"
 	grpcadapter "github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/postgres/db"
@@ -115,19 +124,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// gRPC server
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		slog.Error("listen failed", "error", err)
-		os.Exit(1)
-	}
-
 	tp := initTracer()
 	defer func() { _ = tp.Shutdown(ctx) }()
-
-	grpcServer := grpc.NewServer(
-		grpc.StatsHandler(otelgrpc.NewServerHandler()),
-	)
 
 	// Build identity-svc Server. If NOTIFICATION_SVC_URL is set, dial
 	// notification-svc and wire the real InvitationEmailer so
@@ -153,31 +151,75 @@ func main() {
 		identityServer = identityServer.WithAcceptURLBase(acceptBase)
 	}
 
-	// Register identity service
+	// gRPC surface — used by iOS + server-to-server callers via
+	// the application/grpc content-type path.
+	grpcServer := grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	)
 	identityv1.RegisterIdentityServiceServer(grpcServer, identityServer)
-
-	// Health checks (Cloud Run probe)
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(grpcServer, healthServer)
-
-	// Reflection (dla grpcurl debug)
 	reflection.Register(grpcServer)
 
-	// NB: Connect-RPC handler registration is deferred to Slice 2 of
-	// the web-app workstream. The generated identityv1connect handler
-	// expects connect.Request[T] / connect.Response[T] shapes while
-	// our Server implements the bare gRPC shape; bridging requires
-	// ~20 mechanical adapter methods (one per RPC). Generated code in
-	// gen/go/identity/v1/identityv1connect/ is compiled-but-unwired —
-	// the Slice 2 PR that lands the Next.js client will also land
-	// the adapter alongside its first browser call. gRPC + gRPC-Web
-	// callers still work today via grpcServer.ServeHTTP.
-	slog.Info("identity-svc starting", "port", port, "version", version)
-	if err := grpcServer.Serve(lis); err != nil {
-		slog.Error("serve failed", "error", err)
-		os.Exit(1)
+	// Connect-RPC surface — same business logic, exposed as the
+	// connect/gRPC-Web/Connect family of protocols for browser
+	// callers. ConnectAdapter wraps each gRPC method 1:1.
+	httpMux := nethttp.NewServeMux()
+	connectPath, connectHandler := identityv1connect.NewIdentityServiceHandler(
+		grpcadapter.NewConnectAdapter(identityServer))
+	httpMux.Handle(connectPath, connectHandler)
+	httpMux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
+		w.WriteHeader(nethttp.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	// Mixed handler: dispatch on Content-Type so a single listener
+	// serves both protocols (same h2c pattern as billing-svc).
+	mixedHandler := nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
+			grpcServer.ServeHTTP(w, r)
+			return
+		}
+		httpMux.ServeHTTP(w, r)
+	})
+
+	// CORS for browser-facing Connect-RPC. Server-to-server callers
+	// (iOS, clinical-svc proxy, Cloud Scheduler) don't send Origin
+	// and pass through untouched.
+	corsOrigins := getEnv("CORS_ALLOWED_ORIGINS",
+		"https://superwizor.ai,https://app.superwizor.ai,http://localhost:3000,http://localhost:8080")
+	corsMW := cors.New(cors.FromEnv(corsOrigins))
+
+	h2s := &http2.Server{}
+	httpSrv := &nethttp.Server{
+		Addr:              ":" + port,
+		Handler:           h2c.NewHandler(corsMW(mixedHandler), h2s),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
+
+	rootCtx, cancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		slog.Info("identity-svc starting (gRPC + Connect + HTTP mixed)",
+			"port", port, "version", version)
+		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, nethttp.ErrServerClosed) {
+			slog.Error("serve failed", "error", err)
+		}
+	}()
+
+	<-rootCtx.Done()
+	slog.Info("identity-svc shutdown signal received")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+	grpcServer.GracefulStop()
+	_ = httpSrv.Shutdown(shutdownCtx)
+	wg.Wait()
+	slog.Info("identity-svc stopped")
 }
 
 func getEnv(key, fallback string) string {
