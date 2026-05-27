@@ -226,6 +226,13 @@ jobs:
           # DEKs — handler swallows the error and GetSessionDetails returns an
           # empty Reports array.
           KMS_KEY_URI="projects/${{ env.PROJECT_ID }}/locations/${{ env.REGION }}/keyRings/superwizor-keyring/cryptoKeys/app-data-key"
+          # BILLING_SVC_URL — read by clinical-svc.GetMyBillingState
+          # proxy (feat/billing-svc-refactor phase B). Without it the
+          # handler returns Unavailable and Flutter can't render the
+          # quota banner. Previously set via gcloud after each CI run;
+          # adding it here so --set-env-vars (which REPLACES the env
+          # block) preserves it on every deploy.
+          BILLING_SVC_URL="https://billing-svc-e3f32b232q-lm.a.run.app"
           gcloud run deploy clinical-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
@@ -234,7 +241,7 @@ jobs:
             --service-account=clinical-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
-            --set-env-vars="IDENTITY_SVC_URL=${IDENTITY_URL},VERSION=${{ github.sha }},KMS_KEY_URI=${KMS_KEY_URI}"
+            --set-env-vars="IDENTITY_SVC_URL=${IDENTITY_URL},VERSION=${{ github.sha }},KMS_KEY_URI=${KMS_KEY_URI},BILLING_SVC_URL=${BILLING_SVC_URL}"
           gcloud run services add-iam-policy-binding clinical-svc \
             --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
             --member=allUsers --role=roles/run.invoker
@@ -242,6 +249,13 @@ jobs:
       - name: Deploy Ingestion to Cloud Run
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-ingestion"
+          # BILLING_SVC_URL — read by ingestion-svc.reserveCreditOrBlock
+          # (feat/billing-svc). Without it the billing client is nil
+          # and CreateAudioUpload skips the quota gate entirely, so
+          # over-quota sessions slip through. Previously set via
+          # gcloud after each CI run; adding here so --set-env-vars
+          # (which REPLACES the env block) preserves it.
+          BILLING_SVC_URL="https://billing-svc-e3f32b232q-lm.a.run.app"
           gcloud run deploy ingestion-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
@@ -256,7 +270,7 @@ jobs:
             --memory 2Gi \
             --no-cpu-throttling \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},AUDIO_BUCKET_NAME=${{ env.PROJECT_ID }}-audio-uploads,VERSION=${{ github.sha }},GCS_FINALIZE_SUB_ID=audio.objectFinalized.sub"
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},AUDIO_BUCKET_NAME=${{ env.PROJECT_ID }}-audio-uploads,VERSION=${{ github.sha }},GCS_FINALIZE_SUB_ID=audio.objectFinalized.sub,BILLING_SVC_URL=${BILLING_SVC_URL}"
           # CPU/memory + --no-cpu-throttling are required for Option F
           # (feat/refactor-stt-architecture, 2026-05-25): the in-process
           # Pub/Sub pull subscriber goroutine runs ffprobe + ffmpeg
