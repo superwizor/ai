@@ -10,7 +10,183 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const adminChangeSubscriptionPlan = `-- name: AdminChangeSubscriptionPlan :one
+UPDATE subscriptions
+SET plan_id    = $2,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, organization_id, plan_id, provider, provider_subscription_id, provider_customer_id_ciphertext, provider_customer_id_encrypted_dek, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, trial_end_at, created_at, updated_at
+`
+
+type AdminChangeSubscriptionPlanParams struct {
+	ID     uuid.UUID `json:"id"`
+	PlanID uuid.UUID `json:"plan_id"`
+}
+
+// AdminChangePlan step 1. Flips subscriptions.plan_id to the new plan.
+// tokens_used + tokens_reserved on the active counter are LEFT ALONE;
+// only tokens_limit is updated separately (via AdminUpdateCounter using
+// the new plan's tokens_per_period). If the operator wants a clean
+// slate, they follow up with AdminResetTokens.
+func (q *Queries) AdminChangeSubscriptionPlan(ctx context.Context, arg AdminChangeSubscriptionPlanParams) (Subscription, error) {
+	row := q.db.QueryRow(ctx, adminChangeSubscriptionPlan, arg.ID, arg.PlanID)
+	var i Subscription
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.PlanID,
+		&i.Provider,
+		&i.ProviderSubscriptionID,
+		&i.ProviderCustomerIDCiphertext,
+		&i.ProviderCustomerIDEncryptedDek,
+		&i.Status,
+		&i.CurrentPeriodStart,
+		&i.CurrentPeriodEnd,
+		&i.CancelAtPeriodEnd,
+		&i.CanceledAt,
+		&i.TrialEndAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const adminGetPlanByTierCycle = `-- name: AdminGetPlanByTierCycle :one
+
+SELECT id, tier, cycle, display_name, price_gross, currency_code, tokens_per_period, licenses_limit, has_b2b_dashboard, marketing_description, stripe_price_id, p24_plan_id, apple_product_id, google_product_id, is_active, created_at FROM subscription_plans
+WHERE tier  = $1::plan_tier
+  AND cycle = $2::billing_cycle
+  AND is_active = TRUE
+LIMIT 1
+`
+
+type AdminGetPlanByTierCycleParams struct {
+	Tier  PlanTier     `json:"tier"`
+	Cycle BillingCycle `json:"cycle"`
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Web-admin RPCs (docs/18 §13.7) — SUPERWIZOR_ADMIN actions.
+// ──────────────────────────────────────────────────────────────────
+// Resolves a (plan_tier, billing_cycle) pair to the live subscription_plans
+// row — used by AdminChangePlan to look up the new tier's tokens_per_period.
+func (q *Queries) AdminGetPlanByTierCycle(ctx context.Context, arg AdminGetPlanByTierCycleParams) (SubscriptionPlan, error) {
+	row := q.db.QueryRow(ctx, adminGetPlanByTierCycle, arg.Tier, arg.Cycle)
+	var i SubscriptionPlan
+	err := row.Scan(
+		&i.ID,
+		&i.Tier,
+		&i.Cycle,
+		&i.DisplayName,
+		&i.PriceGross,
+		&i.CurrencyCode,
+		&i.TokensPerPeriod,
+		&i.LicensesLimit,
+		&i.HasB2bDashboard,
+		&i.MarketingDescription,
+		&i.StripePriceID,
+		&i.P24PlanID,
+		&i.AppleProductID,
+		&i.GoogleProductID,
+		&i.IsActive,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const adminUpdateCounter = `-- name: AdminUpdateCounter :one
+UPDATE usage_counters
+SET tokens_used  = COALESCE($1::int,  tokens_used),
+    tokens_limit = COALESCE($2::int, tokens_limit),
+    updated_at   = now()
+WHERE id = $3
+RETURNING id, subscription_id, period_start, period_end, tokens_used, tokens_reserved, tokens_limit, updated_at
+`
+
+type AdminUpdateCounterParams struct {
+	TokensUsed  *int32    `json:"tokens_used"`
+	TokensLimit *int32    `json:"tokens_limit"`
+	ID          uuid.UUID `json:"id"`
+}
+
+// AdminResetTokens core. Selective COALESCE — pass NULL on tokens_used or
+// tokens_limit to leave that column unchanged. The handler maps proto
+// value -1 (sentinel) to NULL before calling.
+func (q *Queries) AdminUpdateCounter(ctx context.Context, arg AdminUpdateCounterParams) (UsageCounter, error) {
+	row := q.db.QueryRow(ctx, adminUpdateCounter, arg.TokensUsed, arg.TokensLimit, arg.ID)
+	var i UsageCounter
+	err := row.Scan(
+		&i.ID,
+		&i.SubscriptionID,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.TokensUsed,
+		&i.TokensReserved,
+		&i.TokensLimit,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createBillingAuditEvent = `-- name: CreateBillingAuditEvent :one
+INSERT INTO audit_events (
+    actor_user_id, organization_id, action,
+    resource_type, resource_id, metadata, reason
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7
+)
+RETURNING id, actor_user_id, organization_id, action, resource_type, resource_id, metadata, ip_address, user_agent, occurred_at, reason
+`
+
+type CreateBillingAuditEventParams struct {
+	ActorUserID    pgtype.UUID `json:"actor_user_id"`
+	OrganizationID pgtype.UUID `json:"organization_id"`
+	Action         string      `json:"action"`
+	ResourceType   string      `json:"resource_type"`
+	ResourceID     pgtype.UUID `json:"resource_id"`
+	Metadata       []byte      `json:"metadata"`
+	Reason         *string     `json:"reason"`
+}
+
+// Web-admin actions (SUPERWIZOR_ADMIN) on billing data land here. Mirrors
+// identity-svc's audit_events insert. reason is enforced >=10 chars at
+// the handler level, NOT NULL-allowed at the schema level (legacy events
+// don't have it populated).
+func (q *Queries) CreateBillingAuditEvent(ctx context.Context, arg CreateBillingAuditEventParams) (AuditEvent, error) {
+	row := q.db.QueryRow(ctx, createBillingAuditEvent,
+		arg.ActorUserID,
+		arg.OrganizationID,
+		arg.Action,
+		arg.ResourceType,
+		arg.ResourceID,
+		arg.Metadata,
+		arg.Reason,
+	)
+	var i AuditEvent
+	err := row.Scan(
+		&i.ID,
+		&i.ActorUserID,
+		&i.OrganizationID,
+		&i.Action,
+		&i.ResourceType,
+		&i.ResourceID,
+		&i.Metadata,
+		&i.IpAddress,
+		&i.UserAgent,
+		&i.OccurredAt,
+		&i.Reason,
+	)
+	return i, err
+}
 
 const createUsageCounter = `-- name: CreateUsageCounter :one
 INSERT INTO usage_counters (

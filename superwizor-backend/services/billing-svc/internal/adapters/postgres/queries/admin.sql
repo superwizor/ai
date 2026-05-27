@@ -48,3 +48,58 @@ WHERE s.status IN ('ACTIVE', 'TRIALING')
       AND c.period_start <= now()
       AND c.period_end > now()
 );
+
+-- ──────────────────────────────────────────────────────────────────
+-- Web-admin RPCs (docs/18 §13.7) — SUPERWIZOR_ADMIN actions.
+-- ──────────────────────────────────────────────────────────────────
+
+-- name: AdminGetPlanByTierCycle :one
+-- Resolves a (plan_tier, billing_cycle) pair to the live subscription_plans
+-- row — used by AdminChangePlan to look up the new tier's tokens_per_period.
+SELECT * FROM subscription_plans
+WHERE tier  = sqlc.arg(tier)::plan_tier
+  AND cycle = sqlc.arg(cycle)::billing_cycle
+  AND is_active = TRUE
+LIMIT 1;
+
+-- name: AdminUpdateCounter :one
+-- AdminResetTokens core. Selective COALESCE — pass NULL on tokens_used or
+-- tokens_limit to leave that column unchanged. The handler maps proto
+-- value -1 (sentinel) to NULL before calling.
+UPDATE usage_counters
+SET tokens_used  = COALESCE(sqlc.narg(tokens_used)::int,  tokens_used),
+    tokens_limit = COALESCE(sqlc.narg(tokens_limit)::int, tokens_limit),
+    updated_at   = now()
+WHERE id = sqlc.arg(id)
+RETURNING *;
+
+-- name: AdminChangeSubscriptionPlan :one
+-- AdminChangePlan step 1. Flips subscriptions.plan_id to the new plan.
+-- tokens_used + tokens_reserved on the active counter are LEFT ALONE;
+-- only tokens_limit is updated separately (via AdminUpdateCounter using
+-- the new plan's tokens_per_period). If the operator wants a clean
+-- slate, they follow up with AdminResetTokens.
+UPDATE subscriptions
+SET plan_id    = $2,
+    updated_at = now()
+WHERE id = $1
+RETURNING *;
+
+-- name: CreateBillingAuditEvent :one
+-- Web-admin actions (SUPERWIZOR_ADMIN) on billing data land here. Mirrors
+-- identity-svc's audit_events insert. reason is enforced >=10 chars at
+-- the handler level, NOT NULL-allowed at the schema level (legacy events
+-- don't have it populated).
+INSERT INTO audit_events (
+    actor_user_id, organization_id, action,
+    resource_type, resource_id, metadata, reason
+) VALUES (
+    sqlc.narg(actor_user_id),
+    sqlc.narg(organization_id),
+    sqlc.arg(action),
+    sqlc.arg(resource_type),
+    sqlc.narg(resource_id),
+    sqlc.arg(metadata),
+    sqlc.narg(reason)
+)
+RETURNING *;

@@ -23,9 +23,30 @@ type Querier interface {
 	// Inkrementuje tokens_reserved. Wywoływane PO sprawdzeniu dostępności
 	// w transakcji ReserveCredit.
 	AddReservedTokens(ctx context.Context, arg AddReservedTokensParams) error
+	// AdminChangePlan step 1. Flips subscriptions.plan_id to the new plan.
+	// tokens_used + tokens_reserved on the active counter are LEFT ALONE;
+	// only tokens_limit is updated separately (via AdminUpdateCounter using
+	// the new plan's tokens_per_period). If the operator wants a clean
+	// slate, they follow up with AdminResetTokens.
+	AdminChangeSubscriptionPlan(ctx context.Context, arg AdminChangeSubscriptionPlanParams) (Subscription, error)
+	// ──────────────────────────────────────────────────────────────────
+	// Web-admin RPCs (docs/18 §13.7) — SUPERWIZOR_ADMIN actions.
+	// ──────────────────────────────────────────────────────────────────
+	// Resolves a (plan_tier, billing_cycle) pair to the live subscription_plans
+	// row — used by AdminChangePlan to look up the new tier's tokens_per_period.
+	AdminGetPlanByTierCycle(ctx context.Context, arg AdminGetPlanByTierCycleParams) (SubscriptionPlan, error)
+	// AdminResetTokens core. Selective COALESCE — pass NULL on tokens_used or
+	// tokens_limit to leave that column unchanged. The handler maps proto
+	// value -1 (sentinel) to NULL before calling.
+	AdminUpdateCounter(ctx context.Context, arg AdminUpdateCounterParams) (UsageCounter, error)
 	// Atomic: inkrement tokens_used + dekrement tokens_reserved.
 	// Używane w CommitUsage tylko jeśli usage_events INSERT zwrócił nowy row.
 	CommitTokens(ctx context.Context, arg CommitTokensParams) error
+	// Web-admin actions (SUPERWIZOR_ADMIN) on billing data land here. Mirrors
+	// identity-svc's audit_events insert. reason is enforced >=10 chars at
+	// the handler level, NOT NULL-allowed at the schema level (legacy events
+	// don't have it populated).
+	CreateBillingAuditEvent(ctx context.Context, arg CreateBillingAuditEventParams) (AuditEvent, error)
 	// Insert webhook event jako IGNORED (stub mode). UNIQUE constraint na
 	// (provider, provider_event_id) zwróci unique-violation przy duplikacie —
 	// caller (StripeStubHandler) używa tego do idempotency check.
