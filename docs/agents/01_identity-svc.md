@@ -205,8 +205,84 @@ Empty string for any enum field = "use default". Empty object `{}` = "use defaul
 - **Soft-deleted users** still exist in `users` table; queries must filter `WHERE deleted_at IS NULL` unless you specifically need the audit trail.
 - **Cloud Run cold start + Firebase Admin SDK init** can add ~2s. Use min-instances=1 if latency-sensitive.
 
+## SUPERWIZOR_ADMIN bootstrap (one-time, per environment)
+
+After Slice 1 of `feat/web-app` deploys, the `users.role` enum gains
+`ORG_ADMIN` and `SUPERWIZOR_ADMIN` values (migration 000037). New
+admins are minted by flipping the `role` column for an existing user
+row:
+
+```sql
+-- staging — pick the Superwizor team email
+UPDATE users
+   SET role = 'SUPERWIZOR_ADMIN'
+ WHERE email = 'dpiotrak2@gmail.com'
+   AND deleted_at IS NULL;
+```
+
+Run via the cloud-sql-proxy (port 5433 + `psql ... sslmode=disable`),
+NOT via a Cloud SQL admin tool — the proxy is the only path with the
+right IAM. The change takes effect on the user's next inbound RPC
+(no service restart needed).
+
+The reverse — demoting an admin — uses the same UPDATE with the
+target role. There is intentionally no admin UI for this; the
+escape-hatch lives in `psql` so an attacker who compromises the
+admin panel can't promote themselves.
+
+## Firebase OAuth providers (Slice 1 manual config)
+
+Per docs/18 R7. One-time setup in Firebase Console
+(`superwizor-ai-25ecd`):
+
+1. **Authentication → Sign-in method** — enable Google, Apple,
+   Microsoft, plus the existing Email/Password.
+2. **Authentication → Settings → Account linking** — enable
+   "Link accounts that use the same email" (avoids duplicate UIDs
+   when a user signs up with one provider and later switches).
+3. **Google**: reuses the existing Google Cloud OAuth 2.0 client.
+   Add authorized redirect URIs:
+   `https://superwizor.ai/__/auth/handler`,
+   `https://app.superwizor.ai/__/auth/handler`,
+   `http://localhost:3000/__/auth/handler`,
+   `http://localhost:8080/__/auth/handler`.
+4. **Apple**: create a Services ID + Sign-in-with-Apple key in
+   the Apple Developer portal. Paste the Services ID, team ID,
+   key ID, and the private key into Firebase. Rotate the key
+   yearly (Apple expires them after 6 months, so a calendar
+   reminder for month 5 is wise).
+5. **Microsoft**: register a "Web" app in Microsoft Entra (Azure
+   AD). Copy app (client) ID + secret into Firebase. Rotate
+   secret yearly.
+
+No code changes required for any of the above — identity-svc trusts
+the Firebase JWT regardless of provider once verified.
+
+## Resend transactional email (Slice 1)
+
+Production invitation emails go through Resend (Go SDK in
+`services/notification-svc/internal/email/`). To bring this up in a
+new environment:
+
+1. `gcloud secrets create resend-api-key --replication-policy=automatic`
+2. `echo -n "$RESEND_KEY" | gcloud secrets versions add resend-api-key --data-file=-`
+3. Grant `roles/secretmanager.secretAccessor` on `resend-api-key` to
+   `notification-svc@<project>.iam.gserviceaccount.com` (add to
+   `infra/environments/<env>/service-accounts.tf`).
+4. Set `RESEND_FROM` env on notification-svc Cloud Run — e.g.
+   `Superwizor <noreply@superwizor.ai>`. Defaults to that value in
+   the CI workflow if unset.
+
+Without the secret the notification-svc binary boots happily and uses
+`MockSender` (logs but doesn't send). identity-svc.InviteTherapist
+still creates the invitation row + URL — only the email leg is
+silent. Useful for local dev; loud in prod logs ("RESEND_API_KEY
+unset — using MockSender").
+
 ## Source-doc pointers
 
 - `docs/05_FAZA_1_TOZSAMOSC_DANE.md` lines 803–2056 — full Phase 1 task list (proto def, sqlc, Firebase adapter, gRPC handler, deploy, smoke tests, troubleshooting).
 - `docs/03_DATA_MODEL.md` §4.3 (lines 1057–1200) — DDL.
 - `docs/02_ARCHITEKTURA_TECHNICZNA.md` §4.2.1 (lines 359–400) — service responsibility.
+- `docs/18_WEB_APP_DESIGN.md` — full Slice 1+ design + form catalogue + i18n contract.
+- `docs/19_WEB_SLICE_1_PLAN.md` — the 8-commit Slice 1 plan that introduces the new RPCs (RegisterOrganization, InviteTherapist, AcceptInvitation, Admin*).

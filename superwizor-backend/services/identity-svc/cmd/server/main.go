@@ -5,16 +5,22 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
 	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/firebase"
 	grpcadapter "github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/postgres/db"
@@ -123,8 +129,32 @@ func main() {
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 	)
 
+	// Build identity-svc Server. If NOTIFICATION_SVC_URL is set, dial
+	// notification-svc and wire the real InvitationEmailer so
+	// InviteTherapist sends actual emails via Resend. Without the env
+	// var the default NoopEmailSender just logs — fine for local dev
+	// and contract tests.
+	identityServer := grpcadapter.NewServer(pool, queries, authClient, version)
+	if notifURL := os.Getenv("NOTIFICATION_SVC_URL"); notifURL != "" {
+		notifClient, err := newNotificationClient(ctx, notifURL)
+		if err != nil {
+			slog.Warn("identity-svc: could not dial notification-svc; staying on NoopEmailSender",
+				"url", notifURL, "error", err)
+		} else {
+			identityServer = identityServer.WithEmailer(
+				grpcadapter.NewNotificationServiceEmailer(notifClient))
+			slog.Info("identity-svc: invitation emails via notification-svc enabled",
+				"url", notifURL)
+		}
+	} else {
+		slog.Warn("NOTIFICATION_SVC_URL unset — invitation emails are NoopEmailSender only")
+	}
+	if acceptBase := os.Getenv("ACCEPT_URL_BASE"); acceptBase != "" {
+		identityServer = identityServer.WithAcceptURLBase(acceptBase)
+	}
+
 	// Register identity service
-	identityv1.RegisterIdentityServiceServer(grpcServer, grpcadapter.NewServer(pool, queries, authClient, version))
+	identityv1.RegisterIdentityServiceServer(grpcServer, identityServer)
 
 	// Health checks (Cloud Run probe)
 	healthServer := health.NewServer()
@@ -155,4 +185,47 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// newNotificationClient dials notification-svc with Cloud Run
+// service-to-service OIDC auth when the URL is https:// (idtoken
+// minted by metadata server, audience = service URL). Falls back to
+// insecure credentials for http:// (local dev). Same pattern as
+// ingestion-svc / clinical-svc.
+func newNotificationClient(ctx context.Context, serviceURL string) (notificationv1.NotificationServiceClient, error) {
+	if len(serviceURL) >= 5 && serviceURL[:5] == "https" {
+		tokenSource, err := idtoken.NewTokenSource(ctx, serviceURL)
+		if err != nil {
+			return nil, fmt.Errorf("idtoken: %w", err)
+		}
+		u, err := url.Parse(serviceURL)
+		if err != nil {
+			return nil, fmt.Errorf("parse url: %w", err)
+		}
+		target := u.Host
+		if u.Port() == "" {
+			target = u.Host + ":443"
+		}
+		conn, err := grpc.NewClient(target,
+			grpc.WithTransportCredentials(credentials.NewTLS(nil)),
+			grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("dial: %w", err)
+		}
+		return notificationv1.NewNotificationServiceClient(conn), nil
+	}
+	u, err := url.Parse(serviceURL)
+	if err != nil {
+		return nil, err
+	}
+	target := u.Host
+	if target == "" {
+		target = serviceURL
+	}
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	return notificationv1.NewNotificationServiceClient(conn), nil
 }
