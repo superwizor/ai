@@ -10,12 +10,21 @@
 -- The single-shot semantics (no auto-renewal) are enforced by:
 --   - identity-svc.CreateUser bootstrap sets period_end ~100 years out
 --   - billing-svc /admin/manual-period-renewal cron skips tier='TRIAL'
+-- The unique INDEX on (tier, cycle) is partial (WHERE is_active=TRUE),
+-- so ON CONFLICT can't reference it. Migrations only run once, so a
+-- plain INSERT is fine — re-running this migration would never happen
+-- in practice. NOT EXISTS guard keeps the migration idempotent for
+-- the local dev case where someone re-applies by hand.
 INSERT INTO subscription_plans (
     tier, cycle, display_name, price_gross, currency_code,
     tokens_per_period, licenses_limit, has_b2b_dashboard,
     marketing_description, is_active
-) VALUES (
+)
+SELECT
     'TRIAL', 'MONTHLY', 'Trial', 0.00, 'PLN',
     3, 1, FALSE,
     'Bezpłatny trial — 3 sesje na start. Aby kontynuować, wybierz plan SOLO, PRO lub CLINIC.', TRUE
-) ON CONFLICT (tier, cycle) DO NOTHING;
+WHERE NOT EXISTS (
+    SELECT 1 FROM subscription_plans
+    WHERE tier = 'TRIAL' AND cycle = 'MONTHLY' AND is_active = TRUE
+);
