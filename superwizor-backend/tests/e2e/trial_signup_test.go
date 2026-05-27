@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/emptypb"
 
+	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 )
 
@@ -79,4 +81,28 @@ func TestTrialSignup_AutoProvisionsOrgAndSubscription(t *testing.T) {
 	require.True(t,
 		strings.HasPrefix(user.OrganizationId, "") && len(user.OrganizationId) == 36,
 		"organization_id should be a UUID")
+
+	// Now verify the canonical-cache RPC (Phase B refactor): Flutter
+	// will call clinical-svc.GetMyBillingState on cold start instead
+	// of subscribing to the Firestore mirror. Proxies through to
+	// billing-svc.GetSubscription under the hood.
+	clinicalConn := dial(t, cfg.clinicalURL, fbSession.IDToken)
+	defer clinicalConn.Close()
+	clinicalClient := clinicalv1.NewClinicalServiceClient(clinicalConn)
+
+	stateCtx, stateCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer stateCancel()
+	sub, err := clinicalClient.GetMyBillingState(stateCtx, &emptypb.Empty{})
+	require.NoError(t, err, "GetMyBillingState should succeed")
+	t.Logf("✓ GetMyBillingState: plan=%s/%s status=%s tokens=%d/%d remaining=%d",
+		sub.PlanTier, sub.PlanCycle, sub.Status,
+		sub.TokensUsedThisPeriod, sub.TokensPerPeriod, sub.TokensRemaining)
+
+	require.Equal(t, "TRIAL", sub.PlanTier, "fresh signup should be on TRIAL plan")
+	require.Equal(t, "MONTHLY", sub.PlanCycle, "TRIAL is seeded with MONTHLY cycle")
+	require.Equal(t, "TRIALING", sub.Status, "subscription status should be TRIALING")
+	require.Equal(t, int32(3), sub.TokensPerPeriod, "trial pool is 3 tokens")
+	require.Equal(t, int32(3), sub.TokensRemaining, "fresh signup has all 3 tokens available")
+	require.Equal(t, int32(0), sub.TokensUsedThisPeriod)
+	require.Equal(t, int32(0), sub.TokensReservedThisPeriod)
 }
