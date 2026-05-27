@@ -98,6 +98,81 @@
     "primary": "Zarejestruj się",
     "secondary": "Zobacz cennik"
   },
+  "pricing": {
+    "metaTitle": "Cennik",
+    "overline": "Cennik",
+    "heading": "Plan dopasowany do Twojej praktyki",
+    "subhead": "Wszystkie plany zawierają pełną funkcjonalność: transkrypcję, raport, wskazówki superwizyjne. Płacisz tylko za sesje, których realnie używasz.",
+    "cycle": {
+      "monthly": "Miesięcznie",
+      "annual": "Rocznie",
+      "annualNote": "~17% taniej"
+    },
+    "tiers": {
+      "trial": {
+        "name": "Trial",
+        "tagline": "Wypróbuj bez karty",
+        "tokensSuffix": "darmowe sesje",
+        "cta": "Zacznij teraz",
+        "features": [
+          "3 darmowe sesje",
+          "Pełna transkrypcja",
+          "Pełny raport sesji",
+          "Wskazówki superwizyjne",
+          "Bez karty kredytowej"
+        ]
+      },
+      "solo": {
+        "name": "Solo",
+        "tagline": "Dla terapeutów indywidualnych",
+        "tokensSuffixMonthly": "sesji miesięcznie",
+        "tokensSuffixAnnual": "sesji rocznie",
+        "cta": "Wybierz Solo",
+        "features": [
+          "Pełna transkrypcja",
+          "Raport kliniczny",
+          "Wskazówki superwizyjne",
+          "Eksport PDF",
+          "1 licencja"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "Dla intensywnie pracujących",
+        "tokensSuffixMonthly": "sesji miesięcznie",
+        "tokensSuffixAnnual": "sesji rocznie",
+        "cta": "Wybierz Pro",
+        "badge": "Najpopularniejszy",
+        "features": [
+          "Wszystko z planu Solo",
+          "Większa pula sesji",
+          "Priorytetowe wsparcie",
+          "Wczesny dostęp do nowych funkcji",
+          "1 licencja"
+        ]
+      },
+      "clinic": {
+        "name": "Klinika",
+        "tagline": "Dla ośrodków terapeutycznych",
+        "tokensSuffixMonthly": "sesji miesięcznie",
+        "tokensSuffixAnnual": "sesji rocznie",
+        "cta": "Wybierz Klinikę",
+        "features": [
+          "Wszystko z planu Pro",
+          "Pula współdzielona między 5 terapeutów",
+          "Panel administratora (B2B)",
+          "Jedna faktura na klinikę",
+          "Zarządzanie zespołem"
+        ]
+      }
+    },
+    "vatNote": "Ceny netto. VAT 23% doliczany na fakturze.",
+    "currency": "PLN",
+    "perMonth": "zł / miesiąc",
+    "perYear": "zł / rok",
+    "free": "0 zł",
+    "footnote": "Płatność kartą lub Przelewy24. Możesz zmienić lub anulować plan w dowolnym momencie z poziomu konta."
+  },
   "footer": {
     "tagline": "Drugi mózg superwizora.",
     "copyright": "© 2026 Superwizor AI",

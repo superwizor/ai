@@ -98,6 +98,81 @@
     "primary": "Sign up",
     "secondary": "See pricing"
   },
+  "pricing": {
+    "metaTitle": "Pricing",
+    "overline": "Pricing",
+    "heading": "A plan that fits your practice",
+    "subhead": "Every plan includes the full product: transcripts, reports, supervision pointers. You only pay for the sessions you actually use.",
+    "cycle": {
+      "monthly": "Monthly",
+      "annual": "Annual",
+      "annualNote": "~17% off"
+    },
+    "tiers": {
+      "trial": {
+        "name": "Trial",
+        "tagline": "Try without a card",
+        "tokensSuffix": "free sessions",
+        "cta": "Get started",
+        "features": [
+          "3 free sessions",
+          "Full transcript",
+          "Full session report",
+          "Supervision pointers",
+          "No credit card required"
+        ]
+      },
+      "solo": {
+        "name": "Solo",
+        "tagline": "For individual therapists",
+        "tokensSuffixMonthly": "sessions / month",
+        "tokensSuffixAnnual": "sessions / year",
+        "cta": "Choose Solo",
+        "features": [
+          "Full transcript",
+          "Clinical report",
+          "Supervision pointers",
+          "PDF export",
+          "1 license"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "For power users",
+        "tokensSuffixMonthly": "sessions / month",
+        "tokensSuffixAnnual": "sessions / year",
+        "cta": "Choose Pro",
+        "badge": "Most popular",
+        "features": [
+          "Everything in Solo",
+          "More sessions",
+          "Priority support",
+          "Early access to new features",
+          "1 license"
+        ]
+      },
+      "clinic": {
+        "name": "Clinic",
+        "tagline": "For therapy clinics",
+        "tokensSuffixMonthly": "sessions / month",
+        "tokensSuffixAnnual": "sessions / year",
+        "cta": "Choose Clinic",
+        "features": [
+          "Everything in Pro",
+          "Shared pool across 5 therapists",
+          "Admin dashboard (B2B)",
+          "Single invoice per clinic",
+          "Team management"
+        ]
+      }
+    },
+    "vatNote": "Prices are net. 23% VAT added on the invoice.",
+    "currency": "PLN",
+    "perMonth": "PLN / month",
+    "perYear": "PLN / year",
+    "free": "Free",
+    "footnote": "Card or Przelewy24. Change or cancel your plan any time from your account."
+  },
   "footer": {
     "tagline": "A supervisor's second brain.",
     "copyright": "© 2026 Superwizor AI",

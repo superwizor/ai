@@ -1,0 +1,119 @@
+// Public plan catalog for the marketing pricing page.
+//
+// docs/18 §8.1 says the pricing page should "read from subscription_plans"
+// — long-term that means calling `billingClient.listSubscriptionPlans({})`
+// (RPC not yet defined). For now this module mirrors the values from
+// migration `000029_billing_phase3_seed_plans.up.sql` 1:1. When the
+// ListSubscriptionPlans RPC lands in a follow-up backend slice, swap
+// `getPlanCatalog()` to return the RPC response and delete this file.
+//
+// Source of truth: superwizor-backend/migrations/000029_billing_phase3_seed_plans.up.sql
+// Drift check (manual until we have RPC): when you bump prices here,
+// bump the migration in the same PR.
+
+export type PlanTier = "TRIAL" | "SOLO" | "PRO" | "CLINIC";
+export type BillingCycle = "MONTHLY" | "ANNUAL";
+
+export type PlanRow = {
+  tier: PlanTier;
+  cycle: BillingCycle;
+  /** Gross price, in the unit the user sees (PLN). */
+  priceGross: number;
+  currencyCode: "PLN";
+  tokensPerPeriod: number;
+  licensesLimit: number;
+  hasB2BDashboard: boolean;
+};
+
+/**
+ * Static catalog mirroring migration 000029. Trial is included as a
+ * synthetic entry (it's not in subscription_plans — it's auto-provisioned
+ * on signup — but the marketing page needs a card for it).
+ */
+const PLANS: ReadonlyArray<PlanRow> = [
+  {
+    tier: "TRIAL",
+    cycle: "MONTHLY",
+    priceGross: 0,
+    currencyCode: "PLN",
+    tokensPerPeriod: 3,
+    licensesLimit: 1,
+    hasB2BDashboard: false,
+  },
+  {
+    tier: "SOLO",
+    cycle: "MONTHLY",
+    priceGross: 149.0,
+    currencyCode: "PLN",
+    tokensPerPeriod: 20,
+    licensesLimit: 1,
+    hasB2BDashboard: false,
+  },
+  {
+    tier: "SOLO",
+    cycle: "ANNUAL",
+    priceGross: 1490.0,
+    currencyCode: "PLN",
+    tokensPerPeriod: 240,
+    licensesLimit: 1,
+    hasB2BDashboard: false,
+  },
+  {
+    tier: "PRO",
+    cycle: "MONTHLY",
+    priceGross: 249.0,
+    currencyCode: "PLN",
+    tokensPerPeriod: 40,
+    licensesLimit: 1,
+    hasB2BDashboard: false,
+  },
+  {
+    tier: "PRO",
+    cycle: "ANNUAL",
+    priceGross: 2490.0,
+    currencyCode: "PLN",
+    tokensPerPeriod: 480,
+    licensesLimit: 1,
+    hasB2BDashboard: false,
+  },
+  {
+    tier: "CLINIC",
+    cycle: "MONTHLY",
+    priceGross: 999.0,
+    currencyCode: "PLN",
+    tokensPerPeriod: 150,
+    licensesLimit: 5,
+    hasB2BDashboard: true,
+  },
+  {
+    tier: "CLINIC",
+    cycle: "ANNUAL",
+    priceGross: 9990.0,
+    currencyCode: "PLN",
+    tokensPerPeriod: 1800,
+    licensesLimit: 5,
+    hasB2BDashboard: true,
+  },
+];
+
+export async function getPlanCatalog(): Promise<ReadonlyArray<PlanRow>> {
+  // When ListSubscriptionPlans RPC lands:
+  //   const resp = await billingClient.listSubscriptionPlans({});
+  //   return resp.plans.map(...);
+  return PLANS;
+}
+
+export function findPlan(
+  catalog: ReadonlyArray<PlanRow>,
+  tier: PlanTier,
+  cycle: BillingCycle,
+): PlanRow | undefined {
+  return catalog.find((p) => p.tier === tier && p.cycle === cycle);
+}
+
+/** Formats a PLN price using the active locale's number-formatting rules. */
+export function formatPrice(locale: string, value: number): string {
+  return new Intl.NumberFormat(locale === "en" ? "en-GB" : "pl-PL", {
+    maximumFractionDigits: 0,
+  }).format(value);
+}

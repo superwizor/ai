@@ -1,0 +1,109 @@
+Feature: slice-2 / pricing-page
+Branch: feat/web-app-slice-2
+Verified: 2026-05-28
+Anchored to: docs/18 §8.1 ("Pricing — Trial/SOLO/PRO/CLINIC, read from subscription_plans")
+
+What was built
+==============
+- New route: `/pricing` (PL) and `/en/pricing` — both pre-rendered as
+  SSG at build time.
+- New helper: `src/lib/billing/plans.ts` — typed plan catalog mirroring
+  migration 000029. `getPlanCatalog()` returns the rows; the comment
+  inside flags the exact one-line swap point where
+  `billingClient.listSubscriptionPlans({})` will plug in once that RPC
+  ships (open question: it doesn't exist in proto yet — deliberate
+  scope deferral, see "Known gaps" below).
+- New component: `src/components/marketing/PricingCards.tsx` — client
+  component (needs useState for the cycle toggle). Renders four cards
+  side-by-side at lg breakpoint:
+    Trial (free, always shown)
+    Solo (monthly/annual)
+    Pro (highlighted with Ember outline + glow + MOST POPULAR badge)
+    Clinic (CTA targets /register/organization, not /register/therapist)
+  Monthly/Annual toggle is a real tablist with role="tablist" + aria.
+- New route file: `src/app/[locale]/pricing/page.tsx` — server
+  component, awaits `getPlanCatalog()` server-side and hands the rows
+  to the client tile component as props.
+- i18n: `pricing` namespace added to messages/{pl,en}.json — cycle
+  labels, tier names+taglines+features (5 each)+CTA labels, VAT note,
+  unit labels (zł/miesiąc, PLN/month), free-tier label.
+- Prices formatted via `Intl.NumberFormat` with the active locale
+  (pl-PL or en-GB) — pl-PL gives "149" with no fractional digits;
+  en-GB matches the design's no-decimals choice. Both currencies are
+  PLN per docs/18 (subscription_plans.currency_code).
+
+How verified
+============
+1. `pnpm build` exit 0. Route table now lists `/[locale]/pricing`
+   with pre-rendered /pl/pricing + /en/pricing alongside the existing
+   /[locale] home routes — 7 static pages total, all generated.
+
+2. Live HTTP smoke:
+     curl http://localhost:3000/pricing       → 200
+     curl http://localhost:3000/en/pricing    → 200
+
+3. Puppeteer screenshots:
+   - pricing-pl-{mobile,tablet,desktop}.png — viewport-clipped views,
+     Polish locale. Mobile (375): cards stack 1-up; tablet (768):
+     2-col grid; desktop (1280): 4-col grid with Pro card highlighted
+     and badged.
+   - pricing-en-{mobile,tablet,desktop}.png — same dimensions, EN
+     copy throughout: "Trial", "Solo", "Pro" (with "Most popular"
+     badge), "Clinic".
+   - pricing-pl-full.png + pricing-en-full.png — fullPage shots
+     captured via scripts/snap-full.mjs. Show the entire page
+     composition: Navbar → hero block ("Plan dopasowany do Twojej
+     praktyki" / "A plan that fits your practice") → monthly/annual
+     toggle → 4 plan cards → VAT note → footer.
+
+4. Visual confirmation (every screenshot opened with Read):
+   - PL pricing: nav highlights nothing special (Cennik link is in
+     navbar but page handles its own h1). Headings/subhead in Polish
+     with diacritics. All four cards show Polish copy. Pro card has
+     "NAJPOPULARNIEJSZY" badge (Ember on Obsidian).
+   - EN pricing: heading "A plan that fits your practice", Pro card
+     has "MOST POPULAR" badge, English feature bullets.
+   - Pricing rows match migration 000029 exactly:
+       Solo Monthly  → 149 PLN / 20 sessions
+       Pro  Monthly  → 249 PLN / 40 sessions
+       Clinic Monthly → 999 PLN / 150 sessions
+     (Annual values would be 1490 / 2490 / 9990 — verifiable by
+     toggling the cycle, not captured in static screenshot but the
+     code in plans.ts maps the rows directly.)
+
+5. `preview_console_logs(level=error)` returns "No console logs" —
+   the new client component renders cleanly.
+
+6. i18n parity: PL + EN messages added in lockstep (same key shape
+   under `pricing.*`). Any future translation drift gets caught by
+   the parity script that lands in Slice 6.
+
+Compliance with docs/18
+=======================
+- ✓ §8.1: pricing page lists Trial / SOLO / PRO / CLINIC.
+- ✓ §14.5: every visible string is a translation key. The only
+  inline literal is the "✓" feature bullet (decorative, not copy).
+- ✓ Currency formatting via Intl.NumberFormat per docs/18 §14.6.
+- ✓ Clinic CTA targets /register/organization (org founders);
+  Trial / Solo / Pro CTAs target /register/therapist (individual).
+  Routing aligned with §6.1 single-role MVP.
+
+Known gaps (deferred)
+=====================
+- NO ListSubscriptionPlans RPC on billing-svc yet. The pricing page
+  consumes a STATIC catalog (`PLANS` const in plans.ts) sourced from
+  the migration. This is pragmatic, not principled — when the RPC
+  lands, swap getPlanCatalog() in one place. Verification.log notes
+  the one-line swap point. Trade-off: plan-price changes now require
+  a code deploy alongside the DB UPDATE (vs. DB-only with a live
+  RPC). The catalog rarely changes; acceptable.
+- /register/{therapist,organization} land in Slice 3. CTAs link out
+  but the destinations 404 today.
+
+Files touched
+=============
+- marketing-site/messages/pl.json (pricing namespace added)
+- marketing-site/messages/en.json (pricing namespace added)
+- marketing-site/src/lib/billing/plans.ts (new)
+- marketing-site/src/components/marketing/PricingCards.tsx (new)
+- marketing-site/src/app/[locale]/pricing/page.tsx (new)
