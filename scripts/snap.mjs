@@ -6,19 +6,24 @@
 // width and just crops to the window size. Puppeteer's setViewport() with
 // isMobile/deviceScaleFactor produces real mobile layouts.
 //
-// Usage: node scripts/snap.mjs <url> <out-dir> [feature-id]
-//   e.g. node scripts/snap.mjs http://localhost:3000/ evidence/slice-2/nextjs-scaffold home
+// Usage: node scripts/snap.mjs <url> <out-dir> [prefix] [accept-language]
+//   e.g. node scripts/snap.mjs http://localhost:3000/      evidence/.../foo home-pl pl-PL
+//        node scripts/snap.mjs http://localhost:3000/en    evidence/.../foo home-en en-US
+//
+// The 4th arg matters for i18n: next-intl's middleware reads
+// Accept-Language. If you don't override it, puppeteer's default en-US
+// will redirect the bare `/` to `/en`, and you'll capture English by
+// mistake when you meant to shoot the PL default locale.
 //
 // Captures three breakpoints (mobile/tablet/desktop) per call.
-// Outputs <out-dir>/<feature-id>-{mobile,tablet,desktop}.png
 
 import puppeteer from "puppeteer";
 import { mkdir } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 
-const [, , url, outDir, prefix = "home"] = process.argv;
+const [, , url, outDir, prefix = "home", acceptLanguage] = process.argv;
 if (!url || !outDir) {
-  console.error("Usage: node scripts/snap.mjs <url> <out-dir> [prefix]");
+  console.error("Usage: node scripts/snap.mjs <url> <out-dir> [prefix] [accept-language]");
   process.exit(2);
 }
 
@@ -39,6 +44,9 @@ const browser = await puppeteer.launch({
 try {
   for (const s of sizes) {
     const page = await browser.newPage();
+    if (acceptLanguage) {
+      await page.setExtraHTTPHeaders({ "Accept-Language": acceptLanguage });
+    }
     await page.setViewport({
       width: s.width,
       height: s.height,

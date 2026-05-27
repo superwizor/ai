@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "title": "Superwizor AI — drugi mózg superwizora",
+    "description": "Polski co-pilot dla terapeutów i superwizorów. Nagraj sesję, otrzymaj transkrypcję, raport i wskazówki w kilka minut.",
+    "ogSiteName": "Superwizor AI"
+  },
+  "scaffold": {
+    "overline": "Superwizor AI · scaffold",
+    "headingPrefix": "Drugi mózg",
+    "headingAccent": "superwizora",
+    "headingPunctuation": ".",
+    "subhead": "Nagraj sesję, otrzymaj transkrypcję, raport i wskazówki w kilka minut. Polski co-pilot dla terapeutów i superwizorów.",
+    "ctaPrimary": "Zarejestruj się",
+    "ctaSecondary": "Zobacz plany",
+    "tokensMarker": "Brand tokens · ember / evergreen / nocturne · OK"
+  },
+  "nav": {
+    "skipToContent": "Przejdź do treści",
+    "languageSwitcher": "Język",
+    "polish": "Polski",
+    "english": "English"
+  }
+}

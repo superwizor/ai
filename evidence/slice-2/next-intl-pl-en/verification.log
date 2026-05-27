@@ -1,0 +1,114 @@
+Feature: slice-2 / next-intl-pl-en
+Branch: feat/web-app-slice-2
+Verified: 2026-05-27
+Anchored to: docs/18 §14 (i18n contract)
+
+What was built
+==============
+- `pnpm add next-intl` → 4.12.0.
+- `marketing-site/messages/pl.json` + `en.json` — flat namespaces
+  (metadata, scaffold, nav). Same key namespacing rule the doc
+  prescribes: marketing-only keys live alongside; copy that overlaps
+  with Flutter ARBs (auth.login_button, quota.warning_banner) will be
+  added as those features arrive.
+- `marketing-site/src/i18n/routing.ts` — single source of truth for
+  locales + defaultLocale + localePrefix. `as-needed` mode picked
+  per docs/18 §14.4 (PL primary market, no PL prefix).
+- `marketing-site/src/i18n/request.ts` — getRequestConfig that loads
+  the per-request locale's JSON. `hasLocale` guard falls back to the
+  default if a bogus locale slips through.
+- `marketing-site/src/proxy.ts` — locale routing. Renamed from
+  `middleware.ts` per Next.js 16 convention (the rename is purely
+  cosmetic; the function signature is identical). Build no longer
+  emits the deprecation warning.
+- `marketing-site/next.config.ts` — wires `createNextIntlPlugin` so
+  the framework knows where the per-request config lives.
+- `marketing-site/src/app/[locale]/layout.tsx` — locale-scoped root
+  layout. Validates the param against `routing.locales` and 404s
+  otherwise. Emits `<html lang={locale}>`, wires
+  `<NextIntlClientProvider>`, and feeds hreflang alternates into
+  `<head>` via Metadata.alternates.languages. Pre-renders both
+  locale shells at build time via `generateStaticParams()` +
+  `setRequestLocale()` (the supported Next.js 16 + next-intl 4 path
+  for SSG with locale).
+- `marketing-site/src/app/[locale]/page.tsx` — all strings come from
+  `useTranslations("scaffold")` / `getTranslations`. Zero hard-coded
+  copy.
+
+How verified
+============
+1. `pnpm build` exit 0 — both /pl and /en shown in the route table
+   as SSG pre-rendered:
+
+     Route (app)
+     ┌ ○ /_not-found
+     └ ● /[locale]
+       ├ /pl
+       └ /en
+
+     ƒ Proxy (Middleware)
+
+2. `curl http://localhost:3000/` (no Accept-Language) and
+   `curl http://localhost:3000/en` confirm:
+     - PL: <html lang="pl">, title "Superwizor AI — drugi mózg
+       superwizora", description in Polish, og:locale=pl_PL,
+       body contains "Drugi mózg" + "Nagraj sesję".
+     - EN: <html lang="en">, title "Superwizor AI — a
+       supervisor's second brain", description in English,
+       og:locale=en_US, body contains "supervisor" +
+       "Record a session".
+3. hreflang alternates emitted in <head> for BOTH locales:
+     <link rel="alternate" hrefLang="pl" href="https://superwizor.ai"/>
+     <link rel="alternate" hrefLang="en" href="https://superwizor.ai/en"/>
+   Confirms search-engine indexability per docs/18 §14.4.
+4. Puppeteer screenshots with explicit Accept-Language headers
+   (snap.mjs accepts a 4th arg for this) — `home-pl-*.png` and
+   `home-en-*.png` at three breakpoints each. Opened with Read tool,
+   confirmed:
+     - PL shows "Drugi mózg superwizora.", Polish body copy, CTA
+       "ZAREJESTRUJ SIĘ" + "Zobacz plany", marker in PL.
+     - EN shows "A supervisor's second brain.", English body copy,
+       CTA "SIGN UP" + "See pricing", marker in EN.
+     - All three breakpoints responsive at both locales with no
+       clipping.
+5. `preview_console_logs` (level=error) returns "No console logs" —
+   the FORMATTING_ERROR found and fixed during build (next-intl's
+   t() tried to interpolate {page} as a MessageFormat var; the
+   title template is Next.js syntax, not next-intl syntax — fix:
+   hard-code `template: "%s · Superwizor AI"` in code, drop it from
+   messages).
+
+Compliance with docs/18 §14
+===========================
+- ✓ Supported locales: pl (primary), en (secondary) — matches §14.1.
+- ✓ Stack: next-intl on Next.js — §14.2.
+- ✓ URL strategy: "as-needed" routing, PL no prefix, EN at /en — §14.4.
+- ✓ hreflang alternate links on every page — §14.4.
+- ✓ messages/{pl,en}.json — §14.2 file location.
+- ✓ No hard-coded Polish strings in components — §14.5 backend
+  strings policy.
+- ☐ Locale resolution order (§14.3) — only step 1 (URL prefix) and
+  step 4 (Accept-Language) are wired today. Steps 2 (user
+  preference) + 3 (cookie) come in feature 4 (firebase-auth-init)
+  and a follow-up; flagged but not blocking for this scaffold.
+- ☐ check-l10n-parity.sh CI script (§14.2) — lands in Slice 6
+  (i18n-polish-launch) per PROGRESS.md.
+
+Known cosmetic
+==============
+- Next.js dev badge "N" visible in dev-mode screenshots; not in
+  production builds.
+
+Files touched
+=============
+- marketing-site/package.json + pnpm-lock.yaml (next-intl@4.12.0)
+- marketing-site/next.config.ts
+- marketing-site/messages/pl.json (new)
+- marketing-site/messages/en.json (new)
+- marketing-site/src/i18n/routing.ts (new)
+- marketing-site/src/i18n/request.ts (new)
+- marketing-site/src/proxy.ts (new — was src/middleware.ts, renamed
+  per Next 16 convention)
+- marketing-site/src/app/[locale]/layout.tsx (moved + rewritten)
+- marketing-site/src/app/[locale]/page.tsx (moved + rewritten)
+- scripts/snap.mjs (added Accept-Language CLI arg)

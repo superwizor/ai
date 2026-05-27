@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "title": "Superwizor AI — a supervisor's second brain",
+    "description": "Polish-built co-pilot for therapists and supervisors. Record a session and receive transcript, report, and pointers in minutes.",
+    "ogSiteName": "Superwizor AI"
+  },
+  "scaffold": {
+    "overline": "Superwizor AI · scaffold",
+    "headingPrefix": "A supervisor's",
+    "headingAccent": "second brain",
+    "headingPunctuation": ".",
+    "subhead": "Record a session and receive transcript, report, and pointers in minutes. A Polish-built co-pilot for therapists and supervisors.",
+    "ctaPrimary": "Sign up",
+    "ctaSecondary": "See pricing",
+    "tokensMarker": "Brand tokens · ember / evergreen / nocturne · OK"
+  },
+  "nav": {
+    "skipToContent": "Skip to content",
+    "languageSwitcher": "Language",
+    "polish": "Polski",
+    "english": "English"
+  }
+}
