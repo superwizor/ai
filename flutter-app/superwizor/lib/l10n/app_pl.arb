@@ -427,6 +427,7 @@
   "subscription_tier_solo": "Solo",
   "subscription_tier_pro": "Pro",
   "subscription_tier_clinic": "Klinika",
+  "subscription_tier_trial": "Wersja próbna",
   "subscription_cycle_monthly": "miesięczny",
   "subscription_cycle_semi_annual": "półroczny",
   "subscription_cycle_annual": "roczny",

@@ -2105,6 +2105,12 @@ abstract class AppLocalizations {
   /// **'Klinika'**
   String get subscription_tier_clinic;
 
+  /// No description provided for @subscription_tier_trial.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wersja próbna'**
+  String get subscription_tier_trial;
+
   /// No description provided for @subscription_cycle_monthly.
   ///
   /// In pl, this message translates to:

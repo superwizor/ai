@@ -76,6 +76,7 @@ class _PlanCard extends StatelessWidget {
       case 'SOLO': return l.subscription_tier_solo;
       case 'PRO': return l.subscription_tier_pro;
       case 'CLINIC': return l.subscription_tier_clinic;
+      case 'TRIAL': return l.subscription_tier_trial;
       default: return quota.planTier;
     }
   }

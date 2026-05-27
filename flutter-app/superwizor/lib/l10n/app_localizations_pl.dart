@@ -1148,6 +1148,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get subscription_tier_clinic => 'Klinika';
 
   @override
+  String get subscription_tier_trial => 'Wersja próbna';
+
+  @override
   String get subscription_cycle_monthly => 'miesięczny';
 
   @override

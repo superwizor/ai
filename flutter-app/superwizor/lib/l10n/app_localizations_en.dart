@@ -1137,6 +1137,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subscription_tier_clinic => 'Clinic';
 
   @override
+  String get subscription_tier_trial => 'Trial';
+
+  @override
   String get subscription_cycle_monthly => 'monthly';
 
   @override

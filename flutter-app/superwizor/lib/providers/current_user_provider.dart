@@ -50,13 +50,27 @@ final currentUserProvider = FutureProvider<identity_pb.User?>((ref) async {
       debugPrint(
           'currentUserProvider: user ${firebaseUser.uid} not found in '
           'identity-svc, attempting auto-register');
+      // Split Firebase displayName into first/last so identity-svc's
+      // auto-org-provisioning gets a real "First Last Org" instead of
+      // the email-local fallback ("dar Org"). Falls back to empty if
+      // Firebase has no displayName (email/password signup w/o a name).
+      final displayName = (firebaseUser.displayName ?? '').trim();
+      String firstName = '';
+      String lastName = '';
+      if (displayName.isNotEmpty) {
+        final parts = displayName.split(RegExp(r'\s+'));
+        firstName = parts.first;
+        if (parts.length > 1) {
+          lastName = parts.sublist(1).join(' ');
+        }
+      }
       try {
         return await identityClient.createUser(identity_pb.CreateUserRequest(
           firebaseUid: firebaseUser.uid,
           email: firebaseUser.email ?? '',
           role: identity_pb.UserRole.USER_ROLE_THERAPIST,
-          firstName: '',
-          lastName: '',
+          firstName: firstName,
+          lastName: lastName,
           uiLanguage: 'pl',
           timezone: 'Europe/Warsaw',
           hasAcceptedTos: true,
