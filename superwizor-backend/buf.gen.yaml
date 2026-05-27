@@ -26,17 +26,16 @@ plugins:
       - paths=source_relative
 
   # ── TypeScript side (Next.js marketing + admin site) ────────
-  # Plain proto-es messages (TS interfaces + serialisers).
+  # protoc-gen-es v2 emits messages AND service descriptors
+  # (`GenService<…>`) in one file (`*_pb.ts`). Connect-Web v2 consumes
+  # these descriptors directly via `createClient(MyService, transport)`
+  # — no separate connect plugin needed. The standalone
+  # `connectrpc/es` plugin is intentionally NOT used here: pinning its
+  # v1 generator against protoc-gen-es v2 outputs causes broken
+  # `./foo_pbjs` imports (the v1 plugin appends `js` without the dot
+  # and assumes the v1 message shape). docs/18 §5 / R1 is unchanged —
+  # the browser still speaks Connect against the same handler.
   - remote: buf.build/bufbuild/es
-    out: gen/ts
-    opt:
-      - target=ts
-      - import_extension=js
-  # Connect-RPC clients in TS — what marketing-site/ imports to call
-  # identity-svc / clinical-svc / billing-svc from the browser. The
-  # generated client also speaks gRPC-Web so it remains forward-compatible
-  # if we ever swap transports.
-  - remote: buf.build/connectrpc/es
     out: gen/ts
     opt:
       - target=ts

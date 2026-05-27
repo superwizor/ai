@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^2.12.0",
+    "@connectrpc/connect": "^2.1.1",
+    "@connectrpc/connect-web": "^2.1.1",
+    "@superwizor/proto-ts": "file:../superwizor-backend/gen/ts",
     "next": "16.2.6",
     "next-intl": "^4.12.0",
     "react": "19.2.4",
@@ -22,6 +26,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
+    "tsx": "^4.22.3",
     "typescript": "^5"
   }
 }
