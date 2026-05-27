@@ -241,8 +241,20 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 	}
 
 	// Pre-check poza transakcją — szybki idempotent path bez locka.
+	// On hit we still want to return state_after for the client cache,
+	// so we fetch sub + counter (s.subscriptionStateNow) only then.
+	// The common case (fresh session_id) skips both extra queries.
 	if existing, err := s.queries.GetReservationBySession(ctx, sessionID); err == nil {
-		return reservationToProto(existing), nil
+		sub, serr := s.queries.GetActiveSubscriptionByOrg(ctx, orgID)
+		if serr != nil {
+			// Reservation exists without an active sub — anomalous but
+			// not worth blocking the idempotent return on. Send the
+			// reservation back with no state_after; client can call
+			// GetSubscription if it cares.
+			slog.WarnContext(ctx, "ReserveCredit: existing reservation but no active sub", "error", serr)
+			return reservationToProto(existing, nil), nil
+		}
+		return reservationToProto(existing, s.subscriptionStateNow(ctx, sub)), nil
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		slog.ErrorContext(ctx, "ReserveCredit: pre-check", "error", err, "session_id", sessionID)
 		return nil, status.Errorf(codes.Internal, "reservation lookup failed")
@@ -303,7 +315,10 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 				slog.ErrorContext(ctx, "ReserveCredit: race refetch failed", "error", qerr)
 				return nil, status.Errorf(codes.Internal, "reservation race failed")
 			}
-			return reservationToProto(existing), nil
+			// Race winner already wrote the counter; reading it now
+			// reflects the same state the client would see if they
+			// called GetSubscription immediately after.
+			return reservationToProto(existing, s.subscriptionStateNow(ctx, sub)), nil
 		}
 		slog.ErrorContext(ctx, "ReserveCredit: CreateReservation", "error", err)
 		return nil, status.Errorf(codes.Internal, "reservation create failed")
@@ -317,11 +332,18 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 		return nil, status.Errorf(codes.Internal, "counter update failed")
 	}
 
+	// Compute post-write counter snapshot to embed in the response
+	// (state_after on the Reservation proto). Clients use this to
+	// refresh their local cache without a follow-up GetSubscription.
+	tokensUsedAfter := counter.TokensUsed
+	tokensReservedAfter := counter.TokensReserved + estTokens
+	tokensLimitAfter := counter.TokensLimit
+
 	// Outbox quota.updated — keeps Firestore mirror in sync with the
 	// post-reservation counter so Flutter's live stream picks it up
 	// without relying on the optimistic-local-decrement fallback. See
 	// CommitUsage for the parallel rationale.
-	remainingAfter := counter.TokensLimit - counter.TokensUsed - (counter.TokensReserved + estTokens)
+	remainingAfter := tokensLimitAfter - tokensUsedAfter - tokensReservedAfter
 	if remainingAfter < 0 {
 		remainingAfter = 0
 	}
@@ -331,10 +353,10 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 			OrganizationID:  orgID,
 			PlanTier:        string(sub.PlanTier),
 			PlanCycle:       string(sub.PlanCycle),
-			TokensUsed:      counter.TokensUsed,
-			TokensReserved:  counter.TokensReserved + estTokens,
+			TokensUsed:      tokensUsedAfter,
+			TokensReserved:  tokensReservedAfter,
 			TokensRemaining: remainingAfter,
-			TokensLimit:     counter.TokensLimit,
+			TokensLimit:     tokensLimitAfter,
 			PeriodStart:     counter.PeriodStart,
 			PeriodEnd:       counter.PeriodEnd,
 		}
@@ -360,14 +382,50 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 		return nil, status.Errorf(codes.Internal, "commit failed")
 	}
 
-	return reservationToProto(res), nil
+	stateAfter := buildSubscriptionProto(subFields{
+		ID:                 sub.ID,
+		PlanTier:           string(sub.PlanTier),
+		PlanCycle:          string(sub.PlanCycle),
+		Status:             string(sub.Status),
+		CurrentPeriodStart: sub.CurrentPeriodStart,
+		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+	}, tokensUsedAfter, tokensReservedAfter, tokensLimitAfter)
+	return reservationToProto(res, stateAfter), nil
 }
 
-func reservationToProto(r db.PendingReservation) *billingv1.Reservation {
+// subscriptionStateNow fetches the current usage_counter for the given
+// subscription and returns it as a *billingv1.Subscription. Used by
+// the idempotent ReserveCredit pre-check + race-refetch paths where
+// we want to populate state_after but didn't go through a write tx
+// in this call. Falls back to a "limit-only" view if the counter row
+// is unexpectedly missing (defensive — shouldn't happen for an active
+// subscription).
+func (s *Server) subscriptionStateNow(ctx context.Context, sub db.GetActiveSubscriptionByOrgRow) *billingv1.Subscription {
+	counter, err := s.queries.GetActiveCounter(ctx, sub.ID)
+	tokensUsed := int32(0)
+	tokensReserved := int32(0)
+	tokensLimit := sub.PlanTokensPerPeriod
+	if err == nil {
+		tokensUsed = counter.TokensUsed
+		tokensReserved = counter.TokensReserved
+		tokensLimit = counter.TokensLimit
+	}
+	return buildSubscriptionProto(subFields{
+		ID:                 sub.ID,
+		PlanTier:           string(sub.PlanTier),
+		PlanCycle:          string(sub.PlanCycle),
+		Status:             string(sub.Status),
+		CurrentPeriodStart: sub.CurrentPeriodStart,
+		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+	}, tokensUsed, tokensReserved, tokensLimit)
+}
+
+func reservationToProto(r db.PendingReservation, stateAfter *billingv1.Subscription) *billingv1.Reservation {
 	return &billingv1.Reservation{
 		ReservationId:  r.ID.String(),
 		SessionId:      r.SessionID.String(),
 		TokensReserved: r.TokensReserved,
+		StateAfter:     stateAfter,
 		ExpiresAt:      timestamppb.New(r.ExpiresAt),
 	}
 }
@@ -599,6 +657,14 @@ func (s *Server) commitInternal(ctx context.Context, in commitInput) (*billingv1
 		TokensConsumed:  createdEvent.TokensConsumed,
 		RemainingTokens: remainingTokens(freshCounter),
 		LimitTokens:     freshCounter.TokensLimit,
+		StateAfter: buildSubscriptionProto(subFields{
+			ID:                 sub.ID,
+			PlanTier:           string(sub.PlanTier),
+			PlanCycle:          string(sub.PlanCycle),
+			Status:             string(sub.Status),
+			CurrentPeriodStart: sub.CurrentPeriodStart,
+			CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+		}, freshCounter.TokensUsed, freshCounter.TokensReserved, freshCounter.TokensLimit),
 	}, nil
 }
 
@@ -615,6 +681,14 @@ func (s *Server) snapshotAfterCommit(ctx context.Context, orgID uuid.UUID, alrea
 		TokensConsumed:  alreadyCharged,
 		RemainingTokens: remainingTokens(counter),
 		LimitTokens:     counter.TokensLimit,
+		StateAfter: buildSubscriptionProto(subFields{
+			ID:                 sub.ID,
+			PlanTier:           string(sub.PlanTier),
+			PlanCycle:          string(sub.PlanCycle),
+			Status:             string(sub.Status),
+			CurrentPeriodStart: sub.CurrentPeriodStart,
+			CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+		}, counter.TokensUsed, counter.TokensReserved, counter.TokensLimit),
 	}, nil
 }
 
@@ -701,26 +775,65 @@ func (s *Server) GetSubscription(ctx context.Context, req *billingv1.GetSubscrip
 		return nil, status.Errorf(codes.Internal, "subscription lookup failed")
 	}
 
-	counter, err := s.queries.GetActiveCounter(ctx, sub.ID)
+	counter, cerr := s.queries.GetActiveCounter(ctx, sub.ID)
 	tokensUsed := int32(0)
 	tokensReserved := int32(0)
 	tokensLimit := sub.PlanTokensPerPeriod
-	if err == nil {
+	if cerr == nil {
 		tokensUsed = counter.TokensUsed
 		tokensReserved = counter.TokensReserved
 		tokensLimit = counter.TokensLimit
 	}
 
+	return buildSubscriptionProto(subFields{
+		ID:                 sub.ID,
+		PlanTier:           string(sub.PlanTier),
+		PlanCycle:          string(sub.PlanCycle),
+		Status:             string(sub.Status),
+		CurrentPeriodStart: sub.CurrentPeriodStart,
+		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+	}, tokensUsed, tokensReserved, tokensLimit), nil
+}
+
+// subFields collects the subset of sqlc-generated subscription row
+// fields we need to populate the proto Subscription message. Defined
+// as its own type so the same builder works for both the GetActive*
+// shape (used by GetSubscription) and the join-lite shape some other
+// queries return — only the fields below are required.
+type subFields struct {
+	ID                 uuid.UUID
+	PlanTier           string
+	PlanCycle          string
+	Status             string
+	CurrentPeriodStart time.Time
+	CurrentPeriodEnd   time.Time
+}
+
+// buildSubscriptionProto is the single source of truth for converting a
+// (subscription, counter) pair into the proto Subscription message.
+// Used by GetSubscription AND by ReserveCredit / CommitUsage to populate
+// the Reservation.state_after / UsageCommit.state_after fields so
+// clients can refresh their local billing cache from one round trip.
+//
+// tokens_remaining is server-computed as max(0, limit - used - reserved)
+// per the proto contract — clients should not re-derive it.
+func buildSubscriptionProto(s subFields, tokensUsed, tokensReserved, tokensLimit int32) *billingv1.Subscription {
+	remaining := tokensLimit - tokensUsed - tokensReserved
+	if remaining < 0 {
+		remaining = 0
+	}
 	return &billingv1.Subscription{
-		Id:                        sub.ID.String(),
-		PlanTier:                  string(sub.PlanTier),
-		Status:                    string(sub.Status),
-		SessionsPerMonthLimit:     tokensLimit,
-		SessionsUsedThisPeriod:    tokensUsed,
-		TokensPerPeriod:           tokensLimit,
-		TokensUsedThisPeriod:      tokensUsed,
-		TokensReservedThisPeriod:  tokensReserved,
-		CurrentPeriodStart:        timestamppb.New(sub.CurrentPeriodStart),
-		CurrentPeriodEnd:          timestamppb.New(sub.CurrentPeriodEnd),
-	}, nil
+		Id:                       s.ID.String(),
+		PlanTier:                 s.PlanTier,
+		PlanCycle:                s.PlanCycle,
+		Status:                   s.Status,
+		SessionsPerMonthLimit:    tokensLimit,
+		SessionsUsedThisPeriod:   tokensUsed,
+		TokensPerPeriod:          tokensLimit,
+		TokensUsedThisPeriod:     tokensUsed,
+		TokensReservedThisPeriod: tokensReserved,
+		TokensRemaining:          remaining,
+		CurrentPeriodStart:       timestamppb.New(s.CurrentPeriodStart),
+		CurrentPeriodEnd:         timestamppb.New(s.CurrentPeriodEnd),
+	}
 }

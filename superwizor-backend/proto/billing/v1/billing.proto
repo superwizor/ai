@@ -74,6 +74,13 @@ message Reservation {
   string session_id      = 2;
   int32  tokens_reserved = 3;
   google.protobuf.Timestamp expires_at = 4;
+  // Full counter snapshot AFTER this reservation was applied. Lets the
+  // client refresh its cached billing state from a single round trip
+  // instead of subscribing to a separate Firestore mirror. The field is
+  // populated for newly-created reservations AND for the idempotent
+  // "already exists" path — clients should always overwrite their
+  // local cache with this value.
+  Subscription state_after = 5;
 }
 
 message CommitUsageRequest {
@@ -89,6 +96,10 @@ message UsageCommit {
   int32  tokens_consumed  = 1;
   int32  remaining_tokens = 2;
   int32  limit_tokens     = 3;
+  // Full counter snapshot AFTER this commit. Same role as on
+  // Reservation — primary mechanism for clients to keep their local
+  // billing cache in sync without a separate mirror.
+  Subscription state_after = 4;
 }
 
 message ReleaseCreditRequest {
@@ -125,4 +136,11 @@ message Subscription {
   int32  tokens_reserved_this_period = 8;
   google.protobuf.Timestamp current_period_start = 9;
   google.protobuf.Timestamp current_period_end   = 10;
+  // Phase 3b (client-cache refactor): make Subscription a self-contained
+  // snapshot suitable for direct caching on the client. Adds plan_cycle
+  // (so SubscriptionPlanScreen can label MONTHLY vs ANNUAL without a
+  // second lookup) and the server-computed tokens_remaining so callers
+  // never have to reimplement the formula (max(0, limit - used - reserved)).
+  string plan_cycle                  = 11;  // MONTHLY | ANNUAL
+  int32  tokens_remaining            = 12;  // = max(0, limit - used - reserved)
 }

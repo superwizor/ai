@@ -280,6 +280,15 @@ func TestReserveCredit(t *testing.T) {
 		q.getReservationFn = func(ctx context.Context, _ uuid.UUID) (db.PendingReservation, error) {
 			return existing, nil
 		}
+		// Idempotent path now fetches sub + counter to populate
+		// state_after on the response (refactor phase A). Stub both.
+		sub := subRow(t, db.SubscriptionStatusACTIVE, 20)
+		q.getActiveSubFn = func(ctx context.Context, _ uuid.UUID) (db.GetActiveSubscriptionByOrgRow, error) {
+			return sub, nil
+		}
+		q.getActiveCounterFn = func(ctx context.Context, _ uuid.UUID) (db.UsageCounter, error) {
+			return counterRow(2, 1, 20), nil
+		}
 		tx := &fakeTxOpener{q: q}
 		s := newTestServer(q, tx)
 
@@ -295,6 +304,13 @@ func TestReserveCredit(t *testing.T) {
 		}
 		if tx.beginCalls != 0 {
 			t.Errorf("tx.Begin called %d times, want 0 (pre-check should short-circuit)", tx.beginCalls)
+		}
+		// state_after populated from current counter (used=2, reserved=1, limit=20).
+		if resp.StateAfter == nil {
+			t.Fatalf("expected state_after on idempotent return, got nil")
+		}
+		if got := resp.StateAfter.TokensRemaining; got != 17 {
+			t.Errorf("state_after.tokens_remaining = %d, want 17 (= 20 - 2 - 1)", got)
 		}
 	})
 
