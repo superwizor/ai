@@ -21,7 +21,6 @@ import (
 	nethttp "net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -160,17 +159,4 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
-}
-
-func getEnvInt32(key string, fallback int32) int32 {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
-	}
-	n, err := strconv.ParseInt(v, 10, 32)
-	if err != nil {
-		slog.Warn("invalid env var", "key", key, "value", v, "fallback", fallback)
-		return fallback
-	}
-	return int32(n)
 }
