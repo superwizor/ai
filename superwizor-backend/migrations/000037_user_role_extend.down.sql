@@ -1,0 +1,13 @@
+-- One-way migration. Postgres does NOT support DROP VALUE on an enum
+-- type. To remove the values you'd have to:
+--   1. Rename user_role → user_role_old
+--   2. Create a fresh user_role without the new values
+--   3. Re-cast every users.role column with USING role::text::user_role
+--      (fails on any row that holds ORG_ADMIN or SUPERWIZOR_ADMIN)
+--   4. Drop the old type.
+--
+-- We do not script that here — if you genuinely need to revert,
+-- delete or reassign every user with role IN ('ORG_ADMIN',
+-- 'SUPERWIZOR_ADMIN') first, then run the manual recreate-and-cast
+-- procedure above.
+SELECT 1;
