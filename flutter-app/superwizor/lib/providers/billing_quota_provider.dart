@@ -13,7 +13,6 @@
 //
 // Reference: docs/16 §16, docs/17 §5 (rewritten in phase D).
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/billing_quota_cache.dart';
@@ -30,44 +29,53 @@ final billingQuotaCacheProvider = Provider<BillingQuotaCache>((ref) {
 
 /// Notifier surface — emits `QuotaState?` so existing consumers
 /// (QuotaWarningBanner etc.) keep their API unchanged.
+///
+/// Implementation note: the underlying BillingQuotaCache is fetched
+/// fresh via `ref.read(billingQuotaCacheProvider)` on every access
+/// rather than cached in a `late final` field. AsyncNotifier.build()
+/// can re-run when watched providers change (e.g. currentUserProvider
+/// resolves from null → user during signup), and a `late final`
+/// reassignment in that path throws LateInitializationError. The
+/// underlying Provider already memoises BillingQuotaCache so repeated
+/// ref.read() is cheap and returns the same instance.
 class BillingQuotaNotifier extends AsyncNotifier<QuotaState?> {
-  late final BillingQuotaCache _cache;
-  VoidCallback? _listener;
+  BillingQuotaCache get _cache => ref.read(billingQuotaCacheProvider);
 
   @override
   Future<QuotaState?> build() async {
-    _cache = ref.read(billingQuotaCacheProvider);
-
     final user = await ref.watch(currentUserProvider.future);
     if (user == null) {
       return null;
     }
 
+    final cache = _cache;
+
     // Listen to the cache so subsequent refresh() / applyOptimistic
     // calls propagate through the AsyncNotifier without us needing
-    // to manually set state from every caller.
-    _listener = () {
-      state = AsyncData(_cache.current);
-    };
-    _cache.listenable.addListener(_listener!);
+    // to manually set state from every caller. Riverpod fires
+    // ref.onDispose callbacks before re-invoking build(), so the
+    // previous listener is torn down before we add the next.
+    void listener() {
+      state = AsyncData(cache.current);
+    }
+    cache.listenable.addListener(listener);
     ref.onDispose(() {
-      if (_listener != null) {
-        _cache.listenable.removeListener(_listener!);
-      }
+      cache.listenable.removeListener(listener);
     });
 
     // Initial hydration — one RPC. If it fails the cache stays null
     // and the UI hides quota chrome (same behaviour as the old
     // empty-Firestore-doc case).
-    return await _cache.refresh();
+    return await cache.refresh();
   }
 
   /// Public hook for upload-success path: optimistically apply a
   /// reserved-tokens delta to the cache, then trigger a refresh so
   /// the authoritative server snapshot lands.
   Future<void> onReservationCreated() async {
-    _cache.applyOptimisticReservation(1);
-    await _cache.refresh();
+    final cache = _cache;
+    cache.applyOptimisticReservation(1);
+    await cache.refresh();
   }
 }
 

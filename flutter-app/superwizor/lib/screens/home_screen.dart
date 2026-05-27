@@ -16,7 +16,6 @@ import '../widgets/preference_suggestion_banner.dart';
 import '../widgets/quota_warning_banner.dart';
 import 'client_details_screen.dart';
 import 'menu_screen.dart';
-import 'subscription_plan_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -76,15 +75,10 @@ class HomeScreen extends ConsumerWidget {
                     const Spacer(),
                     const PendingUploadsPill(),
                     const SizedBox(width: 4),
-                    IconButton(
-                      tooltip: 'Subskrypcja',
-                      icon: const Icon(Icons.card_membership, color: EuphireColors.frostWhite),
-                      onPressed: () {
-                        Navigator.of(context).push(CupertinoPageRoute(
-                          builder: (_) => const SubscriptionPlanScreen(),
-                        ));
-                      },
-                    ),
+                    // Subskrypcja entry moved into the Settings menu
+                    // (TWOJE KONTO section) — see menu_screen.dart.
+                    // Kartoteki view header now only carries the menu
+                    // affordance so the chrome stays clean.
                     IconButton(
                       icon: const Icon(Icons.menu, color: EuphireColors.frostWhite),
                       onPressed: () {

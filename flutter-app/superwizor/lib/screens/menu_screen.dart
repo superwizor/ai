@@ -31,6 +31,7 @@ import '../widgets/report_preferences_section.dart';
 import '../l10n/app_localizations.dart';
 import 'delete_account_screen.dart';
 import 'legal_markdown_screen.dart';
+import 'subscription_plan_screen.dart';
 
 class MenuScreen extends ConsumerStatefulWidget {
   const MenuScreen({super.key});
@@ -316,6 +317,22 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                 ),
                               );
                             },
+                          ),
+                          _Divider(),
+                          // Subskrypcja — moved here from the
+                          // Kartoteki header (home_screen.dart) so the
+                          // top-bar chrome stays focused on uploads.
+                          // Same SubscriptionPlanScreen behind it.
+                          _SettingsRow(
+                            icon: Icons.card_membership,
+                            title: t.subscription_screen_title,
+                            trailing: Icon(Icons.chevron_right,
+                                color: EuphireColors.mist.withValues(alpha: 0.4), size: 18),
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const SubscriptionPlanScreen(),
+                              ),
+                            ),
                           ),
                         ]),
 
