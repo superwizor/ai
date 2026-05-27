@@ -46,6 +46,22 @@ resource "google_service_account" "llm_worker" {
   project      = var.project_id
 }
 
+# identity-svc needs its own SA so it can:
+#   - read postgres-database-url secret (cloudsql.client + secretAccessor)
+# It does NOT need KMS access because it never touches PHI columns
+# (no transcripts / reports / patient files). Trial-signup writes
+# usage_counters via billing-svc, not directly.
+#
+# Slice 1 of feat/web-app (docs/18 R6) — moves identity-svc off the
+# default Compute SA. The CI deploy step must pass
+# `--service-account=identity-svc@…` for this binding to take effect
+# on Cloud Run.
+resource "google_service_account" "identity_svc" {
+  account_id   = "identity-svc"
+  display_name = "Identity Service SA"
+  project      = var.project_id
+}
+
 resource "google_project_iam_member" "ingestion_signer" {
   project = var.project_id
   role    = "roles/iam.serviceAccountTokenCreator"
@@ -90,6 +106,20 @@ resource "google_kms_crypto_key_iam_member" "clinical_kms" {
   crypto_key_id = module.kms.app_data_key_id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${google_service_account.clinical_svc.email}"
+}
+
+# identity-svc IAM (least privilege — no KMS, no Firestore).
+resource "google_project_iam_member" "identity_sql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.identity_svc.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "identity_db_pwd" {
+  project   = var.project_id
+  secret_id = "postgres-database-url"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.identity_svc.email}"
 }
 
 # notification-svc IAM

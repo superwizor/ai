@@ -199,12 +199,16 @@ jobs:
       - name: Deploy Identity to Cloud Run
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-identity"
+          # Dedicated SA (least privilege: cloudsql.client + secretAccessor
+          # on postgres-database-url). Replaces the default Compute SA per
+          # Slice 1 of feat/web-app (docs/18 R6, P2 Zero-Trust).
           gcloud run deploy identity-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
             --vpc-connector swvpc-connector \
+            --service-account=identity-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
             --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
           gcloud run services add-iam-policy-binding identity-svc \
