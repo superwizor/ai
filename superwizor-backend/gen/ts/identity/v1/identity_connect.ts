@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CheckPermissionRequest, CreateUserRequest, GetReportPreferencesRequest, GetUserByFirebaseUIDRequest, GetUserRequest, HealthCheckResponse, PermissionDecision, ReportPreferences, UpdateProfileRequest, UpdateReportPreferencesRequest, User, UserContext, ValidateTokenRequest } from "./identity_pbjs";
+import { AcceptInvitationRequest, AcceptInvitationResponse, AdminDeleteUserRequest, AdminGetOrganizationRequest, AdminGetUserRequest, AdminListOrganizationsRequest, AdminListOrganizationsResponse, AdminListUsersRequest, AdminListUsersResponse, AdminSetOrganizationStatusRequest, AdminUpdateOrganizationRequest, AdminUpdateUserRequest, CheckPermissionRequest, CreateUserRequest, GetReportPreferencesRequest, GetUserByFirebaseUIDRequest, GetUserRequest, HealthCheckResponse, Invitation, InviteTherapistRequest, ListTherapistsResponse, Organization, OrganizationDetails, PermissionDecision, RegisterOrganizationRequest, RegisterOrganizationResponse, RemoveTherapistRequest, ReportPreferences, UpdateMyOrganizationRequest, UpdateProfileRequest, UpdateReportPreferencesRequest, User, UserContext, ValidateTokenRequest } from "./identity_pbjs";
 import { Empty, MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -46,7 +46,9 @@ export const IdentityService = {
       kind: MethodKind.Unary,
     },
     /**
-     * Creates user on first login (called from Firebase Auth trigger)
+     * Creates user on first login (called from Firebase Auth trigger).
+     * For role=THERAPIST, identity-svc auto-provisions a personal
+     * organisation + Trial subscription (existing flow from commit 0a25ac7).
      *
      * @generated from rpc identity.v1.IdentityService.CreateUser
      */
@@ -57,13 +59,30 @@ export const IdentityService = {
       kind: MethodKind.Unary,
     },
     /**
-     * Updates own profile
+     * Updates own profile. Web sends the full payload (every editable
+     * column per docs/18 §13.4); iOS sends only the subset it knows.
+     * Handler MUST do selective UPDATE — skip fields whose presence
+     * wrapper is unset — so the iOS partial submit doesn't blank
+     * columns it never set. See docs/18 R4/D2.
      *
      * @generated from rpc identity.v1.IdentityService.UpdateProfile
      */
     updateProfile: {
       name: "UpdateProfile",
       I: UpdateProfileRequest,
+      O: User,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Caller-scoped read of own profile. Returns the User row matching
+     * the authenticated firebase_uid. Web cold-start hydration uses
+     * this instead of passing user_id.
+     *
+     * @generated from rpc identity.v1.IdentityService.GetMyProfile
+     */
+    getMyProfile: {
+      name: "GetMyProfile",
+      I: Empty,
       O: User,
       kind: MethodKind.Unary,
     },
@@ -76,6 +95,161 @@ export const IdentityService = {
       name: "CheckPermission",
       I: CheckPermissionRequest,
       O: PermissionDecision,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Web app: org self-serve + invite flow (docs/18 R4, §9) ──
+     *
+     * RegisterOrganization is the public self-serve endpoint. Creates
+     * (in one PG tx) the organisation + headquarters Address + a
+     * single User with role=ORG_ADMIN + a Trial subscription. The
+     * founder is admin-only; to also record sessions they invite
+     * themselves under a second email (single-role MVP).
+     *
+     * @generated from rpc identity.v1.IdentityService.RegisterOrganization
+     */
+    registerOrganization: {
+      name: "RegisterOrganization",
+      I: RegisterOrganizationRequest,
+      O: RegisterOrganizationResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ORG_ADMIN scope ─ all gated on caller's role; org_id resolved
+     * from the auth context, never trusted from the request.
+     *
+     * @generated from rpc identity.v1.IdentityService.GetMyOrganization
+     */
+    getMyOrganization: {
+      name: "GetMyOrganization",
+      I: Empty,
+      O: Organization,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.UpdateMyOrganization
+     */
+    updateMyOrganization: {
+      name: "UpdateMyOrganization",
+      I: UpdateMyOrganizationRequest,
+      O: Organization,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.InviteTherapist
+     */
+    inviteTherapist: {
+      name: "InviteTherapist",
+      I: InviteTherapistRequest,
+      O: Invitation,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.ListTherapistsInMyOrg
+     */
+    listTherapistsInMyOrg: {
+      name: "ListTherapistsInMyOrg",
+      I: Empty,
+      O: ListTherapistsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.RemoveTherapist
+     */
+    removeTherapist: {
+      name: "RemoveTherapist",
+      I: RemoveTherapistRequest,
+      O: Empty,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Invitee scope — public endpoint, validates the magic-link token.
+     * Called from the /accept-invite page after Firebase
+     * createUserWithEmailAndPassword succeeds. Creates the THERAPIST
+     * User row and attaches it to the inviting org.
+     *
+     * @generated from rpc identity.v1.IdentityService.AcceptInvitation
+     */
+    acceptInvitation: {
+      name: "AcceptInvitation",
+      I: AcceptInvitationRequest,
+      O: AcceptInvitationResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SUPERWIZOR_ADMIN scope ─ internal team. Every mutation writes
+     * audit_events with actor_type=SUPERWIZOR_ADMIN + required reason
+     * (>=10 chars enforced at handler level).
+     *
+     * @generated from rpc identity.v1.IdentityService.AdminListOrganizations
+     */
+    adminListOrganizations: {
+      name: "AdminListOrganizations",
+      I: AdminListOrganizationsRequest,
+      O: AdminListOrganizationsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.AdminGetOrganization
+     */
+    adminGetOrganization: {
+      name: "AdminGetOrganization",
+      I: AdminGetOrganizationRequest,
+      O: OrganizationDetails,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.AdminSetOrganizationStatus
+     */
+    adminSetOrganizationStatus: {
+      name: "AdminSetOrganizationStatus",
+      I: AdminSetOrganizationStatusRequest,
+      O: Empty,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.AdminUpdateOrganization
+     */
+    adminUpdateOrganization: {
+      name: "AdminUpdateOrganization",
+      I: AdminUpdateOrganizationRequest,
+      O: Organization,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.AdminListUsers
+     */
+    adminListUsers: {
+      name: "AdminListUsers",
+      I: AdminListUsersRequest,
+      O: AdminListUsersResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.AdminGetUser
+     */
+    adminGetUser: {
+      name: "AdminGetUser",
+      I: AdminGetUserRequest,
+      O: User,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.AdminUpdateUser
+     */
+    adminUpdateUser: {
+      name: "AdminUpdateUser",
+      I: AdminUpdateUserRequest,
+      O: User,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.AdminDeleteUser
+     */
+    adminDeleteUser: {
+      name: "AdminDeleteUser",
+      I: AdminDeleteUserRequest,
+      O: Empty,
       kind: MethodKind.Unary,
     },
     /**

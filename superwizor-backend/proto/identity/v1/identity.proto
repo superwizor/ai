@@ -17,14 +17,60 @@ service IdentityService {
   // Returns user profile by Firebase UID (after login)
   rpc GetUserByFirebaseUID(GetUserByFirebaseUIDRequest) returns (User);
 
-  // Creates user on first login (called from Firebase Auth trigger)
+  // Creates user on first login (called from Firebase Auth trigger).
+  // For role=THERAPIST, identity-svc auto-provisions a personal
+  // organisation + Trial subscription (existing flow from commit 0a25ac7).
   rpc CreateUser(CreateUserRequest) returns (User);
 
-  // Updates own profile
+  // Updates own profile. Web sends the full payload (every editable
+  // column per docs/18 §13.4); iOS sends only the subset it knows.
+  // Handler MUST do selective UPDATE — skip fields whose presence
+  // wrapper is unset — so the iOS partial submit doesn't blank
+  // columns it never set. See docs/18 R4/D2.
   rpc UpdateProfile(UpdateProfileRequest) returns (User);
+
+  // Caller-scoped read of own profile. Returns the User row matching
+  // the authenticated firebase_uid. Web cold-start hydration uses
+  // this instead of passing user_id.
+  rpc GetMyProfile(google.protobuf.Empty) returns (User);
 
   // RBAC: check permission on resource
   rpc CheckPermission(CheckPermissionRequest) returns (PermissionDecision);
+
+  // ─── Web app: org self-serve + invite flow (docs/18 R4, §9) ──
+  //
+  // RegisterOrganization is the public self-serve endpoint. Creates
+  // (in one PG tx) the organisation + headquarters Address + a
+  // single User with role=ORG_ADMIN + a Trial subscription. The
+  // founder is admin-only; to also record sessions they invite
+  // themselves under a second email (single-role MVP).
+  rpc RegisterOrganization(RegisterOrganizationRequest) returns (RegisterOrganizationResponse);
+
+  // ORG_ADMIN scope ─ all gated on caller's role; org_id resolved
+  // from the auth context, never trusted from the request.
+  rpc GetMyOrganization(google.protobuf.Empty) returns (Organization);
+  rpc UpdateMyOrganization(UpdateMyOrganizationRequest) returns (Organization);
+  rpc InviteTherapist(InviteTherapistRequest) returns (Invitation);
+  rpc ListTherapistsInMyOrg(google.protobuf.Empty) returns (ListTherapistsResponse);
+  rpc RemoveTherapist(RemoveTherapistRequest) returns (google.protobuf.Empty);
+
+  // Invitee scope — public endpoint, validates the magic-link token.
+  // Called from the /accept-invite page after Firebase
+  // createUserWithEmailAndPassword succeeds. Creates the THERAPIST
+  // User row and attaches it to the inviting org.
+  rpc AcceptInvitation(AcceptInvitationRequest) returns (AcceptInvitationResponse);
+
+  // SUPERWIZOR_ADMIN scope ─ internal team. Every mutation writes
+  // audit_events with actor_type=SUPERWIZOR_ADMIN + required reason
+  // (>=10 chars enforced at handler level).
+  rpc AdminListOrganizations(AdminListOrganizationsRequest) returns (AdminListOrganizationsResponse);
+  rpc AdminGetOrganization(AdminGetOrganizationRequest) returns (OrganizationDetails);
+  rpc AdminSetOrganizationStatus(AdminSetOrganizationStatusRequest) returns (google.protobuf.Empty);
+  rpc AdminUpdateOrganization(AdminUpdateOrganizationRequest) returns (Organization);
+  rpc AdminListUsers(AdminListUsersRequest) returns (AdminListUsersResponse);
+  rpc AdminGetUser(AdminGetUserRequest) returns (User);
+  rpc AdminUpdateUser(AdminUpdateUserRequest) returns (User);
+  rpc AdminDeleteUser(AdminDeleteUserRequest) returns (google.protobuf.Empty);
 
   // ─── Report customization (docs/10_REPORT_CUSTOMIZATION.md) ───
   // Returns the therapist's report style preferences. The active
@@ -46,6 +92,18 @@ enum UserRole {
   USER_ROLE_UNSPECIFIED = 0;
   USER_ROLE_THERAPIST = 1;
   USER_ROLE_PATIENT = 2;
+  // Web app additions per docs/18 R4. Single-role MVP — a user holds
+  // exactly one role. Org founders are ORG_ADMIN only (cannot record
+  // sessions); to also practise they invite themselves as THERAPIST.
+  USER_ROLE_ORG_ADMIN = 3;
+  USER_ROLE_SUPERWIZOR_ADMIN = 4;
+}
+
+enum OrganizationType {
+  ORGANIZATION_TYPE_UNSPECIFIED = 0;
+  ORGANIZATION_TYPE_SOLO = 1;
+  ORGANIZATION_TYPE_CLINIC = 2;
+  ORGANIZATION_TYPE_ENTERPRISE = 3;
 }
 
 message User {
@@ -102,6 +160,14 @@ message CreateUserRequest {
   bool has_accepted_tos = 8;
 }
 
+// UpdateProfileRequest is the iOS-compatible profile mutation. Per
+// docs/18 D2: iOS sends a subset (fields 2-7), web sends the full
+// payload. The handler does a selective UPDATE — fields whose
+// `optional` wrapper is unset are skipped; empty strings on
+// fields 2-7 (iOS contract) are also skipped to preserve the
+// "missing field means no change" semantics existing clients rely
+// on. New fields 8-13 use `optional` so the wire distinguishes
+// "blank the column" from "don't touch it" cleanly.
 message UpdateProfileRequest {
   string user_id = 1;
   string first_name = 2;
@@ -110,6 +176,13 @@ message UpdateProfileRequest {
   string credentials_number = 5;
   string biography = 6;
   string phone_number = 7;
+  // Web additions (docs/18 §13.4) — full editable surface.
+  optional string avatar_url = 8;
+  optional string default_modality_id = 9;
+  optional string ui_language = 10;
+  optional string timezone = 11;
+  optional Address billing_address = 12;
+  optional bool has_marketing_consent = 13;
 }
 
 message CheckPermissionRequest {
@@ -173,4 +246,251 @@ message UpdateReportPreferencesRequest {
   // same payload → no-op past the first write. Same key with
   // different payload → AlreadyExists (idempotency violation).
   string idempotency_key = 3;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Web app messages — docs/18 §13 (Forms catalogue), §6.1 (RPCs).
+// ──────────────────────────────────────────────────────────────────
+
+// Address is the shared shape used by Organization headquarters and
+// User billing addresses. Backed by the `addresses` PG table; the
+// handler creates one row per parent (org / user) and updates it
+// in place on subsequent edits.
+message Address {
+  string id = 1;                  // server-set; ignored on create
+  string country_code = 2;        // ISO 3166-1 alpha-2 (e.g. "PL")
+  string region = 3;              // voivodeship / state — optional
+  string city = 4;
+  string postal_code = 5;
+  string street_line = 6;
+  string building_number = 7;
+  string unit_number = 8;         // optional
+  string directions = 9;          // optional free text
+}
+
+message Organization {
+  string id = 1;
+  string legal_name = 2;
+  string tax_id = 3;              // NIP for PL
+  string vat_id_eu = 4;           // EU VAT ID for VIES
+  OrganizationType type = 5;      // SOLO | CLINIC | ENTERPRISE
+  Address headquarters_address = 6;
+  string primary_admin_user_id = 7;
+  google.protobuf.Timestamp created_at = 8;
+  bool is_blocked = 9;            // derived from subscriptions.status
+}
+
+// RegisterOrganization payload — clinic founder self-serve.
+//
+// The founder becomes role=ORG_ADMIN with no THERAPIST powers
+// (single-role MVP per docs/18 R4). To also record sessions they
+// invite themselves under a different email via the standard
+// invitation flow (§9).
+message RegisterOrganizationRequest {
+  // Founder user fields
+  string firebase_uid = 1;        // from Firebase Auth on the client
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string phone_number = 5;        // required for billing contact
+  string ui_language = 6;         // 'pl' default
+  string timezone = 7;            // 'Europe/Warsaw' default
+  bool has_accepted_tos = 8;
+  bool has_marketing_consent = 9;
+
+  // Organization fields
+  string legal_name = 10;
+  OrganizationType type = 11;     // CLINIC default for clinic reg
+  string tax_id = 12;             // NIP for PL — required for PL
+  string vat_id_eu = 13;          // optional unless cross-border
+  Address headquarters_address = 14;
+
+  // Idempotency: same key with same payload → returns existing org.
+  string idempotency_key = 15;
+}
+
+message RegisterOrganizationResponse {
+  User user = 1;                  // the new ORG_ADMIN
+  Organization organization = 2;
+}
+
+message UpdateMyOrganizationRequest {
+  // org_id resolved from caller's auth context — not in the wire
+  // payload (org-admin can only edit their own org).
+  optional string legal_name = 1;
+  optional OrganizationType type = 2;
+  optional string tax_id = 3;
+  optional string vat_id_eu = 4;
+  optional Address headquarters_address = 5;
+  optional string primary_admin_user_id = 6;  // for ownership transfer
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Invitations (magic-link flow — docs/18 §9)
+// ──────────────────────────────────────────────────────────────────
+
+message Invitation {
+  string id = 1;
+  string organization_id = 2;
+  string invited_by_user = 3;
+  string email = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  google.protobuf.Timestamp accepted_at = 6;  // empty if pending
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message InviteTherapistRequest {
+  string email = 1;
+  // Suggested fields pre-populate the accept-invite page; invitee
+  // can edit any of them. Optional.
+  string first_name = 2;
+  string last_name = 3;
+  string default_modality_id = 4;
+  string idempotency_key = 5;
+}
+
+message AcceptInvitationRequest {
+  // The url-safe-base64 token from the email link (NOT hashed —
+  // the handler SHA-256s the incoming value before looking up in
+  // invitations.token_hash).
+  string token = 1;
+  // Firebase UID of the just-created Firebase Auth account. The
+  // client calls createUserWithEmailAndPassword first, then sends
+  // this RPC to attach the new account to the inviting org.
+  string firebase_uid = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string default_modality_id = 5;  // optional override
+  string ui_language = 6;
+  string timezone = 7;
+  bool has_accepted_tos = 8;
+  bool has_marketing_consent = 9;
+}
+
+message AcceptInvitationResponse {
+  User user = 1;                  // the new THERAPIST
+  Organization organization = 2;  // the joined org (for the welcome page)
+}
+
+message TherapistEntry {
+  // For an active (accepted) therapist, populated user is set and
+  // pending_invitation is empty. For a pending invitation, the
+  // reverse — `user` is empty.
+  User user = 1;
+  Invitation pending_invitation = 2;
+}
+
+message ListTherapistsResponse {
+  repeated TherapistEntry therapists = 1;
+}
+
+message RemoveTherapistRequest {
+  string user_id = 1;             // must be in the caller's org
+  string reason = 2;              // optional; audit only
+}
+
+// ──────────────────────────────────────────────────────────────────
+// SUPERWIZOR_ADMIN messages
+// ──────────────────────────────────────────────────────────────────
+
+message AdminListOrganizationsRequest {
+  // Pagination — for now we just slice on (created_at, id) ordering.
+  int32 page_size = 1;            // default 50, cap 200
+  string page_token = 2;          // opaque
+  string search = 3;              // matches legal_name (ILIKE) — optional
+}
+
+message OrganizationSummary {
+  Organization organization = 1;
+  int32 therapists_count = 2;
+  google.protobuf.Timestamp last_session_at = 3;
+}
+
+message AdminListOrganizationsResponse {
+  repeated OrganizationSummary organizations = 1;
+  string next_page_token = 2;
+}
+
+message AdminGetOrganizationRequest {
+  string organization_id = 1;
+}
+
+// Richer view than Organization — includes admin-relevant adjuncts.
+message OrganizationDetails {
+  Organization organization = 1;
+  repeated User therapists = 2;
+  // Recent audit history scoped to this org (last 20 entries).
+  repeated AuditEntry recent_audit = 3;
+}
+
+message AuditEntry {
+  string id = 1;
+  google.protobuf.Timestamp occurred_at = 2;
+  string actor_email = 3;         // resolved from actor_user_id
+  string action = 4;
+  string reason = 5;
+  string resource_type = 6;
+  string resource_id = 7;
+}
+
+message AdminSetOrganizationStatusRequest {
+  string organization_id = 1;
+  // Currently supports: "active" | "blocked". Maps to
+  // subscriptions.status (ACTIVE / PAST_DUE).
+  string desired_status = 2;
+  string reason = 3;              // required, >=10 chars
+}
+
+message AdminUpdateOrganizationRequest {
+  string organization_id = 1;
+  optional string legal_name = 2;
+  optional OrganizationType type = 3;
+  optional string tax_id = 4;
+  optional string vat_id_eu = 5;
+  optional Address headquarters_address = 6;
+  optional string primary_admin_user_id = 7;
+  string reason = 8;              // required, >=10 chars
+}
+
+message AdminListUsersRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  // Optional filters — all AND-ed when set.
+  string organization_id = 3;
+  UserRole role = 4;
+  string search = 5;              // email or name ILIKE
+}
+
+message AdminListUsersResponse {
+  repeated User users = 1;
+  string next_page_token = 2;
+}
+
+message AdminGetUserRequest {
+  string user_id = 1;
+}
+
+message AdminUpdateUserRequest {
+  string user_id = 1;
+  optional string email = 2;
+  optional string first_name = 3;
+  optional string last_name = 4;
+  optional string phone_number = 5;
+  optional UserRole role = 6;
+  optional string organization_id = 7;
+  optional string default_modality_id = 8;
+  optional string ui_language = 9;
+  optional string timezone = 10;
+  optional string professional_title = 11;
+  optional string credentials_number = 12;
+  optional string biography = 13;
+  optional string avatar_url = 14;
+  optional Address billing_address = 15;
+  optional bool is_email_verified = 16;
+  string reason = 17;             // required, >=10 chars
+}
+
+message AdminDeleteUserRequest {
+  string user_id = 1;
+  string reason = 2;              // required, >=10 chars
 }

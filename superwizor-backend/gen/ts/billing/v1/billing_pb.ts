@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file billing/v1/billing.proto.
  */
 export const file_billing_v1_billing: GenFile = /*@__PURE__*/
-  fileDesc("ChhiaWxsaW5nL3YxL2JpbGxpbmcucHJvdG8SCmJpbGxpbmcudjEiZgoRQ2hlY2tRdW90YVJlcXVlc3QSFwoPb3JnYW5pemF0aW9uX2lkGAEgASgJEhQKDHRoZXJhcGlzdF9pZBgCIAEoCRISCgp1c2FnZV90eXBlGAMgASgJEg4KBmFtb3VudBgEIAEoBSKyAQoNUXVvdGFEZWNpc2lvbhIPCgdhbGxvd2VkGAEgASgIEg4KBnJlYXNvbhgCIAEoCRIRCglyZW1haW5pbmcYAyABKAUSDQoFbGltaXQYBCABKAUSGAoQcmVtYWluaW5nX3Rva2VucxgFIAEoBRIUCgxsaW1pdF90b2tlbnMYBiABKAUSLgoKcGVyaW9kX2VuZBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAijAEKFFJlc2VydmVDcmVkaXRSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSFwoPb3JnYW5pemF0aW9uX2lkGAIgASgJEhQKDHRoZXJhcGlzdF9pZBgDIAEoCRIYChBlc3RpbWF0ZWRfdG9rZW5zGAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSKxAQoLUmVzZXJ2YXRpb24SFgoOcmVzZXJ2YXRpb25faWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRIXCg90b2tlbnNfcmVzZXJ2ZWQYAyABKAUSLgoKZXhwaXJlc19hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLQoLc3RhdGVfYWZ0ZXIYBSABKAsyGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbiKeAQoSQ29tbWl0VXNhZ2VSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSFwoPb3JnYW5pemF0aW9uX2lkGAIgASgJEhQKDHRoZXJhcGlzdF9pZBgDIAEoCRIYChBkdXJhdGlvbl9zZWNvbmRzGAQgASgFEhIKCnVzYWdlX3R5cGUYBSABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAYgASgJIoUBCgtVc2FnZUNvbW1pdBIXCg90b2tlbnNfY29uc3VtZWQYASABKAUSGAoQcmVtYWluaW5nX3Rva2VucxgCIAEoBRIUCgxsaW1pdF90b2tlbnMYAyABKAUSLQoLc3RhdGVfYWZ0ZXIYBCABKAsyGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbiJTChRSZWxlYXNlQ3JlZGl0UmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEhcKD29yZ2FuaXphdGlvbl9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkimwEKFUluY3JlbWVudFVzYWdlUmVxdWVzdBIXCg9vcmdhbml6YXRpb25faWQYASABKAkSFAoMdGhlcmFwaXN0X2lkGAIgASgJEhIKCnVzYWdlX3R5cGUYAyABKAkSDgoGYW1vdW50GAQgASgFEhIKCnNlc3Npb25faWQYBSABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAYgASgJOgIYASIxChZHZXRTdWJzY3JpcHRpb25SZXF1ZXN0EhcKD29yZ2FuaXphdGlvbl9pZBgBIAEoCSKDAwoMU3Vic2NyaXB0aW9uEgoKAmlkGAEgASgJEhEKCXBsYW5fdGllchgCIAEoCRIOCgZzdGF0dXMYAyABKAkSIAoYc2Vzc2lvbnNfcGVyX21vbnRoX2xpbWl0GAQgASgFEiEKGXNlc3Npb25zX3VzZWRfdGhpc19wZXJpb2QYBSABKAUSGQoRdG9rZW5zX3Blcl9wZXJpb2QYBiABKAUSHwoXdG9rZW5zX3VzZWRfdGhpc19wZXJpb2QYByABKAUSIwobdG9rZW5zX3Jlc2VydmVkX3RoaXNfcGVyaW9kGAggASgFEjgKFGN1cnJlbnRfcGVyaW9kX3N0YXJ0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI2ChJjdXJyZW50X3BlcmlvZF9lbmQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCnBsYW5fY3ljbGUYCyABKAkSGAoQdG9rZW5zX3JlbWFpbmluZxgMIAEoBTLaAwoOQmlsbGluZ1NlcnZpY2USRgoKQ2hlY2tRdW90YRIdLmJpbGxpbmcudjEuQ2hlY2tRdW90YVJlcXVlc3QaGS5iaWxsaW5nLnYxLlF1b3RhRGVjaXNpb24SSgoNUmVzZXJ2ZUNyZWRpdBIgLmJpbGxpbmcudjEuUmVzZXJ2ZUNyZWRpdFJlcXVlc3QaFy5iaWxsaW5nLnYxLlJlc2VydmF0aW9uEkYKC0NvbW1pdFVzYWdlEh4uYmlsbGluZy52MS5Db21taXRVc2FnZVJlcXVlc3QaFy5iaWxsaW5nLnYxLlVzYWdlQ29tbWl0EkkKDVJlbGVhc2VDcmVkaXQSIC5iaWxsaW5nLnYxLlJlbGVhc2VDcmVkaXRSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5ElAKDkluY3JlbWVudFVzYWdlEiEuYmlsbGluZy52MS5JbmNyZW1lbnRVc2FnZVJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiA4gCARJPCg9HZXRTdWJzY3JpcHRpb24SIi5iaWxsaW5nLnYxLkdldFN1YnNjcmlwdGlvblJlcXVlc3QaGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbkKlAQoOY29tLmJpbGxpbmcudjFCDEJpbGxpbmdQcm90b1ABWjxnaXRodWIuY29tL3N1cGVyd2l6b3ItYWkvYmFja2VuZC9nZW4vZ28vYmlsbGluZy92MTtiaWxsaW5ndjGiAgNCWFiqAgpCaWxsaW5nLlYxygIKQmlsbGluZ1xWMeICFkJpbGxpbmdcVjFcR1BCTWV0YWRhdGHqAgtCaWxsaW5nOjpWMWIGcHJvdG8z", [file_google_protobuf_empty, file_google_protobuf_timestamp]);
+  fileDesc("ChhiaWxsaW5nL3YxL2JpbGxpbmcucHJvdG8SCmJpbGxpbmcudjEiZgoRQ2hlY2tRdW90YVJlcXVlc3QSFwoPb3JnYW5pemF0aW9uX2lkGAEgASgJEhQKDHRoZXJhcGlzdF9pZBgCIAEoCRISCgp1c2FnZV90eXBlGAMgASgJEg4KBmFtb3VudBgEIAEoBSKyAQoNUXVvdGFEZWNpc2lvbhIPCgdhbGxvd2VkGAEgASgIEg4KBnJlYXNvbhgCIAEoCRIRCglyZW1haW5pbmcYAyABKAUSDQoFbGltaXQYBCABKAUSGAoQcmVtYWluaW5nX3Rva2VucxgFIAEoBRIUCgxsaW1pdF90b2tlbnMYBiABKAUSLgoKcGVyaW9kX2VuZBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAijAEKFFJlc2VydmVDcmVkaXRSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSFwoPb3JnYW5pemF0aW9uX2lkGAIgASgJEhQKDHRoZXJhcGlzdF9pZBgDIAEoCRIYChBlc3RpbWF0ZWRfdG9rZW5zGAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSKxAQoLUmVzZXJ2YXRpb24SFgoOcmVzZXJ2YXRpb25faWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRIXCg90b2tlbnNfcmVzZXJ2ZWQYAyABKAUSLgoKZXhwaXJlc19hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLQoLc3RhdGVfYWZ0ZXIYBSABKAsyGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbiKeAQoSQ29tbWl0VXNhZ2VSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSFwoPb3JnYW5pemF0aW9uX2lkGAIgASgJEhQKDHRoZXJhcGlzdF9pZBgDIAEoCRIYChBkdXJhdGlvbl9zZWNvbmRzGAQgASgFEhIKCnVzYWdlX3R5cGUYBSABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAYgASgJIoUBCgtVc2FnZUNvbW1pdBIXCg90b2tlbnNfY29uc3VtZWQYASABKAUSGAoQcmVtYWluaW5nX3Rva2VucxgCIAEoBRIUCgxsaW1pdF90b2tlbnMYAyABKAUSLQoLc3RhdGVfYWZ0ZXIYBCABKAsyGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbiJTChRSZWxlYXNlQ3JlZGl0UmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEhcKD29yZ2FuaXphdGlvbl9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkimwEKFUluY3JlbWVudFVzYWdlUmVxdWVzdBIXCg9vcmdhbml6YXRpb25faWQYASABKAkSFAoMdGhlcmFwaXN0X2lkGAIgASgJEhIKCnVzYWdlX3R5cGUYAyABKAkSDgoGYW1vdW50GAQgASgFEhIKCnNlc3Npb25faWQYBSABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAYgASgJOgIYASIxChZHZXRTdWJzY3JpcHRpb25SZXF1ZXN0EhcKD29yZ2FuaXphdGlvbl9pZBgBIAEoCSKDAwoMU3Vic2NyaXB0aW9uEgoKAmlkGAEgASgJEhEKCXBsYW5fdGllchgCIAEoCRIOCgZzdGF0dXMYAyABKAkSIAoYc2Vzc2lvbnNfcGVyX21vbnRoX2xpbWl0GAQgASgFEiEKGXNlc3Npb25zX3VzZWRfdGhpc19wZXJpb2QYBSABKAUSGQoRdG9rZW5zX3Blcl9wZXJpb2QYBiABKAUSHwoXdG9rZW5zX3VzZWRfdGhpc19wZXJpb2QYByABKAUSIwobdG9rZW5zX3Jlc2VydmVkX3RoaXNfcGVyaW9kGAggASgFEjgKFGN1cnJlbnRfcGVyaW9kX3N0YXJ0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI2ChJjdXJyZW50X3BlcmlvZF9lbmQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCnBsYW5fY3ljbGUYCyABKAkSGAoQdG9rZW5zX3JlbWFpbmluZxgMIAEoBSKGAQoXQWRtaW5SZXNldFRva2Vuc1JlcXVlc3QSFwoPb3JnYW5pemF0aW9uX2lkGAEgASgJEhMKC3Rva2Vuc191c2VkGAIgASgFEhQKDHRva2Vuc19saW1pdBgDIAEoBRIOCgZyZWFzb24YBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJIoEBChZBZG1pbkNoYW5nZVBsYW5SZXF1ZXN0EhcKD29yZ2FuaXphdGlvbl9pZBgBIAEoCRIRCglwbGFuX3RpZXIYAiABKAkSEgoKcGxhbl9jeWNsZRgDIAEoCRIOCgZyZWFzb24YBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJMv4ECg5CaWxsaW5nU2VydmljZRJGCgpDaGVja1F1b3RhEh0uYmlsbGluZy52MS5DaGVja1F1b3RhUmVxdWVzdBoZLmJpbGxpbmcudjEuUXVvdGFEZWNpc2lvbhJKCg1SZXNlcnZlQ3JlZGl0EiAuYmlsbGluZy52MS5SZXNlcnZlQ3JlZGl0UmVxdWVzdBoXLmJpbGxpbmcudjEuUmVzZXJ2YXRpb24SRgoLQ29tbWl0VXNhZ2USHi5iaWxsaW5nLnYxLkNvbW1pdFVzYWdlUmVxdWVzdBoXLmJpbGxpbmcudjEuVXNhZ2VDb21taXQSSQoNUmVsZWFzZUNyZWRpdBIgLmJpbGxpbmcudjEuUmVsZWFzZUNyZWRpdFJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkSUAoOSW5jcmVtZW50VXNhZ2USIS5iaWxsaW5nLnYxLkluY3JlbWVudFVzYWdlUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIDiAIBEk8KD0dldFN1YnNjcmlwdGlvbhIiLmJpbGxpbmcudjEuR2V0U3Vic2NyaXB0aW9uUmVxdWVzdBoYLmJpbGxpbmcudjEuU3Vic2NyaXB0aW9uElEKEEFkbWluUmVzZXRUb2tlbnMSIy5iaWxsaW5nLnYxLkFkbWluUmVzZXRUb2tlbnNSZXF1ZXN0GhguYmlsbGluZy52MS5TdWJzY3JpcHRpb24STwoPQWRtaW5DaGFuZ2VQbGFuEiIuYmlsbGluZy52MS5BZG1pbkNoYW5nZVBsYW5SZXF1ZXN0GhguYmlsbGluZy52MS5TdWJzY3JpcHRpb25CpQEKDmNvbS5iaWxsaW5nLnYxQgxCaWxsaW5nUHJvdG9QAVo8Z2l0aHViLmNvbS9zdXBlcndpem9yLWFpL2JhY2tlbmQvZ2VuL2dvL2JpbGxpbmcvdjE7YmlsbGluZ3YxogIDQlhYqgIKQmlsbGluZy5WMcoCCkJpbGxpbmdcVjHiAhZCaWxsaW5nXFYxXEdQQk1ldGFkYXRh6gILQmlsbGluZzo6VjFiBnByb3RvMw", [file_google_protobuf_empty, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message billing.v1.CheckQuotaRequest
@@ -448,6 +448,94 @@ export const SubscriptionSchema: GenMessage<Subscription> = /*@__PURE__*/
   messageDesc(file_billing_v1_billing, 9);
 
 /**
+ * @generated from message billing.v1.AdminResetTokensRequest
+ */
+export type AdminResetTokensRequest = Message<"billing.v1.AdminResetTokensRequest"> & {
+  /**
+   * @generated from field: string organization_id = 1;
+   */
+  organizationId: string;
+
+  /**
+   * New value for usage_counters.tokens_used. Must be >= 0.
+   * Pass -1 to leave tokens_used unchanged (limit-only updates).
+   *
+   * @generated from field: int32 tokens_used = 2;
+   */
+  tokensUsed: number;
+
+  /**
+   * Optional override on tokens_limit. Pass -1 to leave it untouched
+   * (only adjust tokens_used). When set, must be > 0.
+   *
+   * @generated from field: int32 tokens_limit = 3;
+   */
+  tokensLimit: number;
+
+  /**
+   * Required, >= 10 chars. Stored on audit_events.reason.
+   *
+   * @generated from field: string reason = 4;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: string idempotency_key = 5;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message billing.v1.AdminResetTokensRequest.
+ * Use `create(AdminResetTokensRequestSchema)` to create a new message.
+ */
+export const AdminResetTokensRequestSchema: GenMessage<AdminResetTokensRequest> = /*@__PURE__*/
+  messageDesc(file_billing_v1_billing, 10);
+
+/**
+ * @generated from message billing.v1.AdminChangePlanRequest
+ */
+export type AdminChangePlanRequest = Message<"billing.v1.AdminChangePlanRequest"> & {
+  /**
+   * @generated from field: string organization_id = 1;
+   */
+  organizationId: string;
+
+  /**
+   * Target plan_tier (SOLO | PRO | CLINIC | TRIAL) and cycle
+   * (MONTHLY | ANNUAL). Resolves to a subscription_plans row at
+   * handler time.
+   *
+   * @generated from field: string plan_tier = 2;
+   */
+  planTier: string;
+
+  /**
+   * @generated from field: string plan_cycle = 3;
+   */
+  planCycle: string;
+
+  /**
+   * Required, >= 10 chars.
+   *
+   * @generated from field: string reason = 4;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: string idempotency_key = 5;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message billing.v1.AdminChangePlanRequest.
+ * Use `create(AdminChangePlanRequestSchema)` to create a new message.
+ */
+export const AdminChangePlanRequestSchema: GenMessage<AdminChangePlanRequest> = /*@__PURE__*/
+  messageDesc(file_billing_v1_billing, 11);
+
+/**
  * BillingService — quota i lifecycle subskrypcji (Phase 3).
  *
  * Model tokenów (ADR-DM-017): 1 token = ≤60min audio + 180s grace.
@@ -524,6 +612,31 @@ export const BillingService: GenService<{
   getSubscription: {
     methodKind: "unary";
     input: typeof GetSubscriptionRequestSchema;
+    output: typeof SubscriptionSchema;
+  },
+  /**
+   * Sets usage_counters.tokens_used (and optionally tokens_limit)
+   * on the org's current active counter. Used for support escapes
+   * — refunds, manual top-ups, period rolls. Returns the fresh
+   * Subscription proto so the admin UI updates inline.
+   *
+   * @generated from rpc billing.v1.BillingService.AdminResetTokens
+   */
+  adminResetTokens: {
+    methodKind: "unary";
+    input: typeof AdminResetTokensRequestSchema;
+    output: typeof SubscriptionSchema;
+  },
+  /**
+   * Changes the org's subscription plan_tier + plan_cycle. Creates
+   * a new usage_counters row at the new plan's tokens_limit, marks
+   * the old counter inactive. Returns the fresh Subscription.
+   *
+   * @generated from rpc billing.v1.BillingService.AdminChangePlan
+   */
+  adminChangePlan: {
+    methodKind: "unary";
+    input: typeof AdminChangePlanRequestSchema;
     output: typeof SubscriptionSchema;
   },
 }> = /*@__PURE__*/

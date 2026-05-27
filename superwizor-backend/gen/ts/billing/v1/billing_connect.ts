@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CheckQuotaRequest, CommitUsageRequest, GetSubscriptionRequest, IncrementUsageRequest, QuotaDecision, ReleaseCreditRequest, Reservation, ReserveCreditRequest, Subscription, UsageCommit } from "./billing_pbjs";
+import { AdminChangePlanRequest, AdminResetTokensRequest, CheckQuotaRequest, CommitUsageRequest, GetSubscriptionRequest, IncrementUsageRequest, QuotaDecision, ReleaseCreditRequest, Reservation, ReserveCreditRequest, Subscription, UsageCommit } from "./billing_pbjs";
 import { Empty, MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -90,6 +90,33 @@ export const BillingService = {
     getSubscription: {
       name: "GetSubscription",
       I: GetSubscriptionRequest,
+      O: Subscription,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Sets usage_counters.tokens_used (and optionally tokens_limit)
+     * on the org's current active counter. Used for support escapes
+     * — refunds, manual top-ups, period rolls. Returns the fresh
+     * Subscription proto so the admin UI updates inline.
+     *
+     * @generated from rpc billing.v1.BillingService.AdminResetTokens
+     */
+    adminResetTokens: {
+      name: "AdminResetTokens",
+      I: AdminResetTokensRequest,
+      O: Subscription,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Changes the org's subscription plan_tier + plan_cycle. Creates
+     * a new usage_counters row at the new plan's tokens_limit, marks
+     * the old counter inactive. Returns the fresh Subscription.
+     *
+     * @generated from rpc billing.v1.BillingService.AdminChangePlan
+     */
+    adminChangePlan: {
+      name: "AdminChangePlan",
+      I: AdminChangePlanRequest,
       O: Subscription,
       kind: MethodKind.Unary,
     },

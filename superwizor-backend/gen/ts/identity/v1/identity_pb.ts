@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file identity/v1/identity.proto.
  */
 export const file_identity_v1_identity: GenFile = /*@__PURE__*/
-  fileDesc("ChppZGVudGl0eS92MS9pZGVudGl0eS5wcm90bxILaWRlbnRpdHkudjEi9QMKBFVzZXISCgoCaWQYASABKAkSIwoEcm9sZRgCIAEoDjIVLmlkZW50aXR5LnYxLlVzZXJSb2xlEhcKD29yZ2FuaXphdGlvbl9pZBgDIAEoCRIUCgxmaXJlYmFzZV91aWQYBCABKAkSDQoFZW1haWwYBSABKAkSFAoMcGhvbmVfbnVtYmVyGAYgASgJEhkKEWlzX2VtYWlsX3ZlcmlmaWVkGAcgASgIEhIKCmZpcnN0X25hbWUYCCABKAkSEQoJbGFzdF9uYW1lGAkgASgJEhoKEnByb2Zlc3Npb25hbF90aXRsZRgKIAEoCRIaChJjcmVkZW50aWFsc19udW1iZXIYCyABKAkSEwoLdWlfbGFuZ3VhZ2UYDCABKAkSEAoIdGltZXpvbmUYDSABKAkSGAoQaGFzX2FjY2VwdGVkX3RvcxgOIAEoCBIuCgpjcmVhdGVkX2F0GA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIRCgliaW9ncmFwaHkYECABKAkSEgoKYXZhdGFyX3VybBgRIAEoCRIbChNkZWZhdWx0X21vZGFsaXR5X2lkGBIgASgJEhoKEmJpbGxpbmdfYWRkcmVzc19pZBgTIAEoCRIdChVoYXNfbWFya2V0aW5nX2NvbnNlbnQYFCABKAgigQEKC1VzZXJDb250ZXh0Eg8KB3VzZXJfaWQYASABKAkSFAoMZmlyZWJhc2VfdWlkGAIgASgJEiMKBHJvbGUYAyABKA4yFS5pZGVudGl0eS52MS5Vc2VyUm9sZRIXCg9vcmdhbml6YXRpb25faWQYBCABKAkSDQoFZW1haWwYBSABKAkiMQoUVmFsaWRhdGVUb2tlblJlcXVlc3QSGQoRZmlyZWJhc2VfaWRfdG9rZW4YASABKAkiIQoOR2V0VXNlclJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIzChtHZXRVc2VyQnlGaXJlYmFzZVVJRFJlcXVlc3QSFAoMZmlyZWJhc2VfdWlkGAEgASgJIsUBChFDcmVhdGVVc2VyUmVxdWVzdBIUCgxmaXJlYmFzZV91aWQYASABKAkSDQoFZW1haWwYAiABKAkSIwoEcm9sZRgDIAEoDjIVLmlkZW50aXR5LnYxLlVzZXJSb2xlEhIKCmZpcnN0X25hbWUYBCABKAkSEQoJbGFzdF9uYW1lGAUgASgJEhMKC3VpX2xhbmd1YWdlGAYgASgJEhAKCHRpbWV6b25lGAcgASgJEhgKEGhhc19hY2NlcHRlZF90b3MYCCABKAgirwEKFFVwZGF0ZVByb2ZpbGVSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSEgoKZmlyc3RfbmFtZRgCIAEoCRIRCglsYXN0X25hbWUYAyABKAkSGgoScHJvZmVzc2lvbmFsX3RpdGxlGAQgASgJEhoKEmNyZWRlbnRpYWxzX251bWJlchgFIAEoCRIRCgliaW9ncmFwaHkYBiABKAkSFAoMcGhvbmVfbnVtYmVyGAcgASgJImUKFkNoZWNrUGVybWlzc2lvblJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCRIVCg1yZXNvdXJjZV90eXBlGAIgASgJEhMKC3Jlc291cmNlX2lkGAMgASgJEg4KBmFjdGlvbhgEIAEoCSI1ChJQZXJtaXNzaW9uRGVjaXNpb24SDwoHYWxsb3dlZBgBIAEoCBIOCgZyZWFzb24YAiABKAkiNgoTSGVhbHRoQ2hlY2tSZXNwb25zZRIOCgZzdGF0dXMYASABKAkSDwoHdmVyc2lvbhgCIAEoCSKKAgoRUmVwb3J0UHJlZmVyZW5jZXMSDwoHdmVyc2lvbhgBIAEoBRIOCgZsZW5ndGgYAiABKAkSDAoEdG9uZRgDIAEoCRIVCg1xdW90ZV9kZW5zaXR5GAQgASgJEhsKE2RpYWdub3N0aWNfbGFuZ3VhZ2UYBSABKAkSGgoSaHlwb3RoZXNpc19oZWRnaW5nGAYgASgJEhgKEHNlY3Rpb25fZW1waGFzaXMYByADKAkSGQoRc3RyZW5ndGhzX2ZyYW1pbmcYCCABKAkSEQoJZnJlZV90ZXh0GAkgASgJEi4KCnVwZGF0ZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjMKG0dldFJlcG9ydFByZWZlcmVuY2VzUmVxdWVzdBIUCgx0aGVyYXBpc3RfaWQYASABKAkihAEKHlVwZGF0ZVJlcG9ydFByZWZlcmVuY2VzUmVxdWVzdBIUCgx0aGVyYXBpc3RfaWQYASABKAkSMwoLcHJlZmVyZW5jZXMYAiABKAsyHi5pZGVudGl0eS52MS5SZXBvcnRQcmVmZXJlbmNlcxIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkqVQoIVXNlclJvbGUSGQoVVVNFUl9ST0xFX1VOU1BFQ0lGSUVEEAASFwoTVVNFUl9ST0xFX1RIRVJBUElTVBABEhUKEVVTRVJfUk9MRV9QQVRJRU5UEAIy4wUKD0lkZW50aXR5U2VydmljZRJMCg1WYWxpZGF0ZVRva2VuEiEuaWRlbnRpdHkudjEuVmFsaWRhdGVUb2tlblJlcXVlc3QaGC5pZGVudGl0eS52MS5Vc2VyQ29udGV4dBI5CgdHZXRVc2VyEhsuaWRlbnRpdHkudjEuR2V0VXNlclJlcXVlc3QaES5pZGVudGl0eS52MS5Vc2VyElMKFEdldFVzZXJCeUZpcmViYXNlVUlEEiguaWRlbnRpdHkudjEuR2V0VXNlckJ5RmlyZWJhc2VVSURSZXF1ZXN0GhEuaWRlbnRpdHkudjEuVXNlchI/CgpDcmVhdGVVc2VyEh4uaWRlbnRpdHkudjEuQ3JlYXRlVXNlclJlcXVlc3QaES5pZGVudGl0eS52MS5Vc2VyEkUKDVVwZGF0ZVByb2ZpbGUSIS5pZGVudGl0eS52MS5VcGRhdGVQcm9maWxlUmVxdWVzdBoRLmlkZW50aXR5LnYxLlVzZXISVwoPQ2hlY2tQZXJtaXNzaW9uEiMuaWRlbnRpdHkudjEuQ2hlY2tQZXJtaXNzaW9uUmVxdWVzdBofLmlkZW50aXR5LnYxLlBlcm1pc3Npb25EZWNpc2lvbhJgChRHZXRSZXBvcnRQcmVmZXJlbmNlcxIoLmlkZW50aXR5LnYxLkdldFJlcG9ydFByZWZlcmVuY2VzUmVxdWVzdBoeLmlkZW50aXR5LnYxLlJlcG9ydFByZWZlcmVuY2VzEmYKF1VwZGF0ZVJlcG9ydFByZWZlcmVuY2VzEisuaWRlbnRpdHkudjEuVXBkYXRlUmVwb3J0UHJlZmVyZW5jZXNSZXF1ZXN0Gh4uaWRlbnRpdHkudjEuUmVwb3J0UHJlZmVyZW5jZXMSRwoLSGVhbHRoQ2hlY2sSFi5nb29nbGUucHJvdG9idWYuRW1wdHkaIC5pZGVudGl0eS52MS5IZWFsdGhDaGVja1Jlc3BvbnNlQq0BCg9jb20uaWRlbnRpdHkudjFCDUlkZW50aXR5UHJvdG9QAVo+Z2l0aHViLmNvbS9zdXBlcndpem9yLWFpL2JhY2tlbmQvZ2VuL2dvL2lkZW50aXR5L3YxO2lkZW50aXR5djGiAgNJWFiqAgtJZGVudGl0eS5WMcoCC0lkZW50aXR5XFYx4gIXSWRlbnRpdHlcVjFcR1BCTWV0YWRhdGHqAgxJZGVudGl0eTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_google_protobuf_empty]);
+  fileDesc("ChppZGVudGl0eS92MS9pZGVudGl0eS5wcm90bxILaWRlbnRpdHkudjEi9QMKBFVzZXISCgoCaWQYASABKAkSIwoEcm9sZRgCIAEoDjIVLmlkZW50aXR5LnYxLlVzZXJSb2xlEhcKD29yZ2FuaXphdGlvbl9pZBgDIAEoCRIUCgxmaXJlYmFzZV91aWQYBCABKAkSDQoFZW1haWwYBSABKAkSFAoMcGhvbmVfbnVtYmVyGAYgASgJEhkKEWlzX2VtYWlsX3ZlcmlmaWVkGAcgASgIEhIKCmZpcnN0X25hbWUYCCABKAkSEQoJbGFzdF9uYW1lGAkgASgJEhoKEnByb2Zlc3Npb25hbF90aXRsZRgKIAEoCRIaChJjcmVkZW50aWFsc19udW1iZXIYCyABKAkSEwoLdWlfbGFuZ3VhZ2UYDCABKAkSEAoIdGltZXpvbmUYDSABKAkSGAoQaGFzX2FjY2VwdGVkX3RvcxgOIAEoCBIuCgpjcmVhdGVkX2F0GA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIRCgliaW9ncmFwaHkYECABKAkSEgoKYXZhdGFyX3VybBgRIAEoCRIbChNkZWZhdWx0X21vZGFsaXR5X2lkGBIgASgJEhoKEmJpbGxpbmdfYWRkcmVzc19pZBgTIAEoCRIdChVoYXNfbWFya2V0aW5nX2NvbnNlbnQYFCABKAgigQEKC1VzZXJDb250ZXh0Eg8KB3VzZXJfaWQYASABKAkSFAoMZmlyZWJhc2VfdWlkGAIgASgJEiMKBHJvbGUYAyABKA4yFS5pZGVudGl0eS52MS5Vc2VyUm9sZRIXCg9vcmdhbml6YXRpb25faWQYBCABKAkSDQoFZW1haWwYBSABKAkiMQoUVmFsaWRhdGVUb2tlblJlcXVlc3QSGQoRZmlyZWJhc2VfaWRfdG9rZW4YASABKAkiIQoOR2V0VXNlclJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIzChtHZXRVc2VyQnlGaXJlYmFzZVVJRFJlcXVlc3QSFAoMZmlyZWJhc2VfdWlkGAEgASgJIsUBChFDcmVhdGVVc2VyUmVxdWVzdBIUCgxmaXJlYmFzZV91aWQYASABKAkSDQoFZW1haWwYAiABKAkSIwoEcm9sZRgDIAEoDjIVLmlkZW50aXR5LnYxLlVzZXJSb2xlEhIKCmZpcnN0X25hbWUYBCABKAkSEQoJbGFzdF9uYW1lGAUgASgJEhMKC3VpX2xhbmd1YWdlGAYgASgJEhAKCHRpbWV6b25lGAcgASgJEhgKEGhhc19hY2NlcHRlZF90b3MYCCABKAgi5QMKFFVwZGF0ZVByb2ZpbGVSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSEgoKZmlyc3RfbmFtZRgCIAEoCRIRCglsYXN0X25hbWUYAyABKAkSGgoScHJvZmVzc2lvbmFsX3RpdGxlGAQgASgJEhoKEmNyZWRlbnRpYWxzX251bWJlchgFIAEoCRIRCgliaW9ncmFwaHkYBiABKAkSFAoMcGhvbmVfbnVtYmVyGAcgASgJEhcKCmF2YXRhcl91cmwYCCABKAlIAIgBARIgChNkZWZhdWx0X21vZGFsaXR5X2lkGAkgASgJSAGIAQESGAoLdWlfbGFuZ3VhZ2UYCiABKAlIAogBARIVCgh0aW1lem9uZRgLIAEoCUgDiAEBEjIKD2JpbGxpbmdfYWRkcmVzcxgMIAEoCzIULmlkZW50aXR5LnYxLkFkZHJlc3NIBIgBARIiChVoYXNfbWFya2V0aW5nX2NvbnNlbnQYDSABKAhIBYgBAUINCgtfYXZhdGFyX3VybEIWChRfZGVmYXVsdF9tb2RhbGl0eV9pZEIOCgxfdWlfbGFuZ3VhZ2VCCwoJX3RpbWV6b25lQhIKEF9iaWxsaW5nX2FkZHJlc3NCGAoWX2hhc19tYXJrZXRpbmdfY29uc2VudCJlChZDaGVja1Blcm1pc3Npb25SZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSFQoNcmVzb3VyY2VfdHlwZRgCIAEoCRITCgtyZXNvdXJjZV9pZBgDIAEoCRIOCgZhY3Rpb24YBCABKAkiNQoSUGVybWlzc2lvbkRlY2lzaW9uEg8KB2FsbG93ZWQYASABKAgSDgoGcmVhc29uGAIgASgJIjYKE0hlYWx0aENoZWNrUmVzcG9uc2USDgoGc3RhdHVzGAEgASgJEg8KB3ZlcnNpb24YAiABKAkiigIKEVJlcG9ydFByZWZlcmVuY2VzEg8KB3ZlcnNpb24YASABKAUSDgoGbGVuZ3RoGAIgASgJEgwKBHRvbmUYAyABKAkSFQoNcXVvdGVfZGVuc2l0eRgEIAEoCRIbChNkaWFnbm9zdGljX2xhbmd1YWdlGAUgASgJEhoKEmh5cG90aGVzaXNfaGVkZ2luZxgGIAEoCRIYChBzZWN0aW9uX2VtcGhhc2lzGAcgAygJEhkKEXN0cmVuZ3Roc19mcmFtaW5nGAggASgJEhEKCWZyZWVfdGV4dBgJIAEoCRIuCgp1cGRhdGVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIzChtHZXRSZXBvcnRQcmVmZXJlbmNlc1JlcXVlc3QSFAoMdGhlcmFwaXN0X2lkGAEgASgJIoQBCh5VcGRhdGVSZXBvcnRQcmVmZXJlbmNlc1JlcXVlc3QSFAoMdGhlcmFwaXN0X2lkGAEgASgJEjMKC3ByZWZlcmVuY2VzGAIgASgLMh4uaWRlbnRpdHkudjEuUmVwb3J0UHJlZmVyZW5jZXMSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJIrUBCgdBZGRyZXNzEgoKAmlkGAEgASgJEhQKDGNvdW50cnlfY29kZRgCIAEoCRIOCgZyZWdpb24YAyABKAkSDAoEY2l0eRgEIAEoCRITCgtwb3N0YWxfY29kZRgFIAEoCRITCgtzdHJlZXRfbGluZRgGIAEoCRIXCg9idWlsZGluZ19udW1iZXIYByABKAkSEwoLdW5pdF9udW1iZXIYCCABKAkSEgoKZGlyZWN0aW9ucxgJIAEoCSKVAgoMT3JnYW5pemF0aW9uEgoKAmlkGAEgASgJEhIKCmxlZ2FsX25hbWUYAiABKAkSDgoGdGF4X2lkGAMgASgJEhEKCXZhdF9pZF9ldRgEIAEoCRIrCgR0eXBlGAUgASgOMh0uaWRlbnRpdHkudjEuT3JnYW5pemF0aW9uVHlwZRIyChRoZWFkcXVhcnRlcnNfYWRkcmVzcxgGIAEoCzIULmlkZW50aXR5LnYxLkFkZHJlc3MSHQoVcHJpbWFyeV9hZG1pbl91c2VyX2lkGAcgASgJEi4KCmNyZWF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmlzX2Jsb2NrZWQYCSABKAgikAMKG1JlZ2lzdGVyT3JnYW5pemF0aW9uUmVxdWVzdBIUCgxmaXJlYmFzZV91aWQYASABKAkSDQoFZW1haWwYAiABKAkSEgoKZmlyc3RfbmFtZRgDIAEoCRIRCglsYXN0X25hbWUYBCABKAkSFAoMcGhvbmVfbnVtYmVyGAUgASgJEhMKC3VpX2xhbmd1YWdlGAYgASgJEhAKCHRpbWV6b25lGAcgASgJEhgKEGhhc19hY2NlcHRlZF90b3MYCCABKAgSHQoVaGFzX21hcmtldGluZ19jb25zZW50GAkgASgIEhIKCmxlZ2FsX25hbWUYCiABKAkSKwoEdHlwZRgLIAEoDjIdLmlkZW50aXR5LnYxLk9yZ2FuaXphdGlvblR5cGUSDgoGdGF4X2lkGAwgASgJEhEKCXZhdF9pZF9ldRgNIAEoCRIyChRoZWFkcXVhcnRlcnNfYWRkcmVzcxgOIAEoCzIULmlkZW50aXR5LnYxLkFkZHJlc3MSFwoPaWRlbXBvdGVuY3lfa2V5GA8gASgJInAKHFJlZ2lzdGVyT3JnYW5pemF0aW9uUmVzcG9uc2USHwoEdXNlchgBIAEoCzIRLmlkZW50aXR5LnYxLlVzZXISLwoMb3JnYW5pemF0aW9uGAIgASgLMhkuaWRlbnRpdHkudjEuT3JnYW5pemF0aW9uItYCChtVcGRhdGVNeU9yZ2FuaXphdGlvblJlcXVlc3QSFwoKbGVnYWxfbmFtZRgBIAEoCUgAiAEBEjAKBHR5cGUYAiABKA4yHS5pZGVudGl0eS52MS5Pcmdhbml6YXRpb25UeXBlSAGIAQESEwoGdGF4X2lkGAMgASgJSAKIAQESFgoJdmF0X2lkX2V1GAQgASgJSAOIAQESNwoUaGVhZHF1YXJ0ZXJzX2FkZHJlc3MYBSABKAsyFC5pZGVudGl0eS52MS5BZGRyZXNzSASIAQESIgoVcHJpbWFyeV9hZG1pbl91c2VyX2lkGAYgASgJSAWIAQFCDQoLX2xlZ2FsX25hbWVCBwoFX3R5cGVCCQoHX3RheF9pZEIMCgpfdmF0X2lkX2V1QhcKFV9oZWFkcXVhcnRlcnNfYWRkcmVzc0IYChZfcHJpbWFyeV9hZG1pbl91c2VyX2lkIuoBCgpJbnZpdGF0aW9uEgoKAmlkGAEgASgJEhcKD29yZ2FuaXphdGlvbl9pZBgCIAEoCRIXCg9pbnZpdGVkX2J5X3VzZXIYAyABKAkSDQoFZW1haWwYBCABKAkSLgoKZXhwaXJlc19hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLwoLYWNjZXB0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmNyZWF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIoQBChZJbnZpdGVUaGVyYXBpc3RSZXF1ZXN0Eg0KBWVtYWlsGAEgASgJEhIKCmZpcnN0X25hbWUYAiABKAkSEQoJbGFzdF9uYW1lGAMgASgJEhsKE2RlZmF1bHRfbW9kYWxpdHlfaWQYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJIuIBChdBY2NlcHRJbnZpdGF0aW9uUmVxdWVzdBINCgV0b2tlbhgBIAEoCRIUCgxmaXJlYmFzZV91aWQYAiABKAkSEgoKZmlyc3RfbmFtZRgDIAEoCRIRCglsYXN0X25hbWUYBCABKAkSGwoTZGVmYXVsdF9tb2RhbGl0eV9pZBgFIAEoCRITCgt1aV9sYW5ndWFnZRgGIAEoCRIQCgh0aW1lem9uZRgHIAEoCRIYChBoYXNfYWNjZXB0ZWRfdG9zGAggASgIEh0KFWhhc19tYXJrZXRpbmdfY29uc2VudBgJIAEoCCJsChhBY2NlcHRJbnZpdGF0aW9uUmVzcG9uc2USHwoEdXNlchgBIAEoCzIRLmlkZW50aXR5LnYxLlVzZXISLwoMb3JnYW5pemF0aW9uGAIgASgLMhkuaWRlbnRpdHkudjEuT3JnYW5pemF0aW9uImYKDlRoZXJhcGlzdEVudHJ5Eh8KBHVzZXIYASABKAsyES5pZGVudGl0eS52MS5Vc2VyEjMKEnBlbmRpbmdfaW52aXRhdGlvbhgCIAEoCzIXLmlkZW50aXR5LnYxLkludml0YXRpb24iSQoWTGlzdFRoZXJhcGlzdHNSZXNwb25zZRIvCgp0aGVyYXBpc3RzGAEgAygLMhsuaWRlbnRpdHkudjEuVGhlcmFwaXN0RW50cnkiOQoWUmVtb3ZlVGhlcmFwaXN0UmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJEg4KBnJlYXNvbhgCIAEoCSJWCh1BZG1pbkxpc3RPcmdhbml6YXRpb25zUmVxdWVzdBIRCglwYWdlX3NpemUYASABKAUSEgoKcGFnZV90b2tlbhgCIAEoCRIOCgZzZWFyY2gYAyABKAkilQEKE09yZ2FuaXphdGlvblN1bW1hcnkSLwoMb3JnYW5pemF0aW9uGAEgASgLMhkuaWRlbnRpdHkudjEuT3JnYW5pemF0aW9uEhgKEHRoZXJhcGlzdHNfY291bnQYAiABKAUSMwoPbGFzdF9zZXNzaW9uX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJyCh5BZG1pbkxpc3RPcmdhbml6YXRpb25zUmVzcG9uc2USNwoNb3JnYW5pemF0aW9ucxgBIAMoCzIgLmlkZW50aXR5LnYxLk9yZ2FuaXphdGlvblN1bW1hcnkSFwoPbmV4dF9wYWdlX3Rva2VuGAIgASgJIjYKG0FkbWluR2V0T3JnYW5pemF0aW9uUmVxdWVzdBIXCg9vcmdhbml6YXRpb25faWQYASABKAkinAEKE09yZ2FuaXphdGlvbkRldGFpbHMSLwoMb3JnYW5pemF0aW9uGAEgASgLMhkuaWRlbnRpdHkudjEuT3JnYW5pemF0aW9uEiUKCnRoZXJhcGlzdHMYAiADKAsyES5pZGVudGl0eS52MS5Vc2VyEi0KDHJlY2VudF9hdWRpdBgDIAMoCzIXLmlkZW50aXR5LnYxLkF1ZGl0RW50cnkiqgEKCkF1ZGl0RW50cnkSCgoCaWQYASABKAkSLwoLb2NjdXJyZWRfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhMKC2FjdG9yX2VtYWlsGAMgASgJEg4KBmFjdGlvbhgEIAEoCRIOCgZyZWFzb24YBSABKAkSFQoNcmVzb3VyY2VfdHlwZRgGIAEoCRITCgtyZXNvdXJjZV9pZBgHIAEoCSJkCiFBZG1pblNldE9yZ2FuaXphdGlvblN0YXR1c1JlcXVlc3QSFwoPb3JnYW5pemF0aW9uX2lkGAEgASgJEhYKDmRlc2lyZWRfc3RhdHVzGAIgASgJEg4KBnJlYXNvbhgDIAEoCSKCAwoeQWRtaW5VcGRhdGVPcmdhbml6YXRpb25SZXF1ZXN0EhcKD29yZ2FuaXphdGlvbl9pZBgBIAEoCRIXCgpsZWdhbF9uYW1lGAIgASgJSACIAQESMAoEdHlwZRgDIAEoDjIdLmlkZW50aXR5LnYxLk9yZ2FuaXphdGlvblR5cGVIAYgBARITCgZ0YXhfaWQYBCABKAlIAogBARIWCgl2YXRfaWRfZXUYBSABKAlIA4gBARI3ChRoZWFkcXVhcnRlcnNfYWRkcmVzcxgGIAEoCzIULmlkZW50aXR5LnYxLkFkZHJlc3NIBIgBARIiChVwcmltYXJ5X2FkbWluX3VzZXJfaWQYByABKAlIBYgBARIOCgZyZWFzb24YCCABKAlCDQoLX2xlZ2FsX25hbWVCBwoFX3R5cGVCCQoHX3RheF9pZEIMCgpfdmF0X2lkX2V1QhcKFV9oZWFkcXVhcnRlcnNfYWRkcmVzc0IYChZfcHJpbWFyeV9hZG1pbl91c2VyX2lkIowBChVBZG1pbkxpc3RVc2Vyc1JlcXVlc3QSEQoJcGFnZV9zaXplGAEgASgFEhIKCnBhZ2VfdG9rZW4YAiABKAkSFwoPb3JnYW5pemF0aW9uX2lkGAMgASgJEiMKBHJvbGUYBCABKA4yFS5pZGVudGl0eS52MS5Vc2VyUm9sZRIOCgZzZWFyY2gYBSABKAkiUwoWQWRtaW5MaXN0VXNlcnNSZXNwb25zZRIgCgV1c2VycxgBIAMoCzIRLmlkZW50aXR5LnYxLlVzZXISFwoPbmV4dF9wYWdlX3Rva2VuGAIgASgJIiYKE0FkbWluR2V0VXNlclJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSL6BQoWQWRtaW5VcGRhdGVVc2VyUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJEhIKBWVtYWlsGAIgASgJSACIAQESFwoKZmlyc3RfbmFtZRgDIAEoCUgBiAEBEhYKCWxhc3RfbmFtZRgEIAEoCUgCiAEBEhkKDHBob25lX251bWJlchgFIAEoCUgDiAEBEigKBHJvbGUYBiABKA4yFS5pZGVudGl0eS52MS5Vc2VyUm9sZUgEiAEBEhwKD29yZ2FuaXphdGlvbl9pZBgHIAEoCUgFiAEBEiAKE2RlZmF1bHRfbW9kYWxpdHlfaWQYCCABKAlIBogBARIYCgt1aV9sYW5ndWFnZRgJIAEoCUgHiAEBEhUKCHRpbWV6b25lGAogASgJSAiIAQESHwoScHJvZmVzc2lvbmFsX3RpdGxlGAsgASgJSAmIAQESHwoSY3JlZGVudGlhbHNfbnVtYmVyGAwgASgJSAqIAQESFgoJYmlvZ3JhcGh5GA0gASgJSAuIAQESFwoKYXZhdGFyX3VybBgOIAEoCUgMiAEBEjIKD2JpbGxpbmdfYWRkcmVzcxgPIAEoCzIULmlkZW50aXR5LnYxLkFkZHJlc3NIDYgBARIeChFpc19lbWFpbF92ZXJpZmllZBgQIAEoCEgOiAEBEg4KBnJlYXNvbhgRIAEoCUIICgZfZW1haWxCDQoLX2ZpcnN0X25hbWVCDAoKX2xhc3RfbmFtZUIPCg1fcGhvbmVfbnVtYmVyQgcKBV9yb2xlQhIKEF9vcmdhbml6YXRpb25faWRCFgoUX2RlZmF1bHRfbW9kYWxpdHlfaWRCDgoMX3VpX2xhbmd1YWdlQgsKCV90aW1lem9uZUIVChNfcHJvZmVzc2lvbmFsX3RpdGxlQhUKE19jcmVkZW50aWFsc19udW1iZXJCDAoKX2Jpb2dyYXBoeUINCgtfYXZhdGFyX3VybEISChBfYmlsbGluZ19hZGRyZXNzQhQKEl9pc19lbWFpbF92ZXJpZmllZCI5ChZBZG1pbkRlbGV0ZVVzZXJSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSDgoGcmVhc29uGAIgASgJKo4BCghVc2VyUm9sZRIZChVVU0VSX1JPTEVfVU5TUEVDSUZJRUQQABIXChNVU0VSX1JPTEVfVEhFUkFQSVNUEAESFQoRVVNFUl9ST0xFX1BBVElFTlQQAhIXChNVU0VSX1JPTEVfT1JHX0FETUlOEAMSHgoaVVNFUl9ST0xFX1NVUEVSV0laT1JfQURNSU4QBCqRAQoQT3JnYW5pemF0aW9uVHlwZRIhCh1PUkdBTklaQVRJT05fVFlQRV9VTlNQRUNJRklFRBAAEhoKFk9SR0FOSVpBVElPTl9UWVBFX1NPTE8QARIcChhPUkdBTklaQVRJT05fVFlQRV9DTElOSUMQAhIgChxPUkdBTklaQVRJT05fVFlQRV9FTlRFUlBSSVNFEAMy4xAKD0lkZW50aXR5U2VydmljZRJMCg1WYWxpZGF0ZVRva2VuEiEuaWRlbnRpdHkudjEuVmFsaWRhdGVUb2tlblJlcXVlc3QaGC5pZGVudGl0eS52MS5Vc2VyQ29udGV4dBI5CgdHZXRVc2VyEhsuaWRlbnRpdHkudjEuR2V0VXNlclJlcXVlc3QaES5pZGVudGl0eS52MS5Vc2VyElMKFEdldFVzZXJCeUZpcmViYXNlVUlEEiguaWRlbnRpdHkudjEuR2V0VXNlckJ5RmlyZWJhc2VVSURSZXF1ZXN0GhEuaWRlbnRpdHkudjEuVXNlchI/CgpDcmVhdGVVc2VyEh4uaWRlbnRpdHkudjEuQ3JlYXRlVXNlclJlcXVlc3QaES5pZGVudGl0eS52MS5Vc2VyEkUKDVVwZGF0ZVByb2ZpbGUSIS5pZGVudGl0eS52MS5VcGRhdGVQcm9maWxlUmVxdWVzdBoRLmlkZW50aXR5LnYxLlVzZXISOQoMR2V0TXlQcm9maWxlEhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5GhEuaWRlbnRpdHkudjEuVXNlchJXCg9DaGVja1Blcm1pc3Npb24SIy5pZGVudGl0eS52MS5DaGVja1Blcm1pc3Npb25SZXF1ZXN0Gh8uaWRlbnRpdHkudjEuUGVybWlzc2lvbkRlY2lzaW9uEmsKFFJlZ2lzdGVyT3JnYW5pemF0aW9uEiguaWRlbnRpdHkudjEuUmVnaXN0ZXJPcmdhbml6YXRpb25SZXF1ZXN0GikuaWRlbnRpdHkudjEuUmVnaXN0ZXJPcmdhbml6YXRpb25SZXNwb25zZRJGChFHZXRNeU9yZ2FuaXphdGlvbhIWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRoZLmlkZW50aXR5LnYxLk9yZ2FuaXphdGlvbhJbChRVcGRhdGVNeU9yZ2FuaXphdGlvbhIoLmlkZW50aXR5LnYxLlVwZGF0ZU15T3JnYW5pemF0aW9uUmVxdWVzdBoZLmlkZW50aXR5LnYxLk9yZ2FuaXphdGlvbhJPCg9JbnZpdGVUaGVyYXBpc3QSIy5pZGVudGl0eS52MS5JbnZpdGVUaGVyYXBpc3RSZXF1ZXN0GhcuaWRlbnRpdHkudjEuSW52aXRhdGlvbhJUChVMaXN0VGhlcmFwaXN0c0luTXlPcmcSFi5nb29nbGUucHJvdG9idWYuRW1wdHkaIy5pZGVudGl0eS52MS5MaXN0VGhlcmFwaXN0c1Jlc3BvbnNlEk4KD1JlbW92ZVRoZXJhcGlzdBIjLmlkZW50aXR5LnYxLlJlbW92ZVRoZXJhcGlzdFJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkSXwoQQWNjZXB0SW52aXRhdGlvbhIkLmlkZW50aXR5LnYxLkFjY2VwdEludml0YXRpb25SZXF1ZXN0GiUuaWRlbnRpdHkudjEuQWNjZXB0SW52aXRhdGlvblJlc3BvbnNlEnEKFkFkbWluTGlzdE9yZ2FuaXphdGlvbnMSKi5pZGVudGl0eS52MS5BZG1pbkxpc3RPcmdhbml6YXRpb25zUmVxdWVzdBorLmlkZW50aXR5LnYxLkFkbWluTGlzdE9yZ2FuaXphdGlvbnNSZXNwb25zZRJiChRBZG1pbkdldE9yZ2FuaXphdGlvbhIoLmlkZW50aXR5LnYxLkFkbWluR2V0T3JnYW5pemF0aW9uUmVxdWVzdBogLmlkZW50aXR5LnYxLk9yZ2FuaXphdGlvbkRldGFpbHMSZAoaQWRtaW5TZXRPcmdhbml6YXRpb25TdGF0dXMSLi5pZGVudGl0eS52MS5BZG1pblNldE9yZ2FuaXphdGlvblN0YXR1c1JlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkSYQoXQWRtaW5VcGRhdGVPcmdhbml6YXRpb24SKy5pZGVudGl0eS52MS5BZG1pblVwZGF0ZU9yZ2FuaXphdGlvblJlcXVlc3QaGS5pZGVudGl0eS52MS5Pcmdhbml6YXRpb24SWQoOQWRtaW5MaXN0VXNlcnMSIi5pZGVudGl0eS52MS5BZG1pbkxpc3RVc2Vyc1JlcXVlc3QaIy5pZGVudGl0eS52MS5BZG1pbkxpc3RVc2Vyc1Jlc3BvbnNlEkMKDEFkbWluR2V0VXNlchIgLmlkZW50aXR5LnYxLkFkbWluR2V0VXNlclJlcXVlc3QaES5pZGVudGl0eS52MS5Vc2VyEkkKD0FkbWluVXBkYXRlVXNlchIjLmlkZW50aXR5LnYxLkFkbWluVXBkYXRlVXNlclJlcXVlc3QaES5pZGVudGl0eS52MS5Vc2VyEk4KD0FkbWluRGVsZXRlVXNlchIjLmlkZW50aXR5LnYxLkFkbWluRGVsZXRlVXNlclJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkSYAoUR2V0UmVwb3J0UHJlZmVyZW5jZXMSKC5pZGVudGl0eS52MS5HZXRSZXBvcnRQcmVmZXJlbmNlc1JlcXVlc3QaHi5pZGVudGl0eS52MS5SZXBvcnRQcmVmZXJlbmNlcxJmChdVcGRhdGVSZXBvcnRQcmVmZXJlbmNlcxIrLmlkZW50aXR5LnYxLlVwZGF0ZVJlcG9ydFByZWZlcmVuY2VzUmVxdWVzdBoeLmlkZW50aXR5LnYxLlJlcG9ydFByZWZlcmVuY2VzEkcKC0hlYWx0aENoZWNrEhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5GiAuaWRlbnRpdHkudjEuSGVhbHRoQ2hlY2tSZXNwb25zZUKtAQoPY29tLmlkZW50aXR5LnYxQg1JZGVudGl0eVByb3RvUAFaPmdpdGh1Yi5jb20vc3VwZXJ3aXpvci1haS9iYWNrZW5kL2dlbi9nby9pZGVudGl0eS92MTtpZGVudGl0eXYxogIDSVhYqgILSWRlbnRpdHkuVjHKAgtJZGVudGl0eVxWMeICF0lkZW50aXR5XFYxXEdQQk1ldGFkYXRh6gIMSWRlbnRpdHk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_google_protobuf_empty]);
 
 /**
  * @generated from message identity.v1.User
@@ -267,6 +267,15 @@ export const CreateUserRequestSchema: GenMessage<CreateUserRequest> = /*@__PURE_
   messageDesc(file_identity_v1_identity, 5);
 
 /**
+ * UpdateProfileRequest is the iOS-compatible profile mutation. Per
+ * docs/18 D2: iOS sends a subset (fields 2-7), web sends the full
+ * payload. The handler does a selective UPDATE — fields whose
+ * `optional` wrapper is unset are skipped; empty strings on
+ * fields 2-7 (iOS contract) are also skipped to preserve the
+ * "missing field means no change" semantics existing clients rely
+ * on. New fields 8-13 use `optional` so the wire distinguishes
+ * "blank the column" from "don't touch it" cleanly.
+ *
  * @generated from message identity.v1.UpdateProfileRequest
  */
 export type UpdateProfileRequest = Message<"identity.v1.UpdateProfileRequest"> & {
@@ -304,6 +313,38 @@ export type UpdateProfileRequest = Message<"identity.v1.UpdateProfileRequest"> &
    * @generated from field: string phone_number = 7;
    */
   phoneNumber: string;
+
+  /**
+   * Web additions (docs/18 §13.4) — full editable surface.
+   *
+   * @generated from field: optional string avatar_url = 8;
+   */
+  avatarUrl?: string | undefined;
+
+  /**
+   * @generated from field: optional string default_modality_id = 9;
+   */
+  defaultModalityId?: string | undefined;
+
+  /**
+   * @generated from field: optional string ui_language = 10;
+   */
+  uiLanguage?: string | undefined;
+
+  /**
+   * @generated from field: optional string timezone = 11;
+   */
+  timezone?: string | undefined;
+
+  /**
+   * @generated from field: optional identity.v1.Address billing_address = 12;
+   */
+  billingAddress?: Address | undefined;
+
+  /**
+   * @generated from field: optional bool has_marketing_consent = 13;
+   */
+  hasMarketingConsent?: boolean | undefined;
 };
 
 /**
@@ -535,6 +576,1049 @@ export const UpdateReportPreferencesRequestSchema: GenMessage<UpdateReportPrefer
   messageDesc(file_identity_v1_identity, 12);
 
 /**
+ * Address is the shared shape used by Organization headquarters and
+ * User billing addresses. Backed by the `addresses` PG table; the
+ * handler creates one row per parent (org / user) and updates it
+ * in place on subsequent edits.
+ *
+ * @generated from message identity.v1.Address
+ */
+export type Address = Message<"identity.v1.Address"> & {
+  /**
+   * server-set; ignored on create
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * ISO 3166-1 alpha-2 (e.g. "PL")
+   *
+   * @generated from field: string country_code = 2;
+   */
+  countryCode: string;
+
+  /**
+   * voivodeship / state — optional
+   *
+   * @generated from field: string region = 3;
+   */
+  region: string;
+
+  /**
+   * @generated from field: string city = 4;
+   */
+  city: string;
+
+  /**
+   * @generated from field: string postal_code = 5;
+   */
+  postalCode: string;
+
+  /**
+   * @generated from field: string street_line = 6;
+   */
+  streetLine: string;
+
+  /**
+   * @generated from field: string building_number = 7;
+   */
+  buildingNumber: string;
+
+  /**
+   * optional
+   *
+   * @generated from field: string unit_number = 8;
+   */
+  unitNumber: string;
+
+  /**
+   * optional free text
+   *
+   * @generated from field: string directions = 9;
+   */
+  directions: string;
+};
+
+/**
+ * Describes the message identity.v1.Address.
+ * Use `create(AddressSchema)` to create a new message.
+ */
+export const AddressSchema: GenMessage<Address> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 13);
+
+/**
+ * @generated from message identity.v1.Organization
+ */
+export type Organization = Message<"identity.v1.Organization"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string legal_name = 2;
+   */
+  legalName: string;
+
+  /**
+   * NIP for PL
+   *
+   * @generated from field: string tax_id = 3;
+   */
+  taxId: string;
+
+  /**
+   * EU VAT ID for VIES
+   *
+   * @generated from field: string vat_id_eu = 4;
+   */
+  vatIdEu: string;
+
+  /**
+   * SOLO | CLINIC | ENTERPRISE
+   *
+   * @generated from field: identity.v1.OrganizationType type = 5;
+   */
+  type: OrganizationType;
+
+  /**
+   * @generated from field: identity.v1.Address headquarters_address = 6;
+   */
+  headquartersAddress?: Address | undefined;
+
+  /**
+   * @generated from field: string primary_admin_user_id = 7;
+   */
+  primaryAdminUserId: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 8;
+   */
+  createdAt?: Timestamp | undefined;
+
+  /**
+   * derived from subscriptions.status
+   *
+   * @generated from field: bool is_blocked = 9;
+   */
+  isBlocked: boolean;
+};
+
+/**
+ * Describes the message identity.v1.Organization.
+ * Use `create(OrganizationSchema)` to create a new message.
+ */
+export const OrganizationSchema: GenMessage<Organization> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 14);
+
+/**
+ * RegisterOrganization payload — clinic founder self-serve.
+ *
+ * The founder becomes role=ORG_ADMIN with no THERAPIST powers
+ * (single-role MVP per docs/18 R4). To also record sessions they
+ * invite themselves under a different email via the standard
+ * invitation flow (§9).
+ *
+ * @generated from message identity.v1.RegisterOrganizationRequest
+ */
+export type RegisterOrganizationRequest = Message<"identity.v1.RegisterOrganizationRequest"> & {
+  /**
+   * Founder user fields
+   *
+   * from Firebase Auth on the client
+   *
+   * @generated from field: string firebase_uid = 1;
+   */
+  firebaseUid: string;
+
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
+
+  /**
+   * @generated from field: string first_name = 3;
+   */
+  firstName: string;
+
+  /**
+   * @generated from field: string last_name = 4;
+   */
+  lastName: string;
+
+  /**
+   * required for billing contact
+   *
+   * @generated from field: string phone_number = 5;
+   */
+  phoneNumber: string;
+
+  /**
+   * 'pl' default
+   *
+   * @generated from field: string ui_language = 6;
+   */
+  uiLanguage: string;
+
+  /**
+   * 'Europe/Warsaw' default
+   *
+   * @generated from field: string timezone = 7;
+   */
+  timezone: string;
+
+  /**
+   * @generated from field: bool has_accepted_tos = 8;
+   */
+  hasAcceptedTos: boolean;
+
+  /**
+   * @generated from field: bool has_marketing_consent = 9;
+   */
+  hasMarketingConsent: boolean;
+
+  /**
+   * Organization fields
+   *
+   * @generated from field: string legal_name = 10;
+   */
+  legalName: string;
+
+  /**
+   * CLINIC default for clinic reg
+   *
+   * @generated from field: identity.v1.OrganizationType type = 11;
+   */
+  type: OrganizationType;
+
+  /**
+   * NIP for PL — required for PL
+   *
+   * @generated from field: string tax_id = 12;
+   */
+  taxId: string;
+
+  /**
+   * optional unless cross-border
+   *
+   * @generated from field: string vat_id_eu = 13;
+   */
+  vatIdEu: string;
+
+  /**
+   * @generated from field: identity.v1.Address headquarters_address = 14;
+   */
+  headquartersAddress?: Address | undefined;
+
+  /**
+   * Idempotency: same key with same payload → returns existing org.
+   *
+   * @generated from field: string idempotency_key = 15;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message identity.v1.RegisterOrganizationRequest.
+ * Use `create(RegisterOrganizationRequestSchema)` to create a new message.
+ */
+export const RegisterOrganizationRequestSchema: GenMessage<RegisterOrganizationRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 15);
+
+/**
+ * @generated from message identity.v1.RegisterOrganizationResponse
+ */
+export type RegisterOrganizationResponse = Message<"identity.v1.RegisterOrganizationResponse"> & {
+  /**
+   * the new ORG_ADMIN
+   *
+   * @generated from field: identity.v1.User user = 1;
+   */
+  user?: User | undefined;
+
+  /**
+   * @generated from field: identity.v1.Organization organization = 2;
+   */
+  organization?: Organization | undefined;
+};
+
+/**
+ * Describes the message identity.v1.RegisterOrganizationResponse.
+ * Use `create(RegisterOrganizationResponseSchema)` to create a new message.
+ */
+export const RegisterOrganizationResponseSchema: GenMessage<RegisterOrganizationResponse> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 16);
+
+/**
+ * @generated from message identity.v1.UpdateMyOrganizationRequest
+ */
+export type UpdateMyOrganizationRequest = Message<"identity.v1.UpdateMyOrganizationRequest"> & {
+  /**
+   * org_id resolved from caller's auth context — not in the wire
+   * payload (org-admin can only edit their own org).
+   *
+   * @generated from field: optional string legal_name = 1;
+   */
+  legalName?: string | undefined;
+
+  /**
+   * @generated from field: optional identity.v1.OrganizationType type = 2;
+   */
+  type?: OrganizationType | undefined;
+
+  /**
+   * @generated from field: optional string tax_id = 3;
+   */
+  taxId?: string | undefined;
+
+  /**
+   * @generated from field: optional string vat_id_eu = 4;
+   */
+  vatIdEu?: string | undefined;
+
+  /**
+   * @generated from field: optional identity.v1.Address headquarters_address = 5;
+   */
+  headquartersAddress?: Address | undefined;
+
+  /**
+   * for ownership transfer
+   *
+   * @generated from field: optional string primary_admin_user_id = 6;
+   */
+  primaryAdminUserId?: string | undefined;
+};
+
+/**
+ * Describes the message identity.v1.UpdateMyOrganizationRequest.
+ * Use `create(UpdateMyOrganizationRequestSchema)` to create a new message.
+ */
+export const UpdateMyOrganizationRequestSchema: GenMessage<UpdateMyOrganizationRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 17);
+
+/**
+ * @generated from message identity.v1.Invitation
+ */
+export type Invitation = Message<"identity.v1.Invitation"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string organization_id = 2;
+   */
+  organizationId: string;
+
+  /**
+   * @generated from field: string invited_by_user = 3;
+   */
+  invitedByUser: string;
+
+  /**
+   * @generated from field: string email = 4;
+   */
+  email: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expires_at = 5;
+   */
+  expiresAt?: Timestamp | undefined;
+
+  /**
+   * empty if pending
+   *
+   * @generated from field: google.protobuf.Timestamp accepted_at = 6;
+   */
+  acceptedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 7;
+   */
+  createdAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message identity.v1.Invitation.
+ * Use `create(InvitationSchema)` to create a new message.
+ */
+export const InvitationSchema: GenMessage<Invitation> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 18);
+
+/**
+ * @generated from message identity.v1.InviteTherapistRequest
+ */
+export type InviteTherapistRequest = Message<"identity.v1.InviteTherapistRequest"> & {
+  /**
+   * @generated from field: string email = 1;
+   */
+  email: string;
+
+  /**
+   * Suggested fields pre-populate the accept-invite page; invitee
+   * can edit any of them. Optional.
+   *
+   * @generated from field: string first_name = 2;
+   */
+  firstName: string;
+
+  /**
+   * @generated from field: string last_name = 3;
+   */
+  lastName: string;
+
+  /**
+   * @generated from field: string default_modality_id = 4;
+   */
+  defaultModalityId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 5;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message identity.v1.InviteTherapistRequest.
+ * Use `create(InviteTherapistRequestSchema)` to create a new message.
+ */
+export const InviteTherapistRequestSchema: GenMessage<InviteTherapistRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 19);
+
+/**
+ * @generated from message identity.v1.AcceptInvitationRequest
+ */
+export type AcceptInvitationRequest = Message<"identity.v1.AcceptInvitationRequest"> & {
+  /**
+   * The url-safe-base64 token from the email link (NOT hashed —
+   * the handler SHA-256s the incoming value before looking up in
+   * invitations.token_hash).
+   *
+   * @generated from field: string token = 1;
+   */
+  token: string;
+
+  /**
+   * Firebase UID of the just-created Firebase Auth account. The
+   * client calls createUserWithEmailAndPassword first, then sends
+   * this RPC to attach the new account to the inviting org.
+   *
+   * @generated from field: string firebase_uid = 2;
+   */
+  firebaseUid: string;
+
+  /**
+   * @generated from field: string first_name = 3;
+   */
+  firstName: string;
+
+  /**
+   * @generated from field: string last_name = 4;
+   */
+  lastName: string;
+
+  /**
+   * optional override
+   *
+   * @generated from field: string default_modality_id = 5;
+   */
+  defaultModalityId: string;
+
+  /**
+   * @generated from field: string ui_language = 6;
+   */
+  uiLanguage: string;
+
+  /**
+   * @generated from field: string timezone = 7;
+   */
+  timezone: string;
+
+  /**
+   * @generated from field: bool has_accepted_tos = 8;
+   */
+  hasAcceptedTos: boolean;
+
+  /**
+   * @generated from field: bool has_marketing_consent = 9;
+   */
+  hasMarketingConsent: boolean;
+};
+
+/**
+ * Describes the message identity.v1.AcceptInvitationRequest.
+ * Use `create(AcceptInvitationRequestSchema)` to create a new message.
+ */
+export const AcceptInvitationRequestSchema: GenMessage<AcceptInvitationRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 20);
+
+/**
+ * @generated from message identity.v1.AcceptInvitationResponse
+ */
+export type AcceptInvitationResponse = Message<"identity.v1.AcceptInvitationResponse"> & {
+  /**
+   * the new THERAPIST
+   *
+   * @generated from field: identity.v1.User user = 1;
+   */
+  user?: User | undefined;
+
+  /**
+   * the joined org (for the welcome page)
+   *
+   * @generated from field: identity.v1.Organization organization = 2;
+   */
+  organization?: Organization | undefined;
+};
+
+/**
+ * Describes the message identity.v1.AcceptInvitationResponse.
+ * Use `create(AcceptInvitationResponseSchema)` to create a new message.
+ */
+export const AcceptInvitationResponseSchema: GenMessage<AcceptInvitationResponse> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 21);
+
+/**
+ * @generated from message identity.v1.TherapistEntry
+ */
+export type TherapistEntry = Message<"identity.v1.TherapistEntry"> & {
+  /**
+   * For an active (accepted) therapist, populated user is set and
+   * pending_invitation is empty. For a pending invitation, the
+   * reverse — `user` is empty.
+   *
+   * @generated from field: identity.v1.User user = 1;
+   */
+  user?: User | undefined;
+
+  /**
+   * @generated from field: identity.v1.Invitation pending_invitation = 2;
+   */
+  pendingInvitation?: Invitation | undefined;
+};
+
+/**
+ * Describes the message identity.v1.TherapistEntry.
+ * Use `create(TherapistEntrySchema)` to create a new message.
+ */
+export const TherapistEntrySchema: GenMessage<TherapistEntry> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 22);
+
+/**
+ * @generated from message identity.v1.ListTherapistsResponse
+ */
+export type ListTherapistsResponse = Message<"identity.v1.ListTherapistsResponse"> & {
+  /**
+   * @generated from field: repeated identity.v1.TherapistEntry therapists = 1;
+   */
+  therapists: TherapistEntry[];
+};
+
+/**
+ * Describes the message identity.v1.ListTherapistsResponse.
+ * Use `create(ListTherapistsResponseSchema)` to create a new message.
+ */
+export const ListTherapistsResponseSchema: GenMessage<ListTherapistsResponse> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 23);
+
+/**
+ * @generated from message identity.v1.RemoveTherapistRequest
+ */
+export type RemoveTherapistRequest = Message<"identity.v1.RemoveTherapistRequest"> & {
+  /**
+   * must be in the caller's org
+   *
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+
+  /**
+   * optional; audit only
+   *
+   * @generated from field: string reason = 2;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message identity.v1.RemoveTherapistRequest.
+ * Use `create(RemoveTherapistRequestSchema)` to create a new message.
+ */
+export const RemoveTherapistRequestSchema: GenMessage<RemoveTherapistRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 24);
+
+/**
+ * @generated from message identity.v1.AdminListOrganizationsRequest
+ */
+export type AdminListOrganizationsRequest = Message<"identity.v1.AdminListOrganizationsRequest"> & {
+  /**
+   * Pagination — for now we just slice on (created_at, id) ordering.
+   *
+   * default 50, cap 200
+   *
+   * @generated from field: int32 page_size = 1;
+   */
+  pageSize: number;
+
+  /**
+   * opaque
+   *
+   * @generated from field: string page_token = 2;
+   */
+  pageToken: string;
+
+  /**
+   * matches legal_name (ILIKE) — optional
+   *
+   * @generated from field: string search = 3;
+   */
+  search: string;
+};
+
+/**
+ * Describes the message identity.v1.AdminListOrganizationsRequest.
+ * Use `create(AdminListOrganizationsRequestSchema)` to create a new message.
+ */
+export const AdminListOrganizationsRequestSchema: GenMessage<AdminListOrganizationsRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 25);
+
+/**
+ * @generated from message identity.v1.OrganizationSummary
+ */
+export type OrganizationSummary = Message<"identity.v1.OrganizationSummary"> & {
+  /**
+   * @generated from field: identity.v1.Organization organization = 1;
+   */
+  organization?: Organization | undefined;
+
+  /**
+   * @generated from field: int32 therapists_count = 2;
+   */
+  therapistsCount: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_session_at = 3;
+   */
+  lastSessionAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message identity.v1.OrganizationSummary.
+ * Use `create(OrganizationSummarySchema)` to create a new message.
+ */
+export const OrganizationSummarySchema: GenMessage<OrganizationSummary> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 26);
+
+/**
+ * @generated from message identity.v1.AdminListOrganizationsResponse
+ */
+export type AdminListOrganizationsResponse = Message<"identity.v1.AdminListOrganizationsResponse"> & {
+  /**
+   * @generated from field: repeated identity.v1.OrganizationSummary organizations = 1;
+   */
+  organizations: OrganizationSummary[];
+
+  /**
+   * @generated from field: string next_page_token = 2;
+   */
+  nextPageToken: string;
+};
+
+/**
+ * Describes the message identity.v1.AdminListOrganizationsResponse.
+ * Use `create(AdminListOrganizationsResponseSchema)` to create a new message.
+ */
+export const AdminListOrganizationsResponseSchema: GenMessage<AdminListOrganizationsResponse> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 27);
+
+/**
+ * @generated from message identity.v1.AdminGetOrganizationRequest
+ */
+export type AdminGetOrganizationRequest = Message<"identity.v1.AdminGetOrganizationRequest"> & {
+  /**
+   * @generated from field: string organization_id = 1;
+   */
+  organizationId: string;
+};
+
+/**
+ * Describes the message identity.v1.AdminGetOrganizationRequest.
+ * Use `create(AdminGetOrganizationRequestSchema)` to create a new message.
+ */
+export const AdminGetOrganizationRequestSchema: GenMessage<AdminGetOrganizationRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 28);
+
+/**
+ * Richer view than Organization — includes admin-relevant adjuncts.
+ *
+ * @generated from message identity.v1.OrganizationDetails
+ */
+export type OrganizationDetails = Message<"identity.v1.OrganizationDetails"> & {
+  /**
+   * @generated from field: identity.v1.Organization organization = 1;
+   */
+  organization?: Organization | undefined;
+
+  /**
+   * @generated from field: repeated identity.v1.User therapists = 2;
+   */
+  therapists: User[];
+
+  /**
+   * Recent audit history scoped to this org (last 20 entries).
+   *
+   * @generated from field: repeated identity.v1.AuditEntry recent_audit = 3;
+   */
+  recentAudit: AuditEntry[];
+};
+
+/**
+ * Describes the message identity.v1.OrganizationDetails.
+ * Use `create(OrganizationDetailsSchema)` to create a new message.
+ */
+export const OrganizationDetailsSchema: GenMessage<OrganizationDetails> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 29);
+
+/**
+ * @generated from message identity.v1.AuditEntry
+ */
+export type AuditEntry = Message<"identity.v1.AuditEntry"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp occurred_at = 2;
+   */
+  occurredAt?: Timestamp | undefined;
+
+  /**
+   * resolved from actor_user_id
+   *
+   * @generated from field: string actor_email = 3;
+   */
+  actorEmail: string;
+
+  /**
+   * @generated from field: string action = 4;
+   */
+  action: string;
+
+  /**
+   * @generated from field: string reason = 5;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: string resource_type = 6;
+   */
+  resourceType: string;
+
+  /**
+   * @generated from field: string resource_id = 7;
+   */
+  resourceId: string;
+};
+
+/**
+ * Describes the message identity.v1.AuditEntry.
+ * Use `create(AuditEntrySchema)` to create a new message.
+ */
+export const AuditEntrySchema: GenMessage<AuditEntry> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 30);
+
+/**
+ * @generated from message identity.v1.AdminSetOrganizationStatusRequest
+ */
+export type AdminSetOrganizationStatusRequest = Message<"identity.v1.AdminSetOrganizationStatusRequest"> & {
+  /**
+   * @generated from field: string organization_id = 1;
+   */
+  organizationId: string;
+
+  /**
+   * Currently supports: "active" | "blocked". Maps to
+   * subscriptions.status (ACTIVE / PAST_DUE).
+   *
+   * @generated from field: string desired_status = 2;
+   */
+  desiredStatus: string;
+
+  /**
+   * required, >=10 chars
+   *
+   * @generated from field: string reason = 3;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message identity.v1.AdminSetOrganizationStatusRequest.
+ * Use `create(AdminSetOrganizationStatusRequestSchema)` to create a new message.
+ */
+export const AdminSetOrganizationStatusRequestSchema: GenMessage<AdminSetOrganizationStatusRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 31);
+
+/**
+ * @generated from message identity.v1.AdminUpdateOrganizationRequest
+ */
+export type AdminUpdateOrganizationRequest = Message<"identity.v1.AdminUpdateOrganizationRequest"> & {
+  /**
+   * @generated from field: string organization_id = 1;
+   */
+  organizationId: string;
+
+  /**
+   * @generated from field: optional string legal_name = 2;
+   */
+  legalName?: string | undefined;
+
+  /**
+   * @generated from field: optional identity.v1.OrganizationType type = 3;
+   */
+  type?: OrganizationType | undefined;
+
+  /**
+   * @generated from field: optional string tax_id = 4;
+   */
+  taxId?: string | undefined;
+
+  /**
+   * @generated from field: optional string vat_id_eu = 5;
+   */
+  vatIdEu?: string | undefined;
+
+  /**
+   * @generated from field: optional identity.v1.Address headquarters_address = 6;
+   */
+  headquartersAddress?: Address | undefined;
+
+  /**
+   * @generated from field: optional string primary_admin_user_id = 7;
+   */
+  primaryAdminUserId?: string | undefined;
+
+  /**
+   * required, >=10 chars
+   *
+   * @generated from field: string reason = 8;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message identity.v1.AdminUpdateOrganizationRequest.
+ * Use `create(AdminUpdateOrganizationRequestSchema)` to create a new message.
+ */
+export const AdminUpdateOrganizationRequestSchema: GenMessage<AdminUpdateOrganizationRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 32);
+
+/**
+ * @generated from message identity.v1.AdminListUsersRequest
+ */
+export type AdminListUsersRequest = Message<"identity.v1.AdminListUsersRequest"> & {
+  /**
+   * @generated from field: int32 page_size = 1;
+   */
+  pageSize: number;
+
+  /**
+   * @generated from field: string page_token = 2;
+   */
+  pageToken: string;
+
+  /**
+   * Optional filters — all AND-ed when set.
+   *
+   * @generated from field: string organization_id = 3;
+   */
+  organizationId: string;
+
+  /**
+   * @generated from field: identity.v1.UserRole role = 4;
+   */
+  role: UserRole;
+
+  /**
+   * email or name ILIKE
+   *
+   * @generated from field: string search = 5;
+   */
+  search: string;
+};
+
+/**
+ * Describes the message identity.v1.AdminListUsersRequest.
+ * Use `create(AdminListUsersRequestSchema)` to create a new message.
+ */
+export const AdminListUsersRequestSchema: GenMessage<AdminListUsersRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 33);
+
+/**
+ * @generated from message identity.v1.AdminListUsersResponse
+ */
+export type AdminListUsersResponse = Message<"identity.v1.AdminListUsersResponse"> & {
+  /**
+   * @generated from field: repeated identity.v1.User users = 1;
+   */
+  users: User[];
+
+  /**
+   * @generated from field: string next_page_token = 2;
+   */
+  nextPageToken: string;
+};
+
+/**
+ * Describes the message identity.v1.AdminListUsersResponse.
+ * Use `create(AdminListUsersResponseSchema)` to create a new message.
+ */
+export const AdminListUsersResponseSchema: GenMessage<AdminListUsersResponse> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 34);
+
+/**
+ * @generated from message identity.v1.AdminGetUserRequest
+ */
+export type AdminGetUserRequest = Message<"identity.v1.AdminGetUserRequest"> & {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+};
+
+/**
+ * Describes the message identity.v1.AdminGetUserRequest.
+ * Use `create(AdminGetUserRequestSchema)` to create a new message.
+ */
+export const AdminGetUserRequestSchema: GenMessage<AdminGetUserRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 35);
+
+/**
+ * @generated from message identity.v1.AdminUpdateUserRequest
+ */
+export type AdminUpdateUserRequest = Message<"identity.v1.AdminUpdateUserRequest"> & {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+
+  /**
+   * @generated from field: optional string email = 2;
+   */
+  email?: string | undefined;
+
+  /**
+   * @generated from field: optional string first_name = 3;
+   */
+  firstName?: string | undefined;
+
+  /**
+   * @generated from field: optional string last_name = 4;
+   */
+  lastName?: string | undefined;
+
+  /**
+   * @generated from field: optional string phone_number = 5;
+   */
+  phoneNumber?: string | undefined;
+
+  /**
+   * @generated from field: optional identity.v1.UserRole role = 6;
+   */
+  role?: UserRole | undefined;
+
+  /**
+   * @generated from field: optional string organization_id = 7;
+   */
+  organizationId?: string | undefined;
+
+  /**
+   * @generated from field: optional string default_modality_id = 8;
+   */
+  defaultModalityId?: string | undefined;
+
+  /**
+   * @generated from field: optional string ui_language = 9;
+   */
+  uiLanguage?: string | undefined;
+
+  /**
+   * @generated from field: optional string timezone = 10;
+   */
+  timezone?: string | undefined;
+
+  /**
+   * @generated from field: optional string professional_title = 11;
+   */
+  professionalTitle?: string | undefined;
+
+  /**
+   * @generated from field: optional string credentials_number = 12;
+   */
+  credentialsNumber?: string | undefined;
+
+  /**
+   * @generated from field: optional string biography = 13;
+   */
+  biography?: string | undefined;
+
+  /**
+   * @generated from field: optional string avatar_url = 14;
+   */
+  avatarUrl?: string | undefined;
+
+  /**
+   * @generated from field: optional identity.v1.Address billing_address = 15;
+   */
+  billingAddress?: Address | undefined;
+
+  /**
+   * @generated from field: optional bool is_email_verified = 16;
+   */
+  isEmailVerified?: boolean | undefined;
+
+  /**
+   * required, >=10 chars
+   *
+   * @generated from field: string reason = 17;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message identity.v1.AdminUpdateUserRequest.
+ * Use `create(AdminUpdateUserRequestSchema)` to create a new message.
+ */
+export const AdminUpdateUserRequestSchema: GenMessage<AdminUpdateUserRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 36);
+
+/**
+ * @generated from message identity.v1.AdminDeleteUserRequest
+ */
+export type AdminDeleteUserRequest = Message<"identity.v1.AdminDeleteUserRequest"> & {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+
+  /**
+   * required, >=10 chars
+   *
+   * @generated from field: string reason = 2;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message identity.v1.AdminDeleteUserRequest.
+ * Use `create(AdminDeleteUserRequestSchema)` to create a new message.
+ */
+export const AdminDeleteUserRequestSchema: GenMessage<AdminDeleteUserRequest> = /*@__PURE__*/
+  messageDesc(file_identity_v1_identity, 37);
+
+/**
  * @generated from enum identity.v1.UserRole
  */
 export enum UserRole {
@@ -552,6 +1636,20 @@ export enum UserRole {
    * @generated from enum value: USER_ROLE_PATIENT = 2;
    */
   PATIENT = 2,
+
+  /**
+   * Web app additions per docs/18 R4. Single-role MVP — a user holds
+   * exactly one role. Org founders are ORG_ADMIN only (cannot record
+   * sessions); to also practise they invite themselves as THERAPIST.
+   *
+   * @generated from enum value: USER_ROLE_ORG_ADMIN = 3;
+   */
+  ORG_ADMIN = 3,
+
+  /**
+   * @generated from enum value: USER_ROLE_SUPERWIZOR_ADMIN = 4;
+   */
+  SUPERWIZOR_ADMIN = 4,
 }
 
 /**
@@ -559,6 +1657,37 @@ export enum UserRole {
  */
 export const UserRoleSchema: GenEnum<UserRole> = /*@__PURE__*/
   enumDesc(file_identity_v1_identity, 0);
+
+/**
+ * @generated from enum identity.v1.OrganizationType
+ */
+export enum OrganizationType {
+  /**
+   * @generated from enum value: ORGANIZATION_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ORGANIZATION_TYPE_SOLO = 1;
+   */
+  SOLO = 1,
+
+  /**
+   * @generated from enum value: ORGANIZATION_TYPE_CLINIC = 2;
+   */
+  CLINIC = 2,
+
+  /**
+   * @generated from enum value: ORGANIZATION_TYPE_ENTERPRISE = 3;
+   */
+  ENTERPRISE = 3,
+}
+
+/**
+ * Describes the enum identity.v1.OrganizationType.
+ */
+export const OrganizationTypeSchema: GenEnum<OrganizationType> = /*@__PURE__*/
+  enumDesc(file_identity_v1_identity, 1);
 
 /**
  * @generated from service identity.v1.IdentityService
@@ -595,7 +1724,9 @@ export const IdentityService: GenService<{
     output: typeof UserSchema;
   },
   /**
-   * Creates user on first login (called from Firebase Auth trigger)
+   * Creates user on first login (called from Firebase Auth trigger).
+   * For role=THERAPIST, identity-svc auto-provisions a personal
+   * organisation + Trial subscription (existing flow from commit 0a25ac7).
    *
    * @generated from rpc identity.v1.IdentityService.CreateUser
    */
@@ -605,13 +1736,29 @@ export const IdentityService: GenService<{
     output: typeof UserSchema;
   },
   /**
-   * Updates own profile
+   * Updates own profile. Web sends the full payload (every editable
+   * column per docs/18 §13.4); iOS sends only the subset it knows.
+   * Handler MUST do selective UPDATE — skip fields whose presence
+   * wrapper is unset — so the iOS partial submit doesn't blank
+   * columns it never set. See docs/18 R4/D2.
    *
    * @generated from rpc identity.v1.IdentityService.UpdateProfile
    */
   updateProfile: {
     methodKind: "unary";
     input: typeof UpdateProfileRequestSchema;
+    output: typeof UserSchema;
+  },
+  /**
+   * Caller-scoped read of own profile. Returns the User row matching
+   * the authenticated firebase_uid. Web cold-start hydration uses
+   * this instead of passing user_id.
+   *
+   * @generated from rpc identity.v1.IdentityService.GetMyProfile
+   */
+  getMyProfile: {
+    methodKind: "unary";
+    input: typeof EmptySchema;
     output: typeof UserSchema;
   },
   /**
@@ -623,6 +1770,146 @@ export const IdentityService: GenService<{
     methodKind: "unary";
     input: typeof CheckPermissionRequestSchema;
     output: typeof PermissionDecisionSchema;
+  },
+  /**
+   * ─── Web app: org self-serve + invite flow (docs/18 R4, §9) ──
+   *
+   * RegisterOrganization is the public self-serve endpoint. Creates
+   * (in one PG tx) the organisation + headquarters Address + a
+   * single User with role=ORG_ADMIN + a Trial subscription. The
+   * founder is admin-only; to also record sessions they invite
+   * themselves under a second email (single-role MVP).
+   *
+   * @generated from rpc identity.v1.IdentityService.RegisterOrganization
+   */
+  registerOrganization: {
+    methodKind: "unary";
+    input: typeof RegisterOrganizationRequestSchema;
+    output: typeof RegisterOrganizationResponseSchema;
+  },
+  /**
+   * ORG_ADMIN scope ─ all gated on caller's role; org_id resolved
+   * from the auth context, never trusted from the request.
+   *
+   * @generated from rpc identity.v1.IdentityService.GetMyOrganization
+   */
+  getMyOrganization: {
+    methodKind: "unary";
+    input: typeof EmptySchema;
+    output: typeof OrganizationSchema;
+  },
+  /**
+   * @generated from rpc identity.v1.IdentityService.UpdateMyOrganization
+   */
+  updateMyOrganization: {
+    methodKind: "unary";
+    input: typeof UpdateMyOrganizationRequestSchema;
+    output: typeof OrganizationSchema;
+  },
+  /**
+   * @generated from rpc identity.v1.IdentityService.InviteTherapist
+   */
+  inviteTherapist: {
+    methodKind: "unary";
+    input: typeof InviteTherapistRequestSchema;
+    output: typeof InvitationSchema;
+  },
+  /**
+   * @generated from rpc identity.v1.IdentityService.ListTherapistsInMyOrg
+   */
+  listTherapistsInMyOrg: {
+    methodKind: "unary";
+    input: typeof EmptySchema;
+    output: typeof ListTherapistsResponseSchema;
+  },
+  /**
+   * @generated from rpc identity.v1.IdentityService.RemoveTherapist
+   */
+  removeTherapist: {
+    methodKind: "unary";
+    input: typeof RemoveTherapistRequestSchema;
+    output: typeof EmptySchema;
+  },
+  /**
+   * Invitee scope — public endpoint, validates the magic-link token.
+   * Called from the /accept-invite page after Firebase
+   * createUserWithEmailAndPassword succeeds. Creates the THERAPIST
+   * User row and attaches it to the inviting org.
+   *
+   * @generated from rpc identity.v1.IdentityService.AcceptInvitation
+   */
+  acceptInvitation: {
+    methodKind: "unary";
+    input: typeof AcceptInvitationRequestSchema;
+    output: typeof AcceptInvitationResponseSchema;
+  },
+  /**
+   * SUPERWIZOR_ADMIN scope ─ internal team. Every mutation writes
+   * audit_events with actor_type=SUPERWIZOR_ADMIN + required reason
+   * (>=10 chars enforced at handler level).
+   *
+   * @generated from rpc identity.v1.IdentityService.AdminListOrganizations
+   */
+  adminListOrganizations: {
+    methodKind: "unary";
+    input: typeof AdminListOrganizationsRequestSchema;
+    output: typeof AdminListOrganizationsResponseSchema;
+  },
+  /**
+   * @generated from rpc identity.v1.IdentityService.AdminGetOrganization
+   */
+  adminGetOrganization: {
+    methodKind: "unary";
+    input: typeof AdminGetOrganizationRequestSchema;
+    output: typeof OrganizationDetailsSchema;
+  },
+  /**
+   * @generated from rpc identity.v1.IdentityService.AdminSetOrganizationStatus
+   */
+  adminSetOrganizationStatus: {
+    methodKind: "unary";
+    input: typeof AdminSetOrganizationStatusRequestSchema;
+    output: typeof EmptySchema;
+  },
+  /**
+   * @generated from rpc identity.v1.IdentityService.AdminUpdateOrganization
+   */
+  adminUpdateOrganization: {
+    methodKind: "unary";
+    input: typeof AdminUpdateOrganizationRequestSchema;
+    output: typeof OrganizationSchema;
+  },
+  /**
+   * @generated from rpc identity.v1.IdentityService.AdminListUsers
+   */
+  adminListUsers: {
+    methodKind: "unary";
+    input: typeof AdminListUsersRequestSchema;
+    output: typeof AdminListUsersResponseSchema;
+  },
+  /**
+   * @generated from rpc identity.v1.IdentityService.AdminGetUser
+   */
+  adminGetUser: {
+    methodKind: "unary";
+    input: typeof AdminGetUserRequestSchema;
+    output: typeof UserSchema;
+  },
+  /**
+   * @generated from rpc identity.v1.IdentityService.AdminUpdateUser
+   */
+  adminUpdateUser: {
+    methodKind: "unary";
+    input: typeof AdminUpdateUserRequestSchema;
+    output: typeof UserSchema;
+  },
+  /**
+   * @generated from rpc identity.v1.IdentityService.AdminDeleteUser
+   */
+  adminDeleteUser: {
+    methodKind: "unary";
+    input: typeof AdminDeleteUserRequestSchema;
+    output: typeof EmptySchema;
   },
   /**
    * ─── Report customization (docs/10_REPORT_CUSTOMIZATION.md) ───
