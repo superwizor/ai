@@ -10,12 +10,38 @@
       "emailPassword": true
     }
   },
+  "hosting": [
+    {
+      "//": "Marketing site (Next.js). Uses Firebase Hosting's Web Frameworks support — points at the Next.js project root, not a static output dir, so middleware/proxy + SSR/SSG pages all keep working. Deploy: `firebase deploy --only hosting:superwizor-www` from repo root.",
+      "site": "superwizor-www",
+      "source": "marketing-site",
+      "frameworksBackend": {
+        "region": "europe-central2"
+      },
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**",
+        "**/scripts/**",
+        "**/.env*"
+      ]
+    },
+    {
+      "//": "Flutter Web bundle (therapist + org-admin consoles). Deploy: `firebase deploy --only hosting:superwizor-app`.",
+      "site": "superwizor-app",
+      "public": "flutter-app/superwizor/build/web",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+    }
+  ],
   "emulators": {
     "auth": {
       "port": 9099
     },
     "firestore": {
       "port": 8080
+    },
+    "hosting": {
+      "port": 5000
     },
     "ui": {
       "enabled": true
