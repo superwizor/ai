@@ -316,6 +316,25 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 // stateless, so the URL is fresh but the object_path is the cached
 // one from the original create.
 func (s *Server) cachedAudioUploadResponse(ctx context.Context, existing db.AudioUpload) (*ingestionv1.CreateAudioUploadResponse, error) {
+	// Quota gate also runs on the cached path. Without this, a client
+	// that hit QUOTA_EXHAUSTED on its first CreateAudioUpload (which
+	// still committed the session + audio_upload rows under the
+	// original idempotency_key, then errored) could simply retry with
+	// the same idempotency_key and short-circuit straight to a signed
+	// URL — bypassing the reserve check entirely. ReserveCredit is
+	// idempotent in billing-svc (returns the existing reservation by
+	// session_id), so calling it on every cache hit is safe: a session
+	// that already has a reservation gets a no-op OK, and a session
+	// that never got past the quota check on its first attempt gets
+	// the same hard-block on retry.
+	if s.billing != nil && existing.SessionID.Valid {
+		sessionUUID := uuid.UUID(existing.SessionID.Bytes)
+		therapistIDPg := existing.TherapistID
+		if err := s.reserveCreditOrBlock(ctx, sessionUUID, therapistIDPg); err != nil {
+			return nil, err
+		}
+	}
+
 	// On idempotent retry we don't have the request's
 	// estimated_size_bytes anymore — use the audio_uploads row's
 	// actual file_size_bytes if known (post-PUT retry), else 0
