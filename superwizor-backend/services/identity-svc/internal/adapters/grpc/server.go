@@ -3,8 +3,13 @@ package grpc
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -19,12 +24,13 @@ import (
 type Server struct {
 	identityv1.UnimplementedIdentityServiceServer
 	queries *db.Queries
+	pool    *pgxpool.Pool
 	auth    *firebase.AuthClient
 	version string
 }
 
-func NewServer(queries *db.Queries, auth *firebase.AuthClient, version string) *Server {
-	return &Server{queries: queries, auth: auth, version: version}
+func NewServer(pool *pgxpool.Pool, queries *db.Queries, auth *firebase.AuthClient, version string) *Server {
+	return &Server{pool: pool, queries: queries, auth: auth, version: version}
 }
 
 func (s *Server) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*identityv1.HealthCheckResponse, error) {
@@ -111,11 +117,21 @@ func (s *Server) CreateUser(ctx context.Context, req *identityv1.CreateUserReque
 		dbRole = db.UserRole("PATIENT")
 	}
 
+	// All writes happen in a single tx so a partial provisioning
+	// (e.g. user row created but org/subscription failed) doesn't
+	// leave the system in a half-state.
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "tx begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := s.queries.WithTx(tx)
+
 	// Therapist creation path requires both fields per the partial
 	// CHECK on users (migration 000013). Patient rows go through
 	// clinical-svc.CreatePatientUser, which leaves these NULL — not
 	// this RPC.
-	user, err := s.queries.CreateUser(ctx, db.CreateUserParams{
+	user, err := qtx.CreateUser(ctx, db.CreateUserParams{
 		Role:           dbRole,
 		FirebaseUid:    &req.FirebaseUid,
 		Email:          &req.Email,
@@ -129,7 +145,121 @@ func (s *Server) CreateUser(ctx context.Context, req *identityv1.CreateUserReque
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// Auto-provision a Trial subscription for every new THERAPIST.
+	// CreateUserRequest has no organization_id field today, so this
+	// always fires on therapist signup. Patients are skipped — their
+	// quota comes from the therapist's org via patient_files.
+	if dbRole == "THERAPIST" {
+		if err := s.provisionTrialOrgAndSub(ctx, tx, &user, req); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, status.Errorf(codes.Internal, "commit: %v", err)
+	}
+
 	return toProtoUser(user), nil
+}
+
+// provisionTrialOrgAndSub creates a SOLO organization, links the user
+// to it, and seeds a TRIAL subscription + usage_counter. Runs inside
+// the caller's tx so the whole CreateUser is atomic — a failed billing
+// provisioning rolls back the user row too. Mutates `user` to reflect
+// the assigned organization_id so the returned proto carries it.
+//
+// Plan tier: TRIAL (migrations 000032 + 000033). 3 tokens, no
+// auto-renewal — period_end is 100 years out so the existing
+// quota-period mechanics work unchanged but the user effectively keeps
+// the trial pool until they upgrade. Upgrade flow rewrites this row
+// to a paid tier and resets the counter.
+func (s *Server) provisionTrialOrgAndSub(ctx context.Context, tx pgx.Tx, user *db.User, req *identityv1.CreateUserRequest) error {
+	// Build display name: "First Last Org". Fall back to email-local
+	// if names are empty (shouldn't happen for therapists, but keeps
+	// us defensive — legal_name is NOT NULL on organizations).
+	displayName := strings.TrimSpace(req.FirstName + " " + req.LastName)
+	if displayName == "" {
+		displayName = strings.TrimSpace(req.Email)
+		if at := strings.IndexByte(displayName, '@'); at > 0 {
+			displayName = displayName[:at]
+		}
+	}
+	orgName := displayName + " Org"
+
+	// Create organization. type=SOLO since this is a single-therapist
+	// trial; CLINIC plans upgrade via a different flow that switches
+	// organization_type and adds licenses.
+	var orgID uuid.UUID
+	if err := tx.QueryRow(ctx,
+		`INSERT INTO organizations (legal_name, type)
+		 VALUES ($1, 'SOLO')
+		 RETURNING id`,
+		orgName,
+	).Scan(&orgID); err != nil {
+		slog.ErrorContext(ctx, "provisionTrial: create org", "error", err, "name", orgName)
+		return status.Errorf(codes.Internal, "create org: %v", err)
+	}
+
+	// Link user → org. Use RETURNING so the in-memory user struct
+	// reflects the new organization_id without an extra SELECT.
+	if err := tx.QueryRow(ctx,
+		`UPDATE users SET organization_id = $1 WHERE id = $2 RETURNING organization_id`,
+		orgID, user.ID,
+	).Scan(&user.OrganizationID); err != nil {
+		slog.ErrorContext(ctx, "provisionTrial: link user to org", "error", err)
+		return status.Errorf(codes.Internal, "link org: %v", err)
+	}
+
+	// Look up the TRIAL plan. Seeded by migration 000033.
+	var planID uuid.UUID
+	var tokensPerPeriod int32
+	if err := tx.QueryRow(ctx,
+		`SELECT id, tokens_per_period FROM subscription_plans
+		 WHERE tier = 'TRIAL' AND cycle = 'MONTHLY' AND is_active = TRUE
+		 LIMIT 1`,
+	).Scan(&planID, &tokensPerPeriod); err != nil {
+		slog.ErrorContext(ctx, "provisionTrial: lookup trial plan", "error", err)
+		return status.Errorf(codes.Internal, "lookup trial plan: %v", err)
+	}
+
+	// Create the subscription. provider=MANUAL (no Stripe), status=TRIALING
+	// — partial unique index idx_subscriptions_one_active_per_org accepts
+	// TRIALING as "active for the org" so no parallel paid sub can exist
+	// alongside without upgrade-time bookkeeping.
+	// current_period_end ~100 years out keeps the counter from auto-rolling.
+	var subID uuid.UUID
+	var periodStart, periodEnd pgtype.Timestamptz
+	if err := tx.QueryRow(ctx,
+		`INSERT INTO subscriptions (
+		     organization_id, plan_id, provider, provider_subscription_id,
+		     status, current_period_start, current_period_end
+		 ) VALUES (
+		     $1, $2, 'MANUAL', $3,
+		     'TRIALING', NOW(), NOW() + INTERVAL '100 years'
+		 )
+		 RETURNING id, current_period_start, current_period_end`,
+		orgID, planID, "trial-"+orgID.String(),
+	).Scan(&subID, &periodStart, &periodEnd); err != nil {
+		slog.ErrorContext(ctx, "provisionTrial: create subscription", "error", err)
+		return status.Errorf(codes.Internal, "create subscription: %v", err)
+	}
+
+	// Create the usage counter for the trial period. tokens_limit comes
+	// from the plan row so changing the trial size never requires code.
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO usage_counters (
+		     subscription_id, period_start, period_end, tokens_limit
+		 ) VALUES ($1, $2, $3, $4)`,
+		subID, periodStart, periodEnd, tokensPerPeriod,
+	); err != nil {
+		slog.ErrorContext(ctx, "provisionTrial: create counter", "error", err)
+		return status.Errorf(codes.Internal, "create counter: %v", err)
+	}
+
+	slog.InfoContext(ctx, "provisionTrial: trial subscription seeded",
+		"user_id", user.ID, "org_id", orgID, "subscription_id", subID,
+		"tokens_per_period", tokensPerPeriod, "org_name", orgName)
+	return nil
 }
 
 func (s *Server) UpdateProfile(ctx context.Context, req *identityv1.UpdateProfileRequest) (*identityv1.User, error) {

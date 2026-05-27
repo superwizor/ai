@@ -124,7 +124,7 @@ func main() {
 	)
 
 	// Register identity service
-	identityv1.RegisterIdentityServiceServer(grpcServer, grpcadapter.NewServer(queries, authClient, version))
+	identityv1.RegisterIdentityServiceServer(grpcServer, grpcadapter.NewServer(pool, queries, authClient, version))
 
 	// Health checks (Cloud Run probe)
 	healthServer := health.NewServer()

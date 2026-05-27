@@ -16,7 +16,7 @@ import (
 
 // TestHealthCheck verifies basic server liveness
 func TestHealthCheck(t *testing.T) {
-	srv := NewServer(nil, nil, "test-1.0")
+	srv := NewServer(nil, nil, nil, "test-1.0")
 	resp, err := srv.HealthCheck(context.Background(), &emptypb.Empty{})
 	require.NoError(t, err)
 	assert.Equal(t, "OK", resp.Status)
