@@ -1,68 +1,73 @@
-// billingQuotaProvider — live quota state z dwoma źródłami:
-//   1) Firestore stream `organization_quota/{orgId}` (push, baseline)
-//   2) Lokalny offset rezerwacji (applied po sukces CreateAudioUpload)
+// billingQuotaProvider — exposes the cached billing/quota snapshot.
 //
-// Lokalny offset jest reset'owany za każdym razem gdy Firestore emit nowy
-// snapshot — wtedy backend juz wie o nowych rezerwacjach i offset zbędny.
+// Phase B refactor (feat/billing-svc-refactor): replaces the previous
+// Firestore-stream-based provider. The single source of truth is now
+// BillingQuotaCache, which is hydrated on app cold start by calling
+// clinical-svc.GetMyBillingState (proxy to billing-svc.GetSubscription)
+// and refreshed after each successful upload.
 //
-// Reference: docs/16_BILLING_SERVICE_PHASE_3.md §16.
+// Per user direction we do NOT refresh on app resume — minimise DB
+// hits. Cold start is the only automatic refresh; refresh() is also
+// called explicitly from upload_queue_provider when a reservation
+// commits.
+//
+// Reference: docs/16 §16, docs/17 §5 (rewritten in phase D).
 
-import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../services/billing_quota_listener.dart';
+import '../services/billing_quota_cache.dart';
+import '../services/billing_quota_state.dart';
 import 'current_user_provider.dart';
+import 'grpc_provider.dart';
 
-/// Singleton listener.
-final billingQuotaListenerProvider = Provider<BillingQuotaListener>(
-  (ref) => BillingQuotaListener(),
-);
+/// Singleton cache, owned by Riverpod. Disposed when the auth scope
+/// rebuilds (e.g. on sign-out → sign-in).
+final billingQuotaCacheProvider = Provider<BillingQuotaCache>((ref) {
+  final clinical = ref.watch(grpcClientsProvider).clinical;
+  return BillingQuotaCache(clinicalClient: clinical);
+});
 
-/// Notifier — utrzymuje aktualny QuotaState z applied local offset.
+/// Notifier surface — emits `QuotaState?` so existing consumers
+/// (QuotaWarningBanner etc.) keep their API unchanged.
 class BillingQuotaNotifier extends AsyncNotifier<QuotaState?> {
-  StreamSubscription<QuotaState?>? _sub;
-  int _localReservationOffset = 0;
-  QuotaState? _serverState;
+  late final BillingQuotaCache _cache;
+  VoidCallback? _listener;
 
   @override
   Future<QuotaState?> build() async {
-    ref.onDispose(() {
-      _sub?.cancel();
-      _sub = null;
-    });
+    _cache = ref.read(billingQuotaCacheProvider);
 
     final user = await ref.watch(currentUserProvider.future);
-    if (user == null || user.organizationId.isEmpty) {
+    if (user == null) {
       return null;
     }
-    final listener = ref.read(billingQuotaListenerProvider);
 
-    final completer = Completer<QuotaState?>();
-    _sub?.cancel();
-    _sub = listener.watchQuota(user.organizationId).listen((qs) {
-      _serverState = qs;
-      // Server confirmed a snapshot — reset local offset (backend's view
-      // is authoritative once we receive a write).
-      _localReservationOffset = 0;
-      state = AsyncData(_apply());
-      if (!completer.isCompleted) completer.complete(_apply());
-    }, onError: (e, st) {
-      if (!completer.isCompleted) completer.completeError(e, st);
+    // Listen to the cache so subsequent refresh() / applyOptimistic
+    // calls propagate through the AsyncNotifier without us needing
+    // to manually set state from every caller.
+    _listener = () {
+      state = AsyncData(_cache.current);
+    };
+    _cache.listenable.addListener(_listener!);
+    ref.onDispose(() {
+      if (_listener != null) {
+        _cache.listenable.removeListener(_listener!);
+      }
     });
-    return completer.future;
+
+    // Initial hydration — one RPC. If it fails the cache stays null
+    // and the UI hides quota chrome (same behaviour as the old
+    // empty-Firestore-doc case).
+    return await _cache.refresh();
   }
 
-  /// Wywołane przez UI tuż po sukces CreateAudioUpload — dekrementuje
-  /// pozostałe tokeny lokalnie, dopóki backend nie zaktualizuje mirror.
-  void applyLocalReservation(int delta) {
-    _localReservationOffset += delta;
-    state = AsyncData(_apply());
-  }
-
-  QuotaState? _apply() {
-    if (_serverState == null) return null;
-    if (_localReservationOffset == 0) return _serverState;
-    return _serverState!.applyLocalReservation(_localReservationOffset);
+  /// Public hook for upload-success path: optimistically apply a
+  /// reserved-tokens delta to the cache, then trigger a refresh so
+  /// the authoritative server snapshot lands.
+  Future<void> onReservationCreated() async {
+    _cache.applyOptimisticReservation(1);
+    await _cache.refresh();
   }
 }
 

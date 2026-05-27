@@ -95,6 +95,14 @@ const Reservation$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'expiresAt'
     },
+    {
+      '1': 'state_after',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.billing.v1.Subscription',
+      '10': 'stateAfter'
+    },
   ],
 };
 
@@ -103,7 +111,8 @@ final $typed_data.Uint8List reservationDescriptor = $convert.base64Decode(
     'CgtSZXNlcnZhdGlvbhIlCg5yZXNlcnZhdGlvbl9pZBgBIAEoCVINcmVzZXJ2YXRpb25JZBIdCg'
     'pzZXNzaW9uX2lkGAIgASgJUglzZXNzaW9uSWQSJwoPdG9rZW5zX3Jlc2VydmVkGAMgASgFUg50'
     'b2tlbnNSZXNlcnZlZBI5CgpleHBpcmVzX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbW'
-    'VzdGFtcFIJZXhwaXJlc0F0');
+    'VzdGFtcFIJZXhwaXJlc0F0EjkKC3N0YXRlX2FmdGVyGAUgASgLMhguYmlsbGluZy52MS5TdWJz'
+    'Y3JpcHRpb25SCnN0YXRlQWZ0ZXI=');
 
 @$core.Deprecated('Use commitUsageRequestDescriptor instead')
 const CommitUsageRequest$json = {
@@ -133,6 +142,14 @@ const UsageCommit$json = {
     {'1': 'tokens_consumed', '3': 1, '4': 1, '5': 5, '10': 'tokensConsumed'},
     {'1': 'remaining_tokens', '3': 2, '4': 1, '5': 5, '10': 'remainingTokens'},
     {'1': 'limit_tokens', '3': 3, '4': 1, '5': 5, '10': 'limitTokens'},
+    {
+      '1': 'state_after',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.billing.v1.Subscription',
+      '10': 'stateAfter'
+    },
   ],
 };
 
@@ -140,7 +157,8 @@ const UsageCommit$json = {
 final $typed_data.Uint8List usageCommitDescriptor = $convert.base64Decode(
     'CgtVc2FnZUNvbW1pdBInCg90b2tlbnNfY29uc3VtZWQYASABKAVSDnRva2Vuc0NvbnN1bWVkEi'
     'kKEHJlbWFpbmluZ190b2tlbnMYAiABKAVSD3JlbWFpbmluZ1Rva2VucxIhCgxsaW1pdF90b2tl'
-    'bnMYAyABKAVSC2xpbWl0VG9rZW5z');
+    'bnMYAyABKAVSC2xpbWl0VG9rZW5zEjkKC3N0YXRlX2FmdGVyGAQgASgLMhguYmlsbGluZy52MS'
+    '5TdWJzY3JpcHRpb25SCnN0YXRlQWZ0ZXI=');
 
 @$core.Deprecated('Use releaseCreditRequestDescriptor instead')
 const ReleaseCreditRequest$json = {
@@ -246,6 +264,8 @@ const Subscription$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'currentPeriodEnd'
     },
+    {'1': 'plan_cycle', '3': 11, '4': 1, '5': 9, '10': 'planCycle'},
+    {'1': 'tokens_remaining', '3': 12, '4': 1, '5': 5, '10': 'tokensRemaining'},
   ],
 };
 
@@ -260,4 +280,5 @@ final $typed_data.Uint8List subscriptionDescriptor = $convert.base64Decode(
     'KAVSGHRva2Vuc1Jlc2VydmVkVGhpc1BlcmlvZBJMChRjdXJyZW50X3BlcmlvZF9zdGFydBgJIA'
     'EoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSEmN1cnJlbnRQZXJpb2RTdGFydBJIChJj'
     'dXJyZW50X3BlcmlvZF9lbmQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUhBjdX'
-    'JyZW50UGVyaW9kRW5k');
+    'JyZW50UGVyaW9kRW5kEh0KCnBsYW5fY3ljbGUYCyABKAlSCXBsYW5DeWNsZRIpChB0b2tlbnNf'
+    'cmVtYWluaW5nGAwgASgFUg90b2tlbnNSZW1haW5pbmc=');

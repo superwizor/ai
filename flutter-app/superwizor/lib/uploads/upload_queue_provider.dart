@@ -105,16 +105,16 @@ final uploadQueueRunnerProvider =
       await _refreshKartoteka(ref, row.patientFileId);
     },
     // CreateAudioUpload success → backend just took 1 token via
-    // ReserveCredit. Apply local decrement on quota state so the
-    // SubscriptionPlanScreen shows the change immediately (Firestore
-    // mirror only updates on edge thresholds — bez tego user widzi
-    // stale tokens count aż do CommitUsage).
+    // ReserveCredit. Apply an optimistic local decrement, then refresh
+    // the cache from clinical-svc.GetMyBillingState so the authoritative
+    // server snapshot lands. Phase B refactor (feat/billing-svc-refactor)
+    // replaced the previous Firestore-mirror push with this pull model.
     onReservationCreated: (_) {
-      try {
-        ref.read(billingQuotaProvider.notifier).applyLocalReservation(1);
-      } catch (e) {
-        debugPrint('[upload-runner] applyLocalReservation failed: $e');
-      }
+      // Fire-and-forget — the notifier's listener updates state via
+      // its cache listener, so we don't need to await here.
+      ref.read(billingQuotaProvider.notifier).onReservationCreated().catchError((e) {
+        debugPrint('[upload-runner] onReservationCreated failed: $e');
+      });
     },
   );
 

@@ -14,7 +14,7 @@ import 'dart:core' as $core;
 
 import 'package:protobuf/protobuf.dart' as $pb;
 import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
-    as $2;
+    as $3;
 
 import 'clinical.pbenum.dart';
 
@@ -34,11 +34,11 @@ class PatientFile extends $pb.GeneratedMessage {
     $core.String? initialComplaint,
     $core.bool? isProcessClosed,
     $core.bool? hasRecordingConsent,
-    $2.Timestamp? consentGivenAt,
-    $2.Timestamp? firstConsultationAt,
+    $3.Timestamp? consentGivenAt,
+    $3.Timestamp? firstConsultationAt,
     $core.String? privateTherapistNotes,
-    $2.Timestamp? createdAt,
-    $2.Timestamp? updatedAt,
+    $3.Timestamp? createdAt,
+    $3.Timestamp? updatedAt,
     $core.String? patientFirstName,
     $core.String? patientLastName,
     $core.String? patientLanguageCode,
@@ -93,15 +93,15 @@ class PatientFile extends $pb.GeneratedMessage {
     ..aOS(8, _omitFieldNames ? '' : 'initialComplaint')
     ..aOB(9, _omitFieldNames ? '' : 'isProcessClosed')
     ..aOB(10, _omitFieldNames ? '' : 'hasRecordingConsent')
-    ..aOM<$2.Timestamp>(11, _omitFieldNames ? '' : 'consentGivenAt',
-        subBuilder: $2.Timestamp.create)
-    ..aOM<$2.Timestamp>(12, _omitFieldNames ? '' : 'firstConsultationAt',
-        subBuilder: $2.Timestamp.create)
+    ..aOM<$3.Timestamp>(11, _omitFieldNames ? '' : 'consentGivenAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOM<$3.Timestamp>(12, _omitFieldNames ? '' : 'firstConsultationAt',
+        subBuilder: $3.Timestamp.create)
     ..aOS(13, _omitFieldNames ? '' : 'privateTherapistNotes')
-    ..aOM<$2.Timestamp>(14, _omitFieldNames ? '' : 'createdAt',
-        subBuilder: $2.Timestamp.create)
-    ..aOM<$2.Timestamp>(15, _omitFieldNames ? '' : 'updatedAt',
-        subBuilder: $2.Timestamp.create)
+    ..aOM<$3.Timestamp>(14, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOM<$3.Timestamp>(15, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $3.Timestamp.create)
     ..aOS(16, _omitFieldNames ? '' : 'patientFirstName')
     ..aOS(17, _omitFieldNames ? '' : 'patientLastName')
     ..aOS(18, _omitFieldNames ? '' : 'patientLanguageCode')
@@ -223,26 +223,26 @@ class PatientFile extends $pb.GeneratedMessage {
   void clearHasRecordingConsent() => $_clearField(10);
 
   @$pb.TagNumber(11)
-  $2.Timestamp get consentGivenAt => $_getN(10);
+  $3.Timestamp get consentGivenAt => $_getN(10);
   @$pb.TagNumber(11)
-  set consentGivenAt($2.Timestamp value) => $_setField(11, value);
+  set consentGivenAt($3.Timestamp value) => $_setField(11, value);
   @$pb.TagNumber(11)
   $core.bool hasConsentGivenAt() => $_has(10);
   @$pb.TagNumber(11)
   void clearConsentGivenAt() => $_clearField(11);
   @$pb.TagNumber(11)
-  $2.Timestamp ensureConsentGivenAt() => $_ensure(10);
+  $3.Timestamp ensureConsentGivenAt() => $_ensure(10);
 
   @$pb.TagNumber(12)
-  $2.Timestamp get firstConsultationAt => $_getN(11);
+  $3.Timestamp get firstConsultationAt => $_getN(11);
   @$pb.TagNumber(12)
-  set firstConsultationAt($2.Timestamp value) => $_setField(12, value);
+  set firstConsultationAt($3.Timestamp value) => $_setField(12, value);
   @$pb.TagNumber(12)
   $core.bool hasFirstConsultationAt() => $_has(11);
   @$pb.TagNumber(12)
   void clearFirstConsultationAt() => $_clearField(12);
   @$pb.TagNumber(12)
-  $2.Timestamp ensureFirstConsultationAt() => $_ensure(11);
+  $3.Timestamp ensureFirstConsultationAt() => $_ensure(11);
 
   @$pb.TagNumber(13)
   $core.String get privateTherapistNotes => $_getSZ(12);
@@ -254,26 +254,26 @@ class PatientFile extends $pb.GeneratedMessage {
   void clearPrivateTherapistNotes() => $_clearField(13);
 
   @$pb.TagNumber(14)
-  $2.Timestamp get createdAt => $_getN(13);
+  $3.Timestamp get createdAt => $_getN(13);
   @$pb.TagNumber(14)
-  set createdAt($2.Timestamp value) => $_setField(14, value);
+  set createdAt($3.Timestamp value) => $_setField(14, value);
   @$pb.TagNumber(14)
   $core.bool hasCreatedAt() => $_has(13);
   @$pb.TagNumber(14)
   void clearCreatedAt() => $_clearField(14);
   @$pb.TagNumber(14)
-  $2.Timestamp ensureCreatedAt() => $_ensure(13);
+  $3.Timestamp ensureCreatedAt() => $_ensure(13);
 
   @$pb.TagNumber(15)
-  $2.Timestamp get updatedAt => $_getN(14);
+  $3.Timestamp get updatedAt => $_getN(14);
   @$pb.TagNumber(15)
-  set updatedAt($2.Timestamp value) => $_setField(15, value);
+  set updatedAt($3.Timestamp value) => $_setField(15, value);
   @$pb.TagNumber(15)
   $core.bool hasUpdatedAt() => $_has(14);
   @$pb.TagNumber(15)
   void clearUpdatedAt() => $_clearField(15);
   @$pb.TagNumber(15)
-  $2.Timestamp ensureUpdatedAt() => $_ensure(14);
+  $3.Timestamp ensureUpdatedAt() => $_ensure(14);
 
   /// Patient-user fields — JOIN'd from users(role='PATIENT') via
   /// patient_id (migration 000013). Empty strings when the user row
@@ -1395,7 +1395,7 @@ class Session extends $pb.GeneratedMessage {
     $core.Iterable<$core.MapEntry<$core.String, $core.String>>?
         speakerLabelMapping,
     $core.String? status,
-    $2.Timestamp? createdAt,
+    $3.Timestamp? createdAt,
     $core.String? name,
   }) {
     final result = create();
@@ -1443,8 +1443,8 @@ class Session extends $pb.GeneratedMessage {
         valueFieldType: $pb.PbFieldType.OS,
         packageName: const $pb.PackageName('clinical.v1'))
     ..aOS(10, _omitFieldNames ? '' : 'status')
-    ..aOM<$2.Timestamp>(11, _omitFieldNames ? '' : 'createdAt',
-        subBuilder: $2.Timestamp.create)
+    ..aOM<$3.Timestamp>(11, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $3.Timestamp.create)
     ..aOS(12, _omitFieldNames ? '' : 'name')
     ..hasRequiredFields = false;
 
@@ -1551,15 +1551,15 @@ class Session extends $pb.GeneratedMessage {
   void clearStatus() => $_clearField(10);
 
   @$pb.TagNumber(11)
-  $2.Timestamp get createdAt => $_getN(10);
+  $3.Timestamp get createdAt => $_getN(10);
   @$pb.TagNumber(11)
-  set createdAt($2.Timestamp value) => $_setField(11, value);
+  set createdAt($3.Timestamp value) => $_setField(11, value);
   @$pb.TagNumber(11)
   $core.bool hasCreatedAt() => $_has(10);
   @$pb.TagNumber(11)
   void clearCreatedAt() => $_clearField(11);
   @$pb.TagNumber(11)
-  $2.Timestamp ensureCreatedAt() => $_ensure(10);
+  $3.Timestamp ensureCreatedAt() => $_ensure(10);
 
   /// Free-text label shown in the kartoteka list. Default at create-time:
   /// "<modality display_name> <session_number>". Therapist can rename via
@@ -2388,8 +2388,8 @@ class ReportRating extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? issues,
     $core.String? notes,
     $core.String? source,
-    $2.Timestamp? createdAt,
-    $2.Timestamp? updatedAt,
+    $3.Timestamp? createdAt,
+    $3.Timestamp? updatedAt,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -2424,10 +2424,10 @@ class ReportRating extends $pb.GeneratedMessage {
     ..pPS(5, _omitFieldNames ? '' : 'issues')
     ..aOS(6, _omitFieldNames ? '' : 'notes')
     ..aOS(7, _omitFieldNames ? '' : 'source')
-    ..aOM<$2.Timestamp>(8, _omitFieldNames ? '' : 'createdAt',
-        subBuilder: $2.Timestamp.create)
-    ..aOM<$2.Timestamp>(9, _omitFieldNames ? '' : 'updatedAt',
-        subBuilder: $2.Timestamp.create)
+    ..aOM<$3.Timestamp>(8, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOM<$3.Timestamp>(9, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $3.Timestamp.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2513,26 +2513,26 @@ class ReportRating extends $pb.GeneratedMessage {
   void clearSource() => $_clearField(7);
 
   @$pb.TagNumber(8)
-  $2.Timestamp get createdAt => $_getN(7);
+  $3.Timestamp get createdAt => $_getN(7);
   @$pb.TagNumber(8)
-  set createdAt($2.Timestamp value) => $_setField(8, value);
+  set createdAt($3.Timestamp value) => $_setField(8, value);
   @$pb.TagNumber(8)
   $core.bool hasCreatedAt() => $_has(7);
   @$pb.TagNumber(8)
   void clearCreatedAt() => $_clearField(8);
   @$pb.TagNumber(8)
-  $2.Timestamp ensureCreatedAt() => $_ensure(7);
+  $3.Timestamp ensureCreatedAt() => $_ensure(7);
 
   @$pb.TagNumber(9)
-  $2.Timestamp get updatedAt => $_getN(8);
+  $3.Timestamp get updatedAt => $_getN(8);
   @$pb.TagNumber(9)
-  set updatedAt($2.Timestamp value) => $_setField(9, value);
+  set updatedAt($3.Timestamp value) => $_setField(9, value);
   @$pb.TagNumber(9)
   $core.bool hasUpdatedAt() => $_has(8);
   @$pb.TagNumber(9)
   void clearUpdatedAt() => $_clearField(9);
   @$pb.TagNumber(9)
-  $2.Timestamp ensureUpdatedAt() => $_ensure(8);
+  $3.Timestamp ensureUpdatedAt() => $_ensure(8);
 }
 
 class RateReportRequest extends $pb.GeneratedMessage {

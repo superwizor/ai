@@ -347,12 +347,14 @@ class Reservation extends $pb.GeneratedMessage {
     $core.String? sessionId,
     $core.int? tokensReserved,
     $2.Timestamp? expiresAt,
+    Subscription? stateAfter,
   }) {
     final result = create();
     if (reservationId != null) result.reservationId = reservationId;
     if (sessionId != null) result.sessionId = sessionId;
     if (tokensReserved != null) result.tokensReserved = tokensReserved;
     if (expiresAt != null) result.expiresAt = expiresAt;
+    if (stateAfter != null) result.stateAfter = stateAfter;
     return result;
   }
 
@@ -374,6 +376,8 @@ class Reservation extends $pb.GeneratedMessage {
     ..aI(3, _omitFieldNames ? '' : 'tokensReserved')
     ..aOM<$2.Timestamp>(4, _omitFieldNames ? '' : 'expiresAt',
         subBuilder: $2.Timestamp.create)
+    ..aOM<Subscription>(5, _omitFieldNames ? '' : 'stateAfter',
+        subBuilder: Subscription.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -432,6 +436,23 @@ class Reservation extends $pb.GeneratedMessage {
   void clearExpiresAt() => $_clearField(4);
   @$pb.TagNumber(4)
   $2.Timestamp ensureExpiresAt() => $_ensure(3);
+
+  /// Full counter snapshot AFTER this reservation was applied. Lets the
+  /// client refresh its cached billing state from a single round trip
+  /// instead of subscribing to a separate Firestore mirror. The field is
+  /// populated for newly-created reservations AND for the idempotent
+  /// "already exists" path — clients should always overwrite their
+  /// local cache with this value.
+  @$pb.TagNumber(5)
+  Subscription get stateAfter => $_getN(4);
+  @$pb.TagNumber(5)
+  set stateAfter(Subscription value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasStateAfter() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearStateAfter() => $_clearField(5);
+  @$pb.TagNumber(5)
+  Subscription ensureStateAfter() => $_ensure(4);
 }
 
 class CommitUsageRequest extends $pb.GeneratedMessage {
@@ -553,11 +574,13 @@ class UsageCommit extends $pb.GeneratedMessage {
     $core.int? tokensConsumed,
     $core.int? remainingTokens,
     $core.int? limitTokens,
+    Subscription? stateAfter,
   }) {
     final result = create();
     if (tokensConsumed != null) result.tokensConsumed = tokensConsumed;
     if (remainingTokens != null) result.remainingTokens = remainingTokens;
     if (limitTokens != null) result.limitTokens = limitTokens;
+    if (stateAfter != null) result.stateAfter = stateAfter;
     return result;
   }
 
@@ -577,6 +600,8 @@ class UsageCommit extends $pb.GeneratedMessage {
     ..aI(1, _omitFieldNames ? '' : 'tokensConsumed')
     ..aI(2, _omitFieldNames ? '' : 'remainingTokens')
     ..aI(3, _omitFieldNames ? '' : 'limitTokens')
+    ..aOM<Subscription>(4, _omitFieldNames ? '' : 'stateAfter',
+        subBuilder: Subscription.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -624,6 +649,20 @@ class UsageCommit extends $pb.GeneratedMessage {
   $core.bool hasLimitTokens() => $_has(2);
   @$pb.TagNumber(3)
   void clearLimitTokens() => $_clearField(3);
+
+  /// Full counter snapshot AFTER this commit. Same role as on
+  /// Reservation — primary mechanism for clients to keep their local
+  /// billing cache in sync without a separate mirror.
+  @$pb.TagNumber(4)
+  Subscription get stateAfter => $_getN(3);
+  @$pb.TagNumber(4)
+  set stateAfter(Subscription value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasStateAfter() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearStateAfter() => $_clearField(4);
+  @$pb.TagNumber(4)
+  Subscription ensureStateAfter() => $_ensure(3);
 }
 
 class ReleaseCreditRequest extends $pb.GeneratedMessage {
@@ -887,6 +926,8 @@ class Subscription extends $pb.GeneratedMessage {
     $core.int? tokensReservedThisPeriod,
     $2.Timestamp? currentPeriodStart,
     $2.Timestamp? currentPeriodEnd,
+    $core.String? planCycle,
+    $core.int? tokensRemaining,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -904,6 +945,8 @@ class Subscription extends $pb.GeneratedMessage {
     if (currentPeriodStart != null)
       result.currentPeriodStart = currentPeriodStart;
     if (currentPeriodEnd != null) result.currentPeriodEnd = currentPeriodEnd;
+    if (planCycle != null) result.planCycle = planCycle;
+    if (tokensRemaining != null) result.tokensRemaining = tokensRemaining;
     return result;
   }
 
@@ -932,6 +975,8 @@ class Subscription extends $pb.GeneratedMessage {
         subBuilder: $2.Timestamp.create)
     ..aOM<$2.Timestamp>(10, _omitFieldNames ? '' : 'currentPeriodEnd',
         subBuilder: $2.Timestamp.create)
+    ..aOS(11, _omitFieldNames ? '' : 'planCycle')
+    ..aI(12, _omitFieldNames ? '' : 'tokensRemaining')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1049,6 +1094,29 @@ class Subscription extends $pb.GeneratedMessage {
   void clearCurrentPeriodEnd() => $_clearField(10);
   @$pb.TagNumber(10)
   $2.Timestamp ensureCurrentPeriodEnd() => $_ensure(9);
+
+  /// Phase 3b (client-cache refactor): make Subscription a self-contained
+  /// snapshot suitable for direct caching on the client. Adds plan_cycle
+  /// (so SubscriptionPlanScreen can label MONTHLY vs ANNUAL without a
+  /// second lookup) and the server-computed tokens_remaining so callers
+  /// never have to reimplement the formula (max(0, limit - used - reserved)).
+  @$pb.TagNumber(11)
+  $core.String get planCycle => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set planCycle($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasPlanCycle() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearPlanCycle() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.int get tokensRemaining => $_getIZ(11);
+  @$pb.TagNumber(12)
+  set tokensRemaining($core.int value) => $_setSignedInt32(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasTokensRemaining() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearTokensRemaining() => $_clearField(12);
 }
 
 const $core.bool _omitFieldNames =

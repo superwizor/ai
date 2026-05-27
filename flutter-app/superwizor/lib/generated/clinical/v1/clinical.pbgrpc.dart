@@ -17,6 +17,7 @@ import 'package:grpc/service_api.dart' as $grpc;
 import 'package:protobuf/protobuf.dart' as $pb;
 import 'package:protobuf/well_known_types/google/protobuf/empty.pb.dart' as $1;
 
+import '../../billing/v1/billing.pb.dart' as $2;
 import 'clinical.pb.dart' as $0;
 
 export 'clinical.pb.dart';
@@ -106,6 +107,20 @@ class ClinicalServiceClient extends $grpc.Client {
     $grpc.CallOptions? options,
   }) {
     return $createUnaryCall(_$healthCheck, request, options: options);
+  }
+
+  /// Thin proxy to billing-svc.GetSubscription, scoped to the
+  /// calling user's organization. Lets Flutter read the canonical
+  /// counter snapshot (used / reserved / limit / remaining + plan)
+  /// without exposing billing-svc directly to public clients.
+  /// Authentication: identity-svc-validated Firebase JWT (same as
+  /// every other clinical-svc RPC). Organization is derived from
+  /// users.organization_id — clients never specify it.
+  $grpc.ResponseFuture<$2.Subscription> getMyBillingState(
+    $1.Empty request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getMyBillingState, request, options: options);
   }
 
   $grpc.ResponseFuture<$0.UpdateSpeakerLabelsResponse> updateSpeakerLabels(
@@ -237,6 +252,11 @@ class ClinicalServiceClient extends $grpc.Client {
           '/clinical.v1.ClinicalService/HealthCheck',
           ($1.Empty value) => value.writeToBuffer(),
           $0.HealthCheckResponse.fromBuffer);
+  static final _$getMyBillingState =
+      $grpc.ClientMethod<$1.Empty, $2.Subscription>(
+          '/clinical.v1.ClinicalService/GetMyBillingState',
+          ($1.Empty value) => value.writeToBuffer(),
+          $2.Subscription.fromBuffer);
   static final _$updateSpeakerLabels = $grpc.ClientMethod<
           $0.UpdateSpeakerLabelsRequest, $0.UpdateSpeakerLabelsResponse>(
       '/clinical.v1.ClinicalService/UpdateSpeakerLabels',
@@ -360,6 +380,13 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
         ($0.HealthCheckResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$1.Empty, $2.Subscription>(
+        'GetMyBillingState',
+        getMyBillingState_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
+        ($2.Subscription value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.UpdateSpeakerLabelsRequest,
             $0.UpdateSpeakerLabelsResponse>(
         'UpdateSpeakerLabels',
@@ -508,6 +535,14 @@ abstract class ClinicalServiceBase extends $grpc.Service {
   }
 
   $async.Future<$0.HealthCheckResponse> healthCheck(
+      $grpc.ServiceCall call, $1.Empty request);
+
+  $async.Future<$2.Subscription> getMyBillingState_Pre(
+      $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {
+    return getMyBillingState($call, await $request);
+  }
+
+  $async.Future<$2.Subscription> getMyBillingState(
       $grpc.ServiceCall call, $1.Empty request);
 
   $async.Future<$0.UpdateSpeakerLabelsResponse> updateSpeakerLabels_Pre(

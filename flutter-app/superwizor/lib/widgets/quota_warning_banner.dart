@@ -16,7 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/billing_quota_provider.dart';
-import '../services/billing_quota_listener.dart';
+import '../services/billing_quota_state.dart';
 import '../theme/euphire_theme.dart';
 
 /// Static dismiss-state. Session-scoped — reset przy hot reload/restart.
