@@ -98,6 +98,28 @@
     "primary": "Zarejestruj się",
     "secondary": "Zobacz cennik"
   },
+  "legal": {
+    "lastUpdated": "Ostatnia aktualizacja:",
+    "draftBadge": "Wersja robocza · do weryfikacji prawnej",
+    "tableOfContents": "Spis treści",
+    "pages": {
+      "terms": {
+        "metaTitle": "Regulamin",
+        "title": "Regulamin",
+        "intro": "Niniejszy regulamin określa zasady korzystania z serwisu Superwizor AI."
+      },
+      "privacy": {
+        "metaTitle": "Polityka prywatności",
+        "title": "Polityka prywatności",
+        "intro": "Polityka opisuje, jakie dane osobowe przetwarzamy, w jakim celu i przez jak długo."
+      },
+      "dpa": {
+        "metaTitle": "Umowa powierzenia (DPA)",
+        "title": "Umowa powierzenia przetwarzania (DPA)",
+        "intro": "Postanowienia umowy powierzenia przetwarzania danych osobowych zgodnie z art. 28 RODO."
+      }
+    }
+  },
   "pricing": {
     "metaTitle": "Cennik",
     "overline": "Cennik",

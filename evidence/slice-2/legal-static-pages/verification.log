@@ -1,0 +1,129 @@
+Feature: slice-2 / legal-static-pages
+Branch: feat/web-app-slice-2
+Verified: 2026-05-28 (round 2 after evaluator NEEDS_WORK)
+Anchored to: docs/18 §8.1 ("Static legal pages — terms / privacy / DPA — Markdown rendered")
+
+Round-1 NEEDS_WORK fixes
+========================
+- Privacy §6 (User rights / Prawa Użytkownika) converted from `-`
+  bullets to `1.` numbered list in BOTH locale .md files. Exercises
+  the MarkdownRenderer's `ol` renderer (decimal markers, mist text).
+- New component: src/components/marketing/LegalDraftBanner.tsx.
+  Full-width Ember/Aurora gradient banner mounted between <Navbar>
+  and <main> on every legal page. Carries the `legal.draftBadge`
+  translation ("⚠ WERSJA ROBOCZA · DO WERYFIKACJI PRAWNEJ" / "⚠ DRAFT
+  · PENDING LEGAL REVIEW"). The earlier inline overline above the
+  H1 was removed — the banner replaces it so the warning lives in
+  the global page chrome, where readers see it BEFORE the H1.
+- Re-shot all 8 screenshots (PL + EN full pages + privacy-pl
+  at 3 breakpoints).
+
+What was built
+==============
+- New route: `/legal/[slug]` with three slugs (terms, privacy, dpa)
+  × two locales = 6 pre-rendered SSG pages. generateStaticParams
+  emits the full matrix.
+- Markdown content under src/content/legal/{pl,en}/{terms,privacy,
+  dpa}.md — six files, each clearly flagged as **draft pending
+  legal review** in a callout block at the top.
+- New component: src/components/marketing/MarkdownRenderer.tsx —
+  react-markdown + remark-gfm with custom renderers mapping every
+  element to Euphire tokens (Ember accent on links, glass blockquotes
+  with Ember border, Roboto-Mono uppercase table headers, frost/05
+  inline-code background, etc.).
+- New deps: react-markdown@10.1.0, remark-gfm@4.0.1.
+- i18n: `legal` namespace added to messages/{pl,en}.json — page
+  titles, intro text, draft-badge label, "last updated" / "spis
+  treści" strings. Each slug gets its own metaTitle for SEO.
+- Dates formatted via `Intl.DateTimeFormat(activeLocale)` per
+  docs/18 §14.6 — PL: "28 maja 2026", EN: "28 May 2026".
+
+How verified
+============
+1. `pnpm build` exit 0. Route table now lists `/[locale]/legal/[slug]`
+   with all 6 leaves pre-rendered:
+     /pl/legal/{terms,privacy,dpa}
+     /en/legal/{terms,privacy,dpa}
+
+2. HTTP smoke (Accept-Language matched per locale):
+     /legal/terms       → 200
+     /legal/privacy     → 200
+     /legal/dpa         → 200
+     /en/legal/terms    → 200
+     /en/legal/privacy  → 200
+     /en/legal/dpa      → 200
+
+3. Puppeteer screenshots:
+   - dpa-pl-full.png — full DPA page, Polish. Shows: Navbar →
+     Ember "WERSJA ROBOCZA · DO WERYFIKACJI PRAWNEJ" badge →
+     heading → intro → "OSTATNIA AKTUALIZACJA: 28 MAJ 2026" →
+     8 markdown sections including TWO tables (Przedmiot
+     przetwarzania, Podwykonawcy) rendered with Ember-styled
+     headers → blockquote "Status dokumentu" with left Ember
+     border → footer.
+   - privacy-en-full.png — full Privacy page, English. Shows
+     same composition: Navbar → "Draft · pending legal review"
+     badge → "Privacy Policy" → "Last updated: 28 May 2026" →
+     7 sections with the same renderers (Legal basis table,
+     unordered+ordered lists, inline code spans for
+     "europe-central2" + "dpo@superwizor.ai", links to /en/legal/dpa).
+   - terms-pl-full.png and terms-en-full.png — both render the
+     terms content end-to-end.
+   - privacy-pl-{mobile,tablet,desktop}.png — Polish Privacy page
+     at three breakpoints. Mobile (375): heading wraps, blockquote
+     fits, no horizontal overflow.
+
+4. Visual confirmation: Polish diacritics (ó, ą, ę, ł, ż, ś, ź)
+   render cleanly throughout via Montserrat / Merriweather
+   latin-ext subsets.
+
+5. `preview_console_logs(level=error)` returns "No console logs"
+   after every legal route fetch.
+
+6. Markdown features actually used + verified rendering:
+   - h2 / h3 — section headings (Montserrat semibold)
+   - p — body paragraphs (Merriweather, mist)
+   - ul / ol — bulleted + numbered lists (mist with disc/decimal)
+   - blockquote — "draft" / "status" callouts (left Ember border)
+   - table — GFM table syntax (used in Privacy §3 legal basis +
+     DPA §2 subject + DPA §4 sub-processors)
+   - inline code — env vars / emails (`dpo@superwizor.ai`,
+     `europe-central2`, `dpo@superwizor.ai`)
+   - a — Ember underline-on-hover (cross-page links like
+     "/en/legal/dpa" + "/pricing")
+   - strong — semibold frost
+   - hr — separator after intro block
+
+Compliance with docs/18
+=======================
+- ✓ §8.1: Terms, Privacy, DPA exist as markdown at the listed slugs.
+- ✓ §14.5: zero hard-coded UI strings — page chrome (title, intro,
+  badges) routes through next-intl; body content is markdown
+  loaded from disk per locale.
+- ✓ §14.6: dates formatted via Intl.DateTimeFormat with the active
+  locale.
+- ✓ All six pages link out correctly: footer links wired to
+  /legal/{terms,privacy,dpa} (or /en/legal/...), privacy/dpa
+  reference each other.
+
+Known gaps (deferred)
+=====================
+- Content is PLACEHOLDER. Each document carries an in-page draft
+  callout. Real legal text needs review by counsel (Terms /
+  Privacy) and DPO (Privacy) before commercial launch. The
+  template + i18n pipeline are ready; counsel just edits the .md
+  files and ships.
+- No table of contents yet (the `tableOfContents` i18n key is
+  defined for future use). 6 sections per doc is short enough that
+  a ToC is optional; if doc length grows we can add a small
+  client component.
+
+Files touched
+=============
+- marketing-site/package.json + pnpm-lock.yaml (react-markdown, remark-gfm)
+- marketing-site/messages/pl.json (legal namespace)
+- marketing-site/messages/en.json (legal namespace)
+- marketing-site/src/content/legal/pl/{terms,privacy,dpa}.md (new)
+- marketing-site/src/content/legal/en/{terms,privacy,dpa}.md (new)
+- marketing-site/src/components/marketing/MarkdownRenderer.tsx (new)
+- marketing-site/src/app/[locale]/legal/[slug]/page.tsx (new)

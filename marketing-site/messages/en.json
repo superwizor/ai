@@ -98,6 +98,28 @@
     "primary": "Sign up",
     "secondary": "See pricing"
   },
+  "legal": {
+    "lastUpdated": "Last updated:",
+    "draftBadge": "Draft · pending legal review",
+    "tableOfContents": "Table of contents",
+    "pages": {
+      "terms": {
+        "metaTitle": "Terms",
+        "title": "Terms of Service",
+        "intro": "These terms govern your use of Superwizor AI."
+      },
+      "privacy": {
+        "metaTitle": "Privacy",
+        "title": "Privacy Policy",
+        "intro": "This policy describes what personal data we process, why we process it, and for how long."
+      },
+      "dpa": {
+        "metaTitle": "DPA",
+        "title": "Data Processing Agreement (DPA)",
+        "intro": "Terms of the data processing agreement under Article 28 GDPR."
+      }
+    }
+  },
   "pricing": {
     "metaTitle": "Pricing",
     "overline": "Pricing",
