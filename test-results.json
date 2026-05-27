@@ -1,0 +1,42 @@
+{
+  "slice": "slice-2",
+  "branch": "feat/web-app-slice-2",
+  "features": [
+    {
+      "id": "marketing-site-scaffold",
+      "title": "Scaffold Next.js marketing-site (app router, pnpm, TS, Tailwind, next-intl)",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "connect-es-client",
+      "title": "Connect-ES client wiring against identity-svc (gen/ts/ stubs)",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "landing-page-pl-en",
+      "title": "Public landing page in PL + EN (hero, features, CTA)",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "therapist-registration",
+      "title": "Individual therapist registration (Firebase Email/Password + Google)",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "org-registration",
+      "title": "Organization registration with full CRUD form (docs/18 §13)",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "admin-shell",
+      "title": "Admin shell with SUPERWIZOR_ADMIN login + dashboard skeleton",
+      "status": "pending",
+      "evidence": []
+    }
+  ]
+}
