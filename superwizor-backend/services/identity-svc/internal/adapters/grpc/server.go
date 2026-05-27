@@ -23,15 +23,37 @@ import (
 
 type Server struct {
 	identityv1.UnimplementedIdentityServiceServer
-	queries *db.Queries
-	pool    *pgxpool.Pool
-	auth    *firebase.AuthClient
-	version string
+	queries  *db.Queries
+	pool     *pgxpool.Pool
+	auth     *firebase.AuthClient
+	version  string
+	emailer  InvitationEmailer
+	// acceptURLBase is the public origin that hosts the accept-invite
+	// page (e.g. https://app.superwizor.ai). Combined with the token
+	// to form the link sent to invitees.
+	acceptURLBase string
 }
 
 func NewServer(pool *pgxpool.Pool, queries *db.Queries, auth *firebase.AuthClient, version string) *Server {
-	return &Server{pool: pool, queries: queries, auth: auth, version: version}
+	return &Server{
+		pool:          pool,
+		queries:       queries,
+		auth:          auth,
+		version:       version,
+		emailer:       NoopEmailSender{},
+		acceptURLBase: "https://app.superwizor.ai",
+	}
 }
+
+// WithEmailer overrides the InvitationEmailer — used in commit 7 to
+// wire the real Resend-backed sender, and in tests to capture sent
+// emails.
+func (s *Server) WithEmailer(e InvitationEmailer) *Server { s.emailer = e; return s }
+
+// WithAcceptURLBase overrides the origin used to build invite links.
+// Defaults to https://app.superwizor.ai; CI / local dev passes a
+// localhost value.
+func (s *Server) WithAcceptURLBase(base string) *Server { s.acceptURLBase = base; return s }
 
 func (s *Server) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*identityv1.HealthCheckResponse, error) {
 	return &identityv1.HealthCheckResponse{
