@@ -134,6 +134,15 @@ func main() {
 	// Reflection (dla grpcurl debug)
 	reflection.Register(grpcServer)
 
+	// NB: Connect-RPC handler registration is deferred to Slice 2 of
+	// the web-app workstream. The generated identityv1connect handler
+	// expects connect.Request[T] / connect.Response[T] shapes while
+	// our Server implements the bare gRPC shape; bridging requires
+	// ~20 mechanical adapter methods (one per RPC). Generated code in
+	// gen/go/identity/v1/identityv1connect/ is compiled-but-unwired —
+	// the Slice 2 PR that lands the Next.js client will also land
+	// the adapter alongside its first browser call. gRPC + gRPC-Web
+	// callers still work today via grpcServer.ServeHTTP.
 	slog.Info("identity-svc starting", "port", port, "version", version)
 	if err := grpcServer.Serve(lis); err != nil {
 		slog.Error("serve failed", "error", err)

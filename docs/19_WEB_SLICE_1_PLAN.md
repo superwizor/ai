@@ -235,7 +235,7 @@ Eleven sub-tasks → not one giant PR. Proposed sequencing on `feat/web-app`, ea
 | 3 | 1.3 buf.gen extension + generated stubs | Pure tooling + regen. Verifies the codegen path works. |
 | 4 | 1.4 terraform SAs + GCS CORS | Infra-only. `terragrunt apply` separately from code deploys. |
 | 5 | 1.6 proto + 1.7 identity handlers + 1.8 billing admin | The bulk of the slice. Big commit but cohesive — the proto and handlers ship together or not at all. |
-| 6 | 1.9 Connect handler registration | One line per service. Drops in after handlers exist. |
+| 6 | 1.9 Connect handler registration — **DEFERRED to Slice 2** | The generated `*v1connect/` interface uses `connect.Request[T]` / `connect.Response[T]` wrappers; our existing handlers use bare proto types. Bridging needs ~20 mechanical adapter methods per service (60+ total). Slice 1's integration test in commit 8 uses gRPC clients (grpcurl + grpc-go) so commit 6 isn't blocking. Generated Connect stubs in `gen/go/*v1connect/` stay compiled-but-unwired — Slice 2's first browser PR ships the adapter alongside the Next.js code that needs it. |
 | 7 | 1.10 notification-svc email + identity-svc invite wiring | Cross-service; both sides change together. |
 | 8 | 1.11 E2E tests + bootstrap | Final commit; squash-ready merge to main. |
 
