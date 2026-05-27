@@ -15,12 +15,12 @@ resource "google_storage_bucket" "audio_uploads" {
   }
 
   versioning {
-    enabled = false  # audio files są tymczasowe — wersjonowanie nie ma sensu
+    enabled = false # audio files są tymczasowe — wersjonowanie nie ma sensu
   }
 
   lifecycle_rule {
     condition {
-      age = 2  # 48h
+      age = 2 # 48h
     }
     action {
       type = "Delete"
@@ -28,7 +28,7 @@ resource "google_storage_bucket" "audio_uploads" {
   }
 
   cors {
-    origin          = ["*"]  # Restrict to mobile app schema if possible, but signed URLs often use *
+    origin          = ["*"] # Restrict to mobile app schema if possible, but signed URLs often use *
     method          = ["PUT", "OPTIONS"]
     response_header = ["Content-Type", "x-goog-content-length-range"]
     max_age_seconds = 3600

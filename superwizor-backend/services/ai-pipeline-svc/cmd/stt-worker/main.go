@@ -19,10 +19,15 @@ import (
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/api/idtoken"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/oauth"
 	grpcstatus "google.golang.org/grpc/status"
 
+	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/pkg/i18n/lang"
 	"github.com/superwizor-ai/backend/pkg/transcription/chunker"
@@ -56,6 +61,7 @@ var (
 	bucketName         string // audio uploads bucket (Chirp input source)
 	transcriptsRawBkt  string // Chirp output destination (Stage 1)
 	projectID          string
+	billingClient      billingv1.BillingServiceClient // nil = billing hook disabled
 )
 
 func init() {
@@ -71,7 +77,20 @@ func init() {
 
 	var err error
 	if dbDSN != "" {
-		dbPool, err = pgxpool.New(ctx, dbDSN)
+		// Bounded pool (see docs/17 §11). This binary runs in multiple
+		// Cloud Functions (stt-worker / stt-finalize / stt-watchdog),
+		// each scaling independently — single conn per instance keeps
+		// the total under Cloud SQL's hard cap regardless of which
+		// function is hot.
+		poolCfg, perr := pgxpool.ParseConfig(dbDSN)
+		if perr != nil {
+			slog.Error("parse db dsn", "error", perr)
+			os.Exit(1)
+		}
+		poolCfg.MaxConns = 1
+		poolCfg.MinConns = 0
+		poolCfg.MaxConnIdleTime = 30 * time.Second
+		dbPool, err = pgxpool.NewWithConfig(ctx, poolCfg)
 		if err != nil {
 			slog.Error("db init", "error", err)
 			os.Exit(1)
@@ -114,6 +133,20 @@ func init() {
 			crypto = cryptobox.NewCloudKMSBox(kmsClient, kmsKeyURI)
 		} else {
 			crypto = cryptobox.NewMockBox()
+		}
+
+		// Billing client — optional. Set BILLING_SVC_URL to enable
+		// CommitUsage call after STT finalize (fail-soft on errors).
+		if billingURL := os.Getenv("BILLING_SVC_URL"); billingURL != "" {
+			bc, bErr := newBillingClient(ctx, billingURL)
+			if bErr != nil {
+				slog.Error("billing client init failed", "url", billingURL, "error", bErr)
+			} else {
+				billingClient = bc
+				slog.Info("stt-worker: billing-svc client wired", "url", billingURL)
+			}
+		} else {
+			slog.Info("stt-worker: BILLING_SVC_URL unset — CommitUsage hook disabled")
 		}
 	} else {
 		crypto = cryptobox.NewMockBox()
@@ -759,6 +792,78 @@ func handleSTTError(ctx context.Context, logger *slog.Logger, sessionID string, 
 	logger.Error("stt: transient failure — returning error, pubsub will retry",
 		"error", err)
 	return err
+}
+
+// newBillingClient — same pattern as ingestion-svc + clinical-svc.
+// Cloud Run service-to-service OIDC token via idtoken.NewTokenSource.
+func newBillingClient(ctx context.Context, serviceURL string) (billingv1.BillingServiceClient, error) {
+	tokenSource, err := idtoken.NewTokenSource(ctx, serviceURL)
+	if err != nil {
+		return nil, fmt.Errorf("idtoken: %w", err)
+	}
+	// Strip scheme + add :443
+	target := strings.TrimPrefix(strings.TrimPrefix(serviceURL, "https://"), "http://")
+	target = strings.TrimSuffix(target, "/")
+	if !strings.Contains(target, ":") {
+		target += ":443"
+	}
+	conn, err := grpc.NewClient(target,
+		grpc.WithTransportCredentials(credentials.NewTLS(nil)),
+		grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("dial: %w", err)
+	}
+	return billingv1.NewBillingServiceClient(conn), nil
+}
+
+// commitBillingUsageAsync — fire-and-forget bills 1 session's tokens.
+// Loads duration_seconds from session row (set by ingestion finalize),
+// then calls billing-svc.CommitUsage. Idempotent po session_id na backendzie
+// (UNIQUE constraint), więc retry safe.
+//
+// Resolves organization_id z users table. Loguje + swallowuje errors.
+func commitBillingUsageAsync(sessionIDStr string) {
+	if billingClient == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	logger := slog.With("function", "stt-worker", "session_id", sessionIDStr)
+
+	var duration *int32
+	var therapistID, orgID string
+	err := dbPool.QueryRow(ctx, `
+		SELECT s.duration_seconds, s.therapist_id::text, COALESCE(u.organization_id::text, '')
+		FROM sessions s
+		JOIN users u ON u.id = s.therapist_id
+		WHERE s.id = $1`, sessionIDStr).Scan(&duration, &therapistID, &orgID)
+	if err != nil {
+		logger.Warn("billing commit: lookup failed", "error", err)
+		return
+	}
+	if orgID == "" {
+		logger.Info("billing commit: user has no org (skipping)")
+		return
+	}
+	if duration == nil || *duration <= 0 {
+		logger.Info("billing commit: session has no duration (skipping)")
+		return
+	}
+
+	_, err = billingClient.CommitUsage(ctx, &billingv1.CommitUsageRequest{
+		SessionId:       sessionIDStr,
+		OrganizationId:  orgID,
+		TherapistId:     therapistID,
+		DurationSeconds: *duration,
+		UsageType:       "session_analysis",
+		IdempotencyKey:  "stt-commit-" + sessionIDStr,
+	})
+	if err != nil {
+		logger.Warn("billing commit: CommitUsage failed (fail-soft)", "error", err, "duration_seconds", *duration)
+		return
+	}
+	logger.Info("billing commit: tokens committed", "duration_seconds", *duration)
 }
 
 func updateSessionStatus(ctx context.Context, sessionID, status string) error {

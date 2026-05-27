@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +17,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	ingestionv1 "github.com/superwizor-ai/backend/gen/go/ingestion/v1"
 	"github.com/superwizor-ai/backend/pkg/i18n/lang"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/postgres/db"
@@ -48,6 +50,7 @@ type Server struct {
 	converter  *storage.Converter // unused by RPCs post-Option F; kept for wiring symmetry
 	bucketName string
 	pubsub     PubsubPublisher // interface — concrete impl w main
+	billing    billingv1.BillingServiceClient // optional, nil = skip reservation step
 }
 
 type PubsubPublisher interface {
@@ -70,6 +73,14 @@ func NewServer(
 		bucketName: bucketName,
 		pubsub:     pubsub,
 	}
+}
+
+// WithBilling injects the billing-svc client; nil disables the reservation
+// hook (server runs as if quota didn't exist — useful for local dev or for
+// environments where billing-svc isn't reachable).
+func (s *Server) WithBilling(b billingv1.BillingServiceClient) *Server {
+	s.billing = b
+	return s
 }
 
 // pgxBegin is a thin wrapper around s.pool.Begin used by
@@ -253,6 +264,27 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		return nil, status.Errorf(codes.Internal, "commit CreateAudioUpload tx: %v", err)
 	}
 
+	// Billing hook (synchronous): reserve 1 token on billing-svc.
+	//
+	// Hard-block on QUOTA_EXHAUSTED — propagate the ResourceExhausted code
+	// to the Flutter client so it shows QuotaExhaustedDialog and stops the
+	// upload. Other errors (transient billing-svc network blip, missing
+	// org, subscription past-due) stay fail-soft so a billing flake doesn't
+	// reject legitimate uploads. See the function comment for the precise
+	// error taxonomy.
+	//
+	// Note: at this point the session + audio_upload rows are already
+	// committed in our tx (above). On QUOTA_EXHAUSTED the client never
+	// PUTs the audio object to GCS, so the upload row sits empty and
+	// expires via audio_uploads.expires_at TTL. Cheaper than an extra
+	// CheckQuota upfront and tolerates the race where another concurrent
+	// upload consumes the last token between check and reserve.
+	if s.billing != nil {
+		if err := s.reserveCreditOrBlock(ctx, sessionUUID, therapistIDPg); err != nil {
+			return nil, err
+		}
+	}
+
 	signedURL, expires, err := s.signer.GenerateUploadURL(
 		ctx, objectPath, req.ContentType, req.EstimatedSizeBytes,
 	)
@@ -284,6 +316,25 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 // stateless, so the URL is fresh but the object_path is the cached
 // one from the original create.
 func (s *Server) cachedAudioUploadResponse(ctx context.Context, existing db.AudioUpload) (*ingestionv1.CreateAudioUploadResponse, error) {
+	// Quota gate also runs on the cached path. Without this, a client
+	// that hit QUOTA_EXHAUSTED on its first CreateAudioUpload (which
+	// still committed the session + audio_upload rows under the
+	// original idempotency_key, then errored) could simply retry with
+	// the same idempotency_key and short-circuit straight to a signed
+	// URL — bypassing the reserve check entirely. ReserveCredit is
+	// idempotent in billing-svc (returns the existing reservation by
+	// session_id), so calling it on every cache hit is safe: a session
+	// that already has a reservation gets a no-op OK, and a session
+	// that never got past the quota check on its first attempt gets
+	// the same hard-block on retry.
+	if s.billing != nil && existing.SessionID.Valid {
+		sessionUUID := uuid.UUID(existing.SessionID.Bytes)
+		therapistIDPg := existing.TherapistID
+		if err := s.reserveCreditOrBlock(ctx, sessionUUID, therapistIDPg); err != nil {
+			return nil, err
+		}
+	}
+
 	// On idempotent retry we don't have the request's
 	// estimated_size_bytes anymore — use the audio_uploads row's
 	// actual file_size_bytes if known (post-PUT retry), else 0
@@ -367,4 +418,86 @@ func (s *Server) GetAudioUploadStatus(ctx context.Context, req *ingestionv1.GetA
 func errNoRows() error {
 	// pgx.ErrNoRows alias for testability
 	return fmt.Errorf("no rows")
+}
+
+// reserveCreditOrBlock — synchronous billing reservation called inline by
+// CreateAudioUpload. Returns:
+//
+//   - nil on success (1 token reserved, normal path) — caller proceeds.
+//   - nil on a non-fatal billing error (lookup failure, missing org,
+//     transient billing-svc unavailability, etc.) — fail-soft preserved
+//     so a billing flake doesn't reject legitimate uploads.
+//   - codes.ResourceExhausted on QUOTA_EXHAUSTED — caller MUST propagate
+//     this to the Flutter client. Flutter renders QuotaExhaustedDialog
+//     and aborts the upload; the orphan sessions+audio_uploads rows
+//     created in the tx above expire on their own (audio_uploads
+//     expires_at, default 30 min). No GCS object is uploaded.
+//
+// Other billing-side errors that should also be hard-blocks (in theory):
+// FailedPrecondition for SUBSCRIPTION_PAST_DUE or SUBSCRIPTION_INACTIVE
+// — both indicate the org cannot record sessions. We propagate those too
+// since the Flutter UI already handles them via the same dialog path.
+//
+// session_id is the idempotency_key so a retried CreateAudioUpload (same
+// idempotency_key on our side → cached response path) won't double-reserve.
+func (s *Server) reserveCreditOrBlock(ctx context.Context, sessionUUID uuid.UUID, therapistIDPg pgtype.UUID) error {
+	// Independent timeout so a slow billing-svc doesn't compound any
+	// upstream deadline pressure on the caller's ctx.
+	rctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	orgIDPg, err := s.queries.GetUserOrganizationID(rctx, therapistIDPg)
+	if err != nil {
+		slog.WarnContext(rctx, "billing reserve: lookup org failed (fail-soft)",
+			"session_id", sessionUUID, "therapist_id", therapistIDPg, "error", err)
+		return nil
+	}
+	if !orgIDPg.Valid {
+		slog.InfoContext(rctx, "billing reserve: user has no org (skipping)",
+			"session_id", sessionUUID, "therapist_id", therapistIDPg)
+		return nil
+	}
+
+	therapistIDStr := ""
+	if therapistIDPg.Valid {
+		therapistIDStr = uuid.UUID(therapistIDPg.Bytes).String()
+	}
+	orgIDStr := uuid.UUID(orgIDPg.Bytes).String()
+
+	_, err = s.billing.ReserveCredit(rctx, &billingv1.ReserveCreditRequest{
+		SessionId:       sessionUUID.String(),
+		OrganizationId:  orgIDStr,
+		TherapistId:     therapistIDStr,
+		EstimatedTokens: 1,
+		IdempotencyKey:  "ingestion-reserve-" + sessionUUID.String(),
+	})
+	if err != nil {
+		code := status.Code(err)
+		switch code {
+		case codes.ResourceExhausted:
+			// QUOTA_EXHAUSTED. Hard-block. The Flutter client surfaces
+			// this via QuotaExhaustedDialog (existing UI).
+			slog.WarnContext(rctx, "billing reserve: QUOTA_EXHAUSTED — blocking upload",
+				"session_id", sessionUUID, "organization_id", orgIDStr)
+			return status.Error(codes.ResourceExhausted, "QUOTA_EXHAUSTED")
+		case codes.FailedPrecondition:
+			// SUBSCRIPTION_PAST_DUE / SUBSCRIPTION_INACTIVE / QUOTA_COUNTER_MISSING.
+			// Same UX as quota exhausted from Flutter's POV — propagate.
+			slog.WarnContext(rctx, "billing reserve: subscription precondition failed — blocking upload",
+				"session_id", sessionUUID, "organization_id", orgIDStr, "error", err)
+			return status.Error(codes.FailedPrecondition, err.Error())
+		default:
+			// Network blip, billing-svc timeout, internal error. Fail-soft
+			// so transient billing problems don't reject uploads. The
+			// session goes through; stt-finalize will attempt CommitUsage
+			// at the end of the pipeline and a follow-up commit can
+			// reconcile.
+			slog.WarnContext(rctx, "billing reserve: ReserveCredit failed (fail-soft, non-quota)",
+				"session_id", sessionUUID, "organization_id", orgIDStr, "error", err, "code", code.String())
+			return nil
+		}
+	}
+	slog.InfoContext(rctx, "billing reserve: 1 token reserved",
+		"session_id", sessionUUID, "organization_id", orgIDStr)
+	return nil
 }

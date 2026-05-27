@@ -203,6 +203,42 @@ func (s *Store) RemoveFCMTokenByValue(ctx context.Context, userID uuid.UUID, tok
 	return err
 }
 
+// ---------- billing notification routing ----------
+
+// BillingNotificationTarget — kogo powiadomić o evencie billingowym.
+// Per design §16.2: primary admin organizacji (FCM topic dla CLINIC tier
+// rozszerzymy później do wszystkich therapists w org).
+type BillingNotificationTarget struct {
+	UserID               uuid.UUID
+	TherapistFirebaseUID string
+	Locale               string
+}
+
+// LookupBillingNotificationTarget — zwraca primary admin organizacji
+// (lub jedynego therapista jeśli SOLO i admin nie ustawiony).
+// Locale fallback do 'pl' per architektura.
+func (s *Store) LookupBillingNotificationTarget(ctx context.Context, organizationID uuid.UUID) (*BillingNotificationTarget, error) {
+	var target BillingNotificationTarget
+	err := s.Pool.QueryRow(ctx, `
+		SELECT u.id, u.firebase_uid, COALESCE(u.ui_language, 'pl')
+		FROM users u
+		JOIN organizations o ON o.id = u.organization_id
+		WHERE u.organization_id = $1
+		  AND u.role = 'THERAPIST'
+		  AND u.deleted_at IS NULL
+		ORDER BY
+		    -- Primary admin wygrywa jeśli ustawiony.
+		    CASE WHEN u.id = o.primary_admin_user_id THEN 0 ELSE 1 END,
+		    u.created_at ASC
+		LIMIT 1`,
+		organizationID,
+	).Scan(&target.UserID, &target.TherapistFirebaseUID, &target.Locale)
+	if err != nil {
+		return nil, err
+	}
+	return &target, nil
+}
+
 // ---------- notification_deliveries ----------
 
 type InsertDeliveryParams struct {

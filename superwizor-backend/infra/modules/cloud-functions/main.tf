@@ -155,10 +155,10 @@ resource "google_cloudfunctions2_function" "stt_worker" {
   }
 
   service_config {
-    max_instance_count    = 10
-    min_instance_count    = 0
-    available_memory      = "1Gi"
-    available_cpu         = "1"
+    max_instance_count = 10
+    min_instance_count = 0
+    available_memory   = "1Gi"
+    available_cpu      = "1"
     # 120s — reverted from the 1800s band-aid (commit on 2026-05-22)
     # now that BatchRecognize uses GcsOutputConfig and stt-submit
     # returns in ~5s without waiting on Chirp. The 540s timeout
@@ -169,8 +169,8 @@ resource "google_cloudfunctions2_function" "stt_worker" {
     service_account_email = var.stt_worker_sa_email
 
     environment_variables = {
-      GCP_PROJECT_ID         = var.project_id
-      AUDIO_BUCKET_NAME      = var.audio_bucket_name
+      GCP_PROJECT_ID    = var.project_id
+      AUDIO_BUCKET_NAME = var.audio_bucket_name
       # Destination prefix for Chirp BatchRecognize output (Stage 1).
       # stt-submit writes GcsOutputConfig.Uri = gs://${TRANSCRIPTS_RAW_BUCKET}/{sid}/chunk_{i}/
       # and OBJECT_FINALIZE on this bucket triggers stt-finalize.
@@ -188,6 +188,10 @@ resource "google_cloudfunctions2_function" "stt_worker" {
       # Today: en-US is the only language flagged true; pl-PL stays
       # on the LLM-clustering path. Rollback: change to "off".
       STT_NATIVE_DIARIZATION = "on"
+      # billing-svc URL for fire-and-forget CommitUsage after STT
+      # finalize. Set via var.billing_svc_url (Phase 3, slice 5). Empty
+      # = billing hook disabled.
+      BILLING_SVC_URL = var.billing_svc_url
     }
 
     secret_environment_variables {
@@ -202,10 +206,10 @@ resource "google_cloudfunctions2_function" "stt_worker" {
   }
 
   event_trigger {
-    trigger_region = var.region
-    event_type     = "google.cloud.pubsub.topic.v1.messagePublished"
-    pubsub_topic   = var.audio_uploaded_topic
-    retry_policy   = "RETRY_POLICY_RETRY"
+    trigger_region        = var.region
+    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic          = var.audio_uploaded_topic
+    retry_policy          = "RETRY_POLICY_RETRY"
     service_account_email = var.stt_worker_sa_email
   }
 
@@ -266,10 +270,10 @@ resource "google_cloudfunctions2_function" "llm_worker" {
   }
 
   event_trigger {
-    trigger_region = var.region
-    event_type     = "google.cloud.pubsub.topic.v1.messagePublished"
-    pubsub_topic   = var.transcript_completed_topic
-    retry_policy   = "RETRY_POLICY_RETRY"
+    trigger_region        = var.region
+    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic          = var.transcript_completed_topic
+    retry_policy          = "RETRY_POLICY_RETRY"
     service_account_email = var.llm_worker_sa_email
   }
 
@@ -379,12 +383,20 @@ resource "google_cloudfunctions2_function" "stt_finalize" {
     service_account_email = var.stt_worker_sa_email
 
     environment_variables = {
-      GCP_PROJECT_ID         = var.project_id
-      AUDIO_BUCKET_NAME      = var.audio_bucket_name
-      TRANSCRIPTS_RAW_BUCKET = var.transcripts_raw_bucket_name
-      KMS_KEY_URI            = var.app_data_key_id
+      GCP_PROJECT_ID               = var.project_id
+      AUDIO_BUCKET_NAME            = var.audio_bucket_name
+      TRANSCRIPTS_RAW_BUCKET       = var.transcripts_raw_bucket_name
+      KMS_KEY_URI                  = var.app_data_key_id
       DEV_LOG_PLAINTEXT_TRANSCRIPT = var.dev_log_plaintext_transcript ? "true" : "false"
-      STT_NATIVE_DIARIZATION = "on"
+      STT_NATIVE_DIARIZATION       = "on"
+      # billing-svc URL for fire-and-forget CommitUsage. The
+      # commitBillingUsageAsync helper lives in finalize.go and runs in
+      # this function (entry point ProcessTranscriptObject) — NOT in
+      # stt-worker. Without this env var the billing hook stays
+      # disabled and usage_events never get a row → counter never
+      # increments. Empty default keeps the hook disabled for
+      # environments not bootstrapped with billing-svc.
+      BILLING_SVC_URL = var.billing_svc_url
     }
 
     secret_environment_variables {
@@ -684,6 +696,63 @@ resource "google_cloudfunctions2_function" "notification_worker_on_report" {
 # clinical-svc's session.deleted Pub/Sub publishes. Light memory like
 # the status-mirror workers; the only heavy thing is the CollectionGroup
 # query for inbox cleanup, which Firestore evaluates server-side.
+resource "google_cloudfunctions2_function" "notification_worker_on_billing" {
+  name        = "notification-worker-on-billing"
+  location    = var.region
+  project     = var.project_id
+  description = "Fan-out billing.outbox events (quota warnings, subscription lifecycle) → FCM push"
+
+  build_config {
+    runtime     = "go126"
+    entry_point = "ProcessBillingEvent"
+    source {
+      storage_source {
+        bucket = google_storage_bucket.functions_source.name
+        object = google_storage_bucket_object.notification_worker_zip.name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count    = 5
+    min_instance_count    = 0
+    available_memory      = "256Mi"
+    available_cpu         = "1"
+    timeout_seconds       = 60
+    service_account_email = var.notification_worker_sa_email
+
+    environment_variables = {
+      GCP_PROJECT_ID = var.project_id
+    }
+
+    secret_environment_variables {
+      key        = "DATABASE_URL"
+      project_id = var.project_id
+      secret     = var.db_url_secret_id
+      version    = "latest"
+    }
+
+    vpc_connector                 = var.vpc_connector_id
+    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
+  }
+
+  event_trigger {
+    trigger_region        = var.region
+    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic          = var.billing_outbox_topic
+    retry_policy          = "RETRY_POLICY_RETRY"
+    service_account_email = var.notification_worker_sa_email
+  }
+}
+
+resource "google_cloud_run_service_iam_member" "notification_on_billing_invoker" {
+  location = var.region
+  project  = var.project_id
+  service  = google_cloudfunctions2_function.notification_worker_on_billing.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.notification_worker_sa_email}"
+}
+
 resource "google_cloudfunctions2_function" "notification_worker_on_deleted" {
   name        = "notification-worker-on-deleted"
   location    = var.region

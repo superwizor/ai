@@ -3,40 +3,107 @@ syntax = "proto3";
 package billing.v1;
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/superwizor-ai/backend/gen/go/billing/v1;billingv1";
 
+// BillingService — quota i lifecycle subskrypcji (Phase 3).
+//
+// Model tokenów (ADR-DM-017): 1 token = ≤60min audio + 180s grace.
+// Pula trzymana per organizacja, debet idzie dwuetapowo:
+// ReserveCredit (przy CreateAudioUpload) → CommitUsage (po STT, znany duration).
+//
+// Reference: docs/16_BILLING_SERVICE_PHASE_3.md
 service BillingService {
-  // Sprawdza czy organizacja ma quotę na nową sesję
+  // Sprawdza dostępną pulę tokenów (read-only, nie blokuje).
   rpc CheckQuota(CheckQuotaRequest) returns (QuotaDecision);
 
-  // Inkrementuje usage po zakończonej analizie
-  rpc IncrementUsage(IncrementUsageRequest) returns (google.protobuf.Empty);
+  // Rezerwuje token na sesję (ADR-BL-001). TTL 4h.
+  // Idempotent po session_id: powtórne wywołanie zwraca tę samą rezerwację.
+  rpc ReserveCredit(ReserveCreditRequest) returns (Reservation);
 
-  // Stan subskrypcji
+  // Commituje token po STT, ze znanym duration_seconds.
+  // Idempotent po session_id (usage_events.session_id UNIQUE).
+  rpc CommitUsage(CommitUsageRequest) returns (UsageCommit);
+
+  // Zwalnia rezerwację (np. upload failed, manual cancel przed STT).
+  // Idempotent: re-call na RELEASED/COMMITTED zwraca OK bez zmian.
+  rpc ReleaseCredit(ReleaseCreditRequest) returns (google.protobuf.Empty);
+
+  // DEPRECATED: użyj CommitUsage. Zachowane dla Phase 2 callers.
+  // Internal mapping: amount → tokens (1:1), duration_seconds = 0,
+  // co oznacza że advisory lock + counter update działają jak commit
+  // ale bez weryfikacji formuły grace period.
+  rpc IncrementUsage(IncrementUsageRequest) returns (google.protobuf.Empty) {
+    option deprecated = true;
+  }
+
+  // Stan subskrypcji + bieżące zużycie.
   rpc GetSubscription(GetSubscriptionRequest) returns (Subscription);
 }
 
 message CheckQuotaRequest {
   string organization_id = 1;
-  string therapist_id = 2;
-  string usage_type = 3;          // 'session_analysis', 'audio_minutes'
-  int32 amount = 4;
+  string therapist_id    = 2;
+  string usage_type      = 3;  // 'session_analysis'
+  int32  amount          = 4;  // estymowane tokeny; default 1
 }
 
 message QuotaDecision {
-  bool allowed = 1;
-  string reason = 2;
-  int32 remaining = 3;
-  int32 limit = 4;
+  bool   allowed         = 1;
+  string reason          = 2;  // 'OK', 'QUOTA_EXHAUSTED', 'SUBSCRIPTION_INACTIVE', ...
+  // remaining/limit zostają (legacy) — od Phase 3 znaczą TOKENY, nie sesje.
+  int32  remaining       = 3;
+  int32  limit           = 4;
+  // Explicit aliasy dla nowych callerów (= remaining/limit).
+  int32  remaining_tokens = 5;
+  int32  limit_tokens     = 6;
+  google.protobuf.Timestamp period_end = 7;
+}
+
+message ReserveCreditRequest {
+  string session_id       = 1;  // UUID; key idempotencji
+  string organization_id  = 2;
+  string therapist_id     = 3;
+  int32  estimated_tokens = 4;  // optional; default 1
+  string idempotency_key  = 5;
+}
+
+message Reservation {
+  string reservation_id  = 1;
+  string session_id      = 2;
+  int32  tokens_reserved = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+message CommitUsageRequest {
+  string session_id       = 1;  // UUID; key idempotencji
+  string organization_id  = 2;
+  string therapist_id     = 3;
+  int32  duration_seconds = 4;  // autoritative, post-STT
+  string usage_type       = 5;
+  string idempotency_key  = 6;
+}
+
+message UsageCommit {
+  int32  tokens_consumed  = 1;
+  int32  remaining_tokens = 2;
+  int32  limit_tokens     = 3;
+}
+
+message ReleaseCreditRequest {
+  string session_id      = 1;
+  string organization_id = 2;
+  string reason          = 3;  // 'UPLOAD_FAILED', 'USER_CANCELED', 'STT_FAILED'
 }
 
 message IncrementUsageRequest {
+  option deprecated = true;
   string organization_id = 1;
-  string therapist_id = 2;
-  string usage_type = 3;
-  int32 amount = 4;
-  string session_id = 5;          // dla audit
+  string therapist_id    = 2;
+  string usage_type      = 3;
+  int32  amount          = 4;
+  string session_id      = 5;
   string idempotency_key = 6;
 }
 
@@ -45,9 +112,17 @@ message GetSubscriptionRequest {
 }
 
 message Subscription {
-  string id = 1;
-  string plan_tier = 2;            // 'SOLO', 'PRO', 'CLINIC'
-  string status = 3;
-  int32 sessions_per_month_limit = 4;
-  int32 sessions_used_this_period = 5;
+  string id                          = 1;
+  string plan_tier                   = 2;
+  string status                      = 3;
+  // Legacy fields — populated z tokens_* dla wstecznej kompatybilności
+  // (sesje ≈ tokens przy mapowaniu 1:1).
+  int32  sessions_per_month_limit    = 4;
+  int32  sessions_used_this_period   = 5;
+  // Phase 3 canonical fields:
+  int32  tokens_per_period           = 6;
+  int32  tokens_used_this_period     = 7;
+  int32  tokens_reserved_this_period = 8;
+  google.protobuf.Timestamp current_period_start = 9;
+  google.protobuf.Timestamp current_period_end   = 10;
 }

@@ -16,6 +16,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/billing_quota_provider.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/services_provider.dart';
@@ -102,6 +103,18 @@ final uploadQueueRunnerProvider =
     // PROCESSING → COMPLETED/FAILED status flip server-side.
     onAnalysisComplete: (row) async {
       await _refreshKartoteka(ref, row.patientFileId);
+    },
+    // CreateAudioUpload success → backend just took 1 token via
+    // ReserveCredit. Apply local decrement on quota state so the
+    // SubscriptionPlanScreen shows the change immediately (Firestore
+    // mirror only updates on edge thresholds — bez tego user widzi
+    // stale tokens count aż do CommitUsage).
+    onReservationCreated: (_) {
+      try {
+        ref.read(billingQuotaProvider.notifier).applyLocalReservation(1);
+      } catch (e) {
+        debugPrint('[upload-runner] applyLocalReservation failed: $e');
+      }
     },
   );
 

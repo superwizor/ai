@@ -326,6 +326,13 @@ func mergeAndPersist(ctx context.Context, logger *slog.Logger, sessionID uuid.UU
 		logger.Warn("status ANALYZING update failed", "error", err)
 	}
 
+	// Billing hook (fail-soft): post-STT, with duration_seconds known
+	// authoritatively (set by ingestion-svc finalize via ffprobe), bill
+	// the org via billing-svc.CommitUsage. Idempotent po session_id
+	// (UNIQUE constraint na usage_events), więc Pub/Sub redelivery safe.
+	// Errors logged + swallowed — billing failure nie blokuje pipeline.
+	go commitBillingUsageAsync(sessionID.String())
+
 	if err := publishTranscriptCompleted(ctx, sessionID.String(), transcriptID); err != nil {
 		return fmt.Errorf("publishTranscriptCompleted: %w", err)
 	}

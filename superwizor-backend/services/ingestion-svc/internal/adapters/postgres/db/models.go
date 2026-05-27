@@ -100,6 +100,48 @@ func (ns NullContactForm) Value() (driver.Value, error) {
 	return string(ns.ContactForm), nil
 }
 
+type ModalityType string
+
+const (
+	ModalityTypeTherapy  ModalityType = "therapy"
+	ModalityTypeCoaching ModalityType = "coaching"
+)
+
+func (e *ModalityType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ModalityType(s)
+	case string:
+		*e = ModalityType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ModalityType: %T", src)
+	}
+	return nil
+}
+
+type NullModalityType struct {
+	ModalityType ModalityType
+	Valid        bool // Valid is true if ModalityType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullModalityType) Scan(value interface{}) error {
+	if value == nil {
+		ns.ModalityType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ModalityType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullModalityType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ModalityType), nil
+}
+
 type NotificationStatus string
 
 const (
@@ -408,6 +450,50 @@ func (ns NullRelationStatus) Value() (driver.Value, error) {
 	return string(ns.RelationStatus), nil
 }
 
+type ReservationStatus string
+
+const (
+	ReservationStatusACTIVE    ReservationStatus = "ACTIVE"
+	ReservationStatusCOMMITTED ReservationStatus = "COMMITTED"
+	ReservationStatusRELEASED  ReservationStatus = "RELEASED"
+	ReservationStatusEXPIRED   ReservationStatus = "EXPIRED"
+)
+
+func (e *ReservationStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ReservationStatus(s)
+	case string:
+		*e = ReservationStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ReservationStatus: %T", src)
+	}
+	return nil
+}
+
+type NullReservationStatus struct {
+	ReservationStatus ReservationStatus
+	Valid             bool // Valid is true if ReservationStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullReservationStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ReservationStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ReservationStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullReservationStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ReservationStatus), nil
+}
+
 type SessionStatus string
 
 const (
@@ -702,6 +788,7 @@ type Modality struct {
 	IsSupported               bool
 	CreatedAt                 pgtype.Timestamptz
 	UpdatedAt                 pgtype.Timestamptz
+	ModalityType              ModalityType
 }
 
 type NotificationDelivery struct {
@@ -731,6 +818,20 @@ type Organization struct {
 	DeletedAt             pgtype.Timestamptz
 }
 
+type OutboxEvent struct {
+	ID             pgtype.UUID
+	AggregateType  string
+	EventType      string
+	AggregateID    pgtype.UUID
+	OrganizationID pgtype.UUID
+	Payload        []byte
+	Processed      bool
+	PublishedAt    pgtype.Timestamptz
+	Attempts       int32
+	LastError      *string
+	CreatedAt      pgtype.Timestamptz
+}
+
 type PatientFile struct {
 	ID                    pgtype.UUID
 	TherapistID           pgtype.UUID
@@ -750,6 +851,35 @@ type PatientFile struct {
 	DeletedAt             pgtype.Timestamptz
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out (legacy clients).
 	IdempotencyKey *string
+}
+
+type PaymentEvent struct {
+	ID               pgtype.UUID
+	SubscriptionID   pgtype.UUID
+	Provider         PaymentProvider
+	ProviderEventID  string
+	EventType        string
+	AmountGross      pgtype.Numeric
+	AmountNet        pgtype.Numeric
+	VatRate          pgtype.Numeric
+	CurrencyCode     *string
+	RawPayload       []byte
+	ProcessingStatus string
+	ProcessedAt      pgtype.Timestamptz
+	ErrorMessage     *string
+	ReceivedAt       pgtype.Timestamptz
+}
+
+type PendingReservation struct {
+	ID             pgtype.UUID
+	SessionID      pgtype.UUID
+	SubscriptionID pgtype.UUID
+	OrganizationID pgtype.UUID
+	TokensReserved int32
+	Status         ReservationStatus
+	CreatedAt      pgtype.Timestamptz
+	ExpiresAt      pgtype.Timestamptz
+	FinalizedAt    pgtype.Timestamptz
 }
 
 // Suggestion engine telemetry. Pure analytics; safe to TRUNCATE. See docs/10_REPORT_CUSTOMIZATION.md §6.
@@ -853,6 +983,43 @@ type SttOperation struct {
 	FinalizeError         *string
 }
 
+type Subscription struct {
+	ID                             pgtype.UUID
+	OrganizationID                 pgtype.UUID
+	PlanID                         pgtype.UUID
+	Provider                       PaymentProvider
+	ProviderSubscriptionID         string
+	ProviderCustomerIDCiphertext   []byte
+	ProviderCustomerIDEncryptedDek []byte
+	Status                         SubscriptionStatus
+	CurrentPeriodStart             pgtype.Timestamptz
+	CurrentPeriodEnd               pgtype.Timestamptz
+	CancelAtPeriodEnd              bool
+	CanceledAt                     pgtype.Timestamptz
+	TrialEndAt                     pgtype.Timestamptz
+	CreatedAt                      pgtype.Timestamptz
+	UpdatedAt                      pgtype.Timestamptz
+}
+
+type SubscriptionPlan struct {
+	ID                   pgtype.UUID
+	Tier                 PlanTier
+	Cycle                BillingCycle
+	DisplayName          string
+	PriceGross           pgtype.Numeric
+	CurrencyCode         string
+	TokensPerPeriod      int32
+	LicensesLimit        int32
+	HasB2bDashboard      bool
+	MarketingDescription *string
+	StripePriceID        *string
+	P24PlanID            *string
+	AppleProductID       *string
+	GoogleProductID      *string
+	IsActive             bool
+	CreatedAt            pgtype.Timestamptz
+}
+
 type TherapistPatientRelation struct {
 	ID           pgtype.UUID
 	TherapistID  pgtype.UUID
@@ -892,6 +1059,28 @@ type TranscriptSegment struct {
 	TextWordCount    *int32
 	Confidence       pgtype.Numeric
 	CreatedAt        pgtype.Timestamptz
+}
+
+type UsageCounter struct {
+	ID             pgtype.UUID
+	SubscriptionID pgtype.UUID
+	PeriodStart    pgtype.Timestamptz
+	PeriodEnd      pgtype.Timestamptz
+	TokensUsed     int32
+	TokensReserved int32
+	TokensLimit    int32
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type UsageEvent struct {
+	ID              pgtype.UUID
+	SessionID       pgtype.UUID
+	SubscriptionID  pgtype.UUID
+	OrganizationID  pgtype.UUID
+	TokensConsumed  int32
+	DurationSeconds int32
+	UsageType       string
+	CreatedAt       pgtype.Timestamptz
 }
 
 type User struct {

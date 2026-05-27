@@ -165,6 +165,61 @@ resource "google_service_account_iam_member" "pubsub_sa_llm_token_creator" {
 }
 
 # ============================================================================
+# billing-svc — Phase 3 (slice 1 stub gRPC server, slice 3 cron HTTP + outbox).
+#
+# Replaces the old default compute SA that the Phase 2 stub ran on.
+# Internal-only Cloud Run; gRPC invoked by clinical-svc/ingestion-svc/
+# ai-pipeline-svc, plus HTTP cron endpoints invoked by Cloud Scheduler.
+# ============================================================================
+resource "google_service_account" "billing_svc" {
+  account_id   = "billing-svc"
+  display_name = "billing-svc (Phase 3)"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "billing_sql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.billing_svc.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "billing_db_pwd" {
+  project   = var.project_id
+  secret_id = "postgres-database-url"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.billing_svc.email}"
+}
+
+# KMS dla envelope encryption Stripe customer ID (ADR-BL-004).
+# Slice 1 nie używa cryptobox, ale binding zostawiamy ready — slice 2 będzie
+# bezpośrednio go używał.
+resource "google_kms_crypto_key_iam_member" "billing_kms" {
+  crypto_key_id = module.kms.app_data_key_id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${google_service_account.billing_svc.email}"
+}
+
+# ============================================================================
+# Cloud Scheduler dla billing crons (Phase 3, slice 3).
+# Cloud Scheduler woła HTTP endpointy z OIDC tokenem podpisanym przez
+# dedykowane SA cloud-scheduler-billing; Cloud Run frontend waliduje token,
+# wpuszcza tylko jeśli SA ma roles/run.invoker.
+# ============================================================================
+resource "google_service_account" "cloud_scheduler_billing" {
+  account_id   = "cloud-scheduler-billing"
+  display_name = "Cloud Scheduler → billing-svc HTTP crons"
+  project      = var.project_id
+}
+
+resource "google_cloud_run_v2_service_iam_member" "scheduler_invoke_billing" {
+  project  = var.project_id
+  location = "europe-central2"
+  name     = "billing-svc"
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.cloud_scheduler_billing.email}"
+}
+
+# ============================================================================
 # Cloud Run public-invocability for Flutter-facing services.
 #
 # These services are deployed by CI's `gcloud run deploy --allow-unauthenticated`

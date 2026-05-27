@@ -18,6 +18,24 @@ variable "project_number" {
   default     = "344724821207"
 }
 
+variable "billing_svc_url" {
+  type        = string
+  description = <<-EOT
+    Publicznie dostępny URL Cloud Run service `billing-svc` (HTTP port
+    8081, dla admin crons + Stripe stub). Variable bo Cloud Run usługi
+    są deployowane przez CI, nie terraform — pierwszy deploy wygeneruje
+    URL którego wartość trzeba podać przez tfvars / env.
+
+    Format: `https://billing-svc-<HASH>.<region>.run.app`.
+
+    Lookup: `gcloud run services describe billing-svc --region=europe-central2 --format='value(status.url)'`.
+
+    Empty value powoduje że Cloud Scheduler jobs są suspended (paused)
+    przez handler w billing_crons.tf — fail-safe dla bootstrap środowiska.
+  EOT
+  default     = ""
+}
+
 variable "e2e_token_minters" {
   type        = list(string)
   description = <<-EOT

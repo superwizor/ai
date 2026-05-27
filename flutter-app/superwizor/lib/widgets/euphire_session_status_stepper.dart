@@ -56,8 +56,19 @@ class EuphireSessionStatusStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    // Step 1 has two labels: while we are still queued (no session_id
+    // returned yet — upload hasn't even been accepted, e.g. due to
+    // QUOTA_EXHAUSTED retries) we say "audio waiting in upload queue".
+    // Only after the server has accepted the upload (phase >= uploaded)
+    // do we claim the audio is safe on our servers. Previously the
+    // first label was always shown, which was misleading: a quota-
+    // blocked upload sat under "Audio bezpieczne na naszych serwerach"
+    // even though the file never reached us.
+    final step1Text = phase == SessionStepperPhase.pending
+        ? t.stepper_step1_queued
+        : t.stepper_step1_uploaded;
     final steps = [
-      _Step(t.stepper_step1_uploaded, _stateForStep(0)),
+      _Step(step1Text, _stateForStep(0)),
       _Step(t.stepper_step2_transcribing, _stateForStep(1)),
       _Step(t.stepper_step3_analyzing, _stateForStep(2)),
       _Step(t.stepper_step4_finalizing, _stateForStep(3)),

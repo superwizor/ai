@@ -56,63 +56,36 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 		protoTranscript := &clinicalv1.Transcript{
 			Id: transcript.ID.String(),
 		}
-		
-		// 2. Fetch transcript segments
-		segments, err := s.queries.ListTranscriptSegments(ctx, transcript.ID)
-		if err == nil {
-			var segDecryptErrs int
-			for _, seg := range segments {
-				textBytes, err := s.crypto.Decrypt(ctx, seg.TextCiphertext, seg.TextEncryptedDek)
-				if err != nil {
-					// Log loudly — silently dropping segments was the bug
-					// behind "GetSessionDetails returns empty data" when
-					// KMS_KEY_URI was missing and cryptobox fell back to
-					// MockBox. The handler still returns a partial response
-					// rather than failing — caller can compare segment
-					// count to transcript_segments table to detect drift.
-					segDecryptErrs++
-					slog.Error("decrypt transcript segment",
-						"session_id", req.SessionId,
-						"transcript_id", transcript.ID.String(),
-						"segment_id", seg.ID.String(),
-						"error", err)
-					continue
-				}
-				text := string(textBytes)
-				
-				var conf float32
-				if seg.Confidence.Valid {
-				    c, _ := seg.Confidence.Float64Value()
-				    conf = float32(c.Float64)
-				}
-				protoTranscript.Segments = append(protoTranscript.Segments, &clinicalv1.TranscriptSegment{
-					SpeakerTag:    seg.SpeakerTag,
-					SpeakerLabel:  seg.SpeakerLabel,
-					StartOffsetMs: seg.StartOffsetMs,
-					EndOffsetMs:   seg.EndOffsetMs,
-					Text:          text,
-					Confidence:    conf,
-				})
+
+		// 2. Resolve segments.
+		//
+		// Fast path: read the canonical transcript_ciphertext blob (one
+		// KMS decrypt for the whole transcript) when it carries
+		// speaker roles. llm-worker.rebuildBlobWithRoles writes that
+		// post-role-assignment shape; labels.go::UpdateSpeakerLabels
+		// (therapist relabel) also writes it. The earlier attempt to
+		// always read the blob broke diarization for pre-LLM-rebuild
+		// transcripts (stt-worker writes the blob with null speaker_*
+		// fields for the Polish / no-native-diarization path), so the
+		// fast path is gated on tryCanonicalBlobSegments returning a
+		// "blob has roles" success.
+		//
+		// Slow fallback: per-segment loop reads transcript_segments,
+		// which is authoritatively post-LLM with roles populated.
+		// Costs N KMS decrypts and will exceed the 30s gRPC deadline
+		// for long sessions (~600+ chunks at ~80ms KMS RTT). Sessions
+		// in that range need their blob backfilled (one-off) so the
+		// fast path kicks in.
+		if segs, ok := tryCanonicalBlobSegments(ctx, s.crypto, transcript); ok {
+			protoTranscript.Segments = segs
+			protoTranscript.Turns = grouping.GroupSegmentsIntoTurns(segs)
+		} else {
+			segs, fatalErr := loadSegmentsViaPerSegmentLoop(ctx, s.queries, s.crypto, transcript.ID, req.SessionId)
+			if fatalErr != nil {
+				return nil, fatalErr
 			}
-			// If we couldn't decrypt ANY segment but had segments, that's
-			// almost certainly a KMS misconfig (missing KMS_KEY_URI env
-			// var, missing roles/cloudkms.cryptoKeyEncrypterDecrypter on
-			// the runtime SA). Fail loud rather than return an empty
-			// transcript that callers will report as an empty session.
-			if len(segments) > 0 && len(protoTranscript.Segments) == 0 {
-				slog.Error("all transcript segments failed to decrypt — likely KMS misconfig",
-					"session_id", req.SessionId,
-					"transcript_id", transcript.ID.String(),
-					"segment_count", len(segments),
-					"decrypt_errors", segDecryptErrs)
-				return nil, status.Error(codes.Internal,
-					"transcript present but no segments could be decrypted; check clinical-svc KMS config")
-			}
-			// Derive speaker-grouped view from the (decrypted) segments.
-			// Read-only views in Flutter bind to Turns; the per-chunk
-			// Segments slice stays for the speaker-label edit UI.
-			// O(n) over segments; trivial vs the decrypt loop above.
-			protoTranscript.Turns = grouping.GroupSegmentsIntoTurns(protoTranscript.Segments)
+			protoTranscript.Segments = segs
+			protoTranscript.Turns = grouping.GroupSegmentsIntoTurns(segs)
 		}
 		resp.Transcript = protoTranscript
 	}
@@ -321,3 +294,146 @@ func (s *Server) DeleteSession(ctx context.Context, req *clinicalv1.DeleteSessio
 
 	return &emptypb.Empty{}, nil
 }
+
+// transcriptBlobLine matches the on-disk JSON shape stt-worker writes to
+// transcripts.transcript_ciphertext (services/ai-pipeline-svc/cmd/
+// stt-worker/main.go::BlobLine) and the shape llm-worker rewrites in
+// rebuildBlobWithRoles after speaker-label assignment. SpeakerTag /
+// SpeakerLabel are pointers so we can tell "no role assigned to this
+// chunk" (nil) from "explicit zero / empty" (which doesn't happen in
+// practice but stays unambiguous).
+type transcriptBlobLine struct {
+	ChunkIdx     int     `json:"chunk_idx"`
+	Text         string  `json:"text"`
+	StartMS      int64   `json:"start_ms"`
+	EndMS        int64   `json:"end_ms"`
+	WordCount    int     `json:"word_count"`
+	Confidence   float32 `json:"confidence"`
+	SpeakerTag   *int32  `json:"speaker_tag,omitempty"`
+	SpeakerLabel *string `json:"speaker_label,omitempty"`
+}
+
+// cryptoBoxIface is the narrow surface of cryptobox.CryptoBox the
+// transcript reader uses; matches the existing s.crypto interface
+// without pulling its import here.
+type cryptoBoxIface interface {
+	Decrypt(ctx context.Context, ciphertext, encryptedDEK []byte) ([]byte, error)
+}
+
+// tryCanonicalBlobSegments returns (segments, true) only when the blob
+// is a "post-roles" snapshot — at least one line carries a populated
+// speaker_label. That's the marker llm-worker.rebuildBlobWithRoles (and
+// labels.go::UpdateSpeakerLabels) leave behind once roles have been
+// assigned; the raw stt-worker write leaves speaker_label nil/empty for
+// pl-PL sessions and we DO NOT want to use the blob in that case (it
+// would strip diarization).
+//
+// Returns (nil, false) on any decrypt / parse error, on empty blob, or
+// when no line carries a role — caller falls back to the per-segment
+// loop. Errors are logged but not surfaced as gRPC errors because the
+// fallback is correct.
+//
+// Cost: 1 KMS decrypt + 1 JSON unmarshal, independent of session length.
+func tryCanonicalBlobSegments(ctx context.Context, crypto cryptoBoxIface, transcript db.Transcript) ([]*clinicalv1.TranscriptSegment, bool) {
+	if len(transcript.TranscriptCiphertext) == 0 {
+		return nil, false
+	}
+	blobJSON, err := crypto.Decrypt(ctx, transcript.TranscriptCiphertext, transcript.TranscriptEncryptedDek)
+	if err != nil {
+		slog.Warn("canonical blob decrypt failed; falling back to per-segment",
+			"transcript_id", transcript.ID.String(), "error", err)
+		return nil, false
+	}
+	var lines []transcriptBlobLine
+	if err := json.Unmarshal(blobJSON, &lines); err != nil {
+		slog.Warn("canonical blob unmarshal failed; falling back to per-segment",
+			"transcript_id", transcript.ID.String(), "error", err)
+		return nil, false
+	}
+
+	// Strict marker: at least one line must carry a non-empty speaker
+	// label. Pre-llm-worker blobs have all speaker_* fields nil for
+	// pl-PL sessions, and we must not pretend they have diarization.
+	hasRoles := false
+	for _, l := range lines {
+		if l.SpeakerLabel != nil && *l.SpeakerLabel != "" {
+			hasRoles = true
+			break
+		}
+	}
+	if !hasRoles {
+		return nil, false
+	}
+
+	out := make([]*clinicalv1.TranscriptSegment, 0, len(lines))
+	for _, l := range lines {
+		var tag int32
+		if l.SpeakerTag != nil {
+			tag = *l.SpeakerTag
+		}
+		var label string
+		if l.SpeakerLabel != nil {
+			label = *l.SpeakerLabel
+		}
+		out = append(out, &clinicalv1.TranscriptSegment{
+			SpeakerTag:    tag,
+			SpeakerLabel:  label,
+			StartOffsetMs: int32(l.StartMS),
+			EndOffsetMs:   int32(l.EndMS),
+			Text:          l.Text,
+			Confidence:    l.Confidence,
+		})
+	}
+	return out, true
+}
+
+// loadSegmentsViaPerSegmentLoop is the historical slow path — reads
+// transcript_segments and KMS-decrypts each text. Costs N KMS calls
+// (~80-200ms each), so long sessions will exceed the gRPC deadline.
+// Returns a non-nil fatal error only when the transcript has segments
+// but every single decrypt failed (almost certainly a KMS misconfig);
+// otherwise returns whatever it could decrypt + nil.
+func loadSegmentsViaPerSegmentLoop(ctx context.Context, queries db.Querier, crypto cryptoBoxIface, transcriptID uuid.UUID, sessionIDStr string) ([]*clinicalv1.TranscriptSegment, error) {
+	segments, err := queries.ListTranscriptSegments(ctx, transcriptID)
+	if err != nil {
+		return nil, nil
+	}
+	var segDecryptErrs int
+	out := make([]*clinicalv1.TranscriptSegment, 0, len(segments))
+	for _, seg := range segments {
+		textBytes, derr := crypto.Decrypt(ctx, seg.TextCiphertext, seg.TextEncryptedDek)
+		if derr != nil {
+			segDecryptErrs++
+			slog.Error("decrypt transcript segment",
+				"session_id", sessionIDStr,
+				"transcript_id", transcriptID.String(),
+				"segment_id", seg.ID.String(),
+				"error", derr)
+			continue
+		}
+		var conf float32
+		if seg.Confidence.Valid {
+			c, _ := seg.Confidence.Float64Value()
+			conf = float32(c.Float64)
+		}
+		out = append(out, &clinicalv1.TranscriptSegment{
+			SpeakerTag:    seg.SpeakerTag,
+			SpeakerLabel:  seg.SpeakerLabel,
+			StartOffsetMs: seg.StartOffsetMs,
+			EndOffsetMs:   seg.EndOffsetMs,
+			Text:          string(textBytes),
+			Confidence:    conf,
+		})
+	}
+	if len(segments) > 0 && len(out) == 0 {
+		slog.Error("all transcript segments failed to decrypt — likely KMS misconfig",
+			"session_id", sessionIDStr,
+			"transcript_id", transcriptID.String(),
+			"segment_count", len(segments),
+			"decrypt_errors", segDecryptErrs)
+		return nil, status.Error(codes.Internal,
+			"transcript present but no segments could be decrypted; check clinical-svc KMS config")
+	}
+	return out, nil
+}
+

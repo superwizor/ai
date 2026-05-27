@@ -487,33 +487,23 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         if (_lastRow != null && _resolvedSessionId == null)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              children: [
-                Text(
-                  _queuePhaseLabel(_lastRow!),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'RobotoMono',
-                    fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.7),
-                  ),
-                ),
-                if (_lastRow!.lastError != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    _lastRow!.lastError!,
-                    textAlign: TextAlign.center,
-                    maxLines: 4,
-                    style: TextStyle(
-                      fontFamily: 'RobotoMono',
-                      fontSize: 10,
-                      color: Colors.redAccent.shade200,
-                    ),
-                  ),
-                ],
-              ],
+            child: Text(
+              _queuePhaseLabel(_lastRow!),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'RobotoMono',
+                fontSize: 12,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
             ),
           ),
+        // The raw gRPC last-error text used to render here (red,
+        // dev-style). For quota-exhausted submits QuotaExhaustedDialog
+        // already surfaces the right message; for everything else the
+        // queue-phase line above plus the retry counter is enough.
+        // Surfacing raw status codes / framework error strings to the
+        // therapist was noisy and confusing — kept in PendingUpload
+        // for our own diagnostics but no longer rendered.
         const Spacer(),
       ],
     );

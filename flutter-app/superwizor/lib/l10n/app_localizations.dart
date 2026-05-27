@@ -776,6 +776,12 @@ abstract class AppLocalizations {
   /// **'Audio bezpieczne na naszych serwerach.'**
   String get stepper_step1_uploaded;
 
+  /// No description provided for @stepper_step1_queued.
+  ///
+  /// In pl, this message translates to:
+  /// **'Audio czeka w kolejce do uploadu.'**
+  String get stepper_step1_queued;
+
   /// No description provided for @stepper_step2_transcribing.
   ///
   /// In pl, this message translates to:
@@ -1920,6 +1926,244 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Nie udało się zmienić ustawienia.'**
   String get suggestion_banner_apply_error;
+
+  /// Krótka warning banner — pozostałe tokeny w bieżącym okresie
+  ///
+  /// In pl, this message translates to:
+  /// **'{n, plural, =1{Został Ci 1 token.} few{Zostały Ci {n} tokeny.} many{Zostało Ci {n} tokenów.} other{Zostało Ci {n} tokenów.}}'**
+  String billing_quota_warning_short(int n);
+
+  /// No description provided for @billing_quota_critical_short.
+  ///
+  /// In pl, this message translates to:
+  /// **'Został Ci ostatni token.'**
+  String get billing_quota_critical_short;
+
+  /// No description provided for @billing_quota_exhausted_short.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pula tokenów wyczerpana.'**
+  String get billing_quota_exhausted_short;
+
+  /// No description provided for @billing_quota_exhausted_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowe sesje zapiszą się lokalnie do dnia odnowienia.'**
+  String get billing_quota_exhausted_subtitle;
+
+  /// No description provided for @billing_period_end_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pula odnawia się {date}.'**
+  String billing_period_end_label(String date);
+
+  /// No description provided for @billing_expand_plan_cta.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozszerz plan'**
+  String get billing_expand_plan_cta;
+
+  /// No description provided for @billing_dismiss_cta.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozumiem, kontynuuj'**
+  String get billing_dismiss_cta;
+
+  /// No description provided for @billing_exhausted_dialog_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pula tokenów wyczerpana'**
+  String get billing_exhausted_dialog_title;
+
+  /// No description provided for @billing_exhausted_dialog_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Możesz nadal nagrywać sesję — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie na Twoim urządzeniu. Po rozszerzeniu planu lub odnowieniu puli możesz wznowić przetwarzanie sesji z poziomu Kartoteki.'**
+  String get billing_exhausted_dialog_body;
+
+  /// No description provided for @billing_exhausted_dialog_record_locally.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagrywaj lokalnie'**
+  String get billing_exhausted_dialog_record_locally;
+
+  /// No description provided for @billing_pending_sessions_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'{n, plural, =1{Sesja oczekująca na przetworzenie} few{Sesje oczekujące na przetworzenie ({n})} many{Sesji oczekujących na przetworzenie ({n})} other{Sesji oczekujących na przetworzenie ({n})}}'**
+  String billing_pending_sessions_title(int n);
+
+  /// No description provided for @billing_pending_session_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Audio zapisane lokalnie · Czeka na tokeny'**
+  String get billing_pending_session_subtitle;
+
+  /// No description provided for @billing_pending_session_card_meta.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja z {date}, {time} ({duration} min)'**
+  String billing_pending_session_card_meta(
+    String date,
+    String time,
+    int duration,
+  );
+
+  /// No description provided for @billing_resume_processing.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wznów przetwarzanie'**
+  String get billing_resume_processing;
+
+  /// No description provided for @billing_delete_local_audio.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń'**
+  String get billing_delete_local_audio;
+
+  /// No description provided for @billing_tokens_available_required.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tokeny dostępne: {available} / Wymagane: {required}'**
+  String billing_tokens_available_required(int available, int required);
+
+  /// No description provided for @billing_delete_confirm_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usunąć nagranie sesji?'**
+  String get billing_delete_confirm_title;
+
+  /// No description provided for @billing_delete_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Audio zostanie trwale usunięte z tego urządzenia. Tej operacji nie można cofnąć.'**
+  String get billing_delete_confirm_body;
+
+  /// No description provided for @billing_delete_confirm_action.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń trwale'**
+  String get billing_delete_confirm_action;
+
+  /// No description provided for @billing_reservation_expired_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przetwarzanie nie powiodło się'**
+  String get billing_reservation_expired_title;
+
+  /// No description provided for @billing_reservation_expired_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rezerwacja tokena wygasła po 4 godzinach. Audio jest nadal zapisane lokalnie.'**
+  String get billing_reservation_expired_body;
+
+  /// No description provided for @billing_retry_cta.
+  ///
+  /// In pl, this message translates to:
+  /// **'Spróbuj ponownie'**
+  String get billing_retry_cta;
+
+  /// No description provided for @billing_past_due_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Problem z płatnością'**
+  String get billing_past_due_title;
+
+  /// No description provided for @billing_past_due_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się pobrać opłaty za subskrypcję. Do czasu rozwiązania problemu nie będziemy przetwarzać nowych sesji.'**
+  String get billing_past_due_body;
+
+  /// No description provided for @subscription_screen_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Subskrypcja'**
+  String get subscription_screen_title;
+
+  /// No description provided for @subscription_plan_section_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twój plan'**
+  String get subscription_plan_section_header;
+
+  /// No description provided for @subscription_tier_solo.
+  ///
+  /// In pl, this message translates to:
+  /// **'Solo'**
+  String get subscription_tier_solo;
+
+  /// No description provided for @subscription_tier_pro.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pro'**
+  String get subscription_tier_pro;
+
+  /// No description provided for @subscription_tier_clinic.
+  ///
+  /// In pl, this message translates to:
+  /// **'Klinika'**
+  String get subscription_tier_clinic;
+
+  /// No description provided for @subscription_cycle_monthly.
+  ///
+  /// In pl, this message translates to:
+  /// **'miesięczny'**
+  String get subscription_cycle_monthly;
+
+  /// No description provided for @subscription_cycle_semi_annual.
+  ///
+  /// In pl, this message translates to:
+  /// **'półroczny'**
+  String get subscription_cycle_semi_annual;
+
+  /// No description provided for @subscription_cycle_annual.
+  ///
+  /// In pl, this message translates to:
+  /// **'roczny'**
+  String get subscription_cycle_annual;
+
+  /// No description provided for @subscription_sessions_per_period.
+  ///
+  /// In pl, this message translates to:
+  /// **'{n, plural, =1{1 sesja w okresie} few{{n} sesje w okresie} many{{n} sesji w okresie} other{{n} sesji w okresie}}'**
+  String subscription_sessions_per_period(int n);
+
+  /// No description provided for @subscription_sessions_left.
+  ///
+  /// In pl, this message translates to:
+  /// **'{n, plural, =0{Brak sesji do końca okresu} =1{1 sesja do końca okresu} few{{n} sesje do końca okresu} many{{n} sesji do końca okresu} other{{n} sesji do końca okresu}}'**
+  String subscription_sessions_left(int n);
+
+  /// No description provided for @subscription_sessions_used.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wykorzystano: {used} z {limit}'**
+  String subscription_sessions_used(int used, int limit);
+
+  /// No description provided for @subscription_period_ends.
+  ///
+  /// In pl, this message translates to:
+  /// **'Okres kończy się {date}'**
+  String subscription_period_ends(String date);
+
+  /// No description provided for @subscription_no_data_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak danych o subskrypcji'**
+  String get subscription_no_data_title;
+
+  /// No description provided for @subscription_no_data_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się pobrać informacji o Twoim planie. Sprawdź połączenie internetowe i spróbuj ponownie.'**
+  String get subscription_no_data_body;
+
+  /// No description provided for @subscription_refresh_cta.
+  ///
+  /// In pl, this message translates to:
+  /// **'Odśwież'**
+  String get subscription_refresh_cta;
 }
 
 class _AppLocalizationsDelegate

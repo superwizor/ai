@@ -40,6 +40,16 @@ const QuotaDecision$json = {
     {'1': 'reason', '3': 2, '4': 1, '5': 9, '10': 'reason'},
     {'1': 'remaining', '3': 3, '4': 1, '5': 5, '10': 'remaining'},
     {'1': 'limit', '3': 4, '4': 1, '5': 5, '10': 'limit'},
+    {'1': 'remaining_tokens', '3': 5, '4': 1, '5': 5, '10': 'remainingTokens'},
+    {'1': 'limit_tokens', '3': 6, '4': 1, '5': 5, '10': 'limitTokens'},
+    {
+      '1': 'period_end',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'periodEnd'
+    },
   ],
 };
 
@@ -47,7 +57,106 @@ const QuotaDecision$json = {
 final $typed_data.Uint8List quotaDecisionDescriptor = $convert.base64Decode(
     'Cg1RdW90YURlY2lzaW9uEhgKB2FsbG93ZWQYASABKAhSB2FsbG93ZWQSFgoGcmVhc29uGAIgAS'
     'gJUgZyZWFzb24SHAoJcmVtYWluaW5nGAMgASgFUglyZW1haW5pbmcSFAoFbGltaXQYBCABKAVS'
-    'BWxpbWl0');
+    'BWxpbWl0EikKEHJlbWFpbmluZ190b2tlbnMYBSABKAVSD3JlbWFpbmluZ1Rva2VucxIhCgxsaW'
+    '1pdF90b2tlbnMYBiABKAVSC2xpbWl0VG9rZW5zEjkKCnBlcmlvZF9lbmQYByABKAsyGi5nb29n'
+    'bGUucHJvdG9idWYuVGltZXN0YW1wUglwZXJpb2RFbmQ=');
+
+@$core.Deprecated('Use reserveCreditRequestDescriptor instead')
+const ReserveCreditRequest$json = {
+  '1': 'ReserveCreditRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'organization_id', '3': 2, '4': 1, '5': 9, '10': 'organizationId'},
+    {'1': 'therapist_id', '3': 3, '4': 1, '5': 9, '10': 'therapistId'},
+    {'1': 'estimated_tokens', '3': 4, '4': 1, '5': 5, '10': 'estimatedTokens'},
+    {'1': 'idempotency_key', '3': 5, '4': 1, '5': 9, '10': 'idempotencyKey'},
+  ],
+};
+
+/// Descriptor for `ReserveCreditRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reserveCreditRequestDescriptor = $convert.base64Decode(
+    'ChRSZXNlcnZlQ3JlZGl0UmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSWQSJw'
+    'oPb3JnYW5pemF0aW9uX2lkGAIgASgJUg5vcmdhbml6YXRpb25JZBIhCgx0aGVyYXBpc3RfaWQY'
+    'AyABKAlSC3RoZXJhcGlzdElkEikKEGVzdGltYXRlZF90b2tlbnMYBCABKAVSD2VzdGltYXRlZF'
+    'Rva2VucxInCg9pZGVtcG90ZW5jeV9rZXkYBSABKAlSDmlkZW1wb3RlbmN5S2V5');
+
+@$core.Deprecated('Use reservationDescriptor instead')
+const Reservation$json = {
+  '1': 'Reservation',
+  '2': [
+    {'1': 'reservation_id', '3': 1, '4': 1, '5': 9, '10': 'reservationId'},
+    {'1': 'session_id', '3': 2, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'tokens_reserved', '3': 3, '4': 1, '5': 5, '10': 'tokensReserved'},
+    {
+      '1': 'expires_at',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'expiresAt'
+    },
+  ],
+};
+
+/// Descriptor for `Reservation`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reservationDescriptor = $convert.base64Decode(
+    'CgtSZXNlcnZhdGlvbhIlCg5yZXNlcnZhdGlvbl9pZBgBIAEoCVINcmVzZXJ2YXRpb25JZBIdCg'
+    'pzZXNzaW9uX2lkGAIgASgJUglzZXNzaW9uSWQSJwoPdG9rZW5zX3Jlc2VydmVkGAMgASgFUg50'
+    'b2tlbnNSZXNlcnZlZBI5CgpleHBpcmVzX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbW'
+    'VzdGFtcFIJZXhwaXJlc0F0');
+
+@$core.Deprecated('Use commitUsageRequestDescriptor instead')
+const CommitUsageRequest$json = {
+  '1': 'CommitUsageRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'organization_id', '3': 2, '4': 1, '5': 9, '10': 'organizationId'},
+    {'1': 'therapist_id', '3': 3, '4': 1, '5': 9, '10': 'therapistId'},
+    {'1': 'duration_seconds', '3': 4, '4': 1, '5': 5, '10': 'durationSeconds'},
+    {'1': 'usage_type', '3': 5, '4': 1, '5': 9, '10': 'usageType'},
+    {'1': 'idempotency_key', '3': 6, '4': 1, '5': 9, '10': 'idempotencyKey'},
+  ],
+};
+
+/// Descriptor for `CommitUsageRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List commitUsageRequestDescriptor = $convert.base64Decode(
+    'ChJDb21taXRVc2FnZVJlcXVlc3QSHQoKc2Vzc2lvbl9pZBgBIAEoCVIJc2Vzc2lvbklkEicKD2'
+    '9yZ2FuaXphdGlvbl9pZBgCIAEoCVIOb3JnYW5pemF0aW9uSWQSIQoMdGhlcmFwaXN0X2lkGAMg'
+    'ASgJUgt0aGVyYXBpc3RJZBIpChBkdXJhdGlvbl9zZWNvbmRzGAQgASgFUg9kdXJhdGlvblNlY2'
+    '9uZHMSHQoKdXNhZ2VfdHlwZRgFIAEoCVIJdXNhZ2VUeXBlEicKD2lkZW1wb3RlbmN5X2tleRgG'
+    'IAEoCVIOaWRlbXBvdGVuY3lLZXk=');
+
+@$core.Deprecated('Use usageCommitDescriptor instead')
+const UsageCommit$json = {
+  '1': 'UsageCommit',
+  '2': [
+    {'1': 'tokens_consumed', '3': 1, '4': 1, '5': 5, '10': 'tokensConsumed'},
+    {'1': 'remaining_tokens', '3': 2, '4': 1, '5': 5, '10': 'remainingTokens'},
+    {'1': 'limit_tokens', '3': 3, '4': 1, '5': 5, '10': 'limitTokens'},
+  ],
+};
+
+/// Descriptor for `UsageCommit`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List usageCommitDescriptor = $convert.base64Decode(
+    'CgtVc2FnZUNvbW1pdBInCg90b2tlbnNfY29uc3VtZWQYASABKAVSDnRva2Vuc0NvbnN1bWVkEi'
+    'kKEHJlbWFpbmluZ190b2tlbnMYAiABKAVSD3JlbWFpbmluZ1Rva2VucxIhCgxsaW1pdF90b2tl'
+    'bnMYAyABKAVSC2xpbWl0VG9rZW5z');
+
+@$core.Deprecated('Use releaseCreditRequestDescriptor instead')
+const ReleaseCreditRequest$json = {
+  '1': 'ReleaseCreditRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'organization_id', '3': 2, '4': 1, '5': 9, '10': 'organizationId'},
+    {'1': 'reason', '3': 3, '4': 1, '5': 9, '10': 'reason'},
+  ],
+};
+
+/// Descriptor for `ReleaseCreditRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List releaseCreditRequestDescriptor = $convert.base64Decode(
+    'ChRSZWxlYXNlQ3JlZGl0UmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSWQSJw'
+    'oPb3JnYW5pemF0aW9uX2lkGAIgASgJUg5vcmdhbml6YXRpb25JZBIWCgZyZWFzb24YAyABKAlS'
+    'BnJlYXNvbg==');
 
 @$core.Deprecated('Use incrementUsageRequestDescriptor instead')
 const IncrementUsageRequest$json = {
@@ -60,6 +169,7 @@ const IncrementUsageRequest$json = {
     {'1': 'session_id', '3': 5, '4': 1, '5': 9, '10': 'sessionId'},
     {'1': 'idempotency_key', '3': 6, '4': 1, '5': 9, '10': 'idempotencyKey'},
   ],
+  '7': {'3': true},
 };
 
 /// Descriptor for `IncrementUsageRequest`. Decode as a `google.protobuf.DescriptorProto`.
@@ -68,7 +178,7 @@ final $typed_data.Uint8List incrementUsageRequestDescriptor = $convert.base64Dec
     'l6YXRpb25JZBIhCgx0aGVyYXBpc3RfaWQYAiABKAlSC3RoZXJhcGlzdElkEh0KCnVzYWdlX3R5'
     'cGUYAyABKAlSCXVzYWdlVHlwZRIWCgZhbW91bnQYBCABKAVSBmFtb3VudBIdCgpzZXNzaW9uX2'
     'lkGAUgASgJUglzZXNzaW9uSWQSJwoPaWRlbXBvdGVuY3lfa2V5GAYgASgJUg5pZGVtcG90ZW5j'
-    'eUtleQ==');
+    'eUtleToCGAE=');
 
 @$core.Deprecated('Use getSubscriptionRequestDescriptor instead')
 const GetSubscriptionRequest$json = {
@@ -105,6 +215,37 @@ const Subscription$json = {
       '5': 5,
       '10': 'sessionsUsedThisPeriod'
     },
+    {'1': 'tokens_per_period', '3': 6, '4': 1, '5': 5, '10': 'tokensPerPeriod'},
+    {
+      '1': 'tokens_used_this_period',
+      '3': 7,
+      '4': 1,
+      '5': 5,
+      '10': 'tokensUsedThisPeriod'
+    },
+    {
+      '1': 'tokens_reserved_this_period',
+      '3': 8,
+      '4': 1,
+      '5': 5,
+      '10': 'tokensReservedThisPeriod'
+    },
+    {
+      '1': 'current_period_start',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'currentPeriodStart'
+    },
+    {
+      '1': 'current_period_end',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'currentPeriodEnd'
+    },
   ],
 };
 
@@ -113,4 +254,10 @@ final $typed_data.Uint8List subscriptionDescriptor = $convert.base64Decode(
     'CgxTdWJzY3JpcHRpb24SDgoCaWQYASABKAlSAmlkEhsKCXBsYW5fdGllchgCIAEoCVIIcGxhbl'
     'RpZXISFgoGc3RhdHVzGAMgASgJUgZzdGF0dXMSNwoYc2Vzc2lvbnNfcGVyX21vbnRoX2xpbWl0'
     'GAQgASgFUhVzZXNzaW9uc1Blck1vbnRoTGltaXQSOQoZc2Vzc2lvbnNfdXNlZF90aGlzX3Blcm'
-    'lvZBgFIAEoBVIWc2Vzc2lvbnNVc2VkVGhpc1BlcmlvZA==');
+    'lvZBgFIAEoBVIWc2Vzc2lvbnNVc2VkVGhpc1BlcmlvZBIqChF0b2tlbnNfcGVyX3BlcmlvZBgG'
+    'IAEoBVIPdG9rZW5zUGVyUGVyaW9kEjUKF3Rva2Vuc191c2VkX3RoaXNfcGVyaW9kGAcgASgFUh'
+    'R0b2tlbnNVc2VkVGhpc1BlcmlvZBI9Cht0b2tlbnNfcmVzZXJ2ZWRfdGhpc19wZXJpb2QYCCAB'
+    'KAVSGHRva2Vuc1Jlc2VydmVkVGhpc1BlcmlvZBJMChRjdXJyZW50X3BlcmlvZF9zdGFydBgJIA'
+    'EoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSEmN1cnJlbnRQZXJpb2RTdGFydBJIChJj'
+    'dXJyZW50X3BlcmlvZF9lbmQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUhBjdX'
+    'JyZW50UGVyaW9kRW5k');

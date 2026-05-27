@@ -64,6 +64,7 @@ import (
 	"cloud.google.com/go/pubsub/v2"
 	firebase "firebase.google.com/go/v4"
 	fbauth "firebase.google.com/go/v4/auth"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -604,6 +605,20 @@ func TestFullSession_HappyPath(t *testing.T) {
 		// runs in parallel with our PG poll, so it's usually already
 		// there; cold start can take a few seconds).
 		assertFirestoreSessionStateDone(t, ctx, cfg.projectID, sessionID, firebaseUID)
+
+		// --------------------------------------------------------------
+		// Step 8.5b — Billing CommitUsage wiring (Phase 3 §16, slice 5)
+		// --------------------------------------------------------------
+		// stt-worker.commitBillingUsageAsync fires after MarkSessionAnalyzing.
+		// REGRESSION GUARD for the 2026-05-26 Dario bug: missing IAM
+		// binding on stt-worker → CommitUsage 403 → counter stuck at 0.
+		// Skips silently if BillingDB unavailable (test infra not seeded).
+		if env, ok := tryLoadBillingEnv(t); ok {
+			sessUUID, perr := uuid.Parse(sessionID)
+			if perr == nil {
+				AssertBillingCommittedAfterSession(t, env, sessUUID, 1)
+			}
+		}
 
 		// --------------------------------------------------------------
 		// Step 8.6 — Report rating happy-path (feat/report-customization)

@@ -18,6 +18,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"time"
 
 	firebase "firebase.google.com/go/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -47,7 +48,17 @@ func main() {
 
 	ctx := context.Background()
 
-	pool, err := pgxpool.New(ctx, dsn)
+	// Bounded pool (see docs/17 §11). gRPC surface is light:
+	// RegisterFCMToken / RemoveFCMToken / GetUnreadCount.
+	poolCfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		slog.Error("parse db dsn", "error", err)
+		os.Exit(1)
+	}
+	poolCfg.MaxConns = 1
+	poolCfg.MinConns = 0
+	poolCfg.MaxConnIdleTime = 30 * time.Second
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		slog.Error("db connect", "error", err)
 		os.Exit(1)

@@ -144,6 +144,7 @@
   "recording_pending_upload_destructive": "Delete this recording permanently.",
 
   "stepper_step1_uploaded": "Audio safely on our servers.",
+  "stepper_step1_queued": "Audio waiting in upload queue.",
   "stepper_step2_transcribing": "Creating transcription.",
   "stepper_step3_analyzing": "AI is preparing clinical insights.",
   "stepper_step4_finalizing": "Compiling insights into a readable report.",
@@ -366,5 +367,88 @@
   "suggestion_banner_open_settings": "Open settings",
   "suggestion_banner_dismiss": "Not now",
   "suggestion_banner_applied_toast": "Changed — future reports will reflect this.",
-  "suggestion_banner_apply_error": "Could not change the setting."
+  "suggestion_banner_apply_error": "Could not change the setting.",
+
+  "billing_quota_warning_short": "{n, plural, =1{1 token left.} other{{n} tokens left.}}",
+  "@billing_quota_warning_short": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "billing_quota_critical_short": "Only 1 token left.",
+  "billing_quota_exhausted_short": "Token pool exhausted.",
+  "billing_quota_exhausted_subtitle": "New sessions will be saved locally until renewal.",
+  "billing_period_end_label": "Pool renews on {date}.",
+  "@billing_period_end_label": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "billing_expand_plan_cta": "Upgrade plan",
+  "billing_dismiss_cta": "OK, continue",
+
+  "billing_exhausted_dialog_title": "Token pool exhausted",
+  "billing_exhausted_dialog_body": "You can still record the session — audio will be securely encrypted and saved locally on your device. After upgrading your plan or pool renewal, you can resume processing from the Patient File.",
+  "billing_exhausted_dialog_record_locally": "Record locally",
+
+  "billing_pending_sessions_title": "{n, plural, =1{1 session waiting to be processed} other{{n} sessions waiting to be processed}}",
+  "@billing_pending_sessions_title": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "billing_pending_session_subtitle": "Audio saved locally · Waiting for tokens",
+  "billing_pending_session_card_meta": "Session from {date}, {time} ({duration} min)",
+  "@billing_pending_session_card_meta": {
+    "placeholders": {
+      "date": { "type": "String" },
+      "time": { "type": "String" },
+      "duration": { "type": "int" }
+    }
+  },
+  "billing_resume_processing": "Resume processing",
+  "billing_delete_local_audio": "Delete",
+  "billing_tokens_available_required": "Tokens available: {available} / Required: {required}",
+  "@billing_tokens_available_required": {
+    "placeholders": {
+      "available": { "type": "int" },
+      "required": { "type": "int" }
+    }
+  },
+
+  "billing_delete_confirm_title": "Delete session recording?",
+  "billing_delete_confirm_body": "Audio will be permanently deleted from this device. This action cannot be undone.",
+  "billing_delete_confirm_action": "Delete permanently",
+
+  "billing_reservation_expired_title": "Processing failed",
+  "billing_reservation_expired_body": "Token reservation expired after 4 hours. Audio is still saved locally.",
+  "billing_retry_cta": "Try again",
+
+  "billing_past_due_title": "Payment issue",
+  "billing_past_due_body": "We could not process your subscription payment. New sessions will not be processed until this is resolved.",
+
+  "subscription_screen_title": "Subscription",
+  "subscription_plan_section_header": "Your plan",
+  "subscription_tier_solo": "Solo",
+  "subscription_tier_pro": "Pro",
+  "subscription_tier_clinic": "Clinic",
+  "subscription_cycle_monthly": "monthly",
+  "subscription_cycle_semi_annual": "semi-annual",
+  "subscription_cycle_annual": "annual",
+  "subscription_sessions_per_period": "{n, plural, =1{1 session per period} other{{n} sessions per period}}",
+  "@subscription_sessions_per_period": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "subscription_sessions_left": "{n, plural, =0{No sessions left in period} =1{1 session left in period} other{{n} sessions left in period}}",
+  "@subscription_sessions_left": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "subscription_sessions_used": "Used: {used} of {limit}",
+  "@subscription_sessions_used": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "limit": { "type": "int" }
+    }
+  },
+  "subscription_period_ends": "Period ends {date}",
+  "@subscription_period_ends": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "subscription_no_data_title": "No subscription data",
+  "subscription_no_data_body": "Could not load your plan info. Check your connection and try again.",
+  "subscription_refresh_cta": "Refresh"
 }

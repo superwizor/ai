@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -83,8 +84,19 @@ func main() {
 
 	ctx := context.Background()
 
-	// DB
-	pool, err := pgxpool.New(ctx, dbDSN)
+	// DB — bounded pool (see docs/17 §11). clinical-svc gets 1 because
+	// GetSessionDetails / Get*Reports are read-heavy with one tx per
+	// request; concurrent gRPC handlers serialize through pgxpool's
+	// internal Acquire wait queue when the slot is busy.
+	poolCfg, err := pgxpool.ParseConfig(dbDSN)
+	if err != nil {
+		slog.Error("parse db dsn", "error", err)
+		os.Exit(1)
+	}
+	poolCfg.MaxConns = 1
+	poolCfg.MinConns = 0
+	poolCfg.MaxConnIdleTime = 30 * time.Second
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		slog.Error("db connect failed", "error", err)
 		os.Exit(1)

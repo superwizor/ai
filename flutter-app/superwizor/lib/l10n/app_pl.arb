@@ -144,6 +144,7 @@
   "recording_pending_upload_destructive": "Usuń to nagranie bezpowrotnie.",
 
   "stepper_step1_uploaded": "Audio bezpieczne na naszych serwerach.",
+  "stepper_step1_queued": "Audio czeka w kolejce do uploadu.",
   "stepper_step2_transcribing": "Tworzymy transkrypcję.",
   "stepper_step3_analyzing": "Sztuczna Inteligencja przygotowuje wnioski.",
   "stepper_step4_finalizing": "Składamy informacje w czytelny raport.",
@@ -366,5 +367,89 @@
   "suggestion_banner_open_settings": "Otwórz ustawienia",
   "suggestion_banner_dismiss": "Nie teraz",
   "suggestion_banner_applied_toast": "Zmieniono — kolejne raporty uwzględnią to ustawienie.",
-  "suggestion_banner_apply_error": "Nie udało się zmienić ustawienia."
+  "suggestion_banner_apply_error": "Nie udało się zmienić ustawienia.",
+
+  "billing_quota_warning_short": "{n, plural, =1{Został Ci 1 token.} few{Zostały Ci {n} tokeny.} many{Zostało Ci {n} tokenów.} other{Zostało Ci {n} tokenów.}}",
+  "@billing_quota_warning_short": {
+    "description": "Krótka warning banner — pozostałe tokeny w bieżącym okresie",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "billing_quota_critical_short": "Został Ci ostatni token.",
+  "billing_quota_exhausted_short": "Pula tokenów wyczerpana.",
+  "billing_quota_exhausted_subtitle": "Nowe sesje zapiszą się lokalnie do dnia odnowienia.",
+  "billing_period_end_label": "Pula odnawia się {date}.",
+  "@billing_period_end_label": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "billing_expand_plan_cta": "Rozszerz plan",
+  "billing_dismiss_cta": "Rozumiem, kontynuuj",
+
+  "billing_exhausted_dialog_title": "Pula tokenów wyczerpana",
+  "billing_exhausted_dialog_body": "Możesz nadal nagrywać sesję — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie na Twoim urządzeniu. Po rozszerzeniu planu lub odnowieniu puli możesz wznowić przetwarzanie sesji z poziomu Kartoteki.",
+  "billing_exhausted_dialog_record_locally": "Nagrywaj lokalnie",
+
+  "billing_pending_sessions_title": "{n, plural, =1{Sesja oczekująca na przetworzenie} few{Sesje oczekujące na przetworzenie ({n})} many{Sesji oczekujących na przetworzenie ({n})} other{Sesji oczekujących na przetworzenie ({n})}}",
+  "@billing_pending_sessions_title": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "billing_pending_session_subtitle": "Audio zapisane lokalnie · Czeka na tokeny",
+  "billing_pending_session_card_meta": "Sesja z {date}, {time} ({duration} min)",
+  "@billing_pending_session_card_meta": {
+    "placeholders": {
+      "date": { "type": "String" },
+      "time": { "type": "String" },
+      "duration": { "type": "int" }
+    }
+  },
+  "billing_resume_processing": "Wznów przetwarzanie",
+  "billing_delete_local_audio": "Usuń",
+  "billing_tokens_available_required": "Tokeny dostępne: {available} / Wymagane: {required}",
+  "@billing_tokens_available_required": {
+    "placeholders": {
+      "available": { "type": "int" },
+      "required": { "type": "int" }
+    }
+  },
+
+  "billing_delete_confirm_title": "Usunąć nagranie sesji?",
+  "billing_delete_confirm_body": "Audio zostanie trwale usunięte z tego urządzenia. Tej operacji nie można cofnąć.",
+  "billing_delete_confirm_action": "Usuń trwale",
+
+  "billing_reservation_expired_title": "Przetwarzanie nie powiodło się",
+  "billing_reservation_expired_body": "Rezerwacja tokena wygasła po 4 godzinach. Audio jest nadal zapisane lokalnie.",
+  "billing_retry_cta": "Spróbuj ponownie",
+
+  "billing_past_due_title": "Problem z płatnością",
+  "billing_past_due_body": "Nie udało się pobrać opłaty za subskrypcję. Do czasu rozwiązania problemu nie będziemy przetwarzać nowych sesji.",
+
+  "subscription_screen_title": "Subskrypcja",
+  "subscription_plan_section_header": "Twój plan",
+  "subscription_tier_solo": "Solo",
+  "subscription_tier_pro": "Pro",
+  "subscription_tier_clinic": "Klinika",
+  "subscription_cycle_monthly": "miesięczny",
+  "subscription_cycle_semi_annual": "półroczny",
+  "subscription_cycle_annual": "roczny",
+  "subscription_sessions_per_period": "{n, plural, =1{1 sesja w okresie} few{{n} sesje w okresie} many{{n} sesji w okresie} other{{n} sesji w okresie}}",
+  "@subscription_sessions_per_period": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "subscription_sessions_left": "{n, plural, =0{Brak sesji do końca okresu} =1{1 sesja do końca okresu} few{{n} sesje do końca okresu} many{{n} sesji do końca okresu} other{{n} sesji do końca okresu}}",
+  "@subscription_sessions_left": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "subscription_sessions_used": "Wykorzystano: {used} z {limit}",
+  "@subscription_sessions_used": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "limit": { "type": "int" }
+    }
+  },
+  "subscription_period_ends": "Okres kończy się {date}",
+  "@subscription_period_ends": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "subscription_no_data_title": "Brak danych o subskrypcji",
+  "subscription_no_data_body": "Nie udało się pobrać informacji o Twoim planie. Sprawdź połączenie internetowe i spróbuj ponownie.",
+  "subscription_refresh_cta": "Odśwież"
 }

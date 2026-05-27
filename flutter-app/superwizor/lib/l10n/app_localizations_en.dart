@@ -388,6 +388,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stepper_step1_uploaded => 'Audio safely on our servers.';
 
   @override
+  String get stepper_step1_queued => 'Audio waiting in upload queue.';
+
+  @override
   String get stepper_step2_transcribing => 'Creating transcription.';
 
   @override
@@ -1013,4 +1016,175 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get suggestion_banner_apply_error => 'Could not change the setting.';
+
+  @override
+  String billing_quota_warning_short(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n tokens left.',
+      one: '1 token left.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get billing_quota_critical_short => 'Only 1 token left.';
+
+  @override
+  String get billing_quota_exhausted_short => 'Token pool exhausted.';
+
+  @override
+  String get billing_quota_exhausted_subtitle =>
+      'New sessions will be saved locally until renewal.';
+
+  @override
+  String billing_period_end_label(String date) {
+    return 'Pool renews on $date.';
+  }
+
+  @override
+  String get billing_expand_plan_cta => 'Upgrade plan';
+
+  @override
+  String get billing_dismiss_cta => 'OK, continue';
+
+  @override
+  String get billing_exhausted_dialog_title => 'Token pool exhausted';
+
+  @override
+  String get billing_exhausted_dialog_body =>
+      'You can still record the session — audio will be securely encrypted and saved locally on your device. After upgrading your plan or pool renewal, you can resume processing from the Patient File.';
+
+  @override
+  String get billing_exhausted_dialog_record_locally => 'Record locally';
+
+  @override
+  String billing_pending_sessions_title(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n sessions waiting to be processed',
+      one: '1 session waiting to be processed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get billing_pending_session_subtitle =>
+      'Audio saved locally · Waiting for tokens';
+
+  @override
+  String billing_pending_session_card_meta(
+    String date,
+    String time,
+    int duration,
+  ) {
+    return 'Session from $date, $time ($duration min)';
+  }
+
+  @override
+  String get billing_resume_processing => 'Resume processing';
+
+  @override
+  String get billing_delete_local_audio => 'Delete';
+
+  @override
+  String billing_tokens_available_required(int available, int required) {
+    return 'Tokens available: $available / Required: $required';
+  }
+
+  @override
+  String get billing_delete_confirm_title => 'Delete session recording?';
+
+  @override
+  String get billing_delete_confirm_body =>
+      'Audio will be permanently deleted from this device. This action cannot be undone.';
+
+  @override
+  String get billing_delete_confirm_action => 'Delete permanently';
+
+  @override
+  String get billing_reservation_expired_title => 'Processing failed';
+
+  @override
+  String get billing_reservation_expired_body =>
+      'Token reservation expired after 4 hours. Audio is still saved locally.';
+
+  @override
+  String get billing_retry_cta => 'Try again';
+
+  @override
+  String get billing_past_due_title => 'Payment issue';
+
+  @override
+  String get billing_past_due_body =>
+      'We could not process your subscription payment. New sessions will not be processed until this is resolved.';
+
+  @override
+  String get subscription_screen_title => 'Subscription';
+
+  @override
+  String get subscription_plan_section_header => 'Your plan';
+
+  @override
+  String get subscription_tier_solo => 'Solo';
+
+  @override
+  String get subscription_tier_pro => 'Pro';
+
+  @override
+  String get subscription_tier_clinic => 'Clinic';
+
+  @override
+  String get subscription_cycle_monthly => 'monthly';
+
+  @override
+  String get subscription_cycle_semi_annual => 'semi-annual';
+
+  @override
+  String get subscription_cycle_annual => 'annual';
+
+  @override
+  String subscription_sessions_per_period(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n sessions per period',
+      one: '1 session per period',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String subscription_sessions_left(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n sessions left in period',
+      one: '1 session left in period',
+      zero: 'No sessions left in period',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String subscription_sessions_used(int used, int limit) {
+    return 'Used: $used of $limit';
+  }
+
+  @override
+  String subscription_period_ends(String date) {
+    return 'Period ends $date';
+  }
+
+  @override
+  String get subscription_no_data_title => 'No subscription data';
+
+  @override
+  String get subscription_no_data_body =>
+      'Could not load your plan info. Check your connection and try again.';
+
+  @override
+  String get subscription_refresh_cta => 'Refresh';
 }
