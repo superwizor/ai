@@ -95,6 +95,14 @@ type Querier interface {
 	GetTherapistUILanguage(ctx context.Context, id uuid.UUID) (string, error)
 	GetTranscriptBySession(ctx context.Context, sessionID uuid.UUID) (Transcript, error)
 	GetTranscriptForRebuild(ctx context.Context, sessionID uuid.UUID) (GetTranscriptForRebuildRow, error)
+	// Resolves users.organization_id for a therapist — used by
+	// clinical-svc.GetMyBillingState (proxy to billing-svc.GetSubscription)
+	// to derive the org from the auth-context user_id.
+	//
+	// Returns NULL via pgtype.UUID when the user isn't bound to an org
+	// yet (rare after the trial-signup bootstrap — but handled
+	// defensively in the caller as FailedPrecondition).
+	GetUserOrganizationID(ctx context.Context, id uuid.UUID) (pgtype.UUID, error)
 	// Permanent removal. Migration 000012 added ON DELETE CASCADE on
 	// sessions.patient_file_id and audio_uploads.patient_file_id, so all
 	// child sessions (and their transcripts/reports/hitop rows via the

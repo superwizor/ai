@@ -53,7 +53,7 @@ func ctxWithUser(t *testing.T, id uuid.UUID) context.Context {
 // identity + crypto stay nil — none of the Update/Delete handlers under
 // test touch them.
 func newTestServer(q db.Querier, tx TxOpener, pub SessionEventPublisher) *Server {
-	return NewServerWithDeps(q, tx, nil, nil, pub, "test-1.0")
+	return NewServerWithDeps(q, tx, nil, nil, nil, pub, "test-1.0")
 }
 
 // codeOf extracts the gRPC code from an error. Returns codes.OK for nil.

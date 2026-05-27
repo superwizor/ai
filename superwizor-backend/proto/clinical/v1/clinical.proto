@@ -4,6 +4,7 @@ package clinical.v1;
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
+import "billing/v1/billing.proto";
 
 option go_package = "github.com/superwizor-ai/backend/gen/go/clinical/v1;clinicalv1";
 
@@ -31,6 +32,16 @@ service ClinicalService {
 
     rpc ListModalities(google.protobuf.Empty) returns (ListModalitiesResponse);
     rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
+
+    // Thin proxy to billing-svc.GetSubscription, scoped to the
+    // calling user's organization. Lets Flutter read the canonical
+    // counter snapshot (used / reserved / limit / remaining + plan)
+    // without exposing billing-svc directly to public clients.
+    // Authentication: identity-svc-validated Firebase JWT (same as
+    // every other clinical-svc RPC). Organization is derived from
+    // users.organization_id — clients never specify it.
+    rpc GetMyBillingState(google.protobuf.Empty) returns (billing.v1.Subscription);
+
     rpc UpdateSpeakerLabels(UpdateSpeakerLabelsRequest) returns (UpdateSpeakerLabelsResponse);
 
     // Sessions and Analysis

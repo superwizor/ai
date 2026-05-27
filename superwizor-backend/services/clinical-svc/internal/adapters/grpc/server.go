@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
@@ -93,6 +94,7 @@ type Server struct {
 	queries  db.Querier
 	tx       TxOpener
 	identity identityv1.IdentityServiceClient
+	billing  billingv1.BillingServiceClient // nil = GetMyBillingState returns Unavailable
 	crypto   cryptobox.CryptoBox
 	pubsub   SessionEventPublisher
 	version  string
@@ -102,11 +104,17 @@ type Server struct {
 // Queries get wrapped behind the Querier+TxOpener interfaces so the
 // handler code never sees the pool directly. Tests construct Server
 // fields directly via NewServerWithDeps.
-func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
+//
+// `billing` is the upstream BillingServiceClient used by GetMyBillingState
+// to proxy through to billing-svc.GetSubscription. Pass nil for tests
+// or environments where billing-svc isn't wired — GetMyBillingState
+// will respond with Unavailable in that case.
+func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, billing billingv1.BillingServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
 	return &Server{
 		queries:  queries,
 		tx:       &pgxTxOpener{pool: dbPool, base: queries},
 		identity: identity,
+		billing:  billing,
 		crypto:   crypto,
 		pubsub:   pubsub,
 		version:  version,
@@ -117,11 +125,12 @@ func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.Id
 // dependency is explicit so tests can inject fakes. Production code
 // uses NewServer; this exists purely to keep test files honest about
 // what they're stubbing.
-func NewServerWithDeps(queries db.Querier, tx TxOpener, identity identityv1.IdentityServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
+func NewServerWithDeps(queries db.Querier, tx TxOpener, identity identityv1.IdentityServiceClient, billing billingv1.BillingServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
 	return &Server{
 		queries:  queries,
 		tx:       tx,
 		identity: identity,
+		billing:  billing,
 		crypto:   crypto,
 		pubsub:   pubsub,
 		version:  version,

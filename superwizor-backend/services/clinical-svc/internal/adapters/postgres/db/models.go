@@ -327,6 +327,7 @@ const (
 	PlanTierPRO     PlanTier = "PRO"
 	PlanTierCLINIC  PlanTier = "CLINIC"
 	PlanTierPATIENT PlanTier = "PATIENT"
+	PlanTierTRIAL   PlanTier = "TRIAL"
 )
 
 func (e *PlanTier) Scan(src interface{}) error {
@@ -450,6 +451,50 @@ func (ns NullRelationStatus) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.RelationStatus), nil
+}
+
+type ReservationStatus string
+
+const (
+	ReservationStatusACTIVE    ReservationStatus = "ACTIVE"
+	ReservationStatusCOMMITTED ReservationStatus = "COMMITTED"
+	ReservationStatusRELEASED  ReservationStatus = "RELEASED"
+	ReservationStatusEXPIRED   ReservationStatus = "EXPIRED"
+)
+
+func (e *ReservationStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ReservationStatus(s)
+	case string:
+		*e = ReservationStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ReservationStatus: %T", src)
+	}
+	return nil
+}
+
+type NullReservationStatus struct {
+	ReservationStatus ReservationStatus `json:"reservation_status"`
+	Valid             bool              `json:"valid"` // Valid is true if ReservationStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullReservationStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ReservationStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ReservationStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullReservationStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ReservationStatus), nil
 }
 
 type SessionStatus string
@@ -776,6 +821,20 @@ type Organization struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type OutboxEvent struct {
+	ID             uuid.UUID          `json:"id"`
+	AggregateType  string             `json:"aggregate_type"`
+	EventType      string             `json:"event_type"`
+	AggregateID    uuid.UUID          `json:"aggregate_id"`
+	OrganizationID uuid.UUID          `json:"organization_id"`
+	Payload        []byte             `json:"payload"`
+	Processed      bool               `json:"processed"`
+	PublishedAt    pgtype.Timestamptz `json:"published_at"`
+	Attempts       int32              `json:"attempts"`
+	LastError      *string            `json:"last_error"`
+	CreatedAt      time.Time          `json:"created_at"`
+}
+
 type PatientFile struct {
 	ID                    uuid.UUID          `json:"id"`
 	TherapistID           uuid.UUID          `json:"therapist_id"`
@@ -795,6 +854,35 @@ type PatientFile struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out (legacy clients).
 	IdempotencyKey *string `json:"idempotency_key"`
+}
+
+type PaymentEvent struct {
+	ID               uuid.UUID          `json:"id"`
+	SubscriptionID   pgtype.UUID        `json:"subscription_id"`
+	Provider         PaymentProvider    `json:"provider"`
+	ProviderEventID  string             `json:"provider_event_id"`
+	EventType        string             `json:"event_type"`
+	AmountGross      pgtype.Numeric     `json:"amount_gross"`
+	AmountNet        pgtype.Numeric     `json:"amount_net"`
+	VatRate          pgtype.Numeric     `json:"vat_rate"`
+	CurrencyCode     *string            `json:"currency_code"`
+	RawPayload       []byte             `json:"raw_payload"`
+	ProcessingStatus string             `json:"processing_status"`
+	ProcessedAt      pgtype.Timestamptz `json:"processed_at"`
+	ErrorMessage     *string            `json:"error_message"`
+	ReceivedAt       time.Time          `json:"received_at"`
+}
+
+type PendingReservation struct {
+	ID             uuid.UUID          `json:"id"`
+	SessionID      uuid.UUID          `json:"session_id"`
+	SubscriptionID uuid.UUID          `json:"subscription_id"`
+	OrganizationID uuid.UUID          `json:"organization_id"`
+	TokensReserved int32              `json:"tokens_reserved"`
+	Status         ReservationStatus  `json:"status"`
+	CreatedAt      time.Time          `json:"created_at"`
+	ExpiresAt      time.Time          `json:"expires_at"`
+	FinalizedAt    pgtype.Timestamptz `json:"finalized_at"`
 }
 
 // Suggestion engine telemetry. Pure analytics; safe to TRUNCATE. See docs/10_REPORT_CUSTOMIZATION.md §6.
@@ -898,6 +986,43 @@ type SttOperation struct {
 	FinalizeError         *string            `json:"finalize_error"`
 }
 
+type Subscription struct {
+	ID                             uuid.UUID          `json:"id"`
+	OrganizationID                 uuid.UUID          `json:"organization_id"`
+	PlanID                         uuid.UUID          `json:"plan_id"`
+	Provider                       PaymentProvider    `json:"provider"`
+	ProviderSubscriptionID         string             `json:"provider_subscription_id"`
+	ProviderCustomerIDCiphertext   []byte             `json:"provider_customer_id_ciphertext"`
+	ProviderCustomerIDEncryptedDek []byte             `json:"provider_customer_id_encrypted_dek"`
+	Status                         SubscriptionStatus `json:"status"`
+	CurrentPeriodStart             time.Time          `json:"current_period_start"`
+	CurrentPeriodEnd               time.Time          `json:"current_period_end"`
+	CancelAtPeriodEnd              bool               `json:"cancel_at_period_end"`
+	CanceledAt                     pgtype.Timestamptz `json:"canceled_at"`
+	TrialEndAt                     pgtype.Timestamptz `json:"trial_end_at"`
+	CreatedAt                      time.Time          `json:"created_at"`
+	UpdatedAt                      time.Time          `json:"updated_at"`
+}
+
+type SubscriptionPlan struct {
+	ID                   uuid.UUID      `json:"id"`
+	Tier                 PlanTier       `json:"tier"`
+	Cycle                BillingCycle   `json:"cycle"`
+	DisplayName          string         `json:"display_name"`
+	PriceGross           pgtype.Numeric `json:"price_gross"`
+	CurrencyCode         string         `json:"currency_code"`
+	TokensPerPeriod      int32          `json:"tokens_per_period"`
+	LicensesLimit        int32          `json:"licenses_limit"`
+	HasB2bDashboard      bool           `json:"has_b2b_dashboard"`
+	MarketingDescription *string        `json:"marketing_description"`
+	StripePriceID        *string        `json:"stripe_price_id"`
+	P24PlanID            *string        `json:"p24_plan_id"`
+	AppleProductID       *string        `json:"apple_product_id"`
+	GoogleProductID      *string        `json:"google_product_id"`
+	IsActive             bool           `json:"is_active"`
+	CreatedAt            time.Time      `json:"created_at"`
+}
+
 type TherapistPatientRelation struct {
 	ID           uuid.UUID          `json:"id"`
 	TherapistID  uuid.UUID          `json:"therapist_id"`
@@ -937,6 +1062,28 @@ type TranscriptSegment struct {
 	TextWordCount    *int32         `json:"text_word_count"`
 	Confidence       pgtype.Numeric `json:"confidence"`
 	CreatedAt        time.Time      `json:"created_at"`
+}
+
+type UsageCounter struct {
+	ID             uuid.UUID `json:"id"`
+	SubscriptionID uuid.UUID `json:"subscription_id"`
+	PeriodStart    time.Time `json:"period_start"`
+	PeriodEnd      time.Time `json:"period_end"`
+	TokensUsed     int32     `json:"tokens_used"`
+	TokensReserved int32     `json:"tokens_reserved"`
+	TokensLimit    int32     `json:"tokens_limit"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type UsageEvent struct {
+	ID              uuid.UUID `json:"id"`
+	SessionID       uuid.UUID `json:"session_id"`
+	SubscriptionID  uuid.UUID `json:"subscription_id"`
+	OrganizationID  uuid.UUID `json:"organization_id"`
+	TokensConsumed  int32     `json:"tokens_consumed"`
+	DurationSeconds int32     `json:"duration_seconds"`
+	UsageType       string    `json:"usage_type"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type User struct {

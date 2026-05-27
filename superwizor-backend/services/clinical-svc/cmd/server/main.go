@@ -20,6 +20,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
+	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
@@ -194,7 +195,25 @@ func main() {
 	if pubsubPublisher != nil {
 		sessionEvents = pubsubPublisher
 	}
-	srv := grpcadapter.NewServer(pool, queries, identityClient, crypto, sessionEvents, version)
+	// Billing client (Phase 3 refactor — optional). When BILLING_SVC_URL
+	// is set, GetMyBillingState proxies through to billing-svc.
+	// GetSubscription. Without the env var, GetMyBillingState responds
+	// Unavailable. Same wiring pattern as ingestion-svc.
+	var billingClient billingv1.BillingServiceClient
+	if billingURL := os.Getenv("BILLING_SVC_URL"); billingURL != "" {
+		c, bErr := newBillingClient(ctx, billingURL)
+		if bErr != nil {
+			slog.Error("billing client init failed", "url", billingURL, "error", bErr)
+			// Fail-soft — the rest of clinical-svc works without it.
+		} else {
+			billingClient = c
+			slog.Info("clinical-svc: billing-svc client wired", "url", billingURL)
+		}
+	} else {
+		slog.Info("clinical-svc: BILLING_SVC_URL unset — GetMyBillingState will return Unavailable")
+	}
+
+	srv := grpcadapter.NewServer(pool, queries, identityClient, billingClient, crypto, sessionEvents, version)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
@@ -230,4 +249,46 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// newBillingClient dials billing-svc with Cloud Run service-to-service
+// OIDC auth when the URL is https://… (idtoken minted by metadata
+// server, audience = service URL). Falls back to insecure credentials
+// for http:// (local dev). Same wiring pattern as ingestion-svc.
+func newBillingClient(ctx context.Context, serviceURL string) (billingv1.BillingServiceClient, error) {
+	if len(serviceURL) >= 5 && serviceURL[:5] == "https" {
+		tokenSource, err := idtoken.NewTokenSource(ctx, serviceURL)
+		if err != nil {
+			return nil, fmt.Errorf("idtoken: %w", err)
+		}
+		u, err := url.Parse(serviceURL)
+		if err != nil {
+			return nil, fmt.Errorf("parse url: %w", err)
+		}
+		target := u.Host
+		if u.Port() == "" {
+			target = u.Host + ":443"
+		}
+		conn, err := grpc.NewClient(target,
+			grpc.WithTransportCredentials(credentials.NewTLS(nil)),
+			grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("dial: %w", err)
+		}
+		return billingv1.NewBillingServiceClient(conn), nil
+	}
+	u, err := url.Parse(serviceURL)
+	if err != nil {
+		return nil, err
+	}
+	target := u.Host
+	if target == "" {
+		target = serviceURL
+	}
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	return billingv1.NewBillingServiceClient(conn), nil
 }
