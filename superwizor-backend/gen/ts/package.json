@@ -1,0 +1,36 @@
+{
+  "name": "@superwizor/proto-ts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generated Connect-RPC + proto-es TypeScript clients for Superwizor gRPC services. Regenerate via `buf generate proto/` from superwizor-backend/. Do not edit by hand.",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    "./billing/v1/*": {
+      "types": "./billing/v1/*.ts",
+      "default": "./billing/v1/*.ts"
+    },
+    "./clinical/v1/*": {
+      "types": "./clinical/v1/*.ts",
+      "default": "./clinical/v1/*.ts"
+    },
+    "./identity/v1/*": {
+      "types": "./identity/v1/*.ts",
+      "default": "./identity/v1/*.ts"
+    },
+    "./ingestion/v1/*": {
+      "types": "./ingestion/v1/*.ts",
+      "default": "./ingestion/v1/*.ts"
+    },
+    "./notification/v1/*": {
+      "types": "./notification/v1/*.ts",
+      "default": "./notification/v1/*.ts"
+    }
+  },
+  "peerDependencies": {
+    "@bufbuild/protobuf": "^2.2.0",
+    "@connectrpc/connect": "^2.0.0",
+    "@connectrpc/connect-web": "^2.0.0"
+  }
+}

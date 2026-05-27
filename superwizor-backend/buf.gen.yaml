@@ -5,6 +5,7 @@ managed:
     - file_option: go_package_prefix
       value: github.com/superwizor-ai/backend/gen/go
 plugins:
+  # ── Go side ─────────────────────────────────────────────────
   - remote: buf.build/protocolbuffers/go
     out: gen/go
     opt:
@@ -14,3 +15,29 @@ plugins:
     opt:
       - paths=source_relative
       - require_unimplemented_servers=true
+  # Connect-RPC handler stubs for Go. The same handler we register
+  # alongside grpc.Server in each service's cmd/server/main.go answers
+  # gRPC, gRPC-Web, AND the Connect protocol from one endpoint —
+  # browsers and the iOS app share a backend with zero protocol shims.
+  # See docs/18 §5 / R1.
+  - remote: buf.build/connectrpc/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+
+  # ── TypeScript side (Next.js marketing + admin site) ────────
+  # Plain proto-es messages (TS interfaces + serialisers).
+  - remote: buf.build/bufbuild/es
+    out: gen/ts
+    opt:
+      - target=ts
+      - import_extension=js
+  # Connect-RPC clients in TS — what marketing-site/ imports to call
+  # identity-svc / clinical-svc / billing-svc from the browser. The
+  # generated client also speaks gRPC-Web so it remains forward-compatible
+  # if we ever swap transports.
+  - remote: buf.build/connectrpc/es
+    out: gen/ts
+    opt:
+      - target=ts
+      - import_extension=js
