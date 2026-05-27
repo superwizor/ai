@@ -193,7 +193,19 @@ func init() {
 
 	var err error
 	if dbDSN != "" {
-		dbPool, err = pgxpool.New(ctx, dbDSN)
+		// Bounded pool (see docs/17 §11). llm-worker spends most of a
+		// request blocked on Vertex AI's Gemini call — single conn is
+		// fine; concurrent invocations on the same instance serialize
+		// through pgxpool.Acquire's wait queue.
+		poolCfg, perr := pgxpool.ParseConfig(dbDSN)
+		if perr != nil {
+			slog.Error("parse db dsn", "error", perr)
+			os.Exit(1)
+		}
+		poolCfg.MaxConns = 1
+		poolCfg.MinConns = 0
+		poolCfg.MaxConnIdleTime = 30 * time.Second
+		dbPool, err = pgxpool.NewWithConfig(ctx, poolCfg)
 		if err != nil {
 			slog.Error("db", "error", err)
 			os.Exit(1)

@@ -77,7 +77,20 @@ func init() {
 
 	var err error
 	if dbDSN != "" {
-		dbPool, err = pgxpool.New(ctx, dbDSN)
+		// Bounded pool (see docs/17 §11). This binary runs in multiple
+		// Cloud Functions (stt-worker / stt-finalize / stt-watchdog),
+		// each scaling independently — single conn per instance keeps
+		// the total under Cloud SQL's hard cap regardless of which
+		// function is hot.
+		poolCfg, perr := pgxpool.ParseConfig(dbDSN)
+		if perr != nil {
+			slog.Error("parse db dsn", "error", perr)
+			os.Exit(1)
+		}
+		poolCfg.MaxConns = 1
+		poolCfg.MinConns = 0
+		poolCfg.MaxConnIdleTime = 30 * time.Second
+		dbPool, err = pgxpool.NewWithConfig(ctx, poolCfg)
 		if err != nil {
 			slog.Error("db init", "error", err)
 			os.Exit(1)

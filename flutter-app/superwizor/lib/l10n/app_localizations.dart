@@ -776,6 +776,12 @@ abstract class AppLocalizations {
   /// **'Audio bezpieczne na naszych serwerach.'**
   String get stepper_step1_uploaded;
 
+  /// No description provided for @stepper_step1_queued.
+  ///
+  /// In pl, this message translates to:
+  /// **'Audio czeka w kolejce do uploadu.'**
+  String get stepper_step1_queued;
+
   /// No description provided for @stepper_step2_transcribing.
   ///
   /// In pl, this message translates to:

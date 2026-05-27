@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"time"
 
 	gcs "cloud.google.com/go/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -43,7 +44,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	pool, err := pgxpool.New(ctx, dbDSN)
+	// Bounded pgxpool — Cloud SQL db-f1-micro caps us at 25 connections
+	// total across all services. See docs/17_BILLING_IMPLEMENTATION_FLOW.md
+	// §11 + the pool-budget table. ingestion-svc gets 2 because it
+	// serves the gRPC handler AND runs an in-process Pub/Sub subscriber
+	// (audio.uploaded) on the same instance.
+	poolCfg, err := pgxpool.ParseConfig(dbDSN)
+	if err != nil {
+		slog.Error("parse db dsn", "error", err)
+		os.Exit(1)
+	}
+	poolCfg.MaxConns = 2
+	poolCfg.MinConns = 0
+	poolCfg.MaxConnIdleTime = 30 * time.Second
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		slog.Error("db", "error", err)
 		os.Exit(1)

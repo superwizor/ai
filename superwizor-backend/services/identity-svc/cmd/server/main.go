@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
@@ -77,8 +78,17 @@ func main() {
 
 	ctx := context.Background()
 
-	// DB pool
-	pool, err := pgxpool.New(ctx, dbDSN)
+	// DB pool — bounded (see docs/17 §11). Identity has light DB usage
+	// (one query per ValidateToken / GetUser), single conn is sufficient.
+	poolCfg, err := pgxpool.ParseConfig(dbDSN)
+	if err != nil {
+		slog.Error("parse db dsn", "error", err)
+		os.Exit(1)
+	}
+	poolCfg.MaxConns = 1
+	poolCfg.MinConns = 0
+	poolCfg.MaxConnIdleTime = 30 * time.Second
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		slog.Error("failed to connect to db", "error", err)
 		os.Exit(1)

@@ -93,7 +93,19 @@ func init() {
 	projectID = os.Getenv("GCP_PROJECT_ID")
 
 	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
-		pool, err := pgxpool.New(ctx, dsn)
+		// Bounded pool (see docs/17 §11). This binary runs in five
+		// Cloud Functions (notification-worker-on-{billing,uploaded,
+		// transcribed,report,deleted}); each invocation is single-
+		// flight and only writes a few rows + Firestore docs.
+		poolCfg, err := pgxpool.ParseConfig(dsn)
+		if err != nil {
+			slog.Error("notification-worker: parse db dsn", "error", err)
+			os.Exit(1)
+		}
+		poolCfg.MaxConns = 1
+		poolCfg.MinConns = 0
+		poolCfg.MaxConnIdleTime = 30 * time.Second
+		pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 		if err != nil {
 			slog.Error("notification-worker: db pool init", "error", err)
 			os.Exit(1)

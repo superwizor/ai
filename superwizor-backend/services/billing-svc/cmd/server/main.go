@@ -68,7 +68,19 @@ func main() {
 	rootCtx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	pool, err := pgxpool.New(rootCtx, dbDSN)
+	// Bounded pool — billing-svc gets 2 because it runs both the gRPC
+	// handlers AND an in-process outbox poller goroutine that selects
+	// from outbox_events. Single-conn would starve one or the other.
+	// See docs/17 §11 for the cross-service budget table.
+	poolCfg, err := pgxpool.ParseConfig(dbDSN)
+	if err != nil {
+		slog.Error("parse db dsn", "error", err)
+		os.Exit(1)
+	}
+	poolCfg.MaxConns = 2
+	poolCfg.MinConns = 0
+	poolCfg.MaxConnIdleTime = 30 * time.Second
+	pool, err := pgxpool.NewWithConfig(rootCtx, poolCfg)
 	if err != nil {
 		slog.Error("db connect failed", "error", err)
 		os.Exit(1)

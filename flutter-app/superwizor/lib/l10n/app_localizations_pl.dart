@@ -393,6 +393,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get stepper_step1_uploaded => 'Audio bezpieczne na naszych serwerach.';
 
   @override
+  String get stepper_step1_queued => 'Audio czeka w kolejce do uploadu.';
+
+  @override
   String get stepper_step2_transcribing => 'Tworzymy transkrypcję.';
 
   @override
