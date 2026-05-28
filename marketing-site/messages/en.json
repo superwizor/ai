@@ -150,7 +150,11 @@
       "title": "Sign up as a therapist",
       "subhead": "You'll get 3 free sessions to start. No credit card required.",
       "sectionAccount": "Your account",
-      "sectionProfile": "Your profile"
+      "sectionProfile": "Your profile",
+      "finishMetaTitle": "Finish your profile",
+      "finishTitle": "Finish your profile",
+      "finishSubhead": "Hi {firstName}. Pick a therapeutic modality and interface language to activate your account.",
+      "finishGenericSubhead": "Pick a therapeutic modality and interface language to activate your account."
     },
     "organization": {
       "metaTitle": "Organization sign-up",
@@ -159,7 +163,11 @@
       "subhead": "After signup you'll be the clinic administrator. To also record sessions yourself, invite a second email from the Therapists tab.",
       "sectionFounder": "Founder account",
       "sectionOrg": "Organisation details",
-      "sectionAddress": "Headquarters address"
+      "sectionAddress": "Headquarters address",
+      "finishMetaTitle": "Finish organisation profile",
+      "finishTitle": "Finish setting up your clinic",
+      "finishSubhead": "Hi {firstName}. Complete the organisation details and headquarters address to activate your administrator account.",
+      "finishGenericSubhead": "Complete the organisation details and headquarters address to activate your administrator account."
     },
     "orgFields": {
       "legalName": "Legal company name",

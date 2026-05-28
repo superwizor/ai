@@ -150,7 +150,11 @@
       "title": "Zarejestruj się jako terapeuta",
       "subhead": "Otrzymasz 3 darmowe sesje na początek. Bez karty kredytowej.",
       "sectionAccount": "Twoje konto",
-      "sectionProfile": "Twój profil"
+      "sectionProfile": "Twój profil",
+      "finishMetaTitle": "Dokończ profil",
+      "finishTitle": "Dokończ swój profil",
+      "finishSubhead": "Witaj {firstName}. Wybierz nurt terapeutyczny i język interfejsu, aby aktywować konto.",
+      "finishGenericSubhead": "Wybierz nurt terapeutyczny i język interfejsu, aby aktywować konto."
     },
     "organization": {
       "metaTitle": "Rejestracja organizacji",
@@ -159,7 +163,11 @@
       "subhead": "Po rejestracji będziesz administratorem kliniki. Aby również prowadzić sesje, zaproś drugi adres e-mail z zakładki Terapeuci.",
       "sectionFounder": "Konto założyciela",
       "sectionOrg": "Dane organizacji",
-      "sectionAddress": "Adres siedziby"
+      "sectionAddress": "Adres siedziby",
+      "finishMetaTitle": "Dokończ profil organizacji",
+      "finishTitle": "Dokończ rejestrację kliniki",
+      "finishSubhead": "Witaj {firstName}. Uzupełnij dane organizacji i adres siedziby, aby aktywować konto administratora.",
+      "finishGenericSubhead": "Uzupełnij dane organizacji i adres siedziby, aby aktywować konto administratora."
     },
     "orgFields": {
       "legalName": "Pełna nazwa firmy",

@@ -86,3 +86,44 @@ export const acceptInviteSchema = z.object({
 });
 
 export type AcceptInviteForm = z.infer<typeof acceptInviteSchema>;
+
+// "Finish profile" schemas — used by the social-login paths where
+// Firebase Auth has already given us email + name, but Superwizor-
+// specific fields (modality, ui_language, ToS) must still be collected
+// before the identity-svc row gets created.
+
+export const therapistFinishSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  modalityCode: z.enum(["UNIV", "CBT", "PSYCHO"]),
+  uiLanguage: z.enum(["pl", "en"]),
+  phoneNumber: z.string().optional(),
+  professionalTitle: z.string().optional(),
+  hasAcceptedTos: z.literal(true),
+  hasMarketingConsent: z.boolean().optional(),
+});
+
+export type TherapistFinishForm = z.infer<typeof therapistFinishSchema>;
+
+export const organizationFinishSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  phoneNumber: z.string().min(4),
+  uiLanguage: z.enum(["pl", "en"]),
+  legalName: z.string().min(1),
+  orgType: z.enum(["SOLO", "CLINIC", "ENTERPRISE"]),
+  taxId: z.string().regex(/^\d{10}$/, "tax-id-invalid"),
+  vatIdEu: z.string().optional(),
+  countryCode: z.string().length(2),
+  region: z.string().optional(),
+  city: z.string().min(1),
+  postalCode: z.string().min(3),
+  streetLine: z.string().min(1),
+  buildingNumber: z.string().min(1),
+  unitNumber: z.string().optional(),
+  directions: z.string().optional(),
+  hasAcceptedTos: z.literal(true),
+  hasMarketingConsent: z.boolean().optional(),
+});
+
+export type OrganizationFinishForm = z.infer<typeof organizationFinishSchema>;

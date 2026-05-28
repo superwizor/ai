@@ -1,19 +1,23 @@
-// /register/therapist — individual therapist signup.
+// /register/therapist/finish — post-social-OAuth profile collection.
 //
-// Server component shell: locale + metadata + modality catalog
-// fetched at request time, passed to the client form component.
+// Lands here from SocialButtons when:
+//   - user clicked "Continue with Google" on /register/therapist,
+//   - Firebase popup succeeded,
+//   - identityClient.getUserByFirebaseUID returned NotFound (no
+//     existing Superwizor row).
 //
-// Social path (Google OAuth) lives in Slice 3 feature 2; this page
-// ships the email/password path. The "or" disclosure swap lands when
-// feature 2 adds the OAuth buttons.
+// Query params (?email=&firstName=&lastName=) come from the Google
+// profile so the form can pre-fill + render a personalised greeting.
+// If a user reloads this page without those params (or bookmarks it)
+// the form still works — they just have to retype name + don't see
+// the "Hi {firstName}" personalised subhead.
 
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
-import { TherapistEmailForm } from "@/components/register/TherapistEmailForm";
-import { SocialButtons } from "@/components/register/SocialButtons";
+import { TherapistFinishForm } from "@/components/register/TherapistFinishForm";
 import { getModalityCatalog } from "@/lib/clinical/modalities";
 
 export async function generateMetadata({
@@ -23,15 +27,18 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "register.therapist" });
-  return { title: t("metaTitle") };
+  return { title: t("finishMetaTitle") };
 }
 
-export default async function RegisterTherapistPage({
+export default async function FinishTherapistPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ email?: string; firstName?: string; lastName?: string }>;
 }) {
   const { locale } = await params;
+  const { email = "", firstName = "", lastName = "" } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("register.therapist");
   const modalities = await getModalityCatalog();
@@ -45,15 +52,21 @@ export default async function RegisterTherapistPage({
             {t("overline")}
           </p>
           <h1 className="font-display text-frost text-center text-3xl sm:text-4xl font-semibold tracking-[var(--tracking-display)] leading-tight">
-            {t("title")}
+            {t("finishTitle")}
           </h1>
           <p className="font-serif text-mist text-center mt-4 max-w-md mx-auto text-base leading-relaxed">
-            {t("subhead")}
+            {firstName
+              ? t("finishSubhead", { firstName })
+              : t("finishGenericSubhead")}
           </p>
 
           <div className="mt-10">
-            <SocialButtons flow="therapist" />
-            <TherapistEmailForm modalities={modalities} />
+            <TherapistFinishForm
+              modalities={modalities}
+              email={email}
+              firstName={firstName}
+              lastName={lastName}
+            />
           </div>
         </section>
       </main>
