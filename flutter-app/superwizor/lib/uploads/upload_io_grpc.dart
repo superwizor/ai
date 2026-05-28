@@ -210,7 +210,10 @@ class GrpcUploadIo implements UploadIo {
   String _sessionIdFromPath(String dirPath) {
     final parts = dirPath.split(Platform.pathSeparator);
     final cleaned = parts.where((s) => s.isNotEmpty).toList();
-    return cleaned.isEmpty ? '' : cleaned.last;
+    final result = cleaned.isEmpty ? '' : cleaned.last;
+    assert(result.isNotEmpty,
+        'sessionId extracted from path must not be empty: $dirPath');
+    return result;
   }
 
   /// Truncates the signed-URL query string in logs — they're

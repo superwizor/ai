@@ -126,7 +126,9 @@ class SecureAudioStorageService {
 
     // HKDF-Expand: OKM = HMAC-SHA256(PRK, info || 0x01)
     // We only need 32 bytes = one iteration (SHA-256 output = 32B)
-    final info = utf8.encode(sessionId);
+    // Domain separation label prevents key collision if HKDF is reused
+    // for a different purpose (e.g. key wrapping) with the same sessionId.
+    final info = utf8.encode('superwizor-audio-v1:$sessionId');
     final expandInput = Uint8List(info.length + 1);
     expandInput.setRange(0, info.length, info);
     expandInput[info.length] = 0x01; // counter byte
@@ -314,6 +316,7 @@ class SecureAudioStorageService {
       'sessionId': sessionId,
       'keyDerivation': 'hkdf-sha256',
       'totalChunks': chunks.length,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
       'chunks': chunkEntries,
       'hmac': digest.toString(),
     };

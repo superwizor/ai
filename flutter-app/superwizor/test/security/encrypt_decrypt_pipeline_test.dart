@@ -37,7 +37,7 @@ enc.Key _deriveSessionKey(enc.Key masterKey, String sessionId) {
   final extractHmac = crypto.Hmac(crypto.sha256, salt);
   final prk = extractHmac.convert(masterKey.bytes).bytes;
 
-  final info = utf8.encode(sessionId);
+  final info = utf8.encode('superwizor-audio-v1:$sessionId');
   final expandInput = Uint8List(info.length + 1);
   expandInput.setRange(0, info.length, info);
   expandInput[info.length] = 0x01;

@@ -8,6 +8,7 @@ import java.security.SecureRandom
 class MainActivity : FlutterActivity() {
 
     private val CHANNEL = "ai.superwizor/secure_random"
+    private val secureRandom = SecureRandom()
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -32,7 +33,7 @@ class MainActivity : FlutterActivity() {
 
                 try {
                     val bytes = ByteArray(length)
-                    SecureRandom().nextBytes(bytes)
+                    secureRandom.nextBytes(bytes)
                     result.success(bytes)
                 } catch (e: Exception) {
                     result.error("RNG_FAILED", e.message, null)
@@ -40,3 +41,4 @@ class MainActivity : FlutterActivity() {
             }
     }
 }
+

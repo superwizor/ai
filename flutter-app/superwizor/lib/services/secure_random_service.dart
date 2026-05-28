@@ -33,7 +33,7 @@ class SecureRandomService {
       final result = await _channel.invokeMethod<Uint8List>(
         'getRandomBytes',
         {'length': length},
-      );
+      ).timeout(const Duration(seconds: 2));
       if (result != null && result.length == length) {
         return result;
       }
