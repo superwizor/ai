@@ -11,6 +11,28 @@ const nextConfig: NextConfig = {
   // its own toolchain instead of expecting pre-compiled .js. This is
   // the standard pattern for monorepo-local TS packages.
   transpilePackages: ["@superwizor/proto-ts"],
+
+  // Cross-origin login redirect per docs/18 §5 R3 (Slice 3 feature 7).
+  // Firebase Auth's IndexedDB session is origin-scoped — bridging
+  // sessions across superwizor.ai ↔ app.superwizor.ai is fragile and
+  // we deliberately don't do it. Any visitor who hits /login on the
+  // marketing origin gets a 307 to the app origin, where the actual
+  // sign-in form lives (Flutter Web in Slice 5; today's stub during
+  // dev). Both locale-prefixed and bare URLs are covered.
+  async redirects() {
+    return [
+      {
+        source: "/login",
+        destination: "https://app.superwizor.ai/login",
+        permanent: false,
+      },
+      {
+        source: "/en/login",
+        destination: "https://app.superwizor.ai/login",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);

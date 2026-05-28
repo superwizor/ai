@@ -28,7 +28,7 @@
         { "id": "register-organization-google","title": "Google OAuth org path + /register/organization/finish page",            "status": "pending", "evidence": [] },
         { "id": "email-verification-gate",     "title": "sendEmailVerification + verification-required interstitial",            "status": "pending", "evidence": [] },
         { "id": "accept-invite-page",          "title": "/accept-invite token validation + password set + AcceptInvitation RPC", "status": "pending", "evidence": [] },
-        { "id": "login-redirect",              "title": "/login as <a> redirect to app.superwizor.ai/login (R3 origin)",         "status": "pending", "evidence": [] },
+        { "id": "login-redirect",              "title": "/login as <a> redirect to app.superwizor.ai/login (R3 origin)",         "status": "passed",  "evidence": ["evidence/slice-3/login-redirect/curl.log", "evidence/slice-3/login-redirect/verification.log"], "evaluator": "PASS-self" },
         { "id": "registration-e2e-playwright", "title": "Playwright happy-path: therapist register → Trial → redirected",        "status": "pending", "evidence": [] }
       ]
     },
