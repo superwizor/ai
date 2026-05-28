@@ -12,7 +12,6 @@ import '../services/recording_service.dart';
 import '../services/secure_audio_storage_service.dart';
 import '../services/session_state_listener.dart';
 import '../services/transcript_pdf_exporter.dart';
-import '../services/upload_service.dart';
 import 'grpc_provider.dart';
 
 final firebaseAuthProvider = Provider<fb_auth.FirebaseAuth>(
@@ -42,9 +41,9 @@ final recordingServiceProvider = Provider<RecordingService>((ref) {
   return svc;
 });
 
-final uploadServiceProvider = Provider<UploadService>((ref) {
-  return UploadService(ref.watch(secureAudioStorageProvider));
-});
+// uploadServiceProvider retired 2026-05 — superseded by the
+// queue-driven upload pipeline (UploadQueueRunner + GrpcUploadIo).
+// Legacy UploadService removed in security audit F-14/F-05.
 
 // transcriptCacheProvider retired 2026-05 — transcript caching is now
 // part of SessionDetailsRepository (see lib/repositories/).
