@@ -9,8 +9,10 @@
 //   - Delete the raw recording (the file is already protected at rest
 //     by iOS Data Protection / Android FBE; zero-overwrite was removed
 //     in F-02 audit because it's ineffective on flash/SSD storage).
-//   - Decrypt for upload: stream-read .enc files, GCM-verify, write to
-//     a single temp file ready for HTTP PUT.
+//   - Write integrity manifest (HMAC-SHA256 over chunk SHA-256 hashes)
+//     that detects tampering or corruption before upload (F-03 fix).
+//   - Decrypt for upload: verify manifest, stream-read .enc files,
+//     GCM-verify, write to a single temp file ready for HTTP PUT.
 //
 // File format per chunk:
 //
@@ -26,6 +28,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+
+import 'package:crypto/crypto.dart' as crypto;
 
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/foundation.dart';
@@ -49,6 +53,8 @@ class EncryptedChunk {
 class SecureAudioStorageService {
   SecureAudioStorageService({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
+
+  static const _manifestFileName = 'manifest.json';
 
   static const _chunkSize = 1024 * 1024; // 1 MB
   static const _ivLen = 12; // GCM standard 96-bit IV
@@ -199,7 +205,123 @@ class SecureAudioStorageService {
     }
 
     await _delete(raw);
+
+    // F-03: Write integrity manifest — HMAC-SHA256 chain over chunk
+    // SHA-256 hashes, keyed by the master encryption key. Verified
+    // before decrypt-for-upload to detect tampering or corruption.
+    await _writeManifest(
+      dir: dir,
+      sessionId: sessionId,
+      chunks: out,
+      key: key,
+    );
+
     return out;
+  }
+
+  // ---------- integrity manifest ----------
+
+  /// Writes `manifest.json` to [dir] containing SHA-256 of each chunk
+  /// file and an HMAC-SHA256 over the serialised chunk list, keyed by
+  /// the encryption master key. This detects:
+  ///   - File deletion (chunk count mismatch)
+  ///   - File replacement/corruption (SHA-256 mismatch)
+  ///   - Manifest tampering (HMAC mismatch)
+  Future<void> _writeManifest({
+    required Directory dir,
+    required String sessionId,
+    required List<EncryptedChunk> chunks,
+    required enc.Key key,
+  }) async {
+    final chunkEntries = <Map<String, dynamic>>[];
+    for (final c in chunks) {
+      final fileBytes = await File(c.path).readAsBytes();
+      final hash = crypto.sha256.convert(fileBytes).toString();
+      chunkEntries.add({
+        'seq': c.seq,
+        'sha256': hash,
+        'sizeBytes': c.sizeBytes,
+      });
+    }
+
+    // HMAC over the JSON-encoded chunk list — NOT over the raw file
+    // content (that's already covered by per-chunk SHA-256). The HMAC
+    // binds the manifest to the master key so an attacker can't forge
+    // a valid manifest after replacing chunks.
+    final chunksJson = jsonEncode(chunkEntries);
+    final hmac = crypto.Hmac(crypto.sha256, key.bytes);
+    final digest = hmac.convert(utf8.encode(chunksJson));
+
+    final manifest = {
+      'version': 1,
+      'sessionId': sessionId,
+      'totalChunks': chunks.length,
+      'chunks': chunkEntries,
+      'hmac': digest.toString(),
+    };
+
+    final manifestFile = File(p.join(dir.path, _manifestFileName));
+    await manifestFile.writeAsString(jsonEncode(manifest));
+  }
+
+  /// Verifies the integrity manifest before decryption. Throws
+  /// [IntegrityViolation] if any check fails.
+  Future<void> _verifyManifest({
+    required Directory dir,
+    required List<File> chunkFiles,
+  }) async {
+    final manifestFile = File(p.join(dir.path, _manifestFileName));
+
+    // Graceful degradation: sessions encrypted before F-03 won't have
+    // a manifest. We skip verification for those — they're already
+    // protected by AES-GCM auth tags per chunk.
+    if (!await manifestFile.exists()) return;
+
+    final manifestJson =
+        jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+    final expectedChunks =
+        (manifestJson['chunks'] as List).cast<Map<String, dynamic>>();
+    final expectedHmac = manifestJson['hmac'] as String;
+    final totalChunks = manifestJson['totalChunks'] as int;
+
+    // 1. Chunk count check
+    if (chunkFiles.length != totalChunks) {
+      throw IntegrityViolation(
+        'chunk count mismatch: expected $totalChunks, found ${chunkFiles.length}',
+      );
+    }
+
+    // 2. Per-chunk SHA-256 check
+    for (int i = 0; i < chunkFiles.length; i++) {
+      final fileBytes = await chunkFiles[i].readAsBytes();
+      final actualHash = crypto.sha256.convert(fileBytes).toString();
+      final expectedHash = expectedChunks[i]['sha256'] as String;
+      if (actualHash != expectedHash) {
+        throw IntegrityViolation(
+          'SHA-256 mismatch on chunk $i: '
+          'expected ${expectedHash.substring(0, 12)}…, '
+          'got ${actualHash.substring(0, 12)}…',
+        );
+      }
+    }
+
+    // 3. HMAC verification — re-derive from chunk list and master key
+    final chunksJson = jsonEncode(expectedChunks);
+    // We need the master key. Read the key version from the first
+    // chunk header (byte 0) to look up the correct version.
+    final firstChunkBytes = await chunkFiles.first.readAsBytes();
+    final keyVersion = firstChunkBytes[0];
+    final key = await _keyForVersion(keyVersion);
+    if (key == null) {
+      throw IntegrityViolation(
+        'cannot verify HMAC: no key for version $keyVersion',
+      );
+    }
+    final hmac = crypto.Hmac(crypto.sha256, key.bytes);
+    final actualDigest = hmac.convert(utf8.encode(chunksJson)).toString();
+    if (actualDigest != expectedHmac) {
+      throw IntegrityViolation('manifest HMAC mismatch — tampering detected');
+    }
   }
 
   // ---------- read path: decrypt for upload ----------
@@ -224,6 +346,11 @@ class SecureAudioStorageService {
     if (chunks.isEmpty) {
       throw StateError('no encrypted chunks found in $dir');
     }
+
+    // F-03: Verify integrity manifest before decryption. If the
+    // manifest exists and any check fails, IntegrityViolation is
+    // thrown and the upload is aborted.
+    await _verifyManifest(dir: dir, chunkFiles: chunks);
 
     final tempDir = await getTemporaryDirectory();
     // On macOS, the sandboxed temp directory (Caches/<bundleId>/) may not
@@ -305,4 +432,15 @@ class SecureAudioStorageService {
       if (kDebugMode) debugPrint('delete failed for ${f.path}: $e');
     }
   }
+}
+
+/// Thrown when the integrity manifest check fails during
+/// [SecureAudioStorageService.decryptToTempFile]. The upload worker
+/// should classify this as a terminal (non-retryable) error —
+/// re-encrypting won't help if the on-disk chunks are corrupted.
+class IntegrityViolation implements Exception {
+  final String message;
+  const IntegrityViolation(this.message);
+  @override
+  String toString() => 'IntegrityViolation: $message';
 }

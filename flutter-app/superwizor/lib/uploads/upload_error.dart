@@ -20,6 +20,8 @@ import 'dart:io';
 import 'package:grpc/grpc.dart' as grpc;
 import 'package:http/http.dart' as http;
 
+import '../services/secure_audio_storage_service.dart';
+
 enum UploadErrorClass {
   retryable,
   signedUrlExpired,
@@ -106,6 +108,12 @@ ClassifiedError classifyUploadError(Object error) {
       error is HandshakeException) {
     return ClassifiedError(
         UploadErrorClass.retryable, 'network: ${error.runtimeType} $error');
+  }
+
+  // ── Integrity violation (F-03) ──────────────────────────────
+  if (error is IntegrityViolation) {
+    return ClassifiedError(UploadErrorClass.terminal,
+        'integrity: ${error.message}');
   }
 
   // ── Default: be conservative, retry ─────────────────────────
