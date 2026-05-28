@@ -45,7 +45,10 @@ import { identityClient } from "@/lib/connect/clients";
 import { UserRole } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { getFirebaseAuth } from "@/lib/firebase/init";
 
-const APP_URL = "https://superwizor-app.web.app/";
+// APP_URL kept as a comment for grep — the post-login Flutter-app
+// bounce moved to the /account page's "Otwórz kartoteki" CTA, so
+// LoginForm itself no longer redirects across origins.
+// const APP_URL = "https://superwizor-app.web.app/";
 
 type Phase = "idle" | "submitting" | "redirect_admin" | "redirect_app";
 
@@ -94,12 +97,15 @@ export function LoginForm() {
         setPhase("redirect_admin");
         router.push(`${adminPrefix}/admin/`);
       } else {
+        // Therapists + org-admins land on the marketing-site /account
+        // page (profile + org + subscription). The Flutter app is a
+        // one-click outbound link from there — keeping the user on
+        // this origin lets them manage their data without re-signing
+        // in on the Flutter origin every time. APP_URL is still
+        // imported because /account uses it for the "Otwórz kartoteki"
+        // CTA.
         setPhase("redirect_app");
-        // Pass the email so the Flutter login screen can pre-fill;
-        // the user still has to retype the password because Firebase
-        // Auth IndexedDB doesn't bridge origins.
-        window.location.href =
-          `${APP_URL}?email=${encodeURIComponent(email.trim().toLowerCase())}`;
+        router.push(`${adminPrefix}/account/`);
       }
     } catch (e) {
       if (

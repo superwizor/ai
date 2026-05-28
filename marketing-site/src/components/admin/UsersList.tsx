@@ -24,6 +24,7 @@ import { identityClient } from "@/lib/connect/clients";
 import {
   AddressSchema,
   AdminListUsersRequestSchema,
+  AdminListOrganizationsRequestSchema,
   AdminUpdateUserRequestSchema,
   AdminDeleteUserRequestSchema,
   UserRole,
@@ -94,6 +95,45 @@ export function UsersList() {
   const [pageStack, setPageStack] = useState<string[]>([""]);
   const [editing, setEditing] = useState<User | null>(null);
   const [deleting, setDeleting] = useState<User | null>(null);
+
+  // org_id → legal_name lookup, populated on mount so the ORGANIZACJA
+  // column can show a human-readable name instead of a UUID. Pages
+  // through AdminListOrganizations until exhausted. For the launch
+  // catalogue (<100 orgs) this is cheap; if it grows, replace with
+  // a per-user JOIN on the backend (AdminListUsers → JOIN orgs).
+  const [orgNames, setOrgNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const names: Record<string, string> = {};
+      let pageToken = "";
+      try {
+        // Safety cap of 20 pages × 100/page = 2000 orgs.
+        for (let i = 0; i < 20; i++) {
+          const resp = await identityClient.adminListOrganizations(
+            create(AdminListOrganizationsRequestSchema, {
+              pageSize: 100,
+              pageToken,
+            }),
+          );
+          for (const summary of resp.organizations) {
+            const o = summary.organization;
+            if (o?.id) names[o.id] = o.legalName || "—";
+          }
+          if (!resp.nextPageToken) break;
+          pageToken = resp.nextPageToken;
+        }
+        if (!cancelled) setOrgNames(names);
+      } catch {
+        // Non-fatal: column falls back to "—". We don't surface the
+        // error because the rest of the page is fine.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const handle = setTimeout(() => setSearchDebounced(search), 300);
@@ -231,8 +271,14 @@ export function UsersList() {
                       <td className="px-4 py-3 font-serif text-mist">
                         {tRole(rk)}
                       </td>
-                      <td className="px-4 py-3 font-mono text-[10px] text-mist/70 break-all">
-                        {u.organizationId || "—"}
+                      <td className="px-4 py-3 font-serif text-mist">
+                        {/* Prefer legal_name from the orgNames map; fall
+                            back to the raw UUID if the lookup hasn't
+                            populated yet (e.g. mid-flight). Dash for
+                            users with no organization. */}
+                        {u.organizationId
+                          ? orgNames[u.organizationId] ?? u.organizationId
+                          : "—"}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex gap-2">
