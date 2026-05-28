@@ -23,6 +23,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _error;
   bool _isLogin = true;
 
+  @override
+  void initState() {
+    super.initState();
+    // Cross-origin login bridge (stop-gap):
+    // marketing-site's /account page links here as
+    //   https://superwizor-app.web.app/?email=<encoded>
+    // because Firebase Auth IndexedDB is origin-scoped (docs/18 §5
+    // R3) — the user is logged in on superwizor.web.app but starts
+    // signed-out here. Pre-fill the email so they only need to
+    // re-type the password. Uri.base reflects the current page URL
+    // on web; on iOS/Android Uri.base is a custom scheme and
+    // queryParameters is empty, so this is a no-op on native.
+    final emailParam = Uri.base.queryParameters['email'];
+    if (emailParam != null && emailParam.isNotEmpty) {
+      _email.text = emailParam;
+    }
+  }
+
   Future<void> _submit() async {
     setState(() {
       _loading = true;

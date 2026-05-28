@@ -84,8 +84,13 @@ export function AccountSections() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {/* Pre-fill the Flutter login email so the user only has to
+              re-type the password — Firebase Auth IndexedDB is origin-
+              scoped (docs/18 §5 R3) and we can't bridge sessions
+              without a custom-token mint. Encoded so emails with +
+              survive the URL parsing on the Flutter side. */}
           <a
-            href={APP_URL}
+            href={`${APP_URL}?email=${encodeURIComponent(fbUser.email ?? "")}`}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-xs px-4 py-2 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition"
@@ -521,8 +526,6 @@ function BillingSection() {
       try {
         const s = await clinicalClient.getMyBillingState(create(EmptySchema, {}));
         if (cancelled) return;
-        // The RPC returns the Subscription directly (no wrapper). If
-        // there's no active sub, plan id will be empty.
         if (!s || !s.planTier) {
           setPhase("none");
         } else {
@@ -530,6 +533,17 @@ function BillingSection() {
           setPhase("ready");
         }
       } catch (e) {
+        // Distinguish "no active subscription" (NotFound) and "user
+        // has no organization" (FailedPrecondition) from real errors.
+        // Both manifest as ConnectError; show the calmer "no
+        // subscription" copy instead of the alarming generic banner.
+        // Anything else still becomes the error state — kept for
+        // debugging visibility.
+        if (e instanceof ConnectError &&
+            (e.code === Code.NotFound || e.code === Code.FailedPrecondition)) {
+          if (!cancelled) setPhase("none");
+          return;
+        }
         console.error("[account] load subscription failed", e);
         if (!cancelled) setPhase("error");
       }

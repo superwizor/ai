@@ -81,7 +81,22 @@ async function loginToFlutter() {
     if (!/(identity-svc|clinical-svc|billing-svc|identitytoolkit)/.test(url)) return;
     try {
       const res = await req.response();
-      respLog.push({ method: req.method(), status: res?.status() ?? 0, url: url.split("/").slice(-2).join("/") });
+      // For gRPC-Web the HTTP status is almost always 200 even when
+      // the call failed — the real status lives in the trailer or in
+      // the response body's last frame as `grpc-status: <code>` and
+      // `grpc-message: <text>`. Decode them so the probe catches
+      // backend errors instead of declaring "logged_in" on a silently
+      // broken session.
+      const body = (await res?.text()) ?? "";
+      const grpcStatus = body.match(/grpc-status:\s*(\d+)/i)?.[1];
+      const grpcMessage = body.match(/grpc-message:\s*([^\r\n]+)/i)?.[1];
+      respLog.push({
+        method: req.method(),
+        status: res?.status() ?? 0,
+        grpc_status: grpcStatus ? Number(grpcStatus) : null,
+        grpc_message: grpcMessage ? decodeURIComponent(grpcMessage).slice(0, 200) : null,
+        url: url.split("/").slice(-2).join("/"),
+      });
     } catch {}
   });
 
