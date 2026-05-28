@@ -189,9 +189,25 @@ func main() {
 	})
 
 	// Mixed handler: dispatch on Content-Type so a single listener
-	// serves both protocols (same h2c pattern as billing-svc).
+	// serves all three protocols (native gRPC, gRPC-Web, Connect).
+	//
+	//   application/grpc            -> standard gRPC server (iOS, server-to-server)
+	//   application/grpc-web[+...]  -> Connect handler (Flutter web)
+	//   application/{json,connect+}  -> Connect handler (marketing-site)
+	//
+	// The Connect handler is a 3-protocol multiplexer — registering a
+	// Connect handler implicitly exposes the same RPCs over gRPC-Web
+	// without any extra wrapping. Before this dispatch, gRPC-Web
+	// requests landed at the plain gRPC server which doesn't speak
+	// gRPC-Web framing, so it rejected with 415. The 2026-05-28
+	// Flutter-web login probe exposed this — see PROGRESS.md.
 	mixedHandler := nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
-		if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
+		ct := r.Header.Get("Content-Type")
+		if r.ProtoMajor == 2 && strings.HasPrefix(ct, "application/grpc") {
+			if strings.HasPrefix(ct, "application/grpc-web") {
+				httpMux.ServeHTTP(w, r)
+				return
+			}
 			grpcServer.ServeHTTP(w, r)
 			return
 		}

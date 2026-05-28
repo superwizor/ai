@@ -3,6 +3,11 @@
 // stay statically exportable. The server component shell used to
 // read `searchParams` directly which forced dynamic rendering and
 // broke the Firebase Hosting static-export deploy.
+//
+// Note (2026-05-28): the `modalities` prop is gone. AcceptInviteForm
+// now fetches the catalogue itself via clinical-svc.ListModalities
+// (anonymous, allowlisted). The Section only needs to hand off the
+// token + the "no token" copy.
 
 "use client";
 
@@ -10,14 +15,12 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 import { AcceptInviteForm } from "./AcceptInviteForm";
-import type { ModalityRow } from "@/lib/clinical/modalities";
 
 type Props = {
-  modalities: ReadonlyArray<ModalityRow>;
   missingTokenMessage: string;
 };
 
-function AcceptInviteSectionInner({ modalities, missingTokenMessage }: Props) {
+function AcceptInviteSectionInner({ missingTokenMessage }: Props) {
   const params = useSearchParams();
   const token = params?.get("token") ?? "";
 
@@ -32,7 +35,7 @@ function AcceptInviteSectionInner({ modalities, missingTokenMessage }: Props) {
     );
   }
 
-  return <AcceptInviteForm token={token} modalities={modalities} />;
+  return <AcceptInviteForm token={token} />;
 }
 
 export function AcceptInviteSection(props: Props) {

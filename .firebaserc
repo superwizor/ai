@@ -1,5 +1,14 @@
 {
-  "projects": {},
-  "targets": {},
+  "projects": {
+    "default": "superwizor-ai-25ecd"
+  },
+  "targets": {
+    "superwizor-ai-25ecd": {
+      "hosting": {
+        "superwizor": ["superwizor"],
+        "superwizor-app": ["superwizor-app"]
+      }
+    }
+  },
   "etags": {}
 }

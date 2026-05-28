@@ -263,8 +263,21 @@ func main() {
 		_, _ = w.Write([]byte("ok"))
 	})
 
+	// Mixed handler dispatches by Content-Type:
+	//   application/grpc           -> native gRPC server (server-to-server, iOS)
+	//   application/grpc-web[+...] -> Connect handler (Flutter web speaks gRPC-Web)
+	//   application/{json,connect+} -> Connect handler (marketing-site browser)
+	//
+	// Pre-fix Flutter web's gRPC-Web traffic was being routed to the
+	// plain gRPC server (because Content-Type starts with the same
+	// prefix), which doesn't speak gRPC-Web framing → 415.
 	mixedHandler := nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
-		if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
+		ct := r.Header.Get("Content-Type")
+		if r.ProtoMajor == 2 && strings.HasPrefix(ct, "application/grpc") {
+			if strings.HasPrefix(ct, "application/grpc-web") {
+				httpMux.ServeHTTP(w, r)
+				return
+			}
 			grpcServer.ServeHTTP(w, r)
 			return
 		}

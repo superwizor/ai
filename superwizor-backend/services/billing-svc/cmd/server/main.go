@@ -125,11 +125,22 @@ func main() {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	// Mixed handler: gRPC requests trafiają do grpc.Server, reszta do http mux.
-	// Content-Type "application/grpc" jest deterministic indicator gRPC traffic
-	// (gRPC wire format + HTTP/2 wymagane).
+	// Mixed handler dispatches by Content-Type:
+	//   application/grpc           -> native gRPC server (server-to-server, iOS)
+	//   application/grpc-web[+...] -> Connect handler (Flutter web speaks gRPC-Web)
+	//   application/{json,connect+} -> Connect handler (marketing-site browser)
+	//
+	// The Connect handler is a 3-protocol multiplexer; routing gRPC-Web
+	// to it gives Flutter web a working RPC channel without spinning up
+	// a separate gRPC-Web proxy. Pre-fix Flutter web got 415 from the
+	// plain gRPC server (see PROGRESS.md 2026-05-28).
 	mixedHandler := nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
-		if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
+		ct := r.Header.Get("Content-Type")
+		if r.ProtoMajor == 2 && strings.HasPrefix(ct, "application/grpc") {
+			if strings.HasPrefix(ct, "application/grpc-web") {
+				httpMux.ServeHTTP(w, r)
+				return
+			}
 			gs.ServeHTTP(w, r)
 			return
 		}

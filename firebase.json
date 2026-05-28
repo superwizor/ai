@@ -12,18 +12,108 @@
   },
   "hosting": [
     {
-      "//": "Marketing site (Next.js). Uses Firebase Hosting's Web Frameworks support — points at the Next.js project root, not a static output dir, so middleware/proxy + SSR/SSG pages all keep working. Deploy: `firebase deploy --only hosting:superwizor-www` from repo root.",
-      "site": "superwizor-www",
-      "source": "marketing-site",
-      "frameworksBackend": {
-        "region": "europe-central2"
-      },
-      "ignore": [
-        "firebase.json",
-        "**/.*",
-        "**/node_modules/**",
-        "**/scripts/**",
-        "**/.env*"
+      "//": "Marketing site (Next.js, static-exported). 2026-05-28 — switched from frameworksBackend (Cloud Functions SSR) to pure static. firebase-frameworks' npm-ci-against-pnpm-lockfile pipeline kept breaking Cloud Build. Static export of Next.js 16 produces clean HTML/JS that Firebase Hosting serves at the edge. Deploy: `pnpm --dir marketing-site build && firebase deploy --only hosting:superwizor`.",
+      "site": "superwizor",
+      "public": "marketing-site/out",
+      "cleanUrls": true,
+      "trailingSlash": true,
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "redirects": [
+        {
+          "//": "Cross-origin login redirect per docs/18 §5 R3. Firebase Auth's IndexedDB session is origin-scoped — bridging sessions across superwizor.ai ↔ app.superwizor.ai is fragile and we deliberately don't do it. Any visitor who hits /login on the marketing origin gets a 307 to the app origin where the actual sign-in form lives. 2026-05-28: DNS for app.superwizor.ai isn't wired up yet, so we point at the firebase.web.app sub-domain directly. Flip back to app.superwizor.ai once DNS lands. The Flutter app uses _AuthGate at / — no /login route — so the destination has no path suffix.",
+          "source": "/login",
+          "destination": "https://superwizor-app.web.app/",
+          "type": 307
+        },
+        {
+          "source": "/en/login",
+          "destination": "https://superwizor-app.web.app/",
+          "type": 307
+        },
+        {
+          "//": "PL default locale redirect. Next.js was configured with `localePrefix: 'as-needed'` so during SSR/dev the PL pages served at no-prefix paths (e.g. /register/therapist) and only EN got the /en prefix. Static export bakes both into explicit directories (out/pl/... and out/en/...); the proxy middleware that stripped the prefix at request time is gone. The redirects below restore the UX — every top-level no-prefix path forwards to its /pl/ equivalent. Result: visitors get the same UX as before — a quick 307 bounce, then a stable /pl/* URL.",
+          "source": "/",
+          "destination": "/pl/",
+          "type": 307
+        },
+        {
+          "//": "Top-level no-prefix paths -> /pl/<same>. One redirect per top-level segment because Firebase Hosting source patterns are anchored: a single catchall would also match /pl/* and /en/* and create a loop. The :rest* capture preserves the deep path so /register/therapist/finish?token=x lands on /pl/register/therapist/finish?token=x.",
+          "source": "/register/:rest*",
+          "destination": "/pl/register/:rest*",
+          "type": 307
+        },
+        {
+          "//": "Bare /admin needs its own exact-match peer because Firebase Hosting's :rest* requires at least one segment after the slash — `/admin` alone doesn't match `/admin/:rest*`. Same for /register, but most users land on a deeper register path.",
+          "source": "/admin",
+          "destination": "/pl/admin/",
+          "type": 307
+        },
+        {
+          "source": "/admin/",
+          "destination": "/pl/admin/",
+          "type": 307
+        },
+        {
+          "source": "/admin/:rest*",
+          "destination": "/pl/admin/:rest*",
+          "type": 307
+        },
+        {
+          "source": "/register",
+          "destination": "/pl/register/therapist/",
+          "type": 307
+        },
+        {
+          "source": "/register/",
+          "destination": "/pl/register/therapist/",
+          "type": 307
+        },
+        {
+          "source": "/legal",
+          "destination": "/pl/",
+          "type": 307
+        },
+        {
+          "source": "/legal/",
+          "destination": "/pl/",
+          "type": 307
+        },
+        {
+          "source": "/legal/:rest*",
+          "destination": "/pl/legal/:rest*",
+          "type": 307
+        },
+        {
+          "source": "/pricing",
+          "destination": "/pl/pricing/",
+          "type": 307
+        },
+        {
+          "source": "/pricing/",
+          "destination": "/pl/pricing/",
+          "type": 307
+        },
+        {
+          "source": "/accept-invite",
+          "destination": "/pl/accept-invite/",
+          "type": 307
+        },
+        {
+          "source": "/accept-invite/",
+          "destination": "/pl/accept-invite/",
+          "type": 307
+        }
+      ],
+      "rewrites": [
+        {
+          "//": "Admin org-detail catch-all. Static export can't pre-render every /admin/orgs/<id> because the IDs aren't known at build time. We ship a single template per locale (out/{pl,en}/admin/orgs/[id]/index.html — literal bracketed directory) and rewrite all matching /admin/orgs/<id> traffic to it. The client component reads usePathname() at runtime and fetches the matching org via AdminGetOrganization.",
+          "source": "/pl/admin/orgs/**",
+          "destination": "/pl/admin/orgs/[id]/index.html"
+        },
+        {
+          "source": "/en/admin/orgs/**",
+          "destination": "/en/admin/orgs/[id]/index.html"
+        }
       ]
     },
     {

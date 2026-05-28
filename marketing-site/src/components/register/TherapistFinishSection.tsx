@@ -4,6 +4,11 @@
 // subhead is rendered here via useTranslations (next-intl's client
 // hook) — passing a function from the server component to here would
 // break server-component serialisation.
+//
+// Note (2026-05-28): the `modalities` prop is gone. TherapistFinishForm
+// now fetches the catalogue itself via clinical-svc.ListModalities
+// (anonymous, allowlisted). This Section just shuttles the OAuth
+// profile fields from the URL into the form.
 
 "use client";
 
@@ -12,13 +17,8 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { TherapistFinishForm } from "./TherapistFinishForm";
-import type { ModalityRow } from "@/lib/clinical/modalities";
 
-type Props = {
-  modalities: ReadonlyArray<ModalityRow>;
-};
-
-function Inner({ modalities }: Props) {
+function Inner() {
   const t = useTranslations("register.therapist");
   const params = useSearchParams();
   const email = params?.get("email") ?? "";
@@ -34,7 +34,6 @@ function Inner({ modalities }: Props) {
       </p>
       <div className="mt-10">
         <TherapistFinishForm
-          modalities={modalities}
           email={email}
           firstName={firstName}
           lastName={lastName}
@@ -44,10 +43,10 @@ function Inner({ modalities }: Props) {
   );
 }
 
-export function TherapistFinishSection(props: Props) {
+export function TherapistFinishSection() {
   return (
     <Suspense fallback={null}>
-      <Inner {...props} />
+      <Inner />
     </Suspense>
   );
 }

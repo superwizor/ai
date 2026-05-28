@@ -7,17 +7,19 @@
 // notification-svc's email template can target either origin and
 // this route serves the same UX.
 //
-// Server component shell: validates the presence of ?token=, then
-// hands the raw token to the client form for AcceptInvitation
-// submission. We do NOT verify the token server-side because there's
-// no GetInvitationByToken RPC — submission is the verification.
+// Static-export contract (2026-05-28): the token used to be read
+// server-side via `searchParams`, which forces dynamic rendering.
+// To make the route exportable, the token now comes from
+// useSearchParams() inside AcceptInviteSection (a "use client"
+// component). The shell stays as a server component so the
+// translated copy is still SSG-prerendered.
 
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
-import { AcceptInviteForm } from "@/components/register/AcceptInviteForm";
+import { AcceptInviteSection } from "@/components/register/AcceptInviteSection";
 
 export async function generateMetadata({
   params,
@@ -31,13 +33,10 @@ export async function generateMetadata({
 
 export default async function AcceptInvitePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ token?: string }>;
 }) {
   const { locale } = await params;
-  const { token } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("register.acceptInvite");
 
@@ -57,16 +56,7 @@ export default async function AcceptInvitePage({
           </p>
 
           <div className="mt-10">
-            {token ? (
-              <AcceptInviteForm token={token} />
-            ) : (
-              <p
-                role="alert"
-                className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost text-center"
-              >
-                {t("missingToken")}
-              </p>
-            )}
+            <AcceptInviteSection missingTokenMessage={t("missingToken")} />
           </div>
         </section>
       </main>
