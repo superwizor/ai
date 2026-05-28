@@ -122,7 +122,22 @@ export function OrganizationEmailForm() {
           setServerError(tErr("weakPassword"));
           return;
         }
+        if (
+          e.code === "auth/network-request-failed" ||
+          e.code === "auth/internal-error"
+        ) {
+          setServerError(tErr("networkError"));
+          return;
+        }
       }
+      if (
+        e instanceof TypeError &&
+        /failed to fetch|network/i.test(e.message)
+      ) {
+        setServerError(tErr("networkError"));
+        return;
+      }
+      console.error("[register/organization] unmapped signup error", e);
       setServerError(tErr("unknown"));
     }
   });

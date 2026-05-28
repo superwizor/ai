@@ -133,7 +133,33 @@ export function TherapistEmailForm({ modalities }: Props) {
           setServerError(tErr("weakPassword"));
           return;
         }
+        // Firebase Auth emulator unreachable, or live API unreachable
+        // (offline, DNS, blocked egress). Surface a network-flavoured
+        // message so the user knows to retry / check connectivity
+        // rather than the generic "unknown" catch-all that previously
+        // hid this case.
+        if (
+          e.code === "auth/network-request-failed" ||
+          e.code === "auth/internal-error"
+        ) {
+          setServerError(tErr("networkError"));
+          return;
+        }
       }
+      // Plain TypeError("Failed to fetch") from a downed identity-svc
+      // (after Firebase succeeded). Same UX as the Firebase network
+      // error path — distinguishing the two doesn't help the user.
+      if (
+        e instanceof TypeError &&
+        /failed to fetch|network/i.test(e.message)
+      ) {
+        setServerError(tErr("networkError"));
+        return;
+      }
+      // Log the full error so devs hitting an unmapped case can
+      // diagnose it from devtools; the user still sees the generic
+      // fallback so nothing internal leaks.
+      console.error("[register/therapist] unmapped signup error", e);
       setServerError(tErr("unknown"));
     }
   });
