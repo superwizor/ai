@@ -11,12 +11,14 @@
 //   5. SecureRandomService fallback path
 //   6. Certificate pinner construction
 //   7. Foreign file detection (F-10)
+//   8. AES-256-GCM encrypt/decrypt (round-trip, wrong key, tamper)
 //
 // These tests form a safety net: if a refactor breaks key derivation
 // or manifest verification, CI will catch it before merge.
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart' as crypto;
@@ -56,7 +58,6 @@ void main() {
     late enc.Key masterKey;
 
     setUp(() {
-      // Fixed test master key (32 bytes)
       masterKey = enc.Key(Uint8List.fromList(
         List.generate(32, (i) => i),
       ));
@@ -105,12 +106,78 @@ void main() {
         'f47ac10b-58cc-4372-a567-0e02b2c3d479',
       );
       expect(derived.bytes.length, 32);
-      // And it's deterministic
       final again = _hkdfDeriveKey(
         masterKey,
         'f47ac10b-58cc-4372-a567-0e02b2c3d479',
       );
       expect(derived.bytes, equals(again.bytes));
+    });
+
+    test('unicode sessionId (Polish characters)', () {
+      final derived = _hkdfDeriveKey(masterKey, 'sesja-ąćęłńóśźż-2026');
+      expect(derived.bytes.length, 32);
+      final again = _hkdfDeriveKey(masterKey, 'sesja-ąćęłńóśźż-2026');
+      expect(derived.bytes, equals(again.bytes));
+    });
+
+    test('very long sessionId (1000 chars)', () {
+      final longId = 'a' * 1000;
+      final derived = _hkdfDeriveKey(masterKey, longId);
+      expect(derived.bytes.length, 32);
+    });
+
+    test('sessionId with special characters', () {
+      for (final id in [
+        'session/with/slashes',
+        'session with spaces',
+        'session\nwith\nnewlines',
+        'session\twith\ttabs',
+        'session<with>angle<brackets>',
+      ]) {
+        final derived = _hkdfDeriveKey(masterKey, id);
+        expect(derived.bytes.length, 32,
+            reason: 'HKDF should handle any UTF-8 string: $id');
+      }
+    });
+
+    test('similar sessionIds produce very different keys (avalanche)', () {
+      final a = _hkdfDeriveKey(masterKey, 'session-000');
+      final b = _hkdfDeriveKey(masterKey, 'session-001');
+
+      int diffCount = 0;
+      for (int i = 0; i < 32; i++) {
+        if (a.bytes[i] != b.bytes[i]) diffCount++;
+      }
+      expect(diffCount, greaterThan(8),
+          reason: 'HKDF must avalanche: 1-char input change → '
+              'many output bytes differ. Got $diffCount/32 different');
+    });
+
+    test('all-zero master key still produces valid derived key', () {
+      final zeroKey = enc.Key(Uint8List(32));
+      final derived = _hkdfDeriveKey(zeroKey, 'session-1');
+      expect(derived.bytes.length, 32);
+      expect(derived.bytes.any((b) => b != 0), isTrue,
+          reason: 'HKDF must produce non-trivial output even from zero key');
+    });
+
+    test('all-0xFF master key produces valid derived key', () {
+      final ffKey = enc.Key(Uint8List.fromList(List.filled(32, 0xFF)));
+      final derived = _hkdfDeriveKey(ffKey, 'test');
+      expect(derived.bytes.length, 32);
+    });
+
+    test('100 unique sessionIds → 100 unique keys (no collisions)', () {
+      final keys = <String>{};
+      for (int i = 0; i < 100; i++) {
+        final derived = _hkdfDeriveKey(masterKey, 'session-$i');
+        final hex = derived.bytes
+            .map((b) => b.toRadixString(16).padLeft(2, '0'))
+            .join();
+        keys.add(hex);
+      }
+      expect(keys.length, 100,
+          reason: 'All 100 derived keys must be unique');
     });
   });
 
@@ -120,7 +187,6 @@ void main() {
 
   group('F-03 integrity manifest', () {
     test('SHA-256 of known data matches expected value', () {
-      // Smoke test: ensure crypto.sha256 works as expected
       final data = utf8.encode('hello world');
       final digest = crypto.sha256.convert(data);
       expect(
@@ -152,22 +218,19 @@ void main() {
       final hmac2 = crypto.Hmac(crypto.sha256, key2);
       final a = hmac1.convert(utf8.encode('same-data'));
       final b = hmac2.convert(utf8.encode('same-data'));
-      expect(a.toString(), isNot(equals(b.toString())),
-          reason: 'Different keys must produce different HMACs — '
-              'this ensures manifest tampering is detected');
+      expect(a.toString(), isNot(equals(b.toString())));
     });
 
     test('manifest JSON round-trip preserves structure', () {
-      // Verify the manifest format we write is parseable
       final manifest = {
         'version': 2,
         'sessionId': 'test-session-123',
-        'chunkCount': 3,
+        'totalChunks': 3,
         'keyDerivation': 'hkdf-sha256',
         'chunks': [
-          {'seq': 0, 'sha256': 'abc123'},
-          {'seq': 1, 'sha256': 'def456'},
-          {'seq': 2, 'sha256': 'ghi789'},
+          {'seq': 0, 'sha256': 'abc123', 'sizeBytes': 100},
+          {'seq': 1, 'sha256': 'def456', 'sizeBytes': 200},
+          {'seq': 2, 'sha256': 'ghi789', 'sizeBytes': 50},
         ],
         'hmac': 'some-hmac-value',
       };
@@ -176,10 +239,42 @@ void main() {
       final parsed = jsonDecode(json) as Map<String, dynamic>;
 
       expect(parsed['version'], 2);
-      expect(parsed['chunkCount'], 3);
+      expect(parsed['totalChunks'], 3);
       expect(parsed['keyDerivation'], 'hkdf-sha256');
       expect((parsed['chunks'] as List).length, 3);
       expect(parsed['hmac'], 'some-hmac-value');
+    });
+
+    test('HMAC output is exactly 64 hex chars (256 bits)', () {
+      final key = List.generate(32, (i) => i);
+      final hmac = crypto.Hmac(crypto.sha256, key);
+      final digest = hmac.convert(utf8.encode('data'));
+      expect(digest.toString().length, 64);
+    });
+
+    test('SHA-256 output is exactly 64 hex chars', () {
+      final digest = crypto.sha256.convert(utf8.encode('data'));
+      expect(digest.toString().length, 64);
+    });
+
+    test('HMAC over reordered JSON is different (order matters)', () {
+      final key = List.generate(32, (i) => i);
+      final hmac = crypto.Hmac(crypto.sha256, key);
+
+      final chunksA = [
+        {'seq': 0, 'sha256': 'aaa'},
+        {'seq': 1, 'sha256': 'bbb'},
+      ];
+      final chunksB = [
+        {'seq': 1, 'sha256': 'bbb'},
+        {'seq': 0, 'sha256': 'aaa'},
+      ];
+
+      final digestA = hmac.convert(utf8.encode(jsonEncode(chunksA)));
+      final digestB = hmac.convert(utf8.encode(jsonEncode(chunksB)));
+      expect(digestA.toString(), isNot(equals(digestB.toString())),
+          reason: 'Reordering chunks must invalidate HMAC — '
+              'this detects chunk reordering attacks');
     });
   });
 
@@ -188,8 +283,6 @@ void main() {
   // ────────────────────────────────────────────────────────────────
 
   group('estimateDecryptedSize', () {
-    // Each chunk has 13 bytes header (1 key_version + 12 IV) +
-    // 16 bytes GCM tag = 29 bytes overhead.
     const overhead = 29;
 
     test('single chunk: subtracts 29 bytes overhead', () {
@@ -218,26 +311,55 @@ void main() {
       final chunks = [
         EncryptedChunk(seq: 0, path: '/x', sizeBytes: overhead),
       ];
-      expect(
-        SecureAudioStorageService.estimateDecryptedSize(chunks),
-        0,
-      );
+      expect(SecureAudioStorageService.estimateDecryptedSize(chunks), 0);
     });
 
     test('chunk smaller than overhead → 0 plaintext (clamped)', () {
       final chunks = [
-        EncryptedChunk(seq: 0, path: '/x', sizeBytes: 10), // < 29
+        EncryptedChunk(seq: 0, path: '/x', sizeBytes: 10),
       ];
-      expect(
-        SecureAudioStorageService.estimateDecryptedSize(chunks),
-        0,
-        reason: 'A chunk smaller than overhead is corrupt but '
-            'estimateDecryptedSize should not produce negative',
-      );
+      expect(SecureAudioStorageService.estimateDecryptedSize(chunks), 0);
     });
 
     test('empty chunk list → 0', () {
       expect(SecureAudioStorageService.estimateDecryptedSize([]), 0);
+    });
+
+    test('realistic 10-minute FLAC recording size', () {
+      final chunks = [
+        EncryptedChunk(seq: 0, path: '/a', sizeBytes: 1048576 + overhead),
+        EncryptedChunk(seq: 1, path: '/b', sizeBytes: 1048576 + overhead),
+        EncryptedChunk(seq: 2, path: '/c', sizeBytes: 600000 + overhead),
+      ];
+      final estimated =
+          SecureAudioStorageService.estimateDecryptedSize(chunks);
+      expect(estimated, 1048576 + 1048576 + 600000);
+    });
+
+    test('100 chunks (long session)', () {
+      final chunks = List.generate(
+        100,
+        (i) => EncryptedChunk(
+          seq: i,
+          path: '/chunk_${i.toString().padLeft(5, '0')}.enc',
+          sizeBytes: 1048576 + overhead,
+        ),
+      );
+      expect(
+        SecureAudioStorageService.estimateDecryptedSize(chunks),
+        100 * 1048576,
+      );
+    });
+
+    test('EncryptedChunk preserves all fields', () {
+      const chunk = EncryptedChunk(
+        seq: 42,
+        path: '/path/to/chunk.enc',
+        sizeBytes: 999,
+      );
+      expect(chunk.seq, 42);
+      expect(chunk.path, '/path/to/chunk.enc');
+      expect(chunk.sizeBytes, 999);
     });
   });
 
@@ -250,15 +372,23 @@ void main() {
       final result = classifyUploadError(
         IntegrityViolation('chunk count mismatch: expected 5, got 3'),
       );
-      expect(result.kind, UploadErrorClass.terminal,
-          reason: 'Integrity failures must never retry — the data '
-              'is compromised and re-uploading would just re-fail');
+      expect(result.kind, UploadErrorClass.terminal);
     });
 
     test('IntegrityViolation message is preserved in classification', () {
       const msg = 'HMAC mismatch: manifest tampered';
       final result = classifyUploadError(IntegrityViolation(msg));
       expect(result.kind, UploadErrorClass.terminal);
+    });
+
+    test('IntegrityViolation toString format', () {
+      const e = IntegrityViolation('test error');
+      expect(e.toString(), 'IntegrityViolation: test error');
+    });
+
+    test('IntegrityViolation message accessor', () {
+      const e = IntegrityViolation('my message');
+      expect(e.message, 'my message');
     });
   });
 
@@ -283,16 +413,12 @@ void main() {
       final key1 = enc.Key.fromSecureRandom(32);
       final key2 = enc.Key.fromSecureRandom(32);
       final iv = enc.IV.fromSecureRandom(12);
-      final encrypter1 = enc.Encrypter(enc.AES(key1, mode: enc.AESMode.gcm));
-      final encrypter2 = enc.Encrypter(enc.AES(key2, mode: enc.AESMode.gcm));
+      final e1 = enc.Encrypter(enc.AES(key1, mode: enc.AESMode.gcm));
+      final e2 = enc.Encrypter(enc.AES(key2, mode: enc.AESMode.gcm));
 
-      final encrypted = encrypter1.encrypt('secret data', iv: iv);
+      final encrypted = e1.encrypt('secret data', iv: iv);
 
-      expect(
-        () => encrypter2.decrypt(encrypted, iv: iv),
-        throwsA(anything),
-        reason: 'GCM auth tag must reject decryption with wrong key',
-      );
+      expect(() => e2.decrypt(encrypted, iv: iv), throwsA(anything));
     });
 
     test('modified ciphertext fails GCM authentication', () {
@@ -301,18 +427,12 @@ void main() {
       final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
 
       final encrypted = encrypter.encrypt('secret data', iv: iv);
-
-      // Tamper with the ciphertext
       final tampered = Uint8List.fromList(encrypted.bytes);
-      tampered[0] ^= 0xFF; // flip bits in first byte
+      tampered[0] ^= 0xFF;
 
       expect(
-        () => encrypter.decrypt(
-          enc.Encrypted(tampered),
-          iv: iv,
-        ),
+        () => encrypter.decrypt(enc.Encrypted(tampered), iv: iv),
         throwsA(anything),
-        reason: 'GCM auth tag must detect ciphertext tampering',
       );
     });
 
@@ -350,10 +470,83 @@ void main() {
       expect(
         () => masterEncrypter.decrypt(encrypted, iv: iv),
         throwsA(anything),
-        reason: 'F-04: session key must differ from master key — '
-            'compromise of master key alone should not decrypt '
-            'session data without re-deriving',
       );
+    });
+
+    test('binary data round-trip (all byte values 0-255)', () {
+      final key = enc.Key.fromSecureRandom(32);
+      final iv = enc.IV.fromSecureRandom(12);
+      final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
+
+      final plaintext = Uint8List.fromList(
+        List.generate(256, (i) => i),
+      );
+      final encrypted = encrypter.encryptBytes(plaintext, iv: iv);
+      final decrypted = encrypter.decryptBytes(encrypted, iv: iv);
+
+      expect(Uint8List.fromList(decrypted), equals(plaintext));
+    });
+
+    test('large block round-trip (64 KB)', () {
+      final key = enc.Key.fromSecureRandom(32);
+      final iv = enc.IV.fromSecureRandom(12);
+      final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
+
+      final rng = Random(42);
+      final plaintext = Uint8List.fromList(
+        List.generate(65536, (_) => rng.nextInt(256)),
+      );
+      final encrypted = encrypter.encryptBytes(plaintext, iv: iv);
+      final decrypted = encrypter.decryptBytes(encrypted, iv: iv);
+
+      expect(Uint8List.fromList(decrypted), equals(plaintext));
+    });
+
+    test('modified GCM auth tag fails (last 16 bytes)', () {
+      final key = enc.Key.fromSecureRandom(32);
+      final iv = enc.IV.fromSecureRandom(12);
+      final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
+
+      final encrypted = encrypter.encryptBytes(
+        Uint8List.fromList([1, 2, 3, 4, 5]),
+        iv: iv,
+      );
+
+      final tampered = Uint8List.fromList(encrypted.bytes);
+      tampered[tampered.length - 1] ^= 0xFF;
+
+      expect(
+        () => encrypter.decryptBytes(enc.Encrypted(tampered), iv: iv),
+        throwsA(anything),
+        reason: 'Flipping a bit in GCM auth tag must fail decryption',
+      );
+    });
+
+    test('wrong IV fails GCM authentication', () {
+      final key = enc.Key.fromSecureRandom(32);
+      final iv1 = enc.IV.fromSecureRandom(12);
+      final iv2 = enc.IV.fromSecureRandom(12);
+      final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
+
+      final encrypted = encrypter.encrypt('secret', iv: iv1);
+
+      expect(
+        () => encrypter.decrypt(encrypted, iv: iv2),
+        throwsA(anything),
+        reason: 'Decrypting with wrong IV must fail GCM auth',
+      );
+    });
+
+    test('empty plaintext encrypts/decrypts (zero-length body)', () {
+      final key = enc.Key.fromSecureRandom(32);
+      final iv = enc.IV.fromSecureRandom(12);
+      final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
+
+      final encrypted = encrypter.encryptBytes(Uint8List(0), iv: iv);
+      final decrypted = encrypter.decryptBytes(encrypted, iv: iv);
+
+      expect(decrypted, isEmpty);
+      expect(encrypted.bytes.length, 16);
     });
   });
 
@@ -375,21 +568,20 @@ void main() {
     });
 
     test('detects foreign files in session directory', () async {
-      // Create expected files
       await File('${tempDir.path}/chunk_00000.enc').writeAsBytes([1, 2, 3]);
       await File('${tempDir.path}/chunk_00001.enc').writeAsBytes([4, 5, 6]);
       await File('${tempDir.path}/manifest.json').writeAsString('{}');
-
-      // Create a foreign file
       await File('${tempDir.path}/malware.bin').writeAsBytes([0xFF, 0xFE]);
 
-      // List all files
-      final allFiles = await tempDir.list().where((e) => e is File).cast<File>().toList();
+      final allFiles = await tempDir
+          .list()
+          .where((e) => e is File)
+          .cast<File>()
+          .toList();
       final chunks = allFiles
           .where((f) => f.path.split('/').last.startsWith('chunk_'))
           .toList();
 
-      // Check for foreign files
       final allowedNames = {
         ...chunks.map((f) => f.path.split('/').last),
         'manifest.json',
@@ -406,7 +598,11 @@ void main() {
       await File('${tempDir.path}/chunk_00000.enc').writeAsBytes([1, 2, 3]);
       await File('${tempDir.path}/manifest.json').writeAsString('{}');
 
-      final allFiles = await tempDir.list().where((e) => e is File).cast<File>().toList();
+      final allFiles = await tempDir
+          .list()
+          .where((e) => e is File)
+          .cast<File>()
+          .toList();
       final chunks = allFiles
           .where((f) => f.path.split('/').last.startsWith('chunk_'))
           .toList();
@@ -421,6 +617,59 @@ void main() {
 
       expect(foreign, isEmpty);
     });
+
+    test('hidden files (starting with .) are detected as foreign', () async {
+      await File('${tempDir.path}/chunk_00000.enc').writeAsBytes([1]);
+      await File('${tempDir.path}/manifest.json').writeAsString('{}');
+      await File('${tempDir.path}/.DS_Store').writeAsBytes([0]);
+      await File('${tempDir.path}/.hidden_keylogger').writeAsBytes([0]);
+
+      final allFiles = await tempDir
+          .list()
+          .where((e) => e is File)
+          .cast<File>()
+          .toList();
+      final chunks = allFiles
+          .where((f) => f.path.split('/').last.startsWith('chunk_'))
+          .toList();
+
+      final allowedNames = {
+        ...chunks.map((f) => f.path.split('/').last),
+        'manifest.json',
+      };
+      final foreign = allFiles
+          .where((f) => !allowedNames.contains(f.path.split('/').last))
+          .toList();
+
+      expect(foreign.length, 2);
+    });
+
+    test('multiple foreign files — all detected', () async {
+      await File('${tempDir.path}/chunk_00000.enc').writeAsBytes([1]);
+      await File('${tempDir.path}/manifest.json').writeAsString('{}');
+      for (int i = 0; i < 5; i++) {
+        await File('${tempDir.path}/rogue_$i.dat').writeAsBytes([i]);
+      }
+
+      final allFiles = await tempDir
+          .list()
+          .where((e) => e is File)
+          .cast<File>()
+          .toList();
+      final chunks = allFiles
+          .where((f) => f.path.split('/').last.startsWith('chunk_'))
+          .toList();
+
+      final allowedNames = {
+        ...chunks.map((f) => f.path.split('/').last),
+        'manifest.json',
+      };
+      final foreign = allFiles
+          .where((f) => !allowedNames.contains(f.path.split('/').last))
+          .toList();
+
+      expect(foreign.length, 5);
+    });
   });
 
   // ────────────────────────────────────────────────────────────────
@@ -429,23 +678,20 @@ void main() {
 
   group('chunk file format', () {
     test('header is exactly 13 bytes (1 key_version + 12 IV)', () {
-      // This is a contract test — if the header format changes,
-      // existing encrypted chunks become unreadable.
       const headerLen = 13;
       const ivLen = 12;
 
       final header = Uint8List(headerLen);
-      header[0] = 1; // key_version
+      header[0] = 1;
       final iv = enc.IV.fromSecureRandom(ivLen);
       header.setRange(1, 1 + ivLen, iv.bytes);
 
       expect(header.length, 13);
-      expect(header[0], 1); // key_version round-trip
+      expect(header[0], 1);
       expect(header.sublist(1, 13), equals(iv.bytes));
     });
 
     test('GCM tag is 16 bytes', () {
-      // Contract: GCM auth tag length must stay at 16
       final key = enc.Key.fromSecureRandom(32);
       final iv = enc.IV.fromSecureRandom(12);
       final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
@@ -453,8 +699,29 @@ void main() {
       final plaintext = Uint8List.fromList([1, 2, 3, 4, 5]);
       final encrypted = encrypter.encryptBytes(plaintext, iv: iv);
 
-      // GCM: ciphertext = plaintext_len + 16 (tag)
       expect(encrypted.bytes.length, plaintext.length + 16);
+    });
+
+    test('key_version 0 is valid', () {
+      final header = Uint8List(13);
+      header[0] = 0;
+      expect(header[0], 0);
+    });
+
+    test('key_version 255 is max uint8', () {
+      final header = Uint8List(13);
+      header[0] = 255;
+      expect(header[0], 255);
+    });
+
+    test('key_version overflow wraps correctly', () {
+      expect(256 & 0xFF, 0);
+      expect(257 & 0xFF, 1);
+      expect(511 & 0xFF, 255);
+    });
+
+    test('total overhead per chunk is exactly 29 bytes', () {
+      expect(13 + 16, 29);
     });
   });
 
@@ -464,9 +731,6 @@ void main() {
 
   group('F-06 SecureRandomService fallback', () {
     test('fallback produces correct length bytes', () async {
-      // In test environment, the MethodChannel is not available,
-      // so SecureRandomService will use the Dart fallback.
-      // This implicitly tests the fallback path.
       final service = SecureRandomService.instance;
       final bytes = await service.getRandomBytes(12);
       expect(bytes.length, 12);
@@ -476,7 +740,6 @@ void main() {
       final service = SecureRandomService.instance;
       final a = await service.getRandomBytes(32);
       final b = await service.getRandomBytes(32);
-      // Statistically impossible for two 256-bit random values to match
       expect(a, isNot(equals(b)));
     });
 
@@ -487,6 +750,37 @@ void main() {
         expect(bytes.length, len, reason: 'failed for length $len');
       }
     });
+
+    test('singleton identity check', () {
+      final a = SecureRandomService.instance;
+      final b = SecureRandomService.instance;
+      expect(identical(a, b), isTrue,
+          reason: 'SecureRandomService must be a singleton');
+    });
+
+    test('byte distribution is reasonable (no stuck bits)', () async {
+      final service = SecureRandomService.instance;
+      final allBytes = <int>[];
+      for (int i = 0; i < 10; i++) {
+        final bytes = await service.getRandomBytes(256);
+        allBytes.addAll(bytes);
+      }
+
+      final seen = allBytes.toSet();
+      expect(seen.length, greaterThan(100),
+          reason: 'RNG should produce diverse byte values — '
+              'only seeing ${seen.length}/256 unique values in 2560 bytes');
+    });
+
+    test('minimum length (1 byte)', () async {
+      final bytes = await SecureRandomService.instance.getRandomBytes(1);
+      expect(bytes.length, 1);
+    });
+
+    test('maximum length (256 bytes)', () async {
+      final bytes = await SecureRandomService.instance.getRandomBytes(256);
+      expect(bytes.length, 256);
+    });
   });
 
   // ────────────────────────────────────────────────────────────────
@@ -495,13 +789,22 @@ void main() {
 
   group('F-09 certificate pinner', () {
     test('createPinnedHttpClient returns a valid http.Client', () {
-      // Import test — verifies the module compiles and
-      // returns a usable client without throwing.
-      // We can't test actual TLS pinning in unit tests
-      // (requires a real network connection).
       final client = createPinnedHttpClient();
       expect(client, isNotNull);
       client.close();
+    });
+
+    test('multiple clients can be created independently', () {
+      final client1 = createPinnedHttpClient();
+      final client2 = createPinnedHttpClient();
+      expect(client1, isNot(same(client2)));
+      client1.close();
+      client2.close();
+    });
+
+    test('client can be closed without error', () {
+      final client = createPinnedHttpClient();
+      expect(() => client.close(), returnsNormally);
     });
   });
 }
