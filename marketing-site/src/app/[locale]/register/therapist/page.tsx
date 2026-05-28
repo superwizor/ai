@@ -14,7 +14,6 @@ import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
 import { TherapistEmailForm } from "@/components/register/TherapistEmailForm";
 import { SocialButtons } from "@/components/register/SocialButtons";
-import { getModalityCatalog } from "@/lib/clinical/modalities";
 
 export async function generateMetadata({
   params,
@@ -34,7 +33,6 @@ export default async function RegisterTherapistPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("register.therapist");
-  const modalities = await getModalityCatalog();
 
   return (
     <>
@@ -53,7 +51,7 @@ export default async function RegisterTherapistPage({
 
           <div className="mt-10">
             <SocialButtons flow="therapist" />
-            <TherapistEmailForm modalities={modalities} />
+            <TherapistEmailForm />
           </div>
         </section>
       </main>

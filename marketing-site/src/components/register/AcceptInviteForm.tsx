@@ -17,7 +17,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
@@ -30,15 +30,29 @@ import { useAuth } from "@/lib/firebase/auth-provider";
 import { identityClient } from "@/lib/connect/clients";
 import { AcceptInvitationRequestSchema } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { Checkbox, FieldShell, RadioGroup, Select, TextInput } from "@/components/forms/Field";
-import type { ModalityRow } from "@/lib/clinical/modalities";
+import {
+  getModalityCatalog,
+  type ModalityRow,
+} from "@/lib/clinical/modalities";
 
-export function AcceptInviteForm({
-  token,
-  modalities,
-}: {
-  token: string;
-  modalities: ReadonlyArray<ModalityRow>;
-}) {
+export function AcceptInviteForm({ token }: { token: string }) {
+  // See TherapistEmailForm for the rationale on client-side modality
+  // fetch (mirror the same pattern).
+  const [modalities, setModalities] = useState<ReadonlyArray<ModalityRow>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    getModalityCatalog()
+      .then((rows) => {
+        if (!cancelled) setModalities(rows);
+      })
+      .catch((err) => {
+        console.error("[accept-invite] modality fetch failed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const t = useTranslations("register.fields");
   const tCommon = useTranslations("register.common");
   const tErr = useTranslations("register.errors");
@@ -75,7 +89,7 @@ export function AcceptInviteForm({
         firebaseUid: user.uid,
         firstName: data.firstName,
         lastName: data.lastName,
-        defaultModalityId: data.modalityCode,
+        defaultModalityId: data.modalityId,
         uiLanguage: data.uiLanguage,
         timezone: tz,
         hasAcceptedTos: true,
@@ -166,11 +180,11 @@ export function AcceptInviteForm({
           </FieldShell>
         </div>
 
-        <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityCode && tErr("modalityRequired")}>
-          <Select id="modality" {...register("modalityCode")} defaultValue="">
+        <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityId && tErr("modalityRequired")}>
+          <Select id="modality" {...register("modalityId")} defaultValue="">
             <option value="" disabled>—</option>
             {modalities.map((m) => (
-              <option key={m.systemCode} value={m.systemCode}>
+              <option key={m.id} value={m.id}>
                 {m.labels[locale === "en" ? "en" : "pl"]}
               </option>
             ))}

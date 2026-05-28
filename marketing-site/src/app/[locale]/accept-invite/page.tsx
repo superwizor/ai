@@ -18,7 +18,6 @@ import type { Metadata } from "next";
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
 import { AcceptInviteForm } from "@/components/register/AcceptInviteForm";
-import { getModalityCatalog } from "@/lib/clinical/modalities";
 
 export async function generateMetadata({
   params,
@@ -41,7 +40,6 @@ export default async function AcceptInvitePage({
   const { token } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("register.acceptInvite");
-  const modalities = await getModalityCatalog();
 
   return (
     <>
@@ -60,7 +58,7 @@ export default async function AcceptInvitePage({
 
           <div className="mt-10">
             {token ? (
-              <AcceptInviteForm token={token} modalities={modalities} />
+              <AcceptInviteForm token={token} />
             ) : (
               <p
                 role="alert"

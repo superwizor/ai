@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
@@ -37,19 +37,37 @@ import {
   Select,
   TextInput,
 } from "@/components/forms/Field";
-import type { ModalityRow } from "@/lib/clinical/modalities";
+import {
+  getModalityCatalog,
+  type ModalityRow,
+} from "@/lib/clinical/modalities";
 
 export function TherapistFinishForm({
-  modalities,
   email,
   firstName,
   lastName,
 }: {
-  modalities: ReadonlyArray<ModalityRow>;
   email: string;
   firstName: string;
   lastName: string;
 }) {
+  // See TherapistEmailForm for the rationale on client-side modality
+  // fetch (mirror the same pattern).
+  const [modalities, setModalities] = useState<ReadonlyArray<ModalityRow>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    getModalityCatalog()
+      .then((rows) => {
+        if (!cancelled) setModalities(rows);
+      })
+      .catch((err) => {
+        console.error("[register/therapist/finish] modality fetch failed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const t = useTranslations("register.fields");
   const tCommon = useTranslations("register.common");
   const tErr = useTranslations("register.errors");
@@ -104,7 +122,7 @@ export function TherapistFinishForm({
       const extras =
         !!data.phoneNumber ||
         !!data.professionalTitle ||
-        !!data.modalityCode ||
+        !!data.modalityId ||
         data.hasMarketingConsent === true;
       if (extras) {
         await identityClient.updateProfile(
@@ -114,7 +132,7 @@ export function TherapistFinishForm({
             lastName: data.lastName,
             professionalTitle: data.professionalTitle ?? "",
             phoneNumber: data.phoneNumber ?? "",
-            defaultModalityId: data.modalityCode,
+            defaultModalityId: data.modalityId,
             hasMarketingConsent: data.hasMarketingConsent ?? false,
           }),
         );
@@ -143,11 +161,11 @@ export function TherapistFinishForm({
           </FieldShell>
         </div>
 
-        <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityCode && tErr("modalityRequired")}>
-          <Select id="modality" {...register("modalityCode")} defaultValue="">
+        <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityId && tErr("modalityRequired")}>
+          <Select id="modality" {...register("modalityId")} defaultValue="">
             <option value="" disabled>—</option>
             {modalities.map((m) => (
-              <option key={m.systemCode} value={m.systemCode}>
+              <option key={m.id} value={m.id}>
                 {m.labels[locale === "en" ? "en" : "pl"]}
               </option>
             ))}

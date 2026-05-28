@@ -1,42 +1,61 @@
-// Therapeutic modality catalog for registration / profile dropdowns.
+// Therapeutic modality catalogue — fetched live from
+// clinical-svc.ListModalities, which clinical-svc's auth interceptor
+// explicitly allowlists for anonymous callers (registration pages don't
+// have a Firebase token yet). See:
+//   superwizor-backend/services/clinical-svc/internal/adapters/grpc/auth_interceptor.go
 //
-// docs/18 §13.2 specifies the dropdown is sourced from
-// `clinical-svc.ListModalities` — RPC that doesn't exist yet in the
-// proto. This module mirrors the seed migration 000006_seed_modalities
-// (UNIV / CBT / PSYCHO are the supported entries at MVP) and provides
-// localised labels so the form can render without a backend round-trip.
+// The DB stores only an English `display_name`. UI labels are localised
+// here, keyed by `system_code`. Add a new entry to LABELS when the DB
+// gains a new modality; missing entries fall back to the server-provided
+// `displayName` for both locales (no broken UI, just untranslated).
 //
-// When clinical-svc.ListModalities ships, swap getModalityCatalog() to
-// the RPC and delete the static list — same swap-point pattern as
-// lib/billing/plans.ts.
+// What changed (2026-05-28): previously this module hardcoded the
+// catalogue and exposed only `systemCode`. The three registration forms
+// then submitted `defaultModalityId: data.modalityCode`, e.g. "CBT", to
+// identity-svc, which validates that field as a `modalities.id` UUID and
+// returned 500 InvalidArgument. Now we surface the real UUID so forms
+// can submit it directly.
 
-export type ModalitySystemCode = "UNIV" | "CBT" | "PSYCHO";
+import { clinicalClient } from "@/lib/connect/clients";
 
 export type ModalityRow = {
-  systemCode: ModalitySystemCode;
+  /** UUID from clinical-svc — what identity-svc.UpdateProfile wants. */
+  id: string;
+  /** "UNIV" | "CBT" | "PSYCHO" — used for localised label lookup. */
+  systemCode: string;
+  /** English display name straight from the DB row. */
+  displayName: string;
   /** Localised display labels. Keys are locale codes from i18n/routing. */
   labels: Record<"pl" | "en", string>;
   isSupported: boolean;
 };
 
-const MODALITIES: ReadonlyArray<ModalityRow> = [
-  {
-    systemCode: "UNIV",
-    labels: { pl: "Uniwersalny (modality-agnostic)", en: "Universal (modality-agnostic)" },
-    isSupported: true,
+// Localised labels keyed by system_code. The DB column display_name is
+// English-only by design — translations belong in the frontend so a copy
+// tweak doesn't need a migration. Mirrors the seed in
+// migrations/000006_seed_modalities.up.sql.
+const LABELS: Record<string, ModalityRow["labels"]> = {
+  UNIV: {
+    pl: "Uniwersalny (modality-agnostic)",
+    en: "Universal (modality-agnostic)",
   },
-  {
-    systemCode: "CBT",
-    labels: { pl: "Terapia poznawczo-behawioralna (CBT)", en: "Cognitive Behavioural Therapy (CBT)" },
-    isSupported: true,
+  CBT: {
+    pl: "Terapia poznawczo-behawioralna (CBT)",
+    en: "Cognitive Behavioural Therapy (CBT)",
   },
-  {
-    systemCode: "PSYCHO",
-    labels: { pl: "Psychodynamiczna", en: "Psychodynamic" },
-    isSupported: true,
+  PSYCHO: {
+    pl: "Psychodynamiczna",
+    en: "Psychodynamic",
   },
-];
+};
 
 export async function getModalityCatalog(): Promise<ReadonlyArray<ModalityRow>> {
-  return MODALITIES;
+  const resp = await clinicalClient.listModalities({});
+  return resp.modalities.map((m) => ({
+    id: m.id,
+    systemCode: m.systemCode,
+    displayName: m.displayName,
+    labels: LABELS[m.systemCode] ?? { pl: m.displayName, en: m.displayName },
+    isSupported: m.isSupported,
+  }));
 }

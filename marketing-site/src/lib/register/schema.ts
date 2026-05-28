@@ -35,6 +35,14 @@ const requiredPhone = z
   .regex(PHONE_REGEX, { message: "phone-invalid" });
 
 // Therapist registration via email/password — fields from docs/18 §13.2.
+//
+// `modalityId` is a `modalities.id` UUID fetched live from
+// clinical-svc.ListModalities (see lib/clinical/modalities.ts). It maps
+// directly onto identity-svc UpdateProfile.default_modality_id, which
+// validates it as a UUID FK into the modalities table. The earlier
+// schema took `modalityCode` (a "CBT"-style system_code string) and
+// passed it through unchanged — identity-svc rejected with
+// InvalidArgument "invalid default_modality_id". Fixed 2026-05-28.
 export const therapistEmailSchema = z.object({
   email: z.string().email(),
   password,
@@ -42,7 +50,7 @@ export const therapistEmailSchema = z.object({
   lastName: z.string().min(1),
   professionalTitle: z.string().optional(),
   credentialsNumber: z.string().optional(),
-  modalityCode: z.enum(["UNIV", "CBT", "PSYCHO"]),
+  modalityId: z.string().uuid({ message: "modality-required" }),
   uiLanguage: z.enum(["pl", "en"]),
   phoneNumber: optionalPhone,
   hasAcceptedTos: z.literal(true),
@@ -101,7 +109,7 @@ export const acceptInviteSchema = z.object({
   password,
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  modalityCode: z.enum(["UNIV", "CBT", "PSYCHO"]),
+  modalityId: z.string().uuid({ message: "modality-required" }),
   uiLanguage: z.enum(["pl", "en"]),
   hasAcceptedTos: z.literal(true),
   hasMarketingConsent: z.boolean().optional(),
@@ -117,7 +125,7 @@ export type AcceptInviteForm = z.infer<typeof acceptInviteSchema>;
 export const therapistFinishSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  modalityCode: z.enum(["UNIV", "CBT", "PSYCHO"]),
+  modalityId: z.string().uuid({ message: "modality-required" }),
   uiLanguage: z.enum(["pl", "en"]),
   phoneNumber: optionalPhone,
   professionalTitle: z.string().optional(),

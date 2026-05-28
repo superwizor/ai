@@ -19,7 +19,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
@@ -44,13 +44,36 @@ import {
   Select,
   TextInput,
 } from "@/components/forms/Field";
-import type { ModalityRow } from "@/lib/clinical/modalities";
+import {
+  getModalityCatalog,
+  type ModalityRow,
+} from "@/lib/clinical/modalities";
 
-type Props = {
-  modalities: ReadonlyArray<ModalityRow>;
-};
+export function TherapistEmailForm() {
+  // Modality catalogue is fetched live on mount via
+  // clinical-svc.ListModalities (allowlisted as anonymous on the
+  // backend interceptor). Initial value [] keeps the Select rendering
+  // a single disabled placeholder option until the RPC returns —
+  // typical staging round-trip is <200ms so no spinner is shown.
+  const [modalities, setModalities] = useState<ReadonlyArray<ModalityRow>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    getModalityCatalog()
+      .then((rows) => {
+        if (!cancelled) setModalities(rows);
+      })
+      .catch((err) => {
+        // Don't block the form — log so devtools shows the failure,
+        // user can still submit other fields. modalityId is required
+        // by zod, so the empty dropdown will surface a normal
+        // validation error rather than a silent submit.
+        console.error("[register/therapist] modality fetch failed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-export function TherapistEmailForm({ modalities }: Props) {
   const t = useTranslations("register.fields");
   const tCommon = useTranslations("register.common");
   const tErr = useTranslations("register.errors");
@@ -105,7 +128,7 @@ export function TherapistEmailForm({ modalities }: Props) {
         !!data.professionalTitle ||
         !!data.credentialsNumber ||
         !!data.phoneNumber ||
-        !!data.modalityCode ||
+        !!data.modalityId ||
         data.hasMarketingConsent === true;
       if (hasExtras) {
         const updateReq = create(UpdateProfileRequestSchema, {
@@ -115,7 +138,9 @@ export function TherapistEmailForm({ modalities }: Props) {
           professionalTitle: data.professionalTitle ?? "",
           credentialsNumber: data.credentialsNumber ?? "",
           phoneNumber: data.phoneNumber ?? "",
-          defaultModalityId: data.modalityCode, // server resolves systemCode → row id
+          // UUID straight from clinical-svc.ListModalities — identity-svc
+          // stores this as users.default_modality_id (FK into modalities).
+          defaultModalityId: data.modalityId,
           hasMarketingConsent: data.hasMarketingConsent ?? false,
         });
         await identityClient.updateProfile(updateReq);
@@ -219,13 +244,13 @@ export function TherapistEmailForm({ modalities }: Props) {
         </div>
 
         <div className="grid gap-4 mt-4">
-          <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityCode && tErr("modalityRequired")}>
-            <Select id="modality" {...register("modalityCode")} defaultValue="">
+          <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityId && tErr("modalityRequired")}>
+            <Select id="modality" {...register("modalityId")} defaultValue="">
               <option value="" disabled>
                 —
               </option>
               {modalities.map((m) => (
-                <option key={m.systemCode} value={m.systemCode}>
+                <option key={m.id} value={m.id}>
                   {m.labels[locale === "en" ? "en" : "pl"]}
                 </option>
               ))}

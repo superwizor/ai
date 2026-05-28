@@ -18,7 +18,6 @@ import type { Metadata } from "next";
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
 import { TherapistFinishForm } from "@/components/register/TherapistFinishForm";
-import { getModalityCatalog } from "@/lib/clinical/modalities";
 
 export async function generateMetadata({
   params,
@@ -41,7 +40,6 @@ export default async function FinishTherapistPage({
   const { email = "", firstName = "", lastName = "" } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("register.therapist");
-  const modalities = await getModalityCatalog();
 
   return (
     <>
@@ -62,7 +60,6 @@ export default async function FinishTherapistPage({
 
           <div className="mt-10">
             <TherapistFinishForm
-              modalities={modalities}
               email={email}
               firstName={firstName}
               lastName={lastName}
