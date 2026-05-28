@@ -39,11 +39,21 @@ deploy_svc() {
   # ^@^ tells gcloud to use @ as the dict-arg delimiter instead of ,
   # so CORS_ALLOWED_ORIGINS can carry its own commas (see
   # `gcloud topic escaping`). VERSION is added as a second entry.
+  #
+  # billing-svc also needs IDENTITY_SVC_URL so the Connect auth
+  # interceptor can validate Firebase tokens via identity-svc — the
+  # browser /admin AdminReset/AdminChange RPCs depend on this. Skip
+  # the env for the other services so we don't ship a noisy override
+  # they don't read.
+  local env_set="^@^CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}@VERSION=${TAG}"
+  if [[ "$svc" == "billing-svc" ]]; then
+    env_set="${env_set}@IDENTITY_SVC_URL=${IDENTITY_SVC_URL:-https://identity-svc-e3f32b232q-lm.a.run.app}"
+  fi
   gcloud run deploy "${svc}" \
     --image="${image}" \
     --region="${REGION}" \
     --project="${PROJECT}" \
-    --update-env-vars="^@^CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}@VERSION=${TAG}" \
+    --update-env-vars="${env_set}" \
     --quiet
 }
 
