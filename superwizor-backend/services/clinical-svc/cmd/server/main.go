@@ -241,21 +241,27 @@ func main() {
 	healthpb.RegisterHealthServer(grpcServer, healthServer)
 	reflection.Register(grpcServer)
 
-	// Connect-RPC surface — browser callers via ConnectAdapter. Note:
-	// the UnaryAuthInterceptor above only applies to the gRPC path.
-	// Browser callers will need an equivalent interceptor wired through
-	// connect.WithInterceptors when the first browser-facing RPC ships
-	// in Slice 2 — for now the only authenticated browser RPC paths
-	// (RegisterOrganization, AcceptInvitation) hit identity-svc, not
-	// clinical-svc, so this is fine.
+	// Connect-RPC surface — browser callers via ConnectAdapter.
+	// Three interceptors run in declaration order:
+	//   1. HeadersToGRPCMetadata: copies HTTP request headers into ctx
+	//      as gRPC IncomingMetadata so handlers reading
+	//      metadata.FromIncomingContext keep working over Connect (see
+	//      pkg/connectmd).
+	//   2. ConnectAuthInterceptor: mirrors UnaryAuthInterceptor for the
+	//      Connect path — validates the Firebase token via identity-svc
+	//      and injects UserIDKey into ctx, so every handler that reads
+	//      `ctx.Value(UserIDKey)` works the same regardless of whether
+	//      the request came in as native gRPC (iOS) or gRPC-Web/
+	//      Connect (browsers). Without this, Flutter web RPCs returned
+	//      "missing user ID in context" — the 2026-05-28 regression
+	//      surfaced after routing gRPC-Web to this handler.
 	httpMux := nethttp.NewServeMux()
-	// HeadersToGRPCMetadata interceptor: copy HTTP request headers
-	// into ctx as gRPC IncomingMetadata so auth helpers that read
-	// metadata.FromIncomingContext see the Bearer token. Without it
-	// Connect requests fail with "no gRPC metadata" — see pkg/connectmd.
 	connectPath, connectHandler := clinicalv1connect.NewClinicalServiceHandler(
 		grpcadapter.NewConnectAdapter(srv),
-		connect.WithInterceptors(connectmd.HeadersToGRPCMetadata()),
+		connect.WithInterceptors(
+			connectmd.HeadersToGRPCMetadata(),
+			grpcadapter.ConnectAuthInterceptor(identityClient),
+		),
 	)
 	httpMux.Handle(connectPath, connectHandler)
 	httpMux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
