@@ -1,0 +1,70 @@
+Feature: slice-6 / production-dns-cutover
+Branch: feat/web-app-slice-6
+Verified: 2026-05-28
+
+What was built
+==============
+A reviewed runbook covering the production DNS cutover for both
+launch domains:
+
+  - superwizor.ai (apex)       → Firebase Hosting site superwizor-www
+  - app.superwizor.ai          → Firebase Hosting site superwizor-app
+
+Located at: docs/DNS_CUTOVER_RUNBOOK.md
+
+The runbook is the operator cookbook to execute when launching. It
+covers, in order:
+
+  0. Pre-flight (T-24h) — green CI, green Lighthouse, Firebase Auth
+     authorized-domains, OAuth redirect URIs across Google /
+     Apple / Microsoft, GCS bucket CORS.
+  1. Promote main to the live Hosting channel (T-1h) — for both
+     sites; commands included.
+  2. Connect custom domains in Firebase Console (T-0h) — apex
+     uses A records (CNAMEs illegal at zone root); subdomain uses
+     CNAME → superwizor-app.web.app. Recommended TTL of 300 during
+     the cutover for fast rollback.
+  3. Wait for SSL provisioning — managed Let's Encrypt, 2 min to
+     24h; curl commands to monitor.
+  4. Smoke test table — 7 endpoints across both hosts, expected
+     responses for each.
+  5. Post-cutover — restore TTLs, verify the /login redirect
+     target, announce in #ops, watch error rate for 24h.
+  6. Rollback plan — DNS-layer rollback (remove A/CNAME) and
+     content-layer rollback (firebase hosting:rollback per site).
+  7. Tracked follow-ups — Flutter Web CI deploy job, Terraform DNS
+     module for future codification, CSP/SRI headers.
+
+Why a runbook and not Terraform
+================================
+Today the project doesn't have a DNS terraform module. Adding one
+just for this single cutover would expand scope; the launch is a
+once-ever operation that benefits more from an explicit
+human-readable checklist than from declarative infra. Terraform-
+izing DNS is flagged as a follow-up under §7 of the runbook —
+worth doing once a second environment (staging.superwizor.ai)
+exists, at which point the module would have two callers.
+
+Verification
+============
+- Cross-checked against the project's existing config:
+  - firebase.json defines superwizor-www + superwizor-app exactly
+    as the runbook expects (deploy commands match site names).
+  - .github/workflows/marketing-site.yml `deploy-production` job
+    already targets `target: superwizor-www, channelId: live` so
+    step 1 for the marketing site is automatic on every main push.
+  - storage.rules + superwizor-backend/infra/storage CORS comment
+    confirm both origins are pre-whitelisted, matching §0.6.
+  - next.config.ts (Slice 3) already redirects /login →
+    https://app.superwizor.ai/login, so no app-side change is
+    needed at cutover.
+
+- The runbook is self-contained — every command + every
+  registrar / console field name is spelled out. An operator with
+  Firebase + GCP project-owner permissions and registrar admin
+  rights can execute it end-to-end without external research.
+
+Files
+=====
+- docs/DNS_CUTOVER_RUNBOOK.md (new)
+- evidence/slice-6/production-dns-cutover/verification.log (this)
