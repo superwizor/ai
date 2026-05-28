@@ -43,10 +43,21 @@ each feature to gate progress (PASS / NEEDS_WORK). Each slice merges into
 - legal-static-pages    — Terms/Privacy/DPA markdown PL+EN
 - firebase-hosting-deploy — superwizor-www site + GitHub Actions CI
 
+### Slice 3 — registration flows (DONE, merged to `feat/web-app` at 7b10f48)
+8 features, all PASS evaluator, 8 commits + 1 merge:
+- register-therapist-email     — /register/therapist email form per §13.2
+- register-therapist-google    — Continue with Google + finish-profile page
+- register-organization-email  — clinic founder signup with HQ address
+- register-organization-google — Google OAuth org path
+- email-verification-gate      — polling + auto-redirect on verified
+- accept-invite-page           — /accept-invite + AcceptInvitation RPC
+- login-redirect               — /login 307 → app.superwizor.ai/login
+- registration-e2e-playwright  — Playwright happy-path, 2/2 green
+
 ## In progress
 
-- **Slice 3** — registration flows. Branch:
-  `feat/web-app-slice-3` (just branched off post-Slice-2 merge).
+- **Slice 4** — admin console at `superwizor.ai/admin`. Branch:
+  `feat/web-app-slice-4` (just branched off post-Slice-3 merge).
 
 ## Slice plan (Slices 2-6)
 
