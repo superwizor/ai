@@ -1026,6 +1026,15 @@ ZASADY:
 	if err != nil {
 		return diarization.Result{}, TokenStats{}, fmt.Errorf("parse markdown metadata: %w", err)
 	}
+	// Surface the cross-group-duplicate count if the parser silently
+	// resolved one. Healthy sessions log nothing; non-zero is a
+	// quality signal we want to watch (Marcin 2026-05-28 incident).
+	if result.DroppedDuplicates > 0 {
+		slog.Warn("diarization parser dropped cross-group duplicate chunks",
+			"dropped_count", result.DroppedDuplicates,
+			"speakers", len(result.Speakers),
+		)
+	}
 
 	var stats TokenStats
 	if resp.UsageMetadata != nil {

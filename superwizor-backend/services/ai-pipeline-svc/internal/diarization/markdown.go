@@ -64,6 +64,15 @@ type Result struct {
 	RAGSummary                   string
 	OverallDiarizationConfidence float64
 	Speakers                     []Speaker
+	// DroppedDuplicates counts cross-group chunk-index collisions the
+	// parser silently resolved by keeping the first group's claim.
+	// 0 is the healthy case. Non-zero means the LLM emitted overlapping
+	// `Chunks:` lines (e.g. chunk 369 in both Group 1 and Group 2) —
+	// a quality issue, not a data-integrity one. llm-worker logs +
+	// counts this so we can spot drift over time. See markdown_test.go
+	// TestParse_DuplicateChunkAcrossGroupsDropsAndContinues for the
+	// behaviour contract.
+	DroppedDuplicates int
 }
 
 // Speaker — one entry under "# Speakers". For cluster grammar Index
@@ -86,6 +95,12 @@ var (
 	ErrInvalidRole              = errors.New("diarization: invalid role")
 	ErrInvalidConfidence        = errors.New("diarization: invalid confidence value")
 	ErrInvalidChunkList         = errors.New("diarization: invalid chunk index list")
+	// Deprecated: as of 2026-05-28 (Marcin incident) the parser no
+	// longer returns this error. Cross-group dup chunks are silently
+	// dropped from later groups and counted on Result.DroppedDuplicates.
+	// Symbol kept for back-compat with any caller that still does
+	// errors.Is(err, ErrDuplicateChunkAssignment); the check will simply
+	// never fire.
 	ErrDuplicateChunkAssignment = errors.New("diarization: chunk index appears in multiple groups")
 	ErrTitleTooLong             = errors.New("diarization: title exceeds budget")
 	ErrSummaryTooLong           = errors.New("diarization: summary exceeds budget")
@@ -263,16 +278,36 @@ func ParseMetadataMarkdown(raw string) (Result, error) {
 					if err != nil {
 						return Result{}, fmt.Errorf("%w (group %d)", err, current.Index)
 					}
+					// Cross-group duplicate handling, relaxed 2026-05-28
+					// (Marcin incident, session ee888aff). The LLM
+					// occasionally hallucinates the same chunk into two
+					// groups — e.g. "chunk 369 in groups 1 and 2". The
+					// strict guard used to error here, which made Pub/Sub
+					// retry the same prompt indefinitely until the
+					// session DLQ'd and the user never got their report.
+					//
+					// New behaviour: first group wins. Subsequent groups
+					// silently drop the colliding index from their own
+					// `ChunkIndices` and we bump Result.DroppedDuplicates
+					// so llm-worker can log + metric the case. Within-
+					// group dups (e.g. "Chunks: 0, 0, 1") still error
+					// via parseChunkList — that's a malformed list, not
+					// an overlap.
+					filtered := indices[:0]
 					for _, ci := range indices {
-						if prev, dup := seenChunk[ci]; dup {
-							return Result{}, fmt.Errorf("%w: chunk %d in groups %d and %d", ErrDuplicateChunkAssignment, ci, prev, current.Index)
+						if _, dup := seenChunk[ci]; dup {
+							res.DroppedDuplicates++
+							continue
 						}
 						seenChunk[ci] = current.Index
+						filtered = append(filtered, ci)
 					}
-					// Note: indices may be nil for empty `Chunks:` line
-					// — finalizeCurrentGroup drops such groups when
-					// the next section/header is seen.
-					current.ChunkIndices = indices
+					// Note: filtered may be nil/empty when the LLM
+					// emitted a Chunks: line whose every entry collided
+					// with prior groups, OR when the original line was
+					// empty. finalizeCurrentGroup drops such empty
+					// groups when the next section/header is seen.
+					current.ChunkIndices = filtered
 					continue
 				}
 				if m := evidenceLine.FindStringSubmatch(line); m != nil {

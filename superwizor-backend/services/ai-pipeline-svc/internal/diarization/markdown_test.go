@@ -135,7 +135,15 @@ Summary: y`
 	}
 }
 
-func TestParse_DuplicateChunkAcrossGroups(t *testing.T) {
+// TestParse_DuplicateChunkAcrossGroupsDropsAndContinues anchors the
+// 2026-05-28 behaviour change (Marcin incident): when the LLM emits
+// the same chunk index in two groups, the parser keeps the first
+// group's claim, drops the duplicate from the later group, and
+// surfaces a non-zero Result.DroppedDuplicates counter so the worker
+// can log + metric the case. Before this change the parser returned
+// ErrDuplicateChunkAssignment, which permanently stuck the session
+// at "transcribed, no report" via the Pub/Sub retry loop.
+func TestParse_DuplicateChunkAcrossGroupsDropsAndContinues(t *testing.T) {
 	in := `# Speakers
 
 ## Group 1 — therapist (confidence 0.9)
@@ -147,10 +155,65 @@ Chunks: 2, 3, 6
 # Metadata
 Title: x
 Summary: y`
-	_, err := ParseMetadataMarkdown(in)
-	if !errors.Is(err, ErrDuplicateChunkAssignment) {
-		t.Errorf("want ErrDuplicateChunkAssignment, got %v", err)
+	got, err := ParseMetadataMarkdown(in)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
+	if got.DroppedDuplicates != 1 {
+		t.Errorf("DroppedDuplicates: got %d, want 1", got.DroppedDuplicates)
+	}
+	if len(got.Speakers) != 2 {
+		t.Fatalf("Speakers: got %d, want 2", len(got.Speakers))
+	}
+	// Group 1 keeps all its claimed chunks.
+	if !chunksEqual(got.Speakers[0].ChunkIndices, []int{0, 2, 5}) {
+		t.Errorf("group 1 chunks: got %v, want [0 2 5]", got.Speakers[0].ChunkIndices)
+	}
+	// Group 2 lost the colliding chunk 2; keeps 3 and 6.
+	if !chunksEqual(got.Speakers[1].ChunkIndices, []int{3, 6}) {
+		t.Errorf("group 2 chunks: got %v, want [3 6]", got.Speakers[1].ChunkIndices)
+	}
+}
+
+// TestParse_AllChunksDroppedAsDuplicatesElidesGroup verifies the edge
+// case where every chunk in the LLM's later group is a duplicate —
+// the group ends up with zero chunks and finalizeCurrentGroup drops
+// it. We're back to a single-speaker session rather than a phantom
+// empty group.
+func TestParse_AllChunksDroppedAsDuplicatesElidesGroup(t *testing.T) {
+	in := `# Speakers
+
+## Group 1 — therapist (confidence 0.9)
+Chunks: 0, 1, 2
+
+## Group 2 — patient (confidence 0.9)
+Chunks: 0, 1, 2
+
+# Metadata
+Title: x
+Summary: y`
+	got, err := ParseMetadataMarkdown(in)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.DroppedDuplicates != 3 {
+		t.Errorf("DroppedDuplicates: got %d, want 3", got.DroppedDuplicates)
+	}
+	if len(got.Speakers) != 1 {
+		t.Errorf("Speakers: got %d, want 1 (the empty group should have been dropped)", len(got.Speakers))
+	}
+}
+
+func chunksEqual(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func TestParse_MalformedChunkList(t *testing.T) {
