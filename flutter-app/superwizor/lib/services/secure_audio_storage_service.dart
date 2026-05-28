@@ -37,6 +37,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'secure_random_service.dart';
+
 /// Public-facing record describing a single encrypted chunk on disk.
 class EncryptedChunk {
   final int seq;
@@ -84,7 +86,9 @@ class SecureAudioStorageService {
     }
 
     // First-time bootstrap on this device.
-    final fresh = enc.Key.fromSecureRandom(32); // 256 bits
+    // F-06: Use hardware-backed CSPRNG for master key generation.
+    final freshBytes = await SecureRandomService.instance.getRandomBytes(32);
+    final fresh = enc.Key(freshBytes);
     await _storage.write(key: keyStorageKey, value: base64Encode(fresh.bytes));
     await _storage.write(key: _keyVersionStorage, value: version.toString());
     return (key: fresh, version: version);
@@ -207,7 +211,12 @@ class SecureAudioStorageService {
     int seq = 0;
 
     Future<void> flushChunk(Uint8List data) async {
-      final iv = enc.IV.fromSecureRandom(_ivLen);
+      // F-06: Use hardware-backed CSPRNG for IV generation.
+      // SecureRandomService tries the native platform RNG first
+      // (SecRandomCopyBytes on iOS, SecureRandom on Android) and
+      // falls back to Dart's Random.secure() if unavailable.
+      final ivBytes = await SecureRandomService.instance.getRandomBytes(_ivLen);
+      final iv = enc.IV(ivBytes);
       final encrypted = encrypter.encryptBytes(data, iv: iv);
 
       final fileName = 'chunk_${seq.toString().padLeft(5, '0')}.enc';

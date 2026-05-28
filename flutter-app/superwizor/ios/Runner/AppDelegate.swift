@@ -20,5 +20,10 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AudioConverter") {
       AudioConverter.register(with: registrar.messenger())
     }
+    // F-06: Hardware RNG plugin — SecRandomCopyBytes (Secure Enclave)
+    // for IV generation in SecureAudioStorageService.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SecureRandomPlugin") {
+      SecureRandomPlugin.register(with: registrar.messenger())
+    }
   }
 }
