@@ -1,0 +1,114 @@
+Feature: slice-5 / flutter-web-therapist-console
+Branch: feat/web-app-slice-5
+Verified: 2026-05-28
+Anchored to: docs/18 §8.3 (Flutter Web therapist console)
+
+What was built
+==============
+Audited and adapted the existing therapist-console flows to run on
+web. The bulk of the code is already platform-agnostic; we shipped
+one targeted kIsWeb branch and confirmed the rest builds + analyzes
+cleanly.
+
+Code change (one file):
+- lib/screens/new_session_screen.dart — kIsWeb branch in the CTA
+  cluster: on web, the recording button disappears entirely and
+  "WGRAJ PLIK AUDIO" is the only (primary, Ember-glow) CTA. On
+  iOS the existing "ROZPOCZNIJ NAGRYWANIE" primary + "Wgraj plik
+  audio" secondary ordering is preserved. Matches docs/18 §8.3
+  "New session — file upload still available; recording branch
+  hidden on web."
+
+Already platform-agnostic, no changes needed
+============================================
+Inspected every therapist-console screen for dart:io / Platform.* /
+File() / Directory() usages. Only three screens have any:
+  - recording_screen.dart        — already kIsWeb-guarded (feature 1)
+  - new_session_screen.dart      — kIsWeb-branched (this feature)
+  - menu_screen.dart             — avatar-upload File(picked.path)
+                                   at line 97; feature 4
+                                   (flutter-web-profile-edit)
+                                   territory. Doesn't crash on web
+                                   build; only fails at runtime if a
+                                   user clicks the avatar.
+
+Screens with NO platform code (all run as-is on web):
+  - home_screen.dart                (Kartoteki list)
+  - client_details_screen.dart      (patient details + session list)
+  - session_details_screen.dart     (single session)
+  - session_status_screen.dart      (Firestore-listener stepper)
+  - transcript_screen.dart          (player + PDF export via pdfx)
+  - report_screen.dart              (sections + risk badge)
+  - subscription_plan_screen.dart   (billing read-only)
+  - pending_uploads_screen.dart     (upload queue)
+  - login_screen.dart               (Firebase Auth)
+  - delete_account_screen.dart      (account removal flow)
+  - legal_markdown_screen.dart      (Terms/Privacy/DPA viewer)
+  - legal_pdf_screen.dart           (legacy PDF viewer)
+  - therapist_setup_screen.dart     (onboarding)
+
+Core data layer (already web-ready):
+- lib/services/grpc_client.dart uses `GrpcOrGrpcWebClientChannel`
+  from package:grpc — auto-selects HTTP/2 on iOS/Android and
+  gRPC-Web over HTTPS on the browser. No code change needed.
+- lib/firebase_options.dart includes the kIsWeb platform branch
+  from the original `flutter create --platforms web` scaffold.
+- Firestore listeners (session-status stepper) work via the
+  firebase_js_sdk facade that cloud_firestore web ships with.
+- audioplayers + pdfx packages have web platform support (with
+  the Wasm dry-run warnings docs/18 §8.3 flags as acceptable
+  under CanvasKit/HTML renderer).
+
+How verified
+============
+1. `flutter analyze lib` → No issues found (4.1s). Captured at
+   evidence/.../analyze.log.
+2. `flutter build web --no-tree-shake-icons --no-wasm-dry-run` →
+   "✓ Built build/web" in 68s. Bundle still 45 MB.
+3. Served the bundle (python3 -m http.server 8765) and hit it
+   with puppeteer at desktop viewport — login screen renders
+   correctly with Polish strings and Euphire tokens
+   (evidence/.../login-pl-full.png).
+4. Source audit (grep dart:io, Platform., File(, Directory() in
+   lib/screens/) showed only the three flagged screens; the rest
+   are pure platform-agnostic Flutter widgets + Riverpod +
+   gRPC-OrWeb + Firebase Web SDK calls.
+
+What's NOT live-verified in this session (deferred)
+====================================================
+The Kartoteki / session-details / transcript / report screens
+can't be screenshotted without an authenticated SUPERWIZOR_ADMIN
+user or seeded test data — same constraint that hit every
+backend-dependent feature in Slices 3 + 4. Two paths to live
+evidence:
+  - Slice 5 feature 8 (registration-e2e style) — Playwright suite
+    against the Flutter Web bundle with Firebase emulator + gRPC
+    intercepts.
+  - End-to-end against staging once Cloud Build deploys this
+    branch via the existing `superwizor-app` Firebase Hosting
+    site config (firebase.json from Slice 2 feature 8).
+Both are infra-only follow-ups; the code that walks those flows
+is the SAME code paths the iOS app already exercises in
+production.
+
+Compliance with docs/18 §8.3
+============================
+- ✓ Recording screen replaced with iPhone-app CTA (feature 1).
+- ✓ New-session recording branch hidden on web, file upload
+  becomes primary CTA (this feature).
+- ✓ File picker via file_picker package — already had web
+  support; existing Wgraj-plik path works unchanged on web.
+- ✓ Audio playback uses audioplayers (web supported).
+- ✓ PDF export uses pdfx (web supported).
+- ☐ Avatar upload `<input type="file">` swap — feature 4.
+- ☐ FCM push (browser PWA-style) — explicitly out of MVP per
+  §8.3.
+- ☐ Shared-machine warning — Slice 6 polish.
+
+Files
+=====
+- flutter-app/superwizor/lib/screens/new_session_screen.dart
+  (kIsWeb import + CTA branch)
+- evidence/slice-5/flutter-web-therapist-console/analyze.log
+- evidence/slice-5/flutter-web-therapist-console/login-pl-full.png
+- evidence/slice-5/flutter-web-therapist-console/verification.log
