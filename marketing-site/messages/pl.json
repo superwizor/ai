@@ -78,10 +78,25 @@
     "audit": {
       "metaTitle": "Dziennik audytowy",
       "title": "Dziennik audytowy",
-      "subhead": "Globalna historia działań administracyjnych.",
-      "placeholderTitle": "Wkrótce",
-      "placeholderBody": "Pełny dziennik wymaga nowego RPC po stronie identity-svc (ListAuditEvents z filtrami actor / action / data). Tymczasowo audyt każdej organizacji widoczny jest na stronie szczegółów: Organizacje → wybierz organizację → Ostatnie zdarzenia.",
-      "goToOrgs": "Przejdź do organizacji"
+      "subhead": "Globalna historia działań administracyjnych — wszystkie organizacje.",
+      "actorEmailLabel": "E-mail wykonującego",
+      "actionLabel": "Akcja",
+      "anyAction": "Wszystkie akcje",
+      "sinceLabel": "Od dnia",
+      "untilLabel": "Do dnia",
+      "loading": "Ładowanie dziennika…",
+      "empty": "Brak zdarzeń spełniających kryteria filtrów.",
+      "error": "Nie udało się pobrać dziennika.",
+      "retry": "Spróbuj ponownie",
+      "prev": "Poprzednia strona",
+      "next": "Następna strona",
+      "col": {
+        "occurred": "Data",
+        "actor": "Wykonujący",
+        "action": "Akcja",
+        "resource": "Zasób",
+        "reason": "Powód"
+      }
     },
     "users": {
       "metaTitle": "Użytkownicy",
@@ -116,6 +131,16 @@
       "uiLanguage": "Język interfejsu",
       "polish": "Polski",
       "english": "English",
+      "professionalTitle": "Tytuł zawodowy",
+      "credentialsNumber": "Numer uprawnień",
+      "biography": "Biografia (publiczna)",
+      "avatarUrl": "URL awatara",
+      "organizationId": "ID organizacji (transfer)",
+      "organizationIdHint": "UUID organizacji docelowej. Skopiuj z /admin/orgs. Pozostaw bez zmian, aby nie przenosić użytkownika.",
+      "defaultModalityId": "Domyślna modalność (UUID)",
+      "defaultModalityIdHint": "UUID z tabeli modalities. Lista nie jest jeszcze dostępna w panelu — wpisz ręcznie.",
+      "billingAddressTitle": "Adres rozliczeniowy",
+      "billingAddressHint": "Wypełnij tylko jeśli chcesz nadpisać istniejący adres. Bieżące dane nie są widoczne w tym formularzu (proto User zawiera wyłącznie billing_address_id).",
       "noChange": "Wprowadź jakąkolwiek zmianę przed potwierdzeniem.",
       "roleLabel": {
         "USER_ROLE_THERAPIST": "Terapeuta",
@@ -133,7 +158,21 @@
       "typeLabel": "Typ organizacji",
       "taxIdLabel": "NIP",
       "vatIdEuLabel": "EU VAT ID",
+      "addressTitle": "Adres siedziby",
+      "primaryAdminLabel": "Główny administrator (transfer własności)",
+      "primaryAdminUnchanged": "— bez zmian —",
+      "primaryAdminHint": "Wybór z listy terapeutów tej organizacji. Aby przekazać własność osobie spoza listy, najpierw zmień jej rolę na ORG_ADMIN przez edycję użytkownika.",
       "noChange": "Wprowadź jakąkolwiek zmianę przed potwierdzeniem."
+    },
+    "address": {
+      "countryCode": "Kraj (ISO 3166-1)",
+      "region": "Województwo",
+      "city": "Miasto",
+      "postalCode": "Kod pocztowy",
+      "streetLine": "Ulica",
+      "buildingNumber": "Numer budynku",
+      "unitNumber": "Numer lokalu",
+      "directions": "Wskazówki dojazdu"
     },
     "actions": {
       "block": "Zablokuj",

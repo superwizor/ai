@@ -78,10 +78,25 @@
     "audit": {
       "metaTitle": "Audit log",
       "title": "Audit log",
-      "subhead": "Global administrative activity history.",
-      "placeholderTitle": "Coming soon",
-      "placeholderBody": "The global audit log needs a new identity-svc RPC (ListAuditEvents with actor / action / date filters). Until then each organisation's audit history is visible on its detail page: Organisations → pick one → Recent activity.",
-      "goToOrgs": "Go to organisations"
+      "subhead": "Global cross-organisation administrative activity history.",
+      "actorEmailLabel": "Actor email",
+      "actionLabel": "Action",
+      "anyAction": "Any action",
+      "sinceLabel": "From",
+      "untilLabel": "Until",
+      "loading": "Loading audit log…",
+      "empty": "No events match the current filters.",
+      "error": "Failed to load the audit log.",
+      "retry": "Try again",
+      "prev": "Previous page",
+      "next": "Next page",
+      "col": {
+        "occurred": "Date",
+        "actor": "Actor",
+        "action": "Action",
+        "resource": "Resource",
+        "reason": "Reason"
+      }
     },
     "users": {
       "metaTitle": "Users",
@@ -116,6 +131,16 @@
       "uiLanguage": "Interface language",
       "polish": "Polski",
       "english": "English",
+      "professionalTitle": "Professional title",
+      "credentialsNumber": "Credentials number",
+      "biography": "Biography (public)",
+      "avatarUrl": "Avatar URL",
+      "organizationId": "Organisation ID (transfer)",
+      "organizationIdHint": "Target organisation UUID. Copy it from /admin/orgs. Leave unchanged to keep the user in the current org.",
+      "defaultModalityId": "Default modality (UUID)",
+      "defaultModalityIdHint": "UUID from the modalities table. No picker yet on the admin panel — paste the value manually.",
+      "billingAddressTitle": "Billing address",
+      "billingAddressHint": "Fill in only to overwrite the existing address. The current value is not shown here (the User proto carries only billing_address_id).",
       "noChange": "Edit at least one field before confirming.",
       "roleLabel": {
         "USER_ROLE_THERAPIST": "Therapist",
@@ -133,7 +158,21 @@
       "typeLabel": "Organisation type",
       "taxIdLabel": "Tax ID (NIP)",
       "vatIdEuLabel": "EU VAT ID",
+      "addressTitle": "Headquarters address",
+      "primaryAdminLabel": "Primary admin (ownership transfer)",
+      "primaryAdminUnchanged": "— unchanged —",
+      "primaryAdminHint": "Pick from the org's therapist roster. To transfer ownership to someone not on this list, first set their role to ORG_ADMIN via user edit.",
       "noChange": "Edit at least one field before confirming."
+    },
+    "address": {
+      "countryCode": "Country (ISO 3166-1)",
+      "region": "Region / voivodeship",
+      "city": "City",
+      "postalCode": "Postal code",
+      "streetLine": "Street",
+      "buildingNumber": "Building number",
+      "unitNumber": "Unit number",
+      "directions": "Directions"
     },
     "actions": {
       "block": "Block",

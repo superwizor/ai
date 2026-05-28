@@ -459,6 +459,82 @@ func (s *Server) AdminUpdateUser(ctx context.Context, req *identityv1.AdminUpdat
 	return toProtoUser(u), nil
 }
 
+// ─── Global audit log ──────────────────────────────────────────
+
+// AdminListAuditEvents returns the cross-org audit feed for the
+// /admin/audit page (docs/18 §8.2). Cursor-paginated on (occurred_at,
+// id) DESC; optional filters (actor_email ILIKE, action exact, since /
+// until window) AND together. The underlying sqlc query LEFT JOINs
+// users so the actor email comes back with the row — no N+1 lookup.
+func (s *Server) AdminListAuditEvents(ctx context.Context, req *identityv1.AdminListAuditEventsRequest) (*identityv1.AdminListAuditEventsResponse, error) {
+	if _, err := s.requireSuperwizorAdmin(ctx); err != nil {
+		return nil, err
+	}
+	pageSize := req.PageSize
+	if pageSize <= 0 {
+		pageSize = 50
+	}
+	if pageSize > 200 {
+		pageSize = 200
+	}
+
+	params := db.AdminListAuditEventsParams{PageSize: pageSize}
+	if req.ActorEmail != "" {
+		s := req.ActorEmail
+		params.ActorEmailSearch = &s
+	}
+	if req.Action != "" {
+		a := req.Action
+		params.ActionFilter = &a
+	}
+	if req.Since != nil {
+		params.SinceTs = pgtype.Timestamptz{Time: req.Since.AsTime(), Valid: true}
+	}
+	if req.Until != nil {
+		params.UntilTs = pgtype.Timestamptz{Time: req.Until.AsTime(), Valid: true}
+	}
+	if req.PageToken != "" {
+		ts, id, err := parsePageToken(req.PageToken)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid page_token")
+		}
+		params.AfterOccurredAt = pgtype.Timestamptz{Time: ts, Valid: true}
+		params.AfterID = pgtype.UUID{Bytes: id, Valid: true}
+	}
+
+	rows, err := s.queries.AdminListAuditEvents(ctx, params)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list audit events: %v", err)
+	}
+
+	out := &identityv1.AdminListAuditEventsResponse{
+		Events: make([]*identityv1.AuditEntry, 0, len(rows)),
+	}
+	for _, r := range rows {
+		entry := &identityv1.AuditEntry{
+			Id:           r.ID.String(),
+			OccurredAt:   timestamppb.New(r.OccurredAt),
+			Action:       r.Action,
+			ResourceType: r.ResourceType,
+		}
+		if r.ActorEmail != nil {
+			entry.ActorEmail = *r.ActorEmail
+		}
+		if r.Reason != nil {
+			entry.Reason = *r.Reason
+		}
+		if r.ResourceID.Valid {
+			entry.ResourceId = uuid.UUID(r.ResourceID.Bytes).String()
+		}
+		out.Events = append(out.Events, entry)
+	}
+	if int32(len(rows)) == pageSize && len(rows) > 0 {
+		last := rows[len(rows)-1]
+		out.NextPageToken = formatPageToken(last.OccurredAt, last.ID)
+	}
+	return out, nil
+}
+
 func (s *Server) AdminDeleteUser(ctx context.Context, req *identityv1.AdminDeleteUserRequest) (*emptypb.Empty, error) {
 	caller, err := s.requireSuperwizorAdmin(ctx)
 	if err != nil {

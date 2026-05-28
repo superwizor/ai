@@ -18,6 +18,7 @@ import { timestampDate } from "@bufbuild/protobuf/wkt";
 
 import { identityClient, billingClient } from "@/lib/connect/clients";
 import {
+  AddressSchema,
   AdminGetOrganizationRequestSchema,
   AdminSetOrganizationStatusRequestSchema,
   AdminUpdateOrganizationRequestSchema,
@@ -29,6 +30,12 @@ import {
   AdminChangePlanRequestSchema,
 } from "@superwizor/proto-ts/billing/v1/billing_pb";
 import { ActionDialog, type ActionResult } from "./ActionDialog";
+import {
+  AddressFields,
+  type AddressDraft,
+  addressDiffers,
+  addressFromProto,
+} from "./AddressFields";
 
 type LoadState = "loading" | "ready" | "not-found" | "error";
 
@@ -54,13 +61,27 @@ export function OrgDetail({ orgId }: { orgId: string }) {
   const [cycle, setCycle] = useState<"MONTHLY" | "ANNUAL">("MONTHLY");
 
   // Edit-org dialog draft state — seeded from the loaded org each
-  // time the dialog opens.
+  // time the dialog opens. Tracks both the original snapshot (for
+  // change detection) and the current draft.
   const [editDraft, setEditDraft] = useState<{
     legalName: string;
     type: "SOLO" | "CLINIC" | "ENTERPRISE";
     taxId: string;
     vatIdEu: string;
-  }>({ legalName: "", type: "CLINIC", taxId: "", vatIdEu: "" });
+    primaryAdminUserId: string;
+    address: AddressDraft;
+  }>({
+    legalName: "",
+    type: "CLINIC",
+    taxId: "",
+    vatIdEu: "",
+    primaryAdminUserId: "",
+    address: addressFromProto(null),
+  });
+  const [editOriginalAddress, setEditOriginalAddress] = useState<AddressDraft>(
+    addressFromProto(null),
+  );
+  const [editOriginalPrimaryAdmin, setEditOriginalPrimaryAdmin] = useState("");
 
   const reload = useCallback(async () => {
     setState("loading");
@@ -186,12 +207,17 @@ export function OrgDetail({ orgId }: { orgId: string }) {
             org.type === ("ORGANIZATION_TYPE_ENTERPRISE" as unknown as OrganizationType)
           ? "ENTERPRISE"
           : "CLINIC";
+    const seededAddress = addressFromProto(org.headquartersAddress);
     setEditDraft({
       legalName: org.legalName,
       type: typeStr,
       taxId: org.taxId,
       vatIdEu: org.vatIdEu,
+      primaryAdminUserId: org.primaryAdminUserId ?? "",
+      address: seededAddress,
     });
+    setEditOriginalAddress(seededAddress);
+    setEditOriginalPrimaryAdmin(org.primaryAdminUserId ?? "");
     setOpenDialog("edit");
   };
 
@@ -208,6 +234,15 @@ export function OrgDetail({ orgId }: { orgId: string }) {
     if (orgTypeMap[editDraft.type] !== org.type) req.type = orgTypeMap[editDraft.type];
     if (editDraft.taxId !== org.taxId) req.taxId = editDraft.taxId;
     if (editDraft.vatIdEu !== org.vatIdEu) req.vatIdEu = editDraft.vatIdEu;
+    if (
+      editDraft.primaryAdminUserId !== "" &&
+      editDraft.primaryAdminUserId !== editOriginalPrimaryAdmin
+    ) {
+      req.primaryAdminUserId = editDraft.primaryAdminUserId;
+    }
+    if (addressDiffers(editDraft.address, editOriginalAddress)) {
+      req.headquartersAddress = create(AddressSchema, editDraft.address);
+    }
 
     if (Object.keys(req).length === 2) {
       // organizationId + reason only — nothing to change.
@@ -463,6 +498,51 @@ export function OrgDetail({ orgId }: { orgId: string }) {
               />
             </div>
           </div>
+
+          {/* Primary admin transfer. Source is the loaded therapists list
+              — pragmatic MVP since AdminGetOrganization already returns
+              them. If the new owner needs to be an ORG_ADMIN not yet on
+              this list, set them via AdminUpdateUser → role first. */}
+          <div className="flex flex-col">
+            <label
+              htmlFor="edit-primary-admin"
+              className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist mb-2"
+            >
+              {tEdit("primaryAdminLabel")}
+            </label>
+            <select
+              id="edit-primary-admin"
+              value={editDraft.primaryAdminUserId}
+              onChange={(e) =>
+                setEditDraft((d) => ({
+                  ...d,
+                  primaryAdminUserId: e.target.value,
+                }))
+              }
+              className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition appearance-none cursor-pointer"
+            >
+              <option value="">{tEdit("primaryAdminUnchanged")}</option>
+              {details.therapists.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.firstName} {u.lastName} — {u.email}
+                </option>
+              ))}
+            </select>
+            <p className="font-mono text-[10px] text-mist/60 mt-1.5">
+              {tEdit("primaryAdminHint")}
+            </p>
+          </div>
+
+          {/* Headquarters address sub-form. The proto Address has 9
+              fields; we surface 8 (id is server-set). Blank fields are
+              fine — submission only sends the message when something
+              actually changed vs. the seeded value. */}
+          <AddressFields
+            idPrefix="edit-hq"
+            value={editDraft.address}
+            onChange={(next) => setEditDraft((d) => ({ ...d, address: next }))}
+            title={tEdit("addressTitle")}
+          />
         </div>
       </ActionDialog>
       <ActionDialog

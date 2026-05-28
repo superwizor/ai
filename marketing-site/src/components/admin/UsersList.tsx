@@ -2,9 +2,17 @@
 //
 // Same hand-rolled table pattern as OrgsList. Adds inline Edit and
 // Delete dialogs powered by AdminUpdateUser + AdminDeleteUser.
-// docs/18 §13.8 spec calls for a richer user-form (full address +
-// avatar + biography); MVP ships the high-frequency fields (name,
-// email, role, phone, ui_language) and defers the rest.
+// The edit dialog now covers the full docs/18 §13.8 surface: name,
+// email, phone, role, organization_id transfer, default_modality_id,
+// professional title + credentials number, biography, avatar URL,
+// billing address (via shared AddressFields), UI language.
+//
+// Two fields still take a raw UUID string instead of a richer picker:
+//   • organization_id — no global orgs lookup is fetched here; the
+//     admin can copy the ID from /admin/orgs.
+//   • default_modality_id — no ListModalities RPC yet on clinical-svc.
+// Both validate as UUIDs in the backend handler; an unknown UUID is
+// rejected with InvalidArgument.
 
 "use client";
 
@@ -14,6 +22,7 @@ import { create } from "@bufbuild/protobuf";
 
 import { identityClient } from "@/lib/connect/clients";
 import {
+  AddressSchema,
   AdminListUsersRequestSchema,
   AdminUpdateUserRequestSchema,
   AdminDeleteUserRequestSchema,
@@ -21,6 +30,13 @@ import {
   type User,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { ActionDialog, type ActionResult } from "./ActionDialog";
+import {
+  AddressFields,
+  type AddressDraft,
+  addressDiffers,
+  addressFromProto,
+  EMPTY_ADDRESS,
+} from "./AddressFields";
 
 const PAGE_SIZE = 25;
 
@@ -300,6 +316,18 @@ function UserEditDialog({
     phoneNumber: user.phoneNumber,
     role: roleKey(user.role),
     uiLanguage: user.uiLanguage || "pl",
+    organizationId: user.organizationId ?? "",
+    defaultModalityId: user.defaultModalityId ?? "",
+    professionalTitle: user.professionalTitle ?? "",
+    credentialsNumber: user.credentialsNumber ?? "",
+    biography: user.biography ?? "",
+    avatarUrl: user.avatarUrl ?? "",
+    // Billing address starts empty because the User proto carries only
+    // billing_address_id, not the resolved Address. The admin sees a
+    // blank sub-form; submission only sends the message when something
+    // gets filled in (addressDiffers vs EMPTY_ADDRESS). If we ever
+    // surface the address back on the User proto we can pre-seed here.
+    billingAddress: addressFromProto(null) as AddressDraft,
   });
 
   const onConfirm = async (reason: string): Promise<ActionResult> => {
@@ -311,6 +339,19 @@ function UserEditDialog({
     if (roleEnumFromKey(draft.role) !== user.role) req.role = roleEnumFromKey(draft.role);
     if (draft.uiLanguage !== (user.uiLanguage || "pl"))
       req.uiLanguage = draft.uiLanguage;
+    if (draft.organizationId !== (user.organizationId ?? ""))
+      req.organizationId = draft.organizationId;
+    if (draft.defaultModalityId !== (user.defaultModalityId ?? ""))
+      req.defaultModalityId = draft.defaultModalityId;
+    if (draft.professionalTitle !== (user.professionalTitle ?? ""))
+      req.professionalTitle = draft.professionalTitle;
+    if (draft.credentialsNumber !== (user.credentialsNumber ?? ""))
+      req.credentialsNumber = draft.credentialsNumber;
+    if (draft.biography !== (user.biography ?? "")) req.biography = draft.biography;
+    if (draft.avatarUrl !== (user.avatarUrl ?? "")) req.avatarUrl = draft.avatarUrl;
+    if (addressDiffers(draft.billingAddress, EMPTY_ADDRESS)) {
+      req.billingAddress = create(AddressSchema, draft.billingAddress);
+    }
 
     if (Object.keys(req).length === 2) {
       return { error: t("noChange") };
@@ -363,27 +404,139 @@ function UserEditDialog({
           onChange={(v) => setDraft((d) => ({ ...d, phoneNumber: v }))}
           type="tel"
         />
-        <SimpleSelect
-          id="u-role"
-          label={t("role")}
-          value={draft.role}
-          onChange={(v) =>
-            setDraft((d) => ({ ...d, role: v as typeof d.role }))
+        <div className="grid grid-cols-2 gap-3">
+          <SimpleSelect
+            id="u-role"
+            label={t("role")}
+            value={draft.role}
+            onChange={(v) =>
+              setDraft((d) => ({ ...d, role: v as typeof d.role }))
+            }
+            options={ROLE_KEYS.filter((k) => k !== "USER_ROLE_UNSPECIFIED").map(
+              (k) => ({ value: k, label: tRole(k) }),
+            )}
+          />
+          <SimpleSelect
+            id="u-lang"
+            label={t("uiLanguage")}
+            value={draft.uiLanguage}
+            onChange={(v) => setDraft((d) => ({ ...d, uiLanguage: v }))}
+            options={[
+              { value: "pl", label: t("polish") },
+              { value: "en", label: t("english") },
+            ]}
+          />
+        </div>
+
+        {/* Professional bona fides — therapists/org-admins surface these. */}
+        <div className="grid grid-cols-2 gap-3">
+          <SimpleInput
+            id="u-title"
+            label={t("professionalTitle")}
+            value={draft.professionalTitle}
+            onChange={(v) => setDraft((d) => ({ ...d, professionalTitle: v }))}
+          />
+          <SimpleInput
+            id="u-creds"
+            label={t("credentialsNumber")}
+            value={draft.credentialsNumber}
+            onChange={(v) => setDraft((d) => ({ ...d, credentialsNumber: v }))}
+          />
+        </div>
+
+        {/* Biography is the public-facing therapist intro; the rendered
+            HTML is sanitized on display so admins may paste markdown
+            or paragraphs of plain text here. */}
+        <div className="flex flex-col">
+          <label
+            htmlFor="u-bio"
+            className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist mb-2"
+          >
+            {t("biography")}
+          </label>
+          <textarea
+            id="u-bio"
+            value={draft.biography}
+            onChange={(e) =>
+              setDraft((d) => ({ ...d, biography: e.target.value }))
+            }
+            rows={3}
+            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-serif text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition resize-y"
+          />
+        </div>
+
+        <SimpleInput
+          id="u-avatar"
+          label={t("avatarUrl")}
+          value={draft.avatarUrl}
+          onChange={(v) => setDraft((d) => ({ ...d, avatarUrl: v }))}
+          type="url"
+        />
+
+        {/* Organization transfer + clinical modality. No global lookup
+            on either today — both are raw UUID inputs. The backend
+            validates the UUID format and rejects unknowns. See the
+            file header for context. */}
+        <div className="flex flex-col">
+          <label
+            htmlFor="u-org"
+            className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist mb-2"
+          >
+            {t("organizationId")}
+          </label>
+          <input
+            id="u-org"
+            type="text"
+            value={draft.organizationId}
+            onChange={(e) =>
+              setDraft((d) => ({ ...d, organizationId: e.target.value.trim() }))
+            }
+            placeholder="00000000-0000-0000-0000-000000000000"
+            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-mono text-xs focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition placeholder:text-mist/40"
+          />
+          <p className="font-mono text-[10px] text-mist/60 mt-1.5">
+            {t("organizationIdHint")}
+          </p>
+        </div>
+
+        <div className="flex flex-col">
+          <label
+            htmlFor="u-modality"
+            className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist mb-2"
+          >
+            {t("defaultModalityId")}
+          </label>
+          <input
+            id="u-modality"
+            type="text"
+            value={draft.defaultModalityId}
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                defaultModalityId: e.target.value.trim(),
+              }))
+            }
+            placeholder="00000000-0000-0000-0000-000000000000"
+            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-mono text-xs focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition placeholder:text-mist/40"
+          />
+          <p className="font-mono text-[10px] text-mist/60 mt-1.5">
+            {t("defaultModalityIdHint")}
+          </p>
+        </div>
+
+        {/* Billing address. Always seeded empty (the User proto carries
+            only the FK), so any non-blank field counts as a change. */}
+        <AddressFields
+          idPrefix="u-billing"
+          value={draft.billingAddress}
+          onChange={(next) =>
+            setDraft((d) => ({ ...d, billingAddress: next }))
           }
-          options={ROLE_KEYS.filter((k) => k !== "USER_ROLE_UNSPECIFIED").map(
-            (k) => ({ value: k, label: tRole(k) }),
-          )}
+          title={t("billingAddressTitle")}
         />
-        <SimpleSelect
-          id="u-lang"
-          label={t("uiLanguage")}
-          value={draft.uiLanguage}
-          onChange={(v) => setDraft((d) => ({ ...d, uiLanguage: v }))}
-          options={[
-            { value: "pl", label: t("polish") },
-            { value: "en", label: t("english") },
-          ]}
-        />
+        <p className="font-mono text-[10px] text-mist/60 -mt-2">
+          {t("billingAddressHint")}
+        </p>
       </div>
     </ActionDialog>
   );

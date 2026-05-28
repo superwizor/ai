@@ -219,6 +219,14 @@ func (a *ConnectAdapter) AdminDeleteUser(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) AdminListAuditEvents(ctx context.Context, req *connect.Request[identityv1.AdminListAuditEventsRequest]) (*connect.Response[identityv1.AdminListAuditEventsResponse], error) {
+	resp, err := a.s.AdminListAuditEvents(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) GetReportPreferences(ctx context.Context, req *connect.Request[identityv1.GetReportPreferencesRequest]) (*connect.Response[identityv1.ReportPreferences], error) {
 	resp, err := a.s.GetReportPreferences(ctx, req.Msg)
 	if err != nil {
