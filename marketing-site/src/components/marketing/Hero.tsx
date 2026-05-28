@@ -20,10 +20,6 @@ export function Hero() {
         {t("headingPunctuation")}
       </h1>
 
-      <p className="font-serif text-mist text-center mt-6 sm:mt-8 max-w-full sm:max-w-xl text-base sm:text-lg leading-relaxed px-2">
-        {t("subhead")}
-      </p>
-
       <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto px-2 sm:px-0">
         <a
           href={`${prefix}/register/therapist`}
@@ -38,6 +34,10 @@ export function Hero() {
           {t("ctaSecondary")}
         </a>
       </div>
+
+      <p className="font-serif text-mist text-center mt-8 sm:mt-10 max-w-full sm:max-w-xl text-base sm:text-lg leading-relaxed px-2">
+        {t("subhead")}
+      </p>
     </section>
   );
 }
