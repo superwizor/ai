@@ -13,6 +13,8 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../cache/cache_cipher.dart';
+
 abstract class ConsentService {
   /// Records that the patient gave consent at a specific moment.
   /// Throws [ConsentRecordingFailed] if persistence fails — caller
@@ -61,9 +63,16 @@ class LocalConsentService implements ConsentService {
   static const boxName = 'consent_audit';
   final fb_auth.FirebaseAuth _auth;
 
+  // F-07 fix: encrypt the consent box with a device-wide key from
+  // flutter_secure_storage (Keychain / Keystore). Without this the
+  // box was plaintext on disk, leaking patient_file_id + firebase_uid
+  // metadata (who recorded which patient).
+  static HiveAesCipher? _cipher;
+
   Future<Box<Map>> _box() async {
     if (Hive.isBoxOpen(boxName)) return Hive.box<Map>(boxName);
-    return Hive.openBox<Map>(boxName);
+    _cipher ??= await CacheCipher().cipherFor('__consent_audit__');
+    return Hive.openBox<Map>(boxName, encryptionCipher: _cipher!);
   }
 
   @override
