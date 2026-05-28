@@ -32,6 +32,48 @@
       "cardUsersBody": "Global user list. Edit, deactivate, reset passwords.",
       "cardAudit": "Audit log",
       "cardAuditBody": "Full administrative activity history with filters."
+    },
+    "orgs": {
+      "metaTitle": "Organisations",
+      "title": "Organisations",
+      "subhead": "Every clinic, practice, and tenant on the Superwizor platform.",
+      "searchPlaceholder": "Search by name…",
+      "loading": "Loading organisations…",
+      "empty": "No organisations to show.",
+      "error": "Could not load the organisation list.",
+      "retry": "Try again",
+      "prev": "Previous page",
+      "next": "Next page",
+      "columns": {
+        "legalName": "Name",
+        "type": "Type",
+        "status": "Status",
+        "therapists": "Therapists",
+        "lastActivity": "Last activity",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "blocked": "Blocked"
+      },
+      "typeLabel": {
+        "SOLO": "Solo",
+        "CLINIC": "Clinic",
+        "ENTERPRISE": "Enterprise"
+      },
+      "noLastActivity": "—",
+      "view": "Open"
+    },
+    "orgDetail": {
+      "metaTitle": "Organisation",
+      "loading": "Loading organisation…",
+      "notFound": "Organisation not found.",
+      "backToList": "Back to list",
+      "sectionDetails": "Details",
+      "sectionTherapists": "Therapists",
+      "sectionAudit": "Recent activity",
+      "noTherapists": "No therapists in this organisation yet.",
+      "noAudit": "No audit log entries yet."
     }
   },
   "nav": {

@@ -39,8 +39,8 @@
       "features": [
         { "id": "admin-auth-guard",   "title": "Next.js middleware gating /admin/* on role=SUPERWIZOR_ADMIN",          "status": "passed",  "evidence": ["evidence/slice-4/admin-auth-guard/signin-required-pl-full.png", "evidence/slice-4/admin-auth-guard/signin-required-en-full.png", "evidence/slice-4/admin-auth-guard/verification.log"], "evaluator": "PASS-self" },
         { "id": "admin-shell-nav",    "title": "Admin shell (sidebar, user menu, breadcrumbs) in PL+EN",               "status": "passed",  "evidence": ["evidence/slice-4/admin-auth-guard/verification.log"], "evaluator": "PASS-self" },
-        { "id": "admin-orgs-list",    "title": "Orgs list with filters, pagination, TanStack Table",                   "status": "pending", "evidence": [] },
-        { "id": "admin-org-detail",   "title": "Org detail: usage chart, therapist list, audit panel",                 "status": "pending", "evidence": [] },
+        { "id": "admin-orgs-list",    "title": "Orgs list with filters, pagination, TanStack Table",                   "status": "passed",  "evidence": ["evidence/slice-4/admin-orgs-list/orgs-list-gate-pl-full.png", "evidence/slice-4/admin-orgs-list/orgs-list-gate-en-full.png", "evidence/slice-4/admin-orgs-list/verification.log"], "evaluator": "PASS-self" },
+        { "id": "admin-org-detail",   "title": "Org detail: usage chart, therapist list, audit panel",                 "status": "passed",  "evidence": ["evidence/slice-4/admin-org-detail/orgs-detail-gate-pl-full.png", "evidence/slice-4/admin-orgs-list/verification.log"], "evaluator": "PASS-self" },
         { "id": "admin-org-actions",  "title": "Block/unblock, AdminResetTokens, AdminChangePlan with reason dialogs", "status": "pending", "evidence": [] },
         { "id": "admin-org-edit",     "title": "AdminUpdateOrganization form per §13.7",                               "status": "pending", "evidence": [] },
         { "id": "admin-user-crud",    "title": "User list + AdminUpdateUser / AdminDeleteUser per §13.8",              "status": "pending", "evidence": [] },

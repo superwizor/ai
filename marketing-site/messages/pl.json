@@ -32,6 +32,48 @@
       "cardUsersBody": "Globalna lista użytkowników. Edycja, dezaktywacja, reset hasła.",
       "cardAudit": "Dziennik audytowy",
       "cardAuditBody": "Pełna historia działań administracyjnych z filtrami."
+    },
+    "orgs": {
+      "metaTitle": "Organizacje",
+      "title": "Organizacje",
+      "subhead": "Wszystkie kliniki, gabinety i podmioty z konta Superwizora.",
+      "searchPlaceholder": "Szukaj po nazwie…",
+      "loading": "Ładowanie listy organizacji…",
+      "empty": "Brak organizacji do wyświetlenia.",
+      "error": "Nie udało się pobrać listy organizacji.",
+      "retry": "Spróbuj ponownie",
+      "prev": "Poprzednia strona",
+      "next": "Następna strona",
+      "columns": {
+        "legalName": "Nazwa",
+        "type": "Typ",
+        "status": "Status",
+        "therapists": "Terapeuci",
+        "lastActivity": "Ostatnia aktywność",
+        "actions": "Akcje"
+      },
+      "status": {
+        "active": "Aktywna",
+        "blocked": "Zablokowana"
+      },
+      "typeLabel": {
+        "SOLO": "Solo",
+        "CLINIC": "Klinika",
+        "ENTERPRISE": "Korporacja"
+      },
+      "noLastActivity": "—",
+      "view": "Szczegóły"
+    },
+    "orgDetail": {
+      "metaTitle": "Organizacja",
+      "loading": "Ładowanie danych organizacji…",
+      "notFound": "Nie znaleziono organizacji.",
+      "backToList": "Wróć do listy",
+      "sectionDetails": "Dane podstawowe",
+      "sectionTherapists": "Terapeuci",
+      "sectionAudit": "Ostatnie zdarzenia",
+      "noTherapists": "Brak terapeutów w tej organizacji.",
+      "noAudit": "Brak zdarzeń w dzienniku audytowym."
     }
   },
   "nav": {
