@@ -163,9 +163,11 @@ void _attachQuotaListener(Ref ref, UploadQueueRunner runner) {
     previous = current;
     if (current == null || prev == null) return;
     if (prev.tokensRemaining == 0 && current.tokensRemaining > 0) {
-      if (kDebugMode) debugPrint('[upload-runner] quota recovered '
-          '(${prev.tokensRemaining} → ${current.tokensRemaining}) '
-          '— kicking parked rows');
+      if (kDebugMode) {
+        debugPrint('[upload-runner] quota recovered '
+            '(${prev.tokensRemaining} → ${current.tokensRemaining}) '
+            '— kicking parked rows');
+      }
       // Reset backoffs first, then kick. Fire-and-forget; the reset
       // is a small Hive write loop and the kick runs _tick() async.
       // We don't await because the cache listener fires synchronously

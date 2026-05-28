@@ -542,8 +542,10 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
             // which Chirp 3 rejects. Log it and upload anyway — if
             // the file is already 16-bit PCM, normalizeWav returns
             // the original File (same path).
-            if (kDebugMode) debugPrint('[file-upload] WAV normalization returned null — '
-                'file may have unsupported format; uploading original');
+            if (kDebugMode) {
+              debugPrint('[file-upload] WAV normalization returned null — '
+                  'file may have unsupported format; uploading original');
+            }
           } else {
             if (kDebugMode) debugPrint('[file-upload] WAV already 16-bit PCM, no conversion needed');
           }
@@ -582,11 +584,15 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
             fileToUpload = flac;
             contentType = 'audio/flac';
             uploadSize = await flac.length();
-            if (kDebugMode) debugPrint('[file-upload] M4A → FLAC OK: '
-                '${(uploadSize / 1024 / 1024).toStringAsFixed(1)} MB');
+            if (kDebugMode) {
+              debugPrint('[file-upload] M4A → FLAC OK: '
+                  '${(uploadSize / 1024 / 1024).toStringAsFixed(1)} MB');
+            }
           } catch (e, st) {
-            if (kDebugMode) debugPrint('[file-upload] M4A → FLAC FAILED, falling back to '
-                'server-side ConvertAudio: $e\n$st');
+            if (kDebugMode) {
+              debugPrint('[file-upload] M4A → FLAC FAILED, falling back to '
+                  'server-side ConvertAudio: $e\n$st');
+            }
             // Upload the original M4A; server will transcode after
             // we land it on GCS.
             needsServerSideConversion = true;
@@ -594,8 +600,10 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
           }
         } else {
           // Android / web — no on-device path yet. Server fallback.
-          if (kDebugMode) debugPrint('[file-upload] non-iOS platform, using server-side '
-              'ConvertAudio for $ext');
+          if (kDebugMode) {
+            debugPrint('[file-upload] non-iOS platform, using server-side '
+                'ConvertAudio for $ext');
+          }
           needsServerSideConversion = true;
           contentType = ext == '.aac' ? 'audio/aac' : 'audio/mp4';
         }

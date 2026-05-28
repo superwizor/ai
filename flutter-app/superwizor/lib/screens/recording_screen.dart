@@ -243,8 +243,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
           if (kDebugMode) debugPrint('[recording] max duration reached at $d');
           _onMaxDurationReached();
         } else if (d >= const Duration(hours: 4)) {
-          if (kDebugMode) debugPrint(
-              '[recording] WARNING insane duration $d ignored — clock jump?');
+          if (kDebugMode) {
+            debugPrint(
+                '[recording] WARNING insane duration $d ignored — clock jump?');
+          }
         }
       });
       _stateSub = _service.stateStream.listen((s) {
@@ -370,8 +372,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   }
 
   Future<void> _onMaxDurationReached() async {
-    if (kDebugMode) debugPrint(
-        '[recording] _onMaxDurationReached dur=${_service.currentDuration}');
+    if (kDebugMode) {
+      debugPrint(
+          '[recording] _onMaxDurationReached dur=${_service.currentDuration}');
+    }
     await _service.pause();
     if (!mounted) return;
     final t = AppLocalizations.of(context);
@@ -408,10 +412,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   // ---------- finish + upload ----------
 
   Future<void> _finishAndUpload() async {
-    if (kDebugMode) debugPrint(
-        '[recording] _finishAndUpload entered; '
-        'currentDuration=${_service.currentDuration} '
-        'displayDuration=$_displayDuration recState=$_recState');
+    if (kDebugMode) {
+      debugPrint(
+          '[recording] _finishAndUpload entered; '
+          'currentDuration=${_service.currentDuration} '
+          'displayDuration=$_displayDuration recState=$_recState');
+    }
 
     // Defensive: refuse to upload absurdly short recordings. The legitimate
     // flow takes you through "Zakończenie i analiza sesji" sheet which
@@ -421,8 +427,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     // bail loudly than ship a 0-byte audio to the backend.
     final realDuration = _service.currentDuration;
     if (realDuration < const Duration(seconds: 5)) {
-      if (kDebugMode) debugPrint(
-          '[recording] _finishAndUpload aborted: duration too short ($realDuration)');
+      if (kDebugMode) {
+        debugPrint(
+            '[recording] _finishAndUpload aborted: duration too short ($realDuration)');
+      }
       if (mounted) {
         setState(() => _uploading = false);
         await showEuphireBottomSheet<void>(
@@ -468,9 +476,11 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       // has 29 bytes of overhead (13 header + 16 GCM tag), so
       // plaintext = Σ(chunk.size - 29). Avoids a wasted decrypt pass.
       final length = SecureAudioStorageService.estimateDecryptedSize(chunks);
-      if (kDebugMode) debugPrint('[recording] estimated decrypted size=${length}B '
-          '(${chunks.length} chunks, '
-          '${(length / 1024 / 1024).toStringAsFixed(1)} MB)');
+      if (kDebugMode) {
+        debugPrint('[recording] estimated decrypted size=${length}B '
+            '(${chunks.length} chunks, '
+            '${(length / 1024 / 1024).toStringAsFixed(1)} MB)');
+      }
 
       // Build the per-session chunks dir path; this is what the
       // queue worker passes back to SecureAudioStorageService.

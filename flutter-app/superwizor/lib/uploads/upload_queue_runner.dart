@@ -386,13 +386,17 @@ class UploadQueueRunner {
     final stream = _sessionStatusStream;
     if (sid == null || stream == null) return;
 
-    if (kDebugMode) debugPrint('[upload-runner] subscribing to analysis status '
-        'localId=${row.localId} sessionId=$sid');
+    if (kDebugMode) {
+      debugPrint('[upload-runner] subscribing to analysis status '
+          'localId=${row.localId} sessionId=$sid');
+    }
 
     final sub = stream(sid).listen(
       (status) async {
-        if (kDebugMode) debugPrint('[upload-runner] analysis status localId=${row.localId} '
-            'sessionId=$sid status=$status');
+        if (kDebugMode) {
+          debugPrint('[upload-runner] analysis status localId=${row.localId} '
+              'sessionId=$sid status=$status');
+        }
         if (status != 'done' && status != 'failed') return;
         // Terminal — refresh the consumer caches then drop the row.
         try {
@@ -405,8 +409,10 @@ class UploadQueueRunner {
         _emitSnapshot();
       },
       onError: (Object e) {
-        if (kDebugMode) debugPrint('[upload-runner] analysis stream error for '
-            '${row.sessionId}: $e');
+        if (kDebugMode) {
+          debugPrint('[upload-runner] analysis stream error for '
+              '${row.sessionId}: $e');
+        }
       },
     );
     _analysisSubs[row.localId] = sub;

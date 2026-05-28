@@ -81,9 +81,11 @@ class UploadWorker {
   Future<PendingUpload> runOne(PendingUpload u) async {
     if (u.isTerminal) return u;
 
-    if (kDebugMode) debugPrint('[upload-worker] runOne localId=${u.localId} '
-        'phase=${u.phase.name} attempt=${u.attemptCount} '
-        'kind=${u.sourceKind.name}');
+    if (kDebugMode) {
+      debugPrint('[upload-worker] runOne localId=${u.localId} '
+          'phase=${u.phase.name} attempt=${u.attemptCount} '
+          'kind=${u.sourceKind.name}');
+    }
 
     try {
       final PendingUpload next;
@@ -110,9 +112,11 @@ class UploadWorker {
         case UploadPhase.failed:
           return u;
       }
-      if (kDebugMode) debugPrint('[upload-worker] runOne localId=${u.localId} '
-          '→ phase=${next.phase.name} '
-          '${next.lastError != null ? "error=${next.lastError}" : ""}');
+      if (kDebugMode) {
+        debugPrint('[upload-worker] runOne localId=${u.localId} '
+            '→ phase=${next.phase.name} '
+            '${next.lastError != null ? "error=${next.lastError}" : ""}');
+      }
       return next;
     } catch (e, st) {
       // Defensive — runOne is supposed to be exception-safe via the

@@ -64,8 +64,10 @@ class AudioConverterService {
     final sampleRate = bd.getUint32(fmtOffset + 12, Endian.little);
     final bitsPerSample = bd.getUint16(fmtOffset + 22, Endian.little);
 
-    if (kDebugMode) debugPrint('[wav-norm] format=$audioFormat channels=$numChannels '
-        'rate=$sampleRate bits=$bitsPerSample fmtSize=$fmtSize');
+    if (kDebugMode) {
+      debugPrint('[wav-norm] format=$audioFormat channels=$numChannels '
+          'rate=$sampleRate bits=$bitsPerSample fmtSize=$fmtSize');
+    }
 
     // audioFormat: 1 = PCM, 3 = IEEE Float, 0xFFFE = extensible
     final isFloat = audioFormat == 3;
@@ -196,11 +198,13 @@ class AudioConverterService {
 
     final inputSize = bytes.length;
     final outputSize = await outFile.length();
-    if (kDebugMode) debugPrint(
-      '[wav-norm] converted: ${(inputSize / 1024 / 1024).toStringAsFixed(1)} MB → '
-      '${(outputSize / 1024 / 1024).toStringAsFixed(1)} MB '
-      '(${bitsPerSample}bit ${effectiveIsFloat ? "float" : "int"} → 16bit PCM)',
-    );
+    if (kDebugMode) {
+      debugPrint(
+        '[wav-norm] converted: ${(inputSize / 1024 / 1024).toStringAsFixed(1)} MB → '
+        '${(outputSize / 1024 / 1024).toStringAsFixed(1)} MB '
+        '(${bitsPerSample}bit ${effectiveIsFloat ? "float" : "int"} → 16bit PCM)',
+      );
+    }
 
     onProgress?.call(1.0);
     return outFile;
