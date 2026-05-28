@@ -12,6 +12,28 @@ const password = z
   .min(8)
   .regex(/\d/, "password-no-digit");
 
+// E.164-ish phone format. Accept an optional leading `+`, then 6–18
+// digits with allowed spaces / dashes / parens between them. We
+// deliberately don't require `+48` — the placeholder hints at the
+// PL format but visitors from other countries still need to type a
+// usable number. Backend stores the canonical form per docs/18
+// §13.2 D5.
+const PHONE_REGEX = /^[+\d][\d\s\-()]{5,18}$/;
+
+// optionalPhone: accept empty (react-hook-form's default for an
+// untouched field) OR a string matching PHONE_REGEX. Anything else
+// fails with "phone-invalid" — surfaced to the user as a localized
+// hint by the form via tErr("phoneInvalid").
+const optionalPhone = z
+  .string()
+  .optional()
+  .refine((v) => !v || PHONE_REGEX.test(v), { message: "phone-invalid" });
+
+const requiredPhone = z
+  .string()
+  .min(1, { message: "phone-required" })
+  .regex(PHONE_REGEX, { message: "phone-invalid" });
+
 // Therapist registration via email/password — fields from docs/18 §13.2.
 export const therapistEmailSchema = z.object({
   email: z.string().email(),
@@ -22,7 +44,7 @@ export const therapistEmailSchema = z.object({
   credentialsNumber: z.string().optional(),
   modalityCode: z.enum(["UNIV", "CBT", "PSYCHO"]),
   uiLanguage: z.enum(["pl", "en"]),
-  phoneNumber: z.string().optional(),
+  phoneNumber: optionalPhone,
   hasAcceptedTos: z.literal(true),
   hasMarketingConsent: z.boolean().optional(),
 });
@@ -38,7 +60,7 @@ export const organizationEmailSchema = z.object({
   password,
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  phoneNumber: z.string().min(4), // required for org admins
+  phoneNumber: requiredPhone, // required for org admins
   uiLanguage: z.enum(["pl", "en"]),
 
   // Organisation
@@ -97,7 +119,7 @@ export const therapistFinishSchema = z.object({
   lastName: z.string().min(1),
   modalityCode: z.enum(["UNIV", "CBT", "PSYCHO"]),
   uiLanguage: z.enum(["pl", "en"]),
-  phoneNumber: z.string().optional(),
+  phoneNumber: optionalPhone,
   professionalTitle: z.string().optional(),
   hasAcceptedTos: z.literal(true),
   hasMarketingConsent: z.boolean().optional(),
@@ -108,7 +130,7 @@ export type TherapistFinishForm = z.infer<typeof therapistFinishSchema>;
 export const organizationFinishSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  phoneNumber: z.string().min(4),
+  phoneNumber: requiredPhone,
   uiLanguage: z.enum(["pl", "en"]),
   legalName: z.string().min(1),
   orgType: z.enum(["SOLO", "CLINIC", "ENTERPRISE"]),

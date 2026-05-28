@@ -257,7 +257,11 @@ export function TherapistEmailForm({ modalities }: Props) {
             </FieldShell>
           </div>
 
-          <FieldShell id="phoneNumber" label={t("phoneNumber")}>
+          <FieldShell
+            id="phoneNumber"
+            label={t("phoneNumber")}
+            error={errors.phoneNumber && tErr("phoneInvalid")}
+          >
             <TextInput
               id="phoneNumber"
               type="tel"

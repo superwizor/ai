@@ -368,6 +368,7 @@
       "tosRequired": "You must accept the terms to register.",
       "emailAlreadyInUse": "This email is already registered. Try logging in instead.",
       "weakPassword": "This password is too weak.",
+      "phoneInvalid": "Phone number should contain 6–18 digits; spaces, dashes and parentheses are allowed.",
       "networkError": "Could not reach the server. Please try again.",
       "unknown": "Something went wrong. Please try again."
     },

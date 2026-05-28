@@ -16,9 +16,18 @@ type FieldShellProps = {
 export function FieldShell({ id, label, hint, error, required, children }: FieldShellProps) {
   return (
     <div className="flex flex-col">
+      {/*
+        min-h-[2lh] reserves the vertical space of two label lines.
+        Side-by-side fields with labels of mismatched length (e.g.
+        "Tytuł zawodowy (opcjonalnie)" next to "Numer prawa wykonywania
+        zawodu (opcjonalnie)") would otherwise wrap one to two lines
+        and shove its input below the neighbour. Reserving two lines
+        keeps inputs aligned across responsive widths without
+        introducing a CSS grid subgrid dependency.
+      */}
       <label
         htmlFor={id}
-        className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist mb-2"
+        className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist mb-2 min-h-[2lh] leading-snug"
       >
         {label}
         {required && <span aria-hidden className="text-ember ml-1">*</span>}

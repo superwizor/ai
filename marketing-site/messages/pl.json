@@ -368,6 +368,7 @@
       "tosRequired": "Musisz zaakceptować regulamin, aby się zarejestrować.",
       "emailAlreadyInUse": "Ten adres e-mail jest już zarejestrowany. Spróbuj się zalogować.",
       "weakPassword": "Hasło jest zbyt słabe.",
+      "phoneInvalid": "Numer telefonu powinien zawierać 6–18 cyfr; dozwolone są spacje, myślniki i nawiasy.",
       "networkError": "Brak połączenia z serwerem. Spróbuj ponownie.",
       "unknown": "Coś poszło nie tak. Spróbuj ponownie."
     },

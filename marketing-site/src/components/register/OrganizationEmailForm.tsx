@@ -176,7 +176,21 @@ export function OrganizationEmailForm() {
               <TextInput id="lastName" autoComplete="family-name" {...register("lastName")} />
             </FieldShell>
           </div>
-          <FieldShell id="phoneNumber" label={t("phoneNumber")} required error={errors.phoneNumber && tOrgErr("phoneRequired")}>
+          <FieldShell
+            id="phoneNumber"
+            label={t("phoneNumber")}
+            required
+            // The zod schema (requiredPhone) emits "phone-required"
+            // for empty and "phone-invalid" for a malformed value; we
+            // localize each separately so the user knows whether to
+            // fill the field or just fix its format.
+            error={
+              errors.phoneNumber &&
+              (errors.phoneNumber.message === "phone-invalid"
+                ? tErr("phoneInvalid")
+                : tOrgErr("phoneRequired"))
+            }
+          >
             <TextInput
               id="phoneNumber"
               type="tel"
