@@ -110,7 +110,7 @@ class GrpcUploadIo implements UploadIo {
 
     try {
       final bytes = await file.readAsBytes();
-      debugPrint('[upload-io] PUT ${bytes.length}B → ${_redact(signedUrl)}');
+      if (kDebugMode) debugPrint('[upload-io] PUT ${bytes.length}B → ${_redact(signedUrl)}');
       final response = await _http.put(
         Uri.parse(signedUrl),
         headers: {
@@ -133,7 +133,7 @@ class GrpcUploadIo implements UploadIo {
         try {
           if (await file.exists()) await file.delete();
         } catch (e) {
-          debugPrint('[upload-io] temp file delete failed: $e');
+          if (kDebugMode) debugPrint('[upload-io] temp file delete failed: $e');
         }
       }
     }
@@ -163,7 +163,7 @@ class GrpcUploadIo implements UploadIo {
         }
       }
     } catch (e) {
-      debugPrint('[upload-io] cleanupSource failed: $e');
+      if (kDebugMode) debugPrint('[upload-io] cleanupSource failed: $e');
       // Don't rethrow — terminal-success on the server is what matters.
     }
   }

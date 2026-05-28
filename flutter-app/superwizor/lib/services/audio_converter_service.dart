@@ -42,9 +42,9 @@ class AudioConverterService {
     void Function(double progress)? onProgress,
   }) async {
     final inputFile = File(inputPath);
-    debugPrint('[wav-norm] reading $inputPath');
+    if (kDebugMode) debugPrint('[wav-norm] reading $inputPath');
     final bytes = await inputFile.readAsBytes();
-    debugPrint('[wav-norm] read ${bytes.length} bytes (${(bytes.length / 1024 / 1024).toStringAsFixed(1)} MB)');
+    if (kDebugMode) debugPrint('[wav-norm] read ${bytes.length} bytes (${(bytes.length / 1024 / 1024).toStringAsFixed(1)} MB)');
     onProgress?.call(0.1);
 
     // Check RIFF/WAVE header
@@ -64,7 +64,7 @@ class AudioConverterService {
     final sampleRate = bd.getUint32(fmtOffset + 12, Endian.little);
     final bitsPerSample = bd.getUint16(fmtOffset + 22, Endian.little);
 
-    debugPrint('[wav-norm] format=$audioFormat channels=$numChannels '
+    if (kDebugMode) debugPrint('[wav-norm] format=$audioFormat channels=$numChannels '
         'rate=$sampleRate bits=$bitsPerSample fmtSize=$fmtSize');
 
     // audioFormat: 1 = PCM, 3 = IEEE Float, 0xFFFE = extensible
@@ -74,7 +74,7 @@ class AudioConverterService {
 
     // If already 16-bit PCM, no conversion needed
     if (isPCM && bitsPerSample == 16) {
-      debugPrint('[wav-norm] already 16-bit PCM, no conversion needed');
+      if (kDebugMode) debugPrint('[wav-norm] already 16-bit PCM, no conversion needed');
       onProgress?.call(1.0);
       return inputFile;
     }
@@ -92,7 +92,7 @@ class AudioConverterService {
     final effectiveIsPCM = effectiveFormat == 1 || isPCM;
 
     if (!effectiveIsFloat && !effectiveIsPCM) {
-      debugPrint('[wav-norm] unsupported WAV format: $audioFormat');
+      if (kDebugMode) debugPrint('[wav-norm] unsupported WAV format: $audioFormat');
       return null;
     }
 
@@ -103,7 +103,7 @@ class AudioConverterService {
     final dataSize = bd.getUint32(dataOffset + 4, Endian.little);
     final dataStart = dataOffset + 8;
 
-    debugPrint('[wav-norm] data chunk: offset=$dataStart size=$dataSize');
+    if (kDebugMode) debugPrint('[wav-norm] data chunk: offset=$dataStart size=$dataSize');
     onProgress?.call(0.2);
 
     // Calculate number of samples
@@ -138,7 +138,7 @@ class AudioConverterService {
         final value = bd.getInt32(offset, Endian.little);
         sample = value / 2147483648.0; // 2^31
       } else {
-        debugPrint('[wav-norm] unsupported: format=$effectiveFormat bits=$bitsPerSample');
+        if (kDebugMode) debugPrint('[wav-norm] unsupported: format=$effectiveFormat bits=$bitsPerSample');
         return null;
       }
 
@@ -196,7 +196,7 @@ class AudioConverterService {
 
     final inputSize = bytes.length;
     final outputSize = await outFile.length();
-    debugPrint(
+    if (kDebugMode) debugPrint(
       '[wav-norm] converted: ${(inputSize / 1024 / 1024).toStringAsFixed(1)} MB → '
       '${(outputSize / 1024 / 1024).toStringAsFixed(1)} MB '
       '(${bitsPerSample}bit ${effectiveIsFloat ? "float" : "int"} → 16bit PCM)',
@@ -259,10 +259,10 @@ class AudioConverterService {
         }
         await Future.delayed(const Duration(milliseconds: 100));
       }
-      debugPrint('[duration-probe] gave up on $localPath (got $d)');
+      if (kDebugMode) debugPrint('[duration-probe] gave up on $localPath (got $d)');
       return 0;
     } catch (e) {
-      debugPrint('[duration-probe] failed for $localPath: $e');
+      if (kDebugMode) debugPrint('[duration-probe] failed for $localPath: $e');
       return 0;
     } finally {
       await player.dispose();
@@ -307,7 +307,7 @@ class AudioConverterService {
       'superwizor_m4aflac_${DateTime.now().millisecondsSinceEpoch}.flac',
     );
 
-    debugPrint('[m4a-flac] input=$inputPath output=$outputPath');
+    if (kDebugMode) debugPrint('[m4a-flac] input=$inputPath output=$outputPath');
 
     // Subscribe to progress before invoking the method so we don't
     // race the first emit. Cancelled in `finally`.
@@ -341,10 +341,10 @@ class AudioConverterService {
       }
 
       final outSize = await outFile.length();
-      debugPrint('[m4a-flac] OK: ${(outSize / 1024 / 1024).toStringAsFixed(1)} MB');
+      if (kDebugMode) debugPrint('[m4a-flac] OK: ${(outSize / 1024 / 1024).toStringAsFixed(1)} MB');
       return outFile;
     } on PlatformException catch (e) {
-      debugPrint('[m4a-flac] platform exception: ${e.code} ${e.message}');
+      if (kDebugMode) debugPrint('[m4a-flac] platform exception: ${e.code} ${e.message}');
       // Re-throw as a plain exception so callers don't need to
       // import flutter/services to catch it.
       throw StateError('Native conversion failed: ${e.code} ${e.message}');

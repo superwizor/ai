@@ -15,6 +15,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -128,7 +129,7 @@ final uploadQueueRunnerProvider =
       // Fire-and-forget — the notifier's listener updates state via
       // its cache listener, so we don't need to await here.
       ref.read(billingQuotaProvider.notifier).onReservationCreated().catchError((e) {
-        debugPrint('[upload-runner] onReservationCreated failed: $e');
+        if (kDebugMode) debugPrint('[upload-runner] onReservationCreated failed: $e');
       });
     },
   );
@@ -162,7 +163,7 @@ void _attachQuotaListener(Ref ref, UploadQueueRunner runner) {
     previous = current;
     if (current == null || prev == null) return;
     if (prev.tokensRemaining == 0 && current.tokensRemaining > 0) {
-      debugPrint('[upload-runner] quota recovered '
+      if (kDebugMode) debugPrint('[upload-runner] quota recovered '
           '(${prev.tokensRemaining} → ${current.tokensRemaining}) '
           '— kicking parked rows');
       // Reset backoffs first, then kick. Fire-and-forget; the reset
@@ -269,13 +270,13 @@ Future<void> _refreshKartoteka(Ref ref, String patientFileId) async {
     final patientRepo = await ref.read(patientRepositoryProvider.future);
     await patientRepo?.refresh();
   } catch (e) {
-    debugPrint('[upload-runner] patient refresh failed: $e');
+    if (kDebugMode) debugPrint('[upload-runner] patient refresh failed: $e');
   }
   try {
     final sessionRepo = await ref.read(sessionRepositoryProvider.future);
     await sessionRepo?.refresh(patientFileId);
   } catch (e) {
-    debugPrint('[upload-runner] session refresh failed: $e');
+    if (kDebugMode) debugPrint('[upload-runner] session refresh failed: $e');
   }
 }
 
@@ -288,7 +289,7 @@ class UploadQueueLifecycleObserver extends WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       final runner = _holder.runner;
       if (runner != null) {
-        debugPrint('[upload-runner] app resumed — kicking queue');
+        if (kDebugMode) debugPrint('[upload-runner] app resumed — kicking queue');
         runner.kick();
       }
     }

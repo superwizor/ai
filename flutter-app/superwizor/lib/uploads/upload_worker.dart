@@ -81,7 +81,7 @@ class UploadWorker {
   Future<PendingUpload> runOne(PendingUpload u) async {
     if (u.isTerminal) return u;
 
-    debugPrint('[upload-worker] runOne localId=${u.localId} '
+    if (kDebugMode) debugPrint('[upload-worker] runOne localId=${u.localId} '
         'phase=${u.phase.name} attempt=${u.attemptCount} '
         'kind=${u.sourceKind.name}');
 
@@ -110,7 +110,7 @@ class UploadWorker {
         case UploadPhase.failed:
           return u;
       }
-      debugPrint('[upload-worker] runOne localId=${u.localId} '
+      if (kDebugMode) debugPrint('[upload-worker] runOne localId=${u.localId} '
           '→ phase=${next.phase.name} '
           '${next.lastError != null ? "error=${next.lastError}" : ""}');
       return next;
@@ -119,7 +119,7 @@ class UploadWorker {
       // per-step handlers below. If we land here something genuinely
       // unexpected happened. Treat as retryable so the next tick
       // re-tries; surfacing it as terminal could hide our own bugs.
-      debugPrint('[upload-worker] runOne unexpected: $e\n$st');
+      if (kDebugMode) debugPrint('[upload-worker] runOne unexpected: $e\n$st');
       return _scheduleRetry(u, 'unexpected: $e');
     }
   }
@@ -198,7 +198,7 @@ class UploadWorker {
     try {
       await _io.cleanupSource(u);
     } catch (e) {
-      debugPrint('[upload-worker] cleanupSource failed (ignored): $e');
+      if (kDebugMode) debugPrint('[upload-worker] cleanupSource failed (ignored): $e');
     }
   }
 

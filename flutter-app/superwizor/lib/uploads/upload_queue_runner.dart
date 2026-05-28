@@ -126,8 +126,9 @@ class UploadQueueRunner {
     _running = true;
 
     _connSub = _connectivityStream.listen(_onConnectivityChanged,
-        onError: (Object e) =>
-            debugPrint('[upload-runner] connectivity stream error: $e'));
+        onError: (Object e) {
+            if (kDebugMode) debugPrint('[upload-runner] connectivity stream error: $e');
+        });
     _periodicTimer = Timer.periodic(_periodicInterval, (_) => _tick());
 
     // Cold-start backoff reset.
@@ -294,7 +295,7 @@ class UploadQueueRunner {
             try {
               _onReservationCreated?.call(next);
             } catch (e) {
-              debugPrint('[upload-runner] onReservationCreated failed: $e');
+              if (kDebugMode) debugPrint('[upload-runner] onReservationCreated failed: $e');
             }
           }
 
@@ -309,7 +310,7 @@ class UploadQueueRunner {
             try {
               await _onUploadComplete?.call(next);
             } catch (e) {
-              debugPrint('[upload-runner] onUploadComplete failed: $e');
+              if (kDebugMode) debugPrint('[upload-runner] onUploadComplete failed: $e');
             }
           }
 
@@ -335,7 +336,7 @@ class UploadQueueRunner {
       // No polling — the runner is push-driven through Firestore.
       _reconcileAnalysisSubscriptions();
     } catch (e, st) {
-      debugPrint('[upload-runner] tick crashed: $e\n$st');
+      if (kDebugMode) debugPrint('[upload-runner] tick crashed: $e\n$st');
     } finally {
       _tickInFlight = false;
       ticksCompleted++;
@@ -385,26 +386,26 @@ class UploadQueueRunner {
     final stream = _sessionStatusStream;
     if (sid == null || stream == null) return;
 
-    debugPrint('[upload-runner] subscribing to analysis status '
+    if (kDebugMode) debugPrint('[upload-runner] subscribing to analysis status '
         'localId=${row.localId} sessionId=$sid');
 
     final sub = stream(sid).listen(
       (status) async {
-        debugPrint('[upload-runner] analysis status localId=${row.localId} '
+        if (kDebugMode) debugPrint('[upload-runner] analysis status localId=${row.localId} '
             'sessionId=$sid status=$status');
         if (status != 'done' && status != 'failed') return;
         // Terminal — refresh the consumer caches then drop the row.
         try {
           await _onAnalysisComplete?.call(row);
         } catch (e) {
-          debugPrint('[upload-runner] onAnalysisComplete failed: $e');
+          if (kDebugMode) debugPrint('[upload-runner] onAnalysisComplete failed: $e');
         }
         await _queue.removeById(row.localId);
         unawaited(_analysisSubs.remove(row.localId)?.cancel());
         _emitSnapshot();
       },
       onError: (Object e) {
-        debugPrint('[upload-runner] analysis stream error for '
+        if (kDebugMode) debugPrint('[upload-runner] analysis stream error for '
             '${row.sessionId}: $e');
       },
     );

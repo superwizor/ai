@@ -178,7 +178,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     final recorder = AudioRecorder();
     try {
       final granted = await recorder.hasPermission();
-      debugPrint('[recording] native mic permission: granted=$granted');
+      if (kDebugMode) debugPrint('[recording] native mic permission: granted=$granted');
       if (granted) return true;
     } finally {
       await recorder.dispose();
@@ -189,7 +189,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     // via Settings) from "first-time refusal" (already shown the OS
     // dialog above).
     final fallback = await Permission.microphone.request();
-    debugPrint('[recording] permission_handler fallback: $fallback');
+    if (kDebugMode) debugPrint('[recording] permission_handler fallback: $fallback');
     if (fallback.isGranted) return true;
 
     if (!mounted) return false;
@@ -239,10 +239,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
             d >= kMaxSessionDuration &&
             d < const Duration(hours: 4)) {
           _maxLimitTriggered = true;
-          debugPrint('[recording] max duration reached at $d');
+          if (kDebugMode) debugPrint('[recording] max duration reached at $d');
           _onMaxDurationReached();
         } else if (d >= const Duration(hours: 4)) {
-          debugPrint(
+          if (kDebugMode) debugPrint(
               '[recording] WARNING insane duration $d ignored — clock jump?');
         }
       });
@@ -303,7 +303,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   // ---------- stop / pause logic per Etap 3 ----------
 
   Future<void> _onStopPressed() async {
-    debugPrint('[recording] _onStopPressed dur=${_service.currentDuration}');
+    if (kDebugMode) debugPrint('[recording] _onStopPressed dur=${_service.currentDuration}');
     final t = AppLocalizations.of(context);
     final dur = _service.currentDuration;
     if (dur < kMinSessionDuration) {
@@ -369,7 +369,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   }
 
   Future<void> _onMaxDurationReached() async {
-    debugPrint(
+    if (kDebugMode) debugPrint(
         '[recording] _onMaxDurationReached dur=${_service.currentDuration}');
     await _service.pause();
     if (!mounted) return;
@@ -407,7 +407,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   // ---------- finish + upload ----------
 
   Future<void> _finishAndUpload() async {
-    debugPrint(
+    if (kDebugMode) debugPrint(
         '[recording] _finishAndUpload entered; '
         'currentDuration=${_service.currentDuration} '
         'displayDuration=$_displayDuration recState=$_recState');
@@ -420,7 +420,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     // bail loudly than ship a 0-byte audio to the backend.
     final realDuration = _service.currentDuration;
     if (realDuration < const Duration(seconds: 5)) {
-      debugPrint(
+      if (kDebugMode) debugPrint(
           '[recording] _finishAndUpload aborted: duration too short ($realDuration)');
       if (mounted) {
         setState(() => _uploading = false);
@@ -445,7 +445,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       final rawPath = await _service.stop();
       if (rawPath == null) throw StateError('no recording produced');
       final rawSize = await File(rawPath).length();
-      debugPrint('[recording] stopped, raw=$rawPath size=${rawSize}B');
+      if (kDebugMode) debugPrint('[recording] stopped, raw=$rawPath size=${rawSize}B');
       if (rawSize == 0) {
         throw StateError(
             'recording file is empty (0 bytes) — iOS encoder failed to flush');
@@ -461,13 +461,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         sessionId: sessionId,
       );
       _chunkCount = chunks.length;
-      debugPrint('[recording] encrypted: ${chunks.length} chunks');
+      if (kDebugMode) debugPrint('[recording] encrypted: ${chunks.length} chunks');
 
       // Plaintext size estimated from chunk metadata — each .enc file
       // has 29 bytes of overhead (13 header + 16 GCM tag), so
       // plaintext = Σ(chunk.size - 29). Avoids a wasted decrypt pass.
       final length = SecureAudioStorageService.estimateDecryptedSize(chunks);
-      debugPrint('[recording] estimated decrypted size=${length}B '
+      if (kDebugMode) debugPrint('[recording] estimated decrypted size=${length}B '
           '(${chunks.length} chunks, '
           '${(length / 1024 / 1024).toStringAsFixed(1)} MB)');
 
@@ -519,7 +519,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         builder: (_) => SessionStatusScreen(localId: sessionId),
       ));
     } catch (e, st) {
-      debugPrint('[recording] _finishAndUpload FAILED: $e\n$st');
+      if (kDebugMode) debugPrint('[recording] _finishAndUpload FAILED: $e\n$st');
       if (mounted) {
         setState(() => _uploading = false);
         await showEuphireBottomSheet<void>(

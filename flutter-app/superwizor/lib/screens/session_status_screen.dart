@@ -265,7 +265,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         final runner = await ref.read(uploadQueueRunnerProvider.future);
         await runner?.dismiss(localId);
       } catch (e) {
-        debugPrint('[session-status] dismiss queue row failed: $e');
+        if (kDebugMode) debugPrint('[session-status] dismiss queue row failed: $e');
       }
     }
 

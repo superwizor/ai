@@ -108,7 +108,7 @@ class UploadQueue {
       } catch (e) {
         // Corrupt row — log and drop on next sweep. We don't delete
         // synchronously here because all() is meant to be read-only.
-        debugPrint('[upload-queue] dropping unreadable row $k: $e');
+        if (kDebugMode) debugPrint('[upload-queue] dropping unreadable row $k: $e');
       }
     }
     return out;

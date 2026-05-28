@@ -485,7 +485,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     try {
       await _convertAndUploadFile(file: file, originalSizeBytes: sizeBytes);
     } catch (e) {
-      debugPrint('[file-upload] FAILED: $e');
+      if (kDebugMode) debugPrint('[file-upload] FAILED: $e');
       if (!mounted) return;
       setState(() => _uploading = false);
       _showErrorSheet('Błąd podczas przesyłania pliku:\n$e');
@@ -534,20 +534,20 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
             tempFile = normalized;
             fileToUpload = normalized;
             uploadSize = await normalized.length();
-            debugPrint('[file-upload] WAV normalized: ${(uploadSize / 1024 / 1024).toStringAsFixed(1)} MB');
+            if (kDebugMode) debugPrint('[file-upload] WAV normalized: ${(uploadSize / 1024 / 1024).toStringAsFixed(1)} MB');
           } else if (normalized == null) {
             // normalizeWav returns null for non-WAV or unsupported
             // sub-formats. The original file might be 32-bit float
             // which Chirp 3 rejects. Log it and upload anyway — if
             // the file is already 16-bit PCM, normalizeWav returns
             // the original File (same path).
-            debugPrint('[file-upload] WAV normalization returned null — '
+            if (kDebugMode) debugPrint('[file-upload] WAV normalization returned null — '
                 'file may have unsupported format; uploading original');
           } else {
-            debugPrint('[file-upload] WAV already 16-bit PCM, no conversion needed');
+            if (kDebugMode) debugPrint('[file-upload] WAV already 16-bit PCM, no conversion needed');
           }
         } catch (e, st) {
-          debugPrint('[file-upload] WAV normalization failed: $e\n$st');
+          if (kDebugMode) debugPrint('[file-upload] WAV normalization failed: $e\n$st');
           // Continue with original file — backend may still handle it
         }
         contentType = 'audio/wav';
@@ -581,10 +581,10 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
             fileToUpload = flac;
             contentType = 'audio/flac';
             uploadSize = await flac.length();
-            debugPrint('[file-upload] M4A → FLAC OK: '
+            if (kDebugMode) debugPrint('[file-upload] M4A → FLAC OK: '
                 '${(uploadSize / 1024 / 1024).toStringAsFixed(1)} MB');
           } catch (e, st) {
-            debugPrint('[file-upload] M4A → FLAC FAILED, falling back to '
+            if (kDebugMode) debugPrint('[file-upload] M4A → FLAC FAILED, falling back to '
                 'server-side ConvertAudio: $e\n$st');
             // Upload the original M4A; server will transcode after
             // we land it on GCS.
@@ -593,7 +593,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
           }
         } else {
           // Android / web — no on-device path yet. Server fallback.
-          debugPrint('[file-upload] non-iOS platform, using server-side '
+          if (kDebugMode) debugPrint('[file-upload] non-iOS platform, using server-side '
               'ConvertAudio for $ext');
           needsServerSideConversion = true;
           contentType = ext == '.aac' ? 'audio/aac' : 'audio/mp4';
@@ -657,7 +657,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
       // server.go::CompleteAudioUpload).
       final probedDurationSec = await AudioConverterService()
           .probeDurationSeconds(stagedFile.path);
-      debugPrint('[file-upload] probed duration: ${probedDurationSec}s');
+      if (kDebugMode) debugPrint('[file-upload] probed duration: ${probedDurationSec}s');
 
       final pending = PendingUpload.initial(
         localId: localId,

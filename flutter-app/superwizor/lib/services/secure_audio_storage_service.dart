@@ -310,7 +310,7 @@ class SecureAudioStorageService {
     } catch (e) {
       // We tried — log and move on. On iOS the file is still
       // protected by Data Protection until the user wipes the device.
-      debugPrint('secure delete failed for ${f.path}: $e');
+      if (kDebugMode) debugPrint('secure delete failed for ${f.path}: $e');
       try {
         if (await f.exists()) await f.delete();
       } catch (_) {}
