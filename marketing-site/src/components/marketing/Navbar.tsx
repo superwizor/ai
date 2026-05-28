@@ -32,9 +32,16 @@ export function Navbar() {
             {t("pricing")}
           </a>
           <LocaleSwitcher />
-          {/* Log-in is a cross-origin redirect to the app — see §5 R3. */}
+          {/* Log-in lands on the marketing-site /login page (2026-05-29):
+              the form there signs the user in on this origin, then
+              routes by role — SUPERWIZOR_ADMIN to /admin/, everyone
+              else to the Flutter app at superwizor-app.web.app. The
+              old "cross-origin redirect to the app" CTA (§5 R3) is
+              still respected for therapists; we just give them a
+              landing page on the marketing origin first so admins
+              have somewhere to sign in. */}
           <a
-            href="https://app.superwizor.ai/login"
+            href={`${prefix}/login`}
             className="hidden sm:inline font-display text-sm text-mist hover:text-frost transition px-3 py-2"
           >
             {t("login")}

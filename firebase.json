@@ -20,14 +20,14 @@
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "redirects": [
         {
-          "//": "Cross-origin login redirect per docs/18 §5 R3. Firebase Auth's IndexedDB session is origin-scoped — bridging sessions across superwizor.ai ↔ app.superwizor.ai is fragile and we deliberately don't do it. Any visitor who hits /login on the marketing origin gets a 307 to the app origin where the actual sign-in form lives. 2026-05-28: DNS for app.superwizor.ai isn't wired up yet, so we point at the firebase.web.app sub-domain directly. Flip back to app.superwizor.ai once DNS lands. The Flutter app uses _AuthGate at / — no /login route — so the destination has no path suffix.",
+          "//": "/login is a real page on the marketing origin as of 2026-05-29 (src/app/[locale]/login/page.tsx). Bare /login (no locale prefix) gets the standard PL-default 307 to /pl/login/; the prefixed routes /pl/login/ and /en/login/ are served as static HTML and don't need redirects. The previous cross-origin redirect to the Flutter app is gone — the new LoginForm signs the user in on this origin, then routes by role.",
           "source": "/login",
-          "destination": "https://superwizor-app.web.app/",
+          "destination": "/pl/login/",
           "type": 307
         },
         {
-          "source": "/en/login",
-          "destination": "https://superwizor-app.web.app/",
+          "source": "/login/",
+          "destination": "/pl/login/",
           "type": 307
         },
         {

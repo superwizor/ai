@@ -26,7 +26,11 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/firebase/auth-provider";
 
 const POLL_INTERVAL_MS = 5_000;
-const APP_HOME_URL = "https://app.superwizor.ai/login";
+// Destination after email-verification. Flutter app at the web.app
+// subdomain since app.superwizor.ai DNS isn't wired yet — flip back
+// when DNS lands. The user signs in on the Flutter origin (Firebase
+// Auth is origin-scoped).
+const APP_HOME_URL = "https://superwizor-app.web.app/";
 
 type Status = "idle" | "sending" | "sent" | "verified";
 

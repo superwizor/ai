@@ -349,7 +349,7 @@ export function TherapistEmailForm() {
       <p className="font-serif text-sm text-mist text-center">
         {tCommon("alreadyHaveAccount")}{" "}
         <a
-          href="https://app.superwizor.ai/login"
+          href={`${prefix}/login`}
           className="text-ember underline"
         >
           {tCommon("loginCta")}

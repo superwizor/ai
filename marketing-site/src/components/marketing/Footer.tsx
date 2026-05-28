@@ -34,7 +34,7 @@ export function Footer() {
           <FooterLink href={`${prefix}/register/therapist`}>
             {tLinks("register")}
           </FooterLink>
-          <FooterLink href="https://app.superwizor.ai/login">
+          <FooterLink href={`${prefix}/login`}>
             {tLinks("login")}
           </FooterLink>
         </FooterColumn>

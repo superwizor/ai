@@ -576,5 +576,25 @@
       "dpa": "DPA / RODO",
       "contact": "Kontakt"
     }
+  },
+  "login": {
+    "metaTitle": "Zaloguj się · Superwizor AI",
+    "overline": "LOGOWANIE",
+    "title": "Witaj z powrotem",
+    "subhead": "Zaloguj się, aby przejść do konsoli terapeuty lub panelu administracyjnego.",
+    "emailLabel": "Email",
+    "passwordLabel": "Hasło",
+    "submit": "Zaloguj się",
+    "submitting": "Logowanie…",
+    "errorBadCreds": "Nieprawidłowy email lub hasło.",
+    "errorGeneric": "Wystąpił błąd podczas logowania. Spróbuj ponownie.",
+    "errorNoProfile": "Twoje konto Firebase istnieje, ale nie znaleziono profilu w Superwizor. Skontaktuj się z zespołem.",
+    "redirectingApp": "Przekierowuję do konsoli terapeuty…",
+    "redirectingAdmin": "Przekierowuję do panelu administracyjnego…",
+    "noAccount": "Nie masz konta?",
+    "createAccount": "Zarejestruj się",
+    "forgotPassword": "Nie pamiętam hasła",
+    "resetSent": "Wysłaliśmy link do resetu hasła na podany adres email.",
+    "resetNeedEmail": "Najpierw wpisz swój adres email."
   }
 }

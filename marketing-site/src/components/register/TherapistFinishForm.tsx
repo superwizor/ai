@@ -140,8 +140,9 @@ export function TherapistFinishForm({
 
       // Google sign-in marks emailVerified=true automatically (Google
       // already vetted the address). Skip the "check your inbox" page
-      // and bounce straight to the app.
-      window.location.href = "https://app.superwizor.ai/login";
+      // and bounce straight to the app. DNS for app.superwizor.ai is
+      // still NXDOMAIN; use the web.app subdomain.
+      window.location.href = "https://superwizor-app.web.app/";
     } catch {
       setServerError(tErr("unknown"));
     }

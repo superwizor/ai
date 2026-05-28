@@ -113,7 +113,8 @@ export function OrganizationFinishForm({
       );
 
       // Google already verified the email server-side — straight to the app.
-      window.location.href = "https://app.superwizor.ai/login";
+      // app.superwizor.ai DNS not wired; web.app subdomain is the live host.
+      window.location.href = "https://superwizor-app.web.app/";
     } catch {
       setServerError(tErr("unknown"));
     }

@@ -49,7 +49,12 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
       // profile collection required.
       try {
         await identityClient.getUserByFirebaseUID({ firebaseUid: user.uid });
-        window.location.href = "https://app.superwizor.ai/login";
+        // Send the existing user to the Flutter app where the console
+        // lives. Firebase Auth is origin-scoped so they'll have to
+        // sign in again on the Flutter origin — unavoidable cost of
+        // R3 origin discipline. DNS for app.superwizor.ai isn't wired
+        // up yet; web.app subdomain is the live host.
+        window.location.href = "https://superwizor-app.web.app/";
         return;
       } catch (e) {
         if (!(e instanceof ConnectError) || e.code !== Code.NotFound) {

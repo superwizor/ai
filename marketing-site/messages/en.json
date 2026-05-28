@@ -576,5 +576,25 @@
       "dpa": "DPA / GDPR",
       "contact": "Contact"
     }
+  },
+  "login": {
+    "metaTitle": "Sign in · Superwizor AI",
+    "overline": "SIGN IN",
+    "title": "Welcome back",
+    "subhead": "Sign in to reach your therapist console or the admin panel.",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "errorBadCreds": "Invalid email or password.",
+    "errorGeneric": "Something went wrong while signing in. Try again.",
+    "errorNoProfile": "Your Firebase account exists, but no Superwizor profile was found. Please contact support.",
+    "redirectingApp": "Redirecting to the therapist console…",
+    "redirectingAdmin": "Redirecting to the admin panel…",
+    "noAccount": "Don't have an account?",
+    "createAccount": "Sign up",
+    "forgotPassword": "Forgot password?",
+    "resetSent": "We've sent a password-reset link to your email.",
+    "resetNeedEmail": "Please enter your email first."
   }
 }

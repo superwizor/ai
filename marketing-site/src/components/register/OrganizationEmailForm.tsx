@@ -333,7 +333,7 @@ export function OrganizationEmailForm() {
 
       <p className="font-serif text-sm text-mist text-center">
         {tCommon("alreadyHaveAccount")}{" "}
-        <a href="https://app.superwizor.ai/login" className="text-ember underline">
+        <a href={`${prefix}/login`} className="text-ember underline">
           {tCommon("loginCta")}
         </a>
       </p>
