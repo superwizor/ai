@@ -98,6 +98,40 @@ class SecureAudioStorageService {
     return enc.Key(base64Decode(stored));
   }
 
+  /// F-04: Derive a per-session AES-256 key via HKDF-SHA256 (RFC 5869).
+  ///
+  /// IKM (input keying material) = master key from Keychain/Keystore
+  /// info = sessionId (UTF-8 bytes)
+  /// salt = empty (HKDF spec uses HashLen zero-bytes)
+  /// output = 32 bytes = AES-256
+  ///
+  /// HKDF is deterministic: given the same (masterKey, sessionId)
+  /// it always produces the same derived key, so:
+  ///   - Re-encryption after a crash produces identical chunks
+  ///   - Decrypt-for-upload can re-derive without storing the key
+  ///
+  /// Backward compat: sessions encrypted before F-04 used the master
+  /// key directly. The manifest's `keyDerivation` field distinguishes
+  /// old vs new sessions at decrypt time.
+  static enc.Key _deriveSessionKey(enc.Key masterKey, String sessionId) {
+    // HKDF-Extract: PRK = HMAC-SHA256(salt, IKM)
+    // salt = 32 zero-bytes (SHA-256 hash length)
+    final salt = Uint8List(32);
+    final extractHmac = crypto.Hmac(crypto.sha256, salt);
+    final prk = extractHmac.convert(masterKey.bytes).bytes;
+
+    // HKDF-Expand: OKM = HMAC-SHA256(PRK, info || 0x01)
+    // We only need 32 bytes = one iteration (SHA-256 output = 32B)
+    final info = utf8.encode(sessionId);
+    final expandInput = Uint8List(info.length + 1);
+    expandInput.setRange(0, info.length, info);
+    expandInput[info.length] = 0x01; // counter byte
+    final expandHmac = crypto.Hmac(crypto.sha256, prk);
+    final okm = expandHmac.convert(expandInput).bytes;
+
+    return enc.Key(Uint8List.fromList(okm));
+  }
+
   // ---------- size computation (no decryption) ----------
 
   /// Computes the exact decrypted plaintext size from encrypted chunk
@@ -139,8 +173,18 @@ class SecureAudioStorageService {
     }
 
     final keyInfo = await _currentKeyAndVersion();
-    final key = keyInfo.key;
+    final masterKey = keyInfo.key;
     final keyVersion = keyInfo.version;
+
+    // F-04: Derive a per-session key via HKDF-SHA256. The master key
+    // is the IKM (input keying material), the sessionId is the info
+    // parameter. This ensures each session is encrypted with a unique
+    // key — compromise of one derived key doesn't expose other
+    // sessions. HKDF is deterministic: same (masterKey, sessionId)
+    // always yields the same derived key, so re-encryption after a
+    // crash and upload-time decryption both work without storing the
+    // derived key.
+    final sessionKey = _deriveSessionKey(masterKey, sessionId);
 
     final dir = await _sessionDir(sessionId);
     // Atomic guard: wipe stale chunks from a previous failed attempt
@@ -155,7 +199,7 @@ class SecureAudioStorageService {
       await dir.create(recursive: true);
     }
 
-    final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
+    final encrypter = enc.Encrypter(enc.AES(sessionKey, mode: enc.AESMode.gcm));
     final out = <EncryptedChunk>[];
 
     final input = raw.openRead();
@@ -207,13 +251,13 @@ class SecureAudioStorageService {
     await _delete(raw);
 
     // F-03: Write integrity manifest — HMAC-SHA256 chain over chunk
-    // SHA-256 hashes, keyed by the master encryption key. Verified
+    // SHA-256 hashes, keyed by the per-session derived key. Verified
     // before decrypt-for-upload to detect tampering or corruption.
     await _writeManifest(
       dir: dir,
       sessionId: sessionId,
       chunks: out,
-      key: key,
+      key: sessionKey,
     );
 
     return out;
@@ -253,8 +297,9 @@ class SecureAudioStorageService {
     final digest = hmac.convert(utf8.encode(chunksJson));
 
     final manifest = {
-      'version': 1,
+      'version': 2,
       'sessionId': sessionId,
+      'keyDerivation': 'hkdf-sha256',
       'totalChunks': chunks.length,
       'chunks': chunkEntries,
       'hmac': digest.toString(),
@@ -265,9 +310,12 @@ class SecureAudioStorageService {
   }
 
   /// Verifies the integrity manifest before decryption. Throws
-  /// [IntegrityViolation] if any check fails.
-  Future<void> _verifyManifest({
+  /// [IntegrityViolation] if any check fails. Returns the
+  /// key derivation strategy from the manifest ('hkdf-sha256' for
+  /// F-04+ sessions, null for pre-F-04 sessions without manifest).
+  Future<String?> _verifyManifest({
     required Directory dir,
+    required String sessionId,
     required List<File> chunkFiles,
   }) async {
     final manifestFile = File(p.join(dir.path, _manifestFileName));
@@ -275,7 +323,7 @@ class SecureAudioStorageService {
     // Graceful degradation: sessions encrypted before F-03 won't have
     // a manifest. We skip verification for those — they're already
     // protected by AES-GCM auth tags per chunk.
-    if (!await manifestFile.exists()) return;
+    if (!await manifestFile.exists()) return null;
 
     final manifestJson =
         jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
@@ -283,6 +331,7 @@ class SecureAudioStorageService {
         (manifestJson['chunks'] as List).cast<Map<String, dynamic>>();
     final expectedHmac = manifestJson['hmac'] as String;
     final totalChunks = manifestJson['totalChunks'] as int;
+    final keyDerivation = manifestJson['keyDerivation'] as String?;
 
     // 1. Chunk count check
     if (chunkFiles.length != totalChunks) {
@@ -305,23 +354,26 @@ class SecureAudioStorageService {
       }
     }
 
-    // 3. HMAC verification — re-derive from chunk list and master key
+    // 3. HMAC verification — re-derive from chunk list + correct key
     final chunksJson = jsonEncode(expectedChunks);
-    // We need the master key. Read the key version from the first
-    // chunk header (byte 0) to look up the correct version.
     final firstChunkBytes = await chunkFiles.first.readAsBytes();
     final keyVersion = firstChunkBytes[0];
-    final key = await _keyForVersion(keyVersion);
-    if (key == null) {
+    final masterKey = await _keyForVersion(keyVersion);
+    if (masterKey == null) {
       throw IntegrityViolation(
         'cannot verify HMAC: no key for version $keyVersion',
       );
     }
-    final hmac = crypto.Hmac(crypto.sha256, key.bytes);
+    // F-04: use per-session derived key for HMAC if manifest says so
+    final hmacKey = (keyDerivation == 'hkdf-sha256')
+        ? _deriveSessionKey(masterKey, sessionId)
+        : masterKey;
+    final hmac = crypto.Hmac(crypto.sha256, hmacKey.bytes);
     final actualDigest = hmac.convert(utf8.encode(chunksJson)).toString();
     if (actualDigest != expectedHmac) {
       throw IntegrityViolation('manifest HMAC mismatch — tampering detected');
     }
+    return keyDerivation;
   }
 
   // ---------- read path: decrypt for upload ----------
@@ -350,7 +402,14 @@ class SecureAudioStorageService {
     // F-03: Verify integrity manifest before decryption. If the
     // manifest exists and any check fails, IntegrityViolation is
     // thrown and the upload is aborted.
-    await _verifyManifest(dir: dir, chunkFiles: chunks);
+    // F-04: The returned keyDerivation tells us whether to use
+    // a per-session derived key or the raw master key.
+    final keyDerivation = await _verifyManifest(
+      dir: dir,
+      sessionId: sessionId,
+      chunkFiles: chunks,
+    );
+    final useHkdf = (keyDerivation == 'hkdf-sha256');
 
     final tempDir = await getTemporaryDirectory();
     // On macOS, the sandboxed temp directory (Caches/<bundleId>/) may not
@@ -373,12 +432,16 @@ class SecureAudioStorageService {
         final iv = enc.IV(Uint8List.sublistView(bytes, 1, 1 + _ivLen));
         final ciphertext = Uint8List.sublistView(bytes, _headerLen);
 
-        final key = await _keyForVersion(keyVersion);
-        if (key == null) {
+        final masterKey = await _keyForVersion(keyVersion);
+        if (masterKey == null) {
           throw StateError(
               'no key for chunk version $keyVersion (was the keychain wiped?)');
         }
-        final decrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
+        // F-04: derive per-session key if this session used HKDF
+        final decryptKey = useHkdf
+            ? _deriveSessionKey(masterKey, sessionId)
+            : masterKey;
+        final decrypter = enc.Encrypter(enc.AES(decryptKey, mode: enc.AESMode.gcm));
         final plain =
             decrypter.decryptBytes(enc.Encrypted(ciphertext), iv: iv);
         sink.add(plain);
