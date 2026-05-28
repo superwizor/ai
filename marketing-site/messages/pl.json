@@ -212,7 +212,11 @@
       "resending": "Wysyłanie…",
       "resent": "Wysłaliśmy nowy link. Sprawdź skrzynkę.",
       "openMail": "Otwórz pocztę",
-      "backToLanding": "Powrót do strony głównej"
+      "backToLanding": "Powrót do strony głównej",
+      "verifyingStatus": "Sprawdzamy potwierdzenie…",
+      "verifiedHeading": "E-mail potwierdzony",
+      "verifiedBody": "Przekierowujemy do aplikacji…",
+      "verifiedGoToApp": "Przejdź do aplikacji"
     }
   },
   "legal": {

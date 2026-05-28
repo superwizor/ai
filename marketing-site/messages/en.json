@@ -212,7 +212,11 @@
       "resending": "Sending…",
       "resent": "We sent a new link. Check your inbox.",
       "openMail": "Open mail app",
-      "backToLanding": "Back to home"
+      "backToLanding": "Back to home",
+      "verifyingStatus": "Checking verification…",
+      "verifiedHeading": "Email verified",
+      "verifiedBody": "Redirecting to the app…",
+      "verifiedGoToApp": "Go to the app"
     }
   },
   "legal": {
