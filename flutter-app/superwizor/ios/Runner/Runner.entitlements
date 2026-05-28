@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- F-16 fix: Enforce iOS Data Protection on all app files.
+
+	     NSFileProtectionCompleteUnlessOpen means:
+	       • Files are encrypted with a per-file key derived from
+	         the device passcode + Secure Enclave.
+	       • Files are accessible while the device is unlocked.
+	       • Open file handles (e.g. active recording) SURVIVE
+	         device lock — the file stays writable until the handle
+	         is closed. New opens are blocked until unlock.
+	       • After lock + file-handle close, the file is encrypted
+	         at rest until next unlock.
+
+	     We use CompleteUnlessOpen (not Complete) because
+	     UIBackgroundModes: audio keeps an AVAudioFile open during
+	     recording. With Complete, the write would fail the moment
+	     the device locks mid-session — unacceptable for P1.
+
+	     Encrypted chunks (.enc) created AFTER recording finishes
+	     (device is unlocked at that point) inherit this protection
+	     class automatically. -->
+	<key>com.apple.developer.default-data-protection</key>
+	<string>NSFileProtectionCompleteUnlessOpen</string>
+</dict>
+</plist>
