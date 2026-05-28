@@ -620,7 +620,7 @@
     "billingPlan": "Plan",
     "billingStatus": "Status",
     "billingTokens": "Minutes left in this cycle",
-    "billingPeriodEnd": "Billing period ends",
+    "billingPeriodEnd": "Period ends",
     "billingLoading": "Loading subscription…",
     "billingNone": "No active subscription.",
     "stripeSection": "Card payments",
@@ -637,6 +637,21 @@
     "taxId": "Tax ID (NIP)",
     "vatIdEu": "EU VAT ID",
     "errGeneric": "Something went wrong. Try again.",
-    "errLoad": "Failed to load data. Try refreshing the page."
+    "errLoad": "Failed to load data. Try refreshing the page.",
+    "billingPlanName": "Plan",
+    "billingTokensLeft": "Minutes left",
+    "billingTokensTotal": "Period limit",
+    "billingUsedBar": "{used} of {total} minutes used",
+    "billingUpgrade": "Upgrade plan",
+    "billingUpgradeHint": "Coming soon — you'll be able to upgrade via Stripe from here.",
+    "billingNoneCta": "Choose a plan (coming soon)",
+    "planSOLO": "Solo",
+    "planPRO": "Pro",
+    "planCLINIC": "Clinic",
+    "planPATIENT": "Patient",
+    "statusTRIALING": "Trial",
+    "statusACTIVE": "Active",
+    "statusPAST_DUE": "Payment overdue",
+    "statusCANCELED": "Cancelled"
   }
 }

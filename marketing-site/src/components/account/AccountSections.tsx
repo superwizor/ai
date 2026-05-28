@@ -554,30 +554,101 @@ function BillingSection() {
   }, []);
 
   if (phase === "loading") return <Section title={t("billingSection")}>{t("billingLoading")}</Section>;
-  if (phase === "none")    return <Section title={t("billingSection")}>{t("billingNone")}</Section>;
+  if (phase === "none") {
+    // No subscription yet — give the user a CTA placeholder for the
+    // future Stripe-driven plan picker. Same disabled-button language
+    // as the active-sub upgrade CTA below so the two states feel
+    // consistent.
+    return (
+      <Section title={t("billingSection")}>
+        <p className="font-serif text-sm text-mist mb-4">{t("billingNone")}</p>
+        <UpgradeCta label={t("billingNoneCta")} hint={t("billingUpgradeHint")} />
+      </Section>
+    );
+  }
   if (phase === "error")   return <Section title={t("billingSection")}>{t("errLoad")}</Section>;
   if (!sub)                return <Section title={t("billingSection")}>{t("billingNone")}</Section>;
+
+  const total = sub.tokensPerPeriod;
+  const used = sub.tokensUsedThisPeriod + sub.tokensReservedThisPeriod;
+  const left = Math.max(0, total - used);
+  const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+  const planName = planLabel(t, sub.planTier);
+  const statusName = statusLabel(t, sub.status);
+  const periodEnd = sub.currentPeriodEnd
+    ? new Date(Number(sub.currentPeriodEnd.seconds) * 1000).toLocaleDateString()
+    : "—";
 
   return (
     <Section title={t("billingSection")}>
       <dl className="grid gap-3 sm:grid-cols-2">
-        <Stat label={t("billingPlan")}    value={sub.planTier || "—"} />
-        <Stat label={t("billingStatus")}  value={sub.status || "—"} />
-        <Stat
-          label={t("billingTokens")}
-          value={`${Math.max(0, sub.tokensPerPeriod - sub.tokensUsedThisPeriod - sub.tokensReservedThisPeriod)} / ${sub.tokensPerPeriod}`}
-        />
-        <Stat
-          label={t("billingPeriodEnd")}
-          value={
-            sub.currentPeriodEnd
-              ? new Date(Number(sub.currentPeriodEnd.seconds) * 1000).toLocaleDateString()
-              : "—"
-          }
-        />
+        <Stat label={t("billingPlanName")}    value={planName} />
+        <Stat label={t("billingStatus")}      value={statusName} />
+        <Stat label={t("billingTokensLeft")}  value={String(left)} />
+        <Stat label={t("billingTokensTotal")} value={String(total)} />
+        <Stat label={t("billingPeriodEnd")}   value={periodEnd} />
       </dl>
+
+      {/* Usage bar — visual reinforcement of "tokens left / total" so
+          the user can eyeball where they are in the cycle. */}
+      {total > 0 && (
+        <div className="mt-6">
+          <div className="h-2 w-full rounded-full bg-frost/10 overflow-hidden">
+            <div
+              className="h-full bg-ember transition-all"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist/70">
+            {t("billingUsedBar", { used: used, total: total })}
+          </p>
+        </div>
+      )}
+
+      <div className="mt-6">
+        <UpgradeCta label={t("billingUpgrade")} hint={t("billingUpgradeHint")} />
+      </div>
     </Section>
   );
+}
+
+// Disabled CTA placeholder for the future Stripe-driven plan upgrade
+// flow. Looks like a primary button so the user knows where the
+// action will live; hover reveals the "coming soon" hint.
+function UpgradeCta({ label, hint }: { label: string; hint: string }) {
+  return (
+    <button
+      type="button"
+      disabled
+      title={hint}
+      className="inline-flex items-center justify-center rounded-button bg-ember/70 text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] cursor-not-allowed opacity-80"
+    >
+      {label}
+    </button>
+  );
+}
+
+// planLabel + statusLabel map raw enum strings off the wire to
+// localised display copy. Falls back to the raw value if a new tier /
+// status lands before we update the i18n table — visible but ugly,
+// which is the right default.
+function planLabel(t: ReturnType<typeof useTranslations>, raw: string): string {
+  if (!raw) return "—";
+  const k = `plan${raw.toUpperCase()}`;
+  try {
+    const val = t(k);
+    if (val && val !== k) return val;
+  } catch {}
+  return raw;
+}
+function statusLabel(t: ReturnType<typeof useTranslations>, raw: string): string {
+  if (!raw) return "—";
+  const k = `status${raw.toUpperCase()}`;
+  try {
+    const val = t(k);
+    if (val && val !== k) return val;
+  } catch {}
+  return raw;
 }
 
 // ────────────────────────────────────────────────────────────────────

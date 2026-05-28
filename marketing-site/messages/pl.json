@@ -620,7 +620,7 @@
     "billingPlan": "Plan",
     "billingStatus": "Status",
     "billingTokens": "Pozostałe minuty w cyklu",
-    "billingPeriodEnd": "Koniec okresu rozliczeniowego",
+    "billingPeriodEnd": "Koniec okresu",
     "billingLoading": "Ładuję dane subskrypcji…",
     "billingNone": "Brak aktywnej subskrypcji.",
     "stripeSection": "Płatności kartą",
@@ -637,6 +637,21 @@
     "taxId": "NIP",
     "vatIdEu": "VAT UE",
     "errGeneric": "Wystąpił błąd. Spróbuj ponownie.",
-    "errLoad": "Nie udało się załadować danych. Spróbuj odświeżyć stronę."
+    "errLoad": "Nie udało się załadować danych. Spróbuj odświeżyć stronę.",
+    "billingPlanName": "Plan",
+    "billingTokensLeft": "Pozostałe minuty",
+    "billingTokensTotal": "Łączny limit",
+    "billingUsedBar": "{used} z {total} minut wykorzystane",
+    "billingUpgrade": "Ulepsz plan",
+    "billingUpgradeHint": "Wkrótce — będzie tu można przejść na wyższy plan przez Stripe.",
+    "billingNoneCta": "Wybierz plan (wkrótce)",
+    "planSOLO": "Solo",
+    "planPRO": "Pro",
+    "planCLINIC": "Klinika",
+    "planPATIENT": "Pacjent",
+    "statusTRIALING": "Okres próbny",
+    "statusACTIVE": "Aktywna",
+    "statusPAST_DUE": "Zaległa płatność",
+    "statusCANCELED": "Anulowana"
   }
 }
