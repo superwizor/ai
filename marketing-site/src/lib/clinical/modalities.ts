@@ -31,21 +31,46 @@ export type ModalityRow = {
 };
 
 // Localised labels keyed by system_code. The DB column display_name is
-// English-only by design — translations belong in the frontend so a copy
-// tweak doesn't need a migration. Mirrors the seed in
-// migrations/000006_seed_modalities.up.sql.
+// Polish (per the seed), so this map provides EN labels and any tweaked
+// PL phrasing. Keys mirror the supported modalities in the modalities
+// table (system_code column). Unknown codes fall back to display_name
+// in both locales — see getModalityCatalog below.
 const LABELS: Record<string, ModalityRow["labels"]> = {
   UNIV: {
-    pl: "Uniwersalny (modality-agnostic)",
-    en: "Universal (modality-agnostic)",
+    pl: "Uniwersalny / Integracyjny",
+    en: "Universal / Integrative",
   },
   CBT: {
-    pl: "Terapia poznawczo-behawioralna (CBT)",
+    pl: "Poznawczo-behawioralna (CBT)",
     en: "Cognitive Behavioural Therapy (CBT)",
   },
   PSYCHO: {
     pl: "Psychodynamiczna",
     en: "Psychodynamic",
+  },
+  GESTALT: {
+    pl: "Gestalt",
+    en: "Gestalt",
+  },
+  PPT: {
+    pl: "Pozytywna (PPT)",
+    en: "Positive Psychotherapy (PPT)",
+  },
+  EFT: {
+    pl: "Skoncentrowana na emocjach (EFT)",
+    en: "Emotion-Focused Therapy (EFT)",
+  },
+  SYS: {
+    pl: "Systemowa (pary i rodziny)",
+    en: "Systemic (couples & families)",
+  },
+  ST: {
+    pl: "Terapia schematów (ST)",
+    en: "Schema Therapy (ST)",
+  },
+  COACH: {
+    pl: "Coaching (ICF/GROW)",
+    en: "Coaching (ICF/GROW)",
   },
 };
 

@@ -14,8 +14,14 @@ import { usePathname } from "next/navigation";
 import { routing } from "@/i18n/routing";
 
 function stripLocalePrefix(path: string, locale: string): string {
-  if (locale === routing.defaultLocale) return path; // already prefix-less
-  // /en/foo → /foo, /en → /
+  // Strip the active locale's prefix regardless of whether it's the
+  // default locale. Static export emits every page under /<locale>/
+  // (the as-needed prefix-strip middleware doesn't run in static
+  // mode), so on a /pl/pricing/ page the locale is "pl" and the
+  // path literally starts with /pl/. The earlier "return path early
+  // when default locale" check produced /en/pl/pricing/ hrefs on the
+  // EN button — which then 404'd because /en/pl/* paths don't exist.
+  // (2026-05-28 crawl regression.)
   const prefix = `/${locale}`;
   if (path === prefix) return "/";
   if (path.startsWith(`${prefix}/`)) return path.slice(prefix.length);

@@ -14,6 +14,7 @@ import type { Metadata } from "next";
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
 import { ResendVerificationButton } from "@/components/register/ResendVerificationButton";
+import { VerifyEmailIntro } from "@/components/register/VerifyEmailIntro";
 
 export async function generateMetadata({
   params,
@@ -25,15 +26,15 @@ export async function generateMetadata({
   return { title: t("metaTitle") };
 }
 
+// Static-export contract: see /register/therapist/finish/page.tsx
+// for the rationale. The ?email= read moved to VerifyEmailIntro
+// (a client component) so this shell can prerender per locale.
 export default async function VerifyEmailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ email?: string }>;
 }) {
   const { locale } = await params;
-  const { email } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("register.verifyEmail");
   const prefix = locale === "en" ? "/en" : "";
@@ -49,9 +50,7 @@ export default async function VerifyEmailPage({
           <h1 className="font-display text-frost text-3xl sm:text-4xl font-semibold tracking-[var(--tracking-display)] leading-tight">
             {t("title")}
           </h1>
-          <p className="font-serif text-mist mt-4 leading-relaxed">
-            {t("intro", { email: email ?? "" })}
-          </p>
+          <VerifyEmailIntro />
           <p className="font-serif text-mist/80 mt-6 text-sm leading-relaxed">
             {t("noEmail")}
           </p>

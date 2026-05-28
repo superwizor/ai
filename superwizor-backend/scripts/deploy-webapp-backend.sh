@@ -36,11 +36,14 @@ deploy_svc() {
   local svc="$1"
   local image="$2"
   echo ">>> Deploying ${svc} (image ${image})"
+  # ^@^ tells gcloud to use @ as the dict-arg delimiter instead of ,
+  # so CORS_ALLOWED_ORIGINS can carry its own commas (see
+  # `gcloud topic escaping`). VERSION is added as a second entry.
   gcloud run deploy "${svc}" \
     --image="${image}" \
     --region="${REGION}" \
     --project="${PROJECT}" \
-    --update-env-vars="CORS_ALLOWED_ORIGINS=${CORS_ORIGINS},VERSION=${TAG}" \
+    --update-env-vars="^@^CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}@VERSION=${TAG}" \
     --quiet
 }
 
