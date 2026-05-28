@@ -29,13 +29,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
+	"net/url"
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	billingv1connect "github.com/superwizor-ai/backend/gen/go/billing/v1/billingv1connect"
+	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	"connectrpc.com/connect"
 
 	"github.com/superwizor-ai/backend/pkg/connectmd"
@@ -94,6 +100,21 @@ func main() {
 	// client-cache model (clinical-svc.GetMyBillingState + state_after
 	// on Reservation/UsageCommit) is the only way state propagates now.
 
+	// Dial identity-svc so the Connect auth interceptor below can
+	// validate the Firebase token coming from browser callers and
+	// resolve role + user_id + org_id. Server-to-server callers (on
+	// the native gRPC path) bypass this — they already supply the
+	// x-superwizor-* metadata themselves.
+	//
+	// Optional: if IDENTITY_SVC_URL is unset, the interceptor is
+	// skipped entirely (admin RPCs will continue to require upstream
+	// metadata, which is fine for local dev / contract tests).
+	identityURL := os.Getenv("IDENTITY_SVC_URL")
+	var identityClient identityv1.IdentityServiceClient
+	if identityURL != "" {
+		identityClient = dialIdentitySvc(rootCtx, identityURL)
+	}
+
 	billingServer := grpcadapter.NewServer(pool, version)
 
 	// gRPC server (in-process — handler reused via ServeHTTP).
@@ -115,9 +136,25 @@ func main() {
 	// see the Authorization Bearer header. Without it Connect requests
 	// land at metadata-checking handlers with `code = Unauthenticated
 	// desc = no gRPC metadata`. See pkg/connectmd for the writeup.
+	// Connect interceptor chain (order matters):
+	//   1. HeadersToGRPCMetadata: copies HTTP request headers into ctx
+	//      as gRPC IncomingMetadata so the auth helpers that read
+	//      metadata.FromIncomingContext keep working over Connect.
+	//   2. ConnectAuthInterceptor (when identityClient is wired):
+	//      validates the Firebase token and injects x-superwizor-role +
+	//      x-superwizor-user-id + x-superwizor-organization-id so the
+	//      existing admin handlers (resolveAdminCaller) see them.
+	//      Without this, browser admin RPCs failed with
+	//      "x-superwizor-role missing" — the 2026-05-29 regression.
+	interceptors := []connect.Interceptor{connectmd.HeadersToGRPCMetadata()}
+	if identityClient != nil {
+		interceptors = append(interceptors, grpcadapter.ConnectAuthInterceptor(identityClient))
+	} else {
+		slog.Warn("billing-svc: IDENTITY_SVC_URL unset — admin Connect RPCs require upstream x-superwizor-role metadata")
+	}
 	connectPath, connectHandler := billingv1connect.NewBillingServiceHandler(
 		grpcadapter.NewConnectAdapter(billingServer),
-		connect.WithInterceptors(connectmd.HeadersToGRPCMetadata()),
+		connect.WithInterceptors(interceptors...),
 	)
 	httpMux.Handle(connectPath, connectHandler)
 	httpMux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
@@ -196,4 +233,53 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// dialIdentitySvc mirrors the pattern from clinical-svc + ingestion-svc:
+// when the URL is https, use Cloud Run idtoken auth (audience = the
+// service URL itself); when it's http, plaintext + insecure creds for
+// local-dev / contract tests. Fatal on dial error — billing-svc would
+// boot but admin RPCs would silently break.
+func dialIdentitySvc(ctx context.Context, identityURL string) identityv1.IdentityServiceClient {
+	if strings.HasPrefix(identityURL, "https://") {
+		tokenSource, err := idtoken.NewTokenSource(ctx, identityURL)
+		if err != nil {
+			slog.Error("idtoken source", "error", err)
+			os.Exit(1)
+		}
+		u, err := url.Parse(identityURL)
+		if err != nil {
+			slog.Error("parse identity url", "error", err)
+			os.Exit(1)
+		}
+		target := u.Host
+		if u.Port() == "" {
+			target = u.Host + ":443"
+		}
+		conn, err := grpc.NewClient(
+			target,
+			grpc.WithTransportCredentials(credentials.NewTLS(nil)),
+			grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
+		)
+		if err != nil {
+			slog.Error("dial identity https", "error", err)
+			os.Exit(1)
+		}
+		return identityv1.NewIdentityServiceClient(conn)
+	}
+	u, err := url.Parse(identityURL)
+	if err != nil {
+		slog.Error("parse identity url", "error", err)
+		os.Exit(1)
+	}
+	target := u.Host
+	if target == "" {
+		target = identityURL
+	}
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		slog.Error("dial identity insecure", "error", err)
+		os.Exit(1)
+	}
+	return identityv1.NewIdentityServiceClient(conn)
 }
