@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"google.golang.org/grpc/codes"
@@ -53,6 +54,102 @@ func (s *Server) SendInvitationEmail(ctx context.Context, req *notificationv1.Se
 		return nil, status.Errorf(codes.Internal, "send email: %v", err)
 	}
 	return &emptypb.Empty{}, nil
+}
+
+// SendEmailVerification dispatches a "confirm your email" message using
+// the localized template under
+// services/notification-svc/internal/i18n/templates/{locale}/email_verification.md.
+// Like SendInvitationEmail this is an internal RPC; identity-svc calls
+// it after Firebase Auth's createUser to deliver the verification link
+// under our own branding.
+func (s *Server) SendEmailVerification(ctx context.Context, req *notificationv1.SendEmailVerificationRequest) (*emptypb.Empty, error) {
+	if strings.TrimSpace(req.GetRecipientEmail()) == "" {
+		return nil, status.Error(codes.InvalidArgument, "recipient_email required")
+	}
+	if strings.TrimSpace(req.GetVerifyUrl()) == "" {
+		return nil, status.Error(codes.InvalidArgument, "verify_url required")
+	}
+
+	tpl, err := i18n.Load(req.GetLocale(), "email_verification")
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "load template: %v", err)
+	}
+	subject, body := tpl.Render(map[string]string{
+		"recipient_email": req.GetRecipientEmail(),
+		"first_name":      firstNameOrDefault(req.GetFirstName(), req.GetLocale()),
+		"verify_url":      req.GetVerifyUrl(),
+		"expires_at":      req.GetExpiresAtIso(),
+	})
+	if err := s.emailer.Send(ctx, email.Message{
+		To:       req.GetRecipientEmail(),
+		Subject:  subject,
+		HTMLBody: bodyToHTML(body),
+		TextBody: body,
+		From:     tpl.From,
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "send email: %v", err)
+	}
+	return &emptypb.Empty{}, nil
+}
+
+// SendQuotaWarning is fired from billing-svc when the org crosses
+// 80% / 95% of its monthly token quota for the first time in the
+// period. Idempotency is the caller's concern — we always send.
+//
+// Placeholder set in templates/{locale}/quota_warning.md:
+//
+//	{first_name}, {organization_name}, {usage_percent}, {tokens_remaining},
+//	{plan_tier}, {plan_cycle}, {period_end}, {billing_url}.
+func (s *Server) SendQuotaWarning(ctx context.Context, req *notificationv1.SendQuotaWarningRequest) (*emptypb.Empty, error) {
+	if strings.TrimSpace(req.GetRecipientEmail()) == "" {
+		return nil, status.Error(codes.InvalidArgument, "recipient_email required")
+	}
+	if strings.TrimSpace(req.GetOrganizationName()) == "" {
+		return nil, status.Error(codes.InvalidArgument, "organization_name required")
+	}
+	if req.GetUsagePercent() <= 0 || req.GetUsagePercent() > 100 {
+		return nil, status.Error(codes.InvalidArgument, "usage_percent must be 1..100")
+	}
+
+	tpl, err := i18n.Load(req.GetLocale(), "quota_warning")
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "load template: %v", err)
+	}
+	subject, body := tpl.Render(map[string]string{
+		"recipient_email":   req.GetRecipientEmail(),
+		"first_name":        firstNameOrDefault(req.GetFirstName(), req.GetLocale()),
+		"organization_name": req.GetOrganizationName(),
+		"usage_percent":     strconv.Itoa(int(req.GetUsagePercent())),
+		"tokens_remaining":  strconv.Itoa(int(req.GetTokensRemaining())),
+		"plan_tier":         req.GetPlanTier(),
+		"plan_cycle":        req.GetPlanCycle(),
+		"period_end":        req.GetPeriodEndIso(),
+		"billing_url":       req.GetBillingUrl(),
+	})
+	if err := s.emailer.Send(ctx, email.Message{
+		To:       req.GetRecipientEmail(),
+		Subject:  subject,
+		HTMLBody: bodyToHTML(body),
+		TextBody: body,
+		From:     tpl.From,
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "send email: %v", err)
+	}
+	return &emptypb.Empty{}, nil
+}
+
+// firstNameOrDefault picks a friendly greeting fallback per locale so
+// an empty first_name doesn't render a literal "Hi ,". This is the
+// same pattern inviterOrDefault uses for the invitation flow.
+func firstNameOrDefault(s, locale string) string {
+	if strings.TrimSpace(s) != "" {
+		return s
+	}
+	loc := strings.ToLower(strings.TrimSpace(locale))
+	if strings.HasPrefix(loc, "en") {
+		return "there"
+	}
+	return "" // PL: drop the placeholder entirely; subject still works
 }
 
 func inviterOrDefault(s string) string {
