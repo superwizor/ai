@@ -152,6 +152,45 @@
       "sectionAccount": "Twoje konto",
       "sectionProfile": "Twój profil"
     },
+    "organization": {
+      "metaTitle": "Rejestracja organizacji",
+      "overline": "Rejestracja organizacji",
+      "title": "Załóż konto kliniki",
+      "subhead": "Po rejestracji będziesz administratorem kliniki. Aby również prowadzić sesje, zaproś drugi adres e-mail z zakładki Terapeuci.",
+      "sectionFounder": "Konto założyciela",
+      "sectionOrg": "Dane organizacji",
+      "sectionAddress": "Adres siedziby"
+    },
+    "orgFields": {
+      "legalName": "Pełna nazwa firmy",
+      "legalNamePlaceholder": "np. Centrum Psychoterapii Sp. z o.o.",
+      "orgType": "Typ organizacji",
+      "orgTypeSolo": "Praktyka indywidualna",
+      "orgTypeClinic": "Klinika / ośrodek",
+      "orgTypeEnterprise": "Korporacja",
+      "taxId": "NIP",
+      "taxIdPlaceholder": "0000000000",
+      "vatIdEu": "EU VAT ID (opcjonalnie)",
+      "vatIdEuPlaceholder": "PL0000000000",
+      "country": "Kraj",
+      "region": "Województwo (opcjonalnie)",
+      "city": "Miasto",
+      "postalCode": "Kod pocztowy",
+      "postalCodePlaceholder": "00-000",
+      "streetLine": "Ulica",
+      "buildingNumber": "Numer budynku",
+      "unitNumber": "Numer lokalu (opcjonalnie)",
+      "directions": "Wskazówki dojazdu (opcjonalnie)"
+    },
+    "orgErrors": {
+      "legalNameRequired": "Wprowadź pełną nazwę firmy.",
+      "taxIdInvalid": "NIP powinien zawierać 10 cyfr.",
+      "phoneRequired": "Numer telefonu jest wymagany dla administratora.",
+      "cityRequired": "Miasto jest wymagane.",
+      "postalCodeInvalid": "Kod pocztowy w formacie 00-000.",
+      "streetRequired": "Ulica jest wymagana.",
+      "buildingRequired": "Numer budynku jest wymagany."
+    },
     "verifyEmail": {
       "metaTitle": "Potwierdź e-mail",
       "title": "Sprawdź swoją skrzynkę",

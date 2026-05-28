@@ -28,3 +28,43 @@ export const therapistEmailSchema = z.object({
 });
 
 export type TherapistEmailForm = z.infer<typeof therapistEmailSchema>;
+
+// Organisation registration via email/password — fields from docs/18 §13.3.
+// Combines founder + organisation + headquarters address in one payload,
+// matching the single-transaction RegisterOrganization RPC.
+export const organizationEmailSchema = z.object({
+  // Founder account
+  email: z.string().email(),
+  password,
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  phoneNumber: z.string().min(4), // required for org admins
+  uiLanguage: z.enum(["pl", "en"]),
+
+  // Organisation
+  legalName: z.string().min(1),
+  orgType: z.enum(["SOLO", "CLINIC", "ENTERPRISE"]),
+  // Polish NIP is 10 digits. Strict for the launch (PL-only); relax
+  // once we expand to other tax jurisdictions.
+  taxId: z.string().regex(/^\d{10}$/, "tax-id-invalid"),
+  vatIdEu: z.string().optional(),
+
+  // Headquarters address
+  // No zod default — react-hook-form's defaultValues handles that.
+  // Keeping the .default() here breaks the input/output type-split.
+  countryCode: z.string().length(2),
+  region: z.string().optional(),
+  city: z.string().min(1),
+  // PL postal-code format: 00-000. Loose for non-PL countries.
+  postalCode: z.string().min(3),
+  streetLine: z.string().min(1),
+  buildingNumber: z.string().min(1),
+  unitNumber: z.string().optional(),
+  directions: z.string().optional(),
+
+  // Consents
+  hasAcceptedTos: z.literal(true),
+  hasMarketingConsent: z.boolean().optional(),
+});
+
+export type OrganizationEmailForm = z.infer<typeof organizationEmailSchema>;

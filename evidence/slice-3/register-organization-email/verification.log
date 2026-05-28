@@ -1,0 +1,134 @@
+Feature: slice-3 / register-organization-email
+Branch: feat/web-app-slice-3
+Verified: 2026-05-28
+Anchored to: docs/18 §8.1 + §13.3 (organization registration)
+
+What was built
+==============
+- src/lib/register/schema.ts — organizationEmailSchema (zod):
+  founder + organisation + headquarters address + consents.
+  PL NIP regex `^\d{10}$` enforced; non-PL countries will need
+  this loosened (countryCode is currently fixed to PL — single-
+  option select for MVP).
+- src/components/register/OrganizationEmailForm.tsx — three-
+  section client form (Konto założyciela / Dane organizacji /
+  Adres siedziby). Submit packages founder + org + Address
+  message into one RegisterOrganization request with an
+  idempotency_key bound to the tab's React useId, so double-
+  click submits return the existing org instead of duplicating.
+- src/app/[locale]/register/organization/page.tsx — server
+  shell. SSG pre-renders at /pl/register/organization +
+  /en/register/organization.
+- messages/{pl,en}.json — added `register.organization`,
+  `register.orgFields`, `register.orgErrors` namespaces.
+
+Reuses (no new files needed):
+- FieldShell / TextInput / Select / Checkbox / RadioGroup form
+  primitives from feature 1.
+- AuthProvider + signUpWithEmail from feature 4.
+- identityClient bearer-token transport from feature 3.
+- Connect-RPC adapter on identity-svc from Slice 1 commit 5484987.
+- Verify-email interstitial route from feature 1 (org submits
+  land on the same /register/therapist/verify-email page — same
+  semantics, both flows just need email-verified before the user
+  can use the app).
+
+Schema fix during build (zod ↔ react-hook-form integration)
+===========================================================
+Initial schema had `countryCode: z.string().length(2).default("PL")`.
+zod's `.default()` makes the field optional in INPUT but required
+in OUTPUT; react-hook-form's Resolver generic doesn't tolerate the
+split (Type 'string | undefined' is not assignable to type 'string'
+when resolving against ResolverOptions). Fix: drop the zod default,
+keep the value from react-hook-form's `defaultValues: { countryCode:
+"PL" }`. Single line. Build clean afterwards.
+
+Cache fix during smoke (Next.js dev)
+====================================
+First curl smoke returned 404 for /register/organization despite
+production build emitting the route. Cause: `.next/dev/` retained a
+stale route manifest from before the new page.tsx was added.
+`rm -rf .next/dev && Preview MCP restart` brought the route up.
+Worth flagging in CLAUDE.md if it recurs — for now treat it as a
+one-time hiccup.
+
+How verified
+============
+1. `pnpm build` exit 0. Route table extended:
+     /[locale]/register/organization  ● SSG  (×2 locales)
+   alongside the existing therapist + verify-email + legal + pricing
+   + home routes. 13 static pages + 1 dynamic + proxy.
+
+2. HTTP smoke (after .next/dev wipe):
+     /register/organization     → 200
+     /en/register/organization  → 200
+     /register/therapist        → 200 (unchanged)
+     /login                     → 307 (unchanged)
+
+3. Puppeteer screenshots (8 files: 6 viewport + 2 fullPage). Read
+   tool confirmed:
+   - register-org-pl-full.png: Navbar → Aurora overline
+     "REJESTRACJA ORGANIZACJI" → heading "Załóż konto kliniki" →
+     subhead with "Po rejestracji będziesz administratorem
+     kliniki…" → three sections:
+       • KONTO ZAŁOŻYCIELA: email, hasło (with hint), imię+nazwisko
+         2-col, numer telefonu (required, with +48 placeholder).
+       • DANE ORGANIZACJI: pełna nazwa firmy (with placeholder
+         "Centrum Psychoterapii Sp. z o.o."), typ organizacji
+         (select defaulting to Klinika / ośrodek), NIP + EU VAT
+         ID 2-col.
+       • ADRES SIEDZIBY: kraj (PL — Polska) + województwo 2-col,
+         miasto + kod pocztowy split, ulica + numer budynku +
+         numer lokalu 3-col, wskazówki dojazdu full-width.
+     ToS + marketing consent checkboxes. ZAŁÓŻ KONTO submit.
+     "Masz już konto? Zaloguj się" → cross-origin link.
+   - register-org-en-full.png: same composition in English.
+     Note Aurora overline "CLINIC SIGN-UP", heading "Register
+     your clinic", section headers "FOUNDER ACCOUNT / ORGANIZATION
+     DETAILS / HEADQUARTERS ADDRESS".
+
+4. preview_console_logs(error) returns "No console logs".
+
+5. Submit flow type-checked against the real proto:
+   `RegisterOrganizationRequestSchema` + `AddressSchema` +
+   `OrganizationType` enum from gen/ts. Drift between proto and
+   form would fail at build, not at runtime.
+
+Compliance with docs/18
+=======================
+- ✓ §13.3 founder fields: email, password, first/last name,
+  phone (required) — all present.
+- ✓ §13.3 organisation fields: legal_name, type (CLINIC
+  default), tax_id (NIP 10-digit regex), vat_id_eu (optional).
+- ✓ §13.3 address fields: country_code (PL default), region
+  (optional), city, postal_code, street_line, building_number,
+  unit_number (optional), directions (optional).
+- ✓ Idempotency-key bound to React useId — same-tab resubmits
+  return the existing org (matches RegisterOrganization field 15
+  contract).
+- ✓ §6.3 standing notice: subhead carries the "you'll be the
+  clinic administrator…" message in both locales.
+- ✓ §14.5: zero hard-coded UI strings.
+- ✓ §5 R3: log-in CTA cross-origin to app.superwizor.ai.
+
+Known gaps (deferred)
+=====================
+- Google OAuth path → feature 4 (gated on Firebase Console toggles
+  per task #64).
+- Live submission untested in-session — same constraint as
+  feature 1; feature 8 (Playwright E2E) covers the end-to-end
+  against an emulator + httptest stub.
+- countryCode dropdown is single-option (PL only). Other
+  countries land when we expand internationally; the schema is
+  ready (length(2) regex) and the form already accepts any
+  ISO-alpha-2 value.
+- NIP checksum (mod-11) not validated client-side. Backend
+  validates per docs/18 §13.1 ("Backend still validates
+  independently; we never trust the client").
+
+Files touched
+=============
+- marketing-site/messages/{pl,en}.json (org namespaces added)
+- marketing-site/src/lib/register/schema.ts (extended)
+- marketing-site/src/components/register/OrganizationEmailForm.tsx (new)
+- marketing-site/src/app/[locale]/register/organization/page.tsx (new)

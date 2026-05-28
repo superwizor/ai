@@ -152,6 +152,45 @@
       "sectionAccount": "Your account",
       "sectionProfile": "Your profile"
     },
+    "organization": {
+      "metaTitle": "Organization sign-up",
+      "overline": "Clinic sign-up",
+      "title": "Register your clinic",
+      "subhead": "After signup you'll be the clinic administrator. To also record sessions yourself, invite a second email from the Therapists tab.",
+      "sectionFounder": "Founder account",
+      "sectionOrg": "Organisation details",
+      "sectionAddress": "Headquarters address"
+    },
+    "orgFields": {
+      "legalName": "Legal company name",
+      "legalNamePlaceholder": "e.g. Centrum Psychoterapii Sp. z o.o.",
+      "orgType": "Organization type",
+      "orgTypeSolo": "Solo practice",
+      "orgTypeClinic": "Clinic / centre",
+      "orgTypeEnterprise": "Enterprise",
+      "taxId": "Tax ID (NIP)",
+      "taxIdPlaceholder": "0000000000",
+      "vatIdEu": "EU VAT ID (optional)",
+      "vatIdEuPlaceholder": "PL0000000000",
+      "country": "Country",
+      "region": "Region / voivodeship (optional)",
+      "city": "City",
+      "postalCode": "Postal code",
+      "postalCodePlaceholder": "00-000",
+      "streetLine": "Street",
+      "buildingNumber": "Building number",
+      "unitNumber": "Unit number (optional)",
+      "directions": "Directions (optional)"
+    },
+    "orgErrors": {
+      "legalNameRequired": "Legal company name is required.",
+      "taxIdInvalid": "Tax ID must be 10 digits.",
+      "phoneRequired": "Phone number is required for the administrator.",
+      "cityRequired": "City is required.",
+      "postalCodeInvalid": "Postal code must follow the 00-000 format.",
+      "streetRequired": "Street is required.",
+      "buildingRequired": "Building number is required."
+    },
     "verifyEmail": {
       "metaTitle": "Verify your email",
       "title": "Check your inbox",
