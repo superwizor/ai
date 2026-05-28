@@ -26,9 +26,12 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
+	"connectrpc.com/connect"
+
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	identityv1connect "github.com/superwizor-ai/backend/gen/go/identity/v1/identityv1connect"
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
+	"github.com/superwizor-ai/backend/pkg/connectmd"
 	"github.com/superwizor-ai/backend/pkg/cors"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/firebase"
 	grpcadapter "github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/grpc"
@@ -165,9 +168,20 @@ func main() {
 	// Connect-RPC surface — same business logic, exposed as the
 	// connect/gRPC-Web/Connect family of protocols for browser
 	// callers. ConnectAdapter wraps each gRPC method 1:1.
+	//
+	// The HeadersToGRPCMetadata interceptor copies the HTTP request
+	// headers into the ctx as gRPC IncomingMetadata so handlers that
+	// read `metadata.FromIncomingContext(ctx)` (the auth helpers,
+	// etc.) work identically whether the request arrived as native
+	// gRPC (iOS) or as Connect (browser). Without this every browser
+	// RPC that requires auth returns "Unauthenticated: no gRPC
+	// metadata" — the bug behind the 2026-05-28 marketing-site signup
+	// regression. See pkg/connectmd for the writeup.
 	httpMux := nethttp.NewServeMux()
 	connectPath, connectHandler := identityv1connect.NewIdentityServiceHandler(
-		grpcadapter.NewConnectAdapter(identityServer))
+		grpcadapter.NewConnectAdapter(identityServer),
+		connect.WithInterceptors(connectmd.HeadersToGRPCMetadata()),
+	)
 	httpMux.Handle(connectPath, connectHandler)
 	httpMux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
 		w.WriteHeader(nethttp.StatusOK)

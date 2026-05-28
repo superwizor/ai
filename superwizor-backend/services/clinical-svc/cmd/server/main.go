@@ -31,6 +31,9 @@ import (
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	clinicalv1connect "github.com/superwizor-ai/backend/gen/go/clinical/v1/clinicalv1connect"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	"connectrpc.com/connect"
+
+	"github.com/superwizor-ai/backend/pkg/connectmd"
 	"github.com/superwizor-ai/backend/pkg/cors"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	grpcadapter "github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/grpc"
@@ -246,8 +249,14 @@ func main() {
 	// (RegisterOrganization, AcceptInvitation) hit identity-svc, not
 	// clinical-svc, so this is fine.
 	httpMux := nethttp.NewServeMux()
+	// HeadersToGRPCMetadata interceptor: copy HTTP request headers
+	// into ctx as gRPC IncomingMetadata so auth helpers that read
+	// metadata.FromIncomingContext see the Bearer token. Without it
+	// Connect requests fail with "no gRPC metadata" — see pkg/connectmd.
 	connectPath, connectHandler := clinicalv1connect.NewClinicalServiceHandler(
-		grpcadapter.NewConnectAdapter(srv))
+		grpcadapter.NewConnectAdapter(srv),
+		connect.WithInterceptors(connectmd.HeadersToGRPCMetadata()),
+	)
 	httpMux.Handle(connectPath, connectHandler)
 	httpMux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
 		w.WriteHeader(nethttp.StatusOK)

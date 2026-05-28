@@ -36,6 +36,9 @@ import (
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	billingv1connect "github.com/superwizor-ai/backend/gen/go/billing/v1/billingv1connect"
+	"connectrpc.com/connect"
+
+	"github.com/superwizor-ai/backend/pkg/connectmd"
 	"github.com/superwizor-ai/backend/pkg/cors"
 	grpcadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/grpc"
 	httpadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/http"
@@ -106,9 +109,16 @@ func main() {
 	httpadapter.NewAdminHandler(pool, logger).RegisterRoutes(httpMux)
 	httpadapter.NewStripeStubHandler(pool, logger).RegisterRoutes(httpMux)
 	// Connect-RPC surface — browser callers reach the same business
-	// logic as the gRPC path via the ConnectAdapter.
+	// logic as the gRPC path via the ConnectAdapter. The connectmd
+	// interceptor copies HTTP request headers into the ctx as gRPC
+	// IncomingMetadata so auth helpers that read metadata.FromIncomingContext
+	// see the Authorization Bearer header. Without it Connect requests
+	// land at metadata-checking handlers with `code = Unauthenticated
+	// desc = no gRPC metadata`. See pkg/connectmd for the writeup.
 	connectPath, connectHandler := billingv1connect.NewBillingServiceHandler(
-		grpcadapter.NewConnectAdapter(billingServer))
+		grpcadapter.NewConnectAdapter(billingServer),
+		connect.WithInterceptors(connectmd.HeadersToGRPCMetadata()),
+	)
 	httpMux.Handle(connectPath, connectHandler)
 	httpMux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
 		w.WriteHeader(nethttp.StatusOK)
