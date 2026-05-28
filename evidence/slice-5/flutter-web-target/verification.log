@@ -1,0 +1,108 @@
+Feature: slice-5 / flutter-web-target
+Branch: feat/web-app-slice-5
+Verified: 2026-05-28
+Anchored to: docs/18 §8.3 (Flutter Web therapist console)
+
+What was built
+==============
+- Confirmed `flutter-app/superwizor/web/` already exists from an
+  earlier `flutter create --platforms web .` — no need to re-run
+  the scaffold.
+- `flutter build web --no-tree-shake-icons` (Flutter 3.41.9 stable)
+  produces `flutter-app/superwizor/build/web/` (45 MB,
+  CanvasKit-rendered). Build clean both before AND after the
+  recording-screen guard.
+- Recording-screen kIsWeb guard added at
+  `flutter-app/superwizor/lib/screens/recording_screen.dart`:
+  the build() method short-circuits to a new `_WebRecordingFallback`
+  widget on web that explains "Nagrywanie dostępne w aplikacji iOS"
+  with the patient alias inlined. docs/18 §8.3 calls this out
+  explicitly: "❌ recording_screen.dart — replaced with a friendly
+  'Use the iPhone app to record' CTA".
+- `flutter analyze` on the changed file: No issues found.
+
+Existing iOS code that needed no changes
+========================================
+- `lib/screens/login_screen.dart` — renders identically on web
+  (verified via the served bundle — see flutter-web-launch.png).
+- `lib/screens/menu_screen.dart`, `home_screen.dart`,
+  `client_details_screen.dart`, `session_details_screen.dart`,
+  `transcript`/`report` screens — none use platform-specific APIs.
+  Riverpod, gRPC-Web (already used over CONNECT), Firestore Web
+  SDK, all work as-is. (Will be re-verified in features 3-4 when
+  we walk the actual flows on web.)
+- `firebase_options.dart` already includes the `kIsWeb` branch
+  selecting the web platform config.
+- The pubspec depends on `record`, `pdfx`, and
+  `flutter_secure_storage`, all of which have web platform support.
+  Wasm dry-run flags some `dart:html` / `dart:js_util` uses in
+  flutter_secure_storage_web + pdfx; non-fatal under CanvasKit/HTML
+  renderer.
+
+How verified
+============
+1. `flutter pub get` ran cleanly (70 packages have newer minor
+   versions but constraints not bumped — separate hygiene task).
+2. `flutter build web --no-tree-shake-icons` → exit 0,
+   "✓ Built build/web". Captured at
+   evidence/.../build.log. Both rounds (before and after the
+   kIsWeb guard) succeeded.
+3. Served the bundle via `python3 -m http.server 8765` and hit it
+   with puppeteer at 1280×800 — `flutter-web-launch.png` captures
+   the login screen rendering with all Euphire tokens applied:
+     • "Superwizor AI." brand heading in Ember
+     • "Zaloguj się, aby kontynuować." subtitle in Mist
+     • Email + password inputs with Frost/05 glass surface
+     • Ember "Zaloguj się." submit
+     • "Nie pamiętam hasła." + "Nie masz konta? Zarejestruj się."
+       links in Ember
+   Polish diacritics (ę, ł, ą, ż) all render correctly.
+4. `flutter analyze lib/screens/recording_screen.dart` → No
+   issues found.
+
+What's NOT done in this feature (deferred to subsequent Slice 5 features)
+=========================================================================
+- Full audit of every screen for browser-incompatibility. Features
+  3 (therapist console) + 4 (profile edit) walk the actual flows
+  and will surface any remaining gaps screen-by-screen.
+- New `web/index.html` polish (title, og:meta, manifest icons).
+  Current uses the default `flutter create` template. Slice 6
+  i18n-polish-launch updates it alongside the marketing site's
+  prod assets.
+- `kIsWeb` guards on `new_session_screen.dart`'s recording
+  branch + the upload-queue's local-file paths. The build doesn't
+  break without them today because the code paths are gated by
+  user navigation, but feature 3 (therapist-console) will need to
+  surface "upload audio" as the only entry path on web.
+- Shared-machine warning ("for use on personal devices only") on
+  the login footer — Slice 6.
+- The auth status badge from the marketing site is irrelevant
+  here; the Flutter Web app has its own session state via Firebase
+  Auth's IndexedDB persistence.
+
+Compliance with docs/18 §8.3
+============================
+- ✓ Web platform enabled, `flutter build web` produces the bundle
+  Firebase Hosting expects at `flutter-app/superwizor/build/web`
+  (matches the `superwizor-app` site config in firebase.json from
+  Slice 2 feature 8).
+- ✓ recording_screen.dart replaced with the "use the iPhone app"
+  CTA on web.
+- ☐ new_session_screen.dart's recording branch — deferred to
+  feature 3 alongside the file-picker entry path.
+- ☐ Avatar/image picker switch to `<input type="file">` —
+  feature 4 (profile-edit).
+- ☐ Shared-machine warning — Slice 6.
+
+Files
+=====
+- flutter-app/superwizor/lib/screens/recording_screen.dart
+  (kIsWeb import + early-return guard + new _WebRecordingFallback)
+- evidence/slice-5/flutter-web-target/build.log
+- evidence/slice-5/flutter-web-target/flutter-web-launch.png
+- evidence/slice-5/flutter-web-target/verification.log (this)
+
+Note: `flutter-app/superwizor/build/web/` is NOT committed (it's
+already in flutter-app/superwizor/.gitignore via the standard
+Flutter template). CI regenerates it via `flutter build web`
+before `firebase deploy --only hosting:superwizor-app`.

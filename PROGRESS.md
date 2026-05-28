@@ -54,10 +54,24 @@ each feature to gate progress (PASS / NEEDS_WORK). Each slice merges into
 - login-redirect               — /login 307 → app.superwizor.ai/login
 - registration-e2e-playwright  — Playwright happy-path, 2/2 green
 
+### Slice 4 — admin console (PARTIAL, merged to `feat/web-app` at ded7f3d)
+2/8 features landed; 6 deferred. The chrome + guard are in place so
+features 3-8 can land in any order:
+- ✅ admin-auth-guard   — /admin layout with role=SUPERWIZOR_ADMIN gate
+- ✅ admin-shell-nav    — sidebar + header chrome
+- ⏸ admin-orgs-list
+- ⏸ admin-org-detail
+- ⏸ admin-org-actions
+- ⏸ admin-org-edit
+- ⏸ admin-user-crud
+- ⏸ admin-audit-log
+
 ## In progress
 
-- **Slice 4** — admin console at `superwizor.ai/admin`. Branch:
-  `feat/web-app-slice-4` (just branched off post-Slice-3 merge).
+- **Slice 5** — Flutter Web consoles at `app.superwizor.ai`. Branch:
+  `feat/web-app-slice-5` (branched off post-Slice-4-partial merge).
+- ✅ flutter-web-target — web platform live, build green, recording
+  screen kIsWeb-guarded. Login renders cleanly on web.
 
 ## Slice plan (Slices 2-6)
 

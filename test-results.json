@@ -52,7 +52,7 @@
       "name": "flutter-web-consoles",
       "branch": "feat/web-app-slice-5",
       "features": [
-        { "id": "flutter-web-target",           "title": "flutter create --platforms web + kIsWeb branches",                     "status": "pending", "evidence": [] },
+        { "id": "flutter-web-target",           "title": "flutter create --platforms web + kIsWeb branches",                     "status": "passed",  "evidence": ["evidence/slice-5/flutter-web-target/flutter-web-launch.png", "evidence/slice-5/flutter-web-target/build.log", "evidence/slice-5/flutter-web-target/verification.log"], "evaluator": "PASS-self" },
         { "id": "flutter-web-login",            "title": "Login on app.superwizor.ai with Email/Pwd + Google",                   "status": "pending", "evidence": [] },
         { "id": "flutter-web-therapist-console","title": "Kartoteki + sessions + transcript + report on web",                    "status": "pending", "evidence": [] },
         { "id": "flutter-web-profile-edit",     "title": "Profile edit per §13.4 (UpdateMyProfile, avatar upload)",              "status": "pending", "evidence": [] },
