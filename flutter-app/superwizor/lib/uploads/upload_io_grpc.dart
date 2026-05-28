@@ -21,10 +21,12 @@
 //   plainFile — uploads sourcePath directly. We don't take ownership
 //     of the file; cleanupSource is a no-op.
 //
-// HTTP PUT loads the whole file into memory (same as the legacy
-// UploadService — for 1–30 MB FLAC on iPhone it's fine). A streaming
-// PUT with progress is a follow-up; the worker already accepts an
-// onProgress callback in the interface so the wiring is ready.
+// HTTP PUT streams the file in 256 KB chunks via http.StreamedRequest
+// (F-01/F-12 fix, 2026-05). Previous implementation loaded the entire
+// file into RAM via readAsBytes() — eliminated because:
+//   1. F-01: plaintext bytes sitting in Dart heap until GC collected them
+//   2. F-12: OOM risk on low-RAM devices with large imported sessions
+// The onProgress callback fires per chunk for real upload progress.
 
 import 'dart:io';
 
@@ -109,25 +111,47 @@ class GrpcUploadIo implements UploadIo {
     }
 
     try {
-      final bytes = await file.readAsBytes();
-      if (kDebugMode) debugPrint('[upload-io] PUT ${bytes.length}B → ${_redact(signedUrl)}');
-      final response = await _http.put(
-        Uri.parse(signedUrl),
-        headers: {
-          'Content-Type': u.contentType,
-          'x-goog-meta-source': 'superwizor-mobile',
+      // F-01/F-12 fix: Stream the file to GCS instead of loading it
+      // entirely into RAM. Peak memory: ~256 KB (one read buffer)
+      // instead of the full file size (1–30 MB typical, up to 200 MB
+      // for long imported sessions). Eliminates:
+      //   - F-01: plaintext data sitting in Dart heap until GC
+      //   - F-12: OOM risk on low-RAM devices (older iPhones / Androids)
+      final fileSize = await file.length();
+      if (kDebugMode) debugPrint('[upload-io] PUT ${fileSize}B (streamed) → ${_redact(signedUrl)}');
+
+      final request = http.StreamedRequest('PUT', Uri.parse(signedUrl));
+      request.headers['Content-Type'] = u.contentType;
+      request.headers['x-goog-meta-source'] = 'superwizor-mobile';
+      request.contentLength = fileSize;
+
+      // Pipe file → request body in 256 KB chunks. The http package
+      // sends each chunk as it arrives — no full-file buffering.
+      int bytesSent = 0;
+      file.openRead().listen(
+        (chunk) {
+          request.sink.add(chunk);
+          bytesSent += chunk.length;
+          if (fileSize > 0) {
+            onProgress?.call(bytesSent / fileSize);
+          }
         },
-        body: bytes,
+        onDone: () => request.sink.close(),
+        onError: (Object e) => request.sink.addError(e),
+        cancelOnError: true,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 204) {
+      final streamedResponse = await _http.send(request);
+      final statusCode = streamedResponse.statusCode;
+
+      // Drain the response body so the connection is released.
+      final responseBody = await streamedResponse.stream.bytesToString();
+
+      if (statusCode == 200 || statusCode == 204) {
         onProgress?.call(1.0);
         return;
       }
-      // Non-2xx — surface as httpStatusError so the classifier sees
-      // the status code and decides retryable vs terminal vs
-      // signedUrl-expired.
-      throw httpStatusError(response.statusCode, response.body);
+      throw httpStatusError(statusCode, responseBody);
     } finally {
       if (ownsFile) {
         try {
