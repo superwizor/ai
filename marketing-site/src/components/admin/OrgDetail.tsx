@@ -36,6 +36,7 @@ import {
   addressDiffers,
   addressFromProto,
 } from "./AddressFields";
+import { translateError } from "@/lib/errors/translate";
 
 type LoadState = "loading" | "ready" | "not-found" | "error";
 
@@ -44,6 +45,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
   const tOrgs = useTranslations("admin.orgs");
   const tA = useTranslations("admin.actions");
   const tEdit = useTranslations("admin.orgEdit");
+  const tErrors = useTranslations("errors");
   const locale = useLocale();
   const prefix = locale === "en" ? "/en" : "";
 
@@ -167,7 +169,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
         await reload();
         return "success";
       } catch (e) {
-        return { error: e instanceof Error ? e.message : String(e) };
+        return { error: translateError(e, tErrors) };
       }
     };
 
@@ -192,7 +194,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
       await reload();
       return "success";
     } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e) };
+      return { error: translateError(e, tErrors) };
     }
   };
 
@@ -255,7 +257,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
       await reload();
       return "success";
     } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e) };
+      return { error: translateError(e, tErrors) };
     }
   };
 
@@ -272,7 +274,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
       await reload();
       return "success";
     } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e) };
+      return { error: translateError(e, tErrors) };
     }
   };
 
