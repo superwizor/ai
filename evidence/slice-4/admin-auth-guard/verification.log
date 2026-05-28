@@ -1,0 +1,125 @@
+Feature: slice-4 / admin-auth-guard (+ admin-shell-nav, shipped together)
+Branch: feat/web-app-slice-4
+Verified: 2026-05-28
+Anchored to: docs/18 §7 (single-role RBAC) + §8.2 (admin console)
+
+What was built
+==============
+- /admin route + layout that wraps every admin page in a single
+  client component, `<AdminGuardAndShell>`, which handles both auth
+  gating AND the chrome (sidebar + header). The two responsibilities
+  are combined intentionally — Next.js refuses to serialise function
+  children from server→client, so the guard can't inject the User
+  into a separate shell via render-prop. The combined client wrapper
+  is the simplest reliable shape.
+
+- src/components/admin/AdminGuard.tsx → AdminGuardAndShell. Four
+  states drive the render:
+    loading      → centered "Sprawdzanie uprawnień…" status.
+    signed-out   → forbidden card prompting login. CTA →
+                   https://app.superwizor.ai/login (cross-origin,
+                   §5 R3). NO redirect-bounce; we keep the user on
+                   the page they tried to access and let them click
+                   through.
+    forbidden    → forbidden card with "back to home" CTA. Used
+                   for both "GetMyProfile failed" and "role !=
+                   SUPERWIZOR_ADMIN".
+    allowed      → <AdminShell> + children.
+  Role check uses identityClient.getMyProfile (empty request →
+  backend resolves the caller from the bearer token). Accepts both
+  numeric UserRole.SUPERWIZOR_ADMIN and the string proto-name
+  "USER_ROLE_SUPERWIZOR_ADMIN" because Connect-Web JSON wire format
+  defaults to enum names (same forward-compat trick as the Slice 3
+  Playwright tests).
+
+- src/components/admin/AdminShell.tsx — chrome. Left sidebar with
+  brand mark + four nav items (Dashboard / Orgs / Users / Audit log).
+  Active item highlighted with Ember/15 fill + frost text via
+  pathname-based aria-current. Right side has a header with email +
+  Sign-out button that calls auth.signOut() then redirects to the
+  locale landing. Sidebar collapses to a top bar at md breakpoint
+  (cosmetic refinement lands in Slice 6 polish).
+
+- src/app/[locale]/admin/layout.tsx — server-component shell:
+  setRequestLocale, generateMetadata (title from i18n key), then
+  hands children to the client guard. Pre-renders both /pl/admin
+  and /en/admin as SSG (the auth status hydrates on the client
+  after first paint).
+
+- src/app/[locale]/admin/page.tsx — Dashboard placeholder. Three
+  cards linking to orgs/users/audit. firstName pulled from
+  auth.user.displayName as a personalised greeting. Real dashboard
+  widgets (live orgs count, sessions/day chart, recent audit
+  events) land alongside features 3-8 when the AdminListOrgs +
+  ListAuditEvents RPCs are exercised.
+
+- i18n: messages/{pl,en}.json grow with `admin` namespace
+  (metaTitle, loading, signin/forbidden copy, sidebar labels,
+  header buttons, home dashboard cards).
+
+How verified
+============
+1. `pnpm build` exit 0. Route table now includes:
+     /[locale]/admin    ● SSG (×2 locales)
+
+2. HTTP smoke:
+     /admin    → 200
+     /en/admin → 200
+
+3. Puppeteer screenshots — guard's "signed-out" branch
+   (puppeteer runs anonymous in this session, so the AdminGuard
+   short-circuits to the "must sign in" forbidden card after the
+   AuthProvider mounts):
+     signin-required-pl-full.png: "Musisz się zalogować, aby
+       uzyskać dostęp do panelu administracyjnego." + Ember
+       "ZALOGUJ SIĘ" button → app.superwizor.ai/login. Centered
+       glass panel.
+     signin-required-en-full.png: English variant.
+
+4. preview_console_logs(error) returns "No console logs". The
+   AdminGuard's getMyProfile call would throw without a bearer
+   token in a signed-in session; the catch sets status="forbidden"
+   silently, no unhandled rejections.
+
+Compliance with docs/18
+=======================
+- ✓ §7 single-role MVP: role check fetched server-side on every
+  page load via GetMyProfile. No client-side Firebase custom
+  claims trusted.
+- ✓ §8.2 admin URL: /admin on the marketing origin (not
+  app.superwizor.ai).
+- ✓ §5 R3 origin discipline: sign-in CTA cross-origins to the app
+  origin's /login. Marketing site never runs the Firebase login
+  flow itself.
+- ✓ §14.5: zero hard-coded UI strings; everything via
+  useTranslations.
+
+What the next sub-features build on top
+=======================================
+- feature 3 (admin-orgs-list): adds a /[locale]/admin/orgs route
+  that fetches via AdminListOrganizations. The shell + guard
+  already work; the orgs page is "just" the body content.
+- features 4-8: similar — each lands a new admin route + reuses
+  the shell + guard.
+
+Known gaps (carried forward)
+============================
+- "Allowed" state not visually evidenced in this session (would
+  need a signed-in SUPERWIZOR_ADMIN user — same constraint as
+  Slice 3 features 1, 3-6). The Playwright pattern from Slice 3
+  feature 8 is the path to evidence it: intercept GetMyProfile,
+  return a User with role=SUPERWIZOR_ADMIN, assert the shell
+  renders. That test can be added under tests/e2e/admin.spec.ts
+  in a follow-up sub-feature.
+- Mobile sidebar collapse to a top bar is sketched but not
+  polished — Slice 6 i18n-polish-launch picks it up.
+
+Files
+=====
+- marketing-site/messages/{pl,en}.json (admin namespace)
+- marketing-site/src/components/admin/AdminGuard.tsx (new)
+- marketing-site/src/components/admin/AdminShell.tsx (new)
+- marketing-site/src/app/[locale]/admin/layout.tsx (new)
+- marketing-site/src/app/[locale]/admin/page.tsx (new)
+- evidence/slice-4/admin-auth-guard/signin-required-{pl,en}-full.png
+- evidence/slice-4/admin-auth-guard/verification.log (this)
