@@ -43,6 +43,17 @@ export function LocaleSwitcher() {
             key={l}
             href={href}
             aria-current={isCurrent ? "page" : undefined}
+            onClick={() => {
+              // Persist the explicit choice so a future visit to "/"
+              // (or any path) reads it as the user's preference. With
+              // routing.localeDetection=false the middleware no longer
+              // auto-redirects on browser language, but it still honours
+              // NEXT_LOCALE for the in-product Link components used in
+              // future surfaces. 1-year lifetime mirrors next-intl's
+              // own default.
+              document.cookie =
+                `NEXT_LOCALE=${l}; Path=/; Max-Age=31536000; SameSite=lax`;
+            }}
             className={`px-2 py-1 rounded-[3px] transition ${
               isCurrent
                 ? "bg-ember text-obsidian"
