@@ -200,7 +200,13 @@
       "confirm": "Potwierdź",
       "submitting": "Wykonywanie…",
       "errorGeneric": "Nie udało się wykonać akcji."
-    }
+    },
+    "signinEmailLabel": "Email",
+    "signinPasswordLabel": "Hasło",
+    "signinSubmit": "Zaloguj się",
+    "signinSubmitting": "Logowanie…",
+    "signinErrorBadCreds": "Nieprawidłowy email lub hasło.",
+    "signinErrorGeneric": "Wystąpił błąd podczas logowania. Spróbuj ponownie."
   },
   "errors": {
     "generic": "Coś poszło nie tak. Spróbuj ponownie za chwilę.",

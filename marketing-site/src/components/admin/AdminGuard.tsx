@@ -23,6 +23,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
+import { FirebaseError } from "firebase/app";
 import type { User } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { UserRole } from "@superwizor/proto-ts/identity/v1/identity_pb";
 
@@ -80,13 +81,14 @@ export function AdminGuardAndShell({ children }: { children: ReactNode }) {
   }
 
   if (status === "signed-out") {
-    return (
-      <ForbiddenCard
-        title={t("signinRequired")}
-        body=""
-        cta={{ label: t("signinCta"), href: "https://app.superwizor.ai/login" }}
-      />
-    );
+    // Marketing-site (this origin) and the Flutter app (superwizor-app
+    // origin) deliberately keep separate Firebase Auth sessions per
+    // docs/18 §5 R3 — IndexedDB is origin-scoped and we don't bridge.
+    // So even an admin who's signed in on the Flutter origin starts
+    // here as "signed-out". Render an inline sign-in form so the
+    // admin can authenticate ON this origin without needing the
+    // public marketing pages to grow a login surface.
+    return <AdminSignInForm />;
   }
 
   if (status === "forbidden") {
@@ -139,6 +141,107 @@ function ForbiddenCard({
           {cta.label}
         </a>
       </div>
+    </main>
+  );
+}
+
+// Inline email/password sign-in surface shown ONLY inside /admin/* when
+// the visitor isn't signed in on this origin. On success the auth-
+// provider's onAuthStateChanged fires, the parent AdminGuard's useEffect
+// re-runs, and the panel hydrates. No redirect; no cross-origin session
+// bridging. If the signed-in account isn't SUPERWIZOR_ADMIN the parent
+// will swap to the forbidden card on the next render — same exit as
+// before.
+function AdminSignInForm() {
+  const t = useTranslations("admin");
+  const { signInWithEmail } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await signInWithEmail(email.trim().toLowerCase(), password);
+      // AuthProvider will fire onAuthStateChanged and AdminGuard's
+      // useEffect re-runs with authStatus=signed-in → GetMyProfile
+      // → "allowed" or "forbidden". No manual reload.
+    } catch (e) {
+      if (
+        e instanceof FirebaseError &&
+        (e.code === "auth/invalid-credential" ||
+          e.code === "auth/wrong-password" ||
+          e.code === "auth/user-not-found" ||
+          e.code === "auth/invalid-email")
+      ) {
+        setError(t("signinErrorBadCreds"));
+      } else {
+        setError(t("signinErrorGeneric"));
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="flex flex-1 items-center justify-center px-4 py-16">
+      <form
+        onSubmit={onSubmit}
+        className="w-full max-w-sm rounded-glass border border-glass-border/40 bg-frost/[0.04] p-8 grid gap-5"
+        noValidate
+      >
+        <h1 className="font-display text-frost text-2xl font-semibold tracking-[var(--tracking-display)] text-center">
+          {t("signinRequired")}
+        </h1>
+
+        <label className="grid gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+            {t("signinEmailLabel")}
+          </span>
+          <input
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="rounded-button bg-frost/5 border border-frost/15 px-3 py-2 font-mono text-sm text-frost focus:outline-none focus:border-ember"
+          />
+        </label>
+
+        <label className="grid gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+            {t("signinPasswordLabel")}
+          </span>
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="rounded-button bg-frost/5 border border-frost/15 px-3 py-2 font-mono text-sm text-frost focus:outline-none focus:border-ember"
+          />
+        </label>
+
+        {error && (
+          <p
+            role="alert"
+            className="rounded-button border border-magma/40 bg-magma/10 px-3 py-2 font-serif text-xs text-frost"
+          >
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {submitting ? t("signinSubmitting") : t("signinSubmit")}
+        </button>
+      </form>
     </main>
   );
 }

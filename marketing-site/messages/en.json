@@ -200,7 +200,13 @@
       "confirm": "Confirm",
       "submitting": "Submitting…",
       "errorGeneric": "Could not run the action."
-    }
+    },
+    "signinEmailLabel": "Email",
+    "signinPasswordLabel": "Password",
+    "signinSubmit": "Sign in",
+    "signinSubmitting": "Signing in…",
+    "signinErrorBadCreds": "Invalid email or password.",
+    "signinErrorGeneric": "Something went wrong while signing in. Try again."
   },
   "errors": {
     "generic": "Something went wrong. Please try again in a moment.",
