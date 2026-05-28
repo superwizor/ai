@@ -59,7 +59,7 @@
         { "id": "org-admin-route-guard",        "title": "/admin route gated on role=ORG_ADMIN in Flutter Web",                  "status": "pending", "evidence": [] },
         { "id": "org-admin-therapists",         "title": "Therapists tab: list + InviteTherapist + RemoveTherapist",             "status": "pending", "evidence": [] },
         { "id": "org-admin-org-settings",       "title": "Org settings form per §13.5 (UpdateMyOrganization with address)",      "status": "pending", "evidence": [] },
-        { "id": "org-admin-billing-readonly",   "title": "Billing view: subscription, tier, usage, reservations (read-only)",    "status": "pending", "evidence": [] }
+        { "id": "org-admin-billing-readonly",   "title": "Billing view: subscription, tier, usage, reservations (read-only)",    "status": "passed",  "evidence": ["evidence/slice-5/org-admin-billing-readonly/wiring.log", "evidence/slice-5/org-admin-billing-readonly/verification.log"], "evaluator": "PASS-self (existing subscription_plan_screen.dart already satisfies the spec end-to-end)" }
       ]
     },
     {
