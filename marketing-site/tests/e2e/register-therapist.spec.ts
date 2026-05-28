@@ -16,6 +16,7 @@
 // hit real backends here. The full-stack live run lives in CI.
 
 import { test, expect } from "@playwright/test";
+import { forLocale, urlPrefix } from "./_locales";
 
 test("therapist email form: validates + fires CreateUser on submit", async ({ page }) => {
   // ── Network intercepts ────────────────────────────────────────
@@ -128,13 +129,27 @@ test("therapist email form: validates + fires CreateUser on submit", async ({ pa
   });
 
   // ── Test steps ───────────────────────────────────────────────
-  await page.goto("/register/therapist");
-  await expect(page).toHaveURL(/\/register\/therapist/);
-  await expect(page.locator("h1")).toContainText("Zarejestruj się jako terapeuta");
+  //
+  // Per-locale UI copy. The PL+EN happy paths run from a single spec
+  // (see playwright.config.ts projects); each project surfaces the
+  // copy via forLocale() and adjusts the route prefix via urlPrefix().
+  const prefix = urlPrefix();
+  const heading = forLocale({
+    pl: "Zarejestruj się jako terapeuta",
+    en: "Sign up as a therapist",
+  });
+  const submitName = forLocale({
+    pl: /Załóż konto/i,
+    en: /Create account/i,
+  });
+
+  await page.goto(`${prefix}/register/therapist`);
+  await expect(page).toHaveURL(new RegExp(`${prefix}/register/therapist`));
+  await expect(page.locator("h1")).toContainText(heading);
 
   // Empty submit triggers zod validation. The form should NOT navigate.
-  await page.getByRole("button", { name: /Załóż konto/i }).click();
-  await expect(page).toHaveURL(/\/register\/therapist$/);
+  await page.getByRole("button", { name: submitName }).click();
+  await expect(page).toHaveURL(new RegExp(`${prefix}/register/therapist$`));
 
   // Fill minimum required fields.
   await page.locator("#email").fill("e2e@example.com");
@@ -145,9 +160,11 @@ test("therapist email form: validates + fires CreateUser on submit", async ({ pa
   await page.locator("#tos").check();
 
   // Submit and wait for the redirect to verify-email.
-  await page.getByRole("button", { name: /Załóż konto/i }).click();
+  await page.getByRole("button", { name: submitName }).click();
 
-  await page.waitForURL(/\/register\/therapist\/verify-email/, { timeout: 10_000 });
+  await page.waitForURL(new RegExp(`${prefix}/register/therapist/verify-email`), {
+    timeout: 10_000,
+  });
 
   // Assertions on the redirect target.
   expect(page.url()).toContain("email=e2e%40example.com");

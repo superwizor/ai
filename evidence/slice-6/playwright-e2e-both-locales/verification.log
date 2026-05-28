@@ -1,0 +1,65 @@
+Feature: slice-6 / playwright-e2e-both-locales
+Branch: feat/web-app-slice-6
+Verified: 2026-05-28
+
+What was built
+==============
+Playwright now runs every spec under tests/e2e/ twice — once under
+Polish browser locale + Accept-Language, once under English — so the
+launch suite catches per-locale regressions before they ship.
+
+Mechanism (the standard Playwright pattern):
+- playwright.config.ts declares two projects: `chromium-pl`
+  (locale "pl-PL", Accept-Language pl-PL,pl;q=0.9) and
+  `chromium-en` (locale "en-GB", Accept-Language en-GB,en;q=0.9).
+  Browser locale drives navigator.languages; next-intl's
+  "as-needed" routing serves PL on bare paths and EN under /en
+  when the request says so.
+- A tiny dispatcher at tests/e2e/_locales.ts lets specs pick
+  text + URL via:
+    forLocale({ pl: "Załóż konto", en: "Create account" })
+    urlPrefix()  →  "" for PL, "/en" for EN
+- register-therapist.spec.ts refactored to use these helpers.
+  Heading text, submit-button name, route, and the verify-email
+  redirect target all branch per locale.
+
+Coverage
+========
+2 specs × 2 locales = 4 tests today:
+  [chromium-pl] therapist email form: validates + fires CreateUser
+  [chromium-pl] /login redirects cross-origin
+  [chromium-en] therapist email form: validates + fires CreateUser
+  [chromium-en] /login redirects cross-origin
+
+All 4 pass against a clean dev server.
+
+Adding a new spec — no per-locale duplication needed. New tests use
+the dispatcher and automatically fan out across both projects
+because Playwright copies the spec into every project's run.
+
+How verified
+============
+$ pnpm exec playwright test --list
+  [chromium-pl] › register-therapist.spec.ts:21 ...
+  [chromium-pl] › register-therapist.spec.ts:188 ...
+  [chromium-en] › register-therapist.spec.ts:21 ...
+  [chromium-en] › register-therapist.spec.ts:188 ...
+  Total: 4 tests in 1 file
+
+$ pnpm exec playwright test
+  Running 4 tests using 4 workers
+  ✓ [chromium-pl] /login redirects cross-origin (472ms)
+  ✓ [chromium-en] /login redirects cross-origin (725ms)
+  ✓ [chromium-pl] therapist email form ... CreateUser (4.6s)
+  ✓ [chromium-en] therapist email form ... CreateUser (4.7s)
+  4 passed (7.7s)
+
+Full run.log alongside this verification.log in evidence/.
+
+Files
+=====
+- marketing-site/playwright.config.ts (projects array)
+- marketing-site/tests/e2e/_locales.ts (new dispatcher)
+- marketing-site/tests/e2e/register-therapist.spec.ts (refactored)
+- evidence/slice-6/playwright-e2e-both-locales/run.log
+- evidence/slice-6/playwright-e2e-both-locales/verification.log (this)
