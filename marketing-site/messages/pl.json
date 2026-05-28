@@ -74,6 +74,43 @@
       "sectionAudit": "Ostatnie zdarzenia",
       "noTherapists": "Brak terapeutów w tej organizacji.",
       "noAudit": "Brak zdarzeń w dzienniku audytowym."
+    },
+    "orgEdit": {
+      "edit": "Edytuj",
+      "title": "Edytuj dane organizacji",
+      "body": "Zmiany zapisują się natychmiast i trafiają do dziennika audytowego.",
+      "legalNameLabel": "Pełna nazwa firmy",
+      "typeLabel": "Typ organizacji",
+      "taxIdLabel": "NIP",
+      "vatIdEuLabel": "EU VAT ID",
+      "noChange": "Wprowadź jakąkolwiek zmianę przed potwierdzeniem."
+    },
+    "actions": {
+      "block": "Zablokuj",
+      "unblock": "Odblokuj",
+      "resetTokens": "Zresetuj tokeny",
+      "changePlan": "Zmień plan",
+      "blockTitle": "Zablokuj organizację",
+      "blockBody": "Organizacja straci dostęp do aplikacji do czasu odblokowania.",
+      "unblockTitle": "Odblokuj organizację",
+      "unblockBody": "Organizacja odzyska pełny dostęp do aplikacji.",
+      "resetTokensTitle": "Zresetuj wykorzystane tokeny",
+      "resetTokensBody": "Ustaw nową wartość licznika tokens_used dla bieżącego okresu rozliczeniowego.",
+      "tokensUsedLabel": "Nowa wartość tokens_used",
+      "tokensLimitLabel": "Nowa wartość tokens_limit (opcjonalnie, puste = bez zmian)",
+      "changePlanTitle": "Zmień plan",
+      "changePlanBody": "Zmiana wchodzi w życie natychmiast. Nowy okres rozliczeniowy startuje teraz.",
+      "tierLabel": "Tier",
+      "cycleLabel": "Okres rozliczeniowy",
+      "cycleMonthly": "Miesięcznie",
+      "cycleAnnual": "Rocznie",
+      "reasonLabel": "Powód (wymagane, min 10 znaków)",
+      "reasonPlaceholder": "Opisz powód działania — trafia do dziennika audytowego.",
+      "reasonTooShort": "Powód musi mieć co najmniej 10 znaków.",
+      "cancel": "Anuluj",
+      "confirm": "Potwierdź",
+      "submitting": "Wykonywanie…",
+      "errorGeneric": "Nie udało się wykonać akcji."
     }
   },
   "nav": {

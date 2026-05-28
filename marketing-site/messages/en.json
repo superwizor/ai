@@ -74,6 +74,43 @@
       "sectionAudit": "Recent activity",
       "noTherapists": "No therapists in this organisation yet.",
       "noAudit": "No audit log entries yet."
+    },
+    "orgEdit": {
+      "edit": "Edit",
+      "title": "Edit organisation details",
+      "body": "Changes save immediately and are recorded in the audit log.",
+      "legalNameLabel": "Legal company name",
+      "typeLabel": "Organisation type",
+      "taxIdLabel": "Tax ID (NIP)",
+      "vatIdEuLabel": "EU VAT ID",
+      "noChange": "Edit at least one field before confirming."
+    },
+    "actions": {
+      "block": "Block",
+      "unblock": "Unblock",
+      "resetTokens": "Reset tokens",
+      "changePlan": "Change plan",
+      "blockTitle": "Block organisation",
+      "blockBody": "The organisation will lose access until unblocked.",
+      "unblockTitle": "Unblock organisation",
+      "unblockBody": "The organisation will regain full access.",
+      "resetTokensTitle": "Reset usage counter",
+      "resetTokensBody": "Set a new value for tokens_used in the current billing period.",
+      "tokensUsedLabel": "New tokens_used value",
+      "tokensLimitLabel": "New tokens_limit (optional, blank = unchanged)",
+      "changePlanTitle": "Change plan",
+      "changePlanBody": "Takes effect immediately. A new billing period starts now.",
+      "tierLabel": "Tier",
+      "cycleLabel": "Billing cycle",
+      "cycleMonthly": "Monthly",
+      "cycleAnnual": "Annual",
+      "reasonLabel": "Reason (required, min 10 chars)",
+      "reasonPlaceholder": "Describe why — logged to audit_events.",
+      "reasonTooShort": "Reason must be at least 10 characters.",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "submitting": "Submitting…",
+      "errorGeneric": "Could not run the action."
     }
   },
   "nav": {
