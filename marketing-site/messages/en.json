@@ -98,6 +98,72 @@
     "primary": "Sign up",
     "secondary": "See pricing"
   },
+  "register": {
+    "common": {
+      "submit": "Create account",
+      "submitting": "Creating account…",
+      "alreadyHaveAccount": "Already have an account?",
+      "loginCta": "Log in",
+      "useEmailInstead": "Or use email",
+      "useSocialInstead": "Or continue with Google",
+      "or": "or",
+      "google": "Continue with Google",
+      "apple": "Continue with Apple",
+      "microsoft": "Continue with Microsoft",
+      "consentToS": "I accept the <termsLink>terms</termsLink> and the <privacyLink>privacy policy</privacyLink>.",
+      "consentMarketing": "I want to receive news and offers from Superwizor AI."
+    },
+    "fields": {
+      "email": "Email address",
+      "password": "Password",
+      "passwordHint": "Min. 8 characters, one digit.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "professionalTitle": "Professional title (optional)",
+      "professionalTitlePlaceholder": "e.g. Clinical psychologist, CBT therapist",
+      "credentialsNumber": "Professional licence number (optional)",
+      "defaultModality": "Primary therapeutic modality",
+      "uiLanguage": "Interface language",
+      "phoneNumber": "Phone number (optional)",
+      "phoneNumberPlaceholder": "+48 123 456 789",
+      "terms": "terms",
+      "privacy": "privacy policy",
+      "polish": "Polski",
+      "english": "English"
+    },
+    "errors": {
+      "emailInvalid": "Enter a valid email address.",
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "passwordNoNumber": "Password must contain at least one digit.",
+      "firstNameRequired": "First name is required.",
+      "lastNameRequired": "Last name is required.",
+      "modalityRequired": "Select a primary therapeutic modality.",
+      "tosRequired": "You must accept the terms to register.",
+      "emailAlreadyInUse": "This email is already registered. Try logging in instead.",
+      "weakPassword": "This password is too weak.",
+      "networkError": "Could not reach the server. Please try again.",
+      "unknown": "Something went wrong. Please try again."
+    },
+    "therapist": {
+      "metaTitle": "Therapist sign-up",
+      "overline": "Sign up",
+      "title": "Sign up as a therapist",
+      "subhead": "You'll get 3 free sessions to start. No credit card required.",
+      "sectionAccount": "Your account",
+      "sectionProfile": "Your profile"
+    },
+    "verifyEmail": {
+      "metaTitle": "Verify your email",
+      "title": "Check your inbox",
+      "intro": "We sent an activation link to {email}. Click it to finish creating your account.",
+      "noEmail": "Don't see the email? Check your spam folder or click below to resend.",
+      "resend": "Resend",
+      "resending": "Sending…",
+      "resent": "We sent a new link. Check your inbox.",
+      "openMail": "Open mail app",
+      "backToLanding": "Back to home"
+    }
+  },
   "legal": {
     "lastUpdated": "Last updated:",
     "draftBadge": "Draft · pending legal review",

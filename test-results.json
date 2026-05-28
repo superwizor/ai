@@ -22,7 +22,7 @@
       "name": "registration-flows",
       "branch": "feat/web-app-slice-3",
       "features": [
-        { "id": "register-therapist-email",    "title": "/register/therapist email+password form per §13.2",                     "status": "pending", "evidence": [] },
+        { "id": "register-therapist-email",    "title": "/register/therapist email+password form per §13.2",                     "status": "passed",  "evidence": ["evidence/slice-3/register-therapist-email/register-pl-mobile.png", "evidence/slice-3/register-therapist-email/register-pl-tablet.png", "evidence/slice-3/register-therapist-email/register-pl-desktop.png", "evidence/slice-3/register-therapist-email/register-en-mobile.png", "evidence/slice-3/register-therapist-email/register-en-tablet.png", "evidence/slice-3/register-therapist-email/register-en-desktop.png", "evidence/slice-3/register-therapist-email/register-pl-full.png", "evidence/slice-3/register-therapist-email/register-en-full.png", "evidence/slice-3/register-therapist-email/verify-email-pl-full.png", "evidence/slice-3/register-therapist-email/verification.log"], "evaluator": "PASS" },
         { "id": "register-therapist-google",   "title": "Google OAuth path + /register/therapist/finish profile page",           "status": "pending", "evidence": [] },
         { "id": "register-organization-email", "title": "/register/organization email+pwd form per §13.3 (with address)",        "status": "pending", "evidence": [] },
         { "id": "register-organization-google","title": "Google OAuth org path + /register/organization/finish page",            "status": "pending", "evidence": [] },

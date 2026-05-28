@@ -12,14 +12,17 @@
     "@bufbuild/protobuf": "^2.12.0",
     "@connectrpc/connect": "^2.1.1",
     "@connectrpc/connect-web": "^2.1.1",
+    "@hookform/resolvers": "^5.4.0",
     "@superwizor/proto-ts": "file:../superwizor-backend/gen/ts",
     "firebase": "^12.13.0",
     "next": "16.2.6",
     "next-intl": "^4.12.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-hook-form": "^7.76.1",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

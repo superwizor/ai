@@ -98,6 +98,72 @@
     "primary": "Zarejestruj się",
     "secondary": "Zobacz cennik"
   },
+  "register": {
+    "common": {
+      "submit": "Załóż konto",
+      "submitting": "Tworzenie konta…",
+      "alreadyHaveAccount": "Masz już konto?",
+      "loginCta": "Zaloguj się",
+      "useEmailInstead": "Albo użyj adresu e-mail",
+      "useSocialInstead": "Albo zaloguj się przez Google",
+      "or": "lub",
+      "google": "Kontynuuj z Google",
+      "apple": "Kontynuuj z Apple",
+      "microsoft": "Kontynuuj z Microsoft",
+      "consentToS": "Akceptuję <termsLink>regulamin</termsLink> oraz <privacyLink>politykę prywatności</privacyLink>.",
+      "consentMarketing": "Chcę otrzymywać informacje o nowościach i ofertach Superwizor AI."
+    },
+    "fields": {
+      "email": "Adres e-mail",
+      "password": "Hasło",
+      "passwordHint": "Min. 8 znaków, jedna cyfra.",
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
+      "professionalTitle": "Tytuł zawodowy (opcjonalnie)",
+      "professionalTitlePlaceholder": "np. Psycholog, terapeuta CBT",
+      "credentialsNumber": "Numer prawa wykonywania zawodu (opcjonalnie)",
+      "defaultModality": "Główny nurt terapeutyczny",
+      "uiLanguage": "Język interfejsu",
+      "phoneNumber": "Numer telefonu (opcjonalnie)",
+      "phoneNumberPlaceholder": "+48 123 456 789",
+      "terms": "regulamin",
+      "privacy": "politykę prywatności",
+      "polish": "Polski",
+      "english": "English"
+    },
+    "errors": {
+      "emailInvalid": "Wprowadź poprawny adres e-mail.",
+      "passwordTooShort": "Hasło musi mieć co najmniej 8 znaków.",
+      "passwordNoNumber": "Hasło musi zawierać co najmniej jedną cyfrę.",
+      "firstNameRequired": "Imię jest wymagane.",
+      "lastNameRequired": "Nazwisko jest wymagane.",
+      "modalityRequired": "Wybierz główny nurt terapeutyczny.",
+      "tosRequired": "Musisz zaakceptować regulamin, aby się zarejestrować.",
+      "emailAlreadyInUse": "Ten adres e-mail jest już zarejestrowany. Spróbuj się zalogować.",
+      "weakPassword": "Hasło jest zbyt słabe.",
+      "networkError": "Brak połączenia z serwerem. Spróbuj ponownie.",
+      "unknown": "Coś poszło nie tak. Spróbuj ponownie."
+    },
+    "therapist": {
+      "metaTitle": "Rejestracja terapeuty",
+      "overline": "Rejestracja",
+      "title": "Zarejestruj się jako terapeuta",
+      "subhead": "Otrzymasz 3 darmowe sesje na początek. Bez karty kredytowej.",
+      "sectionAccount": "Twoje konto",
+      "sectionProfile": "Twój profil"
+    },
+    "verifyEmail": {
+      "metaTitle": "Potwierdź e-mail",
+      "title": "Sprawdź swoją skrzynkę",
+      "intro": "Wysłaliśmy link aktywacyjny na adres {email}. Kliknij go, aby dokończyć rejestrację.",
+      "noEmail": "Nie widzisz wiadomości? Sprawdź folder spam lub kliknij poniżej, aby wysłać ponownie.",
+      "resend": "Wyślij ponownie",
+      "resending": "Wysyłanie…",
+      "resent": "Wysłaliśmy nowy link. Sprawdź skrzynkę.",
+      "openMail": "Otwórz pocztę",
+      "backToLanding": "Powrót do strony głównej"
+    }
+  },
   "legal": {
     "lastUpdated": "Ostatnia aktualizacja:",
     "draftBadge": "Wersja robocza · do weryfikacji prawnej",
