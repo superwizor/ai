@@ -6,7 +6,9 @@
 //   - Encrypt-after-recording: take the FLAC file from `record` package,
 //     stream-read it in 1 MB chunks, AES-GCM each chunk with a fresh IV,
 //     write encrypted .enc files to app documents directory.
-//   - Securely delete the raw recording (zero-overwrite + unlink).
+//   - Delete the raw recording (the file is already protected at rest
+//     by iOS Data Protection / Android FBE; zero-overwrite was removed
+//     in F-02 audit because it's ineffective on flash/SSD storage).
 //   - Decrypt for upload: stream-read .enc files, GCM-verify, write to
 //     a single temp file ready for HTTP PUT.
 //
@@ -196,7 +198,7 @@ class SecureAudioStorageService {
       await flushChunk(tail);
     }
 
-    await _secureDelete(raw);
+    await _delete(raw);
     return out;
   }
 
@@ -261,14 +263,18 @@ class SecureAudioStorageService {
     return out;
   }
 
-  /// Called by UploadService after a successful PUT — wipes the
-  /// session directory.
+  /// Called after a successful PUT — removes the session directory
+  /// and all encrypted chunks. On iOS, files are already hardware-
+  /// encrypted at rest via NSFileProtectionCompleteUnlessOpen;
+  /// on Android, via file-based encryption (FBE). A plain delete
+  /// is sufficient — the OS-level encryption prevents recovery of
+  /// unlinked file content without the device passcode.
   Future<void> purgeSession(String sessionId) async {
     final dir = await _sessionDir(sessionId);
     if (!await dir.exists()) return;
     await for (final entry in dir.list()) {
       if (entry is File) {
-        await _secureDelete(entry);
+        await _delete(entry);
       }
     }
     if (await dir.exists()) await dir.delete(recursive: true);
@@ -281,39 +287,22 @@ class SecureAudioStorageService {
     return Directory(p.join(base.path, 'sessions', sessionId));
   }
 
-  /// Best-effort secure delete: overwrite with zeros once, fsync, unlink.
-  /// On modern flash storage this isn't perfect (wear-levelling), but
-  /// it's better than a plain delete if the device is later compromised.
-  /// iOS Data Protection encrypts at-rest anyway when the device is
-  /// locked — this is belt-and-braces.
-  Future<void> _secureDelete(File f) async {
+  /// Plain file delete. The file content is protected at rest by:
+  ///   - iOS: NSFileProtectionCompleteUnlessOpen (Secure Enclave key)
+  ///   - Android: File-Based Encryption (FBE)
+  /// so unlinked blocks are unreadable without the device passcode.
+  ///
+  /// Previously this method zero-overwrote the file before unlinking
+  /// ("secure delete"). That was removed in the F-02 security audit
+  /// because flash/SSD wear-levelling makes zero-overwrite ineffective:
+  /// the controller writes zeros to NEW physical NAND pages, leaving
+  /// the original data on old pages. The OS-level encryption is the
+  /// real protection — the zero-overwrite was security theater.
+  Future<void> _delete(File f) async {
     try {
-      final size = await f.length();
-      if (size > 0) {
-        final raf = await f.open(mode: FileMode.write);
-        try {
-          const blockSize = 64 * 1024;
-          final zeros = Uint8List(blockSize);
-          int written = 0;
-          while (written < size) {
-            final remain = size - written;
-            await raf.writeFrom(
-                zeros, 0, remain >= blockSize ? blockSize : remain);
-            written += blockSize;
-          }
-          await raf.flush();
-        } finally {
-          await raf.close();
-        }
-      }
-      await f.delete();
+      if (await f.exists()) await f.delete();
     } catch (e) {
-      // We tried — log and move on. On iOS the file is still
-      // protected by Data Protection until the user wipes the device.
-      if (kDebugMode) debugPrint('secure delete failed for ${f.path}: $e');
-      try {
-        if (await f.exists()) await f.delete();
-      } catch (_) {}
+      if (kDebugMode) debugPrint('delete failed for ${f.path}: $e');
     }
   }
 }
