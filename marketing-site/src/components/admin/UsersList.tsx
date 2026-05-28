@@ -30,6 +30,7 @@ import {
   type User,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { ActionDialog, type ActionResult } from "./ActionDialog";
+import { TableSkeleton } from "./TableSkeleton";
 import {
   AddressFields,
   type AddressDraft,
@@ -169,9 +170,12 @@ export function UsersList() {
       </header>
 
       {state === "loading" && (
-        <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/70 py-12 text-center">
-          {t("loading")}
-        </p>
+        <>
+          <span className="sr-only" role="status" aria-live="polite">
+            {t("loading")}
+          </span>
+          <TableSkeleton columns={5} />
+        </>
       )}
 
       {state === "error" && (

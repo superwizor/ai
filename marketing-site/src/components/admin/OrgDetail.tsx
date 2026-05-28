@@ -37,6 +37,7 @@ import {
   addressFromProto,
 } from "./AddressFields";
 import { translateError } from "@/lib/errors/translate";
+import { CardSkeleton } from "./TableSkeleton";
 
 type LoadState = "loading" | "ready" | "not-found" | "error";
 
@@ -132,9 +133,16 @@ export function OrgDetail({ orgId }: { orgId: string }) {
 
   if (state === "loading") {
     return (
-      <p className="px-4 sm:px-6 lg:px-8 py-12 font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/70 text-center">
-        {t("loading")}
-      </p>
+      <div className="px-4 sm:px-6 lg:px-8 py-8 grid gap-6">
+        <span className="sr-only" role="status" aria-live="polite">
+          {t("loading")}
+        </span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <CardSkeleton title={t("sectionDetails")} />
+          <CardSkeleton title={t("sectionTherapists")} />
+          <CardSkeleton title={t("sectionAudit")} />
+        </div>
+      </div>
     );
   }
 
