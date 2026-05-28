@@ -101,7 +101,12 @@ class PendingUpload {
   // ── Pipeline state ────────────────────────────────────────────
   final UploadPhase phase;
   final String? uploadId; // populated after CreateAudioUpload
-  final String? signedUrl; // populated after CreateAudioUpload; may expire
+  // F-13: signedUrl is intentionally NOT persisted to Hive — it has
+  // a ~1h TTL and is useless after app restart. The worker handles
+  // a null signedUrl by re-calling CreateAudioUpload with the same
+  // idempotencyKey, which returns a fresh URL without duplicating
+  // the audio_uploads row.
+  final String? signedUrl; // in-memory only; never serialized
   /// Session ID — used as the CreateAudioUpload idempotencyKey so
   /// a retry of step 1 returns the same uploadId + a fresh URL
   /// rather than creating a duplicate audio_uploads row.
@@ -246,7 +251,8 @@ class PendingUpload {
         'needsServerSideConversion': needsServerSideConversion,
         'phase': phase.name,
         'uploadId': uploadId,
-        'signedUrl': signedUrl,
+        // F-13: signedUrl intentionally omitted — short-lived and
+        // useless after restart. Worker re-derives via CreateAudioUpload.
         'idempotencyKey': idempotencyKey,
         'sessionId': sessionId,
         'attemptCount': attemptCount,
@@ -274,7 +280,9 @@ class PendingUpload {
             j['needsServerSideConversion'] as bool? ?? false,
         phase: _parsePhase(j['phase']),
         uploadId: j['uploadId'] as String?,
-        signedUrl: j['signedUrl'] as String?,
+        // F-13: signedUrl not persisted; always null on restore.
+        // Old Hive rows that still have it are harmlessly ignored.
+        signedUrl: null,
         idempotencyKey: j['idempotencyKey'] as String,
         sessionId: j['sessionId'] as String?,
         attemptCount: (j['attemptCount'] as num?)?.toInt() ?? 0,
