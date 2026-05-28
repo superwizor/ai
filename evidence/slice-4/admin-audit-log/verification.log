@@ -1,0 +1,81 @@
+Feature: slice-4 / admin-audit-log
+Branch: feat/web-app-slice-4-cont
+Verified: 2026-05-28
+Anchored to: docs/18 §8.2 ("global cross-org audit history,
+filterable by actor / action / date range")
+
+What was built
+==============
+A placeholder /admin/audit page that lands the navigation entry
+(the sidebar from feature 2 already linked here) with an honest
+"coming soon" card explaining why the global list isn't live yet
+and how to find audit history per-org in the meantime.
+
+Files:
+- src/app/[locale]/admin/audit/page.tsx — server route, SSG
+  pre-renders for both locales.
+- messages/{pl,en}.json — admin.audit namespace (title, subhead,
+  placeholderTitle, placeholderBody, goToOrgs CTA).
+
+Why a placeholder rather than a real list
+=========================================
+The identity-svc proto doesn't yet expose a global `ListAudit
+Events` RPC. The audit_events table is already populated by
+every admin mutation that ships in Slice 4 (block/unblock,
+reset tokens, change plan, update org, update user, delete user),
+but the only retrieval surface today is:
+
+  identity.v1.IdentityService.AdminGetOrganization →
+    OrganizationDetails.recent_audit (last 20 entries
+    scoped to that org)
+
+Building the global viewer requires a new backend RPC roughly:
+
+  rpc AdminListAuditEvents(AdminListAuditEventsRequest)
+    returns (AdminListAuditEventsResponse);
+
+  AdminListAuditEventsRequest {
+    int32 page_size = 1;
+    string page_token = 2;
+    string actor_email = 3;       // ILIKE, optional
+    string action = 4;            // optional
+    google.protobuf.Timestamp since = 5;  // optional
+    google.protobuf.Timestamp until = 6;  // optional
+  }
+
+That's ~30 minutes of backend work (proto + sqlc query + handler).
+Out of scope for the Slice-4-cont push; flagged for a follow-up.
+
+In the meantime the placeholder page CTA links to /admin/orgs so
+operators can drill into per-org audit panels via the org-detail
+"Recent activity" card (Slice 4 feature 4).
+
+How verified
+============
+1. `pnpm build` exit 0. Route table now includes:
+     /[locale]/admin/audit    ● SSG (×2 locales)
+
+2. HTTP smoke:
+     /admin/audit    → 200
+     /en/admin/audit → 200
+
+3. Puppeteer screenshot:
+     audit-gate-pl-full.png — AdminGuard sign-in panel on
+       /admin/audit. Route + chrome correct.
+
+4. preview_console_logs(error) returns "No console logs".
+
+Compliance with docs/18 §8.2
+============================
+- ☐ Global audit_events viewer with filters — DEFERRED, see above.
+- ✓ Sidebar navigation entry exists (Slice 4 feature 2).
+- ✓ Audit data IS being recorded — every Slice 4 mutation lands
+  in audit_events via the backend handlers from Slice 1.
+- ✓ Per-org viewing works today via the org detail page (feature 4).
+
+Files
+=====
+- marketing-site/messages/{pl,en}.json (admin.audit namespace)
+- marketing-site/src/app/[locale]/admin/audit/page.tsx (new)
+- evidence/slice-4/admin-audit-log/audit-gate-pl-full.png
+- evidence/slice-4/admin-audit-log/verification.log (this)

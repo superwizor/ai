@@ -75,6 +75,56 @@
       "noTherapists": "Brak terapeutów w tej organizacji.",
       "noAudit": "Brak zdarzeń w dzienniku audytowym."
     },
+    "audit": {
+      "metaTitle": "Dziennik audytowy",
+      "title": "Dziennik audytowy",
+      "subhead": "Globalna historia działań administracyjnych.",
+      "placeholderTitle": "Wkrótce",
+      "placeholderBody": "Pełny dziennik wymaga nowego RPC po stronie identity-svc (ListAuditEvents z filtrami actor / action / data). Tymczasowo audyt każdej organizacji widoczny jest na stronie szczegółów: Organizacje → wybierz organizację → Ostatnie zdarzenia.",
+      "goToOrgs": "Przejdź do organizacji"
+    },
+    "users": {
+      "metaTitle": "Użytkownicy",
+      "title": "Użytkownicy",
+      "subhead": "Wszyscy użytkownicy konta Superwizora — terapeuci, administratorzy, pacjenci.",
+      "searchPlaceholder": "Szukaj po imieniu lub e-mailu…",
+      "roleFilterAll": "Wszystkie role",
+      "loading": "Ładowanie listy użytkowników…",
+      "empty": "Brak użytkowników do wyświetlenia.",
+      "error": "Nie udało się pobrać listy.",
+      "retry": "Spróbuj ponownie",
+      "prev": "Poprzednia strona",
+      "next": "Następna strona",
+      "columns": {
+        "name": "Imię i nazwisko",
+        "email": "E-mail",
+        "role": "Rola",
+        "orgId": "Organizacja",
+        "actions": "Akcje"
+      },
+      "edit": "Edytuj",
+      "delete": "Usuń",
+      "editTitle": "Edytuj użytkownika",
+      "editBody": "Zmiany trafiają do dziennika audytowego.",
+      "deleteTitle": "Usuń użytkownika",
+      "deleteBody": "Soft-delete — wpis pozostaje w bazie z ustawioną kolumną deleted_at.",
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
+      "email": "E-mail",
+      "phone": "Telefon",
+      "role": "Rola",
+      "uiLanguage": "Język interfejsu",
+      "polish": "Polski",
+      "english": "English",
+      "noChange": "Wprowadź jakąkolwiek zmianę przed potwierdzeniem.",
+      "roleLabel": {
+        "USER_ROLE_THERAPIST": "Terapeuta",
+        "USER_ROLE_PATIENT": "Pacjent",
+        "USER_ROLE_ORG_ADMIN": "Admin org.",
+        "USER_ROLE_SUPERWIZOR_ADMIN": "Admin Superwizor",
+        "USER_ROLE_UNSPECIFIED": "Brak"
+      }
+    },
     "orgEdit": {
       "edit": "Edytuj",
       "title": "Edytuj dane organizacji",

@@ -75,6 +75,56 @@
       "noTherapists": "No therapists in this organisation yet.",
       "noAudit": "No audit log entries yet."
     },
+    "audit": {
+      "metaTitle": "Audit log",
+      "title": "Audit log",
+      "subhead": "Global administrative activity history.",
+      "placeholderTitle": "Coming soon",
+      "placeholderBody": "The global audit log needs a new identity-svc RPC (ListAuditEvents with actor / action / date filters). Until then each organisation's audit history is visible on its detail page: Organisations → pick one → Recent activity.",
+      "goToOrgs": "Go to organisations"
+    },
+    "users": {
+      "metaTitle": "Users",
+      "title": "Users",
+      "subhead": "Every user on the Superwizor platform — therapists, admins, patients.",
+      "searchPlaceholder": "Search by name or email…",
+      "roleFilterAll": "All roles",
+      "loading": "Loading users…",
+      "empty": "No users to show.",
+      "error": "Could not load the user list.",
+      "retry": "Try again",
+      "prev": "Previous page",
+      "next": "Next page",
+      "columns": {
+        "name": "Name",
+        "email": "Email",
+        "role": "Role",
+        "orgId": "Organisation",
+        "actions": "Actions"
+      },
+      "edit": "Edit",
+      "delete": "Delete",
+      "editTitle": "Edit user",
+      "editBody": "Changes are recorded in the audit log.",
+      "deleteTitle": "Delete user",
+      "deleteBody": "Soft-delete — the row stays in PG with deleted_at set.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "phone": "Phone",
+      "role": "Role",
+      "uiLanguage": "Interface language",
+      "polish": "Polski",
+      "english": "English",
+      "noChange": "Edit at least one field before confirming.",
+      "roleLabel": {
+        "USER_ROLE_THERAPIST": "Therapist",
+        "USER_ROLE_PATIENT": "Patient",
+        "USER_ROLE_ORG_ADMIN": "Org admin",
+        "USER_ROLE_SUPERWIZOR_ADMIN": "Superwizor admin",
+        "USER_ROLE_UNSPECIFIED": "None"
+      }
+    },
     "orgEdit": {
       "edit": "Edit",
       "title": "Edit organisation details",
