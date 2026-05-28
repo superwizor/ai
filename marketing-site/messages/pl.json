@@ -4,6 +4,36 @@
     "description": "Polski co-pilot dla terapeutów i superwizorów. Nagraj sesję, otrzymaj transkrypcję, raport i wskazówki w kilka minut.",
     "ogSiteName": "Superwizor AI"
   },
+  "admin": {
+    "metaTitle": "Panel administracyjny",
+    "loading": "Sprawdzanie uprawnień…",
+    "signinRequired": "Musisz się zalogować, aby uzyskać dostęp do panelu administracyjnego.",
+    "signinCta": "Zaloguj się",
+    "forbiddenTitle": "Brak dostępu",
+    "forbiddenBody": "Twoje konto nie ma uprawnień administratora Superwizora. Skontaktuj się z zespołem, jeśli powinieneś mieć dostęp.",
+    "backToLanding": "Powrót do strony głównej",
+    "sidebar": {
+      "dashboard": "Pulpit",
+      "orgs": "Organizacje",
+      "users": "Użytkownicy",
+      "audit": "Dziennik audytowy"
+    },
+    "header": {
+      "signOut": "Wyloguj",
+      "signedInAs": "Zalogowany jako"
+    },
+    "home": {
+      "overline": "Panel administracyjny",
+      "title": "Witaj, {firstName}",
+      "subhead": "Tu pojawi się pulpit ze statystykami. Wybierz sekcję z menu po lewej.",
+      "cardOrgs": "Organizacje",
+      "cardOrgsBody": "Lista wszystkich organizacji z filtrowaniem, blokowaniem i zmianą planów.",
+      "cardUsers": "Użytkownicy",
+      "cardUsersBody": "Globalna lista użytkowników. Edycja, dezaktywacja, reset hasła.",
+      "cardAudit": "Dziennik audytowy",
+      "cardAuditBody": "Pełna historia działań administracyjnych z filtrami."
+    }
+  },
   "nav": {
     "skipToContent": "Przejdź do treści",
     "brand": "Superwizor AI",

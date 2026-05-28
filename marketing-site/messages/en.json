@@ -4,6 +4,36 @@
     "description": "Polish-built co-pilot for therapists and supervisors. Record a session and receive transcript, report, and pointers in minutes.",
     "ogSiteName": "Superwizor AI"
   },
+  "admin": {
+    "metaTitle": "Admin console",
+    "loading": "Checking access…",
+    "signinRequired": "You need to sign in to access the admin console.",
+    "signinCta": "Sign in",
+    "forbiddenTitle": "Access denied",
+    "forbiddenBody": "Your account doesn't have Superwizor administrator privileges. Contact the team if you believe you should have access.",
+    "backToLanding": "Back to home",
+    "sidebar": {
+      "dashboard": "Dashboard",
+      "orgs": "Organisations",
+      "users": "Users",
+      "audit": "Audit log"
+    },
+    "header": {
+      "signOut": "Sign out",
+      "signedInAs": "Signed in as"
+    },
+    "home": {
+      "overline": "Admin console",
+      "title": "Welcome, {firstName}",
+      "subhead": "The dashboard will live here. Pick a section from the sidebar.",
+      "cardOrgs": "Organisations",
+      "cardOrgsBody": "List of all organisations with filtering, blocking, and plan changes.",
+      "cardUsers": "Users",
+      "cardUsersBody": "Global user list. Edit, deactivate, reset passwords.",
+      "cardAudit": "Audit log",
+      "cardAuditBody": "Full administrative activity history with filters."
+    }
+  },
   "nav": {
     "skipToContent": "Skip to content",
     "brand": "Superwizor AI",
