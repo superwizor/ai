@@ -1,0 +1,40 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'build-identity'
+  args:
+    - 'build'
+    - '-t'
+    - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-identity:$_TAG'
+    - '-f'
+    - 'services/identity-svc/Dockerfile'
+    - '.'
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'build-billing'
+  args:
+    - 'build'
+    - '-t'
+    - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-billing:$_TAG'
+    - '-f'
+    - 'services/billing-svc/Dockerfile'
+    - '.'
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'build-clinical'
+  args:
+    - 'build'
+    - '-t'
+    - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-clinical:$_TAG'
+    - '-f'
+    - 'services/clinical-svc/Dockerfile'
+    - '.'
+
+images:
+  - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-identity:$_TAG'
+  - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-billing:$_TAG'
+  - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-clinical:$_TAG'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+
+timeout: 1800s

@@ -1,8 +1,8 @@
 FROM golang:1.26-alpine AS builder
 WORKDIR /app
 
-# Build in single-module mode — billing-svc's go.mod only needs gen/go and
-# pkg/cors (via replace directives), nothing else from pkg/* or other services.
+# Build in single-module mode — billing-svc's go.mod needs gen/go,
+# pkg/cors, and pkg/connectmd via replace directives.
 # Skipping go.work keeps the image lean and the build cache stable across
 # unrelated services.
 ENV GOWORK=off
@@ -10,6 +10,7 @@ ENV GOWORK=off
 COPY services/billing-svc services/billing-svc
 COPY gen/ gen/
 COPY pkg/cors pkg/cors
+COPY pkg/connectmd pkg/connectmd
 
 WORKDIR /app/services/billing-svc
 RUN go mod download
