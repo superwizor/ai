@@ -1,0 +1,199 @@
+Feature: backend-admin-extensions
+Branch: feat/web-app-backend-admin-extensions
+Verified: 2026-05-28
+Anchored to:
+  - docs/18 §8.2 (global cross-org audit history)
+  - docs/18 §13.7 (AdminUpdateOrganization full field set)
+  - docs/18 §13.8 (AdminUpdateUser full field set)
+
+What was deferred at the end of Slice 4 vs. what shipped here
+==============================================================
+Slice 4 closed at 8/8 features but with three known gaps:
+
+  1. AdminListAuditEvents RPC — entirely missing on identity-svc, so
+     /admin/audit was a placeholder.
+  2. §13.7 fields on AdminUpdateOrganization — the OrgDetail edit
+     dialog only surfaced legal_name, type, tax_id, vat_id_eu, even
+     though the backend handler ALREADY persisted headquarters_address
+     and primary_admin_user_id.
+  3. §13.8 fields on AdminUpdateUser — the UsersList edit dialog only
+     surfaced first_name, last_name, email, phone_number, role,
+     ui_language, even though the backend handler ALREADY persisted
+     organization_id, default_modality_id, professional_title,
+     credentials_number, biography, avatar_url, billing_address.
+
+All three are now done.
+
+(1) AdminListAuditEvents RPC
+============================
+Backend wiring is end-to-end on identity-svc.
+
+Files:
+- proto/identity/v1/identity.proto
+  • added RPC AdminListAuditEvents on IdentityService.
+  • added messages AdminListAuditEventsRequest (page_size, page_token,
+    actor_email ILIKE, action exact, since/until Timestamp) and
+    AdminListAuditEventsResponse (events, next_page_token).
+- services/identity-svc/internal/adapters/postgres/queries/audit_events.sql
+  • added AdminListAuditEvents :many. LEFT JOIN to users so each row
+    carries actor_email without a second roundtrip. All filters AND
+    together via "narg IS NULL OR …" patterns. Cursor pagination on
+    (occurred_at, id) DESC matching the other admin lists.
+- services/identity-svc/internal/adapters/grpc/admin.go
+  • new handler AdminListAuditEvents. requireSuperwizorAdmin gate,
+    pagesize clamp (default 50, cap 200), filter coercion, row →
+    AuditEntry mapping, next_page_token emission. Returns 200 with
+    empty list when filters exclude everything.
+- services/identity-svc/internal/adapters/grpc/connect_adapter.go
+  • Connect-RPC shim added so identityv1connect.IdentityServiceHandler
+    is satisfied (build catches forgotten shims).
+- Regenerated:
+  • gen/go/identity/v1/identity.pb.go + identity_grpc.pb.go + identityv1connect/
+  • gen/ts/identity/v1/identity_pb.ts
+  • services/identity-svc/internal/adapters/postgres/db/audit_events.sql.go
+  • services/identity-svc/internal/adapters/postgres/db/querier.go
+
+Verification:
+  go build ./...                          OK (all submodules)
+  cd services/identity-svc && go test ./... → ok (2.124s)
+    (The existing connect_adapter_test.go End-to-End test is the
+    gatekeeper for the Connect interface — passing means the new
+    AdminListAuditEvents shim wires through.)
+
+(2) /admin/audit page — real list
+==================================
+The placeholder is gone. /admin/audit now renders AuditLogList which
+calls AdminListAuditEvents.
+
+Files:
+- marketing-site/src/components/admin/AuditLogList.tsx (new)
+  • Filters bar: actor_email (debounced search), action (curated
+    KNOWN_ACTIONS dropdown + free), since (date), until (date).
+  • Date inputs interpret "YYYY-MM-DD" as start/end of local day.
+  • Table columns: occurred_at, actor, action, resource_type+id,
+    reason. Same cursor-stack pagination pattern as OrgsList/
+    UsersList.
+- marketing-site/src/app/[locale]/admin/audit/page.tsx
+  • Slimmed down to a server shell rendering <AuditLogList />.
+  • Removed placeholderTitle/placeholderBody/goToOrgs translation
+    keys (replaced with audit.* filter and column labels).
+- marketing-site/messages/{pl,en}.json
+  • admin.audit namespace rewritten: actorEmailLabel, actionLabel,
+    anyAction, sinceLabel, untilLabel, loading, empty, error, retry,
+    prev, next, col.{occurred,actor,action,resource,reason}.
+
+(3) OrgEdit dialog — headquarters_address + primary_admin_user_id
+==================================================================
+The org-detail edit dialog now covers all §13.7 fields.
+
+Files:
+- marketing-site/src/components/admin/AddressFields.tsx (new)
+  • Shared 8-input address sub-form (country_code, region, city,
+    postal_code, street_line, building_number, unit_number,
+    directions). Exports AddressDraft, EMPTY_ADDRESS, addressDiffers,
+    addressFromProto helpers. Reused by both OrgEdit and UserEdit.
+- marketing-site/src/components/admin/OrgDetail.tsx
+  • Edit dialog draft state extended with primaryAdminUserId +
+    address, plus a snapshot of the original values so submission
+    only sends fields that actually changed.
+  • Primary admin picker is a <select> sourced from
+    details.therapists (already loaded). The hint text steers admins
+    to first promote to ORG_ADMIN via user edit if the target isn't
+    on the therapist roster.
+  • AddressFields rendered below the existing fields, seeded from
+    org.headquartersAddress.
+
+- marketing-site/messages/{pl,en}.json
+  • admin.orgEdit additions: addressTitle, primaryAdminLabel,
+    primaryAdminUnchanged, primaryAdminHint.
+  • new admin.address namespace: countryCode, region, city,
+    postalCode, streetLine, buildingNumber, unitNumber, directions.
+
+(4) UserEdit dialog — full §13.8 surface
+========================================
+The users-list edit dialog now covers all editable §13.8 fields.
+
+Files:
+- marketing-site/src/components/admin/UsersList.tsx
+  • Imports AddressSchema + AddressFields helpers.
+  • UserEditDialog draft state extended with: organizationId,
+    defaultModalityId, professionalTitle, credentialsNumber,
+    biography, avatarUrl, billingAddress.
+  • Submission still uses the "only send what changed" pattern.
+  • Two raw-UUID inputs (organizationId, defaultModalityId) with
+    hint text explaining why no picker is available yet (no global
+    org lookup; no ListModalities RPC). The backend rejects unknown
+    UUIDs with InvalidArgument — admins won't silently lose data.
+  • Billing address starts EMPTY (the User proto carries only
+    billing_address_id, not the resolved Address). Any non-blank
+    address field counts as a change.
+
+- marketing-site/messages/{pl,en}.json
+  • admin.users additions: professionalTitle, credentialsNumber,
+    biography, avatarUrl, organizationId, organizationIdHint,
+    defaultModalityId, defaultModalityIdHint, billingAddressTitle,
+    billingAddressHint.
+
+Verification (frontend)
+========================
+pnpm exec tsc --noEmit          → clean, no errors.
+pnpm build                      → exit 0.
+  Route table includes:
+    /[locale]/admin/audit       ● SSG (×2 locales) — now real list,
+                                  no longer the placeholder.
+    /[locale]/admin/orgs/[id]   ƒ dynamic — extended edit dialog.
+    /[locale]/admin/users       ● SSG (×2 locales) — extended edit
+                                  dialog.
+
+HTTP smoke (against dev server):
+  /admin/audit                  → 200 (anonymous AdminGuard panel)
+  /en/admin/audit               → 200
+
+preview_console_logs(error)     → "No console logs"
+
+Screenshots:
+- audit-gate-pl-full.png — AdminGuard sign-in panel rendered on
+  the (now-real) /admin/audit route. Confirms route + chrome are
+  correct without needing live admin auth in puppeteer.
+
+Live admin screenshots (with populated data + filters used) would
+need a SUPERWIZOR_ADMIN session against a populated Postgres. That's
+out of scope for this push; the route + chrome screenshot is the
+same evidence shape as feature 8 of Slice 4 (where the placeholder
+was originally accepted).
+
+Notes on deferred-but-now-flagged work
+======================================
+Things still flagged after this push:
+- Picker UX for default_modality_id needs ListModalities RPC on
+  clinical-svc to land first. ~20min backend work.
+- Picker UX for organization_id transfer in UserEdit could use a
+  paginated org search, but AdminListOrganizations already exists;
+  this is a frontend-only enhancement (typeahead).
+- Primary-admin picker only sees therapists for the org. To pick a
+  non-therapist user as primary admin, an admin must first promote
+  the user via UserEdit. This is documented in the hint text.
+
+Files
+=====
+Backend:
+- superwizor-backend/proto/identity/v1/identity.proto
+- superwizor-backend/services/identity-svc/internal/adapters/postgres/queries/audit_events.sql
+- superwizor-backend/services/identity-svc/internal/adapters/grpc/admin.go
+- superwizor-backend/services/identity-svc/internal/adapters/grpc/connect_adapter.go
+- superwizor-backend/services/identity-svc/internal/adapters/postgres/db/audit_events.sql.go (regen)
+- superwizor-backend/services/identity-svc/internal/adapters/postgres/db/querier.go (regen)
+- superwizor-backend/gen/ts/identity/v1/identity_pb.ts (regen)
+
+Frontend:
+- marketing-site/src/components/admin/AddressFields.tsx (new)
+- marketing-site/src/components/admin/AuditLogList.tsx (new)
+- marketing-site/src/components/admin/OrgDetail.tsx
+- marketing-site/src/components/admin/UsersList.tsx
+- marketing-site/src/app/[locale]/admin/audit/page.tsx (rewritten)
+- marketing-site/messages/pl.json
+- marketing-site/messages/en.json
+
+Evidence:
+- evidence/backend-admin-extensions/audit-gate-pl-full.png
+- evidence/backend-admin-extensions/verification.log (this)
