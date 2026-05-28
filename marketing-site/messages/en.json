@@ -243,10 +243,10 @@
   },
   "hero": {
     "overline": "A Polish-built co-pilot for psychotherapists",
-    "headingPrefix": "A supervisor's",
-    "headingAccent": "second brain",
+    "headingPrefix": "Superwizor AI",
+    "headingAccent": "a cognitive partner in the therapy room",
     "headingPunctuation": ".",
-    "subhead": "Record a session and receive transcript, report, and pointers in minutes. All GDPR-compliant — patient data never leaves the EU.",
+    "subhead": "Superwizor AI helps mental-health professionals reclaim the mental space for attentive sessions with their patients, while supporting therapeutic continuity and a deeper understanding of each patient.",
     "ctaPrimary": "Sign up",
     "ctaSecondary": "See how it works"
   },

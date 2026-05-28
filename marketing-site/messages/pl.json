@@ -243,10 +243,10 @@
   },
   "hero": {
     "overline": "Polski co-pilot dla psychoterapeutów",
-    "headingPrefix": "Drugi mózg",
-    "headingAccent": "superwizora",
+    "headingPrefix": "Superwizor AI",
+    "headingAccent": "poznawczy partner w gabinecie terapeutycznym",
     "headingPunctuation": ".",
-    "subhead": "Nagraj sesję, otrzymaj transkrypcję, raport i wskazówki w kilka minut. Wszystko zgodnie z RODO, dane pacjentów nigdy nie opuszczają UE.",
+    "subhead": "Superwizor AI pomaga specjalistom zdrowia psychicznego odzyskać przestrzeń mentalną na uważne spotkania z pacjentami, jednocześnie wspierając ciągłość procesu terapeutycznego i głębsze rozumienie pacjenta.",
     "ctaPrimary": "Zarejestruj się",
     "ctaSecondary": "Zobacz, jak działa"
   },
