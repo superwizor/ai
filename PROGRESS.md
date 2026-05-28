@@ -32,10 +32,21 @@ each feature to gate progress (PASS / NEEDS_WORK). Each slice merges into
 - Harness: `.claude/` primitives, PROGRESS.md, test-results.json,
   Playwright MCP (commit a40dc23).
 
+### Slice 2 — marketing-site foundation (DONE, merged to `feat/web-app` at aa09972)
+8 features, all PASS evaluator, 8+ commits + 1 merge commit:
+- nextjs-scaffold       — Euphire brand tokens (Tailwind 4 @theme)
+- next-intl-pl-en       — PL/EN with as-needed routing + hreflang
+- connect-rpc-client    — typed clients + bearer interceptor
+- firebase-auth-init    — Web SDK + emulator + token bridge
+- landing-page          — full PL+EN composition (7 sections)
+- pricing-page          — Trial + Solo + Pro + Clinic
+- legal-static-pages    — Terms/Privacy/DPA markdown PL+EN
+- firebase-hosting-deploy — superwizor-www site + GitHub Actions CI
+
 ## In progress
 
-- **Slice 2** — marketing-site foundation. Branch:
-  `feat/web-app-slice-2` (currently checked out, no commits yet).
+- **Slice 3** — registration flows. Branch:
+  `feat/web-app-slice-3` (just branched off post-Slice-2 merge).
 
 ## Slice plan (Slices 2-6)
 

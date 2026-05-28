@@ -1,0 +1,81 @@
+Feature: slice-3 / register-organization-google
+Branch: feat/web-app-slice-3
+Verified: 2026-05-28
+Anchored to: docs/18 §8.1 + §13.3 (organization social path)
+
+What was built
+==============
+- SocialButtons (shared with feature 2) mounted on
+  /register/organization above the email form. Flow identical to
+  the therapist variant but with `flow="organization"` so the
+  finish-profile redirect targets /register/organization/finish.
+- src/lib/register/schema.ts — organizationFinishSchema (zod):
+  founder names + phone + ui_language + full org details + full
+  address (same as the email-path schema minus password).
+- src/components/register/OrganizationFinishForm.tsx — three-
+  section client form (Konto założyciela / Dane organizacji /
+  Adres siedziby). Submit packs founder+org+address into one
+  RegisterOrganization request with the React-useId idempotency
+  key, then bounces to app.superwizor.ai/login (Google sign-in
+  marked emailVerified=true automatically — skip the
+  verify-email interstitial).
+- src/app/[locale]/register/organization/finish/page.tsx —
+  dynamic route. Pre-fills founder names from ?firstName /
+  ?lastName / ?email query, falls back to a generic subhead if
+  the page was reloaded without query.
+- messages/{pl,en}.json — added organization.finishMetaTitle /
+  finishTitle / finishSubhead / finishGenericSubhead keys.
+
+How verified
+============
+1. `pnpm build` exit 0. Route table now lists
+   `/[locale]/register/organization/finish` (dynamic).
+
+2. HTTP smoke:
+     /register/organization                                                                       → 200
+     /register/organization/finish?firstName=Marek&lastName=Nowak&email=marek@example.com         → 200
+
+3. Puppeteer screenshots:
+   - register-pl-full.png: Org register page now opens with
+     "Kontynuuj z Google" social button + "LUB" divider + the
+     existing three-section email form below.
+   - finish-pl-full.png: Org finish page with "Witaj Marek.
+     Uzupełnij dane organizacji i adres siedziby…"
+     personalised subhead. Founder names pre-filled. All three
+     sections render (Konto założyciela / Dane organizacji /
+     Adres siedziby) with the same field set as the email path
+     minus password.
+   - finish-en-full.png: English variant ("Hi John · Complete
+     the organisation details and headquarters address…").
+
+4. preview_console_logs(error) returns "No console logs".
+
+5. Submit calls `identityClient.registerOrganization` with the
+   typed proto request (same as feature 3 — just without the
+   password step). Backend creates org + ORG_ADMIN user + Trial
+   subscription + headquarters address in one transaction. The
+   founder's Google identity is the firebase_uid the proto field
+   needs; emailVerified=true at the Firebase layer means we can
+   skip the verify-email interstitial.
+
+Compliance with docs/18
+=======================
+- ✓ §8.1 org social-path: OAuth → if no Superwizor user →
+  /register/organization/finish for org details → submit →
+  RegisterOrganization → ORG_ADMIN role only (no THERAPIST).
+- ✓ §13.3 founder/org/address sections unchanged; we just shed
+  the password section.
+- ✓ §6.3 standing notice: subhead carries the "you'll be the
+  clinic administrator…" wording in both locales (inherited
+  from the email-path landing — the user reads it on the page
+  before clicking Continue with Google).
+
+Files
+=====
+- marketing-site/messages/{pl,en}.json (organization.finish* keys)
+- marketing-site/src/lib/register/schema.ts (organizationFinishSchema)
+- marketing-site/src/components/register/OrganizationFinishForm.tsx (new)
+- marketing-site/src/app/[locale]/register/organization/page.tsx (mount SocialButtons)
+- marketing-site/src/app/[locale]/register/organization/finish/page.tsx (new)
+- evidence/slice-3/register-organization-google/{register-pl,finish-pl,finish-en}-full.png
+- evidence/slice-3/register-organization-google/verification.log (this)

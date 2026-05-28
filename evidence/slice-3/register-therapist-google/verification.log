@@ -1,0 +1,101 @@
+Feature: slice-3 / register-therapist-google
+Branch: feat/web-app-slice-3
+Verified: 2026-05-28
+Anchored to: docs/18 §8.1 + §13.2 (therapist social path)
+Manual op #64 (Firebase Console Google + account linking): DONE per user.
+
+What was built
+==============
+- src/components/register/SocialButtons.tsx — shared "Continue with
+  Google" component for both register pages. On click:
+    1. auth.signInWithGoogle() (popup) — already wired in feature 4.
+    2. identityClient.getUserByFirebaseUID({firebaseUid: user.uid}).
+    3. Existing user → window.location → app.superwizor.ai/login.
+    4. ConnectError.NotFound → redirect to /register/<flow>/finish
+       with ?firstName / lastName / email from the Google profile.
+    5. Other ConnectError → surface as inline alert (don't proceed
+       to finish-profile because we'd risk a duplicate user row).
+  Includes brand-styled monochrome Google "G" mark inline SVG so we
+  don't pull a separate icon dep. "or" divider separates social from
+  email path.
+- src/lib/register/schema.ts — therapistFinishSchema (zod) covering
+  the minimal post-OAuth fields: names + modality + ui_language +
+  optional title/phone + ToS.
+- src/components/register/TherapistFinishForm.tsx — client form
+  pre-filled from query (firstName / lastName). Submit calls
+  identityClient.createUser({role=THERAPIST, ...}) using the
+  still-signed-in Firebase user, then optionally updateProfile for
+  modality + title + phone + marketing consent, then bounces
+  straight to app.superwizor.ai/login (Google sign-in marks
+  emailVerified=true server-side; no need for the
+  /verify-email interstitial).
+- src/app/[locale]/register/therapist/finish/page.tsx — dynamic
+  route reading searchParams for the personalised "Witaj
+  {firstName}" greeting (falls back to a generic subhead if the
+  user landed here without query, e.g. via reload).
+- Wired SocialButtons into
+  src/app/[locale]/register/therapist/page.tsx above the email
+  form.
+- messages/{pl,en}.json — added therapist.finishMetaTitle /
+  finishTitle / finishSubhead / finishGenericSubhead keys.
+
+How verified
+============
+1. `pnpm build` exit 0. Route table now includes
+   `/[locale]/register/therapist/finish` (dynamic ƒ — uses
+   searchParams).
+
+2. HTTP smoke (after .next/dev wipe + Preview restart):
+     /register/therapist                                                                            → 200
+     /register/therapist/finish?firstName=Anna&lastName=Kowalska&email=anna@example.com             → 200
+
+3. Puppeteer screenshots:
+   - register-pl-full.png: Therapist register page now shows the
+     "Kontynuuj z Google" Ember-on-frost-5 button at the top with
+     the Google G mark, "LUB" Roboto-Mono divider, then the
+     existing email form below. PL diacritics correct.
+   - finish-pl-full.png: Finish-profile page with "Witaj Anna.
+     Wybierz nurt terapeutyczny…" personalised subhead. First
+     name + last name pre-filled with "Anna" / "Kowalska" from
+     query. Modality select + UI language radio (Polski selected)
+     + optional title + optional phone + ToS + marketing
+     consent. ZAŁÓŻ KONTO submit.
+   - finish-en-full.png: Same in English ("Hi Anna · Pick a
+     therapeutic modality…").
+
+4. preview_console_logs(error) returns "No console logs". The
+   client-side popup OAuth code path is reached only on real click
+   in a browser; puppeteer doesn't trigger it. Live verification
+   of the popup → CreateUser → redirect happens in feature 8's
+   Playwright run.
+
+5. Existing /register/therapist/verify-email is unaffected — the
+   social path skips the email-verification interstitial because
+   Google already verified the address (auth.currentUser
+   .emailVerified === true immediately after signInWithPopup).
+
+Compliance with docs/18
+=======================
+- ✓ §8.1: "Three social buttons" — for Slice 3 we ship Google;
+  Apple + Microsoft helpers exist on auth-provider but render no
+  button (will be added once those providers go live in the
+  Firebase Console).
+- ✓ §8.1 social-path branch: OAuth pop-up → GetUserByFirebaseUID
+  → if NotFound, redirect to /register/therapist/finish → submit
+  → CreateUser → Trial auto-provisioning by the existing 0a25ac7
+  backend flow.
+- ✓ §6.5 R1 "One account per email" — account linking is on per
+  manual op #64; Firebase auto-links a same-email signup across
+  providers, so a user who first signed in via Google won't get
+  a second orphan account if they later use email/password.
+
+Files
+=====
+- marketing-site/messages/{pl,en}.json (therapist.finish* keys)
+- marketing-site/src/lib/register/schema.ts (therapistFinishSchema)
+- marketing-site/src/components/register/SocialButtons.tsx (new)
+- marketing-site/src/components/register/TherapistFinishForm.tsx (new)
+- marketing-site/src/app/[locale]/register/therapist/page.tsx (mount SocialButtons)
+- marketing-site/src/app/[locale]/register/therapist/finish/page.tsx (new)
+- evidence/slice-3/register-therapist-google/{register-pl,finish-pl,finish-en}-full.png
+- evidence/slice-3/register-therapist-google/verification.log (this)

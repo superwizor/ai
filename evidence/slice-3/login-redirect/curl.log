@@ -1,0 +1,3 @@
+/login → status=307, location=https://app.superwizor.ai/login
+/en/login → status=307, location=https://app.superwizor.ai/login
+final=https://app.superwizor.ai/login

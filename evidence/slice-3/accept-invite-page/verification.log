@@ -1,0 +1,107 @@
+Feature: slice-3 / accept-invite-page
+Branch: feat/web-app-slice-3
+Verified: 2026-05-28
+Anchored to: docs/18 §9 (Invitation flow end-to-end)
+
+What was built
+==============
+- src/lib/register/schema.ts — acceptInviteSchema covers email +
+  password + name + modality + ui-language + ToS.
+- src/components/register/AcceptInviteForm.tsx — client form. Submit:
+    1. auth.signUpWithEmail → Firebase + sendEmailVerification.
+    2. identityClient.acceptInvitation({token, firebaseUid, ...}).
+    3. window.location → verify-email interstitial.
+  Connect error code mapping for invitation issues:
+    - Code.NotFound       → "invalid token"
+    - Code.PermissionDenied (msg has "expired") → "expired"
+    - Code.PermissionDenied (default)           → "already accepted"
+- src/app/[locale]/accept-invite/page.tsx — server shell. Reads
+  `?token=` from search params. If missing, renders the magma-bordered
+  "missing token" alert instead of the form.
+
+The page is intentionally hosted on the marketing origin as a stopgap
+until Slice 5 brings up the Flutter Web shell at app.superwizor.ai.
+notification-svc's email-template URL is the single switch between
+origins.
+
+Email-not-in-link gap (documented)
+==================================
+docs/18 §9 email link is `…/accept-invite?token=<base64url>`. The
+proto exposes no GetInvitationByToken RPC, so the page asks the
+invitee to retype their email. The backend's AcceptInvitation
+handler cross-checks the SHA-256 of the incoming token against
+invitations.token_hash AND verifies the row's email matches —
+mismatch surfaces as Code.NotFound / PermissionDenied which the
+component maps to user-friendly copy. Two future paths:
+  A) Extend the link to `?token=X&email=Y` (notification-svc tweak).
+  B) Add a GetInvitationByToken RPC for one-shot pre-flight lookup.
+
+How verified
+============
+1. `pnpm build` exit 0. Route table now lists
+   `/[locale]/accept-invite` as dynamic (ƒ) — reading
+   searchParams takes it out of SSG, expected behaviour. 21 SSG
+   pages total + 2 dynamic + proxy.
+
+2. HTTP smoke (after `.next/dev` wipe + Preview restart):
+     /accept-invite?token=fake-token-for-smoke-test → 200
+     /en/accept-invite?token=fake                   → 200
+     /accept-invite                                  → 200 (missing-token alert)
+
+3. Puppeteer fullPage screenshots:
+   - accept-pl-full.png — Polish: Navbar → Aurora overline
+     "ZAPROSZENIE" → heading "Dołącz do organizacji" → subhead.
+     Form: email + hasło (Min. 8 znaków, jedna cyfra) +
+     imię/nazwisko 2-col + główny nurt terapeutyczny select
+     (showing "—" placeholder until picked) + JĘZYK INTERFEJSU
+     radio (Polski highlighted Ember) + ToS consent with linked
+     regulamin/politykę prywatności + marketing consent +
+     AKCEPTUJĘ ZAPROSZENIE submit. Footer.
+   - accept-en-full.png — same composition, English copy
+     ("INVITATION · Join your organisation · Set a password and
+     complete a short profile…", "ACCEPT INVITATION" submit).
+   - accept-missing-token-full.png — same chrome, but the form
+     body is replaced by a magma-bordered alert: "Brakuje tokenu
+     zaproszenia. Otwórz link z wiadomości e-mail." Footer still
+     shown.
+
+4. preview_console_logs(error) returns "No console logs".
+
+5. Submit flow type-checked against the real proto:
+   AcceptInvitationRequestSchema from gen/ts (firebaseUid +
+   token + names + defaultModalityId + uiLanguage + timezone +
+   consents). Drift = build failure, not runtime.
+
+Compliance with docs/18 §9
+==========================
+- ✓ Step 5 ("page shows 'You've been invited…'") — overline +
+  heading + subhead carry the equivalent copy.
+- ✓ Step 6 (createUserWithEmailAndPassword) — feature 4's
+  auth.signUpWithEmail call.
+- ✓ Step 7 (AcceptInvitation(token, firebase_uid)) — exactly
+  what the submit handler does.
+- ✓ Step 9 redirect to /home → for now we redirect to the
+  verify-email interstitial (one shared landing for both org-
+  registration and invite-acceptance paths). Will pivot to
+  app.superwizor.ai/home when Slice 5 ships.
+- ✓ Idempotency note ("a second click sees accepted_at IS NOT
+  NULL → page shows 'This invitation was already used'") — the
+  Code.PermissionDenied mapping covers this; copy:
+  "To zaproszenie zostało już użyte. Zaloguj się normalnie."
+
+Files touched
+=============
+- marketing-site/messages/{pl,en}.json (acceptInvite namespace)
+- marketing-site/src/lib/register/schema.ts (acceptInviteSchema)
+- marketing-site/src/components/register/AcceptInviteForm.tsx (new)
+- marketing-site/src/app/[locale]/accept-invite/page.tsx (new)
+
+Known gaps (deferred)
+=====================
+- Email retype friction → fix in a follow-up via either link
+  extension or a GetInvitationByToken RPC.
+- Post-acceptance redirect goes to the marketing verify-email
+  page; Slice 5 will swap to app.superwizor.ai/home.
+- No invitee-side preview ("Joining: <org name>") because we
+  can't fetch the org name without a pre-flight RPC. Re-evaluate
+  with the GetInvitationByToken option.
