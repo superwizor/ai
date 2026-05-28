@@ -7,6 +7,13 @@
 
 import { defineConfig, devices } from "@playwright/test";
 
+// Per docs/18 §13.11 the launch suite runs every happy-path spec once
+// per supported locale. Playwright `projects` is the natural place to
+// fan that out — each project sets its own `locale` + Accept-Language
+// pair so navigator.languages and the URL routing tier resolve PL or
+// EN respectively. Tests read `testInfo.project.name` to switch
+// expected UI copy + URL prefix; see helpers in tests/e2e/_locales.ts.
+
 export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 30_000,
@@ -14,13 +21,6 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: "http://localhost:3000",
-    // Browser locale drives navigator.languages AND the default
-    // Accept-Language. Without this, Playwright Chromium ships en-US
-    // and next-intl resolves the EN locale on the bare path.
-    locale: "pl-PL",
-    extraHTTPHeaders: {
-      "Accept-Language": "pl-PL,pl;q=0.9",
-    },
     trace: "on-first-retry",
   },
   webServer: {
@@ -34,8 +34,27 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      name: "chromium-pl",
+      use: {
+        ...devices["Desktop Chrome"],
+        locale: "pl-PL",
+        extraHTTPHeaders: {
+          // next-intl's "as-needed" routing serves PL on the bare path
+          // when the Accept-Language header asks for pl. Tests in this
+          // project navigate to `/...` (no prefix).
+          "Accept-Language": "pl-PL,pl;q=0.9",
+        },
+      },
+    },
+    {
+      name: "chromium-en",
+      use: {
+        ...devices["Desktop Chrome"],
+        locale: "en-GB",
+        extraHTTPHeaders: {
+          "Accept-Language": "en-GB,en;q=0.9",
+        },
+      },
     },
   ],
 });

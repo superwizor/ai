@@ -71,6 +71,14 @@ class AppLocalizationsPl extends AppLocalizations {
       'Wysłaliśmy link do zmiany hasła na Twój e-mail.';
 
   @override
+  String get auth_shared_machine_warning_title =>
+      'Korzystasz ze współdzielonego komputera?';
+
+  @override
+  String get auth_shared_machine_warning_body =>
+      'Po zakończeniu pracy wyloguj się, aby Twoje dane sesji nie zostały dostępne dla kolejnego użytkownika tego komputera.';
+
+  @override
   String get auth_error_invalid_credential =>
       'Niepoprawny adres e-mail lub hasło.';
 

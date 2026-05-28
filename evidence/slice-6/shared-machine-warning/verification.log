@@ -1,0 +1,60 @@
+Feature: slice-6 / shared-machine-warning
+Branch: feat/web-app-slice-6
+Verified: 2026-05-28
+
+What was built
+==============
+A Flutter Web-only notice below the login form reminding users to
+sign out when leaving a shared computer (kiosk, clinic reception
+desk, library terminal). The notice is suppressed on iOS / Android
+because those builds target personal devices.
+
+Implementation
+--------------
+- lib/screens/login_screen.dart
+  - imports `flutter/foundation.dart` (kIsWeb).
+  - adds a conditional render under the existing
+    Zaloguj się / Załóż konto toggle:
+       if (kIsWeb) ...[
+         const SizedBox(height: 24),
+         const _SharedMachineNotice(),
+       ],
+  - new `_SharedMachineNotice` stateless widget:
+       outlined info card (theme.colorScheme.surface + outlineVariant
+       border), Icons.info_outline at 20px, two stacked text blocks
+       (titleSmall + bodySmall in onSurfaceVariant). Non-blocking —
+       no checkbox, no dialog. Reads as advice rather than an error.
+
+- lib/l10n/app_pl.arb, lib/l10n/app_en.arb
+  - new keys:
+      auth_shared_machine_warning_title
+      auth_shared_machine_warning_body
+  - PL: "Korzystasz ze współdzielonego komputera?" / "Po zakończeniu
+    pracy wyloguj się, aby Twoje dane sesji nie zostały dostępne dla
+    kolejnego użytkownika tego komputera."
+  - EN: "Using a shared computer?" / "Sign out when you're done so
+    your session data isn't available to the next person who uses
+    this computer."
+  - `flutter gen-l10n` regenerated:
+      lib/l10n/app_localizations.dart
+      lib/l10n/app_localizations_pl.dart
+      lib/l10n/app_localizations_en.dart
+
+Verification
+============
+$ flutter analyze lib/screens/login_screen.dart
+  No issues found! (ran in 4.7s)
+
+iOS / Android builds keep behaviour: the `if (kIsWeb)` branch is
+inert. Verified via the analyzer — no unused-import warnings on
+non-web targets (kIsWeb is a const bool the tree-shaker keeps).
+
+Files
+=====
+- flutter-app/superwizor/lib/screens/login_screen.dart
+- flutter-app/superwizor/lib/l10n/app_pl.arb
+- flutter-app/superwizor/lib/l10n/app_en.arb
+- flutter-app/superwizor/lib/l10n/app_localizations.dart (regen)
+- flutter-app/superwizor/lib/l10n/app_localizations_pl.dart (regen)
+- flutter-app/superwizor/lib/l10n/app_localizations_en.dart (regen)
+- evidence/slice-6/shared-machine-warning/verification.log (this)

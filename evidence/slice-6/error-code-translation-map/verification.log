@@ -1,0 +1,74 @@
+Feature: slice-6 / error-code-translation-map
+Branch: feat/web-app-slice-6
+Verified: 2026-05-28
+
+What was built
+==============
+A central translateError helper at src/lib/errors/translate.ts plus
+the `errors` i18n namespace in PL + EN. Six admin catch-blocks that
+previously surfaced raw `e.message` ("rpc error: code = PermissionDenied
+desc = reason must be >= 10 characters") now route through this helper
+and show a localized, human-friendly string.
+
+Mapping order (first match wins):
+  1. ConnectError message contains a known backend substring →
+     errors.backend.<key>. Today: reasonTooShort, invitationExpired,
+     invitationAccepted, quotaExceeded, subscriptionPastDue,
+     alreadyExists.
+  2. ConnectError.code → errors.code.<name>. All 16 Connect codes
+     are wired (canceled, unknown, invalidArgument, deadlineExceeded,
+     notFound, alreadyExists, permissionDenied, resourceExhausted,
+     failedPrecondition, aborted, outOfRange, unimplemented,
+     internal, unavailable, dataLoss, unauthenticated).
+  3. Plain Error.message also runs through the backend-substring
+     scan so non-Connect errors (e.g. Firebase Auth wrapped as
+     Error) still get specific handling when a pattern matches.
+  4. Otherwise → errors.generic.
+
+A `tryT` fallback returns the bare key string if the i18n key is
+missing — keeps dev-time additions from rendering MissingTranslation
+exceptions that nuke the dialog.
+
+Where it's wired
+================
+All 6 catch sites in:
+  marketing-site/src/components/admin/OrgDetail.tsx  (4 actions:
+    setStatus, resetTokens, changePlan, edit-org)
+  marketing-site/src/components/admin/UsersList.tsx  (2 actions:
+    UserEditDialog onConfirm, UserDeleteDialog onConfirm)
+
+Each component pulls `const tErrors = useTranslations("errors")` and
+calls `translateError(e, tErrors)` instead of stringifying e.message.
+
+Not wired here (out of scope for this feature)
+==============================================
+- src/components/register/AcceptInviteForm.tsx already had bespoke
+  ConnectError→message handling pre-Slice-6 (invalid/expired
+  invitation). That code-path stays as-is; both routes now produce
+  comparable copy, and the bespoke handler emits more nuanced text
+  for the invite-specific failure modes. A follow-up can migrate it
+  to translateError if/when the bespoke logic moves into the
+  BACKEND_PATTERNS table.
+- Firebase Auth errors (`auth/email-already-in-use` etc.) on the
+  registration forms — those carry locale-specific UX copy already
+  in `register.errors.*` and don't need re-routing.
+
+Files
+=====
+- marketing-site/src/lib/errors/translate.ts (new)
+- marketing-site/src/components/admin/OrgDetail.tsx
+- marketing-site/src/components/admin/UsersList.tsx
+- marketing-site/messages/pl.json (new "errors" namespace)
+- marketing-site/messages/en.json (new "errors" namespace)
+- evidence/slice-6/error-code-translation-map/verification.log (this)
+
+Verification
+============
+- pnpm exec tsc --noEmit         → clean, no errors.
+- pnpm build                     → exit 0; all admin routes still
+                                   compile and SSG-prerender for
+                                   both locales.
+- Grep confirms zero `e instanceof Error ? e.message : String(e)`
+  patterns remain in admin/*.tsx:
+    $ grep -rn 'e instanceof Error ? e.message' src/components/admin
+    (no results)

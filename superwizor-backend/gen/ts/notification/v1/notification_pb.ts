@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file notification/v1/notification.proto.
  */
 export const file_notification_v1_notification: GenFile = /*@__PURE__*/
-  fileDesc("CiJub3RpZmljYXRpb24vdjEvbm90aWZpY2F0aW9uLnByb3RvEg9ub3RpZmljYXRpb24udjEiqAEKGlNlbmRJbnZpdGF0aW9uRW1haWxSZXF1ZXN0EhcKD3JlY2lwaWVudF9lbWFpbBgBIAEoCRIZChFvcmdhbml6YXRpb25fbmFtZRgCIAEoCRIaChJpbnZpdGVyX2ZpcnN0X25hbWUYAyABKAkSEgoKYWNjZXB0X3VybBgEIAEoCRIWCg5leHBpcmVzX2F0X2lzbxgFIAEoCRIOCgZsb2NhbGUYBiABKAkikAEKF1JlZ2lzdGVyRkNNVG9rZW5SZXF1ZXN0Eg0KBXRva2VuGAEgASgJEisKCHBsYXRmb3JtGAIgASgOMhkubm90aWZpY2F0aW9uLnYxLlBsYXRmb3JtEhMKC2FwcF92ZXJzaW9uGAMgASgJEhQKDGRldmljZV9tb2RlbBgEIAEoCRIOCgZsb2NhbGUYBSABKAkiSAoYUmVnaXN0ZXJGQ01Ub2tlblJlc3BvbnNlEhAKCHRva2VuX2lkGAEgASgJEhoKEmFscmVhZHlfcmVnaXN0ZXJlZBgCIAEoCCImChVSZW1vdmVGQ01Ub2tlblJlcXVlc3QSDQoFdG9rZW4YASABKAkiJwoWR2V0VW5yZWFkQ291bnRSZXNwb25zZRINCgVjb3VudBgBIAEoBSIyChNIZWFsdGhDaGVja1Jlc3BvbnNlEgoKAm9rGAEgASgIEg8KB3ZlcnNpb24YAiABKAkqXgoIUGxhdGZvcm0SGAoUUExBVEZPUk1fVU5TUEVDSUZJRUQQABIQCgxQTEFURk9STV9JT1MQARIUChBQTEFURk9STV9BTkRST0lEEAISEAoMUExBVEZPUk1fV0VCEAMyzAMKE05vdGlmaWNhdGlvblNlcnZpY2USZwoQUmVnaXN0ZXJGQ01Ub2tlbhIoLm5vdGlmaWNhdGlvbi52MS5SZWdpc3RlckZDTVRva2VuUmVxdWVzdBopLm5vdGlmaWNhdGlvbi52MS5SZWdpc3RlckZDTVRva2VuUmVzcG9uc2USUAoOUmVtb3ZlRkNNVG9rZW4SJi5ub3RpZmljYXRpb24udjEuUmVtb3ZlRkNNVG9rZW5SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5ElEKDkdldFVucmVhZENvdW50EhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Gicubm90aWZpY2F0aW9uLnYxLkdldFVucmVhZENvdW50UmVzcG9uc2USWgoTU2VuZEludml0YXRpb25FbWFpbBIrLm5vdGlmaWNhdGlvbi52MS5TZW5kSW52aXRhdGlvbkVtYWlsUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJLCgtIZWFsdGhDaGVjaxIWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRokLm5vdGlmaWNhdGlvbi52MS5IZWFsdGhDaGVja1Jlc3BvbnNlQs0BChNjb20ubm90aWZpY2F0aW9uLnYxQhFOb3RpZmljYXRpb25Qcm90b1ABWkZnaXRodWIuY29tL3N1cGVyd2l6b3ItYWkvYmFja2VuZC9nZW4vZ28vbm90aWZpY2F0aW9uL3YxO25vdGlmaWNhdGlvbnYxogIDTlhYqgIPTm90aWZpY2F0aW9uLlYxygIPTm90aWZpY2F0aW9uXFYx4gIbTm90aWZpY2F0aW9uXFYxXEdQQk1ldGFkYXRh6gIQTm90aWZpY2F0aW9uOjpWMWIGcHJvdG8z", [file_google_protobuf_empty]);
+  fileDesc("CiJub3RpZmljYXRpb24vdjEvbm90aWZpY2F0aW9uLnByb3RvEg9ub3RpZmljYXRpb24udjEiqAEKGlNlbmRJbnZpdGF0aW9uRW1haWxSZXF1ZXN0EhcKD3JlY2lwaWVudF9lbWFpbBgBIAEoCRIZChFvcmdhbml6YXRpb25fbmFtZRgCIAEoCRIaChJpbnZpdGVyX2ZpcnN0X25hbWUYAyABKAkSEgoKYWNjZXB0X3VybBgEIAEoCRIWCg5leHBpcmVzX2F0X2lzbxgFIAEoCRIOCgZsb2NhbGUYBiABKAkihwEKHFNlbmRFbWFpbFZlcmlmaWNhdGlvblJlcXVlc3QSFwoPcmVjaXBpZW50X2VtYWlsGAEgASgJEhIKCmZpcnN0X25hbWUYAiABKAkSEgoKdmVyaWZ5X3VybBgDIAEoCRIWCg5leHBpcmVzX2F0X2lzbxgEIAEoCRIOCgZsb2NhbGUYBSABKAki9gEKF1NlbmRRdW90YVdhcm5pbmdSZXF1ZXN0EhcKD3JlY2lwaWVudF9lbWFpbBgBIAEoCRISCgpmaXJzdF9uYW1lGAIgASgJEhkKEW9yZ2FuaXphdGlvbl9uYW1lGAMgASgJEhUKDXVzYWdlX3BlcmNlbnQYBCABKAUSGAoQdG9rZW5zX3JlbWFpbmluZxgFIAEoBRIRCglwbGFuX3RpZXIYBiABKAkSEgoKcGxhbl9jeWNsZRgHIAEoCRIWCg5wZXJpb2RfZW5kX2lzbxgIIAEoCRITCgtiaWxsaW5nX3VybBgJIAEoCRIOCgZsb2NhbGUYCiABKAkikAEKF1JlZ2lzdGVyRkNNVG9rZW5SZXF1ZXN0Eg0KBXRva2VuGAEgASgJEisKCHBsYXRmb3JtGAIgASgOMhkubm90aWZpY2F0aW9uLnYxLlBsYXRmb3JtEhMKC2FwcF92ZXJzaW9uGAMgASgJEhQKDGRldmljZV9tb2RlbBgEIAEoCRIOCgZsb2NhbGUYBSABKAkiSAoYUmVnaXN0ZXJGQ01Ub2tlblJlc3BvbnNlEhAKCHRva2VuX2lkGAEgASgJEhoKEmFscmVhZHlfcmVnaXN0ZXJlZBgCIAEoCCImChVSZW1vdmVGQ01Ub2tlblJlcXVlc3QSDQoFdG9rZW4YASABKAkiJwoWR2V0VW5yZWFkQ291bnRSZXNwb25zZRINCgVjb3VudBgBIAEoBSIyChNIZWFsdGhDaGVja1Jlc3BvbnNlEgoKAm9rGAEgASgIEg8KB3ZlcnNpb24YAiABKAkqXgoIUGxhdGZvcm0SGAoUUExBVEZPUk1fVU5TUEVDSUZJRUQQABIQCgxQTEFURk9STV9JT1MQARIUChBQTEFURk9STV9BTkRST0lEEAISEAoMUExBVEZPUk1fV0VCEAMyggUKE05vdGlmaWNhdGlvblNlcnZpY2USZwoQUmVnaXN0ZXJGQ01Ub2tlbhIoLm5vdGlmaWNhdGlvbi52MS5SZWdpc3RlckZDTVRva2VuUmVxdWVzdBopLm5vdGlmaWNhdGlvbi52MS5SZWdpc3RlckZDTVRva2VuUmVzcG9uc2USUAoOUmVtb3ZlRkNNVG9rZW4SJi5ub3RpZmljYXRpb24udjEuUmVtb3ZlRkNNVG9rZW5SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5ElEKDkdldFVucmVhZENvdW50EhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Gicubm90aWZpY2F0aW9uLnYxLkdldFVucmVhZENvdW50UmVzcG9uc2USWgoTU2VuZEludml0YXRpb25FbWFpbBIrLm5vdGlmaWNhdGlvbi52MS5TZW5kSW52aXRhdGlvbkVtYWlsUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJeChVTZW5kRW1haWxWZXJpZmljYXRpb24SLS5ub3RpZmljYXRpb24udjEuU2VuZEVtYWlsVmVyaWZpY2F0aW9uUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJUChBTZW5kUXVvdGFXYXJuaW5nEigubm90aWZpY2F0aW9uLnYxLlNlbmRRdW90YVdhcm5pbmdSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5EksKC0hlYWx0aENoZWNrEhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5GiQubm90aWZpY2F0aW9uLnYxLkhlYWx0aENoZWNrUmVzcG9uc2VCzQEKE2NvbS5ub3RpZmljYXRpb24udjFCEU5vdGlmaWNhdGlvblByb3RvUAFaRmdpdGh1Yi5jb20vc3VwZXJ3aXpvci1haS9iYWNrZW5kL2dlbi9nby9ub3RpZmljYXRpb24vdjE7bm90aWZpY2F0aW9udjGiAgNOWFiqAg9Ob3RpZmljYXRpb24uVjHKAg9Ob3RpZmljYXRpb25cVjHiAhtOb3RpZmljYXRpb25cVjFcR1BCTWV0YWRhdGHqAhBOb3RpZmljYXRpb246OlYxYgZwcm90bzM", [file_google_protobuf_empty]);
 
 /**
  * @generated from message notification.v1.SendInvitationEmailRequest
@@ -69,6 +69,131 @@ export const SendInvitationEmailRequestSchema: GenMessage<SendInvitationEmailReq
   messageDesc(file_notification_v1_notification, 0);
 
 /**
+ * @generated from message notification.v1.SendEmailVerificationRequest
+ */
+export type SendEmailVerificationRequest = Message<"notification.v1.SendEmailVerificationRequest"> & {
+  /**
+   * recipient (lowercased)
+   *
+   * @generated from field: string recipient_email = 1;
+   */
+  recipientEmail: string;
+
+  /**
+   * for the greeting
+   *
+   * @generated from field: string first_name = 2;
+   */
+  firstName: string;
+
+  /**
+   * Firebase Auth verification link
+   *
+   * @generated from field: string verify_url = 3;
+   */
+  verifyUrl: string;
+
+  /**
+   * ISO-8601; mirrors invitation's contract
+   *
+   * @generated from field: string expires_at_iso = 4;
+   */
+  expiresAtIso: string;
+
+  /**
+   * 'pl' | 'en'; falls back to 'pl' if unknown
+   *
+   * @generated from field: string locale = 5;
+   */
+  locale: string;
+};
+
+/**
+ * Describes the message notification.v1.SendEmailVerificationRequest.
+ * Use `create(SendEmailVerificationRequestSchema)` to create a new message.
+ */
+export const SendEmailVerificationRequestSchema: GenMessage<SendEmailVerificationRequest> = /*@__PURE__*/
+  messageDesc(file_notification_v1_notification, 1);
+
+/**
+ * @generated from message notification.v1.SendQuotaWarningRequest
+ */
+export type SendQuotaWarningRequest = Message<"notification.v1.SendQuotaWarningRequest"> & {
+  /**
+   * ORG_ADMIN's email
+   *
+   * @generated from field: string recipient_email = 1;
+   */
+  recipientEmail: string;
+
+  /**
+   * @generated from field: string first_name = 2;
+   */
+  firstName: string;
+
+  /**
+   * @generated from field: string organization_name = 3;
+   */
+  organizationName: string;
+
+  /**
+   * 80 or 95 today; renderer formats as "80%"
+   *
+   * @generated from field: int32 usage_percent = 4;
+   */
+  usagePercent: number;
+
+  /**
+   * tokens left before the period rolls
+   *
+   * @generated from field: int32 tokens_remaining = 5;
+   */
+  tokensRemaining: number;
+
+  /**
+   * "TRIAL" | "SOLO" | "PRO" | "CLINIC"
+   *
+   * @generated from field: string plan_tier = 6;
+   */
+  planTier: string;
+
+  /**
+   * "MONTHLY" | "ANNUAL"
+   *
+   * @generated from field: string plan_cycle = 7;
+   */
+  planCycle: string;
+
+  /**
+   * ISO-8601 end of current period
+   *
+   * @generated from field: string period_end_iso = 8;
+   */
+  periodEndIso: string;
+
+  /**
+   * deep link to the billing panel
+   *
+   * @generated from field: string billing_url = 9;
+   */
+  billingUrl: string;
+
+  /**
+   * 'pl' | 'en'; falls back to 'pl' if unknown
+   *
+   * @generated from field: string locale = 10;
+   */
+  locale: string;
+};
+
+/**
+ * Describes the message notification.v1.SendQuotaWarningRequest.
+ * Use `create(SendQuotaWarningRequestSchema)` to create a new message.
+ */
+export const SendQuotaWarningRequestSchema: GenMessage<SendQuotaWarningRequest> = /*@__PURE__*/
+  messageDesc(file_notification_v1_notification, 2);
+
+/**
  * RegisterFCMToken upserts an FCM token for the authenticated user.
  *
  * user_id is resolved from the Firebase ID token in gRPC metadata server-side;
@@ -121,7 +246,7 @@ export type RegisterFCMTokenRequest = Message<"notification.v1.RegisterFCMTokenR
  * Use `create(RegisterFCMTokenRequestSchema)` to create a new message.
  */
 export const RegisterFCMTokenRequestSchema: GenMessage<RegisterFCMTokenRequest> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 1);
+  messageDesc(file_notification_v1_notification, 3);
 
 /**
  * @generated from message notification.v1.RegisterFCMTokenResponse
@@ -147,7 +272,7 @@ export type RegisterFCMTokenResponse = Message<"notification.v1.RegisterFCMToken
  * Use `create(RegisterFCMTokenResponseSchema)` to create a new message.
  */
 export const RegisterFCMTokenResponseSchema: GenMessage<RegisterFCMTokenResponse> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 2);
+  messageDesc(file_notification_v1_notification, 4);
 
 /**
  * RemoveFCMToken soft-deletes a token (sets invalidated_at). Called on user
@@ -168,7 +293,7 @@ export type RemoveFCMTokenRequest = Message<"notification.v1.RemoveFCMTokenReque
  * Use `create(RemoveFCMTokenRequestSchema)` to create a new message.
  */
 export const RemoveFCMTokenRequestSchema: GenMessage<RemoveFCMTokenRequest> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 3);
+  messageDesc(file_notification_v1_notification, 5);
 
 /**
  * @generated from message notification.v1.GetUnreadCountResponse
@@ -185,7 +310,7 @@ export type GetUnreadCountResponse = Message<"notification.v1.GetUnreadCountResp
  * Use `create(GetUnreadCountResponseSchema)` to create a new message.
  */
 export const GetUnreadCountResponseSchema: GenMessage<GetUnreadCountResponse> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 4);
+  messageDesc(file_notification_v1_notification, 6);
 
 /**
  * @generated from message notification.v1.HealthCheckResponse
@@ -207,7 +332,7 @@ export type HealthCheckResponse = Message<"notification.v1.HealthCheckResponse">
  * Use `create(HealthCheckResponseSchema)` to create a new message.
  */
 export const HealthCheckResponseSchema: GenMessage<HealthCheckResponse> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 5);
+  messageDesc(file_notification_v1_notification, 7);
 
 /**
  * @generated from enum notification.v1.Platform
@@ -292,6 +417,34 @@ export const NotificationService: GenService<{
   sendInvitationEmail: {
     methodKind: "unary";
     input: typeof SendInvitationEmailRequestSchema;
+    output: typeof EmptySchema;
+  },
+  /**
+   * Web-app: confirm-your-email link after self-serve registration.
+   * identity-svc generates the verify_url (Firebase Auth verification
+   * link, retrieved via Firebase Admin SDK) and delegates the email
+   * copy + delivery to notification-svc so the localized branding +
+   * template lives in one place.
+   *
+   * @generated from rpc notification.v1.NotificationService.SendEmailVerification
+   */
+  sendEmailVerification: {
+    methodKind: "unary";
+    input: typeof SendEmailVerificationRequestSchema;
+    output: typeof EmptySchema;
+  },
+  /**
+   * Web-app: 80% / 95% quota warning email. Fired by billing-svc when
+   * a CommitUsage crosses one of the thresholds for the first time
+   * in the current billing period. Idempotency lives in billing-svc
+   * (the threshold-crossing flag is per-period); this RPC always
+   * sends regardless.
+   *
+   * @generated from rpc notification.v1.NotificationService.SendQuotaWarning
+   */
+  sendQuotaWarning: {
+    methodKind: "unary";
+    input: typeof SendQuotaWarningRequestSchema;
     output: typeof EmptySchema;
   },
   /**

@@ -218,6 +218,18 @@ abstract class AppLocalizations {
   /// **'Wysłaliśmy link do zmiany hasła na Twój e-mail.'**
   String get auth_password_reset_sent_body;
 
+  /// No description provided for @auth_shared_machine_warning_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Korzystasz ze współdzielonego komputera?'**
+  String get auth_shared_machine_warning_title;
+
+  /// No description provided for @auth_shared_machine_warning_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Po zakończeniu pracy wyloguj się, aby Twoje dane sesji nie zostały dostępne dla kolejnego użytkownika tego komputera.'**
+  String get auth_shared_machine_warning_body;
+
   /// No description provided for @auth_error_invalid_credential.
   ///
   /// In pl, this message translates to:

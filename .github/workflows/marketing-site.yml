@@ -66,6 +66,13 @@ jobs:
         working-directory: marketing-site
         run: pnpm lint || echo "::warning::lint reported issues (non-blocking until Slice 6)"
 
+      # docs/18 §13.11 — locale parity gate. Fails the build when
+      # pl.json and en.json drift apart so we don't ship half-translated
+      # strings to production. See scripts/check-l10n-parity.mjs.
+      - name: l10n parity (PL ↔ EN)
+        working-directory: marketing-site
+        run: pnpm run check:l10n
+
       - name: Build
         working-directory: marketing-site
         run: pnpm build

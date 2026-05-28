@@ -16,6 +16,7 @@ import {
   AdminListAuditEventsRequestSchema,
   type AuditEntry,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
+import { TableSkeleton } from "./TableSkeleton";
 
 const PAGE_SIZE = 50;
 
@@ -171,9 +172,12 @@ export function AuditLogList() {
       </div>
 
       {state === "loading" && (
-        <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/70 py-12 text-center">
-          {t("loading")}
-        </p>
+        <>
+          <span className="sr-only" role="status" aria-live="polite">
+            {t("loading")}
+          </span>
+          <TableSkeleton columns={5} />
+        </>
       )}
 
       {state === "error" && (

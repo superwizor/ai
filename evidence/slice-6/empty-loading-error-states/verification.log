@@ -1,0 +1,66 @@
+Feature: slice-6 / empty-loading-error-states
+Branch: feat/web-app-slice-6
+Verified: 2026-05-28
+
+What was built
+==============
+Animated skeleton placeholders replace the plain "Loading…" text
+that used to fill the admin lists. Three concrete improvements:
+
+1. TableSkeleton component
+   - Renders 6 rows × N columns inside the same card+border chrome
+     that the live tables use. Layout doesn't jump when data
+     arrives.
+   - Each cell renders a SkeletonBar with column-aware width:
+     wider in column 0 (name/label), narrower in trailing columns
+     (action / status / numeric).
+   - Tailwind `animate-pulse` honours `prefers-reduced-motion`
+     automatically, so the pulse stops for users who opted out.
+
+2. CardSkeleton component
+   - For OrgDetail's three-column card layout. Same border + bg
+     pattern as the live `<Card>` so the swap is visually quiet.
+
+3. Accessibility
+   - The visible skeleton is `aria-hidden="true"`. A sr-only
+     `<span role="status" aria-live="polite">` next to it carries
+     the localized "loading…" text so screen readers still know
+     what's happening.
+
+Wired into:
+- OrgsList.tsx        — 6-column TableSkeleton
+- UsersList.tsx       — 5-column TableSkeleton
+- AuditLogList.tsx    — 5-column TableSkeleton
+- OrgDetail.tsx       — three CardSkeletons (Details / Therapists /
+                        Recent activity) mirroring the live layout
+
+Existing UX kept as-is
+======================
+The error + empty states across all four lists were already in good
+shape (magma-bordered card with retry button for errors; serif text
+for empty). They continue to use the existing translation keys; no
+copy changes here.
+
+Toast system: NOT added. The admin surfaces today only need inline
+errors (returned from the action dialogs via ActionResult) and the
+list-level retry banner. A toast would be over-engineering for the
+current scope — flagged in PROGRESS.md as something to add if/when
+the marketing pages get more interactive flows.
+
+Files
+=====
+- marketing-site/src/components/admin/TableSkeleton.tsx (new)
+- marketing-site/src/components/admin/OrgsList.tsx
+- marketing-site/src/components/admin/UsersList.tsx
+- marketing-site/src/components/admin/AuditLogList.tsx
+- marketing-site/src/components/admin/OrgDetail.tsx
+
+Verification
+============
+- pnpm exec tsc --noEmit   → clean.
+- pnpm build               → exit 0; all admin SSG routes intact.
+- Skeleton-state visual:
+    Behind an authenticated session it would render — anonymous
+    puppeteer sessions short-circuit on AdminGuard before the list
+    mounts, so the screenshot path covered in slice-4 evidence
+    still applies for the gated-route check.

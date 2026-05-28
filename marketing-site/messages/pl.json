@@ -202,6 +202,35 @@
       "errorGeneric": "Nie udało się wykonać akcji."
     }
   },
+  "errors": {
+    "generic": "Coś poszło nie tak. Spróbuj ponownie za chwilę.",
+    "code": {
+      "canceled": "Operacja została anulowana.",
+      "unknown": "Wystąpił nieznany błąd.",
+      "invalidArgument": "Nieprawidłowe dane formularza. Sprawdź wprowadzone wartości.",
+      "deadlineExceeded": "Operacja trwała zbyt długo. Spróbuj ponownie.",
+      "notFound": "Nie znaleziono żądanego zasobu.",
+      "alreadyExists": "Taki wpis już istnieje.",
+      "permissionDenied": "Brak uprawnień do wykonania tej akcji.",
+      "resourceExhausted": "Limit został wyczerpany. Skontaktuj się z administratorem konta.",
+      "failedPrecondition": "Operacja nie może zostać wykonana w obecnym stanie.",
+      "aborted": "Operacja została przerwana. Spróbuj ponownie.",
+      "outOfRange": "Wartość poza dopuszczalnym zakresem.",
+      "unimplemented": "Funkcja nie jest jeszcze dostępna.",
+      "internal": "Błąd serwera. Spróbuj ponownie za chwilę.",
+      "unavailable": "Usługa tymczasowo niedostępna. Spróbuj ponownie za chwilę.",
+      "dataLoss": "Wystąpił błąd integralności danych.",
+      "unauthenticated": "Musisz być zalogowana/y, aby wykonać tę akcję."
+    },
+    "backend": {
+      "reasonTooShort": "Powód musi mieć przynajmniej 10 znaków.",
+      "invitationExpired": "Zaproszenie wygasło. Poproś o nowe.",
+      "invitationAccepted": "Zaproszenie zostało już wykorzystane.",
+      "quotaExceeded": "Limit tokenów został wyczerpany dla bieżącego okresu rozliczeniowego.",
+      "subscriptionPastDue": "Subskrypcja organizacji wymaga aktualizacji płatności.",
+      "alreadyExists": "Taki wpis już istnieje (np. e-mail jest już zarejestrowany)."
+    }
+  },
   "nav": {
     "skipToContent": "Przejdź do treści",
     "brand": "Superwizor AI",

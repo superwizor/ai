@@ -30,6 +30,7 @@ import {
   type User,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { ActionDialog, type ActionResult } from "./ActionDialog";
+import { TableSkeleton } from "./TableSkeleton";
 import {
   AddressFields,
   type AddressDraft,
@@ -37,6 +38,7 @@ import {
   addressFromProto,
   EMPTY_ADDRESS,
 } from "./AddressFields";
+import { translateError } from "@/lib/errors/translate";
 
 const PAGE_SIZE = 25;
 
@@ -168,9 +170,12 @@ export function UsersList() {
       </header>
 
       {state === "loading" && (
-        <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/70 py-12 text-center">
-          {t("loading")}
-        </p>
+        <>
+          <span className="sr-only" role="status" aria-live="polite">
+            {t("loading")}
+          </span>
+          <TableSkeleton columns={5} />
+        </>
       )}
 
       {state === "error" && (
@@ -308,6 +313,7 @@ function UserEditDialog({
 }) {
   const t = useTranslations("admin.users");
   const tRole = useTranslations("admin.users.roleLabel");
+  const tErrors = useTranslations("errors");
 
   const [draft, setDraft] = useState({
     firstName: user.firstName,
@@ -363,7 +369,7 @@ function UserEditDialog({
       onSuccess();
       return "success";
     } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e) };
+      return { error: translateError(e, tErrors) };
     }
   };
 
@@ -552,6 +558,7 @@ function UserDeleteDialog({
   onSuccess: () => void;
 }) {
   const t = useTranslations("admin.users");
+  const tErrors = useTranslations("errors");
 
   const onConfirm = async (reason: string): Promise<ActionResult> => {
     try {
@@ -561,7 +568,7 @@ function UserDeleteDialog({
       onSuccess();
       return "success";
     } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e) };
+      return { error: translateError(e, tErrors) };
     }
   };
 

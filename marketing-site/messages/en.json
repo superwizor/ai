@@ -202,6 +202,35 @@
       "errorGeneric": "Could not run the action."
     }
   },
+  "errors": {
+    "generic": "Something went wrong. Please try again in a moment.",
+    "code": {
+      "canceled": "The operation was cancelled.",
+      "unknown": "An unknown error occurred.",
+      "invalidArgument": "The form data is invalid. Please review the values you entered.",
+      "deadlineExceeded": "The operation took too long. Please try again.",
+      "notFound": "The requested resource was not found.",
+      "alreadyExists": "An entry like this already exists.",
+      "permissionDenied": "You don't have permission to do this.",
+      "resourceExhausted": "Quota exceeded. Contact your account administrator.",
+      "failedPrecondition": "The operation cannot be performed in the current state.",
+      "aborted": "The operation was aborted. Please try again.",
+      "outOfRange": "Value out of allowed range.",
+      "unimplemented": "This feature isn't available yet.",
+      "internal": "Server error. Please try again in a moment.",
+      "unavailable": "The service is temporarily unavailable. Please try again shortly.",
+      "dataLoss": "A data integrity error occurred.",
+      "unauthenticated": "You need to be signed in to do this."
+    },
+    "backend": {
+      "reasonTooShort": "Reason must be at least 10 characters.",
+      "invitationExpired": "This invitation has expired. Request a fresh one.",
+      "invitationAccepted": "This invitation has already been used.",
+      "quotaExceeded": "Token quota exhausted for the current billing period.",
+      "subscriptionPastDue": "Organisation subscription needs a payment update.",
+      "alreadyExists": "An entry like this already exists (for example the email is already registered)."
+    }
+  },
   "nav": {
     "skipToContent": "Skip to content",
     "brand": "Superwizor AI",

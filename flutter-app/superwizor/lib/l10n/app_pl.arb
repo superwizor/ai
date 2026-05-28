@@ -27,6 +27,8 @@
   "auth_forgot_password": "Nie pamiętam hasła.",
   "auth_password_reset_sent_title": "Link do zmiany hasła wysłany.",
   "auth_password_reset_sent_body": "Wysłaliśmy link do zmiany hasła na Twój e-mail.",
+  "auth_shared_machine_warning_title": "Korzystasz ze współdzielonego komputera?",
+  "auth_shared_machine_warning_body": "Po zakończeniu pracy wyloguj się, aby Twoje dane sesji nie zostały dostępne dla kolejnego użytkownika tego komputera.",
 
   "auth_error_invalid_credential": "Niepoprawny adres e-mail lub hasło.",
   "auth_error_email_already_in_use": "Konto z tym adresem e-mail już istnieje. Zaloguj się.",
