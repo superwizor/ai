@@ -191,6 +191,18 @@
       "streetRequired": "Street is required.",
       "buildingRequired": "Building number is required."
     },
+    "acceptInvite": {
+      "metaTitle": "Accept invitation",
+      "overline": "Invitation",
+      "title": "Join your organisation",
+      "subhead": "Set a password and complete a short profile to activate your therapist account.",
+      "submit": "Accept invitation",
+      "submitting": "Accepting invitation…",
+      "missingToken": "Invitation token is missing. Please open the link from your email.",
+      "alreadyAccepted": "This invitation has already been used. Please sign in normally.",
+      "expired": "This invitation has expired. Ask your administrator to resend it.",
+      "invalidToken": "Invalid token. Make sure you are using the latest link."
+    },
     "verifyEmail": {
       "metaTitle": "Verify your email",
       "title": "Check your inbox",

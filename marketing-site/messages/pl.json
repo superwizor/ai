@@ -191,6 +191,18 @@
       "streetRequired": "Ulica jest wymagana.",
       "buildingRequired": "Numer budynku jest wymagany."
     },
+    "acceptInvite": {
+      "metaTitle": "Akceptacja zaproszenia",
+      "overline": "Zaproszenie",
+      "title": "Dołącz do organizacji",
+      "subhead": "Ustaw hasło i wypełnij krótki profil, aby aktywować konto terapeuty.",
+      "submit": "Akceptuję zaproszenie",
+      "submitting": "Akceptacja zaproszenia…",
+      "missingToken": "Brakuje tokenu zaproszenia. Otwórz link z wiadomości e-mail.",
+      "alreadyAccepted": "To zaproszenie zostało już użyte. Zaloguj się normalnie.",
+      "expired": "Zaproszenie wygasło. Poproś administratora o ponowne wysłanie.",
+      "invalidToken": "Nieprawidłowy token. Sprawdź, czy używasz aktualnego linku."
+    },
     "verifyEmail": {
       "metaTitle": "Potwierdź e-mail",
       "title": "Sprawdź swoją skrzynkę",

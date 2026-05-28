@@ -68,3 +68,21 @@ export const organizationEmailSchema = z.object({
 });
 
 export type OrganizationEmailForm = z.infer<typeof organizationEmailSchema>;
+
+// Invitation acceptance schema — the invitee sets password + name +
+// optional modality override. Email is required because we don't
+// surface it from the token client-side; the backend cross-checks
+// it against the invitations row by hashing the token. If they
+// mismatch the AcceptInvitation RPC returns an error.
+export const acceptInviteSchema = z.object({
+  email: z.string().email(),
+  password,
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  modalityCode: z.enum(["UNIV", "CBT", "PSYCHO"]),
+  uiLanguage: z.enum(["pl", "en"]),
+  hasAcceptedTos: z.literal(true),
+  hasMarketingConsent: z.boolean().optional(),
+});
+
+export type AcceptInviteForm = z.infer<typeof acceptInviteSchema>;
