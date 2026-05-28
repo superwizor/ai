@@ -19,8 +19,19 @@ const UserIDKey contextKey = "user_id"
 // UnaryAuthInterceptor checks the authorization token and validates it via IdentityService
 func UnaryAuthInterceptor(identityClient identityv1.IdentityServiceClient) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		// skip healthcheck
-		if info.FullMethod == "/clinical.v1.ClinicalService/HealthCheck" {
+		// Pre-auth allowlist. Methods on this list run without any token
+		// validation:
+		//   - HealthCheck: liveness probe.
+		//   - ListModalities: public catalogue (3 supported modalities at
+		//     MVP, all is_supported=true rows). The marketing-site
+		//     registration page renders the modality dropdown BEFORE the
+		//     user has a Firebase token — without this allowlist the form
+		//     can't load. Data is non-sensitive (id + system_code + EN
+		//     display_name + supported flag). Do not add anything that
+		//     reads per-user data to this switch.
+		switch info.FullMethod {
+		case "/clinical.v1.ClinicalService/HealthCheck",
+			"/clinical.v1.ClinicalService/ListModalities":
 			return handler(ctx, req)
 		}
 
