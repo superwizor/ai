@@ -1,33 +1,112 @@
+# Cloud Build pipeline for the three web-app backend services.
+#
+# Each service is built, pushed, and deployed to Cloud Run in europe-central2.
+# CORS_ALLOWED_ORIGINS is baked in here as a substitution so future rebuilds
+# don't wipe the env var (the prior wipe was the root cause of the
+# 2026-05-28 signup outage — see PROGRESS.md / task #124).
+#
+# Trigger via:
+#   gcloud builds submit \
+#     --config=cloudbuild-webapp-backend.yaml \
+#     --substitutions=_TAG=$(git rev-parse --short HEAD)
+#
+# IAM (one-time setup — see infra/scripts/grant-cloudbuild-deploy.sh):
+#   The Cloud Build SA (PROJECT_NUMBER@cloudbuild.gserviceaccount.com) needs:
+#     - roles/run.developer at project level
+#     - roles/iam.serviceAccountUser on each runtime SA
+#       (identity-svc default compute SA, billing-svc@..., clinical-svc@...)
+
+substitutions:
+  _REGION: europe-central2
+  _CORS_ORIGINS: 'https://superwizor.ai,https://app.superwizor.ai,https://superwizor.web.app,https://superwizor-app.web.app,https://superwizor--*.web.app,https://superwizor-app--*.web.app,http://localhost:3000,http://localhost:8080'
+
 steps:
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'build-identity'
-  args:
-    - 'build'
-    - '-t'
-    - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-identity:$_TAG'
-    - '-f'
-    - 'services/identity-svc/Dockerfile'
-    - '.'
+  # --- identity-svc -------------------------------------------------
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-identity'
+    args:
+      - 'build'
+      - '-t'
+      - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-identity:$_TAG'
+      - '-f'
+      - 'services/identity-svc/Dockerfile'
+      - '.'
 
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'build-billing'
-  args:
-    - 'build'
-    - '-t'
-    - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-billing:$_TAG'
-    - '-f'
-    - 'services/billing-svc/Dockerfile'
-    - '.'
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-identity'
+    args: ['push', 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-identity:$_TAG']
+    waitFor: ['build-identity']
 
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'build-clinical'
-  args:
-    - 'build'
-    - '-t'
-    - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-clinical:$_TAG'
-    - '-f'
-    - 'services/clinical-svc/Dockerfile'
-    - '.'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-identity'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'identity-svc'
+      - '--image=europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-identity:$_TAG'
+      - '--region=${_REGION}'
+      - '--update-env-vars=CORS_ALLOWED_ORIGINS=${_CORS_ORIGINS},VERSION=$_TAG'
+      - '--quiet'
+    waitFor: ['push-identity']
+
+  # --- billing-svc --------------------------------------------------
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-billing'
+    args:
+      - 'build'
+      - '-t'
+      - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-billing:$_TAG'
+      - '-f'
+      - 'services/billing-svc/Dockerfile'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-billing'
+    args: ['push', 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-billing:$_TAG']
+    waitFor: ['build-billing']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-billing'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'billing-svc'
+      - '--image=europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-billing:$_TAG'
+      - '--region=${_REGION}'
+      - '--update-env-vars=CORS_ALLOWED_ORIGINS=${_CORS_ORIGINS},VERSION=$_TAG'
+      - '--quiet'
+    waitFor: ['push-billing']
+
+  # --- clinical-svc -------------------------------------------------
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-clinical'
+    args:
+      - 'build'
+      - '-t'
+      - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-clinical:$_TAG'
+      - '-f'
+      - 'services/clinical-svc/Dockerfile'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-clinical'
+    args: ['push', 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-clinical:$_TAG']
+    waitFor: ['build-clinical']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-clinical'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'clinical-svc'
+      - '--image=europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-clinical:$_TAG'
+      - '--region=${_REGION}'
+      - '--update-env-vars=CORS_ALLOWED_ORIGINS=${_CORS_ORIGINS},VERSION=$_TAG'
+      - '--quiet'
+    waitFor: ['push-clinical']
 
 images:
   - 'europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-identity:$_TAG'
@@ -36,5 +115,6 @@ images:
 
 options:
   machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
 
 timeout: 1800s
