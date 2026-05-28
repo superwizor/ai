@@ -37,6 +37,7 @@ import 'package:http/http.dart' as http;
 import '../generated/ingestion/v1/ingestion.pb.dart' as ingestion_pb;
 import '../generated/ingestion/v1/ingestion.pbgrpc.dart' as ingestion_grpc;
 import '../services/secure_audio_storage_service.dart';
+import 'certificate_pinner.dart';
 import 'pending_upload.dart';
 import 'upload_error.dart';
 import 'upload_io.dart';
@@ -48,7 +49,9 @@ class GrpcUploadIo implements UploadIo {
     http.Client? httpClient,
   })  : _ingestion = ingestion,
         _secureStorage = secureStorage,
-        _http = httpClient ?? http.Client();
+        // F-09: Use a certificate-pinned HTTP client for GCS uploads.
+        // Validates against Google Trust Services root CA fingerprints.
+        _http = httpClient ?? createPinnedHttpClient();
 
   final ingestion_grpc.IngestionServiceClient _ingestion;
   final SecureAudioStorageService _secureStorage;

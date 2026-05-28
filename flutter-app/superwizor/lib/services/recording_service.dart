@@ -105,7 +105,13 @@ class RecordingService {
         numChannels: 1,
         autoGain: true,
         echoCancel: false,
-        noiseSuppress: false,
+        // F-11: noise suppression enabled alongside AGC. Without it,
+        // AGC alone amplifies background noise in quiet rooms
+        // (HVAC hum, street noise, ticking clocks), degrading STT
+        // accuracy. Echo cancellation stays off — therapy sessions
+        // don't play audio back, so there's nothing to cancel and
+        // enabling it would add latency + potential artifacts.
+        noiseSuppress: true,
       ),
       path: outPath,
     );

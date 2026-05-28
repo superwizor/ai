@@ -191,11 +191,15 @@ class SecureAudioStorageService {
     final sessionKey = _deriveSessionKey(masterKey, sessionId);
 
     final dir = await _sessionDir(sessionId);
-    // Atomic guard: wipe stale chunks from a previous failed attempt
-    // so we don't end up with a mix of old + new chunks.
+    // F-10: Atomic guard — wipe ALL files from a previous attempt
+    // (or injected by an attacker on a jailbroken device). We delete
+    // everything, not just .enc files, to prevent:
+    //   - Stale chunks from a partial earlier encryption
+    //   - Foreign files injected into the directory
+    //   - Stale manifest.json from a previous run
     if (await dir.exists()) {
       await for (final entry in dir.list()) {
-        if (entry is File && entry.path.endsWith('.enc')) {
+        if (entry is File) {
           try { await entry.delete(); } catch (_) {}
         }
       }
@@ -397,15 +401,37 @@ class SecureAudioStorageService {
       throw StateError('no encrypted chunks for session $sessionId');
     }
 
-    final chunks = (await dir
-            .list()
-            .where((e) => e is File && p.basename(e.path).startsWith('chunk_'))
-            .toList())
+    final allFiles = await dir
+        .list()
+        .where((e) => e is File)
         .cast<File>()
+        .toList();
+
+    final chunks = allFiles
+        .where((f) => p.basename(f.path).startsWith('chunk_'))
+        .toList()
       ..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
 
     if (chunks.isEmpty) {
       throw StateError('no encrypted chunks found in $dir');
+    }
+
+    // F-10: Foreign file detection — ensure the directory contains
+    // ONLY chunk files and manifest.json. Any other file (injected
+    // by an attacker on a jailbroken device, or left by a rogue
+    // process) is a red flag.
+    final allowedNames = {
+      ...chunks.map((f) => p.basename(f.path)),
+      _manifestFileName,
+    };
+    final foreign = allFiles
+        .where((f) => !allowedNames.contains(p.basename(f.path)))
+        .toList();
+    if (foreign.isNotEmpty) {
+      final names = foreign.map((f) => p.basename(f.path)).join(', ');
+      throw IntegrityViolation(
+        'foreign files detected in session directory: $names',
+      );
     }
 
     // F-03: Verify integrity manifest before decryption. If the
