@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "check:l10n": "node scripts/check-l10n-parity.mjs",
+    "ci": "pnpm run check:l10n && pnpm run lint && pnpm run build",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"
   },

@@ -1,0 +1,68 @@
+Feature: slice-6 / l10n-parity-ci
+Branch: feat/web-app-slice-6
+Verified: 2026-05-28
+Anchored to: docs/18 §13.11 ("CI gate failing when pl.json and en.json drift")
+
+What was built
+==============
+A zero-dependency Node script (no jq, no extra npm packages) that
+walks marketing-site/messages/pl.json and en.json, flattens both
+into dotted-key sets, and reports any divergence.
+
+Behaviour:
+  - Exit 0 when key sets are equal.
+  - Exit 1 when either side has a key the other doesn't, with a
+    list of the missing keys per locale on stderr.
+  - Emits a non-blocking WARNING for keys whose values are
+    byte-for-byte identical across locales — common copy-paste
+    omission. A SHARED_VALUE_ALLOWLIST suppresses legitimately
+    shared values (brand name, NIP/VAT codes, plan tier names,
+    placeholder formats, copyright line).
+
+Wiring
+======
+- marketing-site/scripts/check-l10n-parity.mjs (new) — the script.
+- marketing-site/package.json — adds:
+    "check:l10n": "node scripts/check-l10n-parity.mjs"
+    "ci": "pnpm run check:l10n && pnpm run lint && pnpm run build"
+- .github/workflows/marketing-site.yml — new "l10n parity (PL ↔ EN)"
+  step in the build job, between lint and build. Fails the marketing-
+  site CI workflow on drift so PRs can't merge with mismatched
+  locale files.
+
+Verification
+============
+Initial state (no drift):
+  $ pnpm run check:l10n
+  > l10n parity OK — 413 keys per locale.
+  $ echo $?
+  0
+
+Drift detection (canary key injected into pl.json only):
+  $ node scripts/check-l10n-parity.mjs
+  > Missing in en.json (1):
+  >   - __drift_test__
+  > l10n parity check FAILED.
+  > pl.json keys: 414  en.json keys: 413
+  $ echo $?
+  1
+
+The drift-test fixture was rolled back; current keystore is in
+sync (413 keys per locale, no warnings under the allowlist).
+
+Why a Node script and not jq
+============================
+- jq's recursive flatten across nested objects requires a clumsy
+  reduce + path() walk; a 60-line ES module is clearer and gets
+  syntax highlighting in editors.
+- Zero new npm deps — the script uses only node:fs / node:path /
+  node:url.
+- Same Node 20 the rest of the CI workflow already provisions,
+  so no setup overhead.
+
+Files
+=====
+- marketing-site/scripts/check-l10n-parity.mjs (new)
+- marketing-site/package.json
+- .github/workflows/marketing-site.yml
+- evidence/slice-6/l10n-parity-ci/verification.log (this)
