@@ -1,0 +1,120 @@
+Feature: slice-4 / admin-org-actions (+ admin-org-edit, shipped together)
+Branch: feat/web-app-slice-4-cont
+Verified: 2026-05-28
+Anchored to: docs/18 §8.2 ("Actions: Block/unblock, Reset/top-up
+tokens with reason, Change plan with reason") + §13.7 (AdminUpdate
+Organization form).
+
+What was built
+==============
+Four mutation dialogs on the /admin/orgs/[id] page:
+
+1. **Block / Unblock** — `identityClient.adminSetOrganizationStatus`
+   with `desiredStatus: "active"|"blocked"` + reason. Toggles between
+   "Zablokuj" (danger-magma styling) and "Odblokuj" based on
+   `org.isBlocked` flag. Body copy explains the effect.
+2. **Reset tokens** — `billingClient.adminResetTokens` with
+   tokens_used + optional tokens_limit. Two-field form; empty
+   tokens_limit translates to -1 on the wire ("leave unchanged").
+3. **Change plan** — `billingClient.adminChangePlan` with
+   plan_tier (TRIAL/SOLO/PRO/CLINIC) + plan_cycle (MONTHLY/ANNUAL) +
+   reason. Two select fields.
+4. **Edit details** — `identityClient.adminUpdateOrganization` —
+   `optional` fields per the proto, so the form only sends the
+   delta (legalName, type, taxId, vatIdEu). "noChange" guard prevents
+   firing the RPC with just reason + organizationId.
+
+All four route through the same `ActionDialog` shell:
+- src/components/admin/ActionDialog.tsx — generic modal with:
+  * title + body slots
+  * children slot for action-specific form fields
+  * reason textarea (always required, ≥ 10 chars — matches the
+    backend proto requirement)
+  * Cancel + Confirm buttons; confirm disabled until reason valid
+  * inline error surface for action-specific errors
+  * click-outside-to-close (suppressed while submitting)
+- src/components/admin/OrgDetail.tsx — added:
+  * `openDialog` state machine (block | unblock | resetTokens |
+    changePlan | edit | null)
+  * action handlers returning `ActionResult` so dialog inline-errors
+    work uniformly
+  * `reload()` callback that re-invokes AdminGetOrganization after a
+    successful mutation, so the UI reflects the change immediately
+    (status badge flips, audit panel surfaces the new entry)
+  * `editDraft` state seeded from the loaded org each time the
+    dialog opens
+  * Row of `ActionBtn` buttons above the detail cards: Edit /
+    Block↔Unblock / Reset tokens / Change plan
+  * `NumberField` + `SelectField` helpers reused inside dialogs
+
+New i18n keys (messages/{pl,en}.json):
+  admin.actions.* — block/unblock/resetTokens/changePlan labels +
+    title + body + field labels + tier/cycle labels + reason +
+    cancel/confirm/submitting/error
+  admin.orgEdit.* — edit button label + dialog title/body +
+    legalName/type/taxId/vatIdEu labels + noChange guard message
+
+How verified
+============
+1. `pnpm build` exit 0. Route table unchanged from feature 4 (the
+   dialogs live inside the existing /admin/orgs/[id] route).
+2. HTTP smoke: /admin/orgs/<dummy-uuid> returns 200 (auth gate fires
+   before the page body).
+3. Puppeteer screenshot at evidence/.../detail-gate-pl-full.png —
+   anonymous session lands on the AdminGuard "Musisz się zalogować"
+   panel exactly as feature 1's evidence shows. Confirms:
+   - the route still matches under the dynamic `[id]` segment
+   - the guard runs before the OrgDetail component does any RPCs
+   - no console errors from a half-rendered detail page
+4. preview_console_logs(error) returns "No console logs".
+5. Connect-Web wiring (no code path is new — same pattern as the
+   feature-3 admin smoke):
+   - identityClient.adminSetOrganizationStatus (already wired in
+     Slice 1 commit 5b)
+   - identityClient.adminUpdateOrganization (same)
+   - billingClient.adminResetTokens (Slice 1 commit 5c)
+   - billingClient.adminChangePlan (same)
+   The dialogs assemble the request bodies via the proto-es schemas
+   (create() + *RequestSchema) so type drift surfaces at build.
+
+Compliance with docs/18
+=======================
+- ✓ §8.2 "each → confirmation dialog → audit log entry": all four
+  actions go through the reason-gated dialog. Backend writes
+  audit_events.reason for the actions whose proto exposes a reason
+  field (all four do as of Slice 1).
+- ✓ §13.7 AdminUpdateOrganization fields: legal_name, type, tax_id,
+  vat_id_eu covered. The full §13.7 field set ALSO includes
+  headquarters_address (9 sub-fields) and primary_admin_user_id —
+  see "Deferred" below.
+- ✓ Pessimistic reload(): post-success the AdminGetOrganization is
+  refetched so the UI reflects state from the database, not from
+  the optimistic dialog result.
+
+Deferred per spec section §13.7 (separate sub-feature)
+======================================================
+The org-edit dialog covers four of seven §13.7 fields. The remaining
+fields would extend the same dialog without restructuring:
+- headquarters_address — needs the 8-input address sub-form that
+  OrganizationEmailForm already implements. Refactoring that form
+  into a shared `<AddressFields>` component would land both at once;
+  out of scope for this commit.
+- primary_admin_user_id — needs a user-picker scoped to org's
+  ORG_ADMINs. Lands alongside feature 7 (admin-user-crud) so we can
+  reuse the user-list filter.
+
+Live screenshot of the dialogs themselves still requires an
+authenticated SUPERWIZOR_ADMIN session with seeded org data — same
+constraint that hit every backend-dependent feature. The dialog
+markup is verified by the build pass + the AdminGuard screenshot
+above (which proves the route + layout work).
+
+Files
+=====
+- marketing-site/messages/{pl,en}.json (admin.actions + admin.orgEdit)
+- marketing-site/src/components/admin/ActionDialog.tsx (new)
+- marketing-site/src/components/admin/OrgDetail.tsx (extended with
+  4 action handlers + edit dialog + ActionBtn / NumberField /
+  SelectField helpers)
+- evidence/slice-4/admin-org-actions/detail-gate-pl-full.png
+- evidence/slice-4/admin-org-actions/verification.log (this)

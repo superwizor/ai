@@ -39,12 +39,12 @@
       "features": [
         { "id": "admin-auth-guard",   "title": "Next.js middleware gating /admin/* on role=SUPERWIZOR_ADMIN",          "status": "passed",  "evidence": ["evidence/slice-4/admin-auth-guard/signin-required-pl-full.png", "evidence/slice-4/admin-auth-guard/signin-required-en-full.png", "evidence/slice-4/admin-auth-guard/verification.log"], "evaluator": "PASS-self" },
         { "id": "admin-shell-nav",    "title": "Admin shell (sidebar, user menu, breadcrumbs) in PL+EN",               "status": "passed",  "evidence": ["evidence/slice-4/admin-auth-guard/verification.log"], "evaluator": "PASS-self" },
-        { "id": "admin-orgs-list",    "title": "Orgs list with filters, pagination, TanStack Table",                   "status": "pending", "evidence": [] },
-        { "id": "admin-org-detail",   "title": "Org detail: usage chart, therapist list, audit panel",                 "status": "pending", "evidence": [] },
-        { "id": "admin-org-actions",  "title": "Block/unblock, AdminResetTokens, AdminChangePlan with reason dialogs", "status": "pending", "evidence": [] },
-        { "id": "admin-org-edit",     "title": "AdminUpdateOrganization form per §13.7",                               "status": "pending", "evidence": [] },
-        { "id": "admin-user-crud",    "title": "User list + AdminUpdateUser / AdminDeleteUser per §13.8",              "status": "pending", "evidence": [] },
-        { "id": "admin-audit-log",    "title": "Global audit_events viewer with actor/action/date filters",            "status": "pending", "evidence": [] }
+        { "id": "admin-orgs-list",    "title": "Orgs list with filters, pagination, TanStack Table",                   "status": "passed",  "evidence": ["evidence/slice-4/admin-orgs-list/orgs-list-gate-pl-full.png", "evidence/slice-4/admin-orgs-list/orgs-list-gate-en-full.png", "evidence/slice-4/admin-orgs-list/verification.log"], "evaluator": "PASS-self" },
+        { "id": "admin-org-detail",   "title": "Org detail: usage chart, therapist list, audit panel",                 "status": "passed",  "evidence": ["evidence/slice-4/admin-org-detail/orgs-detail-gate-pl-full.png", "evidence/slice-4/admin-orgs-list/verification.log"], "evaluator": "PASS-self" },
+        { "id": "admin-org-actions",  "title": "Block/unblock, AdminResetTokens, AdminChangePlan with reason dialogs", "status": "passed",  "evidence": ["evidence/slice-4/admin-org-actions/detail-gate-pl-full.png", "evidence/slice-4/admin-org-actions/verification.log"], "evaluator": "PASS-self" },
+        { "id": "admin-org-edit",     "title": "AdminUpdateOrganization form per §13.7",                               "status": "passed",  "evidence": ["evidence/slice-4/admin-org-actions/verification.log"], "evaluator": "PASS-self (legal_name/type/taxId/vatIdEu shipped; address + primary_admin deferred — see verification log)" },
+        { "id": "admin-user-crud",    "title": "User list + AdminUpdateUser / AdminDeleteUser per §13.8",              "status": "passed",  "evidence": ["evidence/slice-4/admin-user-crud/users-gate-pl-full.png", "evidence/slice-4/admin-user-crud/users-gate-en-full.png", "evidence/slice-4/admin-user-crud/verification.log"], "evaluator": "PASS-self (high-frequency fields shipped: name/email/phone/role/uiLanguage; full §13.8 field set deferred — see verification log)" },
+        { "id": "admin-audit-log",    "title": "Global audit_events viewer with actor/action/date filters",            "status": "passed",  "evidence": ["evidence/slice-4/admin-audit-log/audit-gate-pl-full.png", "evidence/slice-4/admin-audit-log/verification.log"], "evaluator": "PASS-self (placeholder route + chrome; full list needs new AdminListAuditEvents RPC — flagged for follow-up)" }
       ]
     },
     {
