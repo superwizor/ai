@@ -311,6 +311,10 @@ func toProtoRole(r db.UserRole) identityv1.UserRole {
 		return identityv1.UserRole_USER_ROLE_THERAPIST
 	case "PATIENT":
 		return identityv1.UserRole_USER_ROLE_PATIENT
+	case db.UserRoleORGADMIN:
+		return identityv1.UserRole_USER_ROLE_ORG_ADMIN
+	case db.UserRoleSUPERWIZORADMIN:
+		return identityv1.UserRole_USER_ROLE_SUPERWIZOR_ADMIN
 	}
 	return identityv1.UserRole_USER_ROLE_UNSPECIFIED
 }
