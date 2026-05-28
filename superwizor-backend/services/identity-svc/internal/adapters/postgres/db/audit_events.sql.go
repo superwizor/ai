@@ -7,9 +7,114 @@ package db
 
 import (
 	"context"
+	"net/netip"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const adminListAuditEvents = `-- name: AdminListAuditEvents :many
+SELECT
+    ae.id,
+    ae.actor_user_id,
+    ae.organization_id,
+    ae.action,
+    ae.resource_type,
+    ae.resource_id,
+    ae.metadata,
+    ae.ip_address,
+    ae.user_agent,
+    ae.occurred_at,
+    ae.reason,
+    u.email AS actor_email
+FROM audit_events ae
+LEFT JOIN users u ON u.id = ae.actor_user_id
+WHERE (
+        $1::text IS NULL
+        OR u.email ILIKE '%' || $1::text || '%'
+      )
+  AND ($2::text IS NULL OR ae.action = $2::text)
+  AND ($3::timestamptz IS NULL OR ae.occurred_at >= $3::timestamptz)
+  AND ($4::timestamptz IS NULL OR ae.occurred_at <= $4::timestamptz)
+  AND (
+        $5::timestamptz IS NULL
+        OR (ae.occurred_at, ae.id) < ($5::timestamptz, $6::uuid)
+      )
+ORDER BY ae.occurred_at DESC, ae.id DESC
+LIMIT $7
+`
+
+type AdminListAuditEventsParams struct {
+	ActorEmailSearch *string            `json:"actor_email_search"`
+	ActionFilter     *string            `json:"action_filter"`
+	SinceTs          pgtype.Timestamptz `json:"since_ts"`
+	UntilTs          pgtype.Timestamptz `json:"until_ts"`
+	AfterOccurredAt  pgtype.Timestamptz `json:"after_occurred_at"`
+	AfterID          pgtype.UUID        `json:"after_id"`
+	PageSize         int32              `json:"page_size"`
+}
+
+type AdminListAuditEventsRow struct {
+	ID             uuid.UUID   `json:"id"`
+	ActorUserID    pgtype.UUID `json:"actor_user_id"`
+	OrganizationID pgtype.UUID `json:"organization_id"`
+	Action         string      `json:"action"`
+	ResourceType   string      `json:"resource_type"`
+	ResourceID     pgtype.UUID `json:"resource_id"`
+	Metadata       []byte      `json:"metadata"`
+	IpAddress      *netip.Addr `json:"ip_address"`
+	UserAgent      *string     `json:"user_agent"`
+	OccurredAt     time.Time   `json:"occurred_at"`
+	Reason         *string     `json:"reason"`
+	ActorEmail     *string     `json:"actor_email"`
+}
+
+// Global cross-org audit log for the /admin/audit page. LEFT JOINs to
+// users so we can both ILIKE-filter on actor_email AND emit the email
+// in the result row without a separate roundtrip per entry. All
+// filters AND together; NULL/empty narg means "no filter on that axis".
+// Cursor pagination on (occurred_at, id) descending.
+func (q *Queries) AdminListAuditEvents(ctx context.Context, arg AdminListAuditEventsParams) ([]AdminListAuditEventsRow, error) {
+	rows, err := q.db.Query(ctx, adminListAuditEvents,
+		arg.ActorEmailSearch,
+		arg.ActionFilter,
+		arg.SinceTs,
+		arg.UntilTs,
+		arg.AfterOccurredAt,
+		arg.AfterID,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminListAuditEventsRow
+	for rows.Next() {
+		var i AdminListAuditEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorUserID,
+			&i.OrganizationID,
+			&i.Action,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Metadata,
+			&i.IpAddress,
+			&i.UserAgent,
+			&i.OccurredAt,
+			&i.Reason,
+			&i.ActorEmail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
 
 const createAuditEvent = `-- name: CreateAuditEvent :one
 INSERT INTO audit_events (

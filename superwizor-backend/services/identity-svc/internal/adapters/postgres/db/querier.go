@@ -12,6 +12,12 @@ import (
 )
 
 type Querier interface {
+	// Global cross-org audit log for the /admin/audit page. LEFT JOINs to
+	// users so we can both ILIKE-filter on actor_email AND emit the email
+	// in the result row without a separate roundtrip per entry. All
+	// filters AND together; NULL/empty narg means "no filter on that axis".
+	// Cursor pagination on (occurred_at, id) descending.
+	AdminListAuditEvents(ctx context.Context, arg AdminListAuditEventsParams) ([]AdminListAuditEventsRow, error)
 	AdminListUsers(ctx context.Context, arg AdminListUsersParams) ([]User, error)
 	// Superwizor-admin variant — accepts the admin-only columns (email, role,
 	// organization_id, is_email_verified) plus everything UpdateProfile covers.

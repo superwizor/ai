@@ -71,6 +71,9 @@ service IdentityService {
   rpc AdminGetUser(AdminGetUserRequest) returns (User);
   rpc AdminUpdateUser(AdminUpdateUserRequest) returns (User);
   rpc AdminDeleteUser(AdminDeleteUserRequest) returns (google.protobuf.Empty);
+  // Global cross-org audit history (docs/18 §8.2). Cursor-paginated;
+  // optional filters AND together. Used by the /admin/audit page.
+  rpc AdminListAuditEvents(AdminListAuditEventsRequest) returns (AdminListAuditEventsResponse);
 
   // ─── Report customization (docs/10_REPORT_CUSTOMIZATION.md) ───
   // Returns the therapist's report style preferences. The active
@@ -493,4 +496,22 @@ message AdminUpdateUserRequest {
 message AdminDeleteUserRequest {
   string user_id = 1;
   string reason = 2;              // required, >=10 chars
+}
+
+// Global cross-org audit list, used by the /admin/audit viewer.
+// All filters are optional and AND together when set; empty actor_email
+// / action / since / until means "any". Pagination uses the same
+// (occurred_at, id) cursor format as the other admin lists.
+message AdminListAuditEventsRequest {
+  int32 page_size = 1;            // default 50, cap 200
+  string page_token = 2;          // opaque
+  string actor_email = 3;         // ILIKE — matches users.email
+  string action = 4;              // exact match (e.g. "organization.update")
+  google.protobuf.Timestamp since = 5;
+  google.protobuf.Timestamp until = 6;
+}
+
+message AdminListAuditEventsResponse {
+  repeated AuditEntry events = 1;
+  string next_page_token = 2;
 }
