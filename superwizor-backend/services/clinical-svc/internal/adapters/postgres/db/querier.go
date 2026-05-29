@@ -12,6 +12,20 @@ import (
 )
 
 type Querier interface {
+	//
+	// Cross-org session activity for /admin/sessions (SUPERWIZOR_ADMIN).
+	// Filter window is on sessions.created_at (when the server-side row
+	// was created, i.e. when the upload landed) — this matches "recent
+	// activity" semantics better than the user-entered session_date.
+	//
+	// The therapist filter is a single substring matched
+	// case-insensitively against first_name + last_name + email. Empty
+	// string means "no filter".
+	//
+	// ORDER BY created_at DESC + LIMIT/OFFSET pagination. The handler
+	// requests LIMIT+1 so it can compute has_more without a separate
+	// COUNT(*) over the (possibly huge) sessions table.
+	AdminListRecentSessions(ctx context.Context, arg AdminListRecentSessionsParams) ([]AdminListRecentSessionsRow, error)
 	CountPatientFilesByTherapist(ctx context.Context, therapistID uuid.UUID) (int64, error)
 	CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) error
 	// patient_id is the FK to the paired users row (role='PATIENT'),

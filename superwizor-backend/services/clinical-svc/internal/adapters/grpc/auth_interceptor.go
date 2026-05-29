@@ -15,7 +15,30 @@ import (
 
 type contextKey string
 
-const UserIDKey contextKey = "user_id"
+const (
+	UserIDKey         contextKey = "user_id"
+	UserRoleKey       contextKey = "user_role"
+	OrganizationIDKey contextKey = "organization_id"
+)
+
+// protoRoleName mirrors billing-svc's helper: turn the proto UserRole
+// enum into the bare-string form ("THERAPIST", "ORG_ADMIN",
+// "SUPERWIZOR_ADMIN", "PATIENT") that handler-level role gates compare
+// against. Keep in lockstep with billing-svc/internal/adapters/grpc/
+// auth_interceptor.go::protoRoleName.
+func protoRoleName(r identityv1.UserRole) string {
+	switch r {
+	case identityv1.UserRole_USER_ROLE_THERAPIST:
+		return "THERAPIST"
+	case identityv1.UserRole_USER_ROLE_PATIENT:
+		return "PATIENT"
+	case identityv1.UserRole_USER_ROLE_ORG_ADMIN:
+		return "ORG_ADMIN"
+	case identityv1.UserRole_USER_ROLE_SUPERWIZOR_ADMIN:
+		return "SUPERWIZOR_ADMIN"
+	}
+	return ""
+}
 
 // Pre-auth allowlist. Methods on this list run without any token
 // validation:
@@ -65,6 +88,8 @@ func UnaryAuthInterceptor(identityClient identityv1.IdentityServiceClient) grpc.
 		}
 
 		newCtx := context.WithValue(ctx, UserIDKey, res.UserId)
+		newCtx = context.WithValue(newCtx, UserRoleKey, protoRoleName(res.Role))
+		newCtx = context.WithValue(newCtx, OrganizationIDKey, res.OrganizationId)
 		return handler(newCtx, req)
 	}
 }
@@ -105,6 +130,8 @@ func ConnectAuthInterceptor(identityClient identityv1.IdentityServiceClient) con
 			}
 
 			newCtx := context.WithValue(ctx, UserIDKey, res.UserId)
+			newCtx = context.WithValue(newCtx, UserRoleKey, protoRoleName(res.Role))
+			newCtx = context.WithValue(newCtx, OrganizationIDKey, res.OrganizationId)
 			return next(newCtx, req)
 		}
 	}

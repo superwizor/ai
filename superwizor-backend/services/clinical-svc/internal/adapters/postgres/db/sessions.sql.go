@@ -13,6 +13,109 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const adminListRecentSessions = `-- name: AdminListRecentSessions :many
+SELECT
+    s.id,
+    s.created_at,
+    s.session_date,
+    s.duration_seconds,
+    s.status::text AS status,
+    s.session_number,
+    u.id AS therapist_id,
+    COALESCE(u.first_name, '') AS therapist_first_name,
+    COALESCE(u.last_name,  '') AS therapist_last_name,
+    COALESCE(u.email,      '') AS therapist_email,
+    COALESCE(u.organization_id::text, '') AS organization_id,
+    COALESCE(o.legal_name, '') AS organization_name
+FROM sessions s
+JOIN users u ON u.id = s.therapist_id
+LEFT JOIN organizations o ON o.id = u.organization_id
+WHERE s.deleted_at IS NULL
+  AND s.created_at >= $1::timestamptz
+  AND s.created_at <  $2::timestamptz
+  AND (
+        $3::text = ''
+        OR LOWER(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')) LIKE '%' || LOWER($3::text) || '%'
+        OR LOWER(COALESCE(u.email,'')) LIKE '%' || LOWER($3::text) || '%'
+      )
+ORDER BY s.created_at DESC
+LIMIT $5::int OFFSET $4::int
+`
+
+type AdminListRecentSessionsParams struct {
+	StartTime       time.Time `json:"start_time"`
+	EndTime         time.Time `json:"end_time"`
+	TherapistFilter string    `json:"therapist_filter"`
+	PageOffset      int32     `json:"page_offset"`
+	PageLimit       int32     `json:"page_limit"`
+}
+
+type AdminListRecentSessionsRow struct {
+	ID                 uuid.UUID   `json:"id"`
+	CreatedAt          time.Time   `json:"created_at"`
+	SessionDate        pgtype.Date `json:"session_date"`
+	DurationSeconds    *int32      `json:"duration_seconds"`
+	Status             string      `json:"status"`
+	SessionNumber      int32       `json:"session_number"`
+	TherapistID        uuid.UUID   `json:"therapist_id"`
+	TherapistFirstName string      `json:"therapist_first_name"`
+	TherapistLastName  string      `json:"therapist_last_name"`
+	TherapistEmail     string      `json:"therapist_email"`
+	OrganizationID     interface{} `json:"organization_id"`
+	OrganizationName   string      `json:"organization_name"`
+}
+
+// Cross-org session activity for /admin/sessions (SUPERWIZOR_ADMIN).
+// Filter window is on sessions.created_at (when the server-side row
+// was created, i.e. when the upload landed) — this matches "recent
+// activity" semantics better than the user-entered session_date.
+//
+// The therapist filter is a single substring matched
+// case-insensitively against first_name + last_name + email. Empty
+// string means "no filter".
+//
+// ORDER BY created_at DESC + LIMIT/OFFSET pagination. The handler
+// requests LIMIT+1 so it can compute has_more without a separate
+// COUNT(*) over the (possibly huge) sessions table.
+func (q *Queries) AdminListRecentSessions(ctx context.Context, arg AdminListRecentSessionsParams) ([]AdminListRecentSessionsRow, error) {
+	rows, err := q.db.Query(ctx, adminListRecentSessions,
+		arg.StartTime,
+		arg.EndTime,
+		arg.TherapistFilter,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminListRecentSessionsRow
+	for rows.Next() {
+		var i AdminListRecentSessionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.SessionDate,
+			&i.DurationSeconds,
+			&i.Status,
+			&i.SessionNumber,
+			&i.TherapistID,
+			&i.TherapistFirstName,
+			&i.TherapistLastName,
+			&i.TherapistEmail,
+			&i.OrganizationID,
+			&i.OrganizationName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createSession = `-- name: CreateSession :one
 INSERT INTO sessions (
     therapist_id,

@@ -173,3 +173,11 @@ func (a *ConnectAdapter) LogPreferenceSuggestion(ctx context.Context, req *conne
 	}
 	return connect.NewResponse(resp), nil
 }
+
+func (a *ConnectAdapter) AdminListSessions(ctx context.Context, req *connect.Request[clinicalv1.AdminListSessionsRequest]) (*connect.Response[clinicalv1.AdminListSessionsResponse], error) {
+	resp, err := a.s.AdminListSessions(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
