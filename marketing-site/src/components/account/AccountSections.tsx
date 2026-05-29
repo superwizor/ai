@@ -26,7 +26,8 @@ import { EmptySchema } from "@bufbuild/protobuf/wkt";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 import { useAuth } from "@/lib/firebase/auth-provider";
-import { identityClient, clinicalClient } from "@/lib/connect/clients";
+import { identityClient, billingClient } from "@/lib/connect/clients";
+import { GetSubscriptionRequestSchema } from "@superwizor/proto-ts/billing/v1/billing_pb";
 import {
   UpdateProfileRequestSchema,
   UpdateMyOrganizationRequestSchema,
@@ -120,7 +121,7 @@ export function AccountSections() {
 
       <ProfileSection profile={profile} onUpdate={setProfile} />
       <OrgSection profile={profile} locale={locale} />
-      <BillingSection />
+      <BillingSection organizationId={profile?.organizationId ?? null} />
       <StripePlaceholder />
     </div>
   );
@@ -517,18 +518,30 @@ function orgTypeName(t: OrganizationType): string {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// Subscription (read-only — uses clinical.GetMyBillingState proxy)
+// Subscription (read-only — calls billing-svc directly, bypassing the
+// clinical-svc.GetMyBillingState proxy because that hop intermittently
+// returns PROTOCOL_ERROR (RST_STREAM) inside Cloud Run. The admin
+// /admin/orgs ZMIEŃ PLAN button uses the same direct billingClient
+// pattern and works reliably. The backend GetSubscription handler
+// enforces caller-org scope so any authenticated user can only fetch
+// their own organization's subscription (SUPERWIZOR_ADMIN bypasses).
 // ────────────────────────────────────────────────────────────────────
-function BillingSection() {
+function BillingSection({ organizationId }: { organizationId: string | null }) {
   const t = useTranslations("account");
   const [sub, setSub] = useState<Subscription | null>(null);
   const [phase, setPhase] = useState<"loading" | "ready" | "none" | "error">("loading");
 
   useEffect(() => {
+    // Wait until the profile arrives — we need organizationId to scope
+    // the call. While we wait we stay in "loading" so the section
+    // doesn't flash an empty state.
+    if (!organizationId) return;
     let cancelled = false;
     (async () => {
       try {
-        const s = await clinicalClient.getMyBillingState(create(EmptySchema, {}));
+        const s = await billingClient.getSubscription(
+          create(GetSubscriptionRequestSchema, { organizationId }),
+        );
         if (cancelled) return;
         if (!s || !s.planTier) {
           setPhase("none");
@@ -555,7 +568,7 @@ function BillingSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [organizationId]);
 
   if (phase === "loading") return <Section title={t("billingSection")}>{t("billingLoading")}</Section>;
   if (phase === "none") {
