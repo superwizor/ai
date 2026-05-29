@@ -16,6 +16,7 @@
       "dashboard": "Pulpit",
       "orgs": "Organizacje",
       "users": "Użytkownicy",
+      "sessions": "Sesje",
       "audit": "Dziennik audytowy"
     },
     "header": {
@@ -74,6 +75,50 @@
       "sectionAudit": "Ostatnie zdarzenia",
       "noTherapists": "Brak terapeutów w tej organizacji.",
       "noAudit": "Brak zdarzeń w dzienniku audytowym."
+    },
+    "sessions": {
+      "metaTitle": "Aktywność sesji",
+      "title": "Aktywność sesji terapeutów",
+      "intro": "Ostatnie sesje wgrane do systemu — wszystkie organizacje. Domyślnie ostatnie 24 godziny.",
+      "filters": {
+        "since": "Od dnia",
+        "until": "Do dnia",
+        "therapist": "Terapeuta",
+        "therapistPlaceholder": "Imię, nazwisko lub e-mail"
+      },
+      "table": {
+        "createdAt": "Wgrane",
+        "sessionDate": "Data sesji",
+        "duration": "Czas trwania",
+        "durationMissing": "—",
+        "status": "Status",
+        "therapist": "Terapeuta",
+        "organization": "Organizacja"
+      },
+      "pagination": {
+        "prev": "Poprzednia",
+        "next": "Następna",
+        "page": "Strona {page}"
+      },
+      "export": {
+        "button": "Eksportuj CSV",
+        "busy": "Przygotowuję…",
+        "truncated": "Eksport ograniczony do {max} wierszy. Zawęź zakres dat, aby pobrać wszystkie."
+      },
+      "empty": "Brak sesji spełniających kryteria.",
+      "errors": {
+        "loadFailed": "Nie udało się pobrać listy sesji. Spróbuj ponownie."
+      },
+      "csv": {
+        "createdAt": "wgrane_utc",
+        "sessionDate": "data_sesji",
+        "durationMinutes": "czas_trwania_min",
+        "status": "status",
+        "therapistName": "terapeuta",
+        "therapistEmail": "email",
+        "organization": "organizacja",
+        "sessionId": "session_id"
+      }
     },
     "audit": {
       "metaTitle": "Dziennik audytowy",

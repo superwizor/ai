@@ -16,6 +16,7 @@
       "dashboard": "Dashboard",
       "orgs": "Organisations",
       "users": "Users",
+      "sessions": "Sessions",
       "audit": "Audit log"
     },
     "header": {
@@ -74,6 +75,50 @@
       "sectionAudit": "Recent activity",
       "noTherapists": "No therapists in this organisation yet.",
       "noAudit": "No audit log entries yet."
+    },
+    "sessions": {
+      "metaTitle": "Session activity",
+      "title": "Therapist session activity",
+      "intro": "Recent sessions uploaded to the system — every organisation. Defaults to the last 24 hours.",
+      "filters": {
+        "since": "From",
+        "until": "Until",
+        "therapist": "Therapist",
+        "therapistPlaceholder": "First or last name, or email"
+      },
+      "table": {
+        "createdAt": "Uploaded",
+        "sessionDate": "Session date",
+        "duration": "Duration",
+        "durationMissing": "—",
+        "status": "Status",
+        "therapist": "Therapist",
+        "organization": "Organisation"
+      },
+      "pagination": {
+        "prev": "Previous",
+        "next": "Next",
+        "page": "Page {page}"
+      },
+      "export": {
+        "button": "Export CSV",
+        "busy": "Preparing…",
+        "truncated": "Export capped at {max} rows. Narrow the date range to download everything."
+      },
+      "empty": "No sessions match the current filters.",
+      "errors": {
+        "loadFailed": "Couldn't load sessions. Please try again."
+      },
+      "csv": {
+        "createdAt": "uploaded_utc",
+        "sessionDate": "session_date",
+        "durationMinutes": "duration_min",
+        "status": "status",
+        "therapistName": "therapist",
+        "therapistEmail": "email",
+        "organization": "organisation",
+        "sessionId": "session_id"
+      }
     },
     "audit": {
       "metaTitle": "Audit log",
