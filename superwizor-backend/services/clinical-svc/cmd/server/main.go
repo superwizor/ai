@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
@@ -353,6 +354,21 @@ func newBillingClient(ctx context.Context, serviceURL string) (billingv1.Billing
 		conn, err := grpc.NewClient(target,
 			grpc.WithTransportCredentials(credentials.NewTLS(nil)),
 			grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
+			// Cloud Run drops idle HTTP/2 connections after ~15 minutes.
+			// Without client keepalive we don't notice until next write,
+			// which then surfaces as
+			//   rpc error: code = Internal desc = stream terminated by
+			//   RST_STREAM with error code: PROTOCOL_ERROR
+			// for the user — first call after idle 500s, retry succeeds
+			// because grpc-go silently dials a fresh conn. 30s PING +
+			// 10s timeout keeps the conn warm without spamming the
+			// server; PermitWithoutStream=true lets us send PINGs when
+			// no RPC is active (which is the actual idle case).
+			grpc.WithKeepaliveParams(keepalive.ClientParameters{
+				Time:                30 * time.Second,
+				Timeout:             10 * time.Second,
+				PermitWithoutStream: true,
+			}),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("dial: %w", err)
