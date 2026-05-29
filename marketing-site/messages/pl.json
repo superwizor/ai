@@ -93,7 +93,10 @@
         "durationMissing": "—",
         "status": "Status",
         "therapist": "Terapeuta",
-        "organization": "Organizacja"
+        "organization": "Organizacja",
+        "planName": "Plan",
+        "periodEnd": "Koniec okresu",
+        "tokensUsed": "Wykorzystane tokeny"
       },
       "pagination": {
         "prev": "Poprzednia",
@@ -117,6 +120,9 @@
         "therapistName": "terapeuta",
         "therapistEmail": "email",
         "organization": "organizacja",
+        "planName": "plan",
+        "periodEnd": "koniec_okresu",
+        "tokensUsed": "wykorzystane_tokeny",
         "sessionId": "session_id"
       }
     },

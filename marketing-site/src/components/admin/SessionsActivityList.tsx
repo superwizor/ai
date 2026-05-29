@@ -29,6 +29,22 @@ const CSV_MAX_ROWS = 5000;
 type LoadState = "idle" | "loading" | "ready" | "error";
 type ExportState = "idle" | "loading" | "error";
 
+// Sort keys must match the allowlist in clinical-svc's
+// admin_sessions.go::adminSessionsSortAllowlist. The UI column-header
+// click handler flips between desc → asc → (back to default) on
+// repeated clicks of the same column.
+type SortKey =
+  | "created_at"
+  | "session_date"
+  | "duration_seconds"
+  | "status"
+  | "therapist"
+  | "organization"
+  | "plan_name"
+  | "period_end"
+  | "tokens_used";
+type SortOrder = "asc" | "desc";
+
 export function SessionsActivityList() {
   const t = useTranslations("admin.sessions");
 
@@ -48,6 +64,8 @@ export function SessionsActivityList() {
   const [exportState, setExportState] = useState<ExportState>("idle");
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey>("created_at");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   useEffect(() => {
     const handle = setTimeout(
@@ -57,10 +75,21 @@ export function SessionsActivityList() {
     return () => clearTimeout(handle);
   }, [therapistFilter]);
 
-  // Reset to page 0 whenever filters change.
+  // Reset to page 0 whenever filters OR sort changes.
   useEffect(() => {
     setPage(0);
-  }, [therapistFilterDebounced, since, until]);
+  }, [therapistFilterDebounced, since, until, sortBy, sortOrder]);
+
+  // Click on a column header: same column flips order asc↔desc; new
+  // column starts at desc (the convention used elsewhere in /admin).
+  const toggleSort = (key: SortKey) => {
+    if (key === sortBy) {
+      setSortOrder((o) => (o === "desc" ? "asc" : "desc"));
+    } else {
+      setSortBy(key);
+      setSortOrder("desc");
+    }
+  };
 
   // Compose the request from the filter inputs. Memoized so fetchPage
   // can be called from both the auto-effect AND the CSV export with
@@ -71,6 +100,8 @@ export function SessionsActivityList() {
         pageSize,
         page: pageIdx,
         therapistFilter: therapistFilterDebounced,
+        sortBy,
+        sortOrder,
       });
       // Date inputs ship "YYYY-MM-DD". since = start-of-day local;
       // until = end-of-day local. Backend treats start_time inclusive,
@@ -86,7 +117,7 @@ export function SessionsActivityList() {
       }
       return req;
     },
-    [since, until, therapistFilterDebounced],
+    [since, until, therapistFilterDebounced, sortBy, sortOrder],
   );
 
   const fetchPage = useCallback(async () => {
@@ -130,6 +161,9 @@ export function SessionsActivityList() {
         t("csv.therapistName"),
         t("csv.therapistEmail"),
         t("csv.organization"),
+        t("csv.planName"),
+        t("csv.periodEnd"),
+        t("csv.tokensUsed"),
         t("csv.sessionId"),
       ];
 
@@ -137,6 +171,9 @@ export function SessionsActivityList() {
       for (const r of resp.sessions) {
         const createdAt = r.createdAt ? timestampDate(r.createdAt) : null;
         const sessionDate = r.sessionDate ? timestampDate(r.sessionDate) : null;
+        const periodEnd = r.subscriptionPeriodEnd
+          ? timestampDate(r.subscriptionPeriodEnd)
+          : null;
         const fullName = `${r.therapistFirstName} ${r.therapistLastName}`.trim();
         const durationMin = r.durationSeconds > 0
           ? (r.durationSeconds / 60).toFixed(1)
@@ -150,6 +187,9 @@ export function SessionsActivityList() {
             fullName,
             r.therapistEmail,
             r.organizationName,
+            r.subscriptionPlanName,
+            periodEnd ? periodEnd.toISOString().slice(0, 10) : "",
+            r.subscriptionTokensUsed > 0 ? String(r.subscriptionTokensUsed) : "",
             r.sessionId,
           ].map(csvCell).join(","),
         );
@@ -244,7 +284,7 @@ export function SessionsActivityList() {
 
       {/* Table */}
       {state === "loading" && rows.length === 0 ? (
-        <TableSkeleton columns={6} rows={8} />
+        <TableSkeleton columns={9} rows={8} />
       ) : state === "error" ? (
         <p className="font-serif text-sm text-magma">{t("errors.loadFailed")}</p>
       ) : rows.length === 0 ? (
@@ -254,12 +294,15 @@ export function SessionsActivityList() {
           <table className="w-full text-left">
             <thead className="bg-evergreen/40 text-mist">
               <tr>
-                <Th>{t("table.createdAt")}</Th>
-                <Th>{t("table.sessionDate")}</Th>
-                <Th>{t("table.duration")}</Th>
-                <Th>{t("table.status")}</Th>
-                <Th>{t("table.therapist")}</Th>
-                <Th>{t("table.organization")}</Th>
+                <SortableTh sortKey="created_at"       active={sortBy} order={sortOrder} onClick={toggleSort}>{t("table.createdAt")}</SortableTh>
+                <SortableTh sortKey="session_date"     active={sortBy} order={sortOrder} onClick={toggleSort}>{t("table.sessionDate")}</SortableTh>
+                <SortableTh sortKey="duration_seconds" active={sortBy} order={sortOrder} onClick={toggleSort}>{t("table.duration")}</SortableTh>
+                <SortableTh sortKey="status"           active={sortBy} order={sortOrder} onClick={toggleSort}>{t("table.status")}</SortableTh>
+                <SortableTh sortKey="therapist"        active={sortBy} order={sortOrder} onClick={toggleSort}>{t("table.therapist")}</SortableTh>
+                <SortableTh sortKey="organization"     active={sortBy} order={sortOrder} onClick={toggleSort}>{t("table.organization")}</SortableTh>
+                <SortableTh sortKey="plan_name"        active={sortBy} order={sortOrder} onClick={toggleSort}>{t("table.planName")}</SortableTh>
+                <SortableTh sortKey="period_end"       active={sortBy} order={sortOrder} onClick={toggleSort}>{t("table.periodEnd")}</SortableTh>
+                <SortableTh sortKey="tokens_used"      active={sortBy} order={sortOrder} onClick={toggleSort}>{t("table.tokensUsed")}</SortableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-frost/5">
@@ -320,10 +363,40 @@ function Field({
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
+function SortableTh({
+  sortKey,
+  active,
+  order,
+  onClick,
+  children,
+}: {
+  sortKey: SortKey;
+  active: SortKey;
+  order: SortOrder;
+  onClick: (k: SortKey) => void;
+  children: React.ReactNode;
+}) {
+  const isActive = active === sortKey;
+  // Visual indicator on the active column. Use an arrow character that
+  // flips based on direction so screen-readers + sighted users both
+  // see the same intent.
+  const arrow = isActive ? (order === "desc" ? "↓" : "↑") : "";
   return (
-    <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] font-medium">
-      {children}
+    <th
+      scope="col"
+      aria-sort={isActive ? (order === "desc" ? "descending" : "ascending") : "none"}
+      className="px-3 py-2 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] font-medium"
+    >
+      <button
+        type="button"
+        onClick={() => onClick(sortKey)}
+        className={`inline-flex items-center gap-1 hover:text-frost transition ${
+          isActive ? "text-frost" : ""
+        }`}
+      >
+        <span>{children}</span>
+        <span className="text-ember w-3 inline-block">{arrow}</span>
+      </button>
     </th>
   );
 }
@@ -339,6 +412,9 @@ function Row({
   // serialises ISO 8601 UTC instead.
   const created = row.createdAt ? timestampDate(row.createdAt) : null;
   const sessionDate = row.sessionDate ? timestampDate(row.sessionDate) : null;
+  const periodEnd = row.subscriptionPeriodEnd
+    ? timestampDate(row.subscriptionPeriodEnd)
+    : null;
   const dur = row.durationSeconds > 0
     ? formatDuration(row.durationSeconds)
     : t("table.durationMissing");
@@ -369,6 +445,15 @@ function Row({
       </td>
       <td className="px-3 py-2 font-serif text-sm text-mist">
         {row.organizationName || "—"}
+      </td>
+      <td className="px-3 py-2 font-serif text-sm text-mist whitespace-nowrap">
+        {row.subscriptionPlanName || "—"}
+      </td>
+      <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
+        {periodEnd ? periodEnd.toLocaleDateString() : "—"}
+      </td>
+      <td className="px-3 py-2 font-mono text-xs text-right">
+        {row.subscriptionTokensUsed > 0 ? row.subscriptionTokensUsed : "—"}
       </td>
     </tr>
   );
