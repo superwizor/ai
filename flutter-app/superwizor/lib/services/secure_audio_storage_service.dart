@@ -38,19 +38,13 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'secure_random_service.dart';
+import 'secure_audio_types.dart';
 
-/// Public-facing record describing a single encrypted chunk on disk.
-class EncryptedChunk {
-  final int seq;
-  final String path;
-  final int sizeBytes;
+// Re-export types so existing `import 'secure_audio_storage_service.dart'`
+// still exposes EncryptedChunk and IntegrityViolation.
+export 'secure_audio_types.dart';
 
-  const EncryptedChunk({
-    required this.seq,
-    required this.path,
-    required this.sizeBytes,
-  });
-}
+
 
 class SecureAudioStorageService {
   SecureAudioStorageService({FlutterSecureStorage? storage})
@@ -533,15 +527,4 @@ class SecureAudioStorageService {
       if (kDebugMode) debugPrint('delete failed for ${f.path}: $e');
     }
   }
-}
-
-/// Thrown when the integrity manifest check fails during
-/// [SecureAudioStorageService.decryptToTempFile]. The upload worker
-/// should classify this as a terminal (non-retryable) error —
-/// re-encrypting won't help if the on-disk chunks are corrupted.
-class IntegrityViolation implements Exception {
-  final String message;
-  const IntegrityViolation(this.message);
-  @override
-  String toString() => 'IntegrityViolation: $message';
 }
