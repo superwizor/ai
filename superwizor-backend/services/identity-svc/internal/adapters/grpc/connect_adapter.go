@@ -243,6 +243,14 @@ func (a *ConnectAdapter) UpdateReportPreferences(ctx context.Context, req *conne
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) MintAppLoginToken(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[identityv1.AppLoginToken], error) {
+	resp, err := a.s.MintAppLoginToken(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) HealthCheck(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[identityv1.HealthCheckResponse], error) {
 	resp, err := a.s.HealthCheck(ctx, req.Msg)
 	if err != nil {

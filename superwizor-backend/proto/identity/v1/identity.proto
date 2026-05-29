@@ -87,8 +87,29 @@ service IdentityService {
   // same payload is a no-op past the first write.
   rpc UpdateReportPreferences(UpdateReportPreferencesRequest) returns (ReportPreferences);
 
+  // ─── Cross-origin SSO (marketing-site → Flutter app) ────────
+  //
+  // Mints a short-lived Firebase custom token for the authenticated
+  // caller, scoped to the caller's own Firebase UID. The marketing
+  // site uses this to hand off an active session to the Flutter web
+  // app (different origin → separate Firebase Auth IndexedDB), so
+  // the user doesn't have to log in twice.
+  //
+  // Tokens expire 1h after issuance per Firebase Admin SDK defaults
+  // and are single-use in practice (the receiving origin redeems
+  // them via signInWithCustomToken, after which they're spent).
+  // The handler does not accept a uid in the request — it always
+  // mints for the caller. No org/role escalation surface.
+  rpc MintAppLoginToken(google.protobuf.Empty) returns (AppLoginToken);
+
   // Health check
   rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
+}
+
+message AppLoginToken {
+  // Firebase custom token (JWT). Pass to firebase_auth's
+  // signInWithCustomToken() on the receiving origin.
+  string token = 1;
 }
 
 enum UserRole {
