@@ -45,7 +45,11 @@ LEFT JOIN LATERAL (
     SELECT id, plan_id, current_period_end
       FROM subscriptions
      WHERE organization_id = u.organization_id
-       AND status IN ('ACTIVE', 'TRIAL', 'PAST_DUE')
+       -- subscription_status enum values: see migration 000002. The
+       -- trial state is 'TRIALING' (NOT 'TRIAL' — that string isn't
+       -- in the enum and Postgres throws "invalid input value for
+       -- enum").
+       AND status IN ('ACTIVE', 'TRIALING', 'PAST_DUE')
      ORDER BY current_period_end DESC
      LIMIT 1
 ) sub ON TRUE

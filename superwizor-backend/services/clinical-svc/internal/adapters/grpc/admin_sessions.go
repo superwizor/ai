@@ -15,6 +15,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -108,6 +109,10 @@ func (s *Server) AdminListSessions(ctx context.Context, req *clinicalv1.AdminLis
 		PageLimit:       pageSize + 1, // read one extra to compute has_more
 	})
 	if err != nil {
+		slog.ErrorContext(ctx, "AdminListSessions: query failed",
+			"sort_by", sortBy,
+			"sort_order", sortOrder,
+			"err", err.Error())
 		return nil, status.Errorf(codes.Internal, "list sessions: %v", err)
 	}
 
