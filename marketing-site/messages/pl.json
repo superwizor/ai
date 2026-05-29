@@ -602,6 +602,7 @@
     "title": "Moje konto",
     "subhead": "Zarządzaj swoim profilem, organizacją i subskrypcją.",
     "kartotekiCta": "Otwórz kartoteki",
+    "kartotekiOpening": "Otwieram…",
     "kartotekiHint": "Konsola terapeuty otwiera się w nowej karcie (app.superwizor.ai).",
     "signOut": "Wyloguj się",
     "profileSection": "Profil",

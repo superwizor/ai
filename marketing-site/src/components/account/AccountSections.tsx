@@ -89,20 +89,7 @@ export function AccountSections() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {/* Pre-fill the Flutter login email so the user only has to
-              re-type the password — Firebase Auth IndexedDB is origin-
-              scoped (docs/18 §5 R3) and we can't bridge sessions
-              without a custom-token mint. Encoded so emails with +
-              survive the URL parsing on the Flutter side. */}
-          <a
-            href={`${APP_URL}?email=${encodeURIComponent(fbUser.email ?? "")}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-5 py-2.5 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition"
-            title={t("kartotekiHint")}
-          >
-            {t("kartotekiCta")} →
-          </a>
+          <OpenKartotekiButton email={fbUser.email ?? ""} />
           <button
             type="button"
             onClick={() => signOut()}
@@ -124,6 +111,83 @@ export function AccountSections() {
       <BillingSection organizationId={profile?.organizationId ?? null} />
       <StripePlaceholder />
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Otwórz kartoteki — cross-origin SSO into the Flutter web app
+// ────────────────────────────────────────────────────────────────────
+//
+// Firebase Auth IndexedDB is origin-scoped, so a signed-in user on
+// superwizor.web.app has NO session on superwizor-app.web.app. We
+// bridge by calling identity-svc.MintAppLoginToken (returns a
+// short-lived Firebase custom token) and handing it to the Flutter
+// origin via URL fragment (#auth_token=...). The Flutter app reads
+// the hash on bootstrap, calls signInWithCustomToken, then strips
+// the hash from the URL.
+//
+// Why fragment, not query: the hash isn't sent to the server, isn't
+// stored in server access logs, and isn't included in the Referer
+// header on cross-origin links. Defence-in-depth for a credential
+// that's already short-lived (~1h).
+//
+// UX detail — popup blocking: window.open() must be called
+// synchronously inside the click handler or Safari/Firefox block
+// it. We open a placeholder window first, mint the token, then set
+// the window's location. If the mint fails we still navigate to
+// the Flutter origin with just the email prefill so the user can
+// type their password — degrades to the pre-SSO behaviour.
+function OpenKartotekiButton({ email }: { email: string }) {
+  const t = useTranslations("account");
+  const [busy, setBusy] = useState(false);
+
+  const onClick = async () => {
+    if (busy) return;
+    setBusy(true);
+    // Open the popup IMMEDIATELY (during the user-gesture frame) so
+    // browser popup heuristics let it through. We update its
+    // location after the mint completes.
+    const popup = window.open("about:blank", "_blank");
+    try {
+      const res = await identityClient.mintAppLoginToken(create(EmptySchema, {}));
+      const token = res?.token ?? "";
+      // Fragment shape: #auth_token=<jwt>&email=<email>. Email kept
+      // around purely so the Flutter app can still pre-fill on the
+      // very rare path where signInWithCustomToken fails and falls
+      // through to the email login form.
+      const url = token
+        ? `${APP_URL}#auth_token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`
+        : `${APP_URL}?email=${encodeURIComponent(email)}`;
+      if (popup) {
+        popup.location.href = url;
+      } else {
+        // Popup blocked anyway — best-effort: navigate the current
+        // tab. Loses the marketing-site /account context, but better
+        // than silently failing.
+        window.location.href = url;
+      }
+    } catch (e) {
+      console.error("[account] mintAppLoginToken failed", e);
+      // Graceful degradation: open the Flutter app with just the
+      // email prefill, exactly like the pre-SSO version did.
+      const fallback = `${APP_URL}?email=${encodeURIComponent(email)}`;
+      if (popup) popup.location.href = fallback;
+      else window.location.href = fallback;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-5 py-2.5 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-progress"
+      title={t("kartotekiHint")}
+    >
+      {busy ? t("kartotekiOpening") : t("kartotekiCta")} →
+    </button>
   );
 }
 

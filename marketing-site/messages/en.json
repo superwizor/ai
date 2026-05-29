@@ -602,6 +602,7 @@
     "title": "My account",
     "subhead": "Manage your profile, organisation, and subscription.",
     "kartotekiCta": "Open the console",
+    "kartotekiOpening": "Opening…",
     "kartotekiHint": "The therapist console opens in a new tab at app.superwizor.ai.",
     "signOut": "Sign out",
     "profileSection": "Profile",
