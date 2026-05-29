@@ -5,40 +5,41 @@
 //   - polls auth.currentUser.reload() every 5s,
 //   - listens for tab visibilitychange to force an immediate
 //     reload when the user returns from clicking the email link,
-//   - on emailVerified=true → auto-redirects to the app origin,
-//     while showing a "Verified · redirecting" intermediate state
-//     so the user understands what just happened,
+//   - on emailVerified=true → auto-redirects to /{locale}/account/
+//     on this origin, while showing a "Verified · redirecting"
+//     intermediate state so the user understands what just happened,
 //   - keeps the Resend button available the whole time.
 //
-// Why on the marketing origin: Firebase's verification email lands
-// the user on whichever URL is configured in the Firebase project
-// (typically https://app.superwizor.ai/__/auth/action which then
-// returns them to the action's `continueUrl`). For now we set
-// continueUrl back to the marketing verify-email page so the user
-// can see verified-then-redirect on the same origin they started
-// on. Slice 5 may move the continueUrl to the app origin directly.
+// Why land on /account/ on the marketing origin (2026-05-29 — switched
+// from the Flutter app at superwizor-app.web.app): the new therapist
+// account page lives here, on the same origin where Firebase Auth
+// signed them in. Bouncing to the Flutter origin required a re-login
+// (Auth is origin-scoped) and the post-signup tasks (Profil + Org
+// edit, Subskrypcja) are now first-class on this origin. The Flutter
+// app is still reachable from the "Otwórz kartoteki" CTA on /account.
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { sendEmailVerification } from "firebase/auth";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useAuth } from "@/lib/firebase/auth-provider";
 
 const POLL_INTERVAL_MS = 5_000;
-// Destination after email-verification. Flutter app at the web.app
-// subdomain since app.superwizor.ai DNS isn't wired yet — flip back
-// when DNS lands. The user signs in on the Flutter origin (Firebase
-// Auth is origin-scoped).
-const APP_HOME_URL = "https://superwizor-app.web.app/";
 
 type Status = "idle" | "sending" | "sent" | "verified";
 
 export function ResendVerificationButton() {
   const t = useTranslations("register.verifyEmail");
+  const locale = useLocale();
   const { user } = useAuth();
   const [status, setStatus] = useState<Status>("idle");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Post-verification destination on the same origin. Same-origin
+  // relative path so this works in dev (localhost), preview channels,
+  // and prod without per-env config.
+  const accountUrl = `/${locale}/account/`;
 
   // Poll for verification. We use auth.currentUser.reload() because
   // the Firebase JS SDK doesn't push email-verified changes
@@ -57,7 +58,7 @@ export function ResendVerificationButton() {
           // before the redirect — better UX than instant
           // window.location change with no feedback.
           setTimeout(() => {
-            window.location.href = APP_HOME_URL;
+            window.location.href = accountUrl;
           }, 1500);
         }
       } catch {
@@ -79,7 +80,7 @@ export function ResendVerificationButton() {
       if (pollRef.current) clearInterval(pollRef.current);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [user, status]);
+  }, [user, status, accountUrl]);
 
   const onResend = async () => {
     if (!user) return;
@@ -102,10 +103,10 @@ export function ResendVerificationButton() {
         </p>
         <p className="font-serif text-mist text-sm">{t("verifiedBody")}</p>
         <a
-          href={APP_HOME_URL}
+          href={accountUrl}
           className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition"
         >
-          {t("verifiedGoToApp")}
+          {t("verifiedGoToAccount")}
         </a>
       </div>
     );

@@ -457,8 +457,8 @@
       "backToLanding": "Back to home",
       "verifyingStatus": "Checking verification…",
       "verifiedHeading": "Email verified",
-      "verifiedBody": "Redirecting to the app…",
-      "verifiedGoToApp": "Go to the app"
+      "verifiedBody": "Redirecting to your account…",
+      "verifiedGoToAccount": "Go to your account"
     }
   },
   "legal": {

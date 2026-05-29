@@ -457,8 +457,8 @@
       "backToLanding": "Powrót do strony głównej",
       "verifyingStatus": "Sprawdzamy potwierdzenie…",
       "verifiedHeading": "E-mail potwierdzony",
-      "verifiedBody": "Przekierowujemy do aplikacji…",
-      "verifiedGoToApp": "Przejdź do aplikacji"
+      "verifiedBody": "Przekierowujemy do panelu konta…",
+      "verifiedGoToAccount": "Przejdź do panelu konta"
     }
   },
   "legal": {
