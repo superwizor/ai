@@ -146,12 +146,19 @@ func main() {
 	//      existing admin handlers (resolveAdminCaller) see them.
 	//      Without this, browser admin RPCs failed with
 	//      "x-superwizor-role missing" — the 2026-05-29 regression.
+	// ConnectErrorInterceptor MUST be last so it observes the handler's
+	// raw return value and translates grpc/status errors before
+	// Connect-Go wraps them as CodeUnknown. Pre-2026-05-29 every admin
+	// browser RPC surfaced as "Wystąpił nieznany błąd" because the
+	// status.Errorf(codes.PermissionDenied) shape was opaque to
+	// Connect.
 	interceptors := []connect.Interceptor{connectmd.HeadersToGRPCMetadata()}
 	if identityClient != nil {
 		interceptors = append(interceptors, grpcadapter.ConnectAuthInterceptor(identityClient))
 	} else {
 		slog.Warn("billing-svc: IDENTITY_SVC_URL unset — admin Connect RPCs require upstream x-superwizor-role metadata")
 	}
+	interceptors = append(interceptors, grpcadapter.ConnectErrorInterceptor())
 	connectPath, connectHandler := billingv1connect.NewBillingServiceHandler(
 		grpcadapter.NewConnectAdapter(billingServer),
 		connect.WithInterceptors(interceptors...),
