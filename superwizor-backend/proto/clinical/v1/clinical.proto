@@ -475,6 +475,27 @@ message AdminListSessionsRequest {
 
   // Zero-based offset. Server reads page+1 row to compute has_more.
   int32 page = 5;
+
+  // Sort key — one of the allowlisted columns below. Anything else
+  // (including empty) falls back to created_at.
+  //
+  //   "created_at"           — when the upload landed (default)
+  //   "session_date"         — the clinical session date
+  //   "duration_seconds"
+  //   "status"
+  //   "therapist"            — last_name, then first_name
+  //   "organization"         — legal_name
+  //   "plan_name"            — subscription_plans.display_name
+  //   "period_end"           — subscriptions.current_period_end
+  //   "tokens_used"          — usage_counters.tokens_used
+  //
+  // Anything else falls through to the default. The server doesn't
+  // 400 on unknown sort keys — the UI will just behave as if the
+  // sort wasn't set.
+  string sort_by = 6;
+
+  // "asc" | "desc". Anything else defaults to "desc".
+  string sort_order = 7;
 }
 
 message AdminListSessionsResponse {
@@ -502,4 +523,13 @@ message AdminSessionRow {
   // session_status enum value as a bare string ("CREATED",
   // "TRANSCRIBING", "DONE", "FAILED", …).
   string status = 11;
+  // Subscription context for the therapist's organisation at query
+  // time. All three fields are best-effort — null/empty for org-less
+  // therapists, suspended subscriptions, or counters that haven't
+  // been initialised yet. The handler always picks the most-recent
+  // active row (a single org has at most one ACTIVE subscription at
+  // a time per ADR-BL-001).
+  string subscription_plan_name = 12;
+  google.protobuf.Timestamp subscription_period_end = 13;
+  int32 subscription_tokens_used = 14;
 }

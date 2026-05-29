@@ -42,6 +42,22 @@ const (
 	adminSessionsDefaultWindowHours = 24
 )
 
+// adminSessionsSortAllowlist gates the dynamic ORDER BY in the SQL —
+// anything not on this list falls back to "created_at". The SQL has
+// matching CASE branches for each entry; keep these in lockstep with
+// queries/sessions.sql::AdminListRecentSessions ORDER BY.
+var adminSessionsSortAllowlist = map[string]struct{}{
+	"created_at":       {},
+	"session_date":     {},
+	"duration_seconds": {},
+	"status":           {},
+	"therapist":        {},
+	"organization":     {},
+	"plan_name":        {},
+	"period_end":       {},
+	"tokens_used":      {},
+}
+
 // AdminListSessions returns recent session activity across every
 // organization. SUPERWIZOR_ADMIN only.
 func (s *Server) AdminListSessions(ctx context.Context, req *clinicalv1.AdminListSessionsRequest) (*clinicalv1.AdminListSessionsResponse, error) {
@@ -73,10 +89,21 @@ func (s *Server) AdminListSessions(ctx context.Context, req *clinicalv1.AdminLis
 		page = 0
 	}
 
+	sortBy := req.GetSortBy()
+	if _, ok := adminSessionsSortAllowlist[sortBy]; !ok {
+		sortBy = "created_at"
+	}
+	sortOrder := req.GetSortOrder()
+	if sortOrder != "asc" {
+		sortOrder = "desc"
+	}
+
 	rows, err := s.queries.AdminListRecentSessions(ctx, db.AdminListRecentSessionsParams{
 		StartTime:       start,
 		EndTime:         end,
 		TherapistFilter: req.GetTherapistFilter(),
+		SortBy:          sortBy,
+		SortOrder:       sortOrder,
 		PageOffset:      page * pageSize,
 		PageLimit:       pageSize + 1, // read one extra to compute has_more
 	})
@@ -93,15 +120,16 @@ func (s *Server) AdminListSessions(ctx context.Context, req *clinicalv1.AdminLis
 	out := make([]*clinicalv1.AdminSessionRow, 0, len(rows))
 	for _, r := range rows {
 		row := &clinicalv1.AdminSessionRow{
-			SessionId:          r.ID.String(),
-			TherapistId:        r.TherapistID.String(),
-			TherapistFirstName: r.TherapistFirstName,
-			TherapistLastName:  r.TherapistLastName,
-			TherapistEmail:     r.TherapistEmail,
-			OrganizationId:     stringifyInterface(r.OrganizationID),
-			OrganizationName:   r.OrganizationName,
-			CreatedAt:          timestamppb.New(r.CreatedAt),
-			Status:             r.Status,
+			SessionId:            r.ID.String(),
+			TherapistId:          r.TherapistID.String(),
+			TherapistFirstName:   r.TherapistFirstName,
+			TherapistLastName:    r.TherapistLastName,
+			TherapistEmail:       r.TherapistEmail,
+			OrganizationId:       stringifyInterface(r.OrganizationID),
+			OrganizationName:     r.OrganizationName,
+			CreatedAt:            timestamppb.New(r.CreatedAt),
+			Status:               r.Status,
+			SubscriptionPlanName: r.SubscriptionPlanName,
 		}
 		if r.SessionDate.Valid {
 			// session_date is a DATE — surface as a Timestamp at
@@ -111,6 +139,17 @@ func (s *Server) AdminListSessions(ctx context.Context, req *clinicalv1.AdminLis
 		}
 		if r.DurationSeconds != nil {
 			row.DurationSeconds = *r.DurationSeconds
+		}
+		// Subscription columns come back as `interface{}` because the
+		// LATERAL-JOIN-with-CASE-wrapper trick keeps sqlc honest about
+		// nullability but loses the concrete Go type. At runtime
+		// it's a time.Time or int32, or nil when there's no
+		// subscription / counter for the therapist's org.
+		if t, ok := r.SubscriptionPeriodEnd.(time.Time); ok {
+			row.SubscriptionPeriodEnd = timestamppb.New(t)
+		}
+		if n, ok := r.SubscriptionTokensUsed.(int32); ok {
+			row.SubscriptionTokensUsed = n
 		}
 		out = append(out, row)
 	}

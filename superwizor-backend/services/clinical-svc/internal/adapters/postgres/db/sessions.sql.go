@@ -26,10 +26,40 @@ SELECT
     COALESCE(u.last_name,  '') AS therapist_last_name,
     COALESCE(u.email,      '') AS therapist_email,
     COALESCE(u.organization_id::text, '') AS organization_id,
-    COALESCE(o.legal_name, '') AS organization_name
+    COALESCE(o.legal_name, '') AS organization_name,
+    COALESCE(p.display_name, '') AS subscription_plan_name,
+    -- CASE wrappers force sqlc to treat the column as nullable —
+    -- without them sqlc inherits the NOT NULL annotation from the
+    -- underlying column and Scan blows up when the LATERAL match
+    -- returned no row.
+    (CASE WHEN sub.id IS NULL THEN NULL ELSE sub.current_period_end END) AS subscription_period_end,
+    (CASE WHEN uc.tokens_used IS NULL THEN NULL ELSE uc.tokens_used END) AS subscription_tokens_used
 FROM sessions s
 JOIN users u ON u.id = s.therapist_id
 LEFT JOIN organizations o ON o.id = u.organization_id
+LEFT JOIN LATERAL (
+    -- Pick the most-recent non-terminal subscription for the
+    -- therapist's organisation. Single ACTIVE per ADR-BL-001, but
+    -- a TRIAL → ACTIVE upgrade leaves both rows, so order by
+    -- current_period_end DESC to land on whichever is current.
+    SELECT id, plan_id, current_period_end
+      FROM subscriptions
+     WHERE organization_id = u.organization_id
+       AND status IN ('ACTIVE', 'TRIAL', 'PAST_DUE')
+     ORDER BY current_period_end DESC
+     LIMIT 1
+) sub ON TRUE
+LEFT JOIN subscription_plans p ON p.id = sub.plan_id
+LEFT JOIN LATERAL (
+    -- Most-recent usage_counter row for this subscription. If
+    -- there's a billing-cycle rollover overlap we land on the
+    -- current one (period_end DESC).
+    SELECT tokens_used
+      FROM usage_counters
+     WHERE subscription_id = sub.id
+     ORDER BY period_end DESC
+     LIMIT 1
+) uc ON TRUE
 WHERE s.deleted_at IS NULL
   AND s.created_at >= $1::timestamptz
   AND s.created_at <  $2::timestamptz
@@ -38,31 +68,55 @@ WHERE s.deleted_at IS NULL
         OR LOWER(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')) LIKE '%' || LOWER($3::text) || '%'
         OR LOWER(COALESCE(u.email,'')) LIKE '%' || LOWER($3::text) || '%'
       )
-ORDER BY s.created_at DESC
-LIMIT $5::int OFFSET $4::int
+ORDER BY
+    CASE WHEN $4::text = 'asc' AND $5::text = 'created_at'        THEN s.created_at         END ASC NULLS LAST,
+    CASE WHEN $4::text = 'asc' AND $5::text = 'session_date'      THEN s.session_date       END ASC NULLS LAST,
+    CASE WHEN $4::text = 'asc' AND $5::text = 'duration_seconds'  THEN s.duration_seconds   END ASC NULLS LAST,
+    CASE WHEN $4::text = 'asc' AND $5::text = 'status'            THEN s.status::text       END ASC NULLS LAST,
+    CASE WHEN $4::text = 'asc' AND $5::text = 'therapist'         THEN LOWER(COALESCE(u.last_name,'') || ' ' || COALESCE(u.first_name,'')) END ASC NULLS LAST,
+    CASE WHEN $4::text = 'asc' AND $5::text = 'organization'      THEN LOWER(COALESCE(o.legal_name,''))   END ASC NULLS LAST,
+    CASE WHEN $4::text = 'asc' AND $5::text = 'plan_name'         THEN LOWER(COALESCE(p.display_name,'')) END ASC NULLS LAST,
+    CASE WHEN $4::text = 'asc' AND $5::text = 'period_end'        THEN sub.current_period_end             END ASC NULLS LAST,
+    CASE WHEN $4::text = 'asc' AND $5::text = 'tokens_used'       THEN uc.tokens_used                     END ASC NULLS LAST,
+    CASE WHEN $4::text = 'desc' AND $5::text = 'created_at'       THEN s.created_at         END DESC NULLS LAST,
+    CASE WHEN $4::text = 'desc' AND $5::text = 'session_date'     THEN s.session_date       END DESC NULLS LAST,
+    CASE WHEN $4::text = 'desc' AND $5::text = 'duration_seconds' THEN s.duration_seconds   END DESC NULLS LAST,
+    CASE WHEN $4::text = 'desc' AND $5::text = 'status'           THEN s.status::text       END DESC NULLS LAST,
+    CASE WHEN $4::text = 'desc' AND $5::text = 'therapist'        THEN LOWER(COALESCE(u.last_name,'') || ' ' || COALESCE(u.first_name,'')) END DESC NULLS LAST,
+    CASE WHEN $4::text = 'desc' AND $5::text = 'organization'     THEN LOWER(COALESCE(o.legal_name,''))   END DESC NULLS LAST,
+    CASE WHEN $4::text = 'desc' AND $5::text = 'plan_name'        THEN LOWER(COALESCE(p.display_name,'')) END DESC NULLS LAST,
+    CASE WHEN $4::text = 'desc' AND $5::text = 'period_end'       THEN sub.current_period_end             END DESC NULLS LAST,
+    CASE WHEN $4::text = 'desc' AND $5::text = 'tokens_used'      THEN uc.tokens_used                     END DESC NULLS LAST,
+    s.created_at DESC  -- final tiebreaker for stable ordering
+LIMIT $7::int OFFSET $6::int
 `
 
 type AdminListRecentSessionsParams struct {
 	StartTime       time.Time `json:"start_time"`
 	EndTime         time.Time `json:"end_time"`
 	TherapistFilter string    `json:"therapist_filter"`
+	SortOrder       string    `json:"sort_order"`
+	SortBy          string    `json:"sort_by"`
 	PageOffset      int32     `json:"page_offset"`
 	PageLimit       int32     `json:"page_limit"`
 }
 
 type AdminListRecentSessionsRow struct {
-	ID                 uuid.UUID   `json:"id"`
-	CreatedAt          time.Time   `json:"created_at"`
-	SessionDate        pgtype.Date `json:"session_date"`
-	DurationSeconds    *int32      `json:"duration_seconds"`
-	Status             string      `json:"status"`
-	SessionNumber      int32       `json:"session_number"`
-	TherapistID        uuid.UUID   `json:"therapist_id"`
-	TherapistFirstName string      `json:"therapist_first_name"`
-	TherapistLastName  string      `json:"therapist_last_name"`
-	TherapistEmail     string      `json:"therapist_email"`
-	OrganizationID     interface{} `json:"organization_id"`
-	OrganizationName   string      `json:"organization_name"`
+	ID                     uuid.UUID   `json:"id"`
+	CreatedAt              time.Time   `json:"created_at"`
+	SessionDate            pgtype.Date `json:"session_date"`
+	DurationSeconds        *int32      `json:"duration_seconds"`
+	Status                 string      `json:"status"`
+	SessionNumber          int32       `json:"session_number"`
+	TherapistID            uuid.UUID   `json:"therapist_id"`
+	TherapistFirstName     string      `json:"therapist_first_name"`
+	TherapistLastName      string      `json:"therapist_last_name"`
+	TherapistEmail         string      `json:"therapist_email"`
+	OrganizationID         interface{} `json:"organization_id"`
+	OrganizationName       string      `json:"organization_name"`
+	SubscriptionPlanName   string      `json:"subscription_plan_name"`
+	SubscriptionPeriodEnd  interface{} `json:"subscription_period_end"`
+	SubscriptionTokensUsed interface{} `json:"subscription_tokens_used"`
 }
 
 // Cross-org session activity for /admin/sessions (SUPERWIZOR_ADMIN).
@@ -74,14 +128,29 @@ type AdminListRecentSessionsRow struct {
 // case-insensitively against first_name + last_name + email. Empty
 // string means "no filter".
 //
-// ORDER BY created_at DESC + LIMIT/OFFSET pagination. The handler
-// requests LIMIT+1 so it can compute has_more without a separate
-// COUNT(*) over the (possibly huge) sessions table.
+// LATERAL JOINs bring in the therapist's organisation's CURRENT
+// subscription (most-recent ACTIVE/TRIAL/PAST_DUE row) + its plan +
+// the most-recent usage counter for that subscription. All three
+// legs are LEFT-LATERAL — orphan therapists / suspended subs /
+// counter-less subs come back as NULLs without losing the session
+// row.
+//
+// ORDER BY supports dynamic sorting via @sort_by + @sort_order. We
+// enumerate the allowlisted columns in two parallel CASE chains
+// (one per direction) because sqlc can't bind a raw ORDER BY
+// column. created_at DESC is the trailing tiebreaker so every sort
+// ends with stable order even when the primary sort column is NULL
+// for many rows.
+//
+// The handler requests LIMIT+1 so it can compute has_more without a
+// separate COUNT(*) over the (possibly huge) sessions table.
 func (q *Queries) AdminListRecentSessions(ctx context.Context, arg AdminListRecentSessionsParams) ([]AdminListRecentSessionsRow, error) {
 	rows, err := q.db.Query(ctx, adminListRecentSessions,
 		arg.StartTime,
 		arg.EndTime,
 		arg.TherapistFilter,
+		arg.SortOrder,
+		arg.SortBy,
 		arg.PageOffset,
 		arg.PageLimit,
 	)
@@ -105,6 +174,9 @@ func (q *Queries) AdminListRecentSessions(ctx context.Context, arg AdminListRece
 			&i.TherapistEmail,
 			&i.OrganizationID,
 			&i.OrganizationName,
+			&i.SubscriptionPlanName,
+			&i.SubscriptionPeriodEnd,
+			&i.SubscriptionTokensUsed,
 		); err != nil {
 			return nil, err
 		}
