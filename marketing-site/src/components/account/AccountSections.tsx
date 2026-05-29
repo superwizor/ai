@@ -73,13 +73,17 @@ export function AccountSections() {
 
   return (
     <div className="grid gap-8">
-      {/* Email + sign-out + kartoteki link */}
+      {/* Email + sign-out + kartoteki link. Sizes here are 20% bigger
+          than the original spec — email label 10→12px, hint xs→sm
+          (12→14px), kartoteki CTA xs→sm with bigger padding, sign-out
+          link 10→12px. Keeps proportions intact while reading more
+          comfortably on a desktop browser. */}
       <header className="rounded-glass border border-glass-border/40 bg-frost/[0.04] p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+          <p className="font-mono text-[12px] uppercase tracking-[var(--tracking-label)] text-mist">
             {fbUser.email}
           </p>
-          <p className="font-serif text-xs text-mist/70 mt-1">
+          <p className="font-serif text-sm text-mist/70 mt-1">
             {t("emailReadOnly")}
           </p>
         </div>
@@ -93,7 +97,7 @@ export function AccountSections() {
             href={`${APP_URL}?email=${encodeURIComponent(fbUser.email ?? "")}`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-xs px-4 py-2 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition"
+            className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-5 py-2.5 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition"
             title={t("kartotekiHint")}
           >
             {t("kartotekiCta")} →
@@ -101,7 +105,7 @@ export function AccountSections() {
           <button
             type="button"
             onClick={() => signOut()}
-            className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist hover:text-ember transition"
+            className="font-mono text-[12px] uppercase tracking-[var(--tracking-label)] text-mist hover:text-ember transition"
           >
             {t("signOut")}
           </button>
@@ -190,11 +194,11 @@ function ProfileSection({
   }
 
   if (!profile) {
-    return <Section title={t("profileSection")} collapsible>{t("orgLoading")}</Section>;
+    return <Section title={t("profileSection")} collapsible defaultOpen={false}>{t("orgLoading")}</Section>;
   }
 
   return (
-    <Section title={t("profileSection")} collapsible>
+    <Section title={t("profileSection")} collapsible defaultOpen={false}>
       <form onSubmit={onSubmit} className="grid gap-4" noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t("firstName")} large>
@@ -375,24 +379,24 @@ function OrgSection({ profile, locale: _locale }: { profile: User | null; locale
   }
 
   if (phase === "loading") {
-    return <Section title={t("orgSection")} collapsible>{t("orgLoading")}</Section>;
+    return <Section title={t("orgSection")} collapsible defaultOpen={false}>{t("orgLoading")}</Section>;
   }
   if (phase === "noOrg") {
-    return <Section title={t("orgSection")} collapsible>{t("orgNone")}</Section>;
+    return <Section title={t("orgSection")} collapsible defaultOpen={false}>{t("orgNone")}</Section>;
   }
   if (phase === "notAllowed") {
     return (
-      <Section title={t("orgSection")} collapsible>
+      <Section title={t("orgSection")} collapsible defaultOpen={false}>
         <p className="font-serif text-sm text-mist">{t("orgNotAllowed")}</p>
       </Section>
     );
   }
   if (phase === "error") {
-    return <Section title={t("orgSection")} collapsible>{t("errLoad")}</Section>;
+    return <Section title={t("orgSection")} collapsible defaultOpen={false}>{t("errLoad")}</Section>;
   }
 
   return (
-    <Section title={t("orgSection")} collapsible>
+    <Section title={t("orgSection")} collapsible defaultOpen={false}>
       <form onSubmit={onSubmit} className="grid gap-4" noValidate>
         <Field label={t("legalName")} large>
           <input
