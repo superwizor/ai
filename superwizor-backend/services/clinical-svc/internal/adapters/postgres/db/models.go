@@ -641,8 +641,10 @@ func (ns NullUploadStatus) Value() (driver.Value, error) {
 type UserRole string
 
 const (
-	UserRoleTHERAPIST UserRole = "THERAPIST"
-	UserRolePATIENT   UserRole = "PATIENT"
+	UserRoleTHERAPIST       UserRole = "THERAPIST"
+	UserRolePATIENT         UserRole = "PATIENT"
+	UserRoleORGADMIN        UserRole = "ORG_ADMIN"
+	UserRoleSUPERWIZORADMIN UserRole = "SUPERWIZOR_ADMIN"
 )
 
 func (e *UserRole) Scan(src interface{}) error {
@@ -742,6 +744,8 @@ type AuditEvent struct {
 	IpAddress      *netip.Addr `json:"ip_address"`
 	UserAgent      *string     `json:"user_agent"`
 	OccurredAt     time.Time   `json:"occurred_at"`
+	// Operator-supplied rationale for admin mutations (SUPERWIZOR_ADMIN). NULL for non-admin events. Handler-level CHECK requires >=10 chars when actor role is SUPERWIZOR_ADMIN.
+	Reason *string `json:"reason"`
 }
 
 type FcmToken struct {
@@ -778,6 +782,18 @@ type HitopMeasurement struct {
 	EvidenceCiphertext   []byte         `json:"evidence_ciphertext"`
 	EvidenceEncryptedDek []byte         `json:"evidence_encrypted_dek"`
 	MeasuredAt           time.Time      `json:"measured_at"`
+}
+
+type Invitation struct {
+	ID             uuid.UUID          `json:"id"`
+	OrganizationID uuid.UUID          `json:"organization_id"`
+	InvitedByUser  uuid.UUID          `json:"invited_by_user"`
+	Email          string             `json:"email"`
+	TokenHash      []byte             `json:"token_hash"`
+	ExpiresAt      time.Time          `json:"expires_at"`
+	AcceptedAt     pgtype.Timestamptz `json:"accepted_at"`
+	AcceptedUserID pgtype.UUID        `json:"accepted_user_id"`
+	CreatedAt      time.Time          `json:"created_at"`
 }
 
 type Modality struct {
@@ -819,20 +835,6 @@ type Organization struct {
 	Type                  OrganizationType   `json:"type"`
 	CreatedAt             time.Time          `json:"created_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
-}
-
-type OutboxEvent struct {
-	ID             uuid.UUID          `json:"id"`
-	AggregateType  string             `json:"aggregate_type"`
-	EventType      string             `json:"event_type"`
-	AggregateID    uuid.UUID          `json:"aggregate_id"`
-	OrganizationID uuid.UUID          `json:"organization_id"`
-	Payload        []byte             `json:"payload"`
-	Processed      bool               `json:"processed"`
-	PublishedAt    pgtype.Timestamptz `json:"published_at"`
-	Attempts       int32              `json:"attempts"`
-	LastError      *string            `json:"last_error"`
-	CreatedAt      time.Time          `json:"created_at"`
 }
 
 type PatientFile struct {

@@ -22,9 +22,22 @@ type Querier interface {
 	// case-insensitively against first_name + last_name + email. Empty
 	// string means "no filter".
 	//
-	// ORDER BY created_at DESC + LIMIT/OFFSET pagination. The handler
-	// requests LIMIT+1 so it can compute has_more without a separate
-	// COUNT(*) over the (possibly huge) sessions table.
+	// LATERAL JOINs bring in the therapist's organisation's CURRENT
+	// subscription (most-recent ACTIVE/TRIAL/PAST_DUE row) + its plan +
+	// the most-recent usage counter for that subscription. All three
+	// legs are LEFT-LATERAL — orphan therapists / suspended subs /
+	// counter-less subs come back as NULLs without losing the session
+	// row.
+	//
+	// ORDER BY supports dynamic sorting via @sort_by + @sort_order. We
+	// enumerate the allowlisted columns in two parallel CASE chains
+	// (one per direction) because sqlc can't bind a raw ORDER BY
+	// column. created_at DESC is the trailing tiebreaker so every sort
+	// ends with stable order even when the primary sort column is NULL
+	// for many rows.
+	//
+	// The handler requests LIMIT+1 so it can compute has_more without a
+	// separate COUNT(*) over the (possibly huge) sessions table.
 	AdminListRecentSessions(ctx context.Context, arg AdminListRecentSessionsParams) ([]AdminListRecentSessionsRow, error)
 	CountPatientFilesByTherapist(ctx context.Context, therapistID uuid.UUID) (int64, error)
 	CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) error
