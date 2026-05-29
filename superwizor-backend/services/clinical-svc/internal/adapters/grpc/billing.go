@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -49,16 +50,27 @@ func (s *Server) GetMyBillingState(ctx context.Context, _ *emptypb.Empty) (*bill
 	orgID, err := s.queries.GetUserOrganizationID(ctx, therapistID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			slog.WarnContext(ctx, "GetMyBillingState: user row not found",
+				"user_id", therapistIDStr)
 			return nil, status.Error(codes.NotFound, "user not found")
 		}
+		// Log the real driver error so 5xx incidents can be triaged
+		// without a redeploy. The user-facing message stays terse.
+		slog.ErrorContext(ctx, "GetMyBillingState: GetUserOrganizationID failed",
+			"user_id", therapistIDStr,
+			"error", err.Error())
 		return nil, status.Errorf(codes.Internal, "user lookup failed: %v", err)
 	}
 	if !orgID.Valid {
+		slog.WarnContext(ctx, "GetMyBillingState: user has no organization",
+			"user_id", therapistIDStr)
 		return nil, status.Error(codes.FailedPrecondition, "user has no organization")
 	}
 	orgIDStr := uuid.UUID(orgID.Bytes).String()
 
 	if s.billing == nil {
+		slog.ErrorContext(ctx, "GetMyBillingState: billing client nil",
+			"user_id", therapistIDStr, "org_id", orgIDStr)
 		return nil, status.Error(codes.Unavailable, "billing client not wired")
 	}
 
@@ -74,6 +86,10 @@ func (s *Server) GetMyBillingState(ctx context.Context, _ *emptypb.Empty) (*bill
 		OrganizationId: orgIDStr,
 	})
 	if err != nil {
+		slog.ErrorContext(ctx, "GetMyBillingState: billing.GetSubscription failed",
+			"user_id", therapistIDStr, "org_id", orgIDStr,
+			"error", err.Error(),
+			"grpc_code", status.Code(err).String())
 		// Forward the gRPC status verbatim so Flutter sees the same
 		// NotFound / FailedPrecondition codes billing-svc emits.
 		return nil, err
