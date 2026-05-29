@@ -190,62 +190,62 @@ function ProfileSection({
   }
 
   if (!profile) {
-    return <Section title={t("profileSection")}>{t("orgLoading")}</Section>;
+    return <Section title={t("profileSection")} collapsible>{t("orgLoading")}</Section>;
   }
 
   return (
-    <Section title={t("profileSection")}>
+    <Section title={t("profileSection")} collapsible>
       <form onSubmit={onSubmit} className="grid gap-4" noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t("firstName")}>
+          <Field label={t("firstName")} large>
             <input
               type="text"
               value={draft.firstName}
               onChange={(e) => setDraft((d) => ({ ...d, firstName: e.target.value }))}
-              className={inputClass}
+              className={inputClassLg}
             />
           </Field>
-          <Field label={t("lastName")}>
+          <Field label={t("lastName")} large>
             <input
               type="text"
               value={draft.lastName}
               onChange={(e) => setDraft((d) => ({ ...d, lastName: e.target.value }))}
-              className={inputClass}
+              className={inputClassLg}
             />
           </Field>
         </div>
-        <Field label={t("phoneNumber")}>
+        <Field label={t("phoneNumber")} large>
           <input
             type="tel"
             value={draft.phoneNumber}
             onChange={(e) => setDraft((d) => ({ ...d, phoneNumber: e.target.value }))}
-            className={inputClass}
+            className={inputClassLg}
           />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t("professionalTitle")}>
+          <Field label={t("professionalTitle")} large>
             <input
               type="text"
               value={draft.professionalTitle}
               onChange={(e) => setDraft((d) => ({ ...d, professionalTitle: e.target.value }))}
-              className={inputClass}
+              className={inputClassLg}
             />
           </Field>
-          <Field label={t("credentialsNumber")}>
+          <Field label={t("credentialsNumber")} large>
             <input
               type="text"
               value={draft.credentialsNumber}
               onChange={(e) => setDraft((d) => ({ ...d, credentialsNumber: e.target.value }))}
-              className={inputClass}
+              className={inputClassLg}
             />
           </Field>
         </div>
-        <Field label={t("biography")}>
+        <Field label={t("biography")} large>
           <textarea
             rows={3}
             value={draft.biography}
             onChange={(e) => setDraft((d) => ({ ...d, biography: e.target.value }))}
-            className={`${inputClass} resize-y`}
+            className={`${inputClassLg} resize-y`}
           />
         </Field>
 
@@ -375,48 +375,48 @@ function OrgSection({ profile, locale: _locale }: { profile: User | null; locale
   }
 
   if (phase === "loading") {
-    return <Section title={t("orgSection")}>{t("orgLoading")}</Section>;
+    return <Section title={t("orgSection")} collapsible>{t("orgLoading")}</Section>;
   }
   if (phase === "noOrg") {
-    return <Section title={t("orgSection")}>{t("orgNone")}</Section>;
+    return <Section title={t("orgSection")} collapsible>{t("orgNone")}</Section>;
   }
   if (phase === "notAllowed") {
     return (
-      <Section title={t("orgSection")}>
+      <Section title={t("orgSection")} collapsible>
         <p className="font-serif text-sm text-mist">{t("orgNotAllowed")}</p>
       </Section>
     );
   }
   if (phase === "error") {
-    return <Section title={t("orgSection")}>{t("errLoad")}</Section>;
+    return <Section title={t("orgSection")} collapsible>{t("errLoad")}</Section>;
   }
 
   return (
-    <Section title={t("orgSection")}>
+    <Section title={t("orgSection")} collapsible>
       <form onSubmit={onSubmit} className="grid gap-4" noValidate>
-        <Field label={t("legalName")}>
+        <Field label={t("legalName")} large>
           <input
             type="text"
             value={draft.legalName}
             onChange={(e) => setDraft((d) => ({ ...d, legalName: e.target.value }))}
-            className={inputClass}
+            className={inputClassLg}
           />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t("taxId")}>
+          <Field label={t("taxId")} large>
             <input
               type="text"
               value={draft.taxId}
               onChange={(e) => setDraft((d) => ({ ...d, taxId: e.target.value }))}
-              className={inputClass}
+              className={inputClassLg}
             />
           </Field>
-          <Field label={t("vatIdEu")}>
+          <Field label={t("vatIdEu")} large>
             <input
               type="text"
               value={draft.vatIdEu}
               onChange={(e) => setDraft((d) => ({ ...d, vatIdEu: e.target.value }))}
-              className={inputClass}
+              className={inputClassLg}
             />
           </Field>
         </div>
@@ -425,54 +425,54 @@ function OrgSection({ profile, locale: _locale }: { profile: User | null; locale
             because it lives under /admin and is tied to an admin
             UpdateUserParams shape. Keep this lightweight. */}
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Ulica">
+          <Field label="Ulica" large>
             <input
               type="text"
               value={draft.streetLine}
               onChange={(e) => setDraft((d) => ({ ...d, streetLine: e.target.value }))}
-              className={inputClass}
+              className={inputClassLg}
             />
           </Field>
-          <Field label="Nr budynku">
+          <Field label="Nr budynku" large>
             <input
               type="text"
               value={draft.buildingNumber}
               onChange={(e) => setDraft((d) => ({ ...d, buildingNumber: e.target.value }))}
-              className={inputClass}
+              className={inputClassLg}
             />
           </Field>
-          <Field label="Nr lokalu">
+          <Field label="Nr lokalu" large>
             <input
               type="text"
               value={draft.unitNumber}
               onChange={(e) => setDraft((d) => ({ ...d, unitNumber: e.target.value }))}
-              className={inputClass}
+              className={inputClassLg}
             />
           </Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Kod pocztowy">
+          <Field label="Kod pocztowy" large>
             <input
               type="text"
               value={draft.postalCode}
               onChange={(e) => setDraft((d) => ({ ...d, postalCode: e.target.value }))}
-              className={inputClass}
+              className={inputClassLg}
             />
           </Field>
-          <Field label="Miasto">
+          <Field label="Miasto" large>
             <input
               type="text"
               value={draft.city}
               onChange={(e) => setDraft((d) => ({ ...d, city: e.target.value }))}
-              className={inputClass}
+              className={inputClassLg}
             />
           </Field>
-          <Field label="Województwo">
+          <Field label="Województwo" large>
             <input
               type="text"
               value={draft.region}
               onChange={(e) => setDraft((d) => ({ ...d, region: e.target.value }))}
-              className={inputClass}
+              className={inputClassLg}
             />
           </Field>
         </div>
@@ -675,24 +675,76 @@ function StripePlaceholder() {
 // ────────────────────────────────────────────────────────────────────
 const inputClass =
   "rounded-button bg-frost/5 border border-frost/15 px-3 py-2 font-mono text-sm text-frost focus:outline-none focus:border-ember w-full";
+// 20% larger variant for the Profil + Organizacja sections per the
+// 2026-05-29 design tweak. Bumps label (10px→12px), input (14px→17px,
+// roughly text-base + a tenth) and uses py-2.5 to keep proportions.
+const inputClassLg =
+  "rounded-button bg-frost/5 border border-frost/15 px-3 py-2.5 font-mono text-[17px] text-frost focus:outline-none focus:border-ember w-full";
 const submitBtnClass =
   "inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed";
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+  collapsible = false,
+  defaultOpen = true,
+}: {
+  title: string;
+  children: React.ReactNode;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  if (!collapsible) {
+    return (
+      <section className="rounded-glass border border-glass-border/40 bg-frost/[0.04] p-6">
+        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
+          {title}
+        </h2>
+        <div>{children}</div>
+      </section>
+    );
+  }
   return (
     <section className="rounded-glass border border-glass-border/40 bg-frost/[0.04] p-6">
-      <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
-        {title}
-      </h2>
-      <div>{children}</div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-4 text-left"
+      >
+        <h2 className="font-mono text-[12px] uppercase tracking-[var(--tracking-overline)] text-ember">
+          {title}
+        </h2>
+        <span
+          aria-hidden="true"
+          className={`font-mono text-xs text-mist/70 transition-transform ${open ? "rotate-180" : ""}`}
+        >
+          ▾
+        </span>
+      </button>
+      {open && <div className="mt-4">{children}</div>}
     </section>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  large = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  large?: boolean;
+}) {
+  // `large` shifts the label up from 10px to 12px (also 20% bigger)
+  // so it stays proportional to the bigger input next to it.
+  const labelClass = large
+    ? "font-mono text-[12px] uppercase tracking-[var(--tracking-label)] text-mist"
+    : "font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist";
   return (
     <label className="grid gap-2">
-      <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">{label}</span>
+      <span className={labelClass}>{label}</span>
       {children}
     </label>
   );
