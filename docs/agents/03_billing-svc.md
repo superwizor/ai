@@ -194,6 +194,65 @@ grpcurl -H "authorization: Bearer $TOKEN" \
 - Real Stripe webhook signature verification + handler (subscription.created / invoice.paid / customer.subscription.deleted).
 - Encrypted customer ID rotation via KMS.
 
+## Browser-direct call pattern (2026-05-29)
+
+The marketing-site `/account/` Subskrypcja card and the `/admin/orgs`
+ZMIEŃ PLAN + ZRESETUJ TOKENY dialogs all call billing-svc **directly
+from the browser** via `billingClient.<rpc>(...)` over Connect-Web —
+not through clinical-svc as a proxy. The earlier proxy hop
+(`browser → clinical-svc.GetMyBillingState → billing-svc.GetSubscription`)
+was returning `code = Internal desc = stream terminated by RST_STREAM`
+intermittently inside Cloud Run; HTTP/2 keepalive on the upstream
+client didn't fix it (commits `2260926`, `fb35e43`). Direct-from-browser
+matches the Connect-RPC R1 design goal — one h2c endpoint serves
+browsers, the iOS app, and server-to-server callers with no protocol
+shim. Apply the same pattern to any new browser surface that needs
+billing data.
+
+**Auth on the direct path:** `ConnectAuthInterceptor` (added
+2026-05-27, commit per task #141) runs in front of every Connect RPC,
+calls `identity-svc.ValidateToken` with the browser's
+`Authorization: Bearer …` header, and writes
+`x-superwizor-role` / `-user-id` / `-organization-id` into the gRPC
+IncomingMetadata so the existing admin handlers (`resolveAdminCaller`)
+see them. Server-to-server callers (native gRPC) skip this — they
+already inject those headers themselves.
+
+**Caller-org guard on `GetSubscription`** (commit `7e4f2d9`, deployed
+`billing-svc-00086-vwt`): when `x-superwizor-organization-id` is
+present (browser path), the handler requires
+`organization_id == req.organization_id` or
+`x-superwizor-role == SUPERWIZOR_ADMIN`. Native gRPC callers without
+the metadata bypass — the trusted-caller contract is preserved.
+Pattern to replicate for any future browser-callable read.
+
+## Connect error translation (2026-05-29, commit `2b7919f`)
+
+Connect-Go does NOT auto-recognise `status.Errorf(codes.X, ...)` from
+`google.golang.org/grpc/status` — it sees a plain `error` and wraps
+it as `connect.CodeUnknown`. Every browser admin RPC then surfaced as
+the generic "Wystąpił nieznany błąd" in the dialog regardless of
+whether the real cause was PermissionDenied, FailedPrecondition,
+InvalidArgument, or Internal. The new
+`ConnectErrorInterceptor` (`internal/adapters/grpc/connect_error_interceptor.go`)
+sits LAST in the Connect chain and:
+
+- Passes `*connect.Error` through untouched (handlers that opt into
+  the Connect-native shape still work).
+- Translates `grpc/status` errors to `connect.Error` via a 1:1
+  `grpcCodeToConnectCode` table.
+- `slog`s the original error type + procedure path + grpc-code +
+  message so any handler-side failure is visible in Cloud Logging
+  (previously: zero app log on 500s — the panic-recovery middleware
+  didn't fire because handlers returned errors cleanly, just with
+  the wrong wire type).
+
+**This bug almost certainly exists in identity-svc and clinical-svc's
+Connect chain too** — both use the same `status.Errorf` pattern.
+Follow-up: lift the interceptor into `pkg/connectmd/` and add to all
+three services. Until then, browser-surfaced errors from those
+services are opaque ("Wystąpił nieznany błąd").
+
 ## Common gotchas
 
 - **`BILLING_SVC_URL` must be set on every caller (ingestion-svc, clinical-svc, stt-finalize CF).** CI's `--set-env-vars` REPLACES the env block — manually-set values get stripped on the next deploy. Fixed in CI by `fe43420` (clinical-svc + ingestion-svc); stt-finalize covered in `d15f6e7`.
@@ -201,6 +260,7 @@ grpcurl -H "authorization: Bearer $TOKEN" \
 - **Trial signup race:** `identity-svc.CreateUser` for a THERAPIST opens its own tx that INSERTs org + subscription + counter. If you do anything to that flow, the tx wrapper in `services/identity-svc/internal/adapters/grpc/server.go` is the only place — don't smear writes across multiple txs.
 - **Partial unique index gotcha on subscription_plans:** `ux_subscription_plans_active` is partial (`WHERE active = TRUE`). `ON CONFLICT` can't reference a partial index — use `INSERT … SELECT … WHERE NOT EXISTS` (see commit `a147726`).
 - **`state_after` on idempotent hits:** when `GetReservationBySession` returns an existing reservation, you still need to read the current counter and build `state_after`. Don't return the proto with empty/nil state_after — clients treat it as a transport failure.
+- **`audit_events.reason` is the column every admin RPC writes to.** Lives in migration 000036. If it goes missing (fresh DB without the migration applied, or a misapplied rollback), `writeBillingAudit` returns `Internal: audit: ERROR: column "reason" of relation "audit_events" does not exist (SQLSTATE 42703)` and AdminChangePlan / AdminResetTokens both 500. Before deploying any admin-RPC change, `SELECT version FROM schema_migrations` and confirm ≥ 37. Staging drifted on 2026-05-29 (was stuck at 34) — `golang-migrate up` via cloud-sql-proxy applies 035-037 idempotently.
 
 ## Source-doc pointers
 

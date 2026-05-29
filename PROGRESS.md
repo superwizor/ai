@@ -73,6 +73,97 @@ features 3-8 can land in any order:
 - ✅ flutter-web-target — web platform live, build green, recording
   screen kIsWeb-guarded. Login renders cleanly on web.
 
+### Out-of-slice fixes / improvements landed 2026-05-29
+
+All on `feat/web-app`. Independent of any specific slice; ship-ready as
+hotfixes to the in-flight web build.
+
+- **Therapist `/account/` page first-class on the marketing origin.**
+  Profil + Organizacja + Subskrypcja sections, all PL+EN, with i18n
+  ARB-equivalent keys under the `account.*` namespace. Profil + Org are
+  collapsible (default-closed) and use a +20% bigger input variant per
+  user feedback. Header (email + Otwórz kartoteki + sign-out) also +20%.
+  Commits: `5725d12`, `ffbf113`, `2f474aa`, `6e1b3d9`.
+- **Subskrypcja card calls billing-svc directly** (`aff0e8e`+
+  `2b29922`). The earlier `clinical.GetMyBillingState` proxy was
+  intermittently RST_STREAM-ing inside Cloud Run; bypassing it matches
+  the proven /admin/orgs `ZMIEŃ PLAN` pattern. **Pre-req on the
+  backend:** `billing-svc.GetSubscription` now enforces caller-org
+  scope (commit `7e4f2d9`, deployed as `billing-svc-00086-vwt`) — the
+  Connect interceptor populates `x-superwizor-organization-id` from
+  the validated Firebase token, and any browser caller whose org
+  doesn't match the requested `organization_id` gets
+  `PermissionDenied`. Server-to-server callers (native gRPC, no
+  metadata) bypass; `SUPERWIZOR_ADMIN` bypasses for cross-org reads.
+- **Post-email-verification redirect → same origin `/account/`.**
+  `ResendVerificationButton.tsx` polls `currentUser.reload()` and on
+  `emailVerified=true` now navigates to `/${locale}/account/` instead
+  of `https://superwizor-app.web.app/`. Avoids the cross-origin
+  re-login that killed the just-completed signup (Firebase Auth
+  IndexedDB is origin-scoped). i18n key renamed
+  `verifiedGoToApp` → `verifiedGoToAccount`. Commit `18d7030`.
+- **Cross-origin SSO from marketing-site → Flutter app.** Otwórz
+  kartoteki on `/account/` now mints a short-lived Firebase custom
+  token via `identity-svc.MintAppLoginToken` (new RPC), opens
+  `https://superwizor-app.web.app/#auth_token=<jwt>` in a new tab, and
+  the Flutter web bundle redeems via `signInWithCustomToken` before
+  `runApp` (conditional import on `dart.library.html` keeps iOS/Android
+  untouched). Token is in the URL fragment, not the query string —
+  hashes don't reach Firebase Hosting logs and aren't included in
+  Referer headers on outbound clicks. On any failure (mint RPC down,
+  popup blocked, token expired) the flow gracefully degrades to the
+  pre-SSO `?email=` prefill so the user can still log in by hand.
+  Backend commit `fbc3b67`, marketing-site `aff0e8e`, Flutter web
+  `3d55ae7`. One-time IAM: granted
+  `roles/iam.serviceAccountTokenCreator` to the compute SA on itself
+  so the Admin SDK can sign custom tokens via the IAM Credentials API
+  without an SA private-key JSON. Switched identity-svc Firebase init
+  from `option.WithoutAuthentication()` → plain `firebase.NewApp` so
+  it can resolve ADC for the signing call.
+- **billing-svc `ConnectErrorInterceptor`** (commit `2b7919f`,
+  deployed `billing-svc-00087-ddr`). Connect-Go does not auto-translate
+  `status.Errorf(codes.X, ...)` errors — it sees a plain `error` and
+  wraps them as `connect.CodeUnknown`, so every admin browser RPC
+  surfaced as "Wystąpił nieznany błąd" regardless of the real cause
+  (PermissionDenied, FailedPrecondition, NotFound, Internal…). The new
+  interceptor sits after the auth interceptor, translates 1:1, and
+  slogs the original error type + procedure path so handler-side
+  failures are visible in Cloud Logging. **Action item:** the SAME
+  bug almost certainly exists in identity-svc and clinical-svc's
+  Connect chain; lift the interceptor into `pkg/connectmd/` and add
+  to all three services in a follow-up.
+- **Staging Cloud SQL schema synced to migrations 035, 036, 037.**
+  The webhook + audit flow had been silently failing for weeks
+  because `audit_events.reason` didn't exist on staging Postgres —
+  `golang-migrate up` against `superwizor-db-bc4c27de` applied
+  invitations (035), audit_events.reason (036), and user_role_extend
+  (037). DB is now at version 37, dirty=false. Done via cloud-sql-proxy
+  on port 5438 with the password from the `superwizor-db-password`
+  Secret Manager secret.
+
+### Known-but-deferred
+
+- **Marcin's stuck audio upload (session `5930f11c-...`).** Row in
+  `audio_uploads` has status=PENDING, content_type=audio/flac, NULL
+  file_size_bytes — Flutter never PUT to GCS. GCS audit logs confirm
+  no PUT attempt. Two `billing reserve` log lines 6 min apart show
+  the worker is retrying CreateAudioUpload (the `signedUrlExpired`
+  classify path bounces phase=created → phase=pending after the PUT
+  fails locally on Marcin's phone). Root cause is on his iPhone (most
+  likely `file.readAsBytes()` throwing because iOS purged the tmp
+  FLAC file between conversion + PUT). Row auto-expires
+  `2026-05-31 11:11:28 UTC`; reserved token is released then.
+  Definitive fix is the post-`a5e8f4c` Flutter build (M4A→FLAC
+  staging-dir fix) but install on Marcin's iPhone is blocked on the
+  Apple Developer Personal Team bundle-ID reclaim (task #147).
+- **Apple Developer Personal Team reclaimed `ai.superwizor.superwizor`.**
+  Xcode can't re-register the App ID; iOS builds for new devices
+  fail at the provisioning step. Pending path chosen with the user:
+  change bundle ID to `ai.superwizor.therapist`, register the new
+  ID in Firebase Console (manual step the user owns), then update
+  Xcode project + `GoogleService-Info.plist`. Long-term fix is
+  enrolment in the paid Apple Developer Program.
+
 ## Slice plan (Slices 2-6)
 
 Each slice branches `feat/web-app-slice-N` off the previous slice's merged

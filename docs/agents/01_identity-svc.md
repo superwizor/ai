@@ -43,6 +43,9 @@ service IdentityService {
   // see "Report preferences" section below.
   rpc GetReportPreferences(GetReportPreferencesRequest) returns (ReportPreferences);
   rpc UpdateReportPreferences(UpdateReportPreferencesRequest) returns (ReportPreferences);
+  // Cross-origin SSO (Slice 2 follow-up, 2026-05-29) — see
+  // "Cross-origin SSO via custom token" section below.
+  rpc MintAppLoginToken(google.protobuf.Empty) returns (AppLoginToken);
 }
 ```
 
@@ -204,6 +207,62 @@ Empty string for any enum field = "use default". Empty object `{}` = "use defaul
 - **`audience` claim** must equal the Firebase project ID (`superwizor-ai-25ecd`), not a custom string. Set in Flutter's Firebase init, not here.
 - **Soft-deleted users** still exist in `users` table; queries must filter `WHERE deleted_at IS NULL` unless you specifically need the audit trail.
 - **Cloud Run cold start + Firebase Admin SDK init** can add ~2s. Use min-instances=1 if latency-sensitive.
+- **Firebase Admin SDK init uses ADC** (since 2026-05-29, commit `fbc3b67`). The earlier `option.WithoutAuthentication()` was fine for `VerifyIDToken` (which only fetches Google's public JWKS) but BLOCKS `CustomToken` (which signs the JWT with the runtime SA's key via the IAM Credentials API). The new init is `firebase.NewApp(ctx, &firebase.Config{ProjectID: ...})` with no auth option — ADC resolves through the metadata server on Cloud Run. Local dev needs `gcloud auth application-default login` or `GOOGLE_APPLICATION_CREDENTIALS` pointing at a SA JSON.
+- **Runtime SA needs `roles/iam.serviceAccountTokenCreator` on ITSELF** for `CustomToken` to sign without a private-key JSON. Granted to `344724821207-compute@developer.gserviceaccount.com` on 2026-05-29. New environments must replicate.
+
+## Cross-origin SSO via custom token (2026-05-29)
+
+The marketing site (`superwizor.web.app`) and the Flutter web app
+(`superwizor-app.web.app`) live on different origins, so Firebase Auth's
+IndexedDB session doesn't bridge between them — a user who clicked
+"Otwórz kartoteki" on `/account/` used to land on the Flutter login
+screen and have to re-enter their password. `MintAppLoginToken` fixes
+this.
+
+**Flow:**
+1. Browser is signed in on `superwizor.web.app` (marketing origin).
+2. User clicks "Otwórz kartoteki" → marketing-site calls
+   `identityClient.mintAppLoginToken({})` over Connect-RPC (Firebase ID
+   token in the `Authorization: Bearer …` header as usual).
+3. Handler calls `resolveCaller(ctx)` → extracts the verified
+   `firebase_uid`, then `auth.CustomToken(ctx, firebase_uid)` — never
+   reads a uid from the request body.
+4. Returns `AppLoginToken{token: <jwt>}`.
+5. marketing-site opens
+   `https://superwizor-app.web.app/#auth_token=<jwt>` in a new tab.
+6. Flutter web's `main()` reads `window.location.hash`, calls
+   `FirebaseAuth.instance.signInWithCustomToken(token)`, and strips
+   the fragment via `history.replaceState`. The `_AuthGate`'s first
+   `authStateChanges` tick already sees the signed-in user, so no
+   `LoginScreen` flash.
+
+**Security:**
+- The handler NEVER reads a uid from the request — always mints for the
+  caller's own `firebase_uid`. No org/role escalation surface.
+- Custom tokens are ~1h TTL by Firebase Admin SDK default and single-use
+  in practice (Firebase rejects reuse).
+- Token is in the URL fragment, not the query string. Fragments don't
+  reach Firebase Hosting access logs, aren't included in the `Referer`
+  header on outbound clicks, and are stripped from the URL bar
+  immediately after redemption.
+- On any failure (mint RPC down, popup blocked by Safari, token
+  expired before redeem) the marketing-site code falls back to the
+  pre-SSO `?email=` prefill so the user can still log in by hand.
+
+**Code:**
+- Proto: `proto/identity/v1/identity.proto` — `rpc MintAppLoginToken`
+  + `message AppLoginToken{ string token = 1; }`.
+- Handler: `services/identity-svc/internal/adapters/grpc/sso.go`.
+- Connect adapter: `connect_adapter.go::MintAppLoginToken`.
+- Firebase helper: `internal/adapters/firebase/auth.go::CustomToken`.
+- Browser: `marketing-site/src/components/account/AccountSections.tsx`
+  → `OpenKartotekiButton` (opens popup synchronously inside the click
+  handler so Safari's popup blocker permits it, then mutates the
+  popup's `location` once the mint resolves).
+- Flutter web: `flutter-app/superwizor/lib/auth/sso_handler_web.dart`
+  redeems the fragment + strips it; the iOS/Android stub is at
+  `lib/auth/sso_handler.dart` (no-op). Conditional import on
+  `dart.library.html` in `main.dart` keeps mobile bundles unchanged.
 
 ## SUPERWIZOR_ADMIN bootstrap (one-time, per environment)
 
