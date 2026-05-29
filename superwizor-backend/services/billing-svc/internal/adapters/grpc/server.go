@@ -27,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -677,6 +678,27 @@ func (s *Server) GetSubscription(ctx context.Context, req *billingv1.GetSubscrip
 	orgID, err := parseUUID("organization_id", req.GetOrganizationId())
 	if err != nil {
 		return nil, err
+	}
+
+	// Browser-caller scope check. The Connect interceptor populates
+	// x-superwizor-organization-id from the validated Firebase token —
+	// when present, the requested org_id MUST match (or the caller must
+	// be SUPERWIZOR_ADMIN). Server-to-server callers (clinical-svc,
+	// ingestion-svc, stt-worker, Cloud Scheduler) on the native-gRPC
+	// path don't pass these headers, so the check is a no-op for them
+	// and the existing trusted-caller contract is preserved.
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		var callerRole, callerOrgID string
+		if v := md.Get("x-superwizor-role"); len(v) > 0 {
+			callerRole = v[0]
+		}
+		if v := md.Get("x-superwizor-organization-id"); len(v) > 0 {
+			callerOrgID = v[0]
+		}
+		if callerOrgID != "" && callerOrgID != req.GetOrganizationId() && callerRole != "SUPERWIZOR_ADMIN" {
+			return nil, status.Errorf(codes.PermissionDenied,
+				"caller's organization does not match requested organization_id")
+		}
 	}
 
 	sub, err := s.queries.GetActiveSubscriptionByOrg(ctx, orgID)
