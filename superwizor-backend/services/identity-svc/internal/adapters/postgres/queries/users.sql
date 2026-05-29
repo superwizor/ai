@@ -15,18 +15,78 @@ INSERT INTO users (
 RETURNING *;
 
 -- name: UpdateProfile :one
+-- Every column uses COALESCE(narg, current) so a NULL narg = "don't touch
+-- this column". The Go handler is responsible for converting empty-string
+-- (the iOS legacy contract on fields 2-7 of UpdateProfileRequest) into
+-- a nil pointer when "don't change" is intended. New optional fields
+-- 8-13 from the proto naturally arrive as nil pointers when unset.
+-- See docs/18 D2.
 UPDATE users SET
-    first_name = COALESCE(sqlc.narg(first_name), first_name),
-    last_name = COALESCE(sqlc.narg(last_name), last_name),
-    professional_title = sqlc.narg(professional_title),
-    credentials_number = sqlc.narg(credentials_number),
-    biography = sqlc.narg(biography),
-    phone_number = sqlc.narg(phone_number)
+    first_name            = COALESCE(sqlc.narg(first_name), first_name),
+    last_name             = COALESCE(sqlc.narg(last_name), last_name),
+    professional_title    = COALESCE(sqlc.narg(professional_title), professional_title),
+    credentials_number    = COALESCE(sqlc.narg(credentials_number), credentials_number),
+    biography             = COALESCE(sqlc.narg(biography), biography),
+    phone_number          = COALESCE(sqlc.narg(phone_number), phone_number),
+    avatar_url            = COALESCE(sqlc.narg(avatar_url), avatar_url),
+    default_modality_id   = COALESCE(sqlc.narg(default_modality_id), default_modality_id),
+    ui_language           = COALESCE(sqlc.narg(ui_language), ui_language),
+    timezone              = COALESCE(sqlc.narg(timezone), timezone),
+    billing_address_id    = COALESCE(sqlc.narg(billing_address_id), billing_address_id),
+    has_marketing_consent = COALESCE(sqlc.narg(has_marketing_consent), has_marketing_consent)
+WHERE id = sqlc.arg(id) AND deleted_at IS NULL
+RETURNING *;
+
+-- name: AdminUpdateUser :one
+-- Superwizor-admin variant — accepts the admin-only columns (email, role,
+-- organization_id, is_email_verified) plus everything UpdateProfile covers.
+-- Every column is selective via COALESCE. The handler enforces the role
+-- gate + writes audit_events before calling this.
+UPDATE users SET
+    email                 = COALESCE(sqlc.narg(email), email),
+    role                  = COALESCE(sqlc.narg(role), role),
+    organization_id       = COALESCE(sqlc.narg(organization_id), organization_id),
+    is_email_verified     = COALESCE(sqlc.narg(is_email_verified), is_email_verified),
+    first_name            = COALESCE(sqlc.narg(first_name), first_name),
+    last_name             = COALESCE(sqlc.narg(last_name), last_name),
+    professional_title    = COALESCE(sqlc.narg(professional_title), professional_title),
+    credentials_number    = COALESCE(sqlc.narg(credentials_number), credentials_number),
+    biography             = COALESCE(sqlc.narg(biography), biography),
+    phone_number          = COALESCE(sqlc.narg(phone_number), phone_number),
+    avatar_url            = COALESCE(sqlc.narg(avatar_url), avatar_url),
+    default_modality_id   = COALESCE(sqlc.narg(default_modality_id), default_modality_id),
+    ui_language           = COALESCE(sqlc.narg(ui_language), ui_language),
+    timezone              = COALESCE(sqlc.narg(timezone), timezone),
+    billing_address_id    = COALESCE(sqlc.narg(billing_address_id), billing_address_id)
 WHERE id = sqlc.arg(id) AND deleted_at IS NULL
 RETURNING *;
 
 -- name: SoftDeleteUser :exec
 UPDATE users SET deleted_at = now() WHERE id = $1;
+
+-- name: LinkUserToOrganization :exec
+-- Used by RegisterOrganization (sets the just-created ORG_ADMIN user's
+-- organization_id to the new org) and AcceptInvitation (sets the new
+-- THERAPIST's org to the inviting org).
+UPDATE users SET organization_id = $2 WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: AdminListUsers :many
+SELECT * FROM users
+WHERE deleted_at IS NULL
+  AND (sqlc.narg(organization_id)::uuid IS NULL OR organization_id = sqlc.narg(organization_id)::uuid)
+  AND (sqlc.narg(role_filter)::user_role IS NULL OR role = sqlc.narg(role_filter)::user_role)
+  AND (
+      sqlc.narg(search_term)::text IS NULL
+      OR email ILIKE '%' || sqlc.narg(search_term)::text || '%'
+      OR first_name ILIKE '%' || sqlc.narg(search_term)::text || '%'
+      OR last_name ILIKE '%' || sqlc.narg(search_term)::text || '%'
+  )
+  AND (
+      sqlc.narg(after_created_at)::timestamptz IS NULL
+      OR (created_at, id) < (sqlc.narg(after_created_at)::timestamptz, sqlc.narg(after_id)::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg(page_size);
 
 -- name: ListTherapistsByOrganization :many
 SELECT * FROM users

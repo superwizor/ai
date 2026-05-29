@@ -102,6 +102,48 @@ func (ns NullContactForm) Value() (driver.Value, error) {
 	return string(ns.ContactForm), nil
 }
 
+type ModalityType string
+
+const (
+	ModalityTypeTherapy  ModalityType = "therapy"
+	ModalityTypeCoaching ModalityType = "coaching"
+)
+
+func (e *ModalityType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ModalityType(s)
+	case string:
+		*e = ModalityType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ModalityType: %T", src)
+	}
+	return nil
+}
+
+type NullModalityType struct {
+	ModalityType ModalityType `json:"modality_type"`
+	Valid        bool         `json:"valid"` // Valid is true if ModalityType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullModalityType) Scan(value interface{}) error {
+	if value == nil {
+		ns.ModalityType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ModalityType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullModalityType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ModalityType), nil
+}
+
 type NotificationStatus string
 
 const (
@@ -285,6 +327,7 @@ const (
 	PlanTierPRO     PlanTier = "PRO"
 	PlanTierCLINIC  PlanTier = "CLINIC"
 	PlanTierPATIENT PlanTier = "PATIENT"
+	PlanTierTRIAL   PlanTier = "TRIAL"
 )
 
 func (e *PlanTier) Scan(src interface{}) error {
@@ -410,17 +453,63 @@ func (ns NullRelationStatus) Value() (driver.Value, error) {
 	return string(ns.RelationStatus), nil
 }
 
+type ReservationStatus string
+
+const (
+	ReservationStatusACTIVE    ReservationStatus = "ACTIVE"
+	ReservationStatusCOMMITTED ReservationStatus = "COMMITTED"
+	ReservationStatusRELEASED  ReservationStatus = "RELEASED"
+	ReservationStatusEXPIRED   ReservationStatus = "EXPIRED"
+)
+
+func (e *ReservationStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ReservationStatus(s)
+	case string:
+		*e = ReservationStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ReservationStatus: %T", src)
+	}
+	return nil
+}
+
+type NullReservationStatus struct {
+	ReservationStatus ReservationStatus `json:"reservation_status"`
+	Valid             bool              `json:"valid"` // Valid is true if ReservationStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullReservationStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ReservationStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ReservationStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullReservationStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ReservationStatus), nil
+}
+
 type SessionStatus string
 
 const (
-	SessionStatusCREATED      SessionStatus = "CREATED"
-	SessionStatusRECORDING    SessionStatus = "RECORDING"
-	SessionStatusUPLOADING    SessionStatus = "UPLOADING"
-	SessionStatusTRANSCRIBING SessionStatus = "TRANSCRIBING"
-	SessionStatusANALYZING    SessionStatus = "ANALYZING"
-	SessionStatusCOMPLETED    SessionStatus = "COMPLETED"
-	SessionStatusFAILED       SessionStatus = "FAILED"
-	SessionStatusCANCELED     SessionStatus = "CANCELED"
+	SessionStatusPENDINGUPLOAD SessionStatus = "PENDING_UPLOAD"
+	SessionStatusCREATED       SessionStatus = "CREATED"
+	SessionStatusRECORDING     SessionStatus = "RECORDING"
+	SessionStatusUPLOADING     SessionStatus = "UPLOADING"
+	SessionStatusTRANSCRIBING  SessionStatus = "TRANSCRIBING"
+	SessionStatusMERGING       SessionStatus = "MERGING"
+	SessionStatusANALYZING     SessionStatus = "ANALYZING"
+	SessionStatusCOMPLETED     SessionStatus = "COMPLETED"
+	SessionStatusFAILED        SessionStatus = "FAILED"
+	SessionStatusCANCELED      SessionStatus = "CANCELED"
 )
 
 func (e *SessionStatus) Scan(src interface{}) error {
@@ -552,8 +641,10 @@ func (ns NullUploadStatus) Value() (driver.Value, error) {
 type UserRole string
 
 const (
-	UserRoleTHERAPIST UserRole = "THERAPIST"
-	UserRolePATIENT   UserRole = "PATIENT"
+	UserRoleTHERAPIST       UserRole = "THERAPIST"
+	UserRolePATIENT         UserRole = "PATIENT"
+	UserRoleORGADMIN        UserRole = "ORG_ADMIN"
+	UserRoleSUPERWIZORADMIN UserRole = "SUPERWIZOR_ADMIN"
 )
 
 func (e *UserRole) Scan(src interface{}) error {
@@ -604,6 +695,20 @@ type Address struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type AudioChunk struct {
+	ID            uuid.UUID `json:"id"`
+	AudioUploadID uuid.UUID `json:"audio_upload_id"`
+	ChunkIndex    int32     `json:"chunk_index"`
+	BucketName    string    `json:"bucket_name"`
+	ObjectPath    string    `json:"object_path"`
+	StartOffsetMs int64     `json:"start_offset_ms"`
+	SeamOffsetMs  int64     `json:"seam_offset_ms"`
+	EndOffsetMs   int64     `json:"end_offset_ms"`
+	OverlapMs     int32     `json:"overlap_ms"`
+	CutOnSilence  bool      `json:"cut_on_silence"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
 type AudioUpload struct {
 	ID                uuid.UUID          `json:"id"`
 	TherapistID       uuid.UUID          `json:"therapist_id"`
@@ -620,11 +725,12 @@ type AudioUpload struct {
 	UploadStartedAt   time.Time          `json:"upload_started_at"`
 	UploadCompletedAt pgtype.Timestamptz `json:"upload_completed_at"`
 	ExpiresAt         time.Time          `json:"expires_at"`
-	IdempotencyKey    *string            `json:"idempotency_key"`
-	ClientAppVersion  *string            `json:"client_app_version"`
-	ClientPlatform    *string            `json:"client_platform"`
-	ErrorMessage      *string            `json:"error_message"`
-	CreatedAt         time.Time          `json:"created_at"`
+	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out.
+	IdempotencyKey   *string   `json:"idempotency_key"`
+	ClientAppVersion *string   `json:"client_app_version"`
+	ClientPlatform   *string   `json:"client_platform"`
+	ErrorMessage     *string   `json:"error_message"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 type AuditEvent struct {
@@ -638,6 +744,8 @@ type AuditEvent struct {
 	IpAddress      *netip.Addr `json:"ip_address"`
 	UserAgent      *string     `json:"user_agent"`
 	OccurredAt     time.Time   `json:"occurred_at"`
+	// Operator-supplied rationale for admin mutations (SUPERWIZOR_ADMIN). NULL for non-admin events. Handler-level CHECK requires >=10 chars when actor role is SUPERWIZOR_ADMIN.
+	Reason *string `json:"reason"`
 }
 
 type FcmToken struct {
@@ -676,17 +784,30 @@ type HitopMeasurement struct {
 	MeasuredAt           time.Time      `json:"measured_at"`
 }
 
+type Invitation struct {
+	ID             uuid.UUID          `json:"id"`
+	OrganizationID uuid.UUID          `json:"organization_id"`
+	InvitedByUser  uuid.UUID          `json:"invited_by_user"`
+	Email          string             `json:"email"`
+	TokenHash      []byte             `json:"token_hash"`
+	ExpiresAt      time.Time          `json:"expires_at"`
+	AcceptedAt     pgtype.Timestamptz `json:"accepted_at"`
+	AcceptedUserID pgtype.UUID        `json:"accepted_user_id"`
+	CreatedAt      time.Time          `json:"created_at"`
+}
+
 type Modality struct {
-	ID                        uuid.UUID `json:"id"`
-	SystemCode                string    `json:"system_code"`
-	DisplayName               string    `json:"display_name"`
-	TherapistAiGeneralPrompt  []byte    `json:"therapist_ai_general_prompt"`
-	TherapistAiSectionPrompts []byte    `json:"therapist_ai_section_prompts"`
-	PatientAiGeneralPrompt    []byte    `json:"patient_ai_general_prompt"`
-	PatientAiSectionPrompts   []byte    `json:"patient_ai_section_prompts"`
-	IsSupported               bool      `json:"is_supported"`
-	CreatedAt                 time.Time `json:"created_at"`
-	UpdatedAt                 time.Time `json:"updated_at"`
+	ID                        uuid.UUID    `json:"id"`
+	SystemCode                string       `json:"system_code"`
+	DisplayName               string       `json:"display_name"`
+	TherapistAiGeneralPrompt  []byte       `json:"therapist_ai_general_prompt"`
+	TherapistAiSectionPrompts []byte       `json:"therapist_ai_section_prompts"`
+	PatientAiGeneralPrompt    []byte       `json:"patient_ai_general_prompt"`
+	PatientAiSectionPrompts   []byte       `json:"patient_ai_section_prompts"`
+	IsSupported               bool         `json:"is_supported"`
+	CreatedAt                 time.Time    `json:"created_at"`
+	UpdatedAt                 time.Time    `json:"updated_at"`
+	ModalityType              ModalityType `json:"modality_type"`
 }
 
 type NotificationDelivery struct {
@@ -733,6 +854,37 @@ type PatientFile struct {
 	CreatedAt             time.Time          `json:"created_at"`
 	UpdatedAt             time.Time          `json:"updated_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
+	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out (legacy clients).
+	IdempotencyKey *string `json:"idempotency_key"`
+}
+
+type PaymentEvent struct {
+	ID               uuid.UUID          `json:"id"`
+	SubscriptionID   pgtype.UUID        `json:"subscription_id"`
+	Provider         PaymentProvider    `json:"provider"`
+	ProviderEventID  string             `json:"provider_event_id"`
+	EventType        string             `json:"event_type"`
+	AmountGross      pgtype.Numeric     `json:"amount_gross"`
+	AmountNet        pgtype.Numeric     `json:"amount_net"`
+	VatRate          pgtype.Numeric     `json:"vat_rate"`
+	CurrencyCode     *string            `json:"currency_code"`
+	RawPayload       []byte             `json:"raw_payload"`
+	ProcessingStatus string             `json:"processing_status"`
+	ProcessedAt      pgtype.Timestamptz `json:"processed_at"`
+	ErrorMessage     *string            `json:"error_message"`
+	ReceivedAt       time.Time          `json:"received_at"`
+}
+
+type PendingReservation struct {
+	ID             uuid.UUID          `json:"id"`
+	SessionID      uuid.UUID          `json:"session_id"`
+	SubscriptionID uuid.UUID          `json:"subscription_id"`
+	OrganizationID uuid.UUID          `json:"organization_id"`
+	TokensReserved int32              `json:"tokens_reserved"`
+	Status         ReservationStatus  `json:"status"`
+	CreatedAt      time.Time          `json:"created_at"`
+	ExpiresAt      time.Time          `json:"expires_at"`
+	FinalizedAt    pgtype.Timestamptz `json:"finalized_at"`
 }
 
 // Suggestion engine telemetry. Pure analytics; safe to TRUNCATE. See docs/10_REPORT_CUSTOMIZATION.md §6.
@@ -821,6 +973,58 @@ type Session struct {
 	Name                  *string            `json:"name"`
 }
 
+type SttOperation struct {
+	ID                    uuid.UUID          `json:"id"`
+	SessionID             uuid.UUID          `json:"session_id"`
+	ChunkIndex            int32              `json:"chunk_index"`
+	ChunkCount            int32              `json:"chunk_count"`
+	StartOffsetMs         int64              `json:"start_offset_ms"`
+	OperationID           string             `json:"operation_id"`
+	GcsOutputUri          string             `json:"gcs_output_uri"`
+	LanguageCode          string             `json:"language_code"`
+	UsedNativeDiarization bool               `json:"used_native_diarization"`
+	SubmittedAt           time.Time          `json:"submitted_at"`
+	FinalizedAt           pgtype.Timestamptz `json:"finalized_at"`
+	FinalizeError         *string            `json:"finalize_error"`
+}
+
+type Subscription struct {
+	ID                             uuid.UUID          `json:"id"`
+	OrganizationID                 uuid.UUID          `json:"organization_id"`
+	PlanID                         uuid.UUID          `json:"plan_id"`
+	Provider                       PaymentProvider    `json:"provider"`
+	ProviderSubscriptionID         string             `json:"provider_subscription_id"`
+	ProviderCustomerIDCiphertext   []byte             `json:"provider_customer_id_ciphertext"`
+	ProviderCustomerIDEncryptedDek []byte             `json:"provider_customer_id_encrypted_dek"`
+	Status                         SubscriptionStatus `json:"status"`
+	CurrentPeriodStart             time.Time          `json:"current_period_start"`
+	CurrentPeriodEnd               time.Time          `json:"current_period_end"`
+	CancelAtPeriodEnd              bool               `json:"cancel_at_period_end"`
+	CanceledAt                     pgtype.Timestamptz `json:"canceled_at"`
+	TrialEndAt                     pgtype.Timestamptz `json:"trial_end_at"`
+	CreatedAt                      time.Time          `json:"created_at"`
+	UpdatedAt                      time.Time          `json:"updated_at"`
+}
+
+type SubscriptionPlan struct {
+	ID                   uuid.UUID      `json:"id"`
+	Tier                 PlanTier       `json:"tier"`
+	Cycle                BillingCycle   `json:"cycle"`
+	DisplayName          string         `json:"display_name"`
+	PriceGross           pgtype.Numeric `json:"price_gross"`
+	CurrencyCode         string         `json:"currency_code"`
+	TokensPerPeriod      int32          `json:"tokens_per_period"`
+	LicensesLimit        int32          `json:"licenses_limit"`
+	HasB2bDashboard      bool           `json:"has_b2b_dashboard"`
+	MarketingDescription *string        `json:"marketing_description"`
+	StripePriceID        *string        `json:"stripe_price_id"`
+	P24PlanID            *string        `json:"p24_plan_id"`
+	AppleProductID       *string        `json:"apple_product_id"`
+	GoogleProductID      *string        `json:"google_product_id"`
+	IsActive             bool           `json:"is_active"`
+	CreatedAt            time.Time      `json:"created_at"`
+}
+
 type TherapistPatientRelation struct {
 	ID           uuid.UUID          `json:"id"`
 	TherapistID  uuid.UUID          `json:"therapist_id"`
@@ -860,6 +1064,28 @@ type TranscriptSegment struct {
 	TextWordCount    *int32         `json:"text_word_count"`
 	Confidence       pgtype.Numeric `json:"confidence"`
 	CreatedAt        time.Time      `json:"created_at"`
+}
+
+type UsageCounter struct {
+	ID             uuid.UUID `json:"id"`
+	SubscriptionID uuid.UUID `json:"subscription_id"`
+	PeriodStart    time.Time `json:"period_start"`
+	PeriodEnd      time.Time `json:"period_end"`
+	TokensUsed     int32     `json:"tokens_used"`
+	TokensReserved int32     `json:"tokens_reserved"`
+	TokensLimit    int32     `json:"tokens_limit"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type UsageEvent struct {
+	ID              uuid.UUID `json:"id"`
+	SessionID       uuid.UUID `json:"session_id"`
+	SubscriptionID  uuid.UUID `json:"subscription_id"`
+	OrganizationID  uuid.UUID `json:"organization_id"`
+	TokensConsumed  int32     `json:"tokens_consumed"`
+	DurationSeconds int32     `json:"duration_seconds"`
+	UsageType       string    `json:"usage_type"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type User struct {

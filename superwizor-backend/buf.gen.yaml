@@ -5,6 +5,7 @@ managed:
     - file_option: go_package_prefix
       value: github.com/superwizor-ai/backend/gen/go
 plugins:
+  # ── Go side ─────────────────────────────────────────────────
   - remote: buf.build/protocolbuffers/go
     out: gen/go
     opt:
@@ -14,3 +15,34 @@ plugins:
     opt:
       - paths=source_relative
       - require_unimplemented_servers=true
+  # Connect-RPC handler stubs for Go. The same handler we register
+  # alongside grpc.Server in each service's cmd/server/main.go answers
+  # gRPC, gRPC-Web, AND the Connect protocol from one endpoint —
+  # browsers and the iOS app share a backend with zero protocol shims.
+  # See docs/18 §5 / R1.
+  - remote: buf.build/connectrpc/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+
+  # ── TypeScript side (Next.js marketing + admin site) ────────
+  # protoc-gen-es v2 emits messages AND service descriptors
+  # (`GenService<…>`) in one file (`*_pb.ts`). Connect-Web v2 consumes
+  # these descriptors directly via `createClient(MyService, transport)`
+  # — no separate connect plugin needed. The standalone
+  # `connectrpc/es` plugin is intentionally NOT used here: pinning its
+  # v1 generator against protoc-gen-es v2 outputs causes broken
+  # `./foo_pbjs` imports (the v1 plugin appends `js` without the dot
+  # and assumes the v1 message shape). docs/18 §5 / R1 is unchanged —
+  # the browser still speaks Connect against the same handler.
+  - remote: buf.build/bufbuild/es
+    out: gen/ts
+    opt:
+      - target=ts
+      # `ts` extension on imports: Next.js + Turbopack's `transpilePackages`
+      # mode resolves `.ts` cleanly across package boundaries, but the
+      # plugin's default `.js` extension makes Webpack/Turbopack hunt for
+      # a non-existent `_pb.js` sibling in cross-package imports
+      # (e.g. clinical_pb.ts → ../../billing/v1/billing_pb.js). Switching
+      # to `.ts` aligns the literal file path with what the bundler sees.
+      - import_extension=ts

@@ -21,7 +21,58 @@ service NotificationService {
   // Inbox count (badge support). Detail listing is Firestore-direct from Flutter.
   rpc GetUnreadCount(google.protobuf.Empty) returns (GetUnreadCountResponse);
 
+  // Web-app: send a transactional email (invitation magic-link).
+  // Internal RPC — callers are other backend services (identity-svc
+  // fires this from InviteTherapist), never the Flutter client.
+  // Locale picks the right body under
+  // services/notification-svc/internal/i18n/templates/{locale}/invitation.md.
+  rpc SendInvitationEmail(SendInvitationEmailRequest) returns (google.protobuf.Empty);
+
+  // Web-app: confirm-your-email link after self-serve registration.
+  // identity-svc generates the verify_url (Firebase Auth verification
+  // link, retrieved via Firebase Admin SDK) and delegates the email
+  // copy + delivery to notification-svc so the localized branding +
+  // template lives in one place.
+  rpc SendEmailVerification(SendEmailVerificationRequest) returns (google.protobuf.Empty);
+
+  // Web-app: 80% / 95% quota warning email. Fired by billing-svc when
+  // a CommitUsage crosses one of the thresholds for the first time
+  // in the current billing period. Idempotency lives in billing-svc
+  // (the threshold-crossing flag is per-period); this RPC always
+  // sends regardless.
+  rpc SendQuotaWarning(SendQuotaWarningRequest) returns (google.protobuf.Empty);
+
   rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
+}
+
+message SendInvitationEmailRequest {
+  string recipient_email     = 1;  // recipient (lowercased)
+  string organization_name   = 2;  // for the "you've been invited to X" line
+  string inviter_first_name  = 3;  // who sent the invite
+  string accept_url          = 4;  // full URL incl. token
+  string expires_at_iso      = 5;  // ISO-8601 expiry timestamp; renderer formats
+  string locale              = 6;  // 'pl' | 'en'; falls back to 'pl' if unknown
+}
+
+message SendEmailVerificationRequest {
+  string recipient_email = 1;  // recipient (lowercased)
+  string first_name      = 2;  // for the greeting
+  string verify_url      = 3;  // Firebase Auth verification link
+  string expires_at_iso  = 4;  // ISO-8601; mirrors invitation's contract
+  string locale          = 5;  // 'pl' | 'en'; falls back to 'pl' if unknown
+}
+
+message SendQuotaWarningRequest {
+  string recipient_email   = 1;  // ORG_ADMIN's email
+  string first_name        = 2;
+  string organization_name = 3;
+  int32  usage_percent     = 4;  // 80 or 95 today; renderer formats as "80%"
+  int32  tokens_remaining  = 5;  // tokens left before the period rolls
+  string plan_tier         = 6;  // "TRIAL" | "SOLO" | "PRO" | "CLINIC"
+  string plan_cycle        = 7;  // "MONTHLY" | "ANNUAL"
+  string period_end_iso    = 8;  // ISO-8601 end of current period
+  string billing_url       = 9;  // deep link to the billing panel
+  string locale            = 10; // 'pl' | 'en'; falls back to 'pl' if unknown
 }
 
 // RegisterFCMToken upserts an FCM token for the authenticated user.

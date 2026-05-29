@@ -40,6 +40,23 @@ service BillingService {
 
   // Stan subskrypcji + bieżące zużycie.
   rpc GetSubscription(GetSubscriptionRequest) returns (Subscription);
+
+  // ─── Web app: SUPERWIZOR_ADMIN actions (docs/18 §6.1, §13.7) ──
+  // Both RPCs are role-gated at the handler level (caller must
+  // have role=SUPERWIZOR_ADMIN). Both write audit_events with
+  // reason (>=10 chars enforced at the handler) and actor_type=
+  // SUPERWIZOR_ADMIN. Idempotency-key cache de-dupes retries.
+
+  // Sets usage_counters.tokens_used (and optionally tokens_limit)
+  // on the org's current active counter. Used for support escapes
+  // — refunds, manual top-ups, period rolls. Returns the fresh
+  // Subscription proto so the admin UI updates inline.
+  rpc AdminResetTokens(AdminResetTokensRequest) returns (Subscription);
+
+  // Changes the org's subscription plan_tier + plan_cycle. Creates
+  // a new usage_counters row at the new plan's tokens_limit, marks
+  // the old counter inactive. Returns the fresh Subscription.
+  rpc AdminChangePlan(AdminChangePlanRequest) returns (Subscription);
 }
 
 message CheckQuotaRequest {
@@ -143,4 +160,33 @@ message Subscription {
   // never have to reimplement the formula (max(0, limit - used - reserved)).
   string plan_cycle                  = 11;  // MONTHLY | ANNUAL
   int32  tokens_remaining            = 12;  // = max(0, limit - used - reserved)
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Web admin messages — docs/18 §13.7 (Superwizor admin org form).
+// ──────────────────────────────────────────────────────────────────
+
+message AdminResetTokensRequest {
+  string organization_id = 1;
+  // New value for usage_counters.tokens_used. Must be >= 0.
+  // Pass -1 to leave tokens_used unchanged (limit-only updates).
+  int32 tokens_used = 2;
+  // Optional override on tokens_limit. Pass -1 to leave it untouched
+  // (only adjust tokens_used). When set, must be > 0.
+  int32 tokens_limit = 3;
+  // Required, >= 10 chars. Stored on audit_events.reason.
+  string reason = 4;
+  string idempotency_key = 5;
+}
+
+message AdminChangePlanRequest {
+  string organization_id = 1;
+  // Target plan_tier (SOLO | PRO | CLINIC | TRIAL) and cycle
+  // (MONTHLY | ANNUAL). Resolves to a subscription_plans row at
+  // handler time.
+  string plan_tier = 2;
+  string plan_cycle = 3;
+  // Required, >= 10 chars.
+  string reason = 4;
+  string idempotency_key = 5;
 }

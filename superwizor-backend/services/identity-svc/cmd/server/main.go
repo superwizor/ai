@@ -2,19 +2,37 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
-	"net"
+	nethttp "net/http"
+	"net/url"
 	"os"
+	"os/signal"
+	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
+	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
+	"connectrpc.com/connect"
+
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	identityv1connect "github.com/superwizor-ai/backend/gen/go/identity/v1/identityv1connect"
+	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
+	"github.com/superwizor-ai/backend/pkg/connectmd"
+	"github.com/superwizor-ai/backend/pkg/cors"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/firebase"
 	grpcadapter "github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/postgres/db"
@@ -109,36 +127,129 @@ func main() {
 		os.Exit(1)
 	}
 
-	// gRPC server
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		slog.Error("listen failed", "error", err)
-		os.Exit(1)
-	}
-
 	tp := initTracer()
 	defer func() { _ = tp.Shutdown(ctx) }()
 
+	// Build identity-svc Server. If NOTIFICATION_SVC_URL is set, dial
+	// notification-svc and wire the real InvitationEmailer so
+	// InviteTherapist sends actual emails via Resend. Without the env
+	// var the default NoopEmailSender just logs — fine for local dev
+	// and contract tests.
+	identityServer := grpcadapter.NewServer(pool, queries, authClient, version)
+	if notifURL := os.Getenv("NOTIFICATION_SVC_URL"); notifURL != "" {
+		notifClient, err := newNotificationClient(ctx, notifURL)
+		if err != nil {
+			slog.Warn("identity-svc: could not dial notification-svc; staying on NoopEmailSender",
+				"url", notifURL, "error", err)
+		} else {
+			identityServer = identityServer.WithEmailer(
+				grpcadapter.NewNotificationServiceEmailer(notifClient))
+			slog.Info("identity-svc: invitation emails via notification-svc enabled",
+				"url", notifURL)
+		}
+	} else {
+		slog.Warn("NOTIFICATION_SVC_URL unset — invitation emails are NoopEmailSender only")
+	}
+	if acceptBase := os.Getenv("ACCEPT_URL_BASE"); acceptBase != "" {
+		identityServer = identityServer.WithAcceptURLBase(acceptBase)
+	}
+
+	// gRPC surface — used by iOS + server-to-server callers via
+	// the application/grpc content-type path.
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 	)
-
-	// Register identity service
-	identityv1.RegisterIdentityServiceServer(grpcServer, grpcadapter.NewServer(pool, queries, authClient, version))
-
-	// Health checks (Cloud Run probe)
+	identityv1.RegisterIdentityServiceServer(grpcServer, identityServer)
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(grpcServer, healthServer)
-
-	// Reflection (dla grpcurl debug)
 	reflection.Register(grpcServer)
 
-	slog.Info("identity-svc starting", "port", port, "version", version)
-	if err := grpcServer.Serve(lis); err != nil {
-		slog.Error("serve failed", "error", err)
-		os.Exit(1)
+	// Connect-RPC surface — same business logic, exposed as the
+	// connect/gRPC-Web/Connect family of protocols for browser
+	// callers. ConnectAdapter wraps each gRPC method 1:1.
+	//
+	// The HeadersToGRPCMetadata interceptor copies the HTTP request
+	// headers into the ctx as gRPC IncomingMetadata so handlers that
+	// read `metadata.FromIncomingContext(ctx)` (the auth helpers,
+	// etc.) work identically whether the request arrived as native
+	// gRPC (iOS) or as Connect (browser). Without this every browser
+	// RPC that requires auth returns "Unauthenticated: no gRPC
+	// metadata" — the bug behind the 2026-05-28 marketing-site signup
+	// regression. See pkg/connectmd for the writeup.
+	httpMux := nethttp.NewServeMux()
+	connectPath, connectHandler := identityv1connect.NewIdentityServiceHandler(
+		grpcadapter.NewConnectAdapter(identityServer),
+		connect.WithInterceptors(connectmd.HeadersToGRPCMetadata()),
+	)
+	httpMux.Handle(connectPath, connectHandler)
+	httpMux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
+		w.WriteHeader(nethttp.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	// Mixed handler: dispatch on Content-Type so a single listener
+	// serves all three protocols (native gRPC, gRPC-Web, Connect).
+	//
+	//   application/grpc            -> standard gRPC server (iOS, server-to-server)
+	//   application/grpc-web[+...]  -> Connect handler (Flutter web)
+	//   application/{json,connect+}  -> Connect handler (marketing-site)
+	//
+	// The Connect handler is a 3-protocol multiplexer — registering a
+	// Connect handler implicitly exposes the same RPCs over gRPC-Web
+	// without any extra wrapping. Before this dispatch, gRPC-Web
+	// requests landed at the plain gRPC server which doesn't speak
+	// gRPC-Web framing, so it rejected with 415. The 2026-05-28
+	// Flutter-web login probe exposed this — see PROGRESS.md.
+	mixedHandler := nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		ct := r.Header.Get("Content-Type")
+		if r.ProtoMajor == 2 && strings.HasPrefix(ct, "application/grpc") {
+			if strings.HasPrefix(ct, "application/grpc-web") {
+				httpMux.ServeHTTP(w, r)
+				return
+			}
+			grpcServer.ServeHTTP(w, r)
+			return
+		}
+		httpMux.ServeHTTP(w, r)
+	})
+
+	// CORS for browser-facing Connect-RPC. Server-to-server callers
+	// (iOS, clinical-svc proxy, Cloud Scheduler) don't send Origin
+	// and pass through untouched.
+	corsOrigins := getEnv("CORS_ALLOWED_ORIGINS",
+		"https://superwizor.ai,https://app.superwizor.ai,http://localhost:3000,http://localhost:8080")
+	corsMW := cors.New(cors.FromEnv(corsOrigins))
+
+	h2s := &http2.Server{}
+	httpSrv := &nethttp.Server{
+		Addr:              ":" + port,
+		Handler:           h2c.NewHandler(corsMW(mixedHandler), h2s),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
+
+	rootCtx, cancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		slog.Info("identity-svc starting (gRPC + Connect + HTTP mixed)",
+			"port", port, "version", version)
+		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, nethttp.ErrServerClosed) {
+			slog.Error("serve failed", "error", err)
+		}
+	}()
+
+	<-rootCtx.Done()
+	slog.Info("identity-svc shutdown signal received")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+	grpcServer.GracefulStop()
+	_ = httpSrv.Shutdown(shutdownCtx)
+	wg.Wait()
+	slog.Info("identity-svc stopped")
 }
 
 func getEnv(key, fallback string) string {
@@ -146,4 +257,47 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// newNotificationClient dials notification-svc with Cloud Run
+// service-to-service OIDC auth when the URL is https:// (idtoken
+// minted by metadata server, audience = service URL). Falls back to
+// insecure credentials for http:// (local dev). Same pattern as
+// ingestion-svc / clinical-svc.
+func newNotificationClient(ctx context.Context, serviceURL string) (notificationv1.NotificationServiceClient, error) {
+	if len(serviceURL) >= 5 && serviceURL[:5] == "https" {
+		tokenSource, err := idtoken.NewTokenSource(ctx, serviceURL)
+		if err != nil {
+			return nil, fmt.Errorf("idtoken: %w", err)
+		}
+		u, err := url.Parse(serviceURL)
+		if err != nil {
+			return nil, fmt.Errorf("parse url: %w", err)
+		}
+		target := u.Host
+		if u.Port() == "" {
+			target = u.Host + ":443"
+		}
+		conn, err := grpc.NewClient(target,
+			grpc.WithTransportCredentials(credentials.NewTLS(nil)),
+			grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("dial: %w", err)
+		}
+		return notificationv1.NewNotificationServiceClient(conn), nil
+	}
+	u, err := url.Parse(serviceURL)
+	if err != nil {
+		return nil, err
+	}
+	target := u.Host
+	if target == "" {
+		target = serviceURL
+	}
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	return notificationv1.NewNotificationServiceClient(conn), nil
 }

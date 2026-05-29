@@ -1,0 +1,709 @@
+{
+  "metadata": {
+    "title": "Superwizor AI — drugi mózg superwizora",
+    "description": "Polski co-pilot dla terapeutów i superwizorów. Nagraj sesję, otrzymaj transkrypcję, raport i wskazówki w kilka minut.",
+    "ogSiteName": "Superwizor AI"
+  },
+  "admin": {
+    "metaTitle": "Panel administracyjny",
+    "loading": "Sprawdzanie uprawnień…",
+    "signinRequired": "Musisz się zalogować, aby uzyskać dostęp do panelu administracyjnego.",
+    "signinCta": "Zaloguj się",
+    "forbiddenTitle": "Brak dostępu",
+    "forbiddenBody": "Twoje konto nie ma uprawnień administratora Superwizora. Skontaktuj się z zespołem, jeśli powinieneś mieć dostęp.",
+    "backToLanding": "Powrót do strony głównej",
+    "sidebar": {
+      "dashboard": "Pulpit",
+      "orgs": "Organizacje",
+      "users": "Użytkownicy",
+      "sessions": "Sesje",
+      "audit": "Dziennik audytowy"
+    },
+    "header": {
+      "signOut": "Wyloguj",
+      "signedInAs": "Zalogowany jako"
+    },
+    "home": {
+      "overline": "Panel administracyjny",
+      "title": "Witaj, {firstName}",
+      "subhead": "Tu pojawi się pulpit ze statystykami. Wybierz sekcję z menu po lewej.",
+      "cardOrgs": "Organizacje",
+      "cardOrgsBody": "Lista wszystkich organizacji z filtrowaniem, blokowaniem i zmianą planów.",
+      "cardUsers": "Użytkownicy",
+      "cardUsersBody": "Globalna lista użytkowników. Edycja, dezaktywacja, reset hasła.",
+      "cardAudit": "Dziennik audytowy",
+      "cardAuditBody": "Pełna historia działań administracyjnych z filtrami."
+    },
+    "orgs": {
+      "metaTitle": "Organizacje",
+      "title": "Organizacje",
+      "subhead": "Wszystkie kliniki, gabinety i podmioty z konta Superwizora.",
+      "searchPlaceholder": "Szukaj po nazwie…",
+      "loading": "Ładowanie listy organizacji…",
+      "empty": "Brak organizacji do wyświetlenia.",
+      "error": "Nie udało się pobrać listy organizacji.",
+      "retry": "Spróbuj ponownie",
+      "prev": "Poprzednia strona",
+      "next": "Następna strona",
+      "columns": {
+        "legalName": "Nazwa",
+        "type": "Typ",
+        "status": "Status",
+        "therapists": "Terapeuci",
+        "lastActivity": "Ostatnia aktywność",
+        "actions": "Akcje"
+      },
+      "status": {
+        "active": "Aktywna",
+        "blocked": "Zablokowana"
+      },
+      "typeLabel": {
+        "SOLO": "Solo",
+        "CLINIC": "Klinika",
+        "ENTERPRISE": "Korporacja"
+      },
+      "noLastActivity": "—",
+      "view": "Szczegóły"
+    },
+    "orgDetail": {
+      "metaTitle": "Organizacja",
+      "loading": "Ładowanie danych organizacji…",
+      "notFound": "Nie znaleziono organizacji.",
+      "backToList": "Wróć do listy",
+      "sectionDetails": "Dane podstawowe",
+      "sectionTherapists": "Terapeuci",
+      "sectionAudit": "Ostatnie zdarzenia",
+      "noTherapists": "Brak terapeutów w tej organizacji.",
+      "noAudit": "Brak zdarzeń w dzienniku audytowym."
+    },
+    "sessions": {
+      "metaTitle": "Aktywność sesji",
+      "title": "Aktywność sesji terapeutów",
+      "intro": "Ostatnie sesje wgrane do systemu — wszystkie organizacje. Domyślnie ostatnie 24 godziny.",
+      "filters": {
+        "since": "Od dnia",
+        "until": "Do dnia",
+        "therapist": "Terapeuta",
+        "therapistPlaceholder": "Imię, nazwisko lub e-mail"
+      },
+      "table": {
+        "createdAt": "Wgrane",
+        "sessionDate": "Data sesji",
+        "duration": "Czas trwania",
+        "durationMissing": "—",
+        "status": "Status",
+        "therapist": "Terapeuta",
+        "organization": "Organizacja",
+        "planName": "Plan",
+        "periodEnd": "Koniec okresu",
+        "tokensUsed": "Wykorzystane tokeny"
+      },
+      "pagination": {
+        "prev": "Poprzednia",
+        "next": "Następna",
+        "page": "Strona {page}"
+      },
+      "export": {
+        "button": "Eksportuj CSV",
+        "busy": "Przygotowuję…",
+        "truncated": "Eksport ograniczony do {max} wierszy. Zawęź zakres dat, aby pobrać wszystkie."
+      },
+      "empty": "Brak sesji spełniających kryteria.",
+      "errors": {
+        "loadFailed": "Nie udało się pobrać listy sesji. Spróbuj ponownie."
+      },
+      "csv": {
+        "createdAt": "wgrane_utc",
+        "sessionDate": "data_sesji",
+        "durationMinutes": "czas_trwania_min",
+        "status": "status",
+        "therapistName": "terapeuta",
+        "therapistEmail": "email",
+        "organization": "organizacja",
+        "planName": "plan",
+        "periodEnd": "koniec_okresu",
+        "tokensUsed": "wykorzystane_tokeny",
+        "sessionId": "session_id"
+      }
+    },
+    "audit": {
+      "metaTitle": "Dziennik audytowy",
+      "title": "Dziennik audytowy",
+      "subhead": "Globalna historia działań administracyjnych — wszystkie organizacje.",
+      "actorEmailLabel": "E-mail wykonującego",
+      "actionLabel": "Akcja",
+      "anyAction": "Wszystkie akcje",
+      "sinceLabel": "Od dnia",
+      "untilLabel": "Do dnia",
+      "loading": "Ładowanie dziennika…",
+      "empty": "Brak zdarzeń spełniających kryteria filtrów.",
+      "error": "Nie udało się pobrać dziennika.",
+      "retry": "Spróbuj ponownie",
+      "prev": "Poprzednia strona",
+      "next": "Następna strona",
+      "col": {
+        "occurred": "Data",
+        "actor": "Wykonujący",
+        "action": "Akcja",
+        "resource": "Zasób",
+        "reason": "Powód"
+      }
+    },
+    "users": {
+      "metaTitle": "Użytkownicy",
+      "title": "Użytkownicy",
+      "subhead": "Wszyscy użytkownicy konta Superwizora — terapeuci, administratorzy, pacjenci.",
+      "searchPlaceholder": "Szukaj po imieniu lub e-mailu…",
+      "roleFilterAll": "Wszystkie role",
+      "loading": "Ładowanie listy użytkowników…",
+      "empty": "Brak użytkowników do wyświetlenia.",
+      "error": "Nie udało się pobrać listy.",
+      "retry": "Spróbuj ponownie",
+      "prev": "Poprzednia strona",
+      "next": "Następna strona",
+      "columns": {
+        "name": "Imię i nazwisko",
+        "email": "E-mail",
+        "role": "Rola",
+        "orgId": "Organizacja",
+        "actions": "Akcje"
+      },
+      "edit": "Edytuj",
+      "delete": "Usuń",
+      "editTitle": "Edytuj użytkownika",
+      "editBody": "Zmiany trafiają do dziennika audytowego.",
+      "deleteTitle": "Usuń użytkownika",
+      "deleteBody": "Soft-delete — wpis pozostaje w bazie z ustawioną kolumną deleted_at.",
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
+      "email": "E-mail",
+      "phone": "Telefon",
+      "role": "Rola",
+      "uiLanguage": "Język interfejsu",
+      "polish": "Polski",
+      "english": "English",
+      "professionalTitle": "Tytuł zawodowy",
+      "credentialsNumber": "Numer uprawnień",
+      "biography": "Biografia (publiczna)",
+      "avatarUrl": "URL awatara",
+      "organizationId": "ID organizacji (transfer)",
+      "organizationIdHint": "UUID organizacji docelowej. Skopiuj z /admin/orgs. Pozostaw bez zmian, aby nie przenosić użytkownika.",
+      "defaultModalityId": "Domyślna modalność (UUID)",
+      "defaultModalityIdHint": "UUID z tabeli modalities. Lista nie jest jeszcze dostępna w panelu — wpisz ręcznie.",
+      "billingAddressTitle": "Adres rozliczeniowy",
+      "billingAddressHint": "Wypełnij tylko jeśli chcesz nadpisać istniejący adres. Bieżące dane nie są widoczne w tym formularzu (proto User zawiera wyłącznie billing_address_id).",
+      "noChange": "Wprowadź jakąkolwiek zmianę przed potwierdzeniem.",
+      "roleLabel": {
+        "USER_ROLE_THERAPIST": "Terapeuta",
+        "USER_ROLE_PATIENT": "Pacjent",
+        "USER_ROLE_ORG_ADMIN": "Admin org.",
+        "USER_ROLE_SUPERWIZOR_ADMIN": "Admin Superwizor",
+        "USER_ROLE_UNSPECIFIED": "Brak"
+      }
+    },
+    "orgEdit": {
+      "edit": "Edytuj",
+      "title": "Edytuj dane organizacji",
+      "body": "Zmiany zapisują się natychmiast i trafiają do dziennika audytowego.",
+      "legalNameLabel": "Pełna nazwa firmy",
+      "typeLabel": "Typ organizacji",
+      "taxIdLabel": "NIP",
+      "vatIdEuLabel": "EU VAT ID",
+      "addressTitle": "Adres siedziby",
+      "primaryAdminLabel": "Główny administrator (transfer własności)",
+      "primaryAdminUnchanged": "— bez zmian —",
+      "primaryAdminHint": "Wybór z listy terapeutów tej organizacji. Aby przekazać własność osobie spoza listy, najpierw zmień jej rolę na ORG_ADMIN przez edycję użytkownika.",
+      "noChange": "Wprowadź jakąkolwiek zmianę przed potwierdzeniem."
+    },
+    "address": {
+      "countryCode": "Kraj (ISO 3166-1)",
+      "region": "Województwo",
+      "city": "Miasto",
+      "postalCode": "Kod pocztowy",
+      "streetLine": "Ulica",
+      "buildingNumber": "Numer budynku",
+      "unitNumber": "Numer lokalu",
+      "directions": "Wskazówki dojazdu"
+    },
+    "actions": {
+      "block": "Zablokuj",
+      "unblock": "Odblokuj",
+      "resetTokens": "Zresetuj tokeny",
+      "changePlan": "Zmień plan",
+      "blockTitle": "Zablokuj organizację",
+      "blockBody": "Organizacja straci dostęp do aplikacji do czasu odblokowania.",
+      "unblockTitle": "Odblokuj organizację",
+      "unblockBody": "Organizacja odzyska pełny dostęp do aplikacji.",
+      "resetTokensTitle": "Zresetuj wykorzystane tokeny",
+      "resetTokensBody": "Ustaw nową wartość licznika tokens_used dla bieżącego okresu rozliczeniowego.",
+      "tokensUsedLabel": "Nowa wartość tokens_used",
+      "tokensLimitLabel": "Nowa wartość tokens_limit (opcjonalnie, puste = bez zmian)",
+      "changePlanTitle": "Zmień plan",
+      "changePlanBody": "Zmiana wchodzi w życie natychmiast. Nowy okres rozliczeniowy startuje teraz.",
+      "tierLabel": "Tier",
+      "cycleLabel": "Okres rozliczeniowy",
+      "cycleMonthly": "Miesięcznie",
+      "cycleAnnual": "Rocznie",
+      "reasonLabel": "Powód (wymagane, min 10 znaków)",
+      "reasonPlaceholder": "Opisz powód działania — trafia do dziennika audytowego.",
+      "reasonTooShort": "Powód musi mieć co najmniej 10 znaków.",
+      "cancel": "Anuluj",
+      "confirm": "Potwierdź",
+      "submitting": "Wykonywanie…",
+      "errorGeneric": "Nie udało się wykonać akcji."
+    },
+    "signinEmailLabel": "Email",
+    "signinPasswordLabel": "Hasło",
+    "signinSubmit": "Zaloguj się",
+    "signinSubmitting": "Logowanie…",
+    "signinErrorBadCreds": "Nieprawidłowy email lub hasło.",
+    "signinErrorGeneric": "Wystąpił błąd podczas logowania. Spróbuj ponownie."
+  },
+  "errors": {
+    "generic": "Coś poszło nie tak. Spróbuj ponownie za chwilę.",
+    "code": {
+      "canceled": "Operacja została anulowana.",
+      "unknown": "Wystąpił nieznany błąd.",
+      "invalidArgument": "Nieprawidłowe dane formularza. Sprawdź wprowadzone wartości.",
+      "deadlineExceeded": "Operacja trwała zbyt długo. Spróbuj ponownie.",
+      "notFound": "Nie znaleziono żądanego zasobu.",
+      "alreadyExists": "Taki wpis już istnieje.",
+      "permissionDenied": "Brak uprawnień do wykonania tej akcji.",
+      "resourceExhausted": "Limit został wyczerpany. Skontaktuj się z administratorem konta.",
+      "failedPrecondition": "Operacja nie może zostać wykonana w obecnym stanie.",
+      "aborted": "Operacja została przerwana. Spróbuj ponownie.",
+      "outOfRange": "Wartość poza dopuszczalnym zakresem.",
+      "unimplemented": "Funkcja nie jest jeszcze dostępna.",
+      "internal": "Błąd serwera. Spróbuj ponownie za chwilę.",
+      "unavailable": "Usługa tymczasowo niedostępna. Spróbuj ponownie za chwilę.",
+      "dataLoss": "Wystąpił błąd integralności danych.",
+      "unauthenticated": "Musisz być zalogowana/y, aby wykonać tę akcję."
+    },
+    "backend": {
+      "reasonTooShort": "Powód musi mieć przynajmniej 10 znaków.",
+      "invitationExpired": "Zaproszenie wygasło. Poproś o nowe.",
+      "invitationAccepted": "Zaproszenie zostało już wykorzystane.",
+      "quotaExceeded": "Limit tokenów został wyczerpany dla bieżącego okresu rozliczeniowego.",
+      "subscriptionPastDue": "Subskrypcja organizacji wymaga aktualizacji płatności.",
+      "alreadyExists": "Taki wpis już istnieje (np. e-mail jest już zarejestrowany)."
+    }
+  },
+  "nav": {
+    "skipToContent": "Przejdź do treści",
+    "brand": "Superwizor AI",
+    "login": "Zaloguj się",
+    "register": "Zarejestruj się",
+    "pricing": "Cennik",
+    "languageSwitcher": "Język",
+    "polish": "Polski",
+    "english": "English"
+  },
+  "hero": {
+    "overline": "Polski co-pilot dla psychoterapeutów",
+    "headingPrefix": "Superwizor AI",
+    "headingAccent": "poznawczy partner w gabinecie terapeutycznym",
+    "headingPunctuation": ".",
+    "subhead": "Superwizor AI pomaga specjalistom zdrowia psychicznego odzyskać przestrzeń mentalną na uważne spotkania z pacjentami, jednocześnie wspierając ciągłość procesu terapeutycznego i głębsze rozumienie pacjenta.",
+    "ctaPrimary": "Zarejestruj się",
+    "ctaSecondary": "Zobacz, jak działa"
+  },
+  "how": {
+    "overline": "Jak to działa",
+    "heading": "Trzy kroki od sesji do raportu",
+    "steps": {
+      "record": {
+        "tag": "01",
+        "title": "Nagraj",
+        "body": "Otwórz aplikację mobilną i włącz nagrywanie. Audio jest szyfrowane i przesyłane na nasze serwery w Europie."
+      },
+      "process": {
+        "tag": "02",
+        "title": "AI przetwarza",
+        "body": "Transkrypcja, podział na role, oznaczenie wątków klinicznych i ocena ryzyka — wszystko po polsku."
+      },
+      "report": {
+        "tag": "03",
+        "title": "Otrzymaj raport",
+        "body": "Pełny raport z sesji, wskazówki superwizyjne i propozycje interwencji — w kilka minut, gotowe do superwizji."
+      }
+    }
+  },
+  "features": {
+    "overline": "Co dostajesz",
+    "heading": "Wszystko, czego potrzebuje superwizor",
+    "items": {
+      "transcript": {
+        "title": "Pełna transkrypcja po polsku",
+        "body": "Diaryzacja, znaczniki czasu, łatwe wyszukiwanie. Eksport do PDF jednym kliknięciem."
+      },
+      "report": {
+        "title": "Raport kliniczny",
+        "body": "Sekcje gotowe pod superwizję: tematy sesji, hipotezy diagnostyczne, ocena ryzyka, sugerowane interwencje."
+      },
+      "supervisor": {
+        "title": "Wskazówki superwizyjne",
+        "body": "AI wskazuje miejsca, w których warto się zatrzymać — utracone okazje terapeutyczne, wzorce, alarmujące sygnały."
+      },
+      "rodo": {
+        "title": "RODO i bezpieczeństwo",
+        "body": "Dane szyfrowane end-to-end, hostowane w UE, dostęp wyłącznie dla terapeuty. Bez treningu modeli na Twoich danych."
+      },
+      "team": {
+        "title": "Tryb organizacyjny",
+        "body": "Dla gabinetów: zarządzanie zespołem, wspólne rozliczanie tokenów, faktura na klinikę."
+      },
+      "supports": {
+        "title": "iOS i web",
+        "body": "Nagrywaj z iPhona, czytaj raporty na komputerze. Wkrótce Android."
+      }
+    }
+  },
+  "audience": {
+    "overline": "Dla kogo",
+    "heading": "Praktyka prywatna, ośrodki, superwizorzy",
+    "items": {
+      "therapist": {
+        "title": "Psychoterapeuci",
+        "body": "Spędzaj mniej czasu na pisaniu notatek, więcej na sesji. Solidny materiał do własnej superwizji."
+      },
+      "supervisor": {
+        "title": "Superwizorzy",
+        "body": "Pełen transkrypt i raport przed sesją superwizyjną. Łatwiejsze omówienie, dokładniejsza informacja zwrotna."
+      },
+      "clinic": {
+        "title": "Ośrodki terapeutyczne",
+        "body": "Standard pracy z dokumentacją w całym zespole. Jeden rachunek, jasne rozliczenie."
+      }
+    }
+  },
+  "cta": {
+    "heading": "Wypróbuj 3 darmowe sesje",
+    "body": "Bez karty, bez zobowiązań. Trial obejmuje pełną funkcjonalność — transkrypcję, raport i wskazówki.",
+    "primary": "Zarejestruj się",
+    "secondary": "Zobacz cennik"
+  },
+  "register": {
+    "common": {
+      "submit": "Załóż konto",
+      "submitting": "Tworzenie konta…",
+      "alreadyHaveAccount": "Masz już konto?",
+      "loginCta": "Zaloguj się",
+      "useEmailInstead": "Albo użyj adresu e-mail",
+      "useSocialInstead": "Albo zaloguj się przez Google",
+      "or": "lub",
+      "google": "Kontynuuj z Google",
+      "apple": "Kontynuuj z Apple",
+      "microsoft": "Kontynuuj z Microsoft",
+      "consentToS": "Akceptuję <termsLink>regulamin</termsLink> oraz <privacyLink>politykę prywatności</privacyLink>.",
+      "consentMarketing": "Chcę otrzymywać informacje o nowościach i ofertach Superwizor AI."
+    },
+    "fields": {
+      "email": "Adres e-mail",
+      "password": "Hasło",
+      "passwordHint": "Min. 8 znaków, jedna cyfra.",
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
+      "professionalTitle": "Tytuł zawodowy (opcjonalnie)",
+      "professionalTitlePlaceholder": "np. Psycholog, terapeuta CBT",
+      "credentialsNumber": "Numer prawa wykonywania zawodu (opcjonalnie)",
+      "defaultModality": "Główny nurt terapeutyczny",
+      "uiLanguage": "Język interfejsu",
+      "phoneNumber": "Numer telefonu (opcjonalnie)",
+      "phoneNumberPlaceholder": "+48 123 456 789",
+      "terms": "regulamin",
+      "privacy": "politykę prywatności",
+      "polish": "Polski",
+      "english": "English"
+    },
+    "errors": {
+      "emailInvalid": "Wprowadź poprawny adres e-mail.",
+      "passwordTooShort": "Hasło musi mieć co najmniej 8 znaków.",
+      "passwordNoNumber": "Hasło musi zawierać co najmniej jedną cyfrę.",
+      "firstNameRequired": "Imię jest wymagane.",
+      "lastNameRequired": "Nazwisko jest wymagane.",
+      "modalityRequired": "Wybierz główny nurt terapeutyczny.",
+      "tosRequired": "Musisz zaakceptować regulamin, aby się zarejestrować.",
+      "emailAlreadyInUse": "Ten adres e-mail jest już zarejestrowany. Spróbuj się zalogować.",
+      "weakPassword": "Hasło jest zbyt słabe.",
+      "phoneInvalid": "Numer telefonu powinien zawierać 6–18 cyfr; dozwolone są spacje, myślniki i nawiasy.",
+      "networkError": "Brak połączenia z serwerem. Spróbuj ponownie.",
+      "unknown": "Coś poszło nie tak. Spróbuj ponownie."
+    },
+    "therapist": {
+      "metaTitle": "Rejestracja terapeuty",
+      "overline": "Rejestracja",
+      "title": "Zarejestruj się jako terapeuta",
+      "subhead": "Otrzymasz 3 darmowe sesje na początek. Bez karty kredytowej.",
+      "sectionAccount": "Twoje konto",
+      "sectionProfile": "Twój profil",
+      "finishMetaTitle": "Dokończ profil",
+      "finishTitle": "Dokończ swój profil",
+      "finishSubhead": "Witaj {firstName}. Wybierz nurt terapeutyczny i język interfejsu, aby aktywować konto.",
+      "finishGenericSubhead": "Wybierz nurt terapeutyczny i język interfejsu, aby aktywować konto."
+    },
+    "organization": {
+      "metaTitle": "Rejestracja organizacji",
+      "overline": "Rejestracja organizacji",
+      "title": "Załóż konto kliniki",
+      "subhead": "Po rejestracji będziesz administratorem kliniki. Aby również prowadzić sesje, zaproś drugi adres e-mail z zakładki Terapeuci.",
+      "sectionFounder": "Konto założyciela",
+      "sectionOrg": "Dane organizacji",
+      "sectionAddress": "Adres siedziby",
+      "finishMetaTitle": "Dokończ profil organizacji",
+      "finishTitle": "Dokończ rejestrację kliniki",
+      "finishSubhead": "Witaj {firstName}. Uzupełnij dane organizacji i adres siedziby, aby aktywować konto administratora.",
+      "finishGenericSubhead": "Uzupełnij dane organizacji i adres siedziby, aby aktywować konto administratora."
+    },
+    "orgFields": {
+      "legalName": "Pełna nazwa firmy",
+      "legalNamePlaceholder": "np. Centrum Psychoterapii Sp. z o.o.",
+      "orgType": "Typ organizacji",
+      "orgTypeSolo": "Praktyka indywidualna",
+      "orgTypeClinic": "Klinika / ośrodek",
+      "orgTypeEnterprise": "Korporacja",
+      "taxId": "NIP",
+      "taxIdPlaceholder": "0000000000",
+      "vatIdEu": "EU VAT ID (opcjonalnie)",
+      "vatIdEuPlaceholder": "PL0000000000",
+      "country": "Kraj",
+      "region": "Województwo (opcjonalnie)",
+      "city": "Miasto",
+      "postalCode": "Kod pocztowy",
+      "postalCodePlaceholder": "00-000",
+      "streetLine": "Ulica",
+      "buildingNumber": "Numer budynku",
+      "unitNumber": "Numer lokalu (opcjonalnie)",
+      "directions": "Wskazówki dojazdu (opcjonalnie)"
+    },
+    "orgErrors": {
+      "legalNameRequired": "Wprowadź pełną nazwę firmy.",
+      "taxIdInvalid": "NIP powinien zawierać 10 cyfr.",
+      "phoneRequired": "Numer telefonu jest wymagany dla administratora.",
+      "cityRequired": "Miasto jest wymagane.",
+      "postalCodeInvalid": "Kod pocztowy w formacie 00-000.",
+      "streetRequired": "Ulica jest wymagana.",
+      "buildingRequired": "Numer budynku jest wymagany."
+    },
+    "acceptInvite": {
+      "metaTitle": "Akceptacja zaproszenia",
+      "overline": "Zaproszenie",
+      "title": "Dołącz do organizacji",
+      "subhead": "Ustaw hasło i wypełnij krótki profil, aby aktywować konto terapeuty.",
+      "submit": "Akceptuję zaproszenie",
+      "submitting": "Akceptacja zaproszenia…",
+      "missingToken": "Brakuje tokenu zaproszenia. Otwórz link z wiadomości e-mail.",
+      "alreadyAccepted": "To zaproszenie zostało już użyte. Zaloguj się normalnie.",
+      "expired": "Zaproszenie wygasło. Poproś administratora o ponowne wysłanie.",
+      "invalidToken": "Nieprawidłowy token. Sprawdź, czy używasz aktualnego linku."
+    },
+    "verifyEmail": {
+      "metaTitle": "Potwierdź e-mail",
+      "title": "Sprawdź swoją skrzynkę",
+      "intro": "Wysłaliśmy link aktywacyjny na adres {email}. Kliknij go, aby dokończyć rejestrację.",
+      "noEmail": "Nie widzisz wiadomości? Sprawdź folder spam lub kliknij poniżej, aby wysłać ponownie.",
+      "resend": "Wyślij ponownie",
+      "resending": "Wysyłanie…",
+      "resent": "Wysłaliśmy nowy link. Sprawdź skrzynkę.",
+      "openMail": "Otwórz pocztę",
+      "backToLanding": "Powrót do strony głównej",
+      "verifyingStatus": "Sprawdzamy potwierdzenie…",
+      "verifiedHeading": "E-mail potwierdzony",
+      "verifiedBody": "Przekierowujemy do panelu konta…",
+      "verifiedGoToAccount": "Przejdź do panelu konta"
+    }
+  },
+  "legal": {
+    "lastUpdated": "Ostatnia aktualizacja:",
+    "draftBadge": "Wersja robocza · do weryfikacji prawnej",
+    "tableOfContents": "Spis treści",
+    "pages": {
+      "terms": {
+        "metaTitle": "Regulamin",
+        "title": "Regulamin",
+        "intro": "Niniejszy regulamin określa zasady korzystania z serwisu Superwizor AI."
+      },
+      "privacy": {
+        "metaTitle": "Polityka prywatności",
+        "title": "Polityka prywatności",
+        "intro": "Polityka opisuje, jakie dane osobowe przetwarzamy, w jakim celu i przez jak długo."
+      },
+      "dpa": {
+        "metaTitle": "Umowa powierzenia (DPA)",
+        "title": "Umowa powierzenia przetwarzania (DPA)",
+        "intro": "Postanowienia umowy powierzenia przetwarzania danych osobowych zgodnie z art. 28 RODO."
+      }
+    }
+  },
+  "pricing": {
+    "metaTitle": "Cennik",
+    "overline": "Cennik",
+    "heading": "Plan dopasowany do Twojej praktyki",
+    "subhead": "Wszystkie plany zawierają pełną funkcjonalność: transkrypcję, raport, wskazówki superwizyjne. Płacisz tylko za sesje, których realnie używasz.",
+    "cycle": {
+      "monthly": "Miesięcznie",
+      "annual": "Rocznie",
+      "annualNote": "~17% taniej"
+    },
+    "tiers": {
+      "trial": {
+        "name": "Trial",
+        "tagline": "Wypróbuj bez karty",
+        "tokensSuffix": "darmowe sesje",
+        "cta": "Zacznij teraz",
+        "features": [
+          "3 darmowe sesje",
+          "Pełna transkrypcja",
+          "Pełny raport sesji",
+          "Wskazówki superwizyjne",
+          "Bez karty kredytowej"
+        ]
+      },
+      "solo": {
+        "name": "Solo",
+        "tagline": "Dla terapeutów indywidualnych",
+        "tokensSuffixMonthly": "sesji miesięcznie",
+        "tokensSuffixAnnual": "sesji rocznie",
+        "cta": "Wybierz Solo",
+        "features": [
+          "Pełna transkrypcja",
+          "Raport kliniczny",
+          "Wskazówki superwizyjne",
+          "Eksport PDF",
+          "1 licencja"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "Dla intensywnie pracujących",
+        "tokensSuffixMonthly": "sesji miesięcznie",
+        "tokensSuffixAnnual": "sesji rocznie",
+        "cta": "Wybierz Pro",
+        "badge": "Najpopularniejszy",
+        "features": [
+          "Wszystko z planu Solo",
+          "Większa pula sesji",
+          "Priorytetowe wsparcie",
+          "Wczesny dostęp do nowych funkcji",
+          "1 licencja"
+        ]
+      },
+      "clinic": {
+        "name": "Klinika",
+        "tagline": "Dla ośrodków terapeutycznych",
+        "tokensSuffixMonthly": "sesji miesięcznie",
+        "tokensSuffixAnnual": "sesji rocznie",
+        "cta": "Wybierz Klinikę",
+        "features": [
+          "Wszystko z planu Pro",
+          "Pula współdzielona między 5 terapeutów",
+          "Panel administratora (B2B)",
+          "Jedna faktura na klinikę",
+          "Zarządzanie zespołem"
+        ]
+      }
+    },
+    "vatNote": "Ceny netto. VAT 23% doliczany na fakturze.",
+    "currency": "PLN",
+    "perMonth": "zł / miesiąc",
+    "perYear": "zł / rok",
+    "free": "0 zł",
+    "footnote": "Płatność kartą lub Przelewy24. Możesz zmienić lub anulować plan w dowolnym momencie z poziomu konta."
+  },
+  "footer": {
+    "tagline": "Drugi mózg superwizora.",
+    "copyright": "© 2026 Superwizor AI",
+    "made": "Zaprojektowane w Polsce",
+    "sections": {
+      "product": "Produkt",
+      "company": "Firma",
+      "legal": "Dokumenty"
+    },
+    "links": {
+      "pricing": "Cennik",
+      "register": "Zarejestruj się",
+      "login": "Zaloguj się",
+      "terms": "Regulamin",
+      "privacy": "Polityka prywatności",
+      "dpa": "DPA / RODO",
+      "contact": "Kontakt"
+    }
+  },
+  "login": {
+    "metaTitle": "Zaloguj się · Superwizor AI",
+    "overline": "LOGOWANIE",
+    "title": "Witaj z powrotem",
+    "subhead": "Zaloguj się, aby przejść do konsoli terapeuty lub panelu administracyjnego.",
+    "emailLabel": "Email",
+    "passwordLabel": "Hasło",
+    "submit": "Zaloguj się",
+    "submitting": "Logowanie…",
+    "errorBadCreds": "Nieprawidłowy email lub hasło.",
+    "errorGeneric": "Wystąpił błąd podczas logowania. Spróbuj ponownie.",
+    "errorNoProfile": "Twoje konto Firebase istnieje, ale nie znaleziono profilu w Superwizor. Skontaktuj się z zespołem.",
+    "redirectingApp": "Przekierowuję na panel konta…",
+    "redirectingAdmin": "Przekierowuję do panelu administracyjnego…",
+    "noAccount": "Nie masz konta?",
+    "createAccount": "Zarejestruj się",
+    "forgotPassword": "Nie pamiętam hasła",
+    "resetSent": "Wysłaliśmy link do resetu hasła na podany adres email.",
+    "resetNeedEmail": "Najpierw wpisz swój adres email."
+  },
+  "account": {
+    "metaTitle": "Moje konto · Superwizor AI",
+    "title": "Moje konto",
+    "subhead": "Zarządzaj swoim profilem, organizacją i subskrypcją.",
+    "kartotekiCta": "Otwórz kartoteki",
+    "kartotekiOpening": "Otwieram…",
+    "kartotekiHint": "Konsola terapeuty otwiera się w nowej karcie (app.superwizor.ai).",
+    "signOut": "Wyloguj się",
+    "profileSection": "Profil",
+    "profileSubmit": "Zapisz zmiany",
+    "profileSubmitting": "Zapisuję…",
+    "profileSaved": "Zmiany zapisane.",
+    "emailReadOnly": "Adres email jest niezmienialny.",
+    "orgSection": "Organizacja",
+    "orgSubmit": "Zapisz organizację",
+    "orgSubmitting": "Zapisuję…",
+    "orgSaved": "Dane organizacji zapisane.",
+    "orgNotAllowed": "Edycja danych organizacji jest dostępna tylko dla właścicieli (gabinety jednoosobowe SOLO) oraz administratorów organizacji. Skontaktuj się z administratorem swojej organizacji.",
+    "orgLoading": "Ładuję dane organizacji…",
+    "orgNone": "Brak organizacji powiązanej z tym kontem.",
+    "billingSection": "Subskrypcja",
+    "billingPlan": "Plan",
+    "billingStatus": "Status",
+    "billingTokens": "Pozostałe minuty w cyklu",
+    "billingPeriodEnd": "Koniec okresu",
+    "billingLoading": "Ładuję dane subskrypcji…",
+    "billingNone": "Brak aktywnej subskrypcji.",
+    "stripeSection": "Płatności kartą",
+    "stripeBody": "Integracja ze Stripe pojawi się wkrótce — z poziomu tego ekranu będzie można dodać kartę i automatycznie odnawiać subskrypcję.",
+    "stripeConnect": "Połącz Stripe (wkrótce)",
+    "firstName": "Imię",
+    "lastName": "Nazwisko",
+    "phoneNumber": "Numer telefonu",
+    "professionalTitle": "Tytuł zawodowy",
+    "credentialsNumber": "Numer licencji",
+    "biography": "O mnie",
+    "legalName": "Nazwa prawna",
+    "orgType": "Typ organizacji",
+    "taxId": "NIP",
+    "vatIdEu": "VAT UE",
+    "errGeneric": "Wystąpił błąd. Spróbuj ponownie.",
+    "errLoad": "Nie udało się załadować danych. Spróbuj odświeżyć stronę.",
+    "billingPlanName": "Plan",
+    "billingTokensLeft": "Pozostałe minuty",
+    "billingTokensTotal": "Łączny limit",
+    "billingUsedBar": "{used} z {total} minut wykorzystane",
+    "billingUpgrade": "Ulepsz plan",
+    "billingUpgradeHint": "Wkrótce — będzie tu można przejść na wyższy plan przez Stripe.",
+    "billingNoneCta": "Wybierz plan (wkrótce)",
+    "planSOLO": "Solo",
+    "planPRO": "Pro",
+    "planCLINIC": "Klinika",
+    "planPATIENT": "Pacjent",
+    "statusTRIALING": "Okres próbny",
+    "statusACTIVE": "Aktywna",
+    "statusPAST_DUE": "Zaległa płatność",
+    "statusCANCELED": "Anulowana"
+  }
+}

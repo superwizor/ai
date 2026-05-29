@@ -43,6 +43,9 @@ service IdentityService {
   // see "Report preferences" section below.
   rpc GetReportPreferences(GetReportPreferencesRequest) returns (ReportPreferences);
   rpc UpdateReportPreferences(UpdateReportPreferencesRequest) returns (ReportPreferences);
+  // Cross-origin SSO (Slice 2 follow-up, 2026-05-29) — see
+  // "Cross-origin SSO via custom token" section below.
+  rpc MintAppLoginToken(google.protobuf.Empty) returns (AppLoginToken);
 }
 ```
 
@@ -204,9 +207,141 @@ Empty string for any enum field = "use default". Empty object `{}` = "use defaul
 - **`audience` claim** must equal the Firebase project ID (`superwizor-ai-25ecd`), not a custom string. Set in Flutter's Firebase init, not here.
 - **Soft-deleted users** still exist in `users` table; queries must filter `WHERE deleted_at IS NULL` unless you specifically need the audit trail.
 - **Cloud Run cold start + Firebase Admin SDK init** can add ~2s. Use min-instances=1 if latency-sensitive.
+- **Firebase Admin SDK init uses ADC** (since 2026-05-29, commit `fbc3b67`). The earlier `option.WithoutAuthentication()` was fine for `VerifyIDToken` (which only fetches Google's public JWKS) but BLOCKS `CustomToken` (which signs the JWT with the runtime SA's key via the IAM Credentials API). The new init is `firebase.NewApp(ctx, &firebase.Config{ProjectID: ...})` with no auth option — ADC resolves through the metadata server on Cloud Run. Local dev needs `gcloud auth application-default login` or `GOOGLE_APPLICATION_CREDENTIALS` pointing at a SA JSON.
+- **Runtime SA needs `roles/iam.serviceAccountTokenCreator` on ITSELF** for `CustomToken` to sign without a private-key JSON. Granted to `344724821207-compute@developer.gserviceaccount.com` on 2026-05-29. New environments must replicate.
+
+## Cross-origin SSO via custom token (2026-05-29)
+
+The marketing site (`superwizor.web.app`) and the Flutter web app
+(`superwizor-app.web.app`) live on different origins, so Firebase Auth's
+IndexedDB session doesn't bridge between them — a user who clicked
+"Otwórz kartoteki" on `/account/` used to land on the Flutter login
+screen and have to re-enter their password. `MintAppLoginToken` fixes
+this.
+
+**Flow:**
+1. Browser is signed in on `superwizor.web.app` (marketing origin).
+2. User clicks "Otwórz kartoteki" → marketing-site calls
+   `identityClient.mintAppLoginToken({})` over Connect-RPC (Firebase ID
+   token in the `Authorization: Bearer …` header as usual).
+3. Handler calls `resolveCaller(ctx)` → extracts the verified
+   `firebase_uid`, then `auth.CustomToken(ctx, firebase_uid)` — never
+   reads a uid from the request body.
+4. Returns `AppLoginToken{token: <jwt>}`.
+5. marketing-site opens
+   `https://superwizor-app.web.app/#auth_token=<jwt>` in a new tab.
+6. Flutter web's `main()` reads `window.location.hash`, calls
+   `FirebaseAuth.instance.signInWithCustomToken(token)`, and strips
+   the fragment via `history.replaceState`. The `_AuthGate`'s first
+   `authStateChanges` tick already sees the signed-in user, so no
+   `LoginScreen` flash.
+
+**Security:**
+- The handler NEVER reads a uid from the request — always mints for the
+  caller's own `firebase_uid`. No org/role escalation surface.
+- Custom tokens are ~1h TTL by Firebase Admin SDK default and single-use
+  in practice (Firebase rejects reuse).
+- Token is in the URL fragment, not the query string. Fragments don't
+  reach Firebase Hosting access logs, aren't included in the `Referer`
+  header on outbound clicks, and are stripped from the URL bar
+  immediately after redemption.
+- On any failure (mint RPC down, popup blocked by Safari, token
+  expired before redeem) the marketing-site code falls back to the
+  pre-SSO `?email=` prefill so the user can still log in by hand.
+
+**Code:**
+- Proto: `proto/identity/v1/identity.proto` — `rpc MintAppLoginToken`
+  + `message AppLoginToken{ string token = 1; }`.
+- Handler: `services/identity-svc/internal/adapters/grpc/sso.go`.
+- Connect adapter: `connect_adapter.go::MintAppLoginToken`.
+- Firebase helper: `internal/adapters/firebase/auth.go::CustomToken`.
+- Browser: `marketing-site/src/components/account/AccountSections.tsx`
+  → `OpenKartotekiButton` (opens popup synchronously inside the click
+  handler so Safari's popup blocker permits it, then mutates the
+  popup's `location` once the mint resolves).
+- Flutter web: `flutter-app/superwizor/lib/auth/sso_handler_web.dart`
+  redeems the fragment + strips it; the iOS/Android stub is at
+  `lib/auth/sso_handler.dart` (no-op). Conditional import on
+  `dart.library.html` in `main.dart` keeps mobile bundles unchanged.
+
+## SUPERWIZOR_ADMIN bootstrap (one-time, per environment)
+
+After Slice 1 of `feat/web-app` deploys, the `users.role` enum gains
+`ORG_ADMIN` and `SUPERWIZOR_ADMIN` values (migration 000037). New
+admins are minted by flipping the `role` column for an existing user
+row:
+
+```sql
+-- staging — pick the Superwizor team email
+UPDATE users
+   SET role = 'SUPERWIZOR_ADMIN'
+ WHERE email = 'dpiotrak2@gmail.com'
+   AND deleted_at IS NULL;
+```
+
+Run via the cloud-sql-proxy (port 5433 + `psql ... sslmode=disable`),
+NOT via a Cloud SQL admin tool — the proxy is the only path with the
+right IAM. The change takes effect on the user's next inbound RPC
+(no service restart needed).
+
+The reverse — demoting an admin — uses the same UPDATE with the
+target role. There is intentionally no admin UI for this; the
+escape-hatch lives in `psql` so an attacker who compromises the
+admin panel can't promote themselves.
+
+## Firebase OAuth providers (Slice 1 manual config)
+
+Per docs/18 R7. One-time setup in Firebase Console
+(`superwizor-ai-25ecd`):
+
+1. **Authentication → Sign-in method** — enable Google, Apple,
+   Microsoft, plus the existing Email/Password.
+2. **Authentication → Settings → Account linking** — enable
+   "Link accounts that use the same email" (avoids duplicate UIDs
+   when a user signs up with one provider and later switches).
+3. **Google**: reuses the existing Google Cloud OAuth 2.0 client.
+   Add authorized redirect URIs:
+   `https://superwizor.ai/__/auth/handler`,
+   `https://app.superwizor.ai/__/auth/handler`,
+   `http://localhost:3000/__/auth/handler`,
+   `http://localhost:8080/__/auth/handler`.
+4. **Apple**: create a Services ID + Sign-in-with-Apple key in
+   the Apple Developer portal. Paste the Services ID, team ID,
+   key ID, and the private key into Firebase. Rotate the key
+   yearly (Apple expires them after 6 months, so a calendar
+   reminder for month 5 is wise).
+5. **Microsoft**: register a "Web" app in Microsoft Entra (Azure
+   AD). Copy app (client) ID + secret into Firebase. Rotate
+   secret yearly.
+
+No code changes required for any of the above — identity-svc trusts
+the Firebase JWT regardless of provider once verified.
+
+## Resend transactional email (Slice 1)
+
+Production invitation emails go through Resend (Go SDK in
+`services/notification-svc/internal/email/`). To bring this up in a
+new environment:
+
+1. `gcloud secrets create resend-api-key --replication-policy=automatic`
+2. `echo -n "$RESEND_KEY" | gcloud secrets versions add resend-api-key --data-file=-`
+3. Grant `roles/secretmanager.secretAccessor` on `resend-api-key` to
+   `notification-svc@<project>.iam.gserviceaccount.com` (add to
+   `infra/environments/<env>/service-accounts.tf`).
+4. Set `RESEND_FROM` env on notification-svc Cloud Run — e.g.
+   `Superwizor <noreply@superwizor.ai>`. Defaults to that value in
+   the CI workflow if unset.
+
+Without the secret the notification-svc binary boots happily and uses
+`MockSender` (logs but doesn't send). identity-svc.InviteTherapist
+still creates the invitation row + URL — only the email leg is
+silent. Useful for local dev; loud in prod logs ("RESEND_API_KEY
+unset — using MockSender").
 
 ## Source-doc pointers
 
 - `docs/05_FAZA_1_TOZSAMOSC_DANE.md` lines 803–2056 — full Phase 1 task list (proto def, sqlc, Firebase adapter, gRPC handler, deploy, smoke tests, troubleshooting).
 - `docs/03_DATA_MODEL.md` §4.3 (lines 1057–1200) — DDL.
 - `docs/02_ARCHITEKTURA_TECHNICZNA.md` §4.2.1 (lines 359–400) — service responsibility.
+- `docs/18_WEB_APP_DESIGN.md` — full Slice 1+ design + form catalogue + i18n contract.
+- `docs/19_WEB_SLICE_1_PLAN.md` — the 8-commit Slice 1 plan that introduces the new RPCs (RegisterOrganization, InviteTherapist, AcceptInvitation, Admin*).

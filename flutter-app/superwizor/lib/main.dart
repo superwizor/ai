@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'auth/sso_handler.dart'
+    if (dart.library.html) 'auth/sso_handler_web.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
@@ -32,6 +34,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Cross-origin SSO bridge: if the user arrived from
+  // superwizor.web.app via the Otworz kartoteki CTA, the URL
+  // fragment carries a one-shot Firebase custom token. Redeem it
+  // BEFORE runApp so the _AuthGate's first authStateChanges tick
+  // already sees a signed-in user — no LoginScreen flash. No-op on
+  // iOS/Android (conditional import resolves to the stub).
+  await applySsoFromUrl();
 
   // Hive — used by ConsentService (D9), the cache repositories
   // (lib/cache/), and the offline upload queue (lib/uploads/).

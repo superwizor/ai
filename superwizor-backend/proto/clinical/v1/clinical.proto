@@ -71,6 +71,19 @@ service ClinicalService {
     // Records that a suggestion-engine banner was either shown,
     // applied, or dismissed. Telemetry only; safe to fire-and-forget.
     rpc LogPreferenceSuggestion(LogPreferenceSuggestionRequest) returns (google.protobuf.Empty);
+
+    // ─── SUPERWIZOR_ADMIN — cross-org session activity (2026-05-29) ──
+    //
+    // Read-only listing of recent therapist session activity for the
+    // /admin/sessions page. Gated on x-superwizor-role=SUPERWIZOR_ADMIN
+    // via the existing Connect auth interceptor; org_admin / therapist
+    // tokens get PermissionDenied.
+    //
+    // Filters (all AND-combined): created_at window, free-text on
+    // therapist name + email. CSV export is implemented client-side by
+    // requesting page_size up to MaxCsvPageSize and serialising the
+    // response.
+    rpc AdminListSessions(AdminListSessionsRequest) returns (AdminListSessionsResponse);
 }
 
 enum ProcessType {
@@ -436,4 +449,87 @@ message LogPreferenceSuggestionRequest {
   // (we log to both rows so analytics doesn't need a cross-service
   // join); "shown"/"dismissed" come from the Flutter UI directly.
   string action = 7;
+}
+
+// ─── AdminListSessions — recent therapist session activity ─────────
+//
+// Backs the /admin/sessions page on superwizor.web.app. SUPERWIZOR_ADMIN
+// only.
+
+message AdminListSessionsRequest {
+  // Window on sessions.created_at. Both bounds are inclusive on the
+  // low end / exclusive on the high end (PG idiomatic). If unset, the
+  // server uses [now()-24h, now()] so the default UI shows the last
+  // 24h.
+  google.protobuf.Timestamp start_time = 1;
+  google.protobuf.Timestamp end_time = 2;
+
+  // Case-insensitive substring filter on therapist first_name +
+  // last_name + email. Empty = no filter.
+  string therapist_filter = 3;
+
+  // Page size. Server clamps to [1, 5000]. Default 100 if zero. 5000
+  // is the CSV-export cap; UI uses a smaller value (50) for paged
+  // browsing.
+  int32 page_size = 4;
+
+  // Zero-based offset. Server reads page+1 row to compute has_more.
+  int32 page = 5;
+
+  // Sort key — one of the allowlisted columns below. Anything else
+  // (including empty) falls back to created_at.
+  //
+  //   "created_at"           — when the upload landed (default)
+  //   "session_date"         — the clinical session date
+  //   "duration_seconds"
+  //   "status"
+  //   "therapist"            — last_name, then first_name
+  //   "organization"         — legal_name
+  //   "plan_name"            — subscription_plans.display_name
+  //   "period_end"           — subscriptions.current_period_end
+  //   "tokens_used"          — usage_counters.tokens_used
+  //
+  // Anything else falls through to the default. The server doesn't
+  // 400 on unknown sort keys — the UI will just behave as if the
+  // sort wasn't set.
+  string sort_by = 6;
+
+  // "asc" | "desc". Anything else defaults to "desc".
+  string sort_order = 7;
+}
+
+message AdminListSessionsResponse {
+  repeated AdminSessionRow sessions = 1;
+  // True when the server has additional rows past this page.
+  bool has_more = 2;
+}
+
+message AdminSessionRow {
+  string session_id = 1;
+  string therapist_id = 2;
+  string therapist_first_name = 3;
+  string therapist_last_name = 4;
+  string therapist_email = 5;
+  string organization_id = 6;
+  string organization_name = 7;
+  // When the session row was created server-side (effectively when
+  // the therapist hit Save in the UI / when the audio upload landed).
+  google.protobuf.Timestamp created_at = 8;
+  // The clinical session date — a DATE column, transmitted as a
+  // timestamp at 00:00 UTC for simplicity.
+  google.protobuf.Timestamp session_date = 9;
+  // null for sessions that haven't completed STT yet.
+  int32 duration_seconds = 10;
+  // session_status enum value as a bare string ("CREATED",
+  // "TRANSCRIBING", "DONE", "FAILED", …).
+  string status = 11;
+  // Subscription context for the therapist's organisation at query
+  // time. All three fields are best-effort — null/empty for org-less
+  // therapists, suspended subscriptions, or counters that haven't
+  // been initialised yet. The handler always picks the most-recent
+  // active row (a single org has at most one ACTIVE subscription at
+  // a time per ADR-BL-001).
+  string subscription_plan_name = 12;
+  google.protobuf.Timestamp subscription_period_end = 13;
+  int32 subscription_tokens_used = 14;
 }

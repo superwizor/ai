@@ -1,0 +1,78 @@
+Feature: slice-2 / firebase-hosting-deploy
+Branch: feat/web-app-slice-2
+Verified: 2026-05-28
+Anchored to: docs/18 §3 ("Hosting & deploy")
+
+What was built
+==============
+Infrastructure to deploy the marketing-site to Firebase Hosting,
+without actually running a deploy in-session (no Firebase project
+credentials available here).
+
+Files touched:
+- firebase.json — added a `hosting` block declaring two sites:
+    • superwizor-www  → source=marketing-site (Next.js, Web
+      Frameworks support)
+    • superwizor-app  → public=flutter-app/superwizor/build/web
+      (placeholder for Slice 5 Flutter Web target)
+  Also added emulators.hosting on port 5000 for local preview.
+- .github/workflows/marketing-site.yml — new GitHub Actions
+  workflow. Path-filtered to fire only on marketing-site/ + proto-ts
+  + firebase.json changes. Three jobs:
+    1. build — pnpm install + lint + pnpm build + smoke-connect
+    2. deploy-preview — fires on PRs and feat/web-app-* branches;
+       deploys to ephemeral preview channel with 7-day TTL
+    3. deploy-production — fires on push to main; deploys to live
+       channel of superwizor-www
+- marketing-site/DEPLOY.md — deploy procedure, required secrets,
+  rollback flow, local-emulator preview command, DNS-cutover
+  pointer to Slice 6.
+
+Design-doc deviation (documented)
+=================================
+docs/18 §3 originally specified `"public": "marketing-site/out"` —
+i.e. Next.js static export. Implementing that strictly would
+require deleting src/proxy.ts (Next refuses static export with
+middleware). We chose Firebase Hosting's Web Frameworks integration
+(`"source": "marketing-site"`) which keeps the locale-routing proxy
+intact and transparently deploys SSR pages to Cloud Functions in
+europe-central2. Same URL surface (`/`, `/en/...`), zero code
+deletion, simpler CI. The deviation + rationale is captured in
+DEPLOY.md "Why `source` not `public`" section.
+
+How verified
+============
+1. `firebase.json` parses as valid JSON (python3 json.load).
+2. `.github/workflows/marketing-site.yml` has the expected structure
+   (name, on, jobs.{build,deploy-preview,deploy-production}).
+3. Final `pnpm build` after all 8 features → exit 0. Route table:
+       /_not-found
+       /[locale]                          → /pl, /en
+       /[locale]/legal/[slug]             → 6 leaves (pl|en × terms|privacy|dpa)
+       /[locale]/pricing                  → /pl/pricing, /en/pricing
+   9 SSG-pre-rendered pages total + proxy middleware.
+4. evidence/.../final-build.log captures the build output.
+5. evidence/.../files.log lists the touched infrastructure files
+   with sizes.
+
+What's NOT in this commit (deferred)
+====================================
+- Actual `firebase deploy` execution — gated on having
+  `superwizor-ai-25ecd` project credentials in-session. The
+  workflow + config are wired; the first real deploy happens when
+  a human runs `firebase deploy --only hosting:superwizor-www` or
+  merges to main with the GitHub secrets populated.
+- DNS cutover (superwizor.ai → Firebase Hosting) — Slice 6
+  `production-dns-cutover` per PROGRESS.md.
+- Terraform for the `HOSTING_DEPLOYER_SA` service account +
+  Workload-Identity Federation provider — separate infra change
+  outside Slice 2 scope.
+
+Files
+=====
+- firebase.json (modified — hosting block + emulator port)
+- .github/workflows/marketing-site.yml (new)
+- marketing-site/DEPLOY.md (new)
+- evidence/slice-2/firebase-hosting-deploy/files.log
+- evidence/slice-2/firebase-hosting-deploy/final-build.log
+- evidence/slice-2/firebase-hosting-deploy/verification.log (this)

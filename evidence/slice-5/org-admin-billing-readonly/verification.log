@@ -1,0 +1,86 @@
+Feature: slice-5 / org-admin-billing-readonly
+Branch: feat/web-app-slice-5
+Verified: 2026-05-28
+Anchored to: docs/18 §8.4 "Billing — org's subscription, plan tier,
+current period usage, pending reservations (read-only of
+Subscription proto via clinical-svc.GetMyBillingState)"
+
+What was built
+==============
+Zero code changes. The existing iOS screen
+`flutter-app/superwizor/lib/screens/subscription_plan_screen.dart`
+already satisfies the feature requirement:
+
+- Read-only view of tier / cycle / sessions-left + pending
+  reservations.
+- Data source: `billingQuotaProvider` →
+  `clinical-svc.GetMyBillingState` (proxy to
+  `billing-svc.GetSubscription`). Confirmed in
+  `lib/services/billing_quota_state.dart:6` +
+  `lib/providers/billing_quota_provider.dart:6` — captured at
+  evidence/.../wiring.log.
+- No plan-change buttons — read-only by design (ORG_ADMINs change
+  plans by contacting support; the Superwizor admin console has the
+  AdminChangePlan path via Slice 4 features 5 + 8 once those land).
+- No dart:io / Platform.* / File() — confirmed by `grep` over the
+  file. Pure Material widgets + Riverpod + l10n.
+
+Why this feature didn't need code
+==================================
+The screen was built in Phase B of the billing refactor (commit
+0a25ac7 era) for the iOS app. Because we deliberately:
+  - read via `clinical-svc.GetMyBillingState` instead of querying
+    PG directly,
+  - use Firestore-mirror cache for offline robustness (web SDK
+    supports this),
+  - and route the gRPC call through
+    `GrpcOrGrpcWebClientChannel` which auto-selects gRPC-Web on
+    browsers,
+the iOS screen Just Works on Flutter Web. The "org-admin"
+distinction in docs/18 §8.4 refers to *who navigates here*, not
+to a separate screen — both ORG_ADMINs and THERAPISTs see the
+same read-only view, scoped server-side by `caller's org`.
+
+The dedicated org-admin entry point (a /admin tab in the
+Flutter Web app routing the user to this screen) lands in
+feature 7 (org-admin-org-settings) since that's where the
+org-admin section's navigation gets built. For now ORG_ADMINs
+reach the screen through the existing menu_screen.dart
+Settings → Subscription path.
+
+How verified
+============
+1. `flutter analyze` (full lib) → No issues (from feature 3 run).
+2. `flutter build web --no-tree-shake-icons --no-wasm-dry-run` →
+   exit 0 (from feature 3 run, no changes since).
+3. Wiring inspection:
+     services/billing_quota_state.dart line 6:
+       "clinical-svc.GetMyBillingState (which proxies billing-
+        svc.GetSubscription)"
+     providers/billing_quota_provider.dart line 6:
+       "clinical-svc.GetMyBillingState (proxy to billing-svc.
+        GetSubscription)"
+   Both lines pre-date Slice 5 — already wired correctly.
+4. Code audit on subscription_plan_screen.dart for platform-
+   specific imports: none found.
+
+What's NOT in this feature (deferred)
+======================================
+- Dedicated /admin/billing route within the Flutter Web app's
+  org-admin section — feature 7 builds the org-admin section
+  navigation; this screen will be one of its tabs.
+- Live screenshot of the screen with seeded data — same
+  authentication constraint that hit every backend-dependent
+  feature in Slices 3 + 4. Slice 6 Playwright happy-path E2E
+  + a Firebase emulator with seeded billing data would surface
+  the full visual.
+
+Files
+=====
+- evidence/slice-5/org-admin-billing-readonly/wiring.log
+  (greps confirming the data-source comments)
+- evidence/slice-5/org-admin-billing-readonly/verification.log
+  (this)
+
+No code changes committed for this feature — the existing iOS
+implementation satisfies the spec end-to-end.

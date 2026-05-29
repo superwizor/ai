@@ -199,14 +199,25 @@ jobs:
       - name: Deploy Identity to Cloud Run
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-identity"
+          # Dedicated SA (least privilege: cloudsql.client + secretAccessor
+          # on postgres-database-url). Replaces the default Compute SA per
+          # Slice 1 of feat/web-app (docs/18 R6, P2 Zero-Trust).
+          #
+          # NOTIFICATION_SVC_URL points identity-svc at notification-svc
+          # so InviteTherapist can dispatch real Resend emails. Without
+          # this env the handler falls back to the NoopEmailSender —
+          # invites still create DB rows but no email is sent.
+          NOTIFICATION_URL=$(gcloud run services describe notification-svc --region ${{ env.REGION }} --format 'value(status.url)' || echo "")
+          ACCEPT_BASE="${ACCEPT_URL_BASE:-https://app.superwizor.ai}"
           gcloud run deploy identity-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
             --vpc-connector swvpc-connector \
+            --service-account=identity-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }},NOTIFICATION_SVC_URL=${NOTIFICATION_URL},ACCEPT_URL_BASE=${ACCEPT_BASE}"
           gcloud run services add-iam-policy-binding identity-svc \
             --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
             --member=allUsers --role=roles/run.invoker
@@ -295,6 +306,12 @@ jobs:
           # notification-svc SA owns the runtime IAM (datastore.user, fcm
           # sender, sql client, secret accessor) — see
           # infra/environments/staging/service-accounts.tf.
+          # RESEND_API_KEY is mounted from Secret Manager. The secret is
+          # created out-of-band (gcloud secrets create resend-api-key);
+          # the notification-svc SA needs roles/secretmanager.secret-
+          # Accessor on it (granted in service-accounts.tf in a follow-up).
+          # If the secret doesn't exist yet the deploy fails — wire the
+          # secret BEFORE merging this commit to main.
           gcloud run deploy notification-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
@@ -302,8 +319,8 @@ jobs:
             --allow-unauthenticated \
             --service-account=notification-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --vpc-connector swvpc-connector \
-            --set-secrets="DATABASE_URL=postgres-database-url:latest" \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
+            --set-secrets="DATABASE_URL=postgres-database-url:latest,RESEND_API_KEY=resend-api-key:latest" \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }},RESEND_FROM=Superwizor <noreply@superwizor.ai>"
           gcloud run services add-iam-policy-binding notification-svc \
             --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
             --member=allUsers --role=roles/run.invoker

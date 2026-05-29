@@ -47,13 +47,22 @@ Thumbs.db
 # Modality prompt specs are source-of-truth for the migration generator
 # (see migrations/add_modality.py). Not secrets — must be tracked.
 !migrations/modality_prompts/*.json
+# Generated TS client manifest — declares the proto-es + Connect peer
+# deps so any TS workspace consuming gen/ts/ can resolve them.
+!gen/ts/package.json
 .env
 .env.local
 
 # Logs
 *.log
-gen/
-!gen/go/
+
+# Generated code from `buf generate`.
+#   Go (gen/go): only go.mod + go.sum are tracked — *.pb.go are regenerated
+#                in CI, no source-controlled artefacts.
+#   TS (gen/ts): full output is tracked — Next.js + Flutter Web don't run
+#                buf, so the generated clients live in git. Source of
+#                truth is proto/; `buf generate` should produce a clean
+#                diff against the committed tree.
 gen/go/*
 !gen/go/go.mod
 !gen/go/go.sum

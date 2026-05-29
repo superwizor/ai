@@ -1,0 +1,70 @@
+Feature: slice-3 / login-redirect
+Branch: feat/web-app-slice-3
+Verified: 2026-05-28
+Anchored to: docs/18 §8.1 (the `/login` bullet) + §5 R3 (origin discipline)
+
+What was built
+==============
+Cross-origin 307 redirect from the marketing origin to the app
+origin, so anyone hitting superwizor.ai/login (PL or EN) lands on
+app.superwizor.ai/login where Firebase Auth's IndexedDB-scoped
+session actually lives.
+
+Single change: marketing-site/next.config.ts — added an async
+`redirects()` returning two entries:
+
+    /login     → https://app.superwizor.ai/login   (307, temporary)
+    /en/login  → https://app.superwizor.ai/login   (307, temporary)
+
+Permanent: false. We use 307 instead of 308 because (a) the app
+origin's login route is technically still being built (Flutter Web
+in Slice 5), and (b) keeping it 307 lets us redirect to a different
+path or origin later without a stuck browser cache. Once Slice 5
+ships and the app-side login is stable we'll flip to permanent: true.
+
+Why a redirect and not a `<a>` link on a real /login page
+=========================================================
+docs/18 §5 R3 / §8.1 say:
+> `/login` — a plain `<a href="https://app.superwizor.ai/login">`
+> redirect to the app origin. We deliberately do **not** run the
+> Firebase login flow on `superwizor.ai`.
+
+The Navbar already carries the cross-origin `<a>`. This feature
+adds the SAFETY for users who:
+- Type "superwizor.ai/login" manually.
+- Click a bookmarked /login URL.
+- Follow an outdated link from press, docs, email signature, etc.
+
+Without the redirect those would 404 on the marketing origin.
+A `next.config.redirects()` entry runs before middleware/proxy and
+incurs no JS, no extra page render, no flash of intermediate page.
+
+How verified
+============
+1. `pnpm build` exit 0. Route table unchanged (redirects() doesn't
+   add routes, just URL transformations at the framework edge).
+
+2. curl smoke (captured in evidence/.../curl.log):
+
+       /login    → status=307, location=https://app.superwizor.ai/login
+       /en/login → status=307, location=https://app.superwizor.ai/login
+
+   Following with curl -L lands on:
+       final=https://app.superwizor.ai/login
+
+3. preview_console_logs(error) returns "No console logs" — no
+   client-side errors introduced.
+
+Note on the Navbar
+==================
+The Navbar component still hard-codes the same destination
+("https://app.superwizor.ai/login") so users with browser-level
+prefetch (or those clicking before the page mounts) bypass the
+redirect entirely and go straight cross-origin. Belt + braces: the
+redirect catches the edge cases.
+
+Files touched
+=============
+- marketing-site/next.config.ts (added redirects())
+- evidence/slice-3/login-redirect/curl.log
+- evidence/slice-3/login-redirect/verification.log (this)

@@ -22,6 +22,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -304,21 +305,32 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
 
         const Spacer(),
 
-        // CTA buttons — only in full mode
+        // CTA buttons — only in full mode.
+        //
+        // Web build flips the affordance: live audio recording isn't
+        // supported in the browser (docs/18 §8.3), so file upload
+        // becomes the primary path and the record CTA is hidden.
+        // iOS keeps the existing record-first ordering.
         if (!widget.autoPickFile) ...[
-          // Primary CTA — Ember with glow
-          _PrimaryButton(
-            icon: Icons.mic_rounded,
-            label: 'ROZPOCZNIJ NAGRYWANIE',
-            onPressed: _goToRecording,
-          ),
-          const SizedBox(height: 12),
-          // Secondary — outlined
-          _SecondaryButton(
-            icon: Icons.upload_file_rounded,
-            label: 'Wgraj plik audio',
-            onPressed: _pickAndUploadFile,
-          ),
+          if (kIsWeb) ...[
+            _PrimaryButton(
+              icon: Icons.upload_file_rounded,
+              label: 'WGRAJ PLIK AUDIO',
+              onPressed: _pickAndUploadFile,
+            ),
+          ] else ...[
+            _PrimaryButton(
+              icon: Icons.mic_rounded,
+              label: 'ROZPOCZNIJ NAGRYWANIE',
+              onPressed: _goToRecording,
+            ),
+            const SizedBox(height: 12),
+            _SecondaryButton(
+              icon: Icons.upload_file_rounded,
+              label: 'Wgraj plik audio',
+              onPressed: _pickAndUploadFile,
+            ),
+          ],
         ],
         const SizedBox(height: 32),
       ],

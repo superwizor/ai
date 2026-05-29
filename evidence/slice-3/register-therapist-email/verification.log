@@ -1,0 +1,139 @@
+Feature: slice-3 / register-therapist-email
+Branch: feat/web-app-slice-3
+Verified: 2026-05-28
+Anchored to: docs/18 §8.1 + §13.2 (therapist registration)
+
+What was built
+==============
+- New deps: react-hook-form@7.76, @hookform/resolvers@5.4, zod@4.4.
+- Form primitives: src/components/forms/Field.tsx — FieldShell,
+  TextInput, Select, TextArea, Checkbox, RadioGroup. All Euphire-
+  themed, reused by every Slice 3 form going forward.
+- Modality catalog: src/lib/clinical/modalities.ts — typed list
+  mirroring migration 000006_seed_modalities (UNIV / CBT / PSYCHO,
+  all `is_supported=TRUE`). Localised labels. Swap point flagged
+  for the future ListModalities RPC.
+- Validation schema: src/lib/register/schema.ts — zod schema for
+  the therapist email form (email, 8+digit password, names,
+  modality enum, ui lang, optional title/credentials/phone,
+  required ToS, optional marketing consent).
+- Form component: src/components/register/TherapistEmailForm.tsx
+  — full §13.2 surface in two sections (Konto + Profil). Submit
+  flow:
+    1. zod validate.
+    2. auth.signUpWithEmail() → Firebase
+       createUserWithEmailAndPassword + sendEmailVerification
+       (feature 4 wiring).
+    3. identityClient.createUser({firebaseUid, email,
+       role=THERAPIST, firstName, lastName, uiLanguage, timezone
+       from Intl, hasAcceptedTos=true}).
+    4. If any optional profile fields filled →
+       identityClient.updateProfile (modality + title + creds +
+       phone + marketing consent). Skips the round-trip otherwise.
+    5. window.location → /register/therapist/verify-email?email=…
+- Verify-email page: src/app/[locale]/register/therapist/
+  verify-email/page.tsx — reads ?email from search-params, shows
+  "Sprawdź swoją skrzynkę" / "Check your inbox" with the address.
+  ResendVerificationButton client island re-fires
+  sendEmailVerification on the current Firebase user. Full
+  poll-for-verified + auto-redirect logic lands in feature 5
+  (email-verification-gate).
+- Routes added:
+    /pl/register/therapist                  (SSG)
+    /en/register/therapist                  (SSG)
+    /[locale]/register/therapist/verify-email (dynamic — needs
+       query param)
+
+How verified
+============
+1. `pnpm build` exit 0. Route table extended:
+     /[locale]/register/therapist             ● SSG (×2 locales)
+     /[locale]/register/therapist/verify-email ƒ Dynamic
+
+2. HTTP smoke (Accept-Language matched):
+     /register/therapist                                                   → 200
+     /en/register/therapist                                                → 200
+     /register/therapist/verify-email?email=anna@example.com               → 200
+
+3. Bug caught and fixed during smoke (round-1 500 on verify-email):
+   - First attempt used `t.rich("intro", { email: () => <strong> })`
+     against a message containing `{email}` placeholder.
+     next-intl distinguishes simple value substitution
+     (`{name}` + `t(...)`) from rich rendering
+     (`<name>chunks</name>` + `t.rich(...)`). Mixing caused a
+     server-side render exception → 500 page.
+   - Same shape error in TherapistEmailForm's consentToS Checkbox
+     label.
+   - Fix: simple values use `t("intro", { email: value })`
+     directly; consentToS message was rewritten with `<termsLink>
+     ...</termsLink>` rich placeholders so the t.rich call works.
+
+4. Puppeteer screenshots (8 files total — 6 viewport + 2 fullPage
+   + 1 verify-email fullPage):
+   - register-pl-full.png: complete form, Polish copy. Top: nav +
+     "REJESTRACJA · Zarejestruj się jako terapeuta · 3 darmowe
+     sesje". TWOJE KONTO section: email + hasło (with hint
+     "Min. 8 znaków, jedna cyfra."). TWÓJ PROFIL section: imię,
+     nazwisko, główny nurt terapeutyczny (select), JĘZYK
+     INTERFEJSU radio group (Polski highlighted Ember by default),
+     tytuł zawodowy (with placeholder "np. Psycholog…"), numer
+     prawa wykonywania zawodu, numer telefonu (placeholder
+     "+48 …"). Bottom: ToS consent checkbox with Ember-underlined
+     "regulamin" + "politykę prywatności" links to /legal/...,
+     marketing-consent checkbox, ZAŁÓŻ KONTO submit button,
+     "Masz już konto? Zaloguj się" link to app.superwizor.ai.
+   - register-en-full.png: same composition, English copy.
+   - register-{pl,en}-{mobile,tablet,desktop}.png: viewport-clipped
+     responsiveness shots. Mobile: fields stack 1-column; tablet:
+     names split into 2-col; desktop: same.
+   - verify-email-pl-full.png: "Sprawdź swoją skrzynkę",
+     "Wysłaliśmy link aktywacyjny na adres anna@example.com…",
+     "Nie widzisz wiadomości? Sprawdź folder spam…", "WYŚLIJ
+     PONOWNIE" + "Powrót do strony głównej" buttons.
+
+5. preview_console_logs(level=error) returns "No console logs"
+   after the t.rich fix.
+
+Compliance with docs/18
+=======================
+- ✓ §13.2: all required fields present (email, password,
+  first/last name, modality, ui language, ToS). Optional fields:
+  professional_title, credentials_number, phone_number,
+  marketing_consent. Not-collected-at-signup (biography, avatar,
+  billing address) correctly absent.
+- ✓ §8.1 email/password path: createUserWithEmailAndPassword →
+  sendEmailVerification → "We sent you a confirmation email" page
+  matches the design.
+- ✓ §13.1 form conventions: zod-validated client-side, inline
+  errors per field, submit disabled while in flight.
+- ✓ §14.5: zero hard-coded UI strings. Form labels, hints,
+  errors, section titles, button text all route through
+  useTranslations.
+- ✓ Login link cross-origin to app.superwizor.ai per §5 R3.
+
+Known gaps (deferred)
+=====================
+- No Google OAuth path on this page yet — feature 2.
+- Verify-email page is a static "check your inbox" interstitial.
+  Polling for emailVerified + auto-redirect to
+  app.superwizor.ai/login lands in feature 5.
+- Backend live submission untested in-session — no identity-svc
+  running. The Connect-RPC call paths are typed against the real
+  proto (CreateUserRequestSchema + UpdateProfileRequestSchema
+  from gen/ts) so type drift would surface at build, not at
+  runtime. Feature 8 (registration-e2e-playwright) covers the
+  end-to-end happy path against a live emulator + httptest stub.
+- ListModalities RPC doesn't exist; static catalog mirrors
+  migration. Same swap-point pattern as plans.ts.
+
+Files touched
+=============
+- marketing-site/package.json + pnpm-lock.yaml (3 new deps)
+- marketing-site/messages/{pl,en}.json (`register` namespace)
+- marketing-site/src/lib/clinical/modalities.ts (new)
+- marketing-site/src/lib/register/schema.ts (new)
+- marketing-site/src/components/forms/Field.tsx (new)
+- marketing-site/src/components/register/TherapistEmailForm.tsx (new)
+- marketing-site/src/components/register/ResendVerificationButton.tsx (new)
+- marketing-site/src/app/[locale]/register/therapist/page.tsx (new)
+- marketing-site/src/app/[locale]/register/therapist/verify-email/page.tsx (new)

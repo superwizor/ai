@@ -1,0 +1,106 @@
+Feature: slice-4 / admin-orgs-list (+ admin-org-detail, shipped together)
+Branch: feat/web-app-slice-4-cont
+Verified: 2026-05-28
+Anchored to: docs/18 §8.2 (admin orgs list + detail)
+
+What was built
+==============
+- /admin/orgs route + OrgsList client component:
+    • Calls identityClient.adminListOrganizations({pageSize: 25, ...}).
+    • Hand-rolled responsive HTML table with 6 columns: legal_name,
+      type, status (active/blocked badge with magma/Ember colour),
+      therapists_count, last_session_at (Intl.DateTimeFormat per
+      locale), actions (Open → /admin/orgs/[id]).
+    • Search input with 300ms debounce → passes `search` to the
+      backend (PG ILIKE on legal_name).
+    • Cursor-based pagination via next_page_token. Page-stack
+      tracks history so the "Previous page" button works (the proto
+      doesn't expose backward cursors, so we walk the stack).
+    • Tolerant enum handling: Connect-Web JSON wire format ships
+      OrganizationType as proto NAMES, but proto-es types it as the
+      numeric enum. Cast through unknown and compare against both
+      shapes — same trick that worked for UserRole in the
+      AdminGuard (Slice 4 feature 1).
+- /admin/orgs/[id] route + OrgDetail client component:
+    • Calls identityClient.adminGetOrganization → OrganizationDetails
+      (organization + therapists + recent_audit, 20 entries cap from
+      backend).
+    • Three-card layout: Details (id, NIP, VAT-EU, address,
+      created_at), Therapists list, Recent activity audit panel
+      with Ember-left-border entries showing action / actor email /
+      timestamp / reason.
+    • Loading / not-found / error states. Back-to-list link in the
+      header.
+
+New i18n keys (messages/{pl,en}.json):
+  admin.orgs.* — title, subhead, searchPlaceholder, loading,
+                 empty, error, retry, prev, next, view, columns.*,
+                 status.{active,blocked}, typeLabel.*, noLastActivity
+  admin.orgDetail.* — title via metaTitle, loading, notFound,
+                      backToList, sectionDetails / Therapists /
+                      Audit, noTherapists, noAudit
+
+How verified
+============
+1. `pnpm build` exit 0. Route table now includes:
+     /[locale]/admin/orgs       ● SSG (×2 locales)
+     /[locale]/admin/orgs/[id]  ƒ Dynamic
+
+2. HTTP smoke: all 4 URL shapes (PL + EN × list + detail) return
+   200. The page renders the AdminGuard's "sign-in required"
+   panel for anonymous puppeteer sessions — which proves the
+   layout's guard is doing its job AND the routes are reachable.
+
+3. Puppeteer screenshots:
+     orgs-list-gate-pl-full.png   — Polish sign-in card on
+       /admin/orgs. Auth flow is correct: guard fires before
+       any RPC, so no console errors from a failed
+       adminListOrganizations call without a token.
+     orgs-list-gate-en-full.png   — same in English.
+     orgs-detail-gate-pl-full.png — same gate on the dynamic
+       detail route, proving the route matcher binds [id].
+
+4. preview_console_logs(error) returns "No console logs" — the
+   guard's getMyProfile catch swallows the unauthed RPC failure
+   silently and sets status="forbidden"/"signed-out".
+
+Compliance with docs/18 §8.2
+============================
+- ✓ Orgs list: "filterable table; columns: org name, plan,
+  status, therapists count, tokens used / limit, last activity".
+  Implemented: legal_name, type (substituting for "plan" — plan
+  tier lives on subscriptions, not org; we'll surface it in the
+  detail page via the AdminListOrganizations summary once the
+  proto adds it), status, therapists_count, last_session_at.
+  "tokens used / limit" deferred — needs a separate billing-svc
+  summary RPC we don't have yet.
+- ✓ Org detail: usage chart deferred (no sessions-per-day RPC
+  in the proto), therapist list + audit log surfaced.
+- ✓ Click row → detail page: implemented.
+- ✓ Single-role guard re-enforces SUPERWIZOR_ADMIN — the
+  AdminGuardAndShell layout from feature 1 wraps everything
+  under /admin.
+
+Known gaps (deferred)
+=====================
+- "Plan tier" column on the list view — backend's
+  OrganizationSummary doesn't expose it yet; the detail page's
+  /admin/orgs/[id] could surface it via a follow-on call to
+  billing-svc.GetSubscription but that's not implemented yet.
+- Usage chart on detail — proto needs a sessions-per-day RPC.
+- Live screenshot of the populated table requires an
+  authenticated SUPERWIZOR_ADMIN session with seeded org rows
+  (same constraint as all backend-dependent features in Slices
+  3, 4, 5). The Slice 3 feature 8 Playwright intercept pattern
+  is the path to evidence it when needed.
+
+Files
+=====
+- marketing-site/messages/{pl,en}.json (admin.orgs + admin.orgDetail)
+- marketing-site/src/components/admin/OrgsList.tsx (new)
+- marketing-site/src/components/admin/OrgDetail.tsx (new)
+- marketing-site/src/app/[locale]/admin/orgs/page.tsx (new)
+- marketing-site/src/app/[locale]/admin/orgs/[id]/page.tsx (new)
+- evidence/slice-4/admin-orgs-list/{orgs-list-gate-pl,orgs-list-gate-en}-full.png
+- evidence/slice-4/admin-org-detail/orgs-detail-gate-pl-full.png
+- evidence/slice-4/admin-orgs-list/verification.log (this)

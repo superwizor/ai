@@ -12,6 +12,175 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const adminListUsers = `-- name: AdminListUsers :many
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences FROM users
+WHERE deleted_at IS NULL
+  AND ($1::uuid IS NULL OR organization_id = $1::uuid)
+  AND ($2::user_role IS NULL OR role = $2::user_role)
+  AND (
+      $3::text IS NULL
+      OR email ILIKE '%' || $3::text || '%'
+      OR first_name ILIKE '%' || $3::text || '%'
+      OR last_name ILIKE '%' || $3::text || '%'
+  )
+  AND (
+      $4::timestamptz IS NULL
+      OR (created_at, id) < ($4::timestamptz, $5::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $6
+`
+
+type AdminListUsersParams struct {
+	OrganizationID pgtype.UUID        `json:"organization_id"`
+	RoleFilter     *UserRole          `json:"role_filter"`
+	SearchTerm     *string            `json:"search_term"`
+	AfterCreatedAt pgtype.Timestamptz `json:"after_created_at"`
+	AfterID        pgtype.UUID        `json:"after_id"`
+	PageSize       int32              `json:"page_size"`
+}
+
+func (q *Queries) AdminListUsers(ctx context.Context, arg AdminListUsersParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, adminListUsers,
+		arg.OrganizationID,
+		arg.RoleFilter,
+		arg.SearchTerm,
+		arg.AfterCreatedAt,
+		arg.AfterID,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Role,
+			&i.OrganizationID,
+			&i.DefaultModalityID,
+			&i.BillingAddressID,
+			&i.FirebaseUid,
+			&i.Email,
+			&i.PhoneNumber,
+			&i.IsEmailVerified,
+			&i.FirstName,
+			&i.LastName,
+			&i.ProfessionalTitle,
+			&i.CredentialsNumber,
+			&i.Biography,
+			&i.AvatarUrl,
+			&i.UiLanguage,
+			&i.Timezone,
+			&i.HasAcceptedTos,
+			&i.HasMarketingConsent,
+			&i.CreatedAt,
+			&i.DeletedAt,
+			&i.ReportPreferences,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const adminUpdateUser = `-- name: AdminUpdateUser :one
+UPDATE users SET
+    email                 = COALESCE($1, email),
+    role                  = COALESCE($2, role),
+    organization_id       = COALESCE($3, organization_id),
+    is_email_verified     = COALESCE($4, is_email_verified),
+    first_name            = COALESCE($5, first_name),
+    last_name             = COALESCE($6, last_name),
+    professional_title    = COALESCE($7, professional_title),
+    credentials_number    = COALESCE($8, credentials_number),
+    biography             = COALESCE($9, biography),
+    phone_number          = COALESCE($10, phone_number),
+    avatar_url            = COALESCE($11, avatar_url),
+    default_modality_id   = COALESCE($12, default_modality_id),
+    ui_language           = COALESCE($13, ui_language),
+    timezone              = COALESCE($14, timezone),
+    billing_address_id    = COALESCE($15, billing_address_id)
+WHERE id = $16 AND deleted_at IS NULL
+RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences
+`
+
+type AdminUpdateUserParams struct {
+	Email             *string     `json:"email"`
+	Role              *UserRole   `json:"role"`
+	OrganizationID    pgtype.UUID `json:"organization_id"`
+	IsEmailVerified   *bool       `json:"is_email_verified"`
+	FirstName         *string     `json:"first_name"`
+	LastName          *string     `json:"last_name"`
+	ProfessionalTitle *string     `json:"professional_title"`
+	CredentialsNumber *string     `json:"credentials_number"`
+	Biography         *string     `json:"biography"`
+	PhoneNumber       *string     `json:"phone_number"`
+	AvatarUrl         *string     `json:"avatar_url"`
+	DefaultModalityID pgtype.UUID `json:"default_modality_id"`
+	UiLanguage        *string     `json:"ui_language"`
+	Timezone          *string     `json:"timezone"`
+	BillingAddressID  pgtype.UUID `json:"billing_address_id"`
+	ID                uuid.UUID   `json:"id"`
+}
+
+// Superwizor-admin variant — accepts the admin-only columns (email, role,
+// organization_id, is_email_verified) plus everything UpdateProfile covers.
+// Every column is selective via COALESCE. The handler enforces the role
+// gate + writes audit_events before calling this.
+func (q *Queries) AdminUpdateUser(ctx context.Context, arg AdminUpdateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, adminUpdateUser,
+		arg.Email,
+		arg.Role,
+		arg.OrganizationID,
+		arg.IsEmailVerified,
+		arg.FirstName,
+		arg.LastName,
+		arg.ProfessionalTitle,
+		arg.CredentialsNumber,
+		arg.Biography,
+		arg.PhoneNumber,
+		arg.AvatarUrl,
+		arg.DefaultModalityID,
+		arg.UiLanguage,
+		arg.Timezone,
+		arg.BillingAddressID,
+		arg.ID,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Role,
+		&i.OrganizationID,
+		&i.DefaultModalityID,
+		&i.BillingAddressID,
+		&i.FirebaseUid,
+		&i.Email,
+		&i.PhoneNumber,
+		&i.IsEmailVerified,
+		&i.FirstName,
+		&i.LastName,
+		&i.ProfessionalTitle,
+		&i.CredentialsNumber,
+		&i.Biography,
+		&i.AvatarUrl,
+		&i.UiLanguage,
+		&i.Timezone,
+		&i.HasAcceptedTos,
+		&i.HasMarketingConsent,
+		&i.CreatedAt,
+		&i.DeletedAt,
+		&i.ReportPreferences,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     role, firebase_uid, email,
@@ -187,6 +356,23 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	return i, err
 }
 
+const linkUserToOrganization = `-- name: LinkUserToOrganization :exec
+UPDATE users SET organization_id = $2 WHERE id = $1 AND deleted_at IS NULL
+`
+
+type LinkUserToOrganizationParams struct {
+	ID             uuid.UUID   `json:"id"`
+	OrganizationID pgtype.UUID `json:"organization_id"`
+}
+
+// Used by RegisterOrganization (sets the just-created ORG_ADMIN user's
+// organization_id to the new org) and AcceptInvitation (sets the new
+// THERAPIST's org to the inviting org).
+func (q *Queries) LinkUserToOrganization(ctx context.Context, arg LinkUserToOrganizationParams) error {
+	_, err := q.db.Exec(ctx, linkUserToOrganization, arg.ID, arg.OrganizationID)
+	return err
+}
+
 const listTherapistsByOrganization = `-- name: ListTherapistsByOrganization :many
 SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences FROM users
 WHERE organization_id = $1
@@ -249,26 +435,44 @@ func (q *Queries) SoftDeleteUser(ctx context.Context, id uuid.UUID) error {
 
 const updateProfile = `-- name: UpdateProfile :one
 UPDATE users SET
-    first_name = COALESCE($1, first_name),
-    last_name = COALESCE($2, last_name),
-    professional_title = $3,
-    credentials_number = $4,
-    biography = $5,
-    phone_number = $6
-WHERE id = $7 AND deleted_at IS NULL
+    first_name            = COALESCE($1, first_name),
+    last_name             = COALESCE($2, last_name),
+    professional_title    = COALESCE($3, professional_title),
+    credentials_number    = COALESCE($4, credentials_number),
+    biography             = COALESCE($5, biography),
+    phone_number          = COALESCE($6, phone_number),
+    avatar_url            = COALESCE($7, avatar_url),
+    default_modality_id   = COALESCE($8, default_modality_id),
+    ui_language           = COALESCE($9, ui_language),
+    timezone              = COALESCE($10, timezone),
+    billing_address_id    = COALESCE($11, billing_address_id),
+    has_marketing_consent = COALESCE($12, has_marketing_consent)
+WHERE id = $13 AND deleted_at IS NULL
 RETURNING id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences
 `
 
 type UpdateProfileParams struct {
-	FirstName         *string   `json:"first_name"`
-	LastName          *string   `json:"last_name"`
-	ProfessionalTitle *string   `json:"professional_title"`
-	CredentialsNumber *string   `json:"credentials_number"`
-	Biography         *string   `json:"biography"`
-	PhoneNumber       *string   `json:"phone_number"`
-	ID                uuid.UUID `json:"id"`
+	FirstName           *string     `json:"first_name"`
+	LastName            *string     `json:"last_name"`
+	ProfessionalTitle   *string     `json:"professional_title"`
+	CredentialsNumber   *string     `json:"credentials_number"`
+	Biography           *string     `json:"biography"`
+	PhoneNumber         *string     `json:"phone_number"`
+	AvatarUrl           *string     `json:"avatar_url"`
+	DefaultModalityID   pgtype.UUID `json:"default_modality_id"`
+	UiLanguage          *string     `json:"ui_language"`
+	Timezone            *string     `json:"timezone"`
+	BillingAddressID    pgtype.UUID `json:"billing_address_id"`
+	HasMarketingConsent *bool       `json:"has_marketing_consent"`
+	ID                  uuid.UUID   `json:"id"`
 }
 
+// Every column uses COALESCE(narg, current) so a NULL narg = "don't touch
+// this column". The Go handler is responsible for converting empty-string
+// (the iOS legacy contract on fields 2-7 of UpdateProfileRequest) into
+// a nil pointer when "don't change" is intended. New optional fields
+// 8-13 from the proto naturally arrive as nil pointers when unset.
+// See docs/18 D2.
 func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (User, error) {
 	row := q.db.QueryRow(ctx, updateProfile,
 		arg.FirstName,
@@ -277,6 +481,12 @@ func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (U
 		arg.CredentialsNumber,
 		arg.Biography,
 		arg.PhoneNumber,
+		arg.AvatarUrl,
+		arg.DefaultModalityID,
+		arg.UiLanguage,
+		arg.Timezone,
+		arg.BillingAddressID,
+		arg.HasMarketingConsent,
 		arg.ID,
 	)
 	var i User

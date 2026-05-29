@@ -19,6 +19,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -541,6 +542,17 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Web build: recording APIs (`package:record` + MediaRecorder
+    // policies) need a microphone gesture per-tab and aren't part of
+    // the Slice 5 scope. docs/18 §8.3 calls out that the recording
+    // screen is replaced on web with a "use the iPhone app" CTA — we
+    // do that here as the foundational guard. Patients still get
+    // their session on iOS; clinicians read the resulting transcript
+    // + report on web.
+    if (kIsWeb) {
+      return _WebRecordingFallback(patientAlias: widget.patientAlias);
+    }
+
     final t = AppLocalizations.of(context);
     final dateLabel = DateFormat('d MMMM y', 'pl_PL').format(DateTime.now());
 
@@ -911,3 +923,71 @@ class _InstructionsBlock extends StatelessWidget {
 // CTA gets re-introduced.
 // ignore: unused_element
 const _kKeepImportEuphireButton = EuphireButton;
+
+/// Web-only fallback shown in place of the iOS recording UI.
+///
+/// docs/18 §8.3 explicitly excludes the recording flow from Flutter
+/// Web: browser-side `MediaRecorder` would need per-tab mic gestures,
+/// FLAC encoding pipeline + chunk persistence isn't IndexedDB-friendly,
+/// and the clinical use-case (a therapist mid-session) is iOS-native
+/// anyway. The web build still navigates here when a user clicks
+/// "Start session"; we just render the placeholder instead of trying
+/// to fire the recording APIs that don't exist in the browser.
+class _WebRecordingFallback extends StatelessWidget {
+  final String patientAlias;
+  const _WebRecordingFallback({required this.patientAlias});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: EuphireColors.backgroundGradient,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          iconTheme: const IconThemeData(color: EuphireColors.frostWhite),
+        ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Nagrywanie dostępne w aplikacji iOS',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineMedium
+                        ?.copyWith(color: EuphireColors.frostWhite),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Aby nagrać sesję z $patientAlias, użyj aplikacji '
+                    'Superwizor na iPhone. Po przesłaniu nagrania '
+                    'transkrypcja i raport pojawią się tutaj.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: EuphireColors.frostWhite.withValues(alpha: 0.85)),
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Powrót'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

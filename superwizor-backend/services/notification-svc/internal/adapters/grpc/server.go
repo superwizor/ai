@@ -28,18 +28,26 @@ import (
 
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	pgstore "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/postgres"
+	"github.com/superwizor-ai/backend/services/notification-svc/internal/email"
 )
 
 type Server struct {
 	notificationv1.UnimplementedNotificationServiceServer
-	store      *pgstore.Store
-	auth       *fbauth.Client
-	version    string
+	store   *pgstore.Store
+	auth    *fbauth.Client
+	emailer email.Sender // nil-safe; nil falls through to NoopSender at call site
+	version string
 }
 
 func NewServer(store *pgstore.Store, auth *fbauth.Client, version string) *Server {
-	return &Server{store: store, auth: auth, version: version}
+	return &Server{store: store, auth: auth, version: version, emailer: email.NewMockSender()}
 }
+
+// WithEmailer overrides the email Sender. Production wiring (cmd/server/
+// main.go) calls this with a ResendSender; tests use a MockSender;
+// local dev when RESEND_API_KEY is unset stays on the default
+// MockSender from NewServer.
+func (s *Server) WithEmailer(sender email.Sender) *Server { s.emailer = sender; return s }
 
 // HealthCheck — unauthenticated. Cloud Run health probes hit this.
 func (s *Server) HealthCheck(_ context.Context, _ *emptypb.Empty) (*notificationv1.HealthCheckResponse, error) {

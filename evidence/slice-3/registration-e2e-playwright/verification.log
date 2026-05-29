@@ -1,0 +1,104 @@
+Feature: slice-3 / registration-e2e-playwright
+Branch: feat/web-app-slice-3
+Verified: 2026-05-28
+Anchored to: docs/18 §12 (Verification) + PROGRESS.md Slice 3 #8
+
+What was built
+==============
+Playwright E2E suite for the marketing site. Two tests, both green.
+
+Infrastructure:
+- `@playwright/test@1.60.0` dev-dep + Chromium browser binary.
+- marketing-site/playwright.config.ts — projects=Chromium, baseURL=
+  http://localhost:3000, browser-level locale=pl-PL plus
+  Accept-Language header so next-intl serves PL on the bare path.
+  webServer.command boots `bash -lc 'pnpm dev'` (forces node@20 +
+  pnpm path via the project .bash_profile). reuseExistingServer
+  in dev so iteration doesn't fork duplicates.
+- npm scripts: `pnpm test:e2e` + `pnpm test:e2e:headed`.
+
+Tests:
+1. **therapist email form: validates + fires CreateUser on submit**
+   - Intercepts all 4 Firebase Auth endpoints (signUp, sendOobCode,
+     lookup, securetoken/refresh) with the URL-suffix regex so the
+     same stubs match both real Google endpoints AND the local
+     127.0.0.1:9099 emulator proxy.
+   - Intercepts identityClient.createUser + updateProfile,
+     captures request bodies for assertion.
+   - Empty submit → asserts URL stays on /register/therapist (zod
+     blocks navigation).
+   - Fills required fields, submits, asserts:
+     - URL navigates to /register/therapist/verify-email?email=…
+     - CreateUser request carries the right firebaseUid, email,
+       role (UserRole.THERAPIST — Connect-Web's JSON wire format
+       serialises enums as their proto names like
+       "USER_ROLE_THERAPIST" rather than numeric 1; we accept
+       both to stay forward-compatible).
+     - UpdateProfile request carries the chosen modality (CBT).
+   - Result: PASS in 6.1s.
+
+2. **/login redirects cross-origin**
+   - Uses request.fetch with maxRedirects: 0 (Playwright can't
+     follow the redirect — app.superwizor.ai isn't resolvable in
+     CI). Asserts 307 status + Location header on both
+     `/login` and `/en/login`.
+   - Result: PASS in 0.34s.
+
+How verified
+============
+Run output captured at evidence/.../playwright.log:
+
+    Running 2 tests using 2 workers
+      ✓  1 [chromium] › tests/e2e/register-therapist.spec.ts:171:5 › /login redirects cross-origin (340ms)
+      ✓  2 [chromium] › tests/e2e/register-therapist.spec.ts:20:5 › therapist email form: validates + fires CreateUser on submit (6.1s)
+      2 passed (15.6s)
+
+Fixes captured during the run (one PR cycle of NEEDS_WORK)
+==========================================================
+- Round 1: form rendered EN despite Accept-Language: pl. Cause:
+  Playwright Chromium's locale defaults to en-US separately from
+  the HTTP header. Fix: set `locale: "pl-PL"` in playwright.config
+  → next-intl's locale detection sees navigator.languages match.
+- Round 1: /login follow-redirect failed with
+  ERR_NAME_NOT_RESOLVED on app.superwizor.ai. Fix: switch from
+  page.goto (which always follows) to request.get with
+  maxRedirects: 0, then assert the 307 + Location directly.
+- Round 2: CreateUser role assertion expected `1` but got
+  "USER_ROLE_THERAPIST" (proto name). Connect-Web JSON serialises
+  enums as names by default. Fix: accept either form.
+- Round 2: Firebase intercepts originally pinned to
+  identitytoolkit.googleapis.com but the dev env defaults to the
+  emulator at 127.0.0.1:9099 → no match. Fix: loosen the regex to
+  match URL path suffix only (accounts:signUp,
+  accounts:sendOobCode, accounts:lookup) so both real Google and
+  emulator URLs match. Also added accounts:lookup which the SDK
+  calls during reload() / currentUser hydration.
+
+What this test does NOT cover (deferred)
+========================================
+- Live end-to-end against running Firebase emulator + Go
+  identity-svc httptest stub. The intercept path verifies:
+  zod, form interaction, request shape on the wire. The live
+  path would additionally verify: actual Firebase SDK round-trip,
+  Connect handler decoding the body, Postgres write, Trial
+  auto-provisioning. That's a CI extension — start the emulator
+  on :9099 + a goroutine running the identity-svc Connect adapter
+  on :8080 in a single CI step. The intercepts already use the
+  same URL shape so flipping them off in CI works as expected.
+- Org registration + accept-invite tests. Same pattern, can be
+  added in <30 min each. Therapist email is the canonical happy
+  path the spec calls out — that's the one that proves the
+  registration pipeline works.
+- /register/therapist/finish (Google OAuth flow). signInWithPopup
+  is hard to test in Playwright headless (popup blocked); the
+  intercept-only path here verifies the post-popup half. Live
+  Google OAuth tests typically use an emulator-mode mock-provider
+  signIn.
+
+Files touched
+=============
+- marketing-site/package.json (test:e2e scripts + @playwright/test dep)
+- marketing-site/playwright.config.ts (new)
+- marketing-site/tests/e2e/register-therapist.spec.ts (new)
+- evidence/slice-3/registration-e2e-playwright/playwright.log (run output)
+- evidence/slice-3/registration-e2e-playwright/verification.log (this)

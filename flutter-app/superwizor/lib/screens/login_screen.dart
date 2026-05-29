@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/app_localizations.dart';
@@ -21,6 +22,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _loading = false;
   String? _error;
   bool _isLogin = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Cross-origin login bridge (stop-gap):
+    // marketing-site's /account page links here as
+    //   https://superwizor-app.web.app/?email=<encoded>
+    // because Firebase Auth IndexedDB is origin-scoped (docs/18 §5
+    // R3) — the user is logged in on superwizor.web.app but starts
+    // signed-out here. Pre-fill the email so they only need to
+    // re-type the password. Uri.base reflects the current page URL
+    // on web; on iOS/Android Uri.base is a custom scheme and
+    // queryParameters is empty, so this is a no-op on native.
+    final emailParam = Uri.base.queryParameters['email'];
+    if (emailParam != null && emailParam.isNotEmpty) {
+      _email.text = emailParam;
+    }
+  }
 
   Future<void> _submit() async {
     setState(() {
@@ -252,9 +271,70 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   _isLogin ? 'Nie masz konta? Zarejestruj się.' : 'Masz już konto? Zaloguj się.',
                 ),
               ),
+              // Web-only: shared-machine reminder. iOS/Android run on
+              // personal devices so the warning would be noise there;
+              // app.superwizor.ai is the only context where someone
+              // else might walk up and re-open the browser tab.
+              if (kIsWeb) ...[
+                const SizedBox(height: 24),
+                const _SharedMachineNotice(),
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// Shared-machine notice — Flutter Web only. Public kiosks, clinic
+// reception desks, library computers etc. are realistic environments
+// for the web build (iOS/Android wouldn't be). The notice is
+// non-blocking (no checkbox, no dialog) — just a localized reminder
+// styled as an outlined info card so it reads as advice rather than
+// an error.
+class _SharedMachineNotice extends StatelessWidget {
+  const _SharedMachineNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline,
+            size: 20,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.auth_shared_machine_warning_title,
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  l.auth_shared_machine_warning_body,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

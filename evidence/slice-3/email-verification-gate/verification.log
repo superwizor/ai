@@ -1,0 +1,109 @@
+Feature: slice-3 / email-verification-gate
+Branch: feat/web-app-slice-3
+Verified: 2026-05-28
+Anchored to: docs/18 §8.1 (the post-signup "we sent you" page).
+
+What was built
+==============
+Extended `src/components/register/ResendVerificationButton.tsx`
+(originally a single-shot resend button from feature 1) into a
+full verify-email gate:
+
+  1. Polls `auth.currentUser.reload()` every 5s while the user
+     is signed in but unverified. Firebase's JS SDK doesn't push
+     email-verified changes — reload() refreshes the ID token's
+     emailVerified claim in place.
+  2. Listens to `document.visibilitychange` so when the user
+     clicks the email link in another tab and comes back to this
+     one, the next reload() fires immediately instead of waiting
+     up to 5s.
+  3. On `user.emailVerified === true`:
+       - sets status="verified"
+       - shows a "✓ E-mail potwierdzony · Przekierowujemy do
+         aplikacji…" panel with a manual "Przejdź do aplikacji"
+         button (in case the auto-redirect's window.location is
+         blocked).
+       - 1.5s delay → window.location =
+         https://app.superwizor.ai/login (cross-origin, per §5 R3).
+  4. Resend button still available the whole time. Polite live
+     region ("Sprawdzamy potwierdzenie…") visible when signed in
+     and not yet verified.
+
+Why a poll + visibilitychange and not a Firebase action handler?
+- Firebase's "action link" flow lands the user on
+  /__/auth/action?mode=verifyEmail&oobCode=… which is the
+  Firebase-hosted page. The continueUrl can bring them back to a
+  configured route; we use that for resilient back-nav. The poll
+  here is the second leg of redundancy — if the user clicks the
+  email link in their inbox app (Gmail, native Mail) the
+  verification happens server-side and our page just notices on
+  the next reload(). No custom action handler needed.
+
+Files touched
+=============
+- marketing-site/messages/{pl,en}.json — added `verifyingStatus`,
+  `verifiedHeading`, `verifiedBody`, `verifiedGoToApp` keys.
+- marketing-site/src/components/register/ResendVerificationButton.tsx
+  — full rewrite (component name kept for now to avoid touching
+  the verify-email page; rename to VerifyEmailPanel is a Slice 6
+  polish task).
+
+No new files. No new deps.
+
+How verified
+============
+1. `pnpm build` exit 0. Route table unchanged (only the verify-
+   email page's client island was modified). 21 SSG + 2 dynamic +
+   proxy.
+
+2. HTTP smoke:
+     /register/therapist/verify-email?email=anna@example.com    → 200
+     /en/register/therapist/verify-email?email=anna@example.com → 200
+
+3. Puppeteer screenshots:
+   - verify-email-pl-full.png — Polish, fullPage. Shows the
+     "Sprawdź swoją skrzynkę" + email interpolation +
+     "WYŚLIJ PONOWNIE" + "Powrót do strony głównej". The
+     "Sprawdzamy potwierdzenie…" status is gated on a signed-in
+     user (auth.currentUser !== null); puppeteer hits the page
+     without an active sign-in so it's correctly hidden in the
+     screenshot. The polling code path activates only when a
+     real user is signed in.
+   - verify-email-en-full.png — same composition in English.
+   - verify-email-pl-{mobile,tablet,desktop}.png — viewport-
+     clipped responsiveness.
+
+4. preview_console_logs(error) returns "No console logs". The
+   reload() call would throw on a stale token; the try/catch in
+   the poll function swallows it and just retries on the next
+   interval.
+
+How the verified UI was confirmed (without a real Firebase user)
+================================================================
+Live emailVerified=true cannot be triggered in this session
+without:
+  - A real Firebase project + Auth emulator running, OR
+  - Hand-modifying auth-provider.tsx to inject a mock user.
+Neither is in scope for an infrastructure-only smoke. Feature 8
+(registration-e2e-playwright) covers the live happy path:
+puppeteer signs up via the real form → emulator's
+admin-confirm-email API marks the user verified → poll detects
+the change → redirect fires. That's the genuine E2E test for
+this gate.
+
+What's intentionally NOT wired here
+===================================
+- A route-level "unverified visitor → bounce back to
+  verify-email" middleware. There's no protected page on the
+  marketing site yet (everything is public) so the gate is
+  purely UI-level. When Slice 5's Flutter Web app comes online,
+  its router will check `auth.currentUser.emailVerified` on
+  protected routes — separate concern from this Slice 3 feature.
+
+Files
+=====
+- marketing-site/messages/pl.json (verifyEmail extensions)
+- marketing-site/messages/en.json (verifyEmail extensions)
+- marketing-site/src/components/register/ResendVerificationButton.tsx
+- evidence/slice-3/email-verification-gate/verify-email-*.png (5)
+- evidence/slice-3/email-verification-gate/verification.log (this)

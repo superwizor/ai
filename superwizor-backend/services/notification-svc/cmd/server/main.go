@@ -30,6 +30,7 @@ import (
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	grpcadapter "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/grpc"
 	pgstore "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/postgres"
+	emailpkg "github.com/superwizor-ai/backend/services/notification-svc/internal/email"
 )
 
 func main() {
@@ -87,6 +88,18 @@ func main() {
 			os.Exit(1)
 		}
 		srv = grpcadapter.NewServer(store, auth, version)
+	}
+
+	// Resend-backed email sender (per docs/18 D1). Falls back to the
+	// MockSender default in NewServer when RESEND_API_KEY is unset —
+	// safe for local dev and contract tests, so the binary still
+	// boots without the secret.
+	if apiKey := os.Getenv("RESEND_API_KEY"); apiKey != "" {
+		from := getenv("RESEND_FROM", "Superwizor <noreply@superwizor.ai>")
+		srv = srv.WithEmailer(emailpkg.NewResendSender(apiKey, from))
+		slog.Info("notification-svc: Resend sender enabled", "from", from)
+	} else {
+		slog.Warn("RESEND_API_KEY unset — using MockSender (no real emails sent)")
 	}
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))

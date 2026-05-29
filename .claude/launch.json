@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "marketing-site",
+      "runtimeExecutable": "/usr/local/bin/pnpm",
+      "runtimeArgs": ["--dir", "/Users/dpiotrak/supervisorai_v2/ai/marketing-site", "dev"],
+      "port": 3000
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+Feature: slice-6 / notification-svc-i18n-templates
+Branch: feat/web-app-slice-6
+Verified: 2026-05-28
+Anchored to: docs/18 §14.7 ("transactional emails in PL + EN with per-event templates")
+
+What was built
+==============
+Two new transactional-email events get the same per-locale template
++ RPC treatment that `invitation` already had:
+
+  - email_verification — sent by identity-svc after self-serve signup
+                         to deliver the Firebase Auth verification link
+                         under our own branding.
+  - quota_warning      — sent by billing-svc when an org crosses 80%
+                         or 95% of its monthly token quota for the
+                         first time in the period.
+
+For each event the four artifacts ship together:
+
+  proto/notification/v1/notification.proto
+    + SendEmailVerification RPC + SendEmailVerificationRequest
+      (recipient_email, first_name, verify_url, expires_at_iso, locale)
+    + SendQuotaWarning RPC + SendQuotaWarningRequest
+      (recipient_email, first_name, organization_name, usage_percent,
+       tokens_remaining, plan_tier, plan_cycle, period_end_iso,
+       billing_url, locale)
+
+  services/notification-svc/internal/i18n/templates/pl/email_verification.md
+  services/notification-svc/internal/i18n/templates/en/email_verification.md
+  services/notification-svc/internal/i18n/templates/pl/quota_warning.md
+  services/notification-svc/internal/i18n/templates/en/quota_warning.md
+    YAML frontmatter (subject) + body with {placeholder} markers
+    matching the proto request fields.
+
+  services/notification-svc/internal/adapters/grpc/invitation_email.go
+    + SendEmailVerification handler — InvalidArgument gates,
+      template Load with locale fallback to PL, Render with the
+      proto field map, dispatch via existing s.emailer.
+    + SendQuotaWarning handler — same shape, plus a 1..100 sanity
+      check on usage_percent so a malformed call doesn't render
+      "0%" or "1000%".
+    + firstNameOrDefault helper — drops a literal "Hi ," when the
+      caller doesn't know the recipient's first name. Locale-aware
+      ("there" for EN, empty for PL where the comma-after-name
+      pattern reads cleaner blank).
+
+Why these two events + this scope
+==================================
+docs/18 §14.7 named the three transactional emails the web app needs
+for launch: invitation (already shipped Slice 1 commit 7), email
+verification, and quota warning. Push-only notifications stay
+out-of-band — this work is only about the emails.
+
+The RPCs are added but not yet wired from the upstream services. Per
+the established pattern (the invitation RPC shipped before identity-
+svc started calling it from InviteTherapist), the wiring lands in a
+follow-up commit on each caller:
+
+  - identity-svc.RegisterTherapist / RegisterOrganization →
+    SendEmailVerification (needs Firebase Admin's
+    GenerateEmailVerificationLink first).
+  - billing-svc.CommitUsage → SendQuotaWarning (needs the
+    per-period "warned_at_80 / warned_at_95" idempotency flag added
+    to subscriptions or organization_quota).
+
+Both follow-ups are tracked in PROGRESS.md.
+
+How verified
+============
+1. buf generate proto → clean.
+   Generated Go now exports SendEmailVerification + SendQuotaWarning
+   on NotificationServiceClient + Server interfaces.
+
+2. go build ./... across the workspace → exit 0 on
+   gen/go, services/notification-svc, services/identity-svc,
+   services/billing-svc, services/clinical-svc.
+
+3. go test ./internal/i18n/... → 7/7 pass (new file
+   templater_test.go):
+     TestLoad_AllTemplates_BothLocales/pl/invitation
+     TestLoad_AllTemplates_BothLocales/pl/email_verification
+     TestLoad_AllTemplates_BothLocales/pl/quota_warning
+     TestLoad_AllTemplates_BothLocales/en/invitation
+     TestLoad_AllTemplates_BothLocales/en/email_verification
+     TestLoad_AllTemplates_BothLocales/en/quota_warning
+     TestLoad_UnknownLocaleFallsBackToPL
+
+   The first six explicitly assert that EVERY {placeholder} in the
+   proto's request type is substituted by Render. If a future
+   template typos a key (e.g. "{first_nname}"), the corresponding
+   subtest fails with "placeholder {first_name} not substituted".
+
+4. The two new templates parse the same frontmatter format as the
+   shipping `invitation.md` — same i18n.Load codepath, same renderer.
+   No engine changes were needed.
+
+Files
+=====
+- superwizor-backend/proto/notification/v1/notification.proto
+- superwizor-backend/services/notification-svc/internal/i18n/templates/pl/email_verification.md (new)
+- superwizor-backend/services/notification-svc/internal/i18n/templates/en/email_verification.md (new)
+- superwizor-backend/services/notification-svc/internal/i18n/templates/pl/quota_warning.md (new)
+- superwizor-backend/services/notification-svc/internal/i18n/templates/en/quota_warning.md (new)
+- superwizor-backend/services/notification-svc/internal/i18n/templater_test.go (new)
+- superwizor-backend/services/notification-svc/internal/adapters/grpc/invitation_email.go
+- superwizor-backend/gen/ts/notification/v1/notification_pb.ts (regen)
+- evidence/slice-6/notification-svc-i18n-templates/verification.log (this)

@@ -10,12 +10,128 @@
       "emailPassword": true
     }
   },
+  "hosting": [
+    {
+      "//": "Marketing site (Next.js, static-exported). 2026-05-28 — switched from frameworksBackend (Cloud Functions SSR) to pure static. firebase-frameworks' npm-ci-against-pnpm-lockfile pipeline kept breaking Cloud Build. Static export of Next.js 16 produces clean HTML/JS that Firebase Hosting serves at the edge. Deploy: `pnpm --dir marketing-site build && firebase deploy --only hosting:superwizor`.",
+      "site": "superwizor",
+      "public": "marketing-site/out",
+      "cleanUrls": true,
+      "trailingSlash": true,
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "redirects": [
+        {
+          "//": "/login is a real page on the marketing origin as of 2026-05-29 (src/app/[locale]/login/page.tsx). Bare /login (no locale prefix) gets the standard PL-default 307 to /pl/login/; the prefixed routes /pl/login/ and /en/login/ are served as static HTML and don't need redirects. The previous cross-origin redirect to the Flutter app is gone — the new LoginForm signs the user in on this origin, then routes by role.",
+          "source": "/login",
+          "destination": "/pl/login/",
+          "type": 307
+        },
+        {
+          "source": "/login/",
+          "destination": "/pl/login/",
+          "type": 307
+        },
+        {
+          "//": "PL default locale redirect. Next.js was configured with `localePrefix: 'as-needed'` so during SSR/dev the PL pages served at no-prefix paths (e.g. /register/therapist) and only EN got the /en prefix. Static export bakes both into explicit directories (out/pl/... and out/en/...); the proxy middleware that stripped the prefix at request time is gone. The redirects below restore the UX — every top-level no-prefix path forwards to its /pl/ equivalent. Result: visitors get the same UX as before — a quick 307 bounce, then a stable /pl/* URL.",
+          "source": "/",
+          "destination": "/pl/",
+          "type": 307
+        },
+        {
+          "//": "Top-level no-prefix paths -> /pl/<same>. One redirect per top-level segment because Firebase Hosting source patterns are anchored: a single catchall would also match /pl/* and /en/* and create a loop. The :rest* capture preserves the deep path so /register/therapist/finish?token=x lands on /pl/register/therapist/finish?token=x.",
+          "source": "/register/:rest*",
+          "destination": "/pl/register/:rest*",
+          "type": 307
+        },
+        {
+          "//": "Bare /admin needs its own exact-match peer because Firebase Hosting's :rest* requires at least one segment after the slash — `/admin` alone doesn't match `/admin/:rest*`. Same for /register, but most users land on a deeper register path.",
+          "source": "/admin",
+          "destination": "/pl/admin/",
+          "type": 307
+        },
+        {
+          "source": "/admin/",
+          "destination": "/pl/admin/",
+          "type": 307
+        },
+        {
+          "source": "/admin/:rest*",
+          "destination": "/pl/admin/:rest*",
+          "type": 307
+        },
+        {
+          "source": "/register",
+          "destination": "/pl/register/therapist/",
+          "type": 307
+        },
+        {
+          "source": "/register/",
+          "destination": "/pl/register/therapist/",
+          "type": 307
+        },
+        {
+          "source": "/legal",
+          "destination": "/pl/",
+          "type": 307
+        },
+        {
+          "source": "/legal/",
+          "destination": "/pl/",
+          "type": 307
+        },
+        {
+          "source": "/legal/:rest*",
+          "destination": "/pl/legal/:rest*",
+          "type": 307
+        },
+        {
+          "source": "/pricing",
+          "destination": "/pl/pricing/",
+          "type": 307
+        },
+        {
+          "source": "/pricing/",
+          "destination": "/pl/pricing/",
+          "type": 307
+        },
+        {
+          "source": "/accept-invite",
+          "destination": "/pl/accept-invite/",
+          "type": 307
+        },
+        {
+          "source": "/accept-invite/",
+          "destination": "/pl/accept-invite/",
+          "type": 307
+        }
+      ],
+      "rewrites": [
+        {
+          "//": "Admin org-detail catch-all. Static export can't pre-render every /admin/orgs/<id> because the IDs aren't known at build time. We ship a single template per locale (out/{pl,en}/admin/orgs/[id]/index.html — literal bracketed directory) and rewrite all matching /admin/orgs/<id> traffic to it. The client component reads usePathname() at runtime and fetches the matching org via AdminGetOrganization.",
+          "source": "/pl/admin/orgs/**",
+          "destination": "/pl/admin/orgs/[id]/index.html"
+        },
+        {
+          "source": "/en/admin/orgs/**",
+          "destination": "/en/admin/orgs/[id]/index.html"
+        }
+      ]
+    },
+    {
+      "//": "Flutter Web bundle (therapist + org-admin consoles). Deploy: `firebase deploy --only hosting:superwizor-app`.",
+      "site": "superwizor-app",
+      "public": "flutter-app/superwizor/build/web",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+    }
+  ],
   "emulators": {
     "auth": {
       "port": 9099
     },
     "firestore": {
       "port": 8080
+    },
+    "hosting": {
+      "port": 5000
     },
     "ui": {
       "enabled": true

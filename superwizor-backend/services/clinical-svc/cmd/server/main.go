@@ -2,15 +2,22 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
-	"net"
+	nethttp "net/http"
 	"net/url"
 	"os"
+	"os/signal"
+	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -18,11 +25,17 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
+	clinicalv1connect "github.com/superwizor-ai/backend/gen/go/clinical/v1/clinicalv1connect"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	"connectrpc.com/connect"
+
+	"github.com/superwizor-ai/backend/pkg/connectmd"
+	"github.com/superwizor-ai/backend/pkg/cors"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	grpcadapter "github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
@@ -215,33 +228,102 @@ func main() {
 
 	srv := grpcadapter.NewServer(pool, queries, identityClient, billingClient, crypto, sessionEvents, version)
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		slog.Error("listen failed", "error", err)
-		os.Exit(1)
-	}
-
 	tp := initTracer()
 	defer func() { _ = tp.Shutdown(ctx) }()
 
+	// gRPC surface — iOS + server-to-server callers.
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		grpc.UnaryInterceptor(grpcadapter.UnaryAuthInterceptor(identityClient)),
 	)
 	clinicalv1.RegisterClinicalServiceServer(grpcServer, srv)
-
-	// Health
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(grpcServer, healthServer)
-
 	reflection.Register(grpcServer)
 
-	slog.Info("clinical-svc starting", "port", port)
-	if err := grpcServer.Serve(lis); err != nil {
-		slog.Error("serve failed", "error", err)
-		os.Exit(1)
+	// Connect-RPC surface — browser callers via ConnectAdapter.
+	// Three interceptors run in declaration order:
+	//   1. HeadersToGRPCMetadata: copies HTTP request headers into ctx
+	//      as gRPC IncomingMetadata so handlers reading
+	//      metadata.FromIncomingContext keep working over Connect (see
+	//      pkg/connectmd).
+	//   2. ConnectAuthInterceptor: mirrors UnaryAuthInterceptor for the
+	//      Connect path — validates the Firebase token via identity-svc
+	//      and injects UserIDKey into ctx, so every handler that reads
+	//      `ctx.Value(UserIDKey)` works the same regardless of whether
+	//      the request came in as native gRPC (iOS) or gRPC-Web/
+	//      Connect (browsers). Without this, Flutter web RPCs returned
+	//      "missing user ID in context" — the 2026-05-28 regression
+	//      surfaced after routing gRPC-Web to this handler.
+	httpMux := nethttp.NewServeMux()
+	connectPath, connectHandler := clinicalv1connect.NewClinicalServiceHandler(
+		grpcadapter.NewConnectAdapter(srv),
+		connect.WithInterceptors(
+			connectmd.HeadersToGRPCMetadata(),
+			grpcadapter.ConnectAuthInterceptor(identityClient),
+		),
+	)
+	httpMux.Handle(connectPath, connectHandler)
+	httpMux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
+		w.WriteHeader(nethttp.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	// Mixed handler dispatches by Content-Type:
+	//   application/grpc           -> native gRPC server (server-to-server, iOS)
+	//   application/grpc-web[+...] -> Connect handler (Flutter web speaks gRPC-Web)
+	//   application/{json,connect+} -> Connect handler (marketing-site browser)
+	//
+	// Pre-fix Flutter web's gRPC-Web traffic was being routed to the
+	// plain gRPC server (because Content-Type starts with the same
+	// prefix), which doesn't speak gRPC-Web framing → 415.
+	mixedHandler := nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		ct := r.Header.Get("Content-Type")
+		if r.ProtoMajor == 2 && strings.HasPrefix(ct, "application/grpc") {
+			if strings.HasPrefix(ct, "application/grpc-web") {
+				httpMux.ServeHTTP(w, r)
+				return
+			}
+			grpcServer.ServeHTTP(w, r)
+			return
+		}
+		httpMux.ServeHTTP(w, r)
+	})
+
+	corsOrigins := getEnv("CORS_ALLOWED_ORIGINS",
+		"https://superwizor.ai,https://app.superwizor.ai,http://localhost:3000,http://localhost:8080")
+	corsMW := cors.New(cors.FromEnv(corsOrigins))
+
+	h2s := &http2.Server{}
+	httpSrv := &nethttp.Server{
+		Addr:              ":" + port,
+		Handler:           h2c.NewHandler(corsMW(mixedHandler), h2s),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
+
+	rootCtx, cancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		slog.Info("clinical-svc starting (gRPC + Connect + HTTP mixed)",
+			"port", port)
+		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, nethttp.ErrServerClosed) {
+			slog.Error("serve failed", "error", err)
+		}
+	}()
+
+	<-rootCtx.Done()
+	slog.Info("clinical-svc shutdown signal received")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+	grpcServer.GracefulStop()
+	_ = httpSrv.Shutdown(shutdownCtx)
+	wg.Wait()
+	slog.Info("clinical-svc stopped")
 }
 
 func getEnv(key, fallback string) string {
@@ -272,6 +354,21 @@ func newBillingClient(ctx context.Context, serviceURL string) (billingv1.Billing
 		conn, err := grpc.NewClient(target,
 			grpc.WithTransportCredentials(credentials.NewTLS(nil)),
 			grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
+			// Cloud Run drops idle HTTP/2 connections after ~15 minutes.
+			// Without client keepalive we don't notice until next write,
+			// which then surfaces as
+			//   rpc error: code = Internal desc = stream terminated by
+			//   RST_STREAM with error code: PROTOCOL_ERROR
+			// for the user — first call after idle 500s, retry succeeds
+			// because grpc-go silently dials a fresh conn. 30s PING +
+			// 10s timeout keeps the conn warm without spamming the
+			// server; PermitWithoutStream=true lets us send PINGs when
+			// no RPC is active (which is the actual idle case).
+			grpc.WithKeepaliveParams(keepalive.ClientParameters{
+				Time:                30 * time.Second,
+				Timeout:             10 * time.Second,
+				PermitWithoutStream: true,
+			}),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("dial: %w", err)

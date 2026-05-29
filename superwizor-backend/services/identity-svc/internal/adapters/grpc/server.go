@@ -23,15 +23,37 @@ import (
 
 type Server struct {
 	identityv1.UnimplementedIdentityServiceServer
-	queries *db.Queries
-	pool    *pgxpool.Pool
-	auth    *firebase.AuthClient
-	version string
+	queries  *db.Queries
+	pool     *pgxpool.Pool
+	auth     *firebase.AuthClient
+	version  string
+	emailer  InvitationEmailer
+	// acceptURLBase is the public origin that hosts the accept-invite
+	// page (e.g. https://app.superwizor.ai). Combined with the token
+	// to form the link sent to invitees.
+	acceptURLBase string
 }
 
 func NewServer(pool *pgxpool.Pool, queries *db.Queries, auth *firebase.AuthClient, version string) *Server {
-	return &Server{pool: pool, queries: queries, auth: auth, version: version}
+	return &Server{
+		pool:          pool,
+		queries:       queries,
+		auth:          auth,
+		version:       version,
+		emailer:       NoopEmailSender{},
+		acceptURLBase: "https://app.superwizor.ai",
+	}
 }
+
+// WithEmailer overrides the InvitationEmailer — used in commit 7 to
+// wire the real Resend-backed sender, and in tests to capture sent
+// emails.
+func (s *Server) WithEmailer(e InvitationEmailer) *Server { s.emailer = e; return s }
+
+// WithAcceptURLBase overrides the origin used to build invite links.
+// Defaults to https://app.superwizor.ai; CI / local dev passes a
+// localhost value.
+func (s *Server) WithAcceptURLBase(base string) *Server { s.acceptURLBase = base; return s }
 
 func (s *Server) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*identityv1.HealthCheckResponse, error) {
 	return &identityv1.HealthCheckResponse{
@@ -262,27 +284,8 @@ func (s *Server) provisionTrialOrgAndSub(ctx context.Context, tx pgx.Tx, user *d
 	return nil
 }
 
-func (s *Server) UpdateProfile(ctx context.Context, req *identityv1.UpdateProfileRequest) (*identityv1.User, error) {
-	id, err := uuid.Parse(req.UserId)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
-	}
-
-	user, err := s.queries.UpdateProfile(ctx, db.UpdateProfileParams{
-		ID:                id,
-		FirstName:         &req.FirstName,
-		LastName:          &req.LastName,
-		ProfessionalTitle: &req.ProfessionalTitle,
-		CredentialsNumber: &req.CredentialsNumber,
-		Biography:         &req.Biography,
-		PhoneNumber:       &req.PhoneNumber,
-	})
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	return toProtoUser(user), nil
-}
+// UpdateProfile moved to profile.go with the docs/18 D2 contract
+// (selective UPDATE; empty-string-on-legacy-fields = "don't change").
 
 func (s *Server) CheckPermission(ctx context.Context, req *identityv1.CheckPermissionRequest) (*identityv1.PermissionDecision, error) {
 	// Faza 1: tylko basic checks
@@ -308,6 +311,10 @@ func toProtoRole(r db.UserRole) identityv1.UserRole {
 		return identityv1.UserRole_USER_ROLE_THERAPIST
 	case "PATIENT":
 		return identityv1.UserRole_USER_ROLE_PATIENT
+	case db.UserRoleORGADMIN:
+		return identityv1.UserRole_USER_ROLE_ORG_ADMIN
+	case db.UserRoleSUPERWIZORADMIN:
+		return identityv1.UserRole_USER_ROLE_SUPERWIZOR_ADMIN
 	}
 	return identityv1.UserRole_USER_ROLE_UNSPECIFIED
 }

@@ -1,0 +1,80 @@
+Feature: slice-4 / admin-user-crud
+Branch: feat/web-app-slice-4-cont
+Verified: 2026-05-28
+Anchored to: docs/18 §13.8 (AdminUpdateUser + AdminDeleteUser forms)
+
+What was built
+==============
+- /admin/users route — global user list (server shell at
+  src/app/[locale]/admin/users/page.tsx).
+- src/components/admin/UsersList.tsx — client component:
+  * Calls identityClient.adminListUsers with pageSize=25 + 300ms
+    search debounce + role filter dropdown.
+  * 5-column table: name (first+last), email, role (localized
+    label), organization_id (truncated), inline Edit/Delete actions.
+  * Cursor-based pagination via next_page_token + page-stack walk
+    (same pattern as OrgsList).
+  * UserEditDialog — inline ActionDialog with the high-frequency
+    edit fields per §13.8: first_name, last_name, email, phone_
+    number, role, ui_language. Delta-only submit (only changed
+    fields sent), "noChange" guard if user only filled the reason.
+  * UserDeleteDialog — soft-delete via AdminDeleteUser, single
+    reason field, dialog body shows the user's display name +
+    email so the operator confirms the right row.
+  * Tolerant enum handling — Connect-Web JSON ships UserRole as
+    proto names, proto-es types it as numeric; cast through
+    unknown both ways (same trick as the OrgsList enum coercion +
+    AdminGuard role check).
+
+i18n: messages/{pl,en}.json grow with admin.users.* — title,
+subhead, searchPlaceholder, roleFilterAll, loading/empty/error,
+column headers, edit/delete buttons + dialog titles/bodies,
+form-field labels, noChange guard, role label mapping for all
+five UserRole values.
+
+How verified
+============
+1. `pnpm build` exit 0. Route table now includes:
+     /[locale]/admin/users    ● SSG (×2 locales)
+
+2. HTTP smoke:
+     /admin/users    → 200
+     /en/admin/users → 200
+
+3. Puppeteer screenshots:
+     users-gate-pl-full.png — Polish AdminGuard sign-in panel on
+       /admin/users. Confirms the route is reachable and the
+       AdminGuard fires before any RPC.
+     users-gate-en-full.png — same in English.
+
+4. preview_console_logs(error) returns "No console logs". The
+   guard's getMyProfile catch swallows the unauthed RPC failure
+   silently.
+
+Compliance with docs/18 §13.8
+=============================
+- ✓ Search by name or email (backend's `search` param is ILIKE).
+- ✓ Filter by role.
+- ✓ Pagination.
+- ✓ Edit user — high-frequency fields: name, email, phone, role,
+  ui_language.
+- ✓ Delete user — soft-delete via AdminDeleteUser with reason.
+- ☐ Deferred fields on edit (separate sub-feature when needed):
+  organization_id transfer, default_modality_id, timezone,
+  professional_title, credentials_number, biography, avatar_url,
+  billing_address. AdminUpdateUserRequest has all of them as
+  `optional`, so adding fields to the dialog is incremental work
+  that doesn't change the wire contract.
+
+Live screenshot of the populated table requires an authenticated
+SUPERWIZOR_ADMIN session with seeded user data — same constraint
+as the rest of the admin features. Code path verified by build +
+type-check against the proto-es schemas.
+
+Files
+=====
+- marketing-site/messages/{pl,en}.json (admin.users namespace)
+- marketing-site/src/components/admin/UsersList.tsx (new)
+- marketing-site/src/app/[locale]/admin/users/page.tsx (new)
+- evidence/slice-4/admin-user-crud/{users-gate-pl,users-gate-en}-full.png
+- evidence/slice-4/admin-user-crud/verification.log (this)

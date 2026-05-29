@@ -41,10 +41,35 @@ resource "google_storage_bucket" "audio_uploads" {
     }
   }
 
+  # Browser uploads via V4 signed URLs trigger a CORS pre-flight that
+  # GCS itself answers. The origin list mirrors the same allowlist the
+  # in-app Go CORS middleware enforces on the gRPC side — superwizor.ai
+  # marketing site, app.superwizor.ai therapist/admin console, plus
+  # localhost dev ports. We tightened from "*" to exact-match in
+  # Slice 1 of feat/web-app (docs/18 R2 + R6 P2 Zero-Trust). The
+  # signed URL itself carries auth (no browser credentials sent), but
+  # the explicit allowlist still cuts the blast radius if a leaked
+  # URL ever ends up on a third-party page.
+  #
+  # response_header serves DOUBLE DUTY in GCS CORS: it's both the
+  # Access-Control-Allow-Headers list (for what the request may send)
+  # AND the Access-Control-Expose-Headers list (for what the response
+  # exposes). x-goog-meta-* must be here because ingestion-svc's
+  # CreateAudioUpload includes that header in the upload contract.
   cors {
-    origin          = ["*"]
-    method          = ["PUT", "OPTIONS"]
-    response_header = ["Content-Type", "x-goog-content-length-range"]
+    origin = [
+      "https://superwizor.ai",
+      "https://app.superwizor.ai",
+      "http://localhost:3000",
+      "http://localhost:8080",
+    ]
+    method = ["PUT", "OPTIONS"]
+    response_header = [
+      "Content-Type",
+      "x-goog-content-length-range",
+      "x-goog-meta-source",
+      "x-goog-meta-*",
+    ]
     max_age_seconds = 3600
   }
 }

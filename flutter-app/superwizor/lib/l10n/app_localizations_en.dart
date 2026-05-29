@@ -71,6 +71,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'We have sent a password reset link to your email.';
 
   @override
+  String get auth_shared_machine_warning_title => 'Using a shared computer?';
+
+  @override
+  String get auth_shared_machine_warning_body =>
+      'Sign out when you\'re done so your session data isn\'t available to the next person who uses this computer.';
+
+  @override
   String get auth_error_invalid_credential => 'Invalid email or password.';
 
   @override

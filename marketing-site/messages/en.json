@@ -1,0 +1,709 @@
+{
+  "metadata": {
+    "title": "Superwizor AI — a supervisor's second brain",
+    "description": "Polish-built co-pilot for therapists and supervisors. Record a session and receive transcript, report, and pointers in minutes.",
+    "ogSiteName": "Superwizor AI"
+  },
+  "admin": {
+    "metaTitle": "Admin console",
+    "loading": "Checking access…",
+    "signinRequired": "You need to sign in to access the admin console.",
+    "signinCta": "Sign in",
+    "forbiddenTitle": "Access denied",
+    "forbiddenBody": "Your account doesn't have Superwizor administrator privileges. Contact the team if you believe you should have access.",
+    "backToLanding": "Back to home",
+    "sidebar": {
+      "dashboard": "Dashboard",
+      "orgs": "Organisations",
+      "users": "Users",
+      "sessions": "Sessions",
+      "audit": "Audit log"
+    },
+    "header": {
+      "signOut": "Sign out",
+      "signedInAs": "Signed in as"
+    },
+    "home": {
+      "overline": "Admin console",
+      "title": "Welcome, {firstName}",
+      "subhead": "The dashboard will live here. Pick a section from the sidebar.",
+      "cardOrgs": "Organisations",
+      "cardOrgsBody": "List of all organisations with filtering, blocking, and plan changes.",
+      "cardUsers": "Users",
+      "cardUsersBody": "Global user list. Edit, deactivate, reset passwords.",
+      "cardAudit": "Audit log",
+      "cardAuditBody": "Full administrative activity history with filters."
+    },
+    "orgs": {
+      "metaTitle": "Organisations",
+      "title": "Organisations",
+      "subhead": "Every clinic, practice, and tenant on the Superwizor platform.",
+      "searchPlaceholder": "Search by name…",
+      "loading": "Loading organisations…",
+      "empty": "No organisations to show.",
+      "error": "Could not load the organisation list.",
+      "retry": "Try again",
+      "prev": "Previous page",
+      "next": "Next page",
+      "columns": {
+        "legalName": "Name",
+        "type": "Type",
+        "status": "Status",
+        "therapists": "Therapists",
+        "lastActivity": "Last activity",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "blocked": "Blocked"
+      },
+      "typeLabel": {
+        "SOLO": "Solo",
+        "CLINIC": "Clinic",
+        "ENTERPRISE": "Enterprise"
+      },
+      "noLastActivity": "—",
+      "view": "Open"
+    },
+    "orgDetail": {
+      "metaTitle": "Organisation",
+      "loading": "Loading organisation…",
+      "notFound": "Organisation not found.",
+      "backToList": "Back to list",
+      "sectionDetails": "Details",
+      "sectionTherapists": "Therapists",
+      "sectionAudit": "Recent activity",
+      "noTherapists": "No therapists in this organisation yet.",
+      "noAudit": "No audit log entries yet."
+    },
+    "sessions": {
+      "metaTitle": "Session activity",
+      "title": "Therapist session activity",
+      "intro": "Recent sessions uploaded to the system — every organisation. Defaults to the last 24 hours.",
+      "filters": {
+        "since": "From",
+        "until": "Until",
+        "therapist": "Therapist",
+        "therapistPlaceholder": "First or last name, or email"
+      },
+      "table": {
+        "createdAt": "Uploaded",
+        "sessionDate": "Session date",
+        "duration": "Duration",
+        "durationMissing": "—",
+        "status": "Status",
+        "therapist": "Therapist",
+        "organization": "Organisation",
+        "planName": "Plan",
+        "periodEnd": "Period end",
+        "tokensUsed": "Tokens used"
+      },
+      "pagination": {
+        "prev": "Previous",
+        "next": "Next",
+        "page": "Page {page}"
+      },
+      "export": {
+        "button": "Export CSV",
+        "busy": "Preparing…",
+        "truncated": "Export capped at {max} rows. Narrow the date range to download everything."
+      },
+      "empty": "No sessions match the current filters.",
+      "errors": {
+        "loadFailed": "Couldn't load sessions. Please try again."
+      },
+      "csv": {
+        "createdAt": "uploaded_utc",
+        "sessionDate": "session_date",
+        "durationMinutes": "duration_min",
+        "status": "status",
+        "therapistName": "therapist",
+        "therapistEmail": "email",
+        "organization": "organisation",
+        "planName": "plan",
+        "periodEnd": "period_end",
+        "tokensUsed": "tokens_used",
+        "sessionId": "session_id"
+      }
+    },
+    "audit": {
+      "metaTitle": "Audit log",
+      "title": "Audit log",
+      "subhead": "Global cross-organisation administrative activity history.",
+      "actorEmailLabel": "Actor email",
+      "actionLabel": "Action",
+      "anyAction": "Any action",
+      "sinceLabel": "From",
+      "untilLabel": "Until",
+      "loading": "Loading audit log…",
+      "empty": "No events match the current filters.",
+      "error": "Failed to load the audit log.",
+      "retry": "Try again",
+      "prev": "Previous page",
+      "next": "Next page",
+      "col": {
+        "occurred": "Date",
+        "actor": "Actor",
+        "action": "Action",
+        "resource": "Resource",
+        "reason": "Reason"
+      }
+    },
+    "users": {
+      "metaTitle": "Users",
+      "title": "Users",
+      "subhead": "Every user on the Superwizor platform — therapists, admins, patients.",
+      "searchPlaceholder": "Search by name or email…",
+      "roleFilterAll": "All roles",
+      "loading": "Loading users…",
+      "empty": "No users to show.",
+      "error": "Could not load the user list.",
+      "retry": "Try again",
+      "prev": "Previous page",
+      "next": "Next page",
+      "columns": {
+        "name": "Name",
+        "email": "Email",
+        "role": "Role",
+        "orgId": "Organisation",
+        "actions": "Actions"
+      },
+      "edit": "Edit",
+      "delete": "Delete",
+      "editTitle": "Edit user",
+      "editBody": "Changes are recorded in the audit log.",
+      "deleteTitle": "Delete user",
+      "deleteBody": "Soft-delete — the row stays in PG with deleted_at set.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "phone": "Phone",
+      "role": "Role",
+      "uiLanguage": "Interface language",
+      "polish": "Polski",
+      "english": "English",
+      "professionalTitle": "Professional title",
+      "credentialsNumber": "Credentials number",
+      "biography": "Biography (public)",
+      "avatarUrl": "Avatar URL",
+      "organizationId": "Organisation ID (transfer)",
+      "organizationIdHint": "Target organisation UUID. Copy it from /admin/orgs. Leave unchanged to keep the user in the current org.",
+      "defaultModalityId": "Default modality (UUID)",
+      "defaultModalityIdHint": "UUID from the modalities table. No picker yet on the admin panel — paste the value manually.",
+      "billingAddressTitle": "Billing address",
+      "billingAddressHint": "Fill in only to overwrite the existing address. The current value is not shown here (the User proto carries only billing_address_id).",
+      "noChange": "Edit at least one field before confirming.",
+      "roleLabel": {
+        "USER_ROLE_THERAPIST": "Therapist",
+        "USER_ROLE_PATIENT": "Patient",
+        "USER_ROLE_ORG_ADMIN": "Org admin",
+        "USER_ROLE_SUPERWIZOR_ADMIN": "Superwizor admin",
+        "USER_ROLE_UNSPECIFIED": "None"
+      }
+    },
+    "orgEdit": {
+      "edit": "Edit",
+      "title": "Edit organisation details",
+      "body": "Changes save immediately and are recorded in the audit log.",
+      "legalNameLabel": "Legal company name",
+      "typeLabel": "Organisation type",
+      "taxIdLabel": "Tax ID (NIP)",
+      "vatIdEuLabel": "EU VAT ID",
+      "addressTitle": "Headquarters address",
+      "primaryAdminLabel": "Primary admin (ownership transfer)",
+      "primaryAdminUnchanged": "— unchanged —",
+      "primaryAdminHint": "Pick from the org's therapist roster. To transfer ownership to someone not on this list, first set their role to ORG_ADMIN via user edit.",
+      "noChange": "Edit at least one field before confirming."
+    },
+    "address": {
+      "countryCode": "Country (ISO 3166-1)",
+      "region": "Region / voivodeship",
+      "city": "City",
+      "postalCode": "Postal code",
+      "streetLine": "Street",
+      "buildingNumber": "Building number",
+      "unitNumber": "Unit number",
+      "directions": "Directions"
+    },
+    "actions": {
+      "block": "Block",
+      "unblock": "Unblock",
+      "resetTokens": "Reset tokens",
+      "changePlan": "Change plan",
+      "blockTitle": "Block organisation",
+      "blockBody": "The organisation will lose access until unblocked.",
+      "unblockTitle": "Unblock organisation",
+      "unblockBody": "The organisation will regain full access.",
+      "resetTokensTitle": "Reset usage counter",
+      "resetTokensBody": "Set a new value for tokens_used in the current billing period.",
+      "tokensUsedLabel": "New tokens_used value",
+      "tokensLimitLabel": "New tokens_limit (optional, blank = unchanged)",
+      "changePlanTitle": "Change plan",
+      "changePlanBody": "Takes effect immediately. A new billing period starts now.",
+      "tierLabel": "Tier",
+      "cycleLabel": "Billing cycle",
+      "cycleMonthly": "Monthly",
+      "cycleAnnual": "Annual",
+      "reasonLabel": "Reason (required, min 10 chars)",
+      "reasonPlaceholder": "Describe why — logged to audit_events.",
+      "reasonTooShort": "Reason must be at least 10 characters.",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "submitting": "Submitting…",
+      "errorGeneric": "Could not run the action."
+    },
+    "signinEmailLabel": "Email",
+    "signinPasswordLabel": "Password",
+    "signinSubmit": "Sign in",
+    "signinSubmitting": "Signing in…",
+    "signinErrorBadCreds": "Invalid email or password.",
+    "signinErrorGeneric": "Something went wrong while signing in. Try again."
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again in a moment.",
+    "code": {
+      "canceled": "The operation was cancelled.",
+      "unknown": "An unknown error occurred.",
+      "invalidArgument": "The form data is invalid. Please review the values you entered.",
+      "deadlineExceeded": "The operation took too long. Please try again.",
+      "notFound": "The requested resource was not found.",
+      "alreadyExists": "An entry like this already exists.",
+      "permissionDenied": "You don't have permission to do this.",
+      "resourceExhausted": "Quota exceeded. Contact your account administrator.",
+      "failedPrecondition": "The operation cannot be performed in the current state.",
+      "aborted": "The operation was aborted. Please try again.",
+      "outOfRange": "Value out of allowed range.",
+      "unimplemented": "This feature isn't available yet.",
+      "internal": "Server error. Please try again in a moment.",
+      "unavailable": "The service is temporarily unavailable. Please try again shortly.",
+      "dataLoss": "A data integrity error occurred.",
+      "unauthenticated": "You need to be signed in to do this."
+    },
+    "backend": {
+      "reasonTooShort": "Reason must be at least 10 characters.",
+      "invitationExpired": "This invitation has expired. Request a fresh one.",
+      "invitationAccepted": "This invitation has already been used.",
+      "quotaExceeded": "Token quota exhausted for the current billing period.",
+      "subscriptionPastDue": "Organisation subscription needs a payment update.",
+      "alreadyExists": "An entry like this already exists (for example the email is already registered)."
+    }
+  },
+  "nav": {
+    "skipToContent": "Skip to content",
+    "brand": "Superwizor AI",
+    "login": "Log in",
+    "register": "Sign up",
+    "pricing": "Pricing",
+    "languageSwitcher": "Language",
+    "polish": "Polski",
+    "english": "English"
+  },
+  "hero": {
+    "overline": "A Polish-built co-pilot for psychotherapists",
+    "headingPrefix": "Superwizor AI",
+    "headingAccent": "a cognitive partner in the therapy room",
+    "headingPunctuation": ".",
+    "subhead": "Superwizor AI helps mental-health professionals reclaim the mental space for attentive sessions with their patients, while supporting therapeutic continuity and a deeper understanding of each patient.",
+    "ctaPrimary": "Sign up",
+    "ctaSecondary": "See how it works"
+  },
+  "how": {
+    "overline": "How it works",
+    "heading": "Three steps from session to report",
+    "steps": {
+      "record": {
+        "tag": "01",
+        "title": "Record",
+        "body": "Open the mobile app and start recording. Audio is encrypted in transit and stored in EU regions only."
+      },
+      "process": {
+        "tag": "02",
+        "title": "AI processes",
+        "body": "Transcript, speaker diarization, clinical-topic tagging and risk assessment — all in Polish."
+      },
+      "report": {
+        "tag": "03",
+        "title": "Get the report",
+        "body": "Full session report, supervision pointers and suggested interventions — minutes after the session ends, ready for review."
+      }
+    }
+  },
+  "features": {
+    "overline": "What you get",
+    "heading": "Everything a supervisor needs",
+    "items": {
+      "transcript": {
+        "title": "Full Polish transcript",
+        "body": "Diarization, timestamps, fast search. One-click PDF export."
+      },
+      "report": {
+        "title": "Clinical report",
+        "body": "Supervision-ready sections: session themes, diagnostic hypotheses, risk assessment, suggested interventions."
+      },
+      "supervisor": {
+        "title": "Supervision pointers",
+        "body": "AI flags moments worth pausing on — missed therapeutic opportunities, patterns, red flags."
+      },
+      "rodo": {
+        "title": "GDPR + security",
+        "body": "Data encrypted end-to-end, EU-only hosting, therapist-only access. Your data never trains a model."
+      },
+      "team": {
+        "title": "Organisation mode",
+        "body": "For clinics: team management, shared token billing, single invoice for the practice."
+      },
+      "supports": {
+        "title": "iOS + web",
+        "body": "Record from your iPhone, review reports on a laptop. Android soon."
+      }
+    }
+  },
+  "audience": {
+    "overline": "Who it's for",
+    "heading": "Private practice, clinics, supervisors",
+    "items": {
+      "therapist": {
+        "title": "Psychotherapists",
+        "body": "Spend less time on notes, more on sessions. Solid material for your own supervision."
+      },
+      "supervisor": {
+        "title": "Supervisors",
+        "body": "Full transcript and report before each supervision session. Easier review, more precise feedback."
+      },
+      "clinic": {
+        "title": "Therapy clinics",
+        "body": "Consistent documentation across the team. One invoice, clear billing."
+      }
+    }
+  },
+  "cta": {
+    "heading": "Try 3 free sessions",
+    "body": "No card, no strings. The trial includes the full product — transcripts, reports, and supervision pointers.",
+    "primary": "Sign up",
+    "secondary": "See pricing"
+  },
+  "register": {
+    "common": {
+      "submit": "Create account",
+      "submitting": "Creating account…",
+      "alreadyHaveAccount": "Already have an account?",
+      "loginCta": "Log in",
+      "useEmailInstead": "Or use email",
+      "useSocialInstead": "Or continue with Google",
+      "or": "or",
+      "google": "Continue with Google",
+      "apple": "Continue with Apple",
+      "microsoft": "Continue with Microsoft",
+      "consentToS": "I accept the <termsLink>terms</termsLink> and the <privacyLink>privacy policy</privacyLink>.",
+      "consentMarketing": "I want to receive news and offers from Superwizor AI."
+    },
+    "fields": {
+      "email": "Email address",
+      "password": "Password",
+      "passwordHint": "Min. 8 characters, one digit.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "professionalTitle": "Professional title (optional)",
+      "professionalTitlePlaceholder": "e.g. Clinical psychologist, CBT therapist",
+      "credentialsNumber": "Professional licence number (optional)",
+      "defaultModality": "Primary therapeutic modality",
+      "uiLanguage": "Interface language",
+      "phoneNumber": "Phone number (optional)",
+      "phoneNumberPlaceholder": "+48 123 456 789",
+      "terms": "terms",
+      "privacy": "privacy policy",
+      "polish": "Polski",
+      "english": "English"
+    },
+    "errors": {
+      "emailInvalid": "Enter a valid email address.",
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "passwordNoNumber": "Password must contain at least one digit.",
+      "firstNameRequired": "First name is required.",
+      "lastNameRequired": "Last name is required.",
+      "modalityRequired": "Select a primary therapeutic modality.",
+      "tosRequired": "You must accept the terms to register.",
+      "emailAlreadyInUse": "This email is already registered. Try logging in instead.",
+      "weakPassword": "This password is too weak.",
+      "phoneInvalid": "Phone number should contain 6–18 digits; spaces, dashes and parentheses are allowed.",
+      "networkError": "Could not reach the server. Please try again.",
+      "unknown": "Something went wrong. Please try again."
+    },
+    "therapist": {
+      "metaTitle": "Therapist sign-up",
+      "overline": "Sign up",
+      "title": "Sign up as a therapist",
+      "subhead": "You'll get 3 free sessions to start. No credit card required.",
+      "sectionAccount": "Your account",
+      "sectionProfile": "Your profile",
+      "finishMetaTitle": "Finish your profile",
+      "finishTitle": "Finish your profile",
+      "finishSubhead": "Hi {firstName}. Pick a therapeutic modality and interface language to activate your account.",
+      "finishGenericSubhead": "Pick a therapeutic modality and interface language to activate your account."
+    },
+    "organization": {
+      "metaTitle": "Organization sign-up",
+      "overline": "Clinic sign-up",
+      "title": "Register your clinic",
+      "subhead": "After signup you'll be the clinic administrator. To also record sessions yourself, invite a second email from the Therapists tab.",
+      "sectionFounder": "Founder account",
+      "sectionOrg": "Organisation details",
+      "sectionAddress": "Headquarters address",
+      "finishMetaTitle": "Finish organisation profile",
+      "finishTitle": "Finish setting up your clinic",
+      "finishSubhead": "Hi {firstName}. Complete the organisation details and headquarters address to activate your administrator account.",
+      "finishGenericSubhead": "Complete the organisation details and headquarters address to activate your administrator account."
+    },
+    "orgFields": {
+      "legalName": "Legal company name",
+      "legalNamePlaceholder": "e.g. Centrum Psychoterapii Sp. z o.o.",
+      "orgType": "Organization type",
+      "orgTypeSolo": "Solo practice",
+      "orgTypeClinic": "Clinic / centre",
+      "orgTypeEnterprise": "Enterprise",
+      "taxId": "Tax ID (NIP)",
+      "taxIdPlaceholder": "0000000000",
+      "vatIdEu": "EU VAT ID (optional)",
+      "vatIdEuPlaceholder": "PL0000000000",
+      "country": "Country",
+      "region": "Region / voivodeship (optional)",
+      "city": "City",
+      "postalCode": "Postal code",
+      "postalCodePlaceholder": "00-000",
+      "streetLine": "Street",
+      "buildingNumber": "Building number",
+      "unitNumber": "Unit number (optional)",
+      "directions": "Directions (optional)"
+    },
+    "orgErrors": {
+      "legalNameRequired": "Legal company name is required.",
+      "taxIdInvalid": "Tax ID must be 10 digits.",
+      "phoneRequired": "Phone number is required for the administrator.",
+      "cityRequired": "City is required.",
+      "postalCodeInvalid": "Postal code must follow the 00-000 format.",
+      "streetRequired": "Street is required.",
+      "buildingRequired": "Building number is required."
+    },
+    "acceptInvite": {
+      "metaTitle": "Accept invitation",
+      "overline": "Invitation",
+      "title": "Join your organisation",
+      "subhead": "Set a password and complete a short profile to activate your therapist account.",
+      "submit": "Accept invitation",
+      "submitting": "Accepting invitation…",
+      "missingToken": "Invitation token is missing. Please open the link from your email.",
+      "alreadyAccepted": "This invitation has already been used. Please sign in normally.",
+      "expired": "This invitation has expired. Ask your administrator to resend it.",
+      "invalidToken": "Invalid token. Make sure you are using the latest link."
+    },
+    "verifyEmail": {
+      "metaTitle": "Verify your email",
+      "title": "Check your inbox",
+      "intro": "We sent an activation link to {email}. Click it to finish creating your account.",
+      "noEmail": "Don't see the email? Check your spam folder or click below to resend.",
+      "resend": "Resend",
+      "resending": "Sending…",
+      "resent": "We sent a new link. Check your inbox.",
+      "openMail": "Open mail app",
+      "backToLanding": "Back to home",
+      "verifyingStatus": "Checking verification…",
+      "verifiedHeading": "Email verified",
+      "verifiedBody": "Redirecting to your account…",
+      "verifiedGoToAccount": "Go to your account"
+    }
+  },
+  "legal": {
+    "lastUpdated": "Last updated:",
+    "draftBadge": "Draft · pending legal review",
+    "tableOfContents": "Table of contents",
+    "pages": {
+      "terms": {
+        "metaTitle": "Terms",
+        "title": "Terms of Service",
+        "intro": "These terms govern your use of Superwizor AI."
+      },
+      "privacy": {
+        "metaTitle": "Privacy",
+        "title": "Privacy Policy",
+        "intro": "This policy describes what personal data we process, why we process it, and for how long."
+      },
+      "dpa": {
+        "metaTitle": "DPA",
+        "title": "Data Processing Agreement (DPA)",
+        "intro": "Terms of the data processing agreement under Article 28 GDPR."
+      }
+    }
+  },
+  "pricing": {
+    "metaTitle": "Pricing",
+    "overline": "Pricing",
+    "heading": "A plan that fits your practice",
+    "subhead": "Every plan includes the full product: transcripts, reports, supervision pointers. You only pay for the sessions you actually use.",
+    "cycle": {
+      "monthly": "Monthly",
+      "annual": "Annual",
+      "annualNote": "~17% off"
+    },
+    "tiers": {
+      "trial": {
+        "name": "Trial",
+        "tagline": "Try without a card",
+        "tokensSuffix": "free sessions",
+        "cta": "Get started",
+        "features": [
+          "3 free sessions",
+          "Full transcript",
+          "Full session report",
+          "Supervision pointers",
+          "No credit card required"
+        ]
+      },
+      "solo": {
+        "name": "Solo",
+        "tagline": "For individual therapists",
+        "tokensSuffixMonthly": "sessions / month",
+        "tokensSuffixAnnual": "sessions / year",
+        "cta": "Choose Solo",
+        "features": [
+          "Full transcript",
+          "Clinical report",
+          "Supervision pointers",
+          "PDF export",
+          "1 license"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "For power users",
+        "tokensSuffixMonthly": "sessions / month",
+        "tokensSuffixAnnual": "sessions / year",
+        "cta": "Choose Pro",
+        "badge": "Most popular",
+        "features": [
+          "Everything in Solo",
+          "More sessions",
+          "Priority support",
+          "Early access to new features",
+          "1 license"
+        ]
+      },
+      "clinic": {
+        "name": "Clinic",
+        "tagline": "For therapy clinics",
+        "tokensSuffixMonthly": "sessions / month",
+        "tokensSuffixAnnual": "sessions / year",
+        "cta": "Choose Clinic",
+        "features": [
+          "Everything in Pro",
+          "Shared pool across 5 therapists",
+          "Admin dashboard (B2B)",
+          "Single invoice per clinic",
+          "Team management"
+        ]
+      }
+    },
+    "vatNote": "Prices are net. 23% VAT added on the invoice.",
+    "currency": "PLN",
+    "perMonth": "PLN / month",
+    "perYear": "PLN / year",
+    "free": "Free",
+    "footnote": "Card or Przelewy24. Change or cancel your plan any time from your account."
+  },
+  "footer": {
+    "tagline": "A supervisor's second brain.",
+    "copyright": "© 2026 Superwizor AI",
+    "made": "Made in Poland",
+    "sections": {
+      "product": "Product",
+      "company": "Company",
+      "legal": "Legal"
+    },
+    "links": {
+      "pricing": "Pricing",
+      "register": "Sign up",
+      "login": "Log in",
+      "terms": "Terms",
+      "privacy": "Privacy policy",
+      "dpa": "DPA / GDPR",
+      "contact": "Contact"
+    }
+  },
+  "login": {
+    "metaTitle": "Sign in · Superwizor AI",
+    "overline": "SIGN IN",
+    "title": "Welcome back",
+    "subhead": "Sign in to reach your therapist console or the admin panel.",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "errorBadCreds": "Invalid email or password.",
+    "errorGeneric": "Something went wrong while signing in. Try again.",
+    "errorNoProfile": "Your Firebase account exists, but no Superwizor profile was found. Please contact support.",
+    "redirectingApp": "Redirecting to your account…",
+    "redirectingAdmin": "Redirecting to the admin panel…",
+    "noAccount": "Don't have an account?",
+    "createAccount": "Sign up",
+    "forgotPassword": "Forgot password?",
+    "resetSent": "We've sent a password-reset link to your email.",
+    "resetNeedEmail": "Please enter your email first."
+  },
+  "account": {
+    "metaTitle": "My account · Superwizor AI",
+    "title": "My account",
+    "subhead": "Manage your profile, organisation, and subscription.",
+    "kartotekiCta": "Open the console",
+    "kartotekiOpening": "Opening…",
+    "kartotekiHint": "The therapist console opens in a new tab at app.superwizor.ai.",
+    "signOut": "Sign out",
+    "profileSection": "Profile",
+    "profileSubmit": "Save changes",
+    "profileSubmitting": "Saving…",
+    "profileSaved": "Changes saved.",
+    "emailReadOnly": "Email address is immutable.",
+    "orgSection": "Organisation",
+    "orgSubmit": "Save organisation",
+    "orgSubmitting": "Saving…",
+    "orgSaved": "Organisation data saved.",
+    "orgNotAllowed": "Editing organisation data is only available to solo-clinic therapists and organisation admins. Please contact your organisation administrator.",
+    "orgLoading": "Loading organisation data…",
+    "orgNone": "No organisation linked to this account.",
+    "billingSection": "Subscription",
+    "billingPlan": "Plan",
+    "billingStatus": "Status",
+    "billingTokens": "Minutes left in this cycle",
+    "billingPeriodEnd": "Period ends",
+    "billingLoading": "Loading subscription…",
+    "billingNone": "No active subscription.",
+    "stripeSection": "Card payments",
+    "stripeBody": "Stripe integration is coming soon — you'll be able to add a card and auto-renew your subscription from this screen.",
+    "stripeConnect": "Connect Stripe (coming soon)",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "phoneNumber": "Phone number",
+    "professionalTitle": "Professional title",
+    "credentialsNumber": "License number",
+    "biography": "About me",
+    "legalName": "Legal name",
+    "orgType": "Organisation type",
+    "taxId": "Tax ID (NIP)",
+    "vatIdEu": "EU VAT ID",
+    "errGeneric": "Something went wrong. Try again.",
+    "errLoad": "Failed to load data. Try refreshing the page.",
+    "billingPlanName": "Plan",
+    "billingTokensLeft": "Minutes left",
+    "billingTokensTotal": "Period limit",
+    "billingUsedBar": "{used} of {total} minutes used",
+    "billingUpgrade": "Upgrade plan",
+    "billingUpgradeHint": "Coming soon — you'll be able to upgrade via Stripe from here.",
+    "billingNoneCta": "Choose a plan (coming soon)",
+    "planSOLO": "Solo",
+    "planPRO": "Pro",
+    "planCLINIC": "Clinic",
+    "planPATIENT": "Patient",
+    "statusTRIALING": "Trial",
+    "statusACTIVE": "Active",
+    "statusPAST_DUE": "Payment overdue",
+    "statusCANCELED": "Cancelled"
+  }
+}
