@@ -38,7 +38,17 @@ import (
 )
 
 // DefaultReservationTTL — patrz design §16.1.
-const DefaultReservationTTL = 4 * time.Hour
+//
+// docs/21 WS0E: bumped 4h → 26h to cover the pipeline's transient-retry
+// window. A session can now retry a Chirp/Vertex outage for up to ~24h
+// (objectFinalized.sub / Eventarc subs: 100 delivery attempts), and a
+// retry that finally succeeds must still be able to CommitUsage — which
+// it can't if the reservation already expired. 26h sits just beyond the
+// retry window + the stuck-session backstop, so a genuinely dead session
+// still releases its token via the 5-min reservation-expiry cron. The
+// authoritative failure paths (terminal classify, DLQ give-up reaper,
+// CancelSession) release sooner.
+const DefaultReservationTTL = 26 * time.Hour
 
 // TxOpener / Tx — ten sam pattern co clinical-svc, żeby handlery były
 // testowalne bez prawdziwej bazy.
