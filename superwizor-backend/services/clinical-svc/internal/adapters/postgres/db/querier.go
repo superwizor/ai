@@ -174,6 +174,11 @@ type Querier interface {
 	// Firestore + inbox cleanup downstream. After the hard delete the
 	// rows are gone and we'd have nothing to publish.
 	ListSessionIDsForPatientFile(ctx context.Context, patientFileID uuid.UUID) ([]uuid.UUID, error)
+	// CANCELLED_BY_USER sessions are hidden from the kartoteka list — the
+	// therapist explicitly cancelled them (e.g. a quota-blocked upload), so
+	// they should not clutter the patient's session history. The row is
+	// kept in the table for audit; it just never surfaces here. (Hard
+	// deletes use deleted_at; cancellations use status.)
 	ListSessionsByPatient(ctx context.Context, patientFileID uuid.UUID) ([]Session, error)
 	ListSupportedModalities(ctx context.Context) ([]ListSupportedModalitiesRow, error)
 	ListTranscriptSegments(ctx context.Context, transcriptID uuid.UUID) ([]TranscriptSegment, error)

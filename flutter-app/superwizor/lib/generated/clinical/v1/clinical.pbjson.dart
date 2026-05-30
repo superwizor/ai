@@ -539,6 +539,18 @@ const DeleteSessionRequest$json = {
 final $typed_data.Uint8List deleteSessionRequestDescriptor = $convert.base64Decode(
     'ChREZWxldGVTZXNzaW9uUmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSWQ=');
 
+@$core.Deprecated('Use cancelSessionRequestDescriptor instead')
+const CancelSessionRequest$json = {
+  '1': 'CancelSessionRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+  ],
+};
+
+/// Descriptor for `CancelSessionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List cancelSessionRequestDescriptor = $convert.base64Decode(
+    'ChRDYW5jZWxTZXNzaW9uUmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSWQ=');
+
 @$core.Deprecated('Use listSessionsResponseDescriptor instead')
 const ListSessionsResponse$json = {
   '1': 'ListSessionsResponse',
@@ -882,3 +894,150 @@ final $typed_data.Uint8List logPreferenceSuggestionRequestDescriptor = $convert.
     'ZW5zaW9uGAMgASgJUglkaW1lbnNpb24SHQoKZnJvbV92YWx1ZRgEIAEoCVIJZnJvbVZhbHVlEh'
     'kKCHRvX3ZhbHVlGAUgASgJUgd0b1ZhbHVlEiMKDXRyaWdnZXJfY291bnQYBiABKAVSDHRyaWdn'
     'ZXJDb3VudBIWCgZhY3Rpb24YByABKAlSBmFjdGlvbg==');
+
+@$core.Deprecated('Use adminListSessionsRequestDescriptor instead')
+const AdminListSessionsRequest$json = {
+  '1': 'AdminListSessionsRequest',
+  '2': [
+    {
+      '1': 'start_time',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'startTime'
+    },
+    {
+      '1': 'end_time',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'endTime'
+    },
+    {'1': 'therapist_filter', '3': 3, '4': 1, '5': 9, '10': 'therapistFilter'},
+    {'1': 'page_size', '3': 4, '4': 1, '5': 5, '10': 'pageSize'},
+    {'1': 'page', '3': 5, '4': 1, '5': 5, '10': 'page'},
+    {'1': 'sort_by', '3': 6, '4': 1, '5': 9, '10': 'sortBy'},
+    {'1': 'sort_order', '3': 7, '4': 1, '5': 9, '10': 'sortOrder'},
+  ],
+};
+
+/// Descriptor for `AdminListSessionsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminListSessionsRequestDescriptor = $convert.base64Decode(
+    'ChhBZG1pbkxpc3RTZXNzaW9uc1JlcXVlc3QSOQoKc3RhcnRfdGltZRgBIAEoCzIaLmdvb2dsZS'
+    '5wcm90b2J1Zi5UaW1lc3RhbXBSCXN0YXJ0VGltZRI1CghlbmRfdGltZRgCIAEoCzIaLmdvb2ds'
+    'ZS5wcm90b2J1Zi5UaW1lc3RhbXBSB2VuZFRpbWUSKQoQdGhlcmFwaXN0X2ZpbHRlchgDIAEoCV'
+    'IPdGhlcmFwaXN0RmlsdGVyEhsKCXBhZ2Vfc2l6ZRgEIAEoBVIIcGFnZVNpemUSEgoEcGFnZRgF'
+    'IAEoBVIEcGFnZRIXCgdzb3J0X2J5GAYgASgJUgZzb3J0QnkSHQoKc29ydF9vcmRlchgHIAEoCV'
+    'IJc29ydE9yZGVy');
+
+@$core.Deprecated('Use adminListSessionsResponseDescriptor instead')
+const AdminListSessionsResponse$json = {
+  '1': 'AdminListSessionsResponse',
+  '2': [
+    {
+      '1': 'sessions',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.AdminSessionRow',
+      '10': 'sessions'
+    },
+    {'1': 'has_more', '3': 2, '4': 1, '5': 8, '10': 'hasMore'},
+  ],
+};
+
+/// Descriptor for `AdminListSessionsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminListSessionsResponseDescriptor = $convert.base64Decode(
+    'ChlBZG1pbkxpc3RTZXNzaW9uc1Jlc3BvbnNlEjgKCHNlc3Npb25zGAEgAygLMhwuY2xpbmljYW'
+    'wudjEuQWRtaW5TZXNzaW9uUm93UghzZXNzaW9ucxIZCghoYXNfbW9yZRgCIAEoCFIHaGFzTW9y'
+    'ZQ==');
+
+@$core.Deprecated('Use adminSessionRowDescriptor instead')
+const AdminSessionRow$json = {
+  '1': 'AdminSessionRow',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'therapist_id', '3': 2, '4': 1, '5': 9, '10': 'therapistId'},
+    {
+      '1': 'therapist_first_name',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'therapistFirstName'
+    },
+    {
+      '1': 'therapist_last_name',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'therapistLastName'
+    },
+    {'1': 'therapist_email', '3': 5, '4': 1, '5': 9, '10': 'therapistEmail'},
+    {'1': 'organization_id', '3': 6, '4': 1, '5': 9, '10': 'organizationId'},
+    {
+      '1': 'organization_name',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'organizationName'
+    },
+    {
+      '1': 'created_at',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'session_date',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'sessionDate'
+    },
+    {'1': 'duration_seconds', '3': 10, '4': 1, '5': 5, '10': 'durationSeconds'},
+    {'1': 'status', '3': 11, '4': 1, '5': 9, '10': 'status'},
+    {
+      '1': 'subscription_plan_name',
+      '3': 12,
+      '4': 1,
+      '5': 9,
+      '10': 'subscriptionPlanName'
+    },
+    {
+      '1': 'subscription_period_end',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'subscriptionPeriodEnd'
+    },
+    {
+      '1': 'subscription_tokens_used',
+      '3': 14,
+      '4': 1,
+      '5': 5,
+      '10': 'subscriptionTokensUsed'
+    },
+  ],
+};
+
+/// Descriptor for `AdminSessionRow`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminSessionRowDescriptor = $convert.base64Decode(
+    'Cg9BZG1pblNlc3Npb25Sb3cSHQoKc2Vzc2lvbl9pZBgBIAEoCVIJc2Vzc2lvbklkEiEKDHRoZX'
+    'JhcGlzdF9pZBgCIAEoCVILdGhlcmFwaXN0SWQSMAoUdGhlcmFwaXN0X2ZpcnN0X25hbWUYAyAB'
+    'KAlSEnRoZXJhcGlzdEZpcnN0TmFtZRIuChN0aGVyYXBpc3RfbGFzdF9uYW1lGAQgASgJUhF0aG'
+    'VyYXBpc3RMYXN0TmFtZRInCg90aGVyYXBpc3RfZW1haWwYBSABKAlSDnRoZXJhcGlzdEVtYWls'
+    'EicKD29yZ2FuaXphdGlvbl9pZBgGIAEoCVIOb3JnYW5pemF0aW9uSWQSKwoRb3JnYW5pemF0aW'
+    '9uX25hbWUYByABKAlSEG9yZ2FuaXphdGlvbk5hbWUSOQoKY3JlYXRlZF9hdBgIIAEoCzIaLmdv'
+    'b2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCWNyZWF0ZWRBdBI9CgxzZXNzaW9uX2RhdGUYCSABKA'
+    'syGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgtzZXNzaW9uRGF0ZRIpChBkdXJhdGlvbl9z'
+    'ZWNvbmRzGAogASgFUg9kdXJhdGlvblNlY29uZHMSFgoGc3RhdHVzGAsgASgJUgZzdGF0dXMSNA'
+    'oWc3Vic2NyaXB0aW9uX3BsYW5fbmFtZRgMIAEoCVIUc3Vic2NyaXB0aW9uUGxhbk5hbWUSUgoX'
+    'c3Vic2NyaXB0aW9uX3BlcmlvZF9lbmQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW'
+    '1wUhVzdWJzY3JpcHRpb25QZXJpb2RFbmQSOAoYc3Vic2NyaXB0aW9uX3Rva2Vuc191c2VkGA4g'
+    'ASgFUhZzdWJzY3JpcHRpb25Ub2tlbnNVc2Vk');

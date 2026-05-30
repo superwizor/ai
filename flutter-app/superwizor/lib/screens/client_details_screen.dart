@@ -10,6 +10,8 @@ import '../models/patient.dart';
 import '../models/session.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
+import '../l10n/app_localizations.dart';
+import '../uploads/cancel_upload_action.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
 import '../widgets/edit_patient_modal.dart';
@@ -204,6 +206,21 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     final pendingUploads =
         ref.watch(pendingUploadsForPatientProvider(widget.patientId));
 
+    // Quota-blocked local uploads for this patient → the dedicated
+    // "Sesje oczekujące na przetworzenie" banner is the single
+    // representation. In that case suppress the duplicate server-side
+    // PENDING_UPLOAD "Oczekiwanie na audio" cards entirely. When there
+    // are NO local quota rows (e.g. after a reinstall that lost the
+    // cached audio), the server cards still render so the therapist can
+    // cancel the stranded sessions explicitly (feat/tokens-exhausted).
+    final hasLocalQuotaBlocked =
+        ref.watch(pendingUploadsStreamProvider).maybeWhen(
+              data: (list) => list.any((u) =>
+                  u.patientFileId == widget.patientId &&
+                  u.phase == UploadPhase.quotaBlocked),
+              orElse: () => false,
+            );
+
     // Force a fresh ListSessions fetch on every screen entry. The
     // SWR cached-read path served by `fetchSessions` can return a
     // pre-completion snapshot when an upload finished while the
@@ -334,8 +351,17 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                         data: (sessionsMap) {
                           final sessions =
                               sessionsMap[widget.patientId] ?? [];
-                          final reversedSessions =
-                              sessions.reversed.toList();
+                          // When a quota banner is showing for this
+                          // patient, hide the duplicate PENDING_UPLOAD
+                          // "Oczekiwanie na audio" cards — the banner is
+                          // the single representation of the quota-blocked
+                          // uploads. (Reinstall case: no local rows →
+                          // hasLocalQuotaBlocked false → cards stay, so
+                          // they remain cancellable.)
+                          final reversedSessions = sessions.reversed
+                              .where((s) => !(hasLocalQuotaBlocked &&
+                                  s.status == SessionStatus.pendingUpload))
+                              .toList();
                           // Dedup: if a pending upload already has a
                           // sessionId AND that session is in the server
                           // list, drop the placeholder. The Hive-queue
@@ -436,6 +462,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                   SessionStatus.pendingUpload) {
                                 return _PendingUploadServerCard(
                                   session: session,
+                                  patientId: widget.patientId,
                                 );
                               }
                               return _SessionCard(
@@ -875,9 +902,11 @@ class _PendingUploadCard extends StatelessWidget {
         return 'Finalizowanie sesji…';
       case UploadPhase.completed:
       case UploadPhase.failed:
+      case UploadPhase.quotaBlocked:
         // Shouldn't reach this widget — pendingUploadsForPatientProvider
-        // filters terminal states out. Kept exhaustive so future
-        // enum additions trigger a compile warning.
+        // filters terminal + quota-hold states out (quota holds render
+        // in PendingQuotaSessionsWidget instead). Kept exhaustive so
+        // future enum additions trigger a compile warning.
         return '';
     }
   }
@@ -968,13 +997,24 @@ class _PendingUploadCard extends StatelessWidget {
 /// Tapping routes to SessionStatusScreen (we have a real sessionId
 /// from the server). Option E (2026-05-25,
 /// docs/14_INGESTION_EARLY_SESSION_CREATION.md).
-class _PendingUploadServerCard extends StatelessWidget {
+///
+/// Carries a delete (Usuń) action that cancels the server session
+/// (CancelSession → CANCELLED_BY_USER), so the therapist can clear a
+/// stuck/quota-blocked PENDING_UPLOAD — including the
+/// reinstall-lost-the-local-audio case where there is no local queue
+/// row to dismiss (feat/tokens-exhausted).
+class _PendingUploadServerCard extends ConsumerWidget {
   final Session session;
+  final String patientId;
 
-  const _PendingUploadServerCard({required this.session});
+  const _PendingUploadServerCard({
+    required this.session,
+    required this.patientId,
+  });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
@@ -1032,10 +1072,18 @@ class _PendingUploadServerCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right,
-              color: EuphireColors.mist,
-              size: 20,
+            // Delete (Usuń) → cancel the server session. Works even with
+            // no local audio (reinstall case).
+            IconButton(
+              icon: const Icon(Icons.delete_rounded, size: 22),
+              color: EuphireColors.magma,
+              tooltip: l.upload_cancel_processing,
+              onPressed: () => confirmAndCancelUpload(
+                context,
+                ref,
+                patientFileId: patientId,
+                sessionId: session.id,
+              ),
             ),
           ],
         ),

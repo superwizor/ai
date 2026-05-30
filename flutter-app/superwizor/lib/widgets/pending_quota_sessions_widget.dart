@@ -20,6 +20,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/billing_quota_provider.dart';
 import '../services/billing_quota_state.dart';
 import '../theme/euphire_theme.dart';
+import '../uploads/cancel_upload_action.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
 
@@ -29,6 +30,12 @@ class PendingQuotaSessionsWidget extends ConsumerWidget {
   final String patientFileId;
 
   bool _isQuotaFailure(PendingUpload u) {
+    // Primary: the dedicated quota-hold phase (feat/tokens-exhausted).
+    if (u.phase == UploadPhase.quotaBlocked) return true;
+    // Legacy: rows persisted to Hive before the dedicated phase
+    // existed, where a quota error was folded into `failed` with a
+    // marker in lastError. Kept so an in-flight upgrade doesn't strand
+    // an already-parked recording.
     final err = (u.lastError ?? '').toLowerCase();
     if (u.phase != UploadPhase.failed) return false;
     return err.contains('quota_exhausted') ||
@@ -83,7 +90,14 @@ class PendingQuotaSessionsWidget extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                ...stuck.map((u) => _PendingRow(upload: u)),
+                for (int i = 0; i < stuck.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      color: EuphireColors.glassBorder,
+                      height: 28,
+                    ),
+                  _PendingRow(upload: stuck[i]),
+                ],
                 if (q != null) ...[
                   const Divider(color: EuphireColors.glassBorder, height: 20),
                   Text(
@@ -166,7 +180,7 @@ class _PendingRow extends ConsumerWidget {
               const SizedBox(width: 4),
               TextButton.icon(
                 onPressed: () => _confirmDelete(context, ref),
-                icon: const Icon(Icons.delete_outline, size: 16),
+                icon: const Icon(Icons.delete_rounded, size: 18),
                 label: Text(l.billing_delete_local_audio),
                 style: TextButton.styleFrom(
                   foregroundColor: EuphireColors.magma,
@@ -199,43 +213,14 @@ class _PendingRow extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final l = AppLocalizations.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: EuphireColors.surfaceTeal,
-        title: Text(
-          l.billing_delete_confirm_title,
-          style: const TextStyle(
-            color: EuphireColors.frostWhite,
-            fontFamily: 'Montserrat',
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: Text(
-          l.billing_delete_confirm_body,
-          style: const TextStyle(
-            color: EuphireColors.mist,
-            fontFamily: 'Merriweather',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.common_cancel,
-                style: const TextStyle(color: EuphireColors.mist)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l.billing_delete_confirm_action,
-                style: const TextStyle(color: EuphireColors.magma)),
-          ),
-        ],
-      ),
+    // Cancel the server session (CANCELLED_BY_USER + token release) and
+    // drop the local parked row, behind a single confirm dialog.
+    await confirmAndCancelUpload(
+      context,
+      ref,
+      patientFileId: upload.patientFileId,
+      sessionId: upload.sessionId,
+      localId: upload.localId,
     );
-    if (confirmed != true) return;
-    final runner = await ref.read(uploadQueueRunnerProvider.future);
-    if (runner == null) return;
-    await runner.dismiss(upload.localId);
   }
 }

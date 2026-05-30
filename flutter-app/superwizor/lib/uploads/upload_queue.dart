@@ -130,7 +130,7 @@ class UploadQueue {
     final now = _clock();
     return all()
         .where((u) =>
-            !u.isTerminal && !u.nextAttemptAt.isAfter(now))
+            !u.isTerminal && !u.isParked && !u.nextAttemptAt.isAfter(now))
         .toList()
       // Oldest queued first — fair-queue ordering so a recent retry
       // doesn't starve an older row.
@@ -144,7 +144,11 @@ class UploadQueue {
   Future<int> pruneStale() async {
     final now = _clock();
     final victims = all()
-        .where((u) => !u.isTerminal && u.isOlderThan(_maxAge, now))
+        // Parked quota holds are exempt: the audio is intentionally
+        // waiting for the therapist to resend after a top-up, and
+        // silently failing it after 7 days would lose the recording
+        // with no trace. Only the user (resend / cancel) clears it.
+        .where((u) => !u.isTerminal && !u.isParked && u.isOlderThan(_maxAge, now))
         .toList();
     if (victims.isEmpty) return 0;
     await _enqueue(() async {

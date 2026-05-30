@@ -1,0 +1,21 @@
+-- feat/tokens-exhausted (2026-05-30): user-initiated cancellation.
+--
+-- Adds CANCELLED_BY_USER as a terminal session status. The therapist
+-- can cancel an in-progress session (PENDING_UPLOAD … ANALYZING) from
+-- the "Wgrywanie" or "Bezpieczna analiza w toku" screens — e.g. when
+-- an upload is stuck because the org ran out of tokens
+-- (QUOTA_EXHAUSTED), or they simply changed their mind. On cancel,
+-- clinical-svc.CancelSession flips the status here, releases the held
+-- billing reservation (so the token isn't consumed), and cancels the
+-- audio_uploads row.
+--
+-- Distinct from FAILED (system error) and from a hard DeleteSession
+-- (RODO erasure). CANCELLED_BY_USER rows are hidden from the
+-- kartoteka session list but kept for audit.
+--
+-- Placed AFTER 'COMPLETED' in the enum ordering — it's a terminal
+-- state and ordering only matters for the rare enum-ordered query
+-- (none today). ALTER TYPE ... ADD VALUE is non-blocking on
+-- Postgres >= 12.
+
+ALTER TYPE session_status ADD VALUE IF NOT EXISTS 'CANCELLED_BY_USER';

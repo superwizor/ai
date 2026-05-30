@@ -454,5 +454,15 @@
   },
   "subscription_no_data_title": "Brak danych o subskrypcji",
   "subscription_no_data_body": "Nie udało się pobrać informacji o Twoim planie. Sprawdź połączenie internetowe i spróbuj ponownie.",
-  "subscription_refresh_cta": "Odśwież"
+  "subscription_refresh_cta": "Odśwież",
+
+  "stepper_step1_quota_blocked": "Pula tokenów wyczerpana. Odnów plan, aby wznowić.",
+  "quota_blocked_queue_label": "Pula tokenów wyczerpana",
+  "upload_resend": "Wyślij ponownie",
+  "upload_cancel_processing": "Usuń",
+  "cancel_session_confirm_title": "Anulować przetwarzanie?",
+  "cancel_session_confirm_body": "Sesja zostanie anulowana, a nagranie usunięte z kolejki. Tej operacji nie można cofnąć.",
+  "cancel_session_confirm_action": "Tak, anuluj",
+  "cancel_session_keep": "Nie, zostaw",
+  "cancel_session_success": "Sesja anulowana"
 }

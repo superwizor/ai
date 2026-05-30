@@ -453,5 +453,15 @@
   },
   "subscription_no_data_title": "No subscription data",
   "subscription_no_data_body": "Could not load your plan info. Check your connection and try again.",
-  "subscription_refresh_cta": "Refresh"
+  "subscription_refresh_cta": "Refresh",
+
+  "stepper_step1_quota_blocked": "Token pool exhausted. Renew your plan to resume.",
+  "quota_blocked_queue_label": "Token pool exhausted",
+  "upload_resend": "Resend",
+  "upload_cancel_processing": "Delete",
+  "cancel_session_confirm_title": "Cancel processing?",
+  "cancel_session_confirm_body": "The session will be cancelled and the recording removed from the queue. This cannot be undone.",
+  "cancel_session_confirm_action": "Yes, cancel",
+  "cancel_session_keep": "No, keep it",
+  "cancel_session_success": "Session cancelled"
 }

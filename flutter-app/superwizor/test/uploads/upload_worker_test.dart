@@ -182,6 +182,35 @@ void main() {
       expect(next.lastError, contains('UNAVAILABLE'));
     });
 
+    test('gRPC RESOURCE_EXHAUSTED parks the row (no auto-retry)', () async {
+      // feat/tokens-exhausted: QUOTA_EXHAUSTED must NOT loop. The row
+      // parks in quotaBlocked and stays put until an explicit resend.
+      final io = FakeUploadIo()
+        ..createUploadError =
+            grpc.GrpcError.resourceExhausted('QUOTA_EXHAUSTED');
+      final clock = DateTime.utc(2026, 5, 20, 12);
+
+      final next = await _worker(io, clock: clock).runOne(_seed());
+
+      expect(next.phase, UploadPhase.quotaBlocked);
+      expect(next.isParked, isTrue);
+      expect(next.attemptCount, 1);
+      expect(next.nextAttemptAt, clock,
+          reason: 'parking must not push nextAttemptAt into the future — '
+              'the row is skipped by phase, not by time');
+      expect(next.terminatedAt, isNull,
+          reason: 'parked is resumable, not terminal');
+      expect(next.lastError, contains('QUOTA_EXHAUSTED'));
+    });
+
+    test('quotaBlocked phase is a parked no-op', () async {
+      final io = FakeUploadIo();
+      final next =
+          await _worker(io).runOne(_seed(phase: UploadPhase.quotaBlocked));
+      expect(next.phase, UploadPhase.quotaBlocked);
+      expect(io.calls, isEmpty);
+    });
+
     test('socket exception is retryable', () async {
       final io = FakeUploadIo()
         ..putBytesError = const SocketException('no network');

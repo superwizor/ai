@@ -497,10 +497,17 @@ func (q *Queries) ListReportsBySession(ctx context.Context, sessionID uuid.UUID)
 
 const listSessionsByPatient = `-- name: ListSessionsByPatient :many
 SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name FROM sessions
-WHERE patient_file_id = $1 AND deleted_at IS NULL
+WHERE patient_file_id = $1
+  AND deleted_at IS NULL
+  AND status <> 'CANCELLED_BY_USER'
 ORDER BY session_number DESC
 `
 
+// CANCELLED_BY_USER sessions are hidden from the kartoteka list — the
+// therapist explicitly cancelled them (e.g. a quota-blocked upload), so
+// they should not clutter the patient's session history. The row is
+// kept in the table for audit; it just never surfaces here. (Hard
+// deletes use deleted_at; cancellations use status.)
 func (q *Queries) ListSessionsByPatient(ctx context.Context, patientFileID uuid.UUID) ([]Session, error) {
 	rows, err := q.db.Query(ctx, listSessionsByPatient, patientFileID)
 	if err != nil {

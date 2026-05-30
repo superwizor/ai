@@ -47,10 +47,17 @@ class EuphireSessionStatusStepper extends StatelessWidget {
   /// When true, steps fade out with animation (used for success cascade).
   final bool collapsed;
 
+  /// When true, the upload is parked on a quota hold (the org ran out
+  /// of tokens). Step 1's label switches from the neutral "waiting in
+  /// queue" to the meaningful "token pool exhausted — renew to resume"
+  /// (feat/tokens-exhausted). Only meaningful while [phase] is pending.
+  final bool quotaBlocked;
+
   const EuphireSessionStatusStepper({
     super.key,
     required this.phase,
     this.collapsed = false,
+    this.quotaBlocked = false,
   });
 
   @override
@@ -65,7 +72,9 @@ class EuphireSessionStatusStepper extends StatelessWidget {
     // blocked upload sat under "Audio bezpieczne na naszych serwerach"
     // even though the file never reached us.
     final step1Text = phase == SessionStepperPhase.pending
-        ? t.stepper_step1_queued
+        ? (quotaBlocked
+            ? t.stepper_step1_quota_blocked
+            : t.stepper_step1_queued)
         : t.stepper_step1_uploaded;
     final steps = [
       _Step(step1Text, _stateForStep(0)),
@@ -101,6 +110,14 @@ class EuphireSessionStatusStepper extends StatelessWidget {
   }
 
   _StepState _stateForStep(int idx) {
+    // Quota hold (feat/tokens-exhausted): the upload never started, so
+    // nothing is processing. Step 1 shows a static "blocked" marker (no
+    // spinner); the rest stay pending. This avoids the ember "active"
+    // circle + CircularProgressIndicator that wrongly imply work is
+    // underway.
+    if (quotaBlocked) {
+      return idx == 0 ? _StepState.blocked : _StepState.pending;
+    }
     if (phase == SessionStepperPhase.failed) {
       if (idx < 4) return _StepState.done;
       return _StepState.failed;
@@ -119,7 +136,7 @@ class EuphireSessionStatusStepper extends StatelessWidget {
   }
 }
 
-enum _StepState { pending, active, done, failed }
+enum _StepState { pending, active, done, failed, blocked }
 
 class _Step {
   final String text;
@@ -148,10 +165,11 @@ class _StepRow extends StatelessWidget {
     final isDone = state == _StepState.done;
     final isActive = state == _StepState.active;
     final isFailed = state == _StepState.failed;
+    final isBlocked = state == _StepState.blocked;
     // Circle colors
     final circleColor = isFailed
         ? EuphireColors.magma
-        : isDone || isActive
+        : isDone || isActive || isBlocked
             ? EuphireColors.ember
             : Colors.white.withValues(alpha: 0.08);
 
@@ -163,9 +181,12 @@ class _StepRow extends StatelessWidget {
     // Previously used mist (light grey) which was invisible on yellow.
     final icon = isFailed
         ? const Icon(Icons.close_rounded, size: 16, color: EuphireColors.frostWhite)
-        : isDone
-            ? const Icon(Icons.check_rounded, size: 16, color: EuphireColors.obsidianBlack)
-            : Text(
+        : isBlocked
+            ? const Icon(Icons.account_balance_wallet_outlined,
+                size: 15, color: EuphireColors.obsidianBlack)
+            : isDone
+                ? const Icon(Icons.check_rounded, size: 16, color: EuphireColors.obsidianBlack)
+                : Text(
                 '$number',
                 style: TextStyle(
                   fontFamily: 'Montserrat',
@@ -242,12 +263,10 @@ class _StepRow extends StatelessWidget {
                       fontSize: 15,
                       color: isFailed
                           ? EuphireColors.magma
-                          : isDone
+                          : isDone || isActive || isBlocked
                               ? EuphireColors.frostWhite
-                              : isActive
-                                  ? EuphireColors.frostWhite
-                                  : EuphireColors.mist.withValues(alpha: 0.5),
-                      fontWeight: isActive
+                              : EuphireColors.mist.withValues(alpha: 0.5),
+                      fontWeight: isActive || isBlocked
                           ? FontWeight.w600
                           : isDone
                               ? FontWeight.w400

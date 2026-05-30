@@ -363,6 +363,35 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
     }
   }
 
+  /// User-initiated cancellation of an in-progress session
+  /// (feat/tokens-exhausted). Used when the therapist cancels a
+  /// quota-parked upload (or any pre-completion session) from the
+  /// "Wgrywanie" / "Bezpieczna analiza w toku" screens. The server
+  /// flips status to CANCELLED_BY_USER, releases the held token, and
+  /// hides the row from ListSessions — so locally we just drop it,
+  /// mirroring deleteSession. Unlike delete this is NOT a RODO erase:
+  /// the row survives server-side for audit.
+  Future<void> cancelSession(String patientId, String sessionId) async {
+    final client = ref.read(grpcClientsProvider).clinical;
+    try {
+      await client.cancelSession(
+          grpc_clinical.CancelSessionRequest(sessionId: sessionId));
+
+      await _repo?.removeSessionLocally(patientId, sessionId);
+      await _detailsRepo?.invalidate(sessionId);
+
+      final current = state.whenOrNull(data: (d) => d);
+      if (current == null) return;
+      final sessions = current[patientId] ?? [];
+      final updatedSessions =
+          sessions.where((s) => s.id != sessionId).toList();
+      state = AsyncValue.data({...current, patientId: updatedSessions});
+    } catch (e) {
+      debugPrint('Error cancelling session: $e');
+      rethrow;
+    }
+  }
+
   Future<void> renameSession(
       String patientId, String sessionId, String newName) async {
     final client = ref.read(grpcClientsProvider).clinical;

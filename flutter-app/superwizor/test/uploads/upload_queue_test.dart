@@ -160,4 +160,29 @@ void main() {
     final rows = q.all();
     expect(rows.map((u) => u.localId).toList(), ['good']);
   });
+
+  test('quotaBlocked row survives box close+reopen (app restart), '
+      'not pruned, not due', () async {
+    const boxName = 'restart_persist_box';
+    final b1 = await Hive.openBox<Map>(boxName);
+    final q1 = UploadQueue(hiveBox: b1);
+    await q1.enqueue(_u('quota-1', phase: UploadPhase.quotaBlocked));
+    await b1.close();
+
+    // Simulate an app restart: reopen the SAME box from disk.
+    final b2 = await Hive.openBox<Map>(boxName);
+    final q2 = UploadQueue(hiveBox: b2);
+
+    final rows = q2.all();
+    expect(rows.length, 1, reason: 'row must persist across restart');
+    expect(rows.first.localId, 'quota-1');
+    expect(rows.first.phase, UploadPhase.quotaBlocked);
+    expect(rows.first.isParked, isTrue,
+        reason: 'isParked must survive the Hive round-trip');
+    expect(q2.dueNow(), isEmpty, reason: 'parked rows are never due');
+    expect(await q2.pruneStale(), 0,
+        reason: 'parked rows are exempt from the max-age sweep');
+    expect(q2.all().length, 1, reason: 'still present after pruneStale');
+    await b2.close();
+  });
 }

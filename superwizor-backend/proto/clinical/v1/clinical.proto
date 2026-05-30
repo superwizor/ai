@@ -53,6 +53,14 @@ service ClinicalService {
     // Publishes session.deleted Pub/Sub event for downstream Firestore +
     // inbox cleanup.
     rpc DeleteSession(DeleteSessionRequest) returns (google.protobuf.Empty);
+    // User-initiated cancellation of an IN-PROGRESS session
+    // (PENDING_UPLOAD … ANALYZING). Flips status to CANCELLED_BY_USER,
+    // releases the held billing reservation, and cancels the
+    // audio_uploads row. Hidden from the kartoteka afterward. Idempotent
+    // (re-cancel on an already-terminal session returns OK). Rejects
+    // COMPLETED sessions — those use DeleteSession. See
+    // feat/tokens-exhausted.
+    rpc CancelSession(CancelSessionRequest) returns (google.protobuf.Empty);
 
     // ─── Report ratings (docs/10_REPORT_CUSTOMIZATION.md §5) ───
     // 👍/👎 rating on a generated report. Idempotent on
@@ -273,6 +281,10 @@ message UpdateSessionRequest {
 // rows referencing this session. Publishes session.deleted Pub/Sub
 // event so notification-svc can purge the Firestore mirror + inbox.
 message DeleteSessionRequest {
+  string session_id = 1;
+}
+
+message CancelSessionRequest {
   string session_id = 1;
 }
 

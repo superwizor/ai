@@ -3,15 +3,18 @@ package grpc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/grouping"
@@ -292,6 +295,99 @@ func (s *Server) DeleteSession(ctx context.Context, req *clinicalv1.DeleteSessio
 		}
 	}
 
+	return &emptypb.Empty{}, nil
+}
+
+// CancelSession marks an in-progress session as CANCELLED_BY_USER and
+// releases any held billing reservation. The therapist triggers this
+// from the "Wgrywanie" or "Bezpieczna analiza w toku" screens — e.g.
+// when an upload is parked because the org ran out of tokens
+// (QUOTA_EXHAUSTED) or they simply changed their mind.
+//
+// Semantics:
+//   - Only non-terminal, pre-completion sessions are cancellable
+//     (PENDING_UPLOAD … ANALYZING). A COMPLETED session is rejected with
+//     FailedPrecondition — the therapist should DeleteSession instead.
+//     A session already CANCELLED_BY_USER returns OK (idempotent — safe
+//     to retry or double-tap the bin button).
+//   - The held token reservation is released best-effort via
+//     billing-svc.ReleaseCredit(reason=USER_CANCELED). A release failure
+//     is logged but does NOT fail the cancel: the status flip is the
+//     user-visible contract, and the reservation TTL-expires within ~4h
+//     as a backstop.
+//   - The row is KEPT (status=CANCELLED_BY_USER) for audit but hidden
+//     from the kartoteka session list (see ListSessions). Distinct from
+//     a hard DeleteSession (RODO erasure).
+func (s *Server) CancelSession(ctx context.Context, req *clinicalv1.CancelSessionRequest) (*emptypb.Empty, error) {
+	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
+	if !ok || therapistIDStr == "" {
+		return nil, status.Error(codes.Unauthenticated, "missing user ID in context")
+	}
+	therapistID, err := uuid.Parse(therapistIDStr)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id in context")
+	}
+
+	sessionID, err := uuid.Parse(req.SessionId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid session_id")
+	}
+
+	sess, err := s.queries.GetSession(ctx, sessionID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "session not found")
+		}
+		return nil, status.Errorf(codes.Internal, "load session: %v", err)
+	}
+	// Authz: same 404 whether the session is missing or owned by another
+	// therapist, to avoid id enumeration.
+	if sess.TherapistID != therapistID {
+		return nil, status.Error(codes.NotFound, "session not found")
+	}
+
+	switch sess.Status {
+	case db.SessionStatusCANCELLEDBYUSER:
+		// Idempotent: already cancelled (and already released). No-op.
+		return &emptypb.Empty{}, nil
+	case db.SessionStatusCOMPLETED:
+		return nil, status.Error(codes.FailedPrecondition,
+			"session already completed; delete it instead of cancelling")
+	}
+
+	// Flip the status. UpdateSessionStatus is keyed by id; ownership was
+	// verified above.
+	if err := s.queries.UpdateSessionStatus(ctx, db.UpdateSessionStatusParams{
+		ID:     sessionID,
+		Status: db.SessionStatusCANCELLEDBYUSER,
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "cancel session: %v", err)
+	}
+
+	// Best-effort release of the held token reservation. Logged on
+	// failure; never unwinds the cancel (the status flip is the
+	// contract, and the reservation TTL-expires as a backstop).
+	if s.billing != nil {
+		orgID, oerr := s.queries.GetUserOrganizationID(ctx, therapistID)
+		if oerr != nil || !orgID.Valid {
+			slog.Warn("cancel session: resolve org for credit release failed",
+				"session_id", sessionID, "error", oerr)
+		} else {
+			orgStr := uuid.UUID(orgID.Bytes).String()
+			if _, rerr := s.billing.ReleaseCredit(ctx, &billingv1.ReleaseCreditRequest{
+				SessionId:      sessionID.String(),
+				OrganizationId: orgStr,
+				Reason:         "USER_CANCELED",
+			}); rerr != nil {
+				slog.Warn("cancel session: release credit failed",
+					"session_id", sessionID, "org_id", orgStr, "error", rerr)
+			}
+		}
+	}
+
+	slog.Info("session cancelled by user",
+		"session_id", sessionID, "therapist_id", therapistID,
+		"prior_status", string(sess.Status))
 	return &emptypb.Empty{}, nil
 }
 

@@ -7,7 +7,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 
+	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 )
 
@@ -37,10 +40,13 @@ type fakeQuerier struct {
 	hardDeleteSessionFn           func(ctx context.Context, arg db.HardDeleteSessionParams) (int64, error)
 	getSessionFn                  func(ctx context.Context, id uuid.UUID) (db.Session, error)
 	updateSessionNameFn           func(ctx context.Context, arg db.UpdateSessionNameParams) (db.Session, error)
+	updateSessionStatusFn         func(ctx context.Context, arg db.UpdateSessionStatusParams) error
+	getUserOrganizationIDFn       func(ctx context.Context, id uuid.UUID) (pgtype.UUID, error)
 
 	// Call recorders — set non-nil to record args for later assertion.
 	deletePatientUserCalls    []uuid.UUID
 	hardDeletePatientFileArgs []db.HardDeletePatientFileParams
+	updateSessionStatusCalls  []db.UpdateSessionStatusParams
 }
 
 func (f *fakeQuerier) GetPatientFile(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
@@ -87,6 +93,18 @@ func (f *fakeQuerier) GetSession(ctx context.Context, id uuid.UUID) (db.Session,
 
 func (f *fakeQuerier) UpdateSessionName(ctx context.Context, arg db.UpdateSessionNameParams) (db.Session, error) {
 	return f.updateSessionNameFn(ctx, arg)
+}
+
+func (f *fakeQuerier) UpdateSessionStatus(ctx context.Context, arg db.UpdateSessionStatusParams) error {
+	f.updateSessionStatusCalls = append(f.updateSessionStatusCalls, arg)
+	if f.updateSessionStatusFn == nil {
+		return nil
+	}
+	return f.updateSessionStatusFn(ctx, arg)
+}
+
+func (f *fakeQuerier) GetUserOrganizationID(ctx context.Context, id uuid.UUID) (pgtype.UUID, error) {
+	return f.getUserOrganizationIDFn(ctx, id)
 }
 
 // fakeTxOpener — supplies Begin/Commit/Rollback failure injection plus
@@ -154,3 +172,21 @@ func (p *fakePublisher) PublishSessionDeleted(ctx context.Context, sessionID, th
 // of a stubbed DB call. Distinct value so tests can match it directly
 // when the handler wraps it.
 var errSentinel = errors.New("stub error")
+
+// fakeBilling implements just enough of billingv1.BillingServiceClient
+// for the CancelSession release path. The nil embed makes every other
+// method panic loudly — an unexpected billing call in a test is a bug.
+type fakeBilling struct {
+	billingv1.BillingServiceClient // nil embed
+
+	releaseErr   error
+	releaseCalls []*billingv1.ReleaseCreditRequest
+}
+
+func (b *fakeBilling) ReleaseCredit(ctx context.Context, in *billingv1.ReleaseCreditRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	b.releaseCalls = append(b.releaseCalls, in)
+	if b.releaseErr != nil {
+		return nil, b.releaseErr
+	}
+	return &emptypb.Empty{}, nil
+}

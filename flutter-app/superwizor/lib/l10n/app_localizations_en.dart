@@ -1197,4 +1197,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get subscription_refresh_cta => 'Refresh';
+
+  @override
+  String get stepper_step1_quota_blocked =>
+      'Token pool exhausted. Renew your plan to resume.';
+
+  @override
+  String get quota_blocked_queue_label => 'Token pool exhausted';
+
+  @override
+  String get upload_resend => 'Resend';
+
+  @override
+  String get upload_cancel_processing => 'Delete';
+
+  @override
+  String get cancel_session_confirm_title => 'Cancel processing?';
+
+  @override
+  String get cancel_session_confirm_body =>
+      'The session will be cancelled and the recording removed from the queue. This cannot be undone.';
+
+  @override
+  String get cancel_session_confirm_action => 'Yes, cancel';
+
+  @override
+  String get cancel_session_keep => 'No, keep it';
+
+  @override
+  String get cancel_session_success => 'Session cancelled';
 }
