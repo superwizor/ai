@@ -83,6 +83,7 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
       if (e instanceof FirebaseError && e.code === "auth/popup-closed-by-user") {
         return;
       }
+      console.error("[social-auth] Google sign-in failed:", e);
       setErr(tErr("unknown"));
     } finally {
       setBusy(false);
@@ -99,6 +100,7 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
       if (e instanceof FirebaseError && e.code === "auth/popup-closed-by-user") {
         return;
       }
+      console.error("[social-auth] Apple sign-in failed:", e);
       setErr(tErr("unknown"));
     } finally {
       setBusy(false);

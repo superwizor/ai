@@ -5,29 +5,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../generated/identity/v1/identity.pb.dart' as identity_pb;
+import 'forgot_password_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Login screen — Apple / Google-style minimal UX.
+// Login / Register screen — Euphire brand guidelines.
 //
-// Design principles:
-//   • Full-screen gradient background (teal → deep teal), no card frame.
-//   • Single typeface: Montserrat throughout, varying weight only.
-//   • Maximum whitespace, generous vertical rhythm.
-//   • Social buttons first (conversion-optimized), divider, then email.
-//   • Subtle micro-animations on buttons (scale on tap).
-//   • Accessible contrast ratios on all text.
+// Gradient: Evergreen #004D54 → Nocturne #002E32.
+// Typography: Montserrat only (weights 400 / 500 / 600 / 700).
+// Mode switch: animated slide+fade between Login and Register.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Design tokens
 const _kFont = 'Montserrat';
-const _kBgTop = Color(0xFF0A6B5E);       // rich teal
-const _kBgBottom = Color(0xFF052E28);     // deep forest
-const _kWhite = Color(0xFFF5F5F5);
-const _kWhite70 = Color(0xB3F5F5F5);     // 70% white
-const _kWhite40 = Color(0x66F5F5F5);     // 40% white
-const _kWhite15 = Color(0x26F5F5F5);     // 15% white
-const _kWhite08 = Color(0x14F5F5F5);     // 8% white
-const _kAccent = Color(0xFF95D0D8);       // primary accent (light teal)
+const _kBgTop = Color(0xFF004D54);        // Evergreen
+const _kBgBottom = Color(0xFF002E32);     // Nocturne
+const _kWhite = Color(0xFFF5F5F5);        // Frost White
+const _kWhite70 = Color(0xB3F5F5F5);
+const _kWhite40 = Color(0x66F5F5F5);
+const _kWhite15 = Color(0x26F5F5F5);
+const _kWhite08 = Color(0x14F5F5F5);
+const _kAccent = Color(0xFF95D0D8);       // Mist-like accent
+const _kEmber = Color(0xFFFCAE2F);        // Ember — for register CTA
 const _kErrorBg = Color(0x33FF6B6B);
 const _kErrorBorder = Color(0x66FF6B6B);
 const _kErrorText = Color(0xFFFFAAAA);
@@ -39,17 +36,35 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen>
+    with TickerProviderStateMixin {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
   bool _loading = false;
   bool _isLogin = true;
   String? _error;
   bool _obscurePassword = true;
 
+  late final AnimationController _modeAnim;
+  late final Animation<Offset> _slideOut;
+  late final Animation<Offset> _slideIn;
+  late final Animation<double> _fade;
+
   @override
   void initState() {
     super.initState();
+    _modeAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _slideOut = Tween(begin: Offset.zero, end: const Offset(-0.15, 0))
+        .animate(CurvedAnimation(parent: _modeAnim, curve: Curves.easeIn));
+    _slideIn = Tween(begin: const Offset(0.15, 0), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _modeAnim, curve: Curves.easeOut));
+    _fade = Tween(begin: 1.0, end: 0.0)
+        .animate(CurvedAnimation(parent: _modeAnim, curve: Curves.easeIn));
+
     final emailParam = Uri.base.queryParameters['email'];
     if (emailParam != null && emailParam.isNotEmpty) {
       _emailCtrl.text = emailParam;
@@ -60,7 +75,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _nameCtrl.dispose();
+    _modeAnim.dispose();
     super.dispose();
+  }
+
+  void _toggleMode() {
+    if (_loading) return;
+    _modeAnim.forward().then((_) {
+      setState(() {
+        _isLogin = !_isLogin;
+        _error = null;
+        _passwordCtrl.clear();
+      });
+      _modeAnim.reverse();
+    });
   }
 
   // ── Social sign-in ──────────────────────────────────────────────────────
@@ -76,11 +105,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
       await _ensureUserRegistered();
     } on FirebaseAuthException catch (e) {
+      debugPrint('[auth] Google error: ${e.code} — ${e.message}');
       if (mounted && !_isCancelled(e.code)) {
-        setState(() => _error = AppLocalizations.of(context).auth_social_error);
+        setState(() => _error = _socialErrorMessage(e));
       }
-    } catch (_) {
-      if (mounted) setState(() => _error = AppLocalizations.of(context).auth_social_error);
+    } catch (e) {
+      debugPrint('[auth] Google unexpected: $e');
+      if (mounted) setState(() => _error = _genericSocialError());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -99,11 +130,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
       await _ensureUserRegistered();
     } on FirebaseAuthException catch (e) {
+      debugPrint('[auth] Apple error: ${e.code} — ${e.message}');
       if (mounted && !_isCancelled(e.code)) {
-        setState(() => _error = AppLocalizations.of(context).auth_social_error);
+        setState(() => _error = _socialErrorMessage(e));
       }
-    } catch (_) {
-      if (mounted) setState(() => _error = AppLocalizations.of(context).auth_social_error);
+    } catch (e) {
+      debugPrint('[auth] Apple unexpected: $e');
+      if (mounted) setState(() => _error = _genericSocialError());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -112,7 +145,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isCancelled(String code) =>
       code == 'popup-closed-by-user' ||
       code == 'canceled' ||
-      code == 'user-cancelled';
+      code == 'user-cancelled' ||
+      code == 'web-context-cancelled';
+
+  String _socialErrorMessage(FirebaseAuthException e) {
+    if (e.code == 'operation-not-supported-in-this-environment' ||
+        e.message?.contains('CLIENT_ID') == true ||
+        e.message?.contains('clientId') == true) {
+      return 'Logowanie społecznościowe nie jest jeszcze skonfigurowane na tej platformie. Użyj adresu e-mail.';
+    }
+    return AppLocalizations.of(context).auth_social_error;
+  }
+
+  String _genericSocialError() => AppLocalizations.of(context).auth_social_error;
 
   // ── Email / password ────────────────────────────────────────────────────
 
@@ -130,7 +175,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email, password: pass,
         );
-        await _registerInIdentityService(cred.user!);
+        // Parse name for registration
+        final nameParts = _nameCtrl.text.trim().split(' ');
+        final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+        final lastName = nameParts.length > 1 ? nameParts.skip(1).join(' ') : '';
+        await _registerInIdentityService(cred.user!,
+            firstName: firstName, lastName: lastName);
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _error = _friendlyError(e.code));
@@ -141,38 +191,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _sendPasswordReset() async {
-    final email = _emailCtrl.text.trim().toLowerCase();
-    if (email.isEmpty) {
-      setState(() => _error = AppLocalizations.of(context).auth_error_invalid_email);
-      return;
-    }
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-    } catch (_) {}
-    if (!mounted) return;
-    final t = AppLocalizations.of(context);
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A3A35),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(t.auth_password_reset_sent_title,
-            style: const TextStyle(fontFamily: _kFont, fontWeight: FontWeight.w600, color: _kWhite)),
-        content: Text(t.auth_password_reset_sent_body,
-            style: const TextStyle(fontFamily: _kFont, fontWeight: FontWeight.w400, color: _kWhite70)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(t.common_understand,
-                style: const TextStyle(fontFamily: _kFont, color: _kAccent, fontWeight: FontWeight.w600)),
-          ),
-        ],
+  void _openForgotPassword() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ForgotPasswordScreen(
+          initialEmail: _emailCtrl.text.trim(),
+        ),
       ),
     );
   }
 
-  Future<void> _registerInIdentityService(User user, {String? firstName, String? lastName}) async {
+  Future<void> _registerInIdentityService(User user,
+      {String? firstName, String? lastName}) async {
     String fName = firstName ?? '';
     String lName = lastName ?? '';
     if (fName.isEmpty && user.displayName != null) {
@@ -242,7 +272,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [_kBgTop, _kBgBottom],
-            stops: [0.0, 1.0],
           ),
         ),
         child: SafeArea(
@@ -251,235 +280,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               padding: EdgeInsets.fromLTRB(32, 48, 32, 32 + bottomInset),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 380),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // ── Logo ──────────────────────────────────────────
-                    Container(
-                      width: 88,
-                      height: 88,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _kWhite08,
-                        border: Border.all(color: _kWhite15, width: 1.5),
+                child: AnimatedBuilder(
+                  animation: _modeAnim,
+                  builder: (context, _) {
+                    final isForward = _modeAnim.status == AnimationStatus.forward;
+                    final slide = isForward ? _slideOut : _slideIn;
+                    final opacity = isForward ? _fade : ReverseAnimation(_fade);
+                    return SlideTransition(
+                      position: slide,
+                      child: FadeTransition(
+                        opacity: opacity,
+                        child: _buildContent(),
                       ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Image.asset(
-                        'assets/Ico/Logo_Superwizor_MVP.png',
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-
-                    // ── Title ─────────────────────────────────────────
-                    const Text(
-                      'Witaj ponownie',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: _kFont,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        color: _kWhite,
-                        height: 1.15,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Zaloguj się do Superwizor AI',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: _kFont,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: _kWhite70,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 36),
-
-                    // ── Social buttons ────────────────────────────────
-                    _SocialButton(
-                      onPressed: _loading ? null : _signInWithGoogle,
-                      icon: const _GoogleIcon(),
-                      label: 'Kontynuuj z Google',
-                      backgroundColor: _kWhite,
-                      textColor: const Color(0xFF1F1F1F),
-                    ),
-                    const SizedBox(height: 12),
-                    if (!_isAndroid) ...[
-                      _SocialButton(
-                        onPressed: _loading ? null : _signInWithApple,
-                        icon: const _AppleIcon(),
-                        label: 'Kontynuuj z Apple',
-                        backgroundColor: const Color(0xFF1F1F1F),
-                        textColor: _kWhite,
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-
-                    // ── Divider ───────────────────────────────────────
-                    Row(
-                      children: [
-                        Expanded(child: Container(height: 1, color: _kWhite15)),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          child: Text('lub', style: TextStyle(
-                            fontFamily: _kFont,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: _kWhite40,
-                          )),
-                        ),
-                        Expanded(child: Container(height: 1, color: _kWhite15)),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // ── Email field ───────────────────────────────────
-                    _TextField(
-                      controller: _emailCtrl,
-                      hint: 'Adres e-mail',
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.email],
-                      enabled: !_loading,
-                      prefixIcon: Icons.mail_outline_rounded,
-                    ),
-                    const SizedBox(height: 14),
-
-                    // ── Password field ────────────────────────────────
-                    _TextField(
-                      controller: _passwordCtrl,
-                      hint: 'Hasło',
-                      obscureText: _obscurePassword,
-                      autofillHints: const [AutofillHints.password],
-                      enabled: !_loading,
-                      prefixIcon: Icons.lock_outline_rounded,
-                      suffixIcon: IconButton(
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                          color: _kWhite40,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // ── Forgot password ───────────────────────────────
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _loading ? null : _sendPasswordReset,
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          'Nie pamiętam hasła',
-                          style: TextStyle(
-                            fontFamily: _kFont,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: _kAccent,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // ── Error ─────────────────────────────────────────
-                    if (_error != null) ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _kErrorBg,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: _kErrorBorder),
-                        ),
-                        child: Text(
-                          _error!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontFamily: _kFont,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: _kErrorText,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // ── Submit button ─────────────────────────────────
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: _loading ? null : _submit,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _kAccent,
-                          foregroundColor: const Color(0xFF052E28),
-                          disabledBackgroundColor: _kAccent.withValues(alpha: 0.4),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: _loading
-                            ? const SizedBox(
-                                width: 22, height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF052E28)),
-                                ),
-                              )
-                            : Text(
-                                _isLogin ? 'Zaloguj się' : 'Zarejestruj się',
-                                style: const TextStyle(
-                                  fontFamily: _kFont,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-
-                    // ── Toggle login / register ──────────────────────
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _isLogin ? 'Nie masz konta? ' : 'Masz już konto? ',
-                          style: const TextStyle(
-                            fontFamily: _kFont,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: _kWhite70,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: _loading ? null : () => setState(() {
-                            _isLogin = !_isLogin;
-                            _error = null;
-                          }),
-                          child: Text(
-                            _isLogin ? 'Zarejestruj się' : 'Zaloguj się',
-                            style: const TextStyle(
-                              fontFamily: _kFont,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: _kAccent,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -488,13 +302,255 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
+
+  Widget _buildContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Logo ─────────────────────────────────────────────
+        Container(
+          width: 88,
+          height: 88,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _kWhite08,
+            border: Border.all(color: _kWhite15, width: 1.5),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Image.asset(
+            'assets/Ico/Logo_Superwizor_MVP.png',
+            fit: BoxFit.cover,
+          ),
+        ),
+        const SizedBox(height: 28),
+
+        // ── Title ────────────────────────────────────────────
+        Text(
+          _isLogin ? 'Witaj ponownie' : 'Utwórz konto',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: _kFont,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            color: _kWhite,
+            height: 1.15,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _isLogin
+              ? 'Zaloguj się do Superwizor AI'
+              : 'Dołącz do społeczności terapeutów',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: _kFont,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            color: _kWhite70,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 36),
+
+        // ── Social buttons ───────────────────────────────────
+        _SocialButton(
+          onPressed: _loading ? null : _signInWithGoogle,
+          icon: const _GoogleIcon(),
+          label: 'Kontynuuj z Google',
+          backgroundColor: _kWhite,
+          textColor: const Color(0xFF1F1F1F),
+        ),
+        const SizedBox(height: 12),
+        if (!_isAndroid) ...[
+          _SocialButton(
+            onPressed: _loading ? null : _signInWithApple,
+            icon: const _AppleIcon(),
+            label: 'Kontynuuj z Apple',
+            backgroundColor: const Color(0xFF1F1F1F),
+            textColor: _kWhite,
+          ),
+          const SizedBox(height: 24),
+        ],
+
+        // ── Divider ──────────────────────────────────────────
+        Row(
+          children: [
+            Expanded(child: Container(height: 1, color: _kWhite15)),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('lub', style: TextStyle(
+                fontFamily: _kFont, fontSize: 13,
+                fontWeight: FontWeight.w500, color: _kWhite40,
+              )),
+            ),
+            Expanded(child: Container(height: 1, color: _kWhite15)),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        // ── Name field (register only) ───────────────────────
+        if (!_isLogin) ...[
+          _TextField(
+            controller: _nameCtrl,
+            hint: 'Imię i nazwisko',
+            keyboardType: TextInputType.name,
+            autofillHints: const [AutofillHints.name],
+            enabled: !_loading,
+            prefixIcon: Icons.person_outline_rounded,
+          ),
+          const SizedBox(height: 14),
+        ],
+
+        // ── Email field ──────────────────────────────────────
+        _TextField(
+          controller: _emailCtrl,
+          hint: 'Adres e-mail',
+          keyboardType: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.email],
+          enabled: !_loading,
+          prefixIcon: Icons.mail_outline_rounded,
+        ),
+        const SizedBox(height: 14),
+
+        // ── Password field ───────────────────────────────────
+        _TextField(
+          controller: _passwordCtrl,
+          hint: _isLogin ? 'Hasło' : 'Utwórz hasło (min. 8 znaków)',
+          obscureText: _obscurePassword,
+          autofillHints: [_isLogin ? AutofillHints.password : AutofillHints.newPassword],
+          enabled: !_loading,
+          prefixIcon: Icons.lock_outline_rounded,
+          suffixIcon: IconButton(
+            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            icon: Icon(
+              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+              color: _kWhite40, size: 20,
+            ),
+          ),
+        ),
+
+        // ── Forgot password (login only) ─────────────────────
+        if (_isLogin) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _loading ? null : _openForgotPassword,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('Nie pamiętam hasła', style: TextStyle(
+                fontFamily: _kFont, fontSize: 13,
+                fontWeight: FontWeight.w500, color: _kAccent,
+              )),
+            ),
+          ),
+        ],
+        SizedBox(height: _isLogin ? 20 : 28),
+
+        // ── Error ────────────────────────────────────────────
+        if (_error != null) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: _kErrorBg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _kErrorBorder),
+            ),
+            child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(
+              fontFamily: _kFont, fontSize: 13,
+              fontWeight: FontWeight.w500, color: _kErrorText,
+            )),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // ── Submit button ────────────────────────────────────
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            onPressed: _loading ? null : _submit,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _isLogin ? _kAccent : _kEmber,
+              foregroundColor: const Color(0xFF002E32),
+              disabledBackgroundColor:
+                  (_isLogin ? _kAccent : _kEmber).withValues(alpha: 0.4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              elevation: 0,
+            ),
+            child: _loading
+                ? const SizedBox(
+                    width: 22, height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF002E32)),
+                    ),
+                  )
+                : Text(
+                    _isLogin ? 'Zaloguj się' : 'Zarejestruj się',
+                    style: const TextStyle(
+                      fontFamily: _kFont, fontSize: 16,
+                      fontWeight: FontWeight.w600, letterSpacing: 0.2,
+                    ),
+                  ),
+          ),
+        ),
+
+        // ── Terms (register only) ────────────────────────────
+        if (!_isLogin) ...[
+          const SizedBox(height: 16),
+          const Text(
+            'Rejestrując się, akceptujesz Regulamin\ni Politykę Prywatności Superwizor AI.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: _kFont, fontSize: 12,
+              fontWeight: FontWeight.w400, color: _kWhite40,
+              height: 1.4,
+            ),
+          ),
+        ],
+        const SizedBox(height: 28),
+
+        // ── Toggle login / register ──────────────────────────
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _isLogin ? 'Nie masz konta? ' : 'Masz już konto? ',
+              style: const TextStyle(
+                fontFamily: _kFont, fontSize: 14,
+                fontWeight: FontWeight.w400, color: _kWhite70,
+              ),
+            ),
+            GestureDetector(
+              onTap: _toggleMode,
+              child: Text(
+                _isLogin ? 'Zarejestruj się' : 'Zaloguj się',
+                style: TextStyle(
+                  fontFamily: _kFont, fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _isLogin ? _kAccent : _kEmber,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Reusable widgets
+// Shared widgets
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// Frosted-glass-style text field on the gradient background.
 class _TextField extends StatelessWidget {
   const _TextField({
     required this.controller,
@@ -525,19 +581,15 @@ class _TextField extends StatelessWidget {
       autofillHints: autofillHints,
       enabled: enabled,
       style: const TextStyle(
-        fontFamily: _kFont,
-        fontSize: 15,
-        fontWeight: FontWeight.w500,
-        color: _kWhite,
+        fontFamily: _kFont, fontSize: 15,
+        fontWeight: FontWeight.w500, color: _kWhite,
       ),
       cursorColor: _kAccent,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(
-          fontFamily: _kFont,
-          fontSize: 15,
-          fontWeight: FontWeight.w400,
-          color: _kWhite40,
+          fontFamily: _kFont, fontSize: 15,
+          fontWeight: FontWeight.w400, color: _kWhite40,
         ),
         prefixIcon: prefixIcon != null
             ? Icon(prefixIcon, color: _kWhite40, size: 20)
@@ -548,7 +600,7 @@ class _TextField extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: _kWhite15),
+          borderSide: const BorderSide(color: _kWhite15),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -556,14 +608,13 @@ class _TextField extends StatelessWidget {
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: _kWhite08),
+          borderSide: const BorderSide(color: _kWhite08),
         ),
       ),
     );
   }
 }
 
-/// Social sign-in button with scale-on-tap micro-animation.
 class _SocialButton extends StatefulWidget {
   const _SocialButton({
     required this.onPressed,
@@ -593,43 +644,31 @@ class _SocialButtonState extends State<_SocialButton>
     _anim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 80),
-      lowerBound: 0.0,
-      upperBound: 1.0,
-      value: 0.0,
+      lowerBound: 0.0, upperBound: 1.0, value: 0.0,
     );
   }
 
   @override
-  void dispose() {
-    _anim.dispose();
-    super.dispose();
-  }
+  void dispose() { _anim.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     final disabled = widget.onPressed == null;
     return GestureDetector(
       onTapDown: disabled ? null : (_) => _anim.forward(),
-      onTapUp: disabled ? null : (_) {
-        _anim.reverse();
-        widget.onPressed!();
-      },
+      onTapUp: disabled ? null : (_) { _anim.reverse(); widget.onPressed!(); },
       onTapCancel: () => _anim.reverse(),
       child: AnimatedBuilder(
         animation: _anim,
-        builder: (context, child) {
-          final scale = 1.0 - (_anim.value * 0.03);
-          return Transform.scale(
-            scale: scale,
-            child: child,
-          );
-        },
+        builder: (context, child) => Transform.scale(
+          scale: 1.0 - (_anim.value * 0.03),
+          child: child,
+        ),
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 120),
           opacity: disabled ? 0.5 : 1.0,
           child: Container(
-            width: double.infinity,
-            height: 52,
+            width: double.infinity, height: 52,
             decoration: BoxDecoration(
               color: widget.backgroundColor,
               borderRadius: BorderRadius.circular(14),
@@ -639,15 +678,10 @@ class _SocialButtonState extends State<_SocialButton>
               children: [
                 widget.icon,
                 const SizedBox(width: 12),
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontFamily: _kFont,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: widget.textColor,
-                  ),
-                ),
+                Text(widget.label, style: TextStyle(
+                  fontFamily: _kFont, fontSize: 15,
+                  fontWeight: FontWeight.w600, color: widget.textColor,
+                )),
               ],
             ),
           ),
@@ -660,15 +694,9 @@ class _SocialButtonState extends State<_SocialButton>
 // ── Google "G" icon ─────────────────────────────────────────────────────────
 class _GoogleIcon extends StatelessWidget {
   const _GoogleIcon();
-
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 20,
-      height: 20,
-      child: CustomPaint(painter: _GooglePainter()),
-    );
-  }
+  Widget build(BuildContext context) =>
+      SizedBox(width: 20, height: 20, child: CustomPaint(painter: _GooglePainter()));
 }
 
 class _GooglePainter extends CustomPainter {
@@ -679,12 +707,11 @@ class _GooglePainter extends CustomPainter {
 
     p.color = const Color(0xFF4285F4);
     canvas.drawPath(Path()
-      ..moveTo(22.56*s, 12.25*s)..cubicTo(22.56*s,11.47*s,22.49*s,10.72*s,22.36*s,10*s)
+      ..moveTo(22.56*s,12.25*s)..cubicTo(22.56*s,11.47*s,22.49*s,10.72*s,22.36*s,10*s)
       ..lineTo(12*s,10*s)..lineTo(12*s,14.26*s)..lineTo(17.92*s,14.26*s)
       ..cubicTo(17.66*s,15.63*s,16.88*s,16.79*s,15.71*s,17.57*s)
       ..lineTo(15.71*s,20.34*s)..lineTo(19.28*s,20.34*s)
       ..cubicTo(21.36*s,18.42*s,22.56*s,15.6*s,22.56*s,12.25*s)..close(), p);
-
     p.color = const Color(0xFF34A853);
     canvas.drawPath(Path()
       ..moveTo(12*s,23*s)..cubicTo(14.97*s,23*s,17.46*s,22.02*s,19.28*s,20.34*s)
@@ -692,7 +719,6 @@ class _GooglePainter extends CustomPainter {
       ..cubicTo(9.14*s,18.63*s,6.71*s,16.7*s,5.84*s,14.1*s)
       ..lineTo(2.18*s,14.1*s)..lineTo(2.18*s,16.94*s)
       ..cubicTo(3.99*s,20.53*s,7.7*s,23*s,12*s,23*s)..close(), p);
-
     p.color = const Color(0xFFFBBC05);
     canvas.drawPath(Path()
       ..moveTo(5.84*s,14.1*s)..cubicTo(5.62*s,13.44*s,5.49*s,12.74*s,5.49*s,12*s)
@@ -701,7 +727,6 @@ class _GooglePainter extends CustomPainter {
       ..cubicTo(1.43*s,8.55*s,1*s,10.22*s,1*s,12*s)
       ..cubicTo(1*s,13.78*s,1.43*s,15.45*s,2.18*s,16.94*s)
       ..lineTo(5.84*s,14.1*s)..close(), p);
-
     p.color = const Color(0xFFEA4335);
     canvas.drawPath(Path()
       ..moveTo(12*s,5.38*s)..cubicTo(13.62*s,5.38*s,15.06*s,5.94*s,16.21*s,7.02*s)
@@ -718,15 +743,9 @@ class _GooglePainter extends CustomPainter {
 // ── Apple icon ──────────────────────────────────────────────────────────────
 class _AppleIcon extends StatelessWidget {
   const _AppleIcon();
-
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 18,
-      height: 20,
-      child: CustomPaint(painter: _ApplePainter()),
-    );
-  }
+  Widget build(BuildContext context) =>
+      SizedBox(width: 18, height: 20, child: CustomPaint(painter: _ApplePainter()));
 }
 
 class _ApplePainter extends CustomPainter {
@@ -734,37 +753,33 @@ class _ApplePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final sx = size.width / 24.0;
     final sy = size.height / 24.0;
-    final p = Paint()
-      ..style = PaintingStyle.fill
-      ..color = _kWhite;
+    final p = Paint()..style = PaintingStyle.fill..color = _kWhite;
 
     canvas.drawPath(Path()
-      ..moveTo(12.152*sx, 6.896*sy)
-      ..cubicTo(11.204*sx,6.896*sy, 9.737*sx,5.818*sy, 8.192*sx,5.856*sy)
-      ..cubicTo(6.152*sx,5.883*sy, 4.282*sx,7.039*sy, 3.231*sx,8.87*sy)
-      ..cubicTo(1.114*sx,12.545*sy, 2.685*sx,17.973*sy, 4.75*sx,20.96*sy)
-      ..cubicTo(5.763*sx,22.414*sy, 6.958*sx,24.05*sy, 8.542*sx,23.999*sy)
-      ..cubicTo(10.062*sx,23.934*sy, 10.632*sx,23.012*sy, 12.477*sx,23.012*sy)
-      ..cubicTo(14.308*sx,23.012*sy, 14.827*sx,23.999*sy, 16.437*sx,23.96*sy)
-      ..cubicTo(18.074*sx,23.934*sy, 19.113*sx,22.48*sy, 20.113*sx,21.012*sy)
-      ..cubicTo(21.269*sx,19.324*sy, 21.749*sx,17.687*sy, 21.775*sx,17.597*sy)
-      ..cubicTo(21.736*sx,17.584*sy, 18.593*sx,16.376*sy, 18.555*sx,12.74*sy)
-      ..cubicTo(18.529*sx,9.7*sy, 21.035*sx,8.246*sy, 21.152*sx,8.181*sy)
-      ..cubicTo(19.723*sx,6.091*sy, 17.529*sx,5.857*sy, 16.762*sx,5.805*sy)
-      ..cubicTo(14.762*sx,5.649*sy, 13.087*sx,6.896*sy, 12.152*sx,6.896*sy)
+      ..moveTo(12.152*sx,6.896*sy)
+      ..cubicTo(11.204*sx,6.896*sy,9.737*sx,5.818*sy,8.192*sx,5.856*sy)
+      ..cubicTo(6.152*sx,5.883*sy,4.282*sx,7.039*sy,3.231*sx,8.87*sy)
+      ..cubicTo(1.114*sx,12.545*sy,2.685*sx,17.973*sy,4.75*sx,20.96*sy)
+      ..cubicTo(5.763*sx,22.414*sy,6.958*sx,24.05*sy,8.542*sx,23.999*sy)
+      ..cubicTo(10.062*sx,23.934*sy,10.632*sx,23.012*sy,12.477*sx,23.012*sy)
+      ..cubicTo(14.308*sx,23.012*sy,14.827*sx,23.999*sy,16.437*sx,23.96*sy)
+      ..cubicTo(18.074*sx,23.934*sy,19.113*sx,22.48*sy,20.113*sx,21.012*sy)
+      ..cubicTo(21.269*sx,19.324*sy,21.749*sx,17.687*sy,21.775*sx,17.597*sy)
+      ..cubicTo(21.736*sx,17.584*sy,18.593*sx,16.376*sy,18.555*sx,12.74*sy)
+      ..cubicTo(18.529*sx,9.7*sy,21.035*sx,8.246*sy,21.152*sx,8.181*sy)
+      ..cubicTo(19.723*sx,6.091*sy,17.529*sx,5.857*sy,16.762*sx,5.805*sy)
+      ..cubicTo(14.762*sx,5.649*sy,13.087*sx,6.896*sy,12.152*sx,6.896*sy)
       ..close(), p);
 
     canvas.drawPath(Path()
-      ..moveTo(15.53*sx, 3.83*sy)
-      ..cubicTo(16.373*sx,2.818*sy, 16.93*sx,1.403*sy, 16.775*sx,0*sy)
-      ..cubicTo(15.568*sx,0.052*sy, 14.113*sx,0.805*sy, 13.243*sx,1.818*sy)
-      ..cubicTo(12.463*sx,2.714*sy, 11.789*sx,4.156*sy, 11.97*sx,5.532*sy)
-      ..cubicTo(13.308*sx,5.636*sy, 14.685*sx,4.844*sy, 15.53*sx,3.83*sy)
+      ..moveTo(15.53*sx,3.83*sy)
+      ..cubicTo(16.373*sx,2.818*sy,16.93*sx,1.403*sy,16.775*sx,0*sy)
+      ..cubicTo(15.568*sx,0.052*sy,14.113*sx,0.805*sy,13.243*sx,1.818*sy)
+      ..cubicTo(12.463*sx,2.714*sy,11.789*sx,4.156*sy,11.97*sx,5.532*sy)
+      ..cubicTo(13.308*sx,5.636*sy,14.685*sx,4.844*sy,15.53*sx,3.83*sy)
       ..close(), p);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter _) => false;
 }
-
-
