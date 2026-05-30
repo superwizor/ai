@@ -27,6 +27,12 @@ type fakeQuerier struct {
 	getUsageEventFn        func(ctx context.Context, sessionID uuid.UUID) (db.UsageEvent, error)
 	createUsageEventFn     func(ctx context.Context, arg db.CreateUsageEventParams) (db.UsageEvent, error)
 
+	// admin-path stubs (feat/tokens-exhausted)
+	adminGetPlanFn       func(ctx context.Context, arg db.AdminGetPlanByTierCycleParams) (db.SubscriptionPlan, error)
+	adminChangePlanFn    func(ctx context.Context, arg db.AdminChangeSubscriptionPlanParams) (db.Subscription, error)
+	adminUpdateCounterFn func(ctx context.Context, arg db.AdminUpdateCounterParams) (db.UsageCounter, error)
+	createAuditFn        func(ctx context.Context, arg db.CreateBillingAuditEventParams) (db.AuditEvent, error)
+
 	// Call recorders
 	createReservationCalls []db.CreateReservationParams
 	createUsageEventCalls  []db.CreateUsageEventParams
@@ -34,6 +40,7 @@ type fakeQuerier struct {
 	releaseReservedCalls   []db.ReleaseReservedTokensParams
 	commitTokensCalls      []db.CommitTokensParams
 	advisoryLockCalls      []string
+	adminChangePlanCalls   []db.AdminChangeSubscriptionPlanParams
 }
 
 func (f *fakeQuerier) GetActiveSubscriptionByOrg(ctx context.Context, orgID uuid.UUID) (db.GetActiveSubscriptionByOrgRow, error) {
@@ -113,6 +120,37 @@ func (f *fakeQuerier) GetUsageEventBySession(ctx context.Context, sessionID uuid
 func (f *fakeQuerier) CreateUsageEvent(ctx context.Context, arg db.CreateUsageEventParams) (db.UsageEvent, error) {
 	f.createUsageEventCalls = append(f.createUsageEventCalls, arg)
 	return f.createUsageEventFn(ctx, arg)
+}
+
+// ---------- admin-path stubs (feat/tokens-exhausted) ----------
+
+func (f *fakeQuerier) AdminGetPlanByTierCycle(ctx context.Context, arg db.AdminGetPlanByTierCycleParams) (db.SubscriptionPlan, error) {
+	if f.adminGetPlanFn != nil {
+		return f.adminGetPlanFn(ctx, arg)
+	}
+	return db.SubscriptionPlan{}, nil
+}
+
+func (f *fakeQuerier) AdminChangeSubscriptionPlan(ctx context.Context, arg db.AdminChangeSubscriptionPlanParams) (db.Subscription, error) {
+	f.adminChangePlanCalls = append(f.adminChangePlanCalls, arg)
+	if f.adminChangePlanFn != nil {
+		return f.adminChangePlanFn(ctx, arg)
+	}
+	return db.Subscription{}, nil
+}
+
+func (f *fakeQuerier) AdminUpdateCounter(ctx context.Context, arg db.AdminUpdateCounterParams) (db.UsageCounter, error) {
+	if f.adminUpdateCounterFn != nil {
+		return f.adminUpdateCounterFn(ctx, arg)
+	}
+	return db.UsageCounter{}, nil
+}
+
+func (f *fakeQuerier) CreateBillingAuditEvent(ctx context.Context, arg db.CreateBillingAuditEventParams) (db.AuditEvent, error) {
+	if f.createAuditFn != nil {
+		return f.createAuditFn(ctx, arg)
+	}
+	return db.AuditEvent{}, nil
 }
 
 // ---------- fakeTxOpener ----------
