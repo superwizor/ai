@@ -32,6 +32,7 @@ import '../providers/grpc_provider.dart';
 import '../providers/services_provider.dart';
 import '../services/session_state_listener.dart';
 import '../theme/euphire_theme.dart';
+import '../uploads/cancel_upload_action.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
 import '../widgets/euphire_action_sheet.dart';
@@ -372,6 +373,19 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                       onPressed: () => Navigator.of(context).maybePop(),
                     ),
                     const Spacer(),
+                    // Bin = cancel processing (feat/tokens-exhausted).
+                    // Shown while the session is still cancellable
+                    // (pre-completion): either a local queue row exists
+                    // or we resolved a server session_id. Confirm →
+                    // CancelSession (CANCELLED_BY_USER + token release)
+                    // → leave this screen.
+                    if (!_showCheck && _cancelableSessionId != null)
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 22),
+                        color: EuphireColors.magma,
+                        tooltip: t.upload_cancel_processing,
+                        onPressed: _onCancelPressed,
+                      ),
                   ],
                 ),
               ),
@@ -478,6 +492,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         EuphireSessionStatusStepper(
           phase: _phase,
           collapsed: _collapsed,
+          quotaBlocked: _lastRow?.phase == UploadPhase.quotaBlocked,
         ),
         const SizedBox(height: 16),
         // ── Queue-state diagnostic ──
@@ -497,19 +512,79 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
               ),
             ),
           ),
+        // Quota hold → explicit resend affordance. Auto-retry is off
+        // (feat/tokens-exhausted), so this button is the only way to
+        // re-attempt the upload once the plan tops up.
+        if (_lastRow?.phase == UploadPhase.quotaBlocked) ...[
+          const SizedBox(height: 20),
+          Center(
+            child: OutlinedButton.icon(
+              onPressed: _onResendPressed,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: Text(t.upload_resend),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: EuphireColors.ember,
+                side: BorderSide(
+                  color: EuphireColors.ember.withValues(alpha: 0.4),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                textStyle: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
         // The raw gRPC last-error text used to render here (red,
-        // dev-style). For quota-exhausted submits QuotaExhaustedDialog
-        // already surfaces the right message; for everything else the
-        // queue-phase line above plus the retry counter is enough.
-        // Surfacing raw status codes / framework error strings to the
-        // therapist was noisy and confusing — kept in PendingUpload
-        // for our own diagnostics but no longer rendered.
+        // dev-style). For quota-exhausted submits the stepper step-1
+        // label + the resend button above surface the right message;
+        // for everything else the queue-phase line plus the retry
+        // counter is enough. Surfacing raw status codes / framework
+        // error strings to the therapist was noisy and confusing —
+        // kept in PendingUpload for our own diagnostics but not shown.
         const Spacer(),
       ],
     );
   }
 
+  /// The session_id we can cancel, if any: a resolved server session
+  /// or the one the local queue row already captured. Null while the
+  /// upload hasn't been accepted server-side and has no row.
+  String? get _cancelableSessionId =>
+      _resolvedSessionId ?? _lastRow?.sessionId;
+
+  /// Bin-icon handler — confirm + CancelSession + leave the screen.
+  Future<void> _onCancelPressed() async {
+    final cancelled = await confirmAndCancelUpload(
+      context,
+      ref,
+      patientFileId: _lastRow?.patientFileId,
+      sessionId: _cancelableSessionId,
+      localId: widget.localId ?? _lastRow?.localId,
+    );
+    if (cancelled && mounted) {
+      _routedAway = true;
+      Navigator.of(context).maybePop();
+    }
+  }
+
+  /// Un-park a quota-blocked upload (explicit resend). No-op if the
+  /// row isn't parked.
+  Future<void> _onResendPressed() async {
+    final localId = widget.localId ?? _lastRow?.localId;
+    if (localId == null) return;
+    final runner = await ref.read(uploadQueueRunnerProvider.future);
+    await runner?.resend(localId);
+  }
+
   String _queuePhaseLabel(PendingUpload u) {
+    final t = AppLocalizations.of(context);
     final attempt = u.attemptCount > 0 ? ' • próba ${u.attemptCount + 1}' : '';
     switch (u.phase) {
       case UploadPhase.pending:
@@ -524,6 +599,8 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         return 'Wgrane';
       case UploadPhase.failed:
         return 'Błąd';
+      case UploadPhase.quotaBlocked:
+        return t.quota_blocked_queue_label;
     }
   }
 

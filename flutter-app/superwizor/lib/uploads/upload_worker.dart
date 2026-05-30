@@ -79,7 +79,7 @@ class UploadWorker {
   /// Advances [u] by one phase. Always returns a new PendingUpload
   /// reflecting the outcome; never throws.
   Future<PendingUpload> runOne(PendingUpload u) async {
-    if (u.isTerminal) return u;
+    if (u.isTerminal || u.isParked) return u;
 
     debugPrint('[upload-worker] runOne localId=${u.localId} '
         'phase=${u.phase.name} attempt=${u.attemptCount} '
@@ -108,6 +108,9 @@ class UploadWorker {
           break;
         case UploadPhase.completed:
         case UploadPhase.failed:
+        case UploadPhase.quotaBlocked:
+          // Unreachable in practice (the isTerminal||isParked guard at
+          // the top returns first), but keeps the switch exhaustive.
           return u;
       }
       debugPrint('[upload-worker] runOne localId=${u.localId} '
@@ -226,6 +229,19 @@ class UploadWorker {
           attemptCount: u.attemptCount + 1,
           nextAttemptAt: _clock(), // due immediately
           lastError: cls.message,
+        );
+
+      case UploadErrorClass.quotaBlocked:
+        // Park the row: no tokens, so no point retrying. We do NOT
+        // bump nextAttemptAt into the future (the runner ignores
+        // parked rows regardless via isParked) and we do NOT set
+        // terminatedAt (the upload isn't dead — the user can resend
+        // once the plan tops up). attemptCount is bumped so the UI
+        // can still show how many tries it took to hit the wall.
+        return u.copyWith(
+          phase: UploadPhase.quotaBlocked,
+          lastError: cls.message,
+          attemptCount: u.attemptCount + 1,
         );
 
       case UploadErrorClass.retryable:

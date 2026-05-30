@@ -1213,4 +1213,33 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get subscription_refresh_cta => 'Odśwież';
+
+  @override
+  String get stepper_step1_quota_blocked =>
+      'Pula tokenów wyczerpana. Odnów plan, aby wznowić.';
+
+  @override
+  String get quota_blocked_queue_label => 'Pula tokenów wyczerpana';
+
+  @override
+  String get upload_resend => 'Wyślij ponownie';
+
+  @override
+  String get upload_cancel_processing => 'Anuluj przetwarzanie';
+
+  @override
+  String get cancel_session_confirm_title => 'Anulować przetwarzanie?';
+
+  @override
+  String get cancel_session_confirm_body =>
+      'Sesja zostanie anulowana, a nagranie usunięte z kolejki. Tej operacji nie można cofnąć.';
+
+  @override
+  String get cancel_session_confirm_action => 'Tak, anuluj';
+
+  @override
+  String get cancel_session_keep => 'Nie, zostaw';
+
+  @override
+  String get cancel_session_success => 'Sesja anulowana';
 }

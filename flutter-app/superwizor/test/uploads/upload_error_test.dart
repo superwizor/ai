@@ -4,6 +4,7 @@
 // without inspecting the body).
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:grpc/grpc.dart' as grpc;
 import 'package:superwizor/uploads/upload_error.dart';
 
 void main() {
@@ -66,6 +67,33 @@ void main() {
     test('HTTP 503 → retryable', () {
       final r = classifyUploadError(httpStatusError(503, ''));
       expect(r.kind, UploadErrorClass.retryable);
+    });
+  });
+
+  group('classifyUploadError — gRPC', () {
+    test('ResourceExhausted (QUOTA_EXHAUSTED) → quotaBlocked', () {
+      // feat/tokens-exhausted: this used to be `retryable`, which made
+      // CreateAudioUpload loop forever ("próba 7/4"). It must now park.
+      final r = classifyUploadError(
+          grpc.GrpcError.resourceExhausted('QUOTA_EXHAUSTED'));
+      expect(r.kind, UploadErrorClass.quotaBlocked);
+    });
+
+    test('Unavailable → retryable (transient, still loops)', () {
+      final r = classifyUploadError(grpc.GrpcError.unavailable('backend down'));
+      expect(r.kind, UploadErrorClass.retryable);
+    });
+
+    test('DeadlineExceeded → retryable', () {
+      final r =
+          classifyUploadError(grpc.GrpcError.deadlineExceeded('slow link'));
+      expect(r.kind, UploadErrorClass.retryable);
+    });
+
+    test('FailedPrecondition → terminal', () {
+      final r = classifyUploadError(
+          grpc.GrpcError.failedPrecondition('unsupported codec'));
+      expect(r.kind, UploadErrorClass.terminal);
     });
   });
 }

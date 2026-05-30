@@ -9,7 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme/euphire_theme.dart';
+import '../uploads/cancel_upload_action.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
 import 'session_status_screen.dart';
@@ -109,8 +111,10 @@ class _UploadRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
     final isFailed = upload.phase == UploadPhase.failed;
     final isCompleted = upload.phase == UploadPhase.completed;
+    final isQuotaBlocked = upload.phase == UploadPhase.quotaBlocked;
     final color = isFailed
         ? Colors.redAccent.shade200
         : isCompleted
@@ -157,7 +161,7 @@ class _UploadRow extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  _phaseLabel(upload.phase),
+                  _phaseLabel(upload.phase, l),
                   style: const TextStyle(
                     fontFamily: 'Montserrat',
                     fontWeight: FontWeight.w600,
@@ -185,7 +189,19 @@ class _UploadRow extends ConsumerWidget {
               color: Colors.white.withValues(alpha: 0.7),
             ),
           ),
-          if (upload.lastError != null && isFailed) ...[
+          if (isQuotaBlocked) ...[
+            const SizedBox(height: 6),
+            Text(
+              // Meaningful, reworded copy instead of the raw
+              // "QUOTA_EXHAUSTED" gRPC message (feat/tokens-exhausted).
+              l.stepper_step1_quota_blocked,
+              style: const TextStyle(
+                fontFamily: 'Merriweather',
+                fontSize: 11,
+                color: EuphireColors.ember,
+              ),
+            ),
+          ] else if (upload.lastError != null && isFailed) ...[
             const SizedBox(height: 6),
             Text(
               upload.lastError!,
@@ -202,25 +218,44 @@ class _UploadRow extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              if (isFailed)
+              // Resend (un-park / retry) for quota-parked and failed rows.
+              if (isFailed || isQuotaBlocked)
                 TextButton.icon(
                   icon: const Icon(Icons.refresh, size: 16),
-                  label: const Text('Ponów'),
+                  label: Text(isQuotaBlocked ? l.upload_resend : 'Ponów'),
                   onPressed: () async {
                     final runner = await ref
                         .read(uploadQueueRunnerProvider.future);
-                    await runner?.retryFailed(upload.localId);
+                    await runner?.resend(upload.localId);
                   },
                 ),
-              TextButton.icon(
-                icon: const Icon(Icons.close, size: 16),
-                label: Text(isCompleted ? 'Zamknij' : 'Anuluj'),
-                onPressed: () async {
-                  final runner =
-                      await ref.read(uploadQueueRunnerProvider.future);
-                  await runner?.dismiss(upload.localId);
-                },
-              ),
+              // Completed rows just close locally — nothing to cancel.
+              if (isCompleted)
+                TextButton.icon(
+                  icon: const Icon(Icons.close, size: 16),
+                  label: const Text('Zamknij'),
+                  onPressed: () async {
+                    final runner =
+                        await ref.read(uploadQueueRunnerProvider.future);
+                    await runner?.dismiss(upload.localId);
+                  },
+                )
+              else
+                // In-progress / parked / failed → bin = cancel processing
+                // (CANCELLED_BY_USER on the server + drop local row).
+                TextButton.icon(
+                  icon: const Icon(Icons.delete_outline, size: 16),
+                  label: Text(l.upload_cancel_processing),
+                  style: TextButton.styleFrom(
+                      foregroundColor: EuphireColors.magma),
+                  onPressed: () => confirmAndCancelUpload(
+                    context,
+                    ref,
+                    patientFileId: upload.patientFileId,
+                    sessionId: upload.sessionId,
+                    localId: upload.localId,
+                  ),
+                ),
             ],
           ),
             ],
@@ -242,10 +277,12 @@ class _UploadRow extends ConsumerWidget {
         return Icons.check_circle_outline;
       case UploadPhase.failed:
         return Icons.error_outline;
+      case UploadPhase.quotaBlocked:
+        return Icons.account_balance_wallet_outlined;
     }
   }
 
-  static String _phaseLabel(UploadPhase p) {
+  static String _phaseLabel(UploadPhase p, AppLocalizations l) {
     switch (p) {
       case UploadPhase.pending:
         return 'W kolejce';
@@ -259,6 +296,8 @@ class _UploadRow extends ConsumerWidget {
         return 'Wgrane';
       case UploadPhase.failed:
         return 'Błąd';
+      case UploadPhase.quotaBlocked:
+        return l.quota_blocked_queue_label;
     }
   }
 

@@ -47,10 +47,17 @@ class EuphireSessionStatusStepper extends StatelessWidget {
   /// When true, steps fade out with animation (used for success cascade).
   final bool collapsed;
 
+  /// When true, the upload is parked on a quota hold (the org ran out
+  /// of tokens). Step 1's label switches from the neutral "waiting in
+  /// queue" to the meaningful "token pool exhausted — renew to resume"
+  /// (feat/tokens-exhausted). Only meaningful while [phase] is pending.
+  final bool quotaBlocked;
+
   const EuphireSessionStatusStepper({
     super.key,
     required this.phase,
     this.collapsed = false,
+    this.quotaBlocked = false,
   });
 
   @override
@@ -65,7 +72,9 @@ class EuphireSessionStatusStepper extends StatelessWidget {
     // blocked upload sat under "Audio bezpieczne na naszych serwerach"
     // even though the file never reached us.
     final step1Text = phase == SessionStepperPhase.pending
-        ? t.stepper_step1_queued
+        ? (quotaBlocked
+            ? t.stepper_step1_quota_blocked
+            : t.stepper_step1_queued)
         : t.stepper_step1_uploaded;
     final steps = [
       _Step(step1Text, _stateForStep(0)),

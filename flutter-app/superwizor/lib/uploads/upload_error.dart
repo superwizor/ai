@@ -24,6 +24,15 @@ enum UploadErrorClass {
   retryable,
   signedUrlExpired,
   terminal,
+
+  /// Quota exhausted — billing has no tokens left for this org.
+  /// Surfaced as gRPC ResourceExhausted ("QUOTA_EXHAUSTED") from
+  /// CreateAudioUpload's ReserveCredit. We do NOT auto-retry these:
+  /// hammering CreateAudioUpload every 30 min won't conjure tokens,
+  /// and the old behavior (retryable) produced the "próba 7/4"
+  /// runaway. The worker parks the row (phase=quotaBlocked) and the
+  /// UI offers an explicit resend / cancel. See pending_upload.dart.
+  quotaBlocked,
 }
 
 class ClassifiedError {
@@ -50,10 +59,16 @@ ClassifiedError classifyUploadError(Object error) {
       case grpc.StatusCode.unimplemented:
         return ClassifiedError(UploadErrorClass.terminal, msg);
 
+      // Quota exhausted — billing reservation refused. Park, don't
+      // retry. ingestion-svc.CreateAudioUpload returns this (via
+      // billing-svc ReserveCredit) with message "QUOTA_EXHAUSTED"
+      // when the org is out of tokens.
+      case grpc.StatusCode.resourceExhausted:
+        return ClassifiedError(UploadErrorClass.quotaBlocked, msg);
+
       // Transient — retry with backoff.
       case grpc.StatusCode.unavailable:
       case grpc.StatusCode.deadlineExceeded:
-      case grpc.StatusCode.resourceExhausted:
       case grpc.StatusCode.aborted:
       case grpc.StatusCode.internal:
       case grpc.StatusCode.unknown:

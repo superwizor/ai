@@ -1756,6 +1756,60 @@ class DeleteSessionRequest extends $pb.GeneratedMessage {
   void clearSessionId() => $_clearField(1);
 }
 
+class CancelSessionRequest extends $pb.GeneratedMessage {
+  factory CancelSessionRequest({
+    $core.String? sessionId,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    return result;
+  }
+
+  CancelSessionRequest._();
+
+  factory CancelSessionRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory CancelSessionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CancelSessionRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CancelSessionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CancelSessionRequest copyWith(void Function(CancelSessionRequest) updates) =>
+      super.copyWith((message) => updates(message as CancelSessionRequest))
+          as CancelSessionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static CancelSessionRequest create() => CancelSessionRequest._();
+  @$core.override
+  CancelSessionRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static CancelSessionRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CancelSessionRequest>(create);
+  static CancelSessionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+}
+
 class ListSessionsResponse extends $pb.GeneratedMessage {
   factory ListSessionsResponse({
     $core.Iterable<Session>? sessions,
@@ -3227,6 +3281,465 @@ class LogPreferenceSuggestionRequest extends $pb.GeneratedMessage {
   $core.bool hasAction() => $_has(6);
   @$pb.TagNumber(7)
   void clearAction() => $_clearField(7);
+}
+
+class AdminListSessionsRequest extends $pb.GeneratedMessage {
+  factory AdminListSessionsRequest({
+    $3.Timestamp? startTime,
+    $3.Timestamp? endTime,
+    $core.String? therapistFilter,
+    $core.int? pageSize,
+    $core.int? page,
+    $core.String? sortBy,
+    $core.String? sortOrder,
+  }) {
+    final result = create();
+    if (startTime != null) result.startTime = startTime;
+    if (endTime != null) result.endTime = endTime;
+    if (therapistFilter != null) result.therapistFilter = therapistFilter;
+    if (pageSize != null) result.pageSize = pageSize;
+    if (page != null) result.page = page;
+    if (sortBy != null) result.sortBy = sortBy;
+    if (sortOrder != null) result.sortOrder = sortOrder;
+    return result;
+  }
+
+  AdminListSessionsRequest._();
+
+  factory AdminListSessionsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminListSessionsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminListSessionsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOM<$3.Timestamp>(1, _omitFieldNames ? '' : 'startTime',
+        subBuilder: $3.Timestamp.create)
+    ..aOM<$3.Timestamp>(2, _omitFieldNames ? '' : 'endTime',
+        subBuilder: $3.Timestamp.create)
+    ..aOS(3, _omitFieldNames ? '' : 'therapistFilter')
+    ..aI(4, _omitFieldNames ? '' : 'pageSize')
+    ..aI(5, _omitFieldNames ? '' : 'page')
+    ..aOS(6, _omitFieldNames ? '' : 'sortBy')
+    ..aOS(7, _omitFieldNames ? '' : 'sortOrder')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminListSessionsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminListSessionsRequest copyWith(
+          void Function(AdminListSessionsRequest) updates) =>
+      super.copyWith((message) => updates(message as AdminListSessionsRequest))
+          as AdminListSessionsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminListSessionsRequest create() => AdminListSessionsRequest._();
+  @$core.override
+  AdminListSessionsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminListSessionsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminListSessionsRequest>(create);
+  static AdminListSessionsRequest? _defaultInstance;
+
+  /// Window on sessions.created_at. Both bounds are inclusive on the
+  /// low end / exclusive on the high end (PG idiomatic). If unset, the
+  /// server uses [now()-24h, now()] so the default UI shows the last
+  /// 24h.
+  @$pb.TagNumber(1)
+  $3.Timestamp get startTime => $_getN(0);
+  @$pb.TagNumber(1)
+  set startTime($3.Timestamp value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasStartTime() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStartTime() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $3.Timestamp ensureStartTime() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $3.Timestamp get endTime => $_getN(1);
+  @$pb.TagNumber(2)
+  set endTime($3.Timestamp value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEndTime() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEndTime() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $3.Timestamp ensureEndTime() => $_ensure(1);
+
+  /// Case-insensitive substring filter on therapist first_name +
+  /// last_name + email. Empty = no filter.
+  @$pb.TagNumber(3)
+  $core.String get therapistFilter => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set therapistFilter($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTherapistFilter() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTherapistFilter() => $_clearField(3);
+
+  /// Page size. Server clamps to [1, 5000]. Default 100 if zero. 5000
+  /// is the CSV-export cap; UI uses a smaller value (50) for paged
+  /// browsing.
+  @$pb.TagNumber(4)
+  $core.int get pageSize => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set pageSize($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPageSize() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPageSize() => $_clearField(4);
+
+  /// Zero-based offset. Server reads page+1 row to compute has_more.
+  @$pb.TagNumber(5)
+  $core.int get page => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set page($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPage() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPage() => $_clearField(5);
+
+  /// Sort key — one of the allowlisted columns below. Anything else
+  /// (including empty) falls back to created_at.
+  ///
+  ///   "created_at"           — when the upload landed (default)
+  ///   "session_date"         — the clinical session date
+  ///   "duration_seconds"
+  ///   "status"
+  ///   "therapist"            — last_name, then first_name
+  ///   "organization"         — legal_name
+  ///   "plan_name"            — subscription_plans.display_name
+  ///   "period_end"           — subscriptions.current_period_end
+  ///   "tokens_used"          — usage_counters.tokens_used
+  ///
+  /// Anything else falls through to the default. The server doesn't
+  /// 400 on unknown sort keys — the UI will just behave as if the
+  /// sort wasn't set.
+  @$pb.TagNumber(6)
+  $core.String get sortBy => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set sortBy($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSortBy() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSortBy() => $_clearField(6);
+
+  /// "asc" | "desc". Anything else defaults to "desc".
+  @$pb.TagNumber(7)
+  $core.String get sortOrder => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set sortOrder($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSortOrder() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSortOrder() => $_clearField(7);
+}
+
+class AdminListSessionsResponse extends $pb.GeneratedMessage {
+  factory AdminListSessionsResponse({
+    $core.Iterable<AdminSessionRow>? sessions,
+    $core.bool? hasMore,
+  }) {
+    final result = create();
+    if (sessions != null) result.sessions.addAll(sessions);
+    if (hasMore != null) result.hasMore = hasMore;
+    return result;
+  }
+
+  AdminListSessionsResponse._();
+
+  factory AdminListSessionsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminListSessionsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminListSessionsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..pPM<AdminSessionRow>(1, _omitFieldNames ? '' : 'sessions',
+        subBuilder: AdminSessionRow.create)
+    ..aOB(2, _omitFieldNames ? '' : 'hasMore')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminListSessionsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminListSessionsResponse copyWith(
+          void Function(AdminListSessionsResponse) updates) =>
+      super.copyWith((message) => updates(message as AdminListSessionsResponse))
+          as AdminListSessionsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminListSessionsResponse create() => AdminListSessionsResponse._();
+  @$core.override
+  AdminListSessionsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminListSessionsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminListSessionsResponse>(create);
+  static AdminListSessionsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<AdminSessionRow> get sessions => $_getList(0);
+
+  /// True when the server has additional rows past this page.
+  @$pb.TagNumber(2)
+  $core.bool get hasMore => $_getBF(1);
+  @$pb.TagNumber(2)
+  set hasMore($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasHasMore() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearHasMore() => $_clearField(2);
+}
+
+class AdminSessionRow extends $pb.GeneratedMessage {
+  factory AdminSessionRow({
+    $core.String? sessionId,
+    $core.String? therapistId,
+    $core.String? therapistFirstName,
+    $core.String? therapistLastName,
+    $core.String? therapistEmail,
+    $core.String? organizationId,
+    $core.String? organizationName,
+    $3.Timestamp? createdAt,
+    $3.Timestamp? sessionDate,
+    $core.int? durationSeconds,
+    $core.String? status,
+    $core.String? subscriptionPlanName,
+    $3.Timestamp? subscriptionPeriodEnd,
+    $core.int? subscriptionTokensUsed,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    if (therapistId != null) result.therapistId = therapistId;
+    if (therapistFirstName != null)
+      result.therapistFirstName = therapistFirstName;
+    if (therapistLastName != null) result.therapistLastName = therapistLastName;
+    if (therapistEmail != null) result.therapistEmail = therapistEmail;
+    if (organizationId != null) result.organizationId = organizationId;
+    if (organizationName != null) result.organizationName = organizationName;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (sessionDate != null) result.sessionDate = sessionDate;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (status != null) result.status = status;
+    if (subscriptionPlanName != null)
+      result.subscriptionPlanName = subscriptionPlanName;
+    if (subscriptionPeriodEnd != null)
+      result.subscriptionPeriodEnd = subscriptionPeriodEnd;
+    if (subscriptionTokensUsed != null)
+      result.subscriptionTokensUsed = subscriptionTokensUsed;
+    return result;
+  }
+
+  AdminSessionRow._();
+
+  factory AdminSessionRow.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminSessionRow.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminSessionRow',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..aOS(2, _omitFieldNames ? '' : 'therapistId')
+    ..aOS(3, _omitFieldNames ? '' : 'therapistFirstName')
+    ..aOS(4, _omitFieldNames ? '' : 'therapistLastName')
+    ..aOS(5, _omitFieldNames ? '' : 'therapistEmail')
+    ..aOS(6, _omitFieldNames ? '' : 'organizationId')
+    ..aOS(7, _omitFieldNames ? '' : 'organizationName')
+    ..aOM<$3.Timestamp>(8, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOM<$3.Timestamp>(9, _omitFieldNames ? '' : 'sessionDate',
+        subBuilder: $3.Timestamp.create)
+    ..aI(10, _omitFieldNames ? '' : 'durationSeconds')
+    ..aOS(11, _omitFieldNames ? '' : 'status')
+    ..aOS(12, _omitFieldNames ? '' : 'subscriptionPlanName')
+    ..aOM<$3.Timestamp>(13, _omitFieldNames ? '' : 'subscriptionPeriodEnd',
+        subBuilder: $3.Timestamp.create)
+    ..aI(14, _omitFieldNames ? '' : 'subscriptionTokensUsed')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminSessionRow clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminSessionRow copyWith(void Function(AdminSessionRow) updates) =>
+      super.copyWith((message) => updates(message as AdminSessionRow))
+          as AdminSessionRow;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminSessionRow create() => AdminSessionRow._();
+  @$core.override
+  AdminSessionRow createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminSessionRow getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminSessionRow>(create);
+  static AdminSessionRow? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get therapistId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set therapistId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTherapistId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTherapistId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get therapistFirstName => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set therapistFirstName($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTherapistFirstName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTherapistFirstName() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get therapistLastName => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set therapistLastName($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTherapistLastName() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTherapistLastName() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get therapistEmail => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set therapistEmail($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTherapistEmail() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTherapistEmail() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get organizationId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set organizationId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasOrganizationId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearOrganizationId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get organizationName => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set organizationName($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasOrganizationName() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearOrganizationName() => $_clearField(7);
+
+  /// When the session row was created server-side (effectively when
+  /// the therapist hit Save in the UI / when the audio upload landed).
+  @$pb.TagNumber(8)
+  $3.Timestamp get createdAt => $_getN(7);
+  @$pb.TagNumber(8)
+  set createdAt($3.Timestamp value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasCreatedAt() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearCreatedAt() => $_clearField(8);
+  @$pb.TagNumber(8)
+  $3.Timestamp ensureCreatedAt() => $_ensure(7);
+
+  /// The clinical session date — a DATE column, transmitted as a
+  /// timestamp at 00:00 UTC for simplicity.
+  @$pb.TagNumber(9)
+  $3.Timestamp get sessionDate => $_getN(8);
+  @$pb.TagNumber(9)
+  set sessionDate($3.Timestamp value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasSessionDate() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearSessionDate() => $_clearField(9);
+  @$pb.TagNumber(9)
+  $3.Timestamp ensureSessionDate() => $_ensure(8);
+
+  /// null for sessions that haven't completed STT yet.
+  @$pb.TagNumber(10)
+  $core.int get durationSeconds => $_getIZ(9);
+  @$pb.TagNumber(10)
+  set durationSeconds($core.int value) => $_setSignedInt32(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasDurationSeconds() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearDurationSeconds() => $_clearField(10);
+
+  /// session_status enum value as a bare string ("CREATED",
+  /// "TRANSCRIBING", "DONE", "FAILED", …).
+  @$pb.TagNumber(11)
+  $core.String get status => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set status($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasStatus() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearStatus() => $_clearField(11);
+
+  /// Subscription context for the therapist's organisation at query
+  /// time. All three fields are best-effort — null/empty for org-less
+  /// therapists, suspended subscriptions, or counters that haven't
+  /// been initialised yet. The handler always picks the most-recent
+  /// active row (a single org has at most one ACTIVE subscription at
+  /// a time per ADR-BL-001).
+  @$pb.TagNumber(12)
+  $core.String get subscriptionPlanName => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set subscriptionPlanName($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasSubscriptionPlanName() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearSubscriptionPlanName() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $3.Timestamp get subscriptionPeriodEnd => $_getN(12);
+  @$pb.TagNumber(13)
+  set subscriptionPeriodEnd($3.Timestamp value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasSubscriptionPeriodEnd() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearSubscriptionPeriodEnd() => $_clearField(13);
+  @$pb.TagNumber(13)
+  $3.Timestamp ensureSubscriptionPeriodEnd() => $_ensure(12);
+
+  @$pb.TagNumber(14)
+  $core.int get subscriptionTokensUsed => $_getIZ(13);
+  @$pb.TagNumber(14)
+  set subscriptionTokensUsed($core.int value) => $_setSignedInt32(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasSubscriptionTokensUsed() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearSubscriptionTokensUsed() => $_clearField(14);
 }
 
 const $core.bool _omitFieldNames =

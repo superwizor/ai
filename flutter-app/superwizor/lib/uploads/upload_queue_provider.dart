@@ -255,7 +255,12 @@ final pendingUploadsForPatientProvider =
         .where((u) =>
             u.patientFileId == patientFileId &&
             u.phase != UploadPhase.completed &&
-            u.phase != UploadPhase.failed)
+            u.phase != UploadPhase.failed &&
+            // Quota holds get their own dedicated banner
+            // (PendingQuotaSessionsWidget) on the patient screen, so
+            // keep them out of the generic in-progress placeholder
+            // cards to avoid showing the same recording twice.
+            u.phase != UploadPhase.quotaBlocked)
         .toList(growable: false),
     orElse: () => const [],
   );

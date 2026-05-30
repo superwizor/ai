@@ -163,6 +163,20 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$deleteSession, request, options: options);
   }
 
+  /// User-initiated cancellation of an IN-PROGRESS session
+  /// (PENDING_UPLOAD … ANALYZING). Flips status to CANCELLED_BY_USER,
+  /// releases the held billing reservation, and cancels the
+  /// audio_uploads row. Hidden from the kartoteka afterward. Idempotent
+  /// (re-cancel on an already-terminal session returns OK). Rejects
+  /// COMPLETED sessions — those use DeleteSession. See
+  /// feat/tokens-exhausted.
+  $grpc.ResponseFuture<$1.Empty> cancelSession(
+    $0.CancelSessionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$cancelSession, request, options: options);
+  }
+
   /// ─── Report ratings (docs/10_REPORT_CUSTOMIZATION.md §5) ───
   /// 👍/👎 rating on a generated report. Idempotent on
   /// (report_id, therapist_id) — re-rating UPSERTs in place.
@@ -203,6 +217,24 @@ class ClinicalServiceClient extends $grpc.Client {
   }) {
     return $createUnaryCall(_$logPreferenceSuggestion, request,
         options: options);
+  }
+
+  /// ─── SUPERWIZOR_ADMIN — cross-org session activity (2026-05-29) ──
+  ///
+  /// Read-only listing of recent therapist session activity for the
+  /// /admin/sessions page. Gated on x-superwizor-role=SUPERWIZOR_ADMIN
+  /// via the existing Connect auth interceptor; org_admin / therapist
+  /// tokens get PermissionDenied.
+  ///
+  /// Filters (all AND-combined): created_at window, free-text on
+  /// therapist name + email. CSV export is implemented client-side by
+  /// requesting page_size up to MaxCsvPageSize and serialising the
+  /// response.
+  $grpc.ResponseFuture<$0.AdminListSessionsResponse> adminListSessions(
+    $0.AdminListSessionsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminListSessions, request, options: options);
   }
 
   // method descriptors
@@ -282,6 +314,11 @@ class ClinicalServiceClient extends $grpc.Client {
           '/clinical.v1.ClinicalService/DeleteSession',
           ($0.DeleteSessionRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
+  static final _$cancelSession =
+      $grpc.ClientMethod<$0.CancelSessionRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/CancelSession',
+          ($0.CancelSessionRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
   static final _$rateReport =
       $grpc.ClientMethod<$0.RateReportRequest, $0.RateReportResponse>(
           '/clinical.v1.ClinicalService/RateReport',
@@ -302,6 +339,11 @@ class ClinicalServiceClient extends $grpc.Client {
           '/clinical.v1.ClinicalService/LogPreferenceSuggestion',
           ($0.LogPreferenceSuggestionRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
+  static final _$adminListSessions = $grpc.ClientMethod<
+          $0.AdminListSessionsRequest, $0.AdminListSessionsResponse>(
+      '/clinical.v1.ClinicalService/AdminListSessions',
+      ($0.AdminListSessionsRequest value) => value.writeToBuffer(),
+      $0.AdminListSessionsResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('clinical.v1.ClinicalService')
@@ -430,6 +472,14 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.DeleteSessionRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.CancelSessionRequest, $1.Empty>(
+        'CancelSession',
+        cancelSession_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.CancelSessionRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.RateReportRequest, $0.RateReportResponse>(
         'RateReport',
         rateReport_Pre,
@@ -462,6 +512,15 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.LogPreferenceSuggestionRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminListSessionsRequest,
+            $0.AdminListSessionsResponse>(
+        'AdminListSessions',
+        adminListSessions_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminListSessionsRequest.fromBuffer(value),
+        ($0.AdminListSessionsResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.PatientFile> createPatientFile_Pre($grpc.ServiceCall $call,
@@ -588,6 +647,14 @@ abstract class ClinicalServiceBase extends $grpc.Service {
   $async.Future<$1.Empty> deleteSession(
       $grpc.ServiceCall call, $0.DeleteSessionRequest request);
 
+  $async.Future<$1.Empty> cancelSession_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.CancelSessionRequest> $request) async {
+    return cancelSession($call, await $request);
+  }
+
+  $async.Future<$1.Empty> cancelSession(
+      $grpc.ServiceCall call, $0.CancelSessionRequest request);
+
   $async.Future<$0.RateReportResponse> rateReport_Pre($grpc.ServiceCall $call,
       $async.Future<$0.RateReportRequest> $request) async {
     return rateReport($call, await $request);
@@ -620,4 +687,13 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$1.Empty> logPreferenceSuggestion(
       $grpc.ServiceCall call, $0.LogPreferenceSuggestionRequest request);
+
+  $async.Future<$0.AdminListSessionsResponse> adminListSessions_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminListSessionsRequest> $request) async {
+    return adminListSessions($call, await $request);
+  }
+
+  $async.Future<$0.AdminListSessionsResponse> adminListSessions(
+      $grpc.ServiceCall call, $0.AdminListSessionsRequest request);
 }

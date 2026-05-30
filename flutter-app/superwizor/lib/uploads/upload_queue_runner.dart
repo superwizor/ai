@@ -172,6 +172,11 @@ class UploadQueueRunner {
     final now = DateTime.now().toUtc();
     for (final row in _queue.all()) {
       if (row.isTerminal) continue;
+      // Quota holds are explicit-resume only. Never un-park them on
+      // cold start or on a billing top-up (feat/tokens-exhausted):
+      // the therapist decides when to resend, so they're not surprised
+      // by a token being spent on an upload they'd half-forgotten.
+      if (row.isParked) continue;
       if (!row.nextAttemptAt.isAfter(now)) continue;
       await _queue.update(row.copyWith(nextAttemptAt: now));
     }
@@ -222,13 +227,22 @@ class UploadQueueRunner {
     _emitSnapshot();
   }
 
-  /// User-driven retry — flips a failed row back to pending so the
-  /// next tick processes it. No-op for non-failed rows. Awaits the
-  /// resulting tick so callers (and tests) get deterministic
-  /// progress, matching enqueueAndKick's contract.
+  /// User-driven retry/resend — flips a failed OR quota-parked row
+  /// back to pending so the next tick processes it. No-op for any
+  /// other phase. Awaits the resulting tick so callers (and tests)
+  /// get deterministic progress, matching enqueueAndKick's contract.
+  ///
+  /// This is the ONLY path that un-parks a quotaBlocked row: there is
+  /// no automatic resume (feat/tokens-exhausted). Resetting
+  /// attemptCount to 0 gives the resend a clean backoff schedule if
+  /// it ends up hitting a transient error this time around.
   Future<void> retryFailed(String localId) async {
     final u = _queue.getById(localId);
-    if (u == null || u.phase != UploadPhase.failed) return;
+    if (u == null ||
+        (u.phase != UploadPhase.failed &&
+            u.phase != UploadPhase.quotaBlocked)) {
+      return;
+    }
     await _queue.update(u.copyWith(
       phase: UploadPhase.pending,
       attemptCount: 0,
@@ -239,6 +253,11 @@ class UploadQueueRunner {
     _emitSnapshot();
     await _tick();
   }
+
+  /// Semantic alias for [retryFailed] — the quota-UX screens call
+  /// "resend" (Wyślij ponownie), which is the same un-park-and-run
+  /// operation. Kept as a distinct name so call sites read clearly.
+  Future<void> resend(String localId) => retryFailed(localId);
 
   // ── Tick ──────────────────────────────────────────────────────
 

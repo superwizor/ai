@@ -74,6 +74,17 @@ enum UploadPhase {
   /// from the queue list view so they can see the error and decide
   /// whether to retry manually or give up.
   failed,
+
+  /// Quota hold (feat/tokens-exhausted, 2026-05-30). CreateAudioUpload
+  /// returned gRPC ResourceExhausted / QUOTA_EXHAUSTED — the org ran
+  /// out of tokens. Unlike `failed` this is RESUMABLE, and unlike a
+  /// retryable error we do NOT auto-retry: the audio is parked
+  /// indefinitely until the therapist explicitly resends (after the
+  /// plan renews / tops up) or cancels the session. Parking — not
+  /// looping — is the contract: see [isParked]. The row survives
+  /// restarts (it's just another phase persisted to Hive) and is
+  /// exempt from the cold-start backoff reset and the max-age sweep.
+  quotaBlocked,
 }
 
 class PendingUpload {
@@ -226,8 +237,17 @@ class PendingUpload {
 
   bool get isTerminal =>
       phase == UploadPhase.completed || phase == UploadPhase.failed;
+
+  /// Parked on a quota hold. Not terminal (the user can resend), but
+  /// the runner must never auto-advance it — no ticks, no cold-start
+  /// backoff reset, no max-age prune. Only an explicit resend
+  /// (un-parks → pending) or cancel (removes the row) moves it.
+  bool get isParked => phase == UploadPhase.quotaBlocked;
+
   bool get isDue =>
-      !isTerminal && nextAttemptAt.isBefore(DateTime.now().toUtc());
+      !isTerminal &&
+      !isParked &&
+      nextAttemptAt.isBefore(DateTime.now().toUtc());
   bool isOlderThan(Duration d, DateTime now) =>
       now.toUtc().difference(queuedAt) > d;
 

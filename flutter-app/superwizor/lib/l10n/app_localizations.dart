@@ -2182,6 +2182,60 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Odśwież'**
   String get subscription_refresh_cta;
+
+  /// No description provided for @stepper_step1_quota_blocked.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pula tokenów wyczerpana. Odnów plan, aby wznowić.'**
+  String get stepper_step1_quota_blocked;
+
+  /// No description provided for @quota_blocked_queue_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pula tokenów wyczerpana'**
+  String get quota_blocked_queue_label;
+
+  /// No description provided for @upload_resend.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij ponownie'**
+  String get upload_resend;
+
+  /// No description provided for @upload_cancel_processing.
+  ///
+  /// In pl, this message translates to:
+  /// **'Anuluj przetwarzanie'**
+  String get upload_cancel_processing;
+
+  /// No description provided for @cancel_session_confirm_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Anulować przetwarzanie?'**
+  String get cancel_session_confirm_title;
+
+  /// No description provided for @cancel_session_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja zostanie anulowana, a nagranie usunięte z kolejki. Tej operacji nie można cofnąć.'**
+  String get cancel_session_confirm_body;
+
+  /// No description provided for @cancel_session_confirm_action.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tak, anuluj'**
+  String get cancel_session_confirm_action;
+
+  /// No description provided for @cancel_session_keep.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie, zostaw'**
+  String get cancel_session_keep;
+
+  /// No description provided for @cancel_session_success.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja anulowana'**
+  String get cancel_session_success;
 }
 
 class _AppLocalizationsDelegate

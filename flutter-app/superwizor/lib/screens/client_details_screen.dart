@@ -875,9 +875,11 @@ class _PendingUploadCard extends StatelessWidget {
         return 'Finalizowanie sesji…';
       case UploadPhase.completed:
       case UploadPhase.failed:
+      case UploadPhase.quotaBlocked:
         // Shouldn't reach this widget — pendingUploadsForPatientProvider
-        // filters terminal states out. Kept exhaustive so future
-        // enum additions trigger a compile warning.
+        // filters terminal + quota-hold states out (quota holds render
+        // in PendingQuotaSessionsWidget instead). Kept exhaustive so
+        // future enum additions trigger a compile warning.
         return '';
     }
   }
