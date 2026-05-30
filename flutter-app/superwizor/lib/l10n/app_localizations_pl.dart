@@ -1225,7 +1225,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get upload_resend => 'Wyślij ponownie';
 
   @override
-  String get upload_cancel_processing => 'Anuluj';
+  String get upload_cancel_processing => 'Usuń';
 
   @override
   String get cancel_session_confirm_title => 'Anulować przetwarzanie?';

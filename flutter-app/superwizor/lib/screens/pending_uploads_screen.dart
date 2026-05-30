@@ -244,7 +244,7 @@ class _UploadRow extends ConsumerWidget {
                 // In-progress / parked / failed → bin = cancel processing
                 // (CANCELLED_BY_USER on the server + drop local row).
                 TextButton.icon(
-                  icon: const Icon(Icons.delete_outline, size: 16),
+                  icon: const Icon(Icons.delete_rounded, size: 18),
                   label: Text(l.upload_cancel_processing),
                   style: TextButton.styleFrom(
                       foregroundColor: EuphireColors.magma),

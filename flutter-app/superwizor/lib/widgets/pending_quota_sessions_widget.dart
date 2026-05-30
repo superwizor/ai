@@ -90,7 +90,14 @@ class PendingQuotaSessionsWidget extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                ...stuck.map((u) => _PendingRow(upload: u)),
+                for (int i = 0; i < stuck.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      color: EuphireColors.glassBorder,
+                      height: 28,
+                    ),
+                  _PendingRow(upload: stuck[i]),
+                ],
                 if (q != null) ...[
                   const Divider(color: EuphireColors.glassBorder, height: 20),
                   Text(
@@ -173,7 +180,7 @@ class _PendingRow extends ConsumerWidget {
               const SizedBox(width: 4),
               TextButton.icon(
                 onPressed: () => _confirmDelete(context, ref),
-                icon: const Icon(Icons.delete_outline, size: 16),
+                icon: const Icon(Icons.delete_rounded, size: 18),
                 label: Text(l.billing_delete_local_audio),
                 style: TextButton.styleFrom(
                   foregroundColor: EuphireColors.magma,

@@ -381,7 +381,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                     // → leave this screen.
                     if (!_showCheck && _canCancel)
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 22),
+                        icon: const Icon(Icons.delete_rounded, size: 22),
                         color: EuphireColors.magma,
                         tooltip: t.upload_cancel_processing,
                         onPressed: _onCancelPressed,
