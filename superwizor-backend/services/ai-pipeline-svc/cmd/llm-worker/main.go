@@ -276,24 +276,25 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 	// happened with the chunk_assignments / Vertex schema bug). Mark the
 	// session FAILED on every fatal error so the polling clients see it.
 
+	// DB-load failures below are TRANSIENT (Cloud SQL hiccup, KMS blip):
+	// do NOT mark FAILED, just NACK so Pub/Sub retries within the ~24h
+	// window (docs/21 §3.1). Flipping FAILED here flashed a permanent
+	// failure to the user on a recoverable blip.
 	session, err := loadSession(ctx, ev.SessionID)
 	if err != nil {
-		logger.Error("load session", "error", err)
-		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
+		logger.Error("load session (transient — pubsub will retry)", "error", err)
 		return fmt.Errorf("load session: %w", err)
 	}
 
 	chunks, err := loadTranscriptBlob(ctx, ev.TranscriptID)
 	if err != nil {
-		logger.Error("load transcript", "error", err)
-		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
+		logger.Error("load transcript (transient — pubsub will retry)", "error", err)
 		return fmt.Errorf("load transcript: %w", err)
 	}
 
 	modalityPrompt, err := loadModalityPrompt(ctx, session.ModalityID)
 	if err != nil {
-		logger.Error("load modality prompt", "error", err, "modality_id", session.ModalityID)
-		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
+		logger.Error("load modality prompt (transient — pubsub will retry)", "error", err, "modality_id", session.ModalityID)
 		return fmt.Errorf("load prompt: %w", err)
 	}
 
@@ -318,7 +319,18 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 			"prompt_len", len(modalityPrompt),
 			"chunk_count", len(chunks),
 			"rag_context_len", len(ragContext))
-		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
+		if isTerminalLLMError(err) {
+			// Content/safety block or invalid-argument — will never
+			// succeed. Mark FAILED, mirror to the user, ack (no retry).
+			_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
+			if perr := publishSessionStatusChanged(ctx, ev.SessionID, "failed"); perr != nil {
+				logger.Warn("publish session.status_changed(failed) failed", "error", perr)
+			}
+			logger.Error("llm: terminal generate failure — FAILED, ack, no retry", "error", err)
+			return nil
+		}
+		// Transient (Vertex 5xx / quota / deadline) — do NOT mark FAILED;
+		// NACK so Pub/Sub retries within the ~24h window.
 		return fmt.Errorf("generate: %w", err)
 	}
 
@@ -348,8 +360,8 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 
 	reportID, err := persistReport(ctx, session, ev.TranscriptID, &report, reportJSON, tokenStats, time.Since(startTime))
 	if err != nil {
-		logger.Error("persist report", "error", err)
-		_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
+		// DB write failure — transient. NACK, retry; do not mark FAILED.
+		logger.Error("persist report (transient — pubsub will retry)", "error", err)
 		return fmt.Errorf("persist: %w", err)
 	}
 
@@ -2077,6 +2089,59 @@ func publishReportGenerated(ctx context.Context, sessionID, reportID string) err
 	res := topic.Publish(ctx, &pubsub.Message{Data: payload})
 	_, err := res.Get(ctx)
 	return err
+}
+
+// publishSessionStatusChanged mirrors a terminal failure to the
+// `session.status_changed` topic (docs/21). [status] is the Firestore
+// vocabulary ("failed"). Only call for TERMINAL failures — never for a
+// transient error that Pub/Sub will retry. Best-effort.
+func publishSessionStatusChanged(ctx context.Context, sessionID, status string) error {
+	if pubsubClient == nil {
+		return nil
+	}
+	topic := pubsubClient.Publisher("session.status_changed")
+	defer topic.Stop()
+	payload, _ := json.Marshal(map[string]string{
+		"session_id": sessionID,
+		"status":     status,
+	})
+	res := topic.Publish(ctx, &pubsub.Message{
+		Data: payload,
+		Attributes: map[string]string{
+			"event_type": "session.status_changed",
+			"session_id": sessionID,
+			"status":     status,
+		},
+	})
+	_, err := res.Get(ctx)
+	return err
+}
+
+// isTerminalLLMError decides whether a report-generation error will
+// never succeed on retry (docs/21 §3.1 WS0C). Terminal: Vertex content/
+// safety blocks and invalid-argument/schema rejections — retrying the
+// same transcript+prompt gets the same rejection. Everything else
+// (5xx / Unavailable / DeadlineExceeded / rate-limit / DB hiccup /
+// truncated JSON) is transient and must retry. Default: transient — we
+// over-retry rather than surface a false permanent failure to a user
+// who has already lost the local audio.
+func isTerminalLLMError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(msg, "safety"),
+		strings.Contains(msg, "blocked"),
+		strings.Contains(msg, "block_reason"),
+		strings.Contains(msg, "content filter"),
+		strings.Contains(msg, "prohibited"),
+		strings.Contains(msg, "invalid_argument"),
+		strings.Contains(msg, "invalidargument"),
+		strings.Contains(msg, "failed_precondition"):
+		return true
+	}
+	return false
 }
 
 var _ = aiplatformpb.PredictRequest{}

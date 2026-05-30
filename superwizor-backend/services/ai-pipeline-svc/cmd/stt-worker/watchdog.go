@@ -107,12 +107,27 @@ func rescueOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) erro
 	resp, pollErr := chirpOp.Poll(ctx)
 
 	if pollErr != nil {
-		// The Operation surfaced a terminal error.
+		// Poll returns an error for two very different reasons: (a) the
+		// Chirp *operation* genuinely errored (bad file → terminal), or
+		// (b) the Operations API was transiently unavailable
+		// (Unavailable / DeadlineExceeded / Internal). Failing the
+		// session on (b) would permanently kill a recoverable session
+		// mid-outage (docs/21 §3.1 WS0D). Only a terminal-classified
+		// error fails the session; transient → re-check next tick.
+		if !isTerminalSTTError(pollErr) {
+			logger.Warn("Chirp Poll transient error; leaving session in-progress, re-check next tick",
+				"error_truncated", truncateOpError(pollErr.Error()))
+			return nil
+		}
+		// Genuine terminal operation error.
 		msg := truncateOpError(pollErr.Error())
 		recordFinalizeError(ctx, op.SessionID, op.ChunkIndex, msg)
 		_ = updateSessionStatus(ctx, op.SessionID.String(), "FAILED")
+		if perr := publishSessionStatusChanged(ctx, op.SessionID.String(), "failed"); perr != nil {
+			logger.Warn("publish session.status_changed(failed) failed", "error", perr)
+		}
 		_, _ = markChunkFinalized(ctx, op.SessionID, op.ChunkIndex)
-		logger.Error("Chirp operation completed with ERROR; session FAILED",
+		logger.Error("Chirp operation completed with terminal ERROR; session FAILED",
 			"error_truncated", msg)
 		return nil
 	}
@@ -148,6 +163,9 @@ func rescueOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) erro
 			)
 			recordFinalizeError(ctx, op.SessionID, op.ChunkIndex, truncateOpError(msg))
 			_ = updateSessionStatus(ctx, op.SessionID.String(), "FAILED")
+			if perr := publishSessionStatusChanged(ctx, op.SessionID.String(), "failed"); perr != nil {
+				logger.Warn("publish session.status_changed(failed) failed", "error", perr)
+			}
 			_, _ = markChunkFinalized(ctx, op.SessionID, op.ChunkIndex)
 			logger.Error("Chirp per-file error; session FAILED",
 				"error_code", fr.Error.Code,
