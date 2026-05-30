@@ -34,5 +34,16 @@
 	<string>Aplikacja wymaga dostępu do galerii, aby dodać zdjęcie profilowe.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Aplikacja wymaga dostępu do aparatu, aby zrobić zdjęcie profilowe.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.344724821207-3i6ag6t8qrrpeeaurej7qnqh2bgdvjae</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

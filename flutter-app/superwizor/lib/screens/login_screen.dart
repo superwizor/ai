@@ -47,8 +47,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   bool _obscurePassword = true;
 
   late final AnimationController _modeAnim;
-  late final Animation<Offset> _slideOut;
-  late final Animation<Offset> _slideIn;
   late final Animation<double> _fade;
 
   @override
@@ -56,14 +54,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     super.initState();
     _modeAnim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 300),
     );
-    _slideOut = Tween(begin: Offset.zero, end: const Offset(-0.15, 0))
-        .animate(CurvedAnimation(parent: _modeAnim, curve: Curves.easeIn));
-    _slideIn = Tween(begin: const Offset(0.15, 0), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _modeAnim, curve: Curves.easeOut));
     _fade = Tween(begin: 1.0, end: 0.0)
-        .animate(CurvedAnimation(parent: _modeAnim, curve: Curves.easeIn));
+        .animate(CurvedAnimation(parent: _modeAnim, curve: Curves.easeInOut));
 
     final emailParam = Uri.base.queryParameters['email'];
     if (emailParam != null && emailParam.isNotEmpty) {
@@ -280,20 +274,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               padding: EdgeInsets.fromLTRB(32, 48, 32, 32 + bottomInset),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 380),
-                child: AnimatedBuilder(
-                  animation: _modeAnim,
-                  builder: (context, _) {
-                    final isForward = _modeAnim.status == AnimationStatus.forward;
-                    final slide = isForward ? _slideOut : _slideIn;
-                    final opacity = isForward ? _fade : ReverseAnimation(_fade);
-                    return SlideTransition(
-                      position: slide,
-                      child: FadeTransition(
-                        opacity: opacity,
-                        child: _buildContent(),
-                      ),
-                    );
-                  },
+                child: FadeTransition(
+                  opacity: _fade,
+                  child: _buildContent(),
                 ),
               ),
             ),
