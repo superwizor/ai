@@ -87,6 +87,11 @@ func ProcessWatchdog(w http.ResponseWriter, r *http.Request) {
 	// logged and ignored — next tick will retry.
 	_ = runOrphanSessionCleanup(ctx, logger)
 
+	// docs/21 WS2B: time-based give-up backstop for sessions whose
+	// pipeline message was lost entirely (the DLQ reaper never sees
+	// them). Deadline sits beyond the 24h retry window.
+	_ = reapStuckSessions(ctx, logger)
+
 	w.WriteHeader(http.StatusOK)
 	_, _ = fmt.Fprintf(w, "watchdog: processed %d stuck operations\n", len(rows))
 }
