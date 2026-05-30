@@ -3,11 +3,11 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import 'forgot_password_screen.dart';
+import 'legal_markdown_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Login / Register — Euphire brand guidelines v4.
@@ -29,13 +29,13 @@ const _kWhite40 = Color(0x66F5F5F5);
 const _kWhite15 = Color(0x26F5F5F5);
 const _kWhite08 = Color(0x14F5F5F5);
 const _kEmber = Color(0xFFFCAE2F);
+const _kMint = Color(0xFF95D0D8);         // Mint — links & secondary text
 const _kObsidian = Color(0xFF1F1F1F);
 const _kErrorBg = Color(0x33FF6B6B);
 const _kErrorBorder = Color(0x66FF6B6B);
 const _kErrorText = Color(0xFFFFAAAA);
 
-const _kTermsUrl = 'https://superwizor.ai/legal/terms';
-const _kPrivacyUrl = 'https://superwizor.ai/legal/privacy';
+
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -151,15 +151,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       code == 'web-context-cancelled';
 
   String _socialErrorMessage(FirebaseAuthException e) {
-    if (e.code == 'operation-not-supported-in-this-environment' ||
-        e.message?.contains('CLIENT_ID') == true ||
-        e.message?.contains('clientId') == true) {
-      return 'Logowanie społecznościowe nie jest jeszcze skonfigurowane na tej platformie. Użyj adresu e-mail.';
-    }
-    return AppLocalizations.of(context).auth_social_error;
+    // DEV: always show the raw code so we can diagnose platform issues.
+    return 'Auth error [${e.code}]: ${e.message ?? "brak szczegółów"}';
   }
 
-  String _genericSocialError() => AppLocalizations.of(context).auth_social_error;
 
   // ── Email / password ────────────────────────────────────────────────────
 
@@ -274,11 +269,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool get _isAndroid =>
       !kIsWeb && Theme.of(context).platform == TargetPlatform.android;
 
-  Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+  void _openLegal(String baseName, String title) {
+    final lang = Localizations.localeOf(context).languageCode;
+    final path = lang == 'en'
+        ? 'assets/legal/${baseName}_en.md'
+        : 'assets/legal/$baseName.md';
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LegalMarkdownScreen(assetPath: path, title: title),
+      ),
+    );
   }
 
   // ── Build ───────────────────────────────────────────────────────────────
@@ -364,7 +364,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             child: const Text('Nie pamiętam hasła', style: TextStyle(
               fontFamily: _kFont, fontSize: 13,
-              fontWeight: FontWeight.w500, color: _kEmber,
+              fontWeight: FontWeight.w500, color: _kMint,
             )),
           ),
         ),
@@ -590,21 +590,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 TextSpan(
                   text: 'Regulamin',
                   style: const TextStyle(
-                    color: _kEmber, fontWeight: FontWeight.w500,
+                    color: _kMint, fontWeight: FontWeight.w500,
                     decoration: TextDecoration.underline,
-                    decorationColor: _kEmber,
+                    decorationColor: _kMint,
                   ),
-                  recognizer: TapGestureRecognizer()..onTap = () => _launchUrl(_kTermsUrl),
+                  recognizer: TapGestureRecognizer()..onTap = () => _openLegal('terms', 'Regulamin'),
                 ),
                 const TextSpan(text: ' oraz '),
                 TextSpan(
                   text: 'Politykę Prywatności',
                   style: const TextStyle(
-                    color: _kEmber, fontWeight: FontWeight.w500,
+                    color: _kMint, fontWeight: FontWeight.w500,
                     decoration: TextDecoration.underline,
-                    decorationColor: _kEmber,
+                    decorationColor: _kMint,
                   ),
-                  recognizer: TapGestureRecognizer()..onTap = () => _launchUrl(_kPrivacyUrl),
+                  recognizer: TapGestureRecognizer()..onTap = () => _openLegal('privacy_policy', 'Polityka Prywatności'),
                 ),
                 const TextSpan(text: ' Superwizor AI.'),
               ],
@@ -673,7 +673,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           onTap: onTap,
           child: Text(action, style: const TextStyle(
             fontFamily: _kFont, fontSize: 14,
-            fontWeight: FontWeight.w600, color: _kEmber,
+            fontWeight: FontWeight.w600, color: _kMint,
           )),
         ),
       ],
