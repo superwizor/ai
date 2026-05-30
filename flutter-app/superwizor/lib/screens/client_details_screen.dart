@@ -206,6 +206,21 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     final pendingUploads =
         ref.watch(pendingUploadsForPatientProvider(widget.patientId));
 
+    // Quota-blocked local uploads for this patient → the dedicated
+    // "Sesje oczekujące na przetworzenie" banner is the single
+    // representation. In that case suppress the duplicate server-side
+    // PENDING_UPLOAD "Oczekiwanie na audio" cards entirely. When there
+    // are NO local quota rows (e.g. after a reinstall that lost the
+    // cached audio), the server cards still render so the therapist can
+    // cancel the stranded sessions explicitly (feat/tokens-exhausted).
+    final hasLocalQuotaBlocked =
+        ref.watch(pendingUploadsStreamProvider).maybeWhen(
+              data: (list) => list.any((u) =>
+                  u.patientFileId == widget.patientId &&
+                  u.phase == UploadPhase.quotaBlocked),
+              orElse: () => false,
+            );
+
     // Force a fresh ListSessions fetch on every screen entry. The
     // SWR cached-read path served by `fetchSessions` can return a
     // pre-completion snapshot when an upload finished while the
@@ -336,8 +351,17 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                         data: (sessionsMap) {
                           final sessions =
                               sessionsMap[widget.patientId] ?? [];
-                          final reversedSessions =
-                              sessions.reversed.toList();
+                          // When a quota banner is showing for this
+                          // patient, hide the duplicate PENDING_UPLOAD
+                          // "Oczekiwanie na audio" cards — the banner is
+                          // the single representation of the quota-blocked
+                          // uploads. (Reinstall case: no local rows →
+                          // hasLocalQuotaBlocked false → cards stay, so
+                          // they remain cancellable.)
+                          final reversedSessions = sessions.reversed
+                              .where((s) => !(hasLocalQuotaBlocked &&
+                                  s.status == SessionStatus.pendingUpload))
+                              .toList();
                           // Dedup: if a pending upload already has a
                           // sessionId AND that session is in the server
                           // list, drop the placeholder. The Hive-queue
