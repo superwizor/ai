@@ -538,7 +538,7 @@
     "metaTitle": "Pricing",
     "overline": "Pricing",
     "heading": "A plan that fits your practice",
-    "subhead": "Every plan includes the full product: transcripts, reports, supervision pointers. You only pay for the sessions you actually use.",
+    "subhead": "Every plan includes the full product: transcripts, clinical reports, and supervision pointers. You only pay for the sessions you actually use.",
     "cycle": {
       "monthly": "Monthly",
       "annual": "Annual",
@@ -546,59 +546,59 @@
     },
     "tiers": {
       "trial": {
-        "name": "Trial",
-        "tagline": "Try without a card",
-        "tokensSuffix": "free sessions",
-        "cta": "Get started",
+        "name": "Discovery",
+        "tagline": "Try with no strings attached",
+        "tokensSuffix": "free sessions for 14 days",
+        "cta": "Start for free",
         "features": [
-          "3 free sessions",
-          "Full transcript",
-          "Full session report",
+          "3 free sessions to start",
+          "Full Polish transcript",
+          "Clinical report for every session",
           "Supervision pointers",
           "No credit card required"
         ]
       },
       "solo": {
-        "name": "Solo",
+        "name": "Balance",
         "tagline": "For individual therapists",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
-        "cta": "Choose Solo",
+        "cta": "Choose Balance",
         "features": [
-          "Full transcript",
-          "Clinical report",
+          "30 sessions per month",
+          "Full transcript & report",
           "Supervision pointers",
           "PDF export",
-          "1 license"
+          "1 therapist license"
         ]
       },
       "pro": {
-        "name": "Pro",
+        "name": "Growth",
         "tagline": "For power users",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
-        "cta": "Choose Pro",
+        "cta": "Choose Growth",
         "badge": "Most popular",
         "features": [
-          "Everything in Solo",
-          "More sessions",
+          "120 sessions per month",
+          "Everything in Balance",
           "Priority support",
           "Early access to new features",
-          "1 license"
+          "1 therapist license"
         ]
       },
       "clinic": {
-        "name": "Clinic",
-        "tagline": "For therapy clinics",
+        "name": "Evolution",
+        "tagline": "For clinics & power users",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
-        "cta": "Choose Clinic",
+        "cta": "Let's talk",
         "features": [
-          "Everything in Pro",
-          "Shared pool across 5 therapists",
-          "Admin dashboard (B2B)",
-          "Single invoice per clinic",
-          "Team management"
+          "Everything in Growth",
+          "Flexible session limits",
+          "Multi-seat — multiple licenses",
+          "Custom 1:1 pricing",
+          "Dedicated account manager"
         ]
       }
     },
@@ -646,7 +646,10 @@
     "createAccount": "Sign up",
     "forgotPassword": "Forgot password?",
     "resetSent": "We've sent a password-reset link to your email.",
-    "resetNeedEmail": "Please enter your email first."
+    "resetNeedEmail": "Please enter your email first.",
+    "signInWithGoogle": "Continue with Google",
+    "signInWithApple": "Continue with Apple",
+    "orUseEmail": "Or use your email"
   },
   "account": {
     "metaTitle": "My account · Superwizor AI",

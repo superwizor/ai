@@ -5,10 +5,9 @@
 // card resolves its current row from (tier, activeCycle) — Trial is
 // always shown regardless of toggle.
 //
-// Feature copy comes from messages/{locale}.json. The card composition
-// is shared visual language with the rest of the marketing surface:
-// frost/05 surface, glass borders, Ember accent for the "popular" badge
-// + primary CTA.
+// SOLO and PRO CTA buttons link directly to Stripe Payment Links
+// (test/sandbox mode). CLINIC uses a mailto for B2B inquiries.
+// Trial links to /register/therapist.
 
 "use client";
 
@@ -37,22 +36,18 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
           row={findPlan(catalog, "SOLO", cycle)!}
           cycle={cycle}
           locale={locale}
-          registerHref={`${prefix}/register/therapist`}
         />
         <PaidCard
           tier="pro"
           row={findPlan(catalog, "PRO", cycle)!}
           cycle={cycle}
           locale={locale}
-          registerHref={`${prefix}/register/therapist`}
           badge={t("tiers.pro.badge")}
         />
-        <PaidCard
-          tier="clinic"
+        <ClinicCard
           row={findPlan(catalog, "CLINIC", cycle)!}
           cycle={cycle}
           locale={locale}
-          registerHref={`${prefix}/register/organization`}
         />
       </div>
 
@@ -156,14 +151,12 @@ function PaidCard({
   row,
   cycle,
   locale,
-  registerHref,
   badge,
 }: {
   tier: Tier;
   row: PlanRow;
   cycle: BillingCycle;
   locale: string;
-  registerHref: string;
   badge?: string;
 }) {
   const tt = useTranslations(`pricing.tiers.${tier}`);
@@ -180,6 +173,9 @@ function PaidCard({
       ? tt("tokensSuffixMonthly")
       : tt("tokensSuffixAnnual");
   const priceUnit = cycle === "MONTHLY" ? t("perMonth") : t("perYear");
+
+  // Direct link to Stripe Payment Link (sandbox). Opens in new tab.
+  const checkoutHref = row.stripePaymentLink;
 
   return (
     <article className={`flex flex-col rounded-card ${surface} p-6 sm:p-7 relative`}>
@@ -214,13 +210,77 @@ function PaidCard({
         ))}
       </ul>
 
+      {checkoutHref ? (
+        <a
+          href={checkoutHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`mt-6 inline-flex items-center justify-center rounded-button font-mono uppercase tracking-[var(--tracking-label)] text-sm px-4 py-3 transition ${
+            isHighlighted
+              ? "bg-ember text-obsidian shadow-[var(--shadow-ember-glow)] hover:brightness-110"
+              : "border border-frost/20 text-frost hover:bg-frost/5 font-display normal-case tracking-normal"
+          }`}
+        >
+          {tt("cta")}
+        </a>
+      ) : (
+        <span className="mt-6 inline-flex items-center justify-center rounded-button border border-frost/10 text-mist/50 font-display text-sm px-4 py-3 cursor-not-allowed">
+          {tt("cta")}
+        </span>
+      )}
+    </article>
+  );
+}
+
+function ClinicCard({
+  row,
+  cycle,
+  locale,
+}: {
+  row: PlanRow;
+  cycle: BillingCycle;
+  locale: string;
+}) {
+  const tt = useTranslations("pricing.tiers.clinic");
+  const t = useTranslations("pricing");
+  const features = tt.raw("features") as string[];
+
+  const tokensLabel =
+    cycle === "MONTHLY"
+      ? tt("tokensSuffixMonthly")
+      : tt("tokensSuffixAnnual");
+  const priceUnit = cycle === "MONTHLY" ? t("perMonth") : t("perYear");
+
+  return (
+    <article className="flex flex-col rounded-card bg-frost/[0.04] border border-frost/10 p-6 sm:p-7">
+      <header>
+        <h3 className="font-display text-frost text-xl font-semibold">
+          {tt("name")}
+        </h3>
+        <p className="font-serif text-mist text-sm mt-1">{tt("tagline")}</p>
+      </header>
+
+      <div className="mt-6 flex items-baseline gap-2">
+        <span className="font-display text-frost text-4xl font-semibold">
+          {formatPrice(locale, row.priceGross)}
+        </span>
+        <span className="font-mono text-xs uppercase tracking-[var(--tracking-label)] text-mist">
+          {priceUnit}
+        </span>
+      </div>
+      <p className="font-mono text-xs uppercase tracking-[var(--tracking-label)] text-mist mt-2">
+        {row.tokensPerPeriod} {tokensLabel}
+      </p>
+
+      <ul className="mt-6 space-y-2 flex-1">
+        {features.map((f, i) => (
+          <FeatureLine key={i}>{f}</FeatureLine>
+        ))}
+      </ul>
+
       <a
-        href={registerHref}
-        className={`mt-6 inline-flex items-center justify-center rounded-button font-mono uppercase tracking-[var(--tracking-label)] text-sm px-4 py-3 transition ${
-          isHighlighted
-            ? "bg-ember text-obsidian shadow-[var(--shadow-ember-glow)] hover:brightness-110"
-            : "border border-frost/20 text-frost hover:bg-frost/5 font-display normal-case tracking-normal"
-        }`}
+        href="mailto:kontakt@superwizor.ai?subject=Plan%20Clinic%20-%20wycena"
+        className="mt-6 inline-flex items-center justify-center rounded-button border border-frost/20 text-frost font-display text-sm px-4 py-3 hover:bg-frost/5 transition"
       >
         {tt("cta")}
       </a>

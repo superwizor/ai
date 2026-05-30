@@ -538,7 +538,7 @@
     "metaTitle": "Cennik",
     "overline": "Cennik",
     "heading": "Plan dopasowany do Twojej praktyki",
-    "subhead": "Wszystkie plany zawierają pełną funkcjonalność: transkrypcję, raport, wskazówki superwizyjne. Płacisz tylko za sesje, których realnie używasz.",
+    "subhead": "Wszystkie plany zawierają pełną funkcjonalność: transkrypcję, raport kliniczny i wskazówki superwizyjne. Płacisz tylko za sesje, których realnie używasz.",
     "cycle": {
       "monthly": "Miesięcznie",
       "annual": "Rocznie",
@@ -546,59 +546,59 @@
     },
     "tiers": {
       "trial": {
-        "name": "Trial",
-        "tagline": "Wypróbuj bez karty",
-        "tokensSuffix": "darmowe sesje",
-        "cta": "Zacznij teraz",
+        "name": "Poznanie",
+        "tagline": "Wypróbuj bez zobowiązań",
+        "tokensSuffix": "darmowe sesje na 14 dni",
+        "cta": "Zacznij za darmo",
         "features": [
-          "3 darmowe sesje",
-          "Pełna transkrypcja",
-          "Pełny raport sesji",
+          "3 darmowe sesje na start",
+          "Pełna transkrypcja po polsku",
+          "Raport kliniczny z każdej sesji",
           "Wskazówki superwizyjne",
           "Bez karty kredytowej"
         ]
       },
       "solo": {
-        "name": "Solo",
+        "name": "Równowaga",
         "tagline": "Dla terapeutów indywidualnych",
         "tokensSuffixMonthly": "sesji miesięcznie",
         "tokensSuffixAnnual": "sesji rocznie",
-        "cta": "Wybierz Solo",
+        "cta": "Wybierz Równowagę",
         "features": [
-          "Pełna transkrypcja",
-          "Raport kliniczny",
+          "30 sesji miesięcznie",
+          "Pełna transkrypcja i raport",
           "Wskazówki superwizyjne",
           "Eksport PDF",
-          "1 licencja"
+          "1 licencja terapeuty"
         ]
       },
       "pro": {
-        "name": "Pro",
+        "name": "Rozkwit",
         "tagline": "Dla intensywnie pracujących",
         "tokensSuffixMonthly": "sesji miesięcznie",
         "tokensSuffixAnnual": "sesji rocznie",
-        "cta": "Wybierz Pro",
-        "badge": "Najpopularniejszy",
+        "cta": "Wybierz Rozkwit",
+        "badge": "Najczęściej wybierany",
         "features": [
-          "Wszystko z planu Solo",
-          "Większa pula sesji",
+          "120 sesji miesięcznie",
+          "Wszystko z planu Równowaga",
           "Priorytetowe wsparcie",
           "Wczesny dostęp do nowych funkcji",
-          "1 licencja"
+          "1 licencja terapeuty"
         ]
       },
       "clinic": {
-        "name": "Klinika",
-        "tagline": "Dla ośrodków terapeutycznych",
+        "name": "Ewolucja",
+        "tagline": "Dla poradni i power-userów",
         "tokensSuffixMonthly": "sesji miesięcznie",
         "tokensSuffixAnnual": "sesji rocznie",
-        "cta": "Wybierz Klinikę",
+        "cta": "Porozmawiajmy",
         "features": [
-          "Wszystko z planu Pro",
-          "Pula współdzielona między 5 terapeutów",
-          "Panel administratora (B2B)",
-          "Jedna faktura na klinikę",
-          "Zarządzanie zespołem"
+          "Wszystko z planu Rozkwit",
+          "Elastyczne limity sesji",
+          "Multi-seat — wiele licencji",
+          "Indywidualna wycena 1:1",
+          "Dedykowany opiekun konta"
         ]
       }
     },
@@ -646,7 +646,10 @@
     "createAccount": "Zarejestruj się",
     "forgotPassword": "Nie pamiętam hasła",
     "resetSent": "Wysłaliśmy link do resetu hasła na podany adres email.",
-    "resetNeedEmail": "Najpierw wpisz swój adres email."
+    "resetNeedEmail": "Najpierw wpisz swój adres email.",
+    "signInWithGoogle": "Kontynuuj z Google",
+    "signInWithApple": "Kontynuuj z Apple",
+    "orUseEmail": "Albo użyj adresu e-mail"
   },
   "account": {
     "metaTitle": "Moje konto · Superwizor AI",

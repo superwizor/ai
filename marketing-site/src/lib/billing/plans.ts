@@ -23,6 +23,10 @@ export type PlanRow = {
   tokensPerPeriod: number;
   licensesLimit: number;
   hasB2BDashboard: boolean;
+  /** Stripe Price ID (sandbox). null = no self-serve checkout. */
+  stripePriceId: string | null;
+  /** Stripe Payment Link URL (sandbox). null = no self-serve checkout. */
+  stripePaymentLink: string | null;
 };
 
 /**
@@ -39,42 +43,52 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tokensPerPeriod: 3,
     licensesLimit: 1,
     hasB2BDashboard: false,
+    stripePriceId: null,
+    stripePaymentLink: null,
   },
   {
     tier: "SOLO",
     cycle: "MONTHLY",
     priceGross: 149.0,
     currencyCode: "PLN",
-    tokensPerPeriod: 20,
+    tokensPerPeriod: 30,
     licensesLimit: 1,
     hasB2BDashboard: false,
+    stripePriceId: "price_1TclVgE5jzWcAIgeT6ec0HDh",
+    stripePaymentLink: "https://buy.stripe.com/test_dRmbJ14s21tYfZ1fAF48000",
   },
   {
     tier: "SOLO",
     cycle: "ANNUAL",
     priceGross: 1490.0,
     currencyCode: "PLN",
-    tokensPerPeriod: 240,
+    tokensPerPeriod: 360,
     licensesLimit: 1,
     hasB2BDashboard: false,
+    stripePriceId: "price_1TclVhE5jzWcAIge7YjI49Hs",
+    stripePaymentLink: "https://buy.stripe.com/test_4gM00j8Ii6Oi147gEJ48001",
   },
   {
     tier: "PRO",
     cycle: "MONTHLY",
     priceGross: 249.0,
     currencyCode: "PLN",
-    tokensPerPeriod: 40,
+    tokensPerPeriod: 120,
     licensesLimit: 1,
     hasB2BDashboard: false,
+    stripePriceId: "price_1TclVhE5jzWcAIgeMQTPps4i",
+    stripePaymentLink: "https://buy.stripe.com/test_bJebJ12jUc8C5kn2NT48002",
   },
   {
     tier: "PRO",
     cycle: "ANNUAL",
     priceGross: 2490.0,
     currencyCode: "PLN",
-    tokensPerPeriod: 480,
+    tokensPerPeriod: 1440,
     licensesLimit: 1,
     hasB2BDashboard: false,
+    stripePriceId: "price_1TclViE5jzWcAIgehEFNihUP",
+    stripePaymentLink: "https://buy.stripe.com/test_fZueVd5w67SmeUXdsx48003",
   },
   {
     tier: "CLINIC",
@@ -84,6 +98,8 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tokensPerPeriod: 150,
     licensesLimit: 5,
     hasB2BDashboard: true,
+    stripePriceId: null, // B2B — manual pricing
+    stripePaymentLink: null,
   },
   {
     tier: "CLINIC",
@@ -93,6 +109,8 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tokensPerPeriod: 1800,
     licensesLimit: 5,
     hasB2BDashboard: true,
+    stripePriceId: null, // B2B — manual pricing
+    stripePaymentLink: null,
   },
 ];
 

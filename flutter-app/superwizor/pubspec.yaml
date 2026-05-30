@@ -82,6 +82,7 @@ dependencies:
   shared_preferences: ^2.5.5
   firebase_storage: ^13.3.0
   flutter_svg: ^2.3.0
+  google_sign_in: ^7.2.0
 
 dev_dependencies:
   flutter_test:
@@ -113,6 +114,7 @@ flutter:
   assets:
     - assets/legal/
     - assets/sounds/
+    - assets/Ico/
     - assets/images/svg/
 
   fonts:

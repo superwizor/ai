@@ -278,6 +278,36 @@ abstract class AppLocalizations {
   /// **'Wystąpił błąd logowania. Spróbuj ponownie.'**
   String get auth_error_generic;
 
+  /// No description provided for @auth_sign_in_with_google.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kontynuuj z Google'**
+  String get auth_sign_in_with_google;
+
+  /// No description provided for @auth_sign_in_with_apple.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaloguj się z Apple'**
+  String get auth_sign_in_with_apple;
+
+  /// No description provided for @auth_or_use_email.
+  ///
+  /// In pl, this message translates to:
+  /// **'Albo użyj adresu e-mail'**
+  String get auth_or_use_email;
+
+  /// No description provided for @auth_social_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Logowanie przez konto zewnętrzne nie powiodło się. Spróbuj ponownie.'**
+  String get auth_social_error;
+
+  /// No description provided for @auth_social_cancelled.
+  ///
+  /// In pl, this message translates to:
+  /// **'Logowanie anulowane.'**
+  String get auth_social_cancelled;
+
   /// No description provided for @setup_title.
   ///
   /// In pl, this message translates to:
