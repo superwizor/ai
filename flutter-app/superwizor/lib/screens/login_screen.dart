@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../generated/identity/v1/identity.pb.dart' as identity_pb;
@@ -95,17 +96,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _signInWithGoogle() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final provider = GoogleAuthProvider();
       if (kIsWeb) {
-        await FirebaseAuth.instance.signInWithPopup(provider);
+        await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
       } else {
-        await FirebaseAuth.instance.signInWithProvider(provider);
+        // google_sign_in v7: singleton + initialize + authenticate
+        final gsi = GoogleSignIn.instance;
+        await gsi.initialize(
+          clientId: '344724821207-3i6ag6t8qrrpeeaurej7qnqh2bgdvjae.apps.googleusercontent.com',
+        );
+        final account = await gsi.authenticate();
+        final idToken = account.authentication.idToken;
+        final credential = GoogleAuthProvider.credential(idToken: idToken);
+        await FirebaseAuth.instance.signInWithCredential(credential);
       }
       await _ensureUserRegistered();
     } on FirebaseAuthException catch (e) {
       debugPrint('[auth] Google FirebaseAuthException: ${e.code} — ${e.message}');
       if (mounted && !_isCancelled(e.code)) {
         setState(() => _error = _socialErrorMessage(e));
+      }
+    } on GoogleSignInException catch (e) {
+      debugPrint('[auth] GoogleSignInException: ${e.code} — ${e.description}');
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        // user cancelled — no error shown
+      } else if (mounted) {
+        setState(() => _error = 'Google: ${e.description ?? e.code.name}');
       }
     } catch (e, stack) {
       debugPrint('[auth] Google unexpected: $e\n$stack');
