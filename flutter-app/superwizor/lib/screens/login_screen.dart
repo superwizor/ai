@@ -1,33 +1,41 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import 'forgot_password_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Login / Register screen — Euphire brand guidelines.
+// Login / Register — Euphire brand guidelines v4.
 //
-// Gradient: Evergreen #004D54 → Nocturne #002E32.
-// Typography: Montserrat only (weights 400 / 500 / 600 / 700).
-// Mode switch: animated slide+fade between Login and Register.
+// Gradient:   Evergreen #004D54 → Nocturne #002E32.
+// CTA color:  Ember #FCAE2F (all action buttons + links).
+// Typography: Montserrat only.
+// Transition: Horizontal page-slide like Google Identity (PageView).
+// Inputs:     Material floating-label with focus animation.
+// ToS:        Clickable links + mandatory toggle (register).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _kFont = 'Montserrat';
-const _kBgTop = Color(0xFF004D54);        // Evergreen
-const _kBgBottom = Color(0xFF002E32);     // Nocturne
-const _kWhite = Color(0xFFF5F5F5);        // Frost White
+const _kBgTop = Color(0xFF004D54);
+const _kBgBottom = Color(0xFF002E32);
+const _kWhite = Color(0xFFF5F5F5);
 const _kWhite70 = Color(0xB3F5F5F5);
 const _kWhite40 = Color(0x66F5F5F5);
 const _kWhite15 = Color(0x26F5F5F5);
 const _kWhite08 = Color(0x14F5F5F5);
-const _kAccent = Color(0xFF95D0D8);       // Mist-like accent
-const _kEmber = Color(0xFFFCAE2F);        // Ember — for register CTA
+const _kEmber = Color(0xFFFCAE2F);
+const _kObsidian = Color(0xFF1F1F1F);
 const _kErrorBg = Color(0x33FF6B6B);
 const _kErrorBorder = Color(0x66FF6B6B);
 const _kErrorText = Color(0xFFFFAAAA);
+
+const _kTermsUrl = 'https://superwizor.ai/legal/terms';
+const _kPrivacyUrl = 'https://superwizor.ai/legal/privacy';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -36,29 +44,21 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen>
-    with TickerProviderStateMixin {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
+  late final PageController _pageCtrl;
   bool _loading = false;
   bool _isLogin = true;
   String? _error;
   bool _obscurePassword = true;
-
-  late final AnimationController _modeAnim;
-  late final Animation<double> _fade;
+  bool _tosAccepted = false;
 
   @override
   void initState() {
     super.initState();
-    _modeAnim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _fade = Tween(begin: 1.0, end: 0.0)
-        .animate(CurvedAnimation(parent: _modeAnim, curve: Curves.easeInOut));
-
+    _pageCtrl = PageController();
     final emailParam = Uri.base.queryParameters['email'];
     if (emailParam != null && emailParam.isNotEmpty) {
       _emailCtrl.text = emailParam;
@@ -70,20 +70,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _nameCtrl.dispose();
-    _modeAnim.dispose();
+    _pageCtrl.dispose();
     super.dispose();
   }
 
-  void _toggleMode() {
+  void _goToRegister() {
     if (_loading) return;
-    _modeAnim.forward().then((_) {
-      setState(() {
-        _isLogin = !_isLogin;
-        _error = null;
-        _passwordCtrl.clear();
-      });
-      _modeAnim.reverse();
-    });
+    setState(() { _isLogin = false; _error = null; _passwordCtrl.clear(); });
+    _pageCtrl.animateToPage(1,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOutCubicEmphasized);
+  }
+
+  void _goToLogin() {
+    if (_loading) return;
+    setState(() { _isLogin = true; _error = null; _passwordCtrl.clear(); });
+    _pageCtrl.animateToPage(0,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOutCubicEmphasized);
   }
 
   // ── Social sign-in ──────────────────────────────────────────────────────
@@ -99,13 +103,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
       await _ensureUserRegistered();
     } on FirebaseAuthException catch (e) {
-      debugPrint('[auth] Google error: ${e.code} — ${e.message}');
+      debugPrint('[auth] Google FirebaseAuthException: ${e.code} — ${e.message}');
       if (mounted && !_isCancelled(e.code)) {
         setState(() => _error = _socialErrorMessage(e));
       }
-    } catch (e) {
-      debugPrint('[auth] Google unexpected: $e');
-      if (mounted) setState(() => _error = _genericSocialError());
+    } catch (e, stack) {
+      debugPrint('[auth] Google unexpected: $e\n$stack');
+      if (mounted) {
+        setState(() => _error = 'Google: ${e.toString().length > 200 ? e.toString().substring(0, 200) : e}');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -124,13 +130,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
       await _ensureUserRegistered();
     } on FirebaseAuthException catch (e) {
-      debugPrint('[auth] Apple error: ${e.code} — ${e.message}');
+      debugPrint('[auth] Apple FirebaseAuthException: ${e.code} — ${e.message}');
       if (mounted && !_isCancelled(e.code)) {
         setState(() => _error = _socialErrorMessage(e));
       }
-    } catch (e) {
-      debugPrint('[auth] Apple unexpected: $e');
-      if (mounted) setState(() => _error = _genericSocialError());
+    } catch (e, stack) {
+      debugPrint('[auth] Apple unexpected: $e\n$stack');
+      if (mounted) {
+        setState(() => _error = 'Apple: ${e.toString().length > 200 ? e.toString().substring(0, 200) : e}');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -155,27 +163,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   // ── Email / password ────────────────────────────────────────────────────
 
-  Future<void> _submit() async {
+  Future<void> _submitLogin() async {
     setState(() { _loading = true; _error = null; });
     final email = _emailCtrl.text.trim().toLowerCase();
     final pass = _passwordCtrl.text;
     try {
-      if (_isLogin) {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email, password: pass,
-        );
-        await _ensureUserRegistered();
-      } else {
-        final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: email, password: pass,
-        );
-        // Parse name for registration
-        final nameParts = _nameCtrl.text.trim().split(' ');
-        final firstName = nameParts.isNotEmpty ? nameParts.first : '';
-        final lastName = nameParts.length > 1 ? nameParts.skip(1).join(' ') : '';
-        await _registerInIdentityService(cred.user!,
-            firstName: firstName, lastName: lastName);
-      }
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email, password: pass,
+      );
+      await _ensureUserRegistered();
+    } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => _error = _friendlyError(e.code));
+    } catch (_) {
+      if (mounted) setState(() => _error = AppLocalizations.of(context).auth_error_generic);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _submitRegister() async {
+    if (!_tosAccepted) {
+      setState(() => _error = 'Zaakceptuj Regulamin i Politykę Prywatności, aby kontynuować.');
+      return;
+    }
+    setState(() { _loading = true; _error = null; });
+    final email = _emailCtrl.text.trim().toLowerCase();
+    final pass = _passwordCtrl.text;
+    try {
+      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email, password: pass,
+      );
+      final nameParts = _nameCtrl.text.trim().split(' ');
+      final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+      final lastName = nameParts.length > 1 ? nameParts.skip(1).join(' ') : '';
+      await _registerInIdentityService(cred.user!,
+          firstName: firstName, lastName: lastName);
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _error = _friendlyError(e.code));
     } catch (_) {
@@ -252,14 +274,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   bool get _isAndroid =>
       !kIsWeb && Theme.of(context).platform == TargetPlatform.android;
 
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   // ── Build ───────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-
     return Scaffold(
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -269,325 +296,252 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
         ),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(32, 48, 32, 32 + bottomInset),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 380),
-                child: FadeTransition(
-                  opacity: _fade,
-                  child: _buildContent(),
-                ),
-              ),
-            ),
+          child: PageView(
+            controller: _pageCtrl,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _buildPage(_buildLoginContent()),
+              _buildPage(_buildRegisterContent()),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildPage(Widget content) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Center(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(32, 40, 32, 32 + bottomInset),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: content,
+        ),
+      ),
+    );
+  }
+
+  // ── Login page ──────────────────────────────────────────────────────────
+
+  Widget _buildLoginContent() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ── Logo ─────────────────────────────────────────────
-        Container(
-          width: 88,
-          height: 88,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _kWhite08,
-            border: Border.all(color: _kWhite15, width: 1.5),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Image.asset(
-            'assets/Ico/Logo_Superwizor_MVP.png',
-            fit: BoxFit.cover,
-          ),
-        ),
+        _buildLogo(),
         const SizedBox(height: 28),
-
-        // ── Title ────────────────────────────────────────────
-        Text(
-          _isLogin ? 'Witaj ponownie' : 'Utwórz konto',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: _kFont,
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-            color: _kWhite,
-            height: 1.15,
-            letterSpacing: -0.5,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _isLogin
-              ? 'Zaloguj się do Superwizor AI'
-              : 'Dołącz do społeczności terapeutów',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: _kFont,
-            fontSize: 15,
-            fontWeight: FontWeight.w400,
-            color: _kWhite70,
-            height: 1.4,
-          ),
-        ),
+        _buildTitle('Witaj ponownie', 'Zaloguj się do Superwizor AI'),
         const SizedBox(height: 36),
-
-        // ── Social buttons ───────────────────────────────────
-        _SocialButton(
-          onPressed: _loading ? null : _signInWithGoogle,
-          icon: const _GoogleIcon(),
-          label: 'Kontynuuj z Google',
-          backgroundColor: _kWhite,
-          textColor: const Color(0xFF1F1F1F),
-        ),
-        const SizedBox(height: 12),
-        if (!_isAndroid) ...[
-          _SocialButton(
-            onPressed: _loading ? null : _signInWithApple,
-            icon: const _AppleIcon(),
-            label: 'Kontynuuj z Apple',
-            backgroundColor: const Color(0xFF1F1F1F),
-            textColor: _kWhite,
-          ),
-          const SizedBox(height: 24),
-        ],
-
-        // ── Divider ──────────────────────────────────────────
-        Row(
-          children: [
-            Expanded(child: Container(height: 1, color: _kWhite15)),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text('lub', style: TextStyle(
-                fontFamily: _kFont, fontSize: 13,
-                fontWeight: FontWeight.w500, color: _kWhite40,
-              )),
-            ),
-            Expanded(child: Container(height: 1, color: _kWhite15)),
-          ],
-        ),
+        _buildSocialButtons(),
         const SizedBox(height: 24),
-
-        // ── Name field (register only) ───────────────────────
-        if (!_isLogin) ...[
-          _TextField(
-            controller: _nameCtrl,
-            hint: 'Imię i nazwisko',
-            keyboardType: TextInputType.name,
-            autofillHints: const [AutofillHints.name],
-            enabled: !_loading,
-            prefixIcon: Icons.person_outline_rounded,
-          ),
-          const SizedBox(height: 14),
-        ],
-
-        // ── Email field ──────────────────────────────────────
-        _TextField(
+        _buildDivider(),
+        const SizedBox(height: 24),
+        _buildFloatingField(
           controller: _emailCtrl,
-          hint: 'Adres e-mail',
+          label: 'Adres e-mail',
           keyboardType: TextInputType.emailAddress,
           autofillHints: const [AutofillHints.email],
-          enabled: !_loading,
           prefixIcon: Icons.mail_outline_rounded,
         ),
-        const SizedBox(height: 14),
-
-        // ── Password field ───────────────────────────────────
-        _TextField(
+        const SizedBox(height: 16),
+        _buildFloatingField(
           controller: _passwordCtrl,
-          hint: _isLogin ? 'Hasło' : 'Utwórz hasło (min. 8 znaków)',
+          label: 'Hasło',
           obscureText: _obscurePassword,
-          autofillHints: [_isLogin ? AutofillHints.password : AutofillHints.newPassword],
-          enabled: !_loading,
+          autofillHints: const [AutofillHints.password],
           prefixIcon: Icons.lock_outline_rounded,
-          suffixIcon: IconButton(
-            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-            icon: Icon(
-              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              color: _kWhite40, size: 20,
-            ),
-          ),
+          suffixIcon: _buildVisibilityToggle(),
         ),
-
-        // ── Forgot password (login only) ─────────────────────
-        if (_isLogin) ...[
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: _loading ? null : _openForgotPassword,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text('Nie pamiętam hasła', style: TextStyle(
-                fontFamily: _kFont, fontSize: 13,
-                fontWeight: FontWeight.w500, color: _kAccent,
-              )),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: _loading ? null : _openForgotPassword,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-          ),
-        ],
-        SizedBox(height: _isLogin ? 20 : 28),
-
-        // ── Error ────────────────────────────────────────────
-        if (_error != null) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: _kErrorBg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _kErrorBorder),
-            ),
-            child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(
+            child: const Text('Nie pamiętam hasła', style: TextStyle(
               fontFamily: _kFont, fontSize: 13,
-              fontWeight: FontWeight.w500, color: _kErrorText,
+              fontWeight: FontWeight.w500, color: _kEmber,
             )),
           ),
-          const SizedBox(height: 16),
-        ],
-
-        // ── Submit button ────────────────────────────────────
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton(
-            onPressed: _loading ? null : _submit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isLogin ? _kAccent : _kEmber,
-              foregroundColor: const Color(0xFF002E32),
-              disabledBackgroundColor:
-                  (_isLogin ? _kAccent : _kEmber).withValues(alpha: 0.4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              elevation: 0,
-            ),
-            child: _loading
-                ? const SizedBox(
-                    width: 22, height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF002E32)),
-                    ),
-                  )
-                : Text(
-                    _isLogin ? 'Zaloguj się' : 'Zarejestruj się',
-                    style: const TextStyle(
-                      fontFamily: _kFont, fontSize: 16,
-                      fontWeight: FontWeight.w600, letterSpacing: 0.2,
-                    ),
-                  ),
-          ),
         ),
-
-        // ── Terms (register only) ────────────────────────────
-        if (!_isLogin) ...[
-          const SizedBox(height: 16),
-          const Text(
-            'Rejestrując się, akceptujesz Regulamin\ni Politykę Prywatności Superwizor AI.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: _kFont, fontSize: 12,
-              fontWeight: FontWeight.w400, color: _kWhite40,
-              height: 1.4,
-            ),
-          ),
-        ],
+        const SizedBox(height: 20),
+        if (_error != null) ...[_buildError(), const SizedBox(height: 16)],
+        _buildCta('Zaloguj się', _loading ? null : _submitLogin),
         const SizedBox(height: 28),
-
-        // ── Toggle login / register ──────────────────────────
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _isLogin ? 'Nie masz konta? ' : 'Masz już konto? ',
-              style: const TextStyle(
-                fontFamily: _kFont, fontSize: 14,
-                fontWeight: FontWeight.w400, color: _kWhite70,
-              ),
-            ),
-            GestureDetector(
-              onTap: _toggleMode,
-              child: Text(
-                _isLogin ? 'Zarejestruj się' : 'Zaloguj się',
-                style: TextStyle(
-                  fontFamily: _kFont, fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: _isLogin ? _kAccent : _kEmber,
-                ),
-              ),
-            ),
-          ],
+        _buildModeSwitch(
+          'Nie masz konta? ',
+          'Zarejestruj się',
+          _goToRegister,
         ),
       ],
     );
   }
-}
 
-// ═════════════════════════════════════════════════════════════════════════════
-// Shared widgets
-// ═════════════════════════════════════════════════════════════════════════════
+  // ── Register page ───────────────────────────────────────────────────────
 
-class _TextField extends StatelessWidget {
-  const _TextField({
-    required this.controller,
-    required this.hint,
-    this.obscureText = false,
-    this.keyboardType,
-    this.autofillHints,
-    this.enabled = true,
-    this.prefixIcon,
-    this.suffixIcon,
-  });
+  Widget _buildRegisterContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildLogo(),
+        const SizedBox(height: 28),
+        _buildTitle('Utwórz konto', 'Dołącz do społeczności terapeutów'),
+        const SizedBox(height: 36),
+        _buildSocialButtons(),
+        const SizedBox(height: 24),
+        _buildDivider(),
+        const SizedBox(height: 24),
+        _buildFloatingField(
+          controller: _nameCtrl,
+          label: 'Imię i nazwisko',
+          keyboardType: TextInputType.name,
+          autofillHints: const [AutofillHints.name],
+          prefixIcon: Icons.person_outline_rounded,
+        ),
+        const SizedBox(height: 16),
+        _buildFloatingField(
+          controller: _emailCtrl,
+          label: 'Adres e-mail',
+          keyboardType: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.email],
+          prefixIcon: Icons.mail_outline_rounded,
+        ),
+        const SizedBox(height: 16),
+        _buildFloatingField(
+          controller: _passwordCtrl,
+          label: 'Utwórz hasło (min. 8 znaków)',
+          obscureText: _obscurePassword,
+          autofillHints: const [AutofillHints.newPassword],
+          prefixIcon: Icons.lock_outline_rounded,
+          suffixIcon: _buildVisibilityToggle(),
+        ),
+        const SizedBox(height: 20),
+        _buildTosCheckbox(),
+        const SizedBox(height: 20),
+        if (_error != null) ...[_buildError(), const SizedBox(height: 16)],
+        _buildCta('Zarejestruj się', _loading ? null : _submitRegister),
+        const SizedBox(height: 28),
+        _buildModeSwitch(
+          'Masz już konto? ',
+          'Zaloguj się',
+          _goToLogin,
+        ),
+      ],
+    );
+  }
 
-  final TextEditingController controller;
-  final String hint;
-  final bool obscureText;
-  final TextInputType? keyboardType;
-  final Iterable<String>? autofillHints;
-  final bool enabled;
-  final IconData? prefixIcon;
-  final Widget? suffixIcon;
+  // ── Shared widgets ──────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildLogo() {
+    return Container(
+      width: 88, height: 88,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: _kWhite08,
+        border: Border.all(color: _kWhite15, width: 1.5),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Image.asset('assets/Ico/Logo_Superwizor_MVP.png', fit: BoxFit.cover),
+    );
+  }
+
+  Widget _buildTitle(String title, String subtitle) {
+    return Column(children: [
+      Text(title, textAlign: TextAlign.center, style: const TextStyle(
+        fontFamily: _kFont, fontSize: 28, fontWeight: FontWeight.w700,
+        color: _kWhite, height: 1.15, letterSpacing: -0.5,
+      )),
+      const SizedBox(height: 8),
+      Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(
+        fontFamily: _kFont, fontSize: 15, fontWeight: FontWeight.w400,
+        color: _kWhite70, height: 1.4,
+      )),
+    ]);
+  }
+
+  Widget _buildSocialButtons() {
+    return Column(children: [
+      _SocialButton(
+        onPressed: _loading ? null : _signInWithGoogle,
+        icon: const _GoogleIcon(),
+        label: 'Kontynuuj z Google',
+        backgroundColor: _kWhite,
+        textColor: _kObsidian,
+      ),
+      const SizedBox(height: 12),
+      if (!_isAndroid) ...[
+        _SocialButton(
+          onPressed: _loading ? null : _signInWithApple,
+          icon: const _AppleIcon(),
+          label: 'Kontynuuj z Apple',
+          backgroundColor: _kObsidian,
+          textColor: _kWhite,
+        ),
+      ],
+    ]);
+  }
+
+  Widget _buildDivider() {
+    return Row(children: [
+      Expanded(child: Container(height: 1, color: _kWhite15)),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: Text('lub', style: TextStyle(
+          fontFamily: _kFont, fontSize: 13,
+          fontWeight: FontWeight.w500, color: _kWhite40,
+        )),
+      ),
+      Expanded(child: Container(height: 1, color: _kWhite15)),
+    ]);
+  }
+
+  Widget _buildFloatingField({
+    required TextEditingController controller,
+    required String label,
+    TextInputType? keyboardType,
+    List<String>? autofillHints,
+    bool obscureText = false,
+    IconData? prefixIcon,
+    Widget? suffixIcon,
+  }) {
     return TextField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       autofillHints: autofillHints,
-      enabled: enabled,
+      enabled: !_loading,
       style: const TextStyle(
         fontFamily: _kFont, fontSize: 15,
         fontWeight: FontWeight.w500, color: _kWhite,
       ),
-      cursorColor: _kAccent,
+      cursorColor: _kEmber,
       decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(
+        labelText: label,
+        labelStyle: const TextStyle(
           fontFamily: _kFont, fontSize: 15,
           fontWeight: FontWeight.w400, color: _kWhite40,
         ),
+        floatingLabelStyle: const TextStyle(
+          fontFamily: _kFont, fontSize: 13,
+          fontWeight: FontWeight.w500, color: _kEmber,
+        ),
         prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, color: _kWhite40, size: 20)
-            : null,
+            ? Icon(prefixIcon, color: _kWhite40, size: 20) : null,
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: _kWhite08,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: _kWhite15),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kAccent, width: 1.5),
+          borderSide: const BorderSide(color: _kEmber, width: 1.5),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -596,7 +550,140 @@ class _TextField extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildVisibilityToggle() {
+    return IconButton(
+      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+      icon: Icon(
+        _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        color: _kWhite40, size: 20,
+      ),
+    );
+  }
+
+  Widget _buildTosCheckbox() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 24, height: 24,
+          child: Checkbox(
+            value: _tosAccepted,
+            onChanged: _loading ? null : (v) => setState(() => _tosAccepted = v ?? false),
+            activeColor: _kEmber,
+            checkColor: _kObsidian,
+            side: const BorderSide(color: _kWhite40, width: 1.5),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(
+                fontFamily: _kFont, fontSize: 13,
+                fontWeight: FontWeight.w400, color: _kWhite70,
+                height: 1.5,
+              ),
+              children: [
+                const TextSpan(text: 'Akceptuję '),
+                TextSpan(
+                  text: 'Regulamin',
+                  style: const TextStyle(
+                    color: _kEmber, fontWeight: FontWeight.w500,
+                    decoration: TextDecoration.underline,
+                    decorationColor: _kEmber,
+                  ),
+                  recognizer: TapGestureRecognizer()..onTap = () => _launchUrl(_kTermsUrl),
+                ),
+                const TextSpan(text: ' oraz '),
+                TextSpan(
+                  text: 'Politykę Prywatności',
+                  style: const TextStyle(
+                    color: _kEmber, fontWeight: FontWeight.w500,
+                    decoration: TextDecoration.underline,
+                    decorationColor: _kEmber,
+                  ),
+                  recognizer: TapGestureRecognizer()..onTap = () => _launchUrl(_kPrivacyUrl),
+                ),
+                const TextSpan(text: ' Superwizor AI.'),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildError() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: _kErrorBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kErrorBorder),
+      ),
+      child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(
+        fontFamily: _kFont, fontSize: 13,
+        fontWeight: FontWeight.w500, color: _kErrorText,
+      )),
+    );
+  }
+
+  Widget _buildCta(String label, VoidCallback? onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _kEmber,
+          foregroundColor: _kObsidian,
+          disabledBackgroundColor: _kEmber.withValues(alpha: 0.4),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 0,
+        ),
+        child: _loading
+            ? const SizedBox(
+                width: 22, height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(_kObsidian),
+                ),
+              )
+            : Text(label, style: const TextStyle(
+                fontFamily: _kFont, fontSize: 16,
+                fontWeight: FontWeight.w600, letterSpacing: 0.2,
+                color: _kObsidian,
+              )),
+      ),
+    );
+  }
+
+  Widget _buildModeSwitch(String question, String action, VoidCallback onTap) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(question, style: const TextStyle(
+          fontFamily: _kFont, fontSize: 14,
+          fontWeight: FontWeight.w400, color: _kWhite70,
+        )),
+        GestureDetector(
+          onTap: onTap,
+          child: Text(action, style: const TextStyle(
+            fontFamily: _kFont, fontSize: 14,
+            fontWeight: FontWeight.w600, color: _kEmber,
+          )),
+        ),
+      ],
+    );
+  }
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Social button with press animation
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _SocialButton extends StatefulWidget {
   const _SocialButton({
