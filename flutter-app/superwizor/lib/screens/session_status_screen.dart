@@ -379,7 +379,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                     // or we resolved a server session_id. Confirm →
                     // CancelSession (CANCELLED_BY_USER + token release)
                     // → leave this screen.
-                    if (!_showCheck && _cancelableSessionId != null)
+                    if (!_showCheck && _canCancel)
                       IconButton(
                         icon: const Icon(Icons.delete_outline, size: 22),
                         color: EuphireColors.magma,
@@ -400,41 +400,72 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                 ),
               ),
 
-              // ── Bottom button ──
+              // ── Bottom buttons ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(28, 0, 28, 24),
                 child: AnimatedOpacity(
                   opacity: _showCheck ? 0.0 : 1.0,
                   duration: const Duration(milliseconds: 300),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _navigateBackToRecords,
-                      icon: const Icon(
-                        Icons.folder_open_rounded,
-                        size: 20,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Quota hold → explicit "Wyślij ponownie". Auto-retry
+                      // is off; this is the only way to re-attempt once the
+                      // plan tops up. Filled style so it reads as the
+                      // primary action, above the secondary "back" link.
+                      if (_isQuotaBlocked) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: _onResendPressed,
+                            icon: const Icon(Icons.refresh_rounded, size: 20),
+                            label: Text(t.upload_resend),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: EuphireColors.ember,
+                              foregroundColor: EuphireColors.obsidianBlack,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              textStyle: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _navigateBackToRecords,
+                          icon: const Icon(Icons.folder_open_rounded, size: 20),
+                          label: Text(t.session_status_back_to_records),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: EuphireColors.mist,
+                            side: BorderSide(
+                              color: EuphireColors.mist.withValues(alpha: 0.25),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            textStyle: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
                       ),
-                      label: Text(t.session_status_back_to_records),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: EuphireColors.mist,
-                        side: BorderSide(
-                          color: EuphireColors.mist.withValues(alpha: 0.25),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        textStyle: const TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
                 ),
               ),
@@ -496,10 +527,11 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         ),
         const SizedBox(height: 16),
         // ── Queue-state diagnostic ──
-        // Only shown while we're in the upload phase (sessionId
-        // hasn't materialised yet). Helps the user — and us in dev
-        // — see exactly which phase the queue is in.
-        if (_lastRow != null && _resolvedSessionId == null)
+        // Only shown while we're in the upload phase (sessionId hasn't
+        // materialised yet) AND not quota-blocked (the stepper step-1
+        // label already says "Pula tokenów wyczerpana", so the mono
+        // diagnostic would just duplicate it).
+        if (_lastRow != null && _resolvedSessionId == null && !_isQuotaBlocked)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
@@ -512,52 +544,30 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
               ),
             ),
           ),
-        // Quota hold → explicit resend affordance. Auto-retry is off
-        // (feat/tokens-exhausted), so this button is the only way to
-        // re-attempt the upload once the plan tops up.
-        if (_lastRow?.phase == UploadPhase.quotaBlocked) ...[
-          const SizedBox(height: 20),
-          Center(
-            child: OutlinedButton.icon(
-              onPressed: _onResendPressed,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: Text(t.upload_resend),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: EuphireColors.ember,
-                side: BorderSide(
-                  color: EuphireColors.ember.withValues(alpha: 0.4),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                textStyle: const TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-        // The raw gRPC last-error text used to render here (red,
-        // dev-style). For quota-exhausted submits the stepper step-1
-        // label + the resend button above surface the right message;
-        // for everything else the queue-phase line plus the retry
-        // counter is enough. Surfacing raw status codes / framework
-        // error strings to the therapist was noisy and confusing —
-        // kept in PendingUpload for our own diagnostics but not shown.
+        // Resend lives in the bottom button area (below) so it never
+        // overlaps "Wróć do kartotek". The raw gRPC last-error text used
+        // to render here (dev-style) — removed; the stepper label + the
+        // bottom resend button carry the meaning now.
         const Spacer(),
       ],
     );
   }
 
   /// The session_id we can cancel, if any: a resolved server session
-  /// or the one the local queue row already captured. Null while the
-  /// upload hasn't been accepted server-side and has no row.
+  /// or the one the local queue row already captured. May be null for a
+  /// quota-blocked upload (CreateAudioUpload errored before returning a
+  /// session_id) — in that case we still cancel by dropping the local
+  /// queue row via [_onCancelPressed].
   String? get _cancelableSessionId =>
       _resolvedSessionId ?? _lastRow?.sessionId;
+
+  /// Whether the bin (cancel) action is available. True whenever there's
+  /// something to cancel — a local queue row (drop it) and/or a server
+  /// session (CancelSession). Not gated on a session_id, so quota-blocked
+  /// rows (no session_id) still get the bin.
+  bool get _canCancel => _lastRow != null || _resolvedSessionId != null;
+
+  bool get _isQuotaBlocked => _lastRow?.phase == UploadPhase.quotaBlocked;
 
   /// Bin-icon handler — confirm + CancelSession + leave the screen.
   Future<void> _onCancelPressed() async {

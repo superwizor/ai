@@ -458,7 +458,7 @@
   "stepper_step1_quota_blocked": "Token pool exhausted. Renew your plan to resume.",
   "quota_blocked_queue_label": "Token pool exhausted",
   "upload_resend": "Resend",
-  "upload_cancel_processing": "Cancel processing",
+  "upload_cancel_processing": "Cancel",
   "cancel_session_confirm_title": "Cancel processing?",
   "cancel_session_confirm_body": "The session will be cancelled and the recording removed from the queue. This cannot be undone.",
   "cancel_session_confirm_action": "Yes, cancel",

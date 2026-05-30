@@ -1209,7 +1209,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get upload_resend => 'Resend';
 
   @override
-  String get upload_cancel_processing => 'Cancel processing';
+  String get upload_cancel_processing => 'Cancel';
 
   @override
   String get cancel_session_confirm_title => 'Cancel processing?';

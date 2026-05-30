@@ -2204,7 +2204,7 @@ abstract class AppLocalizations {
   /// No description provided for @upload_cancel_processing.
   ///
   /// In pl, this message translates to:
-  /// **'Anuluj przetwarzanie'**
+  /// **'Anuluj'**
   String get upload_cancel_processing;
 
   /// No description provided for @cancel_session_confirm_title.

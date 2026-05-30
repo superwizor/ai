@@ -259,6 +259,25 @@ class UploadQueueRunner {
   /// operation. Kept as a distinct name so call sites read clearly.
   Future<void> resend(String localId) => retryFailed(localId);
 
+  /// When one upload hits QUOTA_EXHAUSTED, park every OTHER still-active
+  /// upload too — they'll all fail CreateAudioUpload the same way, so we
+  /// stop the runner from hammering and present a consistent quota state
+  /// across the whole queue. Each parked sibling is un-parked
+  /// independently by an explicit resend. Excludes the row that just
+  /// parked ([trigger]), terminal rows, and already-parked rows.
+  Future<void> _parkSiblingsOnQuota(PendingUpload trigger) async {
+    for (final row in _queue.all()) {
+      if (row.localId == trigger.localId) continue;
+      if (row.isTerminal || row.isParked) continue;
+      await _queue.update(row.copyWith(
+        phase: UploadPhase.quotaBlocked,
+        lastError: trigger.lastError,
+        clearUploadCredentials: true,
+      ));
+    }
+    _emitSnapshot();
+  }
+
   // ── Tick ──────────────────────────────────────────────────────
 
   Future<void> _tick() async {
@@ -292,12 +311,28 @@ class UploadQueueRunner {
       final due = _queue.dueNow();
       for (final initial in due) {
         if (!_running) break;
-        var current = initial;
+        // Re-read live state: a prior row this tick may have hit
+        // QUOTA_EXHAUSTED and parked this one as a sibling
+        // (_parkSiblingsOnQuota). Skip rows that are no longer runnable
+        // so we don't fire a doomed CreateAudioUpload that just re-parks.
+        final fresh = _queue.getById(initial.localId);
+        if (fresh == null || fresh.isTerminal || fresh.isParked) continue;
+        var current = fresh;
         while (_running) {
           final next = await _worker.runOne(current);
-          if (identical(next, current)) break; // worker no-op (terminal)
+          if (identical(next, current)) break; // worker no-op (terminal/parked)
           await _queue.update(next);
           changed = true;
+
+          // QUOTA_EXHAUSTED on this row → every other queued upload for
+          // this org will fail the same way. Park them all now so the
+          // whole queue shows the consistent "Pula tokenów wyczerpana"
+          // state instead of leaving siblings on "Audio czeka w
+          // kolejce" until each one individually hits the wall.
+          if (current.phase != UploadPhase.quotaBlocked &&
+              next.phase == UploadPhase.quotaBlocked) {
+            await _parkSiblingsOnQuota(next);
+          }
           // Emit a snapshot mid-row so the SessionStatusScreen sees
           // each phase transition (pending → created → uploaded → …)
           // without waiting for the whole pipeline to finish.
@@ -333,6 +368,7 @@ class UploadQueueRunner {
           }
 
           if (next.isTerminal) break;
+          if (next.isParked) break; // quota hold — no auto-retry
           // Worker scheduled a backoff retry — let a future tick
           // (periodic or connectivity-triggered) pick it up.
           if (next.nextAttemptAt.isAfter(DateTime.now().toUtc())) {
