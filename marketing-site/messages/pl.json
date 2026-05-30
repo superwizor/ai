@@ -646,7 +646,10 @@
     "createAccount": "Zarejestruj się",
     "forgotPassword": "Nie pamiętam hasła",
     "resetSent": "Wysłaliśmy link do resetu hasła na podany adres email.",
-    "resetNeedEmail": "Najpierw wpisz swój adres email."
+    "resetNeedEmail": "Najpierw wpisz swój adres email.",
+    "signInWithGoogle": "Kontynuuj z Google",
+    "signInWithApple": "Kontynuuj z Apple",
+    "orUseEmail": "Albo użyj adresu e-mail"
   },
   "account": {
     "metaTitle": "Moje konto · Superwizor AI",

@@ -646,7 +646,10 @@
     "createAccount": "Sign up",
     "forgotPassword": "Forgot password?",
     "resetSent": "We've sent a password-reset link to your email.",
-    "resetNeedEmail": "Please enter your email first."
+    "resetNeedEmail": "Please enter your email first.",
+    "signInWithGoogle": "Continue with Google",
+    "signInWithApple": "Continue with Apple",
+    "orUseEmail": "Or use your email"
   },
   "account": {
     "metaTitle": "My account · Superwizor AI",

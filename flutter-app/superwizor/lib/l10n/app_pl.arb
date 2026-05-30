@@ -39,6 +39,12 @@
   "auth_error_user_disabled": "To konto zostało wyłączone. Skontaktuj się z pomocą.",
   "auth_error_generic": "Wystąpił błąd logowania. Spróbuj ponownie.",
 
+  "auth_sign_in_with_google": "Kontynuuj z Google",
+  "auth_sign_in_with_apple": "Zaloguj się z Apple",
+  "auth_or_use_email": "Albo użyj adresu e-mail",
+  "auth_social_error": "Logowanie przez konto zewnętrzne nie powiodło się. Spróbuj ponownie.",
+  "auth_social_cancelled": "Logowanie anulowane.",
+
   "setup_title": "Konfiguracja Twojego profilu.",
   "setup_subtitle": "Powiedz nam jak pracujesz, dostosujemy do tego analizę.",
   "setup_modality_label": "Główny nurt terapii",

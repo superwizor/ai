@@ -106,6 +106,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get auth_error_generic => 'A login error occurred. Try again.';
 
   @override
+  String get auth_sign_in_with_google => 'Continue with Google';
+
+  @override
+  String get auth_sign_in_with_apple => 'Sign in with Apple';
+
+  @override
+  String get auth_or_use_email => 'Or use your email';
+
+  @override
+  String get auth_social_error =>
+      'Sign-in with external account failed. Please try again.';
+
+  @override
+  String get auth_social_cancelled => 'Sign-in cancelled.';
+
+  @override
   String get setup_title => 'Set up your profile.';
 
   @override

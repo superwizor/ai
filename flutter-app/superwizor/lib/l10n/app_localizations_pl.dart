@@ -109,6 +109,22 @@ class AppLocalizationsPl extends AppLocalizations {
   String get auth_error_generic => 'Wystąpił błąd logowania. Spróbuj ponownie.';
 
   @override
+  String get auth_sign_in_with_google => 'Kontynuuj z Google';
+
+  @override
+  String get auth_sign_in_with_apple => 'Zaloguj się z Apple';
+
+  @override
+  String get auth_or_use_email => 'Albo użyj adresu e-mail';
+
+  @override
+  String get auth_social_error =>
+      'Logowanie przez konto zewnętrzne nie powiodło się. Spróbuj ponownie.';
+
+  @override
+  String get auth_social_cancelled => 'Logowanie anulowane.';
+
+  @override
   String get setup_title => 'Konfiguracja Twojego profilu.';
 
   @override

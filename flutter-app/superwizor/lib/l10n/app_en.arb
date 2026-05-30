@@ -39,6 +39,12 @@
   "auth_error_user_disabled": "This account has been disabled. Contact support.",
   "auth_error_generic": "A login error occurred. Try again.",
 
+  "auth_sign_in_with_google": "Continue with Google",
+  "auth_sign_in_with_apple": "Sign in with Apple",
+  "auth_or_use_email": "Or use your email",
+  "auth_social_error": "Sign-in with external account failed. Please try again.",
+  "auth_social_cancelled": "Sign-in cancelled.",
+
   "setup_title": "Set up your profile.",
   "setup_subtitle": "Tell us how you work, we'll tailor the analysis to it.",
   "setup_modality_label": "Primary therapy modality",

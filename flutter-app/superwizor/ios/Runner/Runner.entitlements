@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Sign In with Apple capability — required for
+	     FirebaseAuth.signInWithProvider(OAuthProvider('apple.com'))
+	     to show the native Face ID / Touch ID sheet on iOS.
+	     Added 2026-05-30 (feat/social-auth). -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+</dict>
+</plist>

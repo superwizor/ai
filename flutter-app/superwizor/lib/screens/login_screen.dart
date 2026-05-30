@@ -41,6 +41,93 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Social sign-in — uses firebase_auth's signInWithProvider (native) /
+  // signInWithPopup (web). No extra packages required — firebase_auth
+  // 6.4.0 handles both paths. On iOS, signInWithProvider uses:
+  //   • Google  → ASWebAuthenticationSession (system Safari sheet)
+  //   • Apple   → ASAuthorizationController (native Face ID / Touch ID sheet)
+  // ──────────────────────────────────────────────────────────────────────
+
+  Future<void> _signInWithGoogle() async {
+    final t = AppLocalizations.of(context);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final provider = GoogleAuthProvider();
+      if (kIsWeb) {
+        await FirebaseAuth.instance.signInWithPopup(provider);
+      } else {
+        await FirebaseAuth.instance.signInWithProvider(provider);
+      }
+      await _ensureUserRegistered();
+    } on FirebaseAuthException catch (e) {
+      debugPrint('[social] Google sign-in FirebaseAuthException: ${e.code}');
+      if (mounted) {
+        // popup-closed / cancelled → silent
+        if (e.code != 'popup-closed-by-user' &&
+            e.code != 'canceled' &&
+            e.code != 'user-cancelled') {
+          setState(() => _error = t.auth_social_error);
+        }
+      }
+    } catch (e) {
+      debugPrint('[social] Google sign-in error: $e');
+      if (mounted) setState(() => _error = t.auth_social_error);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _signInWithApple() async {
+    final t = AppLocalizations.of(context);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final provider = OAuthProvider('apple.com')
+        ..addScope('email')
+        ..addScope('name');
+      if (kIsWeb) {
+        await FirebaseAuth.instance.signInWithPopup(provider);
+      } else {
+        // On iOS: uses ASAuthorizationController → native Sign In with Apple
+        // sheet (Face ID / Touch ID). Requires Runner.entitlements to have
+        // com.apple.developer.applesignin = [Default].
+        await FirebaseAuth.instance.signInWithProvider(provider);
+      }
+      await _ensureUserRegistered();
+    } on FirebaseAuthException catch (e) {
+      debugPrint('[social] Apple sign-in FirebaseAuthException: ${e.code}');
+      if (mounted) {
+        if (e.code != 'popup-closed-by-user' &&
+            e.code != 'canceled' &&
+            e.code != 'user-cancelled') {
+          setState(() => _error = t.auth_social_error);
+        }
+      }
+    } catch (e) {
+      debugPrint('[social] Apple sign-in error: $e');
+      if (mounted) setState(() => _error = t.auth_social_error);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Email / password sign-in
+  // ──────────────────────────────────────────────────────────────────────
+
   Future<void> _submit() async {
     setState(() {
       _loading = true;
@@ -142,22 +229,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   /// Register the Firebase user in the identity-svc PostgreSQL database.
-  Future<void> _registerInIdentityService(User firebaseUser) async {
+  /// Accepts optional firstName/lastName from social providers (Google,
+  /// Apple) — only available on first sign-in; subsequent logins may
+  /// have null displayName.
+  Future<void> _registerInIdentityService(
+    User firebaseUser, {
+    String? firstName,
+    String? lastName,
+  }) async {
+    // Derive first/last name: prefer explicit args, then split displayName,
+    // then fall back to empty strings (user fills in profile later).
+    String resolvedFirst = firstName ?? '';
+    String resolvedLast = lastName ?? '';
+    if (resolvedFirst.isEmpty && firebaseUser.displayName != null) {
+      final parts = (firebaseUser.displayName ?? '').split(' ');
+      resolvedFirst = parts.isNotEmpty ? parts.first : '';
+      resolvedLast = parts.length > 1 ? parts.skip(1).join(' ') : '';
+    }
+
     final identityClient = ref.read(grpcClientsProvider).identity;
     try {
       await identityClient.createUser(identity_pb.CreateUserRequest(
         firebaseUid: firebaseUser.uid,
         email: firebaseUser.email ?? _email.text.trim(),
         role: identity_pb.UserRole.USER_ROLE_THERAPIST,
-        firstName: '',
-        lastName: '',
+        firstName: resolvedFirst,
+        lastName: resolvedLast,
         uiLanguage: 'pl',
         timezone: 'Europe/Warsaw',
         hasAcceptedTos: true,
       ));
-      debugPrint('User registered in identity-svc successfully');
+      debugPrint('[auth] User registered in identity-svc successfully');
     } catch (e) {
-      debugPrint('Error registering user in identity-svc: $e');
+      debugPrint('[auth] Error registering user in identity-svc: $e');
       // Don't block login even if registration fails — user can retry
     }
   }
@@ -175,7 +279,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
     } catch (e) {
       // User not found in identity-svc — auto-register them
-      debugPrint('User not found in identity-svc, auto-registering...');
+      debugPrint('[auth] User not found in identity-svc, auto-registering...');
       await _registerInIdentityService(firebaseUser);
     }
   }
@@ -219,6 +323,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -229,9 +336,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             children: [
               EuphireHeader(
                 title: 'Superwizor AI.',
-                subtitle: _isLogin ? 'Zaloguj się, aby kontynuować.' : 'Zarejestruj się, aby rozpocząć.',
+                subtitle: _isLogin
+                    ? 'Zaloguj się, aby kontynuować.'
+                    : 'Zarejestruj się, aby rozpocząć.',
               ),
               const SizedBox(height: 48),
+
+              // ── Social login buttons ──────────────────────────────
+              _SocialButton(
+                label: t.auth_sign_in_with_google,
+                icon: _GoogleIcon(),
+                onPressed: _loading ? null : _signInWithGoogle,
+              ),
+              const SizedBox(height: 12),
+              // Apple Sign In: shown on all platforms (iOS + web).
+              // On Android we omit it — Apple's HIG requires Apple
+              // Sign In to be available wherever Google Sign In is,
+              // but the reverse isn't required and Android users
+              // rarely have Apple IDs.
+              if (!_isAndroid) ...[
+                _SocialButton(
+                  label: t.auth_sign_in_with_apple,
+                  icon: const _AppleIcon(),
+                  onPressed: _loading ? null : _signInWithApple,
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // ── Divider ───────────────────────────────────────────
+              _OrDivider(label: t.auth_or_use_email),
+              const SizedBox(height: 20),
+
+              // ── Email / Password form ─────────────────────────────
               EuphireTextField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
@@ -244,15 +380,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 labelText: 'Twoje hasło.',
               ),
               const SizedBox(height: 24),
+
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Text(
                     _error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(color: theme.colorScheme.error),
                     textAlign: TextAlign.center,
                   ),
                 ),
+
               EuphireButton(
                 text: _isLogin ? 'Zaloguj się.' : 'Zarejestruj się.',
                 isLoading: _loading,
@@ -262,15 +400,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               if (_isLogin)
                 TextButton(
                   onPressed: _loading ? null : _sendPasswordReset,
-                  child: Text(AppLocalizations.of(context).auth_forgot_password),
+                  child: Text(t.auth_forgot_password),
                 ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: _toggleAuthMode,
                 child: Text(
-                  _isLogin ? 'Nie masz konta? Zarejestruj się.' : 'Masz już konto? Zaloguj się.',
+                  _isLogin
+                      ? 'Nie masz konta? Zarejestruj się.'
+                      : 'Masz już konto? Zaloguj się.',
                 ),
               ),
+
               // Web-only: shared-machine reminder. iOS/Android run on
               // personal devices so the warning would be noise there;
               // app.superwizor.ai is the only context where someone
@@ -285,14 +426,193 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
+
+  /// True when running on Android (not web, not iOS/macOS).
+  bool get _isAndroid =>
+      !kIsWeb && Theme.of(context).platform == TargetPlatform.android;
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// Social button — generic outlined button for Google / Apple.
+// ──────────────────────────────────────────────────────────────────────────
+class _SocialButton extends StatelessWidget {
+  const _SocialButton({
+    required this.label,
+    required this.icon,
+    this.onPressed,
+  });
+
+  final String label;
+  final Widget icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final disabled = onPressed == null;
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        side: BorderSide(
+          color: disabled
+              ? theme.colorScheme.outlineVariant
+              : theme.colorScheme.outline,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        foregroundColor: theme.colorScheme.onSurface,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          icon,
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: disabled
+                  ? theme.colorScheme.onSurface.withValues(alpha: 0.4)
+                  : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// "— lub —" divider between social and email sections.
+// ──────────────────────────────────────────────────────────────────────────
+class _OrDivider extends StatelessWidget {
+  const _OrDivider({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+      ],
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Google "G" monochrome icon (SVG paths as CustomPainter).
+// ──────────────────────────────────────────────────────────────────────────
+class _GoogleIcon extends StatelessWidget {
+  const _GoogleIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 20,
+      height: 20,
+      child: CustomPaint(painter: _GoogleLogoPainter()),
+    );
+  }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width / 18;
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    // Blue
+    paint.color = const Color(0xFF4285F4);
+    final pathBlue = Path()
+      ..moveTo(17.64 * s, 9.2 * s)
+      ..cubicTo(17.64 * s, 8.56 * s, 17.58 * s, 7.95 * s, 17.48 * s, 7.36 * s)
+      ..lineTo(9 * s, 7.36 * s)
+      ..lineTo(9 * s, 10.84 * s)
+      ..lineTo(13.84 * s, 10.84 * s)
+      ..cubicTo(13.63 * s, 11.97 * s, 13.0 * s, 12.92 * s, 12.05 * s, 13.56 * s)
+      ..lineTo(12.05 * s, 15.82 * s)
+      ..lineTo(14.95 * s, 15.82 * s)
+      ..cubicTo(16.65 * s, 14.26 * s, 17.64 * s, 11.95 * s, 17.64 * s, 9.2 * s)
+      ..close();
+    canvas.drawPath(pathBlue, paint);
+
+    // Green
+    paint.color = const Color(0xFF34A853);
+    final pathGreen = Path()
+      ..moveTo(9 * s, 18 * s)
+      ..cubicTo(11.43 * s, 18 * s, 13.47 * s, 17.19 * s, 14.96 * s, 15.82 * s)
+      ..lineTo(12.06 * s, 13.56 * s)
+      ..cubicTo(11.25 * s, 14.1 * s, 10.22 * s, 14.42 * s, 9 * s, 14.42 * s)
+      ..cubicTo(6.64 * s, 14.42 * s, 4.64 * s, 12.83 * s, 3.93 * s, 10.68 * s)
+      ..lineTo(0.96 * s, 10.68 * s)
+      ..lineTo(0.96 * s, 13.02 * s)
+      ..cubicTo(2.45 * s, 15.98 * s, 5.48 * s, 18 * s, 9 * s, 18 * s)
+      ..close();
+    canvas.drawPath(pathGreen, paint);
+
+    // Yellow
+    paint.color = const Color(0xFFFBBC05);
+    final pathYellow = Path()
+      ..moveTo(3.93 * s, 10.71 * s)
+      ..cubicTo(3.75 * s, 10.17 * s, 3.64 * s, 9.6 * s, 3.64 * s, 9 * s)
+      ..cubicTo(3.64 * s, 8.4 * s, 3.75 * s, 7.82 * s, 3.93 * s, 7.29 * s)
+      ..lineTo(3.93 * s, 4.96 * s)
+      ..lineTo(0.96 * s, 4.96 * s)
+      ..cubicTo(0.35 * s, 6.17 * s, 0 * s, 7.55 * s, 0 * s, 9 * s)
+      ..cubicTo(0, 10.45 * s, 0.35 * s, 11.83 * s, 0.96 * s, 13.04 * s)
+      ..lineTo(3.93 * s, 10.71 * s)
+      ..close();
+    canvas.drawPath(pathYellow, paint);
+
+    // Red
+    paint.color = const Color(0xFFEA4335);
+    final pathRed = Path()
+      ..moveTo(9 * s, 3.58 * s)
+      ..cubicTo(10.32 * s, 3.58 * s, 11.51 * s, 4.03 * s, 12.44 * s, 4.93 * s)
+      ..lineTo(15.02 * s, 2.35 * s)
+      ..cubicTo(13.47 * s, 0.9 * s, 11.43 * s, 0, 9 * s, 0)
+      ..cubicTo(5.48 * s, 0, 2.45 * s, 2.02 * s, 0.96 * s, 4.96 * s)
+      ..lineTo(3.93 * s, 7.29 * s)
+      ..cubicTo(4.64 * s, 5.17 * s, 6.64 * s, 3.58 * s, 9 * s, 3.58 * s)
+      ..close();
+    canvas.drawPath(pathRed, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Apple  icon (monochrome, adapts to light/dark).
+// ──────────────────────────────────────────────────────────────────────────
+class _AppleIcon extends StatelessWidget {
+  const _AppleIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.onSurface;
+    return Icon(Icons.apple, size: 22, color: color);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Shared-machine notice — Flutter Web only. Public kiosks, clinic
 // reception desks, library computers etc. are realistic environments
 // for the web build (iOS/Android wouldn't be). The notice is
 // non-blocking (no checkbox, no dialog) — just a localized reminder
 // styled as an outlined info card so it reads as advice rather than
 // an error.
+// ──────────────────────────────────────────────────────────────────────────
 class _SharedMachineNotice extends StatelessWidget {
   const _SharedMachineNotice();
 
