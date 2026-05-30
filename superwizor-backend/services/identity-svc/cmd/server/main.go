@@ -16,7 +16,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -221,11 +220,18 @@ func main() {
 		"https://superwizor.ai,https://app.superwizor.ai,http://localhost:3000,http://localhost:8080")
 	corsMW := cors.New(cors.FromEnv(corsOrigins))
 
-	h2s := &http2.Server{}
+	// Configure HTTP/2 via http2.ConfigureServer (Go 1.23+) instead of
+	// the deprecated golang.org/x/net/http2/h2c wrapper. Enables
+	// cleartext HTTP/2 (h2c) for gRPC on Cloud Run internal networking.
 	httpSrv := &nethttp.Server{
 		Addr:              ":" + port,
-		Handler:           h2c.NewHandler(corsMW(mixedHandler), h2s),
+		Handler:           corsMW(mixedHandler),
 		ReadHeaderTimeout: 10 * time.Second,
+	}
+	h2s := &http2.Server{}
+	if err := http2.ConfigureServer(httpSrv, h2s); err != nil {
+		slog.Error("http2 configure failed", "error", err)
+		os.Exit(1)
 	}
 
 	rootCtx, cancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
