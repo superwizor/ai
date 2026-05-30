@@ -77,6 +77,30 @@ var terminalStatuses = map[string]bool{
 	"cancelled": true,
 }
 
+// shouldMirror decides whether a session_states write transitioning the
+// doc from currStatus → newStatus should proceed. Pure (no Firestore) so
+// the monotonic-rank + terminal-sticky rules (docs/21 §3.4) are unit-
+// testable. currStatus "" means a fresh/absent doc (always accepts).
+//   - newStatus unknown to the rank map → allow (logged elsewhere as drift).
+//   - newRank < currRank → skip (monotonic regress, e.g. a backlog
+//     `uploaded` landing after `analyzing`).
+//   - currStatus terminal and != newStatus → skip (first-terminal-wins:
+//     a late `failed` must not clobber a real `done`, nor reopen a
+//     `cancelled`).
+func shouldMirror(currStatus, newStatus string) bool {
+	newRank, known := sessionStatusRank[newStatus]
+	if !known {
+		return true
+	}
+	if newRank < sessionStatusRank[currStatus] {
+		return false
+	}
+	if terminalStatuses[currStatus] && currStatus != newStatus {
+		return false
+	}
+	return true
+}
+
 // WriteSessionState merges the status field into session_states/{sessionId}
 // IF AND ONLY IF the new status outranks (>=) the currently-stored status.
 // A read-modify-write inside a Firestore transaction prevents the lost-
@@ -90,8 +114,7 @@ func (w *Writer) WriteSessionState(ctx context.Context, st SessionState) error {
 		return nil
 	}
 	docRef := w.client.Doc("session_states/" + st.SessionID)
-	newRank, ok := sessionStatusRank[st.Status]
-	if !ok {
+	if _, ok := sessionStatusRank[st.Status]; !ok {
 		// Defensive: unknown status string. Don't block — write it
 		// through but log so we notice schema drift.
 		slog.Warn("firestore session_states: unknown status — writing anyway",
@@ -111,23 +134,8 @@ func (w *Writer) WriteSessionState(ctx context.Context, st SessionState) error {
 					currStatus = s
 				}
 			}
-			currRank := sessionStatusRank[currStatus]
-			if ok && newRank < currRank {
-				// Skip: the doc is already at a more-advanced state.
-				slog.Info("firestore session_states: skipping monotonic regress",
-					"session_id", st.SessionID,
-					"current_status", currStatus,
-					"new_status", st.Status)
-				return nil
-			}
-			// Terminal-sticky guard: done/failed/cancelled all share
-			// rank 4, so the rank check above won't stop done→failed.
-			// First terminal state wins (docs/21 §3.4) — a session that
-			// actually completed must not be flipped to failed by a
-			// late DLQ-retry message, and a cancelled session must not
-			// be re-opened.
-			if terminalStatuses[currStatus] && currStatus != st.Status {
-				slog.Info("firestore session_states: skipping terminal overwrite",
+			if !shouldMirror(currStatus, st.Status) {
+				slog.Info("firestore session_states: skipping write",
 					"session_id", st.SessionID,
 					"current_status", currStatus,
 					"new_status", st.Status)
