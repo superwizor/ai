@@ -11,6 +11,7 @@ variable "transcripts_raw_bucket_name" {
 }
 variable "audio_uploaded_topic" { type = string }
 variable "transcript_completed_topic" { type = string }
+variable "session_status_changed_topic" { type = string }
 variable "stt_worker_source_dir" { type = string }
 variable "llm_worker_source_dir" { type = string }
 variable "stt_worker_sa_email" {

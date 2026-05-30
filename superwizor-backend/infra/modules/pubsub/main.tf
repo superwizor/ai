@@ -67,9 +67,23 @@ resource "google_pubsub_topic" "session_deleted" {
   project = var.project_id
 }
 
+# session.status_changed (docs/21): unified mirror for the
+# currently-unmirrored transitions — transcribing (progress), failed
+# (terminal), cancelled (user). Published by ai-pipeline-svc workers and
+# clinical-svc; consumed by notification-worker-on-status.
+resource "google_pubsub_topic" "session_status_changed" {
+  name    = "session.status_changed"
+  project = var.project_id
+}
+
 # DLQ topics
 resource "google_pubsub_topic" "audio_uploaded_dlq" {
   name    = "audio.uploaded.dlq"
+  project = var.project_id
+}
+
+resource "google_pubsub_topic" "session_status_changed_dlq" {
+  name    = "session.status_changed.dlq"
   project = var.project_id
 }
 
@@ -132,6 +146,13 @@ resource "google_pubsub_topic_iam_member" "pubsub_agent_report_dlq_publisher" {
 resource "google_pubsub_topic_iam_member" "pubsub_agent_session_deleted_dlq_publisher" {
   project = var.project_id
   topic   = google_pubsub_topic.session_deleted_dlq.name
+  role    = "roles/pubsub.publisher"
+  member  = local.pubsub_service_agent
+}
+
+resource "google_pubsub_topic_iam_member" "pubsub_agent_session_status_changed_dlq_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.session_status_changed_dlq.name
   role    = "roles/pubsub.publisher"
   member  = local.pubsub_service_agent
 }
@@ -338,6 +359,31 @@ resource "google_pubsub_topic_iam_member" "clinical_session_deleted_publisher" {
   member  = "serviceAccount:clinical-svc@${var.project_id}.iam.gserviceaccount.com"
 }
 
+# IAM: stt-worker + llm-worker + clinical-svc may publish
+# session.status_changed (docs/21). stt-worker covers stt-finalize +
+# stt-watchdog (same SA); llm-worker covers terminal report failures;
+# clinical-svc publishes "cancelled".
+resource "google_pubsub_topic_iam_member" "stt_status_changed_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.session_status_changed.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:stt-worker@${var.project_id}.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_topic_iam_member" "llm_status_changed_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.session_status_changed.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:llm-worker@${var.project_id}.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_topic_iam_member" "clinical_status_changed_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.session_status_changed.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:clinical-svc@${var.project_id}.iam.gserviceaccount.com"
+}
+
 # Phase C of feat/billing-svc-refactor removed billing.outbox + its DLQ +
 # the billing-svc publisher IAM binding. Quota state now propagates via
 # direct RPC — clinical-svc.GetMyBillingState plus state_after on
@@ -360,6 +406,8 @@ output "audio_object_finalized_subscription_name" { value = google_pubsub_subscr
 output "transcript_completed_topic" { value = google_pubsub_topic.transcript_completed.id }
 output "report_generated_topic" { value = google_pubsub_topic.report_generated.id }
 output "session_deleted_topic" { value = google_pubsub_topic.session_deleted.id }
+output "session_status_changed_topic" { value = google_pubsub_topic.session_status_changed.id }
+output "session_status_changed_dlq_topic" { value = google_pubsub_topic.session_status_changed_dlq.id }
 output "audio_uploaded_dlq_topic" { value = google_pubsub_topic.audio_uploaded_dlq.id }
 output "transcript_completed_dlq_topic" { value = google_pubsub_topic.transcript_completed_dlq.id }
 output "report_generated_dlq_topic" { value = google_pubsub_topic.report_generated_dlq.id }

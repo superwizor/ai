@@ -58,10 +58,23 @@ type SessionState struct {
 // 0 is the default for any unknown / unset status — that way a new doc
 // (where the current rank is 0) always accepts the first write.
 var sessionStatusRank = map[string]int{
-	"":          0,
-	"uploaded":  1,
-	"analyzing": 2,
-	"done":      3,
+	"":             0,
+	"uploaded":     1,
+	"transcribing": 2, // docs/21 WS1B — between uploaded and analyzing
+	"analyzing":    3,
+	"done":         4,
+	"failed":       4, // terminal — same tier as done
+	"cancelled":    4, // terminal — user-initiated
+}
+
+// terminalStatuses are the sticky end states. Once a doc reaches one,
+// no other (different) terminal state may overwrite it — first terminal
+// wins. This stops a late `failed` redelivery from clobbering a `done`
+// (or vice-versa) under reordered at-least-once delivery (docs/21 §3.4).
+var terminalStatuses = map[string]bool{
+	"done":      true,
+	"failed":    true,
+	"cancelled": true,
 }
 
 // WriteSessionState merges the status field into session_states/{sessionId}
@@ -102,6 +115,19 @@ func (w *Writer) WriteSessionState(ctx context.Context, st SessionState) error {
 			if ok && newRank < currRank {
 				// Skip: the doc is already at a more-advanced state.
 				slog.Info("firestore session_states: skipping monotonic regress",
+					"session_id", st.SessionID,
+					"current_status", currStatus,
+					"new_status", st.Status)
+				return nil
+			}
+			// Terminal-sticky guard: done/failed/cancelled all share
+			// rank 4, so the rank check above won't stop done→failed.
+			// First terminal state wins (docs/21 §3.4) — a session that
+			// actually completed must not be flipped to failed by a
+			// late DLQ-retry message, and a cancelled session must not
+			// be re-opened.
+			if terminalStatuses[currStatus] && currStatus != st.Status {
+				slog.Info("firestore session_states: skipping terminal overwrite",
 					"session_id", st.SessionID,
 					"current_status", currStatus,
 					"new_status", st.Status)

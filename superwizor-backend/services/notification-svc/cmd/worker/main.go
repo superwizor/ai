@@ -145,6 +145,7 @@ func init() {
 	functions.CloudEvent("ProcessTranscriptCompleted", ProcessTranscriptCompleted)
 	functions.CloudEvent("ProcessAudioUploaded", ProcessAudioUploaded)
 	functions.CloudEvent("ProcessSessionDeleted", ProcessSessionDeleted)
+	functions.CloudEvent("ProcessSessionStatusChanged", ProcessSessionStatusChanged)
 }
 
 // ---------------------------------------------------------------------------
@@ -328,6 +329,73 @@ func ProcessAudioUploaded(ctx context.Context, e event.Event) error {
 	return handleStatusMirror(ctx, e, "audio.uploaded", "uploaded", parseAudioUploaded)
 }
 
+// ProcessSessionStatusChanged — consumes session.status_changed (docs/21).
+// Unlike the fixed-status handlers above, the status VARIES
+// (transcribing | failed | cancelled) and is carried in the payload, so
+// it is read from the event and validated against the Firestore
+// vocabulary. This is the single consumer for the currently-unmirrored
+// transitions; uploaded/analyzing/done keep their dedicated handlers.
+func ProcessSessionStatusChanged(ctx context.Context, e event.Event) error {
+	logger := slog.With("function", "notification-worker", "trigger", "session.status_changed")
+
+	var msgData MessagePublishedData
+	if err := e.DataAs(&msgData); err != nil {
+		logger.Error("decode cloudevent", "error", err)
+		return err
+	}
+	sessionIDStr, fsStatus, err := parseSessionStatusChanged(msgData.Message.Data)
+	if err != nil {
+		logger.Error("parse payload", "error", err, "raw", string(msgData.Message.Data))
+		return err
+	}
+	logger = logger.With("session_id", sessionIDStr, "status", fsStatus)
+
+	if store == nil {
+		logger.Warn("no store — skipping (mock mode)")
+		return nil
+	}
+	sessionID, err := uuid.Parse(sessionIDStr)
+	if err != nil {
+		logger.Error("invalid session_id", "error", err)
+		return err
+	}
+
+	session, err := store.LoadSessionForNotification(ctx, sessionID)
+	if err != nil {
+		logger.Error("load session", "error", err)
+		return fmt.Errorf("load session: %w", err)
+	}
+
+	// Idempotency per (session, status) so a duplicate Pub/Sub delivery
+	// of the same transition doesn't re-mirror.
+	idempotencyKey := sessionIDStr + ":status_" + fsStatus
+	if _, err := store.InsertNotificationDelivery(ctx, pgstore.InsertDeliveryParams{
+		UserID:           session.TherapistID,
+		SessionID:        &session.SessionID,
+		NotificationType: "status_" + fsStatus,
+		IdempotencyKey:   idempotencyKey,
+	}); err != nil {
+		if isAlreadyDelivered(err) {
+			logger.Info("duplicate status event — already mirrored")
+			return nil
+		}
+		logger.Error("insert delivery", "error", err)
+		return err
+	}
+
+	if err := fsWriter.WriteSessionState(ctx, fswriter.SessionState{
+		SessionID:            sessionIDStr,
+		TherapistFirebaseUID: session.TherapistFirebaseUID,
+		Status:               fsStatus,
+		ProgressPercent:      progressForStatus(fsStatus),
+	}); err != nil {
+		logger.Warn("firestore mirror failed", "error", err)
+	}
+
+	logger.Info("status mirror written", "status", fsStatus)
+	return nil
+}
+
 // handleStatusMirror is the shared body for the silent status-update
 // handlers. Idempotency: we still INSERT a row in notification_deliveries
 // (notification_type = "status_<topic>") so duplicate Pub/Sub messages
@@ -433,6 +501,29 @@ func parseTranscriptCompleted(b []byte) (string, error) {
 		return "", fmt.Errorf("transcript.completed missing session_id")
 	}
 	return ev.SessionID, nil
+}
+
+// parseSessionStatusChanged extracts session_id + status and validates
+// the status against the Firestore vocabulary this consumer understands.
+// An unknown status is rejected (→ retried, then DLQ) rather than
+// silently writing garbage into session_states.
+func parseSessionStatusChanged(b []byte) (sessionID, status string, err error) {
+	var ev struct {
+		SessionID string `json:"session_id"`
+		Status    string `json:"status"`
+	}
+	if uerr := json.Unmarshal(b, &ev); uerr != nil {
+		return "", "", uerr
+	}
+	if ev.SessionID == "" {
+		return "", "", fmt.Errorf("session.status_changed missing session_id")
+	}
+	switch ev.Status {
+	case "transcribing", "failed", "cancelled":
+		return ev.SessionID, ev.Status, nil
+	default:
+		return "", "", fmt.Errorf("session.status_changed unknown status %q", ev.Status)
+	}
 }
 
 func parseAudioUploaded(b []byte) (string, error) {
