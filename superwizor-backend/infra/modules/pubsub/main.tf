@@ -251,8 +251,12 @@ resource "google_pubsub_subscription" "audio_object_finalized_sub" {
   }
 
   dead_letter_policy {
-    dead_letter_topic     = google_pubsub_topic.audio_object_finalized_dlq.id
-    max_delivery_attempts = 5
+    dead_letter_topic = google_pubsub_topic.audio_object_finalized_dlq.id
+    # docs/21 WS0A: 100 attempts at 10–600s backoff ≈ ~24h envelope,
+    # matching the Eventarc subs (wire_dlq.sh). Was 5 (~minutes), which
+    # gave up on a Chirp/transcripts-raw transient long before it could
+    # self-heal. The DLQ give-up reaper surfaces FAILED only after this.
+    max_delivery_attempts = 100
   }
 }
 
