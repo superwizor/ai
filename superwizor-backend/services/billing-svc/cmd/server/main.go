@@ -28,7 +28,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -200,13 +199,19 @@ func main() {
 		"https://superwizor.ai,https://app.superwizor.ai,http://localhost:3000,http://localhost:8080")
 	corsMW := cors.New(cors.FromEnv(corsOrigins))
 
-	// h2c (HTTP/2 cleartext) — Cloud Run terminuje TLS przed kontenerem,
-	// więc po naszej stronie ruch jest HTTP/2 plaintext.
-	h2s := &http2.Server{}
+	// HTTP/2 cleartext (h2c) — Cloud Run terminuje TLS przed kontenerem,
+	// więc po naszej stronie ruch jest HTTP/2 plaintext. Używamy
+	// http2.ConfigureServer (Go 1.23+) zamiast przestarzałego
+	// golang.org/x/net/http2/h2c wrapper.
 	httpSrv := &nethttp.Server{
 		Addr:              ":" + port,
-		Handler:           h2c.NewHandler(corsMW(mixedHandler), h2s),
+		Handler:           corsMW(mixedHandler),
 		ReadHeaderTimeout: 10 * time.Second,
+	}
+	h2s := &http2.Server{}
+	if err := http2.ConfigureServer(httpSrv, h2s); err != nil {
+		slog.Error("http2 configure failed", "error", err)
+		os.Exit(1)
 	}
 
 	var wg sync.WaitGroup
