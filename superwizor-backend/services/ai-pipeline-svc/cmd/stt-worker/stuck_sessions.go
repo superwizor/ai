@@ -83,6 +83,10 @@ func reapStuckSessions(ctx context.Context, logger *slog.Logger) error {
 			logger.Warn("reap_stuck_sessions: publish session.status_changed(failed) failed",
 				"session_id", id, "error", perr)
 		}
+		// Give up on the reservation too. By this deadline the 26h TTL
+		// has usually already expired it (reserve+26h ≤ status+26h), so
+		// this is a best-effort, idempotent backstop for the release.
+		releaseBillingCredit(ctx, id, "PIPELINE_GIVEUP")
 		logger.Warn("reap_stuck_sessions: session stuck past deadline → FAILED",
 			"session_id", id, "deadline_hours", hours)
 	}

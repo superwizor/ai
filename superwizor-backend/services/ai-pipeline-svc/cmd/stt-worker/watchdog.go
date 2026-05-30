@@ -131,6 +131,7 @@ func rescueOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) erro
 		if perr := publishSessionStatusChanged(ctx, op.SessionID.String(), "failed"); perr != nil {
 			logger.Warn("publish session.status_changed(failed) failed", "error", perr)
 		}
+		releaseBillingCredit(ctx, op.SessionID.String(), "STT_FAILED")
 		_, _ = markChunkFinalized(ctx, op.SessionID, op.ChunkIndex)
 		logger.Error("Chirp operation completed with terminal ERROR; session FAILED",
 			"error_truncated", msg)
@@ -171,6 +172,7 @@ func rescueOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) erro
 			if perr := publishSessionStatusChanged(ctx, op.SessionID.String(), "failed"); perr != nil {
 				logger.Warn("publish session.status_changed(failed) failed", "error", perr)
 			}
+			releaseBillingCredit(ctx, op.SessionID.String(), "STT_FAILED")
 			_, _ = markChunkFinalized(ctx, op.SessionID, op.ChunkIndex)
 			logger.Error("Chirp per-file error; session FAILED",
 				"error_code", fr.Error.Code,

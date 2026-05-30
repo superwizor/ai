@@ -796,6 +796,7 @@ func handleSTTError(ctx context.Context, logger *slog.Logger, sessionID string, 
 		if perr := publishSessionStatusChanged(ctx, sessionID, "failed"); perr != nil {
 			logger.Warn("stt: publish session.status_changed(failed) failed", "error", perr)
 		}
+		releaseBillingCredit(ctx, sessionID, "STT_FAILED")
 		logger.Error("stt: terminal failure — FAILED + acking pubsub, no retry",
 			"error", err,
 			"hint", "check audio codec (Chirp 3 accepts FLAC/WAV/OGG/AMR; M4A must be transcoded via ingestion-svc.ConvertAudio before CompleteAudioUpload)")
@@ -882,6 +883,44 @@ func commitBillingUsageAsync(sessionIDStr string) {
 		return
 	}
 	logger.Info("billing commit: tokens committed", "duration_seconds", *duration)
+}
+
+// releaseBillingCredit releases the held reservation for a session that
+// failed terminally (or is being given up on), so the token returns to
+// the org promptly instead of waiting out the 26h reservation TTL
+// (docs/21 WS0E/WS2A). Synchronous + best-effort: must run before the
+// handler returns (Cloud Functions may freeze the instance after), so we
+// don't background it; resolves org_id and fires ReleaseCredit, logging
+// on failure. Idempotent on the billing side (no-op if already released
+// / expired).
+func releaseBillingCredit(ctx context.Context, sessionIDStr, reason string) {
+	if billingClient == nil || dbPool == nil {
+		return
+	}
+	logger := slog.With("function", "stt-worker", "session_id", sessionIDStr)
+
+	var orgID string
+	err := dbPool.QueryRow(ctx, `
+		SELECT COALESCE(u.organization_id::text, '')
+		FROM sessions s
+		JOIN users u ON u.id = s.therapist_id
+		WHERE s.id = $1`, sessionIDStr).Scan(&orgID)
+	if err != nil {
+		logger.Warn("billing release: lookup failed", "error", err)
+		return
+	}
+	if orgID == "" {
+		return
+	}
+	if _, rerr := billingClient.ReleaseCredit(ctx, &billingv1.ReleaseCreditRequest{
+		SessionId:      sessionIDStr,
+		OrganizationId: orgID,
+		Reason:         reason,
+	}); rerr != nil {
+		logger.Warn("billing release: ReleaseCredit failed (fail-soft)", "error", rerr)
+		return
+	}
+	logger.Info("billing release: token released", "reason", reason)
 }
 
 func updateSessionStatus(ctx context.Context, sessionID, status string) error {
