@@ -1,7 +1,21 @@
 # 21 — Session Status Propagation & Failure Semantics
 
-**Status:** Design (approved 2026-05-30) — not yet implemented.
+**Status:** Implemented on `feat/session-status-propagation` (2026-05-30),
+local build + tests + `terragrunt validate` green; **not yet deployed**.
 **Branch:** `feat/session-status-propagation`
+
+> **Implementation note (WS2A consolidation):** the literal
+> `pipeline-dlq-reaper` Cloud Function (pull the DLQ reader subscriptions
+> to fail sessions the instant retries exhaust, ~24h) was **not** built as
+> a separate function. Its outcome — *FAILED + publish + release token on
+> give-up* — is delivered by the **stt-watchdog time-backstop**
+> (`reapStuckSessions`, ~26h) plus the **26h reservation TTL** (§3.7), plus
+> **prompt token release on terminal STT failures** (`releaseBillingCredit`
+> in handleSTTError / watchdog). Net effect is the same; the only
+> difference is ~2h of detection latency for the rare retries-exhausted
+> case, traded for far less machinery (no new CF/Eventarc, no billing
+> client in notification-worker). llm-worker terminal content-filter
+> failures release via the TTL (no billing client there).
 **Supersedes the relevant parts of:** the `implementation_plan.md` audit of `SessionStatusScreen`
 (the "mirror `failed` to Firestore" proposal) and ADR-IMPL-012's "Faza 4" gap in
 [`08_FAZA_3_NOTIFICATIONS.md`](./08_FAZA_3_NOTIFICATIONS.md).
