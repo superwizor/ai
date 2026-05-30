@@ -142,6 +142,14 @@ func (a *ConnectAdapter) DeleteSession(ctx context.Context, req *connect.Request
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) CancelSession(ctx context.Context, req *connect.Request[clinicalv1.CancelSessionRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.CancelSession(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) RateReport(ctx context.Context, req *connect.Request[clinicalv1.RateReportRequest]) (*connect.Response[clinicalv1.RateReportResponse], error) {
 	resp, err := a.s.RateReport(ctx, req.Msg)
 	if err != nil {

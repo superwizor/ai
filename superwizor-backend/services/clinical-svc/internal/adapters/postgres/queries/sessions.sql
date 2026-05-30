@@ -127,8 +127,15 @@ SELECT * FROM sessions
 WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: ListSessionsByPatient :many
+-- CANCELLED_BY_USER sessions are hidden from the kartoteka list — the
+-- therapist explicitly cancelled them (e.g. a quota-blocked upload), so
+-- they should not clutter the patient's session history. The row is
+-- kept in the table for audit; it just never surfaces here. (Hard
+-- deletes use deleted_at; cancellations use status.)
 SELECT * FROM sessions
-WHERE patient_file_id = $1 AND deleted_at IS NULL
+WHERE patient_file_id = $1
+  AND deleted_at IS NULL
+  AND status <> 'CANCELLED_BY_USER'
 ORDER BY session_number DESC;
 
 -- name: UpdateSessionStatus :exec
