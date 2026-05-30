@@ -155,8 +155,9 @@ func (t *fakeTx) Rollback(ctx context.Context) error {
 // (when set) is returned for every publish, lets us prove the handler
 // keeps going on pubsub failures.
 type fakePublisher struct {
-	calls      []publisherCall
-	publishErr error
+	calls         []publisherCall
+	statusChanged []publisherCall
+	publishErr    error
 }
 
 type publisherCall struct {
@@ -165,6 +166,11 @@ type publisherCall struct {
 
 func (p *fakePublisher) PublishSessionDeleted(ctx context.Context, sessionID, therapistID string) error {
 	p.calls = append(p.calls, publisherCall{sessionID: sessionID, therapistID: therapistID})
+	return p.publishErr
+}
+
+func (p *fakePublisher) PublishSessionStatusChanged(ctx context.Context, sessionID, statusStr string) error {
+	p.statusChanged = append(p.statusChanged, publisherCall{sessionID: sessionID, therapistID: statusStr})
 	return p.publishErr
 }
 

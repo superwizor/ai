@@ -364,6 +364,16 @@ func (s *Server) CancelSession(ctx context.Context, req *clinicalv1.CancelSessio
 		return nil, status.Errorf(codes.Internal, "cancel session: %v", err)
 	}
 
+	// Mirror the cancellation to Firestore via session.status_changed
+	// (docs/21) so a session_status_screen still watching this session
+	// reflects the terminal state. Best-effort.
+	if s.pubsub != nil {
+		if perr := s.pubsub.PublishSessionStatusChanged(ctx, sessionID.String(), "cancelled"); perr != nil {
+			slog.Warn("cancel session: publish session.status_changed(cancelled) failed",
+				"session_id", sessionID, "error", perr)
+		}
+	}
+
 	// Best-effort release of the held token reservation. Logged on
 	// failure; never unwinds the cancel (the status flip is the
 	// contract, and the reservation TTL-expires as a backstop).

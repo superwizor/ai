@@ -33,6 +33,9 @@ import (
 // without Pub/Sub creds).
 type SessionEventPublisher interface {
 	PublishSessionDeleted(ctx context.Context, sessionID, therapistID string) error
+	// PublishSessionStatusChanged mirrors a lifecycle status to Firestore
+	// via session.status_changed (docs/21). Used for "cancelled".
+	PublishSessionStatusChanged(ctx context.Context, sessionID, status string) error
 }
 
 // TxOpener abstracts "start a transaction, give me a Querier scoped to
