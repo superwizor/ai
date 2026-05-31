@@ -464,8 +464,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         color: _kWhite08,
         border: Border.all(color: _kWhite15, width: 1.5),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Image.asset('assets/images/PNG/v02_supervisor_logo_gradient.png', fit: BoxFit.cover),
+      child: ClipOval(
+        child: Image.asset(
+          'assets/images/PNG/v02_supervisor_logo_gradient.png',
+          fit: BoxFit.cover,
+          width: 88,
+          height: 88,
+        ),
+      ),
     );
   }
 
