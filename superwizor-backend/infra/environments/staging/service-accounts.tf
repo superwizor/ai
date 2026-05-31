@@ -163,8 +163,9 @@ resource "google_project_iam_member" "notification_fcm" {
   member  = "serviceAccount:${google_service_account.notification_svc.email}"
 }
 
-# Eventarc trigger receiver — Cloud Functions Gen2 workers (3 of them in
-# Sprint 3.5: on-uploaded, on-transcribed, on-report)
+# Eventarc trigger receiver — Cloud Functions Gen2 notification workers
+# (post docs/21 Faza-4: on-status + on-deleted; the three per-topic workers
+# on-uploaded/-transcribed/-report were consolidated into on-status)
 resource "google_project_iam_member" "notification_worker_eventarc" {
   project = var.project_id
   role    = "roles/eventarc.eventReceiver"

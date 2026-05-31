@@ -55,11 +55,13 @@ variable "transcript_completed_dlq_topic" {
 # to its own Eventarc Pub/Sub trigger. docs/21 Faza-4 retired the two pure
 # status mirrors (on-uploaded, on-transcribed) into on-status:
 #   - on-status   → session.status_changed → ProcessSessionStatusChanged
-#                   (single status mirror: uploaded/transcribing/analyzing/
-#                    done/failed/cancelled)
-#   - on-report   → report.generated       → ProcessReportGenerated
-#                   (NOT a pure mirror — FCM "report ready" push + inbox)
-#   - on-deleted  → session.deleted         → ProcessSessionDeleted (erase)
+#                   (whole lifecycle mirror — uploaded/transcribing/analyzing/
+#                    done/failed/cancelled — AND, on "done", the report-ready
+#                    FCM push + inbox doc via handleReportReady)
+#   - on-deleted  → session.deleted         → ProcessSessionDeleted (RODO erase)
+#
+# Retired (docs/21 Faza-4): on-uploaded, on-transcribed (pure mirrors) and
+# on-report (its FCM push folded into on-status's "done" branch).
 # ----------------------------------------------------------------------------
 
 variable "notification_worker_source_dir" {
@@ -70,11 +72,6 @@ variable "notification_worker_source_dir" {
 variable "notification_worker_sa_email" {
   type        = string
   description = "Email of the notification-svc service account (shared by Cloud Run server + 3 worker functions)"
-}
-
-variable "report_generated_topic" {
-  type        = string
-  description = "Pub/Sub topic ID for report.generated (final fan-out → FCM push + Firestore done)"
 }
 
 variable "session_deleted_topic" {

@@ -57,32 +57,6 @@ func (p *Publisher) PublishTranscriptCompleted(ctx context.Context, sessionID, t
 	return nil
 }
 
-type ReportGeneratedPayload struct {
-	SessionID string `json:"sessionId"`
-	ReportID  string `json:"reportId"`
-}
-
-func (p *Publisher) PublishReportGenerated(ctx context.Context, sessionID, reportID string) error {
-	topic := p.client.Publisher("report.generated")
-	defer topic.Stop()
-
-	payload := ReportGeneratedPayload{
-		SessionID: sessionID,
-		ReportID:  reportID,
-	}
-
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal report generated payload: %v", err)
-	}
-
-	res := topic.Publish(ctx, &pubsub.Message{
-		Data: data,
-	})
-
-	if _, err := res.Get(ctx); err != nil {
-		return fmt.Errorf("failed to publish report.generated message: %v", err)
-	}
-
-	return nil
-}
+// NOTE: report.generated is retired (docs/21 Faza-4). llm-worker now
+// publishes the terminal-success transition to session.status_changed
+// ("done"); notification-worker-on-status owns the report-ready fan-out.

@@ -385,7 +385,11 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		logger.Warn("status", "error", err)
 	}
 
-	_ = publishReportGenerated(ctx, ev.SessionID, reportID)
+	// Publish the terminal-success transition. notification-worker-on-status
+	// consumes "done" and owns the report-ready fan-out (Firestore mirror +
+	// FCM "report ready" push + inbox doc) — docs/21 Faza-4. The old
+	// report.generated topic + notification-worker-on-report are retired.
+	_ = publishSessionStatusChanged(ctx, ev.SessionID, "done")
 
 	logger.Info("done",
 		"report_id", reportID,
@@ -2075,31 +2079,10 @@ func updateSessionStatus(ctx context.Context, sessionID, status string) error {
 	return err
 }
 
-func publishReportGenerated(ctx context.Context, sessionID, reportID string) error {
-	if pubsubClient == nil {
-		return nil
-	}
-	topic := pubsubClient.Publisher("report.generated")
-	defer topic.Stop()
-
-	payload, _ := json.Marshal(map[string]string{
-		"session_id": sessionID,
-		"report_id":  reportID,
-	})
-	res := topic.Publish(ctx, &pubsub.Message{Data: payload})
-	_, err := res.Get(ctx)
-	return err
-	// NOTE: "done" is NOT published to session.status_changed.
-	// notification-worker-on-report consumes report.generated and owns the
-	// "done" path (Firestore mirror + FCM "report ready" push + inbox doc)
-	// — it can't be retired like the pure mirrors (on-uploaded/-transcribed)
-	// because of the push. on-status handles uploaded/transcribing/
-	// analyzing/failed/cancelled (docs/21 Faza-4, partial).
-}
-
-// publishSessionStatusChanged mirrors a terminal failure to the
-// `session.status_changed` topic (docs/21). [status] is the Firestore
-// vocabulary ("failed"). Only call for TERMINAL failures — never for a
+// publishSessionStatusChanged mirrors a terminal transition to the unified
+// `session.status_changed` topic (docs/21 Faza-4). [status] is the Firestore
+// vocabulary — llm-worker emits "done" (terminal success → report-ready
+// fan-out on the consumer) and "failed" (terminal error). NEVER call for a
 // transient error that Pub/Sub will retry. Best-effort.
 func publishSessionStatusChanged(ctx context.Context, sessionID, status string) error {
 	if pubsubClient == nil {

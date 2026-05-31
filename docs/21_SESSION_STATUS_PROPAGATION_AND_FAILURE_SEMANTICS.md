@@ -1,7 +1,15 @@
 # 21 — Session Status Propagation & Failure Semantics
 
-**Status:** Implemented on `feat/session-status-propagation` (2026-05-30),
-local build + tests + `terragrunt validate` green; **not yet deployed**.
+**Status:** Implemented + deployed on `feat/session-status-propagation`
+(2026-05-30/31). **Faza-4 full consolidation landed (2026-05-31):** all four
+former per-topic notification functions are collapsed into **one**
+`notification-worker-on-status` consuming the unified `session.status_changed`
+topic. `on-uploaded`/`on-transcribed` (pure mirrors) were retired first; then
+`on-report` — which is *not* a pure mirror (it sends the "report ready" FCM
+push + writes the inbox doc) — was folded into the `done` branch of
+`ProcessSessionStatusChanged` (`handleReportReady`). `report.generated` (topic
++ DLQ + llm-worker publisher) is fully torn down; llm-worker now publishes
+`session.status_changed("done")`. Only `on-status` + `on-deleted` remain.
 **Branch:** `feat/session-status-propagation`
 
 > **Implementation note (WS2A consolidation):** the literal
@@ -367,9 +375,14 @@ Legend: **FS** = Firestore `session_states` value the user effectively sees.
 
 ## 6. Open questions / future
 
-- **Full consolidation:** long‑term, migrate `uploaded/analyzing/done` onto the
-  same `session.status_changed` topic and retire the 4 per‑event functions
-  (ADR‑IMPL‑012 Faza 4). Out of scope here; tracked as a follow‑up.
+- **Full consolidation:** ✅ **DONE (2026-05-31).** `uploaded/transcribing/
+  analyzing/done/failed/cancelled` all flow through `session.status_changed`
+  into a single `notification-worker-on-status`. The four per‑event functions
+  are retired — `on-uploaded`/`on-transcribed` as pure mirrors, and `on-report`
+  by folding its report‑ready FCM push + inbox doc into the `done` branch
+  (`handleReportReady`). `report.generated` topic/DLQ/publisher torn down.
+  This closes the ADR‑IMPL‑012 Faza‑4 gap. Only `on-status` + `on-deleted`
+  (RODO erase — a distinct action, not a status transition) remain.
 - **Per‑stage retry budgets:** a 24h flat window is generous for STT but maybe
   long for LLM; could differentiate later if cost/latency dictates.
 - **DLQ replay tooling:** an operator command to re‑inject a DLQ'd message after
@@ -384,6 +397,7 @@ Legend: **FS** = Firestore `session_states` value the user effectively sees.
 | 2026-05-30 | Transient errors retry up to ~24h, only then FAIL + notify | Post‑Option‑F the local audio is gone; a premature FAILED on a self‑healing blip permanently loses recoverable work. |
 | 2026-05-30 | Unified `session.status_changed` topic + one function | Stops per‑status topic/function proliferation; ADR‑IMPL‑012 Faza 4 direction. |
 | 2026-05-30 | Give‑up = DLQ consumer + 24–26h time backstop | Precise (DLQ) + resilient to lost messages (sweep). |
+| 2026-05-31 | Faza‑4 full consolidation: fold `on-report` into `on-status` `done` branch; retire `report.generated` | `ProcessReportGenerated` only logged `report_id`; the FCM push + inbox both key off `session_id`, so the unified event carries everything. One function, one topic, one idempotency story — the report‑ready push lives in `handleReportReady`, called when `status==done`. |
 | 2026-05-30 | Terminal errors fail fast | No point making a user wait 24h for a bad‑codec error they could re‑record now. |
 | 2026-05-30 | Extend reservation TTL to ≥24h | Reconcile billing with the retry window so a late success can commit. |
 | 2026-05-30 | Client timeout informs only, never fails | Backend is the single source of truth for terminal state. |

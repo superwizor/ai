@@ -4,7 +4,7 @@
 #
 # Three alert policies:
 #   1. firestore-sync.dlq has undelivered messages         (best-effort visibility)
-#   2. notification-worker-on-report error rate elevated   (FCM bugs / Firebase outage)
+#   2. notification-worker-on-status error rate elevated   (FCM bugs / Firebase outage)
 #   3. notification-svc Cloud Run error rate elevated      (gRPC handler bugs)
 #
 # Plus a Cloud Logging dashboard with three widgets that visualise:
@@ -94,23 +94,27 @@ resource "google_monitoring_alert_policy" "firestore_sync_dlq_nonempty" {
 }
 
 # ---------------------------------------------------------------------------
-# Alert 2: notification-worker-on-report execution errors elevated.
+# Alert 2: notification-worker-on-status execution errors elevated.
 # ---------------------------------------------------------------------------
-# Rationale: this is the only worker that calls FCM. Elevated error rate =
-# FCM API outage, Firebase project misconfig, or an actual code bug. We
-# care about the on-report function specifically because the other two
-# (on-uploaded, on-transcribed) are silent status mirrors and can fail with
-# less user impact (clinical-svc poll covers them).
-resource "google_monitoring_alert_policy" "notification_worker_on_report_errors" {
-  display_name = "[notif] notification-worker-on-report error rate > 10%"
+# Rationale: after the docs/21 Faza-4 consolidation, on-status is the single
+# status-mirror consumer AND the FCM-sending function — on its "done" branch
+# it fires the "report ready" push (handleReportReady, formerly on-report).
+# Elevated error rate = FCM API outage, Firebase project misconfig, DB
+# trouble, or a code bug. The retired pure mirrors (on-uploaded/-transcribed)
+# folded in here too; their failures are lower-impact (clinical-svc poll
+# covers status) but the push failures are not, so we alert on the whole
+# function.
+resource "google_monitoring_alert_policy" "notification_worker_on_status_errors" {
+  display_name = "[notif] notification-worker-on-status error rate > 10%"
   project      = var.project_id
   combiner     = "OR"
 
   documentation {
     content   = <<-EOT
-      Cloud Function `notification-worker-on-report` is failing > 10% of
-      invocations over a 15 min window. This is the FCM-sending function;
-      its failure means therapists are not getting "Report ready" pushes.
+      Cloud Function `notification-worker-on-status` is failing > 10% of
+      invocations over a 15 min window. This is the status-mirror + FCM
+      function; its failure means therapists are not getting "Report ready"
+      pushes and/or the Firestore status stepper stops advancing.
 
       Common causes:
       - Firebase Admin SDK init failure → check GCP_PROJECT_ID env on the function
@@ -119,7 +123,7 @@ resource "google_monitoring_alert_policy" "notification_worker_on_report_errors"
       - Schema mismatch on notification_deliveries idempotency_key
 
       Logs: `gcloud logging read \
-        'resource.labels.service_name="notification-worker-on-report" AND severity>=ERROR' \
+        'resource.labels.service_name="notification-worker-on-status" AND severity>=ERROR' \
         --project=${var.project_id} --limit=20`
     EOT
     mime_type = "text/markdown"
@@ -134,7 +138,7 @@ resource "google_monitoring_alert_policy" "notification_worker_on_report_errors"
       query    = <<-EOQ
         fetch cloud_function
         | metric 'cloudfunctions.googleapis.com/function/execution_count'
-        | filter (resource.function_name == 'notification-worker-on-report')
+        | filter (resource.function_name == 'notification-worker-on-status')
         | align rate(5m)
         | every 1m
         | group_by [metric.status],
@@ -223,7 +227,7 @@ resource "google_monitoring_alert_policy" "notification_svc_5xx" {
 # ---------------------------------------------------------------------------
 # Three widgets sketching the operational picture:
 #   1. Per-status session timeline       (LLM/STT worker logs)
-#   2. FCM SendEachForMulticast outcomes (notification-worker-on-report logs)
+#   2. FCM SendEachForMulticast outcomes (notification-worker-on-status logs)
 #   3. Token invalidations               (notification-worker logs, jsonPayload.msg)
 #
 # The dashboard is JSON because the Terraform resource takes the GCP raw
@@ -246,7 +250,7 @@ resource "google_monitoring_dashboard" "notification_pipeline" {
               filter = join("\n", [
                 "resource.type=\"cloud_function\"",
                 "resource.labels.function_name=~\"notification-worker-.*\"",
-                "jsonPayload.msg=~\"status mirror written|report.generated handled\"",
+                "jsonPayload.msg=~\"status mirror written|report-ready .done. handled\"",
               ])
               resourceNames = ["projects/${var.project_id}"]
             }
@@ -257,14 +261,14 @@ resource "google_monitoring_dashboard" "notification_pipeline" {
           width  = 6
           height = 4
           widget = {
-            title = "notification-worker-on-report executions by status"
+            title = "notification-worker-on-status executions by status"
             xyChart = {
               dataSets = [{
                 timeSeriesQuery = {
                   timeSeriesFilter = {
                     filter = join(" AND ", [
                       "metric.type=\"cloudfunctions.googleapis.com/function/execution_count\"",
-                      "resource.label.function_name=\"notification-worker-on-report\"",
+                      "resource.label.function_name=\"notification-worker-on-status\"",
                     ])
                     aggregation = {
                       alignmentPeriod    = "60s"
@@ -289,7 +293,7 @@ resource "google_monitoring_dashboard" "notification_pipeline" {
             logsPanel = {
               filter = join("\n", [
                 "resource.type=\"cloud_function\"",
-                "resource.labels.function_name=\"notification-worker-on-report\"",
+                "resource.labels.function_name=\"notification-worker-on-status\"",
                 "jsonPayload.msg=\"invalidating fcm token\"",
               ])
               resourceNames = ["projects/${var.project_id}"]
@@ -331,7 +335,7 @@ resource "google_monitoring_dashboard" "notification_pipeline" {
 output "alert_policy_ids" {
   value = [
     google_monitoring_alert_policy.firestore_sync_dlq_nonempty.id,
-    google_monitoring_alert_policy.notification_worker_on_report_errors.id,
+    google_monitoring_alert_policy.notification_worker_on_status_errors.id,
     google_monitoring_alert_policy.notification_svc_5xx.id,
   ]
   description = "All three alert policy IDs — useful to pin on dashboards or runbooks."

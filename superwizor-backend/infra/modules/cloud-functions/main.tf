@@ -599,60 +599,12 @@ resource "google_cloudfunctions2_function" "notification_worker_on_status" {
 # for the rationale; the billing.outbox topic + DLQ are torn down by
 # modules/pubsub.
 
-# on-report: NOT a pure status mirror — it sends the "report ready" FCM
-# push + writes the inbox doc (its done Firestore mirror is now redundant
-# with on-status but kept idempotent). Stays for the push; only the pure
-# mirrors on-uploaded/-transcribed were retired (docs/21 Faza-4, partial).
-# Slightly more memory: Firebase Admin SDK + Firestore both load on first
-# invocation.
-resource "google_cloudfunctions2_function" "notification_worker_on_report" {
-  name        = "notification-worker-on-report"
-  location    = var.region
-  project     = var.project_id
-  description = "report.generated → FCM 'report ready' push + Firestore done + inbox doc"
-
-  build_config {
-    runtime     = "go126"
-    entry_point = "ProcessReportGenerated"
-    source {
-      storage_source {
-        bucket = google_storage_bucket.functions_source.name
-        object = google_storage_bucket_object.notification_worker_zip.name
-      }
-    }
-  }
-
-  service_config {
-    max_instance_count    = 5
-    min_instance_count    = 0
-    available_memory      = "512Mi"
-    available_cpu         = "1"
-    timeout_seconds       = 120
-    service_account_email = var.notification_worker_sa_email
-
-    environment_variables = {
-      GCP_PROJECT_ID = var.project_id
-    }
-
-    secret_environment_variables {
-      key        = "DATABASE_URL"
-      project_id = var.project_id
-      secret     = var.db_url_secret_id
-      version    = "latest"
-    }
-
-    vpc_connector                 = var.vpc_connector_id
-    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
-  }
-
-  event_trigger {
-    trigger_region        = var.region
-    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
-    pubsub_topic          = var.report_generated_topic
-    retry_policy          = "RETRY_POLICY_RETRY"
-    service_account_email = var.notification_worker_sa_email
-  }
-}
+# on-report RETIRED (docs/21 Faza-4 consolidation): the report-ready FCM
+# push + inbox doc it owned moved into ProcessSessionStatusChanged's "done"
+# branch (handleReportReady). llm-worker now publishes the terminal-success
+# transition to session.status_changed instead of report.generated, so the
+# single on-status function carries the whole lifecycle including the push.
+# The report.generated topic + its DLQ are torn down in modules/pubsub.
 
 # 4) on-deleted: hard-delete cleanup — wipes session_states/{id} and
 # inbox notifications referencing the gone session. Triggered by
@@ -714,14 +666,6 @@ resource "google_cloud_run_service_iam_member" "notification_on_status_invoker" 
   location = var.region
   project  = var.project_id
   service  = google_cloudfunctions2_function.notification_worker_on_status.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${var.notification_worker_sa_email}"
-}
-
-resource "google_cloud_run_service_iam_member" "notification_on_report_invoker" {
-  location = var.region
-  project  = var.project_id
-  service  = google_cloudfunctions2_function.notification_worker_on_report.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${var.notification_worker_sa_email}"
 }

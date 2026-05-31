@@ -84,7 +84,6 @@ module "cloud_functions" {
   transcripts_raw_bucket_name    = module.storage.transcripts_raw_bucket_name
   audio_uploaded_topic           = module.pubsub.audio_uploaded_topic
   transcript_completed_topic     = module.pubsub.transcript_completed_topic
-  report_generated_topic         = module.pubsub.report_generated_topic
   session_deleted_topic          = module.pubsub.session_deleted_topic
   session_status_changed_topic   = module.pubsub.session_status_changed_topic
   billing_svc_url                = var.billing_svc_url

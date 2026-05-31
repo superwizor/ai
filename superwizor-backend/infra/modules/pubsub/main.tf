@@ -51,10 +51,10 @@ resource "google_pubsub_topic" "transcript_completed" {
   project = var.project_id
 }
 
-resource "google_pubsub_topic" "report_generated" {
-  name    = "report.generated"
-  project = var.project_id
-}
+# report.generated RETIRED (docs/21 Faza-4): llm-worker now publishes the
+# terminal-success transition to session.status_changed ("done") and
+# notification-worker-on-status owns the report-ready fan-out. The topic,
+# its DLQ, the DLQ reader, and the llm-worker publisher binding are all gone.
 
 # session.deleted — emitted by clinical-svc.DeleteSession and (per-session)
 # by clinical-svc.DeletePatientFile. notification-svc-on-deleted handler
@@ -97,16 +97,6 @@ resource "google_pubsub_topic" "session_deleted_dlq" {
   project = var.project_id
 }
 
-# DLQ for the report.generated pipeline (notification-worker-on-report).
-# Mirror of audio_uploaded_dlq / transcript_completed_dlq — every main
-# topic that has an Eventarc consumer gets a paired DLQ so the
-# wire_dlq.sh post-apply script can bind it via
-# `gcloud pubsub subscriptions update`.
-resource "google_pubsub_topic" "report_generated_dlq" {
-  name    = "report.generated.dlq"
-  project = var.project_id
-}
-
 # ============================================
 # DLQ publisher bindings
 # ============================================
@@ -132,13 +122,6 @@ resource "google_pubsub_topic_iam_member" "pubsub_agent_audio_dlq_publisher" {
 resource "google_pubsub_topic_iam_member" "pubsub_agent_transcript_dlq_publisher" {
   project = var.project_id
   topic   = google_pubsub_topic.transcript_completed_dlq.name
-  role    = "roles/pubsub.publisher"
-  member  = local.pubsub_service_agent
-}
-
-resource "google_pubsub_topic_iam_member" "pubsub_agent_report_dlq_publisher" {
-  project = var.project_id
-  topic   = google_pubsub_topic.report_generated_dlq.name
   role    = "roles/pubsub.publisher"
   member  = local.pubsub_service_agent
 }
@@ -184,16 +167,6 @@ resource "google_pubsub_subscription" "transcript_completed_dlq_reader" {
   name    = "transcript.completed.dlq.reader"
   project = var.project_id
   topic   = google_pubsub_topic.transcript_completed_dlq.id
-
-  ack_deadline_seconds       = 60
-  message_retention_duration = "604800s"
-  expiration_policy { ttl = "" }
-}
-
-resource "google_pubsub_subscription" "report_generated_dlq_reader" {
-  name    = "report.generated.dlq.reader"
-  project = var.project_id
-  topic   = google_pubsub_topic.report_generated_dlq.id
 
   ack_deadline_seconds       = 60
   message_retention_duration = "604800s"
@@ -344,14 +317,6 @@ resource "google_pubsub_topic_iam_member" "stt_publisher" {
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:stt-worker@${var.project_id}.iam.gserviceaccount.com"
 }
-# IAM: llm-worker może publishować report.generated
-resource "google_pubsub_topic_iam_member" "llm_publisher" {
-  project = var.project_id
-  topic   = google_pubsub_topic.report_generated.name
-  role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:llm-worker@${var.project_id}.iam.gserviceaccount.com"
-}
-
 # IAM: clinical-svc may publish session.deleted (one event per
 # DeleteSession + per session under DeletePatientFile fan-out).
 # Service account convention: clinical-svc@<project>.iam — created
@@ -417,13 +382,11 @@ output "audio_object_finalized_topic_name" { value = google_pubsub_topic.audio_o
 output "audio_object_finalized_subscription_id" { value = google_pubsub_subscription.audio_object_finalized_sub.id }
 output "audio_object_finalized_subscription_name" { value = google_pubsub_subscription.audio_object_finalized_sub.name }
 output "transcript_completed_topic" { value = google_pubsub_topic.transcript_completed.id }
-output "report_generated_topic" { value = google_pubsub_topic.report_generated.id }
 output "session_deleted_topic" { value = google_pubsub_topic.session_deleted.id }
 output "session_status_changed_topic" { value = google_pubsub_topic.session_status_changed.id }
 output "session_status_changed_dlq_topic" { value = google_pubsub_topic.session_status_changed_dlq.id }
 output "audio_uploaded_dlq_topic" { value = google_pubsub_topic.audio_uploaded_dlq.id }
 output "transcript_completed_dlq_topic" { value = google_pubsub_topic.transcript_completed_dlq.id }
-output "report_generated_dlq_topic" { value = google_pubsub_topic.report_generated_dlq.id }
 output "session_deleted_dlq_topic" { value = google_pubsub_topic.session_deleted_dlq.id }
 output "firestore_sync_dlq_topic" { value = google_pubsub_topic.firestore_sync_dlq.id }
 output "firestore_sync_dlq_subscription" { value = google_pubsub_subscription.firestore_sync_dlq_reader.id }
