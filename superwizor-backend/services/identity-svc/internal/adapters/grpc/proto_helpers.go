@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
@@ -97,6 +96,7 @@ func fromProtoRole(r identityv1.UserRole) (db.UserRole, bool) {
 	return "", false
 }
 
+
 func toProtoInvitation(inv db.Invitation) *identityv1.Invitation {
 	out := &identityv1.Invitation{
 		Id:             inv.ID.String(),
@@ -110,13 +110,4 @@ func toProtoInvitation(inv db.Invitation) *identityv1.Invitation {
 		out.AcceptedAt = timestamppb.New(inv.AcceptedAt.Time)
 	}
 	return out
-}
-
-// pgUUIDFromString is the inverse of uuid.UUID(pgtype.UUID{}.Bytes).
-func pgUUIDFromString(s string) (pgtype.UUID, error) {
-	u, err := uuid.Parse(s)
-	if err != nil {
-		return pgtype.UUID{}, err
-	}
-	return pgtype.UUID{Bytes: u, Valid: true}, nil
 }

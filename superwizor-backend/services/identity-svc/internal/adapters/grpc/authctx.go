@@ -14,9 +14,9 @@ import (
 )
 
 // callerContext is the resolved caller identity stored on ctx via
-// withCaller / fetched via callerFromContext. Every authenticated
-// handler reads it before any role gate; unauthenticated handlers
-// (RegisterOrganization, AcceptInvitation, ValidateToken) don't.
+// callerFromContext. Every authenticated handler reads it before any
+// role gate; unauthenticated handlers (RegisterOrganization,
+// AcceptInvitation, ValidateToken) don't.
 type callerContext struct {
 	userID         uuid.UUID
 	firebaseUID    string
@@ -26,10 +26,6 @@ type callerContext struct {
 }
 
 type callerContextKey struct{}
-
-func withCaller(ctx context.Context, c callerContext) context.Context {
-	return context.WithValue(ctx, callerContextKey{}, c)
-}
 
 func callerFromContext(ctx context.Context) (callerContext, bool) {
 	c, ok := ctx.Value(callerContextKey{}).(callerContext)

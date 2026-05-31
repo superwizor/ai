@@ -21,6 +21,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/billing_quota_provider.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/grpc_provider.dart';
+import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
 import '../repositories/patient_repository.dart';
 import '../repositories/session_repository.dart';
@@ -269,6 +270,12 @@ final pendingUploadsForPatientProvider =
 /// Refreshes both repositories' caches for [patientFileId]. Used by
 /// the upload-runner callbacks (onUploadComplete + onAnalysisComplete)
 /// to keep the kartoteka in sync with server state without polling.
+///
+/// Also pushes the refreshed session data into [sessionsProvider] so
+/// the home screen's _PatientListSection rebuilds immediately —
+/// without this, the repo cache updates but the provider's in-memory
+/// Map<patientId, sessions> stays stale until the next manual
+/// fetchSessions() call.
 Future<void> _refreshKartoteka(Ref ref, String patientFileId) async {
   try {
     final patientRepo = await ref.read(patientRepositoryProvider.future);
@@ -281,6 +288,13 @@ Future<void> _refreshKartoteka(Ref ref, String patientFileId) async {
     await sessionRepo?.refresh(patientFileId);
   } catch (e) {
     debugPrint('[upload-runner] session refresh failed: $e');
+  }
+  // Push the refreshed data into the Riverpod state so widgets that
+  // watch sessionsProvider (home screen badges, card pills) rebuild.
+  try {
+    await ref.read(sessionsProvider.notifier).forceRefresh(patientFileId);
+  } catch (e) {
+    debugPrint('[upload-runner] sessionsProvider forceRefresh failed: $e');
   }
 }
 

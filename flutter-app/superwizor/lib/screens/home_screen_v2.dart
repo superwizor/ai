@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -204,6 +205,12 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
   bool _showCompleted = false;
   final Set<String> _fetchedPatients = {};
 
+  /// Previous status per patient — used to detect analyzing → hasNewReport.
+  final Map<String, _PatientStatus> _prevStatuses = {};
+
+  /// Patients that just transitioned to hasNewReport — triggers pill animation.
+  final Set<String> _justCompletedIds = {};
+
   /// Eagerly fetch sessions for all patients whose session lists
   /// haven't been loaded yet. This ensures badges ("Nowy raport"),
   /// "Ostatnio: X" dates, and session counts are visible immediately
@@ -234,6 +241,40 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     _ensureSessionsFetched();
   }
 
+  /// Detect status transitions and fire celebration.
+  void _detectTransitions(
+    List<Patient> patients,
+    Map<String, List<Session>> sessionsMap,
+    Set<String> viewedReports,
+    BuildContext context,
+  ) {
+    for (final p in patients) {
+      final sessions = sessionsMap[p.id] ?? [];
+      final newStatus = _statusFor(p, sessions, viewedReports);
+      final prev = _prevStatuses[p.id];
+      _prevStatuses[p.id] = newStatus;
+
+      // Don't fire on initial load (prev == null)
+      if (prev == _PatientStatus.analyzing &&
+          newStatus == _PatientStatus.hasNewReport) {
+        // 🎉 Session just completed!
+        _justCompletedIds.add(p.id);
+        HapticFeedback.heavyImpact();
+        // Play success sound from assets
+        final player = AudioPlayer();
+        player.play(AssetSource('sounds/SFX_succes.mp3'));
+        // Dispose after playback
+        player.onPlayerComplete.first.then((_) => player.dispose());
+        // Celebratory toast with patient name
+        final name = '${p.firstName} ${p.lastName}'.trim();
+        EuphireToast.success(
+          context,
+          message: 'Raport gotowy — $name 🎉',
+        );
+      }
+    }
+  }
+
   // Compute contextual status for a patient based on their sessions
   static _PatientStatus _statusFor(Patient patient, List<Session> sessions, Set<String> viewedReports) {
     if (sessions.isEmpty && patient.sessionCount == 0) return _PatientStatus.awaiting;
@@ -256,6 +297,13 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     final sessionsMap = ref.watch(sessionsProvider).value ?? {};
     final lifecycleMap = ref.watch(patientLifecycleProvider);
     final viewedReports = ref.watch(viewedReportsProvider);
+
+    // Detect status transitions (analyzing → hasNewReport) and celebrate.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _detectTransitions(widget.patients, sessionsMap, viewedReports, context);
+      }
+    });
 
     // Split by lifecycle
     final activePatients = <Patient>[];
@@ -370,6 +418,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
                   sessionCount: patient.sessionCount,
                   lastSessionDate: lastDate,
                   status: _statusFor(patient, sessions, viewedReports),
+                  justCompleted: _justCompletedIds.remove(patient.id),
                 );
               },
             ),
@@ -542,12 +591,13 @@ enum _PatientStatus {
 
 // ─── COMPACT PATIENT CARD ─────────────────────────────────────────
 
-class _PatientCompactCard extends ConsumerWidget {
+class _PatientCompactCard extends ConsumerStatefulWidget {
   final Patient patient;
   final int sessionCount;
   final DateTime? lastSessionDate;
   final _PatientStatus status;
   final bool dimmed;
+  final bool justCompleted;
 
   const _PatientCompactCard({
     required this.patient,
@@ -555,32 +605,40 @@ class _PatientCompactCard extends ConsumerWidget {
     this.lastSessionDate,
     this.status = _PatientStatus.awaiting,
     this.dimmed = false,
+    this.justCompleted = false,
   });
 
-  // Avatar colors now come from AvatarColors.palette via patientAvatarProvider
+  @override
+  ConsumerState<_PatientCompactCard> createState() => _PatientCompactCardState();
+}
+
+class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   String get _initials {
-    final f = patient.firstName;
-    final l = patient.lastName;
+    final f = widget.patient.firstName;
+    final l = widget.patient.lastName;
     if (f.isEmpty && l.isEmpty) return '?';
     final first = f.isNotEmpty ? f[0].toUpperCase() : '';
     final last = l.isNotEmpty ? l[0].toUpperCase() : '';
     return '$first$last'.trim();
   }
 
-  String get _name => '${patient.firstName} ${patient.lastName}'.trim();
+  String get _name => '${widget.patient.firstName} ${widget.patient.lastName}'.trim();
 
   static const _months = ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Pa\u017a','Lis','Gru'];
 
   // Returns a list of InlineSpans for the subtitle with the date part
   // rendered in a slightly bolder weight for visual emphasis.
   List<InlineSpan> _subtitleSpans({required bool full}) {
-    if (lastSessionDate != null) {
-      final d = lastSessionDate!;
+    if (widget.lastSessionDate != null) {
+      final d = widget.lastSessionDate!;
       final dateStr = '${d.day} ${_months[d.month - 1]}';
       if (full) {
         return [
-          TextSpan(text: 'Sesje: $sessionCount \u2022 Ostatnio: '),
+          TextSpan(text: 'Sesje: ${widget.sessionCount} \u2022 Ostatnio: '),
           TextSpan(
             text: dateStr,
             style: const TextStyle(fontWeight: FontWeight.w600),
@@ -596,12 +654,12 @@ class _PatientCompactCard extends ConsumerWidget {
         ];
       }
     }
-    if (sessionCount > 0) return [TextSpan(text: 'Sesje: $sessionCount')];
+    if (widget.sessionCount > 0) return [TextSpan(text: 'Sesje: ${widget.sessionCount}')];
     return [TextSpan(text: full ? 'Oczekuje na pierwsz\u0105 sesj\u0119' : 'Nowy klient')];
   }
 
   // Status pill config
-  (String label, Color color, bool show) get _statusConfig => switch (status) {
+  (String label, Color color, bool show) get _statusConfig => switch (widget.status) {
     _PatientStatus.hasNewReport => ('Nowy raport', const Color(0xFF4ADE80), true),
     _PatientStatus.analyzing => ('AI analizuje', EuphireColors.ember, true),
     _PatientStatus.active => ('Aktywny', EuphireColors.ember, false),
@@ -617,21 +675,67 @@ class _PatientCompactCard extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => _PatientOptionsMenu(
-        patientId: patient.id,
+        patientId: widget.patient.id,
         patientName: _name,
       ),
     );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    if (widget.justCompleted) {
+      _startPulseAndStop();
+    }
+  }
+
+  /// Pulse 3 times (~4s total) then stop gracefully.
+  void _startPulseAndStop() {
+    var count = 0;
+    _pulseController.addStatusListener((status) {
+      if (status == AnimationStatus.completed ||
+          status == AnimationStatus.dismissed) {
+        count++;
+        // 3 full cycles = 6 half-cycles (forward + reverse)
+        if (count >= 6) {
+          _pulseController.stop();
+          _pulseController.reset();
+        }
+      }
+    });
+    _pulseController.repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant _PatientCompactCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.justCompleted && !_pulseController.isAnimating) {
+      _startPulseAndStop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Read custom avatar config (label + color)
     final avatarConfigs = ref.watch(patientAvatarProvider);
-    final avatarConfig = avatarConfigs[patient.id] ?? const PatientAvatarConfig();
+    final avatarConfig = avatarConfigs[widget.patient.id] ?? const PatientAvatarConfig();
     final color = avatarConfig.color;
     final avatarLabel = avatarConfig.customLabel ?? _initials;
 
-    final opacity = dimmed ? 0.55 : 1.0;
+    final opacity = widget.dimmed ? 0.55 : 1.0;
     final (statusLabel, statusColor, showPill) = _statusConfig;
 
     return Opacity(
@@ -646,7 +750,7 @@ class _PatientCompactCard extends ConsumerWidget {
               context,
               MaterialPageRoute(
                 builder: (_) => ClientDetailsScreen(
-                  patientId: patient.id,
+                  patientId: widget.patient.id,
                   clientName: _name,
                 ),
               ),
@@ -668,7 +772,7 @@ class _PatientCompactCard extends ConsumerWidget {
                       backgroundColor: Colors.transparent,
                       isScrollControlled: true,
                       builder: (_) => AvatarCustomizeSheet(
-                        patientId: patient.id,
+                        patientId: widget.patient.id,
                         defaultInitials: _initials,
                       ),
                     );
@@ -724,37 +828,54 @@ class _PatientCompactCard extends ConsumerWidget {
                     ],
                   ),
                 ),
-                // ── Status pill (only shown for actionable states) ──
+                // ── Status pill (with pulse animation for hasNewReport) ──
                 if (showPill)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
+                  AnimatedBuilder(
+                    animation: _pulseAnimation,
+                    builder: (context, child) {
+                      final isNewReport = widget.status == _PatientStatus.hasNewReport;
+                      final scale = isNewReport ? _pulseAnimation.value : 1.0;
+                      return Transform.scale(
+                        scale: scale,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: statusColor,
+                            color: statusColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            boxShadow: isNewReport ? [
+                              BoxShadow(
+                                color: statusColor.withValues(alpha: 0.25 * (_pulseAnimation.value - 1.0) / 0.15),
+                                blurRadius: 12,
+                                spreadRadius: 1,
+                              ),
+                            ] : null,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: statusColor,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                statusLabel,
+                                style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: statusColor,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 5),
-                        Text(
-                          statusLabel,
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: statusColor,
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 if (showPill) const SizedBox(width: 4),
                 // ── Three dots menu ──
