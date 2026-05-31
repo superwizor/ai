@@ -190,6 +190,7 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
+            --use-http2 \
             --vpc-connector swvpc-connector \
             --set-env-vars="ENV=staging"
           gcloud run services add-iam-policy-binding api-service \
@@ -214,6 +215,7 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
+            --use-http2 \
             --vpc-connector swvpc-connector \
             --service-account=identity-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
@@ -249,6 +251,7 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
+            --use-http2 \
             --service-account=clinical-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
@@ -272,6 +275,7 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
+            --use-http2 \
             --service-account=ingestion-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --vpc-connector swvpc-connector \
             --vpc-egress private-ranges-only \
@@ -317,6 +321,7 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
+            --use-http2 \
             --service-account=notification-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest,RESEND_API_KEY=resend-api-key:latest" \
@@ -334,6 +339,7 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --no-allow-unauthenticated \
+            --use-http2 \
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
             --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
