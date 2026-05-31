@@ -38,7 +38,7 @@ import '../uploads/upload_queue_provider.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_session_status_stepper.dart';
-import 'home_screen.dart';
+import 'home_screen_v2.dart';
 import 'transcript_screen.dart';
 
 class SessionStatusScreen extends ConsumerStatefulWidget {
@@ -380,11 +380,36 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                     // CancelSession (CANCELLED_BY_USER + token release)
                     // → leave this screen.
                     if (!_showCheck && _canCancel)
-                      IconButton(
-                        icon: const Icon(Icons.delete_rounded, size: 22),
-                        color: EuphireColors.magma,
-                        tooltip: t.upload_cancel_processing,
-                        onPressed: _onCancelPressed,
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _onCancelPressed,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: EuphireColors.magma.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: EuphireColors.magma.withValues(alpha: 0.5)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.cancel_outlined, size: 18, color: EuphireColors.magma),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'Usuń z analizy',
+                                  style: TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: EuphireColors.magma,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                   ],
                 ),

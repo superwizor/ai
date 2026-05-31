@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../theme/euphire_theme.dart';
+import '../widgets/euphire_toast.dart';
 
 class DeleteAccountScreen extends StatefulWidget {
   const DeleteAccountScreen({super.key});
@@ -249,12 +250,7 @@ class _ConfirmDeleteSheetState extends State<_ConfirmDeleteSheet> {
       setState(() => _deleting = false);
       if (e.code == 'requires-recent-login') {
         Navigator.of(context).pop(false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context).delete_account_relogin_error),
-            backgroundColor: Colors.red,
-          ),
-        );
+        EuphireToast.error(context, message: AppLocalizations.of(context).delete_account_relogin_error);
         await FirebaseAuth.instance.signOut();
       }
     } catch (_) {

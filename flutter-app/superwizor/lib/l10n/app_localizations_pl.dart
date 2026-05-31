@@ -182,29 +182,39 @@ class AppLocalizationsPl extends AppLocalizations {
       'To ustawienie wpływa na generowane raporty. Możesz je zmienić w każdej chwili.';
 
   @override
-  String get addPatient_title => 'Nowy pacjent.';
+  String get addPatient_title => 'Nowa kartoteka';
 
   @override
-  String get addPatient_first_name_label => 'Imię pacjenta (wymagane)';
+  String get addPatient_subtitle =>
+      'Uzupełnij dane klienta, aby utworzyć kartotekę.';
 
   @override
-  String get addPatient_last_name_label => 'Pseudonim lub inicjał (opcjonalne)';
+  String get addPatient_first_name_label => 'Imię (wymagane)';
 
   @override
-  String get addPatient_modality_label => 'Nurt sesji (dziedziczony z profilu)';
+  String get addPatient_last_name_label => 'Inicjał lub pseudonim';
 
   @override
-  String get addPatient_language_label => 'Język sesji';
+  String get addPatient_email_label => 'E-mail klienta';
+
+  @override
+  String get addPatient_email_hint => 'Opcjonalnie — do przyszłych powiadomień';
+
+  @override
+  String get addPatient_modality_label => 'Nurt terapeutyczny';
+
+  @override
+  String get addPatient_language_label => 'Język raportu';
 
   @override
   String get addPatient_consent_label =>
-      'Oświadczam, że pacjent wyraził zgodę na nagrywanie i przetwarzanie danych zgodnie z Polityką Prywatności i DPA Superwizor AI.';
+      'Klient wyraził zgodę na nagrywanie i przetwarzanie danych zgodnie z Polityką Prywatności i DPA Superwizor AI.';
 
   @override
-  String get addPatient_consent_link_label => 'Zobacz dokument DPA.';
+  String get addPatient_consent_link_label => 'Zobacz DPA.';
 
   @override
-  String get addPatient_save_primary => 'Zapisz pacjenta.';
+  String get addPatient_save_primary => 'Utwórz kartotekę';
 
   @override
   String get addPatient_no_consent_header => 'Brak zgody na nagrywanie.';
@@ -217,23 +227,23 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addPatient_no_consent_primary => 'Rozumiem.';
 
   @override
-  String get addPatient_duplicate_header => 'Taki pacjent już istnieje.';
+  String get addPatient_duplicate_header => 'Taki klient już istnieje.';
 
   @override
   String get addPatient_duplicate_body =>
-      'Masz już kartotekę z tą kombinacją imienia i pseudonimu. Dodaj inicjał, przydomek lub inny wyróżnik, aby uniknąć pomyłek.';
+      'Masz już kartotekę z tą kombinacją imienia i pseudonimu. Dodaj inicjał lub przydomek, aby uniknąć pomyłek.';
 
   @override
   String get addPatient_duplicate_primary => 'Poprawię nazwę.';
 
   @override
-  String get editPatient_title => 'Edycja danych pacjenta.';
+  String get editPatient_title => 'Edytuj kartotekę';
 
   @override
-  String get editPatient_save_primary => 'Zapisz zmiany.';
+  String get editPatient_save_primary => 'Zapisz zmiany';
 
   @override
-  String get editPatient_erase_destructive => 'Usuń pacjenta bezpowrotnie';
+  String get editPatient_erase_destructive => 'Usuń kartotekę bezpowrotnie';
 
   @override
   String get editPatient_erase_confirm_header =>
@@ -241,7 +251,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get editPatient_erase_confirm_body =>
-      'To działanie trwale usunie pacjenta oraz WSZYSTKIE jego sesje i transkrypcje (wymóg RODO). Nie można tego cofnąć.';
+      'To działanie trwale usunie kartotekę klienta oraz WSZYSTKIE sesje i transkrypcje (wymóg RODO). Nie można tego cofnąć.';
 
   @override
   String get addSession_title => 'Nowa sesja.';
@@ -1251,11 +1261,69 @@ class AppLocalizationsPl extends AppLocalizations {
       'Sesja zostanie anulowana, a nagranie usunięte z kolejki. Tej operacji nie można cofnąć.';
 
   @override
-  String get cancel_session_confirm_action => 'Tak, anuluj';
+  String get cancel_session_confirm_action => 'Tak, usuń';
 
   @override
   String get cancel_session_keep => 'Nie, zostaw';
 
   @override
   String get cancel_session_success => 'Sesja anulowana';
+
+  @override
+  String get note_add_label => 'DODAJ NOTATKĘ';
+
+  @override
+  String get note_add_subtitle => 'Szybka notatka o kliencie';
+
+  @override
+  String get note_sheet_title => 'Nowa notatka';
+
+  @override
+  String get note_sheet_hint => 'Wpisz swoją notatkę…';
+
+  @override
+  String get note_sheet_save => 'Zapisz';
+
+  @override
+  String get note_sheet_cancel => 'Anuluj';
+
+  @override
+  String get note_delete_confirm => 'Usunąć notatkę?';
+
+  @override
+  String get note_delete_action => 'Usuń';
+
+  @override
+  String get note_empty_text => 'Notatka nie może być pusta.';
+
+  @override
+  String get note_title_hint => 'Tytuł notatki';
+
+  @override
+  String get note_body_hint => 'Treść notatki…';
+
+  @override
+  String get note_discard_title => 'Odrzucić zmiany?';
+
+  @override
+  String get note_discard_body =>
+      'Masz niezapisane zmiany. Chcesz je odrzucić?';
+
+  @override
+  String get note_discard_action => 'Odrzuć';
+
+  @override
+  String get note_discard_save => 'Zapisz';
+
+  @override
+  String get note_edit_label => 'Edytuj notatkę';
+
+  @override
+  String get note_untitled => 'Bez tytułu';
+
+  @override
+  String get note_saved => 'Notatka zapisana ✓';
+
+  @override
+  String get note_deleted => 'Notatka usunięta';
 }

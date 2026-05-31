@@ -20,6 +20,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/billing_quota_provider.dart';
 import '../services/billing_quota_state.dart';
 import '../theme/euphire_theme.dart';
+import 'euphire_toast.dart';
 import '../uploads/cancel_upload_action.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
@@ -205,10 +206,7 @@ class _PendingRow extends ConsumerWidget {
     if (runner == null) return;
     await runner.retryFailed(upload.localId);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(AppLocalizations.of(context).billing_resume_processing),
-        duration: const Duration(seconds: 2),
-      ));
+      EuphireToast.success(context, message: AppLocalizations.of(context).billing_resume_processing);
     }
   }
 

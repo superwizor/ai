@@ -19,6 +19,7 @@
 // id is available — it's hidden behind `therapistIdProvider`.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart' as grpc;
 import 'package:uuid/uuid.dart';
@@ -28,6 +29,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/grpc_provider.dart';
 import '../theme/euphire_theme.dart';
+import 'euphire_toast.dart';
 import 'preference_suggestion_banner.dart' show suggestionRefreshTickProvider;
 
 /// Canonical chip category IDs. These must match
@@ -128,6 +130,14 @@ class _ReportRatingWidgetState extends ConsumerState<ReportRatingWidget> {
   Future<void> _submitPositive() async {
     final therapistId = ref.read(therapistIdProvider);
     if (therapistId == null || _submitting) return;
+
+    // Toggle off: if already positive, just clear local state silently.
+    // The backend doesn't support "unrating" — we only reset the UI.
+    if (_currentRating == 'positive') {
+      setState(() => _currentRating = null);
+      return;
+    }
+
     setState(() => _submitting = true);
     try {
       await ref.read(grpcClientsProvider).clinical.rateReport(
@@ -144,9 +154,6 @@ class _ReportRatingWidgetState extends ConsumerState<ReportRatingWidget> {
         _currentRating = 'positive';
         _submitting = false;
       });
-      // Nudge the suggestion banner to recheck — a positive rating
-      // can still push out an old (stale) negative suggestion if the
-      // chip count drops out of the trigger window.
       ref.read(suggestionRefreshTickProvider.notifier).bump();
       _toast(AppLocalizations.of(context).report_rating_saved_positive);
     } catch (e) {
@@ -197,13 +204,11 @@ class _ReportRatingWidgetState extends ConsumerState<ReportRatingWidget> {
 
   void _toast(String msg, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor:
-            isError ? EuphireColors.magma.withValues(alpha: 0.85) : null,
-      ),
-    );
+    if (isError) {
+      EuphireToast.error(context, message: msg);
+    } else {
+      EuphireToast.success(context, message: msg);
+    }
   }
 
   Future<void> _openNegativeSheet() async {
@@ -239,7 +244,7 @@ class _ReportRatingWidgetState extends ConsumerState<ReportRatingWidget> {
             isPositive ? Icons.thumb_up : Icons.thumb_up_outlined,
             color: isPositive ? EuphireColors.ember : null,
           ),
-          onPressed: disabled || isPositive ? null : _submitPositive,
+          onPressed: disabled ? null : _submitPositive,
         ),
         IconButton(
           tooltip: t.report_rating_thumbs_down_tooltip,
@@ -301,15 +306,9 @@ class _NegativeRatingSheetState extends State<_NegativeRatingSheet> {
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
         child: SafeArea(
           top: false,
-          // Tap anywhere outside the TextField to dismiss the keyboard
-          // — there's no on-screen "Done" affordance for a multi-line
-          // TextField on iOS.
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => FocusScope.of(context).unfocus(),
-            // SingleChildScrollView: when the keyboard pushes the sheet
-            // up, the user can scroll within the sheet to reach the
-            // submit button at the bottom.
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -327,17 +326,44 @@ class _NegativeRatingSheetState extends State<_NegativeRatingSheet> {
                   ),
                 ),
               ),
-              Text(
-                t.report_rating_modal_title,
-                style: theme.textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                t.report_rating_modal_subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: EuphireColors.mist,
-                  fontStyle: FontStyle.italic,
-                ),
+              // Icon + title header
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: EuphireColors.magma.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.feedback_outlined,
+                      color: EuphireColors.magma.withValues(alpha: 0.9),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          t.report_rating_modal_title,
+                          style: theme.textTheme.headlineMedium,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          t.report_rating_modal_subtitle,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: EuphireColors.mist,
+                            fontStyle: FontStyle.italic,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Wrap(
@@ -348,27 +374,33 @@ class _NegativeRatingSheetState extends State<_NegativeRatingSheet> {
                   return FilterChip(
                     label: Text(_chipLabel(t, id)),
                     selected: selected,
-                    onSelected: (v) => setState(() {
-                      if (v) {
-                        _selected.add(id);
-                      } else {
-                        _selected.remove(id);
-                      }
-                    }),
+                    onSelected: (v) {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        if (v) {
+                          _selected.add(id);
+                        } else {
+                          _selected.remove(id);
+                        }
+                      });
+                    },
                     backgroundColor: Colors.white.withValues(alpha: 0.06),
-                    selectedColor: EuphireColors.ember.withValues(alpha: 0.25),
-                    checkmarkColor: EuphireColors.ember,
+                    selectedColor: EuphireColors.magma.withValues(alpha: 0.30),
+                    checkmarkColor: EuphireColors.frostWhite,
                     labelStyle: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 13,
                       color: selected
-                          ? EuphireColors.ember
+                          ? EuphireColors.frostWhite
                           : EuphireColors.frostWhite,
                       fontWeight:
-                          selected ? FontWeight.w600 : FontWeight.w400,
+                          selected ? FontWeight.w700 : FontWeight.w400,
                     ),
                     side: BorderSide(
                       color: selected
-                          ? EuphireColors.ember.withValues(alpha: 0.6)
+                          ? EuphireColors.magma
                           : Colors.white.withValues(alpha: 0.12),
+                      width: selected ? 1.5 : 1,
                     ),
                   );
                 }).toList(),

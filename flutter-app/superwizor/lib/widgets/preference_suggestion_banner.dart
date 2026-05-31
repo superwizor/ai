@@ -37,6 +37,7 @@ import '../providers/current_user_provider.dart';
 import '../providers/grpc_provider.dart';
 import '../screens/menu_screen.dart';
 import '../theme/euphire_theme.dart';
+import 'euphire_toast.dart';
 
 /// Tick that bumps whenever something happens that may have created
 /// a new active suggestion (most importantly: a new rating was
@@ -413,23 +414,12 @@ class _PreferenceSuggestionBannerState
         _hiddenLocally = true;
         _busy = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text(AppLocalizations.of(context).suggestion_banner_applied_toast),
-        ),
-      );
+      EuphireToast.success(context, message: AppLocalizations.of(context).suggestion_banner_applied_toast);
     } catch (e) {
       debugPrint('PreferenceSuggestionBanner: apply failed: $e');
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text(AppLocalizations.of(context).suggestion_banner_apply_error),
-          backgroundColor: EuphireColors.magma.withValues(alpha: 0.85),
-        ),
-      );
+      EuphireToast.error(context, message: AppLocalizations.of(context).suggestion_banner_apply_error);
     }
   }
 

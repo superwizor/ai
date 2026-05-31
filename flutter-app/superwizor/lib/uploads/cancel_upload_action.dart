@@ -26,11 +26,12 @@ import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/patient_provider.dart';
 import '../theme/euphire_theme.dart';
+import '../widgets/euphire_toast.dart';
 import 'upload_queue_provider.dart';
 
-/// Shows the confirm dialog and, on confirm, cancels the session +
-/// dismisses the local upload. Returns true iff the user confirmed and
-/// the cleanup ran.
+/// Shows a two-step bottom sheet confirmation and, on confirm, cancels
+/// the session + dismisses the local upload. Returns true iff the user
+/// confirmed and the cleanup ran.
 Future<bool> confirmAndCancelUpload(
   BuildContext context,
   WidgetRef ref, {
@@ -40,38 +41,11 @@ Future<bool> confirmAndCancelUpload(
 }) async {
   final l = AppLocalizations.of(context);
 
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showModalBottomSheet<bool>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      backgroundColor: EuphireColors.surfaceTeal,
-      title: Text(
-        l.cancel_session_confirm_title,
-        style: const TextStyle(
-          color: EuphireColors.frostWhite,
-          fontFamily: 'Montserrat',
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      content: Text(
-        l.cancel_session_confirm_body,
-        style: const TextStyle(
-          color: EuphireColors.mist,
-          fontFamily: 'Merriweather',
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: Text(l.cancel_session_keep,
-              style: const TextStyle(color: EuphireColors.mist)),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, true),
-          child: Text(l.cancel_session_confirm_action,
-              style: const TextStyle(color: EuphireColors.magma)),
-        ),
-      ],
-    ),
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (ctx) => _CancelConfirmSheet(l: l),
   );
   if (confirmed != true) return false;
 
@@ -104,10 +78,253 @@ Future<bool> confirmAndCancelUpload(
   }
 
   if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(l.cancel_session_success),
-      duration: const Duration(seconds: 2),
-    ));
+    EuphireToast.success(context, message: l.cancel_session_success);
   }
   return true;
+}
+
+/// Two-step cancel confirmation bottom sheet.
+/// Step 1: Warning with explanation.
+/// Step 2: "Czy na pewno?" double-confirm.
+class _CancelConfirmSheet extends StatefulWidget {
+  final AppLocalizations l;
+  const _CancelConfirmSheet({required this.l});
+
+  @override
+  State<_CancelConfirmSheet> createState() => _CancelConfirmSheetState();
+}
+
+class _CancelConfirmSheetState extends State<_CancelConfirmSheet> {
+  bool _showDoubleConfirm = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A2326),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(top: BorderSide(color: Colors.white10)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            child: _showDoubleConfirm
+                ? _buildDoubleConfirm()
+                : _buildInitialWarning(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInitialWarning() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: Container(
+            width: 40, height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        // Icon
+        Center(
+          child: Container(
+            width: 56, height: 56,
+            decoration: BoxDecoration(
+              color: EuphireColors.magma.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.cancel_outlined,
+              size: 28,
+              color: EuphireColors.magma.withValues(alpha: 0.9),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          widget.l.cancel_session_confirm_title,
+          style: const TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: EuphireColors.frostWhite,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Ta sesja jest w trakcie analizy. Usunięcie jej oznacza bezpowrotną utratę nagrania i transkrypcji. Nie będzie można tego cofnąć.',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 14,
+            color: EuphireColors.mist.withValues(alpha: 0.8),
+            height: 1.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                ),
+                child: Text(
+                  widget.l.cancel_session_keep,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: EuphireColors.mist,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () => setState(() => _showDoubleConfirm = true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: EuphireColors.magma,
+                  foregroundColor: EuphireColors.frostWhite,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Usuń z analizy',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDoubleConfirm() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: Container(
+            width: 40, height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Center(
+          child: Container(
+            width: 56, height: 56,
+            decoration: BoxDecoration(
+              color: EuphireColors.magma.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.warning_amber_rounded,
+              size: 28,
+              color: EuphireColors.magma,
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Na pewno?',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: EuphireColors.magma,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Tej operacji nie można cofnąć. Nagranie i transkrypcja zostaną trwale usunięte.',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 14,
+            color: EuphireColors.mist.withValues(alpha: 0.8),
+            height: 1.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                ),
+                child: const Text(
+                  'Wróć',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: EuphireColors.mist,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: EuphireColors.magma,
+                  foregroundColor: EuphireColors.frostWhite,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  widget.l.cancel_session_confirm_action,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }

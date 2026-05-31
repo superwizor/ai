@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:ui' as ui;
 
+import '../widgets/euphire_toast.dart';
+
 import '../cache/dto/report_dto.dart';
 import '../cache/dto/transcript_dto.dart';
 import '../providers/session_details_provider.dart';
@@ -36,9 +38,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
       buffer.writeln('');
     }
     Clipboard.setData(ClipboardData(text: buffer.toString()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Skopiowano wszystkie raporty do schowka!')),
-    );
+    EuphireToast.success(context, message: 'Wszystkie raporty skopiowane do schowka');
   }
   
   void _copyTranscript(BuildContext context, TranscriptDto transcript) {
@@ -48,9 +48,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
       buffer.writeln('');
     }
     Clipboard.setData(ClipboardData(text: buffer.toString()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Skopiowano transkrypcję do schowka!')),
-    );
+    EuphireToast.success(context, message: 'Transkrypcja skopiowana do schowka');
   }
 
   @override

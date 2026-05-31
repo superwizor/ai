@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'euphire_toast.dart';
 
 class ReportDetailSheet extends StatelessWidget {
   final String title;
@@ -39,9 +40,7 @@ class ReportDetailSheet extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: content));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Skopiowano raport do schowka!')),
-              );
+              EuphireToast.success(context, message: 'Raport skopiowany do schowka');
               Navigator.pop(context);
             },
             icon: const Icon(Icons.copy),

@@ -24,6 +24,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/grpc_provider.dart';
 import '../theme/euphire_theme.dart';
+import 'euphire_toast.dart';
 
 // ────────────────────────────────────────────────────────────
 // Canonical option IDs. Kept in sync with the comments on
@@ -233,18 +234,11 @@ class _ReportPreferencesSectionState
               );
       if (!mounted) return;
       setState(() => _prefs = res);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.report_prefs_saved)),
-      );
+      EuphireToast.success(context, message: t.report_prefs_saved);
     } catch (e) {
       debugPrint('ReportPreferencesSection: updateReportPreferences failed: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(t.report_prefs_save_error),
-          backgroundColor: EuphireColors.magma.withValues(alpha: 0.85),
-        ),
-      );
+      EuphireToast.error(context, message: t.report_prefs_save_error);
       // Roll back to last known good — re-fetch is the cheapest way.
       _load();
     }
