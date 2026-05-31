@@ -25,7 +25,7 @@
 // Test cleanup:
 //   Każdy test używa UNIQUE session_id (UUID), więc nie ma kolizji między
 //   testami. Po teście cleanup deletuje swoje rzędy z usage_events,
-//   pending_reservations, outbox_events.
+//   pending_reservations.
 //
 // Edge cases pokryte:
 //   - Token calculator boundary (45/63/64/120/123min)
@@ -33,7 +33,6 @@
 //   - Quota exhausted gate
 //   - ReserveCredit → ReleaseCredit roundtrip
 //   - ReserveCredit → CommitUsage transfer
-//   - Outbox edge-trigger (warning/critical/exhausted)
 //   - PAST_DUE blokuje reservation
 //   - Stale reservation expiry (manual /admin/reservation-expiry call)
 package e2e_test
@@ -232,25 +231,6 @@ func (e *billingTestEnv) setCounterUsage(t *testing.T, used, reserved int32) {
 		AND period_start <= now() AND period_end > now()`,
 		used, reserved, e.orgID)
 	require.NoError(t, err, "set counter")
-}
-
-// readOutboxEvent — wraca najnowszy outbox event dla danego subscription.
-// Nil jeśli nic nie ma.
-func (e *billingTestEnv) readLatestOutboxEvent(t *testing.T, since time.Time) (eventType string, payload map[string]any, found bool) {
-	ctx := context.Background()
-	var et string
-	var pl []byte
-	err := e.dbPool.QueryRow(ctx, `
-		SELECT event_type, payload FROM outbox_events
-		WHERE organization_id = $1 AND created_at > $2
-		ORDER BY created_at DESC LIMIT 1`,
-		e.orgID, since).Scan(&et, &pl)
-	if err != nil {
-		return "", nil, false
-	}
-	p := map[string]any{}
-	require.NoError(t, json.Unmarshal(pl, &p))
-	return et, p, true
 }
 
 // ============================================================================
@@ -596,44 +576,14 @@ func TestBilling_GetSubscription(t *testing.T) {
 	assert.Equal(t, sub.TokensUsedThisPeriod, sub.SessionsUsedThisPeriod)
 }
 
-// ============================================================================
-// Outbox edge cases
-// ============================================================================
-
-// NOTE: TestBilling_Outbox_QuotaWarning + TestBilling_Outbox_QuotaExhausted
-// were removed (2026-05-31). They asserted against the outbox_events table,
-// which migration 000034_drop_outbox_events deliberately dropped when the
-// billing.outbox fan-out was replaced by direct-RPC quota propagation
-// (clinical-svc.GetMyBillingState + state_after on Reservation/UsageCommit).
-// They could never pass post-000034 (relation does not exist).
-
-// TestBilling_Outbox_NoEventWhenNoEdge — commit nie przekraczający progu nie tworzy outboxa
-func TestBilling_Outbox_NoEventWhenNoEdge(t *testing.T) {
-	env := loadBillingEnv(t)
-	env.resetCounter(t) // 0 used, 40 remaining
-	defer env.resetCounter(t)
-
-	conn, c := env.dialBilling(t)
-	defer conn.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	sessionID := uuid.New()
-	t.Cleanup(func() { env.cleanupSession(t, sessionID) })
-
-	before := time.Now()
-	_, err := c.CommitUsage(ctx, &billingv1.CommitUsageRequest{
-		SessionId:       sessionID.String(),
-		OrganizationId:  env.orgID.String(),
-		DurationSeconds: 2700, // 1 token → remaining 39, no edge
-	})
-	require.NoError(t, err)
-	time.Sleep(500 * time.Millisecond)
-
-	_, _, found := env.readLatestOutboxEvent(t, before)
-	assert.False(t, found, "no outbox event expected (remaining went 40→39, no threshold)")
-}
+// NOTE: the "Outbox edge cases" group (TestBilling_Outbox_QuotaWarning,
+// _QuotaExhausted, _NoEventWhenNoEdge) was removed (2026-05-31). It asserted
+// against the outbox_events table, which migration 000034_drop_outbox_events
+// deliberately dropped when the billing.outbox fan-out was replaced by
+// direct-RPC quota propagation (clinical-svc.GetMyBillingState + state_after
+// on Reservation/UsageCommit). The two warning/exhausted tests failed
+// unconditionally (relation does not exist); NoEventWhenNoEdge only "passed"
+// because its helper swallowed that error and returned found=false.
 
 // ============================================================================
 // Race conditions
