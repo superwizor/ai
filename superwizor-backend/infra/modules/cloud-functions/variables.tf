@@ -51,11 +51,15 @@ variable "transcript_completed_dlq_topic" {
 # ----------------------------------------------------------------------------
 # notification-svc worker inputs (Phase 3 — Sprints 3.3 + 3.5)
 #
-# One source bundle (cmd/worker) is wrapped by THREE Cloud Functions, each
-# bound to its own Eventarc Pub/Sub trigger:
-#   - on-uploaded   → audio.uploaded       → ProcessAudioUploaded
-#   - on-transcribed→ transcript.completed → ProcessTranscriptCompleted
-#   - on-report     → report.generated     → ProcessReportGenerated
+# One source bundle (cmd/worker) is wrapped by Cloud Functions, each bound
+# to its own Eventarc Pub/Sub trigger. docs/21 Faza-4 retired the two pure
+# status mirrors (on-uploaded, on-transcribed) into on-status:
+#   - on-status   → session.status_changed → ProcessSessionStatusChanged
+#                   (single status mirror: uploaded/transcribing/analyzing/
+#                    done/failed/cancelled)
+#   - on-report   → report.generated       → ProcessReportGenerated
+#                   (NOT a pure mirror — FCM "report ready" push + inbox)
+#   - on-deleted  → session.deleted         → ProcessSessionDeleted (erase)
 # ----------------------------------------------------------------------------
 
 variable "notification_worker_source_dir" {

@@ -2087,14 +2087,14 @@ func publishReportGenerated(ctx context.Context, sessionID, reportID string) err
 		"report_id":  reportID,
 	})
 	res := topic.Publish(ctx, &pubsub.Message{Data: payload})
-	if _, err := res.Get(ctx); err != nil {
-		return err
-	}
-	// docs/21 Faza-4 consolidation: also mirror "done" via the unified
-	// session.status_changed topic (notification-worker-on-status is the
-	// single status-mirror consumer; on-report retired). report.generated
-	// keeps flowing for any other consumer.
-	return publishSessionStatusChanged(ctx, sessionID, "done")
+	_, err := res.Get(ctx)
+	return err
+	// NOTE: "done" is NOT published to session.status_changed.
+	// notification-worker-on-report consumes report.generated and owns the
+	// "done" path (Firestore mirror + FCM "report ready" push + inbox doc)
+	// — it can't be retired like the pure mirrors (on-uploaded/-transcribed)
+	// because of the push. on-status handles uploaded/transcribing/
+	// analyzing/failed/cancelled (docs/21 Faza-4, partial).
 }
 
 // publishSessionStatusChanged mirrors a terminal failure to the
