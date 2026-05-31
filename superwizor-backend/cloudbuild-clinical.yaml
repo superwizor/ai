@@ -1,5 +1,5 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'services/clinical-svc/Dockerfile', '-t', 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-clinical:manual-cde867b', '.']
+    args: ['build', '-f', 'services/clinical-svc/Dockerfile', '-t', 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-clinical:manual-dbb43e3', '.']
 images:
-  - 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-clinical:manual-cde867b'
+  - 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-clinical:manual-dbb43e3'
