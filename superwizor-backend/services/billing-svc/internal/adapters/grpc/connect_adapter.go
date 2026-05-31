@@ -53,6 +53,7 @@ func (a *ConnectAdapter) ReleaseCredit(ctx context.Context, req *connect.Request
 	return connect.NewResponse(resp), nil
 }
 
+//nolint:staticcheck // SA1019: IncrementUsageRequest is deprecated but connect adapter must mirror server.go.
 func (a *ConnectAdapter) IncrementUsage(ctx context.Context, req *connect.Request[billingv1.IncrementUsageRequest]) (*connect.Response[emptypb.Empty], error) {
 	resp, err := a.s.IncrementUsage(ctx, req.Msg)
 	if err != nil {
