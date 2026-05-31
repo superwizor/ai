@@ -600,80 +600,12 @@ func TestBilling_GetSubscription(t *testing.T) {
 // Outbox edge cases
 // ============================================================================
 
-// TestBilling_Outbox_QuotaWarning — counter 6 used, jedna sesja → 5 remaining → warning event
-func TestBilling_Outbox_QuotaWarning(t *testing.T) {
-	env := loadBillingEnv(t)
-	env.resetCounter(t)
-	// Limit 40, set used=34 → remaining=6. Commit 1 token (45min) → remaining=5 → warning edge.
-	env.setCounterUsage(t, 34, 0)
-	defer env.resetCounter(t)
-
-	conn, c := env.dialBilling(t)
-	defer conn.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	sessionID := uuid.New()
-	t.Cleanup(func() { env.cleanupSession(t, sessionID) })
-
-	before := time.Now()
-	_, err := c.CommitUsage(ctx, &billingv1.CommitUsageRequest{
-		SessionId:       sessionID.String(),
-		OrganizationId:  env.orgID.String(),
-		DurationSeconds: 2700,
-	})
-	require.NoError(t, err)
-
-	// Outbox event powinien być w DB — poller czyści w tle, ale jeśli zdąży
-	// szybko, możemy go nie złapać. Damy 1s na pewność że został zapisany,
-	// ale niekoniecznie published.
-	time.Sleep(500 * time.Millisecond)
-
-	// Sprawdzamy w outbox_events PO created_at > before — niezależnie od processed.
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel2()
-	var eventType string
-	err = env.dbPool.QueryRow(ctx2, `
-		SELECT event_type FROM outbox_events
-		WHERE organization_id = $1 AND created_at > $2
-		ORDER BY created_at DESC LIMIT 1`,
-		env.orgID, before).Scan(&eventType)
-	require.NoError(t, err, "outbox event must be persisted")
-	assert.Equal(t, "quota.warning", eventType)
-}
-
-// TestBilling_Outbox_QuotaExhausted — counter 39 used → commit 1 → 40 used (0 remaining) → exhausted event
-func TestBilling_Outbox_QuotaExhausted(t *testing.T) {
-	env := loadBillingEnv(t)
-	env.resetCounter(t)
-	env.setCounterUsage(t, 39, 0) // 1 remaining
-	defer env.resetCounter(t)
-
-	conn, c := env.dialBilling(t)
-	defer conn.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	sessionID := uuid.New()
-	t.Cleanup(func() { env.cleanupSession(t, sessionID) })
-
-	before := time.Now()
-	_, err := c.CommitUsage(ctx, &billingv1.CommitUsageRequest{
-		SessionId:       sessionID.String(),
-		OrganizationId:  env.orgID.String(),
-		DurationSeconds: 2700,
-	})
-	require.NoError(t, err)
-
-	time.Sleep(500 * time.Millisecond)
-
-	et, payload, found := env.readLatestOutboxEvent(t, before)
-	require.True(t, found, "outbox event must exist")
-	assert.Equal(t, "quota.exhausted", et)
-	assert.EqualValues(t, 0, payload["tokens_remaining"])
-}
+// NOTE: TestBilling_Outbox_QuotaWarning + TestBilling_Outbox_QuotaExhausted
+// were removed (2026-05-31). They asserted against the outbox_events table,
+// which migration 000034_drop_outbox_events deliberately dropped when the
+// billing.outbox fan-out was replaced by direct-RPC quota propagation
+// (clinical-svc.GetMyBillingState + state_after on Reservation/UsageCommit).
+// They could never pass post-000034 (relation does not exist).
 
 // TestBilling_Outbox_NoEventWhenNoEdge — commit nie przekraczający progu nie tworzy outboxa
 func TestBilling_Outbox_NoEventWhenNoEdge(t *testing.T) {
