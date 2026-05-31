@@ -92,10 +92,8 @@ RETRY_MAX_BACKOFF="600s"
 TRIGGERS=(
   "stt-worker:audio.uploaded.dlq:100"
   "llm-worker:transcript.completed.dlq:100"
-  "notification-worker-on-uploaded:audio.uploaded.dlq:100"
-  "notification-worker-on-transcribed:transcript.completed.dlq:100"
-  "notification-worker-on-report:report.generated.dlq:100"
   "notification-worker-on-deleted:session.deleted.dlq:100"
+  "notification-worker-on-status:session.status_changed.dlq:100"
 )
 
 echo "Project: $PROJECT  Region: $REGION"

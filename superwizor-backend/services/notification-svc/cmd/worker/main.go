@@ -1,14 +1,22 @@
 // Package notificationworker is the Cloud Functions Gen2 entrypoint for
-// notification-svc. It registers three CloudEvent handlers, one per Pub/Sub
-// topic that the AI pipeline emits:
+// notification-svc. After the docs/21 Faza-4 consolidation it registers two
+// CloudEvent handlers:
 //
-//	report.generated     → ProcessReportGenerated      (sends FCM + sets status=done)
-//	transcript.completed → ProcessTranscriptCompleted  (status=analyzing, no push)
-//	audio.uploaded       → ProcessAudioUploaded        (status=uploaded, no push)
+//	session.status_changed → ProcessSessionStatusChanged (notification-worker-on-status)
+//	    The single status-mirror consumer for the whole lifecycle
+//	    (uploaded | transcribing | analyzing | done | failed | cancelled).
+//	    On "done" it ALSO sends the report-ready FCM push + inbox doc
+//	    (handleReportReady) — the job formerly owned by the retired
+//	    notification-worker-on-report.
+//	session.deleted        → ProcessSessionDeleted       (notification-worker-on-deleted)
+//	    RODO erase of the Firestore mirror + inbox docs.
 //
-// Each handler is wired to its own Cloud Function resource in
-// infra/modules/cloud-functions/main.tf — Eventarc routes one topic per
-// function. Source code is shared (one zip, three resources).
+// The former per-topic functions (on-uploaded → audio.uploaded,
+// on-transcribed → transcript.completed, on-report → report.generated) are
+// retired; their producers now publish to the unified session.status_changed
+// topic. Each remaining handler is wired to its own Cloud Function resource
+// in infra/modules/cloud-functions/main.tf (one shared zip, Eventarc routes
+// one topic per function).
 //
 // Pattern lifted from services/ai-pipeline-svc/cmd/{stt,llm}-worker:
 //   - package <name>worker, NO func main()
@@ -48,25 +56,10 @@ type MessagePublishedData struct {
 	} `json:"message"`
 }
 
-// All three publishers (ingestion-svc, stt-worker, llm-worker) use
+// Producers (clinical-svc, stt-worker, llm-worker, ingestion-svc) use
 // snake_case JSON keys — verified against their source. Stay consistent
 // with that convention here so the worker doesn't drop session_id.
-type ReportGeneratedEvent struct {
-	SessionID string `json:"session_id"`
-	ReportID  string `json:"report_id"`
-}
-
-type TranscriptCompletedEvent struct {
-	SessionID    string `json:"session_id"`
-	TranscriptID string `json:"transcript_id"`
-}
-
-type AudioUploadedEvent struct {
-	SessionID  string `json:"session_id"`
-	UploadID   string `json:"upload_id"`
-	ObjectPath string `json:"object_path"`
-}
-
+//
 // SessionDeletedEvent matches the schema published by clinical-svc
 // (services/clinical-svc/internal/adapters/pubsub/publisher.go) when a
 // session is hard-deleted via DeleteSession or DeletePatientFile.
@@ -141,49 +134,30 @@ func init() {
 		slog.Warn("notification-worker: GCP_PROJECT_ID not set — Firestore + FCM disabled")
 	}
 
-	functions.CloudEvent("ProcessReportGenerated", ProcessReportGenerated)
-	functions.CloudEvent("ProcessTranscriptCompleted", ProcessTranscriptCompleted)
-	functions.CloudEvent("ProcessAudioUploaded", ProcessAudioUploaded)
+	// docs/21 Faza-4 consolidation: a SINGLE status consumer
+	// (ProcessSessionStatusChanged, deployed as notification-worker-on-status)
+	// owns the whole session lifecycle mirror AND the report-ready FCM push.
+	// The three former per-topic functions (on-uploaded, on-transcribed,
+	// on-report) are retired — their producers now publish to the unified
+	// session.status_changed topic. on-deleted stays (RODO erase is a
+	// different action, not a status transition).
 	functions.CloudEvent("ProcessSessionDeleted", ProcessSessionDeleted)
+	functions.CloudEvent("ProcessSessionStatusChanged", ProcessSessionStatusChanged)
 }
 
 // ---------------------------------------------------------------------------
-// ProcessReportGenerated — final fan-out: FCM push + Firestore status=done
-// + inbox doc + audit row in PG. Fully idempotent.
+// handleReportReady — the report-ready fan-out: FCM "report ready" push +
+// Firestore status=done + inbox doc + audit row in PG. Fully idempotent.
+//
+// Invoked by ProcessSessionStatusChanged on the "done" transition (docs/21
+// Faza-4). This was formerly ProcessReportGenerated /
+// notification-worker-on-report. That function logged report_id but never
+// used it for the push or inbox — both key off session_id — so the unified
+// session.status_changed event carries everything this path needs and the
+// dedicated on-report function was retired.
 // ---------------------------------------------------------------------------
-func ProcessReportGenerated(ctx context.Context, e event.Event) error {
-	logger := slog.With("function", "notification-worker", "trigger", "report.generated")
-
-	var msgData MessagePublishedData
-	if err := e.DataAs(&msgData); err != nil {
-		logger.Error("decode cloudevent", "error", err)
-		return err
-	}
-	var ev ReportGeneratedEvent
-	if err := json.Unmarshal(msgData.Message.Data, &ev); err != nil {
-		logger.Error("parse report.generated payload", "error", err,
-			"raw", string(msgData.Message.Data))
-		return err
-	}
-	logger = logger.With("session_id", ev.SessionID, "report_id", ev.ReportID)
-
-	if store == nil {
-		logger.Warn("no store — skipping (mock mode)")
-		return nil
-	}
-	sessionID, err := uuid.Parse(ev.SessionID)
-	if err != nil {
-		logger.Error("invalid session_id", "error", err)
-		return err
-	}
-
-	session, err := store.LoadSessionForNotification(ctx, sessionID)
-	if err != nil {
-		logger.Error("load session", "error", err)
-		return fmt.Errorf("load session: %w", err)
-	}
-
-	idempotencyKey := ev.SessionID + ":report_ready"
+func handleReportReady(ctx context.Context, logger *slog.Logger, sessionIDStr string, session *pgstore.SessionForNotification) error {
+	idempotencyKey := sessionIDStr + ":report_ready"
 	deliveryID, err := store.InsertNotificationDelivery(ctx, pgstore.InsertDeliveryParams{
 		UserID:           session.TherapistID,
 		SessionID:        &session.SessionID,
@@ -192,11 +166,11 @@ func ProcessReportGenerated(ctx context.Context, e event.Event) error {
 	})
 	if err != nil {
 		if isAlreadyDelivered(err) {
-			logger.Info("duplicate report.generated event — already processed")
+			logger.Info("duplicate report-ready (done) event — already processed")
 			// Still mirror status to Firestore — cheap and ensures
 			// readers converge if a previous attempt crashed mid-write.
 			_ = fsWriter.WriteSessionState(ctx, fswriter.SessionState{
-				SessionID:            ev.SessionID,
+				SessionID:            sessionIDStr,
 				TherapistFirebaseUID: session.TherapistFirebaseUID,
 				Status:               "done",
 				ProgressPercent:      100,
@@ -242,7 +216,7 @@ func ProcessReportGenerated(ctx context.Context, e event.Event) error {
 			Tokens:           tokenStrings,
 			Title:            title,
 			Body:             body,
-			SessionID:        ev.SessionID,
+			SessionID:        sessionIDStr,
 			NotificationType: "report_ready",
 		})
 		if err != nil {
@@ -294,7 +268,7 @@ func ProcessReportGenerated(ctx context.Context, e event.Event) error {
 
 	// Best-effort Firestore writes. Errors are logged inside the writer.
 	_ = fsWriter.WriteSessionState(ctx, fswriter.SessionState{
-		SessionID:            ev.SessionID,
+		SessionID:            sessionIDStr,
 		TherapistFirebaseUID: session.TherapistFirebaseUID,
 		Status:               "done",
 		ProgressPercent:      100,
@@ -305,53 +279,39 @@ func ProcessReportGenerated(ctx context.Context, e event.Event) error {
 		NotificationType: "report_ready",
 		Title:            title,
 		Body:             body,
-		SessionID:        ev.SessionID,
+		SessionID:        sessionIDStr,
 		CreatedAt:        time.Now().UTC(),
 	})
 
-	logger.Info("report.generated handled",
+	logger.Info("report-ready (done) handled",
 		"push_status", pushStatus, "tokens", len(tokens))
 	return nil
 }
 
-// ---------------------------------------------------------------------------
-// ProcessTranscriptCompleted — pure status mirror (analyzing). No FCM.
-// ---------------------------------------------------------------------------
-func ProcessTranscriptCompleted(ctx context.Context, e event.Event) error {
-	return handleStatusMirror(ctx, e, "transcript.completed", "analyzing", parseTranscriptCompleted)
-}
-
-// ---------------------------------------------------------------------------
-// ProcessAudioUploaded — pure status mirror (uploaded). No FCM.
-// ---------------------------------------------------------------------------
-func ProcessAudioUploaded(ctx context.Context, e event.Event) error {
-	return handleStatusMirror(ctx, e, "audio.uploaded", "uploaded", parseAudioUploaded)
-}
-
-// handleStatusMirror is the shared body for the silent status-update
-// handlers. Idempotency: we still INSERT a row in notification_deliveries
-// (notification_type = "status_<topic>") so duplicate Pub/Sub messages
-// don't write to Firestore twice. The FCM-related delivery columns stay
-// empty for these rows.
-func handleStatusMirror(
-	ctx context.Context,
-	e event.Event,
-	topicLabel, fsStatus string,
-	parse func([]byte) (string, error),
-) error {
-	logger := slog.With("function", "notification-worker", "trigger", topicLabel)
+// ProcessSessionStatusChanged — consumes session.status_changed (docs/21
+// Faza-4). The SINGLE status consumer (deployed as
+// notification-worker-on-status). The status VARIES (uploaded | transcribing
+// | analyzing | done | failed | cancelled) and is carried in the payload, so
+// it is read from the event and validated against the Firestore vocabulary.
+//
+// Most transitions are pure Firestore mirrors. "done" is special: beyond the
+// mirror it ALSO fires the report-ready FCM push + inbox doc
+// (handleReportReady) — the work formerly done by the retired
+// notification-worker-on-report.
+func ProcessSessionStatusChanged(ctx context.Context, e event.Event) error {
+	logger := slog.With("function", "notification-worker", "trigger", "session.status_changed")
 
 	var msgData MessagePublishedData
 	if err := e.DataAs(&msgData); err != nil {
 		logger.Error("decode cloudevent", "error", err)
 		return err
 	}
-	sessionIDStr, err := parse(msgData.Message.Data)
+	sessionIDStr, fsStatus, err := parseSessionStatusChanged(msgData.Message.Data)
 	if err != nil {
 		logger.Error("parse payload", "error", err, "raw", string(msgData.Message.Data))
 		return err
 	}
-	logger = logger.With("session_id", sessionIDStr)
+	logger = logger.With("session_id", sessionIDStr, "status", fsStatus)
 
 	if store == nil {
 		logger.Warn("no store — skipping (mock mode)")
@@ -369,7 +329,16 @@ func handleStatusMirror(
 		return fmt.Errorf("load session: %w", err)
 	}
 
-	// Idempotency only — no FCM, no audit columns to update.
+	// "done" is the report-ready transition: beyond the status mirror it
+	// fires the FCM "report ready" push + writes the inbox doc. Delegated to
+	// handleReportReady, which carries its own ("report_ready") idempotency
+	// key so it never collides with the "status_done" mirror key.
+	if fsStatus == "done" {
+		return handleReportReady(ctx, logger, sessionIDStr, session)
+	}
+
+	// Idempotency per (session, status) so a duplicate Pub/Sub delivery
+	// of the same transition doesn't re-mirror.
 	idempotencyKey := sessionIDStr + ":status_" + fsStatus
 	if _, err := store.InsertNotificationDelivery(ctx, pgstore.InsertDeliveryParams{
 		UserID:           session.TherapistID,
@@ -385,16 +354,12 @@ func handleStatusMirror(
 		return err
 	}
 
-	progress := progressForStatus(fsStatus)
 	if err := fsWriter.WriteSessionState(ctx, fswriter.SessionState{
 		SessionID:            sessionIDStr,
 		TherapistFirebaseUID: session.TherapistFirebaseUID,
 		Status:               fsStatus,
-		ProgressPercent:      progress,
+		ProgressPercent:      progressForStatus(fsStatus),
 	}); err != nil {
-		// Best-effort: log but don't fail. The Pub/Sub message gets
-		// ACK'd; if Firestore is down, Flutter falls back to clinical-svc
-		// poll for status (architecture §6.3).
 		logger.Warn("firestore mirror failed", "error", err)
 	}
 
@@ -424,26 +389,31 @@ func progressForStatus(s string) int {
 // helpers
 // ---------------------------------------------------------------------------
 
-func parseTranscriptCompleted(b []byte) (string, error) {
-	var ev TranscriptCompletedEvent
-	if err := json.Unmarshal(b, &ev); err != nil {
-		return "", err
+// parseSessionStatusChanged extracts session_id + status and validates
+// the status against the Firestore vocabulary this consumer understands.
+// An unknown status is rejected (→ retried, then DLQ) rather than
+// silently writing garbage into session_states.
+func parseSessionStatusChanged(b []byte) (sessionID, status string, err error) {
+	var ev struct {
+		SessionID string `json:"session_id"`
+		Status    string `json:"status"`
+	}
+	if uerr := json.Unmarshal(b, &ev); uerr != nil {
+		return "", "", uerr
 	}
 	if ev.SessionID == "" {
-		return "", fmt.Errorf("transcript.completed missing session_id")
+		return "", "", fmt.Errorf("session.status_changed missing session_id")
 	}
-	return ev.SessionID, nil
-}
-
-func parseAudioUploaded(b []byte) (string, error) {
-	var ev AudioUploadedEvent
-	if err := json.Unmarshal(b, &ev); err != nil {
-		return "", err
+	switch ev.Status {
+	// Full lifecycle (docs/21 Faza-4 consolidation): on-status is now the
+	// single status-mirror consumer. Producers publish every transition
+	// here, and notification-worker-on-uploaded/-transcribed/-report are
+	// retired. (on-deleted stays — deletion is a different action.)
+	case "uploaded", "transcribing", "analyzing", "done", "failed", "cancelled":
+		return ev.SessionID, ev.Status, nil
+	default:
+		return "", "", fmt.Errorf("session.status_changed unknown status %q", ev.Status)
 	}
-	if ev.SessionID == "" {
-		return "", fmt.Errorf("audio.uploaded missing session_id")
-	}
-	return ev.SessionID, nil
 }
 
 // localizeReportReady returns (title, body) for the report-ready push,

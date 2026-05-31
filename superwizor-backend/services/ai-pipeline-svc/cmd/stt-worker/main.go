@@ -209,6 +209,12 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 		logger.Error("status update", "error", err)
 		return err
 	}
+	// Mirror progress to the user (docs/21 §3.3, WS1B): the stepper
+	// advances to step 3 instead of sitting on step 2 for the whole
+	// (long) transcription then jumping to step 4. Best-effort.
+	if perr := publishSessionStatusChanged(ctx, event.SessionID, "transcribing"); perr != nil {
+		logger.Warn("publish session.status_changed(transcribing) failed", "error", perr)
+	}
 
 	// Resolve language from session.language_code (populated by
 	// ingestion-svc.CompleteAudioUpload from patient_user.ui_language).
@@ -782,14 +788,27 @@ func isTerminalSTTError(err error) bool {
 // Returning the original `err` preserves stack/message for Cloud
 // Logging at the function framework layer.
 func handleSTTError(ctx context.Context, logger *slog.Logger, sessionID string, err error) error {
-	_ = updateSessionStatus(ctx, sessionID, "FAILED")
 	if isTerminalSTTError(err) {
-		logger.Error("stt: terminal failure — acking pubsub, no retry",
+		// Terminal — this input will never succeed. Mark FAILED, mirror
+		// to the user (docs/21: authoritative-FAILED source #1), ack so
+		// Pub/Sub stops retrying.
+		_ = updateSessionStatus(ctx, sessionID, "FAILED")
+		if perr := publishSessionStatusChanged(ctx, sessionID, "failed"); perr != nil {
+			logger.Warn("stt: publish session.status_changed(failed) failed", "error", perr)
+		}
+		releaseBillingCredit(ctx, sessionID, "STT_FAILED")
+		logger.Error("stt: terminal failure — FAILED + acking pubsub, no retry",
 			"error", err,
 			"hint", "check audio codec (Chirp 3 accepts FLAC/WAV/OGG/AMR; M4A must be transcoded via ingestion-svc.ConvertAudio before CompleteAudioUpload)")
 		return nil
 	}
-	logger.Error("stt: transient failure — returning error, pubsub will retry",
+	// Transient (Chirp 5xx / Unavailable / deadline / network). Do NOT
+	// write FAILED and do NOT publish — that would flash a permanent
+	// failure to the user for audio they can no longer re-process
+	// (docs/21 §2.2). Leave the session in its in-progress status and
+	// NACK so Pub/Sub retries within the ~24h window; the DLQ give-up
+	// reaper surfaces FAILED only if retries are genuinely exhausted.
+	logger.Error("stt: transient failure — status left in-progress, pubsub will retry",
 		"error", err)
 	return err
 }
@@ -864,6 +883,44 @@ func commitBillingUsageAsync(sessionIDStr string) {
 		return
 	}
 	logger.Info("billing commit: tokens committed", "duration_seconds", *duration)
+}
+
+// releaseBillingCredit releases the held reservation for a session that
+// failed terminally (or is being given up on), so the token returns to
+// the org promptly instead of waiting out the 26h reservation TTL
+// (docs/21 WS0E/WS2A). Synchronous + best-effort: must run before the
+// handler returns (Cloud Functions may freeze the instance after), so we
+// don't background it; resolves org_id and fires ReleaseCredit, logging
+// on failure. Idempotent on the billing side (no-op if already released
+// / expired).
+func releaseBillingCredit(ctx context.Context, sessionIDStr, reason string) {
+	if billingClient == nil || dbPool == nil {
+		return
+	}
+	logger := slog.With("function", "stt-worker", "session_id", sessionIDStr)
+
+	var orgID string
+	err := dbPool.QueryRow(ctx, `
+		SELECT COALESCE(u.organization_id::text, '')
+		FROM sessions s
+		JOIN users u ON u.id = s.therapist_id
+		WHERE s.id = $1`, sessionIDStr).Scan(&orgID)
+	if err != nil {
+		logger.Warn("billing release: lookup failed", "error", err)
+		return
+	}
+	if orgID == "" {
+		return
+	}
+	if _, rerr := billingClient.ReleaseCredit(ctx, &billingv1.ReleaseCreditRequest{
+		SessionId:      sessionIDStr,
+		OrganizationId: orgID,
+		Reason:         reason,
+	}); rerr != nil {
+		logger.Warn("billing release: ReleaseCredit failed (fail-soft)", "error", rerr)
+		return
+	}
+	logger.Info("billing release: token released", "reason", reason)
 }
 
 func updateSessionStatus(ctx context.Context, sessionID, status string) error {
@@ -1149,6 +1206,49 @@ func publishTranscriptCompleted(ctx context.Context, sessionID, transcriptID str
 		Attributes: map[string]string{
 			"event_type": "transcript.completed",
 			"session_id": sessionID,
+		},
+	})
+	if _, err := res.Get(ctx); err != nil {
+		return err
+	}
+	// docs/21 Faza-4 consolidation: also mirror "analyzing" via the
+	// unified session.status_changed topic (notification-worker-on-status
+	// is the single status-mirror consumer; on-transcribed retired).
+	// transcript.completed itself stays — it drives llm-worker.
+	return publishSessionStatusChanged(ctx, sessionID, "analyzing")
+}
+
+// publishSessionStatusChanged mirrors a session lifecycle status to the
+// `session.status_changed` topic (docs/21). notification-worker-on-status
+// writes it into Firestore session_states so the Flutter app advances /
+// shows the failure. [status] is the Firestore vocabulary
+// ("transcribing" | "failed"), NOT the PG enum.
+//
+// IMPORTANT (docs/21 §3.1): only call this for TERMINAL failures and for
+// genuine progress (transcribing). NEVER publish "failed" on a transient
+// error that Pub/Sub will retry — that would flash a permanent-looking
+// failure for a recording the user can no longer re-process.
+//
+// Best-effort: a publish failure is logged by the caller; it never blocks
+// the PG write or the ack/nack decision.
+func publishSessionStatusChanged(ctx context.Context, sessionID, status string) error {
+	if pubsubClient == nil {
+		return nil
+	}
+	topic := pubsubClient.Publisher("session.status_changed")
+	defer topic.Stop()
+
+	payload, _ := json.Marshal(map[string]string{
+		"session_id": sessionID,
+		"status":     status,
+	})
+
+	res := topic.Publish(ctx, &pubsub.Message{
+		Data: payload,
+		Attributes: map[string]string{
+			"event_type": "session.status_changed",
+			"session_id": sessionID,
+			"status":     status,
 		},
 	})
 	_, err := res.Get(ctx)

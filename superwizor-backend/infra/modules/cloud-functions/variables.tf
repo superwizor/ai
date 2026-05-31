@@ -11,6 +11,7 @@ variable "transcripts_raw_bucket_name" {
 }
 variable "audio_uploaded_topic" { type = string }
 variable "transcript_completed_topic" { type = string }
+variable "session_status_changed_topic" { type = string }
 variable "stt_worker_source_dir" { type = string }
 variable "llm_worker_source_dir" { type = string }
 variable "stt_worker_sa_email" {
@@ -50,11 +51,17 @@ variable "transcript_completed_dlq_topic" {
 # ----------------------------------------------------------------------------
 # notification-svc worker inputs (Phase 3 — Sprints 3.3 + 3.5)
 #
-# One source bundle (cmd/worker) is wrapped by THREE Cloud Functions, each
-# bound to its own Eventarc Pub/Sub trigger:
-#   - on-uploaded   → audio.uploaded       → ProcessAudioUploaded
-#   - on-transcribed→ transcript.completed → ProcessTranscriptCompleted
-#   - on-report     → report.generated     → ProcessReportGenerated
+# One source bundle (cmd/worker) is wrapped by Cloud Functions, each bound
+# to its own Eventarc Pub/Sub trigger. docs/21 Faza-4 retired the two pure
+# status mirrors (on-uploaded, on-transcribed) into on-status:
+#   - on-status   → session.status_changed → ProcessSessionStatusChanged
+#                   (whole lifecycle mirror — uploaded/transcribing/analyzing/
+#                    done/failed/cancelled — AND, on "done", the report-ready
+#                    FCM push + inbox doc via handleReportReady)
+#   - on-deleted  → session.deleted         → ProcessSessionDeleted (RODO erase)
+#
+# Retired (docs/21 Faza-4): on-uploaded, on-transcribed (pure mirrors) and
+# on-report (its FCM push folded into on-status's "done" branch).
 # ----------------------------------------------------------------------------
 
 variable "notification_worker_source_dir" {
@@ -65,11 +72,6 @@ variable "notification_worker_source_dir" {
 variable "notification_worker_sa_email" {
   type        = string
   description = "Email of the notification-svc service account (shared by Cloud Run server + 3 worker functions)"
-}
-
-variable "report_generated_topic" {
-  type        = string
-  description = "Pub/Sub topic ID for report.generated (final fan-out → FCM push + Firestore done)"
 }
 
 variable "session_deleted_topic" {

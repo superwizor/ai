@@ -1,5 +1,5 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-ingestion:latest', '-f', 'services/ingestion-svc/Dockerfile', '.']
+  args: ['build', '-t', 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-ingestion:manual-46947d0', '-f', 'services/ingestion-svc/Dockerfile', '.']
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-ingestion:latest']
+  args: ['push', 'europe-central2-docker.pkg.dev/superwizor-ai-25ecd/services/superwizor-ingestion:manual-46947d0']

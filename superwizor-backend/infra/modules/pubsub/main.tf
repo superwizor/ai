@@ -51,10 +51,10 @@ resource "google_pubsub_topic" "transcript_completed" {
   project = var.project_id
 }
 
-resource "google_pubsub_topic" "report_generated" {
-  name    = "report.generated"
-  project = var.project_id
-}
+# report.generated RETIRED (docs/21 Faza-4): llm-worker now publishes the
+# terminal-success transition to session.status_changed ("done") and
+# notification-worker-on-status owns the report-ready fan-out. The topic,
+# its DLQ, the DLQ reader, and the llm-worker publisher binding are all gone.
 
 # session.deleted — emitted by clinical-svc.DeleteSession and (per-session)
 # by clinical-svc.DeletePatientFile. notification-svc-on-deleted handler
@@ -67,9 +67,23 @@ resource "google_pubsub_topic" "session_deleted" {
   project = var.project_id
 }
 
+# session.status_changed (docs/21): unified mirror for the
+# currently-unmirrored transitions — transcribing (progress), failed
+# (terminal), cancelled (user). Published by ai-pipeline-svc workers and
+# clinical-svc; consumed by notification-worker-on-status.
+resource "google_pubsub_topic" "session_status_changed" {
+  name    = "session.status_changed"
+  project = var.project_id
+}
+
 # DLQ topics
 resource "google_pubsub_topic" "audio_uploaded_dlq" {
   name    = "audio.uploaded.dlq"
+  project = var.project_id
+}
+
+resource "google_pubsub_topic" "session_status_changed_dlq" {
+  name    = "session.status_changed.dlq"
   project = var.project_id
 }
 
@@ -80,16 +94,6 @@ resource "google_pubsub_topic" "transcript_completed_dlq" {
 
 resource "google_pubsub_topic" "session_deleted_dlq" {
   name    = "session.deleted.dlq"
-  project = var.project_id
-}
-
-# DLQ for the report.generated pipeline (notification-worker-on-report).
-# Mirror of audio_uploaded_dlq / transcript_completed_dlq — every main
-# topic that has an Eventarc consumer gets a paired DLQ so the
-# wire_dlq.sh post-apply script can bind it via
-# `gcloud pubsub subscriptions update`.
-resource "google_pubsub_topic" "report_generated_dlq" {
-  name    = "report.generated.dlq"
   project = var.project_id
 }
 
@@ -122,16 +126,16 @@ resource "google_pubsub_topic_iam_member" "pubsub_agent_transcript_dlq_publisher
   member  = local.pubsub_service_agent
 }
 
-resource "google_pubsub_topic_iam_member" "pubsub_agent_report_dlq_publisher" {
+resource "google_pubsub_topic_iam_member" "pubsub_agent_session_deleted_dlq_publisher" {
   project = var.project_id
-  topic   = google_pubsub_topic.report_generated_dlq.name
+  topic   = google_pubsub_topic.session_deleted_dlq.name
   role    = "roles/pubsub.publisher"
   member  = local.pubsub_service_agent
 }
 
-resource "google_pubsub_topic_iam_member" "pubsub_agent_session_deleted_dlq_publisher" {
+resource "google_pubsub_topic_iam_member" "pubsub_agent_session_status_changed_dlq_publisher" {
   project = var.project_id
-  topic   = google_pubsub_topic.session_deleted_dlq.name
+  topic   = google_pubsub_topic.session_status_changed_dlq.name
   role    = "roles/pubsub.publisher"
   member  = local.pubsub_service_agent
 }
@@ -163,16 +167,6 @@ resource "google_pubsub_subscription" "transcript_completed_dlq_reader" {
   name    = "transcript.completed.dlq.reader"
   project = var.project_id
   topic   = google_pubsub_topic.transcript_completed_dlq.id
-
-  ack_deadline_seconds       = 60
-  message_retention_duration = "604800s"
-  expiration_policy { ttl = "" }
-}
-
-resource "google_pubsub_subscription" "report_generated_dlq_reader" {
-  name    = "report.generated.dlq.reader"
-  project = var.project_id
-  topic   = google_pubsub_topic.report_generated_dlq.id
 
   ack_deadline_seconds       = 60
   message_retention_duration = "604800s"
@@ -230,8 +224,12 @@ resource "google_pubsub_subscription" "audio_object_finalized_sub" {
   }
 
   dead_letter_policy {
-    dead_letter_topic     = google_pubsub_topic.audio_object_finalized_dlq.id
-    max_delivery_attempts = 5
+    dead_letter_topic = google_pubsub_topic.audio_object_finalized_dlq.id
+    # docs/21 WS0A: 100 attempts at 10–600s backoff ≈ ~24h envelope,
+    # matching the Eventarc subs (wire_dlq.sh). Was 5 (~minutes), which
+    # gave up on a Chirp/transcripts-raw transient long before it could
+    # self-heal. The DLQ give-up reaper surfaces FAILED only after this.
+    max_delivery_attempts = 100
   }
 }
 
@@ -319,14 +317,6 @@ resource "google_pubsub_topic_iam_member" "stt_publisher" {
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:stt-worker@${var.project_id}.iam.gserviceaccount.com"
 }
-# IAM: llm-worker może publishować report.generated
-resource "google_pubsub_topic_iam_member" "llm_publisher" {
-  project = var.project_id
-  topic   = google_pubsub_topic.report_generated.name
-  role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:llm-worker@${var.project_id}.iam.gserviceaccount.com"
-}
-
 # IAM: clinical-svc may publish session.deleted (one event per
 # DeleteSession + per session under DeletePatientFile fan-out).
 # Service account convention: clinical-svc@<project>.iam — created
@@ -334,6 +324,40 @@ resource "google_pubsub_topic_iam_member" "llm_publisher" {
 resource "google_pubsub_topic_iam_member" "clinical_session_deleted_publisher" {
   project = var.project_id
   topic   = google_pubsub_topic.session_deleted.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:clinical-svc@${var.project_id}.iam.gserviceaccount.com"
+}
+
+# IAM: stt-worker + llm-worker + clinical-svc may publish
+# session.status_changed (docs/21). stt-worker covers stt-finalize +
+# stt-watchdog (same SA); llm-worker covers terminal report failures;
+# clinical-svc publishes "cancelled".
+resource "google_pubsub_topic_iam_member" "stt_status_changed_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.session_status_changed.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:stt-worker@${var.project_id}.iam.gserviceaccount.com"
+}
+
+# docs/21 Faza-4: ingestion-svc publishes "uploaded" onto the unified
+# topic (on-uploaded retired).
+resource "google_pubsub_topic_iam_member" "ingestion_status_changed_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.session_status_changed.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:ingestion-svc@${var.project_id}.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_topic_iam_member" "llm_status_changed_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.session_status_changed.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:llm-worker@${var.project_id}.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_topic_iam_member" "clinical_status_changed_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.session_status_changed.name
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:clinical-svc@${var.project_id}.iam.gserviceaccount.com"
 }
@@ -358,11 +382,11 @@ output "audio_object_finalized_topic_name" { value = google_pubsub_topic.audio_o
 output "audio_object_finalized_subscription_id" { value = google_pubsub_subscription.audio_object_finalized_sub.id }
 output "audio_object_finalized_subscription_name" { value = google_pubsub_subscription.audio_object_finalized_sub.name }
 output "transcript_completed_topic" { value = google_pubsub_topic.transcript_completed.id }
-output "report_generated_topic" { value = google_pubsub_topic.report_generated.id }
 output "session_deleted_topic" { value = google_pubsub_topic.session_deleted.id }
+output "session_status_changed_topic" { value = google_pubsub_topic.session_status_changed.id }
+output "session_status_changed_dlq_topic" { value = google_pubsub_topic.session_status_changed_dlq.id }
 output "audio_uploaded_dlq_topic" { value = google_pubsub_topic.audio_uploaded_dlq.id }
 output "transcript_completed_dlq_topic" { value = google_pubsub_topic.transcript_completed_dlq.id }
-output "report_generated_dlq_topic" { value = google_pubsub_topic.report_generated_dlq.id }
 output "session_deleted_dlq_topic" { value = google_pubsub_topic.session_deleted_dlq.id }
 output "firestore_sync_dlq_topic" { value = google_pubsub_topic.firestore_sync_dlq.id }
 output "firestore_sync_dlq_subscription" { value = google_pubsub_subscription.firestore_sync_dlq_reader.id }

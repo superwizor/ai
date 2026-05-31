@@ -71,3 +71,33 @@ func (p *Publisher) PublishSessionDeleted(ctx context.Context, sessionID, therap
 	_, err = res.Get(ctx)
 	return err
 }
+
+// PublishSessionStatusChanged mirrors a lifecycle status to the
+// session.status_changed topic (docs/21). clinical-svc uses it for
+// "cancelled" (CancelSession) so the Firestore session_states doc
+// reflects a user-initiated cancellation. [status] is the Firestore
+// vocabulary ("cancelled"), not the PG enum. Best-effort — the call
+// site logs but does not fail the gRPC call on error.
+func (p *Publisher) PublishSessionStatusChanged(ctx context.Context, sessionID, status string) error {
+	data, err := json.Marshal(map[string]string{
+		"session_id": sessionID,
+		"status":     status,
+	})
+	if err != nil {
+		return err
+	}
+
+	topic := p.client.Publisher("session.status_changed")
+	defer topic.Stop()
+
+	res := topic.Publish(ctx, &pubsub.Message{
+		Data: data,
+		Attributes: map[string]string{
+			"event_type": "session.status_changed",
+			"session_id": sessionID,
+			"status":     status,
+		},
+	})
+	_, err = res.Get(ctx)
+	return err
+}

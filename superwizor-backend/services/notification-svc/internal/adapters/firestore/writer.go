@@ -58,10 +58,47 @@ type SessionState struct {
 // 0 is the default for any unknown / unset status — that way a new doc
 // (where the current rank is 0) always accepts the first write.
 var sessionStatusRank = map[string]int{
-	"":          0,
-	"uploaded":  1,
-	"analyzing": 2,
-	"done":      3,
+	"":             0,
+	"uploaded":     1,
+	"transcribing": 2, // docs/21 WS1B — between uploaded and analyzing
+	"analyzing":    3,
+	"done":         4,
+	"failed":       4, // terminal — same tier as done
+	"cancelled":    4, // terminal — user-initiated
+}
+
+// terminalStatuses are the sticky end states. Once a doc reaches one,
+// no other (different) terminal state may overwrite it — first terminal
+// wins. This stops a late `failed` redelivery from clobbering a `done`
+// (or vice-versa) under reordered at-least-once delivery (docs/21 §3.4).
+var terminalStatuses = map[string]bool{
+	"done":      true,
+	"failed":    true,
+	"cancelled": true,
+}
+
+// shouldMirror decides whether a session_states write transitioning the
+// doc from currStatus → newStatus should proceed. Pure (no Firestore) so
+// the monotonic-rank + terminal-sticky rules (docs/21 §3.4) are unit-
+// testable. currStatus "" means a fresh/absent doc (always accepts).
+//   - newStatus unknown to the rank map → allow (logged elsewhere as drift).
+//   - newRank < currRank → skip (monotonic regress, e.g. a backlog
+//     `uploaded` landing after `analyzing`).
+//   - currStatus terminal and != newStatus → skip (first-terminal-wins:
+//     a late `failed` must not clobber a real `done`, nor reopen a
+//     `cancelled`).
+func shouldMirror(currStatus, newStatus string) bool {
+	newRank, known := sessionStatusRank[newStatus]
+	if !known {
+		return true
+	}
+	if newRank < sessionStatusRank[currStatus] {
+		return false
+	}
+	if terminalStatuses[currStatus] && currStatus != newStatus {
+		return false
+	}
+	return true
 }
 
 // WriteSessionState merges the status field into session_states/{sessionId}
@@ -77,8 +114,7 @@ func (w *Writer) WriteSessionState(ctx context.Context, st SessionState) error {
 		return nil
 	}
 	docRef := w.client.Doc("session_states/" + st.SessionID)
-	newRank, ok := sessionStatusRank[st.Status]
-	if !ok {
+	if _, ok := sessionStatusRank[st.Status]; !ok {
 		// Defensive: unknown status string. Don't block — write it
 		// through but log so we notice schema drift.
 		slog.Warn("firestore session_states: unknown status — writing anyway",
@@ -98,10 +134,8 @@ func (w *Writer) WriteSessionState(ctx context.Context, st SessionState) error {
 					currStatus = s
 				}
 			}
-			currRank := sessionStatusRank[currStatus]
-			if ok && newRank < currRank {
-				// Skip: the doc is already at a more-advanced state.
-				slog.Info("firestore session_states: skipping monotonic regress",
+			if !shouldMirror(currStatus, st.Status) {
+				slog.Info("firestore session_states: skipping write",
 					"session_id", st.SessionID,
 					"current_status", currStatus,
 					"new_status", st.Status)

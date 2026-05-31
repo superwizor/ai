@@ -25,7 +25,7 @@
 // Test cleanup:
 //   Każdy test używa UNIQUE session_id (UUID), więc nie ma kolizji między
 //   testami. Po teście cleanup deletuje swoje rzędy z usage_events,
-//   pending_reservations, outbox_events.
+//   pending_reservations.
 //
 // Edge cases pokryte:
 //   - Token calculator boundary (45/63/64/120/123min)
@@ -33,7 +33,6 @@
 //   - Quota exhausted gate
 //   - ReserveCredit → ReleaseCredit roundtrip
 //   - ReserveCredit → CommitUsage transfer
-//   - Outbox edge-trigger (warning/critical/exhausted)
 //   - PAST_DUE blokuje reservation
 //   - Stale reservation expiry (manual /admin/reservation-expiry call)
 package e2e_test
@@ -232,25 +231,6 @@ func (e *billingTestEnv) setCounterUsage(t *testing.T, used, reserved int32) {
 		AND period_start <= now() AND period_end > now()`,
 		used, reserved, e.orgID)
 	require.NoError(t, err, "set counter")
-}
-
-// readOutboxEvent — wraca najnowszy outbox event dla danego subscription.
-// Nil jeśli nic nie ma.
-func (e *billingTestEnv) readLatestOutboxEvent(t *testing.T, since time.Time) (eventType string, payload map[string]any, found bool) {
-	ctx := context.Background()
-	var et string
-	var pl []byte
-	err := e.dbPool.QueryRow(ctx, `
-		SELECT event_type, payload FROM outbox_events
-		WHERE organization_id = $1 AND created_at > $2
-		ORDER BY created_at DESC LIMIT 1`,
-		e.orgID, since).Scan(&et, &pl)
-	if err != nil {
-		return "", nil, false
-	}
-	p := map[string]any{}
-	require.NoError(t, json.Unmarshal(pl, &p))
-	return et, p, true
 }
 
 // ============================================================================
@@ -596,112 +576,14 @@ func TestBilling_GetSubscription(t *testing.T) {
 	assert.Equal(t, sub.TokensUsedThisPeriod, sub.SessionsUsedThisPeriod)
 }
 
-// ============================================================================
-// Outbox edge cases
-// ============================================================================
-
-// TestBilling_Outbox_QuotaWarning — counter 6 used, jedna sesja → 5 remaining → warning event
-func TestBilling_Outbox_QuotaWarning(t *testing.T) {
-	env := loadBillingEnv(t)
-	env.resetCounter(t)
-	// Limit 40, set used=34 → remaining=6. Commit 1 token (45min) → remaining=5 → warning edge.
-	env.setCounterUsage(t, 34, 0)
-	defer env.resetCounter(t)
-
-	conn, c := env.dialBilling(t)
-	defer conn.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	sessionID := uuid.New()
-	t.Cleanup(func() { env.cleanupSession(t, sessionID) })
-
-	before := time.Now()
-	_, err := c.CommitUsage(ctx, &billingv1.CommitUsageRequest{
-		SessionId:       sessionID.String(),
-		OrganizationId:  env.orgID.String(),
-		DurationSeconds: 2700,
-	})
-	require.NoError(t, err)
-
-	// Outbox event powinien być w DB — poller czyści w tle, ale jeśli zdąży
-	// szybko, możemy go nie złapać. Damy 1s na pewność że został zapisany,
-	// ale niekoniecznie published.
-	time.Sleep(500 * time.Millisecond)
-
-	// Sprawdzamy w outbox_events PO created_at > before — niezależnie od processed.
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel2()
-	var eventType string
-	err = env.dbPool.QueryRow(ctx2, `
-		SELECT event_type FROM outbox_events
-		WHERE organization_id = $1 AND created_at > $2
-		ORDER BY created_at DESC LIMIT 1`,
-		env.orgID, before).Scan(&eventType)
-	require.NoError(t, err, "outbox event must be persisted")
-	assert.Equal(t, "quota.warning", eventType)
-}
-
-// TestBilling_Outbox_QuotaExhausted — counter 39 used → commit 1 → 40 used (0 remaining) → exhausted event
-func TestBilling_Outbox_QuotaExhausted(t *testing.T) {
-	env := loadBillingEnv(t)
-	env.resetCounter(t)
-	env.setCounterUsage(t, 39, 0) // 1 remaining
-	defer env.resetCounter(t)
-
-	conn, c := env.dialBilling(t)
-	defer conn.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	sessionID := uuid.New()
-	t.Cleanup(func() { env.cleanupSession(t, sessionID) })
-
-	before := time.Now()
-	_, err := c.CommitUsage(ctx, &billingv1.CommitUsageRequest{
-		SessionId:       sessionID.String(),
-		OrganizationId:  env.orgID.String(),
-		DurationSeconds: 2700,
-	})
-	require.NoError(t, err)
-
-	time.Sleep(500 * time.Millisecond)
-
-	et, payload, found := env.readLatestOutboxEvent(t, before)
-	require.True(t, found, "outbox event must exist")
-	assert.Equal(t, "quota.exhausted", et)
-	assert.EqualValues(t, 0, payload["tokens_remaining"])
-}
-
-// TestBilling_Outbox_NoEventWhenNoEdge — commit nie przekraczający progu nie tworzy outboxa
-func TestBilling_Outbox_NoEventWhenNoEdge(t *testing.T) {
-	env := loadBillingEnv(t)
-	env.resetCounter(t) // 0 used, 40 remaining
-	defer env.resetCounter(t)
-
-	conn, c := env.dialBilling(t)
-	defer conn.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	sessionID := uuid.New()
-	t.Cleanup(func() { env.cleanupSession(t, sessionID) })
-
-	before := time.Now()
-	_, err := c.CommitUsage(ctx, &billingv1.CommitUsageRequest{
-		SessionId:       sessionID.String(),
-		OrganizationId:  env.orgID.String(),
-		DurationSeconds: 2700, // 1 token → remaining 39, no edge
-	})
-	require.NoError(t, err)
-	time.Sleep(500 * time.Millisecond)
-
-	_, _, found := env.readLatestOutboxEvent(t, before)
-	assert.False(t, found, "no outbox event expected (remaining went 40→39, no threshold)")
-}
+// NOTE: the "Outbox edge cases" group (TestBilling_Outbox_QuotaWarning,
+// _QuotaExhausted, _NoEventWhenNoEdge) was removed (2026-05-31). It asserted
+// against the outbox_events table, which migration 000034_drop_outbox_events
+// deliberately dropped when the billing.outbox fan-out was replaced by
+// direct-RPC quota propagation (clinical-svc.GetMyBillingState + state_after
+// on Reservation/UsageCommit). The two warning/exhausted tests failed
+// unconditionally (relation does not exist); NoEventWhenNoEdge only "passed"
+// because its helper swallowed that error and returned found=false.
 
 // ============================================================================
 // Race conditions
