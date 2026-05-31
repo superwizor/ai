@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"golang.org/x/net/http2"
 	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -200,18 +199,20 @@ func main() {
 	corsMW := cors.New(cors.FromEnv(corsOrigins))
 
 	// HTTP/2 cleartext (h2c) — Cloud Run terminuje TLS przed kontenerem,
-	// więc po naszej stronie ruch jest HTTP/2 plaintext. Używamy
-	// http2.ConfigureServer (Go 1.23+) zamiast przestarzałego
-	// golang.org/x/net/http2/h2c wrapper.
+	// więc po naszej stronie ruch jest HTTP/2 plaintext. Serwer MUSI mówić
+	// h2c. Używamy http.Server.Protocols (Go 1.24+, SetUnencryptedHTTP2) —
+	// NIE http2.ConfigureServer, które włącza HTTP/2 tylko po TLS i
+	// zostawia plaintext listener niezdolny do sparsowania preface h2c
+	// (→ Cloud Run "reset reason: protocol error", gRPC UNAVAILABLE).
+	// Zastępuje też przestarzały x/net/http2/h2c shim.
+	protocols := new(nethttp.Protocols)
+	protocols.SetHTTP1(true)            // Connect-RPC / CORS preflight / health
+	protocols.SetUnencryptedHTTP2(true) // cleartext h2c dla natywnego gRPC
 	httpSrv := &nethttp.Server{
 		Addr:              ":" + port,
 		Handler:           corsMW(mixedHandler),
 		ReadHeaderTimeout: 10 * time.Second,
-	}
-	h2s := &http2.Server{}
-	if err := http2.ConfigureServer(httpSrv, h2s); err != nil {
-		slog.Error("http2 configure failed", "error", err)
-		os.Exit(1)
+		Protocols:         protocols,
 	}
 
 	var wg sync.WaitGroup
