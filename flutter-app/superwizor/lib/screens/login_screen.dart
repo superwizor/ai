@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
+import '../services/grpc_client.dart';
 import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import 'forgot_password_screen.dart';
 import 'legal_markdown_screen.dart';
@@ -206,7 +207,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final nameParts = _nameCtrl.text.trim().split(' ');
       final firstName = nameParts.isNotEmpty ? nameParts.first : '';
       final lastName = nameParts.length > 1 ? nameParts.skip(1).join(' ') : '';
-      await _registerInIdentityService(cred.user!,
+      if (!mounted) return;
+      final grpc = ref.read(grpcClientsProvider);
+      await _registerInIdentityService(grpc, cred.user!,
           firstName: firstName, lastName: lastName);
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _error = _friendlyError(e.code));
@@ -227,7 +230,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Future<void> _registerInIdentityService(User user,
+  Future<void> _registerInIdentityService(GrpcClients grpc, User user,
       {String? firstName, String? lastName}) async {
     String fName = firstName ?? '';
     String lName = lastName ?? '';
@@ -236,7 +239,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       fName = parts.isNotEmpty ? parts.first : '';
       lName = parts.length > 1 ? parts.skip(1).join(' ') : '';
     }
-    final identityClient = ref.read(grpcClientsProvider).identity;
+    final identityClient = grpc.identity;
     try {
       await identityClient.createUser(identity_pb.CreateUserRequest(
         firebaseUid: user.uid,
@@ -254,13 +257,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _ensureUserRegistered() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    final identityClient = ref.read(grpcClientsProvider).identity;
+    if (!mounted) return;
+    final grpc = ref.read(grpcClientsProvider);
+    final identityClient = grpc.identity;
     try {
       await identityClient.getUserByFirebaseUID(
         identity_pb.GetUserByFirebaseUIDRequest(firebaseUid: user.uid),
       );
     } catch (_) {
-      await _registerInIdentityService(user);
+      await _registerInIdentityService(grpc, user);
     }
   }
 
@@ -460,7 +465,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         border: Border.all(color: _kWhite15, width: 1.5),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Image.asset('assets/Ico/Logo_Superwizor_MVP.png', fit: BoxFit.cover),
+      child: Image.asset('assets/images/PNG/v02_supervisor_logo_gradient.png', fit: BoxFit.cover),
     );
   }
 

@@ -31,6 +31,7 @@ import '../providers/grpc_provider.dart';
 import '../repositories/session_details_repository.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_segmented_control.dart';
+import '../widgets/euphire_toast.dart';
 import '../widgets/report_rating_widget.dart';
 import 'transcript_screen.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -332,51 +333,43 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
               children: [
                 _SummaryCard(report: report, payload: payload),
                 const SizedBox(height: 16),
-                ..._sections!.map((s) => Padding(
-                  key: s.key,
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: MarkdownBody(
-                      data: s.content,
-                      styleSheet: MarkdownStyleSheet(
-                        p: theme.textTheme.bodyLarge,
-                        h1: theme.textTheme.headlineLarge,
-                        h2: theme.textTheme.headlineMedium,
-                        h3: theme.textTheme.headlineSmall,
-                        listBullet: theme.textTheme.bodyLarge,
-                        // Style transcript quotes (the LLM wraps them in
-                        // `> ...` blockquotes per the call-2 prompt).
-                        // Default flutter_markdown gives blockquotes a
-                        // white background which looks broken on our
-                        // dark theme — restyle to match the surrounding
-                        // card with an ember accent bar on the left.
-                        blockquote: theme.textTheme.bodyLarge?.copyWith(
-                          fontStyle: FontStyle.italic,
-                          color: EuphireColors.frostWhite.withValues(alpha: 0.85),
+                ..._sections!.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final s = entry.value;
+                  // First section (right after Brief) gets a slightly darker bg
+                  final isFirstSection = idx == 0;
+                  return GestureDetector(
+                    key: s.key,
+                    onLongPress: () {
+                      HapticFeedback.selectionClick();
+                      _showSectionOptions(context, s, idx);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: isFirstSection
+                              ? Colors.white.withValues(alpha: 0.035)
+                              : Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(14),
+                          border: isFirstSection
+                              ? Border(
+                                  left: BorderSide(
+                                    color: EuphireColors.mist.withValues(alpha: 0.3),
+                                    width: 2,
+                                  ),
+                                )
+                              : null,
                         ),
-                        blockquoteDecoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.04),
-                          border: Border(
-                            left: BorderSide(
-                              color: EuphireColors.ember.withValues(alpha: 0.7),
-                              width: 3,
-                            ),
-                          ),
-                          borderRadius: const BorderRadius.only(
-                            topRight: Radius.circular(6),
-                            bottomRight: Radius.circular(6),
-                          ),
+                        child: MarkdownBody(
+                          data: s.content,
+                          styleSheet: _reportMarkdownStyle(),
                         ),
-                        blockquotePadding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                       ),
                     ),
-                  ),
-                )),
+                  );
+                }),
               ],
             ),
           ),
@@ -407,10 +400,390 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     
     await Clipboard.setData(ClipboardData(text: buffer.toString().trim()));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Skopiowano raporty do schowka.')),
-      );
+      EuphireToast.success(context, message: 'Raporty skopiowane do schowka');
     }
+  }
+
+  // ── Shared MarkdownStyleSheet ──
+
+  MarkdownStyleSheet _reportMarkdownStyle() {
+    return MarkdownStyleSheet(
+      p: const TextStyle(
+        fontFamily: 'Montserrat',
+        fontSize: 14,
+        height: 1.7,
+        color: EuphireColors.frostWhite,
+      ),
+      h1: const TextStyle(
+        fontFamily: 'Montserrat',
+        fontSize: 20,
+        fontWeight: FontWeight.w800,
+        color: EuphireColors.frostWhite,
+        height: 1.4,
+      ),
+      h2: const TextStyle(
+        fontFamily: 'Montserrat',
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+        color: EuphireColors.frostWhite,
+        height: 1.4,
+      ),
+      h3: const TextStyle(
+        fontFamily: 'Montserrat',
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: EuphireColors.frostWhite,
+        height: 1.4,
+      ),
+      strong: const TextStyle(
+        fontFamily: 'Montserrat',
+        fontWeight: FontWeight.w700,
+        color: EuphireColors.frostWhite,
+      ),
+      em: TextStyle(
+        fontStyle: FontStyle.italic,
+        color: EuphireColors.frostWhite.withValues(alpha: 0.9),
+      ),
+      listBullet: TextStyle(
+        fontFamily: 'Montserrat',
+        fontSize: 14,
+        color: EuphireColors.ember.withValues(alpha: 0.9),
+        fontWeight: FontWeight.w700,
+      ),
+      listIndent: 14,
+      listBulletPadding: const EdgeInsets.only(right: 6),
+      blockSpacing: 10,
+      blockquote: TextStyle(
+        fontFamily: 'Montserrat',
+        fontStyle: FontStyle.italic,
+        fontSize: 13.5,
+        height: 1.6,
+        color: EuphireColors.frostWhite.withValues(alpha: 0.85),
+      ),
+      blockquoteDecoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        border: Border(
+          left: BorderSide(
+            color: EuphireColors.ember.withValues(alpha: 0.5),
+            width: 3,
+          ),
+        ),
+        borderRadius: const BorderRadius.only(
+          topRight: Radius.circular(6),
+          bottomRight: Radius.circular(6),
+        ),
+      ),
+      blockquotePadding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+    );
+  }
+
+  // ── Long-press options for a report section ──
+
+  void _showSectionOptions(BuildContext context, _ReportSection section, int index) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0A2326),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag handle
+                Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                ),
+                const SizedBox(height: 20),
+                // Header
+                Text(
+                  section.title,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: EuphireColors.frostWhite,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                // Copy
+                _OptionTile(
+                  icon: Icons.copy_rounded,
+                  label: 'Kopiuj sekcję',
+                  subtitle: 'Skopiuj treść do schowka',
+                  color: EuphireColors.ember,
+                  onTap: () {
+                    // Strip markdown headers for cleaner clipboard
+                    final clean = section.content.replaceAll(RegExp(r'^#+\s+', multiLine: true), '');
+                    Clipboard.setData(ClipboardData(text: clean));
+                    Navigator.pop(ctx);
+                    EuphireToast.success(context, message: 'Sekcja skopiowana do schowka');
+                  },
+                ),
+                const SizedBox(height: 10),
+                // Edit
+                _OptionTile(
+                  icon: Icons.edit_note_rounded,
+                  label: 'Edytuj treść',
+                  subtitle: 'Popraw lub uzupełnij raport AI',
+                  color: const Color(0xFF5EEDCC),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showEditSheet(context, section, index);
+                  },
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Edit bottom sheet for a report section ──
+
+  void _showEditSheet(BuildContext context, _ReportSection section, int index) {
+    final controller = TextEditingController(text: section.content);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (_, scrollCtrl) => Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF0A2326),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              border: Border(top: BorderSide(color: Colors.white10)),
+            ),
+            child: Column(
+              children: [
+                // ── Header ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40, height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF5EEDCC).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.edit_note_rounded, color: Color(0xFF5EEDCC), size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Edycja sekcji',
+                                  style: TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: EuphireColors.frostWhite,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  section.title,
+                                  style: TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontSize: 13,
+                                    color: EuphireColors.mist.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+                    ],
+                  ),
+                ),
+                // ── Text editor ──
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: TextField(
+                      controller: controller,
+                      maxLines: null,
+                      expands: true,
+                      textAlignVertical: TextAlignVertical.top,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 14,
+                        height: 1.7,
+                        color: EuphireColors.frostWhite,
+                      ),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'Edytuj treść sekcji...',
+                        hintStyle: TextStyle(
+                          fontFamily: 'Montserrat',
+                          color: EuphireColors.mist.withValues(alpha: 0.4),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // ── Actions ──
+                Padding(
+                  padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(ctx).viewInsets.bottom + 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5),
+                              side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                            ),
+                          ),
+                          child: const Text(
+                            'Anuluj',
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: EuphireColors.mist,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final newContent = controller.text;
+                            if (newContent != section.content) {
+                              setState(() {
+                                _sections![index].content = newContent;
+                              });
+                            }
+                            Navigator.pop(ctx);
+                            EuphireToast.success(context, message: 'Sekcja raportu zaktualizowana');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF5EEDCC),
+                            foregroundColor: EuphireColors.obsidianBlack,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Zapisz zmiany',
+                            style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Option tile helper for section bottom sheet ──
+
+class _OptionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _OptionTile({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.12)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 12,
+                      color: color.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: color.withValues(alpha: 0.4), size: 20),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -422,24 +795,51 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFF041416),
+        borderRadius: BorderRadius.circular(14),
+        border: Border(
+          left: BorderSide(
+            color: EuphireColors.ember.withValues(alpha: 0.6),
+            width: 3,
+          ),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (report.title.isNotEmpty)
-            Text(report.title, style: theme.textTheme.headlineMedium),
-          if (report.title.isNotEmpty) const SizedBox(height: 8),
+          if (report.title.isNotEmpty) ...[
+            Row(
+              children: [
+                Icon(Icons.auto_awesome_rounded, size: 18,
+                    color: EuphireColors.ember.withValues(alpha: 0.8)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    report.title,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.frostWhite,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
           Text(
             payload.summary ?? report.summaryShort,
-            style: theme.textTheme.bodyLarge,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 14,
+              height: 1.7,
+              color: EuphireColors.frostWhite.withValues(alpha: 0.9),
+            ),
           ),
-
         ],
       ),
     );
@@ -562,7 +962,7 @@ String _separateBoldLabels(String md) {
 
 class _ReportSection {
   final String title;
-  final String content;
+  String content;
   final GlobalKey key;
   final GlobalKey tabKey;
   _ReportSection({

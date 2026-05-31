@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/cupertino.dart';
@@ -90,29 +92,57 @@ class HomeScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Section title (scrolls with content) ──
+                      // ── Greeting: Witaj, [Name] ──────────────────────
                       Padding(
                         padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                        child: Text.rich(
-                          TextSpan(
-                            text: 'Twoje ',
-                            style: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 26,
-                              fontWeight: FontWeight.w700,
-                              color: EuphireColors.frostWhite,
-                              height: 1.2,
-                            ),
-                            children: [
+                        child: Builder(
+                          builder: (context) {
+                            final userAsync = ref.watch(currentUserProvider);
+                            final displayName = userAsync.whenOrNull(
+                              data: (u) {
+                                if (u == null) return null;
+                                final full = '${u.firstName} ${u.lastName}'.trim();
+                                return full.isNotEmpty ? full : null;
+                              },
+                            );
+                            return Text.rich(
                               TextSpan(
-                                text: 'kartoteki',
+                                text: 'Witaj, ',
                                 style: const TextStyle(
-                                  fontFamily: 'Merriweather',
-                                  fontStyle: FontStyle.italic,
-                                  color: EuphireColors.ember,
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w800,
+                                  color: EuphireColors.frostWhite,
+                                  height: 1.2,
                                 ),
+                                children: [
+                                  if (displayName != null)
+                                    TextSpan(
+                                      text: displayName,
+                                      style: const TextStyle(
+                                        fontFamily: 'Merriweather',
+                                        fontStyle: FontStyle.italic,
+                                        fontWeight: FontWeight.w700,
+                                        color: EuphireColors.ember,
+                                      ),
+                                    ),
+                                ],
                               ),
-                            ],
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      // ── Subtitle ──────────────────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          'Z kim dzisiaj pracujemy?',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: EuphireColors.mist.withValues(alpha: 0.6),
                           ),
                         ),
                       ),
@@ -172,6 +202,37 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
   String _query = '';
   bool _showPaused = false;
   bool _showCompleted = false;
+  final Set<String> _fetchedPatients = {};
+
+  /// Eagerly fetch sessions for all patients whose session lists
+  /// haven't been loaded yet. This ensures badges ("Nowy raport"),
+  /// "Ostatnio: X" dates, and session counts are visible immediately
+  /// after a cold restart instead of only after tapping into a card.
+  void _ensureSessionsFetched() {
+    final notifier = ref.read(sessionsProvider.notifier);
+    for (final p in widget.patients) {
+      if (!_fetchedPatients.contains(p.id)) {
+        _fetchedPatients.add(p.id);
+        unawaited(notifier.fetchSessions(p.id));
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Schedule fetch after the first frame so ref is available.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureSessionsFetched();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _PatientListSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // New patients may have been added — fetch their sessions too.
+    _ensureSessionsFetched();
+  }
 
   // Compute contextual status for a patient based on their sessions
   static _PatientStatus _statusFor(Patient patient, List<Session> sessions, Set<String> viewedReports) {
@@ -239,9 +300,8 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Search bar (visible when 3+ patients) ──
-        if (widget.patients.length >= 3)
-          Padding(
+        // ── Search bar (always visible) ──
+        Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Container(
               decoration: BoxDecoration(
@@ -290,6 +350,9 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
             ),
           )
         else ...[
+          // ── "TWOJE KARTOTEKI" section header ──
+          _SectionLabel(label: 'TWOJE KARTOTEKI', count: activeFiltered.length),
+          const SizedBox(height: 8),
           // ── Active patients ──
           if (activeFiltered.isNotEmpty) ...[
             ListView.separated(
@@ -330,7 +393,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'WSTRZYMANE',
+                        'WSTRZYMANE (${pausedFiltered.length})',
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 11,
@@ -509,31 +572,32 @@ class _PatientCompactCard extends ConsumerWidget {
 
   static const _months = ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Pa\u017a','Lis','Gru'];
 
-  String get _subtitleFull {
+  // Returns a list of InlineSpans for the subtitle with the date part
+  // rendered in a slightly bolder weight for visual emphasis.
+  List<InlineSpan> _subtitleSpans({required bool full}) {
     if (lastSessionDate != null) {
       final d = lastSessionDate!;
-      return 'Sesje: $sessionCount \u2022 Ostatnio: ${d.day} ${_months[d.month - 1]}';
+      final dateStr = '${d.day} ${_months[d.month - 1]}';
+      if (full) {
+        return [
+          TextSpan(text: 'Sesje: $sessionCount \u2022 Ostatnio: '),
+          TextSpan(
+            text: dateStr,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ];
+      } else {
+        return [
+          const TextSpan(text: 'Ostatnio: '),
+          TextSpan(
+            text: dateStr,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ];
+      }
     }
-    if (sessionCount > 0) return 'Sesje: $sessionCount';
-    return 'Oczekuje na pierwsz\u0105 sesj\u0119';
-  }
-
-  String get _subtitleDateOnly {
-    if (lastSessionDate != null) {
-      final d = lastSessionDate!;
-      return 'Ostatnio: ${d.day} ${_months[d.month - 1]}';
-    }
-    if (sessionCount > 0) return 'Sesje: $sessionCount';
-    return 'Nowy klient';
-  }
-
-  String get _subtitleDateWrapped {
-    if (lastSessionDate != null) {
-      final d = lastSessionDate!;
-      return 'Ostatnio:\n${d.day} ${_months[d.month - 1]}';
-    }
-    if (sessionCount > 0) return 'Sesje: $sessionCount';
-    return 'Nowy klient';
+    if (sessionCount > 0) return [TextSpan(text: 'Sesje: $sessionCount')];
+    return [TextSpan(text: full ? 'Oczekuje na pierwsz\u0105 sesj\u0119' : 'Nowy klient')];
   }
 
   // Status pill config
@@ -547,6 +611,7 @@ class _PatientCompactCard extends ConsumerWidget {
   };
 
   void _showOptions(BuildContext context) {
+    HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -576,6 +641,7 @@ class _PatientCompactCard extends ConsumerWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () {
+            HapticFeedback.lightImpact();
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -639,18 +705,18 @@ class _PatientCompactCard extends ConsumerWidget {
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final w = constraints.maxWidth;
-                          final text = w > 160 ? _subtitleFull : _subtitleDateOnly;
-                          final lines = w > 100 ? 1 : 2;
-                          final displayText = lines > 1 ? _subtitleDateWrapped : text;
-                          return Text(
-                            displayText,
+                          final useFull = w > 160;
+                          return Text.rich(
+                            TextSpan(
+                              children: _subtitleSpans(full: useFull),
+                            ),
                             style: TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 12,
                               fontWeight: FontWeight.w400,
                               color: EuphireColors.mist.withValues(alpha: 0.6),
                             ),
-                            maxLines: lines,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           );
                         },
@@ -777,7 +843,10 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
         firstName,
         lastName,
       );
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        HapticFeedback.mediumImpact();
+        Navigator.of(context).pop();
+      }
     } catch (e) {
       if (mounted) {
         EuphireToast.error(context, message: 'Błąd: $e');
@@ -1182,7 +1251,10 @@ class _LifecycleSegment extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
         borderRadius: BorderRadius.circular(10),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -1359,7 +1431,10 @@ class _DeletePatientConfirmSheetState extends ConsumerState<_DeletePatientConfir
     setState(() => _deleting = true);
     try {
       await ref.read(patientsProvider.notifier).deletePatientUser(widget.patientId);
-      if (mounted) Navigator.of(context).pop(); // zamknij po sukcesie
+      if (mounted) {
+        HapticFeedback.heavyImpact();
+        Navigator.of(context).pop(); // zamknij po sukcesie
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _deleting = false);

@@ -83,6 +83,8 @@ class SessionDto {
         id: id,
         patientId: patientFileId,
         modality: name.isNotEmpty ? name : 'Rozmowa',
+        // name is NOT mapped here — server 'name' is the modality string,
+        // not a custom title. Session.name is only set by explicit user rename.
         date: createdAt.toLocal(),
         duration: Duration(seconds: durationSeconds),
         status: status == 'PENDING_UPLOAD'

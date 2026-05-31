@@ -12,7 +12,7 @@ import 'auth/sso_handler.dart'
     if (dart.library.html) 'auth/sso_handler_web.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
-import 'screens/home_screen.dart';
+import 'screens/home_screen_v2.dart';
 import 'screens/login_screen.dart';
 import 'theme/euphire_theme.dart';
 import 'uploads/upload_queue_provider.dart';

@@ -23,6 +23,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/locale_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/euphire_theme.dart';
+import '../widgets/euphire_toast.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/modality_sheet.dart';
@@ -101,16 +102,12 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
       await user.reload();
       if (mounted) {
         setState(() {});
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Zdjęcie profilowe zaktualizowane')),
-        );
+        EuphireToast.success(context, message: 'Zdjęcie profilowe zaktualizowane');
       }
     } catch (e) {
       debugPrint('Avatar upload failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Wystąpił błąd podczas zapisu: $e')),
-        );
+        EuphireToast.error(context, message: 'Wystąpił błąd podczas zapisu: $e');
       }
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
@@ -260,16 +257,29 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                           _SettingsRow(
                             icon: Icons.email_outlined,
                             title: t.settings_email,
-                            trailing: Expanded(
-                              child: Text(
-                                email,
-                                textAlign: TextAlign.right,
-                                style: TextStyle(fontFamily: 'Montserrat', fontSize: 13,
-                                    color: EuphireColors.frostWhite.withValues(alpha: 0.4)),
-                                overflow: TextOverflow.ellipsis,
+                            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Flexible(
+                                child: Text(
+                                  email,
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(fontFamily: 'Montserrat', fontSize: 13,
+                                      color: EuphireColors.frostWhite.withValues(alpha: 0.4)),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                            onTap: null, // email read-only (zmiana przez Firebase)
+                              const SizedBox(width: 6),
+                              Icon(Icons.chevron_right,
+                                  color: EuphireColors.mist.withValues(alpha: 0.4), size: 18),
+                            ]),
+                            onTap: () async {
+                              await showModalBottomSheet(
+                                context: context,
+                                backgroundColor: Colors.transparent,
+                                isScrollControlled: true,
+                                builder: (_) => _EmailEditSheet(currentEmail: email),
+                              );
+                              setState(() {}); // refresh after close
+                            },
                           ),
                           _Divider(),
                           _SettingsRow(
@@ -939,6 +949,210 @@ class _LogoutBottomSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Email Edit Bottom Sheet ──────────────────────────────────
+
+class _EmailEditSheet extends StatefulWidget {
+  final String currentEmail;
+  const _EmailEditSheet({required this.currentEmail});
+
+  @override
+  State<_EmailEditSheet> createState() => _EmailEditSheetState();
+}
+
+class _EmailEditSheetState extends State<_EmailEditSheet> {
+  final _controller = TextEditingController();
+  bool _isSaving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final newEmail = _controller.text.trim();
+    if (newEmail.isEmpty) return;
+    if (newEmail == widget.currentEmail) {
+      Navigator.pop(context);
+      return;
+    }
+    // Basic email validation
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(newEmail)) {
+      setState(() => _error = 'Podaj prawidłowy adres e-mail.');
+      return;
+    }
+
+    setState(() { _isSaving = true; _error = null; });
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      await user.verifyBeforeUpdateEmail(newEmail);
+      if (!mounted) return;
+      Navigator.pop(context);
+      EuphireToast.success(context, message: 'Link weryfikacyjny wysłany na $newEmail');
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        setState(() => _error = 'Zaloguj się ponownie, aby zmienić e-mail.');
+      } else if (e.code == 'email-already-in-use') {
+        setState(() => _error = 'Ten adres jest już używany.');
+      } else {
+        setState(() => _error = 'Wystąpił błąd: ${e.message}');
+      }
+    } catch (e) {
+      setState(() => _error = 'Wystąpił błąd: $e');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A2326),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(top: BorderSide(color: Colors.white10)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(24, 20, 24, bottomPadding + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Icon
+              Container(
+                width: 64, height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: EuphireColors.ember.withValues(alpha: 0.12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: EuphireColors.ember.withValues(alpha: 0.15),
+                      blurRadius: 24, spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.email_outlined, color: EuphireColors.ember, size: 28),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Zmień adres e-mail',
+                style: TextStyle(
+                  fontFamily: 'Merriweather',
+                  fontStyle: FontStyle.italic,
+                  fontSize: 20,
+                  color: EuphireColors.frostWhite,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Wyślemy link weryfikacyjny na nowy adres.',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 14,
+                  color: EuphireColors.mist.withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.currentEmail,
+                style: TextStyle(
+                  fontFamily: 'RobotoMono',
+                  fontSize: 12,
+                  color: EuphireColors.mist.withValues(alpha: 0.45),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Text field
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 16,
+                  color: EuphireColors.frostWhite,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'nowy@email.pl',
+                  hintStyle: TextStyle(
+                    fontFamily: 'Montserrat',
+                    color: EuphireColors.mist.withValues(alpha: 0.3),
+                  ),
+                  errorText: _error,
+                  errorStyle: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    color: EuphireColors.magma,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.06),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: EuphireColors.ember, width: 1.5),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+                onSubmitted: (_) => _submit(),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: EuphireColors.ember,
+                    foregroundColor: EuphireColors.obsidianBlack,
+                    disabledBackgroundColor: EuphireColors.ember.withValues(alpha: 0.4),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 22, height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: EuphireColors.obsidianBlack),
+                        )
+                      : const Text(
+                          'Wyślij weryfikację',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+              ),
             ],
           ),
         ),

@@ -1,15 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../constants/modalities.dart';
+
 import '../theme/euphire_theme.dart';
-import '../widgets/euphire_header.dart';
+import '../widgets/euphire_toast.dart';
+
 import '../widgets/euphire_bottom_sheet.dart';
 import '../models/patient.dart';
 import '../models/session.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
+import '../providers/patient_notes_provider.dart';
+import '../providers/viewed_reports_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../uploads/cancel_upload_action.dart';
 import '../uploads/pending_upload.dart';
@@ -40,7 +44,8 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     with TickerProviderStateMixin {
   late AnimationController _fabController;
   late Animation<double> _recordAnim; // mini-FAB #1 (closer to main FAB)
-  late Animation<double> _uploadAnim; // action card #2 (higher up)
+  late Animation<double> _noteAnim;   // action card #2 (middle)
+  late Animation<double> _uploadAnim; // action card #3 (higher up)
   late Animation<double> _bannerAnim; // security banner from top
   late AnimationController _pulseController; // mic icon pulse
   late Animation<double> _pulseScale;
@@ -57,14 +62,18 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-    // Staggered: record appears first, upload slides out with delay, banner last
+    // Staggered: record appears first, note second, upload third, banner last
     _recordAnim = CurvedAnimation(
       parent: _fabController,
-      curve: const Interval(0.0, 0.65, curve: Curves.easeOutCubic),
+      curve: const Interval(0.0, 0.55, curve: Curves.easeOutCubic),
+    );
+    _noteAnim = CurvedAnimation(
+      parent: _fabController,
+      curve: const Interval(0.08, 0.65, curve: Curves.easeOutCubic),
     );
     _uploadAnim = CurvedAnimation(
       parent: _fabController,
-      curve: const Interval(0.12, 0.80, curve: Curves.easeOutCubic),
+      curve: const Interval(0.16, 0.80, curve: Curves.easeOutCubic),
     );
     _bannerAnim = CurvedAnimation(
       parent: _fabController,
@@ -132,13 +141,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     }
     if (!mounted) return null;
     if (therapistId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Profil nie został jeszcze załadowany. Spróbuj za chwilę.',
-          ),
-        ),
-      );
+      EuphireToast.info(context, message: 'Profil nie został jeszcze załadowany. Spróbuj za chwilę.');
       return null;
     }
     final patientsState =
@@ -194,6 +197,18 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
           // reports don't silently default to Polish. Empty → 'pl-PL'.
           patientLanguageCode:
               ctx.languageCode.isNotEmpty ? ctx.languageCode : 'pl-PL',
+        ),
+      ),
+    );
+  }
+
+  void _onNoteTapped() {
+    _closeFab();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _NoteEditorScreen(
+          patientId: widget.patientId,
         ),
       ),
     );
@@ -323,14 +338,29 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      EuphireHeader(
-                        title:
-                            '${patient.firstName} ${patient.lastName}'
-                                .trim(),
-                        subtitle:
-                            '${patient.sessionCount} sesji${patient.modalityCode.isNotEmpty
-                                    ? ' • ${modalityShortLabelFor(patient.modalityCode.toUpperCase())}'
-                                    : ''}',
+                      // ── Patient name header (matches home screen style) ──
+                      Text.rich(
+                        TextSpan(
+                          text: '${patient.firstName} ${patient.lastName}'.trim(),
+                          style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            fontStyle: FontStyle.italic,
+                            color: EuphireColors.ember,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Nad czym dzisiaj pracujemy?',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: EuphireColors.mist.withValues(alpha: 0.7),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       // Billing quota signals (Phase 3 §16):
@@ -358,10 +388,12 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                           // uploads. (Reinstall case: no local rows →
                           // hasLocalQuotaBlocked false → cards stay, so
                           // they remain cancellable.)
-                          final reversedSessions = sessions.reversed
+                          // Sort by date descending (most recent first)
+                          final filteredSessions = sessions
                               .where((s) => !(hasLocalQuotaBlocked &&
                                   s.status == SessionStatus.pendingUpload))
-                              .toList();
+                              .toList()
+                            ..sort((a, b) => b.date.compareTo(a.date));
                           // Dedup: if a pending upload already has a
                           // sessionId AND that session is in the server
                           // list, drop the placeholder. The Hive-queue
@@ -386,7 +418,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                   ? true
                                   : !knownSessionIds.contains(u.sessionId))
                               .toList(growable: false);
-                          if (reversedSessions.isEmpty && visiblePending.isEmpty) {
+                          if (filteredSessions.isEmpty && visiblePending.isEmpty) {
                             return Center(
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 120.0, left: 32.0, right: 32.0),
@@ -435,8 +467,29 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                           // Placeholders sit at the TOP of the list:
                           // newest activity first, matching the
                           // reversed real-sessions ordering below.
+                          //
+                          // Notes are interleaved chronologically:
+                          // build a merged list of sessions + notes
+                          // sorted by date/createdAt descending.
+                          final notes = ref.watch(
+                              patientNotesProvider(widget.patientId));
+
+                          // Build a unified timeline of sessions and
+                          // notes, sorted newest-first.
+                          final List<_TimelineItem> timeline = [];
+                          for (final s in filteredSessions) {
+                            timeline.add(_TimelineItem.session(
+                              s, filteredSessions.length - filteredSessions.indexOf(s),
+                            ));
+                          }
+                          for (final n in notes) {
+                            timeline.add(_TimelineItem.note(n));
+                          }
+                          timeline.sort((a, b) =>
+                              b.sortDate.compareTo(a.sortDate));
+
                           final totalCount =
-                              visiblePending.length + reversedSessions.length;
+                              visiblePending.length + timeline.length;
                           return ListView.builder(
                             shrinkWrap: true,
                             physics:
@@ -448,16 +501,199 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                   upload: visiblePending[index],
                                 );
                               }
-                              final session = reversedSessions[
-                                  index - visiblePending.length];
+                              final timelineIdx = index - visiblePending.length;
+                              final item = timeline[timelineIdx];
+
+                              if (item.isNote) {
+                                return Dismissible(
+                                  key: ValueKey('note_${item.note!.id}'),
+                                  direction: DismissDirection.endToStart,
+                                  confirmDismiss: (_) async {
+                                    final l = AppLocalizations.of(context);
+                                    return await showModalBottomSheet<bool>(
+                                      context: context,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (ctx) => Container(
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFF0A2326),
+                                          borderRadius: BorderRadius.vertical(
+                                              top: Radius.circular(32)),
+                                          border: Border(
+                                              top: BorderSide(
+                                                  color: Colors.white10)),
+                                        ),
+                                        child: SafeArea(
+                                          child: Padding(
+                                            padding:
+                                                const EdgeInsets.fromLTRB(
+                                                    24, 20, 24, 16),
+                                            child: Column(
+                                              mainAxisSize:
+                                                  MainAxisSize.min,
+                                              children: [
+                                                Center(
+                                                  child: Container(
+                                                    width: 40,
+                                                    height: 4,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white24,
+                                                      borderRadius:
+                                                          BorderRadius
+                                                              .circular(2),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 20),
+                                                Text(
+                                                  l.note_delete_confirm,
+                                                  style: const TextStyle(
+                                                    fontFamily: 'Montserrat',
+                                                    fontSize: 18,
+                                                    fontWeight:
+                                                        FontWeight.w700,
+                                                    color: EuphireColors
+                                                        .frostWhite,
+                                                  ),
+                                                  textAlign:
+                                                      TextAlign.center,
+                                                ),
+                                                const SizedBox(height: 20),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                                ctx,
+                                                                false),
+                                                        style: TextButton
+                                                            .styleFrom(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  vertical:
+                                                                      14),
+                                                          shape:
+                                                              RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        12),
+                                                            side: BorderSide(
+                                                                color: Colors
+                                                                    .white
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.1)),
+                                                          ),
+                                                        ),
+                                                        child: Text(
+                                                          l.note_sheet_cancel,
+                                                          style:
+                                                              const TextStyle(
+                                                            fontFamily:
+                                                                'Montserrat',
+                                                            fontSize: 15,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500,
+                                                            color:
+                                                                EuphireColors
+                                                                    .mist,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(
+                                                        width: 12),
+                                                    Expanded(
+                                                      child:
+                                                          ElevatedButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                                ctx, true),
+                                                        style: ElevatedButton
+                                                            .styleFrom(
+                                                          backgroundColor:
+                                                              EuphireColors
+                                                                  .magma,
+                                                          foregroundColor:
+                                                              EuphireColors
+                                                                  .frostWhite,
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  vertical:
+                                                                      14),
+                                                          shape: RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          12)),
+                                                        ),
+                                                        child: Text(
+                                                          l.note_delete_action,
+                                                          style:
+                                                              const TextStyle(
+                                                            fontFamily:
+                                                                'Montserrat',
+                                                            fontSize: 15,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w600,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  onDismissed: (_) {
+                                    HapticFeedback.heavyImpact();
+                                    ref
+                                        .read(patientNotesMapProvider.notifier)
+                                        .deleteNote(widget.patientId,
+                                            item.note!.id);
+                                    final l = AppLocalizations.of(context);
+                                    EuphireToast.success(context, message: l.note_deleted);
+                                  },
+                                  background: Container(
+                                    alignment: Alignment.centerRight,
+                                    padding:
+                                        const EdgeInsets.only(right: 24),
+                                    margin:
+                                        const EdgeInsets.only(bottom: 8),
+                                    decoration: BoxDecoration(
+                                      color: EuphireColors.magma
+                                          .withValues(alpha: 0.15),
+                                      borderRadius:
+                                          BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      Icons.delete_outline_rounded,
+                                      color: EuphireColors.magma
+                                          .withValues(alpha: 0.8),
+                                      size: 24,
+                                    ),
+                                  ),
+                                  child: _NoteCard(
+                                    note: item.note!,
+                                    patientId: widget.patientId,
+                                  ),
+                                );
+                              }
+
+                              final session = item.session!;
                               // Option E (2026-05-25): server-side
                               // PENDING_UPLOAD sessions render with
                               // the same placeholder style as the
                               // Hive-queue-driven _PendingUploadCard.
-                              // Single visible affordance whether
-                              // the row was created server-side
-                              // (Flutter restart, cross-device) or
-                              // is mid-flight client-side.
                               if (session.status ==
                                   SessionStatus.pendingUpload) {
                                 return _PendingUploadServerCard(
@@ -468,7 +704,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                               return _SessionCard(
                                 session: session,
                                 patientId: widget.patientId,
-                                ref: ref,
+                                sessionNumber: item.sessionNumber,
                               );
                             },
                           );
@@ -598,7 +834,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          // ── Action Card #2: Upload file (higher) ──
+                          // ── Action Card #3: Upload file (highest) ──
                           SizeTransition(
                             sizeFactor: _uploadAnim,
                             axisAlignment: 1.0,
@@ -613,6 +849,28 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                   subtitle: 'Prześlij nagranie z dyktafonu',
                                   onTap: _onUploadTapped,
                                   isPrimary: false,
+                                  cardColor: const Color(0xFF142D2B),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // ── Action Card #2: Add note (middle) ──
+                          SizeTransition(
+                            sizeFactor: _noteAnim,
+                            axisAlignment: 1.0,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: SizedBox(
+                                width: screenWidth - 48,
+                                child: _buildActionCard(
+                                  animation: _noteAnim,
+                                  icon: Icons.edit_note_rounded,
+                                  label: AppLocalizations.of(context).note_add_label,
+                                  subtitle: AppLocalizations.of(context).note_add_subtitle,
+                                  onTap: _onNoteTapped,
+                                  isPrimary: false,
+                                  cardColor: const Color(0xFF0B1E20),
                                 ),
                               ),
                             ),
@@ -755,6 +1013,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     required String subtitle,
     required VoidCallback onTap,
     required bool isPrimary,
+    Color? cardColor,
   }) {
     return FadeTransition(
       opacity: animation,
@@ -769,9 +1028,9 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: isPrimary
+              color: cardColor ?? (isPrimary
                   ? EuphireColors.ember
-                  : const Color(0xFF0F1F21),
+                  : const Color(0xFF0F1F21)),
               borderRadius: BorderRadius.circular(14),
               border: isPrimary
                   ? null
@@ -1092,36 +1351,68 @@ class _PendingUploadServerCard extends ConsumerWidget {
   }
 }
 
-class _SessionCard extends StatelessWidget {
+class _SessionCard extends ConsumerWidget {
   final Session session;
   final String patientId;
-  final WidgetRef ref;
+  final int sessionNumber;
 
   const _SessionCard({
     required this.session,
     required this.patientId,
-    required this.ref,
+    this.sessionNumber = 0,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final months = [
       'Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze',
-      'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru',
+      'Lip', 'Sie', 'Wrz', 'Pa\u017a', 'Lis', 'Gru',
     ];
-    final dateStr =
-        '${session.date.day} ${months[session.date.month - 1]}';
+    final d = session.date;
+    final dateStr = '${d.day} ${months[d.month - 1]}';
     final timeStr =
-        '${session.date.hour.toString().padLeft(2, '0')}:${session.date.minute.toString().padLeft(2, '0')}';
+        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    final durationMin = session.duration.inMinutes;
+
+    // Rich metadata line: "11 Maj / 11:00 - 11:56 / 54 min"
+    String metaStr;
+    if (durationMin > 0) {
+      final endTime = d.add(session.duration);
+      final endStr = '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}';
+      metaStr = '$dateStr  \u2022  $timeStr \u2013 $endStr  \u2022  $durationMin min';
+    } else {
+      metaStr = '$dateStr  \u2022  $timeStr';
+    }
 
     final isCompleted = session.status == SessionStatus.completed;
-    final dotColor =
-        isCompleted ? EuphireColors.aurora : EuphireColors.ember;
-    final statusText =
-        isCompleted ? 'Wnioski gotowe' : 'W trakcie analizy';
+    final viewedReports = ref.watch(viewedReportsProvider);
+    final isViewed = viewedReports.contains(session.id);
+
+    // Contextual status — Euphire palette only
+    final (statusText, dotColor) = switch (session.status) {
+      SessionStatus.completed => (
+        isViewed ? 'Gotowy' : 'Nowy raport',
+        isViewed ? EuphireColors.mist : const Color(0xFF4ADE80),
+      ),
+      SessionStatus.inProgress => ('AI analizuje\u2026', EuphireColors.ember),
+      SessionStatus.pendingUpload => ('Przetwarzanie', EuphireColors.mist),
+      SessionStatus.error => ('B\u0142\u0105d', EuphireColors.magma),
+    };
+
+    // Only show the badge pill for actionable states
+    final showBadge = (isCompleted && !isViewed) ||
+        session.status == SessionStatus.inProgress ||
+        session.status == SessionStatus.error;
+
+    final title = session.name ?? (sessionNumber > 0 ? 'Sesja $sessionNumber' : 'Sesja');
 
     return InkWell(
+      borderRadius: BorderRadius.circular(10),
       onTap: () {
+        // Mark as viewed when opening a completed report
+        if (isCompleted) {
+          ref.read(viewedReportsProvider.notifier).markViewed(session.id);
+        }
         final destination = isCompleted
             ? MaterialPageRoute(
                 builder: (_) =>
@@ -1132,318 +1423,1232 @@ class _SessionCard extends StatelessWidget {
         Navigator.push(context, destination);
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: EuphireColors.obsidianBlack.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(5),
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
-              color:
-                  EuphireColors.frostWhite.withValues(alpha: 0.1)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            )
-          ],
+              color: Colors.white.withValues(alpha: 0.08)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      // While the analysis pipeline is still running the
-                      // session has no report to show — surface that
-                      // honestly in the card title rather than pretending
-                      // a "Raport z sesji" already exists.
-                      isCompleted ? 'Raport z sesji' : 'Przetwarzanie',
-                      style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: EuphireColors.frostWhite,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: dotColor.withValues(alpha: 0.2),
-                            border: Border.all(color: dotColor),
-                            boxShadow: [
-                              BoxShadow(
-                                  color: dotColor, blurRadius: 6)
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          statusText,
-                          style: const TextStyle(
-                            fontFamily: 'Merriweather',
-                            fontStyle: FontStyle.italic,
-                            fontSize: 14,
-                            color: EuphireColors.mist,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+            // ── Session number badge ──
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: dotColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                sessionNumber > 0 ? '#$sessionNumber' : '#',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: dotColor,
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          dateStr,
-                          style: const TextStyle(
-                            fontFamily: 'RobotoMono',
-                            color: EuphireColors.mist,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert,
-                              color: EuphireColors.mist, size: 18),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          color: EuphireColors.nocturne,
-                          shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(12)),
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'rename',
-                              child: Text('Zmień nazwę',
-                                  style: TextStyle(
-                                      color: EuphireColors
-                                          .frostWhite)),
-                            ),
-                            const PopupMenuItem(
-                              value: 'delete',
-                              child: Text('Usuń sesję',
-                                  style: TextStyle(
-                                      color:
-                                          EuphireColors.magma)),
-                            ),
-                          ],
-                          onSelected: (value) {
-                            if (value == 'delete') {
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  backgroundColor:
-                                      EuphireColors.nocturne,
-                                  title: const Text(
-                                      'Bezpowrotne usunięcie sesji',
-                                      style: TextStyle(
-                                          color: EuphireColors
-                                              .frostWhite)),
-                                  content: const Text(
-                                      'Czy na pewno chcesz BEZPOWROTNIE usunąć tę sesję, nagranie oraz transkrypcję? Tej operacji nie można cofnąć.',
-                                      style: TextStyle(
-                                          color:
-                                              EuphireColors.mist)),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context),
-                                      child: const Text('Anuluj',
-                                          style: TextStyle(
-                                              color: EuphireColors
-                                                  .mist)),
-                                    ),
-                                    TextButton(
-                                      onPressed: () async {
-                                        try {
-                                          await ref
-                                              .read(sessionsProvider
-                                                  .notifier)
-                                              .deleteSession(
-                                                  patientId,
-                                                  session.id);
-                                          if (context.mounted) {
-                                            Navigator.pop(context);
-                                          }
-                                        } catch (_) {}
-                                      },
-                                      child: const Text(
-                                          'Usuń bezpowrotnie',
-                                          style: TextStyle(
-                                              color: EuphireColors
-                                                  .magma)),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            } else if (value == 'rename') {
-                              final controller =
-                                  TextEditingController(
-                                      text: session.modality);
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  backgroundColor:
-                                      EuphireColors.nocturne,
-                                  title: const Text(
-                                      'Zmień nazwę sesji',
-                                      style: TextStyle(
-                                          color: EuphireColors
-                                              .frostWhite)),
-                                  content: TextField(
-                                    controller: controller,
-                                    style: const TextStyle(
-                                        color: EuphireColors
-                                            .frostWhite),
-                                    autofocus: true,
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context),
-                                      child: const Text('Anuluj',
-                                          style: TextStyle(
-                                              color: EuphireColors
-                                                  .mist)),
-                                    ),
-                                    TextButton(
-                                      onPressed: () async {
-                                        if (controller.text
-                                            .trim()
-                                            .isNotEmpty) {
-                                          try {
-                                            await ref
-                                                .read(
-                                                    sessionsProvider
-                                                        .notifier)
-                                                .renameSession(
-                                                    patientId,
-                                                    session.id,
-                                                    controller.text
-                                                        .trim());
-                                            if (context.mounted) {
-                                              Navigator.pop(
-                                                  context);
-                                            }
-                                          } catch (_) {}
-                                        }
-                                      },
-                                      child: const Text('Zapisz',
-                                          style: TextStyle(
-                                              color: EuphireColors
-                                                  .ember)),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      timeStr,
-                      style: TextStyle(
-                        fontFamily: 'RobotoMono',
-                        color: EuphireColors.mist
-                            .withValues(alpha: 0.6),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 12),
-            Divider(
-                color: EuphireColors.mist.withValues(alpha: 0.3),
-                height: 1),
-            const SizedBox(height: 12),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 16,
-                  runSpacing: 12,
+            const SizedBox(width: 14),
+            // ── Title + meta ──
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: EuphireColors.frostWhite,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    metaStr,
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 11,
+                      color: EuphireColors.mist.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // ── Status pill (only for actionable states) ──
+            if (showBadge)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: dotColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                          maxWidth: constraints.maxWidth),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: EuphireColors.obsidianBlack,
-                              border: Border.all(
-                                  color: EuphireColors.mist
-                                      .withValues(alpha: 0.3)),
-                            ),
-                            child: const Icon(Icons.person,
-                                size: 16,
-                                color: EuphireColors.mist),
-                          ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              'NURT: ${session.modality}',
-                              style: const TextStyle(
-                                fontFamily: 'RobotoMono',
-                                fontSize: 13,
-                                color: EuphireColors.mist,
-                              ),
-                            ),
-                          ),
-                        ],
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: dotColor,
                       ),
                     ),
-                    const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Zobacz więcej',
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: EuphireColors.ember,
-                          ),
-                        ),
-                        SizedBox(width: 4),
-                        Icon(Icons.arrow_forward,
-                            size: 18, color: EuphireColors.ember),
-                      ],
+                    const SizedBox(width: 5),
+                    Text(
+                      statusText,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: dotColor,
+                      ),
                     ),
                   ],
-                );
-              },
+                ),
+              ),
+            if (showBadge) const SizedBox(width: 4),
+            // ── Context menu ──
+            GestureDetector(
+              onTap: () => _showSessionOptionsSheet(
+                context, ref, session, patientId, title),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                child: Icon(
+                  Icons.more_vert,
+                  color: EuphireColors.mist.withValues(alpha: 0.5),
+                  size: 22,
+                ),
+              ),
             ),
           ],
         ),
       ),
     );
   }
+
+  void _showSessionOptionsSheet(
+    BuildContext context,
+    WidgetRef ref,
+    Session session,
+    String patientId,
+    String currentTitle,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _SessionOptionsSheet(
+        session: session,
+        patientId: patientId,
+        currentTitle: currentTitle,
+      ),
+    );
+  }
+
 }
 
-// ─── Custom clipper: shallow arc at the bottom edge ─────────────────
+
+// ─── Session Options Bottom Sheet (unified, no nesting) ──────────────
+
+class _SessionOptionsSheet extends ConsumerStatefulWidget {
+  final Session session;
+  final String patientId;
+  final String currentTitle;
+
+  const _SessionOptionsSheet({
+    required this.session,
+    required this.patientId,
+    required this.currentTitle,
+  });
+
+  @override
+  ConsumerState<_SessionOptionsSheet> createState() => _SessionOptionsSheetState();
+}
+
+class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
+  late TextEditingController _titleCtrl;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleCtrl = TextEditingController(text: widget.currentTitle);
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onSave() async {
+    final newTitle = _titleCtrl.text.trim();
+    if (newTitle.isEmpty || newTitle == widget.currentTitle) {
+      Navigator.pop(context);
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await ref.read(sessionsProvider.notifier).renameSession(
+        widget.patientId,
+        widget.session.id,
+        newTitle,
+      );
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _deleteWarning() {
+    Navigator.pop(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0A2326),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Center(
+                  child: Container(
+                    width: 56, height: 56,
+                    decoration: BoxDecoration(
+                      color: EuphireColors.magma.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.delete_forever_rounded,
+                      size: 28,
+                      color: EuphireColors.magma.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Bezpowrotne usunięcie sesji',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: EuphireColors.frostWhite,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Sesja, nagranie i transkrypcja zostaną trwale usunięte. Tej operacji nie można cofnąć.',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 14,
+                    color: EuphireColors.mist.withValues(alpha: 0.8),
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5),
+                            side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                          ),
+                        ),
+                        child: const Text(
+                          'Anuluj',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: EuphireColors.mist,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await ref
+                                .read(sessionsProvider.notifier)
+                                .deleteSession(widget.patientId, widget.session.id);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                          } catch (_) {}
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: EuphireColors.magma,
+                          foregroundColor: EuphireColors.frostWhite,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                        child: const Text(
+                          'Tak, usuń',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final hasChanges = _titleCtrl.text.trim().isNotEmpty &&
+        _titleCtrl.text.trim() != widget.currentTitle;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A2326),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(top: BorderSide(color: Colors.white10)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(24, 20, 24, bottomInset + 16),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // ── Icon ──
+                Center(
+                  child: Container(
+                    width: 72, height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: EuphireColors.ember.withValues(alpha: 0.12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: EuphireColors.ember.withValues(alpha: 0.2),
+                          blurRadius: 28, spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.edit_calendar_rounded,
+                      color: EuphireColors.ember,
+                      size: 34,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Title ──
+                const Text(
+                  'Zarządzaj sesją',
+                  style: TextStyle(
+                    fontFamily: 'Merriweather',
+                    fontStyle: FontStyle.italic,
+                    fontSize: 22,
+                    color: EuphireColors.frostWhite,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Zmień tytuł lub usuń sesję',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    color: EuphireColors.mist.withValues(alpha: 0.8),
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+
+                // ── Inline title field ──
+                TextField(
+                  controller: _titleCtrl,
+                  onChanged: (_) => setState(() {}),
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: EuphireColors.frostWhite,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Tytuł sesji',
+                    labelStyle: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: EuphireColors.mist.withValues(alpha: 0.7),
+                    ),
+                    floatingLabelStyle: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: EuphireColors.ember.withValues(alpha: 0.9),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.08),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: EuphireColors.ember, width: 1.5),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // ── Save button ──
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: hasChanges && !_saving ? _onSave : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: EuphireColors.ember,
+                      foregroundColor: EuphireColors.obsidianBlack,
+                      disabledBackgroundColor: EuphireColors.ember.withValues(alpha: 0.3),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                      elevation: 0,
+                    ),
+                    child: _saving
+                        ? const SizedBox(
+                            width: 20, height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: EuphireColors.obsidianBlack),
+                          )
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_rounded, size: 18),
+                              SizedBox(width: 6),
+                              Text(
+                                'Zapisz tytuł',
+                                style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Delete option ──
+                InkWell(
+                  onTap: _deleteWarning,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: EuphireColors.magma.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: EuphireColors.magma.withValues(alpha: 0.15)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: EuphireColors.magma.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.delete_outline_rounded, color: EuphireColors.magma, size: 22),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Usuń sesję',
+                                style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w600, color: EuphireColors.magma),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Trwale usuń nagranie i analizę',
+                                style: TextStyle(fontFamily: 'Montserrat', fontSize: 12, color: EuphireColors.magma.withValues(alpha: 0.7)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right_rounded, color: EuphireColors.magma.withValues(alpha: 0.5), size: 20),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+// ─── Timeline item (union of Session | PatientNote) ──────────────────
+
+class _TimelineItem {
+  final Session? session;
+  final PatientNote? note;
+  final int sessionNumber;
+
+  _TimelineItem._({this.session, this.note, this.sessionNumber = 0});
+
+  factory _TimelineItem.session(Session s, int number) =>
+      _TimelineItem._(session: s, sessionNumber: number);
+
+  factory _TimelineItem.note(PatientNote n) =>
+      _TimelineItem._(note: n);
+
+  bool get isNote => note != null;
+
+  DateTime get sortDate => isNote ? note!.createdAt : session!.date;
+}
+
+// ─── Note Card ────────────────────────────────────────────────────────
+
+class _NoteCard extends ConsumerWidget {
+  final PatientNote note;
+  final String patientId;
+
+  const _NoteCard({required this.note, required this.patientId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final months = [
+      'Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze',
+      'Lip', 'Sie', 'Wrz', 'Pa\u017a', 'Lis', 'Gru',
+    ];
+    final d = note.createdAt;
+    final dateStr = '${d.day} ${months[d.month - 1]}';
+    final timeStr =
+        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    final metaStr = '$dateStr  \u2022  $timeStr';
+    final l = AppLocalizations.of(context);
+    final displayTitle = note.title.isNotEmpty ? note.title : l.note_untitled;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => _NoteViewScreen(
+              note: note,
+              patientId: patientId,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D2A2E),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: EuphireColors.mist.withValues(alpha: 0.12),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Emoji badge ──
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: EuphireColors.ember.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: const Text('📝', style: TextStyle(fontSize: 18)),
+            ),
+            const SizedBox(width: 14),
+            // ── Title + preview + meta ──
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: EuphireColors.frostWhite,
+                    ),
+                  ),
+                  if (note.text.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      note.text,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        color: EuphireColors.frostWhite.withValues(alpha: 0.6),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  Text(
+                    metaStr,
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 11,
+                      color: EuphireColors.mist.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // ── Options menu (edit + delete) ──
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'edit') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => _NoteEditorScreen(
+                        patientId: patientId,
+                        existingNote: note,
+                      ),
+                    ),
+                  );
+                } else if (value == 'delete') {
+                  _showDeleteConfirmation(context, ref, l);
+                }
+              },
+              icon: Icon(
+                Icons.more_vert,
+                color: EuphireColors.mist.withValues(alpha: 0.4),
+                size: 20,
+              ),
+              color: const Color(0xFF0A2326),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+              ),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_rounded, size: 18,
+                          color: EuphireColors.mist.withValues(alpha: 0.7)),
+                      const SizedBox(width: 10),
+                      Text(l.note_edit_label,
+                          style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 14,
+                              color: EuphireColors.frostWhite)),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline_rounded, size: 18,
+                          color: EuphireColors.magma.withValues(alpha: 0.8)),
+                      const SizedBox(width: 10),
+                      Text(l.note_delete_action,
+                          style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 14,
+                              color: EuphireColors.magma)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(
+      BuildContext context, WidgetRef ref, AppLocalizations l) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0A2326),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(l.note_delete_confirm,
+                    style: const TextStyle(
+                        fontFamily: 'Montserrat', fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: EuphireColors.frostWhite),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 8),
+                Text(note.title.isNotEmpty ? note.title : note.text,
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontFamily: 'Montserrat', fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        color: EuphireColors.mist.withValues(alpha: 0.7)),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 20),
+                Row(children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.1)),
+                        ),
+                      ),
+                      child: Text(l.note_sheet_cancel,
+                          style: const TextStyle(
+                              fontFamily: 'Montserrat', fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: EuphireColors.mist)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        HapticFeedback.heavyImpact();
+                        ref.read(patientNotesMapProvider.notifier)
+                            .deleteNote(patientId, note.id);
+                        EuphireToast.success(context, message: l.note_deleted);
+                        Navigator.pop(ctx);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: EuphireColors.magma,
+                        foregroundColor: EuphireColors.frostWhite,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(l.note_delete_action,
+                          style: const TextStyle(
+                              fontFamily: 'Montserrat', fontSize: 15,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Note Editor Screen (full page, create or edit) ──────────────────
+
+class _NoteEditorScreen extends ConsumerStatefulWidget {
+  final String patientId;
+  final PatientNote? existingNote;
+
+  const _NoteEditorScreen({
+    required this.patientId,
+    this.existingNote,
+  });
+
+  @override
+  ConsumerState<_NoteEditorScreen> createState() => _NoteEditorScreenState();
+}
+
+class _NoteEditorScreenState extends ConsumerState<_NoteEditorScreen> {
+  late TextEditingController _titleCtrl;
+  late TextEditingController _bodyCtrl;
+  late FocusNode _bodyFocus;
+  bool _saved = false;
+
+  bool get _isEditing => widget.existingNote != null;
+  bool get _hasContent =>
+      _titleCtrl.text.trim().isNotEmpty || _bodyCtrl.text.trim().isNotEmpty;
+  bool get _hasChanges {
+    if (!_isEditing) return _hasContent;
+    return _titleCtrl.text.trim() != widget.existingNote!.title ||
+        _bodyCtrl.text.trim() != widget.existingNote!.text;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _titleCtrl = TextEditingController(text: widget.existingNote?.title ?? '');
+    _bodyCtrl = TextEditingController(text: widget.existingNote?.text ?? '');
+    _bodyFocus = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _bodyCtrl.dispose();
+    _bodyFocus.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final title = _titleCtrl.text.trim();
+    final body = _bodyCtrl.text.trim();
+    if (title.isEmpty && body.isEmpty) return;
+    final notifier = ref.read(patientNotesMapProvider.notifier);
+    if (_isEditing) {
+      notifier.updateNote(
+          widget.patientId, widget.existingNote!.id, title, body);
+    } else {
+      notifier.addNote(widget.patientId, title, body);
+    }
+    HapticFeedback.mediumImpact();
+    final l = AppLocalizations.of(context);
+    EuphireToast.success(context, message: l.note_saved);
+    _saved = true;
+    Navigator.pop(context);
+  }
+
+  Future<bool> _onWillPop() async {
+    if (_saved || !_hasChanges) return true;
+    final l = AppLocalizations.of(context);
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0A2326),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(l.note_discard_title,
+                    style: const TextStyle(
+                        fontFamily: 'Montserrat', fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: EuphireColors.frostWhite),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 8),
+                Text(l.note_discard_body,
+                    style: TextStyle(
+                        fontFamily: 'Montserrat', fontSize: 14,
+                        color: EuphireColors.mist.withValues(alpha: 0.7),
+                        height: 1.5),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 20),
+                Row(children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, 'discard'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.1)),
+                        ),
+                      ),
+                      child: Text(l.note_discard_action,
+                          style: const TextStyle(
+                              fontFamily: 'Montserrat', fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: EuphireColors.mist)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx, 'save');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: EuphireColors.ember,
+                        foregroundColor: EuphireColors.nocturne,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(l.note_discard_save,
+                          style: const TextStyle(
+                              fontFamily: 'Montserrat', fontSize: 15,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (result == 'save') {
+      _save();
+      return false;
+    }
+    return result == 'discard';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF071A1D),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded,
+                color: EuphireColors.frostWhite),
+            onPressed: () async {
+              final shouldPop = await _onWillPop();
+              if (shouldPop && context.mounted) Navigator.pop(context);
+            },
+          ),
+          title: Text(
+            _isEditing ? l.note_edit_label : l.note_sheet_title,
+            style: const TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: EuphireColors.frostWhite,
+            ),
+          ),
+          centerTitle: true,
+          actions: [
+            TextButton(
+              onPressed: _save,
+              child: Text(
+                l.note_sheet_save,
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: EuphireColors.ember,
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          behavior: HitTestBehavior.translucent,
+          child: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: MediaQuery.of(context).size.width < 375 ? 20 : 24,
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 8),
+                  // ── Title field ──
+                  TextField(
+                    controller: _titleCtrl,
+                    autofocus: !_isEditing,
+                    textCapitalization: TextCapitalization.sentences,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _bodyFocus.requestFocus(),
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: MediaQuery.of(context).size.width < 375 ? 20 : 22,
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.frostWhite,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: l.note_title_hint,
+                      hintStyle: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: MediaQuery.of(context).size.width < 375 ? 20 : 22,
+                        fontWeight: FontWeight.w700,
+                        color: EuphireColors.mist.withValues(alpha: 0.3),
+                      ),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                  Divider(
+                      color: Colors.white.withValues(alpha: 0.08), height: 1),
+                  const SizedBox(height: 12),
+                  // ── Body field ──
+                  Expanded(
+                    child: TextField(
+                      controller: _bodyCtrl,
+                      focusNode: _bodyFocus,
+                      maxLines: null,
+                      expands: true,
+                      maxLength: 5000,
+                      textAlignVertical: TextAlignVertical.top,
+                      textCapitalization: TextCapitalization.sentences,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        color: EuphireColors.frostWhite,
+                        height: 1.6,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: l.note_body_hint,
+                        hintStyle: TextStyle(
+                          fontFamily: 'Montserrat',
+                          color: EuphireColors.mist.withValues(alpha: 0.3),
+                        ),
+                        border: InputBorder.none,
+                        counterStyle: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 11,
+                          color: EuphireColors.mist.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      buildCounter: (context,
+                          {required currentLength,
+                          required isFocused,
+                          required maxLength}) {
+                        if (currentLength < 4500) return null;
+                        return Text(
+                          '$currentLength/$maxLength',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 11,
+                            color: currentLength > 4800
+                                ? EuphireColors.magma.withValues(alpha: 0.8)
+                                : EuphireColors.mist.withValues(alpha: 0.4),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Note View Screen (beautiful read-only presentation) ─────────────
+
+class _NoteViewScreen extends ConsumerWidget {
+  final PatientNote note;
+  final String patientId;
+
+  const _NoteViewScreen({
+    required this.note,
+    required this.patientId,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final months = [
+      'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+      'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień',
+    ];
+    final d = note.createdAt;
+    final dateStr = '${d.day} ${months[d.month - 1]} ${d.year}';
+    final timeStr =
+        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    final displayTitle =
+        note.title.isNotEmpty ? note.title : l.note_untitled;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF071A1D),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded,
+              color: EuphireColors.frostWhite),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_rounded,
+                color: EuphireColors.ember, size: 22),
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => _NoteEditorScreen(
+                    patientId: patientId,
+                    existingNote: note,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Emoji ──
+              const Text('📝', style: TextStyle(fontSize: 36)),
+              const SizedBox(height: 16),
+              // ── Title ──
+              Text(
+                displayTitle,
+                style: const TextStyle(
+                  fontFamily: 'Merriweather',
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: EuphireColors.frostWhite,
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // ── Date pill ──
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: EuphireColors.ember.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$dateStr  •  $timeStr',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: EuphireColors.ember.withValues(alpha: 0.8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+              // ── Divider ──
+              Divider(
+                  color: Colors.white.withValues(alpha: 0.08), height: 1),
+              const SizedBox(height: 28),
+              // ── Body ──
+              if (note.text.isNotEmpty)
+                Text(
+                  note.text,
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 15,
+                    color:
+                        EuphireColors.frostWhite.withValues(alpha: 0.85),
+                    height: 1.7,
+                  ),
+                )
+              else
+                Text(
+                  'Brak treści',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 15,
+                    fontStyle: FontStyle.italic,
+                    color: EuphireColors.mist.withValues(alpha: 0.4),
+                  ),
+                ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+// ─── Custom clipper: shallow arc at the bottom edge ─────────────────────
 
 class _ArcBottomClipper extends CustomClipper<Path> {
   final double arcDip; // how much the center dips below the edges

@@ -44,6 +44,7 @@ import '../theme/euphire_theme.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_segmented_control.dart';
+import '../widgets/euphire_toast.dart';
 import 'report_screen.dart';
 
 class TranscriptScreen extends ConsumerStatefulWidget {
@@ -249,8 +250,8 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
         SliverToBoxAdapter(
           child: Column(
             children: [
+              const SizedBox(height: 8),
               _buildFilterRow(t, data),
-              Divider(height: 1, color: Colors.white.withValues(alpha: 0.1)),
             ],
           ),
         ),
@@ -329,37 +330,79 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 36,
+            height: 38,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemBuilder: (ctx, i) {
                 final f = filters[i];
                 final selected = _filter == f.value;
-                return ChoiceChip(
-                  label: Text(f.label),
-                  selected: selected,
-                  onSelected: (_) => setState(() => _filter = f.value),
-                  selectedColor: EuphireColors.ember,
-                  labelStyle: TextStyle(
-                    color: selected
-                        ? EuphireColors.obsidianBlack
-                        : EuphireColors.frostWhite,
+                return GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _filter = f.value);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? EuphireColors.ember
+                          : Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (selected)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 6),
+                            child: Icon(Icons.check_rounded, size: 14, color: EuphireColors.obsidianBlack),
+                          ),
+                        Text(
+                          f.label,
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 13,
+                            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                            color: selected ? EuphireColors.obsidianBlack : EuphireColors.frostWhite,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  backgroundColor: Colors.white.withValues(alpha: 0.05),
                 );
               },
               separatorBuilder: (ctx, _) => const SizedBox(width: 8),
               itemCount: filters.length,
             ),
           ),
-          const SizedBox(height: 8),
-          TextField(
-            decoration: InputDecoration(
-              hintText: t.transcript_search_hint,
-              prefixIcon: const Icon(Icons.search, size: 20),
-              isDense: true,
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(12),
             ),
-            onChanged: (v) => setState(() => _search = v),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: t.transcript_search_hint,
+                hintStyle: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 14,
+                  color: EuphireColors.mist.withValues(alpha: 0.4),
+                ),
+                prefixIcon: Icon(Icons.search_rounded, size: 20, color: EuphireColors.mist.withValues(alpha: 0.5)),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                isDense: true,
+              ),
+              style: const TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 14,
+                color: EuphireColors.frostWhite,
+              ),
+              onChanged: (v) => setState(() => _search = v),
+            ),
           ),
         ],
       ),
@@ -415,9 +458,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
       await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        EuphireToast.error(context, message: e.toString());
       }
     }
   }
@@ -434,9 +475,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
     
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Skopiowano transkrypcję do schowka.')),
-      );
+      EuphireToast.success(context, message: 'Transkrypcja skopiowana do schowka');
     }
   }
 }
@@ -464,80 +503,87 @@ class _SegmentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
-    // SpeakerTurnDto exposes confidenceAvg (the word-weighted mean
-    // across the underlying TranscriptSegments) rather than a single
-    // confidence scalar — same usage, just named for what it is.
     final lowConf = segment.confidenceAvg > 0 && segment.confidenceAvg < 0.7;
+    final speakerClr = _speakerColor(segment.speakerTag);
 
     return InkWell(
       onTap: onTap,
-      onLongPress: () => _showLongPressMenu(context),
+      onLongPress: () {
+        HapticFeedback.selectionClick();
+        _showLongPressMenu(context);
+      },
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          border: isPlaying
-              ? Border(
-                  left: BorderSide(color: EuphireColors.ember, width: 3))
-              : null,
+          color: isPlaying
+              ? speakerClr.withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: SelectableText.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '${segment.speakerLabel.isNotEmpty ? segment.speakerLabel : t.transcript_segment_unknown_speaker} ',
-                          style: TextStyle(
-                            color: _speakerColor(segment.speakerTag),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
-                        ),
-                        TextSpan(
-                          text: '[${_formatRange(segment)}] -> ',
-                          style: TextStyle(
-                            color: EuphireColors.mist,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        ..._highlight(segment.text, search, theme).map((span) {
-                          // Copy style from highlight and apply simplifications
-                          return TextSpan(
-                            text: (span).text,
-                            style: TextStyle(
-                              color: EuphireColors.frostWhite,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                              fontStyle: lowConf ? FontStyle.italic : FontStyle.normal,
-                              height: 1.5,
-                            ).merge(span.style),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ),
-                if (lowConf)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 6, top: 2),
-                    child: Tooltip(
-                      message: t.transcript_low_confidence_tooltip,
-                      child: Icon(Icons.help_outline,
-                          size: 14, color: EuphireColors.mist),
-                    ),
-                  ),
-              ],
+          border: Border(
+            left: BorderSide(
+              color: speakerClr.withValues(alpha: isPlaying ? 0.9 : 0.5),
+              width: 3,
             ),
-          ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Speaker label + timestamp row ──
+              Row(
+                children: [
+                  Text(
+                    segment.speakerLabel.isNotEmpty ? segment.speakerLabel : t.transcript_segment_unknown_speaker,
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      color: speakerClr,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _formatRange(segment),
+                    style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      color: EuphireColors.mist.withValues(alpha: 0.5),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (lowConf)
+                    Tooltip(
+                      message: t.transcript_low_confidence_tooltip,
+                      child: Icon(Icons.help_outline_rounded,
+                          size: 14, color: EuphireColors.mist.withValues(alpha: 0.5)),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              // ── Transcript text ──
+              SelectableText.rich(
+                TextSpan(
+                  children: _highlight(segment.text, search, theme).map((span) {
+                    return TextSpan(
+                      text: span.text,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        color: EuphireColors.frostWhite.withValues(alpha: 0.92),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        fontStyle: lowConf ? FontStyle.italic : FontStyle.normal,
+                        height: 1.6,
+                      ).merge(span.style),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -568,12 +614,14 @@ class _SegmentTile extends StatelessWidget {
     return out;
   }
 
+  static const _speakerMint = Color(0xFF5EEDCC);
+
   Color _speakerColor(int tag) {
     switch (tag) {
       case 1:
         return EuphireColors.ember;
       case 2:
-        return EuphireColors.aurora;
+        return _speakerMint;
       case 3:
         return EuphireColors.mist;
       default:
@@ -616,14 +664,6 @@ class _SegmentTile extends StatelessWidget {
                   text: '[${_formatRange(segment)}] ${segment.text}',
                 ));
                 Navigator.of(ctx).pop();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.play_arrow),
-              title: Text(t.transcript_actions_play_from_here),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                onTap();
               },
             ),
           ],

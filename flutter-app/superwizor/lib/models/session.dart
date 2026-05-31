@@ -15,6 +15,7 @@ class Session {
   final String id;
   final String patientId;
   final String modality;
+  final String? name;
   final DateTime date;
   final Duration duration;
   final SessionStatus status;
@@ -23,6 +24,7 @@ class Session {
     required this.id,
     required this.patientId,
     required this.modality,
+    this.name,
     required this.date,
     required this.duration,
     this.status = SessionStatus.inProgress,
@@ -32,6 +34,7 @@ class Session {
     String? id,
     String? patientId,
     String? modality,
+    String? name,
     DateTime? date,
     Duration? duration,
     SessionStatus? status,
@@ -40,6 +43,7 @@ class Session {
       id: id ?? this.id,
       patientId: patientId ?? this.patientId,
       modality: modality ?? this.modality,
+      name: name ?? this.name,
       date: date ?? this.date,
       duration: duration ?? this.duration,
       status: status ?? this.status,

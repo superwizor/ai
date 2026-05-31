@@ -419,49 +419,67 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_title.
   ///
   /// In pl, this message translates to:
-  /// **'Nowy pacjent.'**
+  /// **'Nowa kartoteka'**
   String get addPatient_title;
+
+  /// No description provided for @addPatient_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Uzupełnij dane klienta, aby utworzyć kartotekę.'**
+  String get addPatient_subtitle;
 
   /// No description provided for @addPatient_first_name_label.
   ///
   /// In pl, this message translates to:
-  /// **'Imię pacjenta (wymagane)'**
+  /// **'Imię (wymagane)'**
   String get addPatient_first_name_label;
 
   /// No description provided for @addPatient_last_name_label.
   ///
   /// In pl, this message translates to:
-  /// **'Pseudonim lub inicjał (opcjonalne)'**
+  /// **'Inicjał lub pseudonim'**
   String get addPatient_last_name_label;
+
+  /// No description provided for @addPatient_email_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'E-mail klienta'**
+  String get addPatient_email_label;
+
+  /// No description provided for @addPatient_email_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Opcjonalnie — do przyszłych powiadomień'**
+  String get addPatient_email_hint;
 
   /// No description provided for @addPatient_modality_label.
   ///
   /// In pl, this message translates to:
-  /// **'Nurt sesji (dziedziczony z profilu)'**
+  /// **'Nurt terapeutyczny'**
   String get addPatient_modality_label;
 
   /// No description provided for @addPatient_language_label.
   ///
   /// In pl, this message translates to:
-  /// **'Język sesji'**
+  /// **'Język raportu'**
   String get addPatient_language_label;
 
   /// No description provided for @addPatient_consent_label.
   ///
   /// In pl, this message translates to:
-  /// **'Oświadczam, że pacjent wyraził zgodę na nagrywanie i przetwarzanie danych zgodnie z Polityką Prywatności i DPA Superwizor AI.'**
+  /// **'Klient wyraził zgodę na nagrywanie i przetwarzanie danych zgodnie z Polityką Prywatności i DPA Superwizor AI.'**
   String get addPatient_consent_label;
 
   /// No description provided for @addPatient_consent_link_label.
   ///
   /// In pl, this message translates to:
-  /// **'Zobacz dokument DPA.'**
+  /// **'Zobacz DPA.'**
   String get addPatient_consent_link_label;
 
   /// No description provided for @addPatient_save_primary.
   ///
   /// In pl, this message translates to:
-  /// **'Zapisz pacjenta.'**
+  /// **'Utwórz kartotekę'**
   String get addPatient_save_primary;
 
   /// No description provided for @addPatient_no_consent_header.
@@ -485,13 +503,13 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_duplicate_header.
   ///
   /// In pl, this message translates to:
-  /// **'Taki pacjent już istnieje.'**
+  /// **'Taki klient już istnieje.'**
   String get addPatient_duplicate_header;
 
   /// No description provided for @addPatient_duplicate_body.
   ///
   /// In pl, this message translates to:
-  /// **'Masz już kartotekę z tą kombinacją imienia i pseudonimu. Dodaj inicjał, przydomek lub inny wyróżnik, aby uniknąć pomyłek.'**
+  /// **'Masz już kartotekę z tą kombinacją imienia i pseudonimu. Dodaj inicjał lub przydomek, aby uniknąć pomyłek.'**
   String get addPatient_duplicate_body;
 
   /// No description provided for @addPatient_duplicate_primary.
@@ -503,19 +521,19 @@ abstract class AppLocalizations {
   /// No description provided for @editPatient_title.
   ///
   /// In pl, this message translates to:
-  /// **'Edycja danych pacjenta.'**
+  /// **'Edytuj kartotekę'**
   String get editPatient_title;
 
   /// No description provided for @editPatient_save_primary.
   ///
   /// In pl, this message translates to:
-  /// **'Zapisz zmiany.'**
+  /// **'Zapisz zmiany'**
   String get editPatient_save_primary;
 
   /// No description provided for @editPatient_erase_destructive.
   ///
   /// In pl, this message translates to:
-  /// **'Usuń pacjenta bezpowrotnie'**
+  /// **'Usuń kartotekę bezpowrotnie'**
   String get editPatient_erase_destructive;
 
   /// No description provided for @editPatient_erase_confirm_header.
@@ -527,7 +545,7 @@ abstract class AppLocalizations {
   /// No description provided for @editPatient_erase_confirm_body.
   ///
   /// In pl, this message translates to:
-  /// **'To działanie trwale usunie pacjenta oraz WSZYSTKIE jego sesje i transkrypcje (wymóg RODO). Nie można tego cofnąć.'**
+  /// **'To działanie trwale usunie kartotekę klienta oraz WSZYSTKIE sesje i transkrypcje (wymóg RODO). Nie można tego cofnąć.'**
   String get editPatient_erase_confirm_body;
 
   /// No description provided for @addSession_title.
@@ -2252,7 +2270,7 @@ abstract class AppLocalizations {
   /// No description provided for @cancel_session_confirm_action.
   ///
   /// In pl, this message translates to:
-  /// **'Tak, anuluj'**
+  /// **'Tak, usuń'**
   String get cancel_session_confirm_action;
 
   /// No description provided for @cancel_session_keep.
@@ -2266,6 +2284,120 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Sesja anulowana'**
   String get cancel_session_success;
+
+  /// No description provided for @note_add_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'DODAJ NOTATKĘ'**
+  String get note_add_label;
+
+  /// No description provided for @note_add_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Szybka notatka o kliencie'**
+  String get note_add_subtitle;
+
+  /// No description provided for @note_sheet_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowa notatka'**
+  String get note_sheet_title;
+
+  /// No description provided for @note_sheet_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wpisz swoją notatkę…'**
+  String get note_sheet_hint;
+
+  /// No description provided for @note_sheet_save.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisz'**
+  String get note_sheet_save;
+
+  /// No description provided for @note_sheet_cancel.
+  ///
+  /// In pl, this message translates to:
+  /// **'Anuluj'**
+  String get note_sheet_cancel;
+
+  /// No description provided for @note_delete_confirm.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usunąć notatkę?'**
+  String get note_delete_confirm;
+
+  /// No description provided for @note_delete_action.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń'**
+  String get note_delete_action;
+
+  /// No description provided for @note_empty_text.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka nie może być pusta.'**
+  String get note_empty_text;
+
+  /// No description provided for @note_title_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tytuł notatki'**
+  String get note_title_hint;
+
+  /// No description provided for @note_body_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Treść notatki…'**
+  String get note_body_hint;
+
+  /// No description provided for @note_discard_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Odrzucić zmiany?'**
+  String get note_discard_title;
+
+  /// No description provided for @note_discard_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Masz niezapisane zmiany. Chcesz je odrzucić?'**
+  String get note_discard_body;
+
+  /// No description provided for @note_discard_action.
+  ///
+  /// In pl, this message translates to:
+  /// **'Odrzuć'**
+  String get note_discard_action;
+
+  /// No description provided for @note_discard_save.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisz'**
+  String get note_discard_save;
+
+  /// No description provided for @note_edit_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Edytuj notatkę'**
+  String get note_edit_label;
+
+  /// No description provided for @note_untitled.
+  ///
+  /// In pl, this message translates to:
+  /// **'Bez tytułu'**
+  String get note_untitled;
+
+  /// No description provided for @note_saved.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka zapisana ✓'**
+  String get note_saved;
+
+  /// No description provided for @note_deleted.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka usunięta'**
+  String get note_deleted;
 }
 
 class _AppLocalizationsDelegate

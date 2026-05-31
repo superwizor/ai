@@ -394,28 +394,42 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
 
   Future<void> renameSession(
       String patientId, String sessionId, String newName) async {
-    final client = ref.read(grpcClientsProvider).clinical;
+    // 1. Optimistic UI update — instant feedback
+    void applyOptimistic() {
+      final current = state.whenOrNull(data: (d) => d);
+      if (current != null) {
+        final sessions = current[patientId] ?? [];
+        final updatedSessions = sessions.map((s) {
+          if (s.id == sessionId) {
+            return s.copyWith(name: newName);
+          }
+          return s;
+        }).toList();
+        state = AsyncValue.data({...current, patientId: updatedSessions});
+      }
+    }
+
+    applyOptimistic();
+
+    // 2. Persist in local cache (survives app restart)
+    await _repo?.renameSessionLocally(patientId, sessionId, newName);
+
+    // 3. Best-effort server sync (don't block UI or revert on failure)
     try {
+      final client = ref.read(grpcClientsProvider).clinical;
       await client.updateSession(grpc_clinical.UpdateSessionRequest(
         sessionId: sessionId,
         name: newName,
       ));
-
+      // 4. Re-apply after server round-trip: a concurrent forceRefresh
+      //    may have overwritten the optimistic state with stale data
+      //    from ListSessions (server eventual-consistency lag between
+      //    UpdateSession and ListSessions). Re-stamp both cache and
+      //    in-memory state so the correct name sticks.
       await _repo?.renameSessionLocally(patientId, sessionId, newName);
-
-      final current = state.whenOrNull(data: (d) => d);
-      if (current == null) return;
-      final sessions = current[patientId] ?? [];
-      final updatedSessions = sessions.map((s) {
-        if (s.id == sessionId) {
-          return s.copyWith(modality: newName);
-        }
-        return s;
-      }).toList();
-      state = AsyncValue.data({...current, patientId: updatedSessions});
+      applyOptimistic();
     } catch (e) {
-      debugPrint('Error renaming session: $e');
-      rethrow;
+      debugPrint('[rename] Server sync failed (local rename persisted): $e');
     }
   }
 }

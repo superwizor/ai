@@ -181,6 +181,11 @@ class CacheManager {
 
   String get currentTherapistId => _requireOpen().therapistId;
 
+  /// Raw meta box handle — for lightweight local-only data (e.g.
+  /// patient notes) that doesn't need the CacheEnvelope TTL/LRU
+  /// machinery. Callers write plain JSON maps directly.
+  Box<Map> rawMetaBox() => _requireOpen().meta;
+
   // ── targeted invalidation (called from repositories on mutations) ──
 
   /// Wipes everything for a patient — used when DeletePatientFile or

@@ -101,21 +101,208 @@ func (q *Queries) GetActiveSubscriptionByOrg(ctx context.Context, organizationID
 	return i, err
 }
 
-const getSubscriptionByID = `-- name: GetSubscriptionByID :one
-SELECT id, organization_id, plan_id, provider, provider_subscription_id, provider_customer_id_ciphertext, provider_customer_id_encrypted_dek, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, trial_end_at, created_at, updated_at FROM subscriptions WHERE id = $1
+const getPlanByStripePriceID = `-- name: GetPlanByStripePriceID :one
+SELECT id, tier, cycle, tokens_per_period, licenses_limit, has_b2b_dashboard,
+       price_gross, currency_code
+FROM subscription_plans
+WHERE stripe_price_id = $1
+  AND is_active = TRUE
+LIMIT 1
 `
 
-func (q *Queries) GetSubscriptionByID(ctx context.Context, id uuid.UUID) (Subscription, error) {
-	row := q.db.QueryRow(ctx, getSubscriptionByID, id)
-	var i Subscription
+type GetPlanByStripePriceIDRow struct {
+	ID              uuid.UUID      `json:"id"`
+	Tier            PlanTier       `json:"tier"`
+	Cycle           BillingCycle   `json:"cycle"`
+	TokensPerPeriod int32          `json:"tokens_per_period"`
+	LicensesLimit   int32          `json:"licenses_limit"`
+	HasB2bDashboard bool           `json:"has_b2b_dashboard"`
+	PriceGross      pgtype.Numeric `json:"price_gross"`
+	CurrencyCode    string         `json:"currency_code"`
+}
+
+// Lookup planu po stripe_price_id — używane przy checkout.session.completed
+// żeby wiedzieć ile tokenów przypisać i jaki tier.
+func (q *Queries) GetPlanByStripePriceID(ctx context.Context, stripePriceID *string) (GetPlanByStripePriceIDRow, error) {
+	row := q.db.QueryRow(ctx, getPlanByStripePriceID, stripePriceID)
+	var i GetPlanByStripePriceIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Tier,
+		&i.Cycle,
+		&i.TokensPerPeriod,
+		&i.LicensesLimit,
+		&i.HasB2bDashboard,
+		&i.PriceGross,
+		&i.CurrencyCode,
+	)
+	return i, err
+}
+
+const getSubscriptionByStripeID = `-- name: GetSubscriptionByStripeID :one
+SELECT s.id, s.organization_id, s.plan_id, s.provider,
+       s.provider_subscription_id, s.status,
+       s.current_period_start, s.current_period_end,
+       s.cancel_at_period_end, s.canceled_at, s.trial_end_at,
+       s.created_at, s.updated_at,
+       p.tokens_per_period AS plan_tokens_per_period,
+       p.tier AS plan_tier, p.cycle AS plan_cycle
+FROM subscriptions s
+JOIN subscription_plans p ON p.id = s.plan_id
+WHERE s.provider = 'STRIPE'
+  AND s.provider_subscription_id = $1
+LIMIT 1
+`
+
+type GetSubscriptionByStripeIDRow struct {
+	ID                     uuid.UUID          `json:"id"`
+	OrganizationID         uuid.UUID          `json:"organization_id"`
+	PlanID                 uuid.UUID          `json:"plan_id"`
+	Provider               PaymentProvider    `json:"provider"`
+	ProviderSubscriptionID string             `json:"provider_subscription_id"`
+	Status                 SubscriptionStatus `json:"status"`
+	CurrentPeriodStart     time.Time          `json:"current_period_start"`
+	CurrentPeriodEnd       time.Time          `json:"current_period_end"`
+	CancelAtPeriodEnd      bool               `json:"cancel_at_period_end"`
+	CanceledAt             pgtype.Timestamptz `json:"canceled_at"`
+	TrialEndAt             pgtype.Timestamptz `json:"trial_end_at"`
+	CreatedAt              time.Time          `json:"created_at"`
+	UpdatedAt              time.Time          `json:"updated_at"`
+	PlanTokensPerPeriod    int32              `json:"plan_tokens_per_period"`
+	PlanTier               PlanTier           `json:"plan_tier"`
+	PlanCycle              BillingCycle       `json:"plan_cycle"`
+}
+
+// Lookup subskrypcji po stripe subscription ID.
+func (q *Queries) GetSubscriptionByStripeID(ctx context.Context, providerSubscriptionID string) (GetSubscriptionByStripeIDRow, error) {
+	row := q.db.QueryRow(ctx, getSubscriptionByStripeID, providerSubscriptionID)
+	var i GetSubscriptionByStripeIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.OrganizationID,
 		&i.PlanID,
 		&i.Provider,
 		&i.ProviderSubscriptionID,
-		&i.ProviderCustomerIDCiphertext,
-		&i.ProviderCustomerIDEncryptedDek,
+		&i.Status,
+		&i.CurrentPeriodStart,
+		&i.CurrentPeriodEnd,
+		&i.CancelAtPeriodEnd,
+		&i.CanceledAt,
+		&i.TrialEndAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PlanTokensPerPeriod,
+		&i.PlanTier,
+		&i.PlanCycle,
+	)
+	return i, err
+}
+
+const updateSubscriptionStatusByStripeID = `-- name: UpdateSubscriptionStatusByStripeID :exec
+UPDATE subscriptions
+SET status               = $2,
+    cancel_at_period_end = $3,
+    canceled_at          = $4,
+    updated_at           = now()
+WHERE provider = 'STRIPE'
+  AND provider_subscription_id = $1
+`
+
+type UpdateSubscriptionStatusByStripeIDParams struct {
+	ProviderSubscriptionID string             `json:"provider_subscription_id"`
+	Status                 SubscriptionStatus `json:"status"`
+	CancelAtPeriodEnd      bool               `json:"cancel_at_period_end"`
+	CanceledAt             pgtype.Timestamptz `json:"canceled_at"`
+}
+
+// Aktualizuje status subskrypcji i opcjonalnie cancel_at_period_end.
+// Używane przy invoice.payment_failed, customer.subscription.deleted,
+// customer.subscription.updated.
+func (q *Queries) UpdateSubscriptionStatusByStripeID(ctx context.Context, arg UpdateSubscriptionStatusByStripeIDParams) error {
+	_, err := q.db.Exec(ctx, updateSubscriptionStatusByStripeID,
+		arg.ProviderSubscriptionID,
+		arg.Status,
+		arg.CancelAtPeriodEnd,
+		arg.CanceledAt,
+	)
+	return err
+}
+
+const upsertStripeSubscription = `-- name: UpsertStripeSubscription :one
+INSERT INTO subscriptions (
+    organization_id, plan_id,
+    provider, provider_subscription_id,
+    status,
+    current_period_start, current_period_end,
+    cancel_at_period_end, trial_end_at
+) VALUES (
+    $1, $2,
+    'STRIPE', $3,
+    $4,
+    $5, $6,
+    $7, $8
+)
+ON CONFLICT (provider, provider_subscription_id) DO UPDATE
+    SET plan_id              = EXCLUDED.plan_id,
+        status               = EXCLUDED.status,
+        current_period_start = EXCLUDED.current_period_start,
+        current_period_end   = EXCLUDED.current_period_end,
+        cancel_at_period_end = EXCLUDED.cancel_at_period_end,
+        trial_end_at         = EXCLUDED.trial_end_at,
+        updated_at           = now()
+RETURNING id, organization_id, plan_id, provider, provider_subscription_id,
+          status, current_period_start, current_period_end,
+          cancel_at_period_end, canceled_at, trial_end_at, created_at, updated_at
+`
+
+type UpsertStripeSubscriptionParams struct {
+	OrganizationID         uuid.UUID          `json:"organization_id"`
+	PlanID                 uuid.UUID          `json:"plan_id"`
+	ProviderSubscriptionID string             `json:"provider_subscription_id"`
+	Status                 SubscriptionStatus `json:"status"`
+	CurrentPeriodStart     time.Time          `json:"current_period_start"`
+	CurrentPeriodEnd       time.Time          `json:"current_period_end"`
+	CancelAtPeriodEnd      bool               `json:"cancel_at_period_end"`
+	TrialEndAt             pgtype.Timestamptz `json:"trial_end_at"`
+}
+
+type UpsertStripeSubscriptionRow struct {
+	ID                     uuid.UUID          `json:"id"`
+	OrganizationID         uuid.UUID          `json:"organization_id"`
+	PlanID                 uuid.UUID          `json:"plan_id"`
+	Provider               PaymentProvider    `json:"provider"`
+	ProviderSubscriptionID string             `json:"provider_subscription_id"`
+	Status                 SubscriptionStatus `json:"status"`
+	CurrentPeriodStart     time.Time          `json:"current_period_start"`
+	CurrentPeriodEnd       time.Time          `json:"current_period_end"`
+	CancelAtPeriodEnd      bool               `json:"cancel_at_period_end"`
+	CanceledAt             pgtype.Timestamptz `json:"canceled_at"`
+	TrialEndAt             pgtype.Timestamptz `json:"trial_end_at"`
+	CreatedAt              time.Time          `json:"created_at"`
+	UpdatedAt              time.Time          `json:"updated_at"`
+}
+
+// Tworzy lub aktualizuje subskrypcję po zdarzeniu Stripe.
+// ON CONFLICT (provider, provider_subscription_id) aktualizuje pola.
+// Używane przy checkout.session.completed i customer.subscription.created.
+func (q *Queries) UpsertStripeSubscription(ctx context.Context, arg UpsertStripeSubscriptionParams) (UpsertStripeSubscriptionRow, error) {
+	row := q.db.QueryRow(ctx, upsertStripeSubscription,
+		arg.OrganizationID,
+		arg.PlanID,
+		arg.ProviderSubscriptionID,
+		arg.Status,
+		arg.CurrentPeriodStart,
+		arg.CurrentPeriodEnd,
+		arg.CancelAtPeriodEnd,
+		arg.TrialEndAt,
+	)
+	var i UpsertStripeSubscriptionRow
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.PlanID,
+		&i.Provider,
+		&i.ProviderSubscriptionID,
 		&i.Status,
 		&i.CurrentPeriodStart,
 		&i.CurrentPeriodEnd,

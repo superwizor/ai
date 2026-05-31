@@ -178,30 +178,39 @@ class AppLocalizationsEn extends AppLocalizations {
       'This affects how your reports are generated. You can change it anytime.';
 
   @override
-  String get addPatient_title => 'New Patient.';
+  String get addPatient_title => 'New record';
 
   @override
-  String get addPatient_first_name_label => 'Patient\'s first name (required)';
+  String get addPatient_subtitle =>
+      'Fill in client details to create a record.';
 
   @override
-  String get addPatient_last_name_label => 'Alias or initial (optional)';
+  String get addPatient_first_name_label => 'First name (required)';
 
   @override
-  String get addPatient_modality_label =>
-      'Session modality (inherited from profile)';
+  String get addPatient_last_name_label => 'Initial or alias';
 
   @override
-  String get addPatient_language_label => 'Session language';
+  String get addPatient_email_label => 'Client email';
+
+  @override
+  String get addPatient_email_hint => 'Optional — for future notifications';
+
+  @override
+  String get addPatient_modality_label => 'Therapy modality';
+
+  @override
+  String get addPatient_language_label => 'Report language';
 
   @override
   String get addPatient_consent_label =>
-      'I declare that the patient consented to recording and data processing according to the Privacy Policy and DPA of Superwizor AI.';
+      'The client consented to recording and data processing according to the Privacy Policy and DPA of Superwizor AI.';
 
   @override
-  String get addPatient_consent_link_label => 'View DPA document.';
+  String get addPatient_consent_link_label => 'View DPA.';
 
   @override
-  String get addPatient_save_primary => 'Save patient.';
+  String get addPatient_save_primary => 'Create record';
 
   @override
   String get addPatient_no_consent_header => 'No consent to record.';
@@ -214,30 +223,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPatient_no_consent_primary => 'I understand.';
 
   @override
-  String get addPatient_duplicate_header => 'This patient already exists.';
+  String get addPatient_duplicate_header => 'This client already exists.';
 
   @override
   String get addPatient_duplicate_body =>
-      'You already have a record with this name combination. Add an initial, nickname, or other identifier to avoid confusion.';
+      'You already have a record with this name combination. Add an initial or alias to avoid confusion.';
 
   @override
   String get addPatient_duplicate_primary => 'I\'ll fix the name.';
 
   @override
-  String get editPatient_title => 'Edit patient details.';
+  String get editPatient_title => 'Edit client file';
 
   @override
-  String get editPatient_save_primary => 'Save changes.';
+  String get editPatient_save_primary => 'Save changes';
 
   @override
-  String get editPatient_erase_destructive => 'Erase patient permanently';
+  String get editPatient_erase_destructive => 'Erase client file permanently';
 
   @override
   String get editPatient_erase_confirm_header => 'Permanent erasure';
 
   @override
   String get editPatient_erase_confirm_body =>
-      'This action permanently deletes the patient and ALL their sessions and transcripts (GDPR right to be forgotten). This cannot be undone.';
+      'This action permanently deletes the client file and ALL their sessions and transcripts (GDPR right to be forgotten). This cannot be undone.';
 
   @override
   String get addSession_title => 'New Session.';
@@ -1235,11 +1244,69 @@ class AppLocalizationsEn extends AppLocalizations {
       'The session will be cancelled and the recording removed from the queue. This cannot be undone.';
 
   @override
-  String get cancel_session_confirm_action => 'Yes, cancel';
+  String get cancel_session_confirm_action => 'Yes, delete';
 
   @override
   String get cancel_session_keep => 'No, keep it';
 
   @override
   String get cancel_session_success => 'Session cancelled';
+
+  @override
+  String get note_add_label => 'ADD NOTE';
+
+  @override
+  String get note_add_subtitle => 'Quick note about the client';
+
+  @override
+  String get note_sheet_title => 'New note';
+
+  @override
+  String get note_sheet_hint => 'Type your note…';
+
+  @override
+  String get note_sheet_save => 'Save';
+
+  @override
+  String get note_sheet_cancel => 'Cancel';
+
+  @override
+  String get note_delete_confirm => 'Delete note?';
+
+  @override
+  String get note_delete_action => 'Delete';
+
+  @override
+  String get note_empty_text => 'Note cannot be empty.';
+
+  @override
+  String get note_title_hint => 'Note title';
+
+  @override
+  String get note_body_hint => 'Note content…';
+
+  @override
+  String get note_discard_title => 'Discard changes?';
+
+  @override
+  String get note_discard_body =>
+      'You have unsaved changes. Do you want to discard them?';
+
+  @override
+  String get note_discard_action => 'Discard';
+
+  @override
+  String get note_discard_save => 'Save';
+
+  @override
+  String get note_edit_label => 'Edit note';
+
+  @override
+  String get note_untitled => 'Untitled';
+
+  @override
+  String get note_saved => 'Note saved ✓';
+
+  @override
+  String get note_deleted => 'Note deleted';
 }
