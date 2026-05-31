@@ -524,25 +524,28 @@ func (h *StripeHandler) upsertSubscriptionFromStripe(ctx context.Context, event 
 // insertPaymentEvent wstawia zdarzenie do payment_events (audit log).
 // Zwraca (id, alreadyProcessed, error).
 // alreadyProcessed=true gdy ON CONFLICT DO NOTHING zadziałał (duplikat).
+//
+// Idempotency: sqlc :one z ON CONFLICT DO NOTHING zwraca pgx.ErrNoRows
+// gdy RETURNING nie daje żadnego row (duplikat). Nie zwraca nil struct.
 func (h *StripeHandler) insertPaymentEvent(ctx context.Context, event stripeEvent, raw []byte) (uuid.UUID, bool, error) {
 	q := db.New(h.pool)
 	row, err := q.CreatePaymentEvent(ctx, db.CreatePaymentEventParams{
-		Provider:        db.PaymentProviderSTRIPE,
-		ProviderEventID: event.ID,
-		EventType:       event.Type,
-		AmountGross:     nil,
-		AmountNet:       nil,
-		VatRate:         nil,
-		CurrencyCode:    nil,
-		RawPayload:      raw,
+		Provider:         db.PaymentProviderSTRIPE,
+		ProviderEventID:  event.ID,
+		EventType:        event.Type,
+		AmountGross:      pgtype.Numeric{}, // Valid=false → SQL NULL
+		AmountNet:        pgtype.Numeric{}, // Valid=false → SQL NULL
+		VatRate:          pgtype.Numeric{}, // Valid=false → SQL NULL
+		CurrencyCode:     nil,
+		RawPayload:       raw,
 		ProcessingStatus: processingStatusForType(event.Type),
 	})
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			// ON CONFLICT DO NOTHING → RETURNING dał 0 rows → duplikat.
+			return uuid.Nil, true, nil
+		}
 		return uuid.Nil, false, err
-	}
-	if row == nil {
-		// ON CONFLICT DO NOTHING zwrócił brak row — duplikat.
-		return uuid.Nil, true, nil
 	}
 	return row.ID, false, nil
 }

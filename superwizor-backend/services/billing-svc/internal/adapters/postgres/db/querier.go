@@ -47,6 +47,11 @@ type Querier interface {
 	// the handler level, NOT NULL-allowed at the schema level (legacy events
 	// don't have it populated).
 	CreateBillingAuditEvent(ctx context.Context, arg CreateBillingAuditEventParams) (AuditEvent, error)
+	// Idempotent insert zdarzenia płatności (ADR-BL-002).
+	// UNIQUE(provider, provider_event_id) zapewnia że to samo zdarzenie
+	// Stripe nie zostanie przetworzone dwukrotnie — zwraca pusty RETURNING
+	// przy konflikcie (caller sprawdza czy id jest zero UUID).
+	CreatePaymentEvent(ctx context.Context, arg CreatePaymentEventParams) (CreatePaymentEventRow, error)
 	// Insert webhook event jako IGNORED (stub mode). UNIQUE constraint na
 	// (provider, provider_event_id) zwróci unique-violation przy duplikacie —
 	// caller (StripeStubHandler) używa tego do idempotency check.
@@ -75,11 +80,27 @@ type Querier interface {
 	// Constraint idx_subscriptions_one_active_per_org gwarantuje, że
 	// jest co najwyżej jedna w stanie ACTIVE/TRIALING/PAST_DUE.
 	// Zwracamy też plan-side dane potrzebne do QuotaDecision bez dodatkowego query.
+	//
+	// DETERMINISTYCZNY wybór (feat/tokens-exhausted, 2026-05-30): mimo że
+	// partial-unique index gwarantuje co najwyżej jeden ACTIVE/TRIALING/
+	// PAST_DUE per org, kiedyś inwariant został naruszony (failed
+	// TRIAL→paid upgrade zostawił dwa wiersze). Bez ORDER BY `LIMIT 1`
+	// zwracał DOWOLNY z nich — w incydencie 2026-05-29 zwracał stary
+	// TRIAL (3 tokeny) zamiast nowego Solo (20), powodując fałszywe
+	// QUOTA_EXHAUSTED. ORDER BY poniżej preferuje płatny plan:
+	//   1. ACTIVE > TRIALING > PAST_DUE  (płatny aktywny wygrywa z trialem)
+	//   2. najnowszy created_at          (upgrade jest nowszy niż trial)
+	// Dzięki temu reserve/quota zawsze patrzy na plan, za który klient
+	// faktycznie płaci, nawet jeśli inwariant zostanie kiedyś naruszony.
 	GetActiveSubscriptionByOrg(ctx context.Context, organizationID uuid.UUID) (GetActiveSubscriptionByOrgRow, error)
+	// Lookup planu po stripe_price_id — używane przy checkout.session.completed
+	// żeby wiedzieć ile tokenów przypisać i jaki tier.
+	GetPlanByStripePriceID(ctx context.Context, stripePriceID *string) (GetPlanByStripePriceIDRow, error)
 	// Idempotency lookup PRZED próbą INSERT-u. Zwraca aktywną lub już sfinalizowaną
 	// rezerwację (status determinuje co handler robi).
 	GetReservationBySession(ctx context.Context, sessionID uuid.UUID) (PendingReservation, error)
-	GetSubscriptionByID(ctx context.Context, id uuid.UUID) (Subscription, error)
+	// Lookup subskrypcji po stripe subscription ID.
+	GetSubscriptionByStripeID(ctx context.Context, providerSubscriptionID string) (GetSubscriptionByStripeIDRow, error)
 	// Idempotency lookup. Zwraca już zaistniały event jeśli był (no-op path
 	// w CommitUsage).
 	GetUsageEventBySession(ctx context.Context, sessionID uuid.UUID) (UsageEvent, error)
@@ -100,6 +121,8 @@ type Querier interface {
 	// tokens_reserved per row, żeby handler mógł zaktualizować odpowiednie
 	// usage_counters w tej samej transakcji.
 	MarkExpiredReservations(ctx context.Context) ([]MarkExpiredReservationsRow, error)
+	MarkPaymentEventFailed(ctx context.Context, arg MarkPaymentEventFailedParams) error
+	MarkPaymentEventProcessed(ctx context.Context, id uuid.UUID) error
 	// Wywoływane wewnątrz transakcji CommitUsage, po insert do usage_events.
 	MarkReservationCommitted(ctx context.Context, sessionID uuid.UUID) error
 	// Wywoływane przez ReleaseCredit (jawne anulowanie sesji).
@@ -110,6 +133,14 @@ type Querier interface {
 	// Atomic shift okresu rozliczeniowego — używane przez manual renewal cron
 	// ORAZ (w slice 2) przez Stripe invoice.paid handler.
 	ShiftSubscriptionPeriod(ctx context.Context, arg ShiftSubscriptionPeriodParams) error
+	// Aktualizuje status subskrypcji i opcjonalnie cancel_at_period_end.
+	// Używane przy invoice.payment_failed, customer.subscription.deleted,
+	// customer.subscription.updated.
+	UpdateSubscriptionStatusByStripeID(ctx context.Context, arg UpdateSubscriptionStatusByStripeIDParams) error
+	// Tworzy lub aktualizuje subskrypcję po zdarzeniu Stripe.
+	// ON CONFLICT (provider, provider_subscription_id) aktualizuje pola.
+	// Używane przy checkout.session.completed i customer.subscription.created.
+	UpsertStripeSubscription(ctx context.Context, arg UpsertStripeSubscriptionParams) (UpsertStripeSubscriptionRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

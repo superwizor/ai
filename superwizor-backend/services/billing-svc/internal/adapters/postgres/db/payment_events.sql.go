@@ -10,7 +10,73 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const createPaymentEvent = `-- name: CreatePaymentEvent :one
+INSERT INTO payment_events (
+    provider, provider_event_id, event_type,
+    amount_gross, amount_net, vat_rate, currency_code,
+    raw_payload, processing_status,
+    received_at
+) VALUES (
+    $1, $2, $3,
+    $4, $5, $6, $7,
+    $8, $9,
+    now()
+)
+ON CONFLICT (provider, provider_event_id) DO NOTHING
+RETURNING id, provider, provider_event_id, event_type, processing_status, received_at
+`
+
+type CreatePaymentEventParams struct {
+	Provider         PaymentProvider `json:"provider"`
+	ProviderEventID  string          `json:"provider_event_id"`
+	EventType        string          `json:"event_type"`
+	AmountGross      pgtype.Numeric  `json:"amount_gross"`
+	AmountNet        pgtype.Numeric  `json:"amount_net"`
+	VatRate          pgtype.Numeric  `json:"vat_rate"`
+	CurrencyCode     *string         `json:"currency_code"`
+	RawPayload       []byte          `json:"raw_payload"`
+	ProcessingStatus string          `json:"processing_status"`
+}
+
+type CreatePaymentEventRow struct {
+	ID               uuid.UUID       `json:"id"`
+	Provider         PaymentProvider `json:"provider"`
+	ProviderEventID  string          `json:"provider_event_id"`
+	EventType        string          `json:"event_type"`
+	ProcessingStatus string          `json:"processing_status"`
+	ReceivedAt       time.Time       `json:"received_at"`
+}
+
+// Idempotent insert zdarzenia płatności (ADR-BL-002).
+// UNIQUE(provider, provider_event_id) zapewnia że to samo zdarzenie
+// Stripe nie zostanie przetworzone dwukrotnie — zwraca pusty RETURNING
+// przy konflikcie (caller sprawdza czy id jest zero UUID).
+func (q *Queries) CreatePaymentEvent(ctx context.Context, arg CreatePaymentEventParams) (CreatePaymentEventRow, error) {
+	row := q.db.QueryRow(ctx, createPaymentEvent,
+		arg.Provider,
+		arg.ProviderEventID,
+		arg.EventType,
+		arg.AmountGross,
+		arg.AmountNet,
+		arg.VatRate,
+		arg.CurrencyCode,
+		arg.RawPayload,
+		arg.ProcessingStatus,
+	)
+	var i CreatePaymentEventRow
+	err := row.Scan(
+		&i.ID,
+		&i.Provider,
+		&i.ProviderEventID,
+		&i.EventType,
+		&i.ProcessingStatus,
+		&i.ReceivedAt,
+	)
+	return i, err
+}
 
 const createPaymentEventStub = `-- name: CreatePaymentEventStub :one
 INSERT INTO payment_events (
@@ -61,4 +127,34 @@ func (q *Queries) CreatePaymentEventStub(ctx context.Context, arg CreatePaymentE
 		&i.ReceivedAt,
 	)
 	return i, err
+}
+
+const markPaymentEventFailed = `-- name: MarkPaymentEventFailed :exec
+UPDATE payment_events
+SET processing_status = 'FAILED',
+    error_message     = $2,
+    processed_at      = now()
+WHERE id = $1
+`
+
+type MarkPaymentEventFailedParams struct {
+	ID           uuid.UUID `json:"id"`
+	ErrorMessage *string   `json:"error_message"`
+}
+
+func (q *Queries) MarkPaymentEventFailed(ctx context.Context, arg MarkPaymentEventFailedParams) error {
+	_, err := q.db.Exec(ctx, markPaymentEventFailed, arg.ID, arg.ErrorMessage)
+	return err
+}
+
+const markPaymentEventProcessed = `-- name: MarkPaymentEventProcessed :exec
+UPDATE payment_events
+SET processing_status = 'PROCESSED',
+    processed_at      = now()
+WHERE id = $1
+`
+
+func (q *Queries) MarkPaymentEventProcessed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markPaymentEventProcessed, id)
+	return err
 }
