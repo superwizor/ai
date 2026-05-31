@@ -1,8 +1,8 @@
 # Data Processing Agreement (DPA)
 
-**Effective Date:** 21.07.2025
+**Effective Date:** 2026-06-01
 
-This Data Processing Agreement (“**DPA**” or “**Agreement**”) is entered into between: 
+This Data Processing Agreement ("**DPA**" or "**Agreement**") is entered into between: 
 
 **The Professional User**, who has accepted the Terms of Service of the Superwizor AI application, acting as: **Data Controller** (hereinafter referred to as the "**Controller**") 
 
@@ -16,8 +16,8 @@ hereinafter collectively referred to as the "**Parties**".
 
 ## PREAMBLE
 
-*   **WHEREAS**, the Controller has concluded an agreement with the Processor for the provision of electronic services by accepting the Terms of Service of the Superwizor AI application (hereinafter the "Terms" or "Main Agreement"), available at: [App Page/Menu/Terms of Service]; 
-*   **WHEREAS**, as part of the services specified in the Main Agreement, the Controller will entrust the Processor with processing the personal data of their Patients; 
+*   **WHEREAS**, the Controller has concluded an agreement with the Processor for the provision of electronic services by accepting the Terms of Service of the Superwizor AI application (hereinafter the "Terms" or "Main Agreement"), available in the "Legal Information" section of the App settings; 
+*   **WHEREAS**, as part of the services specified in the Main Agreement, the Controller entrusts the Processor with processing the personal data of their Patients, including special categories of data (health data); 
 *   **WHEREAS**, this DPA fulfills the legal obligation specified in Art. 28 sec. 3 of Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 ("GDPR"); 
 *   **WHEREAS**, this DPA is an integral part of the Main Agreement. 
 
@@ -30,8 +30,8 @@ The Parties agree as follows:
 ## § 1. DEFINITIONS
 
 1.  Capitalized terms not defined in this DPA have the meaning assigned to them in the Terms. 
-2.  **Privacy Policy** – a document specifying the rules of data processing by the Service Provider, available at: [App Page/Menu/Privacy Policy]. 
-3.  **Personal Data** – all personal data of the Controller's Patients, including special categories of personal data (health-related data), processed by the Processor on behalf of the Controller in connection with the performance of the Main Agreement. 
+2.  **Privacy Policy** – a document specifying the rules of data processing by the Service Provider, available in the "Legal Information" section of the App settings. 
+3.  **Personal Data** – all personal data of the Controller's Patients, including special categories of personal data (data concerning physical and mental health), processed by the Processor on behalf of the Controller in connection with the performance of the Main Agreement. 
 4.  **Personal Data Breach** – a breach of security leading to the accidental or unlawful destruction, loss, alteration, unauthorized disclosure of, or unauthorized access to Personal Data. 
 5.  **Third Country** – a country outside the European Economic Area (EEA).
 
@@ -40,14 +40,24 @@ The Parties agree as follows:
 ## § 2. SUBJECT, SCOPE AND PURPOSE OF PROCESSING
 
 1.  The Controller entrusts the Processor with Personal Data for processing on the terms and for the purpose specified in this Agreement. 
-2.  **Subject of processing:** Performance of services provided by the Processor under the Main Agreement. 
-3.  **Nature and purpose of processing:** Performing operations on Personal Data necessary to provide the Application services to the Controller, in accordance with the functionalities described in § 4 of the Terms. 
+2.  **Subject of processing:** Performance of services provided by the Processor under the Main Agreement, consisting of processing audio recordings of therapy and coaching sessions, their transcription, analysis using artificial intelligence, and generation of clinical reports. 
+3.  **Nature and purpose of processing:** Performing operations on Personal Data necessary to provide the Application services to the Controller, in accordance with the functionalities described in § 4 of the Terms, in particular: 
+    *   Temporary storage of audio recordings (maximum 48 hours from upload, after which they are automatically and permanently deleted).
+    *   Automatic transcription of audio recordings using Speech-to-Text technology (Chirp 3).
+    *   Diarization (identification and differentiation of speakers using neutral labels — "Person 1", "Person 2").
+    *   Generation of structured clinical reports using artificial intelligence (Vertex AI / Gemini).
+    *   Generation of HiTOP dimensional measurements.
+    *   Creation and storage of encrypted clinical memory (RAG) — anonymized session summaries to ensure therapeutic continuity.
+    *   Generation of embeddings (vector representations) for clinical memory.
+    *   Storage of encrypted transcriptions and reports as User Materials.
 4.  **Type of Personal Data:** Data specified in Part II of the Privacy Policy ("Information for Patients"), in particular: 
-    *   Identification and contact data, insofar as they appear in the recording. 
+    *   Identification and contact data, insofar as they appear in the recording or transcription. 
     *   Special categories of Personal Data, i.e., data concerning the physical or mental health of Patients (Art. 9 sec. 1 of the GDPR). 
-    *   Any other Personal Data contained in audio recordings and their potential transcriptions. 
+    *   Any other Personal Data contained in audio recordings, their transcriptions, clinical reports, and clinical memory. 
 5.  **Categories of data subjects:** Patients of the Controller, as defined in § 2 point 9 of the Terms. 
-6.  **Duration of processing:** Personal Data will be processed for the duration of the Main Agreement, in accordance with § 12 of the Terms.
+6.  **Duration of processing:** Personal Data will be processed for the duration of the Main Agreement, in accordance with § 12 of the Terms, subject to the following:
+    *   Audio recordings are automatically deleted within 48 hours of upload (regardless of the Agreement status).
+    *   After termination of the Main Agreement, remaining Personal Data (transcriptions, reports, clinical memory) is marked as deleted (soft delete) and permanently deleted within 30 days.
 
 ---
 
@@ -55,15 +65,27 @@ The Parties agree as follows:
 
 The Processor undertakes to: 
 
-1.  **Process on instructions:** Process Personal Data only on documented instructions from the Controller. Documented instructions include the provisions of the Main Agreement and this DPA, as well as ongoing actions and configurations made by the Controller in the Application. 
+1.  **Process on instructions:** Process Personal Data only on documented instructions from the Controller. Documented instructions include the provisions of the Main Agreement and this DPA, as well as ongoing actions and configurations made by the Controller in the Application (e.g., initiating a session recording, creating a Patient file, setting report preferences). 
 2.  **Confidentiality:** Ensure that persons authorized to process the Personal Data have committed themselves to confidentiality or are under an appropriate statutory obligation of confidentiality. 
-3.  **Security of processing (Art. 32 GDPR):** Implement and apply appropriate technical and organizational measures, described inter alia in Part I, point 5 of the Privacy Policy, to ensure a level of security appropriate to the risk. 
-4.  **Assist the Controller:** Assist the Controller by appropriate measures, insofar as this is possible, for the fulfilment of the Controller's obligation to respond to requests for exercising the data subject's rights. 
-5.  **Support the Controller:** Assist the Controller in ensuring compliance with the obligations pursuant to Articles 32 to 36 of the GDPR, taking into account the nature of processing and the information available to the processor. 
-6.  **Report breaches:** Notify the Controller without undue delay after becoming aware of a Personal Data Breach, no later than within 48 hours of detecting the breach. 
-7.  **Delete or return data:** At the choice of the Controller, delete or return all the Personal Data to the Controller after the end of the provision of services relating to processing (termination of the Main Agreement), and delete existing copies unless law requires storage of the personal data. The rules for data deletion after the termination of the agreement are specified in § 12 sec. 6 of the Terms. 
-8.  **Audit:** Make available to the Controller all information necessary to demonstrate compliance with the obligations laid down in Article 28 GDPR and allow for and contribute to audits. Detailed audit rules, also referred to in Part I, point 10 of the Privacy Policy, are as follows: 
-    *   The Parties agree that in order to minimize operational disruptions, the Controller accepts in the first instance the provision by the Processor of valid certificates, attestations or audit reports conducted by independent third parties (e.g., ISO 27001, SOC 2). 
+3.  **Security of processing (Art. 32 GDPR):** Implement and apply appropriate technical and organizational measures to ensure a level of security appropriate to the risk, in particular as described in Part I, point 5 of the Privacy Policy, including:
+    *   Envelope Encryption with CMEK keys managed in Cloud KMS with automatic rotation every 90 days.
+    *   Data storage exclusively in the europe-central2 (Warsaw) region, with Vertex AI in europe-west4 (Netherlands) — exclusively within the EEA.
+    *   Network isolation of the database (no public IP, access via VPC Connector).
+    *   Dedicated Service Accounts with minimum permissions for each microservice.
+    *   Automatic deletion of audio recordings within 48 hours (OLM).
+    *   Soft-delete mechanism with a 30-day retention period.
+    *   Audit logging of all significant data operations.
+4.  **Assist the Controller:** Assist the Controller by appropriate measures, insofar as this is possible, for the fulfillment of the Controller's obligation to respond to requests for exercising the data subject's rights, in particular regarding the right to access, rectification, erasure, and data portability. 
+5.  **Support the Controller:** Assist the Controller in ensuring compliance with the obligations pursuant to Articles 32 to 36 of the GDPR (security, impact assessment, consultation with supervisory authority), taking into account the nature of processing and the information available to the Processor. 
+6.  **Report breaches:** Notify the Controller without undue delay after becoming aware of a Personal Data Breach, no later than within **48 hours** of detecting the breach. The notification will include at least: a description of the nature of the breach, the categories and approximate number of data subjects affected, the likely consequences of the breach, and the measures taken or proposed to address the breach. 
+7.  **Delete or return data:** At the choice of the Controller, delete or return all the Personal Data to the Controller after the end of the provision of services relating to processing (termination of the Main Agreement), and delete existing copies unless law requires storage of the personal data. The data deletion procedure after agreement termination is as follows:
+    *   **Audio recordings:** automatically deleted within 48 hours of upload (regardless of Agreement status) — no action required.
+    *   **Transcriptions, reports, HiTOP measurements, RAG clinical memory:** marked as deleted (soft delete) and permanently deleted from the database within 30 days.
+    *   **Patient file data:** deleted cascadingly with the User's account, subject to the 30-day soft-delete retention period.
+    *   **Encrypted backups:** data may be present in encrypted Cloud SQL backups for the duration of their retention period (up to 30 days), after which they are automatically overwritten. Without access to Cloud KMS, data in backups remains unreadable.
+    *   **Encryption keys:** KEK rotation (every 90 days) renders encrypted DEKs from previous key versions unusable after the cryptographic material of older versions is deleted.
+8.  **Audit:** Make available to the Controller all information necessary to demonstrate compliance with the obligations laid down in Article 28 GDPR and allow for and contribute to audits. Detailed audit rules are as follows: 
+    *   The Parties agree that in order to minimize operational disruptions, the Controller accepts in the first instance the provision by the Processor of its own security assessment report, documentation of technical and organizational measures, and, where available, certificates or attestations (e.g., ISO 27001, SOC 2) or audit reports conducted by independent third parties. As of the effective date of this DPA, the Processor does not hold ISO 27001 or SOC 2 certifications; however, its infrastructure is based on Google Cloud Platform, which holds ISO 27001, ISO 27017, ISO 27018, and SOC 1/2/3 certifications.
     *   If the provided information is insufficient, the Controller has the right to conduct an audit by informing the Processor at least 30 days in advance. The audit will be conducted during the Processor's working hours, in a manner that causes minimal disruption to its business. The Controller bears all costs associated with conducting the audit, including the auditor's fees.
 
 ---
@@ -72,35 +94,45 @@ The Processor undertakes to:
 
 The Controller declares and warrants that: 
 
-1.  It processes Personal Data in accordance with the law. 
-2.  It has an appropriate legal basis for processing the Personal Data of Patients and entrusting them to the Processor, in accordance with the obligation described in § 5 sec. 2 point 4 of the Terms. 
-3.  It has fulfilled the information obligation towards data subjects (in accordance with Art. 13 or 14 of the GDPR). The Processor provides in Part II of the Privacy Policy model information that can be used by the Controller to support them in fulfilling this obligation.
+1.  It processes Personal Data in accordance with the law, including the GDPR and the Data Protection Act. 
+2.  It has an appropriate legal basis for processing the Personal Data of Patients and entrusting them to the Processor, in accordance with the obligation described in § 5 sec. 2 of the Terms. In particular, for the processing of health data (Art. 9 sec. 1 GDPR), the Controller ensures fulfillment of the condition under Art. 9 sec. 2 GDPR.
+3.  It has fulfilled the information obligation towards data subjects (in accordance with Art. 13 or 14 of the GDPR), including informing Patients about the recording of sessions and the use of the App. The Processor provides in Part II of the Privacy Policy model information that can be used by the Controller to support them in fulfilling this obligation.
 4.  It will only issue lawful instructions to the Processor regarding the processing of Personal Data.
 
 ---
 
 ## § 5. SUB-PROCESSING AND DATA TRANSFER
 
-1.  **General authorization for sub-processing:** The Controller grants general written authorization (Art. 28 sec. 2 GDPR) for the Processor to use the services of Sub-processors. 
-2.  **List of Sub-processors:** The Processor undertakes to maintain an up-to-date list of Sub-processors, referred to in Part I, point 7 of the Privacy Policy, which is provided here: [Google Cloud Platform, Firebase, Gemini API, Google AI Studio]. 
+1.  **General authorization for sub-processing:** The Controller grants general written authorization (Art. 28 sec. 2 GDPR) for the Processor to use the services of Sub-processors listed in sec. 2. 
+2.  **List of Sub-processors:** The Processor undertakes to maintain an up-to-date list of Sub-processors. As of the effective date of this DPA, the list of Sub-processors is as follows:
+
+| Sub-processor | Service | Data Processed | Location |
+|---|---|---|---|
+| **Google Cloud Platform** | Cloud Run, Cloud SQL PostgreSQL, Cloud Storage, Cloud KMS, Pub/Sub, Secret Manager | Backend processing and data storage | europe-central2 (Warsaw, Poland) |
+| **Google Cloud — Vertex AI** | Speech-to-Text (Chirp 3), Gemini (reports), Text Embeddings (RAG) | Transcription, report generation, embeddings | europe-west4 (Netherlands) — EEA |
+| **Google Firebase** | Authentication, Cloud Firestore, Cloud Storage, FCM | Auth tokens, status mirrors, profile photos | europe-central2 |
+| **Stripe, Inc.** | Payment processing, subscription management | Payment data, company information | Stripe infrastructure (PCI DSS Level 1) |
+
+The current list is also available in Part I, point 6 of the Privacy Policy.
+
 3.  **Obligations upon sub-processing:** The Processor shall ensure that the contract with each Sub-processor imposes on them at least the same data protection obligations as set out in this DPA for the Processor. The Processor remains fully liable to the Controller for the performance of that Sub-processor's data protection obligations. 
-4.  **Right to object:** The Processor will inform the Controller (e.g., by email or through an in-app message) of any intended changes concerning the addition or replacement of Sub-processors, thereby giving the Controller the opportunity to object to such changes within 14 days of receiving the information. In the event of a justified objection, the Parties will attempt to resolve the situation. If a resolution is not possible, the Controller has the right to terminate the Main Agreement. 
-5.  **Data transfer to Third Countries:** The Controller accepts that Personal Data may be transferred to Third Countries. The Processor guarantees that the transfer takes place in compliance with the legal mechanisms required by the GDPR, which is described in Part I, point 8 of the Privacy Policy.
+4.  **Right to object:** The Processor will inform the Controller (by email to the address associated with the Account or via an in-App notification) of any intended changes concerning the addition or replacement of Sub-processors, thereby giving the Controller the opportunity to raise a justified objection to such changes within 14 days of receiving the information. In the event of a justified objection, the Parties will attempt to resolve the situation. If a resolution is not possible, the Controller has the right to terminate the Main Agreement.
+5.  **No transfer to Third Countries:** The Processor guarantees that it **does not transfer Personal Data to Third Countries** (outside the EEA). The Processor's entire infrastructure is located within the European Economic Area (region europe-central2 — Warsaw and region europe-west4 — Netherlands). Region restrictions are enforced at the GCP organizational policy level (constraint `gcp.resourceLocations`).
 
 ---
 
 ## § 6. LIABILITY
 
 1.  The liability of the Parties is governed by the provisions of the GDPR, in particular Art. 82. 
-2.  The liability of the Processor is limited to damages resulting directly from its breach of obligations arising from this Agreement or the provisions of the GDPR. 
-3.  In accordance with § 8 of the Terms, the total liability of the Processor towards the Controller under this Agreement is limited to the amount of the Subscription Fee paid by the Controller for the period in which the event causing the damage occurred.
+2.  The liability of the Processor is limited to damages resulting directly from its breach of obligations arising from this Agreement or the provisions of the GDPR directly applicable to Processors. 
+3.  In accordance with § 8 of the Terms, the total liability of the Processor towards the Controller under this Agreement is limited to the amount of the Subscription Fees paid by the Controller in the 12 months preceding the event causing the damage. This limitation does not apply to liability arising from intentional misconduct or gross negligence.
 
 ---
 
 ## § 7. FINAL PROVISIONS
 
 1.  This DPA is an integral part of the Main Agreement. In the event of any conflict between the provisions of the DPA and the Terms regarding personal data protection, the provisions of the DPA shall prevail. 
-2.  The Agreement enters into force upon acceptance of the Main Agreement by the Controller and is valid for its entire duration. 
+2.  The Agreement enters into force upon acceptance of the Main Agreement by the Controller and is valid for its entire duration, and with respect to data deletion obligations — until their full performance. 
 3.  The rules for amending the DPA are analogous to the rules for amending the Terms, described in § 13 of the Terms. The Controller will be informed of any changes at least 14 days in advance. 
 4.  In matters not covered by this Agreement, the provisions of the Terms and the Privacy Policy apply, followed by the provisions of Polish law and the GDPR. 
-5.  The competent court for resolving disputes will be the court with local jurisdiction over the Processor's registered office, in accordance with § 14 sec. 3 of the Terms.
+5.  The competent court for resolving disputes will be the court with local jurisdiction over the Processor's registered office in Kraków, in accordance with § 14 sec. 2 of the Terms.
