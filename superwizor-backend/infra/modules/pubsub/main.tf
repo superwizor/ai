@@ -374,6 +374,15 @@ resource "google_pubsub_topic_iam_member" "stt_status_changed_publisher" {
   member  = "serviceAccount:stt-worker@${var.project_id}.iam.gserviceaccount.com"
 }
 
+# docs/21 Faza-4: ingestion-svc publishes "uploaded" onto the unified
+# topic (on-uploaded retired).
+resource "google_pubsub_topic_iam_member" "ingestion_status_changed_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.session_status_changed.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:ingestion-svc@${var.project_id}.iam.gserviceaccount.com"
+}
+
 resource "google_pubsub_topic_iam_member" "llm_status_changed_publisher" {
   project = var.project_id
   topic   = google_pubsub_topic.session_status_changed.name

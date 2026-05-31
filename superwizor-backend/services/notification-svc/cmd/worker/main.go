@@ -519,7 +519,11 @@ func parseSessionStatusChanged(b []byte) (sessionID, status string, err error) {
 		return "", "", fmt.Errorf("session.status_changed missing session_id")
 	}
 	switch ev.Status {
-	case "transcribing", "failed", "cancelled":
+	// Full lifecycle (docs/21 Faza-4 consolidation): on-status is now the
+	// single status-mirror consumer. Producers publish every transition
+	// here, and notification-worker-on-uploaded/-transcribed/-report are
+	// retired. (on-deleted stays — deletion is a different action.)
+	case "uploaded", "transcribing", "analyzing", "done", "failed", "cancelled":
 		return ev.SessionID, ev.Status, nil
 	default:
 		return "", "", fmt.Errorf("session.status_changed unknown status %q", ev.Status)

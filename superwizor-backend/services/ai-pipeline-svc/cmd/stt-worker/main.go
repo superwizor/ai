@@ -1208,8 +1208,14 @@ func publishTranscriptCompleted(ctx context.Context, sessionID, transcriptID str
 			"session_id": sessionID,
 		},
 	})
-	_, err := res.Get(ctx)
-	return err
+	if _, err := res.Get(ctx); err != nil {
+		return err
+	}
+	// docs/21 Faza-4 consolidation: also mirror "analyzing" via the
+	// unified session.status_changed topic (notification-worker-on-status
+	// is the single status-mirror consumer; on-transcribed retired).
+	// transcript.completed itself stays — it drives llm-worker.
+	return publishSessionStatusChanged(ctx, sessionID, "analyzing")
 }
 
 // publishSessionStatusChanged mirrors a session lifecycle status to the

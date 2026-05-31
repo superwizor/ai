@@ -2087,8 +2087,14 @@ func publishReportGenerated(ctx context.Context, sessionID, reportID string) err
 		"report_id":  reportID,
 	})
 	res := topic.Publish(ctx, &pubsub.Message{Data: payload})
-	_, err := res.Get(ctx)
-	return err
+	if _, err := res.Get(ctx); err != nil {
+		return err
+	}
+	// docs/21 Faza-4 consolidation: also mirror "done" via the unified
+	// session.status_changed topic (notification-worker-on-status is the
+	// single status-mirror consumer; on-report retired). report.generated
+	// keeps flowing for any other consumer.
+	return publishSessionStatusChanged(ctx, sessionID, "done")
 }
 
 // publishSessionStatusChanged mirrors a terminal failure to the

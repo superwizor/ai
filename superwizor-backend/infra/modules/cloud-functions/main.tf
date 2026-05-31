@@ -539,106 +539,6 @@ resource "google_cloud_scheduler_job" "stt_watchdog_cron" {
 # we don't duplicate them here.
 # ============================================================================
 
-# 1) on-uploaded: status mirror only, no FCM. Lightweight.
-resource "google_cloudfunctions2_function" "notification_worker_on_uploaded" {
-  name        = "notification-worker-on-uploaded"
-  location    = var.region
-  project     = var.project_id
-  description = "Mirrors audio.uploaded → Firestore session_states.status='uploaded'"
-
-  build_config {
-    runtime     = "go126"
-    entry_point = "ProcessAudioUploaded"
-    source {
-      storage_source {
-        bucket = google_storage_bucket.functions_source.name
-        object = google_storage_bucket_object.notification_worker_zip.name
-      }
-    }
-  }
-
-  service_config {
-    max_instance_count    = 5
-    min_instance_count    = 0
-    available_memory      = "256Mi"
-    available_cpu         = "1"
-    timeout_seconds       = 60
-    service_account_email = var.notification_worker_sa_email
-
-    environment_variables = {
-      GCP_PROJECT_ID = var.project_id
-    }
-
-    secret_environment_variables {
-      key        = "DATABASE_URL"
-      project_id = var.project_id
-      secret     = var.db_url_secret_id
-      version    = "latest"
-    }
-
-    vpc_connector                 = var.vpc_connector_id
-    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
-  }
-
-  event_trigger {
-    trigger_region        = var.region
-    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
-    pubsub_topic          = var.audio_uploaded_topic
-    retry_policy          = "RETRY_POLICY_RETRY"
-    service_account_email = var.notification_worker_sa_email
-  }
-}
-
-# 2) on-transcribed: status mirror only, no FCM.
-resource "google_cloudfunctions2_function" "notification_worker_on_transcribed" {
-  name        = "notification-worker-on-transcribed"
-  location    = var.region
-  project     = var.project_id
-  description = "Mirrors transcript.completed → Firestore session_states.status='analyzing'"
-
-  build_config {
-    runtime     = "go126"
-    entry_point = "ProcessTranscriptCompleted"
-    source {
-      storage_source {
-        bucket = google_storage_bucket.functions_source.name
-        object = google_storage_bucket_object.notification_worker_zip.name
-      }
-    }
-  }
-
-  service_config {
-    max_instance_count    = 5
-    min_instance_count    = 0
-    available_memory      = "256Mi"
-    available_cpu         = "1"
-    timeout_seconds       = 60
-    service_account_email = var.notification_worker_sa_email
-
-    environment_variables = {
-      GCP_PROJECT_ID = var.project_id
-    }
-
-    secret_environment_variables {
-      key        = "DATABASE_URL"
-      project_id = var.project_id
-      secret     = var.db_url_secret_id
-      version    = "latest"
-    }
-
-    vpc_connector                 = var.vpc_connector_id
-    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
-  }
-
-  event_trigger {
-    trigger_region        = var.region
-    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
-    pubsub_topic          = var.transcript_completed_topic
-    retry_policy          = "RETRY_POLICY_RETRY"
-    service_account_email = var.notification_worker_sa_email
-  }
-}
-
 # docs/21: consumes session.status_changed → mirrors transcribing /
 # failed / cancelled into Firestore session_states. One function for the
 # variable-status transitions (the status is carried in the payload).
@@ -686,58 +586,6 @@ resource "google_cloudfunctions2_function" "notification_worker_on_status" {
     trigger_region        = var.region
     event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
     pubsub_topic          = var.session_status_changed_topic
-    retry_policy          = "RETRY_POLICY_RETRY"
-    service_account_email = var.notification_worker_sa_email
-  }
-}
-
-# 3) on-report: full fan-out — FCM push + Firestore done + inbox doc.
-# Slightly more memory because the Firebase Admin SDK + Firestore client
-# both load on first invocation.
-resource "google_cloudfunctions2_function" "notification_worker_on_report" {
-  name        = "notification-worker-on-report"
-  location    = var.region
-  project     = var.project_id
-  description = "report.generated → FCM push + Firestore session_states.status='done' + inbox doc"
-
-  build_config {
-    runtime     = "go126"
-    entry_point = "ProcessReportGenerated"
-    source {
-      storage_source {
-        bucket = google_storage_bucket.functions_source.name
-        object = google_storage_bucket_object.notification_worker_zip.name
-      }
-    }
-  }
-
-  service_config {
-    max_instance_count    = 5
-    min_instance_count    = 0
-    available_memory      = "512Mi"
-    available_cpu         = "1"
-    timeout_seconds       = 120
-    service_account_email = var.notification_worker_sa_email
-
-    environment_variables = {
-      GCP_PROJECT_ID = var.project_id
-    }
-
-    secret_environment_variables {
-      key        = "DATABASE_URL"
-      project_id = var.project_id
-      secret     = var.db_url_secret_id
-      version    = "latest"
-    }
-
-    vpc_connector                 = var.vpc_connector_id
-    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
-  }
-
-  event_trigger {
-    trigger_region        = var.region
-    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
-    pubsub_topic          = var.report_generated_topic
     retry_policy          = "RETRY_POLICY_RETRY"
     service_account_email = var.notification_worker_sa_email
   }
@@ -807,34 +655,10 @@ resource "google_cloudfunctions2_function" "notification_worker_on_deleted" {
 
 # Cloud Run invoker bindings — Cloud Functions Gen2 == Cloud Run under the
 # hood; the trigger SA needs run.invoker on its own service.
-resource "google_cloud_run_service_iam_member" "notification_on_uploaded_invoker" {
-  location = var.region
-  project  = var.project_id
-  service  = google_cloudfunctions2_function.notification_worker_on_uploaded.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${var.notification_worker_sa_email}"
-}
-
-resource "google_cloud_run_service_iam_member" "notification_on_transcribed_invoker" {
-  location = var.region
-  project  = var.project_id
-  service  = google_cloudfunctions2_function.notification_worker_on_transcribed.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${var.notification_worker_sa_email}"
-}
-
 resource "google_cloud_run_service_iam_member" "notification_on_status_invoker" {
   location = var.region
   project  = var.project_id
   service  = google_cloudfunctions2_function.notification_worker_on_status.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${var.notification_worker_sa_email}"
-}
-
-resource "google_cloud_run_service_iam_member" "notification_on_report_invoker" {
-  location = var.region
-  project  = var.project_id
-  service  = google_cloudfunctions2_function.notification_worker_on_report.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${var.notification_worker_sa_email}"
 }
