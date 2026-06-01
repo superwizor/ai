@@ -214,6 +214,7 @@ const CreatePatientFileRequest$json = {
       '5': 9,
       '10': 'patientLanguageCode'
     },
+    {'1': 'patient_email', '3': 11, '4': 1, '5': 9, '10': 'patientEmail'},
   ],
 };
 
@@ -227,7 +228,8 @@ final $typed_data.Uint8List createPatientFileRequestDescriptor = $convert.base64
     'JlY29yZGluZ0NvbnNlbnQSJwoPaWRlbXBvdGVuY3lfa2V5GAcgASgJUg5pZGVtcG90ZW5jeUtl'
     'eRIsChJwYXRpZW50X2ZpcnN0X25hbWUYCCABKAlSEHBhdGllbnRGaXJzdE5hbWUSKgoRcGF0aW'
     'VudF9sYXN0X25hbWUYCSABKAlSD3BhdGllbnRMYXN0TmFtZRIyChVwYXRpZW50X2xhbmd1YWdl'
-    'X2NvZGUYCiABKAlSE3BhdGllbnRMYW5ndWFnZUNvZGU=');
+    'X2NvZGUYCiABKAlSE3BhdGllbnRMYW5ndWFnZUNvZGUSIwoNcGF0aWVudF9lbWFpbBgLIAEoCV'
+    'IMcGF0aWVudEVtYWls');
 
 @$core.Deprecated('Use getPatientFileRequestDescriptor instead')
 const GetPatientFileRequest$json = {

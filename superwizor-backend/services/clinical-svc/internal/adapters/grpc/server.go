@@ -332,6 +332,19 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 		return nil, status.Errorf(codes.Internal, "create patient_file: %v", err)
 	}
 
+	// patient_email lives on patient_files (migration 000040). Persist it
+	// in the SAME transaction so the address entered on the create form is
+	// captured at creation time (it was previously dropped — the create
+	// path never wrote it, so an edit afterwards showed an empty field).
+	if req.PatientEmail != "" {
+		if err := qtx.SetPatientEmail(ctx, db.SetPatientEmailParams{
+			ID:           pf.ID,
+			PatientEmail: req.PatientEmail,
+		}); err != nil {
+			return nil, status.Errorf(codes.Internal, "set patient email: %v", err)
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return nil, status.Errorf(codes.Internal, "commit: %v", err)
 	}
@@ -357,6 +370,7 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 	resp.PatientFirstName = req.PatientFirstName
 	resp.PatientLastName = req.PatientLastName
 	resp.PatientLanguageCode = patientLang
+	resp.PatientEmail = req.PatientEmail
 	return resp, nil
 }
 

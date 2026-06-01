@@ -590,7 +590,24 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   /// something to cancel — a local queue row (drop it) and/or a server
   /// session (CancelSession). Not gated on a session_id, so quota-blocked
   /// rows (no session_id) still get the bin.
-  bool get _canCancel => _lastRow != null || _resolvedSessionId != null;
+  /// Whether the "Usuń z analizy" control is shown.
+  ///
+  /// Only while the audio is still WAITING LOCALLY — queued / mid-upload
+  /// (pending, created) or parked on a quota hold. Once the bytes are in
+  /// the bucket (phase >= uploaded) the server owns the analysis and there
+  /// is nothing local to cancel from here, so the button is hidden.
+  bool get _canCancel {
+    final row = _lastRow;
+    if (row == null) return false;
+    switch (row.phase) {
+      case UploadPhase.pending:
+      case UploadPhase.created:
+      case UploadPhase.quotaBlocked:
+        return true;
+      default:
+        return false;
+    }
+  }
 
   bool get _isQuotaBlocked => _lastRow?.phase == UploadPhase.quotaBlocked;
 

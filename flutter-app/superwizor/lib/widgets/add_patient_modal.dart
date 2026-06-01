@@ -297,6 +297,7 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
         lastName: lastName,
         modalityCode: _modalityCode,
         languageCode: _languageCode,
+        email: _emailController.text.trim(),
       );
 
       final list = ref.read(patientsProvider).whenOrNull(data: (d) => d) ??
@@ -312,8 +313,6 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
             );
       }
 
-      // TODO: persist _emailController.text.trim() when the backend
-      // accepts patient_email (field exists client-side for future use).
 
       if (mounted) {
         HapticFeedback.mediumImpact();

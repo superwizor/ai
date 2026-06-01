@@ -437,6 +437,7 @@ class CreatePatientFileRequest extends $pb.GeneratedMessage {
     $core.String? patientFirstName,
     $core.String? patientLastName,
     $core.String? patientLanguageCode,
+    $core.String? patientEmail,
   }) {
     final result = create();
     if (therapistId != null) result.therapistId = therapistId;
@@ -451,6 +452,7 @@ class CreatePatientFileRequest extends $pb.GeneratedMessage {
     if (patientLastName != null) result.patientLastName = patientLastName;
     if (patientLanguageCode != null)
       result.patientLanguageCode = patientLanguageCode;
+    if (patientEmail != null) result.patientEmail = patientEmail;
     return result;
   }
 
@@ -478,6 +480,7 @@ class CreatePatientFileRequest extends $pb.GeneratedMessage {
     ..aOS(8, _omitFieldNames ? '' : 'patientFirstName')
     ..aOS(9, _omitFieldNames ? '' : 'patientLastName')
     ..aOS(10, _omitFieldNames ? '' : 'patientLanguageCode')
+    ..aOS(11, _omitFieldNames ? '' : 'patientEmail')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -593,6 +596,17 @@ class CreatePatientFileRequest extends $pb.GeneratedMessage {
   $core.bool hasPatientLanguageCode() => $_has(9);
   @$pb.TagNumber(10)
   void clearPatientLanguageCode() => $_clearField(10);
+
+  /// Patient contact e-mail, persisted on patient_files at create time
+  /// (migration 000040). Optional; empty leaves it unset.
+  @$pb.TagNumber(11)
+  $core.String get patientEmail => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set patientEmail($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasPatientEmail() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearPatientEmail() => $_clearField(11);
 }
 
 class GetPatientFileRequest extends $pb.GeneratedMessage {

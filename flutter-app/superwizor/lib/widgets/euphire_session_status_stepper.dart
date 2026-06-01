@@ -79,9 +79,12 @@ class EuphireSessionStatusStepper extends StatelessWidget {
     final steps = [
       _Step(step1Text, _stateForStep(0)),
       _Step(t.stepper_step2_transcribing, _stateForStep(1)),
+      // "Składamy informacje w czytelny raport" (finalizing) was merged
+      // into the analysis step — step 3 now represents the whole
+      // AI-processing phase, so the timeline reflects the real backend
+      // state instead of showing a separate (misleading) finalizing step.
       _Step(t.stepper_step3_analyzing, _stateForStep(2)),
-      _Step(t.stepper_step4_finalizing, _stateForStep(3)),
-      _Step(t.stepper_step5_done, _stateForStep(4)),
+      _Step(t.stepper_step5_done, _stateForStep(3)),
     ];
 
     return AnimatedOpacity(
@@ -119,14 +122,17 @@ class EuphireSessionStatusStepper extends StatelessWidget {
       return idx == 0 ? _StepState.blocked : _StepState.pending;
     }
     if (phase == SessionStepperPhase.failed) {
-      if (idx < 4) return _StepState.done;
+      if (idx < 3) return _StepState.done;
       return _StepState.failed;
     }
     final reached = switch (phase) {
       SessionStepperPhase.pending => -1,
       SessionStepperPhase.uploaded => 0,
-      SessionStepperPhase.analyzing => 2, // skips transcribing, marks analyzing as done, finalizing active
-      SessionStepperPhase.done => 4,
+      // analyzing: audio + transcription marked done; the AI analysis step
+      // (idx 2) is the ACTIVE processing step — there's no separate
+      // finalizing step after it anymore.
+      SessionStepperPhase.analyzing => 1,
+      SessionStepperPhase.done => 3,
       SessionStepperPhase.failed => -1,
     };
     if (idx < reached) return _StepState.done;

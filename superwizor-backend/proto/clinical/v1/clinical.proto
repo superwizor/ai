@@ -170,6 +170,9 @@ message CreatePatientFileRequest {
     string patient_first_name    = 8;
     string patient_last_name     = 9;
     string patient_language_code = 10;
+    // Patient contact e-mail, persisted on patient_files at create time
+    // (migration 000040). Optional; empty leaves it unset.
+    string patient_email         = 11;
 }
 
 message GetPatientFileRequest {

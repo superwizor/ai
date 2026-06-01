@@ -108,6 +108,7 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     String lastName = '',
     String modalityCode = 'UNIV',
     String languageCode = 'pl-PL',
+    String email = '',
   }) async {
     final client = ref.read(grpcClientsProvider).clinical;
     final req = grpc_clinical.CreatePatientFileRequest(
@@ -119,6 +120,8 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
       patientFirstName: firstName,
       patientLastName: lastName,
       patientLanguageCode: languageCode,
+      // Persist the contact e-mail at create time (was previously dropped).
+      patientEmail: email,
     );
 
     state = const AsyncValue.loading();
@@ -356,27 +359,34 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
       rethrow;
     }
 
-    // Server delete succeeded. Local cache cleanup + state update is
-    // best-effort: a Hive/cache hiccup here must NOT bubble up and make a
-    // successful delete look like a failure (which left the row on screen
-    // and the sheet open).
+    // Server delete succeeded. Evict the cached session_details — the
+    // backend CASCADE-deleted transcripts/reports/audio_uploads
+    // (migration 000012); a stale entry would render PHI for a session
+    // that no longer exists.
     try {
-      // Drop the row from the cached DTO list + live state.
-      await _repo?.removeSessionLocally(patientId, sessionId);
-      // Evict the cached session_details — the backend CASCADE-deleted
-      // transcripts/reports/audio_uploads (migration 000012); a stale
-      // entry would render PHI for a session that no longer exists.
       await _detailsRepo?.invalidate(sessionId);
+    } catch (e) {
+      debugPrint('deleteSession: details invalidate failed (ignored): $e');
+    }
 
+    // Reconcile the list from the SERVER (authoritative). This is the fix
+    // for "delete does nothing": optimistic local removal could be undone
+    // by a stale SWR cache re-read, leaving the row on screen. forceRefresh
+    // bypasses the cached-read path and rewrites the cache from the server,
+    // where the session is now gone.
+    try {
+      await forceRefresh(patientId);
+    } catch (e) {
+      debugPrint('deleteSession: post-delete refresh failed, '
+          'falling back to optimistic removal: $e');
       final current = state.whenOrNull(data: (d) => d);
       if (current != null) {
         final sessions = current[patientId] ?? [];
-        final updatedSessions =
-            sessions.where((s) => s.id != sessionId).toList();
-        state = AsyncValue.data({...current, patientId: updatedSessions});
+        state = AsyncValue.data({
+          ...current,
+          patientId: sessions.where((s) => s.id != sessionId).toList(),
+        });
       }
-    } catch (e) {
-      debugPrint('deleteSession: local cache cleanup failed (ignored): $e');
     }
   }
 
