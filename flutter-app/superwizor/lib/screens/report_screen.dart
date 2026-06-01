@@ -401,6 +401,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     final draft = extractActionPlan(
       reportMarkdown,
       sessionDate: data.session.createdAt,
+      titlePrefix: AppLocalizations.of(context).action_plan_default_title,
     );
     final email = ref.read(patientEmailProvider(data.session.patientFileId));
     Navigator.of(context).push(

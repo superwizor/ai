@@ -24,13 +24,31 @@ class ActionPlanDraft {
 
 /// Heading names (already normalized to lowercase, accent-free) we look
 /// for, in priority order. The first heading whose text *contains* one of
-/// these phrases wins.
+/// these phrases wins. Polish (primary) + English equivalents are
+/// interleaved by priority so the extractor works on reports generated in
+/// either language. Broad terms ("interventions"/"tasks") sit last so a
+/// more specific heading always wins first.
 const List<String> _kHeadingPriority = [
+  // P0 — explicit client action plan.
   'plan dzialania klienta',
+  'client action plan',
+  // P1 — action plan.
   'plan dzialania',
+  'action plan',
+  // P2 — proposed interventions.
   'propozycje interwencji',
+  'proposed interventions',
+  'intervention proposals',
+  'suggested interventions',
+  // P3 — agreed tasks / homework / next steps.
   'ustalone z klientem zadania',
+  'agreed tasks',
+  'next steps',
+  'homework',
+  // P4 — broad fallbacks.
   'zadania',
+  'tasks',
+  'interventions',
 ];
 
 /// Lowercases and strips Polish diacritics so heading matching is both
@@ -87,14 +105,15 @@ String _twoDigits(int n) => n.toString().padLeft(2, '0');
 ///     of the same-or-higher level (fewer-or-equal `#`).
 ///  3. Trim. If nothing matches, `text` is empty.
 ///
-/// `title` is "Plan działania" optionally suffixed with the session date
-/// as "— dd.MM.yyyy" when [sessionDate] is provided.
+/// `title` is [titlePrefix] (localized by the caller, e.g.
+/// "Plan działania"/"Action plan") optionally suffixed with the session
+/// date as "— dd.MM.yyyy" when [sessionDate] is provided.
 ActionPlanDraft extractActionPlan(String reportMarkdown,
-    {DateTime? sessionDate}) {
+    {DateTime? sessionDate, String titlePrefix = 'Plan działania'}) {
   final title = sessionDate != null
-      ? 'Plan działania — '
+      ? '$titlePrefix — '
           '${_twoDigits(sessionDate.day)}.${_twoDigits(sessionDate.month)}.${sessionDate.year}'
-      : 'Plan działania';
+      : titlePrefix;
 
   final lines = reportMarkdown.split('\n');
 
