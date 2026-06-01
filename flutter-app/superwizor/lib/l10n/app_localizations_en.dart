@@ -1309,4 +1309,63 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get note_deleted => 'Note deleted';
+
+  @override
+  String get action_plan_send_button => 'Send action plan to patient';
+
+  @override
+  String get action_plan_save_only => 'Save';
+
+  @override
+  String get action_plan_save_and_send => 'Save and send';
+
+  @override
+  String get action_plan_no_email_title => 'No e-mail address';
+
+  @override
+  String get action_plan_no_email_body =>
+      'The plan can\'t be sent — the patient has no e-mail address on file. Add an e-mail in the client record.';
+
+  @override
+  String get action_plan_send_confirm_title => 'Send the action plan?';
+
+  @override
+  String action_plan_send_confirm_body(String email) {
+    return 'The plan will be sent to: $email';
+  }
+
+  @override
+  String get action_plan_send_sim_caption =>
+      '(simulation — e-mail delivery will be wired to the backend)';
+
+  @override
+  String get action_plan_send_cancel => 'Cancel';
+
+  @override
+  String get action_plan_send_confirm_action => 'Send';
+
+  @override
+  String get action_plan_sent_toast =>
+      'Action plan saved and sent (simulation)';
+
+  @override
+  String get action_plan_default_title => 'Action plan';
+
+  @override
+  String get action_plan_fill_email_hint =>
+      'Fill in the client\'s e-mail address and resend.';
+
+  @override
+  String get note_send_to_client => 'Send to client';
+
+  @override
+  String get note_send_confirm_title => 'Send note to client?';
+
+  @override
+  String note_send_confirm_body(String email) {
+    return 'The note will be sent to: $email';
+  }
+
+  @override
+  String get note_sent_toast => 'Note sent to client (simulation)';
 }

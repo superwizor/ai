@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file clinical/v1/clinical.proto.
  */
 export const file_clinical_v1_clinical: GenFile = /*@__PURE__*/
-  fileDesc("ChpjbGluaWNhbC92MS9jbGluaWNhbC5wcm90bxILY2xpbmljYWwudjEi0wQKC1BhdGllbnRGaWxlEgoKAmlkGAEgASgJEhQKDHRoZXJhcGlzdF9pZBgCIAEoCRISCgpwYXRpZW50X2lkGAMgASgJEhMKC21vZGFsaXR5X2lkGAQgASgJEhUKDW1vZGFsaXR5X2NvZGUYBSABKAkSFQoNd29ya2luZ19hbGlhcxgGIAEoCRIuCgxwcm9jZXNzX3R5cGUYByABKA4yGC5jbGluaWNhbC52MS5Qcm9jZXNzVHlwZRIZChFpbml0aWFsX2NvbXBsYWludBgIIAEoCRIZChFpc19wcm9jZXNzX2Nsb3NlZBgJIAEoCBIdChVoYXNfcmVjb3JkaW5nX2NvbnNlbnQYCiABKAgSNAoQY29uc2VudF9naXZlbl9hdBgLIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASOQoVZmlyc3RfY29uc3VsdGF0aW9uX2F0GAwgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIfChdwcml2YXRlX3RoZXJhcGlzdF9ub3RlcxgNIAEoCRIuCgpjcmVhdGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJwYXRpZW50X2ZpcnN0X25hbWUYECABKAkSGQoRcGF0aWVudF9sYXN0X25hbWUYESABKAkSHQoVcGF0aWVudF9sYW5ndWFnZV9jb2RlGBIgASgJIm4KCE1vZGFsaXR5EgoKAmlkGAEgASgJEhMKC3N5c3RlbV9jb2RlGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCRIUCgxpc19zdXBwb3J0ZWQYBCABKAgSFQoNbW9kYWxpdHlfdHlwZRgFIAEoCSK3AgoYQ3JlYXRlUGF0aWVudEZpbGVSZXF1ZXN0EhQKDHRoZXJhcGlzdF9pZBgBIAEoCRIVCg1tb2RhbGl0eV9jb2RlGAIgASgJEhUKDXdvcmtpbmdfYWxpYXMYAyABKAkSLgoMcHJvY2Vzc190eXBlGAQgASgOMhguY2xpbmljYWwudjEuUHJvY2Vzc1R5cGUSGQoRaW5pdGlhbF9jb21wbGFpbnQYBSABKAkSHQoVaGFzX3JlY29yZGluZ19jb25zZW50GAYgASgIEhcKD2lkZW1wb3RlbmN5X2tleRgHIAEoCRIaChJwYXRpZW50X2ZpcnN0X25hbWUYCCABKAkSGQoRcGF0aWVudF9sYXN0X25hbWUYCSABKAkSHQoVcGF0aWVudF9sYW5ndWFnZV9jb2RlGAogASgJIjAKFUdldFBhdGllbnRGaWxlUmVxdWVzdBIXCg9wYXRpZW50X2ZpbGVfaWQYASABKAkiVgoXTGlzdFBhdGllbnRGaWxlc1JlcXVlc3QSFAoMdGhlcmFwaXN0X2lkGAEgASgJEhEKCXBhZ2Vfc2l6ZRgCIAEoBRISCgpwYWdlX3Rva2VuGAMgASgJImQKGExpc3RQYXRpZW50RmlsZXNSZXNwb25zZRIvCg1wYXRpZW50X2ZpbGVzGAEgAygLMhguY2xpbmljYWwudjEuUGF0aWVudEZpbGUSFwoPbmV4dF9wYWdlX3Rva2VuGAIgASgJIqEBChhVcGRhdGVQYXRpZW50RmlsZVJlcXVlc3QSFwoPcGF0aWVudF9maWxlX2lkGAEgASgJEhUKDXdvcmtpbmdfYWxpYXMYAiABKAkSGQoRaW5pdGlhbF9jb21wbGFpbnQYAyABKAkSHwoXcHJpdmF0ZV90aGVyYXBpc3Rfbm90ZXMYBCABKAkSGQoRaXNfcHJvY2Vzc19jbG9zZWQYBSABKAgiMwoYRGVsZXRlUGF0aWVudEZpbGVSZXF1ZXN0EhcKD3BhdGllbnRfZmlsZV9pZBgBIAEoCSJxChhVcGRhdGVQYXRpZW50VXNlclJlcXVlc3QSFwoPcGF0aWVudF9maWxlX2lkGAEgASgJEhIKCmZpcnN0X25hbWUYAiABKAkSEQoJbGFzdF9uYW1lGAMgASgJEhUKDWxhbmd1YWdlX2NvZGUYBCABKAkiMwoYRGVsZXRlUGF0aWVudFVzZXJSZXF1ZXN0EhcKD3BhdGllbnRfZmlsZV9pZBgBIAEoCSJDChZMaXN0TW9kYWxpdGllc1Jlc3BvbnNlEikKCm1vZGFsaXRpZXMYASADKAsyFS5jbGluaWNhbC52MS5Nb2RhbGl0eSI2ChNIZWFsdGhDaGVja1Jlc3BvbnNlEg4KBnN0YXR1cxgBIAEoCRIPCgd2ZXJzaW9uGAIgASgJIrcBChpVcGRhdGVTcGVha2VyTGFiZWxzUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJElAKDWxhYmVsX21hcHBpbmcYAiADKAsyOS5jbGluaWNhbC52MS5VcGRhdGVTcGVha2VyTGFiZWxzUmVxdWVzdC5MYWJlbE1hcHBpbmdFbnRyeRozChFMYWJlbE1hcHBpbmdFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIngKG1VwZGF0ZVNwZWFrZXJMYWJlbHNSZXNwb25zZRISCgpzZXNzaW9uX2lkGAEgASgJEhUKDXRyYW5zY3JpcHRfaWQYAiABKAkSGAoQc2VnbWVudHNfdXBkYXRlZBgDIAEoBRIUCgxibG9iX3JlYnVpbHQYBCABKAgikwMKB1Nlc3Npb24SCgoCaWQYASABKAkSFAoMdGhlcmFwaXN0X2lkGAIgASgJEhcKD3BhdGllbnRfZmlsZV9pZBgDIAEoCRIXCg9hdWRpb191cGxvYWRfaWQYBCABKAkSFAoMc2Vzc2lvbl9kYXRlGAUgASgJEhYKDnNlc3Npb25fbnVtYmVyGAYgASgFEhgKEGR1cmF0aW9uX3NlY29uZHMYByABKAUSFAoMY29udGFjdF9mb3JtGAggASgJEkwKFXNwZWFrZXJfbGFiZWxfbWFwcGluZxgJIAMoCzItLmNsaW5pY2FsLnYxLlNlc3Npb24uU3BlYWtlckxhYmVsTWFwcGluZ0VudHJ5Eg4KBnN0YXR1cxgKIAEoCRIuCgpjcmVhdGVkX2F0GAsgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIMCgRuYW1lGAwgASgJGjoKGFNwZWFrZXJMYWJlbE1hcHBpbmdFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIi4KE0xpc3RTZXNzaW9uc1JlcXVlc3QSFwoPcGF0aWVudF9maWxlX2lkGAEgASgJIjgKFFVwZGF0ZVNlc3Npb25SZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSDAoEbmFtZRgCIAEoCSIqChREZWxldGVTZXNzaW9uUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJIioKFENhbmNlbFNlc3Npb25SZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkiPgoUTGlzdFNlc3Npb25zUmVzcG9uc2USJgoIc2Vzc2lvbnMYASADKAsyFC5jbGluaWNhbC52MS5TZXNzaW9uIpEBChFUcmFuc2NyaXB0U2VnbWVudBITCgtzcGVha2VyX3RhZxgBIAEoBRIVCg1zcGVha2VyX2xhYmVsGAIgASgJEhcKD3N0YXJ0X29mZnNldF9tcxgDIAEoBRIVCg1lbmRfb2Zmc2V0X21zGAQgASgFEgwKBHRleHQYBSABKAkSEgoKY29uZmlkZW5jZRgGIAEoAiJzCgpUcmFuc2NyaXB0EgoKAmlkGAEgASgJEjAKCHNlZ21lbnRzGAIgAygLMh4uY2xpbmljYWwudjEuVHJhbnNjcmlwdFNlZ21lbnQSJwoFdHVybnMYAyADKAsyGC5jbGluaWNhbC52MS5TcGVha2VyVHVybiKmAQoLU3BlYWtlclR1cm4SEwoLc3BlYWtlcl90YWcYASABKAUSFQoNc3BlYWtlcl9sYWJlbBgCIAEoCRIXCg9zdGFydF9vZmZzZXRfbXMYAyABKAUSFQoNZW5kX29mZnNldF9tcxgEIAEoBRIMCgR0ZXh0GAUgASgJEhUKDXNlZ21lbnRfY291bnQYBiABKAUSFgoOY29uZmlkZW5jZV9hdmcYByABKAIieAoGUmVwb3J0EgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEhUKDXN1bW1hcnlfc2hvcnQYAyABKAkSDwoHY29udGVudBgEIAEoCRIXCg9zZW50aW1lbnRfbGFiZWwYBSABKAkSEgoKcmlza19sZXZlbBgGIAEoCSIuChhHZXRTZXNzaW9uRGV0YWlsc1JlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCSKVAQoZR2V0U2Vzc2lvbkRldGFpbHNSZXNwb25zZRIlCgdzZXNzaW9uGAEgASgLMhQuY2xpbmljYWwudjEuU2Vzc2lvbhIrCgp0cmFuc2NyaXB0GAIgASgLMhcuY2xpbmljYWwudjEuVHJhbnNjcmlwdBIkCgdyZXBvcnRzGAMgAygLMhMuY2xpbmljYWwudjEuUmVwb3J0IuIBCgxSZXBvcnRSYXRpbmcSCgoCaWQYASABKAkSEQoJcmVwb3J0X2lkGAIgASgJEhQKDHRoZXJhcGlzdF9pZBgDIAEoCRIOCgZyYXRpbmcYBCABKAkSDgoGaXNzdWVzGAUgAygJEg0KBW5vdGVzGAYgASgJEg4KBnNvdXJjZRgHIAEoCRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKUAQoRUmF0ZVJlcG9ydFJlcXVlc3QSEQoJcmVwb3J0X2lkGAEgASgJEhQKDHRoZXJhcGlzdF9pZBgCIAEoCRIOCgZyYXRpbmcYAyABKAkSDgoGaXNzdWVzGAQgAygJEg0KBW5vdGVzGAUgASgJEg4KBnNvdXJjZRgGIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYByABKAkiPwoSUmF0ZVJlcG9ydFJlc3BvbnNlEikKBnJhdGluZxgBIAEoCzIZLmNsaW5pY2FsLnYxLlJlcG9ydFJhdGluZyJBChZHZXRSZXBvcnRSYXRpbmdSZXF1ZXN0EhEKCXJlcG9ydF9pZBgBIAEoCRIUCgx0aGVyYXBpc3RfaWQYAiABKAkiMgoaR2V0QWN0aXZlU3VnZ2VzdGlvblJlcXVlc3QSFAoMdGhlcmFwaXN0X2lkGAEgASgJItUBChRQcmVmZXJlbmNlU3VnZ2VzdGlvbhIVCg1zdWdnZXN0aW9uX2lkGAEgASgJEhEKCWRpbWVuc2lvbhgCIAEoCRISCgpmcm9tX3ZhbHVlGAMgASgJEhAKCHRvX3ZhbHVlGAQgASgJEhQKDHJlYXNvbl9sYWJlbBgFIAEoCRIVCg10cmlnZ2VyX2NvdW50GAYgASgFEkAKDGFsdGVybmF0aXZlcxgHIAMoCzIqLmNsaW5pY2FsLnYxLlByZWZlcmVuY2VTdWdnZXN0aW9uQ2FuZGlkYXRlIoUBCh1QcmVmZXJlbmNlU3VnZ2VzdGlvbkNhbmRpZGF0ZRIRCglkaW1lbnNpb24YASABKAkSEgoKZnJvbV92YWx1ZRgCIAEoCRIQCgh0b192YWx1ZRgDIAEoCRIUCgxyZWFzb25fbGFiZWwYBCABKAkSFQoNdHJpZ2dlcl9jb3VudBgFIAEoBSKtAQoeTG9nUHJlZmVyZW5jZVN1Z2dlc3Rpb25SZXF1ZXN0EhQKDHRoZXJhcGlzdF9pZBgBIAEoCRIVCg1zdWdnZXN0aW9uX2lkGAIgASgJEhEKCWRpbWVuc2lvbhgDIAEoCRISCgpmcm9tX3ZhbHVlGAQgASgJEhAKCHRvX3ZhbHVlGAUgASgJEhUKDXRyaWdnZXJfY291bnQYBiABKAUSDgoGYWN0aW9uGAcgASgJItgBChhBZG1pbkxpc3RTZXNzaW9uc1JlcXVlc3QSLgoKc3RhcnRfdGltZRgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kX3RpbWUYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhgKEHRoZXJhcGlzdF9maWx0ZXIYAyABKAkSEQoJcGFnZV9zaXplGAQgASgFEgwKBHBhZ2UYBSABKAUSDwoHc29ydF9ieRgGIAEoCRISCgpzb3J0X29yZGVyGAcgASgJIl0KGUFkbWluTGlzdFNlc3Npb25zUmVzcG9uc2USLgoIc2Vzc2lvbnMYASADKAsyHC5jbGluaWNhbC52MS5BZG1pblNlc3Npb25Sb3cSEAoIaGFzX21vcmUYAiABKAgizgMKD0FkbWluU2Vzc2lvblJvdxISCgpzZXNzaW9uX2lkGAEgASgJEhQKDHRoZXJhcGlzdF9pZBgCIAEoCRIcChR0aGVyYXBpc3RfZmlyc3RfbmFtZRgDIAEoCRIbChN0aGVyYXBpc3RfbGFzdF9uYW1lGAQgASgJEhcKD3RoZXJhcGlzdF9lbWFpbBgFIAEoCRIXCg9vcmdhbml6YXRpb25faWQYBiABKAkSGQoRb3JnYW5pemF0aW9uX25hbWUYByABKAkSLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMc2Vzc2lvbl9kYXRlGAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIYChBkdXJhdGlvbl9zZWNvbmRzGAogASgFEg4KBnN0YXR1cxgLIAEoCRIeChZzdWJzY3JpcHRpb25fcGxhbl9uYW1lGAwgASgJEjsKF3N1YnNjcmlwdGlvbl9wZXJpb2RfZW5kGA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIgChhzdWJzY3JpcHRpb25fdG9rZW5zX3VzZWQYDiABKAUqkgEKC1Byb2Nlc3NUeXBlEhwKGFBST0NFU1NfVFlQRV9VTlNQRUNJRklFRBAAEhsKF1BST0NFU1NfVFlQRV9JTkRJVklEVUFMEAESFwoTUFJPQ0VTU19UWVBFX0NPVVBMRRACEhcKE1BST0NFU1NfVFlQRV9GQU1JTFkQAxIWChJQUk9DRVNTX1RZUEVfR1JPVVAQBDKZDgoPQ2xpbmljYWxTZXJ2aWNlElQKEUNyZWF0ZVBhdGllbnRGaWxlEiUuY2xpbmljYWwudjEuQ3JlYXRlUGF0aWVudEZpbGVSZXF1ZXN0GhguY2xpbmljYWwudjEuUGF0aWVudEZpbGUSTgoOR2V0UGF0aWVudEZpbGUSIi5jbGluaWNhbC52MS5HZXRQYXRpZW50RmlsZVJlcXVlc3QaGC5jbGluaWNhbC52MS5QYXRpZW50RmlsZRJfChBMaXN0UGF0aWVudEZpbGVzEiQuY2xpbmljYWwudjEuTGlzdFBhdGllbnRGaWxlc1JlcXVlc3QaJS5jbGluaWNhbC52MS5MaXN0UGF0aWVudEZpbGVzUmVzcG9uc2USVAoRVXBkYXRlUGF0aWVudEZpbGUSJS5jbGluaWNhbC52MS5VcGRhdGVQYXRpZW50RmlsZVJlcXVlc3QaGC5jbGluaWNhbC52MS5QYXRpZW50RmlsZRJSChFEZWxldGVQYXRpZW50RmlsZRIlLmNsaW5pY2FsLnYxLkRlbGV0ZVBhdGllbnRGaWxlUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJUChFVcGRhdGVQYXRpZW50VXNlchIlLmNsaW5pY2FsLnYxLlVwZGF0ZVBhdGllbnRVc2VyUmVxdWVzdBoYLmNsaW5pY2FsLnYxLlBhdGllbnRGaWxlElIKEURlbGV0ZVBhdGllbnRVc2VyEiUuY2xpbmljYWwudjEuRGVsZXRlUGF0aWVudFVzZXJSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Ek0KDkxpc3RNb2RhbGl0aWVzEhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5GiMuY2xpbmljYWwudjEuTGlzdE1vZGFsaXRpZXNSZXNwb25zZRJHCgtIZWFsdGhDaGVjaxIWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRogLmNsaW5pY2FsLnYxLkhlYWx0aENoZWNrUmVzcG9uc2USRQoRR2V0TXlCaWxsaW5nU3RhdGUSFi5nb29nbGUucHJvdG9idWYuRW1wdHkaGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbhJoChNVcGRhdGVTcGVha2VyTGFiZWxzEicuY2xpbmljYWwudjEuVXBkYXRlU3BlYWtlckxhYmVsc1JlcXVlc3QaKC5jbGluaWNhbC52MS5VcGRhdGVTcGVha2VyTGFiZWxzUmVzcG9uc2USUwoMTGlzdFNlc3Npb25zEiAuY2xpbmljYWwudjEuTGlzdFNlc3Npb25zUmVxdWVzdBohLmNsaW5pY2FsLnYxLkxpc3RTZXNzaW9uc1Jlc3BvbnNlEmIKEUdldFNlc3Npb25EZXRhaWxzEiUuY2xpbmljYWwudjEuR2V0U2Vzc2lvbkRldGFpbHNSZXF1ZXN0GiYuY2xpbmljYWwudjEuR2V0U2Vzc2lvbkRldGFpbHNSZXNwb25zZRJICg1VcGRhdGVTZXNzaW9uEiEuY2xpbmljYWwudjEuVXBkYXRlU2Vzc2lvblJlcXVlc3QaFC5jbGluaWNhbC52MS5TZXNzaW9uEkoKDURlbGV0ZVNlc3Npb24SIS5jbGluaWNhbC52MS5EZWxldGVTZXNzaW9uUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJKCg1DYW5jZWxTZXNzaW9uEiEuY2xpbmljYWwudjEuQ2FuY2VsU2Vzc2lvblJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkSTQoKUmF0ZVJlcG9ydBIeLmNsaW5pY2FsLnYxLlJhdGVSZXBvcnRSZXF1ZXN0Gh8uY2xpbmljYWwudjEuUmF0ZVJlcG9ydFJlc3BvbnNlElEKD0dldFJlcG9ydFJhdGluZxIjLmNsaW5pY2FsLnYxLkdldFJlcG9ydFJhdGluZ1JlcXVlc3QaGS5jbGluaWNhbC52MS5SZXBvcnRSYXRpbmcSYQoTR2V0QWN0aXZlU3VnZ2VzdGlvbhInLmNsaW5pY2FsLnYxLkdldEFjdGl2ZVN1Z2dlc3Rpb25SZXF1ZXN0GiEuY2xpbmljYWwudjEuUHJlZmVyZW5jZVN1Z2dlc3Rpb24SXgoXTG9nUHJlZmVyZW5jZVN1Z2dlc3Rpb24SKy5jbGluaWNhbC52MS5Mb2dQcmVmZXJlbmNlU3VnZ2VzdGlvblJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkSYgoRQWRtaW5MaXN0U2Vzc2lvbnMSJS5jbGluaWNhbC52MS5BZG1pbkxpc3RTZXNzaW9uc1JlcXVlc3QaJi5jbGluaWNhbC52MS5BZG1pbkxpc3RTZXNzaW9uc1Jlc3BvbnNlQq0BCg9jb20uY2xpbmljYWwudjFCDUNsaW5pY2FsUHJvdG9QAVo+Z2l0aHViLmNvbS9zdXBlcndpem9yLWFpL2JhY2tlbmQvZ2VuL2dvL2NsaW5pY2FsL3YxO2NsaW5pY2FsdjGiAgNDWFiqAgtDbGluaWNhbC5WMcoCC0NsaW5pY2FsXFYx4gIXQ2xpbmljYWxcVjFcR1BCTWV0YWRhdGHqAgxDbGluaWNhbDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_google_protobuf_empty, file_billing_v1_billing]);
+  fileDesc("ChpjbGluaWNhbC92MS9jbGluaWNhbC5wcm90bxILY2xpbmljYWwudjEi6gQKC1BhdGllbnRGaWxlEgoKAmlkGAEgASgJEhQKDHRoZXJhcGlzdF9pZBgCIAEoCRISCgpwYXRpZW50X2lkGAMgASgJEhMKC21vZGFsaXR5X2lkGAQgASgJEhUKDW1vZGFsaXR5X2NvZGUYBSABKAkSFQoNd29ya2luZ19hbGlhcxgGIAEoCRIuCgxwcm9jZXNzX3R5cGUYByABKA4yGC5jbGluaWNhbC52MS5Qcm9jZXNzVHlwZRIZChFpbml0aWFsX2NvbXBsYWludBgIIAEoCRIZChFpc19wcm9jZXNzX2Nsb3NlZBgJIAEoCBIdChVoYXNfcmVjb3JkaW5nX2NvbnNlbnQYCiABKAgSNAoQY29uc2VudF9naXZlbl9hdBgLIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASOQoVZmlyc3RfY29uc3VsdGF0aW9uX2F0GAwgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIfChdwcml2YXRlX3RoZXJhcGlzdF9ub3RlcxgNIAEoCRIuCgpjcmVhdGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GA8gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJwYXRpZW50X2ZpcnN0X25hbWUYECABKAkSGQoRcGF0aWVudF9sYXN0X25hbWUYESABKAkSHQoVcGF0aWVudF9sYW5ndWFnZV9jb2RlGBIgASgJEhUKDXBhdGllbnRfZW1haWwYEyABKAkibgoITW9kYWxpdHkSCgoCaWQYASABKAkSEwoLc3lzdGVtX2NvZGUYAiABKAkSFAoMZGlzcGxheV9uYW1lGAMgASgJEhQKDGlzX3N1cHBvcnRlZBgEIAEoCBIVCg1tb2RhbGl0eV90eXBlGAUgASgJIrcCChhDcmVhdGVQYXRpZW50RmlsZVJlcXVlc3QSFAoMdGhlcmFwaXN0X2lkGAEgASgJEhUKDW1vZGFsaXR5X2NvZGUYAiABKAkSFQoNd29ya2luZ19hbGlhcxgDIAEoCRIuCgxwcm9jZXNzX3R5cGUYBCABKA4yGC5jbGluaWNhbC52MS5Qcm9jZXNzVHlwZRIZChFpbml0aWFsX2NvbXBsYWludBgFIAEoCRIdChVoYXNfcmVjb3JkaW5nX2NvbnNlbnQYBiABKAgSFwoPaWRlbXBvdGVuY3lfa2V5GAcgASgJEhoKEnBhdGllbnRfZmlyc3RfbmFtZRgIIAEoCRIZChFwYXRpZW50X2xhc3RfbmFtZRgJIAEoCRIdChVwYXRpZW50X2xhbmd1YWdlX2NvZGUYCiABKAkiMAoVR2V0UGF0aWVudEZpbGVSZXF1ZXN0EhcKD3BhdGllbnRfZmlsZV9pZBgBIAEoCSJWChdMaXN0UGF0aWVudEZpbGVzUmVxdWVzdBIUCgx0aGVyYXBpc3RfaWQYASABKAkSEQoJcGFnZV9zaXplGAIgASgFEhIKCnBhZ2VfdG9rZW4YAyABKAkiZAoYTGlzdFBhdGllbnRGaWxlc1Jlc3BvbnNlEi8KDXBhdGllbnRfZmlsZXMYASADKAsyGC5jbGluaWNhbC52MS5QYXRpZW50RmlsZRIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkioQEKGFVwZGF0ZVBhdGllbnRGaWxlUmVxdWVzdBIXCg9wYXRpZW50X2ZpbGVfaWQYASABKAkSFQoNd29ya2luZ19hbGlhcxgCIAEoCRIZChFpbml0aWFsX2NvbXBsYWludBgDIAEoCRIfChdwcml2YXRlX3RoZXJhcGlzdF9ub3RlcxgEIAEoCRIZChFpc19wcm9jZXNzX2Nsb3NlZBgFIAEoCCIzChhEZWxldGVQYXRpZW50RmlsZVJlcXVlc3QSFwoPcGF0aWVudF9maWxlX2lkGAEgASgJIogBChhVcGRhdGVQYXRpZW50VXNlclJlcXVlc3QSFwoPcGF0aWVudF9maWxlX2lkGAEgASgJEhIKCmZpcnN0X25hbWUYAiABKAkSEQoJbGFzdF9uYW1lGAMgASgJEhUKDWxhbmd1YWdlX2NvZGUYBCABKAkSFQoNcGF0aWVudF9lbWFpbBgFIAEoCSKnAgoLUGF0aWVudE5vdGUSCgoCaWQYASABKAkSFwoPcGF0aWVudF9maWxlX2lkGAIgASgJEgwKBGtpbmQYAyABKAkSGQoRc291cmNlX3Nlc3Npb25faWQYBCABKAkSDQoFdGl0bGUYBSABKAkSDAoEdGV4dBgGIAEoCRI2ChJzZW50X3RvX3BhdGllbnRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhUKDXNlbnRfdG9fZW1haWwYCCABKAkSLgoKY3JlYXRlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAieQoYQ3JlYXRlUGF0aWVudE5vdGVSZXF1ZXN0EhcKD3BhdGllbnRfZmlsZV9pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRIMCgR0ZXh0GAMgASgJEgwKBGtpbmQYBCABKAkSGQoRc291cmNlX3Nlc3Npb25faWQYBSABKAkiMgoXTGlzdFBhdGllbnROb3Rlc1JlcXVlc3QSFwoPcGF0aWVudF9maWxlX2lkGAEgASgJIkMKGExpc3RQYXRpZW50Tm90ZXNSZXNwb25zZRInCgVub3RlcxgBIAMoCzIYLmNsaW5pY2FsLnYxLlBhdGllbnROb3RlIkgKGFVwZGF0ZVBhdGllbnROb3RlUmVxdWVzdBIPCgdub3RlX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEgwKBHRleHQYAyABKAkiKwoYRGVsZXRlUGF0aWVudE5vdGVSZXF1ZXN0Eg8KB25vdGVfaWQYASABKAkiLwoZR2V0QWN0aW9uUGxhbkRyYWZ0UmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJInsKD0FjdGlvblBsYW5EcmFmdBIXCg9zdWdnZXN0ZWRfdGl0bGUYASABKAkSFgoOc3VnZ2VzdGVkX3RleHQYAiABKAkSGQoRcGF0aWVudF9oYXNfZW1haWwYAyABKAgSHAoUcGF0aWVudF9lbWFpbF9tYXNrZWQYBCABKAkioQEKFlNhdmVQYXRpZW50Tm90ZVJlcXVlc3QSFwoPcGF0aWVudF9maWxlX2lkGAEgASgJEg8KB25vdGVfaWQYAiABKAkSDQoFdGl0bGUYAyABKAkSDAoEdGV4dBgEIAEoCRIMCgRraW5kGAUgASgJEhkKEXNvdXJjZV9zZXNzaW9uX2lkGAYgASgJEhcKD3NlbmRfdG9fcGF0aWVudBgHIAEoCCJPChdTYXZlUGF0aWVudE5vdGVSZXNwb25zZRImCgRub3RlGAEgASgLMhguY2xpbmljYWwudjEuUGF0aWVudE5vdGUSDAoEc2VudBgCIAEoCCIzChhEZWxldGVQYXRpZW50VXNlclJlcXVlc3QSFwoPcGF0aWVudF9maWxlX2lkGAEgASgJIkMKFkxpc3RNb2RhbGl0aWVzUmVzcG9uc2USKQoKbW9kYWxpdGllcxgBIAMoCzIVLmNsaW5pY2FsLnYxLk1vZGFsaXR5IjYKE0hlYWx0aENoZWNrUmVzcG9uc2USDgoGc3RhdHVzGAEgASgJEg8KB3ZlcnNpb24YAiABKAkitwEKGlVwZGF0ZVNwZWFrZXJMYWJlbHNSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSUAoNbGFiZWxfbWFwcGluZxgCIAMoCzI5LmNsaW5pY2FsLnYxLlVwZGF0ZVNwZWFrZXJMYWJlbHNSZXF1ZXN0LkxhYmVsTWFwcGluZ0VudHJ5GjMKEUxhYmVsTWFwcGluZ0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEieAobVXBkYXRlU3BlYWtlckxhYmVsc1Jlc3BvbnNlEhIKCnNlc3Npb25faWQYASABKAkSFQoNdHJhbnNjcmlwdF9pZBgCIAEoCRIYChBzZWdtZW50c191cGRhdGVkGAMgASgFEhQKDGJsb2JfcmVidWlsdBgEIAEoCCKTAwoHU2Vzc2lvbhIKCgJpZBgBIAEoCRIUCgx0aGVyYXBpc3RfaWQYAiABKAkSFwoPcGF0aWVudF9maWxlX2lkGAMgASgJEhcKD2F1ZGlvX3VwbG9hZF9pZBgEIAEoCRIUCgxzZXNzaW9uX2RhdGUYBSABKAkSFgoOc2Vzc2lvbl9udW1iZXIYBiABKAUSGAoQZHVyYXRpb25fc2Vjb25kcxgHIAEoBRIUCgxjb250YWN0X2Zvcm0YCCABKAkSTAoVc3BlYWtlcl9sYWJlbF9tYXBwaW5nGAkgAygLMi0uY2xpbmljYWwudjEuU2Vzc2lvbi5TcGVha2VyTGFiZWxNYXBwaW5nRW50cnkSDgoGc3RhdHVzGAogASgJEi4KCmNyZWF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEgwKBG5hbWUYDCABKAkaOgoYU3BlYWtlckxhYmVsTWFwcGluZ0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiLgoTTGlzdFNlc3Npb25zUmVxdWVzdBIXCg9wYXRpZW50X2ZpbGVfaWQYASABKAkiOAoUVXBkYXRlU2Vzc2lvblJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJIioKFERlbGV0ZVNlc3Npb25SZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkiKgoUQ2FuY2VsU2Vzc2lvblJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCSI+ChRMaXN0U2Vzc2lvbnNSZXNwb25zZRImCghzZXNzaW9ucxgBIAMoCzIULmNsaW5pY2FsLnYxLlNlc3Npb24ikQEKEVRyYW5zY3JpcHRTZWdtZW50EhMKC3NwZWFrZXJfdGFnGAEgASgFEhUKDXNwZWFrZXJfbGFiZWwYAiABKAkSFwoPc3RhcnRfb2Zmc2V0X21zGAMgASgFEhUKDWVuZF9vZmZzZXRfbXMYBCABKAUSDAoEdGV4dBgFIAEoCRISCgpjb25maWRlbmNlGAYgASgCInMKClRyYW5zY3JpcHQSCgoCaWQYASABKAkSMAoIc2VnbWVudHMYAiADKAsyHi5jbGluaWNhbC52MS5UcmFuc2NyaXB0U2VnbWVudBInCgV0dXJucxgDIAMoCzIYLmNsaW5pY2FsLnYxLlNwZWFrZXJUdXJuIqYBCgtTcGVha2VyVHVybhITCgtzcGVha2VyX3RhZxgBIAEoBRIVCg1zcGVha2VyX2xhYmVsGAIgASgJEhcKD3N0YXJ0X29mZnNldF9tcxgDIAEoBRIVCg1lbmRfb2Zmc2V0X21zGAQgASgFEgwKBHRleHQYBSABKAkSFQoNc2VnbWVudF9jb3VudBgGIAEoBRIWCg5jb25maWRlbmNlX2F2ZxgHIAEoAiJ4CgZSZXBvcnQSCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSFQoNc3VtbWFyeV9zaG9ydBgDIAEoCRIPCgdjb250ZW50GAQgASgJEhcKD3NlbnRpbWVudF9sYWJlbBgFIAEoCRISCgpyaXNrX2xldmVsGAYgASgJIi4KGEdldFNlc3Npb25EZXRhaWxzUmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJIpUBChlHZXRTZXNzaW9uRGV0YWlsc1Jlc3BvbnNlEiUKB3Nlc3Npb24YASABKAsyFC5jbGluaWNhbC52MS5TZXNzaW9uEisKCnRyYW5zY3JpcHQYAiABKAsyFy5jbGluaWNhbC52MS5UcmFuc2NyaXB0EiQKB3JlcG9ydHMYAyADKAsyEy5jbGluaWNhbC52MS5SZXBvcnQi4gEKDFJlcG9ydFJhdGluZxIKCgJpZBgBIAEoCRIRCglyZXBvcnRfaWQYAiABKAkSFAoMdGhlcmFwaXN0X2lkGAMgASgJEg4KBnJhdGluZxgEIAEoCRIOCgZpc3N1ZXMYBSADKAkSDQoFbm90ZXMYBiABKAkSDgoGc291cmNlGAcgASgJEi4KCmNyZWF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIpQBChFSYXRlUmVwb3J0UmVxdWVzdBIRCglyZXBvcnRfaWQYASABKAkSFAoMdGhlcmFwaXN0X2lkGAIgASgJEg4KBnJhdGluZxgDIAEoCRIOCgZpc3N1ZXMYBCADKAkSDQoFbm90ZXMYBSABKAkSDgoGc291cmNlGAYgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgHIAEoCSI/ChJSYXRlUmVwb3J0UmVzcG9uc2USKQoGcmF0aW5nGAEgASgLMhkuY2xpbmljYWwudjEuUmVwb3J0UmF0aW5nIkEKFkdldFJlcG9ydFJhdGluZ1JlcXVlc3QSEQoJcmVwb3J0X2lkGAEgASgJEhQKDHRoZXJhcGlzdF9pZBgCIAEoCSIyChpHZXRBY3RpdmVTdWdnZXN0aW9uUmVxdWVzdBIUCgx0aGVyYXBpc3RfaWQYASABKAki1QEKFFByZWZlcmVuY2VTdWdnZXN0aW9uEhUKDXN1Z2dlc3Rpb25faWQYASABKAkSEQoJZGltZW5zaW9uGAIgASgJEhIKCmZyb21fdmFsdWUYAyABKAkSEAoIdG9fdmFsdWUYBCABKAkSFAoMcmVhc29uX2xhYmVsGAUgASgJEhUKDXRyaWdnZXJfY291bnQYBiABKAUSQAoMYWx0ZXJuYXRpdmVzGAcgAygLMiouY2xpbmljYWwudjEuUHJlZmVyZW5jZVN1Z2dlc3Rpb25DYW5kaWRhdGUihQEKHVByZWZlcmVuY2VTdWdnZXN0aW9uQ2FuZGlkYXRlEhEKCWRpbWVuc2lvbhgBIAEoCRISCgpmcm9tX3ZhbHVlGAIgASgJEhAKCHRvX3ZhbHVlGAMgASgJEhQKDHJlYXNvbl9sYWJlbBgEIAEoCRIVCg10cmlnZ2VyX2NvdW50GAUgASgFIq0BCh5Mb2dQcmVmZXJlbmNlU3VnZ2VzdGlvblJlcXVlc3QSFAoMdGhlcmFwaXN0X2lkGAEgASgJEhUKDXN1Z2dlc3Rpb25faWQYAiABKAkSEQoJZGltZW5zaW9uGAMgASgJEhIKCmZyb21fdmFsdWUYBCABKAkSEAoIdG9fdmFsdWUYBSABKAkSFQoNdHJpZ2dlcl9jb3VudBgGIAEoBRIOCgZhY3Rpb24YByABKAki2AEKGEFkbWluTGlzdFNlc3Npb25zUmVxdWVzdBIuCgpzdGFydF90aW1lGAEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRfdGltZRgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGAoQdGhlcmFwaXN0X2ZpbHRlchgDIAEoCRIRCglwYWdlX3NpemUYBCABKAUSDAoEcGFnZRgFIAEoBRIPCgdzb3J0X2J5GAYgASgJEhIKCnNvcnRfb3JkZXIYByABKAkiXQoZQWRtaW5MaXN0U2Vzc2lvbnNSZXNwb25zZRIuCghzZXNzaW9ucxgBIAMoCzIcLmNsaW5pY2FsLnYxLkFkbWluU2Vzc2lvblJvdxIQCghoYXNfbW9yZRgCIAEoCCLOAwoPQWRtaW5TZXNzaW9uUm93EhIKCnNlc3Npb25faWQYASABKAkSFAoMdGhlcmFwaXN0X2lkGAIgASgJEhwKFHRoZXJhcGlzdF9maXJzdF9uYW1lGAMgASgJEhsKE3RoZXJhcGlzdF9sYXN0X25hbWUYBCABKAkSFwoPdGhlcmFwaXN0X2VtYWlsGAUgASgJEhcKD29yZ2FuaXphdGlvbl9pZBgGIAEoCRIZChFvcmdhbml6YXRpb25fbmFtZRgHIAEoCRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxzZXNzaW9uX2RhdGUYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhgKEGR1cmF0aW9uX3NlY29uZHMYCiABKAUSDgoGc3RhdHVzGAsgASgJEh4KFnN1YnNjcmlwdGlvbl9wbGFuX25hbWUYDCABKAkSOwoXc3Vic2NyaXB0aW9uX3BlcmlvZF9lbmQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiAKGHN1YnNjcmlwdGlvbl90b2tlbnNfdXNlZBgOIAEoBSqSAQoLUHJvY2Vzc1R5cGUSHAoYUFJPQ0VTU19UWVBFX1VOU1BFQ0lGSUVEEAASGwoXUFJPQ0VTU19UWVBFX0lORElWSURVQUwQARIXChNQUk9DRVNTX1RZUEVfQ09VUExFEAISFwoTUFJPQ0VTU19UWVBFX0ZBTUlMWRADEhYKElBST0NFU1NfVFlQRV9HUk9VUBAEMrQSCg9DbGluaWNhbFNlcnZpY2USVAoRQ3JlYXRlUGF0aWVudEZpbGUSJS5jbGluaWNhbC52MS5DcmVhdGVQYXRpZW50RmlsZVJlcXVlc3QaGC5jbGluaWNhbC52MS5QYXRpZW50RmlsZRJOCg5HZXRQYXRpZW50RmlsZRIiLmNsaW5pY2FsLnYxLkdldFBhdGllbnRGaWxlUmVxdWVzdBoYLmNsaW5pY2FsLnYxLlBhdGllbnRGaWxlEl8KEExpc3RQYXRpZW50RmlsZXMSJC5jbGluaWNhbC52MS5MaXN0UGF0aWVudEZpbGVzUmVxdWVzdBolLmNsaW5pY2FsLnYxLkxpc3RQYXRpZW50RmlsZXNSZXNwb25zZRJUChFVcGRhdGVQYXRpZW50RmlsZRIlLmNsaW5pY2FsLnYxLlVwZGF0ZVBhdGllbnRGaWxlUmVxdWVzdBoYLmNsaW5pY2FsLnYxLlBhdGllbnRGaWxlElIKEURlbGV0ZVBhdGllbnRGaWxlEiUuY2xpbmljYWwudjEuRGVsZXRlUGF0aWVudEZpbGVSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5ElQKEVVwZGF0ZVBhdGllbnRVc2VyEiUuY2xpbmljYWwudjEuVXBkYXRlUGF0aWVudFVzZXJSZXF1ZXN0GhguY2xpbmljYWwudjEuUGF0aWVudEZpbGUSUgoRRGVsZXRlUGF0aWVudFVzZXISJS5jbGluaWNhbC52MS5EZWxldGVQYXRpZW50VXNlclJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkSVAoRQ3JlYXRlUGF0aWVudE5vdGUSJS5jbGluaWNhbC52MS5DcmVhdGVQYXRpZW50Tm90ZVJlcXVlc3QaGC5jbGluaWNhbC52MS5QYXRpZW50Tm90ZRJfChBMaXN0UGF0aWVudE5vdGVzEiQuY2xpbmljYWwudjEuTGlzdFBhdGllbnROb3Rlc1JlcXVlc3QaJS5jbGluaWNhbC52MS5MaXN0UGF0aWVudE5vdGVzUmVzcG9uc2USVAoRVXBkYXRlUGF0aWVudE5vdGUSJS5jbGluaWNhbC52MS5VcGRhdGVQYXRpZW50Tm90ZVJlcXVlc3QaGC5jbGluaWNhbC52MS5QYXRpZW50Tm90ZRJSChFEZWxldGVQYXRpZW50Tm90ZRIlLmNsaW5pY2FsLnYxLkRlbGV0ZVBhdGllbnROb3RlUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJaChJHZXRBY3Rpb25QbGFuRHJhZnQSJi5jbGluaWNhbC52MS5HZXRBY3Rpb25QbGFuRHJhZnRSZXF1ZXN0GhwuY2xpbmljYWwudjEuQWN0aW9uUGxhbkRyYWZ0ElwKD1NhdmVQYXRpZW50Tm90ZRIjLmNsaW5pY2FsLnYxLlNhdmVQYXRpZW50Tm90ZVJlcXVlc3QaJC5jbGluaWNhbC52MS5TYXZlUGF0aWVudE5vdGVSZXNwb25zZRJNCg5MaXN0TW9kYWxpdGllcxIWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRojLmNsaW5pY2FsLnYxLkxpc3RNb2RhbGl0aWVzUmVzcG9uc2USRwoLSGVhbHRoQ2hlY2sSFi5nb29nbGUucHJvdG9idWYuRW1wdHkaIC5jbGluaWNhbC52MS5IZWFsdGhDaGVja1Jlc3BvbnNlEkUKEUdldE15QmlsbGluZ1N0YXRlEhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5GhguYmlsbGluZy52MS5TdWJzY3JpcHRpb24SaAoTVXBkYXRlU3BlYWtlckxhYmVscxInLmNsaW5pY2FsLnYxLlVwZGF0ZVNwZWFrZXJMYWJlbHNSZXF1ZXN0GiguY2xpbmljYWwudjEuVXBkYXRlU3BlYWtlckxhYmVsc1Jlc3BvbnNlElMKDExpc3RTZXNzaW9ucxIgLmNsaW5pY2FsLnYxLkxpc3RTZXNzaW9uc1JlcXVlc3QaIS5jbGluaWNhbC52MS5MaXN0U2Vzc2lvbnNSZXNwb25zZRJiChFHZXRTZXNzaW9uRGV0YWlscxIlLmNsaW5pY2FsLnYxLkdldFNlc3Npb25EZXRhaWxzUmVxdWVzdBomLmNsaW5pY2FsLnYxLkdldFNlc3Npb25EZXRhaWxzUmVzcG9uc2USSAoNVXBkYXRlU2Vzc2lvbhIhLmNsaW5pY2FsLnYxLlVwZGF0ZVNlc3Npb25SZXF1ZXN0GhQuY2xpbmljYWwudjEuU2Vzc2lvbhJKCg1EZWxldGVTZXNzaW9uEiEuY2xpbmljYWwudjEuRGVsZXRlU2Vzc2lvblJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkSSgoNQ2FuY2VsU2Vzc2lvbhIhLmNsaW5pY2FsLnYxLkNhbmNlbFNlc3Npb25SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Ek0KClJhdGVSZXBvcnQSHi5jbGluaWNhbC52MS5SYXRlUmVwb3J0UmVxdWVzdBofLmNsaW5pY2FsLnYxLlJhdGVSZXBvcnRSZXNwb25zZRJRCg9HZXRSZXBvcnRSYXRpbmcSIy5jbGluaWNhbC52MS5HZXRSZXBvcnRSYXRpbmdSZXF1ZXN0GhkuY2xpbmljYWwudjEuUmVwb3J0UmF0aW5nEmEKE0dldEFjdGl2ZVN1Z2dlc3Rpb24SJy5jbGluaWNhbC52MS5HZXRBY3RpdmVTdWdnZXN0aW9uUmVxdWVzdBohLmNsaW5pY2FsLnYxLlByZWZlcmVuY2VTdWdnZXN0aW9uEl4KF0xvZ1ByZWZlcmVuY2VTdWdnZXN0aW9uEisuY2xpbmljYWwudjEuTG9nUHJlZmVyZW5jZVN1Z2dlc3Rpb25SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5EmIKEUFkbWluTGlzdFNlc3Npb25zEiUuY2xpbmljYWwudjEuQWRtaW5MaXN0U2Vzc2lvbnNSZXF1ZXN0GiYuY2xpbmljYWwudjEuQWRtaW5MaXN0U2Vzc2lvbnNSZXNwb25zZUKtAQoPY29tLmNsaW5pY2FsLnYxQg1DbGluaWNhbFByb3RvUAFaPmdpdGh1Yi5jb20vc3VwZXJ3aXpvci1haS9iYWNrZW5kL2dlbi9nby9jbGluaWNhbC92MTtjbGluaWNhbHYxogIDQ1hYqgILQ2xpbmljYWwuVjHKAgtDbGluaWNhbFxWMeICF0NsaW5pY2FsXFYxXEdQQk1ldGFkYXRh6gIMQ2xpbmljYWw6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_google_protobuf_empty, file_billing_v1_billing]);
 
 /**
  * @generated from message clinical.v1.PatientFile
@@ -122,6 +122,14 @@ export type PatientFile = Message<"clinical.v1.PatientFile"> & {
    * @generated from field: string patient_language_code = 18;
    */
   patientLanguageCode: string;
+
+  /**
+   * Patient contact e-mail (patient_files.patient_email, docs/22). Empty
+   * when none is on file. Drives the "send action plan" e-mail flow.
+   *
+   * @generated from field: string patient_email = 19;
+   */
+  patientEmail: string;
 };
 
 /**
@@ -401,6 +409,14 @@ export type UpdatePatientUserRequest = Message<"clinical.v1.UpdatePatientUserReq
    * @generated from field: string language_code = 4;
    */
   languageCode: string;
+
+  /**
+   * Patient contact e-mail (docs/22). Persisted to
+   * patient_files.patient_email. Empty string clears it. Optional.
+   *
+   * @generated from field: string patient_email = 5;
+   */
+  patientEmail: string;
 };
 
 /**
@@ -409,6 +425,335 @@ export type UpdatePatientUserRequest = Message<"clinical.v1.UpdatePatientUserReq
  */
 export const UpdatePatientUserRequestSchema: GenMessage<UpdatePatientUserRequest> = /*@__PURE__*/
   messageDesc(file_clinical_v1_clinical, 8);
+
+/**
+ * ── Patient notes + action plan (docs/22) ──────────────────────────────
+ *
+ * @generated from message clinical.v1.PatientNote
+ */
+export type PatientNote = Message<"clinical.v1.PatientNote"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string patient_file_id = 2;
+   */
+  patientFileId: string;
+
+  /**
+   * FREE_NOTE | ACTION_PLAN
+   *
+   * @generated from field: string kind = 3;
+   */
+  kind: string;
+
+  /**
+   * empty for FREE_NOTE
+   *
+   * @generated from field: string source_session_id = 4;
+   */
+  sourceSessionId: string;
+
+  /**
+   * decrypted server-side
+   *
+   * @generated from field: string title = 5;
+   */
+  title: string;
+
+  /**
+   * decrypted server-side
+   *
+   * @generated from field: string text = 6;
+   */
+  text: string;
+
+  /**
+   * null if never sent
+   *
+   * @generated from field: google.protobuf.Timestamp sent_to_patient_at = 7;
+   */
+  sentToPatientAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: string sent_to_email = 8;
+   */
+  sentToEmail: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 9;
+   */
+  createdAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 10;
+   */
+  updatedAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message clinical.v1.PatientNote.
+ * Use `create(PatientNoteSchema)` to create a new message.
+ */
+export const PatientNoteSchema: GenMessage<PatientNote> = /*@__PURE__*/
+  messageDesc(file_clinical_v1_clinical, 9);
+
+/**
+ * @generated from message clinical.v1.CreatePatientNoteRequest
+ */
+export type CreatePatientNoteRequest = Message<"clinical.v1.CreatePatientNoteRequest"> & {
+  /**
+   * @generated from field: string patient_file_id = 1;
+   */
+  patientFileId: string;
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title: string;
+
+  /**
+   * @generated from field: string text = 3;
+   */
+  text: string;
+
+  /**
+   * defaults to FREE_NOTE if empty
+   *
+   * @generated from field: string kind = 4;
+   */
+  kind: string;
+
+  /**
+   * optional
+   *
+   * @generated from field: string source_session_id = 5;
+   */
+  sourceSessionId: string;
+};
+
+/**
+ * Describes the message clinical.v1.CreatePatientNoteRequest.
+ * Use `create(CreatePatientNoteRequestSchema)` to create a new message.
+ */
+export const CreatePatientNoteRequestSchema: GenMessage<CreatePatientNoteRequest> = /*@__PURE__*/
+  messageDesc(file_clinical_v1_clinical, 10);
+
+/**
+ * @generated from message clinical.v1.ListPatientNotesRequest
+ */
+export type ListPatientNotesRequest = Message<"clinical.v1.ListPatientNotesRequest"> & {
+  /**
+   * @generated from field: string patient_file_id = 1;
+   */
+  patientFileId: string;
+};
+
+/**
+ * Describes the message clinical.v1.ListPatientNotesRequest.
+ * Use `create(ListPatientNotesRequestSchema)` to create a new message.
+ */
+export const ListPatientNotesRequestSchema: GenMessage<ListPatientNotesRequest> = /*@__PURE__*/
+  messageDesc(file_clinical_v1_clinical, 11);
+
+/**
+ * @generated from message clinical.v1.ListPatientNotesResponse
+ */
+export type ListPatientNotesResponse = Message<"clinical.v1.ListPatientNotesResponse"> & {
+  /**
+   * @generated from field: repeated clinical.v1.PatientNote notes = 1;
+   */
+  notes: PatientNote[];
+};
+
+/**
+ * Describes the message clinical.v1.ListPatientNotesResponse.
+ * Use `create(ListPatientNotesResponseSchema)` to create a new message.
+ */
+export const ListPatientNotesResponseSchema: GenMessage<ListPatientNotesResponse> = /*@__PURE__*/
+  messageDesc(file_clinical_v1_clinical, 12);
+
+/**
+ * @generated from message clinical.v1.UpdatePatientNoteRequest
+ */
+export type UpdatePatientNoteRequest = Message<"clinical.v1.UpdatePatientNoteRequest"> & {
+  /**
+   * @generated from field: string note_id = 1;
+   */
+  noteId: string;
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title: string;
+
+  /**
+   * @generated from field: string text = 3;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message clinical.v1.UpdatePatientNoteRequest.
+ * Use `create(UpdatePatientNoteRequestSchema)` to create a new message.
+ */
+export const UpdatePatientNoteRequestSchema: GenMessage<UpdatePatientNoteRequest> = /*@__PURE__*/
+  messageDesc(file_clinical_v1_clinical, 13);
+
+/**
+ * @generated from message clinical.v1.DeletePatientNoteRequest
+ */
+export type DeletePatientNoteRequest = Message<"clinical.v1.DeletePatientNoteRequest"> & {
+  /**
+   * @generated from field: string note_id = 1;
+   */
+  noteId: string;
+};
+
+/**
+ * Describes the message clinical.v1.DeletePatientNoteRequest.
+ * Use `create(DeletePatientNoteRequestSchema)` to create a new message.
+ */
+export const DeletePatientNoteRequestSchema: GenMessage<DeletePatientNoteRequest> = /*@__PURE__*/
+  messageDesc(file_clinical_v1_clinical, 14);
+
+/**
+ * GetActionPlanDraft — extracts the action-plan section from a session's
+ * report (server-side heuristic) to prefill the note editor, plus the
+ * patient e-mail availability for the send gate.
+ *
+ * @generated from message clinical.v1.GetActionPlanDraftRequest
+ */
+export type GetActionPlanDraftRequest = Message<"clinical.v1.GetActionPlanDraftRequest"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+};
+
+/**
+ * Describes the message clinical.v1.GetActionPlanDraftRequest.
+ * Use `create(GetActionPlanDraftRequestSchema)` to create a new message.
+ */
+export const GetActionPlanDraftRequestSchema: GenMessage<GetActionPlanDraftRequest> = /*@__PURE__*/
+  messageDesc(file_clinical_v1_clinical, 15);
+
+/**
+ * @generated from message clinical.v1.ActionPlanDraft
+ */
+export type ActionPlanDraft = Message<"clinical.v1.ActionPlanDraft"> & {
+  /**
+   * @generated from field: string suggested_title = 1;
+   */
+  suggestedTitle: string;
+
+  /**
+   * @generated from field: string suggested_text = 2;
+   */
+  suggestedText: string;
+
+  /**
+   * @generated from field: bool patient_has_email = 3;
+   */
+  patientHasEmail: boolean;
+
+  /**
+   * e.g. "p***@example.com"
+   *
+   * @generated from field: string patient_email_masked = 4;
+   */
+  patientEmailMasked: string;
+};
+
+/**
+ * Describes the message clinical.v1.ActionPlanDraft.
+ * Use `create(ActionPlanDraftSchema)` to create a new message.
+ */
+export const ActionPlanDraftSchema: GenMessage<ActionPlanDraft> = /*@__PURE__*/
+  messageDesc(file_clinical_v1_clinical, 16);
+
+/**
+ * SavePatientNote — create/update a note and optionally e-mail it to the
+ * patient. send_to_patient=true with no patient e-mail → FAILED_PRECONDITION
+ * "PATIENT_EMAIL_MISSING" (note is still saved).
+ *
+ * @generated from message clinical.v1.SavePatientNoteRequest
+ */
+export type SavePatientNoteRequest = Message<"clinical.v1.SavePatientNoteRequest"> & {
+  /**
+   * @generated from field: string patient_file_id = 1;
+   */
+  patientFileId: string;
+
+  /**
+   * empty = create
+   *
+   * @generated from field: string note_id = 2;
+   */
+  noteId: string;
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title: string;
+
+  /**
+   * @generated from field: string text = 4;
+   */
+  text: string;
+
+  /**
+   * FREE_NOTE | ACTION_PLAN
+   *
+   * @generated from field: string kind = 5;
+   */
+  kind: string;
+
+  /**
+   * optional
+   *
+   * @generated from field: string source_session_id = 6;
+   */
+  sourceSessionId: string;
+
+  /**
+   * @generated from field: bool send_to_patient = 7;
+   */
+  sendToPatient: boolean;
+};
+
+/**
+ * Describes the message clinical.v1.SavePatientNoteRequest.
+ * Use `create(SavePatientNoteRequestSchema)` to create a new message.
+ */
+export const SavePatientNoteRequestSchema: GenMessage<SavePatientNoteRequest> = /*@__PURE__*/
+  messageDesc(file_clinical_v1_clinical, 17);
+
+/**
+ * @generated from message clinical.v1.SavePatientNoteResponse
+ */
+export type SavePatientNoteResponse = Message<"clinical.v1.SavePatientNoteResponse"> & {
+  /**
+   * @generated from field: clinical.v1.PatientNote note = 1;
+   */
+  note?: PatientNote | undefined;
+
+  /**
+   * true if the e-mail was sent
+   *
+   * @generated from field: bool sent = 2;
+   */
+  sent: boolean;
+};
+
+/**
+ * Describes the message clinical.v1.SavePatientNoteResponse.
+ * Use `create(SavePatientNoteResponseSchema)` to create a new message.
+ */
+export const SavePatientNoteResponseSchema: GenMessage<SavePatientNoteResponse> = /*@__PURE__*/
+  messageDesc(file_clinical_v1_clinical, 18);
 
 /**
  * DeletePatientUser — RODO-style erasure of a patient. The user row
@@ -437,7 +782,7 @@ export type DeletePatientUserRequest = Message<"clinical.v1.DeletePatientUserReq
  * Use `create(DeletePatientUserRequestSchema)` to create a new message.
  */
 export const DeletePatientUserRequestSchema: GenMessage<DeletePatientUserRequest> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 9);
+  messageDesc(file_clinical_v1_clinical, 19);
 
 /**
  * @generated from message clinical.v1.ListModalitiesResponse
@@ -454,7 +799,7 @@ export type ListModalitiesResponse = Message<"clinical.v1.ListModalitiesResponse
  * Use `create(ListModalitiesResponseSchema)` to create a new message.
  */
 export const ListModalitiesResponseSchema: GenMessage<ListModalitiesResponse> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 10);
+  messageDesc(file_clinical_v1_clinical, 20);
 
 /**
  * @generated from message clinical.v1.HealthCheckResponse
@@ -476,7 +821,7 @@ export type HealthCheckResponse = Message<"clinical.v1.HealthCheckResponse"> & {
  * Use `create(HealthCheckResponseSchema)` to create a new message.
  */
 export const HealthCheckResponseSchema: GenMessage<HealthCheckResponse> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 11);
+  messageDesc(file_clinical_v1_clinical, 21);
 
 /**
  * @generated from message clinical.v1.UpdateSpeakerLabelsRequest
@@ -501,7 +846,7 @@ export type UpdateSpeakerLabelsRequest = Message<"clinical.v1.UpdateSpeakerLabel
  * Use `create(UpdateSpeakerLabelsRequestSchema)` to create a new message.
  */
 export const UpdateSpeakerLabelsRequestSchema: GenMessage<UpdateSpeakerLabelsRequest> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 12);
+  messageDesc(file_clinical_v1_clinical, 22);
 
 /**
  * @generated from message clinical.v1.UpdateSpeakerLabelsResponse
@@ -533,7 +878,7 @@ export type UpdateSpeakerLabelsResponse = Message<"clinical.v1.UpdateSpeakerLabe
  * Use `create(UpdateSpeakerLabelsResponseSchema)` to create a new message.
  */
 export const UpdateSpeakerLabelsResponseSchema: GenMessage<UpdateSpeakerLabelsResponse> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 13);
+  messageDesc(file_clinical_v1_clinical, 23);
 
 /**
  * @generated from message clinical.v1.Session
@@ -610,7 +955,7 @@ export type Session = Message<"clinical.v1.Session"> & {
  * Use `create(SessionSchema)` to create a new message.
  */
 export const SessionSchema: GenMessage<Session> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 14);
+  messageDesc(file_clinical_v1_clinical, 24);
 
 /**
  * @generated from message clinical.v1.ListSessionsRequest
@@ -627,7 +972,7 @@ export type ListSessionsRequest = Message<"clinical.v1.ListSessionsRequest"> & {
  * Use `create(ListSessionsRequestSchema)` to create a new message.
  */
 export const ListSessionsRequestSchema: GenMessage<ListSessionsRequest> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 15);
+  messageDesc(file_clinical_v1_clinical, 25);
 
 /**
  * UpdateSession — rename a session. Currently `name` is the only
@@ -653,7 +998,7 @@ export type UpdateSessionRequest = Message<"clinical.v1.UpdateSessionRequest"> &
  * Use `create(UpdateSessionRequestSchema)` to create a new message.
  */
 export const UpdateSessionRequestSchema: GenMessage<UpdateSessionRequest> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 16);
+  messageDesc(file_clinical_v1_clinical, 26);
 
 /**
  * DeleteSession — hard delete via CASCADE (migration 000012).
@@ -675,7 +1020,7 @@ export type DeleteSessionRequest = Message<"clinical.v1.DeleteSessionRequest"> &
  * Use `create(DeleteSessionRequestSchema)` to create a new message.
  */
 export const DeleteSessionRequestSchema: GenMessage<DeleteSessionRequest> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 17);
+  messageDesc(file_clinical_v1_clinical, 27);
 
 /**
  * @generated from message clinical.v1.CancelSessionRequest
@@ -692,7 +1037,7 @@ export type CancelSessionRequest = Message<"clinical.v1.CancelSessionRequest"> &
  * Use `create(CancelSessionRequestSchema)` to create a new message.
  */
 export const CancelSessionRequestSchema: GenMessage<CancelSessionRequest> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 18);
+  messageDesc(file_clinical_v1_clinical, 28);
 
 /**
  * @generated from message clinical.v1.ListSessionsResponse
@@ -709,7 +1054,7 @@ export type ListSessionsResponse = Message<"clinical.v1.ListSessionsResponse"> &
  * Use `create(ListSessionsResponseSchema)` to create a new message.
  */
 export const ListSessionsResponseSchema: GenMessage<ListSessionsResponse> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 19);
+  messageDesc(file_clinical_v1_clinical, 29);
 
 /**
  * @generated from message clinical.v1.TranscriptSegment
@@ -751,7 +1096,7 @@ export type TranscriptSegment = Message<"clinical.v1.TranscriptSegment"> & {
  * Use `create(TranscriptSegmentSchema)` to create a new message.
  */
 export const TranscriptSegmentSchema: GenMessage<TranscriptSegment> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 20);
+  messageDesc(file_clinical_v1_clinical, 30);
 
 /**
  * @generated from message clinical.v1.Transcript
@@ -790,7 +1135,7 @@ export type Transcript = Message<"clinical.v1.Transcript"> & {
  * Use `create(TranscriptSchema)` to create a new message.
  */
 export const TranscriptSchema: GenMessage<Transcript> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 21);
+  messageDesc(file_clinical_v1_clinical, 31);
 
 /**
  * SpeakerTurn — a contiguous span of segments attributed to one
@@ -846,7 +1191,7 @@ export type SpeakerTurn = Message<"clinical.v1.SpeakerTurn"> & {
  * Use `create(SpeakerTurnSchema)` to create a new message.
  */
 export const SpeakerTurnSchema: GenMessage<SpeakerTurn> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 22);
+  messageDesc(file_clinical_v1_clinical, 32);
 
 /**
  * @generated from message clinical.v1.Report
@@ -888,7 +1233,7 @@ export type Report = Message<"clinical.v1.Report"> & {
  * Use `create(ReportSchema)` to create a new message.
  */
 export const ReportSchema: GenMessage<Report> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 23);
+  messageDesc(file_clinical_v1_clinical, 33);
 
 /**
  * @generated from message clinical.v1.GetSessionDetailsRequest
@@ -905,7 +1250,7 @@ export type GetSessionDetailsRequest = Message<"clinical.v1.GetSessionDetailsReq
  * Use `create(GetSessionDetailsRequestSchema)` to create a new message.
  */
 export const GetSessionDetailsRequestSchema: GenMessage<GetSessionDetailsRequest> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 24);
+  messageDesc(file_clinical_v1_clinical, 34);
 
 /**
  * @generated from message clinical.v1.GetSessionDetailsResponse
@@ -932,7 +1277,7 @@ export type GetSessionDetailsResponse = Message<"clinical.v1.GetSessionDetailsRe
  * Use `create(GetSessionDetailsResponseSchema)` to create a new message.
  */
 export const GetSessionDetailsResponseSchema: GenMessage<GetSessionDetailsResponse> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 25);
+  messageDesc(file_clinical_v1_clinical, 35);
 
 /**
  * @generated from message clinical.v1.ReportRating
@@ -999,7 +1344,7 @@ export type ReportRating = Message<"clinical.v1.ReportRating"> & {
  * Use `create(ReportRatingSchema)` to create a new message.
  */
 export const ReportRatingSchema: GenMessage<ReportRating> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 26);
+  messageDesc(file_clinical_v1_clinical, 36);
 
 /**
  * @generated from message clinical.v1.RateReportRequest
@@ -1057,7 +1402,7 @@ export type RateReportRequest = Message<"clinical.v1.RateReportRequest"> & {
  * Use `create(RateReportRequestSchema)` to create a new message.
  */
 export const RateReportRequestSchema: GenMessage<RateReportRequest> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 27);
+  messageDesc(file_clinical_v1_clinical, 37);
 
 /**
  * @generated from message clinical.v1.RateReportResponse
@@ -1074,7 +1419,7 @@ export type RateReportResponse = Message<"clinical.v1.RateReportResponse"> & {
  * Use `create(RateReportResponseSchema)` to create a new message.
  */
 export const RateReportResponseSchema: GenMessage<RateReportResponse> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 28);
+  messageDesc(file_clinical_v1_clinical, 38);
 
 /**
  * @generated from message clinical.v1.GetReportRatingRequest
@@ -1096,7 +1441,7 @@ export type GetReportRatingRequest = Message<"clinical.v1.GetReportRatingRequest
  * Use `create(GetReportRatingRequestSchema)` to create a new message.
  */
 export const GetReportRatingRequestSchema: GenMessage<GetReportRatingRequest> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 29);
+  messageDesc(file_clinical_v1_clinical, 39);
 
 /**
  * @generated from message clinical.v1.GetActiveSuggestionRequest
@@ -1113,7 +1458,7 @@ export type GetActiveSuggestionRequest = Message<"clinical.v1.GetActiveSuggestio
  * Use `create(GetActiveSuggestionRequestSchema)` to create a new message.
  */
 export const GetActiveSuggestionRequestSchema: GenMessage<GetActiveSuggestionRequest> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 30);
+  messageDesc(file_clinical_v1_clinical, 40);
 
 /**
  * @generated from message clinical.v1.PreferenceSuggestion
@@ -1185,7 +1530,7 @@ export type PreferenceSuggestion = Message<"clinical.v1.PreferenceSuggestion"> &
  * Use `create(PreferenceSuggestionSchema)` to create a new message.
  */
 export const PreferenceSuggestionSchema: GenMessage<PreferenceSuggestion> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 31);
+  messageDesc(file_clinical_v1_clinical, 41);
 
 /**
  * PreferenceSuggestionCandidate is one row in the ranked candidate
@@ -1226,7 +1571,7 @@ export type PreferenceSuggestionCandidate = Message<"clinical.v1.PreferenceSugge
  * Use `create(PreferenceSuggestionCandidateSchema)` to create a new message.
  */
 export const PreferenceSuggestionCandidateSchema: GenMessage<PreferenceSuggestionCandidate> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 32);
+  messageDesc(file_clinical_v1_clinical, 42);
 
 /**
  * @generated from message clinical.v1.LogPreferenceSuggestionRequest
@@ -1283,7 +1628,7 @@ export type LogPreferenceSuggestionRequest = Message<"clinical.v1.LogPreferenceS
  * Use `create(LogPreferenceSuggestionRequestSchema)` to create a new message.
  */
 export const LogPreferenceSuggestionRequestSchema: GenMessage<LogPreferenceSuggestionRequest> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 33);
+  messageDesc(file_clinical_v1_clinical, 43);
 
 /**
  * @generated from message clinical.v1.AdminListSessionsRequest
@@ -1363,7 +1708,7 @@ export type AdminListSessionsRequest = Message<"clinical.v1.AdminListSessionsReq
  * Use `create(AdminListSessionsRequestSchema)` to create a new message.
  */
 export const AdminListSessionsRequestSchema: GenMessage<AdminListSessionsRequest> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 34);
+  messageDesc(file_clinical_v1_clinical, 44);
 
 /**
  * @generated from message clinical.v1.AdminListSessionsResponse
@@ -1387,7 +1732,7 @@ export type AdminListSessionsResponse = Message<"clinical.v1.AdminListSessionsRe
  * Use `create(AdminListSessionsResponseSchema)` to create a new message.
  */
 export const AdminListSessionsResponseSchema: GenMessage<AdminListSessionsResponse> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 35);
+  messageDesc(file_clinical_v1_clinical, 45);
 
 /**
  * @generated from message clinical.v1.AdminSessionRow
@@ -1487,7 +1832,7 @@ export type AdminSessionRow = Message<"clinical.v1.AdminSessionRow"> & {
  * Use `create(AdminSessionRowSchema)` to create a new message.
  */
 export const AdminSessionRowSchema: GenMessage<AdminSessionRow> = /*@__PURE__*/
-  messageDesc(file_clinical_v1_clinical, 36);
+  messageDesc(file_clinical_v1_clinical, 46);
 
 /**
  * @generated from enum clinical.v1.ProcessType
@@ -1599,6 +1944,56 @@ export const ClinicalService: GenService<{
     methodKind: "unary";
     input: typeof DeletePatientUserRequestSchema;
     output: typeof EmptySchema;
+  },
+  /**
+   * Patient notes + action plan (docs/22).
+   *
+   * @generated from rpc clinical.v1.ClinicalService.CreatePatientNote
+   */
+  createPatientNote: {
+    methodKind: "unary";
+    input: typeof CreatePatientNoteRequestSchema;
+    output: typeof PatientNoteSchema;
+  },
+  /**
+   * @generated from rpc clinical.v1.ClinicalService.ListPatientNotes
+   */
+  listPatientNotes: {
+    methodKind: "unary";
+    input: typeof ListPatientNotesRequestSchema;
+    output: typeof ListPatientNotesResponseSchema;
+  },
+  /**
+   * @generated from rpc clinical.v1.ClinicalService.UpdatePatientNote
+   */
+  updatePatientNote: {
+    methodKind: "unary";
+    input: typeof UpdatePatientNoteRequestSchema;
+    output: typeof PatientNoteSchema;
+  },
+  /**
+   * @generated from rpc clinical.v1.ClinicalService.DeletePatientNote
+   */
+  deletePatientNote: {
+    methodKind: "unary";
+    input: typeof DeletePatientNoteRequestSchema;
+    output: typeof EmptySchema;
+  },
+  /**
+   * @generated from rpc clinical.v1.ClinicalService.GetActionPlanDraft
+   */
+  getActionPlanDraft: {
+    methodKind: "unary";
+    input: typeof GetActionPlanDraftRequestSchema;
+    output: typeof ActionPlanDraftSchema;
+  },
+  /**
+   * @generated from rpc clinical.v1.ClinicalService.SavePatientNote
+   */
+  savePatientNote: {
+    methodKind: "unary";
+    input: typeof SavePatientNoteRequestSchema;
+    output: typeof SavePatientNoteResponseSchema;
   },
   /**
    * @generated from rpc clinical.v1.ClinicalService.ListModalities

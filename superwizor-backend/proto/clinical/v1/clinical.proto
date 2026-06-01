@@ -30,6 +30,14 @@ service ClinicalService {
     // Firestore + inbox cleanup. Nothing left to return → Empty.
     rpc DeletePatientUser(DeletePatientUserRequest) returns (google.protobuf.Empty);
 
+    // Patient notes + action plan (docs/22).
+    rpc CreatePatientNote(CreatePatientNoteRequest) returns (PatientNote);
+    rpc ListPatientNotes(ListPatientNotesRequest) returns (ListPatientNotesResponse);
+    rpc UpdatePatientNote(UpdatePatientNoteRequest) returns (PatientNote);
+    rpc DeletePatientNote(DeletePatientNoteRequest) returns (google.protobuf.Empty);
+    rpc GetActionPlanDraft(GetActionPlanDraftRequest) returns (ActionPlanDraft);
+    rpc SavePatientNote(SavePatientNoteRequest) returns (SavePatientNoteResponse);
+
     rpc ListModalities(google.protobuf.Empty) returns (ListModalitiesResponse);
     rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
 
@@ -130,6 +138,9 @@ message PatientFile {
     string patient_first_name    = 16;
     string patient_last_name     = 17;
     string patient_language_code = 18;
+    // Patient contact e-mail (patient_files.patient_email, docs/22). Empty
+    // when none is on file. Drives the "send action plan" e-mail flow.
+    string patient_email         = 19;
 }
 
 message Modality {
@@ -205,6 +216,70 @@ message UpdatePatientUserRequest {
     string first_name      = 2;
     string last_name       = 3;
     string language_code   = 4;
+    // Patient contact e-mail (docs/22). Persisted to
+    // patient_files.patient_email. Empty string clears it. Optional.
+    string patient_email   = 5;
+}
+
+// ── Patient notes + action plan (docs/22) ──────────────────────────────
+message PatientNote {
+    string id = 1;
+    string patient_file_id = 2;
+    string kind = 3;               // FREE_NOTE | ACTION_PLAN
+    string source_session_id = 4;  // empty for FREE_NOTE
+    string title = 5;              // decrypted server-side
+    string text = 6;               // decrypted server-side
+    google.protobuf.Timestamp sent_to_patient_at = 7; // null if never sent
+    string sent_to_email = 8;
+    google.protobuf.Timestamp created_at = 9;
+    google.protobuf.Timestamp updated_at = 10;
+}
+
+message CreatePatientNoteRequest {
+    string patient_file_id = 1;
+    string title = 2;
+    string text = 3;
+    string kind = 4;               // defaults to FREE_NOTE if empty
+    string source_session_id = 5;  // optional
+}
+
+message ListPatientNotesRequest { string patient_file_id = 1; }
+message ListPatientNotesResponse { repeated PatientNote notes = 1; }
+
+message UpdatePatientNoteRequest {
+    string note_id = 1;
+    string title = 2;
+    string text = 3;
+}
+
+message DeletePatientNoteRequest { string note_id = 1; }
+
+// GetActionPlanDraft — extracts the action-plan section from a session's
+// report (server-side heuristic) to prefill the note editor, plus the
+// patient e-mail availability for the send gate.
+message GetActionPlanDraftRequest { string session_id = 1; }
+message ActionPlanDraft {
+    string suggested_title = 1;
+    string suggested_text = 2;
+    bool   patient_has_email = 3;
+    string patient_email_masked = 4; // e.g. "p***@example.com"
+}
+
+// SavePatientNote — create/update a note and optionally e-mail it to the
+// patient. send_to_patient=true with no patient e-mail → FAILED_PRECONDITION
+// "PATIENT_EMAIL_MISSING" (note is still saved).
+message SavePatientNoteRequest {
+    string patient_file_id = 1;
+    string note_id = 2;            // empty = create
+    string title = 3;
+    string text = 4;
+    string kind = 5;               // FREE_NOTE | ACTION_PLAN
+    string source_session_id = 6;  // optional
+    bool   send_to_patient = 7;
+}
+message SavePatientNoteResponse {
+    PatientNote note = 1;
+    bool sent = 2;                 // true if the e-mail was sent
 }
 
 // DeletePatientUser — RODO-style erasure of a patient. The user row

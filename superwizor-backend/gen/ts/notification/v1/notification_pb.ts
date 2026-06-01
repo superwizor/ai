@@ -12,7 +12,76 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file notification/v1/notification.proto.
  */
 export const file_notification_v1_notification: GenFile = /*@__PURE__*/
-  fileDesc("CiJub3RpZmljYXRpb24vdjEvbm90aWZpY2F0aW9uLnByb3RvEg9ub3RpZmljYXRpb24udjEiqAEKGlNlbmRJbnZpdGF0aW9uRW1haWxSZXF1ZXN0EhcKD3JlY2lwaWVudF9lbWFpbBgBIAEoCRIZChFvcmdhbml6YXRpb25fbmFtZRgCIAEoCRIaChJpbnZpdGVyX2ZpcnN0X25hbWUYAyABKAkSEgoKYWNjZXB0X3VybBgEIAEoCRIWCg5leHBpcmVzX2F0X2lzbxgFIAEoCRIOCgZsb2NhbGUYBiABKAkihwEKHFNlbmRFbWFpbFZlcmlmaWNhdGlvblJlcXVlc3QSFwoPcmVjaXBpZW50X2VtYWlsGAEgASgJEhIKCmZpcnN0X25hbWUYAiABKAkSEgoKdmVyaWZ5X3VybBgDIAEoCRIWCg5leHBpcmVzX2F0X2lzbxgEIAEoCRIOCgZsb2NhbGUYBSABKAki9gEKF1NlbmRRdW90YVdhcm5pbmdSZXF1ZXN0EhcKD3JlY2lwaWVudF9lbWFpbBgBIAEoCRISCgpmaXJzdF9uYW1lGAIgASgJEhkKEW9yZ2FuaXphdGlvbl9uYW1lGAMgASgJEhUKDXVzYWdlX3BlcmNlbnQYBCABKAUSGAoQdG9rZW5zX3JlbWFpbmluZxgFIAEoBRIRCglwbGFuX3RpZXIYBiABKAkSEgoKcGxhbl9jeWNsZRgHIAEoCRIWCg5wZXJpb2RfZW5kX2lzbxgIIAEoCRITCgtiaWxsaW5nX3VybBgJIAEoCRIOCgZsb2NhbGUYCiABKAkikAEKF1JlZ2lzdGVyRkNNVG9rZW5SZXF1ZXN0Eg0KBXRva2VuGAEgASgJEisKCHBsYXRmb3JtGAIgASgOMhkubm90aWZpY2F0aW9uLnYxLlBsYXRmb3JtEhMKC2FwcF92ZXJzaW9uGAMgASgJEhQKDGRldmljZV9tb2RlbBgEIAEoCRIOCgZsb2NhbGUYBSABKAkiSAoYUmVnaXN0ZXJGQ01Ub2tlblJlc3BvbnNlEhAKCHRva2VuX2lkGAEgASgJEhoKEmFscmVhZHlfcmVnaXN0ZXJlZBgCIAEoCCImChVSZW1vdmVGQ01Ub2tlblJlcXVlc3QSDQoFdG9rZW4YASABKAkiJwoWR2V0VW5yZWFkQ291bnRSZXNwb25zZRINCgVjb3VudBgBIAEoBSIyChNIZWFsdGhDaGVja1Jlc3BvbnNlEgoKAm9rGAEgASgIEg8KB3ZlcnNpb24YAiABKAkqXgoIUGxhdGZvcm0SGAoUUExBVEZPUk1fVU5TUEVDSUZJRUQQABIQCgxQTEFURk9STV9JT1MQARIUChBQTEFURk9STV9BTkRST0lEEAISEAoMUExBVEZPUk1fV0VCEAMyggUKE05vdGlmaWNhdGlvblNlcnZpY2USZwoQUmVnaXN0ZXJGQ01Ub2tlbhIoLm5vdGlmaWNhdGlvbi52MS5SZWdpc3RlckZDTVRva2VuUmVxdWVzdBopLm5vdGlmaWNhdGlvbi52MS5SZWdpc3RlckZDTVRva2VuUmVzcG9uc2USUAoOUmVtb3ZlRkNNVG9rZW4SJi5ub3RpZmljYXRpb24udjEuUmVtb3ZlRkNNVG9rZW5SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5ElEKDkdldFVucmVhZENvdW50EhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Gicubm90aWZpY2F0aW9uLnYxLkdldFVucmVhZENvdW50UmVzcG9uc2USWgoTU2VuZEludml0YXRpb25FbWFpbBIrLm5vdGlmaWNhdGlvbi52MS5TZW5kSW52aXRhdGlvbkVtYWlsUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJeChVTZW5kRW1haWxWZXJpZmljYXRpb24SLS5ub3RpZmljYXRpb24udjEuU2VuZEVtYWlsVmVyaWZpY2F0aW9uUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJUChBTZW5kUXVvdGFXYXJuaW5nEigubm90aWZpY2F0aW9uLnYxLlNlbmRRdW90YVdhcm5pbmdSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5EksKC0hlYWx0aENoZWNrEhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5GiQubm90aWZpY2F0aW9uLnYxLkhlYWx0aENoZWNrUmVzcG9uc2VCzQEKE2NvbS5ub3RpZmljYXRpb24udjFCEU5vdGlmaWNhdGlvblByb3RvUAFaRmdpdGh1Yi5jb20vc3VwZXJ3aXpvci1haS9iYWNrZW5kL2dlbi9nby9ub3RpZmljYXRpb24vdjE7bm90aWZpY2F0aW9udjGiAgNOWFiqAg9Ob3RpZmljYXRpb24uVjHKAg9Ob3RpZmljYXRpb25cVjHiAhtOb3RpZmljYXRpb25cVjFcR1BCTWV0YWRhdGHqAhBOb3RpZmljYXRpb246OlYxYgZwcm90bzM", [file_google_protobuf_empty]);
+  fileDesc("CiJub3RpZmljYXRpb24vdjEvbm90aWZpY2F0aW9uLnByb3RvEg9ub3RpZmljYXRpb24udjEipwEKGlNlbmRBY3Rpb25QbGFuRW1haWxSZXF1ZXN0EhAKCHRvX2VtYWlsGAEgASgJEh4KFnRoZXJhcGlzdF9kaXNwbGF5X25hbWUYAiABKAkSGAoQYWN0aW9uX3BsYW5fdGV4dBgDIAEoCRIUCgxzZXNzaW9uX2RhdGUYBCABKAkSDgoGbG9jYWxlGAUgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgGIAEoCSIyChtTZW5kQWN0aW9uUGxhbkVtYWlsUmVzcG9uc2USEwoLZGVsaXZlcnlfaWQYASABKAkiqAEKGlNlbmRJbnZpdGF0aW9uRW1haWxSZXF1ZXN0EhcKD3JlY2lwaWVudF9lbWFpbBgBIAEoCRIZChFvcmdhbml6YXRpb25fbmFtZRgCIAEoCRIaChJpbnZpdGVyX2ZpcnN0X25hbWUYAyABKAkSEgoKYWNjZXB0X3VybBgEIAEoCRIWCg5leHBpcmVzX2F0X2lzbxgFIAEoCRIOCgZsb2NhbGUYBiABKAkihwEKHFNlbmRFbWFpbFZlcmlmaWNhdGlvblJlcXVlc3QSFwoPcmVjaXBpZW50X2VtYWlsGAEgASgJEhIKCmZpcnN0X25hbWUYAiABKAkSEgoKdmVyaWZ5X3VybBgDIAEoCRIWCg5leHBpcmVzX2F0X2lzbxgEIAEoCRIOCgZsb2NhbGUYBSABKAki9gEKF1NlbmRRdW90YVdhcm5pbmdSZXF1ZXN0EhcKD3JlY2lwaWVudF9lbWFpbBgBIAEoCRISCgpmaXJzdF9uYW1lGAIgASgJEhkKEW9yZ2FuaXphdGlvbl9uYW1lGAMgASgJEhUKDXVzYWdlX3BlcmNlbnQYBCABKAUSGAoQdG9rZW5zX3JlbWFpbmluZxgFIAEoBRIRCglwbGFuX3RpZXIYBiABKAkSEgoKcGxhbl9jeWNsZRgHIAEoCRIWCg5wZXJpb2RfZW5kX2lzbxgIIAEoCRITCgtiaWxsaW5nX3VybBgJIAEoCRIOCgZsb2NhbGUYCiABKAkikAEKF1JlZ2lzdGVyRkNNVG9rZW5SZXF1ZXN0Eg0KBXRva2VuGAEgASgJEisKCHBsYXRmb3JtGAIgASgOMhkubm90aWZpY2F0aW9uLnYxLlBsYXRmb3JtEhMKC2FwcF92ZXJzaW9uGAMgASgJEhQKDGRldmljZV9tb2RlbBgEIAEoCRIOCgZsb2NhbGUYBSABKAkiSAoYUmVnaXN0ZXJGQ01Ub2tlblJlc3BvbnNlEhAKCHRva2VuX2lkGAEgASgJEhoKEmFscmVhZHlfcmVnaXN0ZXJlZBgCIAEoCCImChVSZW1vdmVGQ01Ub2tlblJlcXVlc3QSDQoFdG9rZW4YASABKAkiJwoWR2V0VW5yZWFkQ291bnRSZXNwb25zZRINCgVjb3VudBgBIAEoBSIyChNIZWFsdGhDaGVja1Jlc3BvbnNlEgoKAm9rGAEgASgIEg8KB3ZlcnNpb24YAiABKAkqXgoIUGxhdGZvcm0SGAoUUExBVEZPUk1fVU5TUEVDSUZJRUQQABIQCgxQTEFURk9STV9JT1MQARIUChBQTEFURk9STV9BTkRST0lEEAISEAoMUExBVEZPUk1fV0VCEAMy9AUKE05vdGlmaWNhdGlvblNlcnZpY2USZwoQUmVnaXN0ZXJGQ01Ub2tlbhIoLm5vdGlmaWNhdGlvbi52MS5SZWdpc3RlckZDTVRva2VuUmVxdWVzdBopLm5vdGlmaWNhdGlvbi52MS5SZWdpc3RlckZDTVRva2VuUmVzcG9uc2USUAoOUmVtb3ZlRkNNVG9rZW4SJi5ub3RpZmljYXRpb24udjEuUmVtb3ZlRkNNVG9rZW5SZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5ElEKDkdldFVucmVhZENvdW50EhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5Gicubm90aWZpY2F0aW9uLnYxLkdldFVucmVhZENvdW50UmVzcG9uc2USWgoTU2VuZEludml0YXRpb25FbWFpbBIrLm5vdGlmaWNhdGlvbi52MS5TZW5kSW52aXRhdGlvbkVtYWlsUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJeChVTZW5kRW1haWxWZXJpZmljYXRpb24SLS5ub3RpZmljYXRpb24udjEuU2VuZEVtYWlsVmVyaWZpY2F0aW9uUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJUChBTZW5kUXVvdGFXYXJuaW5nEigubm90aWZpY2F0aW9uLnYxLlNlbmRRdW90YVdhcm5pbmdSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5EnAKE1NlbmRBY3Rpb25QbGFuRW1haWwSKy5ub3RpZmljYXRpb24udjEuU2VuZEFjdGlvblBsYW5FbWFpbFJlcXVlc3QaLC5ub3RpZmljYXRpb24udjEuU2VuZEFjdGlvblBsYW5FbWFpbFJlc3BvbnNlEksKC0hlYWx0aENoZWNrEhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5GiQubm90aWZpY2F0aW9uLnYxLkhlYWx0aENoZWNrUmVzcG9uc2VCzQEKE2NvbS5ub3RpZmljYXRpb24udjFCEU5vdGlmaWNhdGlvblByb3RvUAFaRmdpdGh1Yi5jb20vc3VwZXJ3aXpvci1haS9iYWNrZW5kL2dlbi9nby9ub3RpZmljYXRpb24vdjE7bm90aWZpY2F0aW9udjGiAgNOWFiqAg9Ob3RpZmljYXRpb24uVjHKAg9Ob3RpZmljYXRpb25cVjHiAhtOb3RpZmljYXRpb25cVjFcR1BCTWV0YWRhdGHqAhBOb3RpZmljYXRpb246OlYxYgZwcm90bzM", [file_google_protobuf_empty]);
+
+/**
+ * @generated from message notification.v1.SendActionPlanEmailRequest
+ */
+export type SendActionPlanEmailRequest = Message<"notification.v1.SendActionPlanEmailRequest"> & {
+  /**
+   * patient e-mail (validated by caller)
+   *
+   * @generated from field: string to_email = 1;
+   */
+  toEmail: string;
+
+  /**
+   * @generated from field: string therapist_display_name = 2;
+   */
+  therapistDisplayName: string;
+
+  /**
+   * plain text; newlines → <br> for HTML
+   *
+   * @generated from field: string action_plan_text = 3;
+   */
+  actionPlanText: string;
+
+  /**
+   * pre-formatted display date
+   *
+   * @generated from field: string session_date = 4;
+   */
+  sessionDate: string;
+
+  /**
+   * 'pl' | 'en'; falls back to 'pl'
+   *
+   * @generated from field: string locale = 5;
+   */
+  locale: string;
+
+  /**
+   * e.g. "<note_id>:action_plan_sent"
+   *
+   * @generated from field: string idempotency_key = 6;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message notification.v1.SendActionPlanEmailRequest.
+ * Use `create(SendActionPlanEmailRequestSchema)` to create a new message.
+ */
+export const SendActionPlanEmailRequestSchema: GenMessage<SendActionPlanEmailRequest> = /*@__PURE__*/
+  messageDesc(file_notification_v1_notification, 0);
+
+/**
+ * @generated from message notification.v1.SendActionPlanEmailResponse
+ */
+export type SendActionPlanEmailResponse = Message<"notification.v1.SendActionPlanEmailResponse"> & {
+  /**
+   * @generated from field: string delivery_id = 1;
+   */
+  deliveryId: string;
+};
+
+/**
+ * Describes the message notification.v1.SendActionPlanEmailResponse.
+ * Use `create(SendActionPlanEmailResponseSchema)` to create a new message.
+ */
+export const SendActionPlanEmailResponseSchema: GenMessage<SendActionPlanEmailResponse> = /*@__PURE__*/
+  messageDesc(file_notification_v1_notification, 1);
 
 /**
  * @generated from message notification.v1.SendInvitationEmailRequest
@@ -66,7 +135,7 @@ export type SendInvitationEmailRequest = Message<"notification.v1.SendInvitation
  * Use `create(SendInvitationEmailRequestSchema)` to create a new message.
  */
 export const SendInvitationEmailRequestSchema: GenMessage<SendInvitationEmailRequest> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 0);
+  messageDesc(file_notification_v1_notification, 2);
 
 /**
  * @generated from message notification.v1.SendEmailVerificationRequest
@@ -113,7 +182,7 @@ export type SendEmailVerificationRequest = Message<"notification.v1.SendEmailVer
  * Use `create(SendEmailVerificationRequestSchema)` to create a new message.
  */
 export const SendEmailVerificationRequestSchema: GenMessage<SendEmailVerificationRequest> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 1);
+  messageDesc(file_notification_v1_notification, 3);
 
 /**
  * @generated from message notification.v1.SendQuotaWarningRequest
@@ -191,7 +260,7 @@ export type SendQuotaWarningRequest = Message<"notification.v1.SendQuotaWarningR
  * Use `create(SendQuotaWarningRequestSchema)` to create a new message.
  */
 export const SendQuotaWarningRequestSchema: GenMessage<SendQuotaWarningRequest> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 2);
+  messageDesc(file_notification_v1_notification, 4);
 
 /**
  * RegisterFCMToken upserts an FCM token for the authenticated user.
@@ -246,7 +315,7 @@ export type RegisterFCMTokenRequest = Message<"notification.v1.RegisterFCMTokenR
  * Use `create(RegisterFCMTokenRequestSchema)` to create a new message.
  */
 export const RegisterFCMTokenRequestSchema: GenMessage<RegisterFCMTokenRequest> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 3);
+  messageDesc(file_notification_v1_notification, 5);
 
 /**
  * @generated from message notification.v1.RegisterFCMTokenResponse
@@ -272,7 +341,7 @@ export type RegisterFCMTokenResponse = Message<"notification.v1.RegisterFCMToken
  * Use `create(RegisterFCMTokenResponseSchema)` to create a new message.
  */
 export const RegisterFCMTokenResponseSchema: GenMessage<RegisterFCMTokenResponse> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 4);
+  messageDesc(file_notification_v1_notification, 6);
 
 /**
  * RemoveFCMToken soft-deletes a token (sets invalidated_at). Called on user
@@ -293,7 +362,7 @@ export type RemoveFCMTokenRequest = Message<"notification.v1.RemoveFCMTokenReque
  * Use `create(RemoveFCMTokenRequestSchema)` to create a new message.
  */
 export const RemoveFCMTokenRequestSchema: GenMessage<RemoveFCMTokenRequest> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 5);
+  messageDesc(file_notification_v1_notification, 7);
 
 /**
  * @generated from message notification.v1.GetUnreadCountResponse
@@ -310,7 +379,7 @@ export type GetUnreadCountResponse = Message<"notification.v1.GetUnreadCountResp
  * Use `create(GetUnreadCountResponseSchema)` to create a new message.
  */
 export const GetUnreadCountResponseSchema: GenMessage<GetUnreadCountResponse> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 6);
+  messageDesc(file_notification_v1_notification, 8);
 
 /**
  * @generated from message notification.v1.HealthCheckResponse
@@ -332,7 +401,7 @@ export type HealthCheckResponse = Message<"notification.v1.HealthCheckResponse">
  * Use `create(HealthCheckResponseSchema)` to create a new message.
  */
 export const HealthCheckResponseSchema: GenMessage<HealthCheckResponse> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 7);
+  messageDesc(file_notification_v1_notification, 9);
 
 /**
  * @generated from enum notification.v1.Platform
@@ -446,6 +515,20 @@ export const NotificationService: GenService<{
     methodKind: "unary";
     input: typeof SendQuotaWarningRequestSchema;
     output: typeof EmptySchema;
+  },
+  /**
+   * Send a session's "action plan" to the patient by e-mail (docs/22).
+   * Internal RPC — clinical-svc fires this from SavePatientNote when the
+   * therapist chooses "save and send". Template is loaded from the
+   * email_templates table (key 'action_plan'), falling back to the
+   * embedded default.
+   *
+   * @generated from rpc notification.v1.NotificationService.SendActionPlanEmail
+   */
+  sendActionPlanEmail: {
+    methodKind: "unary";
+    input: typeof SendActionPlanEmailRequestSchema;
+    output: typeof SendActionPlanEmailResponseSchema;
   },
   /**
    * @generated from rpc notification.v1.NotificationService.HealthCheck

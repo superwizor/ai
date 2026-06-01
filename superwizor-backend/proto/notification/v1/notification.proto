@@ -42,7 +42,27 @@ service NotificationService {
   // sends regardless.
   rpc SendQuotaWarning(SendQuotaWarningRequest) returns (google.protobuf.Empty);
 
+  // Send a session's "action plan" to the patient by e-mail (docs/22).
+  // Internal RPC — clinical-svc fires this from SavePatientNote when the
+  // therapist chooses "save and send". Template is loaded from the
+  // email_templates table (key 'action_plan'), falling back to the
+  // embedded default.
+  rpc SendActionPlanEmail(SendActionPlanEmailRequest) returns (SendActionPlanEmailResponse);
+
   rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
+}
+
+message SendActionPlanEmailRequest {
+  string to_email                = 1;  // patient e-mail (validated by caller)
+  string therapist_display_name  = 2;
+  string action_plan_text        = 3;  // plain text; newlines → <br> for HTML
+  string session_date            = 4;  // pre-formatted display date
+  string locale                  = 5;  // 'pl' | 'en'; falls back to 'pl'
+  string idempotency_key         = 6;  // e.g. "<note_id>:action_plan_sent"
+}
+
+message SendActionPlanEmailResponse {
+  string delivery_id = 1;
 }
 
 message SendInvitationEmailRequest {

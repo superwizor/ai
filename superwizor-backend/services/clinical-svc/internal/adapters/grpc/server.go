@@ -20,6 +20,7 @@ import (
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 )
@@ -98,9 +99,23 @@ type Server struct {
 	tx       TxOpener
 	identity identityv1.IdentityServiceClient
 	billing  billingv1.BillingServiceClient // nil = GetMyBillingState returns Unavailable
-	crypto   cryptobox.CryptoBox
-	pubsub   SessionEventPublisher
-	version  string
+	// notification is the upstream NotificationServiceClient used by
+	// SavePatientNote to e-mail an action plan to the patient. nil =
+	// NOTIFICATION_SVC_URL unset (local dev) → the send leg returns
+	// Unavailable("EMAIL_NOT_CONFIGURED"); the note is still saved.
+	notification notificationv1.NotificationServiceClient
+	crypto       cryptobox.CryptoBox
+	pubsub       SessionEventPublisher
+	version      string
+}
+
+// WithNotification injects the notification-svc client. Kept as a
+// post-construction option (rather than a NewServerWithDeps param) so the
+// existing test constructors keep compiling unchanged. Production wires
+// it from cmd/server/main.go via NewServer.
+func (s *Server) WithNotification(n notificationv1.NotificationServiceClient) *Server {
+	s.notification = n
+	return s
 }
 
 // NewServer wires the production gRPC server: pgxpool + concrete sqlc
@@ -112,15 +127,16 @@ type Server struct {
 // to proxy through to billing-svc.GetSubscription. Pass nil for tests
 // or environments where billing-svc isn't wired — GetMyBillingState
 // will respond with Unavailable in that case.
-func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, billing billingv1.BillingServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
+func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, billing billingv1.BillingServiceClient, notification notificationv1.NotificationServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
 	return &Server{
-		queries:  queries,
-		tx:       &pgxTxOpener{pool: dbPool, base: queries},
-		identity: identity,
-		billing:  billing,
-		crypto:   crypto,
-		pubsub:   pubsub,
-		version:  version,
+		queries:      queries,
+		tx:           &pgxTxOpener{pool: dbPool, base: queries},
+		identity:     identity,
+		billing:      billing,
+		notification: notification,
+		crypto:       crypto,
+		pubsub:       pubsub,
+		version:      version,
 	}
 }
 
@@ -491,6 +507,17 @@ func (s *Server) UpdatePatientUser(ctx context.Context, req *clinicalv1.UpdatePa
 			"this kartoteka has no patient user attached")
 	}
 
+	// patient_email lives on patient_files (migration 000040), not the
+	// paired users row. Persist it alongside the user-field edit. Empty
+	// string clears the column (SetPatientEmail NULLIFs ''); a concrete
+	// value sets it.
+	if err := s.queries.SetPatientEmail(ctx, db.SetPatientEmailParams{
+		ID:           pfID,
+		PatientEmail: req.PatientEmail,
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "set patient email: %v", err)
+	}
+
 	if _, err := s.queries.UpdatePatientUser(ctx, db.UpdatePatientUserParams{
 		ID:           uuid.UUID(pf.PatientID.Bytes),
 		FirstName:    req.FirstName,
@@ -738,6 +765,11 @@ func toProtoPatientFileFromJoinRow(row db.GetPatientFileWithUserRow, modalityCod
 	if row.PatientLanguageCode != nil {
 		resp.PatientLanguageCode = *row.PatientLanguageCode
 	}
+	// patient_email (migration 000040): nullable contact PII. *string is
+	// nil for pseudonymous kartoteki — emit "".
+	if row.PatientEmail != nil {
+		resp.PatientEmail = *row.PatientEmail
+	}
 	// Nullable timestamps: pgtype.Timestamptz emits Valid=false when the
 	// DB column is NULL (consent never given, or consent_given_at not
 	// backfilled on a pre-fix row). Leave the proto field zero in that
@@ -789,6 +821,9 @@ func toProtoPatientFileFromListJoinRow(row db.ListPatientFilesByTherapistWithUse
 	if row.PatientLanguageCode != nil {
 		resp.PatientLanguageCode = *row.PatientLanguageCode
 	}
+	if row.PatientEmail != nil {
+		resp.PatientEmail = *row.PatientEmail
+	}
 	// See toProtoPatientFileFromJoinRow for the Valid-check rationale.
 	if row.ConsentGivenAt.Valid {
 		resp.ConsentGivenAt = timestamppb.New(row.ConsentGivenAt.Time)
@@ -820,6 +855,9 @@ func toProtoPatientFile(pf db.PatientFile, modalityCode string) *clinicalv1.Pati
 	}
 	if pf.PrivateTherapistNotes != nil {
 		resp.PrivateTherapistNotes = *pf.PrivateTherapistNotes
+	}
+	if pf.PatientEmail != nil {
+		resp.PatientEmail = *pf.PatientEmail
 	}
 	// See toProtoPatientFileFromJoinRow for the Valid-check rationale.
 	if pf.ConsentGivenAt.Valid {

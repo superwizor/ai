@@ -28,11 +28,14 @@ import '../cache/dto/session_details_dto.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
+import '../providers/patient_contact_provider.dart';
 import '../repositories/session_details_repository.dart';
 import '../theme/euphire_theme.dart';
+import '../utils/action_plan_extractor.dart';
 import '../widgets/euphire_segmented_control.dart';
 import '../widgets/euphire_toast.dart';
 import '../widgets/report_rating_widget.dart';
+import 'client_details_screen.dart';
 import 'transcript_screen.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
@@ -196,13 +199,20 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: false,
         title: Text(t.report_tab, style: theme.textTheme.titleLarge),
         actions: [
-          // Rating sits to the LEFT of Copy (i.e. first in the actions
-          // list) — it's report-scoped UI, so it only shows once the
+          // Rating sits to the LEFT of the icon buttons (i.e. first in the
+          // actions list) — it's report-scoped UI, so it only shows once the
           // GetSessionDetails fetch has resolved a report we can target.
           if (_data != null && _data!.reports.isNotEmpty)
             ReportRatingWidget(reportId: _data!.reports.first.id),
+          // Send action plan to patient — replaces the old pinned bottom bar.
+          IconButton(
+            tooltip: t.action_plan_send_button,
+            icon: const Icon(Icons.outgoing_mail),
+            onPressed: _data == null ? null : _onSendActionPlan,
+          ),
           IconButton(
             tooltip: 'Skopiuj raporty',
             icon: const Icon(Icons.copy),
@@ -370,11 +380,41 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                     ),
                   );
                 }),
+                const SizedBox(height: 8),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// Extracts the action plan from [reportMarkdown] and opens the existing
+  /// note editor prefilled, in action-plan mode (Save / Save+Send). The
+  /// "send" is SIMULATED — no backend call. The patient e-mail is resolved
+  /// from the local patient-contact store so the editor's send-gate reflects
+  /// the real captured address (null when none is on file).
+  void _onSendActionPlan() {
+    final data = _data;
+    if (data == null || data.reports.isEmpty) return;
+    final reportMarkdown = _ReportPayload.parse(data.reports.first).reportMarkdown;
+    final draft = extractActionPlan(
+      reportMarkdown,
+      sessionDate: data.session.createdAt,
+      titlePrefix: AppLocalizations.of(context).action_plan_default_title,
+    );
+    final email = ref.read(patientEmailProvider(data.session.patientFileId));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NoteEditorScreen(
+          patientId: data.session.patientFileId,
+          actionPlanMode: true,
+          sourceSessionId: widget.sessionId,
+          initialTitle: draft.title,
+          initialText: draft.text,
+          patientEmail: email,
+        ),
+      ),
     );
   }
 

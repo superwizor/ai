@@ -9,3 +9,12 @@
 SELECT organization_id
 FROM users
 WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: GetUserDisplayName :one
+-- first_name + last_name for a user (therapist), used by
+-- SavePatientNote to populate the action-plan e-mail's
+-- therapist_display_name. Both columns are NOT NULL on the users table
+-- (migration 000003) so no null handling is needed here.
+SELECT first_name, last_name
+FROM users
+WHERE id = $1 AND deleted_at IS NULL;

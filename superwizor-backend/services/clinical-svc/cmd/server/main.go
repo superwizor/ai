@@ -30,6 +30,7 @@ import (
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	clinicalv1connect "github.com/superwizor-ai/backend/gen/go/clinical/v1/clinicalv1connect"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	"connectrpc.com/connect"
 
 	"github.com/superwizor-ai/backend/pkg/connectmd"
@@ -224,7 +225,26 @@ func main() {
 		slog.Info("clinical-svc: BILLING_SVC_URL unset — GetMyBillingState will return Unavailable")
 	}
 
-	srv := grpcadapter.NewServer(pool, queries, identityClient, billingClient, crypto, sessionEvents, version)
+	// Notification client (docs/22). When NOTIFICATION_SVC_URL is set,
+	// SavePatientNote's send-to-patient path proxies to
+	// notification-svc.SendActionPlanEmail. Without it, the send leg
+	// returns Unavailable("EMAIL_NOT_CONFIGURED") — the note is still
+	// saved. Same OIDC+TLS wiring as the billing client.
+	var notificationClient notificationv1.NotificationServiceClient
+	if notificationURL := os.Getenv("NOTIFICATION_SVC_URL"); notificationURL != "" {
+		c, nErr := newNotificationClient(ctx, notificationURL)
+		if nErr != nil {
+			slog.Error("notification client init failed", "url", notificationURL, "error", nErr)
+			// Fail-soft — the rest of clinical-svc works without it.
+		} else {
+			notificationClient = c
+			slog.Info("clinical-svc: notification-svc client wired", "url", notificationURL)
+		}
+	} else {
+		slog.Info("clinical-svc: NOTIFICATION_SVC_URL unset — SavePatientNote send path returns EMAIL_NOT_CONFIGURED")
+	}
+
+	srv := grpcadapter.NewServer(pool, queries, identityClient, billingClient, notificationClient, crypto, sessionEvents, version)
 
 	tp := initTracer()
 	defer func() { _ = tp.Shutdown(ctx) }()
@@ -397,4 +417,51 @@ func newBillingClient(ctx context.Context, serviceURL string) (billingv1.Billing
 		return nil, err
 	}
 	return billingv1.NewBillingServiceClient(conn), nil
+}
+
+// newNotificationClient dials notification-svc with the same OIDC+TLS
+// (https) / insecure (http) wiring as newBillingClient. Used by
+// SavePatientNote to deliver action-plan e-mails (docs/22).
+func newNotificationClient(ctx context.Context, serviceURL string) (notificationv1.NotificationServiceClient, error) {
+	if len(serviceURL) >= 5 && serviceURL[:5] == "https" {
+		tokenSource, err := idtoken.NewTokenSource(ctx, serviceURL)
+		if err != nil {
+			return nil, fmt.Errorf("idtoken: %w", err)
+		}
+		u, err := url.Parse(serviceURL)
+		if err != nil {
+			return nil, fmt.Errorf("parse url: %w", err)
+		}
+		target := u.Host
+		if u.Port() == "" {
+			target = u.Host + ":443"
+		}
+		conn, err := grpc.NewClient(target,
+			grpc.WithTransportCredentials(credentials.NewTLS(nil)),
+			grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
+			// See newBillingClient for the Cloud Run keepalive rationale.
+			grpc.WithKeepaliveParams(keepalive.ClientParameters{
+				Time:                30 * time.Second,
+				Timeout:             10 * time.Second,
+				PermitWithoutStream: true,
+			}),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("dial: %w", err)
+		}
+		return notificationv1.NewNotificationServiceClient(conn), nil
+	}
+	u, err := url.Parse(serviceURL)
+	if err != nil {
+		return nil, err
+	}
+	target := u.Host
+	if target == "" {
+		target = serviceURL
+	}
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	return notificationv1.NewNotificationServiceClient(conn), nil
 }

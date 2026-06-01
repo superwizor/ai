@@ -78,6 +78,57 @@ func (a *ConnectAdapter) DeletePatientUser(ctx context.Context, req *connect.Req
 	return connect.NewResponse(resp), nil
 }
 
+// Patient notes + action plan (docs/22) — mechanical 1:1 Connect wrappers
+// over the *Server gRPC handlers in patient_notes.go.
+
+func (a *ConnectAdapter) CreatePatientNote(ctx context.Context, req *connect.Request[clinicalv1.CreatePatientNoteRequest]) (*connect.Response[clinicalv1.PatientNote], error) {
+	resp, err := a.s.CreatePatientNote(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) ListPatientNotes(ctx context.Context, req *connect.Request[clinicalv1.ListPatientNotesRequest]) (*connect.Response[clinicalv1.ListPatientNotesResponse], error) {
+	resp, err := a.s.ListPatientNotes(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) UpdatePatientNote(ctx context.Context, req *connect.Request[clinicalv1.UpdatePatientNoteRequest]) (*connect.Response[clinicalv1.PatientNote], error) {
+	resp, err := a.s.UpdatePatientNote(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) DeletePatientNote(ctx context.Context, req *connect.Request[clinicalv1.DeletePatientNoteRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.DeletePatientNote(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) GetActionPlanDraft(ctx context.Context, req *connect.Request[clinicalv1.GetActionPlanDraftRequest]) (*connect.Response[clinicalv1.ActionPlanDraft], error) {
+	resp, err := a.s.GetActionPlanDraft(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) SavePatientNote(ctx context.Context, req *connect.Request[clinicalv1.SavePatientNoteRequest]) (*connect.Response[clinicalv1.SavePatientNoteResponse], error) {
+	resp, err := a.s.SavePatientNote(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) ListModalities(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[clinicalv1.ListModalitiesResponse], error) {
 	resp, err := a.s.ListModalities(ctx, req.Msg)
 	if err != nil {

@@ -43,10 +43,13 @@ type fakeQuerier struct {
 	updateSessionStatusFn         func(ctx context.Context, arg db.UpdateSessionStatusParams) error
 	getUserOrganizationIDFn       func(ctx context.Context, id uuid.UUID) (pgtype.UUID, error)
 
+	setPatientEmailFn func(ctx context.Context, arg db.SetPatientEmailParams) error
+
 	// Call recorders — set non-nil to record args for later assertion.
 	deletePatientUserCalls    []uuid.UUID
 	hardDeletePatientFileArgs []db.HardDeletePatientFileParams
 	updateSessionStatusCalls  []db.UpdateSessionStatusParams
+	setPatientEmailCalls      []db.SetPatientEmailParams
 }
 
 func (f *fakeQuerier) GetPatientFile(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
@@ -105,6 +108,17 @@ func (f *fakeQuerier) UpdateSessionStatus(ctx context.Context, arg db.UpdateSess
 
 func (f *fakeQuerier) GetUserOrganizationID(ctx context.Context, id uuid.UUID) (pgtype.UUID, error) {
 	return f.getUserOrganizationIDFn(ctx, id)
+}
+
+// SetPatientEmail records the call and defaults to a no-op success so
+// UpdatePatientUser tests that don't care about the e-mail leg keep
+// passing. Set setPatientEmailFn to assert behavior or inject an error.
+func (f *fakeQuerier) SetPatientEmail(ctx context.Context, arg db.SetPatientEmailParams) error {
+	f.setPatientEmailCalls = append(f.setPatientEmailCalls, arg)
+	if f.setPatientEmailFn == nil {
+		return nil
+	}
+	return f.setPatientEmailFn(ctx, arg)
 }
 
 // fakeTxOpener — supplies Begin/Commit/Rollback failure injection plus

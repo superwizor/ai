@@ -134,3 +134,14 @@ DELETE FROM patient_files WHERE id = $1 AND therapist_id = $2;
 -- Firestore + inbox cleanup downstream. After the hard delete the
 -- rows are gone and we'd have nothing to publish.
 SELECT id FROM sessions WHERE patient_file_id = $1 AND deleted_at IS NULL;
+
+-- name: SetPatientEmail :exec
+-- Sets (or clears) the patient's contact e-mail on the kartoteka
+-- (migration 000040). Plaintext contact PII, consistent with
+-- working_alias. An empty string from the caller is normalized to NULL
+-- so "no e-mail" is a single canonical representation. Authz
+-- (therapist ownership) is enforced in the handler before this runs.
+UPDATE patient_files SET
+  patient_email = NULLIF(sqlc.arg(patient_email)::text, ''),
+  updated_at = now()
+WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
