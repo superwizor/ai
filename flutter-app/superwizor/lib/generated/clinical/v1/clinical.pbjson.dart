@@ -550,14 +550,15 @@ const SavePatientNoteResponse$json = {
       '10': 'note'
     },
     {'1': 'sent', '3': 2, '4': 1, '5': 8, '10': 'sent'},
+    {'1': 'send_error', '3': 3, '4': 1, '5': 9, '10': 'sendError'},
   ],
 };
 
 /// Descriptor for `SavePatientNoteResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List savePatientNoteResponseDescriptor =
-    $convert.base64Decode(
-        'ChdTYXZlUGF0aWVudE5vdGVSZXNwb25zZRIsCgRub3RlGAEgASgLMhguY2xpbmljYWwudjEuUG'
-        'F0aWVudE5vdGVSBG5vdGUSEgoEc2VudBgCIAEoCFIEc2VudA==');
+final $typed_data.Uint8List savePatientNoteResponseDescriptor = $convert.base64Decode(
+    'ChdTYXZlUGF0aWVudE5vdGVSZXNwb25zZRIsCgRub3RlGAEgASgLMhguY2xpbmljYWwudjEuUG'
+    'F0aWVudE5vdGVSBG5vdGUSEgoEc2VudBgCIAEoCFIEc2VudBIdCgpzZW5kX2Vycm9yGAMgASgJ'
+    'UglzZW5kRXJyb3I=');
 
 @$core.Deprecated('Use deletePatientUserRequestDescriptor instead')
 const DeletePatientUserRequest$json = {

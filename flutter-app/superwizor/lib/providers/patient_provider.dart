@@ -345,31 +345,38 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
 
   Future<void> deleteSession(String patientId, String sessionId) async {
     final client = ref.read(grpcClientsProvider).clinical;
+
+    // Only the server delete can legitimately fail (auth, not-found,
+    // backend error) — let that propagate so the UI surfaces it.
     try {
       await client.deleteSession(
           grpc_clinical.DeleteSessionRequest(sessionId: sessionId));
+    } catch (e) {
+      debugPrint('Error deleting session (server): $e');
+      rethrow;
+    }
 
-      // Local optimistic update: drop the row from both the live
-      // state and the cached DTO list. The cache mutation keeps
-      // subsequent reads consistent without a refresh round-trip.
+    // Server delete succeeded. Local cache cleanup + state update is
+    // best-effort: a Hive/cache hiccup here must NOT bubble up and make a
+    // successful delete look like a failure (which left the row on screen
+    // and the sheet open).
+    try {
+      // Drop the row from the cached DTO list + live state.
       await _repo?.removeSessionLocally(patientId, sessionId);
-
-      // Also evict the cached session_details for this session — the
-      // backend just CASCADE-deleted transcripts/reports/audio_uploads
-      // (migration 000012); if we left the entry in cache, a stale
-      // navigation back to it would render PHI for a session that no
-      // longer exists server-side.
+      // Evict the cached session_details — the backend CASCADE-deleted
+      // transcripts/reports/audio_uploads (migration 000012); a stale
+      // entry would render PHI for a session that no longer exists.
       await _detailsRepo?.invalidate(sessionId);
 
       final current = state.whenOrNull(data: (d) => d);
-      if (current == null) return;
-      final sessions = current[patientId] ?? [];
-      final updatedSessions =
-          sessions.where((s) => s.id != sessionId).toList();
-      state = AsyncValue.data({...current, patientId: updatedSessions});
+      if (current != null) {
+        final sessions = current[patientId] ?? [];
+        final updatedSessions =
+            sessions.where((s) => s.id != sessionId).toList();
+        state = AsyncValue.data({...current, patientId: updatedSessions});
+      }
     } catch (e) {
-      debugPrint('Error deleting session: $e');
-      rethrow;
+      debugPrint('deleteSession: local cache cleanup failed (ignored): $e');
     }
   }
 

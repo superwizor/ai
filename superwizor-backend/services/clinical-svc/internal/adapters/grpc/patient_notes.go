@@ -412,19 +412,41 @@ func (s *Server) SavePatientNote(ctx context.Context, req *clinicalv1.SavePatien
 	}
 
 	sent := false
+	sendError := ""
 	if req.SendToPatient {
-		note, err = s.sendActionPlan(ctx, therapistID, note, pf)
-		if err != nil {
-			return nil, err
+		updated, serr := s.sendActionPlan(ctx, therapistID, note, pf)
+		if serr != nil {
+			// The note is ALREADY persisted. A send failure must not look
+			// like a save failure — and must not make the client retry
+			// into a duplicate note. Surface a stable reason code on the
+			// (successful) response and keep the saved note.
+			sendError = sendErrorCode(serr)
+			slog.WarnContext(ctx, "SavePatientNote: action plan saved but not sent",
+				"note_id", note.ID, "reason", sendError, "error", serr)
+		} else {
+			note = updated
+			sent = true
 		}
-		sent = true
 	}
 
 	protoNote, err := s.toProtoPatientNote(ctx, note)
 	if err != nil {
 		return nil, err
 	}
-	return &clinicalv1.SavePatientNoteResponse{Note: protoNote, Sent: sent}, nil
+	return &clinicalv1.SavePatientNoteResponse{Note: protoNote, Sent: sent, SendError: sendError}, nil
+}
+
+// sendErrorCode maps a sendActionPlan error to a stable reason code for
+// SavePatientNoteResponse.send_error.
+func sendErrorCode(err error) string {
+	switch status.Code(err) {
+	case codes.FailedPrecondition:
+		return "PATIENT_EMAIL_MISSING"
+	case codes.Unavailable:
+		return "EMAIL_NOT_CONFIGURED"
+	default:
+		return "EMAIL_SEND_FAILED"
+	}
 }
 
 // sendActionPlan resolves the patient e-mail, calls notification-svc, and

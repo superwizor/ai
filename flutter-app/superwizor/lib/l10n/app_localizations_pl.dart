@@ -1361,6 +1361,14 @@ class AppLocalizationsPl extends AppLocalizations {
   String get action_plan_sent_toast => 'Plan działania wysłany do klienta';
 
   @override
+  String get action_plan_saved_not_sent =>
+      'Notatka zapisana, ale nie udało się wysłać e-maila. Spróbuj wysłać ponownie później.';
+
+  @override
+  String get session_delete_error =>
+      'Nie udało się usunąć sesji. Spróbuj ponownie.';
+
+  @override
   String get action_plan_default_title => 'Plan działania';
 
   @override

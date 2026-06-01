@@ -1864,10 +1864,12 @@ class SavePatientNoteResponse extends $pb.GeneratedMessage {
   factory SavePatientNoteResponse({
     PatientNote? note,
     $core.bool? sent,
+    $core.String? sendError,
   }) {
     final result = create();
     if (note != null) result.note = note;
     if (sent != null) result.sent = sent;
+    if (sendError != null) result.sendError = sendError;
     return result;
   }
 
@@ -1887,6 +1889,7 @@ class SavePatientNoteResponse extends $pb.GeneratedMessage {
     ..aOM<PatientNote>(1, _omitFieldNames ? '' : 'note',
         subBuilder: PatientNote.create)
     ..aOB(2, _omitFieldNames ? '' : 'sent')
+    ..aOS(3, _omitFieldNames ? '' : 'sendError')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1928,6 +1931,22 @@ class SavePatientNoteResponse extends $pb.GeneratedMessage {
   $core.bool hasSent() => $_has(1);
   @$pb.TagNumber(2)
   void clearSent() => $_clearField(2);
+
+  /// When send_to_patient was set but delivery failed, the note is
+  /// STILL saved (note above is populated) and this carries a stable
+  /// reason code so the UI can show "saved, but not sent" instead of a
+  /// false "save failed". Empty when sent==true or no send was requested.
+  ///   PATIENT_EMAIL_MISSING — no patient e-mail on file
+  ///   EMAIL_NOT_CONFIGURED  — notification-svc not wired (local dev)
+  ///   EMAIL_SEND_FAILED     — notification-svc/Resend rejected the send
+  @$pb.TagNumber(3)
+  $core.String get sendError => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set sendError($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSendError() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSendError() => $_clearField(3);
 }
 
 /// DeletePatientUser — RODO-style erasure of a patient. The user row

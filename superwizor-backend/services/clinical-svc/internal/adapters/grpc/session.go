@@ -276,11 +276,18 @@ func (s *Server) DeleteSession(ctx context.Context, req *clinicalv1.DeleteSessio
 		TherapistID: therapistID,
 	})
 	if err != nil {
+		// Log it — a silent Internal here is what made "Tak, usuń do
+		// nothing" undiagnosable. Most likely cause if it ever fires: a
+		// new table referencing sessions(id) without ON DELETE CASCADE.
+		slog.ErrorContext(ctx, "DeleteSession: hard delete failed",
+			"session_id", sessionID, "therapist_id", therapistID, "error", err)
 		return nil, status.Errorf(codes.Internal, "delete session: %v", err)
 	}
 	if rows == 0 {
 		// Either the session never existed or belongs to another
 		// therapist. Same 404 to avoid enumeration.
+		slog.WarnContext(ctx, "DeleteSession: no row deleted (not found or not owned)",
+			"session_id", sessionID, "therapist_id", therapistID)
 		return nil, status.Error(codes.NotFound, "session not found")
 	}
 

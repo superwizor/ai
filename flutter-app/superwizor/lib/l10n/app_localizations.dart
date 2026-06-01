@@ -2459,6 +2459,18 @@ abstract class AppLocalizations {
   /// **'Plan działania wysłany do klienta'**
   String get action_plan_sent_toast;
 
+  /// No description provided for @action_plan_saved_not_sent.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka zapisana, ale nie udało się wysłać e-maila. Spróbuj wysłać ponownie później.'**
+  String get action_plan_saved_not_sent;
+
+  /// No description provided for @session_delete_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się usunąć sesji. Spróbuj ponownie.'**
+  String get session_delete_error;
+
   /// No description provided for @action_plan_default_title.
   ///
   /// In pl, this message translates to:

@@ -280,6 +280,14 @@ message SavePatientNoteRequest {
 message SavePatientNoteResponse {
     PatientNote note = 1;
     bool sent = 2;                 // true if the e-mail was sent
+    // When send_to_patient was set but delivery failed, the note is
+    // STILL saved (note above is populated) and this carries a stable
+    // reason code so the UI can show "saved, but not sent" instead of a
+    // false "save failed". Empty when sent==true or no send was requested.
+    //   PATIENT_EMAIL_MISSING — no patient e-mail on file
+    //   EMAIL_NOT_CONFIGURED  — notification-svc not wired (local dev)
+    //   EMAIL_SEND_FAILED     — notification-svc/Resend rejected the send
+    string send_error = 3;
 }
 
 // DeletePatientUser — RODO-style erasure of a patient. The user row

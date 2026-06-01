@@ -336,24 +336,41 @@ func TestUpdatePatientUser_WrongTherapistReturnsNotFound(t *testing.T) {
 	}
 }
 
-// patient_id NULL means the paired user was already wiped via
-// DeletePatientUser. Refuse with FailedPrecondition instead of
-// silently recreating the user — therapist should make a deliberate
-// choice (recreate the whole kartoteka).
-func TestUpdatePatientUser_NullPatientIDIsFailedPrecondition(t *testing.T) {
+// patient_id NULL means a pseudonymous kartoteka (no paired user). The
+// patient e-mail lives on patient_files, independent of the users row, so
+// UpdatePatientUser must STILL persist the e-mail and succeed — not bail.
+// The name/language update is simply skipped (no user row to touch). This
+// is the fix for the "send action plan" gate never seeing an address for
+// pseudonymous patients.
+func TestUpdatePatientUser_NullPatientIDPersistsEmail(t *testing.T) {
 	therapistID := uuid.New()
 	pfID := uuid.New()
+	userUpdated := false
 	q := &fakeQuerier{
 		getPatientFileFn: func(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
 			return patientFileFixture(id, therapistID, nil), nil
+		},
+		getPatientFileWithUserFn: func(ctx context.Context, id uuid.UUID) (db.GetPatientFileWithUserRow, error) {
+			return db.GetPatientFileWithUserRow{}, nil
+		},
+		updatePatientUserFn: func(ctx context.Context, arg db.UpdatePatientUserParams) (db.UpdatePatientUserRow, error) {
+			userUpdated = true
+			return db.UpdatePatientUserRow{}, nil
 		},
 	}
 	srv := newTestServer(q, nil, nil)
 	_, err := srv.UpdatePatientUser(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientUserRequest{
 		PatientFileId: pfID.String(),
+		PatientEmail:  "liniana@example.com",
 	})
-	if got := codeOf(err); got != codes.FailedPrecondition {
-		t.Fatalf("want FailedPrecondition, got %v", got)
+	if err != nil {
+		t.Fatalf("want success for pseudonymous kartoteka, got %v", err)
+	}
+	if len(q.setPatientEmailCalls) != 1 || q.setPatientEmailCalls[0].PatientEmail != "liniana@example.com" {
+		t.Fatalf("expected SetPatientEmail called once with the e-mail, got %+v", q.setPatientEmailCalls)
+	}
+	if userUpdated {
+		t.Fatalf("UpdatePatientUser (name/language) must be skipped when patient_id is NULL")
 	}
 }
 

@@ -499,18 +499,14 @@ func (s *Server) UpdatePatientUser(ctx context.Context, req *clinicalv1.UpdatePa
 	if pf.TherapistID != therapistID {
 		return nil, status.Error(codes.NotFound, "patient file not found")
 	}
-	if !pf.PatientID.Valid {
-		// No paired user exists (probably wiped via DeletePatientUser).
-		// Refuse rather than auto-recreate — caller should make a
-		// deliberate decision (e.g. recreate the kartoteka).
-		return nil, status.Error(codes.FailedPrecondition,
-			"this kartoteka has no patient user attached")
-	}
-
-	// patient_email lives on patient_files (migration 000040), not the
-	// paired users row. Persist it alongside the user-field edit. Empty
-	// string clears the column (SetPatientEmail NULLIFs ''); a concrete
-	// value sets it.
+	// patient_email lives on patient_files (migration 000040), independent
+	// of the paired users row — so persist it even for a pseudonymous
+	// kartoteka that has no patient user attached (patient_id NULL, which
+	// is the common case). Empty string clears the column (SetPatientEmail
+	// NULLIFs ''); a concrete value sets it. Previously this whole handler
+	// bailed with FailedPrecondition when there was no paired user, so the
+	// e-mail edit was silently dropped for pseudonymous patients and the
+	// "send action plan" gate never saw an address.
 	if err := s.queries.SetPatientEmail(ctx, db.SetPatientEmailParams{
 		ID:           pfID,
 		PatientEmail: req.PatientEmail,
@@ -518,13 +514,18 @@ func (s *Server) UpdatePatientUser(ctx context.Context, req *clinicalv1.UpdatePa
 		return nil, status.Errorf(codes.Internal, "set patient email: %v", err)
 	}
 
-	if _, err := s.queries.UpdatePatientUser(ctx, db.UpdatePatientUserParams{
-		ID:           uuid.UUID(pf.PatientID.Bytes),
-		FirstName:    req.FirstName,
-		LastName:     req.LastName,
-		LanguageCode: req.LanguageCode,
-	}); err != nil {
-		return nil, status.Errorf(codes.Internal, "update patient user: %v", err)
+	// Name / language live on the paired users row. Only update them when a
+	// patient user exists; a pseudonymous kartoteka has none — that's not
+	// an error, the e-mail edit above still applied.
+	if pf.PatientID.Valid {
+		if _, err := s.queries.UpdatePatientUser(ctx, db.UpdatePatientUserParams{
+			ID:           uuid.UUID(pf.PatientID.Bytes),
+			FirstName:    req.FirstName,
+			LastName:     req.LastName,
+			LanguageCode: req.LanguageCode,
+		}); err != nil {
+			return nil, status.Errorf(codes.Internal, "update patient user: %v", err)
+		}
 	}
 
 	// Re-read with JOIN so the response carries the now-current

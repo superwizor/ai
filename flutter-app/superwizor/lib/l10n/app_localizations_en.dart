@@ -1344,6 +1344,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get action_plan_sent_toast => 'Action plan sent to client';
 
   @override
+  String get action_plan_saved_not_sent =>
+      'Note saved, but the e-mail couldn\'t be sent. Try sending again later.';
+
+  @override
+  String get session_delete_error =>
+      'Couldn\'t delete the session. Please try again.';
+
+  @override
   String get action_plan_default_title => 'Action plan';
 
   @override

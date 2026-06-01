@@ -1704,7 +1704,17 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                                 .read(sessionsProvider.notifier)
                                 .deleteSession(widget.patientId, widget.session.id);
                             if (ctx.mounted) Navigator.pop(ctx);
-                          } catch (_) {}
+                          } catch (e) {
+                            // Don't swallow the error — that's exactly what
+                            // made the button look dead. Close the sheet and
+                            // tell the user it failed.
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (mounted) {
+                              EuphireToast.error(context,
+                                  message: AppLocalizations.of(context)
+                                      .session_delete_error);
+                            }
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: EuphireColors.magma,
@@ -2455,6 +2465,10 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   late TextEditingController _bodyCtrl;
   late FocusNode _bodyFocus;
   bool _saved = false;
+  // Tracks the server note id once it exists, so a retry (e.g. after a
+  // failed e-mail send) UPDATES the same note instead of creating a
+  // duplicate. Seeded from an existing note; updated from each save.
+  String _noteId = '';
 
   bool get _isEditing => widget.existingNote != null;
   bool get _hasContent =>
@@ -2475,6 +2489,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     _bodyCtrl = TextEditingController(
         text: widget.existingNote?.text ?? widget.initialText ?? '');
     _bodyFocus = FocusNode();
+    _noteId = widget.existingNote?.id ?? '';
   }
 
   @override
@@ -2548,27 +2563,42 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     try {
       final repo =
           ClinicalNotesRepository(ref.read(grpcClientsProvider).clinical);
-      await repo.savePatientNote(
+      final resp = await repo.savePatientNote(
         widget.patientId,
-        noteId: widget.existingNote?.id ?? '',
+        noteId: _noteId,
         title: _titleCtrl.text.trim(),
         text: _bodyCtrl.text.trim(),
         kind: widget.actionPlanMode ? NoteKind.actionPlan : NoteKind.freeNote,
         sourceSessionId: widget.sourceSessionId ?? '',
         sendToPatient: true,
       );
+      // The server ALWAYS persists the note first — a send failure never
+      // means the save failed. Remember the id so a retry updates this
+      // same note instead of creating a duplicate.
       _saved = true;
-      // Reconcile the local list with the server (the note now exists /
-      // is marked sent).
-      await ref
-          .read(patientNotesMapProvider.notifier)
-          .refreshNotes(widget.patientId);
+      if (resp.note.id.isNotEmpty) _noteId = resp.note.id;
+      if (mounted) {
+        await ref
+            .read(patientNotesMapProvider.notifier)
+            .refreshNotes(widget.patientId);
+      }
       if (!mounted) return;
-      HapticFeedback.mediumImpact();
-      EuphireToast.success(context, message: l.action_plan_sent_toast);
-      Navigator.pop(context);
+      if (resp.sent) {
+        HapticFeedback.mediumImpact();
+        EuphireToast.success(context, message: l.action_plan_sent_toast);
+        Navigator.pop(context);
+      } else if (resp.sendError == 'PATIENT_EMAIL_MISSING') {
+        // Saved, but no e-mail on file — prompt to add one and retry.
+        _showNoEmailSheet(l);
+      } else {
+        // Saved, but delivery failed (provider not configured / domain not
+        // verified). Keep the editor open so the send can be retried; the
+        // note itself is safe.
+        EuphireToast.error(context, message: l.action_plan_saved_not_sent);
+      }
     } on PatientEmailMissingException {
-      // Note was saved server-side, but there's no e-mail to send to.
+      // Backward-compat with an older backend that returned
+      // FAILED_PRECONDITION. The note was still saved server-side.
       _saved = true;
       if (mounted) {
         await ref
