@@ -504,12 +504,12 @@
   "@action_plan_send_confirm_body": {
     "placeholders": { "email": { "type": "String" } }
   },
-  "action_plan_send_sim_caption": "(simulation — e-mail delivery will be wired to the backend)",
   "action_plan_send_cancel": "Cancel",
   "action_plan_send_confirm_action": "Send",
-  "action_plan_sent_toast": "Action plan saved and sent (simulation)",
+  "action_plan_sent_toast": "Action plan sent to client",
   "action_plan_default_title": "Action plan",
   "action_plan_fill_email_hint": "Fill in the client's e-mail address and resend.",
+  "note_save_error": "Couldn't save the note",
 
   "note_send_to_client": "Send to client",
   "note_send_confirm_title": "Send note to client?",
@@ -517,5 +517,5 @@
   "@note_send_confirm_body": {
     "placeholders": { "email": { "type": "String" } }
   },
-  "note_sent_toast": "Note sent to client (simulation)"
+  "note_sent_toast": "Note sent to client"
 }

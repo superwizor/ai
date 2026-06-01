@@ -29,6 +29,7 @@ import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/patient_contact_provider.dart';
+import '../repositories/clinical_notes_repository.dart';
 import '../repositories/session_details_repository.dart';
 import '../theme/euphire_theme.dart';
 import '../utils/action_plan_extractor.dart';
@@ -389,30 +390,61 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     );
   }
 
-  /// Extracts the action plan from [reportMarkdown] and opens the existing
-  /// note editor prefilled, in action-plan mode (Save / Save+Send). The
-  /// "send" is SIMULATED — no backend call. The patient e-mail is resolved
-  /// from the local patient-contact store so the editor's send-gate reflects
-  /// the real captured address (null when none is on file).
-  void _onSendActionPlan() {
+  /// Fetches the server-side action-plan draft (GetActionPlanDraft) and
+  /// opens the note editor prefilled, in action-plan mode (Save /
+  /// Save+Send). The send itself is a real SavePatientNote call from the
+  /// editor. The patient e-mail availability comes from the server draft
+  /// (patientHasEmail / patientEmailMasked); on RPC failure we fall back
+  /// to the local report extractor + the cached patient e-mail.
+  Future<void> _onSendActionPlan() async {
     final data = _data;
     if (data == null || data.reports.isEmpty) return;
-    final reportMarkdown = _ReportPayload.parse(data.reports.first).reportMarkdown;
-    final draft = extractActionPlan(
-      reportMarkdown,
-      sessionDate: data.session.createdAt,
-      titlePrefix: AppLocalizations.of(context).action_plan_default_title,
-    );
-    final email = ref.read(patientEmailProvider(data.session.patientFileId));
+    final l = AppLocalizations.of(context);
+    final patientFileId = data.session.patientFileId;
+
+    String title = l.action_plan_default_title;
+    String text = '';
+    bool patientHasEmail = false;
+    String? patientEmail;
+
+    try {
+      final repo = ClinicalNotesRepository(ref.read(grpcClientsProvider).clinical);
+      final draft = await repo.getActionPlanDraft(widget.sessionId);
+      if (draft.suggestedTitle.isNotEmpty) title = draft.suggestedTitle;
+      text = draft.suggestedText;
+      patientHasEmail = draft.patientHasEmail;
+      // The masked e-mail is for display only; the editor's send-gate
+      // uses patientHasEmail. Resolve the real (unmasked) e-mail from the
+      // server-backed patient list so the confirm sheet can mask it
+      // consistently.
+      patientEmail = ref.read(patientEmailProvider(patientFileId));
+    } catch (e) {
+      debugPrint('[report] getActionPlanDraft failed, '
+          'falling back to local extractor: $e');
+      final reportMarkdown =
+          _ReportPayload.parse(data.reports.first).reportMarkdown;
+      final draft = extractActionPlan(
+        reportMarkdown,
+        sessionDate: data.session.createdAt,
+        titlePrefix: l.action_plan_default_title,
+      );
+      title = draft.title;
+      text = draft.text;
+      patientEmail = ref.read(patientEmailProvider(patientFileId));
+      patientHasEmail = patientEmail != null && patientEmail.isNotEmpty;
+    }
+
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => NoteEditorScreen(
-          patientId: data.session.patientFileId,
+          patientId: patientFileId,
           actionPlanMode: true,
           sourceSessionId: widget.sessionId,
-          initialTitle: draft.title,
-          initialText: draft.text,
-          patientEmail: email,
+          initialTitle: title,
+          initialText: text,
+          patientEmail: patientEmail,
+          patientHasEmail: patientHasEmail,
         ),
       ),
     );

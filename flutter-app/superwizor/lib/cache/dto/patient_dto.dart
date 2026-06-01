@@ -20,6 +20,9 @@ class PatientDto {
   final String modalityCode;
   final String languageCode;
   final int sessionCount;
+  // Patient contact e-mail (PatientFile.patientEmail, docs/22). Empty
+  // when none on file.
+  final String email;
 
   const PatientDto({
     required this.id,
@@ -28,6 +31,7 @@ class PatientDto {
     required this.modalityCode,
     required this.languageCode,
     required this.sessionCount,
+    this.email = '',
   });
 
   Map<String, dynamic> toJson() => {
@@ -37,6 +41,7 @@ class PatientDto {
         'modalityCode': modalityCode,
         'languageCode': languageCode,
         'sessionCount': sessionCount,
+        'email': email,
       };
 
   factory PatientDto.fromJson(Map<String, dynamic> j) => PatientDto(
@@ -46,6 +51,7 @@ class PatientDto {
         modalityCode: j['modalityCode'] as String? ?? '',
         languageCode: j['languageCode'] as String? ?? '',
         sessionCount: (j['sessionCount'] as num?)?.toInt() ?? 0,
+        email: j['email'] as String? ?? '',
       );
 
   // sessionCount is not on the proto today; if/when ListPatientFiles
@@ -62,6 +68,7 @@ class PatientDto {
         modalityCode: p.modalityCode,
         languageCode: p.patientLanguageCode,
         sessionCount: sessionCount,
+        email: p.patientEmail,
       );
 
   Patient toModel() => Patient(
@@ -71,6 +78,7 @@ class PatientDto {
         modalityCode: modalityCode,
         languageCode: languageCode,
         sessionCount: sessionCount,
+        email: email,
       );
 
   factory PatientDto.fromModel(Patient p) => PatientDto(
@@ -80,5 +88,6 @@ class PatientDto {
         modalityCode: p.modalityCode,
         languageCode: p.languageCode,
         sessionCount: p.sessionCount,
+        email: p.email,
       );
 }

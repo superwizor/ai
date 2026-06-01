@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/app_localizations.dart';
 import '../models/patient.dart';
 import '../providers/patient_provider.dart';
-import '../providers/patient_contact_provider.dart';
 import '../theme/euphire_theme.dart';
 import 'euphire_toast.dart';
 import 'euphire_button.dart';
@@ -38,11 +37,9 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
     super.initState();
     _firstNameController = TextEditingController(text: widget.patient.firstName);
     _lastNameController = TextEditingController(text: widget.patient.lastName);
-    // Seed from the local patient-contact store (e-mail isn't on the
-    // Patient model / backend yet). This moves to clinical-svc
-    // UpdatePatientUser (patient_email) per docs/22.
-    final storedEmail = ref.read(patientEmailProvider(widget.patient.id));
-    _emailController = TextEditingController(text: storedEmail ?? '');
+    // Seed from the server-backed patient file e-mail
+    // (PatientFile.patientEmail, docs/22).
+    _emailController = TextEditingController(text: widget.patient.email);
   }
 
   @override
@@ -190,18 +187,15 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
 
     setState(() => _saving = true);
     try {
+      // Persist first/last name + e-mail in one UpdatePatientUser call.
+      // The e-mail goes to PatientFile.patient_email (docs/22); an empty
+      // string clears it server-side.
       await ref.read(patientsProvider.notifier).updatePatientUser(
-        widget.patient.id,
-        firstName,
-        lastName,
-      );
-
-      // Persist the e-mail locally (Hive meta box). This moves to
-      // clinical-svc UpdatePatientUser (patient_email) per docs/22 once
-      // the backend accepts the field.
-      await ref
-          .read(patientContactsProvider.notifier)
-          .setEmail(widget.patient.id, email);
+            widget.patient.id,
+            firstName,
+            lastName,
+            email: email,
+          );
 
       if (mounted) {
         HapticFeedback.mediumImpact();

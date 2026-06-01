@@ -12,9 +12,11 @@ import '../models/patient.dart';
 import '../models/session.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
+import '../providers/grpc_provider.dart';
 import '../providers/patient_notes_provider.dart';
 import '../providers/patient_contact_provider.dart';
 import '../providers/viewed_reports_provider.dart';
+import '../repositories/clinical_notes_repository.dart';
 import '../l10n/app_localizations.dart';
 import '../uploads/cancel_upload_action.dart';
 import '../uploads/pending_upload.dart';
@@ -2236,12 +2238,13 @@ class _NoteCard extends ConsumerWidget {
     );
   }
 
-  /// Sends a note to the client. DOUBLE VALIDATION:
-  ///   1. Resolve the patient e-mail from the local contact store.
+  /// Sends a note to the client via the real SavePatientNote RPC
+  /// (send_to_patient=true). DOUBLE VALIDATION:
+  ///   1. Resolve the patient e-mail from the server-backed patient file.
   ///   2. If none on file → show a "no e-mail" sheet, do NOT send.
-  ///   3. Else → show a confirmation sheet (masked e-mail). On confirm the
-  ///      send is SIMULATED (no backend) and a success toast is shown.
-  /// This moves to a real notification-svc send per docs/22.
+  ///   3. Else → confirmation sheet (masked e-mail). On confirm we call
+  ///      SavePatientNote(noteId, sendToPatient:true); PATIENT_EMAIL_MISSING
+  ///      falls back to the no-email warning, success shows a real toast.
   void _sendNoteToClient(BuildContext context, WidgetRef ref,
       AppLocalizations l, String patientId, PatientNote note) {
     final email = ref.read(patientEmailProvider(patientId));
@@ -2315,11 +2318,10 @@ class _NoteCard extends ConsumerWidget {
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
-                onPressed: () {
-                  // SIMULATED send — no backend call.
+                onPressed: () async {
                   HapticFeedback.mediumImpact();
                   Navigator.pop(ctx);
-                  EuphireToast.success(context, message: l.note_sent_toast);
+                  await _doSendNote(context, ref, l, patientId, note);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: EuphireColors.ember,
@@ -2340,38 +2342,97 @@ class _NoteCard extends ConsumerWidget {
       ),
     );
   }
+
+  /// Performs the real SavePatientNote(send_to_patient=true) call for an
+  /// existing note. On PATIENT_EMAIL_MISSING shows the no-email hint; on
+  /// success a real "sent" toast. Refreshes the list so sent-state sticks.
+  Future<void> _doSendNote(BuildContext context, WidgetRef ref,
+      AppLocalizations l, String patientId, PatientNote note) async {
+    try {
+      final repo =
+          ClinicalNotesRepository(ref.read(grpcClientsProvider).clinical);
+      await repo.savePatientNote(
+        patientId,
+        noteId: note.id,
+        title: note.title,
+        text: note.text,
+        kind: note.kind.isNotEmpty ? note.kind : NoteKind.freeNote,
+        sourceSessionId: '',
+        sendToPatient: true,
+      );
+      await ref
+          .read(patientNotesMapProvider.notifier)
+          .refreshNotes(patientId);
+      if (context.mounted) {
+        EuphireToast.success(context, message: l.note_sent_toast);
+      }
+    } on PatientEmailMissingException {
+      if (context.mounted) {
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => _EuphireSheet(
+            title: l.action_plan_no_email_title,
+            body: l.action_plan_fill_email_hint,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: EuphireColors.ember,
+                    foregroundColor: EuphireColors.nocturne,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(l.common_understand,
+                      style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[note-send] failed: $e');
+      if (context.mounted) {
+        EuphireToast.error(context, message: l.note_save_error);
+      }
+    }
+  }
 }
 
 // ─── Note Editor Screen (full page, create or edit) ──────────────────
-
-/// Prototype scaffold: lets us exercise BOTH the "has email" and
-/// "no email" branches of the action-plan send flow until the backend
-/// resolves the patient's real e-mail address.
-///   false → patient has NO e-mail on file: "Wyślij" is disabled, only
-///           "Zapisz" works, and a hint asks to fill in the e-mail (this is
-///           the honest default — patient e-mail isn't available client-side).
-///   true  → simulate a patient WITH an e-mail: "Wyślij" enabled → confirm.
-const bool kSimulatePatientHasEmail = false;
 
 class NoteEditorScreen extends ConsumerStatefulWidget {
   final String patientId;
   final PatientNote? existingNote;
 
   /// Optional seed values (used only when [existingNote] is null), e.g. an
-  /// action-plan draft extracted from a report.
+  /// action-plan draft from GetActionPlanDraft.
   final String? initialTitle;
   final String? initialText;
 
   /// When true, renders the action-plan bottom bar (Save / Save+Send) and
-  /// enables the simulated send flow.
+  /// enables the real SavePatientNote send flow.
   final bool actionPlanMode;
 
-  /// Source session the action plan was extracted from (prototype metadata).
+  /// Source session the action plan was extracted from (server metadata,
+  /// stored on PatientNote.source_session_id).
   final String? sourceSessionId;
 
-  /// Patient e-mail, when known client-side. Currently always null (e-mail
-  /// is backend-only), so the send flow falls back to a simulated address.
+  /// Patient e-mail (PatientFile.patientEmail), when on file. Used to mask
+  /// the address in the confirm sheet. Null when none is on file.
   final String? patientEmail;
+
+  /// Whether the patient has an e-mail on file server-side. Drives the
+  /// send-gate. Defaults to (patientEmail != null && non-empty) when not
+  /// explicitly provided.
+  final bool? patientHasEmail;
 
   const NoteEditorScreen({
     super.key,
@@ -2382,6 +2443,7 @@ class NoteEditorScreen extends ConsumerStatefulWidget {
     this.actionPlanMode = false,
     this.sourceSessionId,
     this.patientEmail,
+    this.patientHasEmail,
   });
 
   @override
@@ -2423,58 +2485,134 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     super.dispose();
   }
 
-  /// Persists the note locally (Hive) without toasting or popping. Returns
-  /// false when there's nothing to save. Marks the editor as saved so the
-  /// discard guard won't fire on a later pop.
-  bool _persist() {
+  bool _saving = false;
+
+  /// Persists the note via the server-backed provider (create/update),
+  /// without toasting or popping. Returns false when there's nothing to
+  /// save. Marks the editor as saved so the discard guard won't fire.
+  Future<bool> _persist() async {
     final title = _titleCtrl.text.trim();
     final body = _bodyCtrl.text.trim();
     if (title.isEmpty && body.isEmpty) return false;
     final notifier = ref.read(patientNotesMapProvider.notifier);
     if (_isEditing) {
-      notifier.updateNote(
+      await notifier.updateNote(
           widget.patientId, widget.existingNote!.id, title, body);
     } else {
-      notifier.addNote(widget.patientId, title, body);
+      await notifier.addNote(widget.patientId, title, body);
     }
     HapticFeedback.mediumImpact();
     _saved = true;
     return true;
   }
 
-  void _save() {
-    if (!_persist()) return;
+  Future<void> _save() async {
+    if (_saving) return;
     final l = AppLocalizations.of(context);
-    EuphireToast.success(context, message: l.note_saved);
-    Navigator.pop(context);
+    setState(() => _saving = true);
+    try {
+      if (!await _persist()) return;
+      if (!mounted) return;
+      EuphireToast.success(context, message: l.note_saved);
+      Navigator.pop(context);
+    } catch (e) {
+      if (mounted) EuphireToast.error(context, message: l.note_save_error);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
-  /// Action-plan mode: save the note locally, then run the SIMULATED send
-  /// flow. No backend is touched — the "send" is mocked end to end.
-  /// The patient e-mail to send to, or null if none is on file. E-mail is
-  /// backend-only client-side, so the prototype falls back to the
-  /// kSimulatePatientHasEmail scaffold (see flag docs).
+  /// The patient e-mail to send to (for masking in the confirm sheet), or
+  /// null if none is on file. Comes from the server-backed patient file.
   String? get _patientEmail {
     final passed = widget.patientEmail?.trim();
-    if (passed != null && passed.isNotEmpty) return passed;
-    return kSimulatePatientHasEmail ? 'pacjent@example.com' : null;
+    return (passed != null && passed.isNotEmpty) ? passed : null;
   }
 
-  bool get _patientHasEmail => (_patientEmail?.isNotEmpty ?? false);
+  bool get _patientHasEmail =>
+      widget.patientHasEmail ?? (_patientEmail?.isNotEmpty ?? false);
 
+  /// Action-plan mode: confirm, then save + send via the real
+  /// SavePatientNote RPC (send_to_patient=true). On PATIENT_EMAIL_MISSING
+  /// the note is still saved server-side; we surface the no-email warning.
   Future<void> _saveAndSend() async {
-    // "Wyślij" is disabled when there's no e-mail, so this only runs with a
-    // valid address. Persist first so the note is never lost, then confirm.
-    _persist();
-    final email = _patientEmail;
-    if (email == null || email.isEmpty) return; // defensive
+    if (_saving) return;
     final l = AppLocalizations.of(context);
+    // "Wyślij" is gated on a patient e-mail, so this runs only when one is
+    // on file. Use the masked address in the confirm sheet.
+    final email = _patientEmail ?? '';
     final confirmed = await _showSendConfirmSheet(l, email);
-    if (confirmed != true) return;
-    if (!mounted) return;
-    HapticFeedback.mediumImpact();
-    EuphireToast.success(context, message: l.action_plan_sent_toast);
-    Navigator.pop(context);
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _saving = true);
+    try {
+      final repo =
+          ClinicalNotesRepository(ref.read(grpcClientsProvider).clinical);
+      await repo.savePatientNote(
+        widget.patientId,
+        noteId: widget.existingNote?.id ?? '',
+        title: _titleCtrl.text.trim(),
+        text: _bodyCtrl.text.trim(),
+        kind: widget.actionPlanMode ? NoteKind.actionPlan : NoteKind.freeNote,
+        sourceSessionId: widget.sourceSessionId ?? '',
+        sendToPatient: true,
+      );
+      _saved = true;
+      // Reconcile the local list with the server (the note now exists /
+      // is marked sent).
+      await ref
+          .read(patientNotesMapProvider.notifier)
+          .refreshNotes(widget.patientId);
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      EuphireToast.success(context, message: l.action_plan_sent_toast);
+      Navigator.pop(context);
+    } on PatientEmailMissingException {
+      // Note was saved server-side, but there's no e-mail to send to.
+      _saved = true;
+      if (mounted) {
+        await ref
+            .read(patientNotesMapProvider.notifier)
+            .refreshNotes(widget.patientId);
+      }
+      if (mounted) _showNoEmailSheet(l);
+    } catch (e) {
+      if (mounted) EuphireToast.error(context, message: l.note_save_error);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Shown when a send is attempted but the patient has no e-mail on file.
+  void _showNoEmailSheet(AppLocalizations l) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _EuphireSheet(
+        title: l.action_plan_no_email_title,
+        body: l.action_plan_fill_email_hint,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: EuphireColors.ember,
+                foregroundColor: EuphireColors.nocturne,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(l.common_understand,
+                  style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Masks an e-mail address: keep the first char of the local part, then
@@ -2494,7 +2632,6 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
       builder: (ctx) => _EuphireSheet(
         title: l.action_plan_send_confirm_title,
         body: l.action_plan_send_confirm_body(_maskEmail(email)),
-        caption: l.action_plan_send_sim_caption,
         children: [
           Row(children: [
             Expanded(
@@ -2791,7 +2928,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   /// Action-plan bottom bar: "Zapisz" (save only) + "Zapisz i wyślij"
   /// (primary, ember). Sits below the editor text fields.
   Widget _buildActionPlanBar(AppLocalizations l) {
-    final canSend = _patientHasEmail;
+    final canSend = _patientHasEmail && !_saving;
     return SafeArea(
       top: false,
       child: Padding(
@@ -2825,7 +2962,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
             Row(children: [
               Expanded(
                 child: TextButton(
-                  onPressed: _save,
+                  onPressed: _saving ? null : _save,
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -2873,18 +3010,16 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
 }
 
 /// Euphire-styled bottom sheet matching the note discard sheet visual:
-/// grab handle, centered title + body, optional small caption, then the
-/// caller-supplied action [children].
+/// grab handle, centered title + body, then the caller-supplied action
+/// [children].
 class _EuphireSheet extends StatelessWidget {
   final String title;
   final String body;
-  final String? caption;
   final List<Widget> children;
 
   const _EuphireSheet({
     required this.title,
     required this.body,
-    this.caption,
     required this.children,
   });
 
@@ -2927,17 +3062,6 @@ class _EuphireSheet extends StatelessWidget {
                       color: EuphireColors.mist.withValues(alpha: 0.7),
                       height: 1.5),
                   textAlign: TextAlign.center),
-              if (caption != null) ...[
-                const SizedBox(height: 8),
-                Text(caption!,
-                    style: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
-                        color: EuphireColors.mist.withValues(alpha: 0.5),
-                        height: 1.4),
-                    textAlign: TextAlign.center),
-              ],
               const SizedBox(height: 20),
               ...children,
             ],

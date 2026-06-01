@@ -42,6 +42,7 @@ class PatientFile extends $pb.GeneratedMessage {
     $core.String? patientFirstName,
     $core.String? patientLastName,
     $core.String? patientLanguageCode,
+    $core.String? patientEmail,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -66,6 +67,7 @@ class PatientFile extends $pb.GeneratedMessage {
     if (patientLastName != null) result.patientLastName = patientLastName;
     if (patientLanguageCode != null)
       result.patientLanguageCode = patientLanguageCode;
+    if (patientEmail != null) result.patientEmail = patientEmail;
     return result;
   }
 
@@ -105,6 +107,7 @@ class PatientFile extends $pb.GeneratedMessage {
     ..aOS(16, _omitFieldNames ? '' : 'patientFirstName')
     ..aOS(17, _omitFieldNames ? '' : 'patientLastName')
     ..aOS(18, _omitFieldNames ? '' : 'patientLanguageCode')
+    ..aOS(19, _omitFieldNames ? '' : 'patientEmail')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -304,6 +307,17 @@ class PatientFile extends $pb.GeneratedMessage {
   $core.bool hasPatientLanguageCode() => $_has(17);
   @$pb.TagNumber(18)
   void clearPatientLanguageCode() => $_clearField(18);
+
+  /// Patient contact e-mail (patient_files.patient_email, docs/22). Empty
+  /// when none is on file. Drives the "send action plan" e-mail flow.
+  @$pb.TagNumber(19)
+  $core.String get patientEmail => $_getSZ(18);
+  @$pb.TagNumber(19)
+  set patientEmail($core.String value) => $_setString(18, value);
+  @$pb.TagNumber(19)
+  $core.bool hasPatientEmail() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearPatientEmail() => $_clearField(19);
 }
 
 class Modality extends $pb.GeneratedMessage {
@@ -954,12 +968,14 @@ class UpdatePatientUserRequest extends $pb.GeneratedMessage {
     $core.String? firstName,
     $core.String? lastName,
     $core.String? languageCode,
+    $core.String? patientEmail,
   }) {
     final result = create();
     if (patientFileId != null) result.patientFileId = patientFileId;
     if (firstName != null) result.firstName = firstName;
     if (lastName != null) result.lastName = lastName;
     if (languageCode != null) result.languageCode = languageCode;
+    if (patientEmail != null) result.patientEmail = patientEmail;
     return result;
   }
 
@@ -980,6 +996,7 @@ class UpdatePatientUserRequest extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'firstName')
     ..aOS(3, _omitFieldNames ? '' : 'lastName')
     ..aOS(4, _omitFieldNames ? '' : 'languageCode')
+    ..aOS(5, _omitFieldNames ? '' : 'patientEmail')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1037,6 +1054,880 @@ class UpdatePatientUserRequest extends $pb.GeneratedMessage {
   $core.bool hasLanguageCode() => $_has(3);
   @$pb.TagNumber(4)
   void clearLanguageCode() => $_clearField(4);
+
+  /// Patient contact e-mail (docs/22). Persisted to
+  /// patient_files.patient_email. Empty string clears it. Optional.
+  @$pb.TagNumber(5)
+  $core.String get patientEmail => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set patientEmail($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPatientEmail() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPatientEmail() => $_clearField(5);
+}
+
+/// ── Patient notes + action plan (docs/22) ──────────────────────────────
+class PatientNote extends $pb.GeneratedMessage {
+  factory PatientNote({
+    $core.String? id,
+    $core.String? patientFileId,
+    $core.String? kind,
+    $core.String? sourceSessionId,
+    $core.String? title,
+    $core.String? text,
+    $3.Timestamp? sentToPatientAt,
+    $core.String? sentToEmail,
+    $3.Timestamp? createdAt,
+    $3.Timestamp? updatedAt,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    if (kind != null) result.kind = kind;
+    if (sourceSessionId != null) result.sourceSessionId = sourceSessionId;
+    if (title != null) result.title = title;
+    if (text != null) result.text = text;
+    if (sentToPatientAt != null) result.sentToPatientAt = sentToPatientAt;
+    if (sentToEmail != null) result.sentToEmail = sentToEmail;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  PatientNote._();
+
+  factory PatientNote.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory PatientNote.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PatientNote',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'patientFileId')
+    ..aOS(3, _omitFieldNames ? '' : 'kind')
+    ..aOS(4, _omitFieldNames ? '' : 'sourceSessionId')
+    ..aOS(5, _omitFieldNames ? '' : 'title')
+    ..aOS(6, _omitFieldNames ? '' : 'text')
+    ..aOM<$3.Timestamp>(7, _omitFieldNames ? '' : 'sentToPatientAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOS(8, _omitFieldNames ? '' : 'sentToEmail')
+    ..aOM<$3.Timestamp>(9, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOM<$3.Timestamp>(10, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $3.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PatientNote clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PatientNote copyWith(void Function(PatientNote) updates) =>
+      super.copyWith((message) => updates(message as PatientNote))
+          as PatientNote;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static PatientNote create() => PatientNote._();
+  @$core.override
+  PatientNote createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static PatientNote getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PatientNote>(create);
+  static PatientNote? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get patientFileId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set patientFileId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPatientFileId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPatientFileId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get kind => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set kind($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasKind() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearKind() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get sourceSessionId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set sourceSessionId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSourceSessionId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSourceSessionId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get title => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set title($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTitle() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTitle() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get text => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set text($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasText() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearText() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $3.Timestamp get sentToPatientAt => $_getN(6);
+  @$pb.TagNumber(7)
+  set sentToPatientAt($3.Timestamp value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSentToPatientAt() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSentToPatientAt() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $3.Timestamp ensureSentToPatientAt() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $core.String get sentToEmail => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set sentToEmail($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasSentToEmail() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearSentToEmail() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $3.Timestamp get createdAt => $_getN(8);
+  @$pb.TagNumber(9)
+  set createdAt($3.Timestamp value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCreatedAt() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCreatedAt() => $_clearField(9);
+  @$pb.TagNumber(9)
+  $3.Timestamp ensureCreatedAt() => $_ensure(8);
+
+  @$pb.TagNumber(10)
+  $3.Timestamp get updatedAt => $_getN(9);
+  @$pb.TagNumber(10)
+  set updatedAt($3.Timestamp value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasUpdatedAt() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearUpdatedAt() => $_clearField(10);
+  @$pb.TagNumber(10)
+  $3.Timestamp ensureUpdatedAt() => $_ensure(9);
+}
+
+class CreatePatientNoteRequest extends $pb.GeneratedMessage {
+  factory CreatePatientNoteRequest({
+    $core.String? patientFileId,
+    $core.String? title,
+    $core.String? text,
+    $core.String? kind,
+    $core.String? sourceSessionId,
+  }) {
+    final result = create();
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    if (title != null) result.title = title;
+    if (text != null) result.text = text;
+    if (kind != null) result.kind = kind;
+    if (sourceSessionId != null) result.sourceSessionId = sourceSessionId;
+    return result;
+  }
+
+  CreatePatientNoteRequest._();
+
+  factory CreatePatientNoteRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory CreatePatientNoteRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CreatePatientNoteRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
+    ..aOS(2, _omitFieldNames ? '' : 'title')
+    ..aOS(3, _omitFieldNames ? '' : 'text')
+    ..aOS(4, _omitFieldNames ? '' : 'kind')
+    ..aOS(5, _omitFieldNames ? '' : 'sourceSessionId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreatePatientNoteRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreatePatientNoteRequest copyWith(
+          void Function(CreatePatientNoteRequest) updates) =>
+      super.copyWith((message) => updates(message as CreatePatientNoteRequest))
+          as CreatePatientNoteRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static CreatePatientNoteRequest create() => CreatePatientNoteRequest._();
+  @$core.override
+  CreatePatientNoteRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static CreatePatientNoteRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CreatePatientNoteRequest>(create);
+  static CreatePatientNoteRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get patientFileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set patientFileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFileId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get title => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set title($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTitle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTitle() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get text => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set text($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasText() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearText() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get kind => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set kind($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasKind() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearKind() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get sourceSessionId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set sourceSessionId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSourceSessionId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSourceSessionId() => $_clearField(5);
+}
+
+class ListPatientNotesRequest extends $pb.GeneratedMessage {
+  factory ListPatientNotesRequest({
+    $core.String? patientFileId,
+  }) {
+    final result = create();
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    return result;
+  }
+
+  ListPatientNotesRequest._();
+
+  factory ListPatientNotesRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListPatientNotesRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListPatientNotesRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListPatientNotesRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListPatientNotesRequest copyWith(
+          void Function(ListPatientNotesRequest) updates) =>
+      super.copyWith((message) => updates(message as ListPatientNotesRequest))
+          as ListPatientNotesRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListPatientNotesRequest create() => ListPatientNotesRequest._();
+  @$core.override
+  ListPatientNotesRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListPatientNotesRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListPatientNotesRequest>(create);
+  static ListPatientNotesRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get patientFileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set patientFileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFileId() => $_clearField(1);
+}
+
+class ListPatientNotesResponse extends $pb.GeneratedMessage {
+  factory ListPatientNotesResponse({
+    $core.Iterable<PatientNote>? notes,
+  }) {
+    final result = create();
+    if (notes != null) result.notes.addAll(notes);
+    return result;
+  }
+
+  ListPatientNotesResponse._();
+
+  factory ListPatientNotesResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListPatientNotesResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListPatientNotesResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..pPM<PatientNote>(1, _omitFieldNames ? '' : 'notes',
+        subBuilder: PatientNote.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListPatientNotesResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListPatientNotesResponse copyWith(
+          void Function(ListPatientNotesResponse) updates) =>
+      super.copyWith((message) => updates(message as ListPatientNotesResponse))
+          as ListPatientNotesResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListPatientNotesResponse create() => ListPatientNotesResponse._();
+  @$core.override
+  ListPatientNotesResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListPatientNotesResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListPatientNotesResponse>(create);
+  static ListPatientNotesResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<PatientNote> get notes => $_getList(0);
+}
+
+class UpdatePatientNoteRequest extends $pb.GeneratedMessage {
+  factory UpdatePatientNoteRequest({
+    $core.String? noteId,
+    $core.String? title,
+    $core.String? text,
+  }) {
+    final result = create();
+    if (noteId != null) result.noteId = noteId;
+    if (title != null) result.title = title;
+    if (text != null) result.text = text;
+    return result;
+  }
+
+  UpdatePatientNoteRequest._();
+
+  factory UpdatePatientNoteRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdatePatientNoteRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdatePatientNoteRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'noteId')
+    ..aOS(2, _omitFieldNames ? '' : 'title')
+    ..aOS(3, _omitFieldNames ? '' : 'text')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdatePatientNoteRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdatePatientNoteRequest copyWith(
+          void Function(UpdatePatientNoteRequest) updates) =>
+      super.copyWith((message) => updates(message as UpdatePatientNoteRequest))
+          as UpdatePatientNoteRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdatePatientNoteRequest create() => UpdatePatientNoteRequest._();
+  @$core.override
+  UpdatePatientNoteRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdatePatientNoteRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdatePatientNoteRequest>(create);
+  static UpdatePatientNoteRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get noteId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set noteId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNoteId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNoteId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get title => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set title($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTitle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTitle() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get text => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set text($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasText() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearText() => $_clearField(3);
+}
+
+class DeletePatientNoteRequest extends $pb.GeneratedMessage {
+  factory DeletePatientNoteRequest({
+    $core.String? noteId,
+  }) {
+    final result = create();
+    if (noteId != null) result.noteId = noteId;
+    return result;
+  }
+
+  DeletePatientNoteRequest._();
+
+  factory DeletePatientNoteRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DeletePatientNoteRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeletePatientNoteRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'noteId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeletePatientNoteRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeletePatientNoteRequest copyWith(
+          void Function(DeletePatientNoteRequest) updates) =>
+      super.copyWith((message) => updates(message as DeletePatientNoteRequest))
+          as DeletePatientNoteRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeletePatientNoteRequest create() => DeletePatientNoteRequest._();
+  @$core.override
+  DeletePatientNoteRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DeletePatientNoteRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeletePatientNoteRequest>(create);
+  static DeletePatientNoteRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get noteId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set noteId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNoteId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNoteId() => $_clearField(1);
+}
+
+/// GetActionPlanDraft — extracts the action-plan section from a session's
+/// report (server-side heuristic) to prefill the note editor, plus the
+/// patient e-mail availability for the send gate.
+class GetActionPlanDraftRequest extends $pb.GeneratedMessage {
+  factory GetActionPlanDraftRequest({
+    $core.String? sessionId,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    return result;
+  }
+
+  GetActionPlanDraftRequest._();
+
+  factory GetActionPlanDraftRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetActionPlanDraftRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetActionPlanDraftRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetActionPlanDraftRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetActionPlanDraftRequest copyWith(
+          void Function(GetActionPlanDraftRequest) updates) =>
+      super.copyWith((message) => updates(message as GetActionPlanDraftRequest))
+          as GetActionPlanDraftRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetActionPlanDraftRequest create() => GetActionPlanDraftRequest._();
+  @$core.override
+  GetActionPlanDraftRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetActionPlanDraftRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetActionPlanDraftRequest>(create);
+  static GetActionPlanDraftRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+}
+
+class ActionPlanDraft extends $pb.GeneratedMessage {
+  factory ActionPlanDraft({
+    $core.String? suggestedTitle,
+    $core.String? suggestedText,
+    $core.bool? patientHasEmail,
+    $core.String? patientEmailMasked,
+  }) {
+    final result = create();
+    if (suggestedTitle != null) result.suggestedTitle = suggestedTitle;
+    if (suggestedText != null) result.suggestedText = suggestedText;
+    if (patientHasEmail != null) result.patientHasEmail = patientHasEmail;
+    if (patientEmailMasked != null)
+      result.patientEmailMasked = patientEmailMasked;
+    return result;
+  }
+
+  ActionPlanDraft._();
+
+  factory ActionPlanDraft.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ActionPlanDraft.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ActionPlanDraft',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'suggestedTitle')
+    ..aOS(2, _omitFieldNames ? '' : 'suggestedText')
+    ..aOB(3, _omitFieldNames ? '' : 'patientHasEmail')
+    ..aOS(4, _omitFieldNames ? '' : 'patientEmailMasked')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ActionPlanDraft clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ActionPlanDraft copyWith(void Function(ActionPlanDraft) updates) =>
+      super.copyWith((message) => updates(message as ActionPlanDraft))
+          as ActionPlanDraft;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ActionPlanDraft create() => ActionPlanDraft._();
+  @$core.override
+  ActionPlanDraft createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ActionPlanDraft getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ActionPlanDraft>(create);
+  static ActionPlanDraft? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get suggestedTitle => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set suggestedTitle($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuggestedTitle() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuggestedTitle() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get suggestedText => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set suggestedText($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSuggestedText() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSuggestedText() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get patientHasEmail => $_getBF(2);
+  @$pb.TagNumber(3)
+  set patientHasEmail($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPatientHasEmail() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPatientHasEmail() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get patientEmailMasked => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set patientEmailMasked($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPatientEmailMasked() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPatientEmailMasked() => $_clearField(4);
+}
+
+/// SavePatientNote — create/update a note and optionally e-mail it to the
+/// patient. send_to_patient=true with no patient e-mail → FAILED_PRECONDITION
+/// "PATIENT_EMAIL_MISSING" (note is still saved).
+class SavePatientNoteRequest extends $pb.GeneratedMessage {
+  factory SavePatientNoteRequest({
+    $core.String? patientFileId,
+    $core.String? noteId,
+    $core.String? title,
+    $core.String? text,
+    $core.String? kind,
+    $core.String? sourceSessionId,
+    $core.bool? sendToPatient,
+  }) {
+    final result = create();
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    if (noteId != null) result.noteId = noteId;
+    if (title != null) result.title = title;
+    if (text != null) result.text = text;
+    if (kind != null) result.kind = kind;
+    if (sourceSessionId != null) result.sourceSessionId = sourceSessionId;
+    if (sendToPatient != null) result.sendToPatient = sendToPatient;
+    return result;
+  }
+
+  SavePatientNoteRequest._();
+
+  factory SavePatientNoteRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SavePatientNoteRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SavePatientNoteRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
+    ..aOS(2, _omitFieldNames ? '' : 'noteId')
+    ..aOS(3, _omitFieldNames ? '' : 'title')
+    ..aOS(4, _omitFieldNames ? '' : 'text')
+    ..aOS(5, _omitFieldNames ? '' : 'kind')
+    ..aOS(6, _omitFieldNames ? '' : 'sourceSessionId')
+    ..aOB(7, _omitFieldNames ? '' : 'sendToPatient')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SavePatientNoteRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SavePatientNoteRequest copyWith(
+          void Function(SavePatientNoteRequest) updates) =>
+      super.copyWith((message) => updates(message as SavePatientNoteRequest))
+          as SavePatientNoteRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SavePatientNoteRequest create() => SavePatientNoteRequest._();
+  @$core.override
+  SavePatientNoteRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SavePatientNoteRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SavePatientNoteRequest>(create);
+  static SavePatientNoteRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get patientFileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set patientFileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFileId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get noteId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set noteId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNoteId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNoteId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get title => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set title($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTitle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTitle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get text => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set text($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasText() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearText() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get kind => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set kind($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasKind() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearKind() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get sourceSessionId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set sourceSessionId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSourceSessionId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSourceSessionId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get sendToPatient => $_getBF(6);
+  @$pb.TagNumber(7)
+  set sendToPatient($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSendToPatient() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSendToPatient() => $_clearField(7);
+}
+
+class SavePatientNoteResponse extends $pb.GeneratedMessage {
+  factory SavePatientNoteResponse({
+    PatientNote? note,
+    $core.bool? sent,
+  }) {
+    final result = create();
+    if (note != null) result.note = note;
+    if (sent != null) result.sent = sent;
+    return result;
+  }
+
+  SavePatientNoteResponse._();
+
+  factory SavePatientNoteResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SavePatientNoteResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SavePatientNoteResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOM<PatientNote>(1, _omitFieldNames ? '' : 'note',
+        subBuilder: PatientNote.create)
+    ..aOB(2, _omitFieldNames ? '' : 'sent')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SavePatientNoteResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SavePatientNoteResponse copyWith(
+          void Function(SavePatientNoteResponse) updates) =>
+      super.copyWith((message) => updates(message as SavePatientNoteResponse))
+          as SavePatientNoteResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SavePatientNoteResponse create() => SavePatientNoteResponse._();
+  @$core.override
+  SavePatientNoteResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SavePatientNoteResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SavePatientNoteResponse>(create);
+  static SavePatientNoteResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  PatientNote get note => $_getN(0);
+  @$pb.TagNumber(1)
+  set note(PatientNote value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNote() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNote() => $_clearField(1);
+  @$pb.TagNumber(1)
+  PatientNote ensureNote() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get sent => $_getBF(1);
+  @$pb.TagNumber(2)
+  set sent($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSent() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSent() => $_clearField(2);
 }
 
 /// DeletePatientUser — RODO-style erasure of a patient. The user row

@@ -182,6 +182,7 @@ Future<List<PatientDto>> _grpcFetch(
       modalityCode: pf.modalityCode,
       languageCode: pf.patientLanguageCode,
       sessionCount: counts[i],
+      email: pf.patientEmail,
     );
   });
 }

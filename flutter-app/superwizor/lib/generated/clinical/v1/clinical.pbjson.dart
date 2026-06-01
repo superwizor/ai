@@ -126,6 +126,7 @@ const PatientFile$json = {
       '5': 9,
       '10': 'patientLanguageCode'
     },
+    {'1': 'patient_email', '3': 19, '4': 1, '5': 9, '10': 'patientEmail'},
   ],
 };
 
@@ -146,7 +147,8 @@ final $typed_data.Uint8List patientFileDescriptor = $convert.base64Decode(
     'ZEF0EjkKCnVwZGF0ZWRfYXQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgl1cG'
     'RhdGVkQXQSLAoScGF0aWVudF9maXJzdF9uYW1lGBAgASgJUhBwYXRpZW50Rmlyc3ROYW1lEioK'
     'EXBhdGllbnRfbGFzdF9uYW1lGBEgASgJUg9wYXRpZW50TGFzdE5hbWUSMgoVcGF0aWVudF9sYW'
-    '5ndWFnZV9jb2RlGBIgASgJUhNwYXRpZW50TGFuZ3VhZ2VDb2Rl');
+    '5ndWFnZV9jb2RlGBIgASgJUhNwYXRpZW50TGFuZ3VhZ2VDb2RlEiMKDXBhdGllbnRfZW1haWwY'
+    'EyABKAlSDHBhdGllbnRFbWFpbA==');
 
 @$core.Deprecated('Use modalityDescriptor instead')
 const Modality$json = {
@@ -332,6 +334,7 @@ const UpdatePatientUserRequest$json = {
     {'1': 'first_name', '3': 2, '4': 1, '5': 9, '10': 'firstName'},
     {'1': 'last_name', '3': 3, '4': 1, '5': 9, '10': 'lastName'},
     {'1': 'language_code', '3': 4, '4': 1, '5': 9, '10': 'languageCode'},
+    {'1': 'patient_email', '3': 5, '4': 1, '5': 9, '10': 'patientEmail'},
   ],
 };
 
@@ -339,7 +342,222 @@ const UpdatePatientUserRequest$json = {
 final $typed_data.Uint8List updatePatientUserRequestDescriptor = $convert.base64Decode(
     'ChhVcGRhdGVQYXRpZW50VXNlclJlcXVlc3QSJgoPcGF0aWVudF9maWxlX2lkGAEgASgJUg1wYX'
     'RpZW50RmlsZUlkEh0KCmZpcnN0X25hbWUYAiABKAlSCWZpcnN0TmFtZRIbCglsYXN0X25hbWUY'
-    'AyABKAlSCGxhc3ROYW1lEiMKDWxhbmd1YWdlX2NvZGUYBCABKAlSDGxhbmd1YWdlQ29kZQ==');
+    'AyABKAlSCGxhc3ROYW1lEiMKDWxhbmd1YWdlX2NvZGUYBCABKAlSDGxhbmd1YWdlQ29kZRIjCg'
+    '1wYXRpZW50X2VtYWlsGAUgASgJUgxwYXRpZW50RW1haWw=');
+
+@$core.Deprecated('Use patientNoteDescriptor instead')
+const PatientNote$json = {
+  '1': 'PatientNote',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'patient_file_id', '3': 2, '4': 1, '5': 9, '10': 'patientFileId'},
+    {'1': 'kind', '3': 3, '4': 1, '5': 9, '10': 'kind'},
+    {'1': 'source_session_id', '3': 4, '4': 1, '5': 9, '10': 'sourceSessionId'},
+    {'1': 'title', '3': 5, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'text', '3': 6, '4': 1, '5': 9, '10': 'text'},
+    {
+      '1': 'sent_to_patient_at',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'sentToPatientAt'
+    },
+    {'1': 'sent_to_email', '3': 8, '4': 1, '5': 9, '10': 'sentToEmail'},
+    {
+      '1': 'created_at',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+    {
+      '1': 'updated_at',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `PatientNote`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List patientNoteDescriptor = $convert.base64Decode(
+    'CgtQYXRpZW50Tm90ZRIOCgJpZBgBIAEoCVICaWQSJgoPcGF0aWVudF9maWxlX2lkGAIgASgJUg'
+    '1wYXRpZW50RmlsZUlkEhIKBGtpbmQYAyABKAlSBGtpbmQSKgoRc291cmNlX3Nlc3Npb25faWQY'
+    'BCABKAlSD3NvdXJjZVNlc3Npb25JZBIUCgV0aXRsZRgFIAEoCVIFdGl0bGUSEgoEdGV4dBgGIA'
+    'EoCVIEdGV4dBJHChJzZW50X3RvX3BhdGllbnRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYu'
+    'VGltZXN0YW1wUg9zZW50VG9QYXRpZW50QXQSIgoNc2VudF90b19lbWFpbBgIIAEoCVILc2VudF'
+    'RvRW1haWwSOQoKY3JlYXRlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBS'
+    'CWNyZWF0ZWRBdBI5Cgp1cGRhdGVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdG'
+    'FtcFIJdXBkYXRlZEF0');
+
+@$core.Deprecated('Use createPatientNoteRequestDescriptor instead')
+const CreatePatientNoteRequest$json = {
+  '1': 'CreatePatientNoteRequest',
+  '2': [
+    {'1': 'patient_file_id', '3': 1, '4': 1, '5': 9, '10': 'patientFileId'},
+    {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'text', '3': 3, '4': 1, '5': 9, '10': 'text'},
+    {'1': 'kind', '3': 4, '4': 1, '5': 9, '10': 'kind'},
+    {'1': 'source_session_id', '3': 5, '4': 1, '5': 9, '10': 'sourceSessionId'},
+  ],
+};
+
+/// Descriptor for `CreatePatientNoteRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List createPatientNoteRequestDescriptor = $convert.base64Decode(
+    'ChhDcmVhdGVQYXRpZW50Tm90ZVJlcXVlc3QSJgoPcGF0aWVudF9maWxlX2lkGAEgASgJUg1wYX'
+    'RpZW50RmlsZUlkEhQKBXRpdGxlGAIgASgJUgV0aXRsZRISCgR0ZXh0GAMgASgJUgR0ZXh0EhIK'
+    'BGtpbmQYBCABKAlSBGtpbmQSKgoRc291cmNlX3Nlc3Npb25faWQYBSABKAlSD3NvdXJjZVNlc3'
+    'Npb25JZA==');
+
+@$core.Deprecated('Use listPatientNotesRequestDescriptor instead')
+const ListPatientNotesRequest$json = {
+  '1': 'ListPatientNotesRequest',
+  '2': [
+    {'1': 'patient_file_id', '3': 1, '4': 1, '5': 9, '10': 'patientFileId'},
+  ],
+};
+
+/// Descriptor for `ListPatientNotesRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listPatientNotesRequestDescriptor =
+    $convert.base64Decode(
+        'ChdMaXN0UGF0aWVudE5vdGVzUmVxdWVzdBImCg9wYXRpZW50X2ZpbGVfaWQYASABKAlSDXBhdG'
+        'llbnRGaWxlSWQ=');
+
+@$core.Deprecated('Use listPatientNotesResponseDescriptor instead')
+const ListPatientNotesResponse$json = {
+  '1': 'ListPatientNotesResponse',
+  '2': [
+    {
+      '1': 'notes',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.PatientNote',
+      '10': 'notes'
+    },
+  ],
+};
+
+/// Descriptor for `ListPatientNotesResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listPatientNotesResponseDescriptor =
+    $convert.base64Decode(
+        'ChhMaXN0UGF0aWVudE5vdGVzUmVzcG9uc2USLgoFbm90ZXMYASADKAsyGC5jbGluaWNhbC52MS'
+        '5QYXRpZW50Tm90ZVIFbm90ZXM=');
+
+@$core.Deprecated('Use updatePatientNoteRequestDescriptor instead')
+const UpdatePatientNoteRequest$json = {
+  '1': 'UpdatePatientNoteRequest',
+  '2': [
+    {'1': 'note_id', '3': 1, '4': 1, '5': 9, '10': 'noteId'},
+    {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'text', '3': 3, '4': 1, '5': 9, '10': 'text'},
+  ],
+};
+
+/// Descriptor for `UpdatePatientNoteRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List updatePatientNoteRequestDescriptor =
+    $convert.base64Decode(
+        'ChhVcGRhdGVQYXRpZW50Tm90ZVJlcXVlc3QSFwoHbm90ZV9pZBgBIAEoCVIGbm90ZUlkEhQKBX'
+        'RpdGxlGAIgASgJUgV0aXRsZRISCgR0ZXh0GAMgASgJUgR0ZXh0');
+
+@$core.Deprecated('Use deletePatientNoteRequestDescriptor instead')
+const DeletePatientNoteRequest$json = {
+  '1': 'DeletePatientNoteRequest',
+  '2': [
+    {'1': 'note_id', '3': 1, '4': 1, '5': 9, '10': 'noteId'},
+  ],
+};
+
+/// Descriptor for `DeletePatientNoteRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deletePatientNoteRequestDescriptor =
+    $convert.base64Decode(
+        'ChhEZWxldGVQYXRpZW50Tm90ZVJlcXVlc3QSFwoHbm90ZV9pZBgBIAEoCVIGbm90ZUlk');
+
+@$core.Deprecated('Use getActionPlanDraftRequestDescriptor instead')
+const GetActionPlanDraftRequest$json = {
+  '1': 'GetActionPlanDraftRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+  ],
+};
+
+/// Descriptor for `GetActionPlanDraftRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getActionPlanDraftRequestDescriptor =
+    $convert.base64Decode(
+        'ChlHZXRBY3Rpb25QbGFuRHJhZnRSZXF1ZXN0Eh0KCnNlc3Npb25faWQYASABKAlSCXNlc3Npb2'
+        '5JZA==');
+
+@$core.Deprecated('Use actionPlanDraftDescriptor instead')
+const ActionPlanDraft$json = {
+  '1': 'ActionPlanDraft',
+  '2': [
+    {'1': 'suggested_title', '3': 1, '4': 1, '5': 9, '10': 'suggestedTitle'},
+    {'1': 'suggested_text', '3': 2, '4': 1, '5': 9, '10': 'suggestedText'},
+    {'1': 'patient_has_email', '3': 3, '4': 1, '5': 8, '10': 'patientHasEmail'},
+    {
+      '1': 'patient_email_masked',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'patientEmailMasked'
+    },
+  ],
+};
+
+/// Descriptor for `ActionPlanDraft`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List actionPlanDraftDescriptor = $convert.base64Decode(
+    'Cg9BY3Rpb25QbGFuRHJhZnQSJwoPc3VnZ2VzdGVkX3RpdGxlGAEgASgJUg5zdWdnZXN0ZWRUaX'
+    'RsZRIlCg5zdWdnZXN0ZWRfdGV4dBgCIAEoCVINc3VnZ2VzdGVkVGV4dBIqChFwYXRpZW50X2hh'
+    'c19lbWFpbBgDIAEoCFIPcGF0aWVudEhhc0VtYWlsEjAKFHBhdGllbnRfZW1haWxfbWFza2VkGA'
+    'QgASgJUhJwYXRpZW50RW1haWxNYXNrZWQ=');
+
+@$core.Deprecated('Use savePatientNoteRequestDescriptor instead')
+const SavePatientNoteRequest$json = {
+  '1': 'SavePatientNoteRequest',
+  '2': [
+    {'1': 'patient_file_id', '3': 1, '4': 1, '5': 9, '10': 'patientFileId'},
+    {'1': 'note_id', '3': 2, '4': 1, '5': 9, '10': 'noteId'},
+    {'1': 'title', '3': 3, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'text', '3': 4, '4': 1, '5': 9, '10': 'text'},
+    {'1': 'kind', '3': 5, '4': 1, '5': 9, '10': 'kind'},
+    {'1': 'source_session_id', '3': 6, '4': 1, '5': 9, '10': 'sourceSessionId'},
+    {'1': 'send_to_patient', '3': 7, '4': 1, '5': 8, '10': 'sendToPatient'},
+  ],
+};
+
+/// Descriptor for `SavePatientNoteRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List savePatientNoteRequestDescriptor = $convert.base64Decode(
+    'ChZTYXZlUGF0aWVudE5vdGVSZXF1ZXN0EiYKD3BhdGllbnRfZmlsZV9pZBgBIAEoCVINcGF0aW'
+    'VudEZpbGVJZBIXCgdub3RlX2lkGAIgASgJUgZub3RlSWQSFAoFdGl0bGUYAyABKAlSBXRpdGxl'
+    'EhIKBHRleHQYBCABKAlSBHRleHQSEgoEa2luZBgFIAEoCVIEa2luZBIqChFzb3VyY2Vfc2Vzc2'
+    'lvbl9pZBgGIAEoCVIPc291cmNlU2Vzc2lvbklkEiYKD3NlbmRfdG9fcGF0aWVudBgHIAEoCFIN'
+    'c2VuZFRvUGF0aWVudA==');
+
+@$core.Deprecated('Use savePatientNoteResponseDescriptor instead')
+const SavePatientNoteResponse$json = {
+  '1': 'SavePatientNoteResponse',
+  '2': [
+    {
+      '1': 'note',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.clinical.v1.PatientNote',
+      '10': 'note'
+    },
+    {'1': 'sent', '3': 2, '4': 1, '5': 8, '10': 'sent'},
+  ],
+};
+
+/// Descriptor for `SavePatientNoteResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List savePatientNoteResponseDescriptor =
+    $convert.base64Decode(
+        'ChdTYXZlUGF0aWVudE5vdGVSZXNwb25zZRIsCgRub3RlGAEgASgLMhguY2xpbmljYWwudjEuUG'
+        'F0aWVudE5vdGVSBG5vdGUSEgoEc2VudBgCIAEoCFIEc2VudA==');
 
 @$core.Deprecated('Use deletePatientUserRequestDescriptor instead')
 const DeletePatientUserRequest$json = {

@@ -1352,18 +1352,13 @@ class AppLocalizationsPl extends AppLocalizations {
   }
 
   @override
-  String get action_plan_send_sim_caption =>
-      '(symulacja — wysyłka e-mail zostanie podłączona do backendu)';
-
-  @override
   String get action_plan_send_cancel => 'Anuluj';
 
   @override
   String get action_plan_send_confirm_action => 'Wyślij';
 
   @override
-  String get action_plan_sent_toast =>
-      'Plan działania zapisany i wysłany (symulacja)';
+  String get action_plan_sent_toast => 'Plan działania wysłany do klienta';
 
   @override
   String get action_plan_default_title => 'Plan działania';
@@ -1371,6 +1366,9 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get action_plan_fill_email_hint =>
       'Wypełnij adres e-mail klienta i ponów wysyłkę.';
+
+  @override
+  String get note_save_error => 'Nie udało się zapisać notatki';
 
   @override
   String get note_send_to_client => 'Wyślij do klienta';
@@ -1384,5 +1382,5 @@ class AppLocalizationsPl extends AppLocalizations {
   }
 
   @override
-  String get note_sent_toast => 'Notatka wysłana do klienta (symulacja)';
+  String get note_sent_toast => 'Notatka wysłana do klienta';
 }

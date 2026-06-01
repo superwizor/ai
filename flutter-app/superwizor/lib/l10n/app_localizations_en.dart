@@ -1335,18 +1335,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get action_plan_send_sim_caption =>
-      '(simulation — e-mail delivery will be wired to the backend)';
-
-  @override
   String get action_plan_send_cancel => 'Cancel';
 
   @override
   String get action_plan_send_confirm_action => 'Send';
 
   @override
-  String get action_plan_sent_toast =>
-      'Action plan saved and sent (simulation)';
+  String get action_plan_sent_toast => 'Action plan sent to client';
 
   @override
   String get action_plan_default_title => 'Action plan';
@@ -1354,6 +1349,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get action_plan_fill_email_hint =>
       'Fill in the client\'s e-mail address and resend.';
+
+  @override
+  String get note_save_error => 'Couldn\'t save the note';
 
   @override
   String get note_send_to_client => 'Send to client';
@@ -1367,5 +1365,5 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get note_sent_toast => 'Note sent to client (simulation)';
+  String get note_sent_toast => 'Note sent to client';
 }

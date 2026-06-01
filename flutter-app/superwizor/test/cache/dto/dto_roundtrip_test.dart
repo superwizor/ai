@@ -22,6 +22,7 @@ void main() {
         modalityCode: 'CBT',
         languageCode: 'pl-PL',
         sessionCount: 7,
+        email: 'anna@example.com',
       );
       final encoded = jsonEncode(original.toJson());
       final decoded = PatientDto.fromJson(
@@ -32,7 +33,8 @@ void main() {
       expect(decoded.modalityCode, original.modalityCode);
       expect(decoded.languageCode, original.languageCode);
       expect(decoded.sessionCount, original.sessionCount);
-      expect((jsonDecode(encoded) as Map).length, 6,
+      expect(decoded.email, original.email);
+      expect((jsonDecode(encoded) as Map).length, 7,
           reason: 'field-count guard — add toJson/fromJson coverage for new fields');
     });
   });

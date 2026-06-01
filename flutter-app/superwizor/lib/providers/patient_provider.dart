@@ -93,6 +93,7 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
           modalityCode: pf.modalityCode,
           languageCode: pf.patientLanguageCode,
           sessionCount: 0, // skip the fan-out in the fallback path
+          email: pf.patientEmail,
         );
       }).toList();
     } catch (e) {
@@ -130,13 +131,22 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
     }
   }
 
-  Future<void> updatePatientUser(String patientFileId, String firstName, String lastName) async {
+  Future<void> updatePatientUser(
+    String patientFileId,
+    String firstName,
+    String lastName, {
+    String? email,
+  }) async {
     final client = ref.read(grpcClientsProvider).clinical;
     try {
       await client.updatePatientUser(grpc_clinical.UpdatePatientUserRequest(
         patientFileId: patientFileId,
         firstName: firstName,
         lastName: lastName,
+        // Only set patient_email when the caller provided one. An empty
+        // string clears it server-side (intentional when the field was
+        // emptied); a null caller means "leave the e-mail alone".
+        patientEmail: email,
       ));
       await _refreshAndPublish();
     } catch (e) {

@@ -2441,12 +2441,6 @@ abstract class AppLocalizations {
   /// **'Plan zostanie wysłany na adres: {email}'**
   String action_plan_send_confirm_body(String email);
 
-  /// No description provided for @action_plan_send_sim_caption.
-  ///
-  /// In pl, this message translates to:
-  /// **'(symulacja — wysyłka e-mail zostanie podłączona do backendu)'**
-  String get action_plan_send_sim_caption;
-
   /// No description provided for @action_plan_send_cancel.
   ///
   /// In pl, this message translates to:
@@ -2462,7 +2456,7 @@ abstract class AppLocalizations {
   /// No description provided for @action_plan_sent_toast.
   ///
   /// In pl, this message translates to:
-  /// **'Plan działania zapisany i wysłany (symulacja)'**
+  /// **'Plan działania wysłany do klienta'**
   String get action_plan_sent_toast;
 
   /// No description provided for @action_plan_default_title.
@@ -2476,6 +2470,12 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Wypełnij adres e-mail klienta i ponów wysyłkę.'**
   String get action_plan_fill_email_hint;
+
+  /// No description provided for @note_save_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się zapisać notatki'**
+  String get note_save_error;
 
   /// No description provided for @note_send_to_client.
   ///
@@ -2498,7 +2498,7 @@ abstract class AppLocalizations {
   /// No description provided for @note_sent_toast.
   ///
   /// In pl, this message translates to:
-  /// **'Notatka wysłana do klienta (symulacja)'**
+  /// **'Notatka wysłana do klienta'**
   String get note_sent_toast;
 }
 

@@ -14,6 +14,10 @@ class Patient {
   // to a safe value (e.g. 'pl-PL') in that case.
   final String languageCode;
   final int sessionCount;
+  // Patient contact e-mail (PatientFile.patientEmail, docs/22). Empty
+  // when none is on file. Drives the "send action plan / note" e-mail
+  // gate. Persisted server-side via UpdatePatientUser(patient_email).
+  final String email;
 
   Patient({
     required this.id,
@@ -22,6 +26,7 @@ class Patient {
     this.modalityCode = '',
     this.languageCode = '',
     this.sessionCount = 0,
+    this.email = '',
   });
 
   Patient copyWith({
@@ -31,6 +36,7 @@ class Patient {
     String? modalityCode,
     String? languageCode,
     int? sessionCount,
+    String? email,
   }) {
     return Patient(
       id: id ?? this.id,
@@ -39,6 +45,7 @@ class Patient {
       modalityCode: modalityCode ?? this.modalityCode,
       languageCode: languageCode ?? this.languageCode,
       sessionCount: sessionCount ?? this.sessionCount,
+      email: email ?? this.email,
     );
   }
 }

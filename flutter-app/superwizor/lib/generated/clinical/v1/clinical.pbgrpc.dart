@@ -95,6 +95,49 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$deletePatientUser, request, options: options);
   }
 
+  /// Patient notes + action plan (docs/22).
+  $grpc.ResponseFuture<$0.PatientNote> createPatientNote(
+    $0.CreatePatientNoteRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$createPatientNote, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ListPatientNotesResponse> listPatientNotes(
+    $0.ListPatientNotesRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$listPatientNotes, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.PatientNote> updatePatientNote(
+    $0.UpdatePatientNoteRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$updatePatientNote, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$1.Empty> deletePatientNote(
+    $0.DeletePatientNoteRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$deletePatientNote, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ActionPlanDraft> getActionPlanDraft(
+    $0.GetActionPlanDraftRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getActionPlanDraft, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.SavePatientNoteResponse> savePatientNote(
+    $0.SavePatientNoteRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$savePatientNote, request, options: options);
+  }
+
   $grpc.ResponseFuture<$0.ListModalitiesResponse> listModalities(
     $1.Empty request, {
     $grpc.CallOptions? options,
@@ -274,6 +317,36 @@ class ClinicalServiceClient extends $grpc.Client {
           '/clinical.v1.ClinicalService/DeletePatientUser',
           ($0.DeletePatientUserRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
+  static final _$createPatientNote =
+      $grpc.ClientMethod<$0.CreatePatientNoteRequest, $0.PatientNote>(
+          '/clinical.v1.ClinicalService/CreatePatientNote',
+          ($0.CreatePatientNoteRequest value) => value.writeToBuffer(),
+          $0.PatientNote.fromBuffer);
+  static final _$listPatientNotes = $grpc.ClientMethod<
+          $0.ListPatientNotesRequest, $0.ListPatientNotesResponse>(
+      '/clinical.v1.ClinicalService/ListPatientNotes',
+      ($0.ListPatientNotesRequest value) => value.writeToBuffer(),
+      $0.ListPatientNotesResponse.fromBuffer);
+  static final _$updatePatientNote =
+      $grpc.ClientMethod<$0.UpdatePatientNoteRequest, $0.PatientNote>(
+          '/clinical.v1.ClinicalService/UpdatePatientNote',
+          ($0.UpdatePatientNoteRequest value) => value.writeToBuffer(),
+          $0.PatientNote.fromBuffer);
+  static final _$deletePatientNote =
+      $grpc.ClientMethod<$0.DeletePatientNoteRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/DeletePatientNote',
+          ($0.DeletePatientNoteRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$getActionPlanDraft =
+      $grpc.ClientMethod<$0.GetActionPlanDraftRequest, $0.ActionPlanDraft>(
+          '/clinical.v1.ClinicalService/GetActionPlanDraft',
+          ($0.GetActionPlanDraftRequest value) => value.writeToBuffer(),
+          $0.ActionPlanDraft.fromBuffer);
+  static final _$savePatientNote =
+      $grpc.ClientMethod<$0.SavePatientNoteRequest, $0.SavePatientNoteResponse>(
+          '/clinical.v1.ClinicalService/SavePatientNote',
+          ($0.SavePatientNoteRequest value) => value.writeToBuffer(),
+          $0.SavePatientNoteResponse.fromBuffer);
   static final _$listModalities =
       $grpc.ClientMethod<$1.Empty, $0.ListModalitiesResponse>(
           '/clinical.v1.ClinicalService/ListModalities',
@@ -408,6 +481,57 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.DeletePatientUserRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.CreatePatientNoteRequest, $0.PatientNote>(
+        'CreatePatientNote',
+        createPatientNote_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.CreatePatientNoteRequest.fromBuffer(value),
+        ($0.PatientNote value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ListPatientNotesRequest,
+            $0.ListPatientNotesResponse>(
+        'ListPatientNotes',
+        listPatientNotes_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ListPatientNotesRequest.fromBuffer(value),
+        ($0.ListPatientNotesResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.UpdatePatientNoteRequest, $0.PatientNote>(
+        'UpdatePatientNote',
+        updatePatientNote_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.UpdatePatientNoteRequest.fromBuffer(value),
+        ($0.PatientNote value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DeletePatientNoteRequest, $1.Empty>(
+        'DeletePatientNote',
+        deletePatientNote_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DeletePatientNoteRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.GetActionPlanDraftRequest, $0.ActionPlanDraft>(
+            'GetActionPlanDraft',
+            getActionPlanDraft_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.GetActionPlanDraftRequest.fromBuffer(value),
+            ($0.ActionPlanDraft value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SavePatientNoteRequest,
+            $0.SavePatientNoteResponse>(
+        'SavePatientNote',
+        savePatientNote_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SavePatientNoteRequest.fromBuffer(value),
+        ($0.SavePatientNoteResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$1.Empty, $0.ListModalitiesResponse>(
         'ListModalities',
         listModalities_Pre,
@@ -579,6 +703,57 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$1.Empty> deletePatientUser(
       $grpc.ServiceCall call, $0.DeletePatientUserRequest request);
+
+  $async.Future<$0.PatientNote> createPatientNote_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.CreatePatientNoteRequest> $request) async {
+    return createPatientNote($call, await $request);
+  }
+
+  $async.Future<$0.PatientNote> createPatientNote(
+      $grpc.ServiceCall call, $0.CreatePatientNoteRequest request);
+
+  $async.Future<$0.ListPatientNotesResponse> listPatientNotes_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ListPatientNotesRequest> $request) async {
+    return listPatientNotes($call, await $request);
+  }
+
+  $async.Future<$0.ListPatientNotesResponse> listPatientNotes(
+      $grpc.ServiceCall call, $0.ListPatientNotesRequest request);
+
+  $async.Future<$0.PatientNote> updatePatientNote_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.UpdatePatientNoteRequest> $request) async {
+    return updatePatientNote($call, await $request);
+  }
+
+  $async.Future<$0.PatientNote> updatePatientNote(
+      $grpc.ServiceCall call, $0.UpdatePatientNoteRequest request);
+
+  $async.Future<$1.Empty> deletePatientNote_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.DeletePatientNoteRequest> $request) async {
+    return deletePatientNote($call, await $request);
+  }
+
+  $async.Future<$1.Empty> deletePatientNote(
+      $grpc.ServiceCall call, $0.DeletePatientNoteRequest request);
+
+  $async.Future<$0.ActionPlanDraft> getActionPlanDraft_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetActionPlanDraftRequest> $request) async {
+    return getActionPlanDraft($call, await $request);
+  }
+
+  $async.Future<$0.ActionPlanDraft> getActionPlanDraft(
+      $grpc.ServiceCall call, $0.GetActionPlanDraftRequest request);
+
+  $async.Future<$0.SavePatientNoteResponse> savePatientNote_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.SavePatientNoteRequest> $request) async {
+    return savePatientNote($call, await $request);
+  }
+
+  $async.Future<$0.SavePatientNoteResponse> savePatientNote(
+      $grpc.ServiceCall call, $0.SavePatientNoteRequest request);
 
   $async.Future<$0.ListModalitiesResponse> listModalities_Pre(
       $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {
