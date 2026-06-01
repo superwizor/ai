@@ -1,7 +1,15 @@
 # 22 — Patient Notes + "Plan działania → Pacjent"
 
-**Status:** Design approved (2026-05-31). Flutter UX prototype on
-`feat/patient-notes` (local-only, no backend yet). Backend NOT implemented.
+**Status:** Implemented on `feat/patient-notes` (2026-06-01), **not yet
+deployed**. Flutter UX prototype (local Hive, simulated send) + full backend:
+migrations 000040/000041, clinical-svc (notes CRUD, `patient_email`,
+`GetActionPlanDraft`, `SavePatientNote`, `internal/actionplan` extractor +
+tests, notification client), notification-svc (`SendActionPlanEmail` +
+`email_templates` + embed fallback). All modules build/vet/test green.
+**Remaining:** (a) point the Flutter app at the real RPCs (it still uses the
+local Hive providers + simulated send); (b) deploy — apply migrations, deploy
+clinical-svc + notification-svc, set `NOTIFICATION_SVC_URL` on clinical-svc +
+grant it `run.invoker` on notification-svc.
 **Branch:** `feat/patient-notes`
 **Related:** clinical-svc (notes + report), notification-svc (email/Resend),
 ai-pipeline-svc llm-worker (report markdown).
