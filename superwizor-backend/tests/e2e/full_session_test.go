@@ -833,6 +833,37 @@ func TestFullSession_HappyPath(t *testing.T) {
 		// This subsumes what the lifecycle suite tests at the RPC layer
 		// but with real downstream data — the only place we prove the
 		// cascade actually wipes a session that has STT/LLM artifacts.
+		// ── Step 8.8: DeleteSession hard-deletes a fully-populated session ──
+		// Guards the "Tak, usuń does nothing" report. A COMPLETED session has
+		// transcripts + therapist_reports + stt_operations + audio_uploads
+		// hanging off it; if any table that references sessions(id) lacks
+		// ON DELETE CASCADE/SET NULL, this hard delete trips an FK violation
+		// (a silent Internal that the client used to swallow). This session
+		// is fully populated, so it's the strongest regression guard.
+		t.Log("\n═══ Step 8.8: DeleteSession (single-session hard delete) ═══")
+		_, dsErr := clinicalClient.DeleteSession(ctx, &clinicalv1.DeleteSessionRequest{
+			SessionId: sessionID,
+		})
+		require.NoError(t, dsErr,
+			"DeleteSession must succeed on a session with STT/LLM artifacts (FK cascade must hold)")
+
+		_, gsdAfterDelete := clinicalClient.GetSessionDetails(ctx, &clinicalv1.GetSessionDetailsRequest{
+			SessionId: sessionID,
+		})
+		require.Error(t, gsdAfterDelete, "GetSessionDetails must NotFound after DeleteSession")
+		if st, ok := status.FromError(gsdAfterDelete); ok {
+			assert.Equal(t, codes.NotFound, st.Code(), "deleted session must be unreachable")
+		}
+
+		// The kartoteka must SURVIVE a single-session delete — DeleteSession
+		// removes only the session, not the patient_file.
+		_, gpfAfterDelete := clinicalClient.GetPatientFile(ctx, &clinicalv1.GetPatientFileRequest{
+			PatientFileId: patient.Id,
+		})
+		require.NoError(t, gpfAfterDelete,
+			"patient_file must survive DeleteSession (only the session is removed)")
+		t.Logf("✓ DeleteSession hard-deleted a fully-populated session; kartoteka survived")
+
 		t.Log("\n═══ Step 9/9: DeletePatientUser cascade verification ═══")
 		_, delErr := clinicalClient.DeletePatientUser(ctx, &clinicalv1.DeletePatientUserRequest{
 			PatientFileId: patient.Id,
@@ -850,9 +881,9 @@ func TestFullSession_HappyPath(t *testing.T) {
 				"kartoteka must be unreachable after DeletePatientUser cascade")
 		}
 
-		// session: NotFound (the real cascade test — sessions live
-		// behind patient_files; if the FK didn't cascade properly the
-		// session row would still be readable).
+		// session: still NotFound. It was hard-deleted in Step 8.8 via
+		// DeleteSession; this confirms DeletePatientUser doesn't resurrect
+		// it and nothing re-reads a deleted session.
 		_, gsdErr := clinicalClient.GetSessionDetails(ctx, &clinicalv1.GetSessionDetailsRequest{
 			SessionId: sessionID,
 		})

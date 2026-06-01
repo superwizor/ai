@@ -262,6 +262,74 @@ func TestPatientLifecycle_UpdatePatientUser(t *testing.T) {
 }
 
 // =================================================================
+//   TestPatientLifecycle_PatientEmailPersistence — patient_email
+//   (migration 000040) must survive both CREATE (CreatePatientFile,
+//   field 11) and UPDATE (UpdatePatientUser → SetPatientEmail), and an
+//   empty value must clear it. Guards the on-device bugs where the
+//   e-mail entered on the create form / edit modal was silently dropped,
+//   leaving the "send action plan" gate with no address.
+// =================================================================
+func TestPatientLifecycle_PatientEmailPersistence(t *testing.T) {
+	env := setupLifecycleEnv(t)
+
+	const createEmail = "anna.create@example.com"
+	const updateEmail = "anna.updated@example.com"
+
+	t.Log("\n═══ Step 1: CreatePatientFile WITH patient_email ═══")
+	created, err := env.clinical.CreatePatientFile(env.ctx, &clinicalv1.CreatePatientFileRequest{
+		TherapistId:         env.therapist.Id,
+		ModalityCode:        "CBT",
+		WorkingAlias:        fmt.Sprintf("Email Alias %d", env.runID),
+		ProcessType:         clinicalv1.ProcessType_PROCESS_TYPE_INDIVIDUAL,
+		HasRecordingConsent: true,
+		IdempotencyKey:      fmt.Sprintf("e2e-email-%d", env.runID),
+		PatientFirstName:    "Anna",
+		PatientLanguageCode: "pl",
+		PatientEmail:        createEmail,
+	})
+	require.NoError(t, err, "CreatePatientFile")
+	t.Cleanup(func() {
+		bg, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_, _ = env.clinical.DeletePatientFile(bg,
+			&clinicalv1.DeletePatientFileRequest{PatientFileId: created.Id})
+	})
+	assert.Equal(t, createEmail, created.PatientEmail, "Create response must echo patient_email")
+
+	// Round-trip through the With-User JOIN read path.
+	got, err := env.clinical.GetPatientFile(env.ctx, &clinicalv1.GetPatientFileRequest{
+		PatientFileId: created.Id,
+	})
+	require.NoError(t, err, "GetPatientFile")
+	assert.Equal(t, createEmail, got.PatientEmail,
+		"patient_email entered at create time must persist (was previously dropped)")
+
+	t.Log("\n═══ Step 2: UpdatePatientUser changes patient_email ═══")
+	updated, err := env.clinical.UpdatePatientUser(env.ctx, &clinicalv1.UpdatePatientUserRequest{
+		PatientFileId: created.Id,
+		FirstName:     "Anna",
+		PatientEmail:  updateEmail,
+	})
+	require.NoError(t, err, "UpdatePatientUser")
+	assert.Equal(t, updateEmail, updated.PatientEmail, "Update response must carry the new e-mail")
+
+	got2, err := env.clinical.GetPatientFile(env.ctx, &clinicalv1.GetPatientFileRequest{
+		PatientFileId: created.Id,
+	})
+	require.NoError(t, err, "GetPatientFile (post-update)")
+	assert.Equal(t, updateEmail, got2.PatientEmail, "updated patient_email must persist")
+
+	t.Log("\n═══ Step 3: empty patient_email clears the column ═══")
+	cleared, err := env.clinical.UpdatePatientUser(env.ctx, &clinicalv1.UpdatePatientUserRequest{
+		PatientFileId: created.Id,
+		FirstName:     "Anna",
+		PatientEmail:  "",
+	})
+	require.NoError(t, err, "UpdatePatientUser (clear email)")
+	assert.Empty(t, cleared.PatientEmail, "empty patient_email clears the column (SetPatientEmail NULLIF)")
+}
+
+// =================================================================
 //   TestPatientLifecycle_DeletePatientFile — single-kartoteka delete
 //   (without touching the patient_user row). Verifies:
 //     - DeletePatientFile returns OK (Empty)
