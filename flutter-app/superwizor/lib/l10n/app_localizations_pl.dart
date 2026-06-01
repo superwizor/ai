@@ -1367,4 +1367,8 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get action_plan_default_title => 'Plan działania';
+
+  @override
+  String get action_plan_fill_email_hint =>
+      'Wypełnij adres e-mail klienta i ponów wysyłkę.';
 }

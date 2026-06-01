@@ -2223,9 +2223,12 @@ class _NoteCard extends ConsumerWidget {
 
 /// Prototype scaffold: lets us exercise BOTH the "has email" and
 /// "no email" branches of the action-plan send flow until the backend
-/// resolves the patient's real e-mail address. Flip to false to simulate
-/// a patient with no e-mail on file.
-const bool kSimulatePatientHasEmail = true;
+/// resolves the patient's real e-mail address.
+///   false → patient has NO e-mail on file: "Wyślij" is disabled, only
+///           "Zapisz" works, and a hint asks to fill in the e-mail (this is
+///           the honest default — patient e-mail isn't available client-side).
+///   true  → simulate a patient WITH an e-mail: "Wyślij" enabled → confirm.
+const bool kSimulatePatientHasEmail = false;
 
 class NoteEditorScreen extends ConsumerStatefulWidget {
   final String patientId;
@@ -2325,25 +2328,25 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
 
   /// Action-plan mode: save the note locally, then run the SIMULATED send
   /// flow. No backend is touched — the "send" is mocked end to end.
+  /// The patient e-mail to send to, or null if none is on file. E-mail is
+  /// backend-only client-side, so the prototype falls back to the
+  /// kSimulatePatientHasEmail scaffold (see flag docs).
+  String? get _patientEmail {
+    final passed = widget.patientEmail?.trim();
+    if (passed != null && passed.isNotEmpty) return passed;
+    return kSimulatePatientHasEmail ? 'pacjent@example.com' : null;
+  }
+
+  bool get _patientHasEmail => (_patientEmail?.isNotEmpty ?? false);
+
   Future<void> _saveAndSend() async {
-    // Always save first so the note is never lost, regardless of the
-    // e-mail gate outcome below.
+    // "Wyślij" is disabled when there's no e-mail, so this only runs with a
+    // valid address. Persist first so the note is never lost, then confirm.
     _persist();
+    final email = _patientEmail;
+    if (email == null || email.isEmpty) return; // defensive
     final l = AppLocalizations.of(context);
-
-    // E-mail is backend-only client-side; fall back to a simulated address
-    // so the prototype can exercise the happy path.
-    final effectiveEmail = (widget.patientEmail != null &&
-            widget.patientEmail!.trim().isNotEmpty)
-        ? widget.patientEmail!.trim()
-        : (kSimulatePatientHasEmail ? 'pacjent@example.com' : null);
-
-    if (effectiveEmail == null || effectiveEmail.isEmpty) {
-      await _showNoEmailDialog(l);
-      return; // note already saved; do not send
-    }
-
-    final confirmed = await _showSendConfirmSheet(l, effectiveEmail);
+    final confirmed = await _showSendConfirmSheet(l, email);
     if (confirmed != true) return;
     if (!mounted) return;
     HapticFeedback.mediumImpact();
@@ -2358,37 +2361,6 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     if (at <= 0) return email;
     final domain = email.substring(at);
     return '${email[0]}***$domain';
-  }
-
-  Future<void> _showNoEmailDialog(AppLocalizations l) {
-    return showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _EuphireSheet(
-        title: l.action_plan_no_email_title,
-        body: l.action_plan_no_email_body,
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: EuphireColors.ember,
-                foregroundColor: EuphireColors.nocturne,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text(l.common_understand,
-                  style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600)),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<bool?> _showSendConfirmSheet(
@@ -2696,48 +2668,82 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   /// Action-plan bottom bar: "Zapisz" (save only) + "Zapisz i wyślij"
   /// (primary, ember). Sits below the editor text fields.
   Widget _buildActionPlanBar(AppLocalizations l) {
+    final canSend = _patientHasEmail;
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
-        child: Row(children: [
-          Expanded(
-            child: TextButton(
-              onPressed: _save,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // No patient e-mail → "Wyślij" is disabled; tell the therapist
+            // why and what to do.
+            if (!canSend) ...[
+              Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      size: 16, color: EuphireColors.ember),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l.action_plan_fill_email_hint,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 12.5,
+                        height: 1.4,
+                        color: EuphireColors.mist.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ],
+            Row(children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: _save,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.1)),
+                    ),
+                  ),
+                  child: Text(l.action_plan_save_only,
+                      style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: EuphireColors.mist)),
                 ),
               ),
-              child: Text(l.action_plan_save_only,
-                  style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: EuphireColors.mist)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _saveAndSend,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: EuphireColors.ember,
-                foregroundColor: EuphireColors.nocturne,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: canSend ? _saveAndSend : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: EuphireColors.ember,
+                    foregroundColor: EuphireColors.nocturne,
+                    disabledBackgroundColor:
+                        EuphireColors.ember.withValues(alpha: 0.25),
+                    disabledForegroundColor:
+                        EuphireColors.nocturne.withValues(alpha: 0.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(l.action_plan_save_and_send,
+                      style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
+                ),
               ),
-              child: Text(l.action_plan_save_and_send,
-                  style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600)),
-            ),
-          ),
-        ]),
+            ]),
+          ],
+        ),
       ),
     );
   }

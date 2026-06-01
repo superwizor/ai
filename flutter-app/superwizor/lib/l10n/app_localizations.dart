@@ -2470,6 +2470,12 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Plan działania'**
   String get action_plan_default_title;
+
+  /// No description provided for @action_plan_fill_email_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wypełnij adres e-mail klienta i ponów wysyłkę.'**
+  String get action_plan_fill_email_hint;
 }
 
 class _AppLocalizationsDelegate

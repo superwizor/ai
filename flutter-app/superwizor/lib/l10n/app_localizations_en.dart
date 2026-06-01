@@ -1350,4 +1350,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get action_plan_default_title => 'Action plan';
+
+  @override
+  String get action_plan_fill_email_hint =>
+      'Fill in the client\'s e-mail address and resend.';
 }

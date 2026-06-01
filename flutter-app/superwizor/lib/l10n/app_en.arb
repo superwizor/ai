@@ -508,5 +508,6 @@
   "action_plan_send_cancel": "Cancel",
   "action_plan_send_confirm_action": "Send",
   "action_plan_sent_toast": "Action plan saved and sent (simulation)",
-  "action_plan_default_title": "Action plan"
+  "action_plan_default_title": "Action plan",
+  "action_plan_fill_email_hint": "Fill in the client's e-mail address and resend."
 }
