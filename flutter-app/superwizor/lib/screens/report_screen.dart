@@ -234,6 +234,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         ),
       ),
       body: _build(t, theme),
+      bottomNavigationBar: _buildActionPlanBar(t),
     );
   }
 
@@ -373,31 +374,6 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   );
                 }),
                 const SizedBox(height: 8),
-                // ── Send action plan to patient (local-only prototype) ──
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () =>
-                        _onSendActionPlan(payload.reportMarkdown),
-                    icon: const Icon(Icons.send_rounded, size: 18),
-                    label: Text(
-                      AppLocalizations.of(context).action_plan_send_button,
-                      style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: EuphireColors.ember,
-                      foregroundColor: EuphireColors.nocturne,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -406,14 +382,49 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     );
   }
 
+  /// Pinned bottom bar with the "send action plan to patient" action, so it's
+  /// always visible without scrolling to the end of a long report. Only shown
+  /// once a report has loaded.
+  Widget? _buildActionPlanBar(AppLocalizations t) {
+    if (_loading || _error != null || _data == null || _data!.reports.isEmpty) {
+      return null;
+    }
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _onSendActionPlan,
+          icon: const Icon(Icons.send_rounded, size: 18),
+          label: Text(
+            t.action_plan_send_button,
+            style: const TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: EuphireColors.ember,
+            foregroundColor: EuphireColors.nocturne,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Extracts the action plan from [reportMarkdown] and opens the existing
   /// note editor prefilled, in action-plan mode (Save / Save+Send). The
   /// "send" is SIMULATED — no backend call. Patient e-mail is backend-only
   /// client-side, so we pass null and let the editor fall back to a
   /// simulated address.
-  void _onSendActionPlan(String reportMarkdown) {
+  void _onSendActionPlan() {
     final data = _data;
-    if (data == null) return;
+    if (data == null || data.reports.isEmpty) return;
+    final reportMarkdown = _ReportPayload.parse(data.reports.first).reportMarkdown;
     final draft = extractActionPlan(
       reportMarkdown,
       sessionDate: data.session.createdAt,
