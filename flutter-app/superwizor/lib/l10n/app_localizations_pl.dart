@@ -1326,4 +1326,45 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get note_deleted => 'Notatka usunięta';
+
+  @override
+  String get action_plan_send_button => 'Wyślij plan działania do pacjenta';
+
+  @override
+  String get action_plan_save_only => 'Zapisz';
+
+  @override
+  String get action_plan_save_and_send => 'Zapisz i wyślij';
+
+  @override
+  String get action_plan_no_email_title => 'Brak adresu e-mail';
+
+  @override
+  String get action_plan_no_email_body =>
+      'Nie można wysłać planu — pacjent nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.';
+
+  @override
+  String get action_plan_send_confirm_title => 'Wyślij plan działania?';
+
+  @override
+  String action_plan_send_confirm_body(String email) {
+    return 'Plan zostanie wysłany na adres: $email';
+  }
+
+  @override
+  String get action_plan_send_sim_caption =>
+      '(symulacja — wysyłka e-mail zostanie podłączona do backendu)';
+
+  @override
+  String get action_plan_send_cancel => 'Anuluj';
+
+  @override
+  String get action_plan_send_confirm_action => 'Wyślij';
+
+  @override
+  String get action_plan_sent_toast =>
+      'Plan działania zapisany i wysłany (symulacja)';
+
+  @override
+  String get action_plan_default_title => 'Plan działania';
 }

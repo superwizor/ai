@@ -492,5 +492,21 @@
   "note_edit_label": "Edit note",
   "note_untitled": "Untitled",
   "note_saved": "Note saved ✓",
-  "note_deleted": "Note deleted"
+  "note_deleted": "Note deleted",
+
+  "action_plan_send_button": "Send action plan to patient",
+  "action_plan_save_only": "Save",
+  "action_plan_save_and_send": "Save and send",
+  "action_plan_no_email_title": "No e-mail address",
+  "action_plan_no_email_body": "The plan can't be sent — the patient has no e-mail address on file. Add an e-mail in the client record.",
+  "action_plan_send_confirm_title": "Send the action plan?",
+  "action_plan_send_confirm_body": "The plan will be sent to: {email}",
+  "@action_plan_send_confirm_body": {
+    "placeholders": { "email": { "type": "String" } }
+  },
+  "action_plan_send_sim_caption": "(simulation — e-mail delivery will be wired to the backend)",
+  "action_plan_send_cancel": "Cancel",
+  "action_plan_send_confirm_action": "Send",
+  "action_plan_sent_toast": "Action plan saved and sent (simulation)",
+  "action_plan_default_title": "Action plan"
 }

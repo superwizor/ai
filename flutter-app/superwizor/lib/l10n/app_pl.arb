@@ -493,5 +493,21 @@
   "note_edit_label": "Edytuj notatkę",
   "note_untitled": "Bez tytułu",
   "note_saved": "Notatka zapisana ✓",
-  "note_deleted": "Notatka usunięta"
+  "note_deleted": "Notatka usunięta",
+
+  "action_plan_send_button": "Wyślij plan działania do pacjenta",
+  "action_plan_save_only": "Zapisz",
+  "action_plan_save_and_send": "Zapisz i wyślij",
+  "action_plan_no_email_title": "Brak adresu e-mail",
+  "action_plan_no_email_body": "Nie można wysłać planu — pacjent nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.",
+  "action_plan_send_confirm_title": "Wyślij plan działania?",
+  "action_plan_send_confirm_body": "Plan zostanie wysłany na adres: {email}",
+  "@action_plan_send_confirm_body": {
+    "placeholders": { "email": { "type": "String" } }
+  },
+  "action_plan_send_sim_caption": "(symulacja — wysyłka e-mail zostanie podłączona do backendu)",
+  "action_plan_send_cancel": "Anuluj",
+  "action_plan_send_confirm_action": "Wyślij",
+  "action_plan_sent_toast": "Plan działania zapisany i wysłany (symulacja)",
+  "action_plan_default_title": "Plan działania"
 }

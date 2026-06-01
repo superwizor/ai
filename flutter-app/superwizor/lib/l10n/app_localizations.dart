@@ -2398,6 +2398,78 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Notatka usunięta'**
   String get note_deleted;
+
+  /// No description provided for @action_plan_send_button.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij plan działania do pacjenta'**
+  String get action_plan_send_button;
+
+  /// No description provided for @action_plan_save_only.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisz'**
+  String get action_plan_save_only;
+
+  /// No description provided for @action_plan_save_and_send.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisz i wyślij'**
+  String get action_plan_save_and_send;
+
+  /// No description provided for @action_plan_no_email_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak adresu e-mail'**
+  String get action_plan_no_email_title;
+
+  /// No description provided for @action_plan_no_email_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie można wysłać planu — pacjent nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.'**
+  String get action_plan_no_email_body;
+
+  /// No description provided for @action_plan_send_confirm_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij plan działania?'**
+  String get action_plan_send_confirm_title;
+
+  /// No description provided for @action_plan_send_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Plan zostanie wysłany na adres: {email}'**
+  String action_plan_send_confirm_body(String email);
+
+  /// No description provided for @action_plan_send_sim_caption.
+  ///
+  /// In pl, this message translates to:
+  /// **'(symulacja — wysyłka e-mail zostanie podłączona do backendu)'**
+  String get action_plan_send_sim_caption;
+
+  /// No description provided for @action_plan_send_cancel.
+  ///
+  /// In pl, this message translates to:
+  /// **'Anuluj'**
+  String get action_plan_send_cancel;
+
+  /// No description provided for @action_plan_send_confirm_action.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij'**
+  String get action_plan_send_confirm_action;
+
+  /// No description provided for @action_plan_sent_toast.
+  ///
+  /// In pl, this message translates to:
+  /// **'Plan działania zapisany i wysłany (symulacja)'**
+  String get action_plan_sent_toast;
+
+  /// No description provided for @action_plan_default_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Plan działania'**
+  String get action_plan_default_title;
 }
 
 class _AppLocalizationsDelegate

@@ -207,7 +207,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _NoteEditorScreen(
+        builder: (_) => NoteEditorScreen(
           patientId: widget.patientId,
         ),
       ),
@@ -2066,7 +2066,7 @@ class _NoteCard extends ConsumerWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => _NoteEditorScreen(
+                      builder: (_) => NoteEditorScreen(
                         patientId: patientId,
                         existingNote: note,
                       ),
@@ -2221,20 +2221,48 @@ class _NoteCard extends ConsumerWidget {
 
 // ─── Note Editor Screen (full page, create or edit) ──────────────────
 
-class _NoteEditorScreen extends ConsumerStatefulWidget {
+/// Prototype scaffold: lets us exercise BOTH the "has email" and
+/// "no email" branches of the action-plan send flow until the backend
+/// resolves the patient's real e-mail address. Flip to false to simulate
+/// a patient with no e-mail on file.
+const bool kSimulatePatientHasEmail = true;
+
+class NoteEditorScreen extends ConsumerStatefulWidget {
   final String patientId;
   final PatientNote? existingNote;
 
-  const _NoteEditorScreen({
+  /// Optional seed values (used only when [existingNote] is null), e.g. an
+  /// action-plan draft extracted from a report.
+  final String? initialTitle;
+  final String? initialText;
+
+  /// When true, renders the action-plan bottom bar (Save / Save+Send) and
+  /// enables the simulated send flow.
+  final bool actionPlanMode;
+
+  /// Source session the action plan was extracted from (prototype metadata).
+  final String? sourceSessionId;
+
+  /// Patient e-mail, when known client-side. Currently always null (e-mail
+  /// is backend-only), so the send flow falls back to a simulated address.
+  final String? patientEmail;
+
+  const NoteEditorScreen({
+    super.key,
     required this.patientId,
     this.existingNote,
+    this.initialTitle,
+    this.initialText,
+    this.actionPlanMode = false,
+    this.sourceSessionId,
+    this.patientEmail,
   });
 
   @override
-  ConsumerState<_NoteEditorScreen> createState() => _NoteEditorScreenState();
+  ConsumerState<NoteEditorScreen> createState() => _NoteEditorScreenState();
 }
 
-class _NoteEditorScreenState extends ConsumerState<_NoteEditorScreen> {
+class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   late TextEditingController _titleCtrl;
   late TextEditingController _bodyCtrl;
   late FocusNode _bodyFocus;
@@ -2252,8 +2280,12 @@ class _NoteEditorScreenState extends ConsumerState<_NoteEditorScreen> {
   @override
   void initState() {
     super.initState();
-    _titleCtrl = TextEditingController(text: widget.existingNote?.title ?? '');
-    _bodyCtrl = TextEditingController(text: widget.existingNote?.text ?? '');
+    // When creating a new note we may be seeded from an extracted draft
+    // (e.g. an action plan pulled from a report); fall back to empty.
+    _titleCtrl = TextEditingController(
+        text: widget.existingNote?.title ?? widget.initialTitle ?? '');
+    _bodyCtrl = TextEditingController(
+        text: widget.existingNote?.text ?? widget.initialText ?? '');
     _bodyFocus = FocusNode();
   }
 
@@ -2265,10 +2297,13 @@ class _NoteEditorScreenState extends ConsumerState<_NoteEditorScreen> {
     super.dispose();
   }
 
-  void _save() {
+  /// Persists the note locally (Hive) without toasting or popping. Returns
+  /// false when there's nothing to save. Marks the editor as saved so the
+  /// discard guard won't fire on a later pop.
+  bool _persist() {
     final title = _titleCtrl.text.trim();
     final body = _bodyCtrl.text.trim();
-    if (title.isEmpty && body.isEmpty) return;
+    if (title.isEmpty && body.isEmpty) return false;
     final notifier = ref.read(patientNotesMapProvider.notifier);
     if (_isEditing) {
       notifier.updateNote(
@@ -2277,10 +2312,137 @@ class _NoteEditorScreenState extends ConsumerState<_NoteEditorScreen> {
       notifier.addNote(widget.patientId, title, body);
     }
     HapticFeedback.mediumImpact();
+    _saved = true;
+    return true;
+  }
+
+  void _save() {
+    if (!_persist()) return;
     final l = AppLocalizations.of(context);
     EuphireToast.success(context, message: l.note_saved);
-    _saved = true;
     Navigator.pop(context);
+  }
+
+  /// Action-plan mode: save the note locally, then run the SIMULATED send
+  /// flow. No backend is touched — the "send" is mocked end to end.
+  Future<void> _saveAndSend() async {
+    // Always save first so the note is never lost, regardless of the
+    // e-mail gate outcome below.
+    _persist();
+    final l = AppLocalizations.of(context);
+
+    // E-mail is backend-only client-side; fall back to a simulated address
+    // so the prototype can exercise the happy path.
+    final effectiveEmail = (widget.patientEmail != null &&
+            widget.patientEmail!.trim().isNotEmpty)
+        ? widget.patientEmail!.trim()
+        : (kSimulatePatientHasEmail ? 'pacjent@example.com' : null);
+
+    if (effectiveEmail == null || effectiveEmail.isEmpty) {
+      await _showNoEmailDialog(l);
+      return; // note already saved; do not send
+    }
+
+    final confirmed = await _showSendConfirmSheet(l, effectiveEmail);
+    if (confirmed != true) return;
+    if (!mounted) return;
+    HapticFeedback.mediumImpact();
+    EuphireToast.success(context, message: l.action_plan_sent_toast);
+    Navigator.pop(context);
+  }
+
+  /// Masks an e-mail address: keep the first char of the local part, then
+  /// `***`, then the domain. e.g. `pacjent@example.com` -> `p***@example.com`.
+  String _maskEmail(String email) {
+    final at = email.indexOf('@');
+    if (at <= 0) return email;
+    final domain = email.substring(at);
+    return '${email[0]}***$domain';
+  }
+
+  Future<void> _showNoEmailDialog(AppLocalizations l) {
+    return showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _EuphireSheet(
+        title: l.action_plan_no_email_title,
+        body: l.action_plan_no_email_body,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: EuphireColors.ember,
+                foregroundColor: EuphireColors.nocturne,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(l.common_understand,
+                  style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _showSendConfirmSheet(
+      AppLocalizations l, String email) {
+    return showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _EuphireSheet(
+        title: l.action_plan_send_confirm_title,
+        body: l.action_plan_send_confirm_body(_maskEmail(email)),
+        caption: l.action_plan_send_sim_caption,
+        children: [
+          Row(children: [
+            Expanded(
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                ),
+                child: Text(l.action_plan_send_cancel,
+                    style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: EuphireColors.mist)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: EuphireColors.ember,
+                  foregroundColor: EuphireColors.nocturne,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(l.action_plan_send_confirm_action,
+                    style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ]),
+        ],
+      ),
+    );
   }
 
   Future<bool> _onWillPop() async {
@@ -2400,7 +2562,9 @@ class _NoteEditorScreenState extends ConsumerState<_NoteEditorScreen> {
             },
           ),
           title: Text(
-            _isEditing ? l.note_edit_label : l.note_sheet_title,
+            widget.actionPlanMode
+                ? l.action_plan_default_title
+                : (_isEditing ? l.note_edit_label : l.note_sheet_title),
             style: const TextStyle(
               fontFamily: 'Montserrat',
               fontSize: 17,
@@ -2409,20 +2573,24 @@ class _NoteEditorScreenState extends ConsumerState<_NoteEditorScreen> {
             ),
           ),
           centerTitle: true,
-          actions: [
-            TextButton(
-              onPressed: _save,
-              child: Text(
-                l.note_sheet_save,
-                style: const TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: EuphireColors.ember,
-                ),
-              ),
-            ),
-          ],
+          // In action-plan mode the bottom bar carries the Save / Save+Send
+          // actions, so we drop the redundant AppBar save button.
+          actions: widget.actionPlanMode
+              ? null
+              : [
+                  TextButton(
+                    onPressed: _save,
+                    child: Text(
+                      l.note_sheet_save,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: EuphireColors.ember,
+                      ),
+                    ),
+                  ),
+                ],
         ),
         body: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
@@ -2514,6 +2682,133 @@ class _NoteEditorScreenState extends ConsumerState<_NoteEditorScreen> {
             ),
           ),
         ),
+        bottomNavigationBar:
+            widget.actionPlanMode ? _buildActionPlanBar(l) : null,
+      ),
+    );
+  }
+
+  /// Action-plan bottom bar: "Zapisz" (save only) + "Zapisz i wyślij"
+  /// (primary, ember). Sits below the editor text fields.
+  Widget _buildActionPlanBar(AppLocalizations l) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+        child: Row(children: [
+          Expanded(
+            child: TextButton(
+              onPressed: _save,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                ),
+              ),
+              child: Text(l.action_plan_save_only,
+                  style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: EuphireColors.mist)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _saveAndSend,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: EuphireColors.ember,
+                foregroundColor: EuphireColors.nocturne,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(l.action_plan_save_and_send,
+                  style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Euphire-styled bottom sheet matching the note discard sheet visual:
+/// grab handle, centered title + body, optional small caption, then the
+/// caller-supplied action [children].
+class _EuphireSheet extends StatelessWidget {
+  final String title;
+  final String body;
+  final String? caption;
+  final List<Widget> children;
+
+  const _EuphireSheet({
+    required this.title,
+    required this.body,
+    this.caption,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A2326),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(top: BorderSide(color: Colors.white10)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(title,
+                  style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.frostWhite),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text(body,
+                  style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 14,
+                      color: EuphireColors.mist.withValues(alpha: 0.7),
+                      height: 1.5),
+                  textAlign: TextAlign.center),
+              if (caption != null) ...[
+                const SizedBox(height: 8),
+                Text(caption!,
+                    style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: EuphireColors.mist.withValues(alpha: 0.5),
+                        height: 1.4),
+                    textAlign: TextAlign.center),
+              ],
+              const SizedBox(height: 20),
+              ...children,
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -2562,7 +2857,7 @@ class _NoteViewScreen extends ConsumerWidget {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => _NoteEditorScreen(
+                  builder: (_) => NoteEditorScreen(
                     patientId: patientId,
                     existingNote: note,
                   ),

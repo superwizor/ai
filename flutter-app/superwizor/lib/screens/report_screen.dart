@@ -30,9 +30,11 @@ import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../repositories/session_details_repository.dart';
 import '../theme/euphire_theme.dart';
+import '../utils/action_plan_extractor.dart';
 import '../widgets/euphire_segmented_control.dart';
 import '../widgets/euphire_toast.dart';
 import '../widgets/report_rating_widget.dart';
+import 'client_details_screen.dart';
 import 'transcript_screen.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
@@ -370,11 +372,63 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                     ),
                   );
                 }),
+                const SizedBox(height: 8),
+                // ── Send action plan to patient (local-only prototype) ──
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () =>
+                        _onSendActionPlan(payload.reportMarkdown),
+                    icon: const Icon(Icons.send_rounded, size: 18),
+                    label: Text(
+                      AppLocalizations.of(context).action_plan_send_button,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: EuphireColors.ember,
+                      foregroundColor: EuphireColors.nocturne,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// Extracts the action plan from [reportMarkdown] and opens the existing
+  /// note editor prefilled, in action-plan mode (Save / Save+Send). The
+  /// "send" is SIMULATED — no backend call. Patient e-mail is backend-only
+  /// client-side, so we pass null and let the editor fall back to a
+  /// simulated address.
+  void _onSendActionPlan(String reportMarkdown) {
+    final data = _data;
+    if (data == null) return;
+    final draft = extractActionPlan(
+      reportMarkdown,
+      sessionDate: data.session.createdAt,
+    );
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NoteEditorScreen(
+          patientId: data.session.patientFileId,
+          actionPlanMode: true,
+          sourceSessionId: widget.sessionId,
+          initialTitle: draft.title,
+          initialText: draft.text,
+          patientEmail: null,
+        ),
+      ),
     );
   }
 
