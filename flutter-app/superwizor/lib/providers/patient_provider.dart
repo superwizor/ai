@@ -456,7 +456,13 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
       await _repo?.renameSessionLocally(patientId, sessionId, newName);
       applyOptimistic();
     } catch (e) {
+      // The local rename (optimistic state + cache) is already applied, so
+      // the new title still shows and survives restart — but the SERVER
+      // didn't accept it, so it won't survive a reinstall / other device.
+      // Rethrow so the caller can surface that instead of silently
+      // pretending the rename was saved.
       debugPrint('[rename] Server sync failed (local rename persisted): $e');
+      rethrow;
     }
   }
 }

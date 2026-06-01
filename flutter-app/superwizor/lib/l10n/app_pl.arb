@@ -510,6 +510,7 @@
   "action_plan_sent_toast": "Plan działania wysłany do klienta",
   "action_plan_saved_not_sent": "Notatka zapisana, ale nie udało się wysłać e-maila. Spróbuj wysłać ponownie później.",
   "session_delete_error": "Nie udało się usunąć sesji. Spróbuj ponownie.",
+  "session_rename_error": "Nie udało się zapisać tytułu na serwerze. Spróbuj ponownie.",
   "action_plan_default_title": "Plan działania",
   "action_plan_fill_email_hint": "Wypełnij adres e-mail klienta i ponów wysyłkę.",
   "note_save_error": "Nie udało się zapisać notatki",

@@ -1369,6 +1369,10 @@ class AppLocalizationsPl extends AppLocalizations {
       'Nie udało się usunąć sesji. Spróbuj ponownie.';
 
   @override
+  String get session_rename_error =>
+      'Nie udało się zapisać tytułu na serwerze. Spróbuj ponownie.';
+
+  @override
   String get action_plan_default_title => 'Plan działania';
 
   @override

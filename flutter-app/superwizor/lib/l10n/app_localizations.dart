@@ -2471,6 +2471,12 @@ abstract class AppLocalizations {
   /// **'Nie udało się usunąć sesji. Spróbuj ponownie.'**
   String get session_delete_error;
 
+  /// No description provided for @session_rename_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się zapisać tytułu na serwerze. Spróbuj ponownie.'**
+  String get session_rename_error;
+
   /// No description provided for @action_plan_default_title.
   ///
   /// In pl, this message translates to:

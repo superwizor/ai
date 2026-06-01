@@ -509,6 +509,7 @@
   "action_plan_sent_toast": "Action plan sent to client",
   "action_plan_saved_not_sent": "Note saved, but the e-mail couldn't be sent. Try sending again later.",
   "session_delete_error": "Couldn't delete the session. Please try again.",
+  "session_rename_error": "Couldn't save the title on the server. Please try again.",
   "action_plan_default_title": "Action plan",
   "action_plan_fill_email_hint": "Fill in the client's e-mail address and resend.",
   "note_save_error": "Couldn't save the note",

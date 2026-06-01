@@ -1597,6 +1597,7 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
       return;
     }
     setState(() => _saving = true);
+    final l = AppLocalizations.of(context);
     try {
       await ref.read(sessionsProvider.notifier).renameSession(
         widget.patientId,
@@ -1604,15 +1605,33 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
         newTitle,
       );
       if (mounted) Navigator.pop(context);
-    } catch (_) {
-      if (mounted) setState(() => _saving = false);
+    } catch (e) {
+      // Server didn't accept the rename — surface it (was silently
+      // swallowed before) and keep the sheet open so the user can retry.
+      if (mounted) {
+        setState(() => _saving = false);
+        EuphireToast.error(context, message: l.session_rename_error);
+      }
     }
   }
 
   void _deleteWarning() {
+    // Capture stable references BEFORE popping. Once the options sheet is
+    // popped, THIS State (its `ref` / `context` / `mounted`) is disposed —
+    // so the confirm sheet must not touch them. This was the real reason
+    // "Tak, usuń" did nothing: the old code popped first, then the confirm
+    // button read a DISPOSED `ref`, so deleteSession never even ran (and my
+    // earlier server-refresh fix never executed). notifier/rootContext are
+    // valid for the whole lifetime of the confirm sheet.
+    final notifier = ref.read(sessionsProvider.notifier);
+    final l = AppLocalizations.of(context);
+    final patientId = widget.patientId;
+    final sessionId = widget.session.id;
+    final rootContext = Navigator.of(context, rootNavigator: true).context;
+
     Navigator.pop(context);
     showModalBottomSheet(
-      context: context,
+      context: rootContext,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         decoration: const BoxDecoration(
@@ -1699,20 +1718,15 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
+                          // Close the confirm sheet first, then delete via the
+                          // CAPTURED notifier (the widget's `ref` is gone now).
+                          Navigator.pop(ctx);
                           try {
-                            await ref
-                                .read(sessionsProvider.notifier)
-                                .deleteSession(widget.patientId, widget.session.id);
-                            if (ctx.mounted) Navigator.pop(ctx);
+                            await notifier.deleteSession(patientId, sessionId);
                           } catch (e) {
-                            // Don't swallow the error — that's exactly what
-                            // made the button look dead. Close the sheet and
-                            // tell the user it failed.
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            if (mounted) {
-                              EuphireToast.error(context,
-                                  message: AppLocalizations.of(context)
-                                      .session_delete_error);
+                            if (rootContext.mounted) {
+                              EuphireToast.error(rootContext,
+                                  message: l.session_delete_error);
                             }
                           }
                         },

@@ -1352,6 +1352,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t delete the session. Please try again.';
 
   @override
+  String get session_rename_error =>
+      'Couldn\'t save the title on the server. Please try again.';
+
+  @override
   String get action_plan_default_title => 'Action plan';
 
   @override
