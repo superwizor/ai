@@ -315,6 +315,9 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
           id: s.id,
           patientId: s.patientFileId,
           modality: s.name.isNotEmpty ? s.name : 'Rozmowa',
+          // Read the server name into Session.name so renames persist on
+          // refresh (mirrors SessionDto.toModel — keep in sync).
+          name: s.name.isNotEmpty ? s.name : null,
           date: s.createdAt.toDateTime().toLocal(),
           duration: Duration(seconds: s.durationSeconds),
           status: s.status == 'PENDING_UPLOAD'

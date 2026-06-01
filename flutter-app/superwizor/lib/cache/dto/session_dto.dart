@@ -83,8 +83,14 @@ class SessionDto {
         id: id,
         patientId: patientFileId,
         modality: name.isNotEmpty ? name : 'Rozmowa',
-        // name is NOT mapped here — server 'name' is the modality string,
-        // not a custom title. Session.name is only set by explicit user rename.
+        // Map the server `sessions.name` to Session.name so a custom title set
+        // via UpdateSession (rename) is read back on EVERY refresh — not just
+        // shown optimistically. The server defaults this to
+        // "<modality_display> <N>" on create, so non-renamed sessions still get
+        // a sensible title; the card's own 'Sesja $n' fallback only fires if
+        // the server name is ever empty. (Without this, a rename persisted
+        // server-side but reverted to the default on re-entry.)
+        name: name.isNotEmpty ? name : null,
         date: createdAt.toLocal(),
         duration: Duration(seconds: durationSeconds),
         status: status == 'PENDING_UPLOAD'
