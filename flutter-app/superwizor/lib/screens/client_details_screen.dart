@@ -2606,7 +2606,12 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                   // ── Title field ──
                   TextField(
                     controller: _titleCtrl,
-                    autofocus: !_isEditing,
+                    // Don't autofocus when the title is prefilled (action-plan
+                    // mode): a focused single-line field scrolls the cursor to
+                    // the end, clipping the first char of a long title.
+                    autofocus: !_isEditing &&
+                        (widget.initialTitle == null ||
+                            widget.initialTitle!.isEmpty),
                     textCapitalization: TextCapitalization.sentences,
                     textInputAction: TextInputAction.next,
                     onSubmitted: (_) => _bodyFocus.requestFocus(),

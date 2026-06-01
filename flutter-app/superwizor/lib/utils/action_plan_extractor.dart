@@ -123,20 +123,47 @@ ActionPlanDraft extractActionPlan(String reportMarkdown,
     return ActionPlanDraft(title: title, text: '');
   }
 
-  // Capture body until the next heading of same-or-higher level.
-  final body = <String>[];
+  // Capture raw body lines until the next heading of same-or-higher level.
+  final raw = <String>[];
   for (var i = matchIndex + 1; i < lines.length; i++) {
     final level = _headingLevel(lines[i]);
     if (level != null && level <= matchLevel) break;
-    body.add(_stripBullet(lines[i]));
+    raw.add(lines[i]);
   }
 
-  return ActionPlanDraft(title: title, text: body.join('\n').trim());
+  return ActionPlanDraft(title: title, text: _toPlainText(raw));
 }
 
-/// Trivially strips a single leading markdown list bullet (`- `, `* `,
-/// `+ `, or `1. `) so the seeded note reads as plain text rather than
-/// markdown source. Leaves indentation-only and prose lines untouched.
-String _stripBullet(String line) {
-  return line.replaceFirst(RegExp(r'^(\s*)([-*+]|\d+\.)\s+'), r'$1');
+/// Converts captured markdown body lines into clean, readable plain text for
+/// the note editor: strips markdown emphasis (**bold**, *italic*, `code`),
+/// turns list bullets (`- `/`* `/`+ `) into "• ", unwraps links to their
+/// text, and inserts a blank line before each bullet so items breathe.
+String _toPlainText(List<String> rawLines) {
+  final out = <String>[];
+  for (final line in rawLines) {
+    final cleaned = _cleanInline(line);
+    final isBullet = cleaned.trimLeft().startsWith('• ');
+    if (isBullet && out.isNotEmpty && out.last.trim().isNotEmpty) {
+      out.add(''); // paragraph spacing before a new bullet
+    }
+    out.add(cleaned);
+  }
+  return out.join('\n').replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+}
+
+/// Strips inline markdown from a single line. NOTE: Dart's `replaceFirst`
+/// does NOT expand `$1` backreferences (that inserts a literal "$1") — we
+/// use `replaceFirstMapped`/`replaceAllMapped` where a capture is needed.
+String _cleanInline(String line) {
+  var s = line;
+  // List bullet → "• " (preserve indentation).
+  s = s.replaceFirstMapped(RegExp(r'^(\s*)([-*+])\s+'), (m) => '${m[1]}• ');
+  // Links [text](url) → text.
+  s = s.replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)'), (m) => m[1] ?? '');
+  // Emphasis / code markers: ** __ * `  (single _ left alone to avoid
+  // mangling words).
+  s = s.replaceAll(RegExp(r'\*\*|__|\*|`'), '');
+  // Defensive: any leading heading hashes.
+  s = s.replaceFirst(RegExp(r'^#{1,6}\s*'), '');
+  return s.trimRight();
 }
