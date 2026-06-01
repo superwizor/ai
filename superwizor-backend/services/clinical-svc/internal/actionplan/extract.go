@@ -27,6 +27,13 @@ var headingPriority = []string{
 	// P1 — action plan.
 	"plan dzialania",
 	"action plan",
+	// P1b — between-session inspirations / invitations. Some modalities
+	// (e.g. the balance/energy one) name the client action-plan section
+	// "Inspiracje Między Sesjami" rather than "Plan działania klienta".
+	"inspiracje miedzy sesjami",
+	"between-session inspirations",
+	"between session inspirations",
+	"inspiracje",
 	// P2 — proposed interventions.
 	"propozycje interwencji",
 	"proposed interventions",
@@ -63,30 +70,69 @@ func normalize(s string) string {
 	return diacriticReplacer.Replace(strings.ToLower(s))
 }
 
-// headingLevel returns the markdown heading level (number of leading
-// `#`) for line, or -1 if the line is not an ATX heading.
+// boldHeadingLevel is the synthetic level for a bold-only "heading" line
+// such as `**Plan działania klienta**`. Many report generations emit
+// section titles as bold text instead of ATX `##` — without this they'd
+// be invisible to the extractor. Level 2 makes a bold heading behave like
+// a `##` section. Mirrors the Dart _kBoldHeadingLevel.
+const boldHeadingLevel = 2
+
+// boldInner reports whether trimmed is a line entirely wrapped in `**…**`
+// or `__…__` (optionally with a trailing `:` inside or outside the
+// markers) and returns the inner text. Go's RE2 has no backreferences, so
+// this is done with explicit prefix/suffix checks instead of a regex. A
+// markdown list item like "- **Nazwa:** …" is NOT a bold heading (after
+// trimming it starts with "-", not the marker), so per-task bold
+// sub-labels never get mistaken for a section boundary.
+func boldInner(trimmed string) (string, bool) {
+	s := strings.TrimRight(strings.TrimSpace(trimmed), ":") // colon outside markers
+	for _, m := range []string{"**", "__"} {
+		if len(s) > 2*len(m) && strings.HasPrefix(s, m) && strings.HasSuffix(s, m) {
+			inner := strings.TrimSpace(s[len(m) : len(s)-len(m)])
+			inner = strings.TrimSpace(strings.TrimRight(inner, ":")) // colon inside
+			// Reject lines with multiple bold spans (e.g. "**a** and **b**").
+			if inner != "" && !strings.Contains(inner, m) {
+				return inner, true
+			}
+		}
+	}
+	return "", false
+}
+
+// headingLevel returns the heading level for line, or -1 if it is not a
+// heading. Recognizes both ATX headings (`#`, `##`, …) and bold-only
+// lines (`**Heading**`), so the extractor works whether the report uses
+// real markdown headings or bold-as-heading.
 func headingLevel(line string) int {
-	trimmed := strings.TrimLeft(line, " \t")
-	if !strings.HasPrefix(trimmed, "#") {
-		return -1
+	trimmed := strings.TrimSpace(line)
+	if strings.HasPrefix(trimmed, "#") {
+		level := 0
+		for level < len(trimmed) && trimmed[level] == '#' {
+			level++
+		}
+		// A valid ATX heading needs whitespace (or end) after the hashes.
+		if level < len(trimmed) && trimmed[level] != ' ' {
+			return -1
+		}
+		return level
 	}
-	level := 0
-	for level < len(trimmed) && trimmed[level] == '#' {
-		level++
+	if _, ok := boldInner(trimmed); ok {
+		return boldHeadingLevel
 	}
-	// A valid ATX heading needs whitespace (or end) after the hashes.
-	if level < len(trimmed) && trimmed[level] != ' ' {
-		return -1
-	}
-	return level
+	return -1
 }
 
 var headingHashPrefixRe = regexp.MustCompile(`^#+\s*`)
 
-// headingText returns the heading text after the leading `#`s, trimmed.
+// headingText returns the heading text with the leading `#`s OR
+// surrounding `**`/`__` markers and any trailing `:` stripped, trimmed.
 func headingText(line string) string {
-	trimmed := strings.TrimLeft(line, " \t")
-	return strings.TrimSpace(headingHashPrefixRe.ReplaceAllString(trimmed, ""))
+	trimmed := strings.TrimSpace(line)
+	t := strings.TrimSpace(headingHashPrefixRe.ReplaceAllString(trimmed, ""))
+	if inner, ok := boldInner(t); ok {
+		t = inner
+	}
+	return strings.TrimRight(strings.TrimSpace(t), ":")
 }
 
 // Extract pulls the action-plan section out of report markdown and
@@ -94,8 +140,9 @@ func headingText(line string) string {
 // found.
 //
 // Heuristic (mirrors the Dart extractActionPlan body):
-//  1. Scan ATX headings (`#`, `##`, …), case- and accent-insensitive,
-//     against headingPriority.
+//  1. Scan headings — ATX (`#`, `##`, …) and bold-only lines
+//     (`**Heading**`) — case- and accent-insensitive, against
+//     headingPriority.
 //  2. For the first heading whose text contains a priority phrase,
 //     capture every line after it up to (but excluding) the next heading
 //     of the same-or-higher level (fewer-or-equal `#`).

@@ -42,6 +42,37 @@ done`,
 Nothing actionable here.`,
 			want: "",
 		},
+		{
+			name: "bold-as-heading: **Plan działania klienta** captures body, stops at next bold heading",
+			markdown: `**Podsumowanie**
+Klient był spokojny.
+
+**Plan działania klienta**
+- **Ćwiczenie oddechowe** codziennie rano
+- Spacer 10 minut
+
+**Propozycje interwencji**
+Praca z pustym krzesłem.`,
+			want: "• Ćwiczenie oddechowe codziennie rano\n\n• Spacer 10 minut",
+		},
+		{
+			name: "bold heading with trailing colon",
+			markdown: `**Summary**
+Some text.
+
+**Action plan:**
+Do the breathing exercise.`,
+			want: "Do the breathing exercise.",
+		},
+		{
+			name: "alternate modality name: Inspiracje Między Sesjami",
+			markdown: `## Bilans Sesji
+Coś tam.
+
+## Inspiracje Między Sesjami
+Mikro-praktyka wdzięczności.`,
+			want: "Mikro-praktyka wdzięczności.",
+		},
 	}
 
 	for _, tt := range tests {

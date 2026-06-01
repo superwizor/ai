@@ -35,6 +35,13 @@ const List<String> _kHeadingPriority = [
   // P1 — action plan.
   'plan dzialania',
   'action plan',
+  // P1b — between-session inspirations / invitations. Some modalities
+  // (e.g. the balance/energy one) name the client action-plan section
+  // "Inspiracje Między Sesjami" rather than "Plan działania klienta".
+  'inspiracje miedzy sesjami',
+  'between-session inspirations',
+  'between session inspirations',
+  'inspiracje',
   // P2 — proposed interventions.
   'propozycje interwencji',
   'proposed interventions',
@@ -73,24 +80,48 @@ String _normalize(String s) {
   return buf.toString();
 }
 
-/// Returns the markdown heading level (number of leading `#`) for [line],
-/// or null if the line is not an ATX heading.
+/// Synthetic heading level for a bold-only "heading" line such as
+/// `**Plan działania klienta**`. Many report generations emit section
+/// titles as bold text instead of ATX `##` — without this they'd be
+/// invisible to the extractor and nothing would ever match. Level 2 makes
+/// a bold heading behave like a `##` section: a following bold-only or
+/// `#`/`##` heading ends the captured body, while deeper `###`+
+/// subheadings do not.
+const int _kBoldHeadingLevel = 2;
+
+/// A line that is ENTIRELY wrapped in `**…**` or `__…__` (optionally with a
+/// trailing `:`), e.g. `**Plan działania klienta**` or `__Action plan:__`.
+/// A markdown list item like `- **Nazwa zadania:** …` does NOT match (it
+/// doesn't start with the bold marker after trimming), so per-task bold
+/// sub-labels never get mistaken for a section boundary.
+final RegExp _kBoldHeadingRe = RegExp(r'^(\*\*|__)(.+?)\1:?$');
+
+/// Returns the heading level for [line], or null if it is not a heading.
+/// Recognizes both ATX headings (`#`, `##`, …) and bold-only lines
+/// (`**Heading**`), so the extractor works whether the report uses real
+/// markdown headings or bold-as-heading.
 int? _headingLevel(String line) {
-  final trimmed = line.trimLeft();
-  if (!trimmed.startsWith('#')) return null;
-  var level = 0;
-  while (level < trimmed.length && trimmed[level] == '#') {
-    level++;
+  final trimmed = line.trim();
+  if (trimmed.startsWith('#')) {
+    var level = 0;
+    while (level < trimmed.length && trimmed[level] == '#') {
+      level++;
+    }
+    // A valid ATX heading needs whitespace (or end) after the hashes.
+    if (level < trimmed.length && trimmed[level] != ' ') return null;
+    return level;
   }
-  // A valid ATX heading needs whitespace (or end) after the hashes.
-  if (level < trimmed.length && trimmed[level] != ' ') return null;
-  return level;
+  if (_kBoldHeadingRe.hasMatch(trimmed)) return _kBoldHeadingLevel;
+  return null;
 }
 
-/// Heading text after the leading `#`s, trimmed.
+/// Heading text with the leading `#`s OR surrounding `**`/`__` markers and
+/// any trailing `:` stripped, trimmed.
 String _headingText(String line) {
-  final trimmed = line.trimLeft();
-  return trimmed.replaceFirst(RegExp(r'^#+\s*'), '').trim();
+  var t = line.trim().replaceFirst(RegExp(r'^#+\s*'), '').trim();
+  final bold = _kBoldHeadingRe.firstMatch(t);
+  if (bold != null) t = bold.group(2) ?? t;
+  return t.replaceFirst(RegExp(r':+\s*$'), '').trim();
 }
 
 String _twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -98,8 +129,9 @@ String _twoDigits(int n) => n.toString().padLeft(2, '0');
 /// Extracts the action plan section from [reportMarkdown].
 ///
 /// Heuristic:
-///  1. Scan ATX headings (`#`, `##`, `###`, …), case- and
-///     accent-insensitive, against [_kHeadingPriority].
+///  1. Scan headings — ATX (`#`, `##`, …) and bold-only lines
+///     (`**Heading**`) — case- and accent-insensitive, against
+///     [_kHeadingPriority].
 ///  2. For the first heading whose text contains a priority phrase,
 ///     capture every line after it up to (but excluding) the next heading
 ///     of the same-or-higher level (fewer-or-equal `#`).

@@ -29,7 +29,6 @@ import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/patient_contact_provider.dart';
-import '../repositories/clinical_notes_repository.dart';
 import '../repositories/session_details_repository.dart';
 import '../theme/euphire_theme.dart';
 import '../utils/action_plan_extractor.dart';
@@ -390,49 +389,34 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     );
   }
 
-  /// Fetches the server-side action-plan draft (GetActionPlanDraft) and
+  /// Extracts the action plan from the report the therapist is currently
+  /// viewing (client-side heuristic — see action_plan_extractor.dart) and
   /// opens the note editor prefilled, in action-plan mode (Save /
   /// Save+Send). The send itself is a real SavePatientNote call from the
-  /// editor. The patient e-mail availability comes from the server draft
-  /// (patientHasEmail / patientEmailMasked); on RPC failure we fall back
-  /// to the local report extractor + the cached patient e-mail.
-  Future<void> _onSendActionPlan() async {
+  /// editor. The patient e-mail availability comes from the cached
+  /// patient list.
+  ///
+  /// We deliberately run extraction client-side rather than via the
+  /// server-side GetActionPlanDraft RPC: it works on the exact report
+  /// markdown already loaded on this screen (no round-trip / decrypt) and
+  /// keeps the heuristic in one place we can iterate on quickly.
+  void _onSendActionPlan() {
     final data = _data;
     if (data == null || data.reports.isEmpty) return;
     final l = AppLocalizations.of(context);
     final patientFileId = data.session.patientFileId;
 
-    String title = l.action_plan_default_title;
-    String text = '';
-    bool patientHasEmail = false;
-    String? patientEmail;
-
-    try {
-      final repo = ClinicalNotesRepository(ref.read(grpcClientsProvider).clinical);
-      final draft = await repo.getActionPlanDraft(widget.sessionId);
-      if (draft.suggestedTitle.isNotEmpty) title = draft.suggestedTitle;
-      text = draft.suggestedText;
-      patientHasEmail = draft.patientHasEmail;
-      // The masked e-mail is for display only; the editor's send-gate
-      // uses patientHasEmail. Resolve the real (unmasked) e-mail from the
-      // server-backed patient list so the confirm sheet can mask it
-      // consistently.
-      patientEmail = ref.read(patientEmailProvider(patientFileId));
-    } catch (e) {
-      debugPrint('[report] getActionPlanDraft failed, '
-          'falling back to local extractor: $e');
-      final reportMarkdown =
-          _ReportPayload.parse(data.reports.first).reportMarkdown;
-      final draft = extractActionPlan(
-        reportMarkdown,
-        sessionDate: data.session.createdAt,
-        titlePrefix: l.action_plan_default_title,
-      );
-      title = draft.title;
-      text = draft.text;
-      patientEmail = ref.read(patientEmailProvider(patientFileId));
-      patientHasEmail = patientEmail != null && patientEmail.isNotEmpty;
-    }
+    final reportMarkdown =
+        _ReportPayload.parse(data.reports.first).reportMarkdown;
+    final draft = extractActionPlan(
+      reportMarkdown,
+      sessionDate: data.session.createdAt,
+      titlePrefix: l.action_plan_default_title,
+    );
+    final title = draft.title;
+    final text = draft.text;
+    final patientEmail = ref.read(patientEmailProvider(patientFileId));
+    final patientHasEmail = patientEmail != null && patientEmail.isNotEmpty;
 
     if (!mounted) return;
     Navigator.of(context).push(
