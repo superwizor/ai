@@ -61,6 +61,23 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
   @override
   void initState() {
     super.initState();
+    // Force a fresh ListSessions fetch ONCE on screen entry (not on every
+    // rebuild). The SWR cached-read path can return a pre-completion
+    // snapshot when an upload finished while the user was elsewhere.
+    //
+    // This used to live in build() — which re-ran it on every rebuild. A
+    // rename's optimistic state update triggers a rebuild, which fired a
+    // forceRefresh that raced the in-flight UpdateSession and overwrote the
+    // new title with the still-stale server name. Running it once here
+    // removes that race (the ref.listen on pendingUploads below still
+    // refreshes when an upload completes).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(
+          ref.read(sessionsProvider.notifier).forceRefresh(widget.patientId),
+        );
+      }
+    });
     _fabController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350),
@@ -239,20 +256,8 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
               orElse: () => false,
             );
 
-    // Force a fresh ListSessions fetch on every screen entry. The
-    // SWR cached-read path served by `fetchSessions` can return a
-    // pre-completion snapshot when an upload finished while the
-    // user was on a different screen — _refreshKartoteka in
-    // upload_queue_provider runs at completion but the resulting
-    // cache write can race against app-lifecycle events (force-
-    // kill, background eviction). Doing a force refresh here costs
-    // one gRPC per entry and bounds the "ghost upload" UX bug
-    // confirmed on session 18d1b6d6 (2026-05-24).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(
-        ref.read(sessionsProvider.notifier).forceRefresh(widget.patientId),
-      );
-    });
+    // (forceRefresh on entry moved to initState — it must run once, not on
+    // every rebuild, or it races/overwrites optimistic edits like rename.)
 
     // Auto-refresh hook: when any in-flight upload for THIS patient
     // transitions to a terminal state (drops from
