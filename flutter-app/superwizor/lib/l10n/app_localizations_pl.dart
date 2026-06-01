@@ -1371,4 +1371,18 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get action_plan_fill_email_hint =>
       'Wypełnij adres e-mail klienta i ponów wysyłkę.';
+
+  @override
+  String get note_send_to_client => 'Wyślij do klienta';
+
+  @override
+  String get note_send_confirm_title => 'Wysłać notatkę do klienta?';
+
+  @override
+  String note_send_confirm_body(String email) {
+    return 'Notatka zostanie wysłana na adres: $email';
+  }
+
+  @override
+  String get note_sent_toast => 'Notatka wysłana do klienta (symulacja)';
 }

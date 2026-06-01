@@ -509,5 +509,13 @@
   "action_plan_send_confirm_action": "Send",
   "action_plan_sent_toast": "Action plan saved and sent (simulation)",
   "action_plan_default_title": "Action plan",
-  "action_plan_fill_email_hint": "Fill in the client's e-mail address and resend."
+  "action_plan_fill_email_hint": "Fill in the client's e-mail address and resend.",
+
+  "note_send_to_client": "Send to client",
+  "note_send_confirm_title": "Send note to client?",
+  "note_send_confirm_body": "The note will be sent to: {email}",
+  "@note_send_confirm_body": {
+    "placeholders": { "email": { "type": "String" } }
+  },
+  "note_sent_toast": "Note sent to client (simulation)"
 }

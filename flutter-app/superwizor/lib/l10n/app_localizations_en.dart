@@ -1354,4 +1354,18 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get action_plan_fill_email_hint =>
       'Fill in the client\'s e-mail address and resend.';
+
+  @override
+  String get note_send_to_client => 'Send to client';
+
+  @override
+  String get note_send_confirm_title => 'Send note to client?';
+
+  @override
+  String note_send_confirm_body(String email) {
+    return 'The note will be sent to: $email';
+  }
+
+  @override
+  String get note_sent_toast => 'Note sent to client (simulation)';
 }

@@ -13,6 +13,7 @@ import '../models/session.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/patient_provider.dart';
 import '../providers/patient_notes_provider.dart';
+import '../providers/patient_contact_provider.dart';
 import '../providers/viewed_reports_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../uploads/cancel_upload_action.dart';
@@ -2072,6 +2073,8 @@ class _NoteCard extends ConsumerWidget {
                       ),
                     ),
                   );
+                } else if (value == 'send') {
+                  _sendNoteToClient(context, ref, l, patientId, note);
                 } else if (value == 'delete') {
                   _showDeleteConfirmation(context, ref, l);
                 }
@@ -2095,6 +2098,21 @@ class _NoteCard extends ConsumerWidget {
                           color: EuphireColors.mist.withValues(alpha: 0.7)),
                       const SizedBox(width: 10),
                       Text(l.note_edit_label,
+                          style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 14,
+                              color: EuphireColors.frostWhite)),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'send',
+                  child: Row(
+                    children: [
+                      Icon(Icons.outgoing_mail, size: 18,
+                          color: EuphireColors.ember.withValues(alpha: 0.9)),
+                      const SizedBox(width: 10),
+                      Text(l.note_send_to_client,
                           style: const TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 14,
@@ -2214,6 +2232,111 @@ class _NoteCard extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Sends a note to the client. DOUBLE VALIDATION:
+  ///   1. Resolve the patient e-mail from the local contact store.
+  ///   2. If none on file → show a "no e-mail" sheet, do NOT send.
+  ///   3. Else → show a confirmation sheet (masked e-mail). On confirm the
+  ///      send is SIMULATED (no backend) and a success toast is shown.
+  /// This moves to a real notification-svc send per docs/22.
+  void _sendNoteToClient(BuildContext context, WidgetRef ref,
+      AppLocalizations l, String patientId, PatientNote note) {
+    final email = ref.read(patientEmailProvider(patientId));
+
+    // ── Step 2: no e-mail on file → block with a hint sheet ──
+    if (email == null || email.isEmpty) {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => _EuphireSheet(
+          title: l.action_plan_no_email_title,
+          body: l.action_plan_fill_email_hint,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: EuphireColors.ember,
+                  foregroundColor: EuphireColors.nocturne,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(l.common_understand,
+                    style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // ── Step 3: confirmation sheet with the masked e-mail ──
+    // Mask: first char of local part + "***" + "@domain".
+    final at = email.indexOf('@');
+    final maskedEmail =
+        at > 0 ? '${email[0]}***${email.substring(at)}' : email;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _EuphireSheet(
+        title: l.note_send_confirm_title,
+        body: l.note_send_confirm_body(maskedEmail),
+        children: [
+          Row(children: [
+            Expanded(
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                ),
+                child: Text(l.action_plan_send_cancel,
+                    style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: EuphireColors.mist)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  // SIMULATED send — no backend call.
+                  HapticFeedback.mediumImpact();
+                  Navigator.pop(ctx);
+                  EuphireToast.success(context, message: l.note_sent_toast);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: EuphireColors.ember,
+                  foregroundColor: EuphireColors.nocturne,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(l.action_plan_send_confirm_action,
+                    style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ]),
+        ],
       ),
     );
   }

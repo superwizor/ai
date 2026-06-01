@@ -2476,6 +2476,30 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Wypełnij adres e-mail klienta i ponów wysyłkę.'**
   String get action_plan_fill_email_hint;
+
+  /// No description provided for @note_send_to_client.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij do klienta'**
+  String get note_send_to_client;
+
+  /// No description provided for @note_send_confirm_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wysłać notatkę do klienta?'**
+  String get note_send_confirm_title;
+
+  /// No description provided for @note_send_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka zostanie wysłana na adres: {email}'**
+  String note_send_confirm_body(String email);
+
+  /// No description provided for @note_sent_toast.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka wysłana do klienta (symulacja)'**
+  String get note_sent_toast;
 }
 
 class _AppLocalizationsDelegate

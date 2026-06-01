@@ -510,5 +510,13 @@
   "action_plan_send_confirm_action": "Wyślij",
   "action_plan_sent_toast": "Plan działania zapisany i wysłany (symulacja)",
   "action_plan_default_title": "Plan działania",
-  "action_plan_fill_email_hint": "Wypełnij adres e-mail klienta i ponów wysyłkę."
+  "action_plan_fill_email_hint": "Wypełnij adres e-mail klienta i ponów wysyłkę.",
+
+  "note_send_to_client": "Wyślij do klienta",
+  "note_send_confirm_title": "Wysłać notatkę do klienta?",
+  "note_send_confirm_body": "Notatka zostanie wysłana na adres: {email}",
+  "@note_send_confirm_body": {
+    "placeholders": { "email": { "type": "String" } }
+  },
+  "note_sent_toast": "Notatka wysłana do klienta (symulacja)"
 }

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/app_localizations.dart';
 import '../models/patient.dart';
 import '../providers/patient_provider.dart';
+import '../providers/patient_contact_provider.dart';
 import '../theme/euphire_theme.dart';
 import 'euphire_toast.dart';
 import 'euphire_button.dart';
@@ -25,14 +26,23 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
   late final TextEditingController _emailController;
   bool _saving = false;
   bool _deleting = false;
+  String? _emailError;
+
+  // Light e-mail format check. Empty is allowed (optional field); a
+  // non-empty value must look like an address.
+  static final RegExp _emailRegex =
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   @override
   void initState() {
     super.initState();
     _firstNameController = TextEditingController(text: widget.patient.firstName);
     _lastNameController = TextEditingController(text: widget.patient.lastName);
-    // TODO: populate from patient.email when the model carries it.
-    _emailController = TextEditingController();
+    // Seed from the local patient-contact store (e-mail isn't on the
+    // Patient model / backend yet). This moves to clinical-svc
+    // UpdatePatientUser (patient_email) per docs/22.
+    final storedEmail = ref.read(patientEmailProvider(widget.patient.id));
+    _emailController = TextEditingController(text: storedEmail ?? '');
   }
 
   @override
@@ -139,6 +149,10 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
               label: t.addPatient_email_label,
               hint: t.addPatient_email_hint,
               keyboardType: TextInputType.emailAddress,
+              errorText: _emailError,
+              onChanged: (_) {
+                if (_emailError != null) setState(() => _emailError = null);
+              },
             ),
             const SizedBox(height: 24),
 
@@ -165,6 +179,15 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
     final lastName = _lastNameController.text.trim();
     if (firstName.isEmpty) return;
 
+    final email = _emailController.text.trim();
+    // Validate the optional e-mail: empty is fine, but a non-empty value
+    // must be a plausible address.
+    if (email.isNotEmpty && !_emailRegex.hasMatch(email)) {
+      final t = AppLocalizations.of(context);
+      setState(() => _emailError = t.auth_error_invalid_email);
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       await ref.read(patientsProvider.notifier).updatePatientUser(
@@ -173,8 +196,12 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
         lastName,
       );
 
-      // TODO: persist _emailController.text.trim() when the backend
-      // accepts patient_email on UpdatePatientUser.
+      // Persist the e-mail locally (Hive meta box). This moves to
+      // clinical-svc UpdatePatientUser (patient_email) per docs/22 once
+      // the backend accepts the field.
+      await ref
+          .read(patientContactsProvider.notifier)
+          .setEmail(widget.patient.id, email);
 
       if (mounted) {
         HapticFeedback.mediumImpact();
