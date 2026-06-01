@@ -330,6 +330,86 @@ func TestPatientLifecycle_PatientEmailPersistence(t *testing.T) {
 }
 
 // =================================================================
+//   TestPatientLifecycle_PatientNotesCRUD — full CRUD over the
+//   patient_notes RPCs (docs/22): CreatePatientNote, ListPatientNotes,
+//   UpdatePatientNote, DeletePatientNote. Also proves the
+//   envelope-encryption round-trip — title/text are encrypted at rest
+//   (cryptobox / Cloud KMS) and decrypted on read, so a successful
+//   title/text assertion means the encrypt→store→decrypt loop holds.
+// =================================================================
+func TestPatientLifecycle_PatientNotesCRUD(t *testing.T) {
+	env := setupLifecycleEnv(t)
+	patient := env.createTestPatient("notes-crud")
+	t.Cleanup(func() {
+		bg, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_, _ = env.clinical.DeletePatientFile(bg,
+			&clinicalv1.DeletePatientFileRequest{PatientFileId: patient.Id})
+	})
+
+	const title1 = "Notatka 1"
+	const text1 = "Treść notatki — obserwacje z sesji."
+	const title2 = "Notatka 1 (zmiana)"
+	const text2 = "Zaktualizowana treść notatki."
+
+	t.Log("\n═══ Step 1: CreatePatientNote (FREE_NOTE) ═══")
+	created, err := env.clinical.CreatePatientNote(env.ctx, &clinicalv1.CreatePatientNoteRequest{
+		PatientFileId: patient.Id,
+		Title:         title1,
+		Text:          text1,
+		Kind:          "FREE_NOTE",
+	})
+	require.NoError(t, err, "CreatePatientNote")
+	require.NotEmpty(t, created.Id)
+	assert.Equal(t, patient.Id, created.PatientFileId)
+	assert.Equal(t, "FREE_NOTE", created.Kind)
+	assert.Equal(t, title1, created.Title, "title must round-trip through encrypt→decrypt")
+	assert.Equal(t, text1, created.Text, "text must round-trip through encrypt→decrypt")
+
+	t.Log("\n═══ Step 2: ListPatientNotes returns the (decrypted) note ═══")
+	listed, err := env.clinical.ListPatientNotes(env.ctx, &clinicalv1.ListPatientNotesRequest{
+		PatientFileId: patient.Id,
+	})
+	require.NoError(t, err, "ListPatientNotes")
+	require.Len(t, listed.Notes, 1, "exactly the one note we created")
+	assert.Equal(t, created.Id, listed.Notes[0].Id)
+	assert.Equal(t, title1, listed.Notes[0].Title, "List must decrypt the title")
+	assert.Equal(t, text1, listed.Notes[0].Text, "List must decrypt the text")
+
+	t.Log("\n═══ Step 3: UpdatePatientNote edits title + text ═══")
+	updated, err := env.clinical.UpdatePatientNote(env.ctx, &clinicalv1.UpdatePatientNoteRequest{
+		NoteId: created.Id,
+		Title:  title2,
+		Text:   text2,
+	})
+	require.NoError(t, err, "UpdatePatientNote")
+	assert.Equal(t, created.Id, updated.Id, "same note id (update, not create)")
+	assert.Equal(t, title2, updated.Title)
+	assert.Equal(t, text2, updated.Text)
+
+	// Confirm via List that the DB row actually changed (not just the resp).
+	listed2, err := env.clinical.ListPatientNotes(env.ctx, &clinicalv1.ListPatientNotesRequest{
+		PatientFileId: patient.Id,
+	})
+	require.NoError(t, err, "ListPatientNotes (post-update)")
+	require.Len(t, listed2.Notes, 1)
+	assert.Equal(t, title2, listed2.Notes[0].Title, "updated title must persist")
+	assert.Equal(t, text2, listed2.Notes[0].Text, "updated text must persist")
+
+	t.Log("\n═══ Step 4: DeletePatientNote removes it ═══")
+	_, err = env.clinical.DeletePatientNote(env.ctx, &clinicalv1.DeletePatientNoteRequest{
+		NoteId: created.Id,
+	})
+	require.NoError(t, err, "DeletePatientNote")
+
+	listed3, err := env.clinical.ListPatientNotes(env.ctx, &clinicalv1.ListPatientNotesRequest{
+		PatientFileId: patient.Id,
+	})
+	require.NoError(t, err, "ListPatientNotes (post-delete)")
+	assert.Empty(t, listed3.Notes, "note must be gone after delete (soft-delete filtered from List)")
+}
+
+// =================================================================
 //   TestPatientLifecycle_DeletePatientFile — single-kartoteka delete
 //   (without touching the patient_user row). Verifies:
 //     - DeletePatientFile returns OK (Empty)
