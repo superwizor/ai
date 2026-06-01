@@ -246,6 +246,11 @@ jobs:
           # adding it here so --set-env-vars (which REPLACES the env
           # block) preserves it on every deploy.
           BILLING_SVC_URL="https://billing-svc-e3f32b232q-lm.a.run.app"
+          # NOTIFICATION_SVC_URL — read by clinical-svc.SavePatientNote to send
+          # the patient action-plan e-mail (docs/22). notification-svc already
+          # exists; resolve its URL. Without it the send path returns Unavailable
+          # and the note is saved-only.
+          NOTIFICATION_URL=$(gcloud run services describe notification-svc --region ${{ env.REGION }} --format 'value(status.url)' || echo "")
           gcloud run deploy clinical-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
@@ -255,7 +260,7 @@ jobs:
             --service-account=clinical-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
-            --set-env-vars="IDENTITY_SVC_URL=${IDENTITY_URL},VERSION=${{ github.sha }},KMS_KEY_URI=${KMS_KEY_URI},BILLING_SVC_URL=${BILLING_SVC_URL}"
+            --set-env-vars="IDENTITY_SVC_URL=${IDENTITY_URL},VERSION=${{ github.sha }},KMS_KEY_URI=${KMS_KEY_URI},BILLING_SVC_URL=${BILLING_SVC_URL},NOTIFICATION_SVC_URL=${NOTIFICATION_URL}"
           gcloud run services add-iam-policy-binding clinical-svc \
             --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
             --member=allUsers --role=roles/run.invoker
