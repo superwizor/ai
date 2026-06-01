@@ -749,6 +749,13 @@ type AuditEvent struct {
 	Reason *string `json:"reason"`
 }
 
+type EmailTemplate struct {
+	TemplateKey string    `json:"template_key"`
+	Locale      string    `json:"locale"`
+	Content     []byte    `json:"content"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 type FcmToken struct {
 	ID                uuid.UUID          `json:"id"`
 	UserID            uuid.UUID          `json:"user_id"`
@@ -857,6 +864,24 @@ type PatientFile struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out (legacy clients).
 	IdempotencyKey *string `json:"idempotency_key"`
+	PatientEmail   *string `json:"patient_email"`
+}
+
+type PatientNote struct {
+	ID                uuid.UUID          `json:"id"`
+	PatientFileID     uuid.UUID          `json:"patient_file_id"`
+	TherapistID       uuid.UUID          `json:"therapist_id"`
+	Kind              string             `json:"kind"`
+	SourceSessionID   pgtype.UUID        `json:"source_session_id"`
+	TitleCiphertext   []byte             `json:"title_ciphertext"`
+	TitleEncryptedDek []byte             `json:"title_encrypted_dek"`
+	TextCiphertext    []byte             `json:"text_ciphertext"`
+	TextEncryptedDek  []byte             `json:"text_encrypted_dek"`
+	SentToPatientAt   pgtype.Timestamptz `json:"sent_to_patient_at"`
+	SentToEmail       *string            `json:"sent_to_email"`
+	CreatedAt         time.Time          `json:"created_at"`
+	UpdatedAt         time.Time          `json:"updated_at"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type PaymentEvent struct {

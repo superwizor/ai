@@ -13,6 +13,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -318,4 +319,84 @@ func (s *Store) GetUnreadNotificationCount(ctx context.Context, userID uuid.UUID
 		WHERE user_id = $1 AND status = 'sent'`,
 		userID).Scan(&n)
 	return n, err
+}
+
+// ---------- email_templates ----------
+
+// GetEmailTemplate reads a DB-backed, editable email template
+// (migration 000041). The content column is a JSON object
+// {subject, body_html, body_text} with {key} placeholders rendered by
+// the caller. Locale fallback mirrors the embedded i18n templater: if
+// the requested locale row is absent we retry with 'pl' (the primary
+// market). When neither row exists the method returns pgx.ErrNoRows so
+// the caller can fall back to its embedded go:embed default.
+func (s *Store) GetEmailTemplate(ctx context.Context, key, locale string) (subject, bodyHTML, bodyText string, err error) {
+	subject, bodyHTML, bodyText, err = s.getEmailTemplateRow(ctx, key, locale)
+	if errors.Is(err, pgx.ErrNoRows) && locale != "pl" {
+		// Locale fallback to the primary market.
+		subject, bodyHTML, bodyText, err = s.getEmailTemplateRow(ctx, key, "pl")
+	}
+	return subject, bodyHTML, bodyText, err
+}
+
+func (s *Store) getEmailTemplateRow(ctx context.Context, key, locale string) (subject, bodyHTML, bodyText string, err error) {
+	var raw []byte
+	err = s.Pool.QueryRow(ctx, `
+		SELECT content
+		FROM email_templates
+		WHERE template_key = $1 AND locale = $2`,
+		key, locale,
+	).Scan(&raw)
+	if err != nil {
+		return "", "", "", err
+	}
+	var content struct {
+		Subject  string `json:"subject"`
+		BodyHTML string `json:"body_html"`
+		BodyText string `json:"body_text"`
+	}
+	if err := json.Unmarshal(raw, &content); err != nil {
+		return "", "", "", fmt.Errorf("unmarshal email_template content (%s/%s): %w", key, locale, err)
+	}
+	return content.Subject, content.BodyHTML, content.BodyText, nil
+}
+
+// LookupUserIDByEmail resolves a (non-deleted) users row by email,
+// returning its id. Patient rows may carry an email (migration 000013),
+// so an action-plan recipient is sometimes a real users row — when it
+// is, we can attach the delivery audit + idempotency record to it.
+// Returns pgx.ErrNoRows when no matching user exists.
+func (s *Store) LookupUserIDByEmail(ctx context.Context, email string) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id
+		FROM users
+		WHERE lower(email) = lower($1) AND deleted_at IS NULL
+		ORDER BY created_at
+		LIMIT 1`,
+		email,
+	).Scan(&id)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return id, nil
+}
+
+// GetDeliveryIDByIdempotencyKey returns the id of the existing
+// notification_deliveries row for a given idempotency_key. Used to
+// recover the original delivery id on an idempotent replay (the INSERT
+// path returns ErrAlreadyDelivered without the id). Returns
+// pgx.ErrNoRows if the key was never recorded.
+func (s *Store) GetDeliveryIDByIdempotencyKey(ctx context.Context, idempotencyKey string) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id
+		FROM notification_deliveries
+		WHERE idempotency_key = $1`,
+		idempotencyKey,
+	).Scan(&id)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return id, nil
 }

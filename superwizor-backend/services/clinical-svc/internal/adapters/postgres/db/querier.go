@@ -59,6 +59,15 @@ type Querier interface {
 	// ux_patient_files_idempotency for the race window between the
 	// pre-check and the insert.
 	CreatePatientFile(ctx context.Context, arg CreatePatientFileParams) (PatientFile, error)
+	// patient_notes — per-patient free-text notes + action plans (docs/22,
+	// migration 000040). Clinical PHI: title/text are envelope-encrypted at
+	// the handler layer (cryptobox) and stored as (ciphertext, encrypted_dek)
+	// BYTEA blobs, same as transcripts/reports. Authz (the note's
+	// patient_file.therapist_id == ctx user) is enforced in the gRPC handler;
+	// these queries only filter soft-deleted rows.
+	// source_session_id is NULL for FREE_NOTE; set to the seeding session for
+	// an ACTION_PLAN. The four blob columns carry the encrypted title+text.
+	CreatePatientNote(ctx context.Context, arg CreatePatientNoteParams) (PatientNote, error)
 	// Patient user CRUD — operates on rows in `users` with role='PATIENT'.
 	// Created/edited from clinical-svc.CreatePatientFile + UpdatePatientUser
 	// + DeletePatientUser handlers. The therapist-side ownership check
@@ -108,6 +117,9 @@ type Querier interface {
 	// without a second round-trip. Closes the "modality empty after
 	// create" gap surfaced by the previous Faza 2 TODO.
 	GetPatientFileWithUser(ctx context.Context, id uuid.UUID) (GetPatientFileWithUserRow, error)
+	// Single note for authz + update/delete/send. Soft-deleted rows are
+	// invisible (treated as 404 by the handler).
+	GetPatientNote(ctx context.Context, id uuid.UUID) (PatientNote, error)
 	GetPatientUser(ctx context.Context, id uuid.UUID) (GetPatientUserRow, error)
 	// Report-rating queries. Spec: docs/10_REPORT_CUSTOMIZATION.md §5.
 	// All paths assume the gRPC handler has already validated that the
@@ -122,6 +134,11 @@ type Querier interface {
 	GetTherapistUILanguage(ctx context.Context, id uuid.UUID) (string, error)
 	GetTranscriptBySession(ctx context.Context, sessionID uuid.UUID) (Transcript, error)
 	GetTranscriptForRebuild(ctx context.Context, sessionID uuid.UUID) (GetTranscriptForRebuildRow, error)
+	// first_name + last_name for a user (therapist), used by
+	// SavePatientNote to populate the action-plan e-mail's
+	// therapist_display_name. Both columns are NOT NULL on the users table
+	// (migration 000003) so no null handling is needed here.
+	GetUserDisplayName(ctx context.Context, id uuid.UUID) (GetUserDisplayNameRow, error)
 	// Resolves users.organization_id for a therapist — used by
 	// clinical-svc.GetMyBillingState (proxy to billing-svc.GetSubscription)
 	// to derive the org from the auth-context user_id.
@@ -154,6 +171,9 @@ type Querier interface {
 	// See GetPatientFileWithUser comment for the JOIN strategy. Same
 	// shape, just the WHERE switches to therapist_id + paged.
 	ListPatientFilesByTherapistWithUser(ctx context.Context, arg ListPatientFilesByTherapistWithUserParams) ([]ListPatientFilesByTherapistWithUserRow, error)
+	// All live notes for a kartoteka, newest first. Matches the partial
+	// index idx_patient_notes_file (patient_file_id, created_at DESC).
+	ListPatientNotesByFile(ctx context.Context, patientFileID uuid.UUID) ([]PatientNote, error)
 	// Pulls the last N negative ratings for a therapist. The
 	// suggestion-engine Go code aggregates by chip category. We cap at
 	// 5 in production today (the trigger window) but the LIMIT comes
@@ -182,10 +202,23 @@ type Querier interface {
 	ListSessionsByPatient(ctx context.Context, patientFileID uuid.UUID) ([]Session, error)
 	ListSupportedModalities(ctx context.Context) ([]ListSupportedModalitiesRow, error)
 	ListTranscriptSegments(ctx context.Context, transcriptID uuid.UUID) ([]TranscriptSegment, error)
+	// Stamps the action-plan e-mail send. Called after notification-svc
+	// confirms delivery. Returns the refreshed row so the handler can
+	// re-emit the proto with sent_to_patient_at populated.
+	MarkPatientNoteSent(ctx context.Context, arg MarkPatientNoteSentParams) (PatientNote, error)
+	// Sets (or clears) the patient's contact e-mail on the kartoteka
+	// (migration 000040). Plaintext contact PII, consistent with
+	// working_alias. An empty string from the caller is normalized to NULL
+	// so "no e-mail" is a single canonical representation. Authz
+	// (therapist ownership) is enforced in the handler before this runs.
+	SetPatientEmail(ctx context.Context, arg SetPatientEmailParams) error
 	// Kept for backwards compatibility — old gRPC handlers may still call
 	// it. New code (post-000012) uses HardDeletePatientFile to satisfy
 	// RODO right-to-erasure.
 	SoftDeletePatientFile(ctx context.Context, arg SoftDeletePatientFileParams) error
+	// Soft delete — keeps the row for audit, hides it from List/Get. (Hard
+	// erasure happens via the patient_files CASCADE on RODO delete.)
+	SoftDeletePatientNote(ctx context.Context, id uuid.UUID) error
 	// Mutates only the therapist-editable kartoteka fields. modality_id is
 	// intentionally NOT here: sessions/reports were analyzed under the
 	// modality picked at create time, and silently swapping it would
@@ -194,6 +227,9 @@ type Querier interface {
 	// Patient-user fields (first_name/last_name/language_code) live in
 	// patient_users.sql::UpdatePatientUser.
 	UpdatePatientFile(ctx context.Context, arg UpdatePatientFileParams) (PatientFile, error)
+	// Replaces the encrypted title+text blobs wholesale (the handler
+	// re-encrypts the full plaintext on every edit). bumps updated_at.
+	UpdatePatientNote(ctx context.Context, arg UpdatePatientNoteParams) (PatientNote, error)
 	// COALESCE/NULLIF pattern: empty string from the caller means "leave
 	// this field alone". Concrete value (even a single character) replaces
 	// the column. Returns the refreshed row so the handler can re-emit the

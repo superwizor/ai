@@ -12,6 +12,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getUserDisplayName = `-- name: GetUserDisplayName :one
+SELECT first_name, last_name
+FROM users
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+type GetUserDisplayNameRow struct {
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
+
+// first_name + last_name for a user (therapist), used by
+// SavePatientNote to populate the action-plan e-mail's
+// therapist_display_name. Both columns are NOT NULL on the users table
+// (migration 000003) so no null handling is needed here.
+func (q *Queries) GetUserDisplayName(ctx context.Context, id uuid.UUID) (GetUserDisplayNameRow, error) {
+	row := q.db.QueryRow(ctx, getUserDisplayName, id)
+	var i GetUserDisplayNameRow
+	err := row.Scan(&i.FirstName, &i.LastName)
+	return i, err
+}
+
 const getUserOrganizationID = `-- name: GetUserOrganizationID :one
 SELECT organization_id
 FROM users
