@@ -14,7 +14,13 @@
 class CacheKeys {
   CacheKeys._();
 
-  static const schemaVersion = 1;
+  // Bumped 1 -> 2 (2026-06-01): patient e-mail + session custom-name read
+  // mapping were added/fixed. Old cached PatientDto/SessionDto entries were
+  // written before those fields were mapped, so they hold a stale empty
+  // e-mail / default session name. Bumping the version abandons the v1 boxes
+  // (cache_manager wipes them) so the first load after upgrade re-fetches
+  // fresh rows that carry the e-mail and custom session titles.
+  static const schemaVersion = 2;
 
   // ── Box names ──────────────────────────────────────────────────
   static String patientsBox(String therapistId) =>
