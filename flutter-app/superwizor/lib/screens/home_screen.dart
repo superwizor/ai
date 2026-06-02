@@ -741,7 +741,9 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
     } catch (_) {}
     _firstNameCtrl = TextEditingController(text: patient?.firstName ?? '');
     _lastNameCtrl = TextEditingController(text: patient?.lastName ?? '');
-    _emailCtrl = TextEditingController();
+    // Pre-fill the e-mail from the patient (was empty before — so this sheet
+    // showed a blank e-mail AND, on save, sent "" which CLEARED the address).
+    _emailCtrl = TextEditingController(text: patient?.email ?? '');
   }
 
   @override
@@ -776,6 +778,8 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
         widget.patientId,
         firstName,
         lastName,
+        // Must pass the e-mail — omitting it sent "" and wiped the address.
+        email: _emailCtrl.text.trim(),
       );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
