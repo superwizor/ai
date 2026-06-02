@@ -319,6 +319,27 @@ func TestPatientLifecycle_PatientEmailPersistence(t *testing.T) {
 	require.NoError(t, err, "GetPatientFile (post-update)")
 	assert.Equal(t, updateEmail, got2.PatientEmail, "updated patient_email must persist")
 
+	// CRITICAL: the edit modal's `widget.patient` comes from ListPatientFiles,
+	// NOT GetPatientFile. The list mapper (toProtoPatientFileFromListJoinRow)
+	// is a separate code path — assert IT carries patient_email too, otherwise
+	// the modal pre-fills empty on reopen and the e-mail looks "not saved".
+	t.Log("\n═══ Step 2.5: ListPatientFiles ALSO returns patient_email ═══")
+	listed, err := env.clinical.ListPatientFiles(env.ctx, &clinicalv1.ListPatientFilesRequest{
+		TherapistId: env.therapist.Id,
+		PageSize:    50,
+	})
+	require.NoError(t, err, "ListPatientFiles")
+	var fromList *clinicalv1.PatientFile
+	for _, pf := range listed.PatientFiles {
+		if pf.Id == created.Id {
+			fromList = pf
+			break
+		}
+	}
+	require.NotNil(t, fromList, "created kartoteka must appear in ListPatientFiles")
+	assert.Equal(t, updateEmail, fromList.PatientEmail,
+		"ListPatientFiles must carry patient_email (the edit modal's data source)")
+
 	t.Log("\n═══ Step 3: empty patient_email clears the column ═══")
 	cleared, err := env.clinical.UpdatePatientUser(env.ctx, &clinicalv1.UpdatePatientUserRequest{
 		PatientFileId: created.Id,
