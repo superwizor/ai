@@ -251,20 +251,29 @@ resource "google_cloud_run_v2_service_iam_member" "scheduler_invoke_billing" {
 }
 
 # ============================================================================
-# Cloud Run public-invocability for Flutter-facing services.
+# Cloud Run public-invocability for Flutter- and browser-facing services.
 #
 # These services are deployed by CI's `gcloud run deploy --allow-unauthenticated`
 # (the service revisions themselves are not yet terraform-managed), but we
 # pin the IAM policy here so manual `add-iam-policy-binding` / `remove-iam
 # -policy-binding` commands and accidental --no-allow-unauthenticated deploys
-# can't quietly break Flutter.
+# can't quietly break Flutter or the web /account/ page.
 #
 # Public at the Cloud Run frontend — the actual user identity is verified
 # at the application layer via Firebase ID token (see identity-svc's
-# Firebase Admin SDK call paths).
+# Firebase Admin SDK call paths) and per-service Connect interceptors.
 #
-# Internal services (billing-svc, ai-pipeline-svc, llm-worker, stt-worker)
-# are NOT in this list — they remain SA-bound only.
+# CORS preflight (OPTIONS) requests from browsers are anonymous by spec
+# (no Authorization header), so any service the marketing-site calls
+# directly MUST be in this list — otherwise Google Frontend 403s the
+# preflight and the browser reports a CORS error before the in-app
+# CORS middleware can respond. The /account/ page's Subskrypcja card
+# hits billing-svc.GetSubscription directly (see commit aff0e8e and
+# docs/PROGRESS.md "Subskrypcja card calls billing-svc directly"),
+# which is why billing-svc is in the public list.
+#
+# Internal-only services (ai-pipeline-svc, llm-worker, stt-worker) stay
+# SA-bound — no browser ever calls them.
 # ============================================================================
 locals {
   public_cloud_run_services = [
@@ -273,6 +282,7 @@ locals {
     "ingestion-svc",
     "api-service",
     "notification-svc", # Phase 3 — Flutter calls RegisterFCMToken etc.
+    "billing-svc",      # marketing-site /account/ Subskrypcja card calls GetSubscription directly
   ]
 }
 
