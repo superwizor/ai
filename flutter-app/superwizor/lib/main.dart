@@ -15,6 +15,7 @@ import 'l10n/app_localizations.dart';
 import 'screens/home_screen_v2.dart';
 import 'screens/login_screen.dart';
 import 'theme/euphire_theme.dart';
+import 'widgets/responsive_shell.dart';
 import 'uploads/upload_queue_provider.dart';
 
 /// Top-level handler for FCM messages while the app is in the
@@ -100,6 +101,12 @@ class SuperWizorApp extends ConsumerWidget {
       supportedLocales: const [Locale('pl'), Locale('en')],
       locale: locale,
       home: const _AuthGate(),
+      // Global responsive wrapper — constrains content width on
+      // desktop/tablet (>600px) to 640 logical pixels, centered.
+      // Mobile layout is untouched.
+      builder: (context, child) {
+        return ResponsiveShell(child: child ?? const SizedBox.shrink());
+      },
     );
   }
 }
