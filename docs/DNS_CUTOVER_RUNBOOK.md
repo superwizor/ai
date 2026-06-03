@@ -11,7 +11,7 @@ This document is the cookbook the on-call operator follows. It
 covers two domains in one cutover so the marketing site and the
 therapist app come up together:
 
-- `superwizor.ai`        → Firebase Hosting site `superwizor-www`
+- `superwizor.ai`        → Firebase Hosting site `superwizor`
                            (Next.js marketing + admin shell)
 - `app.superwizor.ai`    → Firebase Hosting site `superwizor-app`
                            (Flutter Web therapist console)
@@ -88,7 +88,7 @@ already there.
 # CI workflow .github/workflows/marketing-site.yml `deploy-production`
 # job does this automatically on every push to main. To trigger
 # manually:
-firebase deploy --only hosting:superwizor-www \
+firebase deploy --only hosting:superwizor \
   --project superwizor-ai-25ecd
 
 # Flutter Web app — built locally, deployed manually for now
@@ -103,8 +103,8 @@ firebase deploy --only hosting:superwizor-app \
 After both deploys, hit the default Firebase URLs and smoke test
 once more:
 
-- https://superwizor-www.web.app/
-- https://superwizor-www.web.app/admin/audit (sign-in panel)
+- https://superwizor.web.app/
+- https://superwizor.web.app/admin/audit (sign-in panel)
 - https://superwizor-app.web.app/login
 
 ---
@@ -114,7 +114,7 @@ once more:
 Firebase Console → Hosting → for each of the two sites, click
 **Add custom domain**.
 
-### 2.1  superwizor.ai (apex) → superwizor-www
+### 2.1  superwizor.ai (apex) → superwizor
 
 1. Enter `superwizor.ai`. Choose **Quick setup** if Firebase
    recognises the domain (often does for popular registrars); else
@@ -233,7 +233,7 @@ Hosting release:
 
 ```bash
 # Marketing site
-firebase hosting:rollback --site superwizor-www --project superwizor-ai-25ecd
+firebase hosting:rollback --site superwizor --project superwizor-ai-25ecd
 
 # Flutter Web
 firebase hosting:rollback --site superwizor-app --project superwizor-ai-25ecd

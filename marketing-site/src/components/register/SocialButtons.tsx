@@ -52,8 +52,8 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
       // Existing user → bounce to Flutter app. Firebase Auth is
       // origin-scoped so they'll re-auth on the Flutter origin —
       // unavoidable cost of R3 origin discipline. DNS for
-      // app.superwizor.ai is still NXDOMAIN; use web.app subdomain.
-      window.location.href = "https://superwizor-app.web.app/";
+      // app.superwizor.ai is wired and live.
+      window.location.href = "https://app.superwizor.ai/";
       return;
     } catch (e) {
       if (!(e instanceof ConnectError) || e.code !== Code.NotFound) {

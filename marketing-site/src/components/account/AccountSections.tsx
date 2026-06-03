@@ -38,7 +38,7 @@ import {
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import type { Subscription } from "@superwizor/proto-ts/billing/v1/billing_pb";
 
-const APP_URL = "https://superwizor-app.web.app/";
+const APP_URL = "https://app.superwizor.ai/";
 
 export function AccountSections() {
   const t = useTranslations("account");
