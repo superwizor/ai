@@ -82,10 +82,40 @@ over one giant blob.
 
 ## Branch strategy
 
-- `main` — production. No direct work.
-- `feat/web-app` — base branch for the web-app build. Slice 1 already here.
-- `feat/web-app-slice-N` — per-slice branches off `feat/web-app`. Merge back
-  into `feat/web-app` (NOT main) when the slice is verified.
+**Default workflow for every change — features, bug fixes, infra tweaks, docs.**
+
+1. **Never commit directly to `main`.** Before the first edit of any new piece
+   of work, create a branch named after what you're doing:
+   - `feat/<short-name>` for new functionality
+   - `fix/<short-name>` for bug fixes
+   - `infra/<short-name>` for terraform / IAM / CI changes
+   - `docs/<short-name>` for doc-only changes
+   If you're already on a feature branch (e.g. `feat/web-app`), branch off it,
+   not off main.
+2. **Commit early and often on the branch.** Same small-commit cadence as
+   before — proofs and screenshots go into `evidence/` along the way.
+3. **Verify before merging.** A branch is "verified" when:
+   - Smoke check passes (`go build ./... && go vet ./...`, `flutter analyze`,
+     `pnpm build` — whichever apply).
+   - Tests pass against the live thing (see "Proof before passing" above).
+   - For UI changes: a Playwright screenshot of the final state is opened
+     with `Read` and confirmed.
+   - For infra changes: `terragrunt plan` clean, `terragrunt apply` succeeds,
+     post-change `curl` / `gcloud` confirms the live resource.
+4. **Then merge to `main`.** Fast-forward when possible (single-commit
+   branches, no divergence); use `--no-ff` for slice merges so the branch
+   history stays visible. Delete the branch locally after merge.
+5. **Push to `origin/main` only when the user asks.** Local merge alone does
+   not publish.
+
+**Existing long-lived branches** (still active):
+- `feat/web-app` — base branch for the web-app build. Per-slice work branches
+  off it as `feat/web-app-slice-N` and merges back into `feat/web-app`
+  *before* `feat/web-app` rolls up to `main`. The "verify before merging"
+  bar applies at every step.
+
+**Exception:** if the user explicitly says "commit to main" or "push this
+straight to main," do as asked — that's a deliberate override.
 
 ## If you're told to stop
 
