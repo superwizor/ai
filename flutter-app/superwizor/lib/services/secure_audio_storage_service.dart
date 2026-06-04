@@ -23,6 +23,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:encrypt/encrypt.dart' as enc;
@@ -147,57 +148,27 @@ class SecureAudioStorageService {
       await dir.create(recursive: true);
     }
 
-    final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
-    final out = <EncryptedChunk>[];
-
-    final input = raw.openRead();
-    final buffer = BytesBuilder(copy: false);
-    int seq = 0;
-
-    Future<void> flushChunk(Uint8List data) async {
-      final iv = enc.IV.fromSecureRandom(_ivLen);
-      final encrypted = encrypter.encryptBytes(data, iv: iv);
-
-      final fileName = 'chunk_${seq.toString().padLeft(5, '0')}.enc';
-      final outFile = File(p.join(dir.path, fileName));
-
-      // header[0] = key_version, header[1..13] = iv
-      final header = Uint8List(_headerLen);
-      header[0] = keyVersion & 0xFF;
-      header.setRange(1, 1 + _ivLen, iv.bytes);
-
-      final sink = outFile.openWrite();
-      sink.add(header);
-      sink.add(encrypted.bytes);
-      await sink.flush();
-      await sink.close();
-
-      out.add(EncryptedChunk(
-        seq: seq,
-        path: outFile.path,
-        sizeBytes: await outFile.length(),
-      ));
-      seq++;
-    }
-
-    await for (final piece in input) {
-      buffer.add(piece);
-      while (buffer.length >= _chunkSize) {
-        final all = buffer.toBytes();
-        final taken = Uint8List.sublistView(all, 0, _chunkSize);
-        final remainder = Uint8List.sublistView(all, _chunkSize);
-        buffer.clear();
-        if (remainder.isNotEmpty) buffer.add(remainder);
-        await flushChunk(taken);
-      }
-    }
-    final tail = buffer.toBytes();
-    if (tail.isNotEmpty) {
-      await flushChunk(tail);
-    }
+    // Run the CPU-heavy AES-GCM loop in a BACKGROUND ISOLATE so it never
+    // starves the main isolate's UI event loop. Encrypting a 60-90 min
+    // FLAC (~130 MB) is hundreds of synchronous block-cipher ops + file
+    // writes; on the main isolate that froze navigation for tens of
+    // seconds. The key plugin (flutter_secure_storage) is main-isolate
+    // only, so we resolve the key bytes here and hand them — with the
+    // paths and params — to a pure-Dart isolate entry (encrypt pkg +
+    // dart:io, no plugins). See also Option D: this only runs when the
+    // upload is deferred offline; an online recording uploads its raw
+    // FLAC directly and never reaches here.
+    final chunks = await Isolate.run(
+      () => _encryptChunksIsolate(_EncryptRequest(
+        rawPath: rawPath,
+        dirPath: dir.path,
+        keyBytes: key.bytes,
+        keyVersion: keyVersion,
+      )),
+    );
 
     await _secureDelete(raw);
-    return out;
+    return chunks;
   }
 
   // ---------- read path: decrypt for upload ----------
@@ -232,31 +203,32 @@ class SecureAudioStorageService {
       await tempDir.create(recursive: true);
     }
     final out = File(p.join(tempDir.path, 'session_$sessionId.flac'));
-    final sink = out.openWrite();
 
-    try {
-      for (final chunkFile in chunks) {
-        final bytes = await chunkFile.readAsBytes();
-        if (bytes.length < _headerLen + _gcmTagLen) {
-          throw StateError('chunk too short: ${chunkFile.path}');
-        }
-        final keyVersion = bytes[0];
-        final iv = enc.IV(Uint8List.sublistView(bytes, 1, 1 + _ivLen));
-        final ciphertext = Uint8List.sublistView(bytes, _headerLen);
+    // Resolve every key version that might be referenced by these chunks
+    // on the MAIN isolate (the keychain plugin is main-isolate only),
+    // then hand the bytes + chunk paths to a pure-Dart isolate that does
+    // the CPU-heavy AES-GCM decrypt + reassembly off the UI thread.
+    final keysByVersion = await _keyBytesByVersion();
+    await Isolate.run(
+      () => _decryptChunksIsolate(_DecryptRequest(
+        chunkPaths: [for (final c in chunks) c.path],
+        outPath: out.path,
+        keysByVersion: keysByVersion,
+      )),
+    );
+    return out;
+  }
 
-        final key = await _keyForVersion(keyVersion);
-        if (key == null) {
-          throw StateError(
-              'no key for chunk version $keyVersion (was the keychain wiped?)');
-        }
-        final decrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
-        final plain =
-            decrypter.decryptBytes(enc.Encrypted(ciphertext), iv: iv);
-        sink.add(plain);
-      }
-      await sink.flush();
-    } finally {
-      await sink.close();
+  /// Reads all stored master-key versions (1..current) into a sendable
+  /// map for the decrypt isolate. Almost always a single entry (v1);
+  /// covers key rotation where old chunks still reference an older key.
+  Future<Map<int, Uint8List>> _keyBytesByVersion() async {
+    final versionStr = await _storage.read(key: _keyVersionStorage);
+    final current = int.tryParse(versionStr ?? '') ?? 1;
+    final out = <int, Uint8List>{};
+    for (var v = 1; v <= current; v++) {
+      final k = await _keyForVersion(v);
+      if (k != null) out[v] = Uint8List.fromList(k.bytes);
     }
     return out;
   }
@@ -315,5 +287,127 @@ class SecureAudioStorageService {
         if (await f.exists()) await f.delete();
       } catch (_) {}
     }
+  }
+}
+
+// ─── Isolate entry points (Option A) ────────────────────────────────
+//
+// Top-level, pure-Dart functions run via Isolate.run so the AES-GCM
+// CPU work never blocks the main (UI) isolate. They use only the
+// `encrypt` package + dart:io — NO plugins (flutter_secure_storage is
+// main-isolate only, so key bytes are resolved on the main isolate and
+// passed in). Private constants of SecureAudioStorageService are
+// library-visible here (same file).
+
+/// Sendable request for [_encryptChunksIsolate].
+class _EncryptRequest {
+  final String rawPath;
+  final String dirPath;
+  final Uint8List keyBytes;
+  final int keyVersion;
+  const _EncryptRequest({
+    required this.rawPath,
+    required this.dirPath,
+    required this.keyBytes,
+    required this.keyVersion,
+  });
+}
+
+/// Streams [_EncryptRequest.rawPath] in 1 MB chunks, AES-GCM-encrypts
+/// each, writes `chunk_NNNNN.enc` into the session dir, returns chunk
+/// metadata. Runs in a background isolate.
+Future<List<EncryptedChunk>> _encryptChunksIsolate(_EncryptRequest req) async {
+  final encrypter = enc.Encrypter(
+      enc.AES(enc.Key(req.keyBytes), mode: enc.AESMode.gcm));
+  final out = <EncryptedChunk>[];
+  final buffer = BytesBuilder(copy: false);
+  int seq = 0;
+
+  Future<void> flushChunk(Uint8List data) async {
+    final iv = enc.IV.fromSecureRandom(SecureAudioStorageService._ivLen);
+    final encrypted = encrypter.encryptBytes(data, iv: iv);
+
+    final fileName = 'chunk_${seq.toString().padLeft(5, '0')}.enc';
+    final outFile = File(p.join(req.dirPath, fileName));
+
+    final header = Uint8List(SecureAudioStorageService._headerLen);
+    header[0] = req.keyVersion & 0xFF;
+    header.setRange(1, 1 + SecureAudioStorageService._ivLen, iv.bytes);
+
+    final sink = outFile.openWrite();
+    sink.add(header);
+    sink.add(encrypted.bytes);
+    await sink.flush();
+    await sink.close();
+
+    out.add(EncryptedChunk(
+      seq: seq,
+      path: outFile.path,
+      sizeBytes: await outFile.length(),
+    ));
+    seq++;
+  }
+
+  await for (final piece in File(req.rawPath).openRead()) {
+    buffer.add(piece);
+    while (buffer.length >= SecureAudioStorageService._chunkSize) {
+      final all = buffer.toBytes();
+      final taken =
+          Uint8List.sublistView(all, 0, SecureAudioStorageService._chunkSize);
+      final remainder =
+          Uint8List.sublistView(all, SecureAudioStorageService._chunkSize);
+      buffer.clear();
+      if (remainder.isNotEmpty) buffer.add(remainder);
+      await flushChunk(taken);
+    }
+  }
+  final tail = buffer.toBytes();
+  if (tail.isNotEmpty) await flushChunk(tail);
+  return out;
+}
+
+/// Sendable request for [_decryptChunksIsolate].
+class _DecryptRequest {
+  final List<String> chunkPaths; // sorted, seq order
+  final String outPath;
+  final Map<int, Uint8List> keysByVersion;
+  const _DecryptRequest({
+    required this.chunkPaths,
+    required this.outPath,
+    required this.keysByVersion,
+  });
+}
+
+/// Decrypts each chunk (resolving its key by the version byte in the
+/// header) and writes the joined plaintext to [outPath]. Runs in a
+/// background isolate.
+Future<void> _decryptChunksIsolate(_DecryptRequest req) async {
+  final sink = File(req.outPath).openWrite();
+  try {
+    for (final cp in req.chunkPaths) {
+      final bytes = await File(cp).readAsBytes();
+      if (bytes.length <
+          SecureAudioStorageService._headerLen +
+              SecureAudioStorageService._gcmTagLen) {
+        throw StateError('chunk too short: $cp');
+      }
+      final keyVersion = bytes[0];
+      final iv = enc.IV(Uint8List.sublistView(
+          bytes, 1, 1 + SecureAudioStorageService._ivLen));
+      final ciphertext =
+          Uint8List.sublistView(bytes, SecureAudioStorageService._headerLen);
+
+      final keyBytes = req.keysByVersion[keyVersion];
+      if (keyBytes == null) {
+        throw StateError(
+            'no key for chunk version $keyVersion (was the keychain wiped?)');
+      }
+      final decrypter =
+          enc.Encrypter(enc.AES(enc.Key(keyBytes), mode: enc.AESMode.gcm));
+      sink.add(decrypter.decryptBytes(enc.Encrypted(ciphertext), iv: iv));
+    }
+    await sink.flush();
+  } finally {
+    await sink.close();
   }
 }

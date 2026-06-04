@@ -19,6 +19,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -455,14 +456,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       }
 
       // The raw FLAC is already on durable disk at
-      // <docs>/sessions/<sessionId>/raw.flac (recording_service). We do
-      // NOT encrypt it inline here anymore: that was a multi-second step
-      // running BEFORE any durable queue row existed, behind a bare
-      // spinner — so "send to analysis" then leaving the screen (or an
-      // app-kill) lost the whole recording. Instead we enqueue a
-      // phase=encrypting row pointing at the session dir and let the
-      // worker run UploadIo.encryptSource durably; the kartoteka card +
-      // pending-uploads pill track it and the user can leave immediately.
+      // <docs>/sessions/<sessionId>/raw.flac (recording_service). Enqueue
+      // it durably FIRST (before any heavy work) so leaving the screen /
+      // app-kill can never lose the recording; the worker owns the rest.
       final docs = await getApplicationDocumentsDirectory();
       final sessionDir = p.join(docs.path, 'sessions', sessionId);
 
@@ -471,28 +467,58 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         throw StateError('Upload queue not available — user not signed in?');
       }
 
-      final pending = PendingUpload.initial(
-        localId: sessionId, // recordings: reuse session UUID as localId
-        therapistId: widget.therapistId,
-        patientFileId: widget.patientFileId,
-        patientLanguageCode: widget.reportLanguage,
-        sourceKind: UploadSourceKind.encryptedChunks,
-        sourcePath: sessionDir,
-        contentType: 'audio/flac',
-        // Plaintext size ≈ raw FLAC size; the worker refines both this
-        // and chunkCount from the real chunk metadata after encrypting.
-        sizeBytes: rawSize,
-        chunkCount: 1,
-        actualDurationSeconds: _displayDuration.inSeconds,
-        needsServerSideConversion: false,
-        idempotencyKey: sessionId,
-        now: DateTime.now().toUtc(),
-      ).copyWith(phase: UploadPhase.encrypting);
+      // Option D — skip on-device encryption when we can upload now.
+      // The AES-GCM chunk encryption only exists to protect PHI sitting
+      // at rest in the queue while OFFLINE. When online (the common case
+      // for someone who just finished recording in the app), upload the
+      // raw FLAC directly over TLS as a plainFile — no CPU-heavy encrypt
+      // pass at all, so navigation never janks. When offline, fall back
+      // to the durable encrypted-chunks path (phase=encrypting), whose
+      // AES now runs in a background isolate (Option A) so even that
+      // doesn't freeze the UI.
+      final conn = await Connectivity().checkConnectivity();
+      final online = conn.any((r) => r != ConnectivityResult.none);
 
-      // Persist durably WITHOUT awaiting a tick — the first tick runs the
-      // (multi-second) encryption, and we must not block navigation on
-      // it. The row is in Hive before this returns, so leaving the screen
-      // / app-kill can no longer lose the recording.
+      final PendingUpload pending;
+      if (online) {
+        pending = PendingUpload.initial(
+          localId: sessionId, // recordings: reuse session UUID as localId
+          therapistId: widget.therapistId,
+          patientFileId: widget.patientFileId,
+          patientLanguageCode: widget.reportLanguage,
+          sourceKind: UploadSourceKind.plainFile,
+          sourcePath: rawPath, // <sessionDir>/raw.flac — PUT directly
+          contentType: 'audio/flac',
+          sizeBytes: rawSize,
+          chunkCount: 1,
+          actualDurationSeconds: _displayDuration.inSeconds,
+          needsServerSideConversion: false,
+          idempotencyKey: sessionId,
+          now: DateTime.now().toUtc(),
+        );
+      } else {
+        pending = PendingUpload.initial(
+          localId: sessionId,
+          therapistId: widget.therapistId,
+          patientFileId: widget.patientFileId,
+          patientLanguageCode: widget.reportLanguage,
+          sourceKind: UploadSourceKind.encryptedChunks,
+          sourcePath: sessionDir,
+          contentType: 'audio/flac',
+          // Plaintext size ≈ raw FLAC size; the worker refines both this
+          // and chunkCount from the real chunk metadata after encrypting.
+          sizeBytes: rawSize,
+          chunkCount: 1,
+          actualDurationSeconds: _displayDuration.inSeconds,
+          needsServerSideConversion: false,
+          idempotencyKey: sessionId,
+          now: DateTime.now().toUtc(),
+        ).copyWith(phase: UploadPhase.encrypting);
+      }
+
+      // Persist durably WITHOUT awaiting a tick. The row is in Hive
+      // before this returns, so leaving the screen / app-kill can no
+      // longer lose the recording.
       await runner.enqueue(pending);
 
       // Invalidate patient + session caches so the new session shows

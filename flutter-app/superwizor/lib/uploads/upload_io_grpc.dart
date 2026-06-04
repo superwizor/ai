@@ -328,13 +328,23 @@ class GrpcUploadIo implements UploadIo {
         return;
       }
 
-      // plainFile: only delete files we own — those under the
-      // `queued_uploads/<localId>/` staging dir that
-      // new_session_screen copies the picked file into. User-picked
-      // files outside that prefix are never ours to delete.
+      final sep = Platform.pathSeparator;
       final path = u.sourcePath;
-      if (path.contains('${Platform.pathSeparator}queued_uploads'
-              '${Platform.pathSeparator}${u.localId}${Platform.pathSeparator}')) {
+
+      // Online recording fast-path (Option D): a plainFile whose source
+      // is the raw FLAC under `sessions/<localId>/raw.flac`. We own that
+      // whole session dir — secure-purge it just like the encrypted-
+      // chunks path would, so no plaintext recording lingers on disk.
+      if (path.contains('${sep}sessions$sep${u.localId}$sep')) {
+        await _secureStorage.purgeSession(u.localId);
+        return;
+      }
+
+      // File-upload path: only delete files we own — those under the
+      // `queued_uploads/<localId>/` staging dir that new_session_screen
+      // copies the picked file into. User-picked files outside that
+      // prefix are never ours to delete.
+      if (path.contains('${sep}queued_uploads$sep${u.localId}$sep')) {
         final dir = Directory(File(path).parent.path);
         if (await dir.exists()) {
           await dir.delete(recursive: true);
