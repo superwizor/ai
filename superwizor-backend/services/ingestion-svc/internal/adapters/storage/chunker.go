@@ -57,6 +57,12 @@ const (
 	// pause on a 19-min chunk (people pause every ~30s in
 	// therapy); short enough that we don't drift wildly off-target.
 	silenceSearchWindowMS int64 = 60_000
+
+	// Safety slop subtracted from the hard cap when bounding cut points.
+	// Absorbs FLAC frame-boundary rounding in ffmpeg's time-based cut and
+	// Chirp's exclusive interpretation of the 20-min limit, so a chunk
+	// planned just under the cap never tips over it on the wire.
+	chunkSafetySlopMS int64 = 20_000
 )
 
 // AudioChunk is the per-chunk metadata returned by ChunkForChirp,
@@ -142,16 +148,15 @@ func (c *Converter) ChunkForChirp(
 	}
 
 	// 3. Pick actual cut points from silence candidates near each
-	//    target. Falls back to the target itself when no silence is
-	//    in range.
-	cutPoints := make([]cutPoint, 0, len(targets))
-	for _, t := range targets {
-		cp := chooseCutPoint(silences, t)
-		cutPoints = append(cutPoints, cp)
-	}
+	//    target, BOUNDED so no resulting chunk can exceed Chirp's 20-min
+	//    BatchRecognize hard cap (the silence snap used to be able to push
+	//    a cut forward by up to silenceSearchWindowMS, blowing the 60s
+	//    margin and producing a >20-min chunk that Chirp rejects with
+	//    INVALID_ARGUMENT — root cause of session e55b7c1e failing).
+	durationMS := int64(sourceDurationSec) * 1000
+	cutPoints := selectCutPoints(targets, silences, durationMS, overlapTargetMS)
 
 	// 4. Build chunk plan with overlap_ms behind each chunk > 0.
-	durationMS := int64(sourceDurationSec) * 1000
 	chunks := buildChunkPlan(cutPoints, durationMS, overlapTargetMS)
 
 	// 5. ffmpeg-split + upload each chunk.
@@ -209,14 +214,75 @@ type cutPoint struct {
 	OnSilence    bool
 }
 
-// chooseCutPoint picks the silence midpoint nearest to `target`
-// within ±silenceSearchWindowMS. Falls back to the exact target
-// (OnSilence=false) when no candidate is in range.
-func chooseCutPoint(silences []silenceRange, target int64) cutPoint {
+// selectCutPoints turns evenly-spaced cut targets into actual cut points,
+// snapping each to nearby silence WHILE GUARANTEEING that no resulting
+// chunk exceeds Chirp's 20-min BatchRecognize hard cap.
+//
+// Each cut is bounded to [minAtMS, maxAtMS]:
+//   - maxAtMS keeps the chunk this cut CLOSES under the cap. The chunk
+//     starts at the previous cut minus the overlap (or 0 for chunk 0);
+//     the cut may not land more than (hardCap − slop) past that start.
+//   - minAtMS applies only to the FINAL cut, ensuring the TRAILING chunk
+//     (lastCut−overlap … durationMS) also fits under the cap — a backward
+//     silence snap on the last cut could otherwise over-extend the tail.
+//
+// Pure function (no I/O) so the cap invariant is unit-testable.
+func selectCutPoints(targets []int64, silences []silenceRange, durationMS, overlapMS int64) []cutPoint {
+	hardLimitMS := int64(maxChunkSecHardCap)*1000 - chunkSafetySlopMS
+	out := make([]cutPoint, 0, len(targets))
+	var prevCut int64
+	for i, t := range targets {
+		chunkStart := int64(0)
+		if i > 0 {
+			chunkStart = prevCut - overlapMS
+			if chunkStart < 0 {
+				chunkStart = 0
+			}
+		}
+		maxAtMS := chunkStart + hardLimitMS
+		if maxAtMS > durationMS {
+			maxAtMS = durationMS
+		}
+		minAtMS := int64(0)
+		if i == len(targets)-1 {
+			minAtMS = durationMS - hardLimitMS + overlapMS
+			if minAtMS < 0 {
+				minAtMS = 0
+			}
+		}
+		if minAtMS > maxAtMS {
+			minAtMS = maxAtMS
+		}
+		out = append(out, chooseCutPoint(silences, t, minAtMS, maxAtMS))
+		prevCut = out[i].AtMS
+	}
+	return out
+}
+
+// chooseCutPoint picks the silence midpoint nearest to `target` within
+// ±silenceSearchWindowMS, but only among candidates inside [minAtMS,
+// maxAtMS] — silence outside that window would push an adjacent chunk
+// past Chirp's hard cap and is rejected. Falls back to the target
+// clamped into [minAtMS, maxAtMS] (OnSilence=false) when no candidate is
+// in range.
+func chooseCutPoint(silences []silenceRange, target, minAtMS, maxAtMS int64) cutPoint {
+	// Clamp the fallback so even a no-silence cut respects the cap.
+	effTarget := target
+	if effTarget < minAtMS {
+		effTarget = minAtMS
+	}
+	if effTarget > maxAtMS {
+		effTarget = maxAtMS
+	}
+
 	bestDelta := silenceSearchWindowMS + 1
-	bestMid := target
+	bestMid := effTarget
+	onSilence := false
 	for _, s := range silences {
 		mid := (s.StartMS + s.EndMS) / 2
+		if mid < minAtMS || mid > maxAtMS {
+			continue // would breach the hard cap on an adjacent chunk
+		}
 		delta := mid - target
 		if delta < 0 {
 			delta = -delta
@@ -224,12 +290,10 @@ func chooseCutPoint(silences []silenceRange, target int64) cutPoint {
 		if delta <= silenceSearchWindowMS && delta < bestDelta {
 			bestDelta = delta
 			bestMid = mid
+			onSilence = true
 		}
 	}
-	return cutPoint{
-		AtMS:      bestMid,
-		OnSilence: bestDelta <= silenceSearchWindowMS,
-	}
+	return cutPoint{AtMS: bestMid, OnSilence: onSilence}
 }
 
 // silenceRange is a single silence interval reported by ffmpeg's

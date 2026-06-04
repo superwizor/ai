@@ -61,9 +61,13 @@ func TestChooseCutPoint(t *testing.T) {
 		{StartMS: 5_000_000, EndMS: 5_002_000}, // way past
 	}
 
+	// Wide bounds → unchanged behavior (the cap-bounding is exercised in
+	// TestSelectCutPoints_NeverExceedsHardCap below).
+	const noMin, wideMax = int64(0), int64(1_000_000_000)
+
 	// Target 1_140_000ms (19 min): nearest mid is (1130+1133)/2 = 1131.5s
 	// → 1_131_500ms; delta = 8500ms < 60000ms (search window).
-	got := chooseCutPoint(silences, 1_140_000)
+	got := chooseCutPoint(silences, 1_140_000, noMin, wideMax)
 	if !got.OnSilence {
 		t.Errorf("expected OnSilence=true; got false")
 	}
@@ -72,12 +76,47 @@ func TestChooseCutPoint(t *testing.T) {
 	}
 
 	// Target 3_000_000ms: no silence within 60s — fallback to target.
-	got = chooseCutPoint(silences, 3_000_000)
+	got = chooseCutPoint(silences, 3_000_000, noMin, wideMax)
 	if got.OnSilence {
 		t.Errorf("expected fallback (OnSilence=false); got true")
 	}
 	if got.AtMS != 3_000_000 {
 		t.Errorf("AtMS = %d, want 3_000_000 (target)", got.AtMS)
+	}
+}
+
+// TestSelectCutPoints_NeverExceedsHardCap reproduces the failure mode of
+// session e55b7c1e: a silence just forward of the ~19-min target used to
+// snap chunk_0 to ≥20 min, which Chirp BatchRecognize rejects with
+// INVALID_ARGUMENT ("file too long"). The bounded selectCutPoints must
+// keep every chunk under the 20-min hard cap.
+func TestSelectCutPoints_NeverExceedsHardCap(t *testing.T) {
+	const durationSec = 2280 // 38 min → 2 chunks at maxChunkSec=1140
+	durationMS := int64(durationSec) * 1000
+	targets := planCutTargets(durationSec, defaultMaxChunkSec) // [1_140_000]
+
+	// Silence whose midpoint sits 60s PAST the 1140s target (mid=1_200_000).
+	// Pre-fix, chooseCutPoint snapped chunk_0's end here → a 1200s chunk,
+	// over the cap. Post-fix it's outside maxAtMS and must be rejected.
+	silences := []silenceRange{
+		{StartMS: 1_199_000, EndMS: 1_201_000}, // mid = 1_200_000
+	}
+
+	cuts := selectCutPoints(targets, silences, durationMS, overlapTargetMS)
+	chunks := buildChunkPlan(cuts, durationMS, overlapTargetMS)
+
+	hardCapMS := int64(maxChunkSecHardCap) * 1000 // 1_200_000
+	for _, ch := range chunks {
+		span := ch.EndOffsetMS - ch.StartOffsetMS
+		if span > hardCapMS {
+			t.Errorf("chunk %d span %dms exceeds hard cap %dms (%+v)",
+				ch.ChunkIndex, span, hardCapMS, ch)
+		}
+	}
+	// And specifically: chunk_0 must NOT have snapped to the over-cap
+	// silence at 1_200_000.
+	if cuts[0].AtMS >= 1_200_000 {
+		t.Errorf("chunk_0 cut snapped to/over the cap: AtMS=%d", cuts[0].AtMS)
 	}
 }
 
