@@ -5,7 +5,7 @@
 // Flow:
 //   - CheckQuota:   read-only check pozostałych tokenów.
 //   - ReserveCredit: dwufazowy debit (ADR-BL-001), pre-bookuje token na sesję.
-//   - CommitUsage:  finalizuje debit po STT, używa duration_seconds + grace period.
+//   - CommitUsage:  finalizuje debit po STT, używa duration_seconds (1 token = ≤75min).
 //   - ReleaseCredit: jawne anulowanie rezerwacji.
 //   - IncrementUsage: legacy alias do CommitUsage z amount→tokens 1:1.
 //
@@ -411,7 +411,7 @@ func (s *Server) CommitUsage(ctx context.Context, req *billingv1.CommitUsageRequ
 }
 
 // IncrementUsage — legacy alias. amount → tokens 1:1, brak duration ⇒
-// brak weryfikacji formuły grace period.
+// brak weryfikacji formuły token-duration.
 //
 //nolint:staticcheck // SA1019: IncrementUsageRequest jest jawnie deprecated, ale
 // musimy zachować implementację dla Phase 2 callerów (proto marked deprecated

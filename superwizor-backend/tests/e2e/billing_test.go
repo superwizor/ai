@@ -356,14 +356,14 @@ func TestBilling_ReserveCommit_HappyPath(t *testing.T) {
 
 // TestBilling_TokenCalculation_Boundaries — verify formuły BR-2 end-to-end.
 //
-// Formuła: max(1, ceil((duration - 180) / 3600))
-// Boundary cases (z docs/16_*.md):
-//   45min = 2700s → 1 token
-//   60min = 3600s → 1 token
-//   63min = 3780s → 1 token (saved by grace)
-//   64min = 3840s → 2 tokens
-//   120min = 7200s → 2 tokens
-//   124min = 7440s → 3 tokens
+// Formuła: max(1, ceil((duration - 0) / 4500))  — 1 token = ≤75min, no grace.
+// Boundary cases:
+//   45min  = 2700s → 1 token
+//   74min  = 4440s → 1 token
+//   75min  = 4500s → 1 token (exact boundary)
+//   75:01  = 4501s → 2 tokens (hard boundary, no grace)
+//   150min = 9000s → 2 tokens (exact boundary)
+//   151min = 9060s → 3 tokens
 func TestBilling_TokenCalculation_Boundaries(t *testing.T) {
 	env := loadBillingEnv(t)
 
@@ -373,11 +373,11 @@ func TestBilling_TokenCalculation_Boundaries(t *testing.T) {
 		wantTokens  int32
 	}{
 		{"45min one token", 2700, 1},
-		{"60min one token", 3600, 1},
-		{"63min boundary one token", 3780, 1},
-		{"64min crosses to two", 3840, 2},
-		{"120min two tokens", 7200, 2},
-		{"124min crosses to three", 7440, 3},
+		{"74min one token", 4440, 1},
+		{"75min boundary one token", 4500, 1},
+		{"75:01 crosses to two", 4501, 2},
+		{"150min two tokens", 9000, 2},
+		{"151min crosses to three", 9060, 3},
 	}
 
 	conn, c := env.dialBilling(t)

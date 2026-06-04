@@ -65,8 +65,8 @@ payment_events           — payment gateway audit (Stripe events, currently stu
 
 **Gone in v2.0:** `outbox_events` table (migration 000034). The `OutboxStatus` enum from migration 000002 is an orphan now — left in place because no other table referenced it.
 
-Token semantics (ADR-DM-017): `1 token = up to 60 min audio + 180 s grace` →
-`tokens = max(1, ceil((duration_s − 180) / 3600))`.
+Token semantics (ADR-DM-017): `1 token = up to 75 min audio (hard boundary, no grace)` →
+`tokens = max(1, ceil(duration_s / 4500))`.
 
 `remaining = limit − used − reserved`. Warning thresholds for UI rendering live **client-side** now (`flutter-app/superwizor/lib/services/billing_quota_state.dart::QuotaState.computeLevel`): warning at `remaining ≤ 5`, critical at `remaining ≤ 1`, exhausted at `remaining == 0`. No backend-side edge-event emission.
 
@@ -302,7 +302,7 @@ services/ai-pipeline-svc/cmd/stt-worker/finalize.go::ProcessTranscriptObject
 2. Begin tx + AcquireSubscriptionLock + LockActiveCounter
 
 3. tokens_to_charge = tokens.Calculate(duration_seconds)
-                    = max(1, ceil((duration − 180) / 3600))
+                    = max(1, ceil(duration / 4500))   // 1 token = ≤75min, no grace
 
 4. CreateUsageEvent(session_id, sub_id, org_id, tokens, duration_seconds, usage_type)
 

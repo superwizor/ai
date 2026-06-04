@@ -1,32 +1,33 @@
 // Package tokens implementuje formułę BR-2 z designu billing-svc:
-// 1 token = ≤60min audio + 180s grace period.
+// 1 token = ≤75min audio (bez okresu tolerancji — granica jest twarda).
 //
 // Reference: docs/16_BILLING_SERVICE_PHASE_3.md §2 (Business Rules).
 package tokens
 
-// GraceSeconds to margines tolerancji dla sesji "lekko przeciągających się"
-// (180s = 3min). Sesje krótsze niż grace nie liczą się jako dodatkowy token.
-const GraceSeconds = 180
+// GraceSeconds to margines tolerancji dla sesji "lekko przeciągających się".
+// Ustawiony na 0: zgodnie z decyzją produktową granica 75min jest twarda —
+// 75:00 = 1 token, 75:01 = 2 tokeny. Stała pozostaje jako pokrętło na
+// wypadek przywrócenia tolerancji w przyszłości.
+const GraceSeconds = 0
 
-// SecondsPerToken — 1 token pokrywa 60min nagrania.
-const SecondsPerToken = 3600
+// SecondsPerToken — 1 token pokrywa 75min nagrania.
+const SecondsPerToken = 4500
 
 // Calculate zwraca liczbę tokenów potrzebnych do skomitowania sesji
 // o czasie trwania durationSeconds.
 //
 // Wzór: max(1, ceil((duration - grace) / secondsPerToken)).
 //
-// Przykłady (przy GraceSeconds=180, SecondsPerToken=3600):
+// Przykłady (przy GraceSeconds=0, SecondsPerToken=4500):
 //   - 0s → 1 token (minimum bilingowe; nawet sesja przerwana po sekundzie
 //     spalila zasoby STT/LLM)
-//   - 2700s (45min) → 1 token  (2520/3600 = 0.7, ceil = 1)
-//   - 3420s (57min) → 1 token  (3240/3600 = 0.9, ceil = 1)
-//   - 3600s (60min) → 1 token  (3420/3600 = 0.95, ceil = 1)
-//   - 3660s (61min) → 1 token  (3480/3600 = 0.97, ceil = 1) — grace saves
-//   - 3780s (63min) → 1 token  (3600/3600 = 1.0, ceil = 1) — boundary
-//   - 3840s (64min) → 2 tokens (3660/3600 = 1.02, ceil = 2)
-//   - 7200s (120min) → 2 tokens (7020/3600 = 1.95, ceil = 2)
-//   - 7380s (123min) → 2 tokens (7200/3600 = 2.0, ceil = 2) — boundary
+//   - 2700s (45min) → 1 token  (2700/4500 = 0.6, ceil = 1)
+//   - 4440s (74min) → 1 token  (4440/4500 = 0.99, ceil = 1)
+//   - 4500s (75min) → 1 token  (4500/4500 = 1.0, ceil = 1) — boundary
+//   - 4501s (75:01) → 2 tokens (4501/4500 = 1.0002, ceil = 2) — twarda granica
+//   - 4560s (76min) → 2 tokens (4560/4500 = 1.01, ceil = 2)
+//   - 9000s (150min) → 2 tokens (9000/4500 = 2.0, ceil = 2) — boundary
+//   - 9060s (151min) → 3 tokens (9060/4500 = 2.01, ceil = 3)
 //
 // Wartości ujemne (defensywnie — clinical-svc nie powinien ich wysyłać)
 // są traktowane jak 0: zwracamy minimum 1 token.

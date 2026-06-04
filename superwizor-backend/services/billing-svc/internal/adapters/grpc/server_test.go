@@ -503,7 +503,7 @@ func TestCommitUsage(t *testing.T) {
 		}
 	})
 
-	t.Run("63min boundary still 1 token (grace period)", func(t *testing.T) {
+	t.Run("75min boundary still 1 token", func(t *testing.T) {
 		q := &fakeQuerier{}
 		sub := subRow(t, db.SubscriptionStatusACTIVE, 20)
 		q.getActiveSubFn = func(ctx context.Context, _ uuid.UUID) (db.GetActiveSubscriptionByOrgRow, error) {
@@ -526,17 +526,17 @@ func TestCommitUsage(t *testing.T) {
 		resp, err := s.CommitUsage(context.Background(), &billingv1.CommitUsageRequest{
 			SessionId:       sessionID.String(),
 			OrganizationId:  orgID.String(),
-			DurationSeconds: 3780, // 63min — boundary
+			DurationSeconds: 4500, // 75min — exact boundary
 		})
 		if err != nil {
 			t.Fatalf("unexpected: %v", err)
 		}
 		if resp.TokensConsumed != 1 {
-			t.Errorf("63min boundary should still be 1 token, got %d", resp.TokensConsumed)
+			t.Errorf("75min boundary should still be 1 token, got %d", resp.TokensConsumed)
 		}
 	})
 
-	t.Run("64min → 2 tokens", func(t *testing.T) {
+	t.Run("76min → 2 tokens", func(t *testing.T) {
 		q := &fakeQuerier{}
 		sub := subRow(t, db.SubscriptionStatusACTIVE, 20)
 		q.getActiveSubFn = func(ctx context.Context, _ uuid.UUID) (db.GetActiveSubscriptionByOrgRow, error) {
@@ -559,13 +559,13 @@ func TestCommitUsage(t *testing.T) {
 		resp, err := s.CommitUsage(context.Background(), &billingv1.CommitUsageRequest{
 			SessionId:       sessionID.String(),
 			OrganizationId:  orgID.String(),
-			DurationSeconds: 3840, // 64min
+			DurationSeconds: 4560, // 76min — past the 75min quantum
 		})
 		if err != nil {
 			t.Fatalf("unexpected: %v", err)
 		}
 		if resp.TokensConsumed != 2 {
-			t.Errorf("64min should consume 2 tokens, got %d", resp.TokensConsumed)
+			t.Errorf("76min should consume 2 tokens, got %d", resp.TokensConsumed)
 		}
 	})
 
