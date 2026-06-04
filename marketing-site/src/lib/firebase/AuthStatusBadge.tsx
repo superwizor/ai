@@ -10,11 +10,11 @@
 "use client";
 
 import { useAuth } from "./auth-provider";
-import { useAuthEmulator } from "./config";
+import { shouldUseAuthEmulator } from "./config";
 
 export function AuthStatusBadge() {
   const { status, user } = useAuth();
-  const emu = useAuthEmulator();
+  const emu = shouldUseAuthEmulator();
 
   if (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_SHOW_AUTH_BADGE !== "1") {
     return null;

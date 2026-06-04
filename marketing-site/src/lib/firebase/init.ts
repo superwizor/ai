@@ -39,7 +39,7 @@ import {
 import { setTokenProvider } from "@/lib/connect/clients";
 import {
   readFirebaseConfig,
-  useAuthEmulator,
+  shouldUseAuthEmulator,
   AUTH_EMULATOR_URL,
 } from "./config";
 
@@ -73,7 +73,7 @@ export function getFirebaseAuth(): Auth {
   // ready, so worst-case the first sign-in is a few ms slower.
   void setPersistence(auth, browserLocalPersistence);
 
-  if (useAuthEmulator() && !_emulatorConnected) {
+  if (shouldUseAuthEmulator() && !_emulatorConnected) {
     connectAuthEmulator(auth, AUTH_EMULATOR_URL, { disableWarnings: true });
     _emulatorConnected = true;
   }

@@ -25,11 +25,11 @@ export type FirebaseConfig = {
 };
 
 export function readFirebaseConfig(): FirebaseConfig {
-  // Required vars — fail fast if missing in prod.
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
-  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "";
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "";
-  const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? "";
+  // Required vars — fallback to project defaults if not set in build environment.
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAHuHAzQ2btMDvzVIiP84DQaiM6xOzjnP8";
+  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "superwizor-ai-25ecd.firebaseapp.com";
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "superwizor-ai-25ecd";
+  const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:344724821207:ios:74fa7d1d312fcec9a98c92";
 
   return {
     apiKey,
@@ -47,7 +47,7 @@ export function readFirebaseConfig(): FirebaseConfig {
  * production Firebase Auth. Set NEXT_PUBLIC_FIREBASE_USE_EMULATOR=1 in
  * `.env.local` for dev. firebase.json declares the emulator on :9099.
  */
-export function useAuthEmulator(): boolean {
+export function shouldUseAuthEmulator(): boolean {
   return process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATOR === "1";
 }
 
