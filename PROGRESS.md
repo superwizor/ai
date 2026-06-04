@@ -73,6 +73,39 @@ features 3-8 can land in any order:
 - ✅ flutter-web-target — web platform live, build green, recording
   screen kIsWeb-guarded. Login renders cleanly on web.
 
+### Flutter audio-conversion data-loss fix (branch `fix/app-audio-conversion`, 2026-06-04)
+
+Commit `85c6cc3`, off `main`. **Not yet merged** — awaiting device smoke
+test on Marcin's iPhone build.
+
+- **Bug:** file-upload → "Konwertuję" screen → tapping back lost the
+  whole session (also app-kill / OS cache purge mid-convert). Root
+  cause: client-side conversion (M4A→FLAC, WAV normalize) ran as an
+  inline `await` inside `NewSessionScreen` *before* any durable
+  `PendingUpload` existed — an interruption returned early past the
+  enqueue, and the `finally` even deleted the converted output.
+- **Fix:** conversion is now a durable queue phase
+  (`UploadPhase.converting`). The row is persisted to Hive the instant
+  the file is staged; `UploadIo.convertSource` runs the transcode in
+  the worker (writing the FLAC into `queued_uploads/<localId>/`,
+  durable + swept by `cleanupSource`); iOS decode-failure / non-iOS
+  fall back to the original + `needsServerSideConversion=true` (server
+  ffmpeg, no data loss). New `UploadQueueRunner.enqueue()` persists
+  without ticking so the screen navigates immediately instead of
+  blocking on the first (minute-long) transcode tick. Cancel now works
+  during conversion. Gotcha for next time: `copyWith` had to gain
+  `sourcePath/contentType/sizeBytes/actualDurationSeconds` params (were
+  immutable post-construction) so the worker can repoint the source at
+  the transcoded file.
+- **Tests:** 4 new converting-phase worker tests; `upload_worker_test`
+  +25 / `upload_queue_test` +10 / `pending_upload_test` +7 all green;
+  `flutter analyze` 0 new issues. NOTE: `upload_state_transitions_test`
+  (+2 −13) and `upload_queue_runner_test` (+3 −7) have **pre-existing**
+  flaky failures — verified identical on the clean baseline via
+  `git stash` (real-timer/Hive runner-lifecycle tests:
+  retryFailed/dismiss/connectivity). Worth a separate cleanup task.
+  Evidence: `evidence/fix-app-audio-conversion/`.
+
 ### Out-of-slice fixes / improvements landed 2026-05-29
 
 All on `feat/web-app`. Independent of any specific slice; ship-ready as
