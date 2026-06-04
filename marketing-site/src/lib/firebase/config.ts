@@ -26,10 +26,10 @@ export type FirebaseConfig = {
 
 export function readFirebaseConfig(): FirebaseConfig {
   // Required vars — fallback to project defaults if not set in build environment.
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAHuHAzQ2btMDvzVIiP84DQaiM6xOzjnP8";
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAggOO0mf-HDhQBI8boIgUSlipjmha2p5w";
   const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "superwizor-ai-25ecd.firebaseapp.com";
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "superwizor-ai-25ecd";
-  const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:344724821207:ios:74fa7d1d312fcec9a98c92";
+  const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:344724821207:web:3e2ca4d5fcfdc640a98c92";
 
   return {
     apiKey,
