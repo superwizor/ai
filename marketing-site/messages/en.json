@@ -294,18 +294,43 @@
     "login": "Log in",
     "register": "Sign up",
     "pricing": "Pricing",
+    "security": "Security",
     "languageSwitcher": "Language",
     "polish": "Polski",
     "english": "English"
   },
+  "topbar": {
+    "rodo": "GDPR compliance",
+    "audio": "Audio deleted after transcription",
+    "access": "Access only for you",
+    "noTraining": "We don't train AI on your sessions"
+  },
   "hero": {
-    "overline": "A Polish-built co-pilot for psychotherapists",
-    "headingPrefix": "Superwizor AI",
-    "headingAccent": "a cognitive partner in the therapy room",
-    "headingPunctuation": ".",
-    "subhead": "Superwizor AI helps mental-health professionals reclaim the mental space for attentive sessions with their patients, while supporting therapeutic continuity and a deeper understanding of each patient.",
-    "ctaPrimary": "Sign up",
-    "ctaSecondary": "See how it works"
+    "overline": "Superwizor AI — your cognitive partner in the session",
+    "headingPrefix": "Three minutes before the session.",
+    "headingAccent": "",
+    "headingPunctuation": "",
+    "subhead": "You open the app and know where to start. Previous sessions are waiting with transcripts, clinical themes, and notes in your modality.",
+    "ctaPrimary": "Try for free",
+    "ctaSecondary": "See how it works",
+    "microtext": "3 sessions. No credit card required.",
+    "trustBar": "Co-created by Polish psychotherapists, supervisors, and psychiatrists.",
+    "chips": {
+      "audio": "Audio deleted after transcription",
+      "access": "Access only for you",
+      "noTraining": "We don't train AI on your sessions",
+      "rodo": "GDPR Compliant"
+    }
+  },
+  "brandStatement": {
+    "body": "Superwizor AI helps mental health professionals reclaim their mental space for attentive sessions, supporting process continuity and a deeper understanding of the client."
+  },
+  "problem": {
+    "overline": "The cost unseen in the calendar",
+    "title": "Most of the session is lost not during — but after.",
+    "body": "A theme you wanted to return to. A sentence that seemed important. A direction you agreed upon. You keep all this in your head until the next meeting — and with a full schedule, the head cannot carry every detail. It's not a matter of discipline, but the number of sessions.",
+    "quote": "Prevents losing 30-40% of the information that I lose when preparing notes manually.",
+    "cite": "Katarzyna, psychotherapist"
   },
   "how": {
     "overline": "How it works",
@@ -326,12 +351,26 @@
         "title": "Get the report",
         "body": "Full session report, supervision pointers and suggested interventions — minutes after the session ends, ready for review."
       }
-    }
+    },
+    "cta": "Try it on your own session",
+    "micro": "3 sessions. No credit card required."
+  },
+  "differentiator": {
+    "overline": "Why Superwizor AI",
+    "title": "Not another documentation tool. A partner that takes off the burden of remembering.",
+    "body": "A note tool ends its work on the finished report. Superwizor AI starts there — it connects sessions, remembers themes, and returns with a full picture of the client for the next meeting.",
+    "quote": "It's not about time — the app takes away the burden of thinking about the client.",
+    "cite": "Bartek, psychotherapist"
   },
   "features": {
     "overline": "What you get",
     "heading": "Everything a supervisor needs",
+    "body": "Instead of notes scattered in notes and in your head.",
     "items": {
+      "record": {
+        "title": "Session recording",
+        "body": "Live in the office, online or from an uploaded file. Records in the background, does not interrupt with locked screen, works even offline."
+      },
       "transcript": {
         "title": "Full Polish transcript",
         "body": "Diarization, timestamps, fast search. One-click PDF export."
@@ -340,23 +379,66 @@
         "title": "Clinical report",
         "body": "Supervision-ready sections: session themes, diagnostic hypotheses, risk assessment, suggested interventions."
       },
+      "modality": {
+        "title": "Works in your modality",
+        "body": "CBT, psychodynamic, SFBT, integrative approach and others — the report speaks the language of your modality, not a single school."
+      },
+      "continuity": {
+        "title": "Continuity between sessions",
+        "body": "Client history and recurring themes connected into a whole. You return after a break with the full picture."
+      },
       "supervisor": {
         "title": "Supervision pointers",
         "body": "AI flags moments worth pausing on — missed therapeutic opportunities, patterns, red flags."
       },
-      "rodo": {
-        "title": "GDPR + security",
-        "body": "Data encrypted end-to-end, EU-only hosting, therapist-only access. Your data never trains a model."
+      "devices": {
+        "title": "Phone and computer",
+        "body": "Record on your phone, read reports on your computer. Everything synchronized."
       },
-      "team": {
-        "title": "Organisation mode",
-        "body": "For clinics: team management, shared token billing, single invoice for the practice."
-      },
-      "supports": {
-        "title": "iOS + web",
-        "body": "Record from your iPhone, review reports on a laptop. Android soon."
+      "folder": {
+        "title": "Client folder",
+        "body": "Client folders, private notebook, and search — the entire history in one organized place."
       }
     }
+  },
+  "depth": {
+    "overline": "Depth, not just records",
+    "title": "Sees what is easy to miss in a hurry",
+    "body": "Superwizor AI does not evaluate you and does not replace your judgment. It highlights a thread that got lost, and a question worth asking — and what you do with that depends entirely on you.",
+    "quote": "Catches subtle things in the conversation that are easy to miss.",
+    "cite": "Andrzej, psychotherapist"
+  },
+  "security": {
+    "overline": "Trust in the office",
+    "title": "What the client tells you in confidence stays between you.",
+    "body": "Session recording is the most sensitive document you have. Here, privacy and security are not features added at the end — they are designed into the foundation of the product.",
+    "punch": "Others send these recordings across the ocean. We don't.",
+    "cards": {
+      "audio": {
+        "title": "Audio disappears after transcription",
+        "body": "Text is created from the recording, and the audio itself is then irretrievably deleted. The most sensitive trace of the session does not remain on the server."
+      },
+      "access": {
+        "title": "Access only for you",
+        "body": "No one but you reaches the recordings and reports — not another therapist, nor us."
+      },
+      "noTraining": {
+        "title": "We don't train AI on your sessions",
+        "body": "Your recordings and transcripts do not go to training any models. They work exclusively for you."
+      },
+      "rodo": {
+        "title": "GDPR with DPA agreement included",
+        "body": "You get a ready-made data processing agreement (DPA) — the formality that GDPR requires of you as a data controller is taken care of."
+      }
+    },
+    "quote": "Broadens the perspective, but doesn't replace expertise. It's a reflective pause, help in 'what next'.",
+    "cite": "Iwona, psychotherapist"
+  },
+  "ctamid": {
+    "title": "See for yourself in your own sessions.",
+    "body": "No obligations. You decide whether to stay.",
+    "cta": "Try for free",
+    "micro": "3 sessions. No credit card required."
   },
   "audience": {
     "overline": "Who it's for",
@@ -371,15 +453,46 @@
         "body": "Full transcript and report before each supervision session. Easier review, more precise feedback."
       },
       "clinic": {
-        "title": "Therapy clinics",
-        "body": "Consistent documentation across the team. One invoice, clear billing."
+        "title": "Therapists in training",
+        "body": "You build your skills and need material for supervision. You have it after every session — in the language of your modality."
+      }
+    }
+  },
+  "faq": {
+    "overline": "Before you start",
+    "title": "Frequently asked questions",
+    "items": {
+      "rodo": {
+        "q": "How does GDPR and patient data security work?",
+        "a": "All personal and medical data is fully protected. Data is hosted in EU data centers (GCP Frankfurt/Warsaw). Data transmission is encrypted via SSL, and audio files are automatically purged from the servers immediately after transcription. Confidential database columns are additionally encrypted using envelope encryption."
+      },
+      "dpa": {
+        "q": "Do I need to sign a Data Processing Agreement (DPA)?",
+        "a": "Yes. In accordance with GDPR (Article 28), every therapist using Superwizor AI must sign a Data Processing Agreement (DPA). We provide a ready-to-sign, fully compliant template that you can sign electronically in one click directly inside the application's admin panel."
+      },
+      "consent": {
+        "q": "How do I get client consent for recording and AI analysis?",
+        "a": "Recording sessions requires the patient's explicit, informed consent. In the legal resources section of the app, you will find ready-to-download and printable templates for patient consent forms covering session recording and AI-assisted analysis, prepared by medical data protection lawyers."
+      },
+      "training": {
+        "q": "Does the AI learn from my recordings or transcripts?",
+        "a": "Absolutely not. We run Vertex AI models within Google Cloud, which guarantees that none of your inputs (audio, transcripts, generated notes) are used for training, fine-tuning, or improving Google's or any third-party's AI models."
+      },
+      "modality": {
+        "q": "For which psychotherapeutic modalities is Superwizor AI designed?",
+        "a": "The application is built for leading psychotherapy approaches, offering dedicated templates tailored specifically to your work. We fully support: Cognitive Behavioral Therapy (CBT), Psychodynamic, Humanistic-Experiential (including Gestalt), Systemic, Integrative, and Solution-Focused Brief Therapy (SFBT/TSR). The system automatically adjusts the report structure and clinical terms to the core assumptions of your chosen modality."
+      },
+      "vat": {
+        "q": "Will I receive a VAT invoice for my subscription?",
+        "a": "Yes. After each purchase or automatic subscription renewal, our billing system automatically generates and sends a full VAT invoice (including NIP/tax ID and company name) to your email address, ready for business expense accounting in Poland/EU."
       }
     }
   },
   "cta": {
-    "heading": "Try 3 free sessions",
-    "body": "No card, no strings. The trial includes the full product — transcripts, reports, and supervision pointers.",
-    "primary": "Sign up",
+    "overline": "YOUR COGNITIVE EXOSKELETON",
+    "heading": "Attentiveness in the session. Without the burden of remembering in between.",
+    "body": "Your documentation is ready. You return to what is happening now.",
+    "primary": "Try for free",
     "secondary": "See pricing"
   },
   "register": {
@@ -538,67 +651,68 @@
     "metaTitle": "Pricing",
     "overline": "Pricing",
     "heading": "A plan that fits your practice",
-    "subhead": "Every plan includes the full product: transcripts, clinical reports, and supervision pointers. You only pay for the sessions you actually use.",
+    "subhead": "Individual plans have the same features — they only differ by the number of sessions. Evolution is an option for teams and clinics.",
     "cycle": {
       "monthly": "Monthly",
       "annual": "Annual",
-      "annualNote": "~17% off"
+      "annualNote": "Annual billing — 17% off"
     },
     "tiers": {
       "trial": {
         "name": "Discovery",
-        "tagline": "Try with no strings attached",
-        "tokensSuffix": "free sessions for 14 days",
-        "cta": "Start for free",
+        "tagline": "Try with no strings attached.",
+        "tokensSuffix": "3 sessions for 14 days",
+        "tokensSuffix2": "full access to the application",
+        "cta": "Try for free",
         "features": [
-          "3 free sessions to start",
-          "Full Polish transcript",
-          "Clinical report for every session",
-          "Supervision pointers",
+          "3 sessions for 14 days",
+          "Full access to all features",
           "No credit card required"
         ]
       },
       "solo": {
         "name": "Balance",
-        "tagline": "For individual therapists",
+        "tagline": "For individual therapists.",
+        "couponText": "CODE: INTRO_SOLO",
+        "priceIntro": "99 PLN",
+        "priceBase": "regular price 149 PLN",
+        "subprice": "introductory price with coupon forever",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
         "cta": "Choose Balance",
         "features": [
-          "30 sessions per month",
-          "Full transcript & report",
-          "Supervision pointers",
-          "PDF export",
-          "1 therapist license"
+          "Up to 30 sessions / month",
+          "Full access to all features"
         ]
       },
       "pro": {
         "name": "Growth",
-        "tagline": "For power users",
+        "tagline": "For power users.",
+        "badge": "Most popular",
+        "couponText": "CODE: INTRO_PRO",
+        "priceIntro": "179 PLN",
+        "priceBase": "regular price 249 PLN",
+        "subprice": "introductory price with coupon forever",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
         "cta": "Choose Growth",
-        "badge": "Most popular",
         "features": [
-          "120 sessions per month",
-          "Everything in Balance",
-          "Priority support",
-          "Early access to new features",
-          "1 therapist license"
+          "Up to 120 sessions / month",
+          "Full access to all features"
         ]
       },
       "clinic": {
         "name": "Evolution",
-        "tagline": "For clinics & power users",
+        "tagline": "For clinics and therapeutic teams.",
+        "price": "Custom",
+        "subprice": "individual terms",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
         "cta": "Let's talk",
         "features": [
-          "Everything in Growth",
           "Flexible session limits",
-          "Multi-seat — multiple licenses",
-          "Custom 1:1 pricing",
-          "Dedicated account manager"
+          "Multi-account support",
+          "Onboarding support"
         ]
       }
     },
@@ -607,10 +721,12 @@
     "perMonth": "PLN / month",
     "perYear": "PLN / year",
     "free": "Free",
+    "footnote1": "Annual billing — 17% off. You only pay after using your 3 free sessions.",
+    "footnote2": "Get started now and lock in the introductory price forever.",
     "footnote": "Card or Przelewy24. Change or cancel your plan any time from your account."
   },
   "footer": {
-    "tagline": "A supervisor's second brain.",
+    "tagline": "Co-created by Polish psychotherapists, supervisors, and psychiatrists.",
     "copyright": "© 2026 Superwizor AI",
     "made": "Made in Poland",
     "sections": {
@@ -708,5 +824,155 @@
     "statusACTIVE": "Active",
     "statusPAST_DUE": "Payment overdue",
     "statusCANCELED": "Cancelled"
+  },
+  "b": {
+    "hero": {
+      "subtitle": "Previous sessions are waiting with transcriptions, threads, and notes.",
+      "microtext": "Co-created by Polish psychotherapists, supervisors, and psychiatrists"
+    },
+    "brandStatement": {
+      "body": "<highlight>Mental space</highlight> for mindful sessions. Process continuity and deeper client understanding."
+    },
+    "problem": {
+      "overline": "The cost you don't see in the schedule",
+      "title": "Most of the session is lost not during, but after it.",
+      "body": "Threads, directions, important sentences. You hold them in your head until the next session, but a full schedule won't carry every detail.",
+      "quote": "It helps avoid losing 30–40% of the information I lose when preparing notes manually.",
+      "cite": "Katarzyna, psychotherapist"
+    },
+    "how": {
+      "overline": "How it works",
+      "heading": "Three steps to a finished report",
+      "steps": {
+        "record": {
+          "tag": "01",
+          "title": "You start recording and stay present",
+          "body": "One tap. Full attention for the person across from you."
+        },
+        "process": {
+          "tag": "02",
+          "title": "Superwizor AI listens in Polish",
+          "body": "It recognizes who's speaking and reads the session in your modality's language."
+        },
+        "report": {
+          "tag": "03",
+          "title": "You return to ready, not a blank page",
+          "body": "Transcript, key threads, and direction. Ready in minutes."
+        }
+      },
+      "cta": "Try on your own session",
+      "micro": "3 sessions. No credit card."
+    },
+    "differentiator": {
+      "title": "Not another documentation tool. A partner that lifts the weight of remembering.",
+      "body": "Superwizor AI connects sessions, remembers threads, and returns with the full picture of the client for the next meeting.",
+      "quote": "Broadens the perspective, but doesn't replace expertise. It's a reflective pause, help in 'what next'.",
+      "cite": "Iwona, psychotherapist"
+    },
+    "features": {
+      "overline": "Application Features",
+      "heading": "Everything related to sessions is now organized in one place.",
+      "body": "You can peacefully focus on what is most important in your work.",
+      "items": {
+        "record": {
+          "title": "Session recording",
+          "body": "Live, online, or from a file. Works in the background, even offline."
+        },
+        "transcript": {
+          "title": "Full Polish transcription",
+          "body": "The whole session with speaker labels. Export to PDF."
+        },
+        "report": {
+          "title": "Report in your modality",
+          "body": "Topics, threads, and suggested steps. Ready in minutes."
+        },
+        "modality": {
+          "title": "Works in your modality",
+          "body": "CBT, psychodynamic, SFT, integrative, and more."
+        },
+        "continuity": {
+          "title": "Continuity between sessions",
+          "body": "Recurring themes connected as a whole. You return with the full picture."
+        },
+        "supervisor": {
+          "title": "Supervisory pointers",
+          "body": "Questions to explore. A ready base for your supervisor meeting."
+        }
+      }
+    },
+    "security": {
+      "title": "What the client tells you in confidence stays between you.",
+      "cards": {
+        "audio": {
+          "title": "Audio deleted after transcription",
+          "body": "The recording is deleted right after processing. It doesn't stay on the server."
+        },
+        "noTraining": {
+          "title": "We don't train AI on your sessions",
+          "body": "Your recordings are never used to train any models."
+        }
+      }
+    },
+    "ctamid": {
+      "title": "Elevate your practice",
+      "body": "Presence in the room. Without the weight of remembering between sessions. Documentation waits ready, you return to what's happening now.",
+      "cta": "Try for free",
+      "cta2": "See pricing",
+      "micro": "3 sessions. No credit card. Full access to the app."
+    },
+    "audience": {
+      "heading": "Built for real work in the office",
+      "items": {
+        "therapist": {
+          "title": "Psychotherapists",
+          "body": "You return to the client with context, not from memory."
+        },
+        "supervisor": {
+          "title": "Supervisors",
+          "body": "Material is ready before the meeting. The conversation starts from the core."
+        },
+        "clinic": {
+          "title": "Therapists in certification",
+          "body": "Ready material for supervision after every session."
+        }
+      }
+    },
+    "pricing": {
+      "heading": "Choose the plan for your practice",
+      "annualNote": "17% cheaper",
+      "footnote2": "Start now. Lock in the lower price forever.",
+      "vatNote": "Prices excl. VAT 23%",
+      "footnote": "Card or Przelewy24. Cancel anytime.",
+      "trial": { "tagline": "See if it's for you." },
+      "pro": { "tagline": "For intensive practice." },
+      "clinic": { "tagline": "For clinics and teams." },
+      "subprice": "this price stays with you forever"
+    },
+    "faq": {
+      "overline": "Before you start",
+      "title": "Common questions",
+      "items": {
+        "rodo": {
+          "q": "How is patient data security handled?",
+          "a": "Data in the EU (Frankfurt/Warsaw). SSL, envelope encryption, audio deleted after transcription. Ready DPA agreement."
+        },
+        "dpa": {
+          "q": "Do I need to sign a Data Processing Agreement (DPA)?",
+          "a": "Yes. A ready template compliant with Polish law can be signed electronically in the app panel."
+        },
+        "consent": {
+          "q": "How to obtain patient consent?",
+          "a": "The app includes ready templates for written consent to recording and AI analysis."
+        },
+        "training": {
+          "q": "Does the AI learn from my recordings?",
+          "a": "No. Vertex AI guarantees that no input data is used for training any models."
+        },
+        "modality": {
+          "q": "Which therapeutic modalities does Superwizor AI support?",
+          "a": "CBT, psychodynamic, Gestalt, systemic, integrative, SFT. Reports speak your modality's language."
+        }
+      }
+    }
   }
 }

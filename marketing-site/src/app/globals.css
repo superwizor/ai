@@ -85,3 +85,77 @@ html, body {
   outline-offset: 2px;
   border-radius: var(--radius-button);
 }
+
+/* ── Custom Animations for Design Taste Skill ── */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes float-delayed {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float-delayed 7s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 8s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, rgba(250,250,250,0.02) 25%, rgba(250,250,250,0.08) 50%, rgba(250,250,250,0.02) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite;
+}
+
+/* ── Section reveal on scroll (Version B) ─────────────────────── */
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.b-reveal {
+  opacity: 0;
+  will-change: opacity, transform;
+}
+
+.b-revealed {
+  animation: reveal-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Stagger children slightly if needed */
+.b-revealed:nth-child(2) { animation-delay: 0.06s; }
+.b-revealed:nth-child(3) { animation-delay: 0.12s; }
+.b-revealed:nth-child(4) { animation-delay: 0.18s; }
+.b-revealed:nth-child(5) { animation-delay: 0.24s; }
+
+/* Fallback smooth scroll for non-JS anchor jumps */
+html {
+  scroll-behavior: smooth;
+}
+

@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   // lockfile dance breaks Cloud Build deploys. Pure static export
   // sidesteps that entirely — pages with dynamic data fetch it
   // client-side at runtime against the Cloud Run backends.
-  output: "export",
+  output: process.env.NODE_ENV === "production" ? "export" : undefined,
 
   // Required for static export: every route becomes a directory with
   // an index.html. Firebase Hosting resolves them without explicit
