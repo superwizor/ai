@@ -152,10 +152,10 @@
           ]
         },
         {
-          "//": "Short cache for HTML pages so updates propagate quickly",
+          "//": "Short cache for HTML pages so deploys propagate quickly. 5 min is enough for CDN benefit while keeping deploy-to-live latency low.",
           "source": "**/*.html",
           "headers": [
-            { "key": "Cache-Control", "value": "public, max-age=3600" }
+            { "key": "Cache-Control", "value": "public, max-age=300" }
           ]
         }
       ]
