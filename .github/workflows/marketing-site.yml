@@ -105,21 +105,21 @@ jobs:
         working-directory: marketing-site
         run: pnpm install --frozen-lockfile
 
+      - name: Build site
+        working-directory: marketing-site
+        run: pnpm build
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
       - name: Firebase Hosting preview channel deploy
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.HOSTING_DEPLOYER_SA_JSON }}
-          projectId: superwizor-ai-25ecd
-          target: superwizor-www
-          expires: 7d
-          channelId: pr-${{ github.event.pull_request.number || github.ref_name }}
+        run: firebase hosting:channel:deploy pr-${{ github.event.pull_request.number || github.ref_name }} --only superwizor --project superwizor-ai-25ecd
 
   deploy-production:
     name: Firebase Hosting production (main)
@@ -148,17 +148,18 @@ jobs:
         working-directory: marketing-site
         run: pnpm install --frozen-lockfile
 
+      - name: Build site
+        working-directory: marketing-site
+        run: pnpm build
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
       - name: Firebase Hosting production deploy
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.HOSTING_DEPLOYER_SA_JSON }}
-          projectId: superwizor-ai-25ecd
-          target: superwizor-www
-          channelId: live
+        run: firebase deploy --only hosting:superwizor --project superwizor-ai-25ecd
