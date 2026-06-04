@@ -35,7 +35,6 @@ import '../providers/grpc_provider.dart';
 import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
 import '../services/recording_service.dart';
-import '../services/secure_audio_storage_service.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
@@ -78,7 +77,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   StreamSubscription<RecordingState>? _stateSub;
   bool _uploading = false;
   bool _maxLimitTriggered = false;
-  int _chunkCount = 0;
+  // Live chunk count for the recording indicator. Encryption now runs in
+  // the upload worker (not inline on finish), so this stays 0 — the
+  // indicator just doesn't show a chunk tally. Kept for the widget API.
+  final int _chunkCount = 0;
 
   RecordingService get _service => ref.read(recordingServiceProvider);
 
@@ -452,36 +454,18 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
             'recording file is empty (0 bytes) — iOS encoder failed to flush');
       }
 
-      // Encrypt to chunks at <docs>/sessions/<sessionId>/chunk_NNNNN.enc.
-      // This is the durable state the upload queue resumes from across
-      // app restarts; the worker decrypts to a temp file at PUT time
-      // via SecureAudioStorageService.
-      final storage = ref.read(secureAudioStorageProvider);
-      final chunks = await storage.encryptRecording(
-        rawPath: rawPath,
-        sessionId: sessionId,
-      );
-      _chunkCount = chunks.length;
-      debugPrint('[recording] encrypted: ${chunks.length} chunks');
-
-      // Plaintext size estimated from chunk metadata — each .enc file
-      // has 29 bytes of overhead (13 header + 16 GCM tag), so
-      // plaintext = Σ(chunk.size - 29). Avoids a wasted decrypt pass.
-      final length = SecureAudioStorageService.estimateDecryptedSize(chunks);
-      debugPrint('[recording] estimated decrypted size=${length}B '
-          '(${chunks.length} chunks, '
-          '${(length / 1024 / 1024).toStringAsFixed(1)} MB)');
-
-      // Build the per-session chunks dir path; this is what the
-      // queue worker passes back to SecureAudioStorageService.
+      // The raw FLAC is already on durable disk at
+      // <docs>/sessions/<sessionId>/raw.flac (recording_service). We do
+      // NOT encrypt it inline here anymore: that was a multi-second step
+      // running BEFORE any durable queue row existed, behind a bare
+      // spinner — so "send to analysis" then leaving the screen (or an
+      // app-kill) lost the whole recording. Instead we enqueue a
+      // phase=encrypting row pointing at the session dir and let the
+      // worker run UploadIo.encryptSource durably; the kartoteka card +
+      // pending-uploads pill track it and the user can leave immediately.
       final docs = await getApplicationDocumentsDirectory();
       final sessionDir = p.join(docs.path, 'sessions', sessionId);
 
-      // Enqueue. The queue runner takes ownership of the rest of the
-      // pipeline — CreateAudioUpload → PUT → (optional ConvertAudio)
-      // → CompleteAudioUpload → purgeSession. A crash mid-upload
-      // leaves the encrypted chunks on disk; the runner resumes on
-      // next app start.
       final runner = await ref.read(uploadQueueRunnerProvider.future);
       if (runner == null) {
         throw StateError('Upload queue not available — user not signed in?');
@@ -495,27 +479,37 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         sourceKind: UploadSourceKind.encryptedChunks,
         sourcePath: sessionDir,
         contentType: 'audio/flac',
-        sizeBytes: length,
-        chunkCount: chunks.length,
+        // Plaintext size ≈ raw FLAC size; the worker refines both this
+        // and chunkCount from the real chunk metadata after encrypting.
+        sizeBytes: rawSize,
+        chunkCount: 1,
         actualDurationSeconds: _displayDuration.inSeconds,
         needsServerSideConversion: false,
         idempotencyKey: sessionId,
         now: DateTime.now().toUtc(),
-      );
+      ).copyWith(phase: UploadPhase.encrypting);
 
-      await runner.enqueueAndKick(pending);
+      // Persist durably WITHOUT awaiting a tick — the first tick runs the
+      // (multi-second) encryption, and we must not block navigation on
+      // it. The row is in Hive before this returns, so leaving the screen
+      // / app-kill can no longer lose the recording.
+      await runner.enqueue(pending);
 
       // Invalidate patient + session caches so the new session shows
       // up in the kartoteka once the server confirms.
       ref.invalidate(patientsProvider);
       ref.invalidate(sessionsProvider);
 
+      // Kick the worker in the background so encryption + upload start
+      // immediately — fire-and-forget so navigation isn't blocked.
+      unawaited(runner.kick());
+
       if (!mounted) return;
       // Push the status screen so the user keeps the familiar
-      // upload-then-processing visual flow. SessionStatusScreen
-      // watches the queue row by localId until CompleteAudioUpload
-      // returns a sessionId, then hands off to the Firestore /
-      // clinical-svc listeners.
+      // processing → upload → analysis visual flow. SessionStatusScreen
+      // watches the queue row by localId until CreateAudioUpload returns
+      // a sessionId, then hands off to the Firestore / clinical-svc
+      // listeners.
       await Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (_) => SessionStatusScreen(localId: sessionId),
       ));
@@ -673,7 +667,20 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
               const SizedBox(height: 16),
               if (_uploading) ...[
                 const SizedBox(height: 16),
-                const Center(child: CircularProgressIndicator()),
+                Column(
+                  children: [
+                    const Center(child: CircularProgressIndicator()),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Zapisuję nagranie...',
+                      style: TextStyle(
+                        fontFamily: 'Merriweather',
+                        fontSize: 13,
+                        color: EuphireColors.frostWhite.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ],
           ),

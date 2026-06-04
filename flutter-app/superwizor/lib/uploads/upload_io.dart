@@ -71,7 +71,31 @@ class ConvertResult {
   });
 }
 
+/// Outcome of [UploadIo.encryptSource] — the metadata the worker stamps
+/// onto the row after the raw recording is encrypted into chunks.
+class EncryptResult {
+  /// Plaintext (decrypted) size in bytes — equals the raw FLAC size.
+  final int sizeBytes;
+
+  /// Number of `chunk_*.enc` files produced.
+  final int chunkCount;
+
+  const EncryptResult({required this.sizeBytes, required this.chunkCount});
+}
+
 abstract class UploadIo {
+  /// Step 0b (only for live-recording rows enqueued in phase=encrypting):
+  /// encrypt the raw FLAC at `<u.sourcePath>/raw.flac` into AES-256-GCM
+  /// `chunk_*.enc` files in the same session dir and securely delete the
+  /// raw file. Returns the chunk count + plaintext size so the worker can
+  /// stamp the row before advancing to phase=pending. Idempotent enough
+  /// to retry: re-encrypting after a partial run overwrites the chunks.
+  /// Throws on key/IO errors → worker classifies as retryable.
+  Future<EncryptResult> encryptSource(
+    PendingUpload u, {
+    void Function(double progressFraction)? onProgress,
+  });
+
   /// Step 0 (only for rows enqueued in phase=converting): transcode the
   /// source file on-device to a Chirp-native format. Writes output into
   /// the row's `queued_uploads/<localId>/` staging dir so it's durable

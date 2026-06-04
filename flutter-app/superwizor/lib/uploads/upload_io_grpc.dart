@@ -70,6 +70,31 @@ class GrpcUploadIo implements UploadIo {
   final SecureAudioStorageService _secureStorage;
   final http.Client _http;
 
+  // ── step 0b: on-device encryption (phase=encrypting only) ─────
+
+  @override
+  Future<EncryptResult> encryptSource(
+    PendingUpload u, {
+    void Function(double)? onProgress,
+  }) async {
+    // Live-recording rows carry sourcePath = <docs>/sessions/<sessionId>/
+    // and the recorder wrote the raw FLAC at <sourcePath>/raw.flac (see
+    // recording_service.dart). encryptRecording streams it into
+    // chunk_*.enc in the same dir and securely deletes raw.flac.
+    final sessionId = _sessionIdFromPath(u.sourcePath);
+    final rawPath = p.join(u.sourcePath, 'raw.flac');
+    final chunks = await _secureStorage.encryptRecording(
+      rawPath: rawPath,
+      sessionId: sessionId,
+    );
+    debugPrint('[upload-io] encrypted recording localId=${u.localId} '
+        'chunks=${chunks.length}');
+    return EncryptResult(
+      sizeBytes: SecureAudioStorageService.estimateDecryptedSize(chunks),
+      chunkCount: chunks.length,
+    );
+  }
+
   // ── step 0: on-device transcode (phase=converting only) ───────
 
   @override

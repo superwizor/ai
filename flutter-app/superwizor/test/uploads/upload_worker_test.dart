@@ -24,9 +24,20 @@ class FakeUploadIo implements UploadIo {
   Object? putBytesError;
   Object? cleanupError;
   Object? convertError;
+  Object? encryptError;
 
   CreateAudioUploadResult? createUploadResult;
   ConvertResult? convertResult;
+  EncryptResult? encryptResult;
+
+  @override
+  Future<EncryptResult> encryptSource(PendingUpload u,
+      {void Function(double)? onProgress}) async {
+    calls.add('encryptSource');
+    if (encryptError != null) throw encryptError!;
+    // Default: a 3-chunk encryption that refines the plaintext size.
+    return encryptResult ?? const EncryptResult(sizeBytes: 7777, chunkCount: 3);
+  }
 
   @override
   Future<ConvertResult> convertSource(PendingUpload u,
@@ -109,6 +120,69 @@ UploadWorker _worker(FakeUploadIo io, {DateTime? clock}) => UploadWorker(
     );
 
 void main() {
+  group('encrypting phase (fix/recording-send-to-analysis)', () {
+    test('encrypting → pending stamps chunkCount + plaintext size', () async {
+      // Live-recording durability fix: a row enqueued in `encrypting`
+      // runs the on-device AES encryption via encryptSource, then
+      // advances to `pending` ready for CreateAudioUpload.
+      final io = FakeUploadIo()
+        ..encryptResult = const EncryptResult(sizeBytes: 16_000_000, chunkCount: 16);
+      final clock = DateTime.utc(2026, 5, 20, 12);
+      final u = _seed(
+        phase: UploadPhase.encrypting,
+        sourcePath: '/docs/sessions/sess-1',
+        contentType: 'audio/flac',
+      );
+
+      final next = await _worker(io, clock: clock).runOne(u);
+
+      expect(next.phase, UploadPhase.pending);
+      expect(next.sizeBytes, 16_000_000, reason: 'refined from chunk metadata');
+      expect(next.chunkCount, 16);
+      expect(next.sourcePath, '/docs/sessions/sess-1',
+          reason: 'encrypted chunks live in the same session dir');
+      expect(next.attemptCount, 0);
+      expect(next.nextAttemptAt, clock, reason: 'due immediately for create');
+      expect(io.calls, ['encryptSource']);
+    });
+
+    test('encrypting walks all the way to completed', () async {
+      final io = FakeUploadIo()
+        ..encryptResult = const EncryptResult(sizeBytes: 16_000_000, chunkCount: 16);
+      final worker = _worker(io);
+      var u = _seed(
+        phase: UploadPhase.encrypting,
+        sourcePath: '/docs/sessions/sess-1',
+      );
+
+      u = await worker.runOne(u); // encrypting → pending
+      expect(u.phase, UploadPhase.pending);
+      u = await worker.runOne(u); // pending → created
+      expect(u.phase, UploadPhase.created);
+      u = await worker.runOne(u); // created → completed
+      expect(u.phase, UploadPhase.completed);
+      expect(io.calls, ['encryptSource', 'createUpload', 'putBytes', 'cleanupSource']);
+    });
+
+    test('transient encrypt error keeps the row in encrypting and retries',
+        () async {
+      final io = FakeUploadIo()
+        ..encryptError = const SocketException('keychain busy');
+      final clock = DateTime.utc(2026, 5, 20, 12);
+      final u = _seed(
+        phase: UploadPhase.encrypting,
+        sourcePath: '/docs/sessions/sess-1',
+      );
+
+      final next = await _worker(io, clock: clock).runOne(u);
+
+      expect(next.phase, UploadPhase.encrypting,
+          reason: 'retryable error stays in the current phase');
+      expect(next.attemptCount, 1);
+      expect(next.nextAttemptAt.isAfter(clock), isTrue);
+    });
+  });
+
   group('converting phase (fix/app-audio-conversion)', () {
     test('converting → pending repoints source at the transcoded file',
         () async {

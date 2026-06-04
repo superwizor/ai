@@ -21,18 +21,20 @@
 // Phase map after Option F (feat/refactor-stt-architecture, 2026-05-25),
 // with the durable on-device transcode step (fix/app-audio-conversion):
 //
-//   converting ─convertSource─► pending ─CreateAudioUpload─► created
-//                                                               │
-//                                              HTTP PUT ────────┘
-//                                                  ▼
-//                                              completed
+//   encrypting ─encryptSource─┐
+//   converting ─convertSource─┼─► pending ─CreateAudioUpload─► created
+//                             │                                   │
+//                             │                  HTTP PUT ────────┘
+//                             │                      ▼
+//                             └──────────────►   completed
 //
 // `converting` is the entry phase for files the client transcodes on
-// device (iPhone M4A→FLAC, WAV→16-bit PCM). It used to happen inline on
-// NewSessionScreen before any durable row existed — fix/app-audio-
-// conversion moves it behind the queue so it survives navigation /
-// app-kill mid-convert. Files that need no on-device work are enqueued
-// straight into `pending` as before.
+// device (iPhone M4A→FLAC, WAV→16-bit PCM). `encrypting` is the entry
+// phase for live recordings (raw FLAC → AES-256-GCM chunks). Both used
+// to run inline on a screen before any durable row existed — moved
+// behind the queue so they survive navigation / app-kill mid-work.
+// Sources that need no on-device prep are enqueued straight into
+// `pending` as before.
 //
 // The previous `uploaded` and `converted` intermediate phases are
 // terminated immediately at PUT success — the server's in-process
@@ -100,6 +102,9 @@ class UploadWorker {
     try {
       final PendingUpload next;
       switch (u.phase) {
+        case UploadPhase.encrypting:
+          next = await _doEncrypt(u);
+          break;
         case UploadPhase.converting:
           next = await _doConvert(u);
           break;
@@ -143,6 +148,27 @@ class UploadWorker {
   }
 
   // ── Phase handlers ────────────────────────────────────────────
+
+  /// phase=encrypting → encrypt the raw recording into chunks, stamp the
+  /// chunk count + plaintext size, advance to phase=pending. Durable: the
+  /// raw FLAC lives in Documents storage, so an interrupted encrypt
+  /// re-runs on the next tick. Transient I/O / key errors classify as
+  /// retryable and keep the row in `encrypting`.
+  Future<PendingUpload> _doEncrypt(PendingUpload u) async {
+    try {
+      final r = await _io.encryptSource(u);
+      return u.copyWith(
+        phase: UploadPhase.pending,
+        sizeBytes: r.sizeBytes,
+        chunkCount: r.chunkCount,
+        attemptCount: 0,
+        nextAttemptAt: _clock(), // due immediately for the create step
+        clearLastError: true,
+      );
+    } catch (e) {
+      return _classify(u, e);
+    }
+  }
 
   /// phase=converting → run the on-device transcode, repoint the
   /// source descriptor at the result, advance to phase=pending so the

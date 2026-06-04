@@ -559,14 +559,34 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         if (_lastRow != null && _resolvedSessionId == null && !_isQuotaBlocked)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              _queuePhaseLabel(_lastRow!),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'RobotoMono',
-                fontSize: 12,
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
+            child: Column(
+              children: [
+                Text(
+                  _queuePhaseLabel(_lastRow!),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Reassurance: the row is durable in the upload queue, so
+                // the user can leave without losing the session. This
+                // directly answers the "what do I do to not lose it / no
+                // info" confusion on the long processing/upload wait.
+                Text(
+                  'Możesz bezpiecznie opuścić ten ekran — '
+                  'sesja przetworzy się w tle.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Merriweather',
+                    fontSize: 12,
+                    height: 1.5,
+                    color: Colors.white.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
             ),
           ),
         // Resend lives in the bottom button area (below) so it never
@@ -600,6 +620,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     final row = _lastRow;
     if (row == null) return false;
     switch (row.phase) {
+      case UploadPhase.encrypting:
       case UploadPhase.converting:
       case UploadPhase.pending:
       case UploadPhase.created:
@@ -640,6 +661,8 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     final t = AppLocalizations.of(context);
     final attempt = u.attemptCount > 0 ? ' • próba ${u.attemptCount + 1}' : '';
     switch (u.phase) {
+      case UploadPhase.encrypting:
+        return 'Przetwarzanie nagrania...$attempt';
       case UploadPhase.converting:
         return 'Konwertuję plik audio...$attempt';
       case UploadPhase.pending:

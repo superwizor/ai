@@ -55,6 +55,11 @@ class _FakeIo implements UploadIo {
       );
 
   @override
+  Future<EncryptResult> encryptSource(PendingUpload u,
+          {void Function(double)? onProgress}) async =>
+      EncryptResult(sizeBytes: u.sizeBytes, chunkCount: u.chunkCount);
+
+  @override
   Future<void> cleanupSource(PendingUpload u) async {}
 }
 

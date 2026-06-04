@@ -62,6 +62,22 @@ enum UploadPhase {
   /// user leaves the screen. See docs/11_IPHONE_AUDIO_CONVERSION.md.
   converting,
 
+  /// Live-recording path only: the raw FLAC the recorder wrote at
+  /// `<docs>/sessions/<sessionId>/raw.flac` still needs encrypting into
+  /// AES-256-GCM `chunk_*.enc` files before upload. The worker runs
+  /// UploadIo.encryptSource, then advances to `pending`.
+  ///
+  /// Same durability rationale as `converting`: encryption used to run
+  /// inline on RecordingScreen (a multi-step, multi-second operation on
+  /// a 60-min recording) BEFORE any durable row existed, behind a bare
+  /// spinner with no label — so "send to analysis" then leaving the
+  /// screen could lose the whole session. Now the row is enqueued the
+  /// instant recording stops; encryption is a resumable worker step and
+  /// the kartoteka + pending-uploads pill track it. The raw FLAC lives
+  /// in durable Documents storage, so an interrupted encrypt re-runs on
+  /// the next tick.
+  encrypting,
+
   /// Newly queued. CreateAudioUpload has not been called.
   pending,
 
@@ -232,6 +248,7 @@ class PendingUpload {
     String? contentType,
     int? sizeBytes,
     int? actualDurationSeconds,
+    int? chunkCount,
   }) {
     return PendingUpload(
       localId: localId,
@@ -242,7 +259,7 @@ class PendingUpload {
       sourcePath: sourcePath ?? this.sourcePath,
       contentType: contentType ?? this.contentType,
       sizeBytes: sizeBytes ?? this.sizeBytes,
-      chunkCount: chunkCount,
+      chunkCount: chunkCount ?? this.chunkCount,
       actualDurationSeconds:
           actualDurationSeconds ?? this.actualDurationSeconds,
       needsServerSideConversion:

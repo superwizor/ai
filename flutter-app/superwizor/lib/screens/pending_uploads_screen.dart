@@ -267,6 +267,8 @@ class _UploadRow extends ConsumerWidget {
 
   static IconData _phaseIcon(UploadPhase p) {
     switch (p) {
+      case UploadPhase.encrypting:
+        return Icons.lock_outline;
       case UploadPhase.converting:
         return Icons.transform;
       case UploadPhase.pending:
@@ -286,6 +288,8 @@ class _UploadRow extends ConsumerWidget {
 
   static String _phaseLabel(UploadPhase p, AppLocalizations l) {
     switch (p) {
+      case UploadPhase.encrypting:
+        return 'W trakcie przetwarzania';
       case UploadPhase.converting:
         return 'Konwertuję...';
       case UploadPhase.pending:
