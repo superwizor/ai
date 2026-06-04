@@ -1,0 +1,13 @@
+Install: Dariusz's iPhone — fix/app-audio-conversion (commit 592e8ce)
+Date: Thu Jun  4 13:11:34 CEST 2026
+Device: iPhone (Dariusz), UDID 00008120-001644C43443A01E, iOS 26.2.1 23C71
+Team: 256MRX722W (EUPHIRE sp. z o.o.)
+Cert: Apple Development: Dariusz Piotrak (QZ9CP4GG9L)
+Bundle: ai.superwizor.superwizor 1.0.0
+
+Device was NOT previously in the EUPHIRE provisioning profile (profile had
+Marcin + 2 others). flutter run --release -d <device> auto-registered it via
+xcodebuild -allowProvisioningDeviceRegistration, regenerated the profile to
+include 00008120-..., re-signed, installed, launched.
+
+Verified installed: devicectl device info apps → "Superwizor ai.superwizor.superwizor 1.0.0".
