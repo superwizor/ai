@@ -20,7 +20,7 @@ import { notFound } from "next/navigation";
 import { Montserrat, Merriweather, Roboto_Mono } from "next/font/google";
 import "../globals.css";
 import { routing } from "@/i18n/routing";
-import { AuthProvider } from "@/lib/firebase/auth-provider";
+import { LazyAuthProvider } from "@/lib/firebase/LazyAuthProvider";
 import { AuthStatusBadge } from "@/lib/firebase/AuthStatusBadge";
 
 const montserrat = Montserrat({
@@ -104,12 +104,20 @@ export default async function LocaleLayout({
       lang={locale}
       className={`${montserrat.variable} ${merriweather.variable} ${robotoMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Preconnect to Firebase Auth + Google API origins so that when
+            the lazy-loaded AuthProvider finally requests them, the TLS
+            handshake is already done. Saves ~300-400ms per origin. */}
+        <link rel="preconnect" href="https://superwizor-ai-25ecd.firebaseapp.com" />
+        <link rel="preconnect" href="https://apis.google.com" />
+        <link rel="preconnect" href="https://www.googleapis.com" />
+      </head>
       <body className="min-h-full flex flex-col">
         <NextIntlClientProvider>
-          <AuthProvider>
+          <LazyAuthProvider>
             {children}
             <AuthStatusBadge />
-          </AuthProvider>
+          </LazyAuthProvider>
         </NextIntlClientProvider>
       </body>
     </html>

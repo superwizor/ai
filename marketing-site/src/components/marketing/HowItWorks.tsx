@@ -76,6 +76,8 @@ export function HowItWorks() {
                           src={stepImages[i]}
                           alt={tStep(`${k}.title`)}
                           loading="lazy"
+                          width={640}
+                          height={480}
                           className="w-full h-auto object-cover"
                         />
                       </div>

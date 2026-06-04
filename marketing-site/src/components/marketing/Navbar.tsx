@@ -24,6 +24,8 @@ export function Navbar() {
           <img
             src="/assets/logo_black.svg"
             alt="Euphire"
+            width={140}
+            height={28}
             className="h-6 sm:h-7 w-auto"
           />
         </a>
