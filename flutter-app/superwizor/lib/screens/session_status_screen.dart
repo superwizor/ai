@@ -600,6 +600,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     final row = _lastRow;
     if (row == null) return false;
     switch (row.phase) {
+      case UploadPhase.converting:
       case UploadPhase.pending:
       case UploadPhase.created:
       case UploadPhase.quotaBlocked:
@@ -639,6 +640,8 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     final t = AppLocalizations.of(context);
     final attempt = u.attemptCount > 0 ? ' • próba ${u.attemptCount + 1}' : '';
     switch (u.phase) {
+      case UploadPhase.converting:
+        return 'Konwertuję plik audio...$attempt';
       case UploadPhase.pending:
         return 'W kolejce$attempt';
       case UploadPhase.created:

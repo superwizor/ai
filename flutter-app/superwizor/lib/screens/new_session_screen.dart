@@ -57,6 +57,14 @@ const Map<String, String> _kSupportedAudioTypes = {
   '.mp4': 'audio/mp4',
 };
 
+/// Extensions we transcode on-device before upload — these are enqueued
+/// in UploadPhase.converting so the work is durable (see the worker's
+/// phase map). WAV is normalized to 16-bit PCM (pure Dart, every
+/// platform); M4A/MP4/AAC become FLAC on iOS via the AudioConverter
+/// platform channel and fall back to the server transcode elsewhere.
+/// Everything else is enqueued straight into UploadPhase.pending.
+const Set<String> _kClientConvertExts = {'.wav', '.m4a', '.mp4', '.aac'};
+
 /// Content types Chirp 3 europe-central2 accepts directly. Anything not in
 /// this set must be routed through IngestionService.ConvertAudio before
 /// CompleteAudioUpload, or the server rejects with FAILED_PRECONDITION.
@@ -105,6 +113,12 @@ class NewSessionScreen extends ConsumerStatefulWidget {
 class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     with TickerProviderStateMixin {
   bool _uploading = false;
+  // True only during the brief pick → stage → enqueue window, before
+  // the row is durable in Hive. While true we block back-navigation
+  // (PopScope) so a stray tap can't race the enqueue. The moment the
+  // row is persisted we flip it false — from then on the pending-
+  // uploads pill owns the session and leaving the screen is safe.
+  bool _busy = false;
   String? _uploadFileName;
   String _uploadStatusLabel = '';
 
@@ -168,7 +182,13 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     final t = AppLocalizations.of(context);
     final dateLabel = DateFormat('d MMMM y', 'pl_PL').format(DateTime.now());
 
-    return Scaffold(
+    return PopScope(
+      // Block back ONLY during the brief, indivisible stage+enqueue
+      // window (_busy). Conversion no longer runs here, so this is a
+      // sub-second guard that prevents a back tap from racing the Hive
+      // write — not the long lock the old inline-conversion flow needed.
+      canPop: !_busy,
+      child: Scaffold(
       // Use gradient instead of flat color (Labirynt pattern)
       body: Container(
         width: double.infinity,
@@ -239,6 +259,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -487,237 +508,142 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
 
     setState(() {
       _uploading = true;
+      _busy = true;
       _uploadFileName = picked.name;
       _displayedProgress = 0.0;
       _targetProgress = 0.0;
-      _uploadStatusLabel = 'Konwersja audio...';
+      _uploadStatusLabel = 'Przygotowuję plik...';
     });
-    _setUploadProgress(0.02);
+    _setUploadProgress(0.05);
 
     try {
-      await _convertAndUploadFile(file: file, originalSizeBytes: sizeBytes);
+      await _stageAndEnqueue(file: file, originalSizeBytes: sizeBytes);
     } catch (e) {
       debugPrint('[file-upload] FAILED: $e');
       if (!mounted) return;
-      setState(() => _uploading = false);
+      setState(() {
+        _uploading = false;
+        _busy = false;
+      });
       _showErrorSheet('Błąd podczas przesyłania pliku:\n$e');
     }
   }
 
-  Future<void> _convertAndUploadFile({
+  /// Stages the picked file into a durable queue dir, enqueues a
+  /// PendingUpload, and navigates to the status screen — WITHOUT
+  /// running any audio conversion on this screen.
+  ///
+  /// This is the fix for the data-loss bug: conversion used to run as
+  /// an inline `await` here, *before* any durable row existed, so
+  /// leaving the "Konwertuję" screen (or an app-kill / OS cache purge
+  /// mid-convert) silently dropped the whole session. Now the row is
+  /// persisted to Hive the moment the file is staged, conversion is a
+  /// resumable worker phase (UploadPhase.converting →
+  /// UploadIo.convertSource), and the pending-uploads pill keeps
+  /// tracking it even if the user navigates away. See
+  /// docs/11_IPHONE_AUDIO_CONVERSION.md and the worker's phase map.
+  ///
+  /// Files needing an on-device transcode (iPhone M4A/MP4/AAC → FLAC,
+  /// WAV → 16-bit PCM) are enqueued in phase=converting; everything
+  /// already Chirp-native (or server-transcoded, e.g. MP3) goes
+  /// straight into phase=pending.
+  Future<void> _stageAndEnqueue({
     required File file,
     required int originalSizeBytes,
   }) async {
-    File? tempFile;
+    final ext = p.extension(file.path).toLowerCase();
+    final contentType = _kSupportedAudioTypes[ext] ?? 'audio/wav';
 
-    try {
-      final ext = p.extension(file.path).toLowerCase();
-      File fileToUpload = file;
-      String contentType = _kSupportedAudioTypes[ext] ?? 'audio/wav';
-      int uploadSize = originalSizeBytes;
+    // Files we transcode on-device. WAV normalization is pure Dart
+    // (every platform); M4A/MP4/AAC become FLAC on iOS and fall back to
+    // the server transcode elsewhere — UploadIo.convertSource decides,
+    // so we route all four through the converting phase regardless of
+    // platform and let the worker handle it durably.
+    final needsClientConversion = _kClientConvertExts.contains(ext);
 
-      // Set to true when client-side M4A→FLAC fails and we need the
-      // backend's ConvertAudio fallback to fire after upload but
-      // before CompleteAudioUpload. Stays false on the happy path
-      // (FLAC live recording, WAV upload, or successful iOS native
-      // M4A conversion).
-      bool needsServerSideConversion = false;
+    final localId = const Uuid().v4();
 
-      // ── Phase 1: Normalize WAV if needed (0% → 25%) ──
-      if (ext == '.wav') {
-        if (!mounted) return;
-        setState(() => _uploadStatusLabel = 'Normalizacja audio...');
-        _setUploadProgress(0.02);
+    // Copy the picked file out of the OS cache (file_picker's path can
+    // be purged at any time) into <docs>/queued_uploads/<localId>/ so
+    // the queue can resume after an app kill. For the converting path
+    // the worker rewrites sourcePath to the transcoded file inside this
+    // same dir; cleanupSource deletes the whole dir on terminal-success
+    // or dismiss.
+    final stagedFile = await _stageForQueue(localId: localId, source: file);
+    if (!mounted) return;
+    _setUploadProgress(0.55);
 
-        try {
-          final converter = AudioConverterService();
-          final normalized = await converter.normalizeWav(
-            file.path,
-            onProgress: (p) {
-              if (!mounted) return;
-              setState(() {
-                _uploadStatusLabel = 'Normalizacja audio...';
-              });
-              _setUploadProgress(p * 0.25);
-            },
-          );
+    // Duration is format-independent, so probe the staged original once
+    // here rather than re-probing post-transcode. Drives the server's
+    // chunking trigger for > 19-min files (Chirp 3's word-timestamp
+    // limit); the server re-probes as defense in depth, and this
+    // returns 0 on any failure.
+    final probedDurationSec =
+        await AudioConverterService().probeDurationSeconds(stagedFile.path);
+    debugPrint('[file-upload] staged localId=$localId '
+        'convert=$needsClientConversion duration=${probedDurationSec}s');
 
-          if (normalized != null && normalized.path != file.path) {
-            tempFile = normalized;
-            fileToUpload = normalized;
-            uploadSize = await normalized.length();
-            debugPrint('[file-upload] WAV normalized: ${(uploadSize / 1024 / 1024).toStringAsFixed(1)} MB');
-          } else if (normalized == null) {
-            // normalizeWav returns null for non-WAV or unsupported
-            // sub-formats. The original file might be 32-bit float
-            // which Chirp 3 rejects. Log it and upload anyway — if
-            // the file is already 16-bit PCM, normalizeWav returns
-            // the original File (same path).
-            debugPrint('[file-upload] WAV normalization returned null — '
-                'file may have unsupported format; uploading original');
-          } else {
-            debugPrint('[file-upload] WAV already 16-bit PCM, no conversion needed');
-          }
-        } catch (e, st) {
-          debugPrint('[file-upload] WAV normalization failed: $e\n$st');
-          // Continue with original file — backend may still handle it
-        }
-        contentType = 'audio/wav';
-      }
-
-      // ── M4A / AAC / MP4 branch: convert to FLAC client-side ──
-      //
-      // Chirp 3 europe-central2 doesn't accept AAC-in-MP4 — see
-      // d752639 (the block that this work re-enables). On iOS we
-      // transcode on-device via ios/Runner/AudioConverter.swift,
-      // which uses AudioToolbox's hardware AAC decoder + FLAC
-      // writer; 5-10x realtime on iPhone 15. On any failure
-      // (Android, web, iOS edge cases, corrupt files) we fall
-      // through to the server-side ConvertAudio RPC after upload.
-      if (ext == '.m4a' || ext == '.mp4' || ext == '.aac') {
-        if (!mounted) return;
-        setState(() => _uploadStatusLabel = 'Konwertuję plik audio...');
-        _setUploadProgress(0.02);
-
-        if (Platform.isIOS) {
-          try {
-            final converter = AudioConverterService();
-            final flac = await converter.convertM4aToFlac(
-              file.path,
-              onProgress: (p) {
-                if (!mounted) return;
-                _setUploadProgress(p * 0.25);
-              },
-            );
-            tempFile = flac;
-            fileToUpload = flac;
-            contentType = 'audio/flac';
-            uploadSize = await flac.length();
-            debugPrint('[file-upload] M4A → FLAC OK: '
-                '${(uploadSize / 1024 / 1024).toStringAsFixed(1)} MB');
-          } catch (e, st) {
-            debugPrint('[file-upload] M4A → FLAC FAILED, falling back to '
-                'server-side ConvertAudio: $e\n$st');
-            // Upload the original M4A; server will transcode after
-            // we land it on GCS.
-            needsServerSideConversion = true;
-            contentType = 'audio/mp4';
-          }
-        } else {
-          // Android / web — no on-device path yet. Server fallback.
-          debugPrint('[file-upload] non-iOS platform, using server-side '
-              'ConvertAudio for $ext');
-          needsServerSideConversion = true;
-          contentType = ext == '.aac' ? 'audio/aac' : 'audio/mp4';
-        }
-      }
-
-      // Any content type that isn't Chirp-native at this point (MP3, WMA,
-      // or an M4A/AAC that escaped client-side conversion) must go through
-      // server-side ConvertAudio before CompleteAudioUpload.
-      if (!_kChirpNativeContentTypes.contains(contentType)) {
-        needsServerSideConversion = true;
-      }
-
-      if (!mounted) return;
-      setState(() => _uploadStatusLabel = 'Kolejkuję...');
-      _setUploadProgress(0.28);
-
-      // ── Phase 2: copy to stable docs-relative path ──
-      //
-      // The file the user picked typically lives in the OS cache dir
-      // (file_picker on iOS/Android), which the OS can purge any time
-      // — and we may not get to upload before that happens. Copy to
-      // <docs>/queued_uploads/<localId>/<basename> so the queue can
-      // resume after an app kill or week-long offline stretch.
-      // GrpcUploadIo.cleanupSource deletes this dir on terminal-success
-      // or on dismiss.
-      final localId = const Uuid().v4();
-      final stagedFile = await _stageForQueue(
-        localId: localId,
-        source: fileToUpload,
-      );
-
-      // Temp file from M4A→FLAC / WAV-normalize is no longer needed
-      // once it's copied into the staging dir.
-      if (tempFile != null) {
-        try {
-          if (await tempFile.exists()) await tempFile.delete();
-        } catch (_) {}
-        tempFile = null;
-      }
-
-      // ── Phase 3: enqueue & kick the runner ──
-      //
-      // After enqueueAndKick returns the runner has either:
-      //   • Driven the row to phase=created (online happy path), or
-      //   • Left it as phase=pending (offline / runner not ready)
-      // Either way the upload continues in the background; the user
-      // can leave this screen and the pending-uploads pill on the
-      // home shell tracks progress.
-      final runner = await ref.read(uploadQueueRunnerProvider.future);
-      if (runner == null) {
-        throw StateError('Upload queue not available — user not signed in?');
-      }
-
-      // Probe duration so the server-side chunking trigger for
-      // > 19-min files (Chirp 3's word-timestamp limit) fires
-      // without depending on ingestion-svc's ffprobe fallback.
-      // probeDurationSeconds returns 0 on any failure; the server
-      // re-probes on CompleteAudioUpload either way (defense in
-      // depth — see services/ingestion-svc/internal/adapters/grpc/
-      // server.go::CompleteAudioUpload).
-      final probedDurationSec = await AudioConverterService()
-          .probeDurationSeconds(stagedFile.path);
-      debugPrint('[file-upload] probed duration: ${probedDurationSec}s');
-
-      final pending = PendingUpload.initial(
-        localId: localId,
-        therapistId: widget.therapistId,
-        patientFileId: widget.patientFileId,
-        patientLanguageCode: widget.patientLanguageCode,
-        sourceKind: UploadSourceKind.plainFile,
-        sourcePath: stagedFile.path,
-        contentType: contentType,
-        sizeBytes: uploadSize,
-        chunkCount: 1,
-        actualDurationSeconds: probedDurationSec,
-        needsServerSideConversion: needsServerSideConversion,
-        idempotencyKey: localId,
-        now: DateTime.now().toUtc(),
-      );
-
-      await runner.enqueueAndKick(pending);
-
-      if (!mounted) return;
-      _setUploadProgress(1.0);
-
-      // Refresh the patient + sessions cache so the new session
-      // (once it lands server-side) shows up in the kartoteka.
-      ref.invalidate(patientsProvider);
-      ref.invalidate(sessionsProvider);
-
-      // Navigate to the status screen so the user sees the stepper
-      // (upload → analyze → done) without losing the progress
-      // affordance. SessionStatusScreen watches the queue row by
-      // localId; once CompleteAudioUpload returns and we have a
-      // server-side sessionId, it switches to the Firestore /
-      // clinical-svc listeners. The snackbar appears inside
-      // SessionStatusScreen's initState so it survives the
-      // pushReplacement transition.
-      await Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (_) => SessionStatusScreen(localId: localId),
-      ));
-    } finally {
-      // Clean up temp file (only if one is still hanging around —
-      // we delete it above before staging but a thrown exception
-      // before that point would land here).
-      if (tempFile != null) {
-        try {
-          if (await tempFile.exists()) await tempFile.delete();
-        } catch (_) {}
-      }
+    final runner = await ref.read(uploadQueueRunnerProvider.future);
+    if (runner == null) {
+      throw StateError('Upload queue not available — user not signed in?');
     }
+
+    if (!mounted) return;
+    setState(() => _uploadStatusLabel = 'Kolejkuję...');
+    _setUploadProgress(0.85);
+
+    var pending = PendingUpload.initial(
+      localId: localId,
+      therapistId: widget.therapistId,
+      patientFileId: widget.patientFileId,
+      patientLanguageCode: widget.patientLanguageCode,
+      sourceKind: UploadSourceKind.plainFile,
+      sourcePath: stagedFile.path,
+      contentType: contentType,
+      sizeBytes: originalSizeBytes,
+      chunkCount: 1,
+      actualDurationSeconds: probedDurationSec,
+      // For the converting path the worker recomputes this after the
+      // transcode; for the direct path it's authoritative now.
+      needsServerSideConversion: needsClientConversion
+          ? false
+          : !_kChirpNativeContentTypes.contains(contentType),
+      idempotencyKey: localId,
+      now: DateTime.now().toUtc(),
+    );
+    if (needsClientConversion) {
+      pending = pending.copyWith(phase: UploadPhase.converting);
+    }
+
+    // Persist the row (durable) WITHOUT awaiting a tick — the first
+    // tick on a converting row would run the (possibly minute-long)
+    // transcode, and we must not block navigation on it. The row is in
+    // Hive before this returns, so back-navigation / app-kill can no
+    // longer lose it.
+    await runner.enqueue(pending);
+
+    if (!mounted) return;
+    _setUploadProgress(1.0);
+    // Past the durable point — releasing the back guard is safe; the
+    // pending-uploads pill now owns this session.
+    _busy = false;
+
+    // Refresh the patient + sessions cache so the new session shows up
+    // in the kartoteka once it lands server-side.
+    ref.invalidate(patientsProvider);
+    ref.invalidate(sessionsProvider);
+
+    // Kick the worker in the background so conversion/upload starts
+    // immediately — fire-and-forget so navigation isn't blocked on it.
+    unawaited(runner.kick());
+
+    // Navigate to the status screen. It watches the queue row by
+    // localId and renders the converting → uploading → analyzing →
+    // done stepper; once a server-side sessionId materialises it hands
+    // off to the Firestore / clinical-svc listeners.
+    await Navigator.of(context).pushReplacement(MaterialPageRoute(
+      builder: (_) => SessionStatusScreen(localId: localId),
+    ));
   }
 
   /// Copies [source] into `<docs>/queued_uploads/<localId>/<basename>`

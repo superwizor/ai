@@ -23,8 +23,26 @@ class FakeUploadIo implements UploadIo {
   Object? createUploadError;
   Object? putBytesError;
   Object? cleanupError;
+  Object? convertError;
 
   CreateAudioUploadResult? createUploadResult;
+  ConvertResult? convertResult;
+
+  @override
+  Future<ConvertResult> convertSource(PendingUpload u,
+      {void Function(double)? onProgress}) async {
+    calls.add('convertSource');
+    if (convertError != null) throw convertError!;
+    // Default: a successful M4A→FLAC transcode that repoints the
+    // source at a new in-staging-dir file and clears server fallback.
+    return convertResult ??
+        const ConvertResult(
+          sourcePath: '/staged/converted.flac',
+          contentType: 'audio/flac',
+          sizeBytes: 4242,
+          needsServerSideConversion: false,
+        );
+  }
 
   @override
   Future<CreateAudioUploadResult> createUpload(PendingUpload u) async {
@@ -58,6 +76,8 @@ PendingUpload _seed({
   bool needsServerSideConversion = false,
   int attemptCount = 0,
   DateTime? queuedAt,
+  String sourcePath = '/x',
+  String contentType = 'audio/flac',
 }) {
   final now = queuedAt ?? DateTime.utc(2026, 5, 20, 12);
   return PendingUpload(
@@ -66,8 +86,8 @@ PendingUpload _seed({
     patientFileId: 'pf',
     patientLanguageCode: 'pl-PL',
     sourceKind: UploadSourceKind.plainFile,
-    sourcePath: '/x',
-    contentType: 'audio/flac',
+    sourcePath: sourcePath,
+    contentType: contentType,
     sizeBytes: 100,
     chunkCount: 1,
     actualDurationSeconds: 0,
@@ -89,6 +109,117 @@ UploadWorker _worker(FakeUploadIo io, {DateTime? clock}) => UploadWorker(
     );
 
 void main() {
+  group('converting phase (fix/app-audio-conversion)', () {
+    test('converting → pending repoints source at the transcoded file',
+        () async {
+      // The durability fix: a row enqueued in `converting` runs the
+      // on-device transcode via convertSource, then advances to
+      // `pending` with the source descriptor repointed at the FLAC.
+      final io = FakeUploadIo()
+        ..convertResult = const ConvertResult(
+          sourcePath: '/staged/l/recording.flac',
+          contentType: 'audio/flac',
+          sizeBytes: 9000,
+          needsServerSideConversion: false,
+        );
+      final clock = DateTime.utc(2026, 5, 20, 12);
+      final u = _seed(
+        phase: UploadPhase.converting,
+        sourcePath: '/staged/l/recording.m4a',
+        contentType: 'audio/mp4',
+      );
+
+      final next = await _worker(io, clock: clock).runOne(u);
+
+      expect(next.phase, UploadPhase.pending,
+          reason: 'after transcode the row is ready for CreateAudioUpload');
+      expect(next.sourcePath, '/staged/l/recording.flac');
+      expect(next.contentType, 'audio/flac');
+      expect(next.sizeBytes, 9000);
+      expect(next.needsServerSideConversion, isFalse);
+      expect(next.attemptCount, 0);
+      expect(next.nextAttemptAt, clock, reason: 'due immediately for create');
+      expect(io.calls, ['convertSource']);
+    });
+
+    test('converting → pending keeps original + server fallback on '
+        'decode failure', () async {
+      // iOS decode failure / non-iOS: convertSource returns the
+      // ORIGINAL file with needsServerSideConversion=true. The session
+      // is NOT lost — we still upload, and ingestion-svc transcodes.
+      final io = FakeUploadIo()
+        ..convertResult = const ConvertResult(
+          sourcePath: '/staged/l/recording.m4a',
+          contentType: 'audio/mp4',
+          sizeBytes: 100,
+          needsServerSideConversion: true,
+        );
+      final u = _seed(
+        phase: UploadPhase.converting,
+        sourcePath: '/staged/l/recording.m4a',
+        contentType: 'audio/mp4',
+      );
+
+      final next = await _worker(io).runOne(u);
+
+      expect(next.phase, UploadPhase.pending);
+      expect(next.sourcePath, '/staged/l/recording.m4a',
+          reason: 'original file uploaded as-is');
+      expect(next.contentType, 'audio/mp4');
+      expect(next.needsServerSideConversion, isTrue,
+          reason: 'server runs ffmpeg off the bucket notification');
+    });
+
+    test('converting walks all the way to completed in successive runOnes',
+        () async {
+      // End-to-end through the new entry phase: convert → create → PUT.
+      final io = FakeUploadIo()
+        ..convertResult = const ConvertResult(
+          sourcePath: '/staged/l/recording.flac',
+          contentType: 'audio/flac',
+          sizeBytes: 9000,
+          needsServerSideConversion: false,
+        );
+      final worker = _worker(io);
+      var u = _seed(
+        phase: UploadPhase.converting,
+        sourcePath: '/staged/l/recording.m4a',
+        contentType: 'audio/mp4',
+      );
+
+      u = await worker.runOne(u); // converting → pending
+      expect(u.phase, UploadPhase.pending);
+      u = await worker.runOne(u); // pending → created
+      expect(u.phase, UploadPhase.created);
+      u = await worker.runOne(u); // created → completed (Option F)
+      expect(u.phase, UploadPhase.completed);
+      expect(io.calls, ['convertSource', 'createUpload', 'putBytes', 'cleanupSource']);
+    });
+
+    test('transient convert error keeps the row in converting and retries',
+        () async {
+      // A genuinely unexpected I/O error (NOT an expected decode
+      // fallback, which convertSource swallows) must keep the durable
+      // row alive in `converting` so the next tick retries — never
+      // drop it.
+      final io = FakeUploadIo()
+        ..convertError = const SocketException('disk hiccup');
+      final clock = DateTime.utc(2026, 5, 20, 12);
+      final u = _seed(
+        phase: UploadPhase.converting,
+        sourcePath: '/staged/l/recording.m4a',
+        contentType: 'audio/mp4',
+      );
+
+      final next = await _worker(io, clock: clock).runOne(u);
+
+      expect(next.phase, UploadPhase.converting,
+          reason: 'retryable error stays in the current phase');
+      expect(next.attemptCount, 1);
+      expect(next.nextAttemptAt.isAfter(clock), isTrue);
+    });
+  });
+
   group('happy paths', () {
     test('pending → created on successful CreateAudioUpload', () async {
       final io = FakeUploadIo();

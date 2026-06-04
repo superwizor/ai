@@ -1,0 +1,5 @@
+Analyzing 5 items...                                            
+
+   info • Angle brackets will be interpreted as HTML • lib/uploads/upload_queue_provider.dart:277:8 • unintended_html_in_doc_comment
+
+1 issue found. (ran in 7.7s)

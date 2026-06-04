@@ -37,7 +37,58 @@ class CreateAudioUploadResult {
   });
 }
 
+/// Outcome of [UploadIo.convertSource]. Describes the file that should
+/// now be uploaded — either the freshly transcoded one (success) or the
+/// untouched original (fallback). The worker copies these fields onto
+/// the PendingUpload via copyWith before advancing to phase=pending.
+class ConvertResult {
+  /// Absolute path to the file to upload from here on. On a successful
+  /// on-device transcode this is the new FLAC/WAV inside the row's
+  /// `queued_uploads/<localId>/` staging dir; on fallback it's the
+  /// original picked file, unchanged.
+  final String sourcePath;
+
+  /// MIME type of [sourcePath] — 'audio/flac' after an M4A transcode,
+  /// 'audio/wav' after normalization, or the original type on fallback.
+  final String contentType;
+
+  /// Size of [sourcePath] in bytes (re-measured after transcode).
+  final int sizeBytes;
+
+  /// True when client-side conversion could NOT produce a Chirp-native
+  /// file (non-iOS platform, iOS decode failure, corrupt input). The
+  /// original is uploaded as-is and ingestion-svc runs its ffmpeg
+  /// fallback off the bucket notification before transcription. This is
+  /// the no-data-loss escape hatch: we always end up with SOMETHING on
+  /// GCS, even when on-device transcode can't run.
+  final bool needsServerSideConversion;
+
+  const ConvertResult({
+    required this.sourcePath,
+    required this.contentType,
+    required this.sizeBytes,
+    required this.needsServerSideConversion,
+  });
+}
+
 abstract class UploadIo {
+  /// Step 0 (only for rows enqueued in phase=converting): transcode the
+  /// source file on-device to a Chirp-native format. Writes output into
+  /// the row's `queued_uploads/<localId>/` staging dir so it's durable
+  /// across app restarts and swept by [cleanupSource]; deletes the
+  /// original once the converted file lands.
+  ///
+  /// Never throws for an *expected* conversion failure (unsupported
+  /// platform, undecodable input) — those return a [ConvertResult]
+  /// pointing at the original file with needsServerSideConversion=true.
+  /// May throw for genuinely transient/unexpected I/O errors, which the
+  /// worker classifies as retryable (the row stays in `converting` and
+  /// the next tick retries).
+  Future<ConvertResult> convertSource(
+    PendingUpload u, {
+    void Function(double progressFraction)? onProgress,
+  });
+
   /// Step 1: CreateAudioUpload. May be called multiple times for the
   /// same [u] — the server is idempotent on (idempotencyKey,
   /// therapistId), returning the same uploadId + a fresh signedUrl.

@@ -1159,6 +1159,8 @@ class _PendingUploadCard extends StatelessWidget {
 
   String get _statusLabel {
     switch (upload.phase) {
+      case UploadPhase.converting:
+        return 'Konwertuję audio…';
       case UploadPhase.pending:
         return 'W kolejce…';
       case UploadPhase.created:

@@ -214,6 +214,22 @@ class UploadQueueRunner {
     await _tick();
   }
 
+  /// Persist [upload] and emit a snapshot WITHOUT running a tick.
+  ///
+  /// Unlike [enqueueAndKick], this returns the instant the row is
+  /// durable — it does NOT wait for the first phase to advance. The
+  /// file-upload screen uses this for phase=converting rows: the first
+  /// tick would run the (potentially minute-long) on-device transcode,
+  /// and we must not block the screen on it. The caller enqueues, then
+  /// navigates to SessionStatusScreen and fires [kick] in the
+  /// background; the periodic timer would pick the row up regardless.
+  /// The row is in Hive before this future completes, so it survives an
+  /// immediate app-kill / navigation — which is the whole point.
+  Future<void> enqueue(PendingUpload upload) async {
+    await _queue.enqueue(upload);
+    _emitSnapshot();
+  }
+
   /// Manual nudge — exposed for the lifecycle hook
   /// (AppLifecycleState.resumed) in the Riverpod gateway, and used
   /// by tests to advance one phase at a time.

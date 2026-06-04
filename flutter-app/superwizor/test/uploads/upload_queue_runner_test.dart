@@ -45,6 +45,16 @@ class _FakeIo implements UploadIo {
   }
 
   @override
+  Future<ConvertResult> convertSource(PendingUpload u,
+          {void Function(double)? onProgress}) async =>
+      ConvertResult(
+        sourcePath: u.sourcePath,
+        contentType: u.contentType,
+        sizeBytes: u.sizeBytes,
+        needsServerSideConversion: u.needsServerSideConversion,
+      );
+
+  @override
   Future<void> cleanupSource(PendingUpload u) async {}
 }
 

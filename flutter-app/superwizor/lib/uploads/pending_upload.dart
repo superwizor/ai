@@ -47,6 +47,21 @@ enum UploadSourceKind {
 }
 
 enum UploadPhase {
+  /// Needs on-device transcoding before anything else (iPhone M4A/MP4/
+  /// AAC → FLAC, or WAV → 16-bit PCM normalization). The worker runs
+  /// UploadIo.convertSource, rewrites the source descriptor (path,
+  /// contentType, sizeBytes) in place, then advances to `pending`.
+  ///
+  /// CRITICAL — this phase is why the row is enqueued *before*
+  /// conversion runs. Conversion used to happen inline on
+  /// NewSessionScreen before any durable row existed, so backing out
+  /// of the "Konwertuję" screen (or an app-kill / OS cache purge mid-
+  /// convert) silently dropped the whole session. Now the durable row
+  /// exists from the moment the user picks the file; conversion is a
+  /// resumable worker step and the pill keeps tracking it even if the
+  /// user leaves the screen. See docs/11_IPHONE_AUDIO_CONVERSION.md.
+  converting,
+
   /// Newly queued. CreateAudioUpload has not been called.
   pending,
 
@@ -207,6 +222,16 @@ class PendingUpload {
     bool clearLastError = false,
     bool clearUploadCredentials = false,
     bool? needsServerSideConversion,
+    // Source-descriptor rewrites — only the `converting` phase uses
+    // these. The on-device transcode produces a NEW file (e.g. the
+    // FLAC that replaces the picked M4A), so the worker must be able
+    // to repoint sourcePath / contentType / sizeBytes at it once
+    // convertSource returns. Every other transition leaves the
+    // descriptor untouched (these stay null → fall through to `this`).
+    String? sourcePath,
+    String? contentType,
+    int? sizeBytes,
+    int? actualDurationSeconds,
   }) {
     return PendingUpload(
       localId: localId,
@@ -214,11 +239,12 @@ class PendingUpload {
       patientFileId: patientFileId,
       patientLanguageCode: patientLanguageCode,
       sourceKind: sourceKind,
-      sourcePath: sourcePath,
-      contentType: contentType,
-      sizeBytes: sizeBytes,
+      sourcePath: sourcePath ?? this.sourcePath,
+      contentType: contentType ?? this.contentType,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
       chunkCount: chunkCount,
-      actualDurationSeconds: actualDurationSeconds,
+      actualDurationSeconds:
+          actualDurationSeconds ?? this.actualDurationSeconds,
       needsServerSideConversion:
           needsServerSideConversion ?? this.needsServerSideConversion,
       phase: phase ?? this.phase,

@@ -1,0 +1,74 @@
+00:00 +0: loading /Users/dpiotrak/supervisorai_v2/ai/flutter-app/superwizor/test/uploads/upload_worker_test.dart
+00:00 +0: converting phase (fix/app-audio-conversion) converting → pending repoints source at the transcoded file
+[upload-worker] runOne localId=l phase=converting attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=pending 
+00:00 +1: converting phase (fix/app-audio-conversion) converting → pending keeps original + server fallback on decode failure
+[upload-worker] runOne localId=l phase=converting attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=pending 
+00:00 +2: converting phase (fix/app-audio-conversion) converting walks all the way to completed in successive runOnes
+[upload-worker] runOne localId=l phase=converting attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=pending 
+[upload-worker] runOne localId=l phase=pending attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=created 
+[upload-worker] runOne localId=l phase=created attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=completed 
+00:00 +3: converting phase (fix/app-audio-conversion) transient convert error keeps the row in converting and retries
+[upload-worker] runOne localId=l phase=converting attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=converting error=network: SocketException SocketException: disk hiccup
+00:00 +4: happy paths pending → created on successful CreateAudioUpload
+[upload-worker] runOne localId=l phase=pending attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=created 
+00:00 +5: happy paths created → completed (terminal) on successful PUT
+[upload-worker] runOne localId=l phase=created attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=completed 
+00:00 +6: happy paths legacy `uploaded` phase walks to completed (post-upgrade)
+[upload-worker] runOne localId=l phase=uploaded attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=completed 
+00:00 +7: happy paths legacy `converted` phase also walks to completed
+[upload-worker] runOne localId=l phase=converted attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=completed 
+00:00 +8: happy paths terminal phases are no-ops
+00:00 +9: error classification → retry gRPC UNAVAILABLE schedules retry with backoff
+[upload-worker] runOne localId=l phase=pending attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=pending error=gRPC UNAVAILABLE: server down
+00:00 +10: error classification → retry gRPC RESOURCE_EXHAUSTED parks the row (no auto-retry)
+[upload-worker] runOne localId=l phase=pending attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=quotaBlocked error=gRPC RESOURCE_EXHAUSTED: QUOTA_EXHAUSTED
+00:00 +11: error classification → retry quotaBlocked phase is a parked no-op
+00:00 +12: error classification → retry socket exception is retryable
+[upload-worker] runOne localId=l phase=created attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=created error=network: SocketException SocketException: no network
+00:00 +13: error classification → retry HTTP 500 is retryable
+[upload-worker] runOne localId=l phase=created attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=created error=HTTP 500: oops
+00:00 +14: error classification → retry backoff grows with attempt count
+[upload-worker] runOne localId=l phase=pending attempt=3 kind=plainFile
+[upload-worker] runOne localId=l → phase=pending error=gRPC UNAVAILABLE: 
+00:00 +15: error classification → terminal gRPC FAILED_PRECONDITION on create marks failed
+[upload-worker] runOne localId=l phase=pending attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=failed error=gRPC FAILED_PRECONDITION: quota exhausted
+00:00 +16: error classification → terminal gRPC INVALID_ARGUMENT is terminal
+[upload-worker] runOne localId=l phase=pending attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=failed error=gRPC INVALID_ARGUMENT: bad
+00:00 +17: error classification → terminal gRPC PERMISSION_DENIED is terminal
+[upload-worker] runOne localId=l phase=pending attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=failed error=gRPC PERMISSION_DENIED: no
+00:00 +18: error classification → terminal HTTP 400 PUT is terminal
+[upload-worker] runOne localId=l phase=created attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=failed error=HTTP 400: bad
+00:00 +19: signed URL expiry HTTP 403 bounces back to pending with cleared credentials
+[upload-worker] runOne localId=l phase=created attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=pending error=HTTP 403: SignatureDoesNotMatch
+00:00 +20: signed URL expiry HTTP 410 also classifies as signedUrlExpired
+[upload-worker] runOne localId=l phase=created attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=pending error=HTTP 410: gone
+00:00 +21: defensive invariants created phase without uploadId drops back to pending
+[upload-worker] runOne localId=l phase=created attempt=0 kind=plainFile
+[upload-worker] runOne localId=l → phase=pending error=invariant: uploadId/signedUrl missing in created phase
+00:00 +22: defensive invariants cleanup failure does not unwind a successful PUT
+[upload-worker] runOne localId=l phase=created attempt=0 kind=plainFile
+[upload-worker] cleanupSource failed (ignored): Exception: disk full
+[upload-worker] runOne localId=l → phase=completed 
+00:00 +23: classifier direct unit returns retryable for unknown error types
+00:00 +24: classifier direct unit classifies http.ClientException as retryable
+00:00 +25: All tests passed!

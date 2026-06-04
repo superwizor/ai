@@ -18,9 +18,21 @@
 //     itself never throws (modulo bugs in our own code, which
 //     would be programmer errors and should surface).
 //
-// Phase map after Option F (feat/refactor-stt-architecture, 2026-05-25):
+// Phase map after Option F (feat/refactor-stt-architecture, 2026-05-25),
+// with the durable on-device transcode step (fix/app-audio-conversion):
 //
-//   pending  ─CreateAudioUpload─►  created  ─HTTP PUT─►  completed
+//   converting ─convertSource─► pending ─CreateAudioUpload─► created
+//                                                               │
+//                                              HTTP PUT ────────┘
+//                                                  ▼
+//                                              completed
+//
+// `converting` is the entry phase for files the client transcodes on
+// device (iPhone M4A→FLAC, WAV→16-bit PCM). It used to happen inline on
+// NewSessionScreen before any durable row existed — fix/app-audio-
+// conversion moves it behind the queue so it survives navigation /
+// app-kill mid-convert. Files that need no on-device work are enqueued
+// straight into `pending` as before.
 //
 // The previous `uploaded` and `converted` intermediate phases are
 // terminated immediately at PUT success — the server's in-process
@@ -88,6 +100,9 @@ class UploadWorker {
     try {
       final PendingUpload next;
       switch (u.phase) {
+        case UploadPhase.converting:
+          next = await _doConvert(u);
+          break;
         case UploadPhase.pending:
           next = await _doCreate(u);
           break;
@@ -128,6 +143,33 @@ class UploadWorker {
   }
 
   // ── Phase handlers ────────────────────────────────────────────
+
+  /// phase=converting → run the on-device transcode, repoint the
+  /// source descriptor at the result, advance to phase=pending so the
+  /// next runOne starts CreateAudioUpload. The transcode itself is
+  /// durable: the row already lives in Hive and the staged source file
+  /// survives app restarts, so an interrupted conversion simply re-runs
+  /// on the next tick. convertSource only throws for transient/
+  /// unexpected I/O errors (expected failures fall back to the original
+  /// file internally) — those classify as retryable and keep the row in
+  /// `converting` for another attempt.
+  Future<PendingUpload> _doConvert(PendingUpload u) async {
+    try {
+      final r = await _io.convertSource(u);
+      return u.copyWith(
+        phase: UploadPhase.pending,
+        sourcePath: r.sourcePath,
+        contentType: r.contentType,
+        sizeBytes: r.sizeBytes,
+        needsServerSideConversion: r.needsServerSideConversion,
+        attemptCount: 0,
+        nextAttemptAt: _clock(), // due immediately for the create step
+        clearLastError: true,
+      );
+    } catch (e) {
+      return _classify(u, e);
+    }
+  }
 
   Future<PendingUpload> _doCreate(PendingUpload u) async {
     try {

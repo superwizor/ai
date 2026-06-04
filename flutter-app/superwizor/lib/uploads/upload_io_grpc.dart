@@ -31,13 +31,31 @@ import 'dart:io';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 
 import '../generated/ingestion/v1/ingestion.pb.dart' as ingestion_pb;
 import '../generated/ingestion/v1/ingestion.pbgrpc.dart' as ingestion_grpc;
+import '../services/audio_converter_service.dart';
 import '../services/secure_audio_storage_service.dart';
 import 'pending_upload.dart';
 import 'upload_error.dart';
 import 'upload_io.dart';
+
+/// Content types Chirp 3 europe-central2 accepts directly. Anything
+/// outside this set must be transcoded — on-device when we can, else
+/// server-side via ingestion-svc's ffmpeg fallback. Mirrors
+/// `_kChirpNativeContentTypes` in new_session_screen.dart and
+/// IsChirpSupported in ingestion-svc/.../storage/converter.go.
+const Set<String> _kChirpNativeContentTypes = {
+  'audio/flac',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/ogg',
+  'audio/opus',
+  'audio/webm',
+  'audio/amr',
+  'audio/amr-wb',
+};
 
 class GrpcUploadIo implements UploadIo {
   GrpcUploadIo({
@@ -51,6 +69,141 @@ class GrpcUploadIo implements UploadIo {
   final ingestion_grpc.IngestionServiceClient _ingestion;
   final SecureAudioStorageService _secureStorage;
   final http.Client _http;
+
+  // ── step 0: on-device transcode (phase=converting only) ───────
+
+  @override
+  Future<ConvertResult> convertSource(
+    PendingUpload u, {
+    void Function(double)? onProgress,
+  }) async {
+    final src = File(u.sourcePath);
+    final ext = p.extension(u.sourcePath).toLowerCase();
+    final converter = AudioConverterService();
+
+    // ── WAV → 16-bit PCM normalization ──
+    // Chirp 3 rejects 32-bit float / 24-bit WAV. normalizeWav returns
+    // the original file untouched when it's already 16-bit PCM, null
+    // when it can't parse the header (upload as-is), or a fresh temp
+    // file otherwise.
+    if (ext == '.wav') {
+      try {
+        final normalized =
+            await converter.normalizeWav(u.sourcePath, onProgress: onProgress);
+        if (normalized != null && normalized.path != u.sourcePath) {
+          final staged = await _adoptIntoStaging(
+            produced: normalized,
+            original: src,
+            ext: '.wav',
+          );
+          return ConvertResult(
+            sourcePath: staged.path,
+            contentType: 'audio/wav',
+            sizeBytes: await staged.length(),
+            needsServerSideConversion: false,
+          );
+        }
+      } catch (e, st) {
+        debugPrint('[upload-io] WAV normalize failed, uploading original: $e\n$st');
+      }
+      // Already-16-bit, unparseable, or normalize threw — ship the
+      // original WAV. It's Chirp-native, so no server fallback needed.
+      return ConvertResult(
+        sourcePath: u.sourcePath,
+        contentType: 'audio/wav',
+        sizeBytes: await src.length(),
+        needsServerSideConversion: false,
+      );
+    }
+
+    // ── M4A / MP4 / AAC → FLAC (iOS on-device) ──
+    if (ext == '.m4a' || ext == '.mp4' || ext == '.aac') {
+      if (Platform.isIOS) {
+        try {
+          final flac = await converter.convertM4aToFlac(
+            u.sourcePath,
+            onProgress: onProgress,
+          );
+          final staged = await _adoptIntoStaging(
+            produced: flac,
+            original: src,
+            ext: '.flac',
+          );
+          debugPrint('[upload-io] M4A → FLAC OK: '
+              '${(await staged.length() / 1024 / 1024).toStringAsFixed(1)} MB');
+          return ConvertResult(
+            sourcePath: staged.path,
+            contentType: 'audio/flac',
+            sizeBytes: await staged.length(),
+            needsServerSideConversion: false,
+          );
+        } catch (e, st) {
+          // Decode failure / corrupt input — fall through to server-side
+          // ConvertAudio. Upload the original; ingestion-svc transcodes
+          // it off the bucket notification. NO data loss.
+          debugPrint('[upload-io] M4A → FLAC failed, server-side fallback: $e\n$st');
+        }
+      } else {
+        debugPrint('[upload-io] non-iOS platform; server-side ConvertAudio for $ext');
+      }
+      return ConvertResult(
+        sourcePath: u.sourcePath,
+        contentType: ext == '.aac' ? 'audio/aac' : 'audio/mp4',
+        sizeBytes: await src.length(),
+        needsServerSideConversion: true,
+      );
+    }
+
+    // Any other type that landed in the converting phase: ship as-is
+    // and let the server decide (needsServerSide when not Chirp-native).
+    final ct = u.contentType;
+    return ConvertResult(
+      sourcePath: u.sourcePath,
+      contentType: ct,
+      sizeBytes: await src.length(),
+      needsServerSideConversion: !_kChirpNativeContentTypes.contains(ct),
+    );
+  }
+
+  /// Moves a converter-produced temp file into the row's staging dir
+  /// (the parent of the original picked file, i.e.
+  /// `queued_uploads/<localId>/`) so the result is durable and gets
+  /// swept by [cleanupSource]. Copies rather than renames because the
+  /// temp dir and docs dir can live on different volumes (rename would
+  /// throw cross-device). Deletes both the temp file and the now-
+  /// redundant original. Returns the staged File.
+  Future<File> _adoptIntoStaging({
+    required File produced,
+    required File original,
+    required String ext,
+  }) async {
+    final stagingDir = original.parent;
+    final dest = File(p.join(
+      stagingDir.path,
+      '${p.basenameWithoutExtension(original.path)}$ext',
+    ));
+    // Guard against dest == original (e.g. picked file already had the
+    // target ext) — copy to a sibling name to avoid truncating the
+    // source mid-copy.
+    final target = dest.path == original.path
+        ? File(p.join(stagingDir.path,
+            '${p.basenameWithoutExtension(original.path)}_conv$ext'))
+        : dest;
+    await produced.copy(target.path);
+    try {
+      if (await produced.exists()) await produced.delete();
+    } catch (e) {
+      debugPrint('[upload-io] temp transcode file cleanup failed: $e');
+    }
+    if (target.path != original.path) {
+      try {
+        if (await original.exists()) await original.delete();
+      } catch (e) {
+        debugPrint('[upload-io] original cleanup failed: $e');
+      }
+    }
+    return target;
+  }
 
   // ── step 1 ────────────────────────────────────────────────────
 
