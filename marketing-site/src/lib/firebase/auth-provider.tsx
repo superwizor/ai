@@ -63,12 +63,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
 
   useEffect(() => {
-    const a = getFirebaseAuth();
-    setAuth(a);
-    return onAuthStateChanged(a, (u) => {
-      setUser(u);
-      setStatus(u ? "signed-in" : "signed-out");
-    });
+    try {
+      const a = getFirebaseAuth();
+      setAuth(a);
+      return onAuthStateChanged(a, (u) => {
+        setUser(u);
+        setStatus(u ? "signed-in" : "signed-out");
+      });
+    } catch (err) {
+      // Firebase SDK may fail to initialise (e.g. stale Turbopack chunk
+      // serving an old API key, network issues, etc.). Catch here so the
+      // page still renders — auth-gated pages simply show the signed-out
+      // state and the landing page works unimpeded.
+      console.error("[AuthProvider] Firebase Auth init failed:", err);
+      setStatus("signed-out");
+      return undefined;
+    }
   }, []);
 
   const value: AuthContextValue = useMemo(() => {
