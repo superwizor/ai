@@ -494,6 +494,18 @@ func submitBatchRecognize(
 
 	req := &speechpb.BatchRecognizeRequest{
 		Recognizer: fmt.Sprintf("projects/%s/locations/eu/recognizers/_", projectID),
+		// Dynamic batching = the "Standard dynamic batch recognition"
+		// pricing tier ($0.003/min vs ~$0.016/min for standard batch —
+		// ~5× cheaper, and STT is ~58% of GCP spend). The trade is no
+		// latency SLA: Chirp runs the job when capacity frees up rather
+		// than ASAP. Our pipeline is fully async and tolerates this —
+		// stt-finalize is triggered by the GCS OBJECT_FINALIZE of Chirp's
+		// output, and stt-watchdog idempotently RE-POLLS the existing
+		// operation by ID (never resubmits, never fails on duration), so
+		// a slower job is just re-checked each tick with no double-charge.
+		// Without this field the request defaults to
+		// PROCESSING_STRATEGY_UNSPECIFIED = the pricier standard-batch rate.
+		ProcessingStrategy: speechpb.BatchRecognizeRequest_DYNAMIC_BATCHING,
 		Config: &speechpb.RecognitionConfig{
 			DecodingConfig: &speechpb.RecognitionConfig_AutoDecodingConfig{
 				AutoDecodingConfig: &speechpb.AutoDetectDecodingConfig{},
