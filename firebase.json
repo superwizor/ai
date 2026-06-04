@@ -102,6 +102,16 @@
           "source": "/accept-invite/",
           "destination": "/pl/accept-invite/",
           "type": 307
+        },
+        {
+          "source": "/b",
+          "destination": "/pl/",
+          "type": 301
+        },
+        {
+          "source": "/b/",
+          "destination": "/pl/",
+          "type": 301
         }
       ],
       "rewrites": [
@@ -113,6 +123,40 @@
         {
           "source": "/en/admin/orgs/**",
           "destination": "/en/admin/orgs/[id]/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "//": "Security headers — all responses",
+          "source": "**",
+          "headers": [
+            { "key": "X-Frame-Options", "value": "DENY" },
+            { "key": "X-Content-Type-Options", "value": "nosniff" },
+            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+            { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+            { "key": "X-XSS-Protection", "value": "1; mode=block" }
+          ]
+        },
+        {
+          "//": "Long-lived cache for hashed Next.js bundles",
+          "source": "_next/static/**",
+          "headers": [
+            { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+          ]
+        },
+        {
+          "//": "Cache images/fonts for 1 year (content-addressed or rarely changed)",
+          "source": "assets/**",
+          "headers": [
+            { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+          ]
+        },
+        {
+          "//": "Short cache for HTML pages so updates propagate quickly",
+          "source": "**/*.html",
+          "headers": [
+            { "key": "Cache-Control", "value": "public, max-age=3600" }
+          ]
         }
       ]
     },

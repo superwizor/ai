@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+
+  <!-- Homepage PL (Version A) -->
+  <url>
+    <loc>https://superwizor.ai/pl/</loc>
+    <xhtml:link rel="alternate" hreflang="pl" href="https://superwizor.ai/pl/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://superwizor.ai/en/" />
+    <lastmod>2026-06-04</lastmod>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Homepage EN -->
+  <url>
+    <loc>https://superwizor.ai/en/</loc>
+    <xhtml:link rel="alternate" hreflang="pl" href="https://superwizor.ai/pl/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://superwizor.ai/en/" />
+    <lastmod>2026-06-04</lastmod>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Version B PL -->
+  <url>
+    <loc>https://superwizor.ai/pl/b/</loc>
+    <xhtml:link rel="alternate" hreflang="pl" href="https://superwizor.ai/pl/b/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://superwizor.ai/en/b/" />
+    <lastmod>2026-06-04</lastmod>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Version B EN -->
+  <url>
+    <loc>https://superwizor.ai/en/b/</loc>
+    <xhtml:link rel="alternate" hreflang="pl" href="https://superwizor.ai/pl/b/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://superwizor.ai/en/b/" />
+    <lastmod>2026-06-04</lastmod>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Pricing PL -->
+  <url>
+    <loc>https://superwizor.ai/pl/pricing/</loc>
+    <xhtml:link rel="alternate" hreflang="pl" href="https://superwizor.ai/pl/pricing/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://superwizor.ai/en/pricing/" />
+    <lastmod>2026-06-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Pricing EN -->
+  <url>
+    <loc>https://superwizor.ai/en/pricing/</loc>
+    <xhtml:link rel="alternate" hreflang="pl" href="https://superwizor.ai/pl/pricing/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://superwizor.ai/en/pricing/" />
+    <lastmod>2026-06-04</lastmod>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Legal — Privacy Policy -->
+  <url>
+    <loc>https://superwizor.ai/pl/legal/privacy/</loc>
+    <lastmod>2026-06-04</lastmod>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://superwizor.ai/en/legal/privacy/</loc>
+    <lastmod>2026-06-04</lastmod>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- Legal — Terms -->
+  <url>
+    <loc>https://superwizor.ai/pl/legal/terms/</loc>
+    <lastmod>2026-06-04</lastmod>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://superwizor.ai/en/legal/terms/</loc>
+    <lastmod>2026-06-04</lastmod>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- Legal — DPA -->
+  <url>
+    <loc>https://superwizor.ai/pl/legal/dpa/</loc>
+    <lastmod>2026-06-04</lastmod>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://superwizor.ai/en/legal/dpa/</loc>
+    <lastmod>2026-06-04</lastmod>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- Register -->
+  <url>
+    <loc>https://superwizor.ai/pl/register/therapist/</loc>
+    <lastmod>2026-06-04</lastmod>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://superwizor.ai/en/register/therapist/</loc>
+    <lastmod>2026-06-04</lastmod>
+    <priority>0.7</priority>
+  </url>
+
+</urlset>

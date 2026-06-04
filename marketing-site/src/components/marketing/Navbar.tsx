@@ -15,40 +15,49 @@ export function Navbar() {
   const prefix = locale === "en" ? "/en" : "";
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-frost/10 bg-evergreen/80 backdrop-blur-md">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+    <header className="sticky top-0 z-40 w-full border-b border-[#E2DED5]/60 bg-[#FBFAF7]/85 backdrop-blur-md">
+      <div className="mx-auto flex w-full max-w-[1080px] items-center justify-between px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
         <a
           href={`${prefix}/`}
-          className="font-display font-semibold text-frost tracking-[var(--tracking-display)] text-base sm:text-lg"
+          className="flex items-center"
         >
-          {t("brand")}
+          <img
+            src="/assets/logo_black.svg"
+            alt="Euphire"
+            className="h-6 sm:h-7 w-auto"
+          />
         </a>
 
         <nav className="flex items-center gap-2 sm:gap-3">
           <a
-            href={`${prefix}/pricing`}
-            className="hidden sm:inline font-display text-sm text-mist hover:text-frost transition px-3 py-2"
+            href="#jak"
+            className="hidden sm:inline font-display text-sm font-semibold text-[#4E5A55] hover:text-[#1B2522] transition px-3 py-2"
+          >
+            {locale === "en" ? "How it works" : "Jak to działa"}
+          </a>
+          <a
+            href="#cennik"
+            className="hidden sm:inline font-display text-sm font-semibold text-[#4E5A55] hover:text-[#1B2522] transition px-3 py-2"
           >
             {t("pricing")}
           </a>
+          <a
+            href="#bezpieczenstwo"
+            className="hidden sm:inline font-display text-sm font-semibold text-[#4E5A55] hover:text-[#1B2522] transition px-3 py-2"
+          >
+            {t("security")}
+          </a>
           <LocaleSwitcher />
-          {/* Log-in lands on the marketing-site /login page (2026-05-29):
-              the form there signs the user in on this origin, then
-              routes by role — SUPERWIZOR_ADMIN to /admin/, everyone
-              else to the Flutter app at superwizor-app.web.app. The
-              old "cross-origin redirect to the app" CTA (§5 R3) is
-              still respected for therapists; we just give them a
-              landing page on the marketing origin first so admins
-              have somewhere to sign in. */}
+          {/* Log-in lands on the marketing-site /login page (2026-05-29) */}
           <a
             href={`${prefix}/login`}
-            className="hidden sm:inline font-display text-sm text-mist hover:text-frost transition px-3 py-2"
+            className="hidden sm:inline font-display text-sm font-semibold text-[#4E5A55] hover:text-[#1B2522] transition px-3 py-2"
           >
             {t("login")}
           </a>
           <a
             href={`${prefix}/register/therapist`}
-            className="inline-flex items-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition"
+            className="inline-flex items-center rounded-button bg-evergreen text-frost hover:bg-[#002E32] font-mono uppercase tracking-[var(--tracking-label)] text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 transition active:scale-[0.98]"
           >
             {t("register")}
           </a>

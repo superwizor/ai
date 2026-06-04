@@ -19,6 +19,10 @@ export type PlanRow = {
   cycle: BillingCycle;
   /** Gross price, in the unit the user sees (PLN). */
   priceGross: number;
+  /** Introductory price with coupon applied. */
+  priceIntroGross?: number;
+  /** Associated Stripe coupon/promo code. */
+  couponCode?: string;
   currencyCode: "PLN";
   tokensPerPeriod: number;
   licensesLimit: number;
@@ -50,6 +54,8 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tier: "SOLO",
     cycle: "MONTHLY",
     priceGross: 149.0,
+    priceIntroGross: 99.0,
+    couponCode: "INTRO_SOLO",
     currencyCode: "PLN",
     tokensPerPeriod: 30,
     licensesLimit: 1,
@@ -61,6 +67,8 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tier: "SOLO",
     cycle: "ANNUAL",
     priceGross: 1490.0,
+    priceIntroGross: 990.0,
+    couponCode: "INTRO_SOLO",
     currencyCode: "PLN",
     tokensPerPeriod: 360,
     licensesLimit: 1,
@@ -72,6 +80,8 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tier: "PRO",
     cycle: "MONTHLY",
     priceGross: 249.0,
+    priceIntroGross: 179.0,
+    couponCode: "INTRO_PRO",
     currencyCode: "PLN",
     tokensPerPeriod: 120,
     licensesLimit: 1,
@@ -83,6 +93,8 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tier: "PRO",
     cycle: "ANNUAL",
     priceGross: 2490.0,
+    priceIntroGross: 1790.0,
+    couponCode: "INTRO_PRO",
     currencyCode: "PLN",
     tokensPerPeriod: 1440,
     licensesLimit: 1,

@@ -294,92 +294,205 @@
     "login": "Zaloguj się",
     "register": "Zarejestruj się",
     "pricing": "Cennik",
+    "security": "Bezpieczeństwo",
     "languageSwitcher": "Język",
     "polish": "Polski",
     "english": "English"
   },
+  "topbar": {
+    "rodo": "Zgodność z RODO",
+    "audio": "Audio usuwane po transkrypcji",
+    "access": "Dostęp tylko dla Ciebie",
+    "noTraining": "Nie uczymy AI na Twoich sesjach"
+  },
   "hero": {
-    "overline": "Polski co-pilot dla psychoterapeutów",
-    "headingPrefix": "Superwizor AI",
-    "headingAccent": "poznawczy partner w gabinecie terapeutycznym",
-    "headingPunctuation": ".",
-    "subhead": "Superwizor AI pomaga specjalistom zdrowia psychicznego odzyskać przestrzeń mentalną na uważne spotkania z pacjentami, jednocześnie wspierając ciągłość procesu terapeutycznego i głębsze rozumienie pacjenta.",
-    "ctaPrimary": "Zarejestruj się",
-    "ctaSecondary": "Zobacz, jak działa"
+    "overline": "Superwizor AI — poznawczy partner w gabinecie",
+    "headingPrefix": "Trzy minuty przed sesją.",
+    "headingAccent": "",
+    "headingPunctuation": "",
+    "subhead": "Otwierasz aplikację i wiesz od czego zacząć. Poprzednie sesje czekają z transkrypcją, kluczowymi wątkami i notatkami w Twoim nurcie.",
+    "ctaPrimary": "Wypróbuj za darmo",
+    "ctaSecondary": "Zobacz, jak działa",
+    "microtext": "3 sesje. Bez karty kredytowej.",
+    "trustBar": "Współtworzona przez polskich psychoterapeutów, superwizorów i psychiatrów.",
+    "chips": {
+      "audio": "Audio usuwane po transkrypcji",
+      "access": "Dostęp tylko dla Ciebie",
+      "noTraining": "Nie uczymy AI na Twoich sesjach",
+      "rodo": "Zgodność z RODO"
+    }
+  },
+  "brandStatement": {
+    "body": "Superwizor AI pomaga specjalistom zdrowia psychicznego odzyskać przestrzeń mentalną na uważne spotkania, wspierając ciągłość procesu i głębsze rozumienie klienta."
+  },
+  "problem": {
+    "overline": "Koszt, którego nie widać w grafiku",
+    "title": "Najwięcej z sesji ginie nie w trakcie — tylko po niej.",
+    "body": "Wątek, do którego chciałeś wrócić. Zdanie, które wydało się ważne. Kierunek, który ustaliliście. Wszystko to trzymasz w głowie do następnego spotkania — a przy pełnym grafiku głowa nie udźwignie każdego szczegółu. To nie kwestia dyscypliny, tylko liczby sesji.",
+    "quote": "Pozwala uniknąć utraty 30–40% informacji, które tracę przy ręcznym przygotowywaniu notatek.",
+    "cite": "Katarzyna, psychoterapeutka"
   },
   "how": {
     "overline": "Jak to działa",
-    "heading": "Trzy kroki od sesji do raportu",
+    "heading": "Trzy kroki od sesji do gotowego raportu",
     "steps": {
       "record": {
         "tag": "01",
-        "title": "Nagraj",
-        "body": "Otwórz aplikację mobilną i włącz nagrywanie. Audio jest szyfrowane i przesyłane na nasze serwery w Europie."
+        "title": "Włączasz nagrywanie — i jesteś obecny",
+        "body": "Jeden dotyk, za zgodą klienta. Od tej chwili nie notujesz w trakcie — całą uwagę masz dla człowieka naprzeciwko."
       },
       "process": {
         "tag": "02",
-        "title": "AI przetwarza",
-        "body": "Transkrypcja, podział na role, oznaczenie wątków klinicznych i ocena ryzyka — wszystko po polsku."
+        "title": "Superwizor AI słucha po polsku",
+        "body": "Rozpoznaje, kto mówi, i czyta sesję w języku Twojego nurtu — z wątkami, które w pośpiechu łatwo przeoczyć. Nagranie znika po przetworzeniu, dane zostają w Unii Europejskiej."
       },
       "report": {
         "tag": "03",
-        "title": "Otrzymaj raport",
-        "body": "Pełny raport z sesji, wskazówki superwizyjne i propozycje interwencji — w kilka minut, gotowe do superwizji."
+        "title": "Wracasz do gotowego, nie do pustej kartki",
+        "body": "Transkrypcja, kluczowe wątki i kierunek na dalej — gotowe na następną sesję i na superwizję. Bez wieczoru spędzonego na pisaniu."
       }
-    }
+    },
+    "cta": "Wypróbuj na własnej sesji",
+    "micro": "3 sesje. Bez karty kredytowej."
+  },
+  "differentiator": {
+    "overline": "Dlaczego Superwizor AI",
+    "title": "Nie kolejne narzędzie do dokumentacji. Partner, który zdejmuje ciężar pamiętania.",
+    "body": "Narzędzie do notatek kończy pracę na gotowym raporcie. Superwizor AI dopiero tam zaczyna — łączy sesje, pamięta wątki i wraca z pełnym obrazem klienta na kolejne spotkanie.",
+    "quote": "To nie chodzi o czas — apka ściąga ciężar myślenia o kliencie.",
+    "cite": "Bartek, psychoterapeuta"
   },
   "features": {
     "overline": "Co dostajesz",
-    "heading": "Wszystko, czego potrzebuje superwizor",
+    "heading": "Wszystko wokół sesji — w jednym miejscu",
+    "body": "Zamiast notatek rozsypanych po kartkach i w głowie.",
     "items": {
+      "record": {
+        "title": "Nagrywanie sesji",
+        "body": "Na żywo w gabinecie, online albo z wgranego pliku. Nagrywa w tle, nie przerywa przy zablokowanym ekranie, działa nawet bez zasięgu."
+      },
       "transcript": {
         "title": "Pełna transkrypcja po polsku",
-        "body": "Diaryzacja, znaczniki czasu, łatwe wyszukiwanie. Eksport do PDF jednym kliknięciem."
+        "body": "Całe spotkanie, z podziałem na role i znacznikami czasu. Eksport do PDF."
       },
       "report": {
-        "title": "Raport kliniczny",
-        "body": "Sekcje gotowe pod superwizję: tematy sesji, hipotezy diagnostyczne, ocena ryzyka, sugerowane interwencje."
+        "title": "Raport w Twoim nurcie",
+        "body": "Tematy, kluczowe wątki i propozycje kroków — gotowe w kilka minut po sesji."
+      },
+      "modality": {
+        "title": "Pracuje w Twojej modalności",
+        "body": "CBT, psychodynamika, TSR, podejście integracyjne i inne — raport mówi językiem Twojego nurtu, nie jednej szkoły."
+      },
+      "continuity": {
+        "title": "Ciągłość między sesjami",
+        "body": "Historia klienta i powracające tematy połączone w całość. Wracasz po przerwie z pełnym obrazem."
       },
       "supervisor": {
         "title": "Wskazówki superwizyjne",
-        "body": "AI wskazuje miejsca, w których warto się zatrzymać — utracone okazje terapeutyczne, wzorce, alarmujące sygnały."
+        "body": "Pytania do pogłębienia i miejsca warte zatrzymania — gotowa baza do rozmowy z superwizorem."
       },
-      "rodo": {
-        "title": "RODO i bezpieczeństwo",
-        "body": "Dane szyfrowane end-to-end, hostowane w UE, dostęp wyłącznie dla terapeuty. Bez treningu modeli na Twoich danych."
+      "devices": {
+        "title": "Telefon i komputer",
+        "body": "Nagrywasz na telefonie, raport czytasz na komputerze. Wszystko zsynchronizowane."
       },
-      "team": {
-        "title": "Tryb organizacyjny",
-        "body": "Dla gabinetów: zarządzanie zespołem, wspólne rozliczanie tokenów, faktura na klinikę."
-      },
-      "supports": {
-        "title": "iOS i web",
-        "body": "Nagrywaj z iPhona, czytaj raporty na komputerze. Wkrótce Android."
+      "folder": {
+        "title": "Kartoteka klienta",
+        "body": "Teczki klientów, prywatny notatnik i wyszukiwarka — cała historia w jednym, uporządkowanym miejscu."
       }
     }
   },
+  "depth": {
+    "overline": "Głębia, nie tylko zapis",
+    "title": "Widzi to, co łatwo przeoczyć w pośpiechu",
+    "body": "Superwizor AI nie ocenia Cię i nie zastępuje Twojego osądu. Pokazuje wątek, który umknął, i pytanie, które warto zadać — a co z tym zrobisz, zależy tylko od Ciebie.",
+    "quote": "Wyłapuje subtelne rzeczy w rozmowie, które łatwo przeoczyć.",
+    "cite": "Andrzej, psychoterapeuta"
+  },
+  "security": {
+    "overline": "Zaufanie w gabinecie",
+    "title": "To, co klient mówi Ci w zaufaniu, zostaje między wami.",
+    "body": "Nagranie sesji to najwrażliwszy dokument, jaki masz. U nas prywatność i bezpieczeństwo nie są funkcją dodaną na końcu — są zaprojektowane w fundament produktu.",
+    "punch": "Inni wysyłają te nagrania za ocean. My nie.",
+    "cards": {
+      "audio": {
+        "title": "Audio znika po transkrypcji",
+        "body": "Z nagrania powstaje tekst, a samo audio jest potem bezpowrotnie usuwane. Najwrażliwszy ślad sesji nie zostaje na serwerze."
+      },
+      "access": {
+        "title": "Dostęp masz tylko Ty",
+        "body": "Do nagrań i raportów nie dociera nikt poza Tobą — ani inny terapeuta, ani my."
+      },
+      "noTraining": {
+        "title": "Nie uczymy AI na Twoich sesjach",
+        "body": "Twoje nagrania i transkrypcje nie trafiają do trenowania żadnych modeli. Pracują wyłącznie dla Ciebie."
+      },
+      "rodo": {
+        "title": "RODO z umową powierzenia w komplecie",
+        "body": "Dostajesz gotową umowę powierzenia (DPA) — formalność, której RODO wymaga od Ciebie jako administratora danych, masz załatwioną."
+      }
+    },
+    "quote": "Poszerza perspektywę, ale nie zastępuje ekspertyzy. To stoper refleksyjny, pomoc w 'co dalej'.",
+    "cite": "Iwona, psychoterapeutka"
+  },
+  "ctamid": {
+    "title": "Przekonaj się na własnych sesjach.",
+    "body": "Bez zobowiązań. Sam zdecydujesz, czy zostajesz.",
+    "cta": "Wypróbuj za darmo",
+    "micro": "3 sesje. Bez karty kredytowej."
+  },
   "audience": {
     "overline": "Dla kogo",
-    "heading": "Praktyka prywatna, ośrodki, superwizorzy",
+    "heading": "Stworzony do realnej pracy w gabinecie",
     "items": {
       "therapist": {
         "title": "Psychoterapeuci",
-        "body": "Spędzaj mniej czasu na pisaniu notatek, więcej na sesji. Solidny materiał do własnej superwizji."
+        "body": "Przy 20–40 sesjach tygodniowo każda zostawia ślad. Wracasz do klienta z kontekstem, nie z pamięci."
       },
       "supervisor": {
         "title": "Superwizorzy",
-        "body": "Pełen transkrypt i raport przed sesją superwizyjną. Łatwiejsze omówienie, dokładniejsza informacja zwrotna."
+        "body": "Transkrypcja i uporządkowany materiał czekają przed spotkaniem. Rozmowa zaczyna się od sedna, nie od odtwarzania sesji."
       },
       "clinic": {
-        "title": "Ośrodki terapeutyczne",
-        "body": "Standard pracy z dokumentacją w całym zespole. Jeden rachunek, jasne rozliczenie."
+        "title": "Terapeuci w trakcie certyfikacji",
+        "body": "Budujesz warsztat i potrzebujesz materiału do superwizji. Masz go po każdej sesji — w języku swojego nurtu."
+      }
+    }
+  },
+  "faq": {
+    "overline": "Zanim zaczniesz",
+    "title": "Pytania, które słyszymy najczęściej",
+    "items": {
+      "rodo": {
+        "q": "Jak wygląda kwestia RODO i bezpieczeństwa danych pacjentów?",
+        "a": "Wszystkie dane osobowe i medyczne są w pełni chronione. Dane przetrzymujemy w centrach danych w UE (GCP Frankfurt/Warszawa). Przesyłanie danych odbywa się za pomocą bezpiecznego połączenia SSL, a pliki audio są usuwane automatycznie z serwerów natychmiast po wygenerowaniu transkrypcji. Poufne kolumny w bazie danych są dodatkowo szyfrowane kluczem kopertowym (pattern envelope encryption)."
+      },
+      "dpa": {
+        "q": "Czy muszę podpisać umowę powierzenia przetwarzania danych (DPA)?",
+        "a": "Tak. Zgodnie z RODO (Art. 28) każdy terapeuta korzystający z Superwizor AI musi podpisać umowę powierzenia przetwarzania danych osobowych (DPA). Udostępniamy gotowy, zgodny z polskim prawem wzór umowy, który możesz podpisać elektronicznie jednym kliknięciem bezpośrednio w panelu administracyjnym aplikacji."
+      },
+      "consent": {
+        "q": "Jak uzyskać zgodę pacjenta na nagrywanie sesji i analizę AI?",
+        "a": "Nagrywanie sesji wymaga wyraźnej, świadomej zgody pacjenta. W sekcji zasobów prawnych aplikacji znajdziesz gotowe do pobrania i wydrukowania szablony pisemnych zgód pacjenta na nagrywanie sesji oraz analizę za pomocą narzędzia AI, opracowane we współpracy z prawnikami specjalizującymi się w ochronie danych medycznych."
+      },
+      "training": {
+        "q": "Czy sztuczna inteligencja uczy się na moich nagraniach i transkrypcjach?",
+        "a": "Absolutnie nie. Używamy modeli Vertex AI w chmurze Google Cloud, które gwarantują, że żadne dane wejściowe (audio, transkrypcje, wygenerowane notatki) nie są wykorzystywane do trenowania, dostrajania ani ulepszania modeli sztucznej inteligencji Google lub podmiotów trzecich."
+      },
+      "modality": {
+        "q": "Dla jakich nurtów psychoterapeutycznych jest przeznaczony Superwizor AI?",
+        "a": "Aplikacja została zaprojektowana z myślą o wiodących nurtach psychoterapii i oferuje dedykowane szablony dopasowane specjalnie do Twojej pracy. Mamy w pełni zaopiekowane nurty: poznawczo-behawioralny (CBT), psychodynamiczny, humanistyczno-doświadczeniowy (w tym Gestalt), systemowy, integracyjny oraz Terapię Skoncentrowaną na Rozwiązaniach (TSR). System automatycznie dostosowuje strukturę raportu i pojęcia kliniczne do założeń wybranej modalności."
+      },
+      "vat": {
+        "q": "Czy za subskrypcję otrzymam fakturę VAT?",
+        "a": "Tak. Po każdym zakupie lub automatycznym odnowieniu subskrypcji nasz system rozliczeniowy automatycznie generuje i przesyła na Twój adres e-mail pełną fakturę VAT (23% VAT), zawierającą wszystkie dane Twojej firmy (NIP, nazwa firmy) niezbędne do zaksięgowania wydatku w kosztach działalności."
       }
     }
   },
   "cta": {
-    "heading": "Wypróbuj 3 darmowe sesje",
-    "body": "Bez karty, bez zobowiązań. Trial obejmuje pełną funkcjonalność — transkrypcję, raport i wskazówki.",
-    "primary": "Zarejestruj się",
+    "overline": "TWÓJ KOGNITYWNY EGZOSZKIELET",
+    "heading": "Uważność w gabinecie. Bez ciężaru pamiętania pomiędzy sesjami.",
+    "body": "Dokumentacja czeka gotowa. Ty wracasz do tego, co dzieje się teraz.",
+    "primary": "Wypróbuj za darmo",
     "secondary": "Zobacz cennik"
   },
   "register": {
@@ -538,67 +651,68 @@
     "metaTitle": "Cennik",
     "overline": "Cennik",
     "heading": "Plan dopasowany do Twojej praktyki",
-    "subhead": "Wszystkie plany zawierają pełną funkcjonalność: transkrypcję, raport kliniczny i wskazówki superwizyjne. Płacisz tylko za sesje, których realnie używasz.",
+    "subhead": "Plany indywidualne mają te same funkcje — różnią się tylko liczbą sesji. Ewolucja to opcja dla zespołów i poradni.",
     "cycle": {
       "monthly": "Miesięcznie",
       "annual": "Rocznie",
-      "annualNote": "~17% taniej"
+      "annualNote": "Rozliczenie roczne — 17% taniej"
     },
     "tiers": {
       "trial": {
         "name": "Poznanie",
-        "tagline": "Wypróbuj bez zobowiązań",
-        "tokensSuffix": "darmowe sesje na 14 dni",
-        "cta": "Zacznij za darmo",
+        "tagline": "Wypróbuj bez zobowiązań.",
+        "tokensSuffix": "3 sesje przez 14 dni",
+        "tokensSuffix2": "pełen dostęp do aplikacji",
+        "cta": "Wypróbuj za darmo",
         "features": [
-          "3 darmowe sesje na start",
-          "Pełna transkrypcja po polsku",
-          "Raport kliniczny z każdej sesji",
-          "Wskazówki superwizyjne",
+          "3 sesje przez 14 dni",
+          "Pełen dostęp do wszystkich funkcji",
           "Bez karty kredytowej"
         ]
       },
       "solo": {
         "name": "Równowaga",
-        "tagline": "Dla terapeutów indywidualnych",
+        "tagline": "Dla terapeutów indywidualnych.",
+        "couponText": "KOD: INTRO_SOLO",
+        "priceIntro": "99 zł",
+        "priceBase": "cena podstawowa 149 zł",
+        "subprice": "cena wprowadzająca z kuponem na zawsze",
         "tokensSuffixMonthly": "sesji miesięcznie",
         "tokensSuffixAnnual": "sesji rocznie",
-        "cta": "Wybierz Równowagę",
+        "cta": "Wybieram Równowagę",
         "features": [
-          "30 sesji miesięcznie",
-          "Pełna transkrypcja i raport",
-          "Wskazówki superwizyjne",
-          "Eksport PDF",
-          "1 licencja terapeuty"
+          "Do 30 sesji miesięcznie",
+          "Pełen dostęp do wszystkich funkcji"
         ]
       },
       "pro": {
         "name": "Rozkwit",
-        "tagline": "Dla intensywnie pracujących",
+        "tagline": "Dla intensywnie pracujących.",
+        "badge": "Najczęściej wybierany",
+        "couponText": "KOD: INTRO_PRO",
+        "priceIntro": "179 zł",
+        "priceBase": "cena podstawowa 249 zł",
+        "subprice": "cena wprowadzająca z kuponem na zawsze",
         "tokensSuffixMonthly": "sesji miesięcznie",
         "tokensSuffixAnnual": "sesji rocznie",
-        "cta": "Wybierz Rozkwit",
-        "badge": "Najczęściej wybierany",
+        "cta": "Wybieram Rozkwit",
         "features": [
-          "120 sesji miesięcznie",
-          "Wszystko z planu Równowaga",
-          "Priorytetowe wsparcie",
-          "Wczesny dostęp do nowych funkcji",
-          "1 licencja terapeuty"
+          "Do 120 sesji miesięcznie",
+          "Pełen dostęp do wszystkich funkcji"
         ]
       },
       "clinic": {
         "name": "Ewolucja",
-        "tagline": "Dla poradni i power-userów",
+        "tagline": "Dla poradni i zespołów terapeutycznych.",
+        "price": "Wycena",
+        "subprice": "indywidualne warunki",
         "tokensSuffixMonthly": "sesji miesięcznie",
         "tokensSuffixAnnual": "sesji rocznie",
         "cta": "Porozmawiajmy",
         "features": [
-          "Wszystko z planu Rozkwit",
-          "Elastyczne limity sesji",
-          "Multi-seat — wiele licencji",
-          "Indywidualna wycena 1:1",
-          "Dedykowany opiekun konta"
+          "Elastyczny limit sesji",
+          "Obsługa wielu kont",
+          "Wsparcie wdrożenia"
         ]
       }
     },
@@ -607,10 +721,12 @@
     "perMonth": "zł / miesiąc",
     "perYear": "zł / rok",
     "free": "0 zł",
+    "footnote1": "Rozliczenie roczne — 17% taniej. Płacisz dopiero po wykorzystaniu 3 darmowych sesji.",
+    "footnote2": "Zacznij już teraz i zatrzymaj niższą cenę na zawsze.",
     "footnote": "Płatność kartą lub Przelewy24. Możesz zmienić lub anulować plan w dowolnym momencie z poziomu konta."
   },
   "footer": {
-    "tagline": "Drugi mózg superwizora.",
+    "tagline": "Współtworzona przez polskich psychoterapeutów, superwizorów i psychiatrów",
     "copyright": "© 2026 Superwizor AI",
     "made": "Zaprojektowane w Polsce",
     "sections": {
@@ -708,5 +824,155 @@
     "statusACTIVE": "Aktywna",
     "statusPAST_DUE": "Zaległa płatność",
     "statusCANCELED": "Anulowana"
+  },
+  "b": {
+    "hero": {
+      "subtitle": "Otwierasz aplikację i wiesz od czego zacząć. Poprzednie sesje czekają z transkrypcją, kluczowymi wątkami i notatkami w Twoim nurcie.",
+      "microtext": "Współtworzona przez polskich psychoterapeutów, superwizorów i psychiatrów"
+    },
+    "brandStatement": {
+      "body": "Superwizor AI pomaga specjalistom zdrowia psychicznego odzyskać <highlight>przestrzeń mentalną</highlight> na uważne spotkania, wspierając ciągłość procesu i głębsze rozumienie klienta."
+    },
+    "problem": {
+      "overline": "Koszt, którego nie widać w grafiku",
+      "title": "Najwięcej z sesji ginie nie w trakcie, tylko po niej.",
+      "body": "Wątki, kierunki, ważne zdania. Trzymasz to w głowie do następnej sesji, ale przy pełnym grafiku głowa nie udźwignie.",
+      "quote": "Pozwala uniknąć utraty 30–40% informacji, które tracę przy ręcznym przygotowywaniu notatek.",
+      "cite": "Katarzyna, psychoterapeutka"
+    },
+    "how": {
+      "overline": "Jak to działa",
+      "heading": "Trzy kroki do gotowego raportu",
+      "steps": {
+        "record": {
+          "tag": "01",
+          "title": "Włączasz nagrywanie i jesteś obecny",
+          "body": "Jeden dotyk. Cała uwaga dla człowieka naprzeciwko."
+        },
+        "process": {
+          "tag": "02",
+          "title": "Superwizor AI słucha po polsku",
+          "body": "Rozpoznaje, kto mówi, i czyta sesję w języku Twojego nurtu."
+        },
+        "report": {
+          "tag": "03",
+          "title": "Wracasz do gotowego, nie do pustej kartki",
+          "body": "Transkrypcja, kluczowe wątki i kierunek. Gotowe w minuty."
+        }
+      },
+      "cta": "Wypróbuj na własnej sesji",
+      "micro": "3 sesje. Bez karty kredytowej."
+    },
+    "differentiator": {
+      "title": "Nie kolejne narzędzie do dokumentacji. Partner, który zdejmuje ciężar pamiętania.",
+      "body": "Superwizor AI łączy sesje, pamięta wątki i wraca z pełnym obrazem klienta na kolejne spotkanie.",
+      "quote": "Poszerza perspektywę, ale nie zastępuje ekspertyzy. To stoper refleksyjny, pomoc w 'co dalej'.",
+      "cite": "Iwona, psychoterapeutka"
+    },
+    "features": {
+      "overline": "Funkcje aplikacji",
+      "heading": "Wszystko co związane z sesjami jest teraz zorganizowane w jednym miejscu.",
+      "body": "Możesz ze spokojem zająć się tym, co w Twojej pracy jest najważniejsze.",
+      "items": {
+        "record": {
+          "title": "Nagrywanie sesji",
+          "body": "Na żywo, online albo z pliku. Działa w tle, nawet bez zasięgu."
+        },
+        "transcript": {
+          "title": "Transkrypcja po polsku",
+          "body": "Całe spotkanie z podziałem na role. Eksport do PDF."
+        },
+        "report": {
+          "title": "Raport w Twoim nurcie",
+          "body": "Tematy, wątki i propozycje kroków. Gotowe w minuty."
+        },
+        "modality": {
+          "title": "Pracuje w Twojej modalności",
+          "body": "CBT, psychodynamika, TSR, podejście integracyjne i inne."
+        },
+        "continuity": {
+          "title": "Ciągłość między sesjami",
+          "body": "Powracające tematy połączone w całość. Wracasz z pełnym obrazem."
+        },
+        "supervisor": {
+          "title": "Wskazówki superwizyjne",
+          "body": "Pytania do pogłębienia. Gotowa baza do rozmowy z superwizorem."
+        }
+      }
+    },
+    "security": {
+      "title": "To, co klient mówi Ci w zaufaniu, zostaje między wami.",
+      "cards": {
+        "audio": {
+          "title": "Audio znika po transkrypcji",
+          "body": "Nagranie jest usuwane zaraz po przetworzeniu. Nie zostaje na serwerze."
+        },
+        "noTraining": {
+          "title": "Nie uczymy AI na Twoich sesjach",
+          "body": "Twoje nagrania nie trafiają do trenowania żadnych modeli."
+        }
+      }
+    },
+    "ctamid": {
+      "title": "Wzmocnij swoją praktykę",
+      "body": "Uważność w gabinecie. Bez ciężaru pamiętania między sesjami. Dokumentacja czeka gotowa, Ty wracasz do tego, co dzieje się teraz.",
+      "cta": "Wypróbuj za darmo",
+      "cta2": "Zobacz cennik",
+      "micro": "3 sesje. Bez karty kredytowej. Pełen dostęp do aplikacji."
+    },
+    "audience": {
+      "heading": "Stworzony do realnej pracy w gabinecie",
+      "items": {
+        "therapist": {
+          "title": "Psychoterapeuci",
+          "body": "Wracasz do klienta z kontekstem, nie z pamięci."
+        },
+        "supervisor": {
+          "title": "Superwizorzy",
+          "body": "Materiał czeka przed spotkaniem. Rozmowa zaczyna się od sedna."
+        },
+        "clinic": {
+          "title": "Terapeuci w certyfikacji",
+          "body": "Gotowy materiał do superwizji po każdej sesji."
+        }
+      }
+    },
+    "pricing": {
+      "heading": "Wybierz plan dla swojej praktyki",
+      "annualNote": "17% taniej",
+      "footnote2": "Zacznij teraz. Zatrzymaj niższą cenę na zawsze.",
+      "vatNote": "Ceny netto + VAT 23%",
+      "footnote": "Karta lub Przelewy24. Anuluj w dowolnym momencie.",
+      "trial": { "tagline": "Sprawdź, czy to dla Ciebie." },
+      "pro": { "tagline": "Dla intensywnej praktyki." },
+      "clinic": { "tagline": "Dla poradni i zespołów." },
+      "subprice": "ta cena zostaje z Tobą na zawsze"
+    },
+    "faq": {
+      "overline": "Zanim zaczniesz",
+      "title": "Najczęstsze pytania",
+      "items": {
+        "rodo": {
+          "q": "Jak wygląda bezpieczeństwo danych pacjentów?",
+          "a": "Dane w UE (Frankfurt/Warszawa). SSL, szyfrowanie kopertowe, audio usuwane po transkrypcji. Gotowa umowa DPA."
+        },
+        "dpa": {
+          "q": "Czy muszę podpisać umowę powierzenia danych (DPA)?",
+          "a": "Tak. Gotowy wzór umowy zgodny z polskim prawem podpiszesz elektronicznie w panelu aplikacji."
+        },
+        "consent": {
+          "q": "Jak uzyskać zgodę pacjenta?",
+          "a": "W aplikacji znajdziesz gotowe szablony pisemnych zgód na nagrywanie i analizę AI."
+        },
+        "training": {
+          "q": "Czy AI uczy się na moich nagraniach?",
+          "a": "Nie. Vertex AI gwarantuje, że żadne dane wejściowe nie są wykorzystywane do trenowania modeli."
+        },
+        "modality": {
+          "q": "Dla jakich nurtów jest Superwizor AI?",
+          "a": "CBT, psychodynamika, Gestalt, systemowy, integracyjny, TSR. Raport mówi językiem Twojego nurtu."
+        }
+      }
+    }
   }
 }
