@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -429,11 +430,33 @@ func ffmpegExtractSlice(ctx context.Context, srcLocal, dstLocal string, startMS,
 	if durationMS <= 0 {
 		return fmt.Errorf("invalid slice: start=%d end=%d", startMS, endMS)
 	}
+	// Last-resort guard: a single chunk must never exceed Chirp's 20-min
+	// BatchRecognize hard cap. selectCutPoints already bounds the planned
+	// span and the +genpts/aresample flags keep ffmpeg honest, but clamp
+	// the -t value here too so no oversized chunk can ever reach Chirp if
+	// some future regression slips past both.
+	if hardMS := int64(maxChunkSecHardCap)*1000 - chunkSafetySlopMS; durationMS > hardMS {
+		slog.Warn("clamping oversized chunk slice to Chirp 20-min cap",
+			"fromMS", durationMS, "toMS", hardMS, "startMS", startMS, "endMS", endMS)
+		durationMS = hardMS
+	}
 	cmd := exec.CommandContext(ctx, "ffmpeg",
 		"-hide_banner", "-loglevel", "error",
+		// ROOT-CAUSE FIX (session e55b7c1e): the recorded FLAC can carry
+		// non-monotonic DTS (seen from the on-device recorder). With a
+		// plain "-ss N -i src -t D" that makes ffmpeg SILENTLY ignore the
+		// -t duration cap on the first slice — chunk_0 overshot its
+		// planned ~18.5 min to 21.0 min and Chirp BatchRecognize rejected
+		// it ("file too long"), failing the whole session. `+genpts`
+		// regenerates presentation timestamps and `aresample=async=1`
+		// rebuilds a monotonic audio timeline, so `-t` is honoured exactly
+		// (verified: 1259s → 1110s on the offending recording). The cut
+		// planning was already correct; this is the layer that was broken.
+		"-fflags", "+genpts",
 		"-ss", msToSecondsArg(startMS),
 		"-i", srcLocal,
 		"-t", msToSecondsArg(durationMS),
+		"-af", "aresample=async=1",
 		"-ar", "16000",
 		"-ac", "1",
 		"-c:a", "flac",
