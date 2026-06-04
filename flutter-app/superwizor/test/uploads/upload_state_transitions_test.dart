@@ -79,6 +79,13 @@ class _FakeIo implements UploadIo {
 
   @override
   Future<void> cleanupSource(PendingUpload u) async {}
+
+  @override
+  Future<int> pruneOrphanedSources({
+    required Set<String> liveLocalIds,
+    required Duration maxAge,
+  }) async =>
+      0;
 }
 
 PendingUpload _seed(String id, {bool needsConversion = false}) =>
@@ -95,7 +102,10 @@ PendingUpload _seed(String id, {bool needsConversion = false}) =>
       actualDurationSeconds: 0,
       needsServerSideConversion: needsConversion,
       idempotencyKey: id,
-      now: DateTime.utc(2026, 5, 20, 12),
+      // Real "now" — the queue's pruneStale sweep (run every tick)
+      // force-fails rows older than its 7-day maxAge, so a hard-coded
+      // past date silently rots once the wall clock passes seed+7d.
+      now: DateTime.now().toUtc(),
     );
 
 UploadQueueRunner _runner({

@@ -43,6 +43,12 @@ class UploadQueue {
   /// for a vacation, short enough to flush dead state.
   final Duration _maxAge;
 
+  /// The age after which an idle row is force-terminated and its
+  /// on-disk source becomes eligible for the orphan prune sweep.
+  /// Exposed so the runner can age-gate [UploadIo.pruneOrphanedSources]
+  /// with the same window.
+  Duration get maxAge => _maxAge;
+
   Future<void> _serialised = Future.value();
 
   // ── Open / scope ───────────────────────────────────────────────

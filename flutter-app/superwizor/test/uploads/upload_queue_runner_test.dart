@@ -25,6 +25,9 @@ class _FakeIo implements UploadIo {
   int putCalls = 0;
   int completeCalls = 0;
   Object? createUploadError;
+  final List<String> cleanedLocalIds = [];
+  Set<String>? lastPruneLiveIds;
+  int pruneCalls = 0;
 
   @override
   Future<CreateAudioUploadResult> createUpload(PendingUpload u) async {
@@ -60,7 +63,19 @@ class _FakeIo implements UploadIo {
       EncryptResult(sizeBytes: u.sizeBytes, chunkCount: u.chunkCount);
 
   @override
-  Future<void> cleanupSource(PendingUpload u) async {}
+  Future<void> cleanupSource(PendingUpload u) async {
+    cleanedLocalIds.add(u.localId);
+  }
+
+  @override
+  Future<int> pruneOrphanedSources({
+    required Set<String> liveLocalIds,
+    required Duration maxAge,
+  }) async {
+    pruneCalls++;
+    lastPruneLiveIds = liveLocalIds;
+    return 0;
+  }
 }
 
 PendingUpload _seed(String id) => PendingUpload.initial(
@@ -76,7 +91,13 @@ PendingUpload _seed(String id) => PendingUpload.initial(
       actualDurationSeconds: 0,
       needsServerSideConversion: false,
       idempotencyKey: id,
-      now: DateTime.utc(2026, 5, 20, 12),
+      // Real "now" (not a fixed date): the runner's cold-start backoff
+      // reset uses DateTime.now() directly, and the queue's pruneStale
+      // sweep on every tick force-fails rows older than its 7-day
+      // maxAge. A hard-coded past date silently rots — once the wall
+      // clock passes seed+7d, every seeded row is pruned to `failed`
+      // before the test can drive it, so keep the seed fresh.
+      now: DateTime.now().toUtc(),
     );
 
 void main() {
@@ -193,6 +214,62 @@ void main() {
     expect(io.createCalls, 1,
         reason: 'cold-start reset should give the parked row one attempt');
     expect(queue.getById('a')!.phase, UploadPhase.completed);
+
+    await runner.dispose();
+  });
+
+  test('dismiss() wipes the row source before removing the row', () async {
+    // #2: a user-discarded upload must take its on-disk source with it,
+    // not wait for the 7-day orphan sweep. dismiss() runs cleanupSource
+    // for the row and only then drops the Hive entry.
+    final io = _FakeIo();
+    final queue = UploadQueue(hiveBox: rawBox);
+    final runner = UploadQueueRunner(
+      queue: queue,
+      worker: UploadWorker(io: io, backoff: (_) => Duration.zero),
+      periodicInterval: const Duration(hours: 1),
+      connectivityStream: const Stream.empty(),
+      hasNetwork: () async => false, // keep the row parked, don't auto-run
+    );
+    await runner.start();
+    io.cleanedLocalIds.clear(); // ignore any start-up activity
+
+    // Seed a row directly so it's present but not yet uploaded.
+    await queue.enqueue(_seed('victim'));
+    expect(queue.getById('victim'), isNotNull);
+
+    await runner.dismiss('victim');
+
+    expect(io.cleanedLocalIds, contains('victim'),
+        reason: 'source cleanup must run on dismiss');
+    expect(queue.getById('victim'), isNull,
+        reason: 'row removed after cleanup');
+
+    await runner.dispose();
+  });
+
+  test('start() runs an orphan-source prune seeded with live localIds',
+      () async {
+    final io = _FakeIo();
+    final queue = UploadQueue(hiveBox: rawBox);
+    // A pre-existing row before start(): its localId must be reported as
+    // "live" so the sweep never reaps an active upload's source.
+    await queue.enqueue(_seed('live-1'));
+
+    final runner = UploadQueueRunner(
+      queue: queue,
+      worker: UploadWorker(io: io, backoff: (_) => Duration.zero),
+      periodicInterval: const Duration(hours: 1),
+      connectivityStream: const Stream.empty(),
+      hasNetwork: () async => false,
+    );
+    await runner.start();
+    // The prune is unawaited inside start(); let the microtask drain.
+    await Future<void>.delayed(Duration.zero);
+
+    expect(io.pruneCalls, greaterThanOrEqualTo(1));
+    expect(io.lastPruneLiveIds, contains('live-1'),
+        reason: 'active rows are protected from the orphan sweep');
 
     await runner.dispose();
   });

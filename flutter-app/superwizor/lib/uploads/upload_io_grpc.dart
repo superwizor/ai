@@ -32,6 +32,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../generated/ingestion/v1/ingestion.pb.dart' as ingestion_pb;
 import '../generated/ingestion/v1/ingestion.pbgrpc.dart' as ingestion_grpc;
@@ -354,6 +355,55 @@ class GrpcUploadIo implements UploadIo {
       debugPrint('[upload-io] cleanupSource failed: $e');
       // Don't rethrow — terminal-success on the server is what matters.
     }
+  }
+
+  @override
+  Future<int> pruneOrphanedSources({
+    required Set<String> liveLocalIds,
+    required Duration maxAge,
+  }) async {
+    var removed = 0;
+    try {
+      final base = await getApplicationDocumentsDirectory();
+      final now = DateTime.now();
+      // Both roots key their per-upload subdir by the queue row's
+      // localId (recordings → `sessions/<id>/`, staged file-uploads →
+      // `queued_uploads/<id>/`). A subdir whose id has no live row is a
+      // leftover from a dismissed/failed/crashed upload.
+      for (final root in const ['sessions', 'queued_uploads']) {
+        final dir = Directory(p.join(base.path, root));
+        if (!await dir.exists()) continue;
+        await for (final entry in dir.list(followLinks: false)) {
+          if (entry is! Directory) continue;
+          final id = p.basename(entry.path);
+          if (liveLocalIds.contains(id)) continue; // still owned by a row
+          DateTime modified;
+          try {
+            modified = (await entry.stat()).modified;
+          } catch (_) {
+            continue; // can't stat — leave it for the next sweep
+          }
+          if (now.difference(modified) < maxAge) continue; // too fresh
+          try {
+            if (root == 'sessions') {
+              // Secure-wipe — these dirs may hold plaintext raw.flac or
+              // encrypted chunks of PHI.
+              await _secureStorage.purgeSession(id);
+            } else {
+              await entry.delete(recursive: true);
+            }
+            removed++;
+            debugPrint('[upload-io] pruned orphaned source $root/$id '
+                '(age ${now.difference(modified).inDays}d)');
+          } catch (e) {
+            debugPrint('[upload-io] prune failed for ${entry.path}: $e');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[upload-io] pruneOrphanedSources failed: $e');
+    }
+    return removed;
   }
 
   // ── helpers ───────────────────────────────────────────────────

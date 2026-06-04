@@ -157,6 +157,31 @@ class UploadQueueRunner {
     // time start() returns, any pre-existing queue items have had
     // at least one phase advanced (or been deferred for offline).
     await _tick();
+
+    // Startup hygiene: sweep orphaned source files left behind by
+    // crashes or pre-fix builds (rows whose Hive entry is gone but
+    // whose `sessions/<id>/` or `queued_uploads/<id>/` dir survived).
+    // Age-gated by the queue's max-age so we never touch an in-flight
+    // recording. Runs after the initial tick (which may have created
+    // fresh rows) so those localIds count as live. Unawaited — pure
+    // disk hygiene that must not delay start() returning.
+    unawaited(_pruneOrphanedSources());
+  }
+
+  /// One-shot orphan-source prune. Best-effort; logs the count.
+  Future<void> _pruneOrphanedSources() async {
+    try {
+      final live = _queue.all().map((u) => u.localId).toSet();
+      final removed = await _worker.pruneOrphanedSources(
+        liveLocalIds: live,
+        maxAge: _queue.maxAge,
+      );
+      if (removed > 0) {
+        debugPrint('[upload-runner] pruned $removed orphaned source dir(s)');
+      }
+    } catch (e) {
+      debugPrint('[upload-runner] orphan prune failed (ignored): $e');
+    }
   }
 
   /// Pulls future nextAttemptAt back to now for every non-terminal row.
@@ -239,6 +264,15 @@ class UploadQueueRunner {
   /// regardless of phase. For a non-terminal row this stops further
   /// retries; for a terminal row it's just cleanup.
   Future<void> dismiss(String localId) async {
+    // Wipe any on-disk source the row still owns (raw recording,
+    // encrypted chunks, staged file-upload) BEFORE dropping the row —
+    // once the row is gone the cleanup metadata (sourceKind/sourcePath)
+    // is gone too, and the bytes would linger until the orphan sweep.
+    // Idempotent: a completed row's source was already purged at PUT.
+    final u = _queue.getById(localId);
+    if (u != null) {
+      await _worker.cleanupSource(u);
+    }
     await _queue.removeById(localId);
     _emitSnapshot();
   }

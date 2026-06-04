@@ -132,4 +132,20 @@ abstract class UploadIo {
   /// path. For plainFile this is a no-op (we never own the user's
   /// picked file).
   Future<void> cleanupSource(PendingUpload u);
+
+  /// Startup hygiene: delete on-disk source material under the app's
+  /// `sessions/` and `queued_uploads/` roots whose owning queue row is
+  /// gone (its localId is NOT in [liveLocalIds]) AND whose last-modified
+  /// time is older than [maxAge]. Returns the number of directories
+  /// removed.
+  ///
+  /// The age guard is what makes this safe to run at startup: a brand-new
+  /// enqueue writes its raw FLAC before the Hive row is persisted, so on a
+  /// cold race the dir could momentarily look orphaned — but its mtime is
+  /// ~now, well inside [maxAge], so we never reap an in-flight recording.
+  /// Never throws — a best-effort sweep that logs and moves on.
+  Future<int> pruneOrphanedSources({
+    required Set<String> liveLocalIds,
+    required Duration maxAge,
+  });
 }

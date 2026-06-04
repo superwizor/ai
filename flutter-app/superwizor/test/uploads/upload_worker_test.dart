@@ -78,6 +78,15 @@ class FakeUploadIo implements UploadIo {
     calls.add('cleanupSource');
     if (cleanupError != null) throw cleanupError!;
   }
+
+  @override
+  Future<int> pruneOrphanedSources({
+    required Set<String> liveLocalIds,
+    required Duration maxAge,
+  }) async {
+    calls.add('pruneOrphanedSources');
+    return 0;
+  }
 }
 
 PendingUpload _seed({

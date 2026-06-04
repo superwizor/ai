@@ -273,6 +273,30 @@ class UploadWorker {
     }
   }
 
+  /// Public source-cleanup entry for the runner to call when a row is
+  /// *discarded* (user dismiss / cancel) rather than completed. Same
+  /// fire-and-forget semantics as the internal terminal-success cleanup
+  /// and idempotent against an already-purged source, so it's safe even
+  /// for a row whose PUT already cleaned up.
+  Future<void> cleanupSource(PendingUpload u) => _cleanupQuiet(u);
+
+  /// Startup hygiene delegate — see [UploadIo.pruneOrphanedSources].
+  /// Never throws; returns 0 on failure.
+  Future<int> pruneOrphanedSources({
+    required Set<String> liveLocalIds,
+    required Duration maxAge,
+  }) async {
+    try {
+      return await _io.pruneOrphanedSources(
+        liveLocalIds: liveLocalIds,
+        maxAge: maxAge,
+      );
+    } catch (e) {
+      debugPrint('[upload-worker] pruneOrphanedSources failed (ignored): $e');
+      return 0;
+    }
+  }
+
   // ── Error → retry classification ─────────────────────────────
 
   PendingUpload _classify(PendingUpload u, Object error) {
