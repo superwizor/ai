@@ -16,16 +16,23 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
-	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/firebase"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/postgres/db"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/domain"
 )
+
+// TokenVerifier abstracts Firebase Auth token verification so
+// production uses the real firebase.AuthClient and tests can inject
+// a mock. The concrete *firebase.AuthClient already satisfies this.
+type TokenVerifier interface {
+	VerifyToken(ctx context.Context, idToken string) (uid string, claims map[string]any, err error)
+	CustomToken(ctx context.Context, uid string) (string, error)
+}
 
 type Server struct {
 	identityv1.UnimplementedIdentityServiceServer
 	queries  *db.Queries
 	pool     *pgxpool.Pool
-	auth     *firebase.AuthClient
+	auth     TokenVerifier
 	version  string
 	emailer  InvitationEmailer
 	// acceptURLBase is the public origin that hosts the accept-invite
@@ -34,7 +41,7 @@ type Server struct {
 	acceptURLBase string
 }
 
-func NewServer(pool *pgxpool.Pool, queries *db.Queries, auth *firebase.AuthClient, version string) *Server {
+func NewServer(pool *pgxpool.Pool, queries *db.Queries, auth TokenVerifier, version string) *Server {
 	return &Server{
 		pool:          pool,
 		queries:       queries,

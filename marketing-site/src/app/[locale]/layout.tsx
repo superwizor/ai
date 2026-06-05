@@ -21,7 +21,7 @@ import { Montserrat, Merriweather, Roboto_Mono } from "next/font/google";
 import "../globals.css";
 import { routing } from "@/i18n/routing";
 import { LazyAuthProvider } from "@/lib/firebase/LazyAuthProvider";
-import { AuthStatusBadge } from "@/lib/firebase/AuthStatusBadge";
+import { LazyAuthStatusBadge } from "@/lib/firebase/LazyAuthStatusBadge";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -116,7 +116,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider>
           <LazyAuthProvider>
             {children}
-            <AuthStatusBadge />
+            <LazyAuthStatusBadge />
           </LazyAuthProvider>
         </NextIntlClientProvider>
       </body>
