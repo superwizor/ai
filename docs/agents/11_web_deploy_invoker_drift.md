@@ -180,6 +180,67 @@ Re-run the preflight check above; expect `HTTP/2 200` + `access-control-allow-or
 
 ---
 
+## Second failure mode — `IDENTITY_SVC_URL` unset → admin RPCs 401
+
+Once the invoker (above) is fixed, browser admin RPCs can still fail — but
+with a **different, more specific** symptom:
+
+- UI shows **"Musisz być zalogowana/y, aby wykonać tę akcję."** (you must be
+  logged in) — i.e. `code.unauthenticated`, NOT `code.unknown`. This means the
+  request **reached the app** and got a structured `Unauthenticated` back
+  (transport is fine).
+- The `/admin` panel itself renders (you passed `AdminGuard`, which only shows
+  after `identityClient.getMyProfile()` succeeds) — so your Firebase token IS
+  attached and valid. The failure is specific to **billing-svc**.
+
+Root cause: billing-svc's `ConnectAuthInterceptor` (which calls
+`identity-svc.ValidateToken` to turn the browser's Firebase token into the
+`x-superwizor-role` metadata the admin handlers require) is **only installed
+when `IDENTITY_SVC_URL` is set** (`services/billing-svc/cmd/server/main.go`:
+`if identityClient != nil`). If that env is missing, the interceptor is skipped,
+the handler sees no role, and returns `Unauthenticated`. On startup billing-svc
+logs: `IDENTITY_SVC_URL unset — admin Connect RPCs require upstream
+x-superwizor-role metadata`.
+
+Diagnose:
+```bash
+gcloud run services describe billing-svc --region=europe-central2 \
+  --project=superwizor-ai-25ecd --format=json \
+  | python3 -c "import json,sys;print([e['name'] for e in json.load(sys.stdin)['spec']['template']['spec']['containers'][0].get('env',[])])"
+# Healthy includes IDENTITY_SVC_URL. If absent → this bug.
+```
+Immediate fix:
+```bash
+gcloud run services update billing-svc --region=europe-central2 \
+  --project=superwizor-ai-25ecd \
+  --update-env-vars "IDENTITY_SVC_URL=https://identity-svc-e3f32b232q-lm.a.run.app"
+```
+
+## The real durable root cause (both modes) — the billing CI deploy block
+
+Both failures trace to ONE place: the **`Deploy Billing to Cloud Run`** step in
+`.github/workflows/ci.yml`. Unlike every other browser-facing service it was
+deployed with:
+
+- `--no-allow-unauthenticated` → **strips `allUsers` on every deploy** (mode 1).
+  identity/clinical use `--allow-unauthenticated` + an explicit
+  `add-iam-policy-binding`.
+- `--set-env-vars="GCP_PROJECT_ID,VERSION"` with **no `IDENTITY_SVC_URL`** —
+  and `--set-env-vars` *replaces* the whole env block, so it wiped any manual
+  fix (mode 2).
+
+So any CI run that redeployed billing-svc silently reverted both manual fixes —
+which is exactly the "another developer deployed and it broke again" pattern.
+Fixed on `fix/billing-svc-ci-deploy`: billing now uses `--allow-unauthenticated`,
+sets `IDENTITY_SVC_URL`, and pins `allUsers` explicitly — matching identity/clinical.
+
+**Lesson:** when you add a browser-facing service, copy the *whole* deploy
+recipe from identity/clinical (`--allow-unauthenticated` + `add-iam-policy-binding`
++ all inter-service `*_SVC_URL` envs). A partial copy that omits public access or
+an `*_SVC_URL` produces exactly these two opaque failures.
+
+---
+
 ## Quick reference — services & URLs
 
 | Service | Browser-facing? | Public URL (staging, project 344724821207) |

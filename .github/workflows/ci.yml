@@ -353,11 +353,36 @@ jobs:
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/superwizor-billing"
 
+          # IDENTITY_SVC_URL — billing-svc's ConnectAuthInterceptor calls
+          # identity-svc.ValidateToken to turn a browser Firebase ID token
+          # into the x-superwizor-role metadata the admin handlers need.
+          # Without this env the interceptor is DISABLED and every browser
+          # admin RPC (AdminResetTokens/AdminChangePlan) 401s as
+          # "Unauthenticated" → UI shows "Musisz być zalogowana/y".
+          # --set-env-vars REPLACES the whole env block, so it MUST be
+          # listed here or it gets wiped on every deploy.
+          IDENTITY_URL=$(gcloud run services describe identity-svc --region ${{ env.REGION }} --format 'value(status.url)' || echo "")
+
+          # --allow-unauthenticated: billing-svc is browser-facing (the
+          # /account/ Subskrypcja card + /admin/* call it directly). The
+          # anonymous CORS preflight (OPTIONS, no Authorization header) is
+          # 403'd by the Google Frontend unless allUsers has run.invoker,
+          # which surfaces as the opaque "Wystąpił nieznany błąd". Real
+          # user identity is still enforced at the app layer via the
+          # Firebase token. (Was --no-allow-unauthenticated, which silently
+          # reverted the IAM fix on every deploy — see
+          # docs/agents/11_web_deploy_invoker_drift.md.)
           gcloud run deploy billing-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
             --platform managed \
-            --no-allow-unauthenticated \
+            --allow-unauthenticated \
             --vpc-connector swvpc-connector \
             --use-http2 \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }},IDENTITY_SVC_URL=${IDENTITY_URL}"
+          # Belt-and-braces parity with identity/clinical: pin allUsers
+          # explicitly so the public invoker can't drift even if a future
+          # deploy flag changes.
+          gcloud run services add-iam-policy-binding billing-svc \
+            --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
+            --member=allUsers --role=roles/run.invoker
