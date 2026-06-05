@@ -20,6 +20,7 @@
 | [`09_testing.md`](./09_testing.md) | Testing (E2E + integration + unit) | Test pyramid, priority-ordered E2E scenarios, auth in tests, common gotchas |
 | [`10_notification-svc.md`](./10_notification-svc.md) | Notification service (Phase 3 — not yet built) | FCM push, Firestore mirror, multi-token-per-user, status events, no-PHI-in-FCM rule |
 | [`11_web_deploy_invoker_drift.md`](./11_web_deploy_invoker_drift.md) | Runbook: browser→backend "unknown error" | Public Cloud Run `allUsers` invoker drift, CORS preflight 403, `Code.Unknown`, deploy/Terraform-apply drift — diagnosis + fix + prevention |
+| [`12_web_file_upload_deferred.md`](./12_web_file_upload_deferred.md) | Deferred: web file upload | Browser upload non-functional; Flutter frontend done, backend TODO (ingestion-svc gRPC-web/Connect refactor + CORS + GCS bucket CORS) |
 
 3. **Source docs** (long-form, 1.7k–4.7k lines each) are at `docs/02_ARCHITEKTURA_TECHNICZNA.md`, `docs/03_DATA_MODEL.md`, `docs/05_FAZA_1_TOZSAMOSC_DANE.md`, `docs/06_FAZA_2_INGESTION_AI.md`. Each per-area file references the relevant sections by line number so you can drill into specifics.
 
