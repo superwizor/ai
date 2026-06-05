@@ -22,15 +22,19 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../generated/ingestion/v1/ingestion.pb.dart' as ingestion_pb;
 import '../l10n/app_localizations.dart';
+import '../providers/grpc_provider.dart';
 import '../providers/patient_provider.dart';
 import '../services/audio_converter_service.dart';
 import '../theme/euphire_theme.dart';
@@ -251,9 +255,19 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: _uploading && _uploadFileName != null
-                      ? _buildSecureUploadView()
-                      : _buildDefaultView(),
+                  // Web/desktop: cap content to a centered column so the
+                  // CTA/text don't stretch full-width. topCenter preserves
+                  // the existing top-aligned layout. Self-gating — phones
+                  // (width < 760) are unaffected, native unchanged.
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 760),
+                      child: _uploading && _uploadFileName != null
+                          ? _buildSecureUploadView()
+                          : _buildDefaultView(),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -447,7 +461,117 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     ));
   }
 
+  /// Web file upload. The browser has no filesystem path and no dart:io,
+  /// so the native stage-to-disk + Hive durable-queue path can't run
+  /// (it threw MissingPluginException on path_provider). Instead we read
+  /// the picked file's bytes into memory and upload them directly:
+  /// CreateAudioUpload (Connect/gRPC-web) → HTTP PUT to the signed URL →
+  /// navigate to the server-driven status screen by sessionId. No durable
+  /// queue (acceptable on web — no app-kill recovery needed).
+  Future<void> _pickAndUploadFileWeb() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: _kSupportedAudioTypes.keys
+          .map((e) => e.replaceFirst('.', ''))
+          .toList(),
+      allowMultiple: false,
+      withData: true, // web: no path — load bytes into memory
+    );
+    if (result == null || result.files.isEmpty) {
+      if (widget.autoPickFile && mounted) Navigator.of(context).maybePop();
+      return;
+    }
+    final picked = result.files.first;
+    final bytes = picked.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      if (!mounted) return;
+      _showErrorSheet('Nie udało się odczytać pliku.');
+      return;
+    }
+    final ext = '.${(picked.extension ?? '').toLowerCase()}';
+    final contentType = _kSupportedAudioTypes[ext];
+    if (contentType == null) {
+      if (!mounted) return;
+      _showErrorSheet(
+        'Format "$ext" nie jest obsługiwany.\n\n'
+        'Obsługiwane formaty: FLAC, WAV, MP3, OGG, OPUS, M4A, AAC, WEBM, AMR.',
+      );
+      return;
+    }
+    if (bytes.length > 500 * 1024 * 1024) {
+      if (!mounted) return;
+      _showErrorSheet(
+        'Plik jest zbyt duży (${(bytes.length / 1024 / 1024).toStringAsFixed(0)} MB). '
+        'Maksymalny rozmiar to 500 MB.',
+      );
+      return;
+    }
+
+    setState(() {
+      _uploading = true;
+      _busy = true;
+      _uploadFileName = picked.name;
+      _displayedProgress = 0.0;
+      _targetProgress = 0.0;
+      _uploadStatusLabel = 'Przesyłam plik...';
+    });
+    _setUploadProgress(0.1);
+
+    try {
+      final ingestion = ref.read(grpcClientsProvider).ingestion;
+      final created = await ingestion.createAudioUpload(
+        ingestion_pb.CreateAudioUploadRequest(
+          patientFileId: widget.patientFileId,
+          therapistId: widget.therapistId,
+          estimatedSizeBytes: Int64(bytes.length),
+          contentType: contentType,
+          clientPlatform: 'web',
+          idempotencyKey: const Uuid().v4(),
+          reportLanguage: widget.patientLanguageCode,
+        ),
+      );
+      _setUploadProgress(0.25);
+
+      // The signed URL pins headers (x-goog-meta-source — see ingestion
+      // signer.go), so echo exactly what the server signed via
+      // requiredHeaders or the PUT 403s. Content-Type must match too.
+      final putHeaders = <String, String>{'Content-Type': contentType};
+      created.requiredHeaders.forEach((k, v) => putHeaders[k] = v);
+      final resp = await http.put(
+        Uri.parse(created.signedUrl),
+        headers: putHeaders,
+        body: bytes,
+      );
+      if (resp.statusCode != 200 && resp.statusCode != 204) {
+        throw 'PUT ${resp.statusCode}: ${resp.body}';
+      }
+      _setUploadProgress(1.0);
+
+      if (!mounted) return;
+      if (created.sessionId.isEmpty) {
+        // No sessionId from the server (legacy) — bounce back; the
+        // session will surface in the kartoteka as processing.
+        Navigator.of(context).maybePop();
+        return;
+      }
+      await Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (_) => SessionStatusScreen(sessionId: created.sessionId),
+      ));
+    } catch (e) {
+      debugPrint('[web-upload] FAILED: $e');
+      if (!mounted) return;
+      setState(() {
+        _uploading = false;
+        _busy = false;
+      });
+      _showErrorSheet('Błąd podczas przesyłania pliku:\n$e');
+    }
+  }
+
   Future<void> _pickAndUploadFile() async {
+    // Web has no filesystem path / dart:io staging — use the bytes-based
+    // direct-upload path instead.
+    if (kIsWeb) return _pickAndUploadFileWeb();
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: _kSupportedAudioTypes.keys
