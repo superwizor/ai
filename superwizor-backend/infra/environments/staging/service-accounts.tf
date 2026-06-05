@@ -62,6 +62,23 @@ resource "google_service_account" "identity_svc" {
   project      = var.project_id
 }
 
+# identity-svc mints Firebase custom tokens for SSO (marketing-site →
+# Flutter web app via signInWithCustomToken — the "Kartoteki" handoff).
+# Under ADC on Cloud Run the Firebase Admin SDK signs the token with the
+# runtime SA's OWN key via the IAM Credentials signBlob API, which requires
+# the SA to be able to create tokens AS ITSELF. Without this grant,
+# identity.MintAppLoginToken returns 500 and the SSO redirect falls back to
+# the password login form (re-auth prompt). See
+# services/identity-svc/internal/adapters/firebase/auth.go::CustomToken
+# (the comment there says: "the SA itself needs serviceAccountTokenCreator
+# on itself"). The dedicated identity-svc SA (Slice 1) replaced the default
+# Compute SA, so this self-grant must be pinned here or it's missing.
+resource "google_service_account_iam_member" "identity_svc_self_token_creator" {
+  service_account_id = google_service_account.identity_svc.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${google_service_account.identity_svc.email}"
+}
+
 resource "google_project_iam_member" "ingestion_signer" {
   project = var.project_id
   role    = "roles/iam.serviceAccountTokenCreator"
