@@ -251,9 +251,19 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: _uploading && _uploadFileName != null
-                      ? _buildSecureUploadView()
-                      : _buildDefaultView(),
+                  // Web/desktop: cap content to a centered column so the
+                  // CTA/text don't stretch full-width. topCenter preserves
+                  // the existing top-aligned layout. Self-gating — phones
+                  // (width < 760) are unaffected, native unchanged.
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 760),
+                      child: _uploading && _uploadFileName != null
+                          ? _buildSecureUploadView()
+                          : _buildDefaultView(),
+                    ),
+                  ),
                 ),
               ),
             ],
