@@ -164,7 +164,23 @@
       "//": "Flutter Web bundle (therapist + org-admin consoles). Deploy: `firebase deploy --only hosting:superwizor-app`.",
       "site": "superwizor-app",
       "public": "flutter-app/superwizor/build/web",
-      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "headers": [
+        {
+          "//": "Entry points must ALWAYS revalidate so a deploy propagates immediately. Without this the browser caches index.html + flutter_service_worker.js and the service worker keeps serving a stale main.dart.js — i.e. 'the page won't refresh'. Hashed canvaskit/wasm/assets keep Firebase's default caching.",
+          "source": "**/@(index.html|flutter_service_worker.js|flutter_bootstrap.js|main.dart.js|version.json|manifest.json)",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          ]
+        },
+        {
+          "//": "Bare root request (/) serves index.html — revalidate it too.",
+          "source": "/",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          ]
+        }
+      ]
     }
   ],
   "emulators": {
