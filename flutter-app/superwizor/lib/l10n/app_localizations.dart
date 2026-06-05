@@ -2150,19 +2150,19 @@ abstract class AppLocalizations {
   /// No description provided for @subscription_tier_solo.
   ///
   /// In pl, this message translates to:
-  /// **'Solo'**
+  /// **'Poznanie'**
   String get subscription_tier_solo;
 
   /// No description provided for @subscription_tier_pro.
   ///
   /// In pl, this message translates to:
-  /// **'Pro'**
+  /// **'Równowaga'**
   String get subscription_tier_pro;
 
   /// No description provided for @subscription_tier_clinic.
   ///
   /// In pl, this message translates to:
-  /// **'Klinika'**
+  /// **'Rozkwit'**
   String get subscription_tier_clinic;
 
   /// No description provided for @subscription_tier_trial.

@@ -1173,13 +1173,13 @@ class AppLocalizationsPl extends AppLocalizations {
   String get subscription_plan_section_header => 'Twój plan';
 
   @override
-  String get subscription_tier_solo => 'Solo';
+  String get subscription_tier_solo => 'Poznanie';
 
   @override
-  String get subscription_tier_pro => 'Pro';
+  String get subscription_tier_pro => 'Równowaga';
 
   @override
-  String get subscription_tier_clinic => 'Klinika';
+  String get subscription_tier_clinic => 'Rozkwit';
 
   @override
   String get subscription_tier_trial => 'Wersja próbna';

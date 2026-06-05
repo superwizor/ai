@@ -1160,13 +1160,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subscription_plan_section_header => 'Your plan';
 
   @override
-  String get subscription_tier_solo => 'Solo';
+  String get subscription_tier_solo => 'Discovery';
 
   @override
-  String get subscription_tier_pro => 'Pro';
+  String get subscription_tier_pro => 'Balance';
 
   @override
-  String get subscription_tier_clinic => 'Clinic';
+  String get subscription_tier_clinic => 'Flourishing';
 
   @override
   String get subscription_tier_trial => 'Trial';

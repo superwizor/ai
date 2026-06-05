@@ -434,9 +434,9 @@
 
   "subscription_screen_title": "Subscription",
   "subscription_plan_section_header": "Your plan",
-  "subscription_tier_solo": "Solo",
-  "subscription_tier_pro": "Pro",
-  "subscription_tier_clinic": "Clinic",
+  "subscription_tier_solo": "Discovery",
+  "subscription_tier_pro": "Balance",
+  "subscription_tier_clinic": "Flourishing",
   "subscription_tier_trial": "Trial",
   "subscription_cycle_monthly": "monthly",
   "subscription_cycle_semi_annual": "semi-annual",
