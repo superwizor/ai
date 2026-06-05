@@ -198,7 +198,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addPatient_email_label => 'E-mail klienta';
 
   @override
-  String get addPatient_email_hint => 'Opcjonalnie — do przyszłych powiadomień';
+  String get addPatient_email_hint => 'Opcjonalnie — do planu działania';
 
   @override
   String get addPatient_modality_label => 'Nurt terapeutyczny';
@@ -235,6 +235,37 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get addPatient_duplicate_primary => 'Poprawię nazwę.';
+
+  @override
+  String get addPatient_step1_subtitle => 'Uzupełnij podstawowe dane klienta.';
+
+  @override
+  String get addPatient_step1_next => 'Dalej';
+
+  @override
+  String get addPatient_step2_title => 'Dopasuj do Twojej pracy';
+
+  @override
+  String get addPatient_step2_subtitle => 'Ustawienia, które trafią do AI.';
+
+  @override
+  String get addPatient_alias_label => 'Etykieta robocza';
+
+  @override
+  String get addPatient_alias_hint =>
+      'Twój prywatny skrót. Widoczny tylko dla Ciebie.';
+
+  @override
+  String get addPatient_discard_title => 'Porzucić zmiany?';
+
+  @override
+  String get addPatient_discard_body => 'Nic nie zostanie zapisane.';
+
+  @override
+  String get addPatient_discard_action => 'Porzuć';
+
+  @override
+  String get addPatient_discard_stay => 'Kontynuuj edycję';
 
   @override
   String get editPatient_title => 'Edytuj kartotekę';

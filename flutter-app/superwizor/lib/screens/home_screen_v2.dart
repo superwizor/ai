@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/cupertino.dart';
 
-import '../constants/modalities.dart';
+
 import '../models/session.dart';
 import '../models/patient.dart';
 import '../theme/euphire_theme.dart';
@@ -16,10 +16,10 @@ import '../providers/patient_provider.dart';
 import '../providers/patient_avatar_provider.dart';
 import '../providers/patient_lifecycle_provider.dart';
 import '../providers/viewed_reports_provider.dart';
-import '../widgets/add_patient_modal.dart';
+import '../screens/add_patient_screen.dart';
 import '../widgets/avatar_customize_sheet.dart';
-import '../widgets/edit_patient_modal.dart';
-import '../widgets/euphire_bottom_sheet.dart';
+
+
 import '../widgets/pending_uploads_pill.dart';
 import '../widgets/preference_suggestion_banner.dart';
 import '../widgets/quota_warning_banner.dart';
@@ -30,10 +30,9 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   void _showAddPatientModal(BuildContext context, WidgetRef ref) {
-    showEuphireBottomSheet(
-      context: context,
-      builder: (context) => const AddPatientModal(),
-    );
+    Navigator.of(context).push(CupertinoPageRoute(
+      builder: (_) => const AddPatientScreen(),
+    ));
   }
 
   @override

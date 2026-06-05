@@ -57,6 +57,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
   final ScrollController _mainScrollController = ScrollController();
   int _activeSectionIndex = 0;
+  String? _editedSummary;
 
   @override
   void initState() {
@@ -341,7 +342,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _SummaryCard(report: report, payload: payload),
+                _buildSummaryCard(report, payload),
                 const SizedBox(height: 16),
                 ..._sections!.asMap().entries.map((entry) {
                   final idx = entry.key;
@@ -443,12 +444,21 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       buffer.writeln('=== ${report.title.isNotEmpty ? report.title : "Raport"} ===');
       
       final payload = _ReportPayload.parse(report);
-      if (payload.summary != null && payload.summary!.isNotEmpty) {
-        buffer.writeln('\nPODSUMOWANIE:\n${payload.summary}');
+      final summaryText = _editedSummary ?? payload.summary;
+      if (summaryText != null && summaryText.isNotEmpty) {
+        buffer.writeln('\nPODSUMOWANIE:\n$summaryText');
       }
       
       if (payload.reportMarkdown.isNotEmpty) {
-        buffer.writeln('\nRAPORT KLINICZNY:\n${payload.reportMarkdown}');
+        // Include edited sections if available
+        if (_sections != null && _sections!.isNotEmpty) {
+          buffer.writeln('\nRAPORT KLINICZNY:');
+          for (final section in _sections!) {
+            buffer.writeln('\n${section.content}');
+          }
+        } else {
+          buffer.writeln('\nRAPORT KLINICZNY:\n${payload.reportMarkdown}');
+        }
       }
       
       buffer.writeln('\n');
@@ -458,6 +468,337 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     if (mounted) {
       EuphireToast.success(context, message: 'Raporty skopiowane do schowka');
     }
+  }
+
+  // ── Summary card with long-press editing ──
+
+  Widget _buildSummaryCard(ReportDto report, _ReportPayload payload) {
+    final summaryText = _editedSummary ?? payload.summary ?? report.summaryShort;
+    final isEdited = _editedSummary != null;
+
+    return GestureDetector(
+      onLongPress: () {
+        HapticFeedback.selectionClick();
+        _showSummaryOptions(context, payload, report);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF041416),
+          borderRadius: BorderRadius.circular(14),
+          border: Border(
+            left: BorderSide(
+              color: EuphireColors.ember.withValues(alpha: 0.6),
+              width: 3,
+            ),
+            top: isEdited
+                ? BorderSide(
+                    color: EuphireColors.ember.withValues(alpha: 0.3),
+                    width: 1,
+                  )
+                : BorderSide.none,
+            right: isEdited
+                ? BorderSide(
+                    color: EuphireColors.ember.withValues(alpha: 0.3),
+                    width: 1,
+                  )
+                : BorderSide.none,
+            bottom: isEdited
+                ? BorderSide(
+                    color: EuphireColors.ember.withValues(alpha: 0.3),
+                    width: 1,
+                  )
+                : BorderSide.none,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (report.title.isNotEmpty) ...[
+              Row(
+                children: [
+                  Icon(Icons.auto_awesome_rounded,
+                      size: 18,
+                      color: EuphireColors.ember.withValues(alpha: 0.8)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      report.title,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: EuphireColors.frostWhite,
+                      ),
+                    ),
+                  ),
+                  if (isEdited)
+                    Icon(
+                      Icons.edit_rounded,
+                      size: 14,
+                      color: EuphireColors.ember.withValues(alpha: 0.5),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+            Text(
+              summaryText,
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 14,
+                height: 1.7,
+                color: EuphireColors.frostWhite.withValues(alpha: 0.9),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSummaryOptions(
+      BuildContext context, _ReportPayload payload, ReportDto report) {
+    final summaryText = _editedSummary ?? payload.summary ?? report.summaryShort;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0A2326),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Podsumowanie sesji',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: EuphireColors.frostWhite,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                _OptionTile(
+                  icon: Icons.copy_rounded,
+                  label: 'Kopiuj podsumowanie',
+                  subtitle: 'Skopiuj treść do schowka',
+                  color: EuphireColors.ember,
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: summaryText));
+                    Navigator.pop(ctx);
+                    EuphireToast.success(context,
+                        message: 'Podsumowanie skopiowane');
+                  },
+                ),
+                const SizedBox(height: 10),
+                _OptionTile(
+                  icon: Icons.edit_note_rounded,
+                  label: 'Edytuj podsumowanie',
+                  subtitle: 'Popraw lub uzupełnij podsumowanie AI',
+                  color: const Color(0xFF5EEDCC),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showEditSummarySheet(context, summaryText);
+                  },
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEditSummarySheet(BuildContext context, String currentText) {
+    final controller = TextEditingController(text: currentText);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (_, scrollCtrl) => Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF0A2326),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              border: Border(top: BorderSide(color: Colors.white10)),
+            ),
+            child: Column(
+              children: [
+                // ── Header ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(2)),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF5EEDCC)
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.edit_note_rounded,
+                                color: Color(0xFF5EEDCC), size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Edycja podsumowania',
+                                  style: TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: EuphireColors.frostWhite,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Podsumowanie sesji',
+                                  style: TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontSize: 13,
+                                    color: EuphireColors.mist
+                                        .withValues(alpha: 0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Divider(
+                          height: 1,
+                          color: Colors.white.withValues(alpha: 0.08)),
+                    ],
+                  ),
+                ),
+                // ── Text editor ──
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: TextField(
+                      controller: controller,
+                      maxLines: null,
+                      expands: true,
+                      textAlignVertical: TextAlignVertical.top,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 14,
+                        height: 1.7,
+                        color: EuphireColors.frostWhite,
+                      ),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'Edytuj podsumowanie sesji...',
+                        hintStyle: TextStyle(
+                          fontFamily: 'Montserrat',
+                          color: EuphireColors.mist.withValues(alpha: 0.4),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // ── Actions ──
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      20, 8, 20, MediaQuery.of(ctx).viewInsets.bottom + 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5),
+                              side: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.1)),
+                            ),
+                          ),
+                          child: const Text(
+                            'Anuluj',
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: EuphireColors.mist,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final newContent = controller.text;
+                            setState(() {
+                              _editedSummary = newContent;
+                            });
+                            Navigator.pop(ctx);
+                            EuphireToast.success(context,
+                                message: 'Podsumowanie zaktualizowane');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF5EEDCC),
+                            foregroundColor: EuphireColors.obsidianBlack,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(5)),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Zapisz zmiany',
+                            style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // ── Shared MarkdownStyleSheet ──
@@ -838,65 +1179,6 @@ class _OptionTile extends StatelessWidget {
             Icon(Icons.chevron_right_rounded, color: color.withValues(alpha: 0.4), size: 20),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  final ReportDto report;
-  final _ReportPayload payload;
-
-  const _SummaryCard({required this.report, required this.payload});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF041416),
-        borderRadius: BorderRadius.circular(14),
-        border: Border(
-          left: BorderSide(
-            color: EuphireColors.ember.withValues(alpha: 0.6),
-            width: 3,
-          ),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (report.title.isNotEmpty) ...[
-            Row(
-              children: [
-                Icon(Icons.auto_awesome_rounded, size: 18,
-                    color: EuphireColors.ember.withValues(alpha: 0.8)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    report.title,
-                    style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: EuphireColors.frostWhite,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-          ],
-          Text(
-            payload.summary ?? report.summaryShort,
-            style: TextStyle(
-              fontFamily: 'Montserrat',
-              fontSize: 14,
-              height: 1.7,
-              color: EuphireColors.frostWhite.withValues(alpha: 0.9),
-            ),
-          ),
-        ],
       ),
     );
   }

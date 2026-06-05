@@ -194,7 +194,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPatient_email_label => 'Client email';
 
   @override
-  String get addPatient_email_hint => 'Optional — for future notifications';
+  String get addPatient_email_hint => 'Optional — for the action plan';
 
   @override
   String get addPatient_modality_label => 'Therapy modality';
@@ -231,6 +231,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addPatient_duplicate_primary => 'I\'ll fix the name.';
+
+  @override
+  String get addPatient_step1_subtitle => 'Fill in the basic client details.';
+
+  @override
+  String get addPatient_step1_next => 'Next';
+
+  @override
+  String get addPatient_step2_title => 'Customize your workflow';
+
+  @override
+  String get addPatient_step2_subtitle => 'Settings that guide the AI.';
+
+  @override
+  String get addPatient_alias_label => 'Working alias';
+
+  @override
+  String get addPatient_alias_hint =>
+      'Your private shortcut. Only you can see it.';
+
+  @override
+  String get addPatient_discard_title => 'Discard changes?';
+
+  @override
+  String get addPatient_discard_body => 'Nothing will be saved.';
+
+  @override
+  String get addPatient_discard_action => 'Discard';
+
+  @override
+  String get addPatient_discard_stay => 'Keep editing';
 
   @override
   String get editPatient_title => 'Edit client file';

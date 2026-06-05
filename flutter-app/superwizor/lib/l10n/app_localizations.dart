@@ -449,7 +449,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_email_hint.
   ///
   /// In pl, this message translates to:
-  /// **'Opcjonalnie — do przyszłych powiadomień'**
+  /// **'Opcjonalnie — do planu działania'**
   String get addPatient_email_hint;
 
   /// No description provided for @addPatient_modality_label.
@@ -517,6 +517,66 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Poprawię nazwę.'**
   String get addPatient_duplicate_primary;
+
+  /// No description provided for @addPatient_step1_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Uzupełnij podstawowe dane klienta.'**
+  String get addPatient_step1_subtitle;
+
+  /// No description provided for @addPatient_step1_next.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dalej'**
+  String get addPatient_step1_next;
+
+  /// No description provided for @addPatient_step2_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dopasuj do Twojej pracy'**
+  String get addPatient_step2_title;
+
+  /// No description provided for @addPatient_step2_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ustawienia, które trafią do AI.'**
+  String get addPatient_step2_subtitle;
+
+  /// No description provided for @addPatient_alias_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Etykieta robocza'**
+  String get addPatient_alias_label;
+
+  /// No description provided for @addPatient_alias_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twój prywatny skrót. Widoczny tylko dla Ciebie.'**
+  String get addPatient_alias_hint;
+
+  /// No description provided for @addPatient_discard_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Porzucić zmiany?'**
+  String get addPatient_discard_title;
+
+  /// No description provided for @addPatient_discard_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nic nie zostanie zapisane.'**
+  String get addPatient_discard_body;
+
+  /// No description provided for @addPatient_discard_action.
+  ///
+  /// In pl, this message translates to:
+  /// **'Porzuć'**
+  String get addPatient_discard_action;
+
+  /// No description provided for @addPatient_discard_stay.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kontynuuj edycję'**
+  String get addPatient_discard_stay;
 
   /// No description provided for @editPatient_title.
   ///
