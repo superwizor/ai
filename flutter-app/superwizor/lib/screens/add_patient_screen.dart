@@ -15,6 +15,7 @@ import 'package:grpc/grpc.dart' as grpc;
 
 import '../constants/modalities.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/patient_avatar_provider.dart';
 import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
 import '../screens/legal_markdown_screen.dart';
@@ -53,6 +54,10 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   bool _aliasManuallyEdited = false;
   bool _consentGiven = false;
   bool _saving = false;
+
+  // ── Avatar customization ──
+  final _avatarLabelController = TextEditingController();
+  int _selectedColorIndex = 0;
 
   @override
   void initState() {
@@ -114,8 +119,30 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     _lastNameController.dispose();
     _emailController.dispose();
     _aliasController.dispose();
+    _avatarLabelController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  String get _avatarPreviewLabel {
+    final custom = _avatarLabelController.text.trim();
+    if (custom.isNotEmpty) return custom;
+    // Auto-generate from name fields
+    final f = _firstNameController.text.trim();
+    final l = _lastNameController.text.trim();
+    if (f.isEmpty && l.isEmpty) return '?';
+    final first = f.isNotEmpty ? f[0].toUpperCase() : '';
+    final last = l.isNotEmpty ? l[0].toUpperCase() : '';
+    return '$first$last'.trim();
+  }
+
+  String get _defaultInitials {
+    final f = _firstNameController.text.trim();
+    final l = _lastNameController.text.trim();
+    if (f.isEmpty && l.isEmpty) return '?';
+    final first = f.isNotEmpty ? f[0].toUpperCase() : '';
+    final last = l.isNotEmpty ? l[0].toUpperCase() : '';
+    return '$first$last'.trim();
   }
 
   String _modalityDisplayName(BuildContext context, String code) {
@@ -448,7 +475,168 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
+
+          // ── Avatar customization (inline) ──
+          Center(
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AvatarColors.fromIndex(_selectedColorIndex),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AvatarColors.fromIndex(_selectedColorIndex)
+                        .withValues(alpha: 0.35),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                _avatarPreviewLabel,
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: EuphireColors.frostWhite,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Avatar label input ──
+          Center(
+            child: SizedBox(
+              width: 140,
+              child: TextField(
+                controller: _avatarLabelController,
+                textAlign: TextAlign.center,
+                maxLength: 2,
+                inputFormatters: [LengthLimitingTextInputFormatter(2)],
+                onChanged: (_) => setState(() {}),
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: EuphireColors.frostWhite,
+                  letterSpacing: 2,
+                ),
+                decoration: InputDecoration(
+                  hintText: _defaultInitials,
+                  hintStyle: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2,
+                    color: EuphireColors.mist.withValues(alpha: 0.25),
+                  ),
+                  counterText: '',
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.06),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                        color: EuphireColors.ember, width: 1.5),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                ),
+              ),
+            ),
+          ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Litery, cyfry lub emoji (max 2)',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 11,
+                  color: EuphireColors.mist.withValues(alpha: 0.4),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Color grid ──
+          Center(
+            child: Text(
+              'KOLOR TŁA',
+              style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 1.5,
+                color: EuphireColors.mist.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Center(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 10,
+              children:
+                  List.generate(AvatarColors.palette.length, (i) {
+                final isSelected = i == _selectedColorIndex;
+                return GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedColorIndex = i);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    width: isSelected ? 40 : 36,
+                    height: isSelected ? 40 : 36,
+                    decoration: BoxDecoration(
+                      color: AvatarColors.palette[i],
+                      shape: BoxShape.circle,
+                      border: isSelected
+                          ? Border.all(
+                              color: EuphireColors.ember, width: 2.5)
+                          : Border.all(
+                              color:
+                                  Colors.white.withValues(alpha: 0.1),
+                              width: 1),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: EuphireColors.ember
+                                    .withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                spreadRadius: 1,
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: isSelected
+                        ? const Icon(Icons.check,
+                            size: 16,
+                            color: EuphireColors.frostWhite)
+                        : null,
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 24),
 
           // ── Modality Dropdown ──
           FormSectionLabel(text: t.addPatient_modality_label),
@@ -607,6 +795,18 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               patientFileId: created.id,
               documentVersion: _kCurrentDpaVersion,
             );
+
+        // ── Save avatar customization ──
+        final avatarLabel = _avatarLabelController.text.trim();
+        final isDefaultLabel =
+            avatarLabel.isEmpty || avatarLabel == _defaultInitials;
+        final avatarConfig = PatientAvatarConfig(
+          customLabel: isDefaultLabel ? null : avatarLabel,
+          colorIndex: _selectedColorIndex,
+        );
+        await ref
+            .read(patientAvatarProvider.notifier)
+            .setConfig(created.id, avatarConfig);
       }
 
       if (mounted) {

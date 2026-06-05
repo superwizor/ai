@@ -271,8 +271,10 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
                 ),
               ),
               const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 10,
                 children: List.generate(AvatarColors.palette.length, (i) {
                   final isSelected = i == _selectedColorIndex;
                   return GestureDetector(
@@ -285,7 +287,6 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
                       curve: Curves.easeOutCubic,
                       width: isSelected ? 40 : 36,
                       height: isSelected ? 40 : 36,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
                         color: AvatarColors.palette[i],
                         shape: BoxShape.circle,
