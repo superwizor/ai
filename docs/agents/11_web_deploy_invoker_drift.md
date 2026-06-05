@@ -241,6 +241,41 @@ an `*_SVC_URL` produces exactly these two opaque failures.
 
 ---
 
+## Third failure mode — CORS allowlist missing the Flutter web origin
+
+Symptom: the **Flutter web app** (`https://superwizor-app.web.app`, reached via
+the marketing-site → "Kartoteki" SSO handoff) logs in fine but **can't load
+data** (endless spinner). The **native app works** (native gRPC, no CORS).
+Browser-only.
+
+Root cause: the CORS allowlist (`getEnv("CORS_ALLOWED_ORIGINS", "<default>")` in
+each service's `cmd/server/main.go`) listed `superwizor.ai` + `app.superwizor.ai`
+but **not** `superwizor-app.web.app` (the Firebase Hosting URL the Flutter web
+build is served from). The app's CORS middleware 403s the preflight with
+`vary: Origin` and **no** `access-control-allow-origin` → browser blocks it.
+Distinct from mode 1: here the request reaches the app (allUsers is set) and the
+app rejects the *origin*; mode 1 is the GFE rejecting before the app.
+
+Diagnose (`vary: Origin` + missing ACAO = app-layer origin reject):
+```bash
+curl -s -o /dev/null -D - -X OPTIONS \
+  "https://clinical-svc-344724821207.europe-central2.run.app/clinical.v1.ClinicalService/ListPatientFiles" \
+  -H "Origin: https://superwizor-app.web.app" -H "Access-Control-Request-Method: POST" \
+  | grep -iE "HTTP/|access-control-allow-origin|vary"
+```
+Immediate fix (per service; use `--update-env-vars` with the FULL list, since
+`--set-env-vars` replaces the whole env block):
+```bash
+gcloud run services update clinical-svc --region=europe-central2 --project=superwizor-ai-25ecd \
+  --update-env-vars "^@^CORS_ALLOWED_ORIGINS=https://superwizor.ai,https://app.superwizor.ai,https://superwizor-app.web.app,http://localhost:3000,http://localhost:8080"
+```
+Durable fix: add the origin to the code default in `cmd/server/main.go` for every
+browser-facing service (clinical/identity/billing) — `fix/cors-flutter-web-origin`.
+**Lesson:** the CORS allowlist must include EVERY origin the browser app is served
+from — including the raw `*.web.app` Firebase URL, not just the custom domain.
+
+---
+
 ## Quick reference — services & URLs
 
 | Service | Browser-facing? | Public URL (staging, project 344724821207) |

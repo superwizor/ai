@@ -195,7 +195,9 @@ func main() {
 	// Server-to-server callers (Cloud Scheduler OIDC) don't carry an
 	// Origin header and pass through untouched. See docs/18 §5 / R2.
 	corsOrigins := getEnv("CORS_ALLOWED_ORIGINS",
-		"https://superwizor.ai,https://app.superwizor.ai,http://localhost:3000,http://localhost:8080")
+		// superwizor-app.web.app = Flutter web app (Firebase Hosting) — see
+		// clinical-svc main.go for rationale.
+		"https://superwizor.ai,https://app.superwizor.ai,https://superwizor-app.web.app,http://localhost:3000,http://localhost:8080")
 	corsMW := cors.New(cors.FromEnv(corsOrigins))
 
 	// HTTP/2 cleartext (h2c) — Cloud Run terminuje TLS przed kontenerem,
