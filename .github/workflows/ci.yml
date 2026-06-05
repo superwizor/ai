@@ -163,7 +163,7 @@ jobs:
       # ────────────────────────────────────────────────────────────────────
       # Cloud Run deploys.
       #
-      # PUBLIC services (api / identity / clinical / ingestion):
+      # PUBLIC services (api / identity / clinical / ingestion / billing):
       #   - --allow-unauthenticated implicitly binds allUsers→roles/run.invoker
       #     at deploy time.
       #   - We ALSO call `add-iam-policy-binding` explicitly after each deploy
@@ -176,8 +176,15 @@ jobs:
       #     infra/environments/staging/service-accounts.tf::public_invoker
       #     so any drift from manual `gcloud run services remove-iam-policy
       #     -binding` gets caught on next `terragrunt apply`.
+      #   - billing-svc IS browser-facing (the /account/ Subskrypcja card and
+      #     /admin/* call it directly via Connect-Web). It was previously
+      #     mis-classified as internal + deployed --no-allow-unauthenticated,
+      #     which 403'd the anonymous CORS preflight at the GFE and ALSO
+      #     reverted the allUsers binding on every deploy. App-layer auth
+      #     (Firebase token via ConnectAuthInterceptor) still gates real
+      #     access. See docs/agents/11_web_deploy_invoker_drift.md.
       #
-      # INTERNAL services (billing / ai-pipeline):
+      # INTERNAL services (ai-pipeline / stt-worker / llm-worker):
       #   - --no-allow-unauthenticated; only specific calling SAs can invoke.
       #   - Terraform manages those SA bindings in service-accounts.tf.
       # ────────────────────────────────────────────────────────────────────
