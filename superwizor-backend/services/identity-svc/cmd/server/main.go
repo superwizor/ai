@@ -216,7 +216,9 @@ func main() {
 	// (iOS, clinical-svc proxy, Cloud Scheduler) don't send Origin
 	// and pass through untouched.
 	corsOrigins := getEnv("CORS_ALLOWED_ORIGINS",
-		"https://superwizor.ai,https://app.superwizor.ai,http://localhost:3000,http://localhost:8080")
+		// superwizor-app.web.app = Flutter web app (Firebase Hosting) — see
+		// clinical-svc main.go for rationale.
+		"https://superwizor.ai,https://app.superwizor.ai,https://superwizor-app.web.app,http://localhost:3000,http://localhost:8080")
 	corsMW := cors.New(cors.FromEnv(corsOrigins))
 
 	// Serve cleartext HTTP/2 (h2c) for gRPC. Cloud Run terminates TLS at

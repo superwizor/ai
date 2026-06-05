@@ -310,7 +310,11 @@ func main() {
 	})
 
 	corsOrigins := getEnv("CORS_ALLOWED_ORIGINS",
-		"https://superwizor.ai,https://app.superwizor.ai,http://localhost:3000,http://localhost:8080")
+		// superwizor-app.web.app = Flutter web app (Firebase Hosting). The
+		// browser build calls clinical/identity/billing directly; without
+		// this origin the CORS preflight is 403'd and the web view can't
+		// load data (native app is unaffected — it uses native gRPC).
+		"https://superwizor.ai,https://app.superwizor.ai,https://superwizor-app.web.app,http://localhost:3000,http://localhost:8080")
 	corsMW := cors.New(cors.FromEnv(corsOrigins))
 
 	// Serve cleartext HTTP/2 (h2c) for gRPC. Cloud Run terminates TLS at
