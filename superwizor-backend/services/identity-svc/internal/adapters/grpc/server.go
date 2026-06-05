@@ -67,7 +67,7 @@ func (s *Server) ValidateToken(ctx context.Context, req *identityv1.ValidateToke
 		return nil, status.Error(codes.InvalidArgument, "firebase_id_token is required")
 	}
 
-	firebaseUID, _, err := s.auth.VerifyToken(ctx, req.FirebaseIdToken)
+	firebaseUID, claims, err := s.auth.VerifyToken(ctx, req.FirebaseIdToken)
 	if err != nil {
 		if errors.Is(err, domain.ErrTokenExpired) {
 			return nil, status.Error(codes.Unauthenticated, "token expired")
@@ -77,7 +77,35 @@ func (s *Server) ValidateToken(ctx context.Context, req *identityv1.ValidateToke
 
 	user, err := s.queries.GetUserByFirebaseUID(ctx, &firebaseUID)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "user not registered")
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Auto-link by email — ONLY when Firebase confirms the email
+			// is verified. Without this guard an attacker could register a
+			// Firebase account with the victim's email (without verifying
+			// it), call ValidateToken, and hijack the existing PG user row.
+			emailVerified, _ := claims["email_verified"].(bool)
+			if emailVal, ok := claims["email"].(string); ok && emailVal != "" && emailVerified {
+				emailLC := strings.ToLower(strings.TrimSpace(emailVal))
+				existingUser, errEmail := s.queries.GetUserByEmail(ctx, &emailLC)
+				if errEmail == nil {
+					// Update their firebase_uid to link the accounts
+					_, errUpdate := s.pool.Exec(ctx,
+						`UPDATE users SET firebase_uid = $1 WHERE id = $2 AND deleted_at IS NULL`,
+						firebaseUID, existingUser.ID,
+					)
+					if errUpdate == nil {
+						slog.InfoContext(ctx, "auto-linked user on the fly", "email", emailLC, "firebase_uid", firebaseUID, "user_id", existingUser.ID)
+						user = existingUser
+						user.FirebaseUid = &firebaseUID
+						err = nil // clear error to proceed returning user context
+					} else {
+						slog.ErrorContext(ctx, "failed to auto-link user", "error", errUpdate, "email", emailLC)
+					}
+				}
+			}
+		}
+		if err != nil {
+			return nil, status.Error(codes.NotFound, "user not registered")
+		}
 	}
 
 	// Per migration 000013, users.firebase_uid and users.email are
