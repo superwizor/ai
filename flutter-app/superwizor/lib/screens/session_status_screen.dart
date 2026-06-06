@@ -150,6 +150,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     // Update the diagnostic label.
     if (_lastRow?.phase != row.phase ||
         _lastRow?.attemptCount != row.attemptCount ||
+        _lastRow?.uploadProgress != row.uploadProgress ||
         _lastRow?.lastError != row.lastError) {
       if (mounted) setState(() => _lastRow = row);
     } else {
@@ -570,6 +571,35 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                     color: Colors.white.withValues(alpha: 0.7),
                   ),
                 ),
+                // Live upload progress (resumable chunked PUT). Shown for the
+                // whole upload: determinate once we have a fraction (multi-
+                // chunk), indeterminate while the first/only chunk is in flight.
+                if (_lastRow!.phase == UploadPhase.created) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: _lastRow!.uploadProgress > 0
+                          ? _lastRow!.uploadProgress.clamp(0.0, 1.0)
+                          : null,
+                      minHeight: 6,
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                          EuphireColors.ember),
+                    ),
+                  ),
+                  if (_lastRow!.uploadProgress > 0) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      '${(_lastRow!.uploadProgress * 100).clamp(0, 100).toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        fontFamily: 'RobotoMono',
+                        fontSize: 11,
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ],
                 const SizedBox(height: 10),
                 // Reassurance: the row is durable in the upload queue, so
                 // the user can leave without losing the session. This
