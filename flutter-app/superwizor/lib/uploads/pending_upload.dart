@@ -163,6 +163,12 @@ class PendingUpload {
   /// Server-recommended chunk size in bytes; 0 → client default (8 MiB).
   final int resumableChunkSize;
 
+  /// Live upload fraction (0..1) during the PUT. TRANSIENT — held in memory
+  /// by the runner and overlaid onto emitted snapshots for the progress bar;
+  /// deliberately NOT persisted to Hive (resume() recomputes the real offset
+  /// after an app-kill, so a persisted value would be misleading).
+  final double uploadProgress;
+
   // ── Retry bookkeeping ─────────────────────────────────────────
   final int attemptCount;
   final DateTime queuedAt; // UTC
@@ -196,6 +202,7 @@ class PendingUpload {
     this.resumableSessionUri,
     this.resumableExpiresAt,
     this.resumableChunkSize = 0,
+    this.uploadProgress = 0.0,
     this.attemptCount = 0,
     this.lastError,
     this.terminatedAt,
@@ -247,6 +254,7 @@ class PendingUpload {
     String? resumableSessionUri,
     DateTime? resumableExpiresAt,
     int? resumableChunkSize,
+    double? uploadProgress,
     int? attemptCount,
     DateTime? nextAttemptAt,
     String? lastError,
@@ -294,6 +302,7 @@ class PendingUpload {
           ? null
           : (resumableExpiresAt ?? this.resumableExpiresAt),
       resumableChunkSize: resumableChunkSize ?? this.resumableChunkSize,
+      uploadProgress: uploadProgress ?? this.uploadProgress,
       idempotencyKey: idempotencyKey,
       queuedAt: queuedAt,
       nextAttemptAt: nextAttemptAt ?? this.nextAttemptAt,

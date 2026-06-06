@@ -189,6 +189,31 @@ class _UploadRow extends ConsumerWidget {
               color: Colors.white.withValues(alpha: 0.7),
             ),
           ),
+          // Live upload progress (resumable chunked PUT). Only meaningful
+          // while uploading (phase=created) with a known fraction.
+          if (upload.phase == UploadPhase.created &&
+              upload.uploadProgress > 0) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: upload.uploadProgress.clamp(0.0, 1.0),
+                minHeight: 4,
+                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(EuphireColors.ember),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${(upload.uploadProgress * 100).clamp(0, 100).toStringAsFixed(0)}%',
+              style: TextStyle(
+                fontFamily: 'RobotoMono',
+                fontSize: 10,
+                color: Colors.white.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
           if (isQuotaBlocked) ...[
             const SizedBox(height: 6),
             Text(

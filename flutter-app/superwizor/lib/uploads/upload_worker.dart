@@ -92,7 +92,15 @@ class UploadWorker {
 
   /// Advances [u] by one phase. Always returns a new PendingUpload
   /// reflecting the outcome; never throws.
-  Future<PendingUpload> runOne(PendingUpload u) async {
+  ///
+  /// [onUploadProgress] is invoked during the GCS PUT (resumable path) with a
+  /// 0..1 fraction so the runner can surface a live progress bar. Transient —
+  /// the runner holds it in memory, not in Hive (resume() recomputes the
+  /// offset after an app-kill).
+  Future<PendingUpload> runOne(
+    PendingUpload u, {
+    void Function(double)? onUploadProgress,
+  }) async {
     if (u.isTerminal || u.isParked) return u;
 
     debugPrint('[upload-worker] runOne localId=${u.localId} '
@@ -112,7 +120,7 @@ class UploadWorker {
           next = await _doCreate(u);
           break;
         case UploadPhase.created:
-          next = await _doUpload(u);
+          next = await _doUpload(u, onUploadProgress: onUploadProgress);
           break;
         case UploadPhase.uploaded:
         case UploadPhase.converted:
@@ -227,7 +235,10 @@ class UploadWorker {
     }
   }
 
-  Future<PendingUpload> _doUpload(PendingUpload u) async {
+  Future<PendingUpload> _doUpload(
+    PendingUpload u, {
+    void Function(double)? onUploadProgress,
+  }) async {
     if (u.uploadId == null || u.signedUrl == null) {
       // Defensive — phase=created should always have these. If they're
       // gone, drop back to pending so the next tick re-creates.
@@ -237,7 +248,7 @@ class UploadWorker {
       );
     }
     try {
-      await _io.putBytes(u);
+      await _io.putBytes(u, onProgress: onUploadProgress);
       // Option F (2026-05-25): success at PUT is terminal-success
       // from the client's POV. The bucket notification + in-process
       // subscriber on ingestion-svc owns transcode / chunking /
