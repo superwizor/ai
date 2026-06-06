@@ -3,18 +3,26 @@ package storage
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	"cloud.google.com/go/iam/credentials/apiv1/credentialspb"
 	"cloud.google.com/go/storage"
+	"google.golang.org/api/option"
+	httptransport "google.golang.org/api/transport/http"
 )
 
 type Signer struct {
 	client     *storage.Client
 	bucketName string
+	// httpClient attaches the Cloud Run SA token automatically — used for the
+	// raw resumable-initiate POST (storage.Client can't return a session URI).
+	httpClient *http.Client
 }
 
 func NewSigner(ctx context.Context, bucketName string) (*Signer, error) {
@@ -22,7 +30,57 @@ func NewSigner(ctx context.Context, bucketName string) (*Signer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create storage client: %w", err)
 	}
-	return &Signer{client: client, bucketName: bucketName}, nil
+	// Authenticated HTTP client for the raw resumable-initiate POST. Built
+	// once; attaches the runtime SA's OAuth token. Scope = storage read/write
+	// (the ingestion SA already holds storage.objectAdmin on the bucket).
+	httpClient, _, err := httptransport.NewClient(ctx,
+		option.WithScopes("https://www.googleapis.com/auth/devstorage.read_write"))
+	if err != nil {
+		return nil, fmt.Errorf("create authed http client: %w", err)
+	}
+	return &Signer{client: client, bucketName: bucketName, httpClient: httpClient}, nil
+}
+
+// resumableSessionTTL — GCS resumable sessions live ~1 week. We advertise 7
+// days and rely on GCS 404/410 to detect a dead session (expiry is advisory).
+const resumableSessionTTL = 7 * 24 * time.Hour
+
+// StartResumableSession initiates a GCS resumable upload session for objectPath
+// and returns the session URI the client PUTs byte-range chunks to (docs/26).
+// It is a raw authenticated POST to the JSON upload API — the standard
+// storage.Client doesn't expose the session URI. ifGenerationMatch=0 makes GCS
+// create only a brand-new object (no accidental overwrite on retry).
+func (s *Signer) StartResumableSession(ctx context.Context, objectPath, contentType string, estSize int64) (string, time.Time, error) {
+	endpoint := fmt.Sprintf(
+		"https://storage.googleapis.com/upload/storage/v1/b/%s/o?uploadType=resumable&name=%s&ifGenerationMatch=0",
+		url.PathEscape(s.bucketName), url.QueryEscape(objectPath),
+	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, nil)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("resumable: build request: %w", err)
+	}
+	// X-Upload-Content-* describe the object that will be uploaded in the
+	// subsequent chunk PUTs. Content-Length:0 — the initiate itself has no body.
+	req.Header.Set("X-Upload-Content-Type", contentType)
+	if estSize > 0 {
+		req.Header.Set("X-Upload-Content-Length", strconv.FormatInt(estSize, 10))
+	}
+	req.Header.Set("Content-Length", "0")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("resumable: initiate POST: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		return "", time.Time{}, fmt.Errorf("resumable: initiate status %d: %s", resp.StatusCode, string(body))
+	}
+	loc := resp.Header.Get("Location")
+	if loc == "" {
+		return "", time.Time{}, fmt.Errorf("resumable: initiate returned no Location header")
+	}
+	return loc, time.Now().Add(resumableSessionTTL), nil
 }
 
 // signedURLTTLFor picks an expiration window appropriate for an

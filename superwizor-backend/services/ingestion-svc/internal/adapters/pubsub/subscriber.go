@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,10 @@ import (
 type StorageObjectData struct {
 	Bucket string `json:"bucket"`
 	Name   string `json:"name"`
+	// Generation — GCS object generation (monotonic per object version). Sent
+	// as a JSON string in the OBJECT_FINALIZE payload. Used for PR3 finalize
+	// dedup (GCS→Pub/Sub delivery is at-least-once). Empty/0 when absent.
+	Generation int64 `json:"generation,string"`
 }
 
 // AudioPublisher defines the event-publishing capability needed by the subscriber.
@@ -130,7 +135,16 @@ func (s *Subscriber) handleMessage(ctx context.Context, msg *pubsub.Message) {
 		return
 	}
 
-	slog.Info("subscriber: processing upload event", "session_id", sessionID, "path", data.Name)
+	// GCS object generation for PR3 dedup. Prefer the Pub/Sub attribute
+	// (set on direct GCS notifications); fall back to the payload field.
+	generation := data.Generation
+	if g := msg.Attributes["objectGeneration"]; g != "" {
+		if parsed, perr := strconv.ParseInt(g, 10, 64); perr == nil {
+			generation = parsed
+		}
+	}
+
+	slog.Info("subscriber: processing upload event", "session_id", sessionID, "path", data.Name, "generation", generation)
 
 	// 3. Acquire transaction-based advisory lock on session
 	tx, err := s.pool.Begin(ctx)
@@ -154,7 +168,7 @@ func (s *Subscriber) handleMessage(ctx context.Context, msg *pubsub.Message) {
 	var sessionStatus string
 	var upload db.AudioUpload
 	err = tx.QueryRow(ctx, `
-		SELECT s.status, u.id, u.therapist_id, u.patient_file_id, u.session_id, u.bucket_name, u.object_path, u.content_type, u.status
+		SELECT s.status, u.id, u.therapist_id, u.patient_file_id, u.session_id, u.bucket_name, u.object_path, u.content_type, u.status, u.processed_generation
 		FROM sessions s
 		JOIN audio_uploads u ON u.id = s.audio_upload_id
 		WHERE s.id = $1 AND s.deleted_at IS NULL
@@ -168,6 +182,7 @@ func (s *Subscriber) handleMessage(ctx context.Context, msg *pubsub.Message) {
 		&upload.ObjectPath,
 		&upload.ContentType,
 		&upload.Status,
+		&upload.ProcessedGeneration,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -196,6 +211,16 @@ func (s *Subscriber) handleMessage(ctx context.Context, msg *pubsub.Message) {
 			}
 		}
 		slog.Info("subscriber: session already processed, acking", "session_id", sessionID, "status", sessionStatus)
+		msg.Ack()
+		return
+	}
+
+	// PR3 finalize dedup: GCS→Pub/Sub delivery is at-least-once. If we've
+	// already finalized THIS object generation, ack the redelivery without
+	// reprocessing (belt-and-suspenders on top of the status gate above).
+	if generation > 0 && upload.ProcessedGeneration != nil && *upload.ProcessedGeneration == generation {
+		slog.Info("subscriber: object generation already processed, acking duplicate",
+			"session_id", sessionID, "generation", generation)
 		msg.Ack()
 		return
 	}
@@ -345,6 +370,17 @@ func (s *Subscriber) handleMessage(ctx context.Context, msg *pubsub.Message) {
 		slog.Error("subscriber: UpdateSessionStatus failed", "session_id", sessionID, "error", statusErr)
 		msg.Nack()
 		return
+	}
+
+	// PR3: record the finalized generation in the same tx so a redelivered
+	// OBJECT_FINALIZE for this generation is acked at the dedup guard above.
+	if generation > 0 && upload.ID.Valid {
+		if mgErr := txq.MarkGenerationProcessed(ctx, db.MarkGenerationProcessedParams{
+			ID:                  upload.ID,
+			ProcessedGeneration: &generation,
+		}); mgErr != nil {
+			slog.Warn("subscriber: MarkGenerationProcessed failed", "session_id", sessionID, "error", mgErr)
+		}
 	}
 
 	// 10. Commit transaction
