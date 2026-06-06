@@ -213,6 +213,12 @@ class UploadWorker {
         uploadId: res.uploadId,
         signedUrl: res.signedUrl,
         sessionId: newSessionId,
+        // Resumable upload (docs/26): carry the session URI onto the row so
+        // putBytes resumes against it. Empty → null (single-PUT fallback).
+        resumableSessionUri:
+            res.resumableSessionUri.isNotEmpty ? res.resumableSessionUri : null,
+        resumableExpiresAt: res.resumableExpiresAt,
+        resumableChunkSize: res.resumableChunkSize,
         attemptCount: 0,
         clearLastError: true,
       );

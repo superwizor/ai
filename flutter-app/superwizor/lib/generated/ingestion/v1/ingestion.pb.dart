@@ -180,6 +180,9 @@ class CreateAudioUploadResponse extends $pb.GeneratedMessage {
     $core.String? objectPath,
     $core.Iterable<$core.MapEntry<$core.String, $core.String>>? requiredHeaders,
     $core.String? sessionId,
+    $core.String? resumableSessionUri,
+    $1.Timestamp? resumableSessionExpiresAt,
+    $fixnum.Int64? recommendedChunkSizeBytes,
   }) {
     final result = create();
     if (uploadId != null) result.uploadId = uploadId;
@@ -190,6 +193,12 @@ class CreateAudioUploadResponse extends $pb.GeneratedMessage {
     if (requiredHeaders != null)
       result.requiredHeaders.addEntries(requiredHeaders);
     if (sessionId != null) result.sessionId = sessionId;
+    if (resumableSessionUri != null)
+      result.resumableSessionUri = resumableSessionUri;
+    if (resumableSessionExpiresAt != null)
+      result.resumableSessionExpiresAt = resumableSessionExpiresAt;
+    if (recommendedChunkSizeBytes != null)
+      result.recommendedChunkSizeBytes = recommendedChunkSizeBytes;
     return result;
   }
 
@@ -217,6 +226,10 @@ class CreateAudioUploadResponse extends $pb.GeneratedMessage {
         valueFieldType: $pb.PbFieldType.OS,
         packageName: const $pb.PackageName('ingestion.v1'))
     ..aOS(6, _omitFieldNames ? '' : 'sessionId')
+    ..aOS(7, _omitFieldNames ? '' : 'resumableSessionUri')
+    ..aOM<$1.Timestamp>(8, _omitFieldNames ? '' : 'resumableSessionExpiresAt',
+        subBuilder: $1.Timestamp.create)
+    ..aInt64(9, _omitFieldNames ? '' : 'recommendedChunkSizeBytes')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -292,6 +305,43 @@ class CreateAudioUploadResponse extends $pb.GeneratedMessage {
   $core.bool hasSessionId() => $_has(5);
   @$pb.TagNumber(6)
   void clearSessionId() => $_clearField(6);
+
+  /// ── Resumable upload (docs/26 PR1) ──────────────────────────────
+  /// GCS resumable session endpoint the client PUTs byte-range chunks to
+  /// (Content-Range), resuming across network drops instead of restarting
+  /// the whole object. Empty when the server couldn't start a resumable
+  /// session — clients then fall back to signed_url (single PUT).
+  @$pb.TagNumber(7)
+  $core.String get resumableSessionUri => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set resumableSessionUri($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasResumableSessionUri() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearResumableSessionUri() => $_clearField(7);
+
+  /// ~7-day session lifetime (advisory; clients rely on GCS 404/410 to
+  /// detect a dead session and re-create via the same idempotency_key).
+  @$pb.TagNumber(8)
+  $1.Timestamp get resumableSessionExpiresAt => $_getN(7);
+  @$pb.TagNumber(8)
+  set resumableSessionExpiresAt($1.Timestamp value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasResumableSessionExpiresAt() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearResumableSessionExpiresAt() => $_clearField(8);
+  @$pb.TagNumber(8)
+  $1.Timestamp ensureResumableSessionExpiresAt() => $_ensure(7);
+
+  /// Suggested chunk size (multiple of 256 KiB; e.g. 8 MiB). Clients may clamp.
+  @$pb.TagNumber(9)
+  $fixnum.Int64 get recommendedChunkSizeBytes => $_getI64(8);
+  @$pb.TagNumber(9)
+  set recommendedChunkSizeBytes($fixnum.Int64 value) => $_setInt64(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasRecommendedChunkSizeBytes() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearRecommendedChunkSizeBytes() => $_clearField(9);
 }
 
 class GetAudioUploadStatusRequest extends $pb.GeneratedMessage {
