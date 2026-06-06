@@ -552,6 +552,55 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
           quotaBlocked: _lastRow?.phase == UploadPhase.quotaBlocked,
         ),
         const SizedBox(height: 16),
+        // ── Live upload progress (resumable chunked PUT) ──
+        // Shown whenever the bytes are still going up (phase=created),
+        // INDEPENDENT of _resolvedSessionId — under Option E the session_id
+        // arrives at CreateAudioUpload (so the screen "hands off" to the
+        // server listeners) while the actual PUT is still in flight.
+        if (_lastRow?.phase == UploadPhase.created && !_isQuotaBlocked)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: Column(
+              children: [
+                Text(
+                  _lastRow!.uploadProgress > 0
+                      ? 'Przesyłam plik na serwer...'
+                      : 'Przygotowuję wysyłkę...',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: _lastRow!.uploadProgress > 0
+                        ? _lastRow!.uploadProgress.clamp(0.0, 1.0)
+                        : null,
+                    minHeight: 6,
+                    backgroundColor: Colors.white.withValues(alpha: 0.1),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                        EuphireColors.ember),
+                  ),
+                ),
+                if (_lastRow!.uploadProgress > 0) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    '${(_lastRow!.uploadProgress * 100).clamp(0, 100).toStringAsFixed(0)}%',
+                    style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
         // ── Queue-state diagnostic ──
         // Only shown while we're in the upload phase (sessionId hasn't
         // materialised yet) AND not quota-blocked (the stepper step-1
@@ -571,35 +620,9 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                     color: Colors.white.withValues(alpha: 0.7),
                   ),
                 ),
-                // Live upload progress (resumable chunked PUT). Shown for the
-                // whole upload: determinate once we have a fraction (multi-
-                // chunk), indeterminate while the first/only chunk is in flight.
-                if (_lastRow!.phase == UploadPhase.created) ...[
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: _lastRow!.uploadProgress > 0
-                          ? _lastRow!.uploadProgress.clamp(0.0, 1.0)
-                          : null,
-                      minHeight: 6,
-                      backgroundColor: Colors.white.withValues(alpha: 0.1),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          EuphireColors.ember),
-                    ),
-                  ),
-                  if (_lastRow!.uploadProgress > 0) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      '${(_lastRow!.uploadProgress * 100).clamp(0, 100).toStringAsFixed(0)}%',
-                      style: TextStyle(
-                        fontFamily: 'RobotoMono',
-                        fontSize: 11,
-                        color: Colors.white.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
-                ],
+                // (The upload progress bar renders above, under the stepper —
+                // it must show during phase=created regardless of
+                // _resolvedSessionId, which is already set by then.)
                 const SizedBox(height: 10),
                 // Reassurance: the row is durable in the upload queue, so
                 // the user can leave without losing the session. This
