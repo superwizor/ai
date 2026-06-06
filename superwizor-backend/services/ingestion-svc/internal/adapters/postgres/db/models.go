@@ -325,6 +325,7 @@ const (
 	PlanTierPRO     PlanTier = "PRO"
 	PlanTierCLINIC  PlanTier = "CLINIC"
 	PlanTierPATIENT PlanTier = "PATIENT"
+	PlanTierTRIAL   PlanTier = "TRIAL"
 )
 
 func (e *PlanTier) Scan(src interface{}) error {
@@ -497,16 +498,17 @@ func (ns NullReservationStatus) Value() (driver.Value, error) {
 type SessionStatus string
 
 const (
-	SessionStatusPENDINGUPLOAD SessionStatus = "PENDING_UPLOAD"
-	SessionStatusCREATED       SessionStatus = "CREATED"
-	SessionStatusRECORDING     SessionStatus = "RECORDING"
-	SessionStatusUPLOADING     SessionStatus = "UPLOADING"
-	SessionStatusTRANSCRIBING  SessionStatus = "TRANSCRIBING"
-	SessionStatusMERGING       SessionStatus = "MERGING"
-	SessionStatusANALYZING     SessionStatus = "ANALYZING"
-	SessionStatusCOMPLETED     SessionStatus = "COMPLETED"
-	SessionStatusFAILED        SessionStatus = "FAILED"
-	SessionStatusCANCELED      SessionStatus = "CANCELED"
+	SessionStatusPENDINGUPLOAD   SessionStatus = "PENDING_UPLOAD"
+	SessionStatusCREATED         SessionStatus = "CREATED"
+	SessionStatusRECORDING       SessionStatus = "RECORDING"
+	SessionStatusUPLOADING       SessionStatus = "UPLOADING"
+	SessionStatusTRANSCRIBING    SessionStatus = "TRANSCRIBING"
+	SessionStatusMERGING         SessionStatus = "MERGING"
+	SessionStatusANALYZING       SessionStatus = "ANALYZING"
+	SessionStatusCOMPLETED       SessionStatus = "COMPLETED"
+	SessionStatusFAILED          SessionStatus = "FAILED"
+	SessionStatusCANCELED        SessionStatus = "CANCELED"
+	SessionStatusCANCELLEDBYUSER SessionStatus = "CANCELLED_BY_USER"
 )
 
 func (e *SessionStatus) Scan(src interface{}) error {
@@ -638,8 +640,10 @@ func (ns NullUploadStatus) Value() (driver.Value, error) {
 type UserRole string
 
 const (
-	UserRoleTHERAPIST UserRole = "THERAPIST"
-	UserRolePATIENT   UserRole = "PATIENT"
+	UserRoleTHERAPIST       UserRole = "THERAPIST"
+	UserRolePATIENT         UserRole = "PATIENT"
+	UserRoleORGADMIN        UserRole = "ORG_ADMIN"
+	UserRoleSUPERWIZORADMIN UserRole = "SUPERWIZOR_ADMIN"
 )
 
 func (e *UserRole) Scan(src interface{}) error {
@@ -721,11 +725,14 @@ type AudioUpload struct {
 	UploadCompletedAt pgtype.Timestamptz
 	ExpiresAt         pgtype.Timestamptz
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out.
-	IdempotencyKey   *string
-	ClientAppVersion *string
-	ClientPlatform   *string
-	ErrorMessage     *string
-	CreatedAt        pgtype.Timestamptz
+	IdempotencyKey            *string
+	ClientAppVersion          *string
+	ClientPlatform            *string
+	ErrorMessage              *string
+	CreatedAt                 pgtype.Timestamptz
+	ResumableSessionUri       *string
+	ResumableSessionExpiresAt pgtype.Timestamptz
+	ProcessedGeneration       *int64
 }
 
 type AuditEvent struct {
@@ -739,6 +746,15 @@ type AuditEvent struct {
 	IpAddress      *netip.Addr
 	UserAgent      *string
 	OccurredAt     pgtype.Timestamptz
+	// Operator-supplied rationale for admin mutations (SUPERWIZOR_ADMIN). NULL for non-admin events. Handler-level CHECK requires >=10 chars when actor role is SUPERWIZOR_ADMIN.
+	Reason *string
+}
+
+type EmailTemplate struct {
+	TemplateKey string
+	Locale      string
+	Content     []byte
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type FcmToken struct {
@@ -775,6 +791,18 @@ type HitopMeasurement struct {
 	EvidenceCiphertext   []byte
 	EvidenceEncryptedDek []byte
 	MeasuredAt           pgtype.Timestamptz
+}
+
+type Invitation struct {
+	ID             pgtype.UUID
+	OrganizationID pgtype.UUID
+	InvitedByUser  pgtype.UUID
+	Email          string
+	TokenHash      []byte
+	ExpiresAt      pgtype.Timestamptz
+	AcceptedAt     pgtype.Timestamptz
+	AcceptedUserID pgtype.UUID
+	CreatedAt      pgtype.Timestamptz
 }
 
 type Modality struct {
@@ -818,20 +846,6 @@ type Organization struct {
 	DeletedAt             pgtype.Timestamptz
 }
 
-type OutboxEvent struct {
-	ID             pgtype.UUID
-	AggregateType  string
-	EventType      string
-	AggregateID    pgtype.UUID
-	OrganizationID pgtype.UUID
-	Payload        []byte
-	Processed      bool
-	PublishedAt    pgtype.Timestamptz
-	Attempts       int32
-	LastError      *string
-	CreatedAt      pgtype.Timestamptz
-}
-
 type PatientFile struct {
 	ID                    pgtype.UUID
 	TherapistID           pgtype.UUID
@@ -851,6 +865,24 @@ type PatientFile struct {
 	DeletedAt             pgtype.Timestamptz
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out (legacy clients).
 	IdempotencyKey *string
+	PatientEmail   *string
+}
+
+type PatientNote struct {
+	ID                pgtype.UUID
+	PatientFileID     pgtype.UUID
+	TherapistID       pgtype.UUID
+	Kind              string
+	SourceSessionID   pgtype.UUID
+	TitleCiphertext   []byte
+	TitleEncryptedDek []byte
+	TextCiphertext    []byte
+	TextEncryptedDek  []byte
+	SentToPatientAt   pgtype.Timestamptz
+	SentToEmail       *string
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+	DeletedAt         pgtype.Timestamptz
 }
 
 type PaymentEvent struct {

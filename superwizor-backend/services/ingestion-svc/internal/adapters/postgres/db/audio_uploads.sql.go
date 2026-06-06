@@ -19,7 +19,7 @@ UPDATE audio_uploads SET
     file_size_bytes = $3,
     chunk_count = $4
 WHERE id = $1
-RETURNING id, therapist_id, patient_file_id, session_id, bucket_name, object_path, content_type, file_size_bytes, duration_seconds, sample_rate_hz, chunk_count, status, upload_started_at, upload_completed_at, expires_at, idempotency_key, client_app_version, client_platform, error_message, created_at
+RETURNING id, therapist_id, patient_file_id, session_id, bucket_name, object_path, content_type, file_size_bytes, duration_seconds, sample_rate_hz, chunk_count, status, upload_started_at, upload_completed_at, expires_at, idempotency_key, client_app_version, client_platform, error_message, created_at, resumable_session_uri, resumable_session_expires_at, processed_generation
 `
 
 type CompleteAudioUploadParams struct {
@@ -58,6 +58,9 @@ func (q *Queries) CompleteAudioUpload(ctx context.Context, arg CompleteAudioUplo
 		&i.ClientPlatform,
 		&i.ErrorMessage,
 		&i.CreatedAt,
+		&i.ResumableSessionUri,
+		&i.ResumableSessionExpiresAt,
+		&i.ProcessedGeneration,
 	)
 	return i, err
 }
@@ -123,7 +126,7 @@ INSERT INTO audio_uploads (
     therapist_id, patient_file_id, session_id, bucket_name, object_path,
     content_type, idempotency_key, client_app_version, client_platform
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, therapist_id, patient_file_id, session_id, bucket_name, object_path, content_type, file_size_bytes, duration_seconds, sample_rate_hz, chunk_count, status, upload_started_at, upload_completed_at, expires_at, idempotency_key, client_app_version, client_platform, error_message, created_at
+RETURNING id, therapist_id, patient_file_id, session_id, bucket_name, object_path, content_type, file_size_bytes, duration_seconds, sample_rate_hz, chunk_count, status, upload_started_at, upload_completed_at, expires_at, idempotency_key, client_app_version, client_platform, error_message, created_at, resumable_session_uri, resumable_session_expires_at, processed_generation
 `
 
 type CreateAudioUploadParams struct {
@@ -178,6 +181,9 @@ func (q *Queries) CreateAudioUpload(ctx context.Context, arg CreateAudioUploadPa
 		&i.ClientPlatform,
 		&i.ErrorMessage,
 		&i.CreatedAt,
+		&i.ResumableSessionUri,
+		&i.ResumableSessionExpiresAt,
+		&i.ProcessedGeneration,
 	)
 	return i, err
 }
@@ -196,7 +202,7 @@ func (q *Queries) DeleteAudioChunksByUpload(ctx context.Context, audioUploadID p
 }
 
 const getAudioUpload = `-- name: GetAudioUpload :one
-SELECT id, therapist_id, patient_file_id, session_id, bucket_name, object_path, content_type, file_size_bytes, duration_seconds, sample_rate_hz, chunk_count, status, upload_started_at, upload_completed_at, expires_at, idempotency_key, client_app_version, client_platform, error_message, created_at FROM audio_uploads WHERE id = $1
+SELECT id, therapist_id, patient_file_id, session_id, bucket_name, object_path, content_type, file_size_bytes, duration_seconds, sample_rate_hz, chunk_count, status, upload_started_at, upload_completed_at, expires_at, idempotency_key, client_app_version, client_platform, error_message, created_at, resumable_session_uri, resumable_session_expires_at, processed_generation FROM audio_uploads WHERE id = $1
 `
 
 func (q *Queries) GetAudioUpload(ctx context.Context, id pgtype.UUID) (AudioUpload, error) {
@@ -223,12 +229,15 @@ func (q *Queries) GetAudioUpload(ctx context.Context, id pgtype.UUID) (AudioUplo
 		&i.ClientPlatform,
 		&i.ErrorMessage,
 		&i.CreatedAt,
+		&i.ResumableSessionUri,
+		&i.ResumableSessionExpiresAt,
+		&i.ProcessedGeneration,
 	)
 	return i, err
 }
 
 const getAudioUploadByIdempotency = `-- name: GetAudioUploadByIdempotency :one
-SELECT id, therapist_id, patient_file_id, session_id, bucket_name, object_path, content_type, file_size_bytes, duration_seconds, sample_rate_hz, chunk_count, status, upload_started_at, upload_completed_at, expires_at, idempotency_key, client_app_version, client_platform, error_message, created_at FROM audio_uploads
+SELECT id, therapist_id, patient_file_id, session_id, bucket_name, object_path, content_type, file_size_bytes, duration_seconds, sample_rate_hz, chunk_count, status, upload_started_at, upload_completed_at, expires_at, idempotency_key, client_app_version, client_platform, error_message, created_at, resumable_session_uri, resumable_session_expires_at, processed_generation FROM audio_uploads
 WHERE idempotency_key = $1 AND therapist_id = $2
 `
 
@@ -261,6 +270,9 @@ func (q *Queries) GetAudioUploadByIdempotency(ctx context.Context, arg GetAudioU
 		&i.ClientPlatform,
 		&i.ErrorMessage,
 		&i.CreatedAt,
+		&i.ResumableSessionUri,
+		&i.ResumableSessionExpiresAt,
+		&i.ProcessedGeneration,
 	)
 	return i, err
 }
@@ -279,13 +291,48 @@ func (q *Queries) MarkAudioUploadFailed(ctx context.Context, arg MarkAudioUpload
 	return err
 }
 
+const markGenerationProcessed = `-- name: MarkGenerationProcessed :exec
+UPDATE audio_uploads SET processed_generation = $2 WHERE id = $1
+`
+
+type MarkGenerationProcessedParams struct {
+	ID                  pgtype.UUID
+	ProcessedGeneration *int64
+}
+
+// docs/26 PR3: record the GCS object generation we've finalized so a
+// redelivered (at-least-once) OBJECT_FINALIZE for the same generation is a no-op.
+func (q *Queries) MarkGenerationProcessed(ctx context.Context, arg MarkGenerationProcessedParams) error {
+	_, err := q.db.Exec(ctx, markGenerationProcessed, arg.ID, arg.ProcessedGeneration)
+	return err
+}
+
+const setResumableSession = `-- name: SetResumableSession :exec
+UPDATE audio_uploads
+SET resumable_session_uri = $2, resumable_session_expires_at = $3
+WHERE id = $1
+`
+
+type SetResumableSessionParams struct {
+	ID                        pgtype.UUID
+	ResumableSessionUri       *string
+	ResumableSessionExpiresAt pgtype.Timestamptz
+}
+
+// docs/26 PR1: persist the GCS resumable session URI + expiry on the
+// audio_uploads row at CreateAudioUpload time so retries reuse it.
+func (q *Queries) SetResumableSession(ctx context.Context, arg SetResumableSessionParams) error {
+	_, err := q.db.Exec(ctx, setResumableSession, arg.ID, arg.ResumableSessionUri, arg.ResumableSessionExpiresAt)
+	return err
+}
+
 const updateAudioUploadAfterConversion = `-- name: UpdateAudioUploadAfterConversion :one
 UPDATE audio_uploads SET
     object_path  = $2,
     content_type = $3,
     bucket_name  = $4
 WHERE id = $1
-RETURNING id, therapist_id, patient_file_id, session_id, bucket_name, object_path, content_type, file_size_bytes, duration_seconds, sample_rate_hz, chunk_count, status, upload_started_at, upload_completed_at, expires_at, idempotency_key, client_app_version, client_platform, error_message, created_at
+RETURNING id, therapist_id, patient_file_id, session_id, bucket_name, object_path, content_type, file_size_bytes, duration_seconds, sample_rate_hz, chunk_count, status, upload_started_at, upload_completed_at, expires_at, idempotency_key, client_app_version, client_platform, error_message, created_at, resumable_session_uri, resumable_session_expires_at, processed_generation
 `
 
 type UpdateAudioUploadAfterConversionParams struct {
@@ -330,6 +377,9 @@ func (q *Queries) UpdateAudioUploadAfterConversion(ctx context.Context, arg Upda
 		&i.ClientPlatform,
 		&i.ErrorMessage,
 		&i.CreatedAt,
+		&i.ResumableSessionUri,
+		&i.ResumableSessionExpiresAt,
+		&i.ProcessedGeneration,
 	)
 	return i, err
 }

@@ -40,6 +40,9 @@ class _FakeIo implements UploadIo {
   @override
   Future<void> putBytes(PendingUpload u,
       {void Function(double)? onProgress}) async {
+    // Simulate a mid-upload progress tick (resumable chunked PUT) so tests
+    // can assert the runner overlays it onto the emitted snapshot.
+    onProgress?.call(0.5);
     // Option F (2026-05-25): PUT-success is terminal-success now.
     // The legacy completeCalls counter doubles as "we reached
     // terminal-success" for tests that previously bumped it.
@@ -141,6 +144,38 @@ void main() {
     expect(io.createCalls, 1);
     expect(io.putCalls, 1);
     expect(io.completeCalls, 1);
+
+    await runner.dispose();
+  });
+
+  test('upload progress is overlaid onto emitted snapshots during the PUT',
+      () async {
+    final io = _FakeIo();
+    final queue = UploadQueue(hiveBox: rawBox);
+    final runner = UploadQueueRunner(
+      queue: queue,
+      worker: UploadWorker(io: io, backoff: (_) => Duration.zero),
+      periodicInterval: const Duration(hours: 1),
+      connectivityStream: const Stream.empty(),
+      hasNetwork: () async => true,
+    );
+    await runner.start();
+
+    final progressSeen = <double>[];
+    final sub = runner.snapshots.listen((rows) {
+      for (final r in rows) {
+        if (r.uploadProgress > 0) progressSeen.add(r.uploadProgress);
+      }
+    });
+
+    await runner.enqueueAndKick(_seed('a'));
+    await Future<void>.delayed(Duration.zero);
+    await sub.cancel();
+
+    expect(progressSeen, contains(0.5),
+        reason: 'putBytes onProgress(0.5) must surface on a snapshot row');
+    // Transient — never persisted; cleared once the row leaves phase=created.
+    expect(queue.getById('a')!.uploadProgress, 0.0);
 
     await runner.dispose();
   });

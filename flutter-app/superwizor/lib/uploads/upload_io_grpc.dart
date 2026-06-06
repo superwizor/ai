@@ -256,6 +256,13 @@ class GrpcUploadIo implements UploadIo {
       // revisions, which the worker treats as "not known yet"
       // (existing semantics preserved for the migration window).
       sessionId: res.sessionId,
+      // Resumable upload (docs/26). Empty when the server (or a legacy
+      // revision) didn't issue a resumable session → single-PUT fallback.
+      resumableSessionUri: res.resumableSessionUri,
+      resumableExpiresAt: res.hasResumableSessionExpiresAt()
+          ? res.resumableSessionExpiresAt.toDateTime()
+          : null,
+      resumableChunkSize: res.recommendedChunkSizeBytes.toInt(),
     );
   }
 
@@ -267,9 +274,11 @@ class GrpcUploadIo implements UploadIo {
     void Function(double)? onProgress,
   }) async {
     final signedUrl = u.signedUrl;
-    if (signedUrl == null) {
+    final resumableUri = u.resumableSessionUri;
+    final hasResumable = resumableUri != null && resumableUri.isNotEmpty;
+    if (signedUrl == null && !hasResumable) {
       // The worker guards against this, but defensive bytes.
-      throw StateError('GrpcUploadIo.putBytes: signedUrl is null');
+      throw StateError('GrpcUploadIo.putBytes: no upload target');
     }
 
     final File file;
@@ -288,8 +297,13 @@ class GrpcUploadIo implements UploadIo {
     }
 
     try {
+      if (hasResumable) {
+        await _putResumable(file, resumableUri, u, onProgress);
+        return;
+      }
+      // ── Legacy single-PUT path (no resumable session) ──
       final bytes = await file.readAsBytes();
-      debugPrint('[upload-io] PUT ${bytes.length}B → ${_redact(signedUrl)}');
+      debugPrint('[upload-io] PUT ${bytes.length}B → ${_redact(signedUrl!)}');
       final response = await _http.put(
         Uri.parse(signedUrl),
         headers: {
@@ -316,6 +330,110 @@ class GrpcUploadIo implements UploadIo {
         }
       }
     }
+  }
+
+  // ── Resumable upload (docs/26) ─────────────────────────────────
+  //
+  // GCS resumable protocol: PUT byte-range chunks to the session URI.
+  // The GCS-acked offset is queried live (resume()), so a single putBytes
+  // call uploads as many chunks as it can; on any failure it throws
+  // (retryable) and the worker's next attempt resume()s from the offset
+  // GCS holds — surviving network drops AND app-kill without restarting
+  // from byte 0 and without persisting the offset locally.
+  Future<void> _putResumable(
+    File file,
+    String sessionUri,
+    PendingUpload u,
+    void Function(double)? onProgress,
+  ) async {
+    final total = await file.length();
+    if (total == 0) throw StateError('resumable: source file is empty');
+
+    // Chunk size must be a multiple of 256 KiB (GCS requirement for
+    // non-final chunks). Default 8 MiB.
+    const quantum = 256 * 1024;
+    final requested = u.resumableChunkSize > 0
+        ? u.resumableChunkSize
+        : 8 * 1024 * 1024;
+    final chunkSize = (requested ~/ quantum) * quantum > 0
+        ? (requested ~/ quantum) * quantum
+        : 8 * 1024 * 1024;
+
+    var offset = await _resumableQueryOffset(sessionUri, total);
+    if (offset >= total) {
+      onProgress?.call(1.0); // GCS already has the whole object
+      return;
+    }
+
+    final raf = await file.open(mode: FileMode.read);
+    try {
+      while (offset < total) {
+        final end = (offset + chunkSize < total) ? offset + chunkSize : total;
+        final len = end - offset;
+        await raf.setPosition(offset);
+        final body = await raf.read(len);
+        final resp = await _http.put(
+          Uri.parse(sessionUri),
+          headers: {
+            'Content-Length': '$len',
+            'Content-Range': 'bytes $offset-${end - 1}/$total',
+          },
+          body: body,
+        );
+        if (resp.statusCode == 200 || resp.statusCode == 201) {
+          onProgress?.call(1.0); // final chunk → object finalized exactly once
+          return;
+        }
+        if (resp.statusCode == 308) {
+          offset = _parseResumeOffset(resp.headers, fallback: end);
+          onProgress?.call(offset / total);
+          continue;
+        }
+        if (resp.statusCode == 404 ||
+            resp.statusCode == 410 ||
+            resp.statusCode == 403) {
+          // Session dead/expired — surface as 403 so the worker's
+          // signedUrl-expired path drops back to pending and re-creates
+          // (CreateAudioUpload re-issues a fresh resumable session).
+          throw httpStatusError(403, 'resumable session gone: ${resp.statusCode}');
+        }
+        // 5xx / other — retryable. Throw; the next attempt resume()s.
+        throw httpStatusError(resp.statusCode, resp.body);
+      }
+    } finally {
+      await raf.close();
+    }
+  }
+
+  /// Queries the GCS resumable session for how many bytes it already holds.
+  /// `Content-Range: bytes */total` with an empty body. Returns the next
+  /// byte offset to send (0 if nothing held, total if already complete).
+  Future<int> _resumableQueryOffset(String sessionUri, int total) async {
+    final resp = await _http.put(
+      Uri.parse(sessionUri),
+      headers: {'Content-Range': 'bytes */$total', 'Content-Length': '0'},
+      body: const <int>[],
+    );
+    if (resp.statusCode == 200 || resp.statusCode == 201) return total;
+    if (resp.statusCode == 308) {
+      return _parseResumeOffset(resp.headers, fallback: 0);
+    }
+    if (resp.statusCode == 404 ||
+        resp.statusCode == 410 ||
+        resp.statusCode == 403) {
+      throw httpStatusError(403, 'resumable session gone: ${resp.statusCode}');
+    }
+    throw httpStatusError(resp.statusCode, resp.body);
+  }
+
+  /// Parses GCS's `Range: bytes=0-K` (bytes 0..K inclusive are held) into the
+  /// next offset to send (K+1). Returns [fallback] when no Range header.
+  int _parseResumeOffset(Map<String, String> headers, {required int fallback}) {
+    final range = headers['range'] ?? headers['Range'];
+    if (range == null) return fallback;
+    final m = RegExp(r'bytes=0-(\d+)').firstMatch(range);
+    if (m == null) return fallback;
+    return int.parse(m.group(1)!) + 1;
   }
 
   // ── step 3 ────────────────────────────────────────────────────

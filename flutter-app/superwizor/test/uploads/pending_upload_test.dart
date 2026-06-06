@@ -24,6 +24,9 @@ PendingUpload _sample() => PendingUpload(
       uploadId: 'au-1',
       signedUrl: 'https://example.com/signed',
       sessionId: null,
+      resumableSessionUri: 'https://storage.googleapis.com/upload/...session',
+      resumableExpiresAt: DateTime.utc(2026, 5, 27, 19, 0, 0),
+      resumableChunkSize: 8 * 1024 * 1024,
       attemptCount: 2,
       queuedAt: DateTime.utc(2026, 5, 20, 19, 0, 0),
       nextAttemptAt: DateTime.utc(2026, 5, 20, 19, 5, 0),
@@ -48,7 +51,12 @@ void main() {
       expect(decoded.queuedAt.toUtc(), original.queuedAt.toUtc());
       expect(decoded.nextAttemptAt.toUtc(), original.nextAttemptAt.toUtc());
       expect(decoded.lastError, 'gRPC UNAVAILABLE');
-      expect((jsonDecode(encoded) as Map).length, 21,
+      // Resumable upload (docs/26) fields round-trip.
+      expect(decoded.resumableSessionUri, original.resumableSessionUri);
+      expect(decoded.resumableExpiresAt?.toUtc(),
+          original.resumableExpiresAt?.toUtc());
+      expect(decoded.resumableChunkSize, 8 * 1024 * 1024);
+      expect((jsonDecode(encoded) as Map).length, 24,
           reason:
               'field-count guard — add toJson/fromJson coverage for new fields');
     });
