@@ -51,6 +51,16 @@ Object commits only on the final chunk ⇒ exactly one `OBJECT_FINALIZE` (also f
 **ingestion-svc + proto + migration**
 - [ ] **Migration** `audio_uploads`: `+ resumable_session_uri TEXT`, `+ resumable_session_expires_at TIMESTAMPTZ` (nullable). Add sqlc query to read/write them.
 - [ ] **`signer.go`**: `StartResumableSession(ctx, objectPath, contentType string, estSize int64) (uri string, expires time.Time, err error)` — POST to the resumable endpoint, `ifGenerationMatch=0`, set `X-Upload-Content-Type`, optional `X-Upload-Content-Length`; parse `Location`.
+  - **Auth gotcha — don't hand-roll OAuth.** The standard `storage.Client` can't hand you a resumable *session URI*, so this is a **raw HTTP POST** to `https://storage.googleapis.com/upload/storage/v1/b/<bucket>/o?uploadType=resumable&name=<obj>`. That request MUST go through a client that attaches the Cloud Run service-account token. Build one with `google.golang.org/api/transport/http` (once, at startup — not per request):
+    ```go
+    import (
+        "google.golang.org/api/option"
+        httptransport "google.golang.org/api/transport/http"
+    )
+    client, _, err := httptransport.NewClient(ctx,
+        option.WithScopes("https://www.googleapis.com/auth/devstorage.read_write"))
+    ```
+    The SA already has `storage.objectAdmin` on the bucket (`service-accounts.tf` ingestion bindings), so the `devstorage.read_write` scope is sufficient. Never log the returned session URI (bearer capability).
 - [ ] **`CreateAudioUpload` handler**: after the existing reserve + row create/lookup, if the row has a non-expired `resumable_session_uri` reuse it; else `StartResumableSession` and persist URI+expiry. Return both legacy `signed_url` (unchanged) **and** the new fields.
 - [ ] **proto** `CreateAudioUploadResponse +=`:
   ```proto
@@ -59,6 +69,24 @@ Object commits only on the final chunk ⇒ exactly one `OBJECT_FINALIZE` (also f
   int64  recommended_chunk_size_bytes = 9;   // e.g. 8 MiB (multiple of 256 KiB)
   ```
   (additive — old clients ignore them). Regen Go (CI `buf generate`) + commit `gen/ts`.
+- [ ] **GCS bucket CORS — web future-proofing (optional for the mobile rollout; required before the web path).** In `infra/modules/audio-storage/main.tf` the `audio_uploads` `cors{}` currently exposes only `["Content-Type", "x-goog-content-length-range"]`. The mobile app (`dart:io HttpClient`) ignores CORS, but a *browser* doing resumable chunks must be allowed to **send** `Content-Range`/`x-goog-resumable` and **read** `Range`/`Location` off the `308 Resume Incomplete`. In GCS, `response_header` drives BOTH `Access-Control-Allow-Headers` and `Access-Control-Expose-Headers`, so extend it:
+  ```hcl
+  cors {
+    # NB: also tighten origin "*" → the real web origins (see docs/agents/11).
+    origin          = [...]
+    method          = ["PUT", "OPTIONS"]   # server initiates; browser only PUTs chunks
+    response_header = [
+      "Content-Type",
+      "x-goog-content-length-range",
+      "Content-Range",     # client → GCS (chunk range)
+      "Range",             # read from 308 Resume Incomplete
+      "Location",          # read the resumable session URI
+      "x-goog-resumable",
+    ]
+    max_age_seconds = 3600
+  }
+  ```
+  Do it in PR1 (cheap, no mobile impact) or defer to the web PR — but don't forget it, or the eventual web resumable path silently 403s on preflight.
 - [ ] **Go e2e** (`tests/e2e`): initiate → PUT 2 chunks (expect 308 then 200) → force a resume query mid-way → assert single object + single finalize.
 - **Risk:** none to existing clients (additive). Deployable independently of the client.
 
@@ -78,6 +106,7 @@ Object commits only on the final chunk ⇒ exactly one `OBJECT_FINALIZE` (also f
 
 ### PR 3 — Server: finalize dedup (independent hardening)
 - [ ] Ingestion subscriber dedups `OBJECT_FINALIZE` by object **generation** (store processed generation on `audio_uploads`; ack stale/duplicate generations without republishing). Defense-in-depth even with resumable.
+- **Why this is still needed with resumable:** the resumable protocol guarantees the object is *created* exactly once (only the final chunk finalizes), but **GCS→Pub/Sub event delivery is "at least once"** — the same `OBJECT_FINALIZE` can be delivered multiple times. Tracking the object `generation` (monotonic per object version) in `audio_uploads` is the robust idempotency guarantee: process a generation once, ack any repeat. This makes the pipeline correct regardless of redelivery, and also covers the legacy single-PUT path during rollout.
 
 ### PR 4 — Verify + clean up
 - [ ] Real-device test: long recording over a **throttled/dropping** network; confirm resume across drops, **one** finalize, accurate progress bar, app-kill/relaunch resume.
