@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper do uruchamiania testów strony WWW lokalnie
+exec "$(dirname "$0")/7_odpal_testy_www_lokalnie.sh" "$@"
