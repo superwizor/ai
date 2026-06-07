@@ -39,7 +39,7 @@ echo "🗄️ DSN bazy: ${LOCAL_DSN}"
 
 # 1. Sprawdzenie połączenia z bazą danych
 echo -n "🔍 Sprawdzanie połączenia z bazą danych... "
-if ! pg_isready -h "${DB_HOST}" -p "${DB_PORT}" -q; then
+if ! nc -z -w 1 "${DB_HOST}" "${DB_PORT}" >/dev/null 2>&1; then
   echo -e "\n❌ Błąd: Lokalna baza danych PostgreSQL na porcie ${DB_PORT} nie jest aktywna!"
   echo "Upewnij się, że baza danych działa (np. w Dockerze) i spróbuj ponownie."
   exit 1
