@@ -56,5 +56,17 @@ tf-plan:  ## Plan Terraform changes
 tf-apply:  ## Apply Terraform changes
 	cd infra/environments/$(ENV) && terragrunt apply
 
+run-local: ## Start all backend services locally in the background
+	./scripts/run_local_backend.sh
+
+test-e2e-local: ## Run E2E tests against local backend services
+	@echo "Running E2E tests against localhost..."
+	cd tests && \
+	IDENTITY_SVC_URL="http://127.0.0.1:8080" \
+	CLINICAL_SVC_URL="http://127.0.0.1:8082" \
+	INGESTION_SVC_URL="http://127.0.0.1:8083" \
+	go test -tags=e2e -timeout=5m -v ./e2e/...
+
 clean:  ## Clean build artifacts
 	rm -rf bin/ gen/ cov.out
+
