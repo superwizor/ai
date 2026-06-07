@@ -11,7 +11,8 @@ export function Hero() {
   const isPl = locale === "pl";
 
   const [clickCount, setClickCount] = useState(0);
-  const [tooltipText, setTooltipText] = useState("");
+  const [tooltipText, setTooltipText] = useState<React.ReactNode>("");
+  const [tooltipKey, setTooltipKey] = useState("");
   const [isFinalTooltip, setIsFinalTooltip] = useState(false);
 
   const handleFabClick = () => {
@@ -24,42 +25,51 @@ export function Hero() {
           ? "Hej! Przycisk działa, ale pacjenta z powietrza nie stworzę... :)" 
           : "Hey! The button works, but I can't materialize a patient out of thin air... :)"
       );
+      setTooltipKey("click3");
     } else if (nextCount === 7) {
       setTooltipText(
         isPl 
-          ? "Poczuj oparcie w fotelu. Weź głęboki oddech. Rozluźnij mięśnie... :)" 
-          : "Feel the support of your chair. Take a deep breath. Relax your muscles... :)"
+          ? "Poczuj oparcie w fotelu. Weź głęboki oddech. Rozluźnij mięśnie..." 
+          : "Feel the support of your chair. Take a deep breath. Relax your muscles..."
       );
+      setTooltipKey("click7");
     } else if (nextCount === 12) {
       setTooltipText(
         isPl 
           ? "Dwanaście kliknięć... To brzmi jak doskonały temat na Twoją najbliższą superwizję. :)" 
           : "Twelve clicks... That sounds like a perfect topic for your next supervision. :)"
       );
+      setTooltipKey("click12");
     } else if (nextCount === 18) {
       setTooltipText(
         isPl 
           ? "A może chcesz o tym porozmawiać? Moja stawka to 200 zł za godzinę. :P" 
           : "Would you like to talk about it? My rate is $50/hour. :P"
       );
+      setTooltipKey("click18");
     } else if (nextCount === 25) {
       setTooltipText(
         isPl 
-          ? "Czy to klikanie to próba ucieczki od pisania dzisiejszych notatek z sesji? :)" 
-          : "Is this clicking an attempt to escape writing today's session notes? :)"
+          ? "Czy to klikanie to próba ucieczki od pisania dzisiejszych notatek z sesji? ^^" 
+          : "Is this clicking an attempt to escape writing today's session notes? ^^"
       );
+      setTooltipKey("click25");
     } else if (nextCount === 33) {
       setTooltipText(
         isPl 
-          ? "Twoja diagnoza na dziś: zespół chronicznego klikania. :)" 
-          : "Your diagnosis for today: chronic clicking syndrome. :)"
+          ? "Twoja diagnoza na dziś: zespół chronicznego klikacza :D" 
+          : "Your diagnosis for today: chronic clicker syndrome :D"
       );
+      setTooltipKey("click33");
     } else if (nextCount === 42) {
       setTooltipText(
-        isPl 
-          ? "To już ostatnia wiadomość od zespołu deweloperów. Gratulujemy wytrwałości i życzymy dobrego dnia! ✨ 🍀 🌿" 
-          : "This is the final message from the dev team. Kudos for your persistence and have a great day! ✨ 🍀 🌿"
+        isPl ? (
+          <><strong>To już ostatnia wiadomość od naszego zespołu.</strong> Gratulujemy wytrwałości i życzymy dobrego dnia! ✨ 🍀 🌿</>
+        ) : (
+          <><strong>This is the final message from our team.</strong> Kudos for your persistence and have a great day! ✨ 🍀 🌿</>
+        )
       );
+      setTooltipKey("click42");
       setIsFinalTooltip(true);
     }
   };
@@ -69,6 +79,7 @@ export function Hero() {
       const timer = setTimeout(() => {
         setClickCount(0);
         setTooltipText("");
+        setTooltipKey("");
         setIsFinalTooltip(false);
       }, 12500);
       return () => clearTimeout(timer);
@@ -404,7 +415,7 @@ export function Hero() {
                       {/* FAB button */}
                       {tooltipText && (
                         <div 
-                          key={tooltipText}
+                          key={tooltipKey}
                           className={`absolute bottom-[68px] right-4 text-[11px] sm:text-xs font-semibold py-2.5 pl-3.5 pr-8 rounded-xl shadow-xl z-30 w-[190px] sm:w-[220px] text-left animate-tooltip-pop select-none transition-colors duration-300 ${
                             isFinalTooltip 
                               ? "bg-white text-[#10211d] border-2 border-[#2f6b62]" 
@@ -416,6 +427,7 @@ export function Hero() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setTooltipText("");
+                              setTooltipKey("");
                               setClickCount(0);
                               setIsFinalTooltip(false);
                             }}
