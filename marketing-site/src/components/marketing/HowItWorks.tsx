@@ -18,6 +18,7 @@ export function HowItWorks() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [maxProgress, setMaxProgress] = useState(0);
+  const [activeSteps, setActiveSteps] = useState([false, false, false]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -26,13 +27,14 @@ export function HowItWorks() {
 
       const rect = container.getBoundingClientRect();
       const windowHeight = window.innerHeight;
-
-      // The eye-level trigger point: 60% of the viewport height
-      const triggerPoint = windowHeight * 0.60;
+      const isMobile = window.innerWidth < 1024;
 
       // Calculate progress of the timeline connector line
       const containerTop = rect.top;
       const containerHeight = rect.height;
+
+      // The eye-level trigger point: 60% of the viewport height
+      const triggerPoint = windowHeight * 0.60;
 
       const scrolledDistance = triggerPoint - containerTop;
       let pct = (scrolledDistance / containerHeight) * 100;
@@ -40,6 +42,32 @@ export function HowItWorks() {
 
       // Lock progress to go forward only (one-way progress)
       setMaxProgress((prevMax) => Math.max(prevMax, pct));
+
+      // Sync step activation
+      setActiveSteps((prev) => {
+        if (!isMobile) {
+          // Desktop: Sync with the progress line segments
+          return [
+            pct >= 2 || prev[0],
+            pct >= 50 || prev[1],
+            pct >= 95 || prev[2],
+          ];
+        } else {
+          // Mobile: Trigger individually when they enter 1/3 from the bottom of the screen (top is <= windowHeight * 0.72)
+          const mobileTriggerPoint = windowHeight * 0.72;
+          const nextActive = [...prev];
+          for (let i = 0; i < 3; i++) {
+            const el = container.querySelector(`#step-row-${i}`);
+            if (el) {
+              const elTop = el.getBoundingClientRect().top;
+              if (elTop <= mobileTriggerPoint) {
+                nextActive[i] = true;
+              }
+            }
+          }
+          return nextActive;
+        }
+      });
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -51,13 +79,6 @@ export function HowItWorks() {
       window.removeEventListener("resize", handleScroll);
     };
   }, []);
-
-  // Sync step activation strictly with the progress line reaching the circle nodes
-  const activeSteps = [
-    maxProgress >= 2,      // Step 1: Top of timeline
-    maxProgress >= 50,     // Step 2: Middle of timeline
-    maxProgress >= 95,     // Step 3: Bottom of timeline
-  ];
 
   return (
     <section id="jak" className="w-full bg-gradient-to-b from-[#FBFAF7] to-[#F2F0EA] text-[#1B2522] py-24 sm:py-32 border-y border-[#E2DED5]/60 relative overflow-hidden">
@@ -125,6 +146,7 @@ export function HowItWorks() {
               return (
                 <div 
                   key={k} 
+                  id={`step-row-${i}`}
                   className="relative grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center"
                 >
                   {/* Step number node on the timeline — lg only */}
