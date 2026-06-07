@@ -1,61 +1,39 @@
-# 🎛️ PORTAL KOMENDY - SuperWizor AI
+# 🎛️ SKRÓTY KOMEND
 
-Witaj w centrum dowodzenia! Ten folder zawiera proste skrypty uruchomieniowe (skróty), dzięki którym nie musisz pamiętać długich komend konsolowych ani zmiennych środowiskowych. 
+Folder z gotowymi skrótami deweloperskimi. Używaj wersji skróconej (sam numer) lub pełnej nazwy pliku.
 
-Wystarczy wejść do tego katalogu w terminalu i uruchomić odpowiedni skrypt, bądź uruchomić go dwukrotnym kliknięciem (lub przeciągnięciem do terminala).
+### 📋 Szybki spis komend
 
----
-
-## 📋 Spis Dostępnych Skrótów
-
-Każdy skrypt wykonuje jedną konkretną czynność deweloperską. Możesz ich używać wpisując sam numer (np. `./KOMENDY/1`) lub pełną nazwę:
-
-| # | Komenda (krótka) | Skrypt (pełny) | Opis działania | Kiedy używać? |
-| :--- | :--- | :--- | :--- | :--- |
-| **0** | `source ./KOMENDY/0` | `0_wejdz_do_katalogu_glownego.sh` | Przenosi Twój obecny terminal bezpośrednio do głównego katalogu projektu. | Gdy zabłądzisz w podkatalogach lub otworzysz nową zakładkę. |
-| **1** | `./KOMENDY/1` | `1_odpal_backend_lokalnie.sh` | Uruchamia lokalne migracje i włącza w tle wszystkie 5 mikrousług na Twoim Macu. Logi zapisują się w katalogu `logs/`. | Gdy chcesz programować lokalnie lub odpalić testy E2E. |
-| **2** | `./KOMENDY/2` | `2_odpal_testy_e2e_lokalnie.sh` | Uruchamia pełny zestaw testów integracyjnych E2E bazy i logiki skierowany na lokalnie uruchomione usługi (`localhost`). | Przed commitem lub po zmianach w logice bazodanowej/RODO. |
-| **3** | `./KOMENDY/3` | `3_uruchom_apke_mac.sh` | Uruchamia aplikację deweloperską Flutter jako natywną aplikację na system macOS. | Do szybkiego programowania wyglądu i logiki UI bez telefonu. |
-| **4** | `./KOMENDY/4` | `4_wgraj_apke_na_telefon.sh` | Uruchamia aplikację i pyta, na które z podłączonych kablem urządzeń fizycznych (iPhone/Android) ją wgrać. | Do testowania nagrywania audio i rzeczywistego działania na telefonie. |
-| **5** | `./KOMENDY/5` | `5_zbuduj_i_otworz_xcode.sh` | Buduje wersję produkcyjną aplikacji dla iOS (tworzy plik `.ipa`) i automatycznie otwiera Xcode, skąd wysyłamy wersję do App Store. | Gdy chcesz wypuścić nową wersję do TestFlight / Apple Store. |
-| **6** | `./KOMENDY/6` | `6_uruchom_www_lokalnie.sh` | Odpala lokalny serwer dla strony marketingowej WWW i automatycznie otwiera adres `http://localhost:3000` w przeglądarce Chrome. | Gdy edytujesz stronę główną lub podstronę rejestracji terapeuty. |
+| # | Komenda (krótka) | Co robi? |
+| :--- | :--- | :--- |
+| **0** | `source ./KOMENDY/0` | 📂 Przenosi terminal do głównego katalogu projektu |
+| **1** | `./KOMENDY/1` | 🚀 Odpala lokalną bazę, migracje i backend (5 usług) |
+| **2** | `./KOMENDY/2` | 🧪 Uruchamia lokalne testy E2E |
+| **3** | `./KOMENDY/3` | 💻 Uruchamia aplikację Flutter jako apkę macOS |
+| **4** | `./KOMENDY/4` | 📲 Wgrywa aplikację Flutter na podłączony telefon |
+| **5** | `./KOMENDY/5` | 🍏 Buduje paczkę iOS i otwiera Xcode (App Store / TestFlight) |
+| **6** | `./KOMENDY/6` | 🌐 Uruchamia stronę WWW lokalnie |
 
 ---
 
-## 🛠️ Jak z tego korzystać? (Instrukcja Krok po Kroku)
+### 🛠️ Dwa najczęstsze scenariusze
 
-### Scenariusz A: Chcę lokalnie przetestować i sprawdzić działanie aplikacji
-1. Otwórz **Terminal nr 1**, upewnij się, że jesteś w głównym folderze projektu (możesz wpisać `source ./KOMENDY/0`), a następnie wpisz:
+#### A. Chcę pokodzić i sprawdzić apkę lokalnie:
+1. **Terminal 1**: Odpal backend i zostaw otwarty:
    ```bash
    ./KOMENDY/1
    ```
-   *(Zostaw to okno otwarte – na bieżąco będą się tu wyświetlać logi z usług).*
-2. Podłącz telefon kablem do Maca (lub odblokuj symulator) i w **Terminalu nr 2** wpisz:
+2. **Terminal 2** (nowa zakładka: `Cmd + T`): Wgraj apkę na telefon:
    ```bash
    ./KOMENDY/4
    ```
-   *(Aplikacja uruchomi się na Twoim telefonie, łącząc się z bazą danych na Twoim komputerze).*
 
----
-
-### Scenariusz B: Chcę wypuścić nową wersję do Apple App Store (TestFlight)
-1. Upewnij się, że nie masz żadnych błędów kompilacji, a potem w terminalu wpisz:
+#### B. Chcę sprawdzić, czy testy przechodzą:
+1. **Terminal 1**: Upewnij się, że backend działa (`./KOMENDY/1`).
+2. **Terminal 2** (nowa zakładka: `Cmd + T`): Odpal testy E2E:
    ```bash
-   ./KOMENDY/5_zbuduj_i_otworz_xcode.sh
+   ./KOMENDY/2
    ```
-2. Skrypt zbuduje paczkę iOS i otworzy Xcode.
-3. W Xcode u góry wybierz menu **Product -> Archive**.
-4. Po ukończeniu archiwizacji otworzy się okno *Organizer* – kliknij tam **niebieski przycisk "Distribute App"** po prawej stronie i przeklikaj kreator wysyłki do App Store Connect.
 
 ---
-
-### Scenariusz C: Chcę edytować stronę główną www i sprawdzić ją w przeglądarce
-1. Wpisz w terminalu:
-   ```bash
-   ./KOMENDY/6_uruchom_www_lokalnie.sh
-   ```
-2. Automatycznie otworzy się przeglądarka z adresem `http://localhost:3000`. Każda edycja kodu strony będzie natychmiast widoczna na ekranie (Hot Reload).
-
----
-
-> 💡 **Wskazówka Seniora**: Jeśli po wywołaniu skryptu otrzymasz błąd o braku uprawnień (Permission Denied), nadaj uprawnienia wszystkim skryptom wpisując raz w głównym katalogu: `chmod +x KOMENDY/*.sh`
+> 💡 **Wskazówka**: Jeśli dostaniesz błąd uprawnień, wpisz raz w głównym katalogu: `chmod +x KOMENDY/*`
