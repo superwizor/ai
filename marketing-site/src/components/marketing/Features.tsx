@@ -613,7 +613,7 @@ export function Features() {
                     '--back-btn-text': 'rgba(255, 255, 255, 0.9)',
                     '--footer-border': 'rgba(255, 255, 255, 0.06)',
                   } as React.CSSProperties}
-                  className="relative w-full rounded-[22.5px] overflow-hidden bg-[var(--screen-bg)] pt-10 pb-5 px-2.5 sm:px-5 lg:px-6 min-h-[580px] lg:min-h-[690px] flex flex-col justify-between select-text transition-all duration-300 text-[var(--text-pri)]"
+                  className="relative w-full rounded-[22.5px] overflow-hidden bg-[var(--screen-bg)] pt-10 pb-5 px-2.5 sm:px-5 lg:px-6 min-h-[580px] h-[580px] lg:min-h-[690px] lg:h-[690px] flex flex-col justify-between select-text transition-all duration-300 text-[var(--text-pri)]"
                 >
                 
                 {/* 1:1 Fake Status Bar */}
@@ -1743,7 +1743,7 @@ export function Features() {
                       {/* Header Title Info */}
                       <div className="mb-4">
                         <h3 className="font-sans font-bold text-2xl lg:text-3xl text-[#fcae2f] italic tracking-wide">
-                          Nagraniowiec
+                          {isPl ? "Pacjent Paweł" : "Patient Paul"}
                         </h3>
                         <p className="font-sans text-[11.5px] lg:text-[13.5px] text-white/70 mt-0.5">
                           Nad czym dzisiaj pracujemy?
@@ -1763,7 +1763,7 @@ export function Features() {
                       </div>
 
                       {/* Session Cards list with glowing vertical RAG connector line */}
-                      <div className="relative pl-11 space-y-3 max-h-[380px] overflow-y-auto pr-0.5 scrollbar-thin">
+                      <div className="relative pl-11 space-y-3 flex-1 min-h-0 overflow-y-auto pr-0.5 scrollbar-thin">
                         
                         {/* Clean vertical straight connector line */}
                         <div className="absolute left-[23px] top-6 bottom-6 w-[2px] bg-white/10 z-0">
