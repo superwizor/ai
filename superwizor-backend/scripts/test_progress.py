@@ -14,8 +14,16 @@ RESET = "\033[0m"
 BOLD = "\033[1m"
 
 def get_all_tests():
-    # Scan tests/e2e for tests
-    tests_dir = "tests/e2e"
+    # 1. Resolve relative to script location (scripts/test_progress.py -> tests/e2e)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.dirname(script_dir)
+    tests_dir = os.path.join(backend_dir, "tests", "e2e")
+    
+    # 2. Fallbacks
+    if not os.path.exists(tests_dir):
+        tests_dir = "tests/e2e"
+    if not os.path.exists(tests_dir):
+        tests_dir = "e2e"
     if not os.path.exists(tests_dir):
         tests_dir = "superwizor-backend/tests/e2e"
     if not os.path.exists(tests_dir):
