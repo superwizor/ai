@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper do uruchamiania backendu lokalnie
+exec "$(dirname "$0")/1_odpal_backend_lokalnie.sh" "$@"

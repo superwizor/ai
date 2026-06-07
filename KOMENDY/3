@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper do uruchamiania aplikacji Flutter na macOS
+exec "$(dirname "$0")/3_uruchom_apke_mac.sh" "$@"

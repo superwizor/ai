@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper do budowania i otwierania Xcode
+exec "$(dirname "$0")/5_zbuduj_i_otworz_xcode.sh" "$@"

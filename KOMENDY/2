@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper do uruchamiania lokalnych testów E2E
+exec "$(dirname "$0")/2_odpal_testy_e2e_lokalnie.sh" "$@"
