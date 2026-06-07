@@ -1751,56 +1751,24 @@ export function Features() {
                       </div>
 
                       {/* Session Connection Info (horizontal continuity) */}
-                      <div className="flex items-start gap-3.5 mb-6 text-left select-none px-1">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-8 h-8 text-[#5bf4bc] shrink-0 mt-0.5">
-                          <path d="M8 3H5a2 2 0 00-2 2v3" />
-                          <path d="M21 8V5a2 2 0 00-2-2h-6" />
-                          <path d="M16 21h3a2 2 0 002-2v-3" />
-                          <path d="M3 16v3a2 2 0 002 2h3" />
-                          <circle cx="8" cy="12" r="2" fill="currentColor" />
-                          <circle cx="16" cy="12" r="2" fill="currentColor" />
-                          <path d="M8 12c2-3 6-3 8 0" stroke="#ffb12c" strokeWidth="2.5" strokeLinecap="round" className="animate-pulse" />
-                          <path d="M8 12c2 3 6 3 8 0" stroke="#5bf4bc" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                        <div>
-                          <h4 className="font-sans font-bold text-white text-[13.5px] lg:text-[14.5px] tracking-wide mb-1 leading-snug">
-                            {isPl ? "Ciągłość relacji z sesji na sesję" : "Continuity across sessions"}
-                          </h4>
-                          <p className="font-sans text-[11.5px] lg:text-[12.5px] text-white/95 leading-relaxed font-semibold">
-                            {isPl 
-                              ? "System automatycznie łączy wątki z poprzednich spotkań, dbając o nieprzerwaną ciągłość procesu terapeutycznego bez konieczności pamiętania każdego szczegółu."
-                              : "The system automatically links threads from past meetings, ensuring uninterrupted continuity of the therapeutic process without having to remember every detail."}
-                          </p>
-                        </div>
+                      <div className="mb-6 text-left select-none px-1">
+                        <h4 className="font-sans font-bold text-white text-[13.5px] lg:text-[14.5px] tracking-wide mb-1 leading-snug">
+                          {isPl ? "Ciągłość relacji z sesji na sesję" : "Continuity across sessions"}
+                        </h4>
+                        <p className="font-sans text-[11.5px] lg:text-[12.5px] text-white/95 leading-relaxed font-semibold">
+                          {isPl 
+                            ? "System automatycznie łączy wątki z poprzednich spotkań, dbając o nieprzerwaną ciągłość procesu terapeutycznego bez konieczności pamiętania każdego szczegółu."
+                            : "The system automatically links threads from past meetings, ensuring uninterrupted continuity of the therapeutic process without having to remember every detail."}
+                        </p>
                       </div>
 
                       {/* Session Cards list with glowing vertical RAG connector line */}
-                      <div className="relative pl-5.5 space-y-2.5 max-h-[380px] overflow-y-auto pr-0.5 scrollbar-thin">
+                      <div className="relative pl-11 space-y-3 max-h-[380px] overflow-y-auto pr-0.5 scrollbar-thin">
                         
-                        {/* The glowing curved line running behind the session badges */}
-                        <div className="absolute left-2.5 top-4 bottom-4 w-1 select-none pointer-events-none z-0">
-                          <svg className="h-full w-4 overflow-visible" fill="none" viewBox="0 0 16 500" preserveAspectRatio="none">
-                            <defs>
-                              <linearGradient id="rag-line-grad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#ffb12c" stopOpacity="0.95" />
-                                <stop offset="50%" stopColor="#5bf4bc" stopOpacity="0.95" />
-                                <stop offset="100%" stopColor="#5bf4bc" stopOpacity="0.4" />
-                              </linearGradient>
-                              <filter id="glow-filter" x="-20%" y="-20%" width="140%" height="140%">
-                                <feGaussianBlur stdDeviation="1.5" result="blur" />
-                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                              </filter>
-                            </defs>
-                            {/* Curved wavy timeline connector path */}
-                            <path 
-                              d="M 2,0 C 14,70 -6,140 8,210 C 20,280 0,350 6,420" 
-                              stroke="url(#rag-line-grad)" 
-                              strokeWidth="2" 
-                              strokeLinecap="round"
-                              filter="url(#glow-filter)"
-                              className="animate-[pulse_3s_infinite_alternate]"
-                            />
-                          </svg>
+                        {/* Clean vertical straight connector line */}
+                        <div className="absolute left-[23px] top-6 bottom-6 w-[2px] bg-white/10 z-0">
+                          {/* Active yellow/orange segment from card 6 to card 5 */}
+                          <div className="h-[20%] bg-[#ffb12c]" />
                         </div>
 
                         {/* Sesja 6 card (Active AI analyzing) */}
@@ -1809,12 +1777,12 @@ export function Features() {
                             setIsAnalyzingView(true);
                             setActiveTab("report");
                           }}
-                          className="bg-[var(--card-bg)] border border-[var(--accent-border-light)] rounded-xl p-3 lg:p-4 flex items-center justify-between shadow-md cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/50 transition-all duration-300 relative z-10"
+                          className="relative flex items-center z-10 cursor-pointer group"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#0e3b33] border border-[#ffb12c]/30 flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-[#ffb12c]">
-                              #6
-                            </div>
+                          <div className="absolute -left-9.5 w-7.5 h-7.5 rounded-full bg-[#0e3b33] border border-[#ffb12c] flex items-center justify-center font-sans font-bold text-[11px] text-[#ffb12c] shadow-lg transition-transform group-hover:scale-105">
+                            #6
+                          </div>
+                          <div className="flex-1 bg-[var(--card-bg)] border border-[var(--accent-border-light)] rounded-xl p-3 flex items-center justify-between hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/50 transition-all duration-300">
                             <div>
                               <div className="font-sans text-[12.5px] lg:text-[14.5px] font-bold text-[var(--text-pri)]">{isPl ? "Sesja 6" : "Session 6"}</div>
                               <div className="font-sans text-[9.5px] lg:text-[11.5px] text-[var(--text-sec)]/80 mt-0.5 flex items-center gap-1.5 flex-wrap">
@@ -1824,8 +1792,8 @@ export function Features() {
                                 </span>
                               </div>
                             </div>
+                            <span className="text-white/60 text-sm">⋮</span>
                           </div>
-                          <span className="text-white/60 text-sm">⋮</span>
                         </div>
 
                         {/* Sesja 5 card */}
@@ -1834,12 +1802,12 @@ export function Features() {
                             setIsAnalyzingView(false);
                             setActiveTab("report");
                           }}
-                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300 relative z-10"
+                          className="relative flex items-center z-10 cursor-pointer group"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#112d2a] flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-white/80">
-                              #5
-                            </div>
+                          <div className="absolute -left-9.5 w-7.5 h-7.5 rounded-full bg-[#112d2a] border border-[#5bf4bc]/30 flex items-center justify-center font-sans font-bold text-[11px] text-[#5bf4bc] shadow-md transition-transform group-hover:scale-105">
+                            #5
+                          </div>
+                          <div className="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 flex items-center justify-between hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300">
                             <div>
                               <div className="font-sans text-[12.5px] lg:text-[14.5px] font-bold text-[var(--text-pri)]">{isPl ? "Sesja 5" : "Session 5"}</div>
                               <div className="font-sans text-[9.5px] lg:text-[11.5px] text-[var(--text-sec)]/80 mt-0.5 flex items-center gap-1.5 flex-wrap">
@@ -1849,8 +1817,8 @@ export function Features() {
                                 </span>
                               </div>
                             </div>
+                            <span className="text-white/50 text-sm">⋮</span>
                           </div>
-                          <span className="text-white/50 text-sm">⋮</span>
                         </div>
 
                         {/* Sesja 4 card */}
@@ -1859,18 +1827,18 @@ export function Features() {
                             setIsAnalyzingView(false);
                             setActiveTab("report");
                           }}
-                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300 relative z-10"
+                          className="relative flex items-center z-10 cursor-pointer group"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#112d2a] flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-white/80">
-                              #4
-                            </div>
+                          <div className="absolute -left-9.5 w-7.5 h-7.5 rounded-full bg-[#112d2a] border border-white/10 flex items-center justify-center font-sans font-bold text-[11px] text-white/70 shadow-sm transition-transform group-hover:scale-105">
+                            #4
+                          </div>
+                          <div className="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 flex items-center justify-between hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300">
                             <div>
                               <div className="font-sans text-[12.5px] lg:text-[14.5px] font-bold text-[var(--text-pri)]">{isPl ? "Sesja 4" : "Session 4"}</div>
                               <div className="font-sans text-[9.5px] lg:text-[12px] text-white/50 mt-0.5">{isPl ? "16 Maj · 23:32" : "16 May · 23:32"}</div>
                             </div>
+                            <span className="text-white/50 text-sm">⋮</span>
                           </div>
-                          <span className="text-white/50 text-sm">⋮</span>
                         </div>
 
                         {/* Sesja 3 card */}
@@ -1879,18 +1847,18 @@ export function Features() {
                             setIsAnalyzingView(false);
                             setActiveTab("report");
                           }}
-                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300 relative z-10"
+                          className="relative flex items-center z-10 cursor-pointer group"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#112d2a] flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-white/80">
-                              #3
-                            </div>
+                          <div className="absolute -left-9.5 w-7.5 h-7.5 rounded-full bg-[#112d2a] border border-white/10 flex items-center justify-center font-sans font-bold text-[11px] text-white/70 shadow-sm transition-transform group-hover:scale-105">
+                            #3
+                          </div>
+                          <div className="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 flex items-center justify-between hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300">
                             <div>
                               <div className="font-sans text-[12.5px] lg:text-[14.5px] font-bold text-[var(--text-pri)]">{isPl ? "Sesja 3" : "Session 3"}</div>
                               <div className="font-sans text-[9.5px] lg:text-[12px] text-white/50 mt-0.5">{isPl ? "10 Maj · 14:15" : "10 May · 14:15"}</div>
                             </div>
+                            <span className="text-white/50 text-sm">⋮</span>
                           </div>
-                          <span className="text-white/50 text-sm">⋮</span>
                         </div>
 
                         {/* Sesja 2 card */}
@@ -1899,18 +1867,18 @@ export function Features() {
                             setIsAnalyzingView(false);
                             setActiveTab("report");
                           }}
-                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300 relative z-10"
+                          className="relative flex items-center z-10 cursor-pointer group"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#112d2a] flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-white/80">
-                              #2
-                            </div>
+                          <div className="absolute -left-9.5 w-7.5 h-7.5 rounded-full bg-[#112d2a] border border-white/10 flex items-center justify-center font-sans font-bold text-[11px] text-white/70 shadow-sm transition-transform group-hover:scale-105">
+                            #2
+                          </div>
+                          <div className="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 flex items-center justify-between hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300">
                             <div>
                               <div className="font-sans text-[12.5px] lg:text-[14.5px] font-bold text-[var(--text-pri)]">{isPl ? "Sesja 2" : "Session 2"}</div>
                               <div className="font-sans text-[9.5px] lg:text-[12px] text-white/50 mt-0.5">{isPl ? "3 Maj · 11:20" : "3 May · 11:20"}</div>
                             </div>
+                            <span className="text-white/50 text-sm">⋮</span>
                           </div>
-                          <span className="text-white/50 text-sm">⋮</span>
                         </div>
 
                         {/* Sesja 1 card */}
@@ -1919,18 +1887,18 @@ export function Features() {
                             setIsAnalyzingView(false);
                             setActiveTab("report");
                           }}
-                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300 relative z-10"
+                          className="relative flex items-center z-10 cursor-pointer group"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#112d2a] flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-white/80">
-                              #1
-                            </div>
+                          <div className="absolute -left-9.5 w-7.5 h-7.5 rounded-full bg-[#112d2a] border border-white/10 flex items-center justify-center font-sans font-bold text-[11px] text-white/70 shadow-sm transition-transform group-hover:scale-105">
+                            #1
+                          </div>
+                          <div className="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 flex items-center justify-between hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300">
                             <div>
                               <div className="font-sans text-[12.5px] lg:text-[14.5px] font-bold text-[var(--text-pri)]">{isPl ? "Sesja 1" : "Session 1"}</div>
                               <div className="font-sans text-[9.5px] lg:text-[12px] text-white/50 mt-0.5">{isPl ? "28 Kwi · 15:45" : "28 Apr · 15:45"}</div>
                             </div>
+                            <span className="text-white/50 text-sm">⋮</span>
                           </div>
-                          <span className="text-white/50 text-sm">⋮</span>
                         </div>
 
                       </div>
