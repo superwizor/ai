@@ -483,7 +483,27 @@ func (h *StripeHandler) upsertSubscriptionFromStripe(ctx context.Context, event 
 		trialEnd = pgtype.Timestamptz{Time: time.Unix(sub.TrialEnd, 0), Valid: true}
 	}
 
-	dbSub, err := q.UpsertStripeSubscription(ctx, db.UpsertStripeSubscriptionParams{
+	// Uruchomienie transakcji, aby zachować spójność przy deaktywacji starych subskrypcji i wstawieniu nowej.
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	qTx := db.New(tx)
+
+	// Jeśli nowa subskrypcja ma być aktywna/trial/past_due, najpierw deaktywujemy wszystkie inne aktywne subskrypcje tej organizacji.
+	if status == db.SubscriptionStatusACTIVE || status == db.SubscriptionStatusTRIALING || status == db.SubscriptionStatusPASTDUE {
+		err = qTx.DeactivateOtherActiveSubscriptions(ctx, db.DeactivateOtherActiveSubscriptionsParams{
+			OrganizationID:         orgID,
+			ProviderSubscriptionID: sub.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("deactivate other active subscriptions: %w", err)
+		}
+	}
+
+	dbSub, err := qTx.UpsertStripeSubscription(ctx, db.UpsertStripeSubscriptionParams{
 		OrganizationID:         orgID,
 		PlanID:                 plan.ID,
 		ProviderSubscriptionID: sub.ID,
@@ -500,7 +520,7 @@ func (h *StripeHandler) upsertSubscriptionFromStripe(ctx context.Context, event 
 	// Jeśli ACTIVE/TRIALING: upewnij się że istnieje usage_counters bucket
 	// dla bieżącego okresu. ON CONFLICT gwarantuje idempotency.
 	if status == db.SubscriptionStatusACTIVE || status == db.SubscriptionStatusTRIALING {
-		_, counterErr := q.CreateUsageCounter(ctx, db.CreateUsageCounterParams{
+		_, counterErr := qTx.CreateUsageCounter(ctx, db.CreateUsageCounterParams{
 			SubscriptionID: dbSub.ID,
 			PeriodStart:    periodStart,
 			PeriodEnd:      periodEnd,
@@ -509,8 +529,12 @@ func (h *StripeHandler) upsertSubscriptionFromStripe(ctx context.Context, event 
 		if counterErr != nil && !isUniqueViolation(counterErr) {
 			h.logger.WarnContext(ctx, "stripe subscription: create usage_counter failed",
 				"subscription_id", dbSub.ID.String(), "error", counterErr)
-			// Nie failujemy całego handlera — cron safety-check wykryje brak countera.
+			// Nie failujemy całej transakcji — cron safety-check wykryje brak countera.
 		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
 	}
 
 	h.logger.InfoContext(ctx, "stripe subscription: upserted",

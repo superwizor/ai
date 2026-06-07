@@ -42,6 +42,7 @@ import (
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	"connectrpc.com/connect"
 
+	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/pkg/connectmd"
 	"github.com/superwizor-ai/backend/pkg/cors"
 	grpcadapter "github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/grpc"
@@ -93,6 +94,9 @@ func main() {
 	}
 	defer pool.Close()
 
+	analyticsCollector := analytics.NewCollector(pool)
+	defer analyticsCollector.Shutdown()
+
 	// Phase C of feat/billing-svc-refactor removed the outbox poller +
 	// Pub/Sub publisher + edge-threshold WithThresholds wiring. The
 	// client-cache model (clinical-svc.GetMyBillingState + state_after
@@ -113,7 +117,7 @@ func main() {
 		identityClient = dialIdentitySvc(rootCtx, identityURL)
 	}
 
-	billingServer := grpcadapter.NewServer(pool, version)
+	billingServer := grpcadapter.NewServer(pool, version, analyticsCollector)
 
 	// gRPC server (in-process — handler reused via ServeHTTP).
 	gs := grpc.NewServer()

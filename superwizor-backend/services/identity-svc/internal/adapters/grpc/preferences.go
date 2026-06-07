@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/postgres/db"
 )
 
@@ -177,6 +178,15 @@ func (s *Server) UpdateReportPreferences(ctx context.Context, req *identityv1.Up
 		return nil, status.Error(codes.Internal, "encode preferences")
 	}
 
+	// Pobranie starych preferencji do wyznaczenia diff dla analityki
+	var oldPayload preferencesPayload
+	oldRaw, errGet := s.queries.GetReportPreferences(ctx, id)
+	if errGet == nil {
+		oldPayload, _ = unmarshalPreferences(oldRaw)
+	} else {
+		oldPayload = preferencesPayload{Version: schemaVersion}
+	}
+
 	raw, err := s.queries.UpdateReportPreferences(ctx, db.UpdateReportPreferencesParams{
 		ID:                id,
 		ReportPreferences: encoded,
@@ -192,6 +202,37 @@ func (s *Server) UpdateReportPreferences(ctx context.Context, req *identityv1.Up
 	if err != nil {
 		return nil, status.Error(codes.Internal, "decode saved preferences")
 	}
+
+	// Emisja zdarzeń analitycznych o zmianie preferencji
+	if s.collector != nil {
+		compareAndTrack := func(dimension, from, to string) {
+			if from != to {
+				s.collector.Track(ctx, analytics.Event{
+					Name:        "preferences.updated",
+					TherapistID: &id,
+					Properties: map[string]any{
+						"dimension":  dimension,
+						"from_value": from,
+						"to_value":   to,
+					},
+					Source: "server",
+				})
+			}
+		}
+
+		compareAndTrack("length", oldPayload.Length, payload.Length)
+		compareAndTrack("tone", oldPayload.Tone, payload.Tone)
+		compareAndTrack("quote_density", oldPayload.QuoteDensity, payload.QuoteDensity)
+		compareAndTrack("diagnostic_language", oldPayload.DiagnosticLanguage, payload.DiagnosticLanguage)
+		compareAndTrack("hypothesis_hedging", oldPayload.HypothesisHedging, payload.HypothesisHedging)
+		compareAndTrack("strengths_framing", oldPayload.StrengthsFraming, payload.StrengthsFraming)
+		compareAndTrack("free_text", oldPayload.FreeText, payload.FreeText)
+
+		oldSections := strings.Join(oldPayload.SectionEmphasis, ",")
+		newSections := strings.Join(payload.SectionEmphasis, ",")
+		compareAndTrack("section_emphasis", oldSections, newSections)
+	}
+
 	return toProtoPreferences(final), nil
 }
 

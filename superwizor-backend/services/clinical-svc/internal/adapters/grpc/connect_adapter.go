@@ -233,6 +233,14 @@ func (a *ConnectAdapter) LogPreferenceSuggestion(ctx context.Context, req *conne
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) TrackEvents(ctx context.Context, req *connect.Request[clinicalv1.TrackEventsRequest]) (*connect.Response[clinicalv1.TrackEventsResponse], error) {
+	resp, err := a.s.TrackEvents(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) AdminListSessions(ctx context.Context, req *connect.Request[clinicalv1.AdminListSessionsRequest]) (*connect.Response[clinicalv1.AdminListSessionsResponse], error) {
 	resp, err := a.s.AdminListSessions(ctx, req.Msg)
 	if err != nil {
@@ -240,3 +248,29 @@ func (a *ConnectAdapter) AdminListSessions(ctx context.Context, req *connect.Req
 	}
 	return connect.NewResponse(resp), nil
 }
+
+func (a *ConnectAdapter) GetAdminAnalytics(ctx context.Context, req *connect.Request[clinicalv1.GetAdminAnalyticsRequest]) (*connect.Response[clinicalv1.GetAdminAnalyticsResponse], error) {
+	resp, err := a.s.GetAdminAnalytics(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) ExportPatientData(ctx context.Context, req *connect.Request[clinicalv1.ExportPatientDataRequest]) (*connect.Response[clinicalv1.ExportPatientDataResponse], error) {
+	resp, err := a.s.ExportPatientData(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) DeletePatientData(ctx context.Context, req *connect.Request[clinicalv1.DeletePatientDataRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.DeletePatientData(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+

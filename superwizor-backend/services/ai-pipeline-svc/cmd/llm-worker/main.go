@@ -302,13 +302,13 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 	// formatted transcript so existing pgvector similarity logic
 	// (Phase 3) gets the same shape it's used to. Cheap conversion;
 	// stays out of the LLM-input critical path.
-	ragContext, err := loadRAGContext(ctx, session.PatientFileID, legacyChunkFormat(chunks))
+	ragContext, err := loadRAGContext(ctx, ev.SessionID, session.PatientFileID, legacyChunkFormat(chunks))
 	if err != nil {
 		logger.Warn("rag context", "error", err)
 		ragContext = ""
 	}
 
-	reportJSON, tokenStats, err := generateReport(ctx, session.ReportLanguage, modalityPrompt, ragContext, chunks, session.ReportPreferences)
+	reportJSON, tokenStats, err := generateReport(ctx, ev.SessionID, session.ReportLanguage, modalityPrompt, ragContext, chunks, session.ReportPreferences)
 	if err != nil {
 		// Vertex AI errors (quota, schema rejection, content filter,
 		// region availability) all land here. Log full error text so we
@@ -528,7 +528,7 @@ func diarizationMode() string {
 	return v
 }
 
-func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragContext string, chunks []transcriptfmt.Chunk, prefs reportprefs.Preferences) (string, TokenStats, error) {
+func generateReport(ctx context.Context, sessionID string, reportLanguage, modalityPrompt, ragContext string, chunks []transcriptfmt.Chunk, prefs reportprefs.Preferences) (string, TokenStats, error) {
 	// New SDK: no per-model object. Each GenerateContent call gets
 	// its own config (call-1 metadata vs call-2 report). The
 	// package-level vertexClient (genai.Client) is shared.
@@ -584,6 +584,18 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 		case "markdown":
 			mdResult, mdStats, err := callMetadataMarkdown(ctx, reportLanguage, chunks, native)
 			if err != nil {
+				slog.InfoContext(ctx, "analytics",
+					"ae", "llm.failed",
+					"session_id", sessionID,
+					"call_number", 1,
+					"error_category", func() string {
+						if isTerminalLLMError(err) {
+							return "terminal"
+						}
+						return "transient"
+					}(),
+					"error", err.Error(),
+				)
 				return "", TokenStats{}, err
 			}
 			metadataPayload = markdownResultToPayload(mdResult, chunks, native)
@@ -592,12 +604,38 @@ func generateReport(ctx context.Context, reportLanguage, modalityPrompt, ragCont
 		default: // "json" — legacy path, byte-identical to pre-refactor behavior.
 			payload, jsonStats, err := callMetadataJSON(ctx, reportLanguage, legacyChunkFormat(chunks))
 			if err != nil {
+				slog.InfoContext(ctx, "analytics",
+					"ae", "llm.failed",
+					"session_id", sessionID,
+					"call_number", 1,
+					"error_category", func() string {
+						if isTerminalLLMError(err) {
+							return "terminal"
+						}
+						return "transient"
+					}(),
+					"error", err.Error(),
+				)
 				return "", TokenStats{}, err
 			}
 			metadataPayload = payload
 			stats.InputTokens += jsonStats.InputTokens
 			stats.OutputTokens += jsonStats.OutputTokens
 		}
+	}
+
+	// Analityka: llm.call1.completed
+	if len(chunks) >= 2 {
+		speakersDetected := len(metadataPayload.SpeakerRoleInference.SpeakerGroups)
+		diarizationConfidence := metadataPayload.SpeakerRoleInference.OverallDiarizationConfidence
+
+		slog.InfoContext(ctx, "analytics",
+			"ae", "llm.call1.completed",
+			"session_id", sessionID,
+			"mode", mode,
+			"diarization_confidence", diarizationConfidence,
+			"speakers_detected", speakersDetected,
+		)
 	}
 
 	// --- Krok 2: Pełny Raport Kliniczny (Raw Text Mode) ---
@@ -719,6 +757,18 @@ TRANSKRYPT BIEŻĄCEJ SESJI (Markdown, grupowanie po mówcach):
 
 	respReport, err := vertexClient.Models.GenerateContent(ctx, geminiModel, genai.Text(reportPrompt), reportCfg)
 	if err != nil {
+		slog.InfoContext(ctx, "analytics",
+			"ae", "llm.failed",
+			"session_id", sessionID,
+			"call_number", 2,
+			"error_category", func() string {
+				if isTerminalLLMError(err) {
+					return "terminal"
+				}
+				return "transient"
+			}(),
+			"error", err.Error(),
+		)
 		return "", TokenStats{}, fmt.Errorf("generate report markdown: %w", err)
 	}
 	if len(respReport.Candidates) == 0 || respReport.Candidates[0].Content == nil {
@@ -735,6 +785,13 @@ TRANSKRYPT BIEŻĄCEJ SESJI (Markdown, grupowanie po mówcach):
 	// shows the trigger rate is near-zero, the retry block can be
 	// removed. Tracked in docs/agents/TODO.md.
 	if respReport.Candidates[0].FinishReason == genai.FinishReasonMaxTokens {
+		// Analityka: llm.safety_retry
+		slog.InfoContext(ctx, "analytics",
+			"ae", "llm.safety_retry",
+			"session_id", sessionID,
+			"retry_reason", "FinishReasonMaxTokens",
+		)
+
 		// 2026-05-19: bumped retry multiplier from 2× to 4×. The 2×
 		// multiplier sometimes re-hit MaxTokens on the retry (observed:
 		// session 0a5523a0, both calls truncated). 4× gives the retry
@@ -752,6 +809,18 @@ TRANSKRYPT BIEŻĄCEJ SESJI (Markdown, grupowanie po mówcach):
 		reportCfg = reportGenConfig(retryMaxOut)
 		respReport, err = vertexClient.Models.GenerateContent(ctx, geminiModel, genai.Text(reportPrompt), reportCfg)
 		if err != nil {
+			slog.InfoContext(ctx, "analytics",
+				"ae", "llm.failed",
+				"session_id", sessionID,
+				"call_number", 2,
+				"error_category", func() string {
+					if isTerminalLLMError(err) {
+						return "terminal"
+					}
+					return "transient"
+				}(),
+				"error", err.Error(),
+			)
 			return "", TokenStats{}, fmt.Errorf("generate report markdown (retry): %w", err)
 		}
 		if len(respReport.Candidates) == 0 || respReport.Candidates[0].Content == nil {
@@ -1868,7 +1937,7 @@ func loadModalityPrompt(ctx context.Context, modalityID uuid.UUID) (string, erro
 // to avoid blowing the call-1/call-2 input window when a patient
 // accumulates 50+ sessions. Older rows truncated last (the SELECT
 // orders by similarity ascending — closest first).
-func loadRAGContext(ctx context.Context, patientFileID uuid.UUID, currentText string) (string, error) {
+func loadRAGContext(ctx context.Context, sessionID string, patientFileID uuid.UUID, currentText string) (string, error) {
 	if dbPool == nil {
 		return "", nil
 	}
@@ -1970,6 +2039,7 @@ func loadRAGContext(ctx context.Context, patientFileID uuid.UUID, currentText st
 	// own paragraph. Number them (1., 2., …) so prompt instructions
 	// can reference "the most relevant prior session" naturally.
 	var sb strings.Builder
+	memoriesUsed := 0
 	for i, h := range hits {
 		next := fmt.Sprintf("%d. %s\n\n", i+1, h.plaintext)
 		// Prompt-budget guard. ragContextMaxChars is generous enough
@@ -1980,8 +2050,20 @@ func loadRAGContext(ctx context.Context, patientFileID uuid.UUID, currentText st
 			break
 		}
 		sb.WriteString(next)
+		memoriesUsed++
 	}
-	return strings.TrimRight(sb.String(), "\n"), nil
+	resultString := strings.TrimRight(sb.String(), "\n")
+
+	// Analityka: rag.retrieved
+	slog.InfoContext(ctx, "analytics",
+		"ae", "rag.retrieved",
+		"session_id", sessionID,
+		"memories_found", len(hits),
+		"memories_used", memoriesUsed,
+		"context_chars", len(resultString),
+	)
+
+	return resultString, nil
 }
 
 func persistReport(ctx context.Context, session *SessionContext, transcriptID string, report *ReportPayload, fullJSON string, tokenStats TokenStats, processingTime time.Duration) (string, error) {

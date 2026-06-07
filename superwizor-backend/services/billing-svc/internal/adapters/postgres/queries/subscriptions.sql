@@ -104,3 +104,15 @@ SET status               = $2,
     updated_at           = now()
 WHERE provider = 'STRIPE'
   AND provider_subscription_id = $1;
+
+-- name: DeactivateOtherActiveSubscriptions :exec
+-- Anuluje wszystkie inne aktywne/trialing/past_due subskrypcje dla danej organizacji,
+-- oprócz tej o podanym Stripe ID (jeśli podane). Zapobiega to naruszeniu unique index
+-- idx_subscriptions_one_active_per_org przy przejściu na płatną subskrypcję.
+UPDATE subscriptions
+SET status = 'CANCELED',
+    canceled_at = now(),
+    updated_at = now()
+WHERE organization_id = $1
+  AND status IN ('ACTIVE', 'TRIALING', 'PAST_DUE')
+  AND (provider_subscription_id IS NULL OR provider_subscription_id <> $2);

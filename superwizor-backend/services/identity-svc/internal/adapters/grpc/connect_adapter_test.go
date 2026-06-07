@@ -23,7 +23,7 @@ import (
 // response. The point isn't to test HealthCheck; it's to prove the
 // adapter contract holds end-to-end.
 func TestConnectAdapter_HealthCheck_EndToEnd(t *testing.T) {
-	srv := NewServer(nil, nil, nil, "test-connect-1.0")
+	srv := NewServer(nil, nil, nil, "test-connect-1.0", nil)
 	adapter := NewConnectAdapter(srv)
 
 	// Generated constructor enforces that adapter implements the

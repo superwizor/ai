@@ -323,6 +323,14 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 			return handleSTTError(ctx, logger, event.SessionID, insertErr)
 		}
 
+		slog.InfoContext(ctx, "analytics",
+			"ae", "stt.submitted",
+			"session_id", event.SessionID,
+			"language_code", bcp47Lang,
+			"native_diarization", useNativeDiarization,
+			"chunk_count", len(chunks),
+		)
+
 		logger.Info("submitted",
 			"chunk_index", ch.ChunkIndex,
 			"operation_id", opName,
@@ -800,6 +808,23 @@ func isTerminalSTTError(err error) bool {
 // Returning the original `err` preserves stack/message for Cloud
 // Logging at the function framework layer.
 func handleSTTError(ctx context.Context, logger *slog.Logger, sessionID string, err error) error {
+	// Analityka: stt.failed
+	langCode := ""
+	if ulang, errLang := loadSessionLanguage(ctx, sessionID); errLang == nil {
+		langCode = lang.BCP47ize(ulang)
+	}
+	errorCategory := "transient"
+	if isTerminalSTTError(err) {
+		errorCategory = "terminal"
+	}
+	slog.InfoContext(ctx, "analytics",
+		"ae", "stt.failed",
+		"session_id", sessionID,
+		"error_category", errorCategory,
+		"language_code", langCode,
+		"error", err.Error(),
+	)
+
 	if isTerminalSTTError(err) {
 		// Terminal — this input will never succeed. Mark FAILED, mirror
 		// to the user (docs/21: authoritative-FAILED source #1), ack so

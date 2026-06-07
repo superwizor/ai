@@ -20,6 +20,569 @@ export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 
 export 'notification.pbenum.dart';
 
+class SendActionPlanEmailRequest extends $pb.GeneratedMessage {
+  factory SendActionPlanEmailRequest({
+    $core.String? toEmail,
+    $core.String? therapistDisplayName,
+    $core.String? actionPlanText,
+    $core.String? sessionDate,
+    $core.String? locale,
+    $core.String? idempotencyKey,
+  }) {
+    final result = create();
+    if (toEmail != null) result.toEmail = toEmail;
+    if (therapistDisplayName != null)
+      result.therapistDisplayName = therapistDisplayName;
+    if (actionPlanText != null) result.actionPlanText = actionPlanText;
+    if (sessionDate != null) result.sessionDate = sessionDate;
+    if (locale != null) result.locale = locale;
+    if (idempotencyKey != null) result.idempotencyKey = idempotencyKey;
+    return result;
+  }
+
+  SendActionPlanEmailRequest._();
+
+  factory SendActionPlanEmailRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SendActionPlanEmailRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SendActionPlanEmailRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'notification.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'toEmail')
+    ..aOS(2, _omitFieldNames ? '' : 'therapistDisplayName')
+    ..aOS(3, _omitFieldNames ? '' : 'actionPlanText')
+    ..aOS(4, _omitFieldNames ? '' : 'sessionDate')
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
+    ..aOS(6, _omitFieldNames ? '' : 'idempotencyKey')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendActionPlanEmailRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendActionPlanEmailRequest copyWith(
+          void Function(SendActionPlanEmailRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as SendActionPlanEmailRequest))
+          as SendActionPlanEmailRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SendActionPlanEmailRequest create() => SendActionPlanEmailRequest._();
+  @$core.override
+  SendActionPlanEmailRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SendActionPlanEmailRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SendActionPlanEmailRequest>(create);
+  static SendActionPlanEmailRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get toEmail => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set toEmail($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasToEmail() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearToEmail() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get therapistDisplayName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set therapistDisplayName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTherapistDisplayName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTherapistDisplayName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get actionPlanText => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set actionPlanText($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasActionPlanText() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearActionPlanText() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get sessionDate => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set sessionDate($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSessionDate() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSessionDate() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get idempotencyKey => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set idempotencyKey($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasIdempotencyKey() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearIdempotencyKey() => $_clearField(6);
+}
+
+class SendActionPlanEmailResponse extends $pb.GeneratedMessage {
+  factory SendActionPlanEmailResponse({
+    $core.String? deliveryId,
+  }) {
+    final result = create();
+    if (deliveryId != null) result.deliveryId = deliveryId;
+    return result;
+  }
+
+  SendActionPlanEmailResponse._();
+
+  factory SendActionPlanEmailResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SendActionPlanEmailResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SendActionPlanEmailResponse',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'notification.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'deliveryId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendActionPlanEmailResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendActionPlanEmailResponse copyWith(
+          void Function(SendActionPlanEmailResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as SendActionPlanEmailResponse))
+          as SendActionPlanEmailResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SendActionPlanEmailResponse create() =>
+      SendActionPlanEmailResponse._();
+  @$core.override
+  SendActionPlanEmailResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SendActionPlanEmailResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SendActionPlanEmailResponse>(create);
+  static SendActionPlanEmailResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get deliveryId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set deliveryId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDeliveryId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDeliveryId() => $_clearField(1);
+}
+
+class SendInvitationEmailRequest extends $pb.GeneratedMessage {
+  factory SendInvitationEmailRequest({
+    $core.String? recipientEmail,
+    $core.String? organizationName,
+    $core.String? inviterFirstName,
+    $core.String? acceptUrl,
+    $core.String? expiresAtIso,
+    $core.String? locale,
+  }) {
+    final result = create();
+    if (recipientEmail != null) result.recipientEmail = recipientEmail;
+    if (organizationName != null) result.organizationName = organizationName;
+    if (inviterFirstName != null) result.inviterFirstName = inviterFirstName;
+    if (acceptUrl != null) result.acceptUrl = acceptUrl;
+    if (expiresAtIso != null) result.expiresAtIso = expiresAtIso;
+    if (locale != null) result.locale = locale;
+    return result;
+  }
+
+  SendInvitationEmailRequest._();
+
+  factory SendInvitationEmailRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SendInvitationEmailRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SendInvitationEmailRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'notification.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'recipientEmail')
+    ..aOS(2, _omitFieldNames ? '' : 'organizationName')
+    ..aOS(3, _omitFieldNames ? '' : 'inviterFirstName')
+    ..aOS(4, _omitFieldNames ? '' : 'acceptUrl')
+    ..aOS(5, _omitFieldNames ? '' : 'expiresAtIso')
+    ..aOS(6, _omitFieldNames ? '' : 'locale')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendInvitationEmailRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendInvitationEmailRequest copyWith(
+          void Function(SendInvitationEmailRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as SendInvitationEmailRequest))
+          as SendInvitationEmailRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SendInvitationEmailRequest create() => SendInvitationEmailRequest._();
+  @$core.override
+  SendInvitationEmailRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SendInvitationEmailRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SendInvitationEmailRequest>(create);
+  static SendInvitationEmailRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get recipientEmail => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set recipientEmail($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRecipientEmail() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRecipientEmail() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get organizationName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set organizationName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasOrganizationName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearOrganizationName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get inviterFirstName => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set inviterFirstName($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasInviterFirstName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearInviterFirstName() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get acceptUrl => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set acceptUrl($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAcceptUrl() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAcceptUrl() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get expiresAtIso => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set expiresAtIso($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasExpiresAtIso() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearExpiresAtIso() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get locale => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set locale($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasLocale() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearLocale() => $_clearField(6);
+}
+
+class SendEmailVerificationRequest extends $pb.GeneratedMessage {
+  factory SendEmailVerificationRequest({
+    $core.String? recipientEmail,
+    $core.String? firstName,
+    $core.String? verifyUrl,
+    $core.String? expiresAtIso,
+    $core.String? locale,
+  }) {
+    final result = create();
+    if (recipientEmail != null) result.recipientEmail = recipientEmail;
+    if (firstName != null) result.firstName = firstName;
+    if (verifyUrl != null) result.verifyUrl = verifyUrl;
+    if (expiresAtIso != null) result.expiresAtIso = expiresAtIso;
+    if (locale != null) result.locale = locale;
+    return result;
+  }
+
+  SendEmailVerificationRequest._();
+
+  factory SendEmailVerificationRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SendEmailVerificationRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SendEmailVerificationRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'notification.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'recipientEmail')
+    ..aOS(2, _omitFieldNames ? '' : 'firstName')
+    ..aOS(3, _omitFieldNames ? '' : 'verifyUrl')
+    ..aOS(4, _omitFieldNames ? '' : 'expiresAtIso')
+    ..aOS(5, _omitFieldNames ? '' : 'locale')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendEmailVerificationRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendEmailVerificationRequest copyWith(
+          void Function(SendEmailVerificationRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as SendEmailVerificationRequest))
+          as SendEmailVerificationRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SendEmailVerificationRequest create() =>
+      SendEmailVerificationRequest._();
+  @$core.override
+  SendEmailVerificationRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SendEmailVerificationRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SendEmailVerificationRequest>(create);
+  static SendEmailVerificationRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get recipientEmail => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set recipientEmail($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRecipientEmail() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRecipientEmail() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get firstName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set firstName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFirstName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFirstName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get verifyUrl => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set verifyUrl($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasVerifyUrl() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearVerifyUrl() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get expiresAtIso => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set expiresAtIso($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasExpiresAtIso() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearExpiresAtIso() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get locale => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set locale($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocale() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLocale() => $_clearField(5);
+}
+
+class SendQuotaWarningRequest extends $pb.GeneratedMessage {
+  factory SendQuotaWarningRequest({
+    $core.String? recipientEmail,
+    $core.String? firstName,
+    $core.String? organizationName,
+    $core.int? usagePercent,
+    $core.int? tokensRemaining,
+    $core.String? planTier,
+    $core.String? planCycle,
+    $core.String? periodEndIso,
+    $core.String? billingUrl,
+    $core.String? locale,
+  }) {
+    final result = create();
+    if (recipientEmail != null) result.recipientEmail = recipientEmail;
+    if (firstName != null) result.firstName = firstName;
+    if (organizationName != null) result.organizationName = organizationName;
+    if (usagePercent != null) result.usagePercent = usagePercent;
+    if (tokensRemaining != null) result.tokensRemaining = tokensRemaining;
+    if (planTier != null) result.planTier = planTier;
+    if (planCycle != null) result.planCycle = planCycle;
+    if (periodEndIso != null) result.periodEndIso = periodEndIso;
+    if (billingUrl != null) result.billingUrl = billingUrl;
+    if (locale != null) result.locale = locale;
+    return result;
+  }
+
+  SendQuotaWarningRequest._();
+
+  factory SendQuotaWarningRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SendQuotaWarningRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SendQuotaWarningRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'notification.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'recipientEmail')
+    ..aOS(2, _omitFieldNames ? '' : 'firstName')
+    ..aOS(3, _omitFieldNames ? '' : 'organizationName')
+    ..aI(4, _omitFieldNames ? '' : 'usagePercent')
+    ..aI(5, _omitFieldNames ? '' : 'tokensRemaining')
+    ..aOS(6, _omitFieldNames ? '' : 'planTier')
+    ..aOS(7, _omitFieldNames ? '' : 'planCycle')
+    ..aOS(8, _omitFieldNames ? '' : 'periodEndIso')
+    ..aOS(9, _omitFieldNames ? '' : 'billingUrl')
+    ..aOS(10, _omitFieldNames ? '' : 'locale')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendQuotaWarningRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendQuotaWarningRequest copyWith(
+          void Function(SendQuotaWarningRequest) updates) =>
+      super.copyWith((message) => updates(message as SendQuotaWarningRequest))
+          as SendQuotaWarningRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SendQuotaWarningRequest create() => SendQuotaWarningRequest._();
+  @$core.override
+  SendQuotaWarningRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SendQuotaWarningRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SendQuotaWarningRequest>(create);
+  static SendQuotaWarningRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get recipientEmail => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set recipientEmail($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRecipientEmail() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRecipientEmail() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get firstName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set firstName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFirstName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFirstName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get organizationName => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set organizationName($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOrganizationName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOrganizationName() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get usagePercent => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set usagePercent($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasUsagePercent() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearUsagePercent() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get tokensRemaining => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set tokensRemaining($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTokensRemaining() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTokensRemaining() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get planTier => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set planTier($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasPlanTier() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearPlanTier() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get planCycle => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set planCycle($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPlanCycle() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPlanCycle() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get periodEndIso => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set periodEndIso($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasPeriodEndIso() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearPeriodEndIso() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get billingUrl => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set billingUrl($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasBillingUrl() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearBillingUrl() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get locale => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set locale($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasLocale() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearLocale() => $_clearField(10);
+}
+
 /// RegisterFCMToken upserts an FCM token for the authenticated user.
 ///
 /// user_id is resolved from the Firebase ID token in gRPC metadata server-side;

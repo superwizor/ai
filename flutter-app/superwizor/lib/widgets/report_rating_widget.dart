@@ -31,6 +31,7 @@ import '../providers/grpc_provider.dart';
 import '../theme/euphire_theme.dart';
 import 'euphire_toast.dart';
 import 'preference_suggestion_banner.dart' show suggestionRefreshTickProvider;
+import '../analytics/analytics_collector.dart';
 
 /// Canonical chip category IDs. These must match
 /// services/clinical-svc/internal/adapters/grpc/ratings.go::allowedIssues.
@@ -138,6 +139,11 @@ class _ReportRatingWidgetState extends ConsumerState<ReportRatingWidget> {
       return;
     }
 
+    ref.read(analyticsCollectorProvider).track("rating.tapped", properties: {
+      "report_id": widget.reportId,
+      "rating": "positive",
+    });
+
     setState(() => _submitting = true);
     try {
       await ref.read(grpcClientsProvider).clinical.rateReport(
@@ -171,6 +177,11 @@ class _ReportRatingWidgetState extends ConsumerState<ReportRatingWidget> {
   }) async {
     final therapistId = ref.read(therapistIdProvider);
     if (therapistId == null || _submitting) return;
+    ref.read(analyticsCollectorProvider).track("rating.tapped", properties: {
+      "report_id": widget.reportId,
+      "rating": "negative",
+    });
+
     setState(() => _submitting = true);
     try {
       await ref.read(grpcClientsProvider).clinical.rateReport(

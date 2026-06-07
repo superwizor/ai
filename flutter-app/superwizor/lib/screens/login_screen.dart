@@ -10,6 +10,7 @@ import '../services/grpc_client.dart';
 import '../generated/identity/v1/identity.pb.dart' as identity_pb;
 import 'forgot_password_screen.dart';
 import 'legal_markdown_screen.dart';
+import '../analytics/analytics_collector.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Login / Register — Euphire brand guidelines v4.
@@ -60,6 +61,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(analyticsCollectorProvider).track("screen.viewed", properties: {"screen_name": "LoginScreen"});
+    });
     _pageCtrl = PageController();
     final emailParam = Uri.base.queryParameters['email'];
     if (emailParam != null && emailParam.isNotEmpty) {

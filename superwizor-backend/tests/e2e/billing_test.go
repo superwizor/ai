@@ -594,7 +594,20 @@ func TestBilling_GetSubscription(t *testing.T) {
 func TestBilling_ConcurrentReserve_LastToken(t *testing.T) {
 	env := loadBillingEnv(t)
 	env.resetCounter(t)
-	env.setCounterUsage(t, 39, 0) // 1 token left
+
+	// Fetch actual limit dynamically to leave exactly 1 token
+	var limit int32
+	ctx := context.Background()
+	err := env.dbPool.QueryRow(ctx, `
+		SELECT tokens_limit FROM usage_counters
+		WHERE subscription_id IN (
+			SELECT id FROM subscriptions
+			WHERE organization_id = $1 AND status IN ('ACTIVE', 'TRIALING')
+		)
+		AND period_start <= now() AND period_end > now()`, env.orgID).Scan(&limit)
+	require.NoError(t, err)
+
+	env.setCounterUsage(t, limit-1, 0) // 1 token left
 	defer env.resetCounter(t)
 
 	conn, c := env.dialBilling(t)

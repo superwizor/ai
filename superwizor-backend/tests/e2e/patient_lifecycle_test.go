@@ -541,3 +541,62 @@ func TestPatientLifecycle_DeletePatientUser_RODO(t *testing.T) {
 	t.Logf("✓ List confirms cascade (%d kartoteki remain)", len(listed.PatientFiles))
 }
 
+// =================================================================
+//   TestPatientLifecycle_DSAR — verifies ExportPatientData and DeletePatientData
+// =================================================================
+func TestPatientLifecycle_DSAR(t *testing.T) {
+	env := setupLifecycleEnv(t)
+	created := env.createTestPatient("dsar")
+
+	t.Cleanup(func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_, _ = env.clinical.DeletePatientFile(bgCtx, &clinicalv1.DeletePatientFileRequest{
+			PatientFileId: created.Id,
+		})
+	})
+
+	t.Log("\n═══ Step 1: Create a Patient Note ═══")
+	note, err := env.clinical.CreatePatientNote(env.ctx, &clinicalv1.CreatePatientNoteRequest{
+		PatientFileId: created.Id,
+		Title:         "DSAR Test Note",
+		Text:          "This is test content for DSAR",
+		Kind:          "FREE_NOTE",
+	})
+	require.NoError(t, err, "CreatePatientNote")
+
+	t.Log("\n═══ Step 2: ExportPatientData and verify decrypted contents ═══")
+	exportResp, err := env.clinical.ExportPatientData(env.ctx, &clinicalv1.ExportPatientDataRequest{
+		PatientFileId: created.Id,
+	})
+	require.NoError(t, err, "ExportPatientData")
+	assert.Equal(t, created.Id, exportResp.PatientFile.Id)
+	require.Len(t, exportResp.Notes, 1)
+	assert.Equal(t, note.Id, exportResp.Notes[0].Id)
+	assert.Equal(t, "DSAR Test Note", exportResp.Notes[0].Title)
+	assert.Equal(t, "This is test content for DSAR", exportResp.Notes[0].Text)
+
+	t.Log("\n═══ Step 3: DeletePatientData (soft-delete DSAR) ═══")
+	_, err = env.clinical.DeletePatientData(env.ctx, &clinicalv1.DeletePatientDataRequest{
+		PatientFileId: created.Id,
+	})
+	require.NoError(t, err, "DeletePatientData")
+
+	t.Log("\n═══ Step 4: Verify data is soft-deleted (Get returns NotFound) ═══")
+	_, err = env.clinical.GetPatientFile(env.ctx, &clinicalv1.GetPatientFileRequest{
+		PatientFileId: created.Id,
+	})
+	require.Error(t, err)
+	st, ok := status.FromError(err)
+	require.True(t, ok)
+	assert.Equal(t, codes.NotFound, st.Code())
+
+	t.Log("\n═══ Step 5: Verify notes are excluded from List (List returns NotFound) ═══")
+	_, err = env.clinical.ListPatientNotes(env.ctx, &clinicalv1.ListPatientNotesRequest{
+		PatientFileId: created.Id,
+	})
+	require.Error(t, err)
+	st2, ok := status.FromError(err)
+	require.True(t, ok)
+	assert.Equal(t, codes.NotFound, st2.Code())
+}

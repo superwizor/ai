@@ -6,6 +6,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -84,17 +85,50 @@ type Querier interface {
 	// cleared automatically. Returns rows-affected so the handler can
 	// distinguish "not found / not a patient" from success.
 	DeletePatientUser(ctx context.Context, id uuid.UUID) (int64, error)
+	// CROSS-SERVICE READ: analytics-only
+	// Uses separate subqueries to prevent row multiplication from 1:N joins
+	GetAIQualityKPIs(ctx context.Context) (GetAIQualityKPIsRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetActivationRate(ctx context.Context) (float64, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetActivationTimeHistogram(ctx context.Context) ([]GetActivationTimeHistogramRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetAvgSessionDuration(ctx context.Context) (float64, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetAvgTokenUtilization(ctx context.Context) (float64, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetCohortRetention(ctx context.Context) ([]GetCohortRetentionRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetCostTrend(ctx context.Context, createdAt time.Time) ([]GetCostTrendRow, error)
 	// Compute the default session.name as production would set it on
 	// create. Used by ingestion-svc.CompleteAudioUpload when populating
 	// the column for a brand-new session. The COALESCE guards against
 	// a missing modality join (defensive — modality_id is NOT NULL on
 	// patient_files so this should never fire, but cheap insurance).
 	GetDefaultSessionName(ctx context.Context, arg GetDefaultSessionNameParams) (interface{}, error)
+	GetExpiredPatientFiles(ctx context.Context) ([]GetExpiredPatientFilesRow, error)
+	GetExpiredPatientNotes(ctx context.Context) ([]uuid.UUID, error)
+	GetExpiredPatientUsers(ctx context.Context) ([]uuid.UUID, error)
+	GetExpiredSessions(ctx context.Context) ([]uuid.UUID, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetFailureRateTrend(ctx context.Context, createdAt time.Time) ([]GetFailureRateTrendRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetFunnelSteps(ctx context.Context) (GetFunnelStepsRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetHourlyHeatmap(ctx context.Context) ([]GetHourlyHeatmapRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetIssueCategories(ctx context.Context) ([]GetIssueCategoriesRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetLatencyTrend(ctx context.Context, sessionAt time.Time) ([]GetLatencyTrendRow, error)
 	// Used by the suggestion engine to honor the 14-day cooldown after
 	// a banner is dismissed for a given dimension. Returns the most
 	// recent 'dismissed' row for (therapist, dimension) or NotFound.
 	GetLatestSuggestionDismissForDimension(ctx context.Context, arg GetLatestSuggestionDismissForDimensionParams) (GetLatestSuggestionDismissForDimensionRow, error)
 	GetModalityByCode(ctx context.Context, systemCode string) (GetModalityByCodeRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetModalityDistribution(ctx context.Context) ([]GetModalityDistributionRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetOverallSatisfactionRate(ctx context.Context) (float64, error)
 	// Kept for code paths that don't need user fields (e.g. internal
 	// authz/ownership checks). External callers use GetPatientFileWithUser.
 	GetPatientFile(ctx context.Context, id uuid.UUID) (PatientFile, error)
@@ -120,20 +154,51 @@ type Querier interface {
 	// Single note for authz + update/delete/send. Soft-deleted rows are
 	// invisible (treated as 404 by the handler).
 	GetPatientNote(ctx context.Context, id uuid.UUID) (PatientNote, error)
+	GetPatientNotesForExport(ctx context.Context, patientFileID uuid.UUID) ([]PatientNote, error)
 	GetPatientUser(ctx context.Context, id uuid.UUID) (GetPatientUserRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetPlanDistribution(ctx context.Context) ([]GetPlanDistributionRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetPlatformFixedCosts(ctx context.Context) ([]GetPlatformFixedCostsRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetReadReportCount(ctx context.Context) (int64, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetRegistrationsTrend(ctx context.Context, createdAt time.Time) ([]GetRegistrationsTrendRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetRelabelRate(ctx context.Context) (float64, error)
 	// Report-rating queries. Spec: docs/10_REPORT_CUSTOMIZATION.md §5.
 	// All paths assume the gRPC handler has already validated that the
 	// therapist owns the session that owns the report (auth happens at
 	// the handler boundary, not in SQL).
 	GetReportRating(ctx context.Context, arg GetReportRatingParams) (ReportRating, error)
+	// CROSS-SERVICE READ: analytics-only
+	// MRR snapshot: counts active subscriptions per plan tier
+	GetRevenueTrend(ctx context.Context) ([]GetRevenueTrendRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetSatisfactionTrend(ctx context.Context, dollar_1 time.Time) ([]GetSatisfactionTrendRow, error)
 	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetSessionDurationTrend(ctx context.Context, createdAt time.Time) ([]GetSessionDurationTrendRow, error)
 	GetSessionWithDetails(ctx context.Context, id uuid.UUID) (GetSessionWithDetailsRow, error)
+	GetSessionsForExport(ctx context.Context, patientFileID uuid.UUID) ([]Session, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetSessionsThisWeek(ctx context.Context) (int64, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetSessionsTrend(ctx context.Context, createdAt time.Time) ([]GetSessionsTrendRow, error)
 	// Used by CreatePatientFile to default the new patient's ui_language
 	// when the caller didn't pass one. Returns '' if the therapist row is
 	// somehow missing (shouldn't happen — auth interceptor would reject).
 	GetTherapistUILanguage(ctx context.Context, id uuid.UUID) (string, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetTokenUsageTrend(ctx context.Context, createdAt time.Time) ([]GetTokenUsageTrendRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetTokenUtilizationHeatmap(ctx context.Context) ([]GetTokenUtilizationHeatmapRow, error)
 	GetTranscriptBySession(ctx context.Context, sessionID uuid.UUID) (Transcript, error)
 	GetTranscriptForRebuild(ctx context.Context, sessionID uuid.UUID) (GetTranscriptForRebuildRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetUnitEconomicsKPIs(ctx context.Context) (GetUnitEconomicsKPIsRow, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetUploadFailuresTrend(ctx context.Context, occurredAt time.Time) ([]GetUploadFailuresTrendRow, error)
 	// first_name + last_name for a user (therapist), used by
 	// SavePatientNote to populate the action-plan e-mail's
 	// therapist_display_name. Both columns are NOT NULL on the users table
@@ -147,6 +212,10 @@ type Querier interface {
 	// yet (rare after the trial-signup bootstrap — but handled
 	// defensively in the caller as FailedPrecondition).
 	GetUserOrganizationID(ctx context.Context, id uuid.UUID) (pgtype.UUID, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetWAU(ctx context.Context) (int64, error)
+	// CROSS-SERVICE READ: analytics-only
+	GetWauTrend(ctx context.Context, dollar_1 time.Time) ([]GetWauTrendRow, error)
 	// Permanent removal. Migration 000012 added ON DELETE CASCADE on
 	// sessions.patient_file_id and audio_uploads.patient_file_id, so all
 	// child sessions (and their transcripts/reports/hitop rows via the
@@ -206,6 +275,11 @@ type Querier interface {
 	// confirms delivery. Returns the refreshed row so the handler can
 	// re-emit the proto with sent_to_patient_at populated.
 	MarkPatientNoteSent(ctx context.Context, arg MarkPatientNoteSentParams) (PatientNote, error)
+	PurgeOldAnalyticsEvents(ctx context.Context) (int64, error)
+	PurgePatientFile(ctx context.Context, id uuid.UUID) (int64, error)
+	PurgePatientNote(ctx context.Context, id uuid.UUID) (int64, error)
+	PurgePatientUser(ctx context.Context, id uuid.UUID) (int64, error)
+	PurgeSession(ctx context.Context, id uuid.UUID) (int64, error)
 	// Sets (or clears) the patient's contact e-mail on the kartoteka
 	// (migration 000040). Plaintext contact PII, consistent with
 	// working_alias. An empty string from the caller is normalized to NULL
@@ -216,9 +290,13 @@ type Querier interface {
 	// it. New code (post-000012) uses HardDeletePatientFile to satisfy
 	// RODO right-to-erasure.
 	SoftDeletePatientFile(ctx context.Context, arg SoftDeletePatientFileParams) error
+	SoftDeletePatientFileForDSAR(ctx context.Context, arg SoftDeletePatientFileForDSARParams) (int64, error)
 	// Soft delete — keeps the row for audit, hides it from List/Get. (Hard
 	// erasure happens via the patient_files CASCADE on RODO delete.)
 	SoftDeletePatientNote(ctx context.Context, id uuid.UUID) error
+	SoftDeletePatientNotesForDSAR(ctx context.Context, patientFileID uuid.UUID) error
+	SoftDeletePatientUserForDSAR(ctx context.Context, id uuid.UUID) (int64, error)
+	SoftDeleteSessionsForDSAR(ctx context.Context, patientFileID uuid.UUID) error
 	// Mutates only the therapist-editable kartoteka fields. modality_id is
 	// intentionally NOT here: sessions/reports were analyzed under the
 	// modality picked at create time, and silently swapping it would

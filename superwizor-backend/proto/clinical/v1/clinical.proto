@@ -4,6 +4,7 @@ package clinical.v1;
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
 import "billing/v1/billing.proto";
 
 option go_package = "github.com/superwizor-ai/backend/gen/go/clinical/v1;clinicalv1";
@@ -99,7 +100,18 @@ service ClinicalService {
     // therapist name + email. CSV export is implemented client-side by
     // requesting page_size up to MaxCsvPageSize and serialising the
     // response.
+    rpc TrackEvents(TrackEventsRequest) returns (TrackEventsResponse);
     rpc AdminListSessions(AdminListSessionsRequest) returns (AdminListSessionsResponse);
+    rpc GetAdminAnalytics(GetAdminAnalyticsRequest) returns (GetAdminAnalyticsResponse);
+
+    // ─── RODO/GDPR DSAR endpoints ───
+    // Export all clinical and personal data related to a patient file,
+    // decrypting all PHI columns using KMS before returning.
+    rpc ExportPatientData(ExportPatientDataRequest) returns (ExportPatientDataResponse);
+
+    // Cascaded soft-delete of all patient data (patient file, sessions, notes).
+    // The daily hard-delete purger will physically delete the records after 30 days.
+    rpc DeletePatientData(DeletePatientDataRequest) returns (google.protobuf.Empty);
 }
 
 enum ProcessType {
@@ -631,3 +643,242 @@ message AdminSessionRow {
   google.protobuf.Timestamp subscription_period_end = 13;
   int32 subscription_tokens_used = 14;
 }
+
+message TrackEventsRequest {
+  repeated ClientEvent events = 1;
+}
+
+message ClientEvent {
+  string event_name = 1;
+  google.protobuf.Struct properties = 2;
+  google.protobuf.Timestamp occurred_at = 3;
+  string client_platform = 4;
+  string client_version = 5;
+}
+
+message TrackEventsResponse {}
+
+message GetAdminAnalyticsRequest {
+  string time_range = 1; // "7d" | "30d" | "90d" | "12w" | "24w" | "52w"
+}
+
+message GetAdminAnalyticsResponse {
+  // Tab 1: Executive Overview
+  int64 kpi_wau = 1;
+  int64 kpi_sessions_this_week = 2;
+  double kpi_activation_rate = 3;
+  double kpi_satisfaction_rate = 4;
+  
+  repeated TrendPoint wau_trend = 5;
+  repeated TrendPoint sessions_trend = 6;
+  repeated TrendPoint registrations_trend = 7;
+  repeated PlanDistribution plan_distribution = 8;
+  
+  // Tab 2: Unit Economics
+  double kpi_avg_cost_per_session = 9;
+  double kpi_monthly_stt_cost = 10;
+  double kpi_monthly_llm_cost = 11;
+  double kpi_avg_token_utilization = 12;
+  
+  repeated CostTrendPoint cost_trend = 13;
+  repeated TokenUtilizationHeatmapPoint token_utilization_heatmap = 14;
+  repeated RevenueTrendPoint revenue_trend = 15;
+  repeated TokenUsageTrendPoint token_usage_trend = 16;
+  
+  // Tab 3: AI Quality
+  double kpi_avg_pipeline_latency = 17;
+  double kpi_failure_rate_7d = 18;
+  double kpi_relabel_rate = 19;
+  
+  repeated SatisfactionTrendPoint satisfaction_trend = 20;
+  repeated IssueCategory issue_categories = 21;
+  repeated LatencyTrendPoint latency_trend = 22;
+  repeated FailureRatePoint failure_rate_trend = 23;
+  
+  // Tab 4: Funnel & Retention
+  double kpi_30d_retention = 24;
+  repeated FunnelStep funnel_steps = 25;
+  repeated CohortRetentionPoint cohort_retention = 26;
+  repeated HistogramBucket activation_time_histogram = 27;
+  
+  // Tab 5: Operations
+  repeated HourlyHeatmapPoint hourly_heatmap = 28;
+  repeated FailureRatePoint upload_failures_trend = 29;
+
+  // Custom Analytics
+  repeated ModalityDistribution modality_distribution = 30;
+  double kpi_avg_session_duration = 31;
+  repeated TrendPoint session_duration_trend = 32;
+
+  repeated PlatformFixedCost platform_fixed_costs = 33;
+}
+
+message TrendPoint {
+  string label = 1;
+  double value = 2;
+}
+
+message PlanDistribution {
+  string plan_name = 1;
+  int64 count = 2;
+}
+
+message ModalityDistribution {
+  string modality_name = 1;
+  int64 count = 2;
+}
+
+message CostTrendPoint {
+  string label = 1;
+  double stt_cost = 2;
+  double llm_cost = 3;
+  double total_cost = 4;
+}
+
+message TokenUtilizationHeatmapPoint {
+  string org_name = 1;
+  string week = 2;
+  double value = 3;
+}
+
+message RevenueTrendPoint {
+  string label = 1;
+  double solo_revenue = 2;
+  double pro_revenue = 3;
+  double total_revenue = 4;
+}
+
+message TokenUsageTrendPoint {
+  string label = 1;
+  int64 input_tokens = 2;
+  int64 output_tokens = 3;
+}
+
+message SatisfactionTrendPoint {
+  string label = 1;
+  double satisfaction_pct = 2;
+}
+
+message IssueCategory {
+  string category = 1;
+  int64 count = 2;
+}
+
+message LatencyTrendPoint {
+  string label = 1;
+  double p50 = 2;
+  double p95 = 3;
+}
+
+message FailureRatePoint {
+  string label = 1;
+  double failure_rate = 2;
+  int64 total = 3;
+  int64 failed = 4;
+}
+
+message FunnelStep {
+  string step_name = 1;
+  int64 count = 2;
+  double pct_of_previous = 3;
+}
+
+message CohortRetentionPoint {
+  string cohort = 1;
+  string week = 2;
+  double pct = 3;
+}
+
+message HistogramBucket {
+  string bucket_label = 1;
+  int64 count = 2;
+}
+
+message HourlyHeatmapPoint {
+  int32 day_of_week = 1; // 0-6
+  int32 hour = 2; // 0-23
+  int64 count = 3;
+}
+
+// ─── RODO/GDPR DSAR messages ───
+
+message ExportPatientDataRequest {
+  string patient_file_id = 1;
+}
+
+message DecryptedReport {
+  string id = 1;
+  string title = 2;
+  string summary_short = 3;
+  string content = 4;
+  string sentiment_label = 5;
+  string risk_level = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message DecryptedSessionSegment {
+  int32 speaker_tag = 1;
+  string speaker_label = 2;
+  int32 start_offset_ms = 3;
+  int32 end_offset_ms = 4;
+  string text = 5;
+  float confidence = 6;
+}
+
+message DecryptedSessionTurn {
+  int32 speaker_tag = 1;
+  string speaker_label = 2;
+  int32 start_offset_ms = 3;
+  int32 end_offset_ms = 4;
+  string text = 5;
+  int32 segment_count = 6;
+  float confidence_avg = 7;
+}
+
+message DecryptedSessionTranscript {
+  string id = 1;
+  repeated DecryptedSessionSegment segments = 2;
+  repeated DecryptedSessionTurn turns = 3;
+}
+
+message DecryptedSession {
+  string id = 1;
+  string name = 2;
+  string session_date = 3;
+  int32 session_number = 4;
+  int32 duration_seconds = 5;
+  string status = 6;
+  google.protobuf.Timestamp created_at = 7;
+  DecryptedSessionTranscript transcript = 8;
+  repeated DecryptedReport reports = 9;
+}
+
+message DecryptedPatientNote {
+  string id = 1;
+  string kind = 2; // FREE_NOTE | ACTION_PLAN
+  string title = 3;
+  string text = 4;
+  google.protobuf.Timestamp sent_to_patient_at = 5;
+  string sent_to_email = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message ExportPatientDataResponse {
+  PatientFile patient_file = 1;
+  repeated DecryptedPatientNote notes = 2;
+  repeated DecryptedSession sessions = 3;
+}
+
+message DeletePatientDataRequest {
+  string patient_file_id = 1;
+}
+
+message PlatformFixedCost {
+  string id = 1;
+  string name = 2;
+  string provider = 3; // "GCP" or "Firebase"
+  double amount_usd = 4;
+  string billing_period = 5; // e.g. "monthly"
+}
+
+

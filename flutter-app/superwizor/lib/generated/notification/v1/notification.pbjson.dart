@@ -31,6 +31,132 @@ final $typed_data.Uint8List platformDescriptor = $convert.base64Decode(
     'CghQbGF0Zm9ybRIYChRQTEFURk9STV9VTlNQRUNJRklFRBAAEhAKDFBMQVRGT1JNX0lPUxABEh'
     'QKEFBMQVRGT1JNX0FORFJPSUQQAhIQCgxQTEFURk9STV9XRUIQAw==');
 
+@$core.Deprecated('Use sendActionPlanEmailRequestDescriptor instead')
+const SendActionPlanEmailRequest$json = {
+  '1': 'SendActionPlanEmailRequest',
+  '2': [
+    {'1': 'to_email', '3': 1, '4': 1, '5': 9, '10': 'toEmail'},
+    {
+      '1': 'therapist_display_name',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'therapistDisplayName'
+    },
+    {'1': 'action_plan_text', '3': 3, '4': 1, '5': 9, '10': 'actionPlanText'},
+    {'1': 'session_date', '3': 4, '4': 1, '5': 9, '10': 'sessionDate'},
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
+    {'1': 'idempotency_key', '3': 6, '4': 1, '5': 9, '10': 'idempotencyKey'},
+  ],
+};
+
+/// Descriptor for `SendActionPlanEmailRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List sendActionPlanEmailRequestDescriptor = $convert.base64Decode(
+    'ChpTZW5kQWN0aW9uUGxhbkVtYWlsUmVxdWVzdBIZCgh0b19lbWFpbBgBIAEoCVIHdG9FbWFpbB'
+    'I0ChZ0aGVyYXBpc3RfZGlzcGxheV9uYW1lGAIgASgJUhR0aGVyYXBpc3REaXNwbGF5TmFtZRIo'
+    'ChBhY3Rpb25fcGxhbl90ZXh0GAMgASgJUg5hY3Rpb25QbGFuVGV4dBIhCgxzZXNzaW9uX2RhdG'
+    'UYBCABKAlSC3Nlc3Npb25EYXRlEhYKBmxvY2FsZRgFIAEoCVIGbG9jYWxlEicKD2lkZW1wb3Rl'
+    'bmN5X2tleRgGIAEoCVIOaWRlbXBvdGVuY3lLZXk=');
+
+@$core.Deprecated('Use sendActionPlanEmailResponseDescriptor instead')
+const SendActionPlanEmailResponse$json = {
+  '1': 'SendActionPlanEmailResponse',
+  '2': [
+    {'1': 'delivery_id', '3': 1, '4': 1, '5': 9, '10': 'deliveryId'},
+  ],
+};
+
+/// Descriptor for `SendActionPlanEmailResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List sendActionPlanEmailResponseDescriptor =
+    $convert.base64Decode(
+        'ChtTZW5kQWN0aW9uUGxhbkVtYWlsUmVzcG9uc2USHwoLZGVsaXZlcnlfaWQYASABKAlSCmRlbG'
+        'l2ZXJ5SWQ=');
+
+@$core.Deprecated('Use sendInvitationEmailRequestDescriptor instead')
+const SendInvitationEmailRequest$json = {
+  '1': 'SendInvitationEmailRequest',
+  '2': [
+    {'1': 'recipient_email', '3': 1, '4': 1, '5': 9, '10': 'recipientEmail'},
+    {
+      '1': 'organization_name',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'organizationName'
+    },
+    {
+      '1': 'inviter_first_name',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'inviterFirstName'
+    },
+    {'1': 'accept_url', '3': 4, '4': 1, '5': 9, '10': 'acceptUrl'},
+    {'1': 'expires_at_iso', '3': 5, '4': 1, '5': 9, '10': 'expiresAtIso'},
+    {'1': 'locale', '3': 6, '4': 1, '5': 9, '10': 'locale'},
+  ],
+};
+
+/// Descriptor for `SendInvitationEmailRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List sendInvitationEmailRequestDescriptor = $convert.base64Decode(
+    'ChpTZW5kSW52aXRhdGlvbkVtYWlsUmVxdWVzdBInCg9yZWNpcGllbnRfZW1haWwYASABKAlSDn'
+    'JlY2lwaWVudEVtYWlsEisKEW9yZ2FuaXphdGlvbl9uYW1lGAIgASgJUhBvcmdhbml6YXRpb25O'
+    'YW1lEiwKEmludml0ZXJfZmlyc3RfbmFtZRgDIAEoCVIQaW52aXRlckZpcnN0TmFtZRIdCgphY2'
+    'NlcHRfdXJsGAQgASgJUglhY2NlcHRVcmwSJAoOZXhwaXJlc19hdF9pc28YBSABKAlSDGV4cGly'
+    'ZXNBdElzbxIWCgZsb2NhbGUYBiABKAlSBmxvY2FsZQ==');
+
+@$core.Deprecated('Use sendEmailVerificationRequestDescriptor instead')
+const SendEmailVerificationRequest$json = {
+  '1': 'SendEmailVerificationRequest',
+  '2': [
+    {'1': 'recipient_email', '3': 1, '4': 1, '5': 9, '10': 'recipientEmail'},
+    {'1': 'first_name', '3': 2, '4': 1, '5': 9, '10': 'firstName'},
+    {'1': 'verify_url', '3': 3, '4': 1, '5': 9, '10': 'verifyUrl'},
+    {'1': 'expires_at_iso', '3': 4, '4': 1, '5': 9, '10': 'expiresAtIso'},
+    {'1': 'locale', '3': 5, '4': 1, '5': 9, '10': 'locale'},
+  ],
+};
+
+/// Descriptor for `SendEmailVerificationRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List sendEmailVerificationRequestDescriptor = $convert.base64Decode(
+    'ChxTZW5kRW1haWxWZXJpZmljYXRpb25SZXF1ZXN0EicKD3JlY2lwaWVudF9lbWFpbBgBIAEoCV'
+    'IOcmVjaXBpZW50RW1haWwSHQoKZmlyc3RfbmFtZRgCIAEoCVIJZmlyc3ROYW1lEh0KCnZlcmlm'
+    'eV91cmwYAyABKAlSCXZlcmlmeVVybBIkCg5leHBpcmVzX2F0X2lzbxgEIAEoCVIMZXhwaXJlc0'
+    'F0SXNvEhYKBmxvY2FsZRgFIAEoCVIGbG9jYWxl');
+
+@$core.Deprecated('Use sendQuotaWarningRequestDescriptor instead')
+const SendQuotaWarningRequest$json = {
+  '1': 'SendQuotaWarningRequest',
+  '2': [
+    {'1': 'recipient_email', '3': 1, '4': 1, '5': 9, '10': 'recipientEmail'},
+    {'1': 'first_name', '3': 2, '4': 1, '5': 9, '10': 'firstName'},
+    {
+      '1': 'organization_name',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'organizationName'
+    },
+    {'1': 'usage_percent', '3': 4, '4': 1, '5': 5, '10': 'usagePercent'},
+    {'1': 'tokens_remaining', '3': 5, '4': 1, '5': 5, '10': 'tokensRemaining'},
+    {'1': 'plan_tier', '3': 6, '4': 1, '5': 9, '10': 'planTier'},
+    {'1': 'plan_cycle', '3': 7, '4': 1, '5': 9, '10': 'planCycle'},
+    {'1': 'period_end_iso', '3': 8, '4': 1, '5': 9, '10': 'periodEndIso'},
+    {'1': 'billing_url', '3': 9, '4': 1, '5': 9, '10': 'billingUrl'},
+    {'1': 'locale', '3': 10, '4': 1, '5': 9, '10': 'locale'},
+  ],
+};
+
+/// Descriptor for `SendQuotaWarningRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List sendQuotaWarningRequestDescriptor = $convert.base64Decode(
+    'ChdTZW5kUXVvdGFXYXJuaW5nUmVxdWVzdBInCg9yZWNpcGllbnRfZW1haWwYASABKAlSDnJlY2'
+    'lwaWVudEVtYWlsEh0KCmZpcnN0X25hbWUYAiABKAlSCWZpcnN0TmFtZRIrChFvcmdhbml6YXRp'
+    'b25fbmFtZRgDIAEoCVIQb3JnYW5pemF0aW9uTmFtZRIjCg11c2FnZV9wZXJjZW50GAQgASgFUg'
+    'x1c2FnZVBlcmNlbnQSKQoQdG9rZW5zX3JlbWFpbmluZxgFIAEoBVIPdG9rZW5zUmVtYWluaW5n'
+    'EhsKCXBsYW5fdGllchgGIAEoCVIIcGxhblRpZXISHQoKcGxhbl9jeWNsZRgHIAEoCVIJcGxhbk'
+    'N5Y2xlEiQKDnBlcmlvZF9lbmRfaXNvGAggASgJUgxwZXJpb2RFbmRJc28SHwoLYmlsbGluZ191'
+    'cmwYCSABKAlSCmJpbGxpbmdVcmwSFgoGbG9jYWxlGAogASgJUgZsb2NhbGU=');
+
 @$core.Deprecated('Use registerFCMTokenRequestDescriptor instead')
 const RegisterFCMTokenRequest$json = {
   '1': 'RegisterFCMTokenRequest',

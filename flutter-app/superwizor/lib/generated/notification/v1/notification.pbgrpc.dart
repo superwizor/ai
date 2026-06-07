@@ -63,6 +63,54 @@ class NotificationServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getUnreadCount, request, options: options);
   }
 
+  /// Web-app: send a transactional email (invitation magic-link).
+  /// Internal RPC — callers are other backend services (identity-svc
+  /// fires this from InviteTherapist), never the Flutter client.
+  /// Locale picks the right body under
+  /// services/notification-svc/internal/i18n/templates/{locale}/invitation.md.
+  $grpc.ResponseFuture<$1.Empty> sendInvitationEmail(
+    $0.SendInvitationEmailRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$sendInvitationEmail, request, options: options);
+  }
+
+  /// Web-app: confirm-your-email link after self-serve registration.
+  /// identity-svc generates the verify_url (Firebase Auth verification
+  /// link, retrieved via Firebase Admin SDK) and delegates the email
+  /// copy + delivery to notification-svc so the localized branding +
+  /// template lives in one place.
+  $grpc.ResponseFuture<$1.Empty> sendEmailVerification(
+    $0.SendEmailVerificationRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$sendEmailVerification, request, options: options);
+  }
+
+  /// Web-app: 80% / 95% quota warning email. Fired by billing-svc when
+  /// a CommitUsage crosses one of the thresholds for the first time
+  /// in the current billing period. Idempotency lives in billing-svc
+  /// (the threshold-crossing flag is per-period); this RPC always
+  /// sends regardless.
+  $grpc.ResponseFuture<$1.Empty> sendQuotaWarning(
+    $0.SendQuotaWarningRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$sendQuotaWarning, request, options: options);
+  }
+
+  /// Send a session's "action plan" to the patient by e-mail (docs/22).
+  /// Internal RPC — clinical-svc fires this from SavePatientNote when the
+  /// therapist chooses "save and send". Template is loaded from the
+  /// email_templates table (key 'action_plan'), falling back to the
+  /// embedded default.
+  $grpc.ResponseFuture<$0.SendActionPlanEmailResponse> sendActionPlanEmail(
+    $0.SendActionPlanEmailRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$sendActionPlanEmail, request, options: options);
+  }
+
   $grpc.ResponseFuture<$0.HealthCheckResponse> healthCheck(
     $1.Empty request, {
     $grpc.CallOptions? options,
@@ -87,6 +135,26 @@ class NotificationServiceClient extends $grpc.Client {
           '/notification.v1.NotificationService/GetUnreadCount',
           ($1.Empty value) => value.writeToBuffer(),
           $0.GetUnreadCountResponse.fromBuffer);
+  static final _$sendInvitationEmail =
+      $grpc.ClientMethod<$0.SendInvitationEmailRequest, $1.Empty>(
+          '/notification.v1.NotificationService/SendInvitationEmail',
+          ($0.SendInvitationEmailRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$sendEmailVerification =
+      $grpc.ClientMethod<$0.SendEmailVerificationRequest, $1.Empty>(
+          '/notification.v1.NotificationService/SendEmailVerification',
+          ($0.SendEmailVerificationRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$sendQuotaWarning =
+      $grpc.ClientMethod<$0.SendQuotaWarningRequest, $1.Empty>(
+          '/notification.v1.NotificationService/SendQuotaWarning',
+          ($0.SendQuotaWarningRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$sendActionPlanEmail = $grpc.ClientMethod<
+          $0.SendActionPlanEmailRequest, $0.SendActionPlanEmailResponse>(
+      '/notification.v1.NotificationService/SendActionPlanEmail',
+      ($0.SendActionPlanEmailRequest value) => value.writeToBuffer(),
+      $0.SendActionPlanEmailResponse.fromBuffer);
   static final _$healthCheck =
       $grpc.ClientMethod<$1.Empty, $0.HealthCheckResponse>(
           '/notification.v1.NotificationService/HealthCheck',
@@ -123,6 +191,39 @@ abstract class NotificationServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
         ($0.GetUnreadCountResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SendInvitationEmailRequest, $1.Empty>(
+        'SendInvitationEmail',
+        sendInvitationEmail_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SendInvitationEmailRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SendEmailVerificationRequest, $1.Empty>(
+        'SendEmailVerification',
+        sendEmailVerification_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SendEmailVerificationRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SendQuotaWarningRequest, $1.Empty>(
+        'SendQuotaWarning',
+        sendQuotaWarning_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SendQuotaWarningRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SendActionPlanEmailRequest,
+            $0.SendActionPlanEmailResponse>(
+        'SendActionPlanEmail',
+        sendActionPlanEmail_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SendActionPlanEmailRequest.fromBuffer(value),
+        ($0.SendActionPlanEmailResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$1.Empty, $0.HealthCheckResponse>(
         'HealthCheck',
         healthCheck_Pre,
@@ -156,6 +257,39 @@ abstract class NotificationServiceBase extends $grpc.Service {
 
   $async.Future<$0.GetUnreadCountResponse> getUnreadCount(
       $grpc.ServiceCall call, $1.Empty request);
+
+  $async.Future<$1.Empty> sendInvitationEmail_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.SendInvitationEmailRequest> $request) async {
+    return sendInvitationEmail($call, await $request);
+  }
+
+  $async.Future<$1.Empty> sendInvitationEmail(
+      $grpc.ServiceCall call, $0.SendInvitationEmailRequest request);
+
+  $async.Future<$1.Empty> sendEmailVerification_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.SendEmailVerificationRequest> $request) async {
+    return sendEmailVerification($call, await $request);
+  }
+
+  $async.Future<$1.Empty> sendEmailVerification(
+      $grpc.ServiceCall call, $0.SendEmailVerificationRequest request);
+
+  $async.Future<$1.Empty> sendQuotaWarning_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.SendQuotaWarningRequest> $request) async {
+    return sendQuotaWarning($call, await $request);
+  }
+
+  $async.Future<$1.Empty> sendQuotaWarning(
+      $grpc.ServiceCall call, $0.SendQuotaWarningRequest request);
+
+  $async.Future<$0.SendActionPlanEmailResponse> sendActionPlanEmail_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.SendActionPlanEmailRequest> $request) async {
+    return sendActionPlanEmail($call, await $request);
+  }
+
+  $async.Future<$0.SendActionPlanEmailResponse> sendActionPlanEmail(
+      $grpc.ServiceCall call, $0.SendActionPlanEmailRequest request);
 
   $async.Future<$0.HealthCheckResponse> healthCheck_Pre(
       $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {

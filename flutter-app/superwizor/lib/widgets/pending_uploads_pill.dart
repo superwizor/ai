@@ -12,6 +12,7 @@ import '../screens/pending_uploads_screen.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
+import '../analytics/analytics_collector.dart';
 
 class PendingUploadsPill extends ConsumerWidget {
   const PendingUploadsPill({super.key});
@@ -52,6 +53,9 @@ class PendingUploadsPill extends ConsumerWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () {
+        ref.read(analyticsCollectorProvider).track("upload_pill.tapped", properties: {
+          "pending_count": list.length,
+        });
         Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => const PendingUploadsScreen(),
         ));

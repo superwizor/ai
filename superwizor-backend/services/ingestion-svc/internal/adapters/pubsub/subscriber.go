@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/postgres/db"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/storage"
 )
@@ -39,6 +40,7 @@ type Subscriber struct {
 	converter  *storage.Converter
 	bucketName string
 	publisher  AudioPublisher
+	collector  *analytics.Collector
 }
 
 func NewSubscriber(
@@ -51,6 +53,7 @@ func NewSubscriber(
 	converter *storage.Converter,
 	bucketName string,
 	publisher AudioPublisher,
+	collector *analytics.Collector,
 ) (*Subscriber, error) {
 	client, err := pubsub.NewClient(ctx, projectID)
 	if err != nil {
@@ -66,6 +69,7 @@ func NewSubscriber(
 		converter:  converter,
 		bucketName: bucketName,
 		publisher:  publisher,
+		collector:  collector,
 	}, nil
 }
 
@@ -229,6 +233,7 @@ func (s *Subscriber) handleMessage(ctx context.Context, msg *pubsub.Message) {
 				ID:     pgtype.UUID{Bytes: sessionID, Valid: true},
 				Status: "FAILED",
 			})
+			s.trackUploadFailed(ctx, upload, "transcode_error")
 			if commitErr := tx.Commit(ctx); commitErr != nil {
 				slog.Error("subscriber: commit failed on failure path", "session_id", sessionID, "error", commitErr)
 			}
@@ -290,6 +295,7 @@ func (s *Subscriber) handleMessage(ctx context.Context, msg *pubsub.Message) {
 					ID:     pgtype.UUID{Bytes: sessionID, Valid: true},
 					Status: "FAILED",
 				})
+				s.trackUploadFailed(ctx, upload, "chunking_error")
 				if commitErr := tx.Commit(ctx); commitErr != nil {
 					slog.Error("subscriber: commit failed on failure path", "session_id", sessionID, "error", commitErr)
 				}
@@ -354,6 +360,8 @@ func (s *Subscriber) handleMessage(ctx context.Context, msg *pubsub.Message) {
 		return
 	}
 
+	s.trackUploadFinalized(ctx, upload, durationSec, !skipTranscode, chunkCount)
+
 	slog.Info("subscriber: successfully processed upload, publishing STT kickoff event", "session_id", sessionID)
 
 	// 11. Kickoff down-stream STT fanning out
@@ -387,4 +395,88 @@ func parseSessionIDFromObjectPath(path string) (uuid.UUID, error) {
 
 func ptr[T any](v T) *T {
 	return &v
+}
+
+func (s *Subscriber) trackUploadFailed(ctx context.Context, upload db.AudioUpload, category string) {
+	if s.collector == nil {
+		return
+	}
+	var thID *uuid.UUID
+	if upload.TherapistID.Valid {
+		id := uuid.UUID(upload.TherapistID.Bytes)
+		thID = &id
+	}
+	var patFileID *uuid.UUID
+	if upload.PatientFileID.Valid {
+		id := uuid.UUID(upload.PatientFileID.Bytes)
+		patFileID = &id
+	}
+	var sessID *uuid.UUID
+	if upload.SessionID.Valid {
+		id := uuid.UUID(upload.SessionID.Bytes)
+		sessID = &id
+	}
+	var orgIDPtr *uuid.UUID
+	if upload.TherapistID.Valid {
+		orgIDPg, errOrg := s.queries.GetUserOrganizationID(ctx, upload.TherapistID)
+		if errOrg == nil && orgIDPg.Valid {
+			id := uuid.UUID(orgIDPg.Bytes)
+			orgIDPtr = &id
+		}
+	}
+
+	s.collector.Track(ctx, analytics.Event{
+		Name:           "upload.failed",
+		TherapistID:    thID,
+		OrganizationID: orgIDPtr,
+		SessionID:      sessID,
+		PatientFileID:  patFileID,
+		Properties: map[string]any{
+			"error_category": category,
+		},
+		Source: "server",
+	})
+}
+
+func (s *Subscriber) trackUploadFinalized(ctx context.Context, upload db.AudioUpload, durationSec int, neededTranscode bool, chunkCount int) {
+	if s.collector == nil {
+		return
+	}
+	var thID *uuid.UUID
+	if upload.TherapistID.Valid {
+		id := uuid.UUID(upload.TherapistID.Bytes)
+		thID = &id
+	}
+	var patFileID *uuid.UUID
+	if upload.PatientFileID.Valid {
+		id := uuid.UUID(upload.PatientFileID.Bytes)
+		patFileID = &id
+	}
+	var sessID *uuid.UUID
+	if upload.SessionID.Valid {
+		id := uuid.UUID(upload.SessionID.Bytes)
+		sessID = &id
+	}
+	var orgIDPtr *uuid.UUID
+	if upload.TherapistID.Valid {
+		orgIDPg, errOrg := s.queries.GetUserOrganizationID(ctx, upload.TherapistID)
+		if errOrg == nil && orgIDPg.Valid {
+			id := uuid.UUID(orgIDPg.Bytes)
+			orgIDPtr = &id
+		}
+	}
+
+	s.collector.Track(ctx, analytics.Event{
+		Name:           "upload.finalized",
+		TherapistID:    thID,
+		OrganizationID: orgIDPtr,
+		SessionID:      sessID,
+		PatientFileID:  patFileID,
+		Properties: map[string]any{
+			"duration_seconds": durationSec,
+			"needed_transcode": neededTranscode,
+			"chunk_count":      chunkCount,
+		},
+		Source: "server",
+	})
 }

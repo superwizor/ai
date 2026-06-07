@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
+	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 )
 
@@ -152,6 +153,31 @@ func (s *Server) UpdateSpeakerLabels(ctx context.Context, req *clinicalv1.Update
 	if err := tx.Commit(ctx); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	// Analityka: speaker_labels.updated
+	var thIDPtr *uuid.UUID
+	var orgIDPtr *uuid.UUID
+	if therapistIDStr, ok := ctx.Value(UserIDKey).(string); ok && therapistIDStr != "" {
+		if thID, err := uuid.Parse(therapistIDStr); err == nil {
+			thIDPtr = &thID
+			orgIDPg, errOrg := s.queries.GetUserOrganizationID(ctx, thID)
+			if errOrg == nil && orgIDPg.Valid {
+				id := uuid.UUID(orgIDPg.Bytes)
+				orgIDPtr = &id
+			}
+		}
+	}
+
+	s.trackEvent(ctx, analytics.Event{
+		Name:           "speaker_labels.updated",
+		TherapistID:    thIDPtr,
+		OrganizationID: orgIDPtr,
+		SessionID:      &sessionID,
+		Properties: map[string]any{
+			"speakers_renamed_count": len(req.LabelMapping),
+		},
+		Source: "server",
+	})
 
 	return &clinicalv1.UpdateSpeakerLabelsResponse{
 		SessionId:       sessionID.String(),

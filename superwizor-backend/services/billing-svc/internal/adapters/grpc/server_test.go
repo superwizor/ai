@@ -26,7 +26,7 @@ func newTestServer(q *fakeQuerier, tx *fakeTxOpener) *Server {
 	if tx.q == nil {
 		tx.q = q
 	}
-	return NewServerWithDeps(q, tx, time.Hour, "test")
+	return NewServerWithDeps(q, tx, time.Hour, "test", nil)
 }
 
 func subRow(t *testing.T, status db.SubscriptionStatus, tokensPerPeriod int32) db.GetActiveSubscriptionByOrgRow {

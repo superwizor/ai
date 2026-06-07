@@ -38,7 +38,9 @@ type Querier interface {
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	GetAddressByID(ctx context.Context, id uuid.UUID) (Address, error)
+	GetConsentHistory(ctx context.Context, userID uuid.UUID) ([]ConsentRecord, error)
 	GetInvitationByOrgEmail(ctx context.Context, arg GetInvitationByOrgEmailParams) (Invitation, error)
+	GetLatestConsent(ctx context.Context, arg GetLatestConsentParams) (ConsentRecord, error)
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
 	// Returns the raw JSONB. Empty object {} when the user has never
 	// customized; Go layer turns that into the default ReportPreferences.
@@ -66,6 +68,7 @@ type Querier interface {
 	// therapists tab in the org-admin UI is about practitioners, not co-admins.
 	ListTherapistsInOrgAll(ctx context.Context, organizationID pgtype.UUID) ([]User, error)
 	MarkInvitationAccepted(ctx context.Context, arg MarkInvitationAcceptedParams) error
+	RecordConsent(ctx context.Context, arg RecordConsentParams) (ConsentRecord, error)
 	SetOrganizationPrimaryAdmin(ctx context.Context, arg SetOrganizationPrimaryAdminParams) error
 	SoftDeleteUser(ctx context.Context, id uuid.UUID) error
 	// Selective update — pass NULL on any narg to keep the existing value.

@@ -105,19 +105,35 @@ module "cloud_functions" {
   depends_on = [module.cloud_sql, module.storage, module.pubsub, google_service_account.stt_worker, google_service_account.llm_worker, google_service_account.notification_svc, module.kms]
 }
 
+resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
+  display_name = "Email Alert Channel (kontakt@superwizor.ai)"
+  type         = "email"
+  labels = {
+    email_address = "kontakt@superwizor.ai"
+  }
+}
+
 # Notification pipeline alerting + dashboard (Sprint 3.6).
 #
-# Notification channels are intentionally empty for staging — alerts still
-# fire to the GCP console; production should populate this with a
-# pre-existing channel id (e.g. an email or PagerDuty channel created
-# outside this module's lifecycle).
+# Notification channels are populated with the staging email channel.
 module "monitoring" {
   source     = "../../modules/monitoring"
   project_id = var.project_id
 
-  notification_channels = []
+  notification_channels = [google_monitoring_notification_channel.email.name]
 
   firestore_sync_dlq_subscription_name = module.pubsub.firestore_sync_dlq_subscription_name
 
   depends_on = [module.pubsub, module.cloud_functions]
 }
+
+module "analytics" {
+  source                  = "../../modules/analytics"
+  project_id              = var.project_id
+  project_number          = var.project_number
+  cloud_sql_instance_name = module.cloud_sql.instance_name
+  db_name                 = module.cloud_sql.db_name
+  db_user                 = module.cloud_sql.db_user
+}
+

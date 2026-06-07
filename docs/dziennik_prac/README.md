@@ -8,6 +8,7 @@ Kronikarz (`/docs/kronikarz/SKILL.md`) automatycznie dodaje tutaj nowe wpisy pod
 
 | Data | Tytuł Sesji | Podsumowanie |
 |------|-------------|--------------|
+| 2026-06-07 | [Integracja Stripe i RODO](2026-06-07-integracja-stripe-i-wdrozenie-rodo.md) | Dokończenie integracji Stripe Sandbox, wdrożenie logiki przejścia (dezaktywacja starych subskrypcji), poprawki analityki i testy RODO. |
 | 2026-05-13 | [UI FINAL](2026-05-13-ui-final.md) | Zakończenie polerowania interfejsu (Faza 3), integracja Firebase Storage do przesyłania zdjęć, wdrożenie glassmorphism. |
 | 2026-05-13 | [Wyczesane UI - faza 2 z 3 (stabilna)](2026-05-13-[Antigravity]-wyczesane-ui-faza-2-z-3-stabilne.md) | Stabilizacja drugiej fazy polerowania. |
 | 2026-05-13 | [Wyczesane UI Faza 3 z 3](2026-05-13-ui-polishing-phase-3.md) | Zakończenie polerowania UI: Animowany Circular Waveform z tętniącymi pierścieniami, auto-start nagrywania, poprawki kopi Session Status (dodano 5 etap raportowania). |

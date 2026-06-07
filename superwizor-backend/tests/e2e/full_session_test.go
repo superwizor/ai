@@ -70,6 +70,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -322,7 +323,12 @@ func authInterceptor(token string) grpc.UnaryClientInterceptor {
 
 func dial(t *testing.T, serviceURL, token string) *grpc.ClientConn {
 	t.Helper()
-	creds := credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12})
+	var creds credentials.TransportCredentials
+	if strings.HasPrefix(serviceURL, "http://") {
+		creds = insecure.NewCredentials()
+	} else {
+		creds = credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12})
+	}
 	conn, err := grpc.NewClient(hostPort(serviceURL),
 		grpc.WithTransportCredentials(creds),
 		grpc.WithUnaryInterceptor(authInterceptor(token)),

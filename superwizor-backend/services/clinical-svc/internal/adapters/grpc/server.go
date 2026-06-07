@@ -21,6 +21,7 @@ import (
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
+	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 )
@@ -37,6 +38,7 @@ type SessionEventPublisher interface {
 	// PublishSessionStatusChanged mirrors a lifecycle status to Firestore
 	// via session.status_changed (docs/21). Used for "cancelled".
 	PublishSessionStatusChanged(ctx context.Context, sessionID, status string) error
+	PublishAnalyticsEvent(ctx context.Context, event analytics.Event) error
 }
 
 // TxOpener abstracts "start a transaction, give me a Querier scoped to
@@ -107,6 +109,7 @@ type Server struct {
 	crypto       cryptobox.CryptoBox
 	pubsub       SessionEventPublisher
 	version      string
+	collector    *analytics.Collector
 }
 
 // WithNotification injects the notification-svc client. Kept as a
@@ -127,7 +130,7 @@ func (s *Server) WithNotification(n notificationv1.NotificationServiceClient) *S
 // to proxy through to billing-svc.GetSubscription. Pass nil for tests
 // or environments where billing-svc isn't wired — GetMyBillingState
 // will respond with Unavailable in that case.
-func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, billing billingv1.BillingServiceClient, notification notificationv1.NotificationServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
+func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.IdentityServiceClient, billing billingv1.BillingServiceClient, notification notificationv1.NotificationServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string, collector *analytics.Collector) *Server {
 	return &Server{
 		queries:      queries,
 		tx:           &pgxTxOpener{pool: dbPool, base: queries},
@@ -137,6 +140,7 @@ func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.Id
 		crypto:       crypto,
 		pubsub:       pubsub,
 		version:      version,
+		collector:    collector,
 	}
 }
 
@@ -144,15 +148,16 @@ func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.Id
 // dependency is explicit so tests can inject fakes. Production code
 // uses NewServer; this exists purely to keep test files honest about
 // what they're stubbing.
-func NewServerWithDeps(queries db.Querier, tx TxOpener, identity identityv1.IdentityServiceClient, billing billingv1.BillingServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string) *Server {
+func NewServerWithDeps(queries db.Querier, tx TxOpener, identity identityv1.IdentityServiceClient, billing billingv1.BillingServiceClient, crypto cryptobox.CryptoBox, pubsub SessionEventPublisher, version string, collector *analytics.Collector) *Server {
 	return &Server{
-		queries:  queries,
-		tx:       tx,
-		identity: identity,
-		billing:  billing,
-		crypto:   crypto,
-		pubsub:   pubsub,
-		version:  version,
+		queries:   queries,
+		tx:        tx,
+		identity:  identity,
+		billing:   billing,
+		crypto:    crypto,
+		pubsub:    pubsub,
+		version:   version,
+		collector: collector,
 	}
 }
 
@@ -348,6 +353,26 @@ func (s *Server) CreatePatientFile(ctx context.Context, req *clinicalv1.CreatePa
 	if err := tx.Commit(ctx); err != nil {
 		return nil, status.Errorf(codes.Internal, "commit: %v", err)
 	}
+
+	// Analityka: patient_file.created
+	var orgIDPtr *uuid.UUID
+	orgIDPg, errOrg := s.queries.GetUserOrganizationID(ctx, therapistID)
+	if errOrg == nil && orgIDPg.Valid {
+		id := uuid.UUID(orgIDPg.Bytes)
+		orgIDPtr = &id
+	}
+
+	s.trackEvent(ctx, analytics.Event{
+		Name:           "patient_file.created",
+		TherapistID:    &therapistID,
+		OrganizationID: orgIDPtr,
+		PatientFileID:  &pf.ID,
+		Properties: map[string]any{
+			"modality_code": req.ModalityCode,
+			"process_type":  req.ProcessType.String(),
+		},
+		Source: "server",
+	})
 
 	// Audit log (async w produkcji; synchroniczne w MVP)
 	auditMeta, _ := json.Marshal(map[string]any{
@@ -897,3 +922,19 @@ func toProtoProcessType(p db.ProcessType) clinicalv1.ProcessType {
 	}
 	return clinicalv1.ProcessType_PROCESS_TYPE_UNSPECIFIED
 }
+
+func (s *Server) trackEvent(ctx context.Context, event analytics.Event) {
+	if s.collector != nil {
+		s.collector.Track(ctx, event)
+	}
+
+	if s.pubsub != nil {
+		if err := s.pubsub.PublishAnalyticsEvent(ctx, event); err != nil {
+			slog.ErrorContext(ctx, "failed to publish analytics event to Pub/Sub",
+				"error", err,
+				"event_name", event.Name,
+			)
+		}
+	}
+}
+

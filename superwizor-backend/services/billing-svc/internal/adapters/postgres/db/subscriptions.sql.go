@@ -13,6 +13,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deactivateOtherActiveSubscriptions = `-- name: DeactivateOtherActiveSubscriptions :exec
+UPDATE subscriptions
+SET status = 'CANCELED',
+    canceled_at = now(),
+    updated_at = now()
+WHERE organization_id = $1
+  AND status IN ('ACTIVE', 'TRIALING', 'PAST_DUE')
+  AND (provider_subscription_id IS NULL OR provider_subscription_id <> $2)
+`
+
+type DeactivateOtherActiveSubscriptionsParams struct {
+	OrganizationID         uuid.UUID `json:"organization_id"`
+	ProviderSubscriptionID string    `json:"provider_subscription_id"`
+}
+
+// Anuluje wszystkie inne aktywne/trialing/past_due subskrypcje dla danej organizacji,
+// oprócz tej o podanym Stripe ID (jeśli podane). Zapobiega to naruszeniu unique index
+// idx_subscriptions_one_active_per_org przy przejściu na płatną subskrypcję.
+func (q *Queries) DeactivateOtherActiveSubscriptions(ctx context.Context, arg DeactivateOtherActiveSubscriptionsParams) error {
+	_, err := q.db.Exec(ctx, deactivateOtherActiveSubscriptions, arg.OrganizationID, arg.ProviderSubscriptionID)
+	return err
+}
+
 const getActiveSubscriptionByOrg = `-- name: GetActiveSubscriptionByOrg :one
 SELECT
     s.id, s.organization_id, s.plan_id, s.provider,

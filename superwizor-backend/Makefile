@@ -31,6 +31,8 @@ build:  ## Build all service binaries
 		echo "Building $$svc"; \
 		go build -o bin/$$svc ./services/$$svc/cmd/server; \
 	done
+	@echo "Building purger"
+	@go build -o bin/purger ./services/clinical-svc/cmd/purger
 
 migrate-up:  ## Run database migrations (staging)
 	migrate -path migrations \

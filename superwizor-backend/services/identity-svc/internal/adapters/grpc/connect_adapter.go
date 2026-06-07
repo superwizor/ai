@@ -258,3 +258,12 @@ func (a *ConnectAdapter) HealthCheck(ctx context.Context, req *connect.Request[e
 	}
 	return connect.NewResponse(resp), nil
 }
+
+func (a *ConnectAdapter) RecordConsent(ctx context.Context, req *connect.Request[identityv1.RecordConsentRequest]) (*connect.Response[identityv1.RecordConsentResponse], error) {
+	resp, err := a.s.RecordConsent(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+

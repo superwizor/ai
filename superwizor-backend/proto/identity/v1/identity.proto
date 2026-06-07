@@ -104,6 +104,11 @@ service IdentityService {
 
   // Health check
   rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
+
+  // ─── RODO/GDPR Consent Logging ───
+  // Records a user consent choice (TOS, MARKETING, RECORDING, etc.)
+  // for auditing compliance.
+  rpc RecordConsent(RecordConsentRequest) returns (RecordConsentResponse);
 }
 
 message AppLoginToken {
@@ -535,4 +540,20 @@ message AdminListAuditEventsRequest {
 message AdminListAuditEventsResponse {
   repeated AuditEntry events = 1;
   string next_page_token = 2;
+}
+
+// ─── RODO/GDPR Consent messages ───
+
+message RecordConsentRequest {
+  string user_id = 1;
+  string consent_type = 2; // e.g., 'TOS', 'MARKETING', 'RECORDING'
+  bool granted = 3;
+  string consent_version = 4; // e.g. 'v1.0.2', '2026-06-01'
+  string ip_address = 5;
+  string user_agent = 6;
+}
+
+message RecordConsentResponse {
+  string consent_record_id = 1;
+  google.protobuf.Timestamp recorded_at = 2;
 }

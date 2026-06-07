@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -11,6 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
+	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 )
 
@@ -44,6 +46,22 @@ type fakeQuerier struct {
 	getUserOrganizationIDFn       func(ctx context.Context, id uuid.UUID) (pgtype.UUID, error)
 
 	setPatientEmailFn func(ctx context.Context, arg db.SetPatientEmailParams) error
+
+	getModalityDistributionFn func(ctx context.Context) ([]db.GetModalityDistributionRow, error)
+	getAvgSessionDurationFn   func(ctx context.Context) (float64, error)
+	getSessionDurationTrendFn func(ctx context.Context, since time.Time) ([]db.GetSessionDurationTrendRow, error)
+
+	// DSAR & Purger fields
+	getPatientNotesForExportFn      func(ctx context.Context, patientFileID uuid.UUID) ([]db.PatientNote, error)
+	getSessionsForExportFn          func(ctx context.Context, patientFileID uuid.UUID) ([]db.Session, error)
+	getTranscriptBySessionFn        func(ctx context.Context, sessionID uuid.UUID) (db.Transcript, error)
+	listTranscriptSegmentsFn        func(ctx context.Context, transcriptID uuid.UUID) ([]db.TranscriptSegment, error)
+	listReportsBySessionFn          func(ctx context.Context, sessionID uuid.UUID) ([]db.Report, error)
+	softDeleteSessionsForDSARFn     func(ctx context.Context, patientFileID uuid.UUID) error
+	softDeletePatientNotesForDSARFn  func(ctx context.Context, patientFileID uuid.UUID) error
+	softDeletePatientFileForDSARFn  func(ctx context.Context, arg db.SoftDeletePatientFileForDSARParams) (int64, error)
+	softDeletePatientUserForDSARFn  func(ctx context.Context, id uuid.UUID) (int64, error)
+	createAuditEventFn              func(ctx context.Context, arg db.CreateAuditEventParams) error
 
 	// Call recorders — set non-nil to record args for later assertion.
 	deletePatientUserCalls    []uuid.UUID
@@ -121,6 +139,70 @@ func (f *fakeQuerier) SetPatientEmail(ctx context.Context, arg db.SetPatientEmai
 	return f.setPatientEmailFn(ctx, arg)
 }
 
+func (f *fakeQuerier) GetModalityDistribution(ctx context.Context) ([]db.GetModalityDistributionRow, error) {
+	if f.getModalityDistributionFn == nil {
+		return nil, nil
+	}
+	return f.getModalityDistributionFn(ctx)
+}
+
+func (f *fakeQuerier) GetAvgSessionDuration(ctx context.Context) (float64, error) {
+	if f.getAvgSessionDurationFn == nil {
+		return 0, nil
+	}
+	return f.getAvgSessionDurationFn(ctx)
+}
+
+func (f *fakeQuerier) GetSessionDurationTrend(ctx context.Context, since time.Time) ([]db.GetSessionDurationTrendRow, error) {
+	if f.getSessionDurationTrendFn == nil {
+		return nil, nil
+	}
+	return f.getSessionDurationTrendFn(ctx, since)
+}
+
+func (f *fakeQuerier) GetPatientNotesForExport(ctx context.Context, patientFileID uuid.UUID) ([]db.PatientNote, error) {
+	return f.getPatientNotesForExportFn(ctx, patientFileID)
+}
+
+func (f *fakeQuerier) GetSessionsForExport(ctx context.Context, patientFileID uuid.UUID) ([]db.Session, error) {
+	return f.getSessionsForExportFn(ctx, patientFileID)
+}
+
+func (f *fakeQuerier) GetTranscriptBySession(ctx context.Context, sessionID uuid.UUID) (db.Transcript, error) {
+	return f.getTranscriptBySessionFn(ctx, sessionID)
+}
+
+func (f *fakeQuerier) ListTranscriptSegments(ctx context.Context, transcriptID uuid.UUID) ([]db.TranscriptSegment, error) {
+	return f.listTranscriptSegmentsFn(ctx, transcriptID)
+}
+
+func (f *fakeQuerier) ListReportsBySession(ctx context.Context, sessionID uuid.UUID) ([]db.Report, error) {
+	return f.listReportsBySessionFn(ctx, sessionID)
+}
+
+func (f *fakeQuerier) SoftDeleteSessionsForDSAR(ctx context.Context, patientFileID uuid.UUID) error {
+	return f.softDeleteSessionsForDSARFn(ctx, patientFileID)
+}
+
+func (f *fakeQuerier) SoftDeletePatientNotesForDSAR(ctx context.Context, patientFileID uuid.UUID) error {
+	return f.softDeletePatientNotesForDSARFn(ctx, patientFileID)
+}
+
+func (f *fakeQuerier) SoftDeletePatientFileForDSAR(ctx context.Context, arg db.SoftDeletePatientFileForDSARParams) (int64, error) {
+	return f.softDeletePatientFileForDSARFn(ctx, arg)
+}
+
+func (f *fakeQuerier) SoftDeletePatientUserForDSAR(ctx context.Context, id uuid.UUID) (int64, error) {
+	return f.softDeletePatientUserForDSARFn(ctx, id)
+}
+
+func (f *fakeQuerier) CreateAuditEvent(ctx context.Context, arg db.CreateAuditEventParams) error {
+	if f.createAuditEventFn == nil {
+		return nil
+	}
+	return f.createAuditEventFn(ctx, arg)
+}
+
 // fakeTxOpener — supplies Begin/Commit/Rollback failure injection plus
 // a tx-scoped fakeQuerier (defaults to the same pointer as the
 // pool-level one in most tests, but separable if a test wants to prove
@@ -169,9 +251,10 @@ func (t *fakeTx) Rollback(ctx context.Context) error {
 // (when set) is returned for every publish, lets us prove the handler
 // keeps going on pubsub failures.
 type fakePublisher struct {
-	calls         []publisherCall
-	statusChanged []publisherCall
-	publishErr    error
+	calls           []publisherCall
+	statusChanged   []publisherCall
+	analyticsEvents []analytics.Event
+	publishErr      error
 }
 
 type publisherCall struct {
@@ -187,6 +270,12 @@ func (p *fakePublisher) PublishSessionStatusChanged(ctx context.Context, session
 	p.statusChanged = append(p.statusChanged, publisherCall{sessionID: sessionID, therapistID: statusStr})
 	return p.publishErr
 }
+
+func (p *fakePublisher) PublishAnalyticsEvent(ctx context.Context, event analytics.Event) error {
+	p.analyticsEvents = append(p.analyticsEvents, event)
+	return p.publishErr
+}
+
 
 // errSentinel — used in tests that just need "any non-nil error" out
 // of a stubbed DB call. Distinct value so tests can match it directly

@@ -238,6 +238,14 @@ resource "google_secret_manager_secret_iam_member" "billing_db_pwd" {
   member    = "serviceAccount:${google_service_account.billing_svc.email}"
 }
 
+resource "google_secret_manager_secret_iam_member" "billing_stripe_secret" {
+  project   = var.project_id
+  secret_id = "stripe-webhook-secret"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.billing_svc.email}"
+}
+
+
 # KMS dla envelope encryption Stripe customer ID (ADR-BL-004).
 # Slice 1 nie używa cryptobox, ale binding zostawiamy ready — slice 2 będzie
 # bezpośrednio go używał.

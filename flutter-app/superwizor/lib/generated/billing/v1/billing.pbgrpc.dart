@@ -23,7 +23,7 @@ export 'billing.pb.dart';
 
 /// BillingService — quota i lifecycle subskrypcji (Phase 3).
 ///
-/// Model tokenów (ADR-DM-017): 1 token = ≤60min audio + 180s grace.
+/// Model tokenów (ADR-DM-017): 1 token = ≤75min audio (twarda granica, bez grace).
 /// Pula trzymana per organizacja, debet idzie dwuetapowo:
 /// ReserveCredit (przy CreateAudioUpload) → CommitUsage (po STT, znany duration).
 ///
@@ -95,6 +95,27 @@ class BillingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getSubscription, request, options: options);
   }
 
+  /// Sets usage_counters.tokens_used (and optionally tokens_limit)
+  /// on the org's current active counter. Used for support escapes
+  /// — refunds, manual top-ups, period rolls. Returns the fresh
+  /// Subscription proto so the admin UI updates inline.
+  $grpc.ResponseFuture<$0.Subscription> adminResetTokens(
+    $0.AdminResetTokensRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminResetTokens, request, options: options);
+  }
+
+  /// Changes the org's subscription plan_tier + plan_cycle. Creates
+  /// a new usage_counters row at the new plan's tokens_limit, marks
+  /// the old counter inactive. Returns the fresh Subscription.
+  $grpc.ResponseFuture<$0.Subscription> adminChangePlan(
+    $0.AdminChangePlanRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminChangePlan, request, options: options);
+  }
+
   // method descriptors
 
   static final _$checkQuota =
@@ -126,6 +147,16 @@ class BillingServiceClient extends $grpc.Client {
       $grpc.ClientMethod<$0.GetSubscriptionRequest, $0.Subscription>(
           '/billing.v1.BillingService/GetSubscription',
           ($0.GetSubscriptionRequest value) => value.writeToBuffer(),
+          $0.Subscription.fromBuffer);
+  static final _$adminResetTokens =
+      $grpc.ClientMethod<$0.AdminResetTokensRequest, $0.Subscription>(
+          '/billing.v1.BillingService/AdminResetTokens',
+          ($0.AdminResetTokensRequest value) => value.writeToBuffer(),
+          $0.Subscription.fromBuffer);
+  static final _$adminChangePlan =
+      $grpc.ClientMethod<$0.AdminChangePlanRequest, $0.Subscription>(
+          '/billing.v1.BillingService/AdminChangePlan',
+          ($0.AdminChangePlanRequest value) => value.writeToBuffer(),
           $0.Subscription.fromBuffer);
 }
 
@@ -181,6 +212,22 @@ abstract class BillingServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.GetSubscriptionRequest.fromBuffer(value),
         ($0.Subscription value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminResetTokensRequest, $0.Subscription>(
+        'AdminResetTokens',
+        adminResetTokens_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminResetTokensRequest.fromBuffer(value),
+        ($0.Subscription value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminChangePlanRequest, $0.Subscription>(
+        'AdminChangePlan',
+        adminChangePlan_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminChangePlanRequest.fromBuffer(value),
+        ($0.Subscription value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.QuotaDecision> checkQuota_Pre($grpc.ServiceCall $call,
@@ -230,4 +277,20 @@ abstract class BillingServiceBase extends $grpc.Service {
 
   $async.Future<$0.Subscription> getSubscription(
       $grpc.ServiceCall call, $0.GetSubscriptionRequest request);
+
+  $async.Future<$0.Subscription> adminResetTokens_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.AdminResetTokensRequest> $request) async {
+    return adminResetTokens($call, await $request);
+  }
+
+  $async.Future<$0.Subscription> adminResetTokens(
+      $grpc.ServiceCall call, $0.AdminResetTokensRequest request);
+
+  $async.Future<$0.Subscription> adminChangePlan_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.AdminChangePlanRequest> $request) async {
+    return adminChangePlan($call, await $request);
+  }
+
+  $async.Future<$0.Subscription> adminChangePlan(
+      $grpc.ServiceCall call, $0.AdminChangePlanRequest request);
 }

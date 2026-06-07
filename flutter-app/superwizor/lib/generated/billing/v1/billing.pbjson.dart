@@ -282,3 +282,41 @@ final $typed_data.Uint8List subscriptionDescriptor = $convert.base64Decode(
     'dXJyZW50X3BlcmlvZF9lbmQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUhBjdX'
     'JyZW50UGVyaW9kRW5kEh0KCnBsYW5fY3ljbGUYCyABKAlSCXBsYW5DeWNsZRIpChB0b2tlbnNf'
     'cmVtYWluaW5nGAwgASgFUg90b2tlbnNSZW1haW5pbmc=');
+
+@$core.Deprecated('Use adminResetTokensRequestDescriptor instead')
+const AdminResetTokensRequest$json = {
+  '1': 'AdminResetTokensRequest',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+    {'1': 'tokens_used', '3': 2, '4': 1, '5': 5, '10': 'tokensUsed'},
+    {'1': 'tokens_limit', '3': 3, '4': 1, '5': 5, '10': 'tokensLimit'},
+    {'1': 'reason', '3': 4, '4': 1, '5': 9, '10': 'reason'},
+    {'1': 'idempotency_key', '3': 5, '4': 1, '5': 9, '10': 'idempotencyKey'},
+  ],
+};
+
+/// Descriptor for `AdminResetTokensRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminResetTokensRequestDescriptor = $convert.base64Decode(
+    'ChdBZG1pblJlc2V0VG9rZW5zUmVxdWVzdBInCg9vcmdhbml6YXRpb25faWQYASABKAlSDm9yZ2'
+    'FuaXphdGlvbklkEh8KC3Rva2Vuc191c2VkGAIgASgFUgp0b2tlbnNVc2VkEiEKDHRva2Vuc19s'
+    'aW1pdBgDIAEoBVILdG9rZW5zTGltaXQSFgoGcmVhc29uGAQgASgJUgZyZWFzb24SJwoPaWRlbX'
+    'BvdGVuY3lfa2V5GAUgASgJUg5pZGVtcG90ZW5jeUtleQ==');
+
+@$core.Deprecated('Use adminChangePlanRequestDescriptor instead')
+const AdminChangePlanRequest$json = {
+  '1': 'AdminChangePlanRequest',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+    {'1': 'plan_tier', '3': 2, '4': 1, '5': 9, '10': 'planTier'},
+    {'1': 'plan_cycle', '3': 3, '4': 1, '5': 9, '10': 'planCycle'},
+    {'1': 'reason', '3': 4, '4': 1, '5': 9, '10': 'reason'},
+    {'1': 'idempotency_key', '3': 5, '4': 1, '5': 9, '10': 'idempotencyKey'},
+  ],
+};
+
+/// Descriptor for `AdminChangePlanRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminChangePlanRequestDescriptor = $convert.base64Decode(
+    'ChZBZG1pbkNoYW5nZVBsYW5SZXF1ZXN0EicKD29yZ2FuaXphdGlvbl9pZBgBIAEoCVIOb3JnYW'
+    '5pemF0aW9uSWQSGwoJcGxhbl90aWVyGAIgASgJUghwbGFuVGllchIdCgpwbGFuX2N5Y2xlGAMg'
+    'ASgJUglwbGFuQ3ljbGUSFgoGcmVhc29uGAQgASgJUgZyZWFzb24SJwoPaWRlbXBvdGVuY3lfa2'
+    'V5GAUgASgJUg5pZGVtcG90ZW5jeUtleQ==');

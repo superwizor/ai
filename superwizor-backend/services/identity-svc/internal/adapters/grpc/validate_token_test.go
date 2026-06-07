@@ -171,7 +171,7 @@ func TestValidateToken_RejectsExpiredToken(t *testing.T) {
 		err: domain.ErrTokenExpired,
 	}
 
-	srv := NewServer(nil, nil, verifier, "test")
+	srv := NewServer(nil, nil, verifier, "test", nil)
 	_, err := srv.ValidateToken(context.Background(), &identityv1.ValidateTokenRequest{
 		FirebaseIdToken: "expired-token",
 	})
@@ -181,7 +181,7 @@ func TestValidateToken_RejectsExpiredToken(t *testing.T) {
 }
 
 func TestValidateToken_RejectsEmptyToken(t *testing.T) {
-	srv := NewServer(nil, nil, nil, "test")
+	srv := NewServer(nil, nil, nil, "test", nil)
 	_, err := srv.ValidateToken(context.Background(), &identityv1.ValidateTokenRequest{
 		FirebaseIdToken: "",
 	})
@@ -195,7 +195,7 @@ func TestValidateToken_RejectsInvalidToken(t *testing.T) {
 		err: domain.ErrInvalidToken,
 	}
 
-	srv := NewServer(nil, nil, verifier, "test")
+	srv := NewServer(nil, nil, verifier, "test", nil)
 	_, err := srv.ValidateToken(context.Background(), &identityv1.ValidateTokenRequest{
 		FirebaseIdToken: "garbage-token",
 	})

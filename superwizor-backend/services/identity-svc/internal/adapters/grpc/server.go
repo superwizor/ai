@@ -11,11 +11,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/postgres/db"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/domain"
 )
@@ -30,24 +32,26 @@ type TokenVerifier interface {
 
 type Server struct {
 	identityv1.UnimplementedIdentityServiceServer
-	queries  *db.Queries
+	queries  db.Querier
 	pool     *pgxpool.Pool
 	auth     TokenVerifier
 	version  string
 	emailer  InvitationEmailer
+	collector *analytics.Collector
 	// acceptURLBase is the public origin that hosts the accept-invite
 	// page (e.g. https://app.superwizor.ai). Combined with the token
 	// to form the link sent to invitees.
 	acceptURLBase string
 }
 
-func NewServer(pool *pgxpool.Pool, queries *db.Queries, auth TokenVerifier, version string) *Server {
+func NewServer(pool *pgxpool.Pool, queries db.Querier, auth TokenVerifier, version string, collector *analytics.Collector) *Server {
 	return &Server{
 		pool:          pool,
 		queries:       queries,
 		auth:          auth,
 		version:       version,
 		emailer:       NoopEmailSender{},
+		collector:     collector,
 		acceptURLBase: "https://app.superwizor.ai",
 	}
 }
@@ -182,7 +186,7 @@ func (s *Server) CreateUser(ctx context.Context, req *identityv1.CreateUserReque
 		return nil, status.Errorf(codes.Internal, "tx begin: %v", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := s.queries.WithTx(tx)
+	qtx := db.New(tx)
 
 	// Therapist creation path requires both fields per the partial
 	// CHECK on users (migration 000013). Patient rows go through
@@ -214,6 +218,50 @@ func (s *Server) CreateUser(ctx context.Context, req *identityv1.CreateUserReque
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, status.Errorf(codes.Internal, "commit: %v", err)
+	}
+
+	// Wyciągnięcie auth_provider do celów analitycznych (zdarzenie therapist.registered)
+	authProvider := "password" // domyślny fallback
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		auths := md.Get("authorization")
+		if len(auths) > 0 {
+			token := auths[0]
+			if len(token) > 7 && (strings.HasPrefix(token, "Bearer ") || strings.HasPrefix(token, "bearer ")) {
+				token = token[7:]
+			}
+			_, claims, errVerify := s.auth.VerifyToken(ctx, token)
+			if errVerify == nil {
+				if fb, ok := claims["firebase"].(map[string]any); ok {
+					if prov, ok := fb["sign_in_provider"].(string); ok {
+						authProvider = prov
+					}
+				}
+				if authProvider == "" {
+					if prov, ok := claims["sign_in_provider"].(string); ok {
+						authProvider = prov
+					}
+				}
+			}
+		}
+	}
+
+	if dbRole == "THERAPIST" && s.collector != nil {
+		orgIDPtr := func() *uuid.UUID {
+			if user.OrganizationID.Valid {
+				id := uuid.UUID(user.OrganizationID.Bytes)
+				return &id
+			}
+			return nil
+		}()
+		s.collector.Track(ctx, analytics.Event{
+			Name:           "therapist.registered",
+			TherapistID:    &user.ID,
+			OrganizationID: orgIDPtr,
+			Properties: map[string]any{
+				"auth_provider": authProvider,
+			},
+			Source: "server",
+		})
 	}
 
 	return toProtoUser(user), nil

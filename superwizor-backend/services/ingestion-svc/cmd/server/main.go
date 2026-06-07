@@ -22,6 +22,7 @@ import (
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	ingestionv1 "github.com/superwizor-ai/backend/gen/go/ingestion/v1"
+	"github.com/superwizor-ai/backend/pkg/analytics"
 	grpcadapter "github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/postgres/db"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/pubsub"
@@ -64,6 +65,9 @@ func main() {
 	}
 	defer pool.Close()
 
+	analyticsCollector := analytics.NewCollector(pool)
+	defer analyticsCollector.Shutdown()
+
 	signer, err := storage.NewSigner(ctx, bucketName)
 	if err != nil {
 		slog.Error("signer", "error", err)
@@ -89,7 +93,7 @@ func main() {
 	}
 
 	queries := db.New(pool)
-	srv := grpcadapter.NewServer(queries, pool, signer, converter, bucketName, publisher)
+	srv := grpcadapter.NewServer(queries, pool, signer, converter, bucketName, publisher, analyticsCollector)
 
 	// Billing client (Phase 3 — optional). When BILLING_SVC_URL is set,
 	// CreateAudioUpload fires a fire-and-forget ReserveCredit per session.
@@ -119,7 +123,7 @@ func main() {
 	// CompleteAudioUpload handler remains the fallback).
 	subID := os.Getenv("GCS_FINALIZE_SUB_ID")
 	if subID != "" {
-		subscriber, subErr := pubsub.NewSubscriber(ctx, projectID, subID, queries, pool, signer, converter, bucketName, publisher)
+		subscriber, subErr := pubsub.NewSubscriber(ctx, projectID, subID, queries, pool, signer, converter, bucketName, publisher, analyticsCollector)
 		if subErr != nil {
 			slog.Error("subscriber init", "error", subErr)
 			os.Exit(1)

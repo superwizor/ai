@@ -538,7 +538,7 @@ export const AdminChangePlanRequestSchema: GenMessage<AdminChangePlanRequest> = 
 /**
  * BillingService — quota i lifecycle subskrypcji (Phase 3).
  *
- * Model tokenów (ADR-DM-017): 1 token = ≤60min audio + 180s grace.
+ * Model tokenów (ADR-DM-017): 1 token = ≤75min audio (twarda granica, bez grace).
  * Pula trzymana per organizacja, debet idzie dwuetapowo:
  * ReserveCredit (przy CreateAudioUpload) → CommitUsage (po STT, znany duration).
  *

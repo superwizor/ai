@@ -44,6 +44,7 @@ import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_button.dart';
 import '../widgets/euphire_recording_indicator.dart';
 import 'session_status_screen.dart';
+import '../analytics/analytics_collector.dart';
 
 // TODO(pre-prod): restore to Duration(minutes: 5) before TestFlight.
 // Lowered to 30s for end-to-end smoke testing on real device — saves us
@@ -88,7 +89,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _verifyConsentAndStart());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(analyticsCollectorProvider).track("screen.viewed", properties: {"screen_name": "RecordingScreen"});
+      _verifyConsentAndStart();
+    });
   }
 
   @override
@@ -232,6 +236,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     try {
       _sessionId = const Uuid().v4();
       await _service.start(_sessionId!);
+      ref.read(analyticsCollectorProvider).track("recording.started");
 
       _durSub = _service.durationStream.listen((d) {
         if (!mounted) return;
@@ -298,7 +303,11 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       ),
     );
     if (result == true) {
+      final dur = _service.currentDuration.inSeconds;
       await _service.cancel();
+      ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
+        "duration_seconds": dur,
+      });
       return true;
     }
     return false;
@@ -404,7 +413,11 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   }
 
   Future<void> _discardAndPop() async {
+    final dur = _service.currentDuration.inSeconds;
     await _service.cancel();
+    ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
+      "duration_seconds": dur,
+    });
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -449,6 +462,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       final rawPath = await _service.stop();
       if (rawPath == null) throw StateError('no recording produced');
       final rawSize = await File(rawPath).length();
+      ref.read(analyticsCollectorProvider).track("recording.stopped", properties: {
+        "duration_seconds": _displayDuration.inSeconds,
+      });
       debugPrint('[recording] stopped, raw=$rawPath size=${rawSize}B');
       if (rawSize == 0) {
         throw StateError(

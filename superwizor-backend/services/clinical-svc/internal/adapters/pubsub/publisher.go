@@ -17,6 +17,7 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/pubsub/v2"
+	"github.com/superwizor-ai/backend/pkg/analytics"
 )
 
 type Publisher struct {
@@ -101,3 +102,55 @@ func (p *Publisher) PublishSessionStatusChanged(ctx context.Context, sessionID, 
 	_, err = res.Get(ctx)
 	return err
 }
+
+func (p *Publisher) PublishAnalyticsEvent(ctx context.Context, event analytics.Event) error {
+	var therapistIDStr, orgIDStr, sessionIDStr, patientFileIDStr, reportIDStr string
+	if event.TherapistID != nil {
+		therapistIDStr = event.TherapistID.String()
+	}
+	if event.OrganizationID != nil {
+		orgIDStr = event.OrganizationID.String()
+	}
+	if event.SessionID != nil {
+		sessionIDStr = event.SessionID.String()
+	}
+	if event.PatientFileID != nil {
+		patientFileIDStr = event.PatientFileID.String()
+	}
+	if event.ReportID != nil {
+		reportIDStr = event.ReportID.String()
+	}
+
+	payload := map[string]any{
+		"event_name":      event.Name,
+		"therapist_id":    therapistIDStr,
+		"organization_id": orgIDStr,
+		"session_id":      sessionIDStr,
+		"patient_file_id": patientFileIDStr,
+		"report_id":       reportIDStr,
+		"properties":      event.Properties,
+		"source":          event.Source,
+		"client_platform": event.ClientPlatform,
+		"client_version":  event.ClientVersion,
+		"occurred_at":     event.OccurredAt,
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	topic := p.client.Publisher("analytics.events")
+	defer topic.Stop()
+
+	res := topic.Publish(ctx, &pubsub.Message{
+		Data: data,
+		Attributes: map[string]string{
+			"event_type": "analytics.event",
+			"event_name": event.Name,
+		},
+	})
+	_, err = res.Get(ctx)
+	return err
+}
+

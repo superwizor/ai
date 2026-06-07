@@ -1,3 +1,5 @@
+import 'analytics/analytics_collector.dart';
+import 'providers/current_user_provider.dart';
 import 'providers/locale_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' as cf;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -104,11 +106,17 @@ class SuperWizorApp extends ConsumerWidget {
   }
 }
 
-class _AuthGate extends StatelessWidget {
+class _AuthGate extends ConsumerWidget {
   const _AuthGate();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(currentUserProvider, (previous, next) {
+      if (next.value != null && (previous == null || previous.value == null)) {
+        ref.read(analyticsCollectorProvider).track("app.session_started");
+      }
+    });
+
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {

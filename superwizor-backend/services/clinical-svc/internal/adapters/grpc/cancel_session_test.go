@@ -22,9 +22,9 @@ func newCancelServer(q db.Querier, billing *fakeBilling) *Server {
 	// interface field would be != nil, so s.billing != nil would wrongly
 	// take the release path).
 	if billing == nil {
-		return NewServerWithDeps(q, nil, nil, nil, nil, nil, "test-1.0")
+		return NewServerWithDeps(q, nil, nil, nil, nil, nil, "test-1.0", nil)
 	}
-	return NewServerWithDeps(q, nil, nil, billing, nil, nil, "test-1.0")
+	return NewServerWithDeps(q, nil, nil, billing, nil, nil, "test-1.0", nil)
 }
 
 func TestCancelSession_HappyPath_FlipsStatusAndReleasesCredit(t *testing.T) {

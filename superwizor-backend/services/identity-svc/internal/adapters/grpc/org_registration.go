@@ -69,7 +69,7 @@ func (s *Server) RegisterOrganization(ctx context.Context, req *identityv1.Regis
 		return nil, status.Errorf(codes.Internal, "tx begin: %v", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := s.queries.WithTx(tx)
+	qtx := db.New(tx)
 
 	// 1. Headquarters address (org's billing address comes later as
 	//    a separate edit; HQ is the only address required at signup).

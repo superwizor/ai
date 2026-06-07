@@ -182,7 +182,7 @@ func (s *Server) AcceptInvitation(ctx context.Context, req *identityv1.AcceptInv
 		return nil, status.Errorf(codes.Internal, "tx begin: %v", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := s.queries.WithTx(tx)
+	qtx := db.New(tx)
 
 	emailLC := strings.ToLower(strings.TrimSpace(inv.Email))
 	user, err := qtx.CreateUser(ctx, db.CreateUserParams{

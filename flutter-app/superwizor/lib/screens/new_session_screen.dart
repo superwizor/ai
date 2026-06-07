@@ -28,6 +28,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import '../analytics/analytics_collector.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -155,6 +156,12 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(analyticsCollectorProvider).track("screen.viewed", properties: {"screen_name": "NewSessionScreen"});
+      if (widget.autoPickFile) {
+        _pickAndUploadFile();
+      }
+    });
     _smoothProgressController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -169,10 +176,6 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
               _startProgress + (_targetProgress - _startProgress) * easedT;
         });
       });
-
-    if (widget.autoPickFile) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _pickAndUploadFile());
-    }
   }
 
   @override
@@ -507,6 +510,11 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
       return;
     }
 
+    ref.read(analyticsCollectorProvider).track("file_upload.picked", properties: {
+      "file_extension": ext,
+      "file_size_bytes": bytes.length,
+    });
+
     setState(() {
       _uploading = true;
       _busy = true;
@@ -629,6 +637,11 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
       );
       return;
     }
+
+    ref.read(analyticsCollectorProvider).track("file_upload.picked", properties: {
+      "file_extension": ext,
+      "file_size_bytes": sizeBytes,
+    });
 
     setState(() {
       _uploading = true;

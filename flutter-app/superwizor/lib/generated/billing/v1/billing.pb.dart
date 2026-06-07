@@ -1119,6 +1119,221 @@ class Subscription extends $pb.GeneratedMessage {
   void clearTokensRemaining() => $_clearField(12);
 }
 
+class AdminResetTokensRequest extends $pb.GeneratedMessage {
+  factory AdminResetTokensRequest({
+    $core.String? organizationId,
+    $core.int? tokensUsed,
+    $core.int? tokensLimit,
+    $core.String? reason,
+    $core.String? idempotencyKey,
+  }) {
+    final result = create();
+    if (organizationId != null) result.organizationId = organizationId;
+    if (tokensUsed != null) result.tokensUsed = tokensUsed;
+    if (tokensLimit != null) result.tokensLimit = tokensLimit;
+    if (reason != null) result.reason = reason;
+    if (idempotencyKey != null) result.idempotencyKey = idempotencyKey;
+    return result;
+  }
+
+  AdminResetTokensRequest._();
+
+  factory AdminResetTokensRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminResetTokensRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminResetTokensRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'organizationId')
+    ..aI(2, _omitFieldNames ? '' : 'tokensUsed')
+    ..aI(3, _omitFieldNames ? '' : 'tokensLimit')
+    ..aOS(4, _omitFieldNames ? '' : 'reason')
+    ..aOS(5, _omitFieldNames ? '' : 'idempotencyKey')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminResetTokensRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminResetTokensRequest copyWith(
+          void Function(AdminResetTokensRequest) updates) =>
+      super.copyWith((message) => updates(message as AdminResetTokensRequest))
+          as AdminResetTokensRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminResetTokensRequest create() => AdminResetTokensRequest._();
+  @$core.override
+  AdminResetTokensRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminResetTokensRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminResetTokensRequest>(create);
+  static AdminResetTokensRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get organizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set organizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganizationId() => $_clearField(1);
+
+  /// New value for usage_counters.tokens_used. Must be >= 0.
+  /// Pass -1 to leave tokens_used unchanged (limit-only updates).
+  @$pb.TagNumber(2)
+  $core.int get tokensUsed => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set tokensUsed($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTokensUsed() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTokensUsed() => $_clearField(2);
+
+  /// Optional override on tokens_limit. Pass -1 to leave it untouched
+  /// (only adjust tokens_used). When set, must be > 0.
+  @$pb.TagNumber(3)
+  $core.int get tokensLimit => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set tokensLimit($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTokensLimit() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTokensLimit() => $_clearField(3);
+
+  /// Required, >= 10 chars. Stored on audit_events.reason.
+  @$pb.TagNumber(4)
+  $core.String get reason => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set reason($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasReason() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearReason() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get idempotencyKey => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set idempotencyKey($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasIdempotencyKey() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearIdempotencyKey() => $_clearField(5);
+}
+
+class AdminChangePlanRequest extends $pb.GeneratedMessage {
+  factory AdminChangePlanRequest({
+    $core.String? organizationId,
+    $core.String? planTier,
+    $core.String? planCycle,
+    $core.String? reason,
+    $core.String? idempotencyKey,
+  }) {
+    final result = create();
+    if (organizationId != null) result.organizationId = organizationId;
+    if (planTier != null) result.planTier = planTier;
+    if (planCycle != null) result.planCycle = planCycle;
+    if (reason != null) result.reason = reason;
+    if (idempotencyKey != null) result.idempotencyKey = idempotencyKey;
+    return result;
+  }
+
+  AdminChangePlanRequest._();
+
+  factory AdminChangePlanRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminChangePlanRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminChangePlanRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'organizationId')
+    ..aOS(2, _omitFieldNames ? '' : 'planTier')
+    ..aOS(3, _omitFieldNames ? '' : 'planCycle')
+    ..aOS(4, _omitFieldNames ? '' : 'reason')
+    ..aOS(5, _omitFieldNames ? '' : 'idempotencyKey')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminChangePlanRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminChangePlanRequest copyWith(
+          void Function(AdminChangePlanRequest) updates) =>
+      super.copyWith((message) => updates(message as AdminChangePlanRequest))
+          as AdminChangePlanRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminChangePlanRequest create() => AdminChangePlanRequest._();
+  @$core.override
+  AdminChangePlanRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminChangePlanRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminChangePlanRequest>(create);
+  static AdminChangePlanRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get organizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set organizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganizationId() => $_clearField(1);
+
+  /// Target plan_tier (SOLO | PRO | CLINIC | TRIAL) and cycle
+  /// (MONTHLY | ANNUAL). Resolves to a subscription_plans row at
+  /// handler time.
+  @$pb.TagNumber(2)
+  $core.String get planTier => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set planTier($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPlanTier() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPlanTier() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get planCycle => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set planCycle($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPlanCycle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPlanCycle() => $_clearField(3);
+
+  /// Required, >= 10 chars.
+  @$pb.TagNumber(4)
+  $core.String get reason => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set reason($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasReason() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearReason() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get idempotencyKey => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set idempotencyKey($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasIdempotencyKey() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearIdempotencyKey() => $_clearField(5);
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

@@ -29,6 +29,7 @@ import (
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	identityv1connect "github.com/superwizor-ai/backend/gen/go/identity/v1/identityv1connect"
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
+	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/pkg/connectmd"
 	"github.com/superwizor-ai/backend/pkg/cors"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/firebase"
@@ -110,6 +111,9 @@ func main() {
 		os.Exit(1)
 	}
 	defer pool.Close()
+	
+	analyticsCollector := analytics.NewCollector(pool)
+	defer analyticsCollector.Shutdown()
 
 	if err := pool.Ping(ctx); err != nil {
 		slog.Error("db ping failed", "error", err)
@@ -133,7 +137,7 @@ func main() {
 	// InviteTherapist sends actual emails via Resend. Without the env
 	// var the default NoopEmailSender just logs — fine for local dev
 	// and contract tests.
-	identityServer := grpcadapter.NewServer(pool, queries, authClient, version)
+	identityServer := grpcadapter.NewServer(pool, queries, authClient, version, analyticsCollector)
 	if notifURL := os.Getenv("NOTIFICATION_SVC_URL"); notifURL != "" {
 		notifClient, err := newNotificationClient(ctx, notifURL)
 		if err != nil {

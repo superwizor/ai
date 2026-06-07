@@ -696,6 +696,23 @@ type Address struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+// Product analytics. No PHI. Safe to TRUNCATE. Cloud Function events go to Cloud Logging, not here.
+type AnalyticsEvent struct {
+	ID             uuid.UUID   `json:"id"`
+	EventName      string      `json:"event_name"`
+	TherapistID    pgtype.UUID `json:"therapist_id"`
+	OrganizationID pgtype.UUID `json:"organization_id"`
+	SessionID      pgtype.UUID `json:"session_id"`
+	PatientFileID  pgtype.UUID `json:"patient_file_id"`
+	ReportID       pgtype.UUID `json:"report_id"`
+	Properties     []byte      `json:"properties"`
+	Source         string      `json:"source"`
+	ClientPlatform *string     `json:"client_platform"`
+	ClientVersion  *string     `json:"client_version"`
+	OccurredAt     time.Time   `json:"occurred_at"`
+	CreatedAt      time.Time   `json:"created_at"`
+}
+
 type AudioChunk struct {
 	ID            uuid.UUID `json:"id"`
 	AudioUploadID uuid.UUID `json:"audio_upload_id"`
@@ -747,6 +764,24 @@ type AuditEvent struct {
 	OccurredAt     time.Time   `json:"occurred_at"`
 	// Operator-supplied rationale for admin mutations (SUPERWIZOR_ADMIN). NULL for non-admin events. Handler-level CHECK requires >=10 chars when actor role is SUPERWIZOR_ADMIN.
 	Reason *string `json:"reason"`
+}
+
+type ConsentRecord struct {
+	ID             uuid.UUID `json:"id"`
+	UserID         uuid.UUID `json:"user_id"`
+	ConsentType    string    `json:"consent_type"`
+	Granted        bool      `json:"granted"`
+	ConsentVersion *string   `json:"consent_version"`
+	IpAddress      *string   `json:"ip_address"`
+	UserAgent      *string   `json:"user_agent"`
+	RecordedAt     time.Time `json:"recorded_at"`
+}
+
+type EmailTemplate struct {
+	TemplateKey string    `json:"template_key"`
+	Locale      string    `json:"locale"`
+	Content     []byte    `json:"content"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type FcmToken struct {
@@ -857,6 +892,24 @@ type PatientFile struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out (legacy clients).
 	IdempotencyKey *string `json:"idempotency_key"`
+	PatientEmail   *string `json:"patient_email"`
+}
+
+type PatientNote struct {
+	ID                uuid.UUID          `json:"id"`
+	PatientFileID     uuid.UUID          `json:"patient_file_id"`
+	TherapistID       uuid.UUID          `json:"therapist_id"`
+	Kind              string             `json:"kind"`
+	SourceSessionID   pgtype.UUID        `json:"source_session_id"`
+	TitleCiphertext   []byte             `json:"title_ciphertext"`
+	TitleEncryptedDek []byte             `json:"title_encrypted_dek"`
+	TextCiphertext    []byte             `json:"text_ciphertext"`
+	TextEncryptedDek  []byte             `json:"text_encrypted_dek"`
+	SentToPatientAt   pgtype.Timestamptz `json:"sent_to_patient_at"`
+	SentToEmail       *string            `json:"sent_to_email"`
+	CreatedAt         time.Time          `json:"created_at"`
+	UpdatedAt         time.Time          `json:"updated_at"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type PaymentEvent struct {
@@ -886,6 +939,15 @@ type PendingReservation struct {
 	CreatedAt      time.Time          `json:"created_at"`
 	ExpiresAt      time.Time          `json:"expires_at"`
 	FinalizedAt    pgtype.Timestamptz `json:"finalized_at"`
+}
+
+type PlatformFixedCost struct {
+	ID            uuid.UUID          `json:"id"`
+	Name          string             `json:"name"`
+	Provider      string             `json:"provider"`
+	AmountUsd     pgtype.Numeric     `json:"amount_usd"`
+	BillingPeriod string             `json:"billing_period"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 // Suggestion engine telemetry. Pure analytics; safe to TRUNCATE. See docs/10_REPORT_CUSTOMIZATION.md §6.
@@ -1113,4 +1175,67 @@ type User struct {
 	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
 	// Per-therapist style preferences for llm-worker call 2 report generation. Empty object {} = all defaults (current behavior). Shape documented in docs/10_REPORT_CUSTOMIZATION.md §7.
 	ReportPreferences []byte `json:"report_preferences"`
+}
+
+type VAnalyticsActivation struct {
+	TherapistID         uuid.UUID   `json:"therapist_id"`
+	SignupAt            time.Time   `json:"signup_at"`
+	FirstPatientAt      interface{} `json:"first_patient_at"`
+	FirstSessionAt      interface{} `json:"first_session_at"`
+	FirstReportAt       interface{} `json:"first_report_at"`
+	FirstRatingAt       interface{} `json:"first_rating_at"`
+	HoursToFirstSession int32       `json:"hours_to_first_session"`
+}
+
+type VAnalyticsPipelineLatency struct {
+	SessionID            uuid.UUID      `json:"session_id"`
+	TherapistID          uuid.UUID      `json:"therapist_id"`
+	E2eSeconds           pgtype.Numeric `json:"e2e_seconds"`
+	SttProcessingSeconds *int32         `json:"stt_processing_seconds"`
+	LlmProcessingSeconds *int32         `json:"llm_processing_seconds"`
+	SessionAt            time.Time      `json:"session_at"`
+}
+
+type VAnalyticsSatisfaction struct {
+	Week            pgtype.Interval `json:"week"`
+	TotalRatings    int64           `json:"total_ratings"`
+	Positive        int64           `json:"positive"`
+	Negative        int64           `json:"negative"`
+	SatisfactionPct pgtype.Numeric  `json:"satisfaction_pct"`
+}
+
+type VAnalyticsSessionCost struct {
+	SessionID       uuid.UUID      `json:"session_id"`
+	TherapistID     uuid.UUID      `json:"therapist_id"`
+	OrganizationID  pgtype.UUID    `json:"organization_id"`
+	DurationSeconds *int32         `json:"duration_seconds"`
+	LlmInputTokens  *int32         `json:"llm_input_tokens"`
+	LlmOutputTokens *int32         `json:"llm_output_tokens"`
+	LlmCostUsd      pgtype.Numeric `json:"llm_cost_usd"`
+	SttCostUsd      pgtype.Numeric `json:"stt_cost_usd"`
+	TotalCostUsd    pgtype.Numeric `json:"total_cost_usd"`
+	CreatedAt       time.Time      `json:"created_at"`
+}
+
+type VAnalyticsSessionFreq struct {
+	TherapistID     uuid.UUID       `json:"therapist_id"`
+	Week            pgtype.Interval `json:"week"`
+	SessionCount    int64           `json:"session_count"`
+	AvgDurationS    float64         `json:"avg_duration_s"`
+	MedianDurationS float64         `json:"median_duration_s"`
+}
+
+type VAnalyticsTokenUtil struct {
+	SubscriptionID uuid.UUID      `json:"subscription_id"`
+	OrganizationID uuid.UUID      `json:"organization_id"`
+	PeriodStart    time.Time      `json:"period_start"`
+	PeriodEnd      time.Time      `json:"period_end"`
+	TokensLimit    int32          `json:"tokens_limit"`
+	TokensUsed     int32          `json:"tokens_used"`
+	UtilizationPct pgtype.Numeric `json:"utilization_pct"`
+}
+
+type VAnalyticsWau struct {
+	Week             pgtype.Interval `json:"week"`
+	ActiveTherapists int64           `json:"active_therapists"`
 }

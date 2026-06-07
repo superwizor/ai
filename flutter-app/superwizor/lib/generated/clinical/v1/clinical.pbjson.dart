@@ -1262,3 +1262,546 @@ final $typed_data.Uint8List adminSessionRowDescriptor = $convert.base64Decode(
     'c3Vic2NyaXB0aW9uX3BlcmlvZF9lbmQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW'
     '1wUhVzdWJzY3JpcHRpb25QZXJpb2RFbmQSOAoYc3Vic2NyaXB0aW9uX3Rva2Vuc191c2VkGA4g'
     'ASgFUhZzdWJzY3JpcHRpb25Ub2tlbnNVc2Vk');
+
+@$core.Deprecated('Use trackEventsRequestDescriptor instead')
+const TrackEventsRequest$json = {
+  '1': 'TrackEventsRequest',
+  '2': [
+    {
+      '1': 'events',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.ClientEvent',
+      '10': 'events'
+    },
+  ],
+};
+
+/// Descriptor for `TrackEventsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List trackEventsRequestDescriptor = $convert.base64Decode(
+    'ChJUcmFja0V2ZW50c1JlcXVlc3QSMAoGZXZlbnRzGAEgAygLMhguY2xpbmljYWwudjEuQ2xpZW'
+    '50RXZlbnRSBmV2ZW50cw==');
+
+@$core.Deprecated('Use clientEventDescriptor instead')
+const ClientEvent$json = {
+  '1': 'ClientEvent',
+  '2': [
+    {'1': 'event_name', '3': 1, '4': 1, '5': 9, '10': 'eventName'},
+    {
+      '1': 'properties',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'properties'
+    },
+    {
+      '1': 'occurred_at',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'occurredAt'
+    },
+    {'1': 'client_platform', '3': 4, '4': 1, '5': 9, '10': 'clientPlatform'},
+    {'1': 'client_version', '3': 5, '4': 1, '5': 9, '10': 'clientVersion'},
+  ],
+};
+
+/// Descriptor for `ClientEvent`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clientEventDescriptor = $convert.base64Decode(
+    'CgtDbGllbnRFdmVudBIdCgpldmVudF9uYW1lGAEgASgJUglldmVudE5hbWUSNwoKcHJvcGVydG'
+    'llcxgCIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3RSCnByb3BlcnRpZXMSOwoLb2NjdXJy'
+    'ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgpvY2N1cnJlZEF0EicKD2'
+    'NsaWVudF9wbGF0Zm9ybRgEIAEoCVIOY2xpZW50UGxhdGZvcm0SJQoOY2xpZW50X3ZlcnNpb24Y'
+    'BSABKAlSDWNsaWVudFZlcnNpb24=');
+
+@$core.Deprecated('Use trackEventsResponseDescriptor instead')
+const TrackEventsResponse$json = {
+  '1': 'TrackEventsResponse',
+};
+
+/// Descriptor for `TrackEventsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List trackEventsResponseDescriptor =
+    $convert.base64Decode('ChNUcmFja0V2ZW50c1Jlc3BvbnNl');
+
+@$core.Deprecated('Use getAdminAnalyticsRequestDescriptor instead')
+const GetAdminAnalyticsRequest$json = {
+  '1': 'GetAdminAnalyticsRequest',
+  '2': [
+    {'1': 'time_range', '3': 1, '4': 1, '5': 9, '10': 'timeRange'},
+  ],
+};
+
+/// Descriptor for `GetAdminAnalyticsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getAdminAnalyticsRequestDescriptor =
+    $convert.base64Decode(
+        'ChhHZXRBZG1pbkFuYWx5dGljc1JlcXVlc3QSHQoKdGltZV9yYW5nZRgBIAEoCVIJdGltZVJhbm'
+        'dl');
+
+@$core.Deprecated('Use getAdminAnalyticsResponseDescriptor instead')
+const GetAdminAnalyticsResponse$json = {
+  '1': 'GetAdminAnalyticsResponse',
+  '2': [
+    {'1': 'kpi_wau', '3': 1, '4': 1, '5': 3, '10': 'kpiWau'},
+    {
+      '1': 'kpi_sessions_this_week',
+      '3': 2,
+      '4': 1,
+      '5': 3,
+      '10': 'kpiSessionsThisWeek'
+    },
+    {
+      '1': 'kpi_activation_rate',
+      '3': 3,
+      '4': 1,
+      '5': 1,
+      '10': 'kpiActivationRate'
+    },
+    {
+      '1': 'kpi_satisfaction_rate',
+      '3': 4,
+      '4': 1,
+      '5': 1,
+      '10': 'kpiSatisfactionRate'
+    },
+    {
+      '1': 'wau_trend',
+      '3': 5,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.TrendPoint',
+      '10': 'wauTrend'
+    },
+    {
+      '1': 'sessions_trend',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.TrendPoint',
+      '10': 'sessionsTrend'
+    },
+    {
+      '1': 'registrations_trend',
+      '3': 7,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.TrendPoint',
+      '10': 'registrationsTrend'
+    },
+    {
+      '1': 'plan_distribution',
+      '3': 8,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.PlanDistribution',
+      '10': 'planDistribution'
+    },
+    {
+      '1': 'kpi_avg_cost_per_session',
+      '3': 9,
+      '4': 1,
+      '5': 1,
+      '10': 'kpiAvgCostPerSession'
+    },
+    {
+      '1': 'kpi_monthly_stt_cost',
+      '3': 10,
+      '4': 1,
+      '5': 1,
+      '10': 'kpiMonthlySttCost'
+    },
+    {
+      '1': 'kpi_monthly_llm_cost',
+      '3': 11,
+      '4': 1,
+      '5': 1,
+      '10': 'kpiMonthlyLlmCost'
+    },
+    {
+      '1': 'kpi_avg_token_utilization',
+      '3': 12,
+      '4': 1,
+      '5': 1,
+      '10': 'kpiAvgTokenUtilization'
+    },
+    {
+      '1': 'cost_trend',
+      '3': 13,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.CostTrendPoint',
+      '10': 'costTrend'
+    },
+    {
+      '1': 'token_utilization_heatmap',
+      '3': 14,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.TokenUtilizationHeatmapPoint',
+      '10': 'tokenUtilizationHeatmap'
+    },
+    {
+      '1': 'revenue_trend',
+      '3': 15,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.RevenueTrendPoint',
+      '10': 'revenueTrend'
+    },
+    {
+      '1': 'token_usage_trend',
+      '3': 16,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.TokenUsageTrendPoint',
+      '10': 'tokenUsageTrend'
+    },
+    {
+      '1': 'kpi_avg_pipeline_latency',
+      '3': 17,
+      '4': 1,
+      '5': 1,
+      '10': 'kpiAvgPipelineLatency'
+    },
+    {
+      '1': 'kpi_failure_rate_7d',
+      '3': 18,
+      '4': 1,
+      '5': 1,
+      '10': 'kpiFailureRate7d'
+    },
+    {'1': 'kpi_relabel_rate', '3': 19, '4': 1, '5': 1, '10': 'kpiRelabelRate'},
+    {
+      '1': 'satisfaction_trend',
+      '3': 20,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.SatisfactionTrendPoint',
+      '10': 'satisfactionTrend'
+    },
+    {
+      '1': 'issue_categories',
+      '3': 21,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.IssueCategory',
+      '10': 'issueCategories'
+    },
+    {
+      '1': 'latency_trend',
+      '3': 22,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.LatencyTrendPoint',
+      '10': 'latencyTrend'
+    },
+    {
+      '1': 'failure_rate_trend',
+      '3': 23,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.FailureRatePoint',
+      '10': 'failureRateTrend'
+    },
+    {
+      '1': 'kpi_30d_retention',
+      '3': 24,
+      '4': 1,
+      '5': 1,
+      '10': 'kpi30dRetention'
+    },
+    {
+      '1': 'funnel_steps',
+      '3': 25,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.FunnelStep',
+      '10': 'funnelSteps'
+    },
+    {
+      '1': 'cohort_retention',
+      '3': 26,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.CohortRetentionPoint',
+      '10': 'cohortRetention'
+    },
+    {
+      '1': 'activation_time_histogram',
+      '3': 27,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.HistogramBucket',
+      '10': 'activationTimeHistogram'
+    },
+    {
+      '1': 'hourly_heatmap',
+      '3': 28,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.HourlyHeatmapPoint',
+      '10': 'hourlyHeatmap'
+    },
+    {
+      '1': 'upload_failures_trend',
+      '3': 29,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.FailureRatePoint',
+      '10': 'uploadFailuresTrend'
+    },
+  ],
+};
+
+/// Descriptor for `GetAdminAnalyticsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getAdminAnalyticsResponseDescriptor = $convert.base64Decode(
+    'ChlHZXRBZG1pbkFuYWx5dGljc1Jlc3BvbnNlEhcKB2twaV93YXUYASABKANSBmtwaVdhdRIzCh'
+    'ZrcGlfc2Vzc2lvbnNfdGhpc193ZWVrGAIgASgDUhNrcGlTZXNzaW9uc1RoaXNXZWVrEi4KE2tw'
+    'aV9hY3RpdmF0aW9uX3JhdGUYAyABKAFSEWtwaUFjdGl2YXRpb25SYXRlEjIKFWtwaV9zYXRpc2'
+    'ZhY3Rpb25fcmF0ZRgEIAEoAVITa3BpU2F0aXNmYWN0aW9uUmF0ZRI0Cgl3YXVfdHJlbmQYBSAD'
+    'KAsyFy5jbGluaWNhbC52MS5UcmVuZFBvaW50Ugh3YXVUcmVuZBI+Cg5zZXNzaW9uc190cmVuZB'
+    'gGIAMoCzIXLmNsaW5pY2FsLnYxLlRyZW5kUG9pbnRSDXNlc3Npb25zVHJlbmQSSAoTcmVnaXN0'
+    'cmF0aW9uc190cmVuZBgHIAMoCzIXLmNsaW5pY2FsLnYxLlRyZW5kUG9pbnRSEnJlZ2lzdHJhdG'
+    'lvbnNUcmVuZBJKChFwbGFuX2Rpc3RyaWJ1dGlvbhgIIAMoCzIdLmNsaW5pY2FsLnYxLlBsYW5E'
+    'aXN0cmlidXRpb25SEHBsYW5EaXN0cmlidXRpb24SNgoYa3BpX2F2Z19jb3N0X3Blcl9zZXNzaW'
+    '9uGAkgASgBUhRrcGlBdmdDb3N0UGVyU2Vzc2lvbhIvChRrcGlfbW9udGhseV9zdHRfY29zdBgK'
+    'IAEoAVIRa3BpTW9udGhseVN0dENvc3QSLwoUa3BpX21vbnRobHlfbGxtX2Nvc3QYCyABKAFSEW'
+    'twaU1vbnRobHlMbG1Db3N0EjkKGWtwaV9hdmdfdG9rZW5fdXRpbGl6YXRpb24YDCABKAFSFmtw'
+    'aUF2Z1Rva2VuVXRpbGl6YXRpb24SOgoKY29zdF90cmVuZBgNIAMoCzIbLmNsaW5pY2FsLnYxLk'
+    'Nvc3RUcmVuZFBvaW50Ugljb3N0VHJlbmQSZQoZdG9rZW5fdXRpbGl6YXRpb25faGVhdG1hcBgO'
+    'IAMoCzIpLmNsaW5pY2FsLnYxLlRva2VuVXRpbGl6YXRpb25IZWF0bWFwUG9pbnRSF3Rva2VuVX'
+    'RpbGl6YXRpb25IZWF0bWFwEkMKDXJldmVudWVfdHJlbmQYDyADKAsyHi5jbGluaWNhbC52MS5S'
+    'ZXZlbnVlVHJlbmRQb2ludFIMcmV2ZW51ZVRyZW5kEk0KEXRva2VuX3VzYWdlX3RyZW5kGBAgAy'
+    'gLMiEuY2xpbmljYWwudjEuVG9rZW5Vc2FnZVRyZW5kUG9pbnRSD3Rva2VuVXNhZ2VUcmVuZBI3'
+    'ChhrcGlfYXZnX3BpcGVsaW5lX2xhdGVuY3kYESABKAFSFWtwaUF2Z1BpcGVsaW5lTGF0ZW5jeR'
+    'ItChNrcGlfZmFpbHVyZV9yYXRlXzdkGBIgASgBUhBrcGlGYWlsdXJlUmF0ZTdkEigKEGtwaV9y'
+    'ZWxhYmVsX3JhdGUYEyABKAFSDmtwaVJlbGFiZWxSYXRlElIKEnNhdGlzZmFjdGlvbl90cmVuZB'
+    'gUIAMoCzIjLmNsaW5pY2FsLnYxLlNhdGlzZmFjdGlvblRyZW5kUG9pbnRSEXNhdGlzZmFjdGlv'
+    'blRyZW5kEkUKEGlzc3VlX2NhdGVnb3JpZXMYFSADKAsyGi5jbGluaWNhbC52MS5Jc3N1ZUNhdG'
+    'Vnb3J5Ug9pc3N1ZUNhdGVnb3JpZXMSQwoNbGF0ZW5jeV90cmVuZBgWIAMoCzIeLmNsaW5pY2Fs'
+    'LnYxLkxhdGVuY3lUcmVuZFBvaW50UgxsYXRlbmN5VHJlbmQSSwoSZmFpbHVyZV9yYXRlX3RyZW'
+    '5kGBcgAygLMh0uY2xpbmljYWwudjEuRmFpbHVyZVJhdGVQb2ludFIQZmFpbHVyZVJhdGVUcmVu'
+    'ZBIqChFrcGlfMzBkX3JldGVudGlvbhgYIAEoAVIPa3BpMzBkUmV0ZW50aW9uEjoKDGZ1bm5lbF'
+    '9zdGVwcxgZIAMoCzIXLmNsaW5pY2FsLnYxLkZ1bm5lbFN0ZXBSC2Z1bm5lbFN0ZXBzEkwKEGNv'
+    'aG9ydF9yZXRlbnRpb24YGiADKAsyIS5jbGluaWNhbC52MS5Db2hvcnRSZXRlbnRpb25Qb2ludF'
+    'IPY29ob3J0UmV0ZW50aW9uElgKGWFjdGl2YXRpb25fdGltZV9oaXN0b2dyYW0YGyADKAsyHC5j'
+    'bGluaWNhbC52MS5IaXN0b2dyYW1CdWNrZXRSF2FjdGl2YXRpb25UaW1lSGlzdG9ncmFtEkYKDm'
+    'hvdXJseV9oZWF0bWFwGBwgAygLMh8uY2xpbmljYWwudjEuSG91cmx5SGVhdG1hcFBvaW50Ug1o'
+    'b3VybHlIZWF0bWFwElEKFXVwbG9hZF9mYWlsdXJlc190cmVuZBgdIAMoCzIdLmNsaW5pY2FsLn'
+    'YxLkZhaWx1cmVSYXRlUG9pbnRSE3VwbG9hZEZhaWx1cmVzVHJlbmQ=');
+
+@$core.Deprecated('Use trendPointDescriptor instead')
+const TrendPoint$json = {
+  '1': 'TrendPoint',
+  '2': [
+    {'1': 'label', '3': 1, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'value', '3': 2, '4': 1, '5': 1, '10': 'value'},
+  ],
+};
+
+/// Descriptor for `TrendPoint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List trendPointDescriptor = $convert.base64Decode(
+    'CgpUcmVuZFBvaW50EhQKBWxhYmVsGAEgASgJUgVsYWJlbBIUCgV2YWx1ZRgCIAEoAVIFdmFsdW'
+    'U=');
+
+@$core.Deprecated('Use planDistributionDescriptor instead')
+const PlanDistribution$json = {
+  '1': 'PlanDistribution',
+  '2': [
+    {'1': 'plan_name', '3': 1, '4': 1, '5': 9, '10': 'planName'},
+    {'1': 'count', '3': 2, '4': 1, '5': 3, '10': 'count'},
+  ],
+};
+
+/// Descriptor for `PlanDistribution`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List planDistributionDescriptor = $convert.base64Decode(
+    'ChBQbGFuRGlzdHJpYnV0aW9uEhsKCXBsYW5fbmFtZRgBIAEoCVIIcGxhbk5hbWUSFAoFY291bn'
+    'QYAiABKANSBWNvdW50');
+
+@$core.Deprecated('Use costTrendPointDescriptor instead')
+const CostTrendPoint$json = {
+  '1': 'CostTrendPoint',
+  '2': [
+    {'1': 'label', '3': 1, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'stt_cost', '3': 2, '4': 1, '5': 1, '10': 'sttCost'},
+    {'1': 'llm_cost', '3': 3, '4': 1, '5': 1, '10': 'llmCost'},
+    {'1': 'total_cost', '3': 4, '4': 1, '5': 1, '10': 'totalCost'},
+  ],
+};
+
+/// Descriptor for `CostTrendPoint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List costTrendPointDescriptor = $convert.base64Decode(
+    'Cg5Db3N0VHJlbmRQb2ludBIUCgVsYWJlbBgBIAEoCVIFbGFiZWwSGQoIc3R0X2Nvc3QYAiABKA'
+    'FSB3N0dENvc3QSGQoIbGxtX2Nvc3QYAyABKAFSB2xsbUNvc3QSHQoKdG90YWxfY29zdBgEIAEo'
+    'AVIJdG90YWxDb3N0');
+
+@$core.Deprecated('Use tokenUtilizationHeatmapPointDescriptor instead')
+const TokenUtilizationHeatmapPoint$json = {
+  '1': 'TokenUtilizationHeatmapPoint',
+  '2': [
+    {'1': 'org_name', '3': 1, '4': 1, '5': 9, '10': 'orgName'},
+    {'1': 'week', '3': 2, '4': 1, '5': 9, '10': 'week'},
+    {'1': 'value', '3': 3, '4': 1, '5': 1, '10': 'value'},
+  ],
+};
+
+/// Descriptor for `TokenUtilizationHeatmapPoint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List tokenUtilizationHeatmapPointDescriptor =
+    $convert.base64Decode(
+        'ChxUb2tlblV0aWxpemF0aW9uSGVhdG1hcFBvaW50EhkKCG9yZ19uYW1lGAEgASgJUgdvcmdOYW'
+        '1lEhIKBHdlZWsYAiABKAlSBHdlZWsSFAoFdmFsdWUYAyABKAFSBXZhbHVl');
+
+@$core.Deprecated('Use revenueTrendPointDescriptor instead')
+const RevenueTrendPoint$json = {
+  '1': 'RevenueTrendPoint',
+  '2': [
+    {'1': 'label', '3': 1, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'solo_revenue', '3': 2, '4': 1, '5': 1, '10': 'soloRevenue'},
+    {'1': 'pro_revenue', '3': 3, '4': 1, '5': 1, '10': 'proRevenue'},
+    {'1': 'total_revenue', '3': 4, '4': 1, '5': 1, '10': 'totalRevenue'},
+  ],
+};
+
+/// Descriptor for `RevenueTrendPoint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List revenueTrendPointDescriptor = $convert.base64Decode(
+    'ChFSZXZlbnVlVHJlbmRQb2ludBIUCgVsYWJlbBgBIAEoCVIFbGFiZWwSIQoMc29sb19yZXZlbn'
+    'VlGAIgASgBUgtzb2xvUmV2ZW51ZRIfCgtwcm9fcmV2ZW51ZRgDIAEoAVIKcHJvUmV2ZW51ZRIj'
+    'Cg10b3RhbF9yZXZlbnVlGAQgASgBUgx0b3RhbFJldmVudWU=');
+
+@$core.Deprecated('Use tokenUsageTrendPointDescriptor instead')
+const TokenUsageTrendPoint$json = {
+  '1': 'TokenUsageTrendPoint',
+  '2': [
+    {'1': 'label', '3': 1, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'input_tokens', '3': 2, '4': 1, '5': 3, '10': 'inputTokens'},
+    {'1': 'output_tokens', '3': 3, '4': 1, '5': 3, '10': 'outputTokens'},
+  ],
+};
+
+/// Descriptor for `TokenUsageTrendPoint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List tokenUsageTrendPointDescriptor = $convert.base64Decode(
+    'ChRUb2tlblVzYWdlVHJlbmRQb2ludBIUCgVsYWJlbBgBIAEoCVIFbGFiZWwSIQoMaW5wdXRfdG'
+    '9rZW5zGAIgASgDUgtpbnB1dFRva2VucxIjCg1vdXRwdXRfdG9rZW5zGAMgASgDUgxvdXRwdXRU'
+    'b2tlbnM=');
+
+@$core.Deprecated('Use satisfactionTrendPointDescriptor instead')
+const SatisfactionTrendPoint$json = {
+  '1': 'SatisfactionTrendPoint',
+  '2': [
+    {'1': 'label', '3': 1, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'satisfaction_pct', '3': 2, '4': 1, '5': 1, '10': 'satisfactionPct'},
+  ],
+};
+
+/// Descriptor for `SatisfactionTrendPoint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List satisfactionTrendPointDescriptor =
+    $convert.base64Decode(
+        'ChZTYXRpc2ZhY3Rpb25UcmVuZFBvaW50EhQKBWxhYmVsGAEgASgJUgVsYWJlbBIpChBzYXRpc2'
+        'ZhY3Rpb25fcGN0GAIgASgBUg9zYXRpc2ZhY3Rpb25QY3Q=');
+
+@$core.Deprecated('Use issueCategoryDescriptor instead')
+const IssueCategory$json = {
+  '1': 'IssueCategory',
+  '2': [
+    {'1': 'category', '3': 1, '4': 1, '5': 9, '10': 'category'},
+    {'1': 'count', '3': 2, '4': 1, '5': 3, '10': 'count'},
+  ],
+};
+
+/// Descriptor for `IssueCategory`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List issueCategoryDescriptor = $convert.base64Decode(
+    'Cg1Jc3N1ZUNhdGVnb3J5EhoKCGNhdGVnb3J5GAEgASgJUghjYXRlZ29yeRIUCgVjb3VudBgCIA'
+    'EoA1IFY291bnQ=');
+
+@$core.Deprecated('Use latencyTrendPointDescriptor instead')
+const LatencyTrendPoint$json = {
+  '1': 'LatencyTrendPoint',
+  '2': [
+    {'1': 'label', '3': 1, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'p50', '3': 2, '4': 1, '5': 1, '10': 'p50'},
+    {'1': 'p95', '3': 3, '4': 1, '5': 1, '10': 'p95'},
+  ],
+};
+
+/// Descriptor for `LatencyTrendPoint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List latencyTrendPointDescriptor = $convert.base64Decode(
+    'ChFMYXRlbmN5VHJlbmRQb2ludBIUCgVsYWJlbBgBIAEoCVIFbGFiZWwSEAoDcDUwGAIgASgBUg'
+    'NwNTASEAoDcDk1GAMgASgBUgNwOTU=');
+
+@$core.Deprecated('Use failureRatePointDescriptor instead')
+const FailureRatePoint$json = {
+  '1': 'FailureRatePoint',
+  '2': [
+    {'1': 'label', '3': 1, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'failure_rate', '3': 2, '4': 1, '5': 1, '10': 'failureRate'},
+    {'1': 'total', '3': 3, '4': 1, '5': 3, '10': 'total'},
+    {'1': 'failed', '3': 4, '4': 1, '5': 3, '10': 'failed'},
+  ],
+};
+
+/// Descriptor for `FailureRatePoint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List failureRatePointDescriptor = $convert.base64Decode(
+    'ChBGYWlsdXJlUmF0ZVBvaW50EhQKBWxhYmVsGAEgASgJUgVsYWJlbBIhCgxmYWlsdXJlX3JhdG'
+    'UYAiABKAFSC2ZhaWx1cmVSYXRlEhQKBXRvdGFsGAMgASgDUgV0b3RhbBIWCgZmYWlsZWQYBCAB'
+    'KANSBmZhaWxlZA==');
+
+@$core.Deprecated('Use funnelStepDescriptor instead')
+const FunnelStep$json = {
+  '1': 'FunnelStep',
+  '2': [
+    {'1': 'step_name', '3': 1, '4': 1, '5': 9, '10': 'stepName'},
+    {'1': 'count', '3': 2, '4': 1, '5': 3, '10': 'count'},
+    {'1': 'pct_of_previous', '3': 3, '4': 1, '5': 1, '10': 'pctOfPrevious'},
+  ],
+};
+
+/// Descriptor for `FunnelStep`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List funnelStepDescriptor = $convert.base64Decode(
+    'CgpGdW5uZWxTdGVwEhsKCXN0ZXBfbmFtZRgBIAEoCVIIc3RlcE5hbWUSFAoFY291bnQYAiABKA'
+    'NSBWNvdW50EiYKD3BjdF9vZl9wcmV2aW91cxgDIAEoAVINcGN0T2ZQcmV2aW91cw==');
+
+@$core.Deprecated('Use cohortRetentionPointDescriptor instead')
+const CohortRetentionPoint$json = {
+  '1': 'CohortRetentionPoint',
+  '2': [
+    {'1': 'cohort', '3': 1, '4': 1, '5': 9, '10': 'cohort'},
+    {'1': 'week', '3': 2, '4': 1, '5': 9, '10': 'week'},
+    {'1': 'pct', '3': 3, '4': 1, '5': 1, '10': 'pct'},
+  ],
+};
+
+/// Descriptor for `CohortRetentionPoint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List cohortRetentionPointDescriptor = $convert.base64Decode(
+    'ChRDb2hvcnRSZXRlbnRpb25Qb2ludBIWCgZjb2hvcnQYASABKAlSBmNvaG9ydBISCgR3ZWVrGA'
+    'IgASgJUgR3ZWVrEhAKA3BjdBgDIAEoAVIDcGN0');
+
+@$core.Deprecated('Use histogramBucketDescriptor instead')
+const HistogramBucket$json = {
+  '1': 'HistogramBucket',
+  '2': [
+    {'1': 'bucket_label', '3': 1, '4': 1, '5': 9, '10': 'bucketLabel'},
+    {'1': 'count', '3': 2, '4': 1, '5': 3, '10': 'count'},
+  ],
+};
+
+/// Descriptor for `HistogramBucket`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List histogramBucketDescriptor = $convert.base64Decode(
+    'Cg9IaXN0b2dyYW1CdWNrZXQSIQoMYnVja2V0X2xhYmVsGAEgASgJUgtidWNrZXRMYWJlbBIUCg'
+    'Vjb3VudBgCIAEoA1IFY291bnQ=');
+
+@$core.Deprecated('Use hourlyHeatmapPointDescriptor instead')
+const HourlyHeatmapPoint$json = {
+  '1': 'HourlyHeatmapPoint',
+  '2': [
+    {'1': 'day_of_week', '3': 1, '4': 1, '5': 5, '10': 'dayOfWeek'},
+    {'1': 'hour', '3': 2, '4': 1, '5': 5, '10': 'hour'},
+    {'1': 'count', '3': 3, '4': 1, '5': 3, '10': 'count'},
+  ],
+};
+
+/// Descriptor for `HourlyHeatmapPoint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List hourlyHeatmapPointDescriptor = $convert.base64Decode(
+    'ChJIb3VybHlIZWF0bWFwUG9pbnQSHgoLZGF5X29mX3dlZWsYASABKAVSCWRheU9mV2VlaxISCg'
+    'Rob3VyGAIgASgFUgRob3VyEhQKBWNvdW50GAMgASgDUgVjb3VudA==');

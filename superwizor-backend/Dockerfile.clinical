@@ -11,9 +11,11 @@ WORKDIR /app/services/clinical-svc
 RUN go mod download
 
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /server ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /purger ./cmd/purger
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=builder /server /server
+COPY --from=builder /purger /purger
 USER nonroot:nonroot
 EXPOSE 8080
 ENTRYPOINT ["/server"]

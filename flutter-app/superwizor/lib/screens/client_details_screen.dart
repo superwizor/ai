@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_toast.dart';
 
+import '../analytics/analytics_collector.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../models/patient.dart';
 import '../models/session.dart';
@@ -73,6 +74,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     // refreshes when an upload completes).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        ref.read(analyticsCollectorProvider).track("screen.viewed", properties: {"screen_name": "ClientDetailsScreen"});
         unawaited(
           ref.read(sessionsProvider.notifier).forceRefresh(widget.patientId),
         );

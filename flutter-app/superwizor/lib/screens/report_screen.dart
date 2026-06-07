@@ -27,8 +27,10 @@ import '../cache/dto/report_dto.dart';
 import '../cache/dto/session_details_dto.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
+import '../analytics/analytics_collector.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/patient_contact_provider.dart';
+import '../providers/viewed_reports_provider.dart';
 import '../repositories/session_details_repository.dart';
 import '../theme/euphire_theme.dart';
 import '../utils/action_plan_extractor.dart';
@@ -58,6 +60,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   final ScrollController _mainScrollController = ScrollController();
   int _activeSectionIndex = 0;
   String? _editedSummary;
+  ScreenTracker? _screenTracker;
 
   @override
   void initState() {
@@ -70,6 +73,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   void dispose() {
     _mainScrollController.removeListener(_onScroll);
     _mainScrollController.dispose();
+    _screenTracker?.stop();
     super.dispose();
   }
 
@@ -189,6 +193,16 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       _loading = false;
       _error = null;
     });
+
+    if (_screenTracker == null && fresh.reports.isNotEmpty) {
+      final isRevisit = ref.read(viewedReportsProvider).contains(widget.sessionId);
+      _screenTracker = ref.read(analyticsCollectorProvider).trackScreen(
+        fresh.reports.first.id,
+        widget.sessionId,
+        isRevisit: isRevisit,
+      );
+      _screenTracker!.start();
+    }
   }
 
   @override

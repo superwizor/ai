@@ -33,6 +33,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
+	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/postgres/db"
 	"github.com/superwizor-ai/backend/services/billing-svc/internal/domain/tokens"
 )
@@ -98,20 +99,22 @@ type Server struct {
 	tx             TxOpener
 	reservationTTL time.Duration
 	version        string
+	collector      *analytics.Collector
 }
 
 // NewServer — produkcyjny konstruktor.
-func NewServer(pool *pgxpool.Pool, version string) *Server {
+func NewServer(pool *pgxpool.Pool, version string, collector *analytics.Collector) *Server {
 	return &Server{
 		queries:        db.New(pool),
 		tx:             NewPgxTxOpener(pool),
 		reservationTTL: DefaultReservationTTL,
 		version:        version,
+		collector:      collector,
 	}
 }
 
 // NewServerWithDeps — test-friendly: każda zależność interfejsowa.
-func NewServerWithDeps(q db.Querier, tx TxOpener, ttl time.Duration, version string) *Server {
+func NewServerWithDeps(q db.Querier, tx TxOpener, ttl time.Duration, version string, collector *analytics.Collector) *Server {
 	if ttl == 0 {
 		ttl = DefaultReservationTTL
 	}
@@ -120,6 +123,7 @@ func NewServerWithDeps(q db.Querier, tx TxOpener, ttl time.Duration, version str
 		tx:             tx,
 		reservationTTL: ttl,
 		version:        version,
+		collector:      collector,
 	}
 }
 
@@ -172,6 +176,7 @@ func (s *Server) CheckQuota(ctx context.Context, req *billingv1.CheckQuotaReques
 	sub, err := s.queries.GetActiveSubscriptionByOrg(ctx, orgID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			s.trackQuotaDenied(ctx, orgID, 0, 0)
 			return &billingv1.QuotaDecision{
 				Allowed: false,
 				Reason:  "SUBSCRIPTION_INACTIVE",
@@ -183,6 +188,7 @@ func (s *Server) CheckQuota(ctx context.Context, req *billingv1.CheckQuotaReques
 
 	// PAST_DUE blokuje nowe rezerwacje per UX-design (sticky modal Flutter).
 	if sub.Status == db.SubscriptionStatusPASTDUE {
+		s.trackQuotaDenied(ctx, orgID, 0, 0)
 		return &billingv1.QuotaDecision{
 			Allowed: false,
 			Reason:  "SUBSCRIPTION_PAST_DUE",
@@ -197,6 +203,7 @@ func (s *Server) CheckQuota(ctx context.Context, req *billingv1.CheckQuotaReques
 			// na missing_counter w monitoring (§9.4) złapie to.
 			slog.WarnContext(ctx, "CheckQuota: missing usage_counter for active subscription",
 				"subscription_id", sub.ID, "org_id", orgID)
+			s.trackQuotaDenied(ctx, orgID, 0, 0)
 			return &billingv1.QuotaDecision{
 				Allowed: false,
 				Reason:  "QUOTA_COUNTER_MISSING",
@@ -211,6 +218,7 @@ func (s *Server) CheckQuota(ctx context.Context, req *billingv1.CheckQuotaReques
 	reason := "OK"
 	if !allowed {
 		reason = "QUOTA_EXHAUSTED"
+		s.trackQuotaDenied(ctx, orgID, remaining, counter.TokensLimit)
 	}
 
 	return &billingv1.QuotaDecision{
@@ -780,4 +788,19 @@ func buildSubscriptionProto(s subFields, tokensUsed, tokensReserved, tokensLimit
 		CurrentPeriodStart:       timestamppb.New(s.CurrentPeriodStart),
 		CurrentPeriodEnd:         timestamppb.New(s.CurrentPeriodEnd),
 	}
+}
+
+func (s *Server) trackQuotaDenied(ctx context.Context, orgID uuid.UUID, remaining, limit int32) {
+	if s.collector == nil {
+		return
+	}
+	s.collector.Track(ctx, analytics.Event{
+		Name:           "quota.denied",
+		OrganizationID: &orgID,
+		Properties: map[string]any{
+			"tokens_remaining": remaining,
+			"tokens_limit":     limit,
+		},
+		Source: "server",
+	})
 }

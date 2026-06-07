@@ -33,6 +33,7 @@ import (
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	"connectrpc.com/connect"
 
+	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/pkg/connectmd"
 	"github.com/superwizor-ai/backend/pkg/cors"
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
@@ -115,6 +116,9 @@ func main() {
 		os.Exit(1)
 	}
 	defer pool.Close()
+
+	analyticsCollector := analytics.NewCollector(pool)
+	defer analyticsCollector.Shutdown()
 
 	// gRPC client → identity-svc with Cloud Run service-to-service auth (if https)
 	var identityConn *grpc.ClientConn
@@ -244,7 +248,7 @@ func main() {
 		slog.Info("clinical-svc: NOTIFICATION_SVC_URL unset — SavePatientNote send path returns EMAIL_NOT_CONFIGURED")
 	}
 
-	srv := grpcadapter.NewServer(pool, queries, identityClient, billingClient, notificationClient, crypto, sessionEvents, version)
+	srv := grpcadapter.NewServer(pool, queries, identityClient, billingClient, notificationClient, crypto, sessionEvents, version, analyticsCollector)
 
 	tp := initTracer()
 	defer func() { _ = tp.Shutdown(ctx) }()

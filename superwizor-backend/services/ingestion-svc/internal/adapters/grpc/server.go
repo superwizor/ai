@@ -19,6 +19,7 @@ import (
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	ingestionv1 "github.com/superwizor-ai/backend/gen/go/ingestion/v1"
+	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/pkg/i18n/lang"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/postgres/db"
 	"github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/storage"
@@ -51,6 +52,7 @@ type Server struct {
 	bucketName string
 	pubsub     PubsubPublisher // interface — concrete impl w main
 	billing    billingv1.BillingServiceClient // optional, nil = skip reservation step
+	collector  *analytics.Collector
 }
 
 type PubsubPublisher interface {
@@ -64,6 +66,7 @@ func NewServer(
 	converter *storage.Converter,
 	bucketName string,
 	pubsub PubsubPublisher,
+	collector *analytics.Collector,
 ) *Server {
 	return &Server{
 		queries:    queries,
@@ -72,6 +75,7 @@ func NewServer(
 		converter:  converter,
 		bucketName: bucketName,
 		pubsub:     pubsub,
+		collector:  collector,
 	}
 }
 
@@ -262,6 +266,30 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, status.Errorf(codes.Internal, "commit CreateAudioUpload tx: %v", err)
+	}
+
+	// Analityka: emisja zdarzenia upload.initiated
+	if s.collector != nil {
+		var orgIDPtr *uuid.UUID
+		orgIDPg, errOrg := s.queries.GetUserOrganizationID(ctx, therapistIDPg)
+		if errOrg == nil && orgIDPg.Valid {
+			id := uuid.UUID(orgIDPg.Bytes)
+			orgIDPtr = &id
+		}
+
+		s.collector.Track(ctx, analytics.Event{
+			Name:           "upload.initiated",
+			TherapistID:    &therapistID,
+			OrganizationID: orgIDPtr,
+			SessionID:      &sessionUUID,
+			PatientFileID:  &patientFileID,
+			Properties: map[string]any{
+				"content_type":         req.ContentType,
+				"estimated_size_bytes": req.EstimatedSizeBytes,
+				"platform":             req.ClientPlatform,
+			},
+			Source: "server",
+		})
 	}
 
 	// Billing hook (synchronous): reserve 1 token on billing-svc.

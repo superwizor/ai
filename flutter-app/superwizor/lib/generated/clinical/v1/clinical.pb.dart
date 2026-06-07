@@ -12,7 +12,9 @@
 
 import 'dart:core' as $core;
 
+import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
+import 'package:protobuf/well_known_types/google/protobuf/struct.pb.dart' as $4;
 import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
     as $3;
 
@@ -4664,6 +4666,1654 @@ class AdminSessionRow extends $pb.GeneratedMessage {
   $core.bool hasSubscriptionTokensUsed() => $_has(13);
   @$pb.TagNumber(14)
   void clearSubscriptionTokensUsed() => $_clearField(14);
+}
+
+class TrackEventsRequest extends $pb.GeneratedMessage {
+  factory TrackEventsRequest({
+    $core.Iterable<ClientEvent>? events,
+  }) {
+    final result = create();
+    if (events != null) result.events.addAll(events);
+    return result;
+  }
+
+  TrackEventsRequest._();
+
+  factory TrackEventsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory TrackEventsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TrackEventsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..pPM<ClientEvent>(1, _omitFieldNames ? '' : 'events',
+        subBuilder: ClientEvent.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TrackEventsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TrackEventsRequest copyWith(void Function(TrackEventsRequest) updates) =>
+      super.copyWith((message) => updates(message as TrackEventsRequest))
+          as TrackEventsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static TrackEventsRequest create() => TrackEventsRequest._();
+  @$core.override
+  TrackEventsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static TrackEventsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TrackEventsRequest>(create);
+  static TrackEventsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<ClientEvent> get events => $_getList(0);
+}
+
+class ClientEvent extends $pb.GeneratedMessage {
+  factory ClientEvent({
+    $core.String? eventName,
+    $4.Struct? properties,
+    $3.Timestamp? occurredAt,
+    $core.String? clientPlatform,
+    $core.String? clientVersion,
+  }) {
+    final result = create();
+    if (eventName != null) result.eventName = eventName;
+    if (properties != null) result.properties = properties;
+    if (occurredAt != null) result.occurredAt = occurredAt;
+    if (clientPlatform != null) result.clientPlatform = clientPlatform;
+    if (clientVersion != null) result.clientVersion = clientVersion;
+    return result;
+  }
+
+  ClientEvent._();
+
+  factory ClientEvent.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ClientEvent.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClientEvent',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'eventName')
+    ..aOM<$4.Struct>(2, _omitFieldNames ? '' : 'properties',
+        subBuilder: $4.Struct.create)
+    ..aOM<$3.Timestamp>(3, _omitFieldNames ? '' : 'occurredAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOS(4, _omitFieldNames ? '' : 'clientPlatform')
+    ..aOS(5, _omitFieldNames ? '' : 'clientVersion')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientEvent clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientEvent copyWith(void Function(ClientEvent) updates) =>
+      super.copyWith((message) => updates(message as ClientEvent))
+          as ClientEvent;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ClientEvent create() => ClientEvent._();
+  @$core.override
+  ClientEvent createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ClientEvent getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClientEvent>(create);
+  static ClientEvent? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get eventName => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set eventName($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEventName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEventName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $4.Struct get properties => $_getN(1);
+  @$pb.TagNumber(2)
+  set properties($4.Struct value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasProperties() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearProperties() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $4.Struct ensureProperties() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $3.Timestamp get occurredAt => $_getN(2);
+  @$pb.TagNumber(3)
+  set occurredAt($3.Timestamp value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOccurredAt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOccurredAt() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $3.Timestamp ensureOccurredAt() => $_ensure(2);
+
+  @$pb.TagNumber(4)
+  $core.String get clientPlatform => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set clientPlatform($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasClientPlatform() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearClientPlatform() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get clientVersion => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set clientVersion($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasClientVersion() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearClientVersion() => $_clearField(5);
+}
+
+class TrackEventsResponse extends $pb.GeneratedMessage {
+  factory TrackEventsResponse() => create();
+
+  TrackEventsResponse._();
+
+  factory TrackEventsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory TrackEventsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TrackEventsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TrackEventsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TrackEventsResponse copyWith(void Function(TrackEventsResponse) updates) =>
+      super.copyWith((message) => updates(message as TrackEventsResponse))
+          as TrackEventsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static TrackEventsResponse create() => TrackEventsResponse._();
+  @$core.override
+  TrackEventsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static TrackEventsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TrackEventsResponse>(create);
+  static TrackEventsResponse? _defaultInstance;
+}
+
+class GetAdminAnalyticsRequest extends $pb.GeneratedMessage {
+  factory GetAdminAnalyticsRequest({
+    $core.String? timeRange,
+  }) {
+    final result = create();
+    if (timeRange != null) result.timeRange = timeRange;
+    return result;
+  }
+
+  GetAdminAnalyticsRequest._();
+
+  factory GetAdminAnalyticsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetAdminAnalyticsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetAdminAnalyticsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'timeRange')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetAdminAnalyticsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetAdminAnalyticsRequest copyWith(
+          void Function(GetAdminAnalyticsRequest) updates) =>
+      super.copyWith((message) => updates(message as GetAdminAnalyticsRequest))
+          as GetAdminAnalyticsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetAdminAnalyticsRequest create() => GetAdminAnalyticsRequest._();
+  @$core.override
+  GetAdminAnalyticsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetAdminAnalyticsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetAdminAnalyticsRequest>(create);
+  static GetAdminAnalyticsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get timeRange => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set timeRange($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTimeRange() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTimeRange() => $_clearField(1);
+}
+
+class GetAdminAnalyticsResponse extends $pb.GeneratedMessage {
+  factory GetAdminAnalyticsResponse({
+    $fixnum.Int64? kpiWau,
+    $fixnum.Int64? kpiSessionsThisWeek,
+    $core.double? kpiActivationRate,
+    $core.double? kpiSatisfactionRate,
+    $core.Iterable<TrendPoint>? wauTrend,
+    $core.Iterable<TrendPoint>? sessionsTrend,
+    $core.Iterable<TrendPoint>? registrationsTrend,
+    $core.Iterable<PlanDistribution>? planDistribution,
+    $core.double? kpiAvgCostPerSession,
+    $core.double? kpiMonthlySttCost,
+    $core.double? kpiMonthlyLlmCost,
+    $core.double? kpiAvgTokenUtilization,
+    $core.Iterable<CostTrendPoint>? costTrend,
+    $core.Iterable<TokenUtilizationHeatmapPoint>? tokenUtilizationHeatmap,
+    $core.Iterable<RevenueTrendPoint>? revenueTrend,
+    $core.Iterable<TokenUsageTrendPoint>? tokenUsageTrend,
+    $core.double? kpiAvgPipelineLatency,
+    $core.double? kpiFailureRate7d,
+    $core.double? kpiRelabelRate,
+    $core.Iterable<SatisfactionTrendPoint>? satisfactionTrend,
+    $core.Iterable<IssueCategory>? issueCategories,
+    $core.Iterable<LatencyTrendPoint>? latencyTrend,
+    $core.Iterable<FailureRatePoint>? failureRateTrend,
+    $core.double? kpi30dRetention,
+    $core.Iterable<FunnelStep>? funnelSteps,
+    $core.Iterable<CohortRetentionPoint>? cohortRetention,
+    $core.Iterable<HistogramBucket>? activationTimeHistogram,
+    $core.Iterable<HourlyHeatmapPoint>? hourlyHeatmap,
+    $core.Iterable<FailureRatePoint>? uploadFailuresTrend,
+  }) {
+    final result = create();
+    if (kpiWau != null) result.kpiWau = kpiWau;
+    if (kpiSessionsThisWeek != null)
+      result.kpiSessionsThisWeek = kpiSessionsThisWeek;
+    if (kpiActivationRate != null) result.kpiActivationRate = kpiActivationRate;
+    if (kpiSatisfactionRate != null)
+      result.kpiSatisfactionRate = kpiSatisfactionRate;
+    if (wauTrend != null) result.wauTrend.addAll(wauTrend);
+    if (sessionsTrend != null) result.sessionsTrend.addAll(sessionsTrend);
+    if (registrationsTrend != null)
+      result.registrationsTrend.addAll(registrationsTrend);
+    if (planDistribution != null)
+      result.planDistribution.addAll(planDistribution);
+    if (kpiAvgCostPerSession != null)
+      result.kpiAvgCostPerSession = kpiAvgCostPerSession;
+    if (kpiMonthlySttCost != null) result.kpiMonthlySttCost = kpiMonthlySttCost;
+    if (kpiMonthlyLlmCost != null) result.kpiMonthlyLlmCost = kpiMonthlyLlmCost;
+    if (kpiAvgTokenUtilization != null)
+      result.kpiAvgTokenUtilization = kpiAvgTokenUtilization;
+    if (costTrend != null) result.costTrend.addAll(costTrend);
+    if (tokenUtilizationHeatmap != null)
+      result.tokenUtilizationHeatmap.addAll(tokenUtilizationHeatmap);
+    if (revenueTrend != null) result.revenueTrend.addAll(revenueTrend);
+    if (tokenUsageTrend != null) result.tokenUsageTrend.addAll(tokenUsageTrend);
+    if (kpiAvgPipelineLatency != null)
+      result.kpiAvgPipelineLatency = kpiAvgPipelineLatency;
+    if (kpiFailureRate7d != null) result.kpiFailureRate7d = kpiFailureRate7d;
+    if (kpiRelabelRate != null) result.kpiRelabelRate = kpiRelabelRate;
+    if (satisfactionTrend != null)
+      result.satisfactionTrend.addAll(satisfactionTrend);
+    if (issueCategories != null) result.issueCategories.addAll(issueCategories);
+    if (latencyTrend != null) result.latencyTrend.addAll(latencyTrend);
+    if (failureRateTrend != null)
+      result.failureRateTrend.addAll(failureRateTrend);
+    if (kpi30dRetention != null) result.kpi30dRetention = kpi30dRetention;
+    if (funnelSteps != null) result.funnelSteps.addAll(funnelSteps);
+    if (cohortRetention != null) result.cohortRetention.addAll(cohortRetention);
+    if (activationTimeHistogram != null)
+      result.activationTimeHistogram.addAll(activationTimeHistogram);
+    if (hourlyHeatmap != null) result.hourlyHeatmap.addAll(hourlyHeatmap);
+    if (uploadFailuresTrend != null)
+      result.uploadFailuresTrend.addAll(uploadFailuresTrend);
+    return result;
+  }
+
+  GetAdminAnalyticsResponse._();
+
+  factory GetAdminAnalyticsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetAdminAnalyticsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetAdminAnalyticsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aInt64(1, _omitFieldNames ? '' : 'kpiWau')
+    ..aInt64(2, _omitFieldNames ? '' : 'kpiSessionsThisWeek')
+    ..aD(3, _omitFieldNames ? '' : 'kpiActivationRate')
+    ..aD(4, _omitFieldNames ? '' : 'kpiSatisfactionRate')
+    ..pPM<TrendPoint>(5, _omitFieldNames ? '' : 'wauTrend',
+        subBuilder: TrendPoint.create)
+    ..pPM<TrendPoint>(6, _omitFieldNames ? '' : 'sessionsTrend',
+        subBuilder: TrendPoint.create)
+    ..pPM<TrendPoint>(7, _omitFieldNames ? '' : 'registrationsTrend',
+        subBuilder: TrendPoint.create)
+    ..pPM<PlanDistribution>(8, _omitFieldNames ? '' : 'planDistribution',
+        subBuilder: PlanDistribution.create)
+    ..aD(9, _omitFieldNames ? '' : 'kpiAvgCostPerSession')
+    ..aD(10, _omitFieldNames ? '' : 'kpiMonthlySttCost')
+    ..aD(11, _omitFieldNames ? '' : 'kpiMonthlyLlmCost')
+    ..aD(12, _omitFieldNames ? '' : 'kpiAvgTokenUtilization')
+    ..pPM<CostTrendPoint>(13, _omitFieldNames ? '' : 'costTrend',
+        subBuilder: CostTrendPoint.create)
+    ..pPM<TokenUtilizationHeatmapPoint>(
+        14, _omitFieldNames ? '' : 'tokenUtilizationHeatmap',
+        subBuilder: TokenUtilizationHeatmapPoint.create)
+    ..pPM<RevenueTrendPoint>(15, _omitFieldNames ? '' : 'revenueTrend',
+        subBuilder: RevenueTrendPoint.create)
+    ..pPM<TokenUsageTrendPoint>(16, _omitFieldNames ? '' : 'tokenUsageTrend',
+        subBuilder: TokenUsageTrendPoint.create)
+    ..aD(17, _omitFieldNames ? '' : 'kpiAvgPipelineLatency')
+    ..aD(18, _omitFieldNames ? '' : 'kpiFailureRate7d',
+        protoName: 'kpi_failure_rate_7d')
+    ..aD(19, _omitFieldNames ? '' : 'kpiRelabelRate')
+    ..pPM<SatisfactionTrendPoint>(
+        20, _omitFieldNames ? '' : 'satisfactionTrend',
+        subBuilder: SatisfactionTrendPoint.create)
+    ..pPM<IssueCategory>(21, _omitFieldNames ? '' : 'issueCategories',
+        subBuilder: IssueCategory.create)
+    ..pPM<LatencyTrendPoint>(22, _omitFieldNames ? '' : 'latencyTrend',
+        subBuilder: LatencyTrendPoint.create)
+    ..pPM<FailureRatePoint>(23, _omitFieldNames ? '' : 'failureRateTrend',
+        subBuilder: FailureRatePoint.create)
+    ..aD(24, _omitFieldNames ? '' : 'kpi30dRetention',
+        protoName: 'kpi_30d_retention')
+    ..pPM<FunnelStep>(25, _omitFieldNames ? '' : 'funnelSteps',
+        subBuilder: FunnelStep.create)
+    ..pPM<CohortRetentionPoint>(26, _omitFieldNames ? '' : 'cohortRetention',
+        subBuilder: CohortRetentionPoint.create)
+    ..pPM<HistogramBucket>(27, _omitFieldNames ? '' : 'activationTimeHistogram',
+        subBuilder: HistogramBucket.create)
+    ..pPM<HourlyHeatmapPoint>(28, _omitFieldNames ? '' : 'hourlyHeatmap',
+        subBuilder: HourlyHeatmapPoint.create)
+    ..pPM<FailureRatePoint>(29, _omitFieldNames ? '' : 'uploadFailuresTrend',
+        subBuilder: FailureRatePoint.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetAdminAnalyticsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetAdminAnalyticsResponse copyWith(
+          void Function(GetAdminAnalyticsResponse) updates) =>
+      super.copyWith((message) => updates(message as GetAdminAnalyticsResponse))
+          as GetAdminAnalyticsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetAdminAnalyticsResponse create() => GetAdminAnalyticsResponse._();
+  @$core.override
+  GetAdminAnalyticsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetAdminAnalyticsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetAdminAnalyticsResponse>(create);
+  static GetAdminAnalyticsResponse? _defaultInstance;
+
+  /// Tab 1: Executive Overview
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get kpiWau => $_getI64(0);
+  @$pb.TagNumber(1)
+  set kpiWau($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasKpiWau() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKpiWau() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get kpiSessionsThisWeek => $_getI64(1);
+  @$pb.TagNumber(2)
+  set kpiSessionsThisWeek($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasKpiSessionsThisWeek() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearKpiSessionsThisWeek() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get kpiActivationRate => $_getN(2);
+  @$pb.TagNumber(3)
+  set kpiActivationRate($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasKpiActivationRate() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearKpiActivationRate() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get kpiSatisfactionRate => $_getN(3);
+  @$pb.TagNumber(4)
+  set kpiSatisfactionRate($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasKpiSatisfactionRate() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearKpiSatisfactionRate() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<TrendPoint> get wauTrend => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<TrendPoint> get sessionsTrend => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $pb.PbList<TrendPoint> get registrationsTrend => $_getList(6);
+
+  @$pb.TagNumber(8)
+  $pb.PbList<PlanDistribution> get planDistribution => $_getList(7);
+
+  /// Tab 2: Unit Economics
+  @$pb.TagNumber(9)
+  $core.double get kpiAvgCostPerSession => $_getN(8);
+  @$pb.TagNumber(9)
+  set kpiAvgCostPerSession($core.double value) => $_setDouble(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasKpiAvgCostPerSession() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearKpiAvgCostPerSession() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.double get kpiMonthlySttCost => $_getN(9);
+  @$pb.TagNumber(10)
+  set kpiMonthlySttCost($core.double value) => $_setDouble(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasKpiMonthlySttCost() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearKpiMonthlySttCost() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.double get kpiMonthlyLlmCost => $_getN(10);
+  @$pb.TagNumber(11)
+  set kpiMonthlyLlmCost($core.double value) => $_setDouble(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasKpiMonthlyLlmCost() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearKpiMonthlyLlmCost() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.double get kpiAvgTokenUtilization => $_getN(11);
+  @$pb.TagNumber(12)
+  set kpiAvgTokenUtilization($core.double value) => $_setDouble(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasKpiAvgTokenUtilization() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearKpiAvgTokenUtilization() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $pb.PbList<CostTrendPoint> get costTrend => $_getList(12);
+
+  @$pb.TagNumber(14)
+  $pb.PbList<TokenUtilizationHeatmapPoint> get tokenUtilizationHeatmap =>
+      $_getList(13);
+
+  @$pb.TagNumber(15)
+  $pb.PbList<RevenueTrendPoint> get revenueTrend => $_getList(14);
+
+  @$pb.TagNumber(16)
+  $pb.PbList<TokenUsageTrendPoint> get tokenUsageTrend => $_getList(15);
+
+  /// Tab 3: AI Quality
+  @$pb.TagNumber(17)
+  $core.double get kpiAvgPipelineLatency => $_getN(16);
+  @$pb.TagNumber(17)
+  set kpiAvgPipelineLatency($core.double value) => $_setDouble(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasKpiAvgPipelineLatency() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearKpiAvgPipelineLatency() => $_clearField(17);
+
+  @$pb.TagNumber(18)
+  $core.double get kpiFailureRate7d => $_getN(17);
+  @$pb.TagNumber(18)
+  set kpiFailureRate7d($core.double value) => $_setDouble(17, value);
+  @$pb.TagNumber(18)
+  $core.bool hasKpiFailureRate7d() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearKpiFailureRate7d() => $_clearField(18);
+
+  @$pb.TagNumber(19)
+  $core.double get kpiRelabelRate => $_getN(18);
+  @$pb.TagNumber(19)
+  set kpiRelabelRate($core.double value) => $_setDouble(18, value);
+  @$pb.TagNumber(19)
+  $core.bool hasKpiRelabelRate() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearKpiRelabelRate() => $_clearField(19);
+
+  @$pb.TagNumber(20)
+  $pb.PbList<SatisfactionTrendPoint> get satisfactionTrend => $_getList(19);
+
+  @$pb.TagNumber(21)
+  $pb.PbList<IssueCategory> get issueCategories => $_getList(20);
+
+  @$pb.TagNumber(22)
+  $pb.PbList<LatencyTrendPoint> get latencyTrend => $_getList(21);
+
+  @$pb.TagNumber(23)
+  $pb.PbList<FailureRatePoint> get failureRateTrend => $_getList(22);
+
+  /// Tab 4: Funnel & Retention
+  @$pb.TagNumber(24)
+  $core.double get kpi30dRetention => $_getN(23);
+  @$pb.TagNumber(24)
+  set kpi30dRetention($core.double value) => $_setDouble(23, value);
+  @$pb.TagNumber(24)
+  $core.bool hasKpi30dRetention() => $_has(23);
+  @$pb.TagNumber(24)
+  void clearKpi30dRetention() => $_clearField(24);
+
+  @$pb.TagNumber(25)
+  $pb.PbList<FunnelStep> get funnelSteps => $_getList(24);
+
+  @$pb.TagNumber(26)
+  $pb.PbList<CohortRetentionPoint> get cohortRetention => $_getList(25);
+
+  @$pb.TagNumber(27)
+  $pb.PbList<HistogramBucket> get activationTimeHistogram => $_getList(26);
+
+  /// Tab 5: Operations
+  @$pb.TagNumber(28)
+  $pb.PbList<HourlyHeatmapPoint> get hourlyHeatmap => $_getList(27);
+
+  @$pb.TagNumber(29)
+  $pb.PbList<FailureRatePoint> get uploadFailuresTrend => $_getList(28);
+}
+
+class TrendPoint extends $pb.GeneratedMessage {
+  factory TrendPoint({
+    $core.String? label,
+    $core.double? value,
+  }) {
+    final result = create();
+    if (label != null) result.label = label;
+    if (value != null) result.value = value;
+    return result;
+  }
+
+  TrendPoint._();
+
+  factory TrendPoint.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory TrendPoint.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TrendPoint',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'label')
+    ..aD(2, _omitFieldNames ? '' : 'value')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TrendPoint clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TrendPoint copyWith(void Function(TrendPoint) updates) =>
+      super.copyWith((message) => updates(message as TrendPoint)) as TrendPoint;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static TrendPoint create() => TrendPoint._();
+  @$core.override
+  TrendPoint createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static TrendPoint getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TrendPoint>(create);
+  static TrendPoint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get label => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set label($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLabel() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLabel() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.double get value => $_getN(1);
+  @$pb.TagNumber(2)
+  set value($core.double value) => $_setDouble(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasValue() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearValue() => $_clearField(2);
+}
+
+class PlanDistribution extends $pb.GeneratedMessage {
+  factory PlanDistribution({
+    $core.String? planName,
+    $fixnum.Int64? count,
+  }) {
+    final result = create();
+    if (planName != null) result.planName = planName;
+    if (count != null) result.count = count;
+    return result;
+  }
+
+  PlanDistribution._();
+
+  factory PlanDistribution.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory PlanDistribution.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PlanDistribution',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'planName')
+    ..aInt64(2, _omitFieldNames ? '' : 'count')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PlanDistribution clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PlanDistribution copyWith(void Function(PlanDistribution) updates) =>
+      super.copyWith((message) => updates(message as PlanDistribution))
+          as PlanDistribution;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static PlanDistribution create() => PlanDistribution._();
+  @$core.override
+  PlanDistribution createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static PlanDistribution getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PlanDistribution>(create);
+  static PlanDistribution? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get planName => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set planName($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPlanName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPlanName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get count => $_getI64(1);
+  @$pb.TagNumber(2)
+  set count($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCount() => $_clearField(2);
+}
+
+class CostTrendPoint extends $pb.GeneratedMessage {
+  factory CostTrendPoint({
+    $core.String? label,
+    $core.double? sttCost,
+    $core.double? llmCost,
+    $core.double? totalCost,
+  }) {
+    final result = create();
+    if (label != null) result.label = label;
+    if (sttCost != null) result.sttCost = sttCost;
+    if (llmCost != null) result.llmCost = llmCost;
+    if (totalCost != null) result.totalCost = totalCost;
+    return result;
+  }
+
+  CostTrendPoint._();
+
+  factory CostTrendPoint.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory CostTrendPoint.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CostTrendPoint',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'label')
+    ..aD(2, _omitFieldNames ? '' : 'sttCost')
+    ..aD(3, _omitFieldNames ? '' : 'llmCost')
+    ..aD(4, _omitFieldNames ? '' : 'totalCost')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CostTrendPoint clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CostTrendPoint copyWith(void Function(CostTrendPoint) updates) =>
+      super.copyWith((message) => updates(message as CostTrendPoint))
+          as CostTrendPoint;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static CostTrendPoint create() => CostTrendPoint._();
+  @$core.override
+  CostTrendPoint createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static CostTrendPoint getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CostTrendPoint>(create);
+  static CostTrendPoint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get label => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set label($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLabel() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLabel() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.double get sttCost => $_getN(1);
+  @$pb.TagNumber(2)
+  set sttCost($core.double value) => $_setDouble(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSttCost() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSttCost() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get llmCost => $_getN(2);
+  @$pb.TagNumber(3)
+  set llmCost($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasLlmCost() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearLlmCost() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get totalCost => $_getN(3);
+  @$pb.TagNumber(4)
+  set totalCost($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTotalCost() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTotalCost() => $_clearField(4);
+}
+
+class TokenUtilizationHeatmapPoint extends $pb.GeneratedMessage {
+  factory TokenUtilizationHeatmapPoint({
+    $core.String? orgName,
+    $core.String? week,
+    $core.double? value,
+  }) {
+    final result = create();
+    if (orgName != null) result.orgName = orgName;
+    if (week != null) result.week = week;
+    if (value != null) result.value = value;
+    return result;
+  }
+
+  TokenUtilizationHeatmapPoint._();
+
+  factory TokenUtilizationHeatmapPoint.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory TokenUtilizationHeatmapPoint.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TokenUtilizationHeatmapPoint',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'orgName')
+    ..aOS(2, _omitFieldNames ? '' : 'week')
+    ..aD(3, _omitFieldNames ? '' : 'value')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TokenUtilizationHeatmapPoint clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TokenUtilizationHeatmapPoint copyWith(
+          void Function(TokenUtilizationHeatmapPoint) updates) =>
+      super.copyWith(
+              (message) => updates(message as TokenUtilizationHeatmapPoint))
+          as TokenUtilizationHeatmapPoint;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static TokenUtilizationHeatmapPoint create() =>
+      TokenUtilizationHeatmapPoint._();
+  @$core.override
+  TokenUtilizationHeatmapPoint createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static TokenUtilizationHeatmapPoint getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TokenUtilizationHeatmapPoint>(create);
+  static TokenUtilizationHeatmapPoint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get orgName => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set orgName($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrgName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrgName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get week => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set week($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWeek() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWeek() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get value => $_getN(2);
+  @$pb.TagNumber(3)
+  set value($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasValue() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearValue() => $_clearField(3);
+}
+
+class RevenueTrendPoint extends $pb.GeneratedMessage {
+  factory RevenueTrendPoint({
+    $core.String? label,
+    $core.double? soloRevenue,
+    $core.double? proRevenue,
+    $core.double? totalRevenue,
+  }) {
+    final result = create();
+    if (label != null) result.label = label;
+    if (soloRevenue != null) result.soloRevenue = soloRevenue;
+    if (proRevenue != null) result.proRevenue = proRevenue;
+    if (totalRevenue != null) result.totalRevenue = totalRevenue;
+    return result;
+  }
+
+  RevenueTrendPoint._();
+
+  factory RevenueTrendPoint.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory RevenueTrendPoint.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RevenueTrendPoint',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'label')
+    ..aD(2, _omitFieldNames ? '' : 'soloRevenue')
+    ..aD(3, _omitFieldNames ? '' : 'proRevenue')
+    ..aD(4, _omitFieldNames ? '' : 'totalRevenue')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RevenueTrendPoint clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RevenueTrendPoint copyWith(void Function(RevenueTrendPoint) updates) =>
+      super.copyWith((message) => updates(message as RevenueTrendPoint))
+          as RevenueTrendPoint;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RevenueTrendPoint create() => RevenueTrendPoint._();
+  @$core.override
+  RevenueTrendPoint createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static RevenueTrendPoint getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RevenueTrendPoint>(create);
+  static RevenueTrendPoint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get label => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set label($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLabel() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLabel() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.double get soloRevenue => $_getN(1);
+  @$pb.TagNumber(2)
+  set soloRevenue($core.double value) => $_setDouble(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSoloRevenue() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSoloRevenue() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get proRevenue => $_getN(2);
+  @$pb.TagNumber(3)
+  set proRevenue($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasProRevenue() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearProRevenue() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get totalRevenue => $_getN(3);
+  @$pb.TagNumber(4)
+  set totalRevenue($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasTotalRevenue() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTotalRevenue() => $_clearField(4);
+}
+
+class TokenUsageTrendPoint extends $pb.GeneratedMessage {
+  factory TokenUsageTrendPoint({
+    $core.String? label,
+    $fixnum.Int64? inputTokens,
+    $fixnum.Int64? outputTokens,
+  }) {
+    final result = create();
+    if (label != null) result.label = label;
+    if (inputTokens != null) result.inputTokens = inputTokens;
+    if (outputTokens != null) result.outputTokens = outputTokens;
+    return result;
+  }
+
+  TokenUsageTrendPoint._();
+
+  factory TokenUsageTrendPoint.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory TokenUsageTrendPoint.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TokenUsageTrendPoint',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'label')
+    ..aInt64(2, _omitFieldNames ? '' : 'inputTokens')
+    ..aInt64(3, _omitFieldNames ? '' : 'outputTokens')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TokenUsageTrendPoint clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TokenUsageTrendPoint copyWith(void Function(TokenUsageTrendPoint) updates) =>
+      super.copyWith((message) => updates(message as TokenUsageTrendPoint))
+          as TokenUsageTrendPoint;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static TokenUsageTrendPoint create() => TokenUsageTrendPoint._();
+  @$core.override
+  TokenUsageTrendPoint createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static TokenUsageTrendPoint getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TokenUsageTrendPoint>(create);
+  static TokenUsageTrendPoint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get label => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set label($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLabel() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLabel() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get inputTokens => $_getI64(1);
+  @$pb.TagNumber(2)
+  set inputTokens($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasInputTokens() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearInputTokens() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get outputTokens => $_getI64(2);
+  @$pb.TagNumber(3)
+  set outputTokens($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOutputTokens() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOutputTokens() => $_clearField(3);
+}
+
+class SatisfactionTrendPoint extends $pb.GeneratedMessage {
+  factory SatisfactionTrendPoint({
+    $core.String? label,
+    $core.double? satisfactionPct,
+  }) {
+    final result = create();
+    if (label != null) result.label = label;
+    if (satisfactionPct != null) result.satisfactionPct = satisfactionPct;
+    return result;
+  }
+
+  SatisfactionTrendPoint._();
+
+  factory SatisfactionTrendPoint.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SatisfactionTrendPoint.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SatisfactionTrendPoint',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'label')
+    ..aD(2, _omitFieldNames ? '' : 'satisfactionPct')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SatisfactionTrendPoint clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SatisfactionTrendPoint copyWith(
+          void Function(SatisfactionTrendPoint) updates) =>
+      super.copyWith((message) => updates(message as SatisfactionTrendPoint))
+          as SatisfactionTrendPoint;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SatisfactionTrendPoint create() => SatisfactionTrendPoint._();
+  @$core.override
+  SatisfactionTrendPoint createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SatisfactionTrendPoint getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SatisfactionTrendPoint>(create);
+  static SatisfactionTrendPoint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get label => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set label($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLabel() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLabel() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.double get satisfactionPct => $_getN(1);
+  @$pb.TagNumber(2)
+  set satisfactionPct($core.double value) => $_setDouble(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSatisfactionPct() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSatisfactionPct() => $_clearField(2);
+}
+
+class IssueCategory extends $pb.GeneratedMessage {
+  factory IssueCategory({
+    $core.String? category,
+    $fixnum.Int64? count,
+  }) {
+    final result = create();
+    if (category != null) result.category = category;
+    if (count != null) result.count = count;
+    return result;
+  }
+
+  IssueCategory._();
+
+  factory IssueCategory.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory IssueCategory.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'IssueCategory',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'category')
+    ..aInt64(2, _omitFieldNames ? '' : 'count')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  IssueCategory clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  IssueCategory copyWith(void Function(IssueCategory) updates) =>
+      super.copyWith((message) => updates(message as IssueCategory))
+          as IssueCategory;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static IssueCategory create() => IssueCategory._();
+  @$core.override
+  IssueCategory createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static IssueCategory getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<IssueCategory>(create);
+  static IssueCategory? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get category => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set category($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCategory() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCategory() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get count => $_getI64(1);
+  @$pb.TagNumber(2)
+  set count($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCount() => $_clearField(2);
+}
+
+class LatencyTrendPoint extends $pb.GeneratedMessage {
+  factory LatencyTrendPoint({
+    $core.String? label,
+    $core.double? p50,
+    $core.double? p95,
+  }) {
+    final result = create();
+    if (label != null) result.label = label;
+    if (p50 != null) result.p50 = p50;
+    if (p95 != null) result.p95 = p95;
+    return result;
+  }
+
+  LatencyTrendPoint._();
+
+  factory LatencyTrendPoint.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory LatencyTrendPoint.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LatencyTrendPoint',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'label')
+    ..aD(2, _omitFieldNames ? '' : 'p50')
+    ..aD(3, _omitFieldNames ? '' : 'p95')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LatencyTrendPoint clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LatencyTrendPoint copyWith(void Function(LatencyTrendPoint) updates) =>
+      super.copyWith((message) => updates(message as LatencyTrendPoint))
+          as LatencyTrendPoint;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static LatencyTrendPoint create() => LatencyTrendPoint._();
+  @$core.override
+  LatencyTrendPoint createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static LatencyTrendPoint getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LatencyTrendPoint>(create);
+  static LatencyTrendPoint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get label => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set label($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLabel() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLabel() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.double get p50 => $_getN(1);
+  @$pb.TagNumber(2)
+  set p50($core.double value) => $_setDouble(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasP50() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearP50() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get p95 => $_getN(2);
+  @$pb.TagNumber(3)
+  set p95($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasP95() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearP95() => $_clearField(3);
+}
+
+class FailureRatePoint extends $pb.GeneratedMessage {
+  factory FailureRatePoint({
+    $core.String? label,
+    $core.double? failureRate,
+    $fixnum.Int64? total,
+    $fixnum.Int64? failed,
+  }) {
+    final result = create();
+    if (label != null) result.label = label;
+    if (failureRate != null) result.failureRate = failureRate;
+    if (total != null) result.total = total;
+    if (failed != null) result.failed = failed;
+    return result;
+  }
+
+  FailureRatePoint._();
+
+  factory FailureRatePoint.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory FailureRatePoint.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'FailureRatePoint',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'label')
+    ..aD(2, _omitFieldNames ? '' : 'failureRate')
+    ..aInt64(3, _omitFieldNames ? '' : 'total')
+    ..aInt64(4, _omitFieldNames ? '' : 'failed')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FailureRatePoint clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FailureRatePoint copyWith(void Function(FailureRatePoint) updates) =>
+      super.copyWith((message) => updates(message as FailureRatePoint))
+          as FailureRatePoint;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FailureRatePoint create() => FailureRatePoint._();
+  @$core.override
+  FailureRatePoint createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static FailureRatePoint getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<FailureRatePoint>(create);
+  static FailureRatePoint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get label => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set label($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLabel() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLabel() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.double get failureRate => $_getN(1);
+  @$pb.TagNumber(2)
+  set failureRate($core.double value) => $_setDouble(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFailureRate() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFailureRate() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get total => $_getI64(2);
+  @$pb.TagNumber(3)
+  set total($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTotal() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTotal() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get failed => $_getI64(3);
+  @$pb.TagNumber(4)
+  set failed($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasFailed() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFailed() => $_clearField(4);
+}
+
+class FunnelStep extends $pb.GeneratedMessage {
+  factory FunnelStep({
+    $core.String? stepName,
+    $fixnum.Int64? count,
+    $core.double? pctOfPrevious,
+  }) {
+    final result = create();
+    if (stepName != null) result.stepName = stepName;
+    if (count != null) result.count = count;
+    if (pctOfPrevious != null) result.pctOfPrevious = pctOfPrevious;
+    return result;
+  }
+
+  FunnelStep._();
+
+  factory FunnelStep.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory FunnelStep.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'FunnelStep',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'stepName')
+    ..aInt64(2, _omitFieldNames ? '' : 'count')
+    ..aD(3, _omitFieldNames ? '' : 'pctOfPrevious')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FunnelStep clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  FunnelStep copyWith(void Function(FunnelStep) updates) =>
+      super.copyWith((message) => updates(message as FunnelStep)) as FunnelStep;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static FunnelStep create() => FunnelStep._();
+  @$core.override
+  FunnelStep createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static FunnelStep getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<FunnelStep>(create);
+  static FunnelStep? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get stepName => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set stepName($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasStepName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStepName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get count => $_getI64(1);
+  @$pb.TagNumber(2)
+  set count($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCount() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get pctOfPrevious => $_getN(2);
+  @$pb.TagNumber(3)
+  set pctOfPrevious($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPctOfPrevious() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPctOfPrevious() => $_clearField(3);
+}
+
+class CohortRetentionPoint extends $pb.GeneratedMessage {
+  factory CohortRetentionPoint({
+    $core.String? cohort,
+    $core.String? week,
+    $core.double? pct,
+  }) {
+    final result = create();
+    if (cohort != null) result.cohort = cohort;
+    if (week != null) result.week = week;
+    if (pct != null) result.pct = pct;
+    return result;
+  }
+
+  CohortRetentionPoint._();
+
+  factory CohortRetentionPoint.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory CohortRetentionPoint.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CohortRetentionPoint',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'cohort')
+    ..aOS(2, _omitFieldNames ? '' : 'week')
+    ..aD(3, _omitFieldNames ? '' : 'pct')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CohortRetentionPoint clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CohortRetentionPoint copyWith(void Function(CohortRetentionPoint) updates) =>
+      super.copyWith((message) => updates(message as CohortRetentionPoint))
+          as CohortRetentionPoint;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static CohortRetentionPoint create() => CohortRetentionPoint._();
+  @$core.override
+  CohortRetentionPoint createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static CohortRetentionPoint getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CohortRetentionPoint>(create);
+  static CohortRetentionPoint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get cohort => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set cohort($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCohort() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCohort() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get week => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set week($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWeek() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWeek() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get pct => $_getN(2);
+  @$pb.TagNumber(3)
+  set pct($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPct() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPct() => $_clearField(3);
+}
+
+class HistogramBucket extends $pb.GeneratedMessage {
+  factory HistogramBucket({
+    $core.String? bucketLabel,
+    $fixnum.Int64? count,
+  }) {
+    final result = create();
+    if (bucketLabel != null) result.bucketLabel = bucketLabel;
+    if (count != null) result.count = count;
+    return result;
+  }
+
+  HistogramBucket._();
+
+  factory HistogramBucket.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory HistogramBucket.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HistogramBucket',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'bucketLabel')
+    ..aInt64(2, _omitFieldNames ? '' : 'count')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistogramBucket clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistogramBucket copyWith(void Function(HistogramBucket) updates) =>
+      super.copyWith((message) => updates(message as HistogramBucket))
+          as HistogramBucket;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static HistogramBucket create() => HistogramBucket._();
+  @$core.override
+  HistogramBucket createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static HistogramBucket getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<HistogramBucket>(create);
+  static HistogramBucket? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get bucketLabel => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set bucketLabel($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasBucketLabel() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearBucketLabel() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get count => $_getI64(1);
+  @$pb.TagNumber(2)
+  set count($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCount() => $_clearField(2);
+}
+
+class HourlyHeatmapPoint extends $pb.GeneratedMessage {
+  factory HourlyHeatmapPoint({
+    $core.int? dayOfWeek,
+    $core.int? hour,
+    $fixnum.Int64? count,
+  }) {
+    final result = create();
+    if (dayOfWeek != null) result.dayOfWeek = dayOfWeek;
+    if (hour != null) result.hour = hour;
+    if (count != null) result.count = count;
+    return result;
+  }
+
+  HourlyHeatmapPoint._();
+
+  factory HourlyHeatmapPoint.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory HourlyHeatmapPoint.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HourlyHeatmapPoint',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'dayOfWeek')
+    ..aI(2, _omitFieldNames ? '' : 'hour')
+    ..aInt64(3, _omitFieldNames ? '' : 'count')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HourlyHeatmapPoint clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HourlyHeatmapPoint copyWith(void Function(HourlyHeatmapPoint) updates) =>
+      super.copyWith((message) => updates(message as HourlyHeatmapPoint))
+          as HourlyHeatmapPoint;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static HourlyHeatmapPoint create() => HourlyHeatmapPoint._();
+  @$core.override
+  HourlyHeatmapPoint createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static HourlyHeatmapPoint getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<HourlyHeatmapPoint>(create);
+  static HourlyHeatmapPoint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get dayOfWeek => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set dayOfWeek($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDayOfWeek() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDayOfWeek() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get hour => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set hour($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasHour() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearHour() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get count => $_getI64(2);
+  @$pb.TagNumber(3)
+  set count($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCount() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCount() => $_clearField(3);
 }
 
 const $core.bool _omitFieldNames =

@@ -273,11 +273,25 @@ class ClinicalServiceClient extends $grpc.Client {
   /// therapist name + email. CSV export is implemented client-side by
   /// requesting page_size up to MaxCsvPageSize and serialising the
   /// response.
+  $grpc.ResponseFuture<$0.TrackEventsResponse> trackEvents(
+    $0.TrackEventsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$trackEvents, request, options: options);
+  }
+
   $grpc.ResponseFuture<$0.AdminListSessionsResponse> adminListSessions(
     $0.AdminListSessionsRequest request, {
     $grpc.CallOptions? options,
   }) {
     return $createUnaryCall(_$adminListSessions, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.GetAdminAnalyticsResponse> getAdminAnalytics(
+    $0.GetAdminAnalyticsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getAdminAnalytics, request, options: options);
   }
 
   // method descriptors
@@ -412,11 +426,21 @@ class ClinicalServiceClient extends $grpc.Client {
           '/clinical.v1.ClinicalService/LogPreferenceSuggestion',
           ($0.LogPreferenceSuggestionRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
+  static final _$trackEvents =
+      $grpc.ClientMethod<$0.TrackEventsRequest, $0.TrackEventsResponse>(
+          '/clinical.v1.ClinicalService/TrackEvents',
+          ($0.TrackEventsRequest value) => value.writeToBuffer(),
+          $0.TrackEventsResponse.fromBuffer);
   static final _$adminListSessions = $grpc.ClientMethod<
           $0.AdminListSessionsRequest, $0.AdminListSessionsResponse>(
       '/clinical.v1.ClinicalService/AdminListSessions',
       ($0.AdminListSessionsRequest value) => value.writeToBuffer(),
       $0.AdminListSessionsResponse.fromBuffer);
+  static final _$getAdminAnalytics = $grpc.ClientMethod<
+          $0.GetAdminAnalyticsRequest, $0.GetAdminAnalyticsResponse>(
+      '/clinical.v1.ClinicalService/GetAdminAnalytics',
+      ($0.GetAdminAnalyticsRequest value) => value.writeToBuffer(),
+      $0.GetAdminAnalyticsResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('clinical.v1.ClinicalService')
@@ -636,6 +660,15 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.LogPreferenceSuggestionRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.TrackEventsRequest, $0.TrackEventsResponse>(
+            'TrackEvents',
+            trackEvents_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.TrackEventsRequest.fromBuffer(value),
+            ($0.TrackEventsResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.AdminListSessionsRequest,
             $0.AdminListSessionsResponse>(
         'AdminListSessions',
@@ -645,6 +678,15 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.AdminListSessionsRequest.fromBuffer(value),
         ($0.AdminListSessionsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetAdminAnalyticsRequest,
+            $0.GetAdminAnalyticsResponse>(
+        'GetAdminAnalytics',
+        getAdminAnalytics_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetAdminAnalyticsRequest.fromBuffer(value),
+        ($0.GetAdminAnalyticsResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.PatientFile> createPatientFile_Pre($grpc.ServiceCall $call,
@@ -863,6 +905,14 @@ abstract class ClinicalServiceBase extends $grpc.Service {
   $async.Future<$1.Empty> logPreferenceSuggestion(
       $grpc.ServiceCall call, $0.LogPreferenceSuggestionRequest request);
 
+  $async.Future<$0.TrackEventsResponse> trackEvents_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.TrackEventsRequest> $request) async {
+    return trackEvents($call, await $request);
+  }
+
+  $async.Future<$0.TrackEventsResponse> trackEvents(
+      $grpc.ServiceCall call, $0.TrackEventsRequest request);
+
   $async.Future<$0.AdminListSessionsResponse> adminListSessions_Pre(
       $grpc.ServiceCall $call,
       $async.Future<$0.AdminListSessionsRequest> $request) async {
@@ -871,4 +921,13 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$0.AdminListSessionsResponse> adminListSessions(
       $grpc.ServiceCall call, $0.AdminListSessionsRequest request);
+
+  $async.Future<$0.GetAdminAnalyticsResponse> getAdminAnalytics_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetAdminAnalyticsRequest> $request) async {
+    return getAdminAnalytics($call, await $request);
+  }
+
+  $async.Future<$0.GetAdminAnalyticsResponse> getAdminAnalytics(
+      $grpc.ServiceCall call, $0.GetAdminAnalyticsRequest request);
 }

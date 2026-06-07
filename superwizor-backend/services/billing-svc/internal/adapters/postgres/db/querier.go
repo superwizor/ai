@@ -70,6 +70,10 @@ type Querier interface {
 	// Nie używamy ON CONFLICT DO NOTHING bo chcemy rozróżnić "świeży insert"
 	// (zwiększyć counter) od "duplikatu" (no-op).
 	CreateUsageEvent(ctx context.Context, arg CreateUsageEventParams) (UsageEvent, error)
+	// Anuluje wszystkie inne aktywne/trialing/past_due subskrypcje dla danej organizacji,
+	// oprócz tej o podanym Stripe ID (jeśli podane). Zapobiega to naruszeniu unique index
+	// idx_subscriptions_one_active_per_org przy przejściu na płatną subskrypcję.
+	DeactivateOtherActiveSubscriptions(ctx context.Context, arg DeactivateOtherActiveSubscriptionsParams) error
 	// Pobiera bieżący usage_counters row dla subskrypcji.
 	// Zakładamy że istnieje dokładnie jeden aktywny okres na timestamp now()
 	// (gwarancja ze §9 — webhook/cron tworzy nowy row przy renewal).

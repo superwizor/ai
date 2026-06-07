@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/cupertino.dart';
+import '../analytics/analytics_collector.dart';
 
 
 import '../models/session.dart';
@@ -37,6 +38,10 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(analyticsCollectorProvider).track("screen.viewed", properties: {"screen_name": "HomeScreen"});
+    });
+
     final patientsAsync = ref.watch(patientsProvider);
     ref.watch(currentUserProvider); // fire backend lookup
 

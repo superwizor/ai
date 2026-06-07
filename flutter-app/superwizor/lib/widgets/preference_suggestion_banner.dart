@@ -38,6 +38,7 @@ import '../providers/grpc_provider.dart';
 import '../screens/menu_screen.dart';
 import '../theme/euphire_theme.dart';
 import 'euphire_toast.dart';
+import '../analytics/analytics_collector.dart';
 
 /// Tick that bumps whenever something happens that may have created
 /// a new active suggestion (most importantly: a new rating was
@@ -382,8 +383,14 @@ class _PreferenceSuggestionBannerState
       return;
     }
 
+    final isSectionEmphasis = c.dimension == 'section_emphasis';
+    ref.read(analyticsCollectorProvider).track("suggestion_banner.tapped", properties: {
+      "dimension": c.dimension,
+      "action": isSectionEmphasis ? "open_settings" : "applied",
+    });
+
     // section_emphasis: deep-link to settings rather than auto-apply.
-    if (c.dimension == 'section_emphasis') {
+    if (isSectionEmphasis) {
       // Log a 'dismissed' so we don't keep re-nagging in the lookback
       // window after the user clicked into settings. (Server fires
       // 'applied' separately if/when they actually pick something.)
@@ -425,6 +432,10 @@ class _PreferenceSuggestionBannerState
 
   Future<void> _dismiss() async {
     if (_busy || _activeCandidate == null) return;
+    ref.read(analyticsCollectorProvider).track("suggestion_banner.tapped", properties: {
+      "dimension": _activeCandidate!.dimension,
+      "action": "dismissed",
+    });
     setState(() => _busy = true);
     // Log the dismiss for the current candidate so the server-side
     // 14-day cooldown for *that dimension* kicks in.
