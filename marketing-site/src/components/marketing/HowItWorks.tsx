@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations, useLocale } from "next-intl";
+import { useState, useEffect, useRef } from "react";
 
 const stepKeys = ["record", "process", "report"] as const;
 const stepImages = [
@@ -15,6 +16,57 @@ export function HowItWorks() {
   const locale = useLocale();
   const prefix = locale === "en" ? "/en" : "";
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [progress, setProgress] = useState(0);
+  const [activeSteps, setActiveSteps] = useState<boolean[]>([false, false, false]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+
+      // Start progress when top of container is 65% down the viewport
+      const triggerTop = windowHeight * 0.65;
+      // Finish progress when bottom of container is 35% down the viewport
+      const triggerBottom = windowHeight * 0.35;
+
+      const totalRange = rect.height - (triggerTop - triggerBottom);
+      const currentProgress = triggerTop - rect.top;
+
+      let pct = 0;
+      if (totalRange > 0) {
+        pct = Math.max(0, Math.min(100, (currentProgress / totalRange) * 100));
+      } else {
+        pct = rect.top < triggerTop ? 100 : 0;
+      }
+      setProgress(pct);
+
+      const stepElements = container.querySelectorAll(".how-it-works-step");
+      const nextActive = [false, false, false];
+      stepElements.forEach((el, idx) => {
+        const elRect = el.getBoundingClientRect();
+        // Activate step when the center of the step crosses 65% of the viewport height
+        const stepCenter = elRect.top + elRect.height / 2;
+        if (stepCenter < windowHeight * 0.65) {
+          nextActive[idx] = true;
+        }
+      });
+      setActiveSteps(nextActive);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+    handleScroll();
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, []);
+
   return (
     <section id="jak" className="w-full bg-gradient-to-b from-[#FBFAF7] to-[#F2F0EA] text-[#1B2522] py-24 sm:py-32 border-y border-[#E2DED5]/60 relative overflow-hidden">
       <div className="mx-auto w-full max-w-[1080px] px-6 relative z-10">
@@ -28,10 +80,14 @@ export function HowItWorks() {
         </div>
 
         {/* Timeline container */}
-        <div className="relative">
+        <div ref={containerRef} className="relative">
           {/* Vertical connector line — visible on lg only */}
-          <div className="hidden lg:block absolute left-1/2 top-8 bottom-8 w-px -translate-x-1/2">
-            <div className="w-full h-full bg-gradient-to-b from-[#004D54]/10 via-[#004D54]/20 to-[#004D54]/10" />
+          <div className="hidden lg:block absolute left-1/2 top-8 bottom-8 w-[2px] -translate-x-1/2 bg-[#004D54]/10">
+            {/* Dynamic progress fill */}
+            <div 
+              className="absolute top-0 left-0 w-full bg-gradient-to-b from-[#ffb12c] to-[#ff9800] rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(252,174,47,0.6)]" 
+              style={{ height: `${progress}%` }}
+            />
           </div>
 
           <div className="space-y-20 sm:space-y-28">
@@ -40,20 +96,41 @@ export function HowItWorks() {
               const stepNum = tStep(`${k}.tag`);
 
               return (
-                <div key={k} className="relative grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+                <div 
+                  key={k} 
+                  className={`relative grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center how-it-works-step transition-all duration-700 ${
+                    activeSteps[i] 
+                      ? "opacity-100 translate-y-0" 
+                      : "opacity-40 translate-y-6"
+                  }`}
+                >
                   {/* Step number node on the timeline — lg only */}
-                  <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-[#004D54] border-4 border-[#FBFAF7] shadow-lg items-center justify-center z-20">
-                    <span className="font-display text-frost text-sm font-bold">{stepNum}</span>
+                  <div 
+                    className={`hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full items-center justify-center z-20 transition-all duration-500 border-4 ${
+                      activeSteps[i]
+                        ? "bg-[#ffb12c] border-[#FBFAF7] text-[#06383e] shadow-[0_0_20px_rgba(252,174,47,0.5)] scale-110"
+                        : "bg-[#004D54] border-[#FBFAF7] text-frost shadow-md"
+                    }`}
+                  >
+                    <span className="font-display text-sm font-bold">{stepNum}</span>
                   </div>
 
                   {/* Text side */}
                   <div className={`lg:col-span-5 flex flex-col items-start text-left ${isReversed ? "order-1 lg:order-2 lg:col-start-8 lg:pl-4" : "order-1 lg:order-1 lg:pr-4"}`}>
                     {/* Mobile step indicator */}
                     <div className="lg:hidden flex items-center gap-3 mb-4">
-                      <span className="w-9 h-9 rounded-full bg-[#004D54] flex items-center justify-center">
-                        <span className="font-display text-frost text-xs font-bold">{stepNum}</span>
+                      <span 
+                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-500 ${
+                          activeSteps[i]
+                            ? "bg-[#ffb12c] text-[#06383e] shadow-[0_0_15px_rgba(252,174,47,0.3)] scale-105"
+                            : "bg-[#004D54] text-frost"
+                        }`}
+                      >
+                        <span className="font-display text-xs font-bold">{stepNum}</span>
                       </span>
-                      <span className="font-mono text-[10px] uppercase tracking-[2px] text-[#004D54]/50 font-semibold">
+                      <span className={`font-mono text-[10px] uppercase tracking-[2px] font-semibold transition-colors duration-500 ${
+                        activeSteps[i] ? "text-[#ffb12c]" : "text-[#004D54]/50"
+                      }`}>
                         {locale === "en" ? "Step" : "Krok"} {stepNum}
                       </span>
                     </div>
