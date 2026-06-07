@@ -4,7 +4,7 @@ export function TopBar() {
   const t = useTranslations("topbar");
 
   return (
-    <div className="w-full bg-gradient-to-r from-[#000B0D] via-[#001418] to-[#000B0D] border-b border-white/[0.09] text-frost select-none">
+    <div className="w-full bg-gradient-to-r from-[#000B0D] via-[#001418] to-[#000B0D] border-b border-white/[0.09] text-frost select-none hidden sm:block">
       <div className="mx-auto max-w-[1080px] px-6 py-2.5 flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-[11px] sm:text-[11.5px] tracking-[0.5px] font-medium text-center">
         {/* RODO / GDPR */}
         <span className="inline-flex items-center gap-2">

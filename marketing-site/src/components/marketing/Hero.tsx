@@ -103,29 +103,29 @@ export function Hero() {
                 <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_60%)] blur-[40px] pointer-events-none" />
                 
                 {/* Floating Badge 1: Top-Left */}
-                <div className="absolute top-[60px] -left-8 z-20 bg-white border border-[#e2ded5] rounded-xl px-3.5 py-2.5 shadow-[0_12px_32px_-12px_rgba(27,37,34,0.3)] hidden sm:flex items-center gap-2.5 animate-floaty-1">
-                  <svg className="w-4.5 h-4.5 text-[#2f6b62] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <div className="absolute top-[58px] -left-4 sm:top-[58px] sm:-left-8 z-20 bg-white border border-[#e2ded5] rounded-xl px-2 py-1.5 sm:px-3.5 sm:py-2.5 shadow-[0_12px_32px_-12px_rgba(27,37,34,0.3)] flex items-center gap-1.5 sm:gap-2.5 animate-floaty-1">
+                  <svg className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-[#2f6b62] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
                     <polyline points="9 15 11 17 15 13" />
                   </svg>
                   <div className="flex flex-col text-left">
-                    <span className="font-sans text-[13px] font-bold text-[#1b2522] leading-tight">
+                    <span className="font-sans text-[11px] sm:text-[13px] font-bold text-[#1b2522] leading-tight">
                       {isPl ? "Raport gotowy" : "Report ready"}
                     </span>
-                    <span className="font-sans text-[10.5px] font-semibold text-[#4e5a55]/90 mt-0.5 leading-tight">
-                      {isPl ? "Dane bezpieczne i szyfrowane" : "Data secure & encrypted"}
+                    <span className="font-sans text-[9px] sm:text-[10.5px] font-semibold text-[#4e5a55]/90 mt-0.5 leading-tight">
+                      {isPl ? "Dane bezpieczne" : "Data secure"}
                     </span>
                   </div>
                 </div>
                 
                 {/* Floating Badge 2: Bottom-Right */}
-                <div className="absolute bottom-[90px] -right-8 z-20 bg-white border border-[#e2ded5] rounded-xl px-3.5 py-2.5 shadow-[0_12px_32px_-12px_rgba(27,37,34,0.3)] hidden sm:flex items-center gap-2 animate-floaty-2">
-                  <svg className="w-4 h-4 text-[#2f6b62] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <div className="absolute bottom-[70px] -right-4 sm:bottom-[90px] sm:-right-8 z-20 bg-white border border-[#e2ded5] rounded-xl px-2 py-1.5 sm:px-3.5 sm:py-2.5 shadow-[0_12px_32px_-12px_rgba(27,37,34,0.3)] flex items-center gap-1.5 sm:gap-2 animate-floaty-2">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#2f6b62] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                     <polyline points="9 11 11 13 15 9" />
                   </svg>
-                  <span className="font-sans text-[13px] font-bold text-[#1b2522]">
+                  <span className="font-sans text-[11px] sm:text-[13px] font-bold text-[#1b2522]">
                     {isPl ? "Zgodne z RODO" : "GDPR compliant"}
                   </span>
                 </div>
@@ -161,7 +161,7 @@ export function Hero() {
                           </svg>
                           {/* battery */}
                           <div className="w-5 h-2.5 border border-white/60 rounded-[3px] p-[1px] flex items-center">
-                            <div className="h-full w-full bg-[#fcae2f] rounded-[1px]" />
+                            <div className="h-full w-full bg-emerald-400 rounded-[1px]" />
                           </div>
                         </div>
                       </div>
@@ -169,12 +169,11 @@ export function Hero() {
                       {/* Fake App Bar */}
                       <div className="flex justify-between items-center mt-3 mb-5 px-1">
                         <div className="flex items-center gap-2">
-                          {/* Key in circle Logo */}
-                          <div className="w-5.5 h-5.5 rounded-full border border-white/80 flex items-center justify-center">
-                            <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3M15.5 7.5L14 9" />
-                            </svg>
-                          </div>
+                           {/* Brandmark SVG Logo */}
+                           <svg className="w-5.5 h-5.5 fill-current text-white shrink-0" viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg">
+                             <path d="M600,0C269.17,0,0,269.17,0,600s269.17,600,600,600,600-269.17,600-600S930.83,0,600,0ZM600,1144.8c-300.4,0-544.8-244.4-544.8-544.8S299.6,55.2,600,55.2s544.8,244.4,544.8,544.8-244.4,544.8-544.8,544.8Z"/>
+                             <path d="M729.21,278.76c5.62,0,10.17-4.55,10.17-10.17v-33.33c0-5.62-4.55-10.17-10.17-10.17h-212.62c-5.62,0-10.17,4.55-10.17,10.17v33.33c0,5.62,4.55,10.17,10.17,10.17h39.67v156.04h-39.67c-5.62,0-10.17,4.55-10.17,10.17v34.18c0,5.62,4.55,10.17,10.17,10.17h39.67v258.04h-39.67c-5.62,0-10.17,4.55-10.17,10.17v34.18c0,5.62,4.55,10.17,10.17,10.17h15.96c-8.55,9.24-14.57,20.23-17.18,32.12-12.75,2.81-24.67,9.19-34.28,18.78-27.29,27.34-27.29,71.83.03,99.19,9.62,9.58,21.51,15.96,34.23,18.76,2.8,12.76,9.19,24.67,18.81,34.25,13.23,13.24,30.85,20.54,49.58,20.54s36.35-7.3,49.56-20.53c9.62-9.61,16.01-21.51,18.81-34.26,12.72-2.81,24.64-9.19,34.23-18.77,27.37-27.35,27.37-71.84,0-99.2-9.62-9.58-21.51-15.94-34.23-18.76-2.62-11.91-8.65-22.89-17.21-32.12h18.54c5.62,0,10.17-4.55,10.17-10.17v-34.18c0-5.62-4.55-10.17-10.17-10.17h-42.22v-258.04h118c5.62,0,10.17-4.55,10.17-10.17v-34.18c0-5.62-4.55-10.17-10.17-10.17h-118v-51.6h68.16c5.62,0,10.17-4.56,10.17-10.17v-31.24c0-5.62-4.55-10.17-10.17-10.17h-68.16v-52.85h118ZM542.52,875.2c7.44,0,13.46-6.02,13.46-13.46,0-15.35,12.45-27.8,27.8-27.8s26.93,11.99,27.44,26.9c-.02.31,0,.58,0,.89,0,7.43,6.02,13.46,13.46,13.46h.71c15.35,0,27.8,12.45,27.8,27.8s-12.45,27.8-27.8,27.8h-.71c-7.43,0-13.46,6.02-13.46,13.46,0,.37-.03.68,0,1.05-.42,14.99-12.35,27.05-27.44,27.05s-27.8-12.45-27.8-27.8v-.3c0-7.43-6.02-13.46-13.46-13.46h-.45c-15.35,0-27.8-12.45-27.8-27.8s12.45-27.8,27.8-27.8h.45Z"/>
+                           </svg>
                           <span className="font-sans font-bold text-xs tracking-wide">Superwizor AI</span>
                         </div>
                         {/* Hamburger icon */}

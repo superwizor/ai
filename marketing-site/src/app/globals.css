@@ -42,6 +42,7 @@
 
   /* ── Typography ─────────────────────────────────────────── */
   /* Wired in layout.tsx via next/font CSS variables. */
+  --font-sans: var(--font-montserrat);
   --font-display: var(--font-montserrat);
   --font-body: var(--font-montserrat);
   --font-serif: var(--font-merriweather);
