@@ -294,7 +294,7 @@ export function Hero() {
                             <div className="min-w-0">
                               <div className="font-sans text-[13px] font-bold text-white flex items-center gap-1.5 flex-wrap">
                                 <span className="truncate">
-                                  {isPl ? "Pacjent Paweł" : "Patient Paul"}
+                                  {isPl ? "Pacjent Marek" : "Patient Mark"}
                                 </span>
                                 <span className="bg-[#1b5042] text-[#5bf4bc] text-[8px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0">
                                   <span className="w-1 h-1 rounded-full bg-[#5bf4bc]" /> 

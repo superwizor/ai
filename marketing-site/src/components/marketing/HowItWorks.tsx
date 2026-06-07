@@ -62,7 +62,7 @@ export function HowItWorks() {
   return (
     <section id="jak" className="w-full bg-gradient-to-b from-[#FBFAF7] to-[#F2F0EA] text-[#1B2522] py-24 sm:py-32 border-y border-[#E2DED5]/60 relative overflow-hidden">
       {/* Dynamic Senior UI animations injected locally */}
-      <style dangerouslySetInnerHTML={{ __html: `
+       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes popCircle {
           0% {
             scale: 0.95;
@@ -76,21 +76,23 @@ export function HowItWorks() {
         @keyframes rippleOuter {
           0% {
             scale: 0.9;
-            opacity: 0.8;
+            opacity: 0.87;
           }
           100% {
-            scale: 2.2;
+            scale: 2.9;
             opacity: 0;
           }
         }
         .animate-pop-circle {
-          animation: popCircle 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+          animation: popCircle 1.1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
         }
         .animate-ripple-1 {
-          animation: rippleOuter 1.4s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+          animation: rippleOuter 1.9s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+          filter: blur(1.0px);
         }
         .animate-ripple-2 {
-          animation: rippleOuter 1.8s cubic-bezier(0.1, 0.8, 0.3, 1) 0.3s forwards;
+          animation: rippleOuter 2.4s cubic-bezier(0.1, 0.8, 0.3, 1) 0.4s forwards;
+          filter: blur(2.0px);
         }
       `}} />
 
@@ -136,8 +138,8 @@ export function HowItWorks() {
                     <span className="font-display text-sm font-bold">{stepNum}</span>
                     {activeSteps[i] && (
                       <>
-                        <span className="absolute -inset-1.5 rounded-full border border-[#ffb12c]/60 animate-ripple-1 pointer-events-none" />
-                        <span className="absolute -inset-3 rounded-full border border-[#ffb12c]/30 animate-ripple-2 pointer-events-none" />
+                        <span className="absolute -inset-1.5 rounded-full border-2 border-[#ffb12c]/55 animate-ripple-1 pointer-events-none" />
+                        <span className="absolute -inset-3 rounded-full border-[3px] border-[#ffb12c]/25 animate-ripple-2 pointer-events-none" />
                       </>
                     )}
                   </div>
@@ -156,8 +158,8 @@ export function HowItWorks() {
                         <span className="font-display text-xs font-bold">{stepNum}</span>
                         {activeSteps[i] && (
                           <>
-                            <span className="absolute -inset-1 rounded-full border border-[#ffb12c]/60 animate-ripple-1 pointer-events-none" />
-                            <span className="absolute -inset-2.5 rounded-full border border-[#ffb12c]/30 animate-ripple-2 pointer-events-none" />
+                            <span className="absolute -inset-1 rounded-full border-2 border-[#ffb12c]/55 animate-ripple-1 pointer-events-none" />
+                            <span className="absolute -inset-2.5 rounded-full border-[3px] border-[#ffb12c]/25 animate-ripple-2 pointer-events-none" />
                           </>
                         )}
                       </span>
