@@ -26,6 +26,7 @@ import { Footer } from "@/components/marketing/Footer";
 import { AiSecurityBand } from "@/components/marketing/AiSecurityBand";
 import { AiValue } from "@/components/marketing/AiValue";
 import { ScrollEffects } from "@/components/marketing/ScrollEffects";
+import { Testimonials } from "@/components/marketing/Testimonials";
 
 export async function generateMetadata({
   params,
@@ -149,6 +150,8 @@ export default async function Home({
             </div>
           </div>
         </section>
+        {/* DARK — Testimonials */}
+        <Testimonials />
         {/* LIGHT */}
         <Faq />
         {/* DARK — Final CTA with breathing rings (from Version A) */}

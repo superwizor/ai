@@ -22,24 +22,24 @@ export function AiValue() {
     <section className="relative w-full bg-gradient-to-b from-[#002E32] to-[#001A1D] text-frost py-20 sm:py-24 overflow-hidden border-y border-frost/5">
       {/* === Dense full-width icon field === */}
       <div className="absolute inset-0 pointer-events-none select-none flex justify-between px-1 sm:px-2 lg:px-4" aria-hidden="true">
-        <IconCol icons={colA} speed={22} dir="up" />
-        <IconCol icons={colC} speed={28} dir="down" />
-        <IconCol icons={colB} speed={25} dir="up" />
-        <IconCol icons={colD} speed={32} dir="down" />
-        <IconCol icons={colE} speed={27} dir="up" />
-        <IconCol icons={colA} speed={34} dir="down" />
-        <IconCol icons={colF} speed={23} dir="up" />
-        <IconCol icons={colC} speed={30} dir="down" />
-        <IconCol icons={colD} speed={26} dir="up" />
-        <IconCol icons={colB} speed={29} dir="down" />
-        <IconCol icons={colE} speed={31} dir="up" />
-        <IconCol icons={colF} speed={24} dir="down" />
-        <IconCol icons={colA} speed={33} dir="up" />
-        <IconCol icons={colD} speed={28} dir="down" />
-        <IconCol icons={colC} speed={22} dir="up" />
-        <IconCol icons={colB} speed={35} dir="down" />
-        <IconCol icons={colE} speed={26} dir="up" />
-        <IconCol icons={colF} speed={30} dir="down" />
+        <IconCol icons={colA} speed={22} dir="up" className="block" />
+        <IconCol icons={colC} speed={28} dir="down" className="hidden md:block" />
+        <IconCol icons={colB} speed={25} dir="up" className="hidden lg:block" />
+        <IconCol icons={colD} speed={32} dir="down" className="hidden md:block" />
+        <IconCol icons={colE} speed={27} dir="up" className="hidden lg:block" />
+        <IconCol icons={colA} speed={34} dir="down" className="hidden md:block" />
+        <IconCol icons={colF} speed={23} dir="up" className="hidden sm:block" />
+        <IconCol icons={colC} speed={30} dir="down" className="hidden md:block" />
+        <IconCol icons={colD} speed={26} dir="up" className="hidden lg:block" />
+        <IconCol icons={colB} speed={29} dir="down" className="hidden md:block" />
+        <IconCol icons={colE} speed={31} dir="up" className="hidden lg:block" />
+        <IconCol icons={colF} speed={24} dir="down" className="hidden md:block" />
+        <IconCol icons={colA} speed={33} dir="up" className="hidden sm:block" />
+        <IconCol icons={colD} speed={28} dir="down" className="hidden md:block" />
+        <IconCol icons={colC} speed={22} dir="up" className="hidden lg:block" />
+        <IconCol icons={colB} speed={35} dir="down" className="hidden md:block" />
+        <IconCol icons={colE} speed={26} dir="up" className="hidden lg:block" />
+        <IconCol icons={colF} speed={30} dir="down" className="block" />
       </div>
 
       {/* Center fade — wide radial mask so text area is clear */}
@@ -93,11 +93,11 @@ export function AiValue() {
 }
 
 /* ─── Single icon column — 4x repeat for seamless loop ───────── */
-function IconCol({ icons, speed, dir }: { icons: React.ReactNode[]; speed: number; dir: "up" | "down" }) {
+function IconCol({ icons, speed, dir, className }: { icons: React.ReactNode[]; speed: number; dir: "up" | "down"; className?: string }) {
   // Quadruple the list so there's always enough content for seamless scrolling
   const quad = [...icons, ...icons, ...icons, ...icons];
   return (
-    <div className="w-6 sm:w-7 shrink-0 h-full overflow-hidden opacity-[0.12]">
+    <div className={`w-6 sm:w-7 shrink-0 h-full overflow-hidden opacity-[0.05] md:opacity-[0.12] ${className || ""}`}>
       <div className="flex flex-col gap-3 sm:gap-4 py-2" style={{ animation: `scroll-${dir} ${speed}s linear infinite` }}>
         {quad.map((ic, i) => <div key={i} className="w-6 sm:w-7 h-6 sm:h-7 flex items-center justify-center shrink-0">{ic}</div>)}
       </div>

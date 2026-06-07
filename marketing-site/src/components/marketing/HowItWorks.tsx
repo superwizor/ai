@@ -47,7 +47,7 @@ export function HowItWorks() {
                   </div>
 
                   {/* Text side */}
-                  <div className={`lg:col-span-5 flex flex-col items-start text-left ${isReversed ? "order-2 lg:order-2 lg:col-start-8 lg:pl-4" : "lg:pr-4"}`}>
+                  <div className={`lg:col-span-5 flex flex-col items-start text-left ${isReversed ? "order-1 lg:order-2 lg:col-start-8 lg:pl-4" : "order-1 lg:order-1 lg:pr-4"}`}>
                     {/* Mobile step indicator */}
                     <div className="lg:hidden flex items-center gap-3 mb-4">
                       <span className="w-9 h-9 rounded-full bg-[#004D54] flex items-center justify-center">
@@ -67,7 +67,7 @@ export function HowItWorks() {
                   </div>
 
                   {/* Image side */}
-                  <div className={`lg:col-span-5 flex justify-center relative ${isReversed ? "order-1 lg:order-1 lg:col-start-1" : "lg:col-start-8"}`}>
+                  <div className={`lg:col-span-5 flex justify-center relative ${isReversed ? "order-2 lg:order-1 lg:col-start-1" : "order-2 lg:order-2 lg:col-start-8"}`}>
                     <div className="relative group max-w-[320px] w-full">
                       {/* Glow behind */}
                       <div className="absolute -inset-4 rounded-[32px] bg-[#004D54]/5 blur-xl group-hover:bg-[#004D54]/8 transition-all duration-500" />

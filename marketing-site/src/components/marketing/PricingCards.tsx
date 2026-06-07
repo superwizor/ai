@@ -28,23 +28,30 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
     <>
       {/* --- Toggle --- */}
       <div className="flex flex-col items-center mb-14">
+        {/* Symmetric Premium Discount Tag */}
+        <div className="mb-4 relative">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] sm:text-xs font-bold bg-[#E6F2F0] text-[#004D54] border border-[#B2DFD8] shadow-[0_2px_10px_rgba(0,77,84,0.06)] whitespace-nowrap select-none tracking-wide">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#2F6B62] animate-pulse" />
+            {locale === "en" ? "Yearly billing: 17% off · 2 months free" : "Płatność roczna: 17% taniej · 2 miesiące gratis"}
+          </span>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-[#E6F2F0] border-r border-b border-[#B2DFD8] rotate-45 -mt-[5px]" />
+        </div>
+
         <div
           role="tablist"
           aria-label="billing cycle"
           className="relative inline-flex items-center rounded-full bg-[#F2F0EA] border border-[#E2DED5] p-1"
         >
           <div
-            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full bg-[#004D54] shadow-lg transition-all duration-300 ease-out ${
-              isAnnual ? "left-[calc(50%+2px)]" : "left-1"
-            }`}
+            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full bg-[#004D54] shadow-lg transition-all duration-300 ease-out ${isAnnual ? "left-[calc(50%+2px)]" : "left-1"
+              }`}
           />
           <button
             role="tab"
             aria-selected={!isAnnual}
             onClick={() => setCycle("MONTHLY")}
-            className={`relative z-10 w-[130px] sm:w-[150px] py-2.5 rounded-full font-sans font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors duration-300 cursor-pointer text-center ${
-              !isAnnual ? "text-white" : "text-[#4E5A55] hover:text-[#1B2522]"
-            }`}
+            className={`relative z-10 w-[130px] sm:w-[150px] py-2.5 rounded-full font-sans font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors duration-300 cursor-pointer text-center ${!isAnnual ? "text-white" : "text-[#4E5A55] hover:text-[#1B2522]"
+              }`}
           >
             {t("cycle.monthly")}
           </button>
@@ -52,9 +59,8 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
             role="tab"
             aria-selected={isAnnual}
             onClick={() => setCycle("ANNUAL")}
-            className={`relative z-10 w-[130px] sm:w-[150px] py-2.5 rounded-full font-sans font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors duration-300 cursor-pointer text-center ${
-              isAnnual ? "text-white" : "text-[#4E5A55] hover:text-[#1B2522]"
-            }`}
+            className={`relative z-10 w-[130px] sm:w-[150px] py-2.5 rounded-full font-sans font-bold text-xs sm:text-sm uppercase tracking-wider transition-colors duration-300 cursor-pointer text-center ${isAnnual ? "text-white" : "text-[#4E5A55] hover:text-[#1B2522]"
+              }`}
           >
             {t("cycle.annual")}
           </button>
@@ -110,7 +116,8 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
         </p>
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fade-in 0.3s ease-out both; }
       `}} />

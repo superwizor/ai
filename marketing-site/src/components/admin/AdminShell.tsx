@@ -14,7 +14,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import type { User } from "@superwizor/proto-ts/identity/v1/identity_pb";
 
-type SidebarItem = { key: "dashboard" | "orgs" | "users" | "sessions" | "audit"; href: string };
+type SidebarItem = { key: "dashboard" | "orgs" | "users" | "sessions" | "audit" | "analytics"; href: string };
 
 export function AdminShell({
   user,
@@ -37,6 +37,7 @@ export function AdminShell({
     { key: "users",     href: `${prefix}/admin/users` },
     { key: "sessions",  href: `${prefix}/admin/sessions` },
     { key: "audit",     href: `${prefix}/admin/audit` },
+    { key: "analytics", href: `${prefix}/admin/analytics` },
   ];
 
   const onSignOut = async () => {
