@@ -12,6 +12,7 @@ export function Hero() {
 
   const [clickCount, setClickCount] = useState(0);
   const [tooltipText, setTooltipText] = useState("");
+  const [isFinalTooltip, setIsFinalTooltip] = useState(false);
 
   const handleFabClick = () => {
     const nextCount = clickCount + 1;
@@ -38,15 +39,28 @@ export function Hero() {
     } else if (nextCount === 18) {
       setTooltipText(
         isPl 
-          ? "A może chcesz o tym porozmawiać? Moja stawka to 200 zł za godzinę. :)" 
-          : "Would you like to talk about it? My rate is $50/hour. :)"
+          ? "A może chcesz o tym porozmawiać? Moja stawka to 200 zł za godzinę. :P" 
+          : "Would you like to talk about it? My rate is $50/hour. :P"
       );
     } else if (nextCount === 25) {
       setTooltipText(
         isPl 
-          ? "To już ostatnia wiadomość od zespołu deweloperów. Gratulujemy wytrwałości i życzymy dobrego dnia! :)" 
-          : "This is the final message from the dev team. Kudos for your persistence and have a great day! :)"
+          ? "Czy to klikanie to próba ucieczki od pisania dzisiejszych notatek z sesji? :)" 
+          : "Is this clicking an attempt to escape writing today's session notes? :)"
       );
+    } else if (nextCount === 33) {
+      setTooltipText(
+        isPl 
+          ? "Twoja diagnoza na dziś: zespół chronicznego klikania. Rokowania są dobre. :)" 
+          : "Your diagnosis for today: chronic clicking syndrome. The prognosis is good. :)"
+      );
+    } else if (nextCount === 42) {
+      setTooltipText(
+        isPl 
+          ? "To już ostatnia wiadomość od zespołu deweloperów. Gratulujemy wytrwałości i życzymy dobrego dnia! ✨ 🍀 🌿" 
+          : "This is the final message from the dev team. Kudos for your persistence and have a great day! ✨ 🍀 🌿"
+      );
+      setIsFinalTooltip(true);
     }
   };
 
@@ -55,6 +69,7 @@ export function Hero() {
       const timer = setTimeout(() => {
         setClickCount(0);
         setTooltipText("");
+        setIsFinalTooltip(false);
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -390,7 +405,11 @@ export function Hero() {
                       {tooltipText && (
                         <div 
                           key={tooltipText}
-                          className="absolute bottom-[68px] right-4 bg-[#ffb12c] text-[#072023] text-[11px] sm:text-xs font-semibold py-2.5 pl-3.5 pr-8 rounded-xl shadow-xl z-30 w-[190px] sm:w-[220px] text-left animate-tooltip-pop select-none"
+                          className={`absolute bottom-[68px] right-4 text-[11px] sm:text-xs font-semibold py-2.5 pl-3.5 pr-8 rounded-xl shadow-xl z-30 w-[190px] sm:w-[220px] text-left animate-tooltip-pop select-none transition-colors duration-300 ${
+                            isFinalTooltip 
+                              ? "bg-white text-[#10211d] border-2 border-[#2f6b62]" 
+                              : "bg-[#ffb12c] text-[#072023]"
+                          }`}
                         >
                           <span>{tooltipText}</span>
                           <button
@@ -398,8 +417,13 @@ export function Hero() {
                               e.stopPropagation();
                               setTooltipText("");
                               setClickCount(0);
+                              setIsFinalTooltip(false);
                             }}
-                            className="absolute top-2 right-2 w-4 h-4 flex items-center justify-center rounded-full hover:bg-black/10 active:scale-95 transition cursor-pointer text-[#072023]"
+                            className={`absolute top-2 right-2 w-4 h-4 flex items-center justify-center rounded-full active:scale-95 transition cursor-pointer ${
+                              isFinalTooltip 
+                                ? "hover:bg-[#2f6b62]/10 text-[#2f6b62]" 
+                                : "hover:bg-black/10 text-[#072023]"
+                            }`}
                             aria-label="Close tooltip"
                           >
                             <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -407,7 +431,11 @@ export function Hero() {
                               <line x1="6" y1="6" x2="18" y2="18" />
                             </svg>
                           </button>
-                          <div className="absolute bottom-[-5px] right-4 w-2.5 h-2.5 bg-[#ffb12c] rotate-45" />
+                          <div className={`absolute bottom-[-5px] right-4 w-2.5 h-2.5 rotate-45 transition-colors duration-300 ${
+                            isFinalTooltip 
+                              ? "bg-white border-r-2 border-b-2 border-[#2f6b62]" 
+                              : "bg-[#ffb12c]"
+                          }`} />
                         </div>
                       )}
                       <div 
