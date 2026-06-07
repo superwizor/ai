@@ -27,6 +27,7 @@ export function Navbar() {
             width={140}
             height={28}
             className="h-6 sm:h-7 w-auto"
+            fetchPriority="high"
           />
         </a>
 
