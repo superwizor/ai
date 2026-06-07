@@ -63,63 +63,34 @@ export function HowItWorks() {
     <section id="jak" className="w-full bg-gradient-to-b from-[#FBFAF7] to-[#F2F0EA] text-[#1B2522] py-24 sm:py-32 border-y border-[#E2DED5]/60 relative overflow-hidden">
       {/* Dynamic Senior UI animations injected locally */}
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes popDesktop {
+        @keyframes popCircle {
           0% {
-            transform: translate(-50%, 0) scale(0.9);
+            scale: 0.95;
             box-shadow: 0 0 0 0 rgba(252, 174, 47, 0);
           }
-          35% {
-            transform: translate(-50%, 0) scale(1.35);
-            box-shadow: 0 0 35px 15px rgba(252, 174, 47, 0.75);
-          }
-          65% {
-            transform: translate(-50%, 0) scale(0.96);
-            box-shadow: 0 0 10px 2px rgba(252, 174, 47, 0.3);
-          }
           100% {
-            transform: translate(-50%, 0) scale(1.15);
-            box-shadow: 0 0 25px 5px rgba(252, 174, 47, 0.55);
-          }
-        }
-        @keyframes popMobile {
-          0% {
-            transform: scale(0.9);
-            box-shadow: 0 0 0 0 rgba(252, 174, 47, 0);
-          }
-          35% {
-            transform: scale(1.35);
-            box-shadow: 0 0 30px 12px rgba(252, 174, 47, 0.7);
-          }
-          65% {
-            transform: scale(0.96);
-            box-shadow: 0 0 10px 2px rgba(252, 174, 47, 0.3);
-          }
-          100% {
-            transform: scale(1.08);
-            box-shadow: 0 0 20px 4px rgba(252, 174, 47, 0.45);
+            scale: 1.12;
+            box-shadow: 0 0 18px 4px rgba(252, 174, 47, 0.4);
           }
         }
         @keyframes rippleOuter {
           0% {
-            transform: scale(0.85);
-            opacity: 0.9;
+            scale: 0.9;
+            opacity: 0.8;
           }
           100% {
-            transform: scale(2.4);
+            scale: 2.2;
             opacity: 0;
           }
         }
-        .animate-pop-desktop {
-          animation: popDesktop 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-        .animate-pop-mobile {
-          animation: popMobile 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        .animate-pop-circle {
+          animation: popCircle 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
         }
         .animate-ripple-1 {
-          animation: rippleOuter 0.9s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+          animation: rippleOuter 1.4s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
         }
         .animate-ripple-2 {
-          animation: rippleOuter 1.2s cubic-bezier(0.1, 0.8, 0.3, 1) 0.15s forwards;
+          animation: rippleOuter 1.8s cubic-bezier(0.1, 0.8, 0.3, 1) 0.3s forwards;
         }
       `}} />
 
@@ -158,7 +129,7 @@ export function HowItWorks() {
                   <div 
                     className={`hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full items-center justify-center z-20 border-4 transition-all duration-500 ${
                       activeSteps[i]
-                        ? "bg-[#ffb12c] border-[#FBFAF7] text-[#06383e] animate-pop-desktop"
+                        ? "bg-[#ffb12c] border-[#FBFAF7] text-[#06383e] animate-pop-circle"
                         : "bg-[#004D54] border-[#FBFAF7] text-frost shadow-md"
                     }`}
                   >
@@ -178,7 +149,7 @@ export function HowItWorks() {
                       <span 
                         className={`w-9 h-9 rounded-full flex items-center justify-center relative border-2 transition-all duration-500 ${
                           activeSteps[i]
-                            ? "bg-[#ffb12c] border-[#FBFAF7] text-[#06383e] animate-pop-mobile"
+                            ? "bg-[#ffb12c] border-[#FBFAF7] text-[#06383e] animate-pop-circle"
                             : "bg-[#004D54] border-[#FBFAF7] text-frost shadow-sm"
                         }`}
                       >
