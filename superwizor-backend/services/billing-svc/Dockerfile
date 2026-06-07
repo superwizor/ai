@@ -11,6 +11,7 @@ COPY services/billing-svc services/billing-svc
 COPY gen/ gen/
 COPY pkg/cors pkg/cors
 COPY pkg/connectmd pkg/connectmd
+COPY pkg/analytics pkg/analytics
 
 WORKDIR /app/services/billing-svc
 RUN go mod download
