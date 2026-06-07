@@ -157,6 +157,7 @@ VERSION="local-dev" \
 GCP_PROJECT_ID="superwizor-ai-25ecd" \
 AUDIO_BUCKET_NAME="superwizor-ai-25ecd-audio-uploads" \
 BILLING_SVC_URL="http://127.0.0.1:${PORT_BILLING}" \
+SIGN_URL_SA_EMAIL="ingestion-svc@superwizor-ai-25ecd.iam.gserviceaccount.com" \
 "${BACKEND_DIR}/bin/ingestion-svc" > "${LOGS_DIR}/ingestion-svc.log" 2>&1 &
 PIDS+=($!)
 
