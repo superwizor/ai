@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations, useLocale } from "next-intl";
+import { useState, useEffect } from "react";
 
 export function Hero() {
   const t = useTranslations("hero");
@@ -8,6 +9,56 @@ export function Hero() {
   const locale = useLocale();
   const prefix = locale === "en" ? "/en" : "";
   const isPl = locale === "pl";
+
+  const [clickCount, setClickCount] = useState(0);
+  const [tooltipText, setTooltipText] = useState("");
+
+  const handleFabClick = () => {
+    const nextCount = clickCount + 1;
+    setClickCount(nextCount);
+
+    if (nextCount === 3) {
+      setTooltipText(
+        isPl 
+          ? "Hej! Przycisk działa, ale pacjenta z powietrza nie stworzę... 😉" 
+          : "Hey! The button works, but I can't materialize a patient out of thin air... 😉"
+      );
+    } else if (nextCount === 4) {
+      setTooltipText(
+        isPl 
+          ? "Klikasz tak namiętnie, jakby to była sesja oporu pacjenta. Wszystko w porządku? 🧘‍♂️" 
+          : "You're clicking this like it's a patient's resistance block. Everything alright? 🧘‍♂️"
+      );
+    } else if (nextCount === 5) {
+      setTooltipText(
+        isPl 
+          ? "Spokojnie... weź głęboki oddech. Poczuj oparcie w fotelu. Przycisk ma już dość. 😌" 
+          : "Calm down... take a deep breath. Feel the support of your chair. The button has had enough. 😌"
+      );
+    } else if (nextCount === 6) {
+      setTooltipText(
+        isPl 
+          ? "A może chcesz o tym porozmawiać? Moja stawka to 200 zł za godzinę. 💸" 
+          : "Would you like to talk about it? My rate is $50/hour. 💸"
+      );
+    } else if (nextCount >= 7) {
+      setTooltipText(
+        isPl 
+          ? "Pacjent Marek został powiadomiony o Twoim natręctwie. 📞" 
+          : "Patient Mark has been notified of your compulsion. 📞"
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (clickCount >= 3) {
+      const timer = setTimeout(() => {
+        setClickCount(0);
+        setTooltipText("");
+      }, 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [clickCount]);
 
   return (
     <section className="relative w-full bg-gradient-to-b from-[#001114] via-[#002E32] to-[#004D54] text-frost overflow-hidden border-b border-frost/5">
@@ -322,7 +373,16 @@ export function Hero() {
                       </div>
 
                       {/* FAB button */}
-                      <div className="absolute bottom-4 right-4 w-11 h-11 rounded-full bg-[#ffb12c] hover:bg-[#e2991b] shadow-lg flex items-center justify-center text-[#0d2729] cursor-pointer transition active:scale-95 z-20">
+                      {tooltipText && (
+                        <div className="absolute bottom-[68px] right-4 bg-[#ffb12c] text-[#072023] text-[11px] sm:text-xs font-semibold py-2.5 px-3.5 rounded-xl shadow-xl z-30 w-[190px] sm:w-[220px] text-left animate-[fadeIn_0.2s_ease-out] select-none pointer-events-none">
+                          <span>{tooltipText}</span>
+                          <div className="absolute bottom-[-5px] right-4 w-2.5 h-2.5 bg-[#ffb12c] rotate-45" />
+                        </div>
+                      )}
+                      <div 
+                        onClick={handleFabClick}
+                        className="absolute bottom-4 right-4 w-11 h-11 rounded-full bg-[#ffb12c] hover:bg-[#e2991b] shadow-lg flex items-center justify-center text-[#0d2729] cursor-pointer transition active:scale-95 z-20"
+                      >
                         <svg className="w-6 h-6 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <line x1="12" y1="5" x2="12" y2="19" />
                           <line x1="5" y1="12" x2="19" y2="12" />
