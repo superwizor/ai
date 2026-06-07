@@ -47,35 +47,6 @@ PORT_NOTIFICATION="8084"
 LOGS_DIR="${BACKEND_DIR}/logs"
 mkdir -p "${LOGS_DIR}"
 
-echo "============================================================"
-echo "🚀 Uruchamianie lokalnego środowiska deweloperskiego SuperWizor"
-echo "============================================================"
-echo "📁 Katalog logów: ${LOGS_DIR}"
-echo "🗄️ DSN bazy: ${LOCAL_DSN}"
-
-# 1. Sprawdzenie połączenia z bazą danych
-echo -n "🔍 Sprawdzanie połączenia z bazą danych... "
-if ! nc -z -w 1 "${DB_HOST}" "${DB_PORT}" >/dev/null 2>&1; then
-  echo -e "\n❌ Błąd: Lokalna baza danych PostgreSQL na porcie ${DB_PORT} nie jest aktywna!"
-  echo "Upewnij się, że baza danych działa (np. w Dockerze) i spróbuj ponownie."
-  exit 1
-fi
-echo "OK!"
-
-# 2. Uruchomienie migracji
-echo "🔄 Uruchamianie migracji bazy danych..."
-(cd "${BACKEND_DIR}" && DB_USER="${DB_USER}" DB_PASSWORD="${DB_PASSWORD}" make migrate-up) || {
-  echo "❌ Migracje nie powiodły się! Sprawdź logi lub dane uwierzytelniające."
-  exit 1
-}
-
-# 3. Kompilacja serwisów (szybki check czy kod się buduje przed uruchomieniem)
-echo "🛠️ Kompilacja mikrousług..."
-(cd "${BACKEND_DIR}" && make build) || {
-  echo "❌ Kompilacja nie powiodła się!"
-  exit 1
-}
-
 # Lista PID-ów procesów tła do późniejszego zabicia
 PIDS=()
 
@@ -90,6 +61,58 @@ cleanup() {
   echo "✅ Wszystkie usługi zostały zatrzymane."
 }
 trap cleanup EXIT SIGINT SIGTERM
+
+echo "============================================================"
+echo "🚀 Uruchamianie lokalnego środowiska deweloperskiego SuperWizor"
+echo "============================================================"
+echo "📁 Katalog logów: ${LOGS_DIR}"
+echo "🗄️ DSN bazy: ${LOCAL_DSN}"
+
+# 1. Sprawdzenie połączenia z bazą danych i ewentualne uruchomienie proxy
+echo -n "🔍 Sprawdzanie połączenia z bazą danych... "
+if ! nc -z -w 1 "${DB_HOST}" "${DB_PORT}" >/dev/null 2>&1; then
+  if [[ "${DB_HOST}" == "127.0.0.1" && "${DB_PORT}" == "5432" ]]; then
+    PROXY_BIN="${BACKEND_DIR}/../cloud-sql-proxy"
+    if [[ -f "${PROXY_BIN}" ]]; then
+      echo -e "\n🔄 Port ${DB_PORT} jest nieaktywny. Wykryto cloud-sql-proxy w katalogu głównym."
+      echo "🚀 Automatycznie uruchamiam cloud-sql-proxy w tle..."
+      "${PROXY_BIN}" superwizor-ai-25ecd:europe-central2:superwizor-db-bc4c27de --port=5432 > "${BACKEND_DIR}/../proxy.log" 2>&1 &
+      PROXY_PID=$!
+      PIDS+=("${PROXY_PID}")
+      echo "⏳ Oczekiwanie na inicjalizację połączenia przez proxy (3s)..."
+      sleep 3
+      if ! nc -z -w 1 "${DB_HOST}" "${DB_PORT}" >/dev/null 2>&1; then
+        echo "❌ Błąd: Uruchomiono cloud-sql-proxy (PID ${PROXY_PID}), ale port ${DB_PORT} nadal nie odpowiada."
+        echo "Sprawdź szczegóły w pliku logu: proxy.log"
+        exit 1
+      fi
+      echo "✅ Połączenie nawiązane pomyślnie!"
+    else
+      echo -e "\n❌ Błąd: Lokalna baza danych na porcie ${DB_PORT} nie działa i brak pliku cloud-sql-proxy."
+      echo "Upewnij się, że lokalna baza (np. w Dockerze) lub proxy działają."
+      exit 1
+    fi
+  else
+    echo -e "\n❌ Błąd: Lokalna baza danych na porcie ${DB_PORT} nie jest aktywna!"
+    exit 1
+  fi
+else
+  echo "OK!"
+fi
+
+# 2. Uruchomienie migracji
+echo "🔄 Uruchamianie migracji bazy danych..."
+(cd "${BACKEND_DIR}" && DB_USER="${DB_USER}" DB_PASSWORD="${DB_PASSWORD}" make migrate-up) || {
+  echo "❌ Migracje nie powiodły się! Sprawdź logi lub dane uwierzytelniające."
+  exit 1
+}
+
+# 3. Kompilacja serwisów (szybki check czy kod się buduje przed uruchomieniem)
+echo "🛠️ Kompilacja mikrousług..."
+(cd "${BACKEND_DIR}" && make build) || {
+  echo "❌ Kompilacja nie powiodła się!"
+  exit 1
+}
 
 # 4. Uruchamianie usług w tle
 echo "⚡ Uruchamianie usług..."
