@@ -257,7 +257,7 @@ export function Features() {
   const reportScrollRef = useRef<HTMLDivElement>(null);
   const tabsRowRef = useRef<HTMLDivElement>(null);
   const isScrollingRef = useRef<boolean>(false);
-  const scrollTimeoutRef = useRef<any>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSubTabClick = (tabId: string) => {
     setReportSubTab(tabId);

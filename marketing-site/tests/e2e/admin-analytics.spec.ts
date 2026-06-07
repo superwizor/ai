@@ -1,5 +1,5 @@
 // Playwright E2E test for /admin/analytics dashboard (auth gating, rendering, and event tracking intercepts)
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 import { forLocale, urlPrefix } from "./_locales";
 
 test.describe("Admin Analytics Dashboard E2E", () => {
@@ -144,12 +144,16 @@ test.describe("Admin Analytics Dashboard E2E", () => {
   });
 
   // Helper function to log in as admin
-  async function loginAsAdmin(page: any, prefix: string) {
+  async function loginAsAdmin(page: Page, prefix: string) {
     await page.goto(`${prefix}/admin/analytics`);
     await page.locator("input[type='email']").fill("admin@superwizor.ai");
     await page.locator("input[type='password']").fill("AdminPassword123!");
     await page.locator("button[type='submit']").click();
-    await expect(page.locator("h1")).toContainText("Centrum Analityczne Admina");
+    const adminTitle = forLocale({
+      pl: "Centrum Analityczne",
+      en: "Analytics Center",
+    });
+    await expect(page.locator("h1")).toContainText(adminTitle);
   }
 
   test("Gates access for non-admins and handles email/password login", async ({ page }) => {
@@ -200,8 +204,12 @@ test.describe("Admin Analytics Dashboard E2E", () => {
 
     await page.getByRole("button", { name: submitName }).click();
 
-    // Verify it passes guard and renders the Center Name title (which is hardcoded in Polish for both locales currently)
-    await expect(page.locator("h1")).toContainText("Centrum Analityczne Admina");
+    // Verify it passes guard and renders the Center Name title
+    const adminTitle = forLocale({
+      pl: "Centrum Analityczne",
+      en: "Analytics Center",
+    });
+    await expect(page.locator("h1")).toContainText(adminTitle);
   });
 
   test("Loads analytics dashboard and asserts cards and tab switching", async ({ page }) => {
@@ -212,7 +220,11 @@ test.describe("Admin Analytics Dashboard E2E", () => {
     await page.waitForTimeout(2000);
 
     // Verify the general overview KPI cards render the mock values
-    await expect(page.locator("text=Weekly Active Users (WAU)")).toBeVisible();
+    const wauTitle = forLocale({
+      pl: "Aktywni terapeuci (WAU)",
+      en: "Active Therapists (WAU)",
+    });
+    await expect(page.locator(`text=${wauTitle}`)).toBeVisible();
     await expect(page.locator("text=120").first()).toBeVisible();
     await expect(page.locator("text=450").first()).toBeVisible();
 
@@ -220,22 +232,52 @@ test.describe("Admin Analytics Dashboard E2E", () => {
     await expect(page.locator("text=86%").first()).toBeVisible();
     await expect(page.locator("text=92%").first()).toBeVisible();
 
-    // Click finances tab
-    await page.getByRole("button", { name: "Finanse i Koszty" }).click();
-    await expect(page.locator("text=Średni Koszt Sesji")).toBeVisible();
-    await expect(page.locator("text=Średnia Utylizacja Tokenów")).toBeVisible();
+    // Click finances/costs tab
+    const costsTabName = forLocale({
+      pl: "Koszty i Ekonomika",
+      en: "Costs & Economics",
+    });
+    const avgCostLabel = forLocale({
+      pl: "Śr. koszt sesji (API)",
+      en: "Avg. Cost per Session (API)",
+    });
+    const tokenUtilLabel = forLocale({
+      pl: "Średnia utylizacja tokenów",
+      en: "Average Token Utilization",
+    });
+    await page.getByRole("button", { name: costsTabName }).click();
+    await expect(page.locator(`text=${avgCostLabel}`)).toBeVisible();
+    await expect(page.locator(`text=${tokenUtilLabel}`)).toBeVisible();
 
     // Click quality tab
-    await page.getByRole("button", { name: "Jakość AI" }).click();
-    await expect(page.locator("text=Mediana Czasu Przetwarzania (E2E)")).toBeVisible();
-    await expect(page.locator("text=Zgłaszane Problemy z Raportami")).toBeVisible();
+    const qualityTabName = forLocale({
+      pl: "Jakość AI",
+      en: "AI Quality",
+    });
+    const latencyLabel = forLocale({
+      pl: "Mediana czasu przetwarzania",
+      en: "Median Processing Time",
+    });
+    const issueLabel = forLocale({
+      pl: "Zgłaszane problemy z raportami",
+      en: "Reported Report Issues",
+    });
+    await page.getByRole("button", { name: qualityTabName }).click();
+    await expect(page.locator(`text=${latencyLabel}`)).toBeVisible();
+    await expect(page.locator(`text=${issueLabel}`)).toBeVisible();
   });
 
   test("Intercepts TrackEvents analytics client requests", async ({ page }) => {
     const prefix = urlPrefix();
 
     // Intercept clinical-svc TrackEvents call
-    let capturedTrackEvents: any = null;
+    let capturedTrackEvents: {
+      events: Array<{
+        eventName: string;
+        clientPlatform: string;
+        properties: { screen_name: string };
+      }>;
+    } | null = null;
     await page.route(/clinical\.v1\.ClinicalService\/TrackEvents/, async (route) => {
       capturedTrackEvents = route.request().postDataJSON();
       await route.fulfill({

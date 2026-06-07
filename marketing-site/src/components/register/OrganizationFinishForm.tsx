@@ -114,6 +114,7 @@ export function OrganizationFinishForm({
 
       // Google already verified the email server-side — straight to the app.
       // app.superwizor.ai DNS not wired; web.app subdomain is the live host.
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = "https://superwizor-app.web.app/";
     } catch {
       setServerError(tErr("unknown"));

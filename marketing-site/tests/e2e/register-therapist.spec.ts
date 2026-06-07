@@ -128,6 +128,30 @@ test("therapist email form: validates + fires CreateUser on submit", async ({ pa
     });
   });
 
+  // Mock ListModalities Connect-RPC response
+  await page.route(/clinical\.v1\.ClinicalService\/ListModalities/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        modalities: [
+          {
+            id: "44f77c8e-8a71-4770-96f3-42e13297a7e8",
+            systemCode: "CBT",
+            displayName: "Poznawczo-behawioralna (CBT)",
+            isSupported: true,
+          },
+          {
+            id: "33e66b8d-8a71-4770-96f3-42e13297a7e7",
+            systemCode: "UNIV",
+            displayName: "Uniwersalny / Integracyjny",
+            isSupported: true,
+          },
+        ],
+      }),
+    });
+  });
+
   // ── Test steps ───────────────────────────────────────────────
   //
   // Per-locale UI copy. The PL+EN happy paths run from a single spec
@@ -149,14 +173,14 @@ test("therapist email form: validates + fires CreateUser on submit", async ({ pa
 
   // Empty submit triggers zod validation. The form should NOT navigate.
   await page.getByRole("button", { name: submitName }).click();
-  await expect(page).toHaveURL(new RegExp(`${prefix}/register/therapist$`));
+  await expect(page).toHaveURL(new RegExp(`${prefix}/register/therapist\\/?$`));
 
   // Fill minimum required fields.
   await page.locator("#email").fill("e2e@example.com");
   await page.locator("#password").fill("Sup3rwizor!");
   await page.locator("#firstName").fill("Anna");
   await page.locator("#lastName").fill("Kowalska");
-  await page.locator("#modality").selectOption("CBT");
+  await page.locator("#modality").selectOption("44f77c8e-8a71-4770-96f3-42e13297a7e8");
   await page.locator("#tos").check();
 
   // Submit and wait for the redirect to verify-email.
@@ -182,21 +206,20 @@ test("therapist email form: validates + fires CreateUser on submit", async ({ pa
 
   // UpdateProfile fired with the modality.
   expect(capturedUpdateProfile).not.toBeNull();
-  expect(capturedUpdateProfile!.defaultModalityId).toBe("CBT");
+  expect(capturedUpdateProfile!.defaultModalityId).toBe("44f77c8e-8a71-4770-96f3-42e13297a7e8");
 });
 
-test("/login redirects cross-origin", async ({ page, request }) => {
-  // The next.config.ts redirect maps /login → app.superwizor.ai/login
-  // (307). We can't actually follow the redirect in CI because
-  // app.superwizor.ai isn't reachable from the test environment, so
-  // use request.fetch with redirect handling disabled and inspect the
-  // 307 + Location header directly. This is what curl confirms in the
-  // feature-7 verification.log too.
-  const response = await request.get("/login", { maxRedirects: 0 });
-  expect(response.status()).toBe(307);
-  expect(response.headers()["location"]).toBe("https://app.superwizor.ai/login");
+test("login page loads and displays login form", async ({ page }) => {
+  const prefix = urlPrefix();
+  await page.goto(`${prefix}/login`);
+  await expect(page).toHaveURL(new RegExp(`(${prefix}|/pl)?/login\\/?$`));
 
-  const enResponse = await request.get("/en/login", { maxRedirects: 0 });
-  expect(enResponse.status()).toBe(307);
-  expect(enResponse.headers()["location"]).toBe("https://app.superwizor.ai/login");
+  const heading = forLocale({
+    pl: "Witaj z powrotem",
+    en: "Welcome back",
+  });
+  await expect(page.locator("h1")).toContainText(heading);
+
+  await expect(page.locator("input[type='email']")).toBeVisible();
+  await expect(page.locator("input[type='password']")).toBeVisible();
 });

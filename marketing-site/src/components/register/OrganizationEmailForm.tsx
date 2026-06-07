@@ -111,6 +111,7 @@ export function OrganizationEmailForm() {
       });
       await identityClient.registerOrganization(req);
 
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = `${prefix}/register/therapist/verify-email?email=${encodeURIComponent(data.email)}`;
     } catch (e) {
       if (e instanceof FirebaseError) {

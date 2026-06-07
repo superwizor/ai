@@ -22,6 +22,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -58,14 +59,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Auth instance is created lazily on mount (browser-only). SSR/SSG
   // renders the provider with status="loading" and no auth object;
   // the effect kicks in on hydration and subscribes to changes.
-  const [auth, setAuth] = useState<ReturnType<typeof getFirebaseAuth> | null>(null);
+  const authRef = useRef<ReturnType<typeof getFirebaseAuth> | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<Status>("loading");
 
   useEffect(() => {
     try {
       const a = getFirebaseAuth();
-      setAuth(a);
+      authRef.current = a;
       return onAuthStateChanged(a, (u) => {
         setUser(u);
         setStatus(u ? "signed-in" : "signed-out");
@@ -88,10 +89,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // — instead the user gets a clear console error and the promise
     // rejects.
     const requireAuth = () => {
-      if (!auth) throw new Error(
+      if (!authRef.current) throw new Error(
         "Firebase Auth not initialised yet — sign-in actions can only run after the AuthProvider has mounted on the client.",
       );
-      return auth;
+      return authRef.current;
     };
 
     return {
@@ -131,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await fbSignOut(requireAuth());
       },
     };
-  }, [auth, status, user]);
+  }, [status, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
