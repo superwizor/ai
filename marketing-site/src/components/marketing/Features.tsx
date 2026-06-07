@@ -396,7 +396,7 @@ export function Features() {
       <div className="absolute top-1/2 left-0 -translate-y-1/2 w-[350px] h-[350px] bg-[#5bf4bc]/[0.03] rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[350px] h-[350px] bg-ember/[0.03] rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="relative mx-auto w-full max-w-[1200px] px-6">
+      <div className="relative mx-auto w-full max-w-[1200px] px-2 sm:px-6">
         
         {/* Header */}
         <div className="mb-16 text-center lg:text-left max-w-2xl">
@@ -559,7 +559,7 @@ export function Features() {
             <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,rgba(0,77,84,0.06),transparent_65%)] blur-[60px] pointer-events-none animate-pulse z-0" />
             
             {/* Wrapper for mockup and outside arrows on desktop */}
-            <div className="relative w-full max-w-[310px] lg:max-w-[540px] mx-auto">
+            <div className="relative w-full max-w-[460px] lg:max-w-[540px] mx-auto">
               
               {/* Left Arrow Button (Outside on Desktop, Hidden on Mobile) */}
               <button
@@ -613,11 +613,11 @@ export function Features() {
                     '--back-btn-text': 'rgba(255, 255, 255, 0.9)',
                     '--footer-border': 'rgba(255, 255, 255, 0.06)',
                   } as React.CSSProperties}
-                  className="relative w-full rounded-[22.5px] overflow-hidden bg-[var(--screen-bg)] pt-10 pb-5 px-4 sm:px-5 lg:px-6 min-h-[580px] lg:min-h-[690px] flex flex-col justify-between select-text transition-all duration-300 text-[var(--text-pri)]"
+                  className="relative w-full rounded-[22.5px] overflow-hidden bg-[var(--screen-bg)] pt-10 pb-5 px-2.5 sm:px-5 lg:px-6 min-h-[580px] lg:min-h-[690px] flex flex-col justify-between select-text transition-all duration-300 text-[var(--text-pri)]"
                 >
                 
                 {/* 1:1 Fake Status Bar */}
-                <div className="absolute top-1.5 left-0 right-0 px-6 flex justify-between items-center text-[10.5px] text-[var(--text-pri)]/80 font-sans z-20">
+                <div className="absolute top-1.5 left-0 right-0 px-4 sm:px-6 flex justify-between items-center text-[10.5px] text-[var(--text-pri)]/80 font-sans z-20">
                   <span className="font-semibold flex items-center gap-1 text-[var(--text-pri)]/80">
                     {activeTab === "report" ? "21:14" : activeTab === "transcript" ? "21:13" : activeTab === "continuity" ? "18:32" : "18:18"} 
                     <span className="text-[9px] ml-0.5">👤</span>
