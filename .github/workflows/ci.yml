@@ -197,7 +197,6 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
-            --use-http2 \
             --vpc-connector swvpc-connector \
             --set-env-vars="ENV=staging"
           gcloud run services add-iam-policy-binding api-service \
@@ -351,7 +350,6 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --no-allow-unauthenticated \
-            --use-http2 \
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
             --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }}"
