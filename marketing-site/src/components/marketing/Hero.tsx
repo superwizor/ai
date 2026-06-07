@@ -47,8 +47,6 @@ export function Hero() {
           ? "To już ostatnia wiadomość od zespołu deweloperów. Gratulujemy wytrwałości i życzymy dobrego dnia! :)" 
           : "This is the final message from the dev team. Kudos for your persistence and have a great day! :)"
       );
-    } else {
-      setTooltipText("");
     }
   };
 
@@ -390,8 +388,25 @@ export function Hero() {
 
                       {/* FAB button */}
                       {tooltipText && (
-                        <div className="absolute bottom-[68px] right-4 bg-[#ffb12c] text-[#072023] text-[11px] sm:text-xs font-semibold py-2.5 px-3.5 rounded-xl shadow-xl z-30 w-[190px] sm:w-[220px] text-left animate-tooltip-pop select-none pointer-events-none">
+                        <div 
+                          key={tooltipText}
+                          className="absolute bottom-[68px] right-4 bg-[#ffb12c] text-[#072023] text-[11px] sm:text-xs font-semibold py-2.5 pl-3.5 pr-8 rounded-xl shadow-xl z-30 w-[190px] sm:w-[220px] text-left animate-tooltip-pop select-none"
+                        >
                           <span>{tooltipText}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTooltipText("");
+                              setClickCount(0);
+                            }}
+                            className="absolute top-2 right-2 w-4 h-4 flex items-center justify-center rounded-full hover:bg-black/10 active:scale-95 transition cursor-pointer text-[#072023]"
+                            aria-label="Close tooltip"
+                          >
+                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </button>
                           <div className="absolute bottom-[-5px] right-4 w-2.5 h-2.5 bg-[#ffb12c] rotate-45" />
                         </div>
                       )}
