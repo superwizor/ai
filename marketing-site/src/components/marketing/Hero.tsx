@@ -26,14 +26,14 @@ export function Hero() {
     } else if (nextCount === 7) {
       setTooltipText(
         isPl 
-          ? "Siedem kliknięć... To brzmi jak świetny temat na najbliższą superwizję. :)" 
-          : "Seven clicks... That sounds like a great topic for your next supervision. :)"
+          ? "Poczuj oparcie w fotelu. Weź głęboki oddech. Rozluźnij mięśnie... :)" 
+          : "Feel the support of your chair. Take a deep breath. Relax your muscles... :)"
       );
     } else if (nextCount === 12) {
       setTooltipText(
         isPl 
-          ? "Spokojnie... weź głęboki oddech. Poczuj oparcie w fotelu. Przycisk ma już dość. :)" 
-          : "Calm down... take a deep breath. Feel the support of your chair. The button has had enough. :)"
+          ? "Dwanaście kliknięć... To brzmi jak doskonały temat na Twoją najbliższą superwizję. :)" 
+          : "Twelve clicks... That sounds like a perfect topic for your next supervision. :)"
       );
     } else if (nextCount === 18) {
       setTooltipText(
