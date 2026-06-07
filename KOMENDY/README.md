@@ -1,39 +1,64 @@
-# 🎛️ SKRÓTY KOMEND
+# 🎛️ PANEL DEWELOPERSKI (SKRÓTY)
 
-Folder z gotowymi skrótami deweloperskimi. Używaj wersji skróconej (sam numer) lub pełnej nazwy pliku.
-
-### 📋 Szybki spis komend
-
-| # | Komenda (krótka) | Co robi? |
-| :--- | :--- | :--- |
-| **0** | `source ./KOMENDY/0` | 📂 Przenosi terminal do głównego katalogu projektu |
-| **1** | `./KOMENDY/1` | 🚀 Odpala lokalną bazę, migracje i backend (5 usług) |
-| **2** | `./KOMENDY/2` | 🧪 Uruchamia lokalne testy E2E |
-| **3** | `./KOMENDY/3` | 💻 Uruchamia aplikację Flutter jako apkę macOS |
-| **4** | `./KOMENDY/4` | 📲 Wgrywa aplikację Flutter na podłączony telefon |
-| **5** | `./KOMENDY/5` | 🍏 Buduje paczkę iOS i otwiera Xcode (App Store / TestFlight) |
-| **6** | `./KOMENDY/6` | 🌐 Uruchamia stronę WWW lokalnie |
+Ten folder zawiera gotowe, zoptymalizowane skróty ułatwiające codzienną pracę z projektem.
 
 ---
 
-### 🛠️ Dwa najczęstsze scenariusze
+### 📋 Szybka Ściąga (Spis Komend)
 
-#### A. Chcę pokodzić i sprawdzić apkę lokalnie:
-1. **Terminal 1**: Odpal backend i zostaw otwarty:
+| # | Szybki skrót | Serwis / Rola | Co robi? |
+| :--- | :--- | :--- | :--- |
+| **`0`** | `source ./KOMENDY/0` | ![Narzędzie](https://img.shields.io/badge/Narz%C4%99dzie-Nawigacja-grey?style=flat-square) | 📂 Przenosi terminal do katalogu głównego projektu |
+| **`1`** | `./KOMENDY/1` | ![Backend](https://img.shields.io/badge/Backend-Uruchomienie-success?style=flat-square&color=10b981) | 🚀 Odpala bazę (proxy), migracje i 5 mikroserwisów w tle |
+| **`2`** | `./KOMENDY/2` | ![Testy](https://img.shields.io/badge/Testy-E2E-blue?style=flat-square&color=3b82f6) | 🧪 Uruchamia lokalne testy integracyjne E2E |
+| **`3`** | `./KOMENDY/3` | ![Flutter](https://img.shields.io/badge/Flutter-macOS-blueviolet?style=flat-square&color=8b5cf6) | 💻 Uruchamia aplikację jako natywny macOS |
+| **`4`** | `./KOMENDY/4` | ![Flutter](https://img.shields.io/badge/Flutter-Telefon-pink?style=flat-square&color=ec4899) | 📲 Wgrywa apkę na podłączone urządzenie (iOS/Android) |
+| **`5`** | `./KOMENDY/5` | ![iOS](https://img.shields.io/badge/iOS-App_Store-red?style=flat-square&color=ef4444) | 🍏 Tworzy produkcyjny plik `.ipa` i otwiera Xcode |
+| **`6`** | `./KOMENDY/6` | ![Web](https://img.shields.io/badge/Strona-WWW-yellow?style=flat-square&color=f59e0b) | 🌐 Odpala stronę marketingową WWW na `localhost:3000` |
+
+---
+
+### 🛠️ Rekomendowane Przepływy Pracy (Workflows)
+
+#### 🟢 Scenariusz A: Lokalna deweloperka z aplikacją mobilną
+Uruchomienie lokalnego backendu oraz wgranie wersji testowej apki na telefon:
+
+```mermaid
+graph TD
+    A[Otwórz terminal] --> B[Odpala Backend: ./KOMENDY/1]
+    B --> C[Otwórz nową zakładkę Cmd+T]
+    C --> D[Wgraj apkę na telefon: ./KOMENDY/4]
+```
+
+1. **Terminal 1**: Odpal backend i zostaw go aktywnego (będzie pokazywać logi na żywo):
    ```bash
    ./KOMENDY/1
    ```
-2. **Terminal 2** (nowa zakładka: `Cmd + T`): Wgraj apkę na telefon:
+2. **Terminal 2** (nowa zakładka za pomocą `Cmd + T`): Wgraj apkę na telefon:
    ```bash
    ./KOMENDY/4
    ```
 
-#### B. Chcę sprawdzić, czy testy przechodzą:
-1. **Terminal 1**: Upewnij się, że backend działa (`./KOMENDY/1`).
-2. **Terminal 2** (nowa zakładka: `Cmd + T`): Odpal testy E2E:
+#### 🔵 Scenariusz B: Weryfikacja kodu i testy integracyjne
+Przetestowanie całej logiki biznesowej, bazy danych i przepływów RODO na localhost:
+
+1. Upewnij się, że lokalny backend działa w tle (**Terminal 1**).
+2. **Terminal 2** (nowa zakładka): Odpal testy E2E:
    ```bash
    ./KOMENDY/2
    ```
 
 ---
-> 💡 **Wskazówka**: Jeśli dostaniesz błąd uprawnień, wpisz raz w głównym katalogu: `chmod +x KOMENDY/*`
+
+> [!TIP]
+> **Szybki Powrót do Bazy**: Jeśli pracujesz głęboko w podfolderach (np. edytując pliki w `marketing-site` lub `clinical-svc`), wpisz w dowolnej chwili:
+> ```bash
+> source ./KOMENDY/0
+> ```
+> natychmiast przeniesie Cię to z powrotem do głównego folderu projektu.
+
+> [!WARNING]
+> **Brak Uprawnień (Permission Denied)**: Jeżeli system macOS zgłosi brak uprawnień do uruchomienia skryptów, nadaj je wszystkim na raz wpisując w katalogu głównym:
+> ```bash
+> chmod +x KOMENDY/*
+> ```
