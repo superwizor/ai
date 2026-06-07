@@ -122,9 +122,7 @@ export function HowItWorks() {
                           <span className="absolute -inset-1 rounded-full border-2 border-[#ffb12c] animate-ping opacity-0" style={{ animationDuration: '1s', animationIterationCount: 1 }} />
                         )}
                       </span>
-                      <span className={`font-mono text-[10px] uppercase tracking-[2px] font-semibold transition-colors duration-500 ${
-                        activeSteps[i] ? "text-[#ffb12c]" : "text-[#004D54]/50"
-                      }`}>
+                      <span className="font-mono text-[10px] uppercase tracking-[2px] text-[#004D54]/60 font-semibold">
                         {locale === "en" ? "Step" : "Krok"} {stepNum}
                       </span>
                     </div>
