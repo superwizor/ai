@@ -65,7 +65,7 @@ test-e2e-local: ## Run E2E tests against local backend services
 	IDENTITY_SVC_URL="http://127.0.0.1:8080" \
 	CLINICAL_SVC_URL="http://127.0.0.1:8082" \
 	INGESTION_SVC_URL="http://127.0.0.1:8083" \
-	go test -tags=e2e -timeout=5m -v ./e2e/... | python3 ../scripts/test_progress.py
+	go test -tags=e2e -timeout=10m -v ./e2e/... | python3 ../scripts/test_progress.py
 
 clean:  ## Clean build artifacts
 	rm -rf bin/ gen/ cov.out

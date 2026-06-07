@@ -1,56 +1,46 @@
 # 🎛️ PORTAL KOMENDY
 
-> [!TIP]
-> Jeśli chcesz szybko wrócić z dowolnego podkatalogu do głównego folderu projektu, wpisz:
-> `source ./KOMENDY/0`
+┌──────────────────────────────────────────────────────────────────────────┐
+│  💡 TIP: Wpisz "source ./KOMENDY/0" w dowolnej chwili, by wrócić do bazy │
+└──────────────────────────────────────────────────────────────────────────┘
+
+---
+
+## 📂 NAWIGACJA
+
+* 🏠 **`source ./KOMENDY/0`**
+  └─ *Przenosi terminal bezpośrednio do głównego katalogu projektu*
 
 ---
 
 ## 💻 BACKEND & TESTY
 
-### 🚀 Uruchomienie Środowiska
-> Odpala bazę (proxy), migracje i 5 mikroserwisów w tle. Zostaw ten terminal otwarty.
-```bash
-./KOMENDY/1
-```
+* 🚀 **`./KOMENDY/1`**
+  ├─ *Odpala bazę (proxy), migracje i 5 mikroserwisów w tle*
+  └─ *Zostaw ten terminal otwarty, aby widzieć logi na żywo*
 
-### 🧪 Testy Integracyjne E2E
-> Odpala testy integracyjne w nowej zakładce terminala (`Cmd + T`).
-```bash
-./KOMENDY/2
-```
+* 🧪 **`./KOMENDY/2`**
+  └─ *Uruchamia pełne lokalne testy integracyjne E2E z paskiem postępu*
 
 ---
 
 ## 📱 APLIKACJA FLUTTER
 
-### 💻 macOS (Natywna apka)
-> Szybki test UI bez podłączania telefonu.
-```bash
-./KOMENDY/3
-```
+* 💻 **`./KOMENDY/3`**
+  └─ *Uruchamia aplikację jako natywny program na macOS*
 
-### 📲 Fizyczny Telefon (iOS/Android)
-> Wgrywa apkę kablem na telefon (wymagane do testowania nagrywania audio).
-```bash
-./KOMENDY/4
-```
+* 📲 **`./KOMENDY/4`**
+  └─ *Wgrywa aplikację kablem na telefon (wymagane do testowania audio)*
 
-### 🍏 Budowanie Produkcji (Xcode)
-> Buduje plik `.ipa` i otwiera Xcode, skąd wysyłasz paczkę do TestFlight.
-```bash
-./KOMENDY/5
-```
+* 🍏 **`./KOMENDY/5`**
+  └─ *Buduje produkcyjną paczkę .ipa i otwiera środowisko Xcode*
 
 ---
 
 ## 🌐 WEB & MARKETING
 
-### 🖥️ Strona WWW
-> Uruchamia lokalny serwer strony marketingowej na `http://localhost:3000`.
-```bash
-./KOMENDY/6
-```
+* 🖥️ **`./KOMENDY/6`**
+  └─ *Uruchamia lokalny serwer strony marketingowej na http://localhost:3000*
 
 ---
 
