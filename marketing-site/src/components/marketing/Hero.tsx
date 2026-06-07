@@ -20,42 +20,44 @@ export function Hero() {
     if (nextCount === 3) {
       setTooltipText(
         isPl 
-          ? "Hej! Przycisk działa, ale pacjenta z powietrza nie stworzę... 😉" 
-          : "Hey! The button works, but I can't materialize a patient out of thin air... 😉"
+          ? "Hej! Przycisk działa, ale pacjenta z powietrza nie stworzę... :)" 
+          : "Hey! The button works, but I can't materialize a patient out of thin air... :)"
       );
-    } else if (nextCount === 4) {
+    } else if (nextCount === 7) {
       setTooltipText(
         isPl 
-          ? "Klikasz tak namiętnie, jakby to była sesja oporu pacjenta. Wszystko w porządku? 🧘‍♂️" 
-          : "You're clicking this like it's a patient's resistance block. Everything alright? 🧘‍♂️"
+          ? "Klikasz tak namiętnie, jakby to była sesja oporu pacjenta. Wszystko w porządku? :)" 
+          : "You're clicking this like it's a patient's resistance block. Everything alright? :)"
       );
-    } else if (nextCount === 5) {
+    } else if (nextCount === 12) {
       setTooltipText(
         isPl 
-          ? "Spokojnie... weź głęboki oddech. Poczuj oparcie w fotelu. Przycisk ma już dość. 😌" 
-          : "Calm down... take a deep breath. Feel the support of your chair. The button has had enough. 😌"
+          ? "Spokojnie... weź głęboki oddech. Poczuj oparcie w fotelu. Przycisk ma już dość. :)" 
+          : "Calm down... take a deep breath. Feel the support of your chair. The button has had enough. :)"
       );
-    } else if (nextCount === 6) {
+    } else if (nextCount === 18) {
       setTooltipText(
         isPl 
-          ? "A może chcesz o tym porozmawiać? Moja stawka to 200 zł za godzinę. 💸" 
-          : "Would you like to talk about it? My rate is $50/hour. 💸"
+          ? "A może chcesz o tym porozmawiać? Moja stawka to 200 zł za godzinę. :)" 
+          : "Would you like to talk about it? My rate is $50/hour. :)"
       );
-    } else if (nextCount >= 7) {
+    } else if (nextCount === 25) {
       setTooltipText(
         isPl 
-          ? "Pacjent Marek został powiadomiony o Twoim natręctwie. 📞" 
-          : "Patient Mark has been notified of your compulsion. 📞"
+          ? "To już ostatnia wiadomość od zespołu deweloperów. Gratulujemy wytrwałości i życzymy dobrego dnia! :)" 
+          : "This is the final message from the dev team. Kudos for your persistence and have a great day! :)"
       );
+    } else {
+      setTooltipText("");
     }
   };
 
   useEffect(() => {
-    if (clickCount >= 3) {
+    if (clickCount > 0) {
       const timer = setTimeout(() => {
         setClickCount(0);
         setTooltipText("");
-      }, 4500);
+      }, 5000);
       return () => clearTimeout(timer);
     }
   }, [clickCount]);
@@ -85,6 +87,20 @@ export function Hero() {
         }
         .animate-floaty-1 { animation: floaty 5s ease-in-out infinite; }
         .animate-floaty-2 { animation: floaty 5s ease-in-out infinite 0.8s; }
+
+        @keyframes tooltipPop {
+          0% {
+            opacity: 0;
+            transform: translateY(12px) scale(0.9);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        .animate-tooltip-pop {
+          animation: tooltipPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
       `}} />
 
       {/* Subtle background glow */}
@@ -374,7 +390,7 @@ export function Hero() {
 
                       {/* FAB button */}
                       {tooltipText && (
-                        <div className="absolute bottom-[68px] right-4 bg-[#ffb12c] text-[#072023] text-[11px] sm:text-xs font-semibold py-2.5 px-3.5 rounded-xl shadow-xl z-30 w-[190px] sm:w-[220px] text-left animate-[fadeIn_0.2s_ease-out] select-none pointer-events-none">
+                        <div className="absolute bottom-[68px] right-4 bg-[#ffb12c] text-[#072023] text-[11px] sm:text-xs font-semibold py-2.5 px-3.5 rounded-xl shadow-xl z-30 w-[190px] sm:w-[220px] text-left animate-tooltip-pop select-none pointer-events-none">
                           <span>{tooltipText}</span>
                           <div className="absolute bottom-[-5px] right-4 w-2.5 h-2.5 bg-[#ffb12c] rotate-45" />
                         </div>
