@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Wrapper do wejścia do katalogu głównego
+# Użycie: source ./KOMENDY/0   lub   . ./KOMENDY/0
+
+cd "/Users/maciekckoklormam91/Desktop/Inne/APP - Superwizor AI"
+echo "📂 Przeniesiono do katalogu głównego projektu: $(pwd)"

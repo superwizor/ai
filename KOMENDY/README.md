@@ -12,6 +12,7 @@ Każdy skrypt wykonuje jedną konkretną czynność deweloperską. Możesz ich u
 
 | # | Komenda (krótka) | Skrypt (pełny) | Opis działania | Kiedy używać? |
 | :--- | :--- | :--- | :--- | :--- |
+| **0** | `source ./KOMENDY/0` | `0_wejdz_do_katalogu_glownego.sh` | Przenosi Twój obecny terminal bezpośrednio do głównego katalogu projektu. | Gdy zabłądzisz w podkatalogach lub otworzysz nową zakładkę. |
 | **1** | `./KOMENDY/1` | `1_odpal_backend_lokalnie.sh` | Uruchamia lokalne migracje i włącza w tle wszystkie 5 mikrousług na Twoim Macu. Logi zapisują się w katalogu `logs/`. | Gdy chcesz programować lokalnie lub odpalić testy E2E. |
 | **2** | `./KOMENDY/2` | `2_odpal_testy_e2e_lokalnie.sh` | Uruchamia pełny zestaw testów integracyjnych E2E bazy i logiki skierowany na lokalnie uruchomione usługi (`localhost`). | Przed commitem lub po zmianach w logice bazodanowej/RODO. |
 | **3** | `./KOMENDY/3` | `3_uruchom_apke_mac.sh` | Uruchamia aplikację deweloperską Flutter jako natywną aplikację na system macOS. | Do szybkiego programowania wyglądu i logiki UI bez telefonu. |
@@ -24,7 +25,7 @@ Każdy skrypt wykonuje jedną konkretną czynność deweloperską. Możesz ich u
 ## 🛠️ Jak z tego korzystać? (Instrukcja Krok po Kroku)
 
 ### Scenariusz A: Chcę lokalnie przetestować i sprawdzić działanie aplikacji
-1. Otwórz **Terminal nr 1** i wpisz:
+1. Otwórz **Terminal nr 1**, upewnij się, że jesteś w głównym folderze projektu (możesz wpisać `source ./KOMENDY/0`), a następnie wpisz:
    ```bash
    ./KOMENDY/1
    ```
