@@ -17,8 +17,7 @@ export function HowItWorks() {
   const prefix = locale === "en" ? "/en" : "";
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [progress, setProgress] = useState(0);
-  const [activeSteps, setActiveSteps] = useState<boolean[]>([false, false, false]);
+  const [maxProgress, setMaxProgress] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -28,33 +27,19 @@ export function HowItWorks() {
       const rect = container.getBoundingClientRect();
       const windowHeight = window.innerHeight;
 
-      // Start progress when top of container is 65% down the viewport
-      const triggerTop = windowHeight * 0.65;
-      // Finish progress when bottom of container is 35% down the viewport
-      const triggerBottom = windowHeight * 0.35;
+      // The eye-level trigger point: 60% of the viewport height
+      const triggerPoint = windowHeight * 0.60;
 
-      const totalRange = rect.height - (triggerTop - triggerBottom);
-      const currentProgress = triggerTop - rect.top;
+      // Calculate progress of the timeline connector line
+      const containerTop = rect.top;
+      const containerHeight = rect.height;
 
-      let pct = 0;
-      if (totalRange > 0) {
-        pct = Math.max(0, Math.min(100, (currentProgress / totalRange) * 100));
-      } else {
-        pct = rect.top < triggerTop ? 100 : 0;
-      }
-      setProgress(pct);
+      const scrolledDistance = triggerPoint - containerTop;
+      let pct = (scrolledDistance / containerHeight) * 100;
+      pct = Math.max(0, Math.min(100, pct));
 
-      const stepElements = container.querySelectorAll(".how-it-works-step");
-      const nextActive = [false, false, false];
-      stepElements.forEach((el, idx) => {
-        const elRect = el.getBoundingClientRect();
-        // Activate step when the center of the step crosses 65% of the viewport height
-        const stepCenter = elRect.top + elRect.height / 2;
-        if (stepCenter < windowHeight * 0.65) {
-          nextActive[idx] = true;
-        }
-      });
-      setActiveSteps(nextActive);
+      // Lock progress to go forward only (one-way progress)
+      setMaxProgress((prevMax) => Math.max(prevMax, pct));
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -66,6 +51,13 @@ export function HowItWorks() {
       window.removeEventListener("resize", handleScroll);
     };
   }, []);
+
+  // Sync step activation strictly with the progress line reaching the circle nodes
+  const activeSteps = [
+    maxProgress >= 2,      // Step 1: Top of timeline
+    maxProgress >= 50,     // Step 2: Middle of timeline
+    maxProgress >= 95,     // Step 3: Bottom of timeline
+  ];
 
   return (
     <section id="jak" className="w-full bg-gradient-to-b from-[#FBFAF7] to-[#F2F0EA] text-[#1B2522] py-24 sm:py-32 border-y border-[#E2DED5]/60 relative overflow-hidden">
@@ -83,10 +75,10 @@ export function HowItWorks() {
         <div ref={containerRef} className="relative">
           {/* Vertical connector line — visible on lg only */}
           <div className="hidden lg:block absolute left-1/2 top-8 bottom-8 w-[2px] -translate-x-1/2 bg-[#004D54]/10">
-            {/* Dynamic progress fill */}
+            {/* Dynamic progress fill (Thicker, brand-colored green line) */}
             <div 
-              className="absolute top-0 left-0 w-full bg-gradient-to-b from-[#ffb12c] to-[#ff9800] rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(252,174,47,0.6)]" 
-              style={{ height: `${progress}%` }}
+              className="absolute top-0 left-0 w-[4px] -translate-x-[1px] bg-[#004D54] rounded-full transition-all duration-300 ease-out" 
+              style={{ height: `${maxProgress}%` }}
             />
           </div>
 
@@ -98,11 +90,7 @@ export function HowItWorks() {
               return (
                 <div 
                   key={k} 
-                  className={`relative grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center how-it-works-step transition-all duration-700 ${
-                    activeSteps[i] 
-                      ? "opacity-100 translate-y-0" 
-                      : "opacity-40 translate-y-6"
-                  }`}
+                  className="relative grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center"
                 >
                   {/* Step number node on the timeline — lg only */}
                   <div 
@@ -113,6 +101,9 @@ export function HowItWorks() {
                     }`}
                   >
                     <span className="font-display text-sm font-bold">{stepNum}</span>
+                    {activeSteps[i] && (
+                      <span className="absolute -inset-1 rounded-full border-2 border-[#ffb12c] animate-ping opacity-0" style={{ animationDuration: '1.2s', animationIterationCount: 1 }} />
+                    )}
                   </div>
 
                   {/* Text side */}
@@ -120,13 +111,16 @@ export function HowItWorks() {
                     {/* Mobile step indicator */}
                     <div className="lg:hidden flex items-center gap-3 mb-4">
                       <span 
-                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-500 ${
+                        className={`w-9 h-9 rounded-full flex items-center justify-center relative transition-all duration-500 ${
                           activeSteps[i]
                             ? "bg-[#ffb12c] text-[#06383e] shadow-[0_0_15px_rgba(252,174,47,0.3)] scale-105"
                             : "bg-[#004D54] text-frost"
                         }`}
                       >
                         <span className="font-display text-xs font-bold">{stepNum}</span>
+                        {activeSteps[i] && (
+                          <span className="absolute -inset-1 rounded-full border-2 border-[#ffb12c] animate-ping opacity-0" style={{ animationDuration: '1s', animationIterationCount: 1 }} />
+                        )}
                       </span>
                       <span className={`font-mono text-[10px] uppercase tracking-[2px] font-semibold transition-colors duration-500 ${
                         activeSteps[i] ? "text-[#ffb12c]" : "text-[#004D54]/50"
