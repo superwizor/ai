@@ -922,11 +922,11 @@ export function Features() {
                             </div>
 
                             {/* 4. Zadanie domowe */}
-                            <div className="bg-red-500/[0.02] border border-red-500/15 rounded-xl p-3.5 flex items-start gap-2.5">
-                              <span className="text-[#ef4444] text-[13px] mt-0.5">⚠️</span>
+                            <div className="bg-[#ffa3a3]/10 border border-[#ffa3a3]/25 rounded-xl p-3.5 flex items-start gap-2.5">
+                              <span className="text-[#ffa3a3] text-[13px] mt-0.5">⚠️</span>
                               <div>
-                                <span className="text-[9px] uppercase tracking-wider font-bold text-[#ef4444] block">{isPl ? "4. Ustalony plan działania (Zadanie)" : "4. Homework Assigned"}</span>
-                                <p className="text-[11px] lg:text-[12.5px] text-[#ef4444]/90 font-medium leading-relaxed mt-0.5">
+                                <span className="text-[9px] uppercase tracking-wider font-bold text-[#ffa3a3] block">{isPl ? "4. Ustalony plan działania (Zadanie)" : "4. Homework Assigned"}</span>
+                                <p className="text-[11px] lg:text-[12.5px] text-[#ffa3a3] font-semibold leading-relaxed mt-0.5">
                                   {isPl ? "Brak wyraźnie ustalonego, konkretnego zadania domowego na koniec sesji." : "No clearly established, specific homework at the end of the session."}
                                 </p>
                               </div>
@@ -1325,8 +1325,8 @@ export function Features() {
                                 <div className="bg-[var(--toggle-bg)] border border-[var(--card-border)] p-3 rounded-lg">
                                   <span className="block text-[8px] uppercase tracking-wider text-[var(--gold-color)] font-bold mb-1">{isPl ? "2. Przekonania kluczowe (Core Beliefs)" : "2. Core Beliefs"}</span>
                                   <div className="flex gap-2.5 mt-1 font-bold flex-wrap">
-                                    <span className="px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-[10px]">„Jestem wadliwy/niekompetentny”</span>
-                                    <span className="px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-[10px]">„Jestem bezradny/brak wpływu”</span>
+                                    <span className="px-2 py-1 bg-red-500/10 border border-[#ffa3a3]/30 rounded text-[#ffa3a3] text-[10px]">„Jestem wadliwy/niekompetentny”</span>
+                                    <span className="px-2 py-1 bg-red-500/10 border border-[#ffa3a3]/30 rounded text-[#ffa3a3] text-[10px]">„Jestem bezradny/brak wpływu”</span>
                                   </div>
                                 </div>
 
@@ -1776,35 +1776,35 @@ export function Features() {
                       </div>
 
                       {/* Modality options list — SHOWING ALL 9 OPTIONS FROM THE SCREENSHOT */}
-                      <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1.5 scrollbar-thin">
+                      <div className="space-y-0.5 max-h-[420px] overflow-y-auto pr-1.5 scrollbar-thin">
                         {MODALITIES_LIST.map((m) => {
                           const isSelected = selectedModality === m.id;
                           return (
                             <div
                               key={m.id}
                               onClick={() => setSelectedModality(m.id)}
-                              className={`transition-all duration-200 rounded-xl p-3 flex items-center justify-between border cursor-pointer ${
+                              className={`transition-all duration-200 p-2.5 flex items-center justify-between border cursor-pointer ${
                                 isSelected
-                                  ? "bg-[#123632] border-[#ffb12c]/40 shadow-md"
-                                  : "bg-transparent hover:bg-white/[0.03] border-transparent"
+                                  ? "bg-[#0b3c40] border-transparent rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.15)] my-1"
+                                  : "bg-transparent border-transparent border-b border-white/[0.05] hover:bg-white/[0.02]"
                               }`}
                             >
-                              <div className="flex items-center gap-3">
-                                <div className={`w-7.5 h-7.5 rounded-full flex items-center justify-center shrink-0 transition-colors duration-200 ${
+                              <div className="flex items-center gap-3.5">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors duration-200 ${
                                   isSelected
-                                    ? "bg-[var(--toggle-active-bg)] text-[var(--toggle-active-text)]"
-                                    : "bg-[var(--toggle-bg)] border border-[var(--card-border)] text-[var(--accent-color)]"
+                                    ? "bg-[#ffb12c]/15 text-[#ffb12c]"
+                                    : "bg-[#042528] text-white/60"
                                 }`}>
                                   {m.icon}
                                 </div>
                                 <span className={`font-sans text-[12.5px] transition-colors duration-200 ${
-                                  isSelected ? "font-bold text-[var(--text-pri)]" : "text-[var(--text-pri)]/90"
+                                  isSelected ? "font-semibold text-white" : "text-white/80"
                                 }`}>
                                   {isPl ? m.label : m.labelEn}
                                 </span>
                               </div>
                               {isSelected && (
-                                <div className="w-5 h-5 rounded-full bg-[var(--toggle-active-bg)] flex items-center justify-center text-[var(--toggle-active-text)] text-xs font-bold shrink-0 animate-[fadeIn_0.2s_ease-out]">
+                                <div className="w-[18px] h-[18px] rounded-full bg-[#ffb12c] flex items-center justify-center text-[#06383e] text-[10px] font-extrabold shrink-0 animate-[fadeIn_0.2s_ease-out]">
                                   ✓
                                 </div>
                               )}
@@ -1817,7 +1817,7 @@ export function Features() {
 
                   {/* Overlay Dialogs, Bottom Sheet & Toast */}
                   {toast && (
-                    <div className="absolute top-[48px] left-4 right-4 bg-[var(--card-bg)] border border-[var(--accent-color)]/20 rounded-xl p-3 shadow-[0_8px_32px_rgba(0,0,0,0.4)] z-50 animate-[fadeIn_0.2s_ease-out] flex items-center gap-3 select-none">
+                    <div className="absolute top-[48px] left-4 right-4 bg-[#0a474e] border border-[var(--accent-color)]/20 rounded-xl p-3 shadow-[0_8px_32px_rgba(0,0,0,0.4)] z-50 animate-[fadeIn_0.2s_ease-out] flex items-center gap-3 select-none">
                       <div className="w-6 h-6 rounded-full bg-[var(--accent-bg-light)] border border-[var(--accent-border-light)] flex items-center justify-center text-[var(--accent-color)] text-xs font-bold shrink-0">
                         ✓
                       </div>
@@ -1834,7 +1834,7 @@ export function Features() {
                       }}
                     >
                       <div 
-                        className="bg-[var(--card-bg)] border-t border-[var(--card-border)] rounded-t-[28px] p-5 w-full shadow-2xl text-left animate-[slideUp_0.3s_cubic-bezier(0.16,1,0.3,1)_both]"
+                        className="bg-[#0a474e] border-t border-[var(--card-border)] rounded-t-[28px] p-5 w-full shadow-2xl text-left animate-[slideUp_0.3s_cubic-bezier(0.16,1,0.3,1)_both]"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {/* Bottom Sheet Handle */}
@@ -1918,7 +1918,7 @@ export function Features() {
                       }}
                     >
                       <div 
-                        className="bg-[var(--card-bg)] border-t border-[var(--card-border)] rounded-t-3xl p-5 w-full shadow-2xl text-left animate-[slideUp_0.3s_cubic-bezier(0.16,1,0.3,1)_both]"
+                        className="bg-[#0a474e] border-t border-[var(--card-border)] rounded-t-3xl p-5 w-full shadow-2xl text-left animate-[slideUp_0.3s_cubic-bezier(0.16,1,0.3,1)_both]"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {/* Bottom Sheet Handle */}
