@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 
 type FeatureKey = "report" | "transcript" | "continuity" | "modality";
@@ -182,9 +182,7 @@ const Quote = ({ children }: { children: React.ReactNode }) => (
   </blockquote>
 );
 
-const INITIAL_EMAIL_DRAFT_PL = `Temat: Twój plan działania z sesji (31.05.2026)
-
-Cześć Marku,
+const INITIAL_EMAIL_DRAFT_PL = `Cześć Marku,
 
 Przesyłam podsumowanie naszego planu działania z dzisiejszej sesji. Ustaliliśmy, że w tym tygodniu skupimy się na Dzienniku Myśli Automatycznych (model A-B-C), aby lepiej zrozumieć sytuacje, w których czujesz się „zablokowany”.
 
@@ -200,9 +198,7 @@ Wskazówka: Jeśli poczujesz opór lub myśl, że „to nic nie da” – to zup
 Do zobaczenia na kolejnej sesji,
 Twój Terapeuta`;
 
-const INITIAL_EMAIL_DRAFT_EN = `Subject: Your action plan from session (31.05.2026)
-
-Hi Mark,
+const INITIAL_EMAIL_DRAFT_EN = `Hi Mark,
 
 Here is the summary of the homework we agreed on during today's session. This week, we will focus on the Automatic Thoughts Journal (A-B-C model) to better understand the moments you feel "blocked."
 
@@ -250,7 +246,80 @@ export function Features() {
 
   const [activeTab, setActiveTab] = useState<FeatureKey>("report");
   const [mockupTheme, setMockupTheme] = useState<"classic" | "cream" | "midnight" | "slate">("classic");
-  const [reportSubTab, setReportSubTab] = useState<string>("all");
+  const [reportSubTab, setReportSubTab] = useState<string>("summary");
+  const [isEmailMode, setIsEmailMode] = useState<boolean>(false);
+
+  const reportScrollRef = useRef<HTMLDivElement>(null);
+  const tabsRowRef = useRef<HTMLDivElement>(null);
+  const isScrollingRef = useRef<boolean>(false);
+  const scrollTimeoutRef = useRef<any>(null);
+
+  const handleSubTabClick = (tabId: string) => {
+    setReportSubTab(tabId);
+    isScrollingRef.current = true;
+    const container = reportScrollRef.current;
+    const target = container?.querySelector(`#sec-${tabId}`);
+    if (container && target) {
+      const containerTop = container.getBoundingClientRect().top;
+      const targetTop = target.getBoundingClientRect().top;
+      const scrollOffset = targetTop - containerTop + container.scrollTop - 8;
+      container.scrollTo({
+        top: scrollOffset,
+        behavior: "smooth"
+      });
+      
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 450);
+    }
+  };
+
+  const handleReportScroll = () => {
+    if (isScrollingRef.current) return;
+    const container = reportScrollRef.current;
+    if (!container) return;
+
+    const sectionIds = ["summary", "observations", "plan", "proposals", "threads", "supervision", "diagnosis"];
+    let activeSection = "summary";
+    const containerTop = container.getBoundingClientRect().top;
+
+    for (const id of sectionIds) {
+      const el = container.querySelector(`#sec-${id}`);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= containerTop + 30) {
+          activeSection = id;
+        }
+      }
+    }
+
+    if (activeSection !== reportSubTab) {
+      setReportSubTab(activeSection);
+      const tabsRow = tabsRowRef.current;
+      const tabButton = tabsRow?.querySelector(`#tab-btn-${activeSection}`);
+      if (tabsRow && tabButton) {
+        const rowRect = tabsRow.getBoundingClientRect();
+        const btnRect = tabButton.getBoundingClientRect();
+        if (btnRect.left < rowRect.left || btnRect.right > rowRect.right) {
+          tabButton.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+            inline: "center"
+          });
+        }
+      }
+    }
+  };
+
+  const handleSendEmail = () => {
+    setEmailState("sending");
+    setTimeout(() => {
+      setEmailState("idle");
+      setIsEmailMode(false);
+      showToast(isPl ? "Plan działania wysłano do klienta!" : "Action plan sent to client!");
+    }, 1200);
+  };
   const [selectedModality, setSelectedModality] = useState<string>("UNIV");
   const [transcriptFilter, setTranscriptFilter] = useState<"all" | "therapist" | "patient">("all");
 
@@ -300,7 +369,6 @@ export function Features() {
   };
 
   const reportSubTabs = [
-    { id: "all", label: "Cały raport", labelEn: "Full report" },
     { id: "summary", label: "Podsumowanie sesji", labelEn: "Session summary" },
     { id: "observations", label: "Wnikliwe obserwacje", labelEn: "Insightful observations" },
     { id: "plan", label: "Plan działania klienta", labelEn: "Client action plan" },
@@ -509,7 +577,7 @@ export function Features() {
               {/* Live demo frame */}
               <div 
                 onClick={handleNextTab}
-                className="relative w-full rounded-[24px] p-[1.5px] bg-[#E2DED5]/80 overflow-hidden shadow-[0_30px_60px_-15px_rgba(27,37,34,0.18)] border border-[#E2DED5]/45 z-10 cursor-pointer group hover:shadow-2xl transition-all duration-300"
+                className="relative w-full rounded-[24px] p-[3px] bg-gradient-to-b from-[#5bf4bc] via-[#004D54] to-[#002E32] overflow-hidden shadow-[0_30px_60px_-15px_rgba(27,37,34,0.18)] z-10 cursor-pointer group hover:shadow-2xl transition-all duration-300"
               >
                 {/* Phone/Tablet Screen Interface */}
                 <div 
@@ -578,12 +646,12 @@ export function Features() {
                   {/* ──────────────────────────────────────────────────────────── */}
                   {activeTab === "report" && (
                     <div className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1">
-                      {reportSubTab === "plan" ? (
+                      {isEmailMode ? (
                         <div className="flex flex-col flex-1 justify-between text-left animate-[fadeIn_0.2s_ease-out]">
                           {/* App Bar matching Screenshot 4 */}
-                          <div className="flex items-center gap-3.5 mb-3">
+                          <div className="flex items-center gap-3.5 mb-3 shrink-0">
                             <button 
-                              onClick={() => setReportSubTab("all")}
+                              onClick={() => setIsEmailMode(false)}
                               className="w-8 h-8 rounded-full bg-[var(--back-btn-bg)] hover:bg-[var(--back-btn-hover)] border border-white/5 flex items-center justify-center text-[var(--back-btn-text)] transition-all cursor-pointer shadow-md"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -593,10 +661,10 @@ export function Features() {
                             <h3 className="font-sans font-bold text-[14px] text-[var(--text-pri)] tracking-wide">{isPl ? "Plan działania" : "Action plan"}</h3>
                           </div>
 
-                          {/* Plan Card */}
-                          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-4 shadow-xl flex-1 flex flex-col min-h-[300px] transition-all duration-300">
+                          {/* Plan Card (stretched flex-1) */}
+                          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-4 shadow-xl flex-1 flex flex-col transition-all duration-300 min-h-0">
                             {/* Email Composer Header */}
-                            <div className="space-y-1.5 mb-2.5 pb-2.5 border-b border-[var(--card-border)] text-[10px] font-sans">
+                            <div className="space-y-1.5 mb-2.5 pb-2.5 border-b border-[var(--card-border)] text-[10px] font-sans shrink-0">
                               <div className="flex items-center gap-1.5 text-[var(--text-sec-50)]">
                                 <span className="w-8 shrink-0">{isPl ? "Do:" : "To:"}</span>
                                 <span className="text-[var(--accent-color)] font-medium">m.kowalski@gmail.com</span>
@@ -618,19 +686,9 @@ export function Features() {
                                   setEmailDraftEn(e.target.value);
                                 }
                               }}
-                              className="w-full flex-1 bg-transparent text-[var(--text-pri-90)] text-[11px] leading-relaxed focus:outline-none resize-none min-h-[220px] max-h-[230px] scrollbar-thin overflow-y-auto"
+                              className="w-full flex-1 bg-transparent text-[var(--text-pri-90)] text-[11px] leading-relaxed focus:outline-none resize-none scrollbar-thin overflow-y-auto"
                               placeholder={isPl ? "Wpisz tekst planu..." : "Enter plan text..."}
                             />
-                          </div>
-
-                          {/* Info Banner */}
-                          <div className="flex items-start gap-2 text-[var(--gold-color)] bg-[var(--gold-bg-light)] border border-[var(--gold-border-light)] rounded-xl p-2 mt-2">
-                            <span className="text-[12px] leading-none shrink-0 mt-0.5">ℹ</span>
-                            <span className="font-sans text-[10px] leading-snug">
-                              {isPl 
-                                ? "Wypełnij adres e-mail klienta i ponów wysyłkę." 
-                                : "Fill in the client's email address and send again."}
-                            </span>
                           </div>
 
                           {/* Action Buttons */}
@@ -638,19 +696,28 @@ export function Features() {
                             <button
                               onClick={() => {
                                 showToast(isPl ? "Zapisano plan działania!" : "Action plan saved!");
-                                setReportSubTab("all");
+                                setIsEmailMode(false);
                               }}
                               className="flex-1 py-1.5 rounded-xl border border-[var(--card-border)] text-[var(--text-sec)] hover:text-[var(--text-pri)] text-xs font-bold cursor-pointer transition-colors text-center"
                             >
                               {isPl ? "Zapisz" : "Save"}
                             </button>
                             <button
-                              onClick={() => {
-                                setActiveDialog("email");
-                              }}
-                              className="flex-1 py-1.5 rounded-xl bg-[var(--toggle-active-bg)] text-[var(--toggle-active-text)] hover:opacity-90 text-xs font-bold cursor-pointer transition-colors text-center"
+                              onClick={handleSendEmail}
+                              disabled={emailState === "sending"}
+                              className="flex-1 py-1.5 rounded-xl bg-[var(--toggle-active-bg)] text-[var(--toggle-active-text)] hover:opacity-90 disabled:opacity-75 text-xs font-bold cursor-pointer transition-colors text-center flex items-center justify-center gap-1.5"
                             >
-                              {isPl ? "Zapisz i wyślij" : "Save & send"}
+                              {emailState === "sending" ? (
+                                <>
+                                  <svg className="animate-spin h-3.5 w-3.5 text-current" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                  </svg>
+                                  <span>{isPl ? "Wysyłanie..." : "Sending..."}</span>
+                                </>
+                              ) : (
+                                <span>{isPl ? "Zapisz i wyślij" : "Save & send"}</span>
+                              )}
                             </button>
                           </div>
                         </div>
@@ -715,7 +782,7 @@ export function Features() {
                               <svg 
                                 onClick={(e) => { 
                                   e.stopPropagation(); 
-                                  setReportSubTab("plan"); 
+                                  setIsEmailMode(true); 
                                 }} 
                                 className="w-[18px] h-[18px] text-[var(--text-sec)] hover:text-[var(--accent-color)] transition-colors cursor-pointer" 
                                 fill="none" 
@@ -755,11 +822,12 @@ export function Features() {
                           </div>
 
                       {/* Sub-tabs Row — horizontally scrollable */}
-                      <div className="flex gap-2.5 mb-4 overflow-x-auto scrollbar-none pb-1 shrink-0">
+                      <div ref={tabsRowRef} className="flex gap-2.5 mb-4 overflow-x-auto scrollbar-none pb-1 shrink-0">
                         {reportSubTabs.map((subTab) => (
                           <button
                             key={subTab.id}
-                            onClick={() => setReportSubTab(subTab.id)}
+                            id={`tab-btn-${subTab.id}`}
+                            onClick={() => handleSubTabClick(subTab.id)}
                             className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer shrink-0 border ${
                               reportSubTab === subTab.id
                                 ? "border-[var(--gold-border-light)] bg-[var(--accent-bg-light)] text-[var(--gold-color)]"
@@ -772,10 +840,14 @@ export function Features() {
                       </div>
 
                       {/* Scrollable Report Content */}
-                      <div className="space-y-4 max-h-[430px] overflow-y-auto pr-0.5 scrollbar-thin select-text">
+                      <div 
+                        ref={reportScrollRef}
+                        onScroll={handleReportScroll}
+                        className="space-y-4 max-h-[430px] overflow-y-auto pr-0.5 scrollbar-thin select-text scroll-smooth"
+                      >
                         
                         {/* Session Title Header & Overview */}
-                        {(reportSubTab === "all" || reportSubTab === "summary") && (
+                        <div id="sec-summary" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] border border-[var(--card-border)] border-l-4 border-l-[var(--gold-color)] rounded-r-xl p-4 shadow-md text-left transition-all duration-300">
                             <div className="flex items-start gap-2.5 mb-1.5">
                               <span className="text-[var(--gold-color)] text-sm mt-0.5">✦</span>
@@ -790,10 +862,8 @@ export function Features() {
                                 : "The patient reports a deterioration of well-being, unusual headaches, and a lack of desire to act, despite prior improvement. He feels a lack of progress and a sense of 'mechanical damage', leading to depressive thoughts. The therapist inquires about symptoms and coping attempts."}
                             </p>
                           </div>
-                        )}
 
                         {/* SECTION 1: PODSUMOWANIE SESJI */}
-                        {(reportSubTab === "all" || reportSubTab === "summary") && (
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
                               {isPl ? "Raport Kliniczny • Część I" : "Clinical Report • Part I"}
@@ -859,10 +929,10 @@ export function Features() {
                               </div>
                             </div>
                           </div>
-                        )}
+                        </div>
 
                         {/* SECTION 2: WNIKLIWE OBSERWACJE */}
-                        {(reportSubTab === "all" || reportSubTab === "observations") && (
+                        <div id="sec-observations" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3.5">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
                               {isPl ? "Raport Kliniczny • Część II" : "Clinical Report • Part II"}
@@ -938,10 +1008,10 @@ export function Features() {
                               </div>
                             </div>
                           </div>
-                        )}
+                        </div>
 
                         {/* SECTION 3: PLAN DZIAŁANIA KLIENTA */}
-                        {(reportSubTab === "all" || reportSubTab === "plan") && (
+                        <div id="sec-plan" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3.5">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
                               {isPl ? "Raport Kliniczny • Część III" : "Clinical Report • Part III"}
@@ -1040,10 +1110,10 @@ export function Features() {
                               </div>
                             </div>
                           </div>
-                        )}
+                        </div>
 
                         {/* SECTION 4: PROPOZYCJE INTERWENCJI */}
-                        {(reportSubTab === "all" || reportSubTab === "proposals") && (
+                        <div id="sec-proposals" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3.5">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
                               {isPl ? "Raport Kliniczny • Część IV" : "Clinical Report • Part IV"}
@@ -1121,10 +1191,10 @@ export function Features() {
                               </div>
                             </div>
                           </div>
-                        )}
+                        </div>
 
                         {/* SECTION 5: WĄTKI DO POGŁĘBIENIA */}
-                        {(reportSubTab === "all" || reportSubTab === "threads") && (
+                        <div id="sec-threads" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3.5">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
                               {isPl ? "Raport Kliniczny • Część V" : "Clinical Report • Part V"}
@@ -1182,10 +1252,10 @@ export function Features() {
                               </div>
                             </div>
                           </div>
-                        )}
+                        </div>
 
                         {/* SECTION 6: WSKAZÓWKI SUPERWIZYJNE */}
-                        {(reportSubTab === "all" || reportSubTab === "supervision") && (
+                        <div id="sec-supervision" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3.5">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
                               {isPl ? "Raport Kliniczny • Część VI" : "Clinical Report • Part VI"}
@@ -1226,10 +1296,10 @@ export function Features() {
                               </div>
                             </div>
                           </div>
-                        )}
+                        </div>
 
                         {/* SECTION 7: WSTĘPNE HIPOTEZY DIAGNOSTYCZNE */}
-                        {(reportSubTab === "all" || reportSubTab === "diagnosis") && (
+                        <div id="sec-diagnosis" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3.5">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
                               {isPl ? "Raport Kliniczny • Część VII" : "Clinical Report • Part VII"}
@@ -1299,7 +1369,7 @@ export function Features() {
                               </div>
                             </div>
                           </div>
-                        )}
+                        </div>
                       </div>
                     </>
                   )}
