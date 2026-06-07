@@ -30,10 +30,18 @@ class CreateAudioUploadResult {
   /// session_id the client surfaces to the UI forever — there's no
   /// follow-up RPC that could return a different one.
   final String sessionId;
+  /// Resumable upload (docs/26). Empty when the server didn't start a
+  /// resumable session — the worker then uses the single-PUT [signedUrl].
+  final String resumableSessionUri;
+  final DateTime? resumableExpiresAt;
+  final int resumableChunkSize;
   const CreateAudioUploadResult({
     required this.uploadId,
     required this.signedUrl,
     this.sessionId = '',
+    this.resumableSessionUri = '',
+    this.resumableExpiresAt,
+    this.resumableChunkSize = 0,
   });
 }
 

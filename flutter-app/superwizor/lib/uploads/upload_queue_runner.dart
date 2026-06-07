@@ -98,6 +98,12 @@ class UploadQueueRunner {
   /// when the row is dismissed.
   final Map<String, StreamSubscription<String>> _analysisSubs = {};
 
+  /// Live upload fraction (0..1) per localId during the GCS PUT — held in
+  /// memory only (never persisted; resume() recomputes the real offset after
+  /// an app-kill) and overlaid onto emitted snapshots so the UI can render a
+  /// progress bar without an extra Hive write per chunk.
+  final Map<String, double> _uploadProgress = {};
+
   final _snapshotsCtrl =
       StreamController<List<PendingUpload>>.broadcast();
   Timer? _periodicTimer;
@@ -117,7 +123,18 @@ class UploadQueueRunner {
   Stream<List<PendingUpload>> get snapshots => _snapshotsCtrl.stream;
 
   /// Current snapshot synchronously (for initial UI paint).
-  List<PendingUpload> snapshotNow() => _queue.all();
+  List<PendingUpload> snapshotNow() => _withProgress(_queue.all());
+
+  /// Overlays the in-memory live upload fraction onto rows currently
+  /// uploading (phase=created) so the UI sees a progress bar.
+  List<PendingUpload> _withProgress(List<PendingUpload> rows) {
+    if (_uploadProgress.isEmpty) return rows;
+    return rows.map((u) {
+      final p = _uploadProgress[u.localId];
+      if (p == null || u.phase != UploadPhase.created) return u;
+      return u.copyWith(uploadProgress: p);
+    }).toList();
+  }
 
   // ── Lifecycle ─────────────────────────────────────────────────
 
@@ -274,6 +291,7 @@ class UploadQueueRunner {
       await _worker.cleanupSource(u);
     }
     await _queue.removeById(localId);
+    _uploadProgress.remove(localId);
     _emitSnapshot();
   }
 
@@ -369,8 +387,18 @@ class UploadQueueRunner {
         if (fresh == null || fresh.isTerminal || fresh.isParked) continue;
         var current = fresh;
         while (_running) {
-          final next = await _worker.runOne(current);
+          final next = await _worker.runOne(
+            current,
+            onUploadProgress: (frac) {
+              _uploadProgress[current.localId] = frac;
+              _emitSnapshot(); // live progress bar during the PUT
+            },
+          );
           if (identical(next, current)) break; // worker no-op (terminal/parked)
+          // Upload finished one way or another — drop the transient progress.
+          if (next.phase != UploadPhase.created) {
+            _uploadProgress.remove(current.localId);
+          }
           await _queue.update(next);
           changed = true;
 
@@ -457,7 +485,7 @@ class UploadQueueRunner {
 
   void _emitSnapshot() {
     if (_snapshotsCtrl.isClosed) return;
-    _snapshotsCtrl.add(_queue.all());
+    _snapshotsCtrl.add(_withProgress(_queue.all()));
   }
 
   /// Brings the `_analysisSubs` map into sync with the current queue

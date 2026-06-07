@@ -84,6 +84,28 @@ const CreateAudioUploadResponse$json = {
       '10': 'requiredHeaders'
     },
     {'1': 'session_id', '3': 6, '4': 1, '5': 9, '10': 'sessionId'},
+    {
+      '1': 'resumable_session_uri',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'resumableSessionUri'
+    },
+    {
+      '1': 'resumable_session_expires_at',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'resumableSessionExpiresAt'
+    },
+    {
+      '1': 'recommended_chunk_size_bytes',
+      '3': 9,
+      '4': 1,
+      '5': 3,
+      '10': 'recommendedChunkSizeBytes'
+    },
   ],
   '3': [CreateAudioUploadResponse_RequiredHeadersEntry$json],
 };
@@ -106,8 +128,12 @@ final $typed_data.Uint8List createAudioUploadResponseDescriptor = $convert.base6
     'IfCgtvYmplY3RfcGF0aBgEIAEoCVIKb2JqZWN0UGF0aBJnChByZXF1aXJlZF9oZWFkZXJzGAUg'
     'AygLMjwuaW5nZXN0aW9uLnYxLkNyZWF0ZUF1ZGlvVXBsb2FkUmVzcG9uc2UuUmVxdWlyZWRIZW'
     'FkZXJzRW50cnlSD3JlcXVpcmVkSGVhZGVycxIdCgpzZXNzaW9uX2lkGAYgASgJUglzZXNzaW9u'
-    'SWQaQgoUUmVxdWlyZWRIZWFkZXJzRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAi'
-    'ABKAlSBXZhbHVlOgI4AQ==');
+    'SWQSMgoVcmVzdW1hYmxlX3Nlc3Npb25fdXJpGAcgASgJUhNyZXN1bWFibGVTZXNzaW9uVXJpEl'
+    'sKHHJlc3VtYWJsZV9zZXNzaW9uX2V4cGlyZXNfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYu'
+    'VGltZXN0YW1wUhlyZXN1bWFibGVTZXNzaW9uRXhwaXJlc0F0Ej8KHHJlY29tbWVuZGVkX2NodW'
+    '5rX3NpemVfYnl0ZXMYCSABKANSGXJlY29tbWVuZGVkQ2h1bmtTaXplQnl0ZXMaQgoUUmVxdWly'
+    'ZWRIZWFkZXJzRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAiABKAlSBXZhbHVlOg'
+    'I4AQ==');
 
 @$core.Deprecated('Use getAudioUploadStatusRequestDescriptor instead')
 const GetAudioUploadStatusRequest$json = {

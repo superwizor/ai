@@ -36,6 +36,18 @@ RETURNING *;
 -- name: MarkAudioUploadFailed :exec
 UPDATE audio_uploads SET status = 'FAILED', error_message = $2 WHERE id = $1;
 
+-- name: SetResumableSession :exec
+-- docs/26 PR1: persist the GCS resumable session URI + expiry on the
+-- audio_uploads row at CreateAudioUpload time so retries reuse it.
+UPDATE audio_uploads
+SET resumable_session_uri = $2, resumable_session_expires_at = $3
+WHERE id = $1;
+
+-- name: MarkGenerationProcessed :exec
+-- docs/26 PR3: record the GCS object generation we've finalized so a
+-- redelivered (at-least-once) OBJECT_FINALIZE for the same generation is a no-op.
+UPDATE audio_uploads SET processed_generation = $2 WHERE id = $1;
+
 -- name: UpdateAudioUploadAfterConversion :one
 -- Rewrites object_path + content_type after the new ConvertAudio RPC
 -- transcoded the GCS object (e.g. M4A → FLAC). Touched columns are

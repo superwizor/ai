@@ -153,6 +153,22 @@ class PendingUpload {
   /// against those, this stays NULL until phase=completed.
   final String? sessionId;
 
+  // ── Resumable upload (docs/26) ────────────────────────────────
+  /// GCS resumable session URI. When present the worker PUTs byte-range
+  /// chunks here and resumes from the GCS-acked offset (queried live, so
+  /// it survives app-kill) instead of restarting the whole object. Null →
+  /// legacy single PUT to [signedUrl].
+  final String? resumableSessionUri;
+  final DateTime? resumableExpiresAt;
+  /// Server-recommended chunk size in bytes; 0 → client default (8 MiB).
+  final int resumableChunkSize;
+
+  /// Live upload fraction (0..1) during the PUT. TRANSIENT — held in memory
+  /// by the runner and overlaid onto emitted snapshots for the progress bar;
+  /// deliberately NOT persisted to Hive (resume() recomputes the real offset
+  /// after an app-kill, so a persisted value would be misleading).
+  final double uploadProgress;
+
   // ── Retry bookkeeping ─────────────────────────────────────────
   final int attemptCount;
   final DateTime queuedAt; // UTC
@@ -183,6 +199,10 @@ class PendingUpload {
     this.uploadId,
     this.signedUrl,
     this.sessionId,
+    this.resumableSessionUri,
+    this.resumableExpiresAt,
+    this.resumableChunkSize = 0,
+    this.uploadProgress = 0.0,
     this.attemptCount = 0,
     this.lastError,
     this.terminatedAt,
@@ -231,6 +251,10 @@ class PendingUpload {
     String? uploadId,
     String? signedUrl,
     String? sessionId,
+    String? resumableSessionUri,
+    DateTime? resumableExpiresAt,
+    int? resumableChunkSize,
+    double? uploadProgress,
     int? attemptCount,
     DateTime? nextAttemptAt,
     String? lastError,
@@ -269,6 +293,16 @@ class PendingUpload {
       signedUrl:
           clearUploadCredentials ? null : (signedUrl ?? this.signedUrl),
       sessionId: sessionId ?? this.sessionId,
+      // A re-create (clearUploadCredentials) re-issues the resumable session
+      // too — drop the stale URI so the worker doesn't PUT to a dead session.
+      resumableSessionUri: clearUploadCredentials
+          ? null
+          : (resumableSessionUri ?? this.resumableSessionUri),
+      resumableExpiresAt: clearUploadCredentials
+          ? null
+          : (resumableExpiresAt ?? this.resumableExpiresAt),
+      resumableChunkSize: resumableChunkSize ?? this.resumableChunkSize,
+      uploadProgress: uploadProgress ?? this.uploadProgress,
       idempotencyKey: idempotencyKey,
       queuedAt: queuedAt,
       nextAttemptAt: nextAttemptAt ?? this.nextAttemptAt,
@@ -310,6 +344,9 @@ class PendingUpload {
         'phase': phase.name,
         'uploadId': uploadId,
         'signedUrl': signedUrl,
+        'resumableSessionUri': resumableSessionUri,
+        'resumableExpiresAt': resumableExpiresAt?.toUtc().toIso8601String(),
+        'resumableChunkSize': resumableChunkSize,
         'idempotencyKey': idempotencyKey,
         'sessionId': sessionId,
         'attemptCount': attemptCount,
@@ -338,6 +375,11 @@ class PendingUpload {
         phase: _parsePhase(j['phase']),
         uploadId: j['uploadId'] as String?,
         signedUrl: j['signedUrl'] as String?,
+        resumableSessionUri: j['resumableSessionUri'] as String?,
+        resumableExpiresAt: (j['resumableExpiresAt'] as String?) == null
+            ? null
+            : DateTime.parse(j['resumableExpiresAt'] as String).toUtc(),
+        resumableChunkSize: (j['resumableChunkSize'] as num?)?.toInt() ?? 0,
         idempotencyKey: j['idempotencyKey'] as String,
         sessionId: j['sessionId'] as String?,
         attemptCount: (j['attemptCount'] as num?)?.toInt() ?? 0,

@@ -61,6 +61,18 @@ message CreateAudioUploadResponse {
   // status from this point. Lets Flutter render the kartoteka
   // entry immediately rather than waiting on async finalize.
   string session_id = 6;
+
+  // ── Resumable upload (docs/26 PR1) ──────────────────────────────
+  // GCS resumable session endpoint the client PUTs byte-range chunks to
+  // (Content-Range), resuming across network drops instead of restarting
+  // the whole object. Empty when the server couldn't start a resumable
+  // session — clients then fall back to signed_url (single PUT).
+  string resumable_session_uri = 7;
+  // ~7-day session lifetime (advisory; clients rely on GCS 404/410 to
+  // detect a dead session and re-create via the same idempotency_key).
+  google.protobuf.Timestamp resumable_session_expires_at = 8;
+  // Suggested chunk size (multiple of 256 KiB; e.g. 8 MiB). Clients may clamp.
+  int64 recommended_chunk_size_bytes = 9;
 }
 
 message GetAudioUploadStatusRequest {

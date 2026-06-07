@@ -325,6 +325,15 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		uploadIDStr = uuid.UUID(upload.ID.Bytes).String()
 	}
 
+	// Resumable session (docs/26). Fresh row — no persisted session yet.
+	resumableURI, resumableExp := s.resumableFields(
+		ctx, upload.ID, objectPath, req.ContentType, req.EstimatedSizeBytes, nil, pgtype.Timestamptz{},
+	)
+	var chunkSize int64
+	if resumableURI != "" {
+		chunkSize = recommendedChunkSizeBytes
+	}
+
 	return &ingestionv1.CreateAudioUploadResponse{
 		UploadId:           uploadIDStr,
 		SignedUrl:          signedURL,
@@ -333,8 +342,51 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		RequiredHeaders: map[string]string{
 			"x-goog-meta-source": "superwizor-mobile",
 		},
-		SessionId: sessionUUID.String(),
+		SessionId:                 sessionUUID.String(),
+		ResumableSessionUri:       resumableURI,
+		ResumableSessionExpiresAt: resumableExp,
+		RecommendedChunkSizeBytes: chunkSize,
 	}, nil
+}
+
+// recommendedChunkSizeBytes — GCS requires resumable chunk sizes to be a
+// multiple of 256 KiB; 8 MiB balances request count vs bytes wasted on a drop.
+const recommendedChunkSizeBytes int64 = 8 * 1024 * 1024
+
+// resumableFields returns the resumable-session fields for the response,
+// reusing a still-valid persisted session or starting (and persisting) a fresh
+// one. Best-effort: on any error it logs and returns empty so the client falls
+// back to the single-PUT signed_url — resumable must never block CreateAudioUpload.
+func (s *Server) resumableFields(
+	ctx context.Context,
+	uploadID pgtype.UUID,
+	objectPath, contentType string,
+	estSize int64,
+	existingURI *string,
+	existingExpiry pgtype.Timestamptz,
+) (uri string, expires *timestamppb.Timestamp) {
+	if existingURI != nil && *existingURI != "" && existingExpiry.Valid &&
+		existingExpiry.Time.After(time.Now()) {
+		return *existingURI, timestamppb.New(existingExpiry.Time)
+	}
+	newURI, exp, err := s.signer.StartResumableSession(ctx, objectPath, contentType, estSize)
+	if err != nil {
+		slog.WarnContext(ctx, "CreateAudioUpload: resumable init failed (client falls back to single PUT)",
+			"error", err, "object_path", objectPath)
+		return "", nil
+	}
+	if uploadID.Valid {
+		if perr := s.queries.SetResumableSession(ctx, db.SetResumableSessionParams{
+			ID:                        uploadID,
+			ResumableSessionUri:       &newURI,
+			ResumableSessionExpiresAt: pgtype.Timestamptz{Time: exp, Valid: true},
+		}); perr != nil {
+			// Non-fatal: this response still carries the URI; the row just
+			// won't remember it (a later retry re-inits).
+			slog.WarnContext(ctx, "CreateAudioUpload: persist resumable session failed", "error", perr)
+		}
+	}
+	return newURI, timestamppb.New(exp)
 }
 
 // cachedAudioUploadResponse rebuilds the gRPC response for an
@@ -385,6 +437,18 @@ func (s *Server) cachedAudioUploadResponse(ctx context.Context, existing db.Audi
 	if existing.SessionID.Valid {
 		sessionIDStr = uuid.UUID(existing.SessionID.Bytes).String()
 	}
+
+	// Resumable session (docs/26): reuse the persisted one if still valid,
+	// else start a fresh session for the same object_path.
+	resumableURI, resumableExp := s.resumableFields(
+		ctx, existing.ID, existing.ObjectPath, existing.ContentType, estSize,
+		existing.ResumableSessionUri, existing.ResumableSessionExpiresAt,
+	)
+	var chunkSize int64
+	if resumableURI != "" {
+		chunkSize = recommendedChunkSizeBytes
+	}
+
 	return &ingestionv1.CreateAudioUploadResponse{
 		UploadId:           existingID.String(),
 		SignedUrl:          signedURL,
@@ -393,7 +457,10 @@ func (s *Server) cachedAudioUploadResponse(ctx context.Context, existing db.Audi
 		RequiredHeaders: map[string]string{
 			"x-goog-meta-source": "superwizor-mobile",
 		},
-		SessionId: sessionIDStr,
+		SessionId:                 sessionIDStr,
+		ResumableSessionUri:       resumableURI,
+		ResumableSessionExpiresAt: resumableExp,
+		RecommendedChunkSizeBytes: chunkSize,
 	}, nil
 }
 
