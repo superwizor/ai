@@ -247,6 +247,12 @@ export function Features() {
   const [activeTab, setActiveTab] = useState<FeatureKey>("report");
   const [reportSubTab, setReportSubTab] = useState<string>("summary");
   const [isEmailMode, setIsEmailMode] = useState<boolean>(false);
+  const [isAnalyzingView, setIsAnalyzingView] = useState<boolean>(false);
+
+  const changeTab = (tab: FeatureKey) => {
+    setActiveTab(tab);
+    setIsAnalyzingView(false);
+  };
 
   const reportScrollRef = useRef<HTMLDivElement>(null);
   const tabsRowRef = useRef<HTMLDivElement>(null);
@@ -362,13 +368,13 @@ export function Features() {
     if (e) e.stopPropagation();
     const currentIndex = tabs.indexOf(activeTab);
     const nextIndex = (currentIndex + 1) % tabs.length;
-    setActiveTab(tabs[nextIndex]);
+    changeTab(tabs[nextIndex]);
   };
   const handlePrevTab = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const currentIndex = tabs.indexOf(activeTab);
     const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-    setActiveTab(tabs[prevIndex]);
+    changeTab(tabs[prevIndex]);
   };
 
   const reportSubTabs = [
@@ -416,7 +422,7 @@ export function Features() {
               
               {/* Tab 1: Report */}
               <button
-                onClick={() => setActiveTab("report")}
+                onClick={() => changeTab("report")}
                 className={`snap-center min-w-[140px] sm:min-w-[160px] lg:min-w-0 flex-shrink-0 text-left rounded-xl lg:rounded-[20px] p-3 lg:p-6 transition-all duration-300 cursor-pointer border flex flex-row items-center gap-2.5 lg:flex-col lg:items-start lg:gap-0 ${
                   activeTab === "report"
                     ? "bg-gradient-to-br from-[#004D54] to-[#002E32] text-white border-transparent shadow-[0_12px_32px_-12px_rgba(0,77,84,0.35)]"
@@ -447,7 +453,7 @@ export function Features() {
 
               {/* Tab 2: Transcript */}
               <button
-                onClick={() => setActiveTab("transcript")}
+                onClick={() => changeTab("transcript")}
                 className={`snap-center min-w-[140px] sm:min-w-[160px] lg:min-w-0 flex-shrink-0 text-left rounded-xl lg:rounded-[20px] p-3 lg:p-6 transition-all duration-300 cursor-pointer border flex flex-row items-center gap-2.5 lg:flex-col lg:items-start lg:gap-0 ${
                   activeTab === "transcript"
                     ? "bg-gradient-to-br from-[#004D54] to-[#002E32] text-white border-transparent shadow-[0_12px_32px_-12px_rgba(0,77,84,0.35)]"
@@ -478,7 +484,7 @@ export function Features() {
 
               {/* Tab 3: Continuity */}
               <button
-                onClick={() => setActiveTab("continuity")}
+                onClick={() => changeTab("continuity")}
                 className={`snap-center min-w-[140px] sm:min-w-[160px] lg:min-w-0 flex-shrink-0 text-left rounded-xl lg:rounded-[20px] p-3 lg:p-6 transition-all duration-300 cursor-pointer border flex flex-row items-center gap-2.5 lg:flex-col lg:items-start lg:gap-0 ${
                   activeTab === "continuity"
                     ? "bg-gradient-to-br from-[#004D54] to-[#002E32] text-white border-transparent shadow-[0_12px_32px_-12px_rgba(0,77,84,0.35)]"
@@ -511,7 +517,7 @@ export function Features() {
 
               {/* Tab 4: Modality */}
               <button
-                onClick={() => setActiveTab("modality")}
+                onClick={() => changeTab("modality")}
                 className={`snap-center min-w-[140px] sm:min-w-[160px] lg:min-w-0 flex-shrink-0 text-left rounded-xl lg:rounded-[20px] p-3 lg:p-6 transition-all duration-300 cursor-pointer border flex flex-row items-center gap-2.5 lg:flex-col lg:items-start lg:gap-0 ${
                   activeTab === "modality"
                     ? "bg-gradient-to-br from-[#004D54] to-[#002E32] text-white border-transparent shadow-[0_12px_32px_-12px_rgba(0,77,84,0.35)]"
@@ -649,7 +655,111 @@ export function Features() {
                   {/* ──────────────────────────────────────────────────────────── */}
                   {activeTab === "report" && (
                     <div className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1">
-                      {isEmailMode ? (
+                      {isAnalyzingView ? (
+                        <div className="flex flex-col flex-1 justify-between text-left animate-[fadeIn_0.2s_ease-out]">
+                          {/* App Bar with Back Arrow */}
+                          <div className="flex items-center mb-4 shrink-0">
+                            <button 
+                              onClick={() => {
+                                setIsAnalyzingView(false);
+                                setActiveTab("continuity");
+                              }}
+                              className="w-8 h-8 rounded-full bg-[var(--back-btn-bg)] hover:bg-[var(--back-btn-hover)] border border-white/5 flex items-center justify-center text-[var(--back-btn-text)] transition-all cursor-pointer shadow-md"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                          </div>
+
+                          {/* Content Wrapper */}
+                          <div className="flex-1 flex flex-col justify-start">
+                            <h3 className="font-sans font-bold text-xl lg:text-2xl text-[#fcae2f] leading-snug">
+                              Bezpieczna analiza w toku.
+                            </h3>
+                            <p className="font-sans text-[11px] lg:text-[13px] text-white/70 mt-2 leading-relaxed">
+                              Opracowujemy dla Ciebie raporty i transkrypcje. Może to potrwać 15 minut. Możesz tutaj wrócić za chwilę.
+                            </p>
+
+                            {/* Timeline Steps */}
+                            <div className="mt-8 space-y-6 relative pl-9">
+                              {/* Connecting line between steps */}
+                              <div className="absolute left-[13px] top-[14px] bottom-[14px] w-[2px] bg-white/10 z-0">
+                                {/* Active orange segment from step 1 to step 2 */}
+                                <div className="h-[30%] bg-[#ffb12c]" />
+                              </div>
+
+                              {/* Step 1 */}
+                              <div className="relative flex items-start gap-3.5 z-10">
+                                <div className="w-7 h-7 rounded-full bg-[#ffb12c] flex items-center justify-center text-[#06383e] text-xs font-bold shrink-0 shadow-lg">
+                                  ✓
+                                </div>
+                                <div>
+                                  <h4 className="font-sans text-[12.5px] text-white/90 font-medium">
+                                    Audio bezpieczne na naszych serwerach.
+                                  </h4>
+                                </div>
+                              </div>
+
+                              {/* Step 2 */}
+                              <div className="relative flex items-start gap-3.5 z-10">
+                                <div className="w-7 h-7 rounded-full bg-[#ffb12c] text-[#06383e] flex items-center justify-center font-sans text-xs font-bold shrink-0 shadow-lg">
+                                  2
+                                </div>
+                                <div>
+                                  <h4 className="font-sans text-[12.5px] text-white font-semibold">
+                                    Tworzymy transkrypcję.
+                                  </h4>
+                                  <div className="flex items-center gap-2 mt-1.5">
+                                    <div className="w-3.5 h-3.5 border-[1.5px] border-[#ffb12c]/30 border-t-[#ffb12c] rounded-full animate-spin" />
+                                    <span className="text-[10px] text-[#ffb12c] font-medium">{isPl ? "Przetwarzanie..." : "Processing..."}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Step 3 */}
+                              <div className="relative flex items-start gap-3.5 z-10">
+                                <div className="w-7 h-7 rounded-full bg-[#0d2a2c]/80 border border-white/10 text-white/40 flex items-center justify-center font-sans text-xs font-medium shrink-0">
+                                  3
+                                </div>
+                                <div>
+                                  <h4 className="font-sans text-[12.5px] text-white/40 font-medium">
+                                    Sztuczna Inteligencja przygotowuje wnioski.
+                                  </h4>
+                                </div>
+                              </div>
+
+                              {/* Step 4 */}
+                              <div className="relative flex items-start gap-3.5 z-10">
+                                <div className="w-7 h-7 rounded-full bg-[#0d2a2c]/80 border border-white/10 text-white/40 flex items-center justify-center font-sans text-xs font-medium shrink-0">
+                                  4
+                                </div>
+                                <div>
+                                  <h4 className="font-sans text-[12.5px] text-white/40 font-medium">
+                                    Gotowe! Wysyłamy wnioski do Ciebie.
+                                  </h4>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Bottom Return Button */}
+                          <div className="mt-8 shrink-0">
+                            <button
+                              onClick={() => {
+                                setIsAnalyzingView(false);
+                                setActiveTab("continuity");
+                              }}
+                              className="w-full py-2.5 rounded-xl border border-white/15 text-white/90 hover:bg-white/[0.03] text-xs font-semibold cursor-pointer transition-all flex items-center justify-center gap-2"
+                            >
+                              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                              </svg>
+                              <span>{isPl ? "Wróć do kartotek" : "Wróć do kartotek"}</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : isEmailMode ? (
                         <div className="flex flex-col flex-1 justify-between text-left animate-[fadeIn_0.2s_ease-out]">
                           {/* App Bar matching Screenshot 4 */}
                           <div className="flex items-center gap-3.5 mb-3 shrink-0">
@@ -1615,7 +1725,15 @@ export function Features() {
                     <div className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1 relative min-h-[380px]">
                       {/* App Bar */}
                       <div className="flex justify-between items-center mb-4">
-                        <span className="text-white text-base cursor-pointer">⟨</span>
+                        <span 
+                          onClick={() => {
+                            setIsAnalyzingView(false);
+                            setActiveTab("report");
+                          }}
+                          className="text-white text-base cursor-pointer font-bold text-lg select-none hover:text-white/80 transition-colors"
+                        >
+                          ⟨
+                        </span>
                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
                           <path d="M12 20h9" />
                           <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
@@ -1632,24 +1750,77 @@ export function Features() {
                         </p>
                       </div>
 
-                      {/* Session Cards list */}
-                      <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-0.5 scrollbar-thin">
+                      {/* Session Connection Info (horizontal continuity) */}
+                      <div className="flex items-start gap-3.5 mb-6 text-left select-none px-1">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="w-8 h-8 text-[#5bf4bc] shrink-0 mt-0.5">
+                          <path d="M8 3H5a2 2 0 00-2 2v3" />
+                          <path d="M21 8V5a2 2 0 00-2-2h-6" />
+                          <path d="M16 21h3a2 2 0 002-2v-3" />
+                          <path d="M3 16v3a2 2 0 002 2h3" />
+                          <circle cx="8" cy="12" r="2" fill="currentColor" />
+                          <circle cx="16" cy="12" r="2" fill="currentColor" />
+                          <path d="M8 12c2-3 6-3 8 0" stroke="#ffb12c" strokeWidth="2.5" strokeLinecap="round" className="animate-pulse" />
+                          <path d="M8 12c2 3 6 3 8 0" stroke="#5bf4bc" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                        <div>
+                          <h4 className="font-sans font-bold text-white text-[13.5px] lg:text-[14.5px] tracking-wide mb-1 leading-snug">
+                            {isPl ? "Ciągłość relacji z sesji na sesję" : "Continuity across sessions"}
+                          </h4>
+                          <p className="font-sans text-[11.5px] lg:text-[12.5px] text-white/95 leading-relaxed font-semibold">
+                            {isPl 
+                              ? "System automatycznie łączy wątki z poprzednich spotkań, dbając o nieprzerwaną ciągłość procesu terapeutycznego bez konieczności pamiętania każdego szczegółu."
+                              : "The system automatically links threads from past meetings, ensuring uninterrupted continuity of the therapeutic process without having to remember every detail."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Session Cards list with glowing vertical RAG connector line */}
+                      <div className="relative pl-5.5 space-y-2.5 max-h-[380px] overflow-y-auto pr-0.5 scrollbar-thin">
                         
-                        {/* Sesja 6 card (Active new report) */}
+                        {/* The glowing curved line running behind the session badges */}
+                        <div className="absolute left-2.5 top-4 bottom-4 w-1 select-none pointer-events-none z-0">
+                          <svg className="h-full w-4 overflow-visible" fill="none" viewBox="0 0 16 500" preserveAspectRatio="none">
+                            <defs>
+                              <linearGradient id="rag-line-grad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ffb12c" stopOpacity="0.95" />
+                                <stop offset="50%" stopColor="#5bf4bc" stopOpacity="0.95" />
+                                <stop offset="100%" stopColor="#5bf4bc" stopOpacity="0.4" />
+                              </linearGradient>
+                              <filter id="glow-filter" x="-20%" y="-20%" width="140%" height="140%">
+                                <feGaussianBlur stdDeviation="1.5" result="blur" />
+                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                              </filter>
+                            </defs>
+                            {/* Curved wavy timeline connector path */}
+                            <path 
+                              d="M 2,0 C 14,70 -6,140 8,210 C 20,280 0,350 6,420" 
+                              stroke="url(#rag-line-grad)" 
+                              strokeWidth="2" 
+                              strokeLinecap="round"
+                              filter="url(#glow-filter)"
+                              className="animate-[pulse_3s_infinite_alternate]"
+                            />
+                          </svg>
+                        </div>
+
+                        {/* Sesja 6 card (Active AI analyzing) */}
                         <div 
-                          onClick={() => setActiveTab("report")}
-                          className="bg-[var(--card-bg)] border border-[var(--accent-border-light)] rounded-xl p-3 lg:p-4 flex items-center justify-between shadow-md cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/50 transition-all duration-300"
+                          onClick={() => {
+                            setIsAnalyzingView(true);
+                            setActiveTab("report");
+                          }}
+                          className="bg-[var(--card-bg)] border border-[var(--accent-border-light)] rounded-xl p-3 lg:p-4 flex items-center justify-between shadow-md cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/50 transition-all duration-300 relative z-10"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#0e3b33] border border-[#5bf4bc]/30 flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-[#5bf4bc]">
+                            <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#0e3b33] border border-[#ffb12c]/30 flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-[#ffb12c]">
                               #6
                             </div>
                             <div>
                               <div className="font-sans text-[12.5px] lg:text-[14.5px] font-bold text-[var(--text-pri)]">{isPl ? "Sesja 6" : "Session 6"}</div>
                               <div className="font-sans text-[9.5px] lg:text-[11.5px] text-[var(--text-sec)]/80 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                                <span>{isPl ? "2 Cze" : "2 Jun"} · 10:29 – 10:30 · 1 min</span>
-                                <span className="bg-[#0F3B32] text-[#5bf4bc] text-[8px] lg:text-[9.5px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0">
-                                  <span className="w-1 h-1 rounded-full bg-[#5bf4bc]" /> {isPl ? "Nowy raport" : "New report"}
+                                <span>{isPl ? "2 Cze · 10:29" : "2 Jun · 10:29"}</span>
+                                <span className="bg-amber-500/10 text-amber-400 text-[8px] lg:text-[9.5px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0 border border-amber-500/20 animate-pulse">
+                                  <span className="w-1 h-1 rounded-full bg-amber-400 animate-ping" /> {isPl ? "Analizuje przez AI" : "AI analyzing"}
                                 </span>
                               </div>
                             </div>
@@ -1659,8 +1830,11 @@ export function Features() {
 
                         {/* Sesja 5 card */}
                         <div 
-                          onClick={() => setActiveTab("report")}
-                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300"
+                          onClick={() => {
+                            setIsAnalyzingView(false);
+                            setActiveTab("report");
+                          }}
+                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300 relative z-10"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#112d2a] flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-white/80">
@@ -1668,7 +1842,12 @@ export function Features() {
                             </div>
                             <div>
                               <div className="font-sans text-[12.5px] lg:text-[14.5px] font-bold text-[var(--text-pri)]">{isPl ? "Sesja 5" : "Session 5"}</div>
-                              <div className="font-sans text-[9.5px] lg:text-[12px] text-white/50 mt-0.5">{isPl ? "24 Maj" : "24 May"} · 17:41</div>
+                              <div className="font-sans text-[9.5px] lg:text-[11.5px] text-[var(--text-sec)]/80 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                <span>{isPl ? "24 Maj · 17:41" : "24 May · 17:41"}</span>
+                                <span className="bg-[#0F3B32] text-[#5bf4bc] text-[8px] lg:text-[9.5px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0 border border-[#5bf4bc]/20">
+                                  <span className="w-1 h-1 rounded-full bg-[#5bf4bc]" /> {isPl ? "Nowy raport" : "New report"}
+                                </span>
+                              </div>
                             </div>
                           </div>
                           <span className="text-white/50 text-sm">⋮</span>
@@ -1676,8 +1855,11 @@ export function Features() {
 
                         {/* Sesja 4 card */}
                         <div 
-                          onClick={() => setActiveTab("report")}
-                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300"
+                          onClick={() => {
+                            setIsAnalyzingView(false);
+                            setActiveTab("report");
+                          }}
+                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300 relative z-10"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#112d2a] flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-white/80">
@@ -1685,7 +1867,7 @@ export function Features() {
                             </div>
                             <div>
                               <div className="font-sans text-[12.5px] lg:text-[14.5px] font-bold text-[var(--text-pri)]">{isPl ? "Sesja 4" : "Session 4"}</div>
-                              <div className="font-sans text-[9.5px] lg:text-[12px] text-white/50 mt-0.5">{isPl ? "16 Maj" : "16 May"} · 23:32</div>
+                              <div className="font-sans text-[9.5px] lg:text-[12px] text-white/50 mt-0.5">{isPl ? "16 Maj · 23:32" : "16 May · 23:32"}</div>
                             </div>
                           </div>
                           <span className="text-white/50 text-sm">⋮</span>
@@ -1693,8 +1875,11 @@ export function Features() {
 
                         {/* Sesja 3 card */}
                         <div 
-                          onClick={() => setActiveTab("report")}
-                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300"
+                          onClick={() => {
+                            setIsAnalyzingView(false);
+                            setActiveTab("report");
+                          }}
+                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300 relative z-10"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#112d2a] flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-white/80">
@@ -1702,7 +1887,7 @@ export function Features() {
                             </div>
                             <div>
                               <div className="font-sans text-[12.5px] lg:text-[14.5px] font-bold text-[var(--text-pri)]">{isPl ? "Sesja 3" : "Session 3"}</div>
-                              <div className="font-sans text-[9.5px] lg:text-[12px] text-white/50 mt-0.5">{isPl ? "10 Maj" : "10 May"} · 14:15</div>
+                              <div className="font-sans text-[9.5px] lg:text-[12px] text-white/50 mt-0.5">{isPl ? "10 Maj · 14:15" : "10 May · 14:15"}</div>
                             </div>
                           </div>
                           <span className="text-white/50 text-sm">⋮</span>
@@ -1710,8 +1895,11 @@ export function Features() {
 
                         {/* Sesja 2 card */}
                         <div 
-                          onClick={() => setActiveTab("report")}
-                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300"
+                          onClick={() => {
+                            setIsAnalyzingView(false);
+                            setActiveTab("report");
+                          }}
+                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300 relative z-10"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#112d2a] flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-white/80">
@@ -1719,16 +1907,19 @@ export function Features() {
                             </div>
                             <div>
                               <div className="font-sans text-[12.5px] lg:text-[14.5px] font-bold text-[var(--text-pri)]">{isPl ? "Sesja 2" : "Session 2"}</div>
-                              <div className="font-sans text-[9.5px] lg:text-[12px] text-white/50 mt-0.5">{isPl ? "3 Maj" : "3 May"} · 11:20</div>
+                              <div className="font-sans text-[9.5px] lg:text-[12px] text-white/50 mt-0.5">{isPl ? "3 Maj · 11:20" : "3 May · 11:20"}</div>
                             </div>
                           </div>
                           <span className="text-white/50 text-sm">⋮</span>
                         </div>
 
-                        {/* Sesja 1 card (Active AI analyzing) */}
+                        {/* Sesja 1 card */}
                         <div 
-                          onClick={() => setActiveTab("report")}
-                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300"
+                          onClick={() => {
+                            setIsAnalyzingView(false);
+                            setActiveTab("report");
+                          }}
+                          className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 lg:p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--back-btn-hover)] hover:border-[var(--accent-color)]/30 transition-all duration-300 relative z-10"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-[#112d2a] flex items-center justify-center font-sans font-bold text-[12px] lg:text-[14px] text-white/80">
@@ -1736,13 +1927,7 @@ export function Features() {
                             </div>
                             <div>
                               <div className="font-sans text-[12.5px] lg:text-[14.5px] font-bold text-[var(--text-pri)]">{isPl ? "Sesja 1" : "Session 1"}</div>
-                              <div className="font-sans text-[9.5px] lg:text-[11.5px] text-[var(--text-sec)]/80 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                                <span>{isPl ? "28 Kwi" : "28 Apr"} · 15:45</span>
-                                <span className="bg-amber-500/10 text-amber-400 text-[8.5px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0 border border-amber-500/20 animate-pulse">
-                                  <span className="w-1 h-1 rounded-full bg-amber-400" /> 
-                                  {isPl ? "Analiza AI trwa..." : "AI analyzing..."}
-                                </span>
-                              </div>
+                              <div className="font-sans text-[9.5px] lg:text-[12px] text-white/50 mt-0.5">{isPl ? "28 Kwi · 15:45" : "28 Apr · 15:45"}</div>
                             </div>
                           </div>
                           <span className="text-white/50 text-sm">⋮</span>
