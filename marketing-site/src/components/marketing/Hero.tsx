@@ -51,8 +51,8 @@ export function Hero() {
     } else if (nextCount === 33) {
       setTooltipText(
         isPl 
-          ? "Twoja diagnoza na dziś: zespół chronicznego klikania. Rokowania są dobre. :)" 
-          : "Your diagnosis for today: chronic clicking syndrome. The prognosis is good. :)"
+          ? "Twoja diagnoza na dziś: zespół chronicznego klikania. :)" 
+          : "Your diagnosis for today: chronic clicking syndrome. :)"
       );
     } else if (nextCount === 42) {
       setTooltipText(
@@ -70,7 +70,7 @@ export function Hero() {
         setClickCount(0);
         setTooltipText("");
         setIsFinalTooltip(false);
-      }, 5000);
+      }, 12500);
       return () => clearTimeout(timer);
     }
   }, [clickCount]);
