@@ -27,7 +27,7 @@ test:  ## Run unit tests for all modules
 	done
 
 build:  ## Build all service binaries
-	@for svc in identity-svc billing-svc clinical-svc ingestion-svc analytics-svc notification-svc; do \
+	@for svc in identity-svc billing-svc clinical-svc ingestion-svc notification-svc; do \
 		echo "Building $$svc"; \
 		go build -o bin/$$svc ./services/$$svc/cmd/server; \
 	done
