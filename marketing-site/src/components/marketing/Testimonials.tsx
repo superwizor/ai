@@ -184,14 +184,14 @@ export function Testimonials() {
       </div>
 
       {/* Marquee Wrapper Container */}
-      <div className="relative w-full overflow-hidden marquee-container flex flex-col gap-6 lg:gap-8 z-10">
+      <div className="relative w-full overflow-hidden marquee-container flex flex-col gap-4 lg:gap-6 z-10 py-2">
 
         {/* Portal Fade Overlays (dark theme matching background) */}
         <div className="absolute top-0 bottom-0 left-0 w-24 md:w-48 bg-gradient-to-r from-[#001A1D] to-transparent z-20 pointer-events-none" />
         <div className="absolute top-0 bottom-0 right-0 w-24 md:w-48 bg-gradient-to-l from-[#002e32] to-transparent z-20 pointer-events-none" />
 
         {/* Row 1: Left to Right (Moving backwards) */}
-        <div className="flex w-full">
+        <div className="flex w-full py-2.5">
           <div className="animate-marquee-row-reverse flex gap-6 lg:gap-8 px-4">
             {[...ROW1_DATA, ...ROW1_DATA].map((item, idx) => (
               <div
@@ -228,7 +228,7 @@ export function Testimonials() {
         </div>
 
         {/* Row 2: Right to Left (Moving forward) */}
-        <div className="flex w-full">
+        <div className="flex w-full py-2.5">
           <div className="animate-marquee-row flex gap-6 lg:gap-8 px-4">
             {[...ROW2_DATA, ...ROW2_DATA].map((item, idx) => (
               <div
