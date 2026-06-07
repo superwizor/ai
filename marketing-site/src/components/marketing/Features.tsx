@@ -245,7 +245,6 @@ export function Features() {
   const isPl = locale === "pl";
 
   const [activeTab, setActiveTab] = useState<FeatureKey>("report");
-  const [mockupTheme, setMockupTheme] = useState<"classic" | "cream" | "midnight" | "slate">("classic");
   const [reportSubTab, setReportSubTab] = useState<string>("summary");
   const [isEmailMode, setIsEmailMode] = useState<boolean>(false);
 
@@ -338,12 +337,16 @@ export function Features() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleCopy = () => {
-    const textToCopy = isPl
-      ? "Pogorszenie samopoczucia, bóle głowy i brak postępu..."
-      : "Deterioration of well-being, headaches and lack of progress...";
+  const handleCopy = (type: "report" | "transcript" = "report") => {
+    const textToCopy = type === "report"
+      ? (isPl ? "Pogorszenie samopoczucia, bóle głowy i brak postępu..." : "Deterioration of well-being, headaches and lack of progress...")
+      : (isPl ? "Dzień dobry. Cieszę się, że się widzimy..." : "Good morning. I'm glad to see you...");
     navigator.clipboard.writeText(textToCopy).catch(() => {});
-    showToast(isPl ? "Raport skopiowano do schowka!" : "Report copied to clipboard!");
+    showToast(
+      type === "report"
+        ? (isPl ? "Raport skopiowano do schowka!" : "Report copied to clipboard!")
+        : (isPl ? "Transkrypcję skopiowano do schowka!" : "Transcript copied to clipboard!")
+    );
   };
 
   const handleLike = () => {
@@ -577,32 +580,32 @@ export function Features() {
               {/* Live demo frame */}
               <div 
                 onClick={handleNextTab}
-                className="relative w-full rounded-[24px] p-[3px] bg-gradient-to-b from-[#5bf4bc] via-[#004D54] to-[#002E32] overflow-hidden shadow-[0_30px_60px_-15px_rgba(27,37,34,0.18)] z-10 cursor-pointer group hover:shadow-2xl transition-all duration-300"
+                className="relative w-full rounded-[24px] p-[1.5px] bg-[#2C3533] overflow-hidden shadow-[0_30px_60px_-15px_rgba(27,37,34,0.18)] border border-white/[0.06] z-10 cursor-pointer group hover:shadow-2xl transition-all duration-300"
               >
                 {/* Phone/Tablet Screen Interface */}
                 <div 
                   onClick={(e) => e.stopPropagation()}
                   style={{
-                    '--screen-bg': mockupTheme === 'classic' ? '#041416' : mockupTheme === 'cream' ? '#F4F1EA' : mockupTheme === 'midnight' ? '#080808' : '#0F1319',
-                    '--card-bg': mockupTheme === 'classic' ? '#0B2124' : mockupTheme === 'cream' ? '#FFFFFF' : mockupTheme === 'midnight' ? '#141414' : '#171E29',
-                    '--card-border': mockupTheme === 'classic' ? 'rgba(255,255,255,0.1)' : mockupTheme === 'cream' ? 'rgba(0,77,84,0.12)' : mockupTheme === 'midnight' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.05)',
-                    '--text-pri': mockupTheme === 'classic' ? '#FFFFFF' : mockupTheme === 'cream' ? '#1B2522' : mockupTheme === 'midnight' ? '#FFFFFF' : '#f8fafc',
-                    '--text-pri-90': mockupTheme === 'classic' ? 'rgba(255,255,255,0.9)' : mockupTheme === 'cream' ? '#1B2522' : mockupTheme === 'midnight' ? 'rgba(255,255,255,0.9)' : 'rgba(248,250,252,0.9)',
-                    '--text-sec': mockupTheme === 'classic' ? 'rgba(255,255,255,0.7)' : mockupTheme === 'cream' ? '#4E5A55' : mockupTheme === 'midnight' ? '#a3a3a3' : '#94a3b8',
-                    '--text-sec-50': mockupTheme === 'classic' ? 'rgba(255,255,255,0.5)' : mockupTheme === 'cream' ? 'rgba(78,90,85,0.6)' : mockupTheme === 'midnight' ? 'rgba(163,163,163,0.5)' : 'rgba(148,163,184,0.5)',
-                    '--accent-color': mockupTheme === 'classic' ? '#5bf4bc' : mockupTheme === 'cream' ? '#004D54' : mockupTheme === 'midnight' ? '#10b981' : '#a855f7',
-                    '--accent-bg-light': mockupTheme === 'classic' ? 'rgba(91,244,188,0.05)' : mockupTheme === 'cream' ? 'rgba(0,77,84,0.05)' : mockupTheme === 'midnight' ? 'rgba(16,185,129,0.05)' : 'rgba(168,85,247,0.05)',
-                    '--accent-border-light': mockupTheme === 'classic' ? 'rgba(91,244,188,0.1)' : mockupTheme === 'cream' ? 'rgba(0,77,84,0.1)' : mockupTheme === 'midnight' ? 'rgba(16,185,129,0.1)' : 'rgba(168,85,247,0.1)',
-                    '--gold-color': mockupTheme === 'classic' ? '#fcae2f' : mockupTheme === 'cream' ? '#C26B00' : mockupTheme === 'midnight' ? '#fbbf24' : '#f43f5e',
-                    '--gold-bg-light': mockupTheme === 'classic' ? 'rgba(252,174,47,0.05)' : mockupTheme === 'cream' ? 'rgba(194,107,0,0.05)' : mockupTheme === 'midnight' ? 'rgba(251,191,36,0.05)' : 'rgba(244,63,94,0.05)',
-                    '--gold-border-light': mockupTheme === 'classic' ? 'rgba(252,174,47,0.1)' : mockupTheme === 'cream' ? 'rgba(194,107,0,0.1)' : mockupTheme === 'midnight' ? 'rgba(251,191,36,0.1)' : 'rgba(244,63,94,0.1)',
-                    '--toggle-bg': mockupTheme === 'classic' ? '#071917' : mockupTheme === 'cream' ? '#EDEAE3' : mockupTheme === 'midnight' ? '#1c1c1c' : '#222c3c',
-                    '--toggle-active-bg': mockupTheme === 'classic' ? '#ffb12c' : mockupTheme === 'cream' ? '#004D54' : mockupTheme === 'midnight' ? '#fbbf24' : '#f43f5e',
-                    '--toggle-active-text': mockupTheme === 'classic' ? '#0a1e20' : mockupTheme === 'cream' ? '#FFFFFF' : mockupTheme === 'midnight' ? '#000000' : '#FFFFFF',
-                    '--back-btn-bg': mockupTheme === 'classic' ? '#163033' : mockupTheme === 'cream' ? '#EDEAE3' : mockupTheme === 'midnight' ? '#242424' : '#222c3c',
-                    '--back-btn-hover': mockupTheme === 'classic' ? '#1f4347' : mockupTheme === 'cream' ? '#E2DED5' : mockupTheme === 'midnight' ? '#2e2e2e' : '#2b394e',
-                    '--back-btn-text': mockupTheme === 'classic' ? 'rgba(255,255,255,0.9)' : mockupTheme === 'cream' ? '#1B2522' : mockupTheme === 'midnight' ? '#FFFFFF' : '#f8fafc',
-                    '--footer-border': mockupTheme === 'classic' ? 'rgba(255,255,255,0.06)' : mockupTheme === 'cream' ? 'rgba(0,0,0,0.08)' : mockupTheme === 'midnight' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.05)',
+                    '--screen-bg': '#08464d',
+                    '--card-bg': 'rgba(255, 255, 255, 0.04)',
+                    '--card-border': 'rgba(255, 255, 255, 0.08)',
+                    '--text-pri': '#FFFFFF',
+                    '--text-pri-90': 'rgba(255, 255, 255, 0.9)',
+                    '--text-sec': 'rgba(255, 255, 255, 0.65)',
+                    '--text-sec-50': 'rgba(255, 255, 255, 0.45)',
+                    '--accent-color': '#5bf4bc',
+                    '--accent-bg-light': 'rgba(91, 244, 188, 0.06)',
+                    '--accent-border-light': 'rgba(91, 244, 188, 0.12)',
+                    '--gold-color': '#fcae2f',
+                    '--gold-bg-light': 'rgba(252, 174, 47, 0.06)',
+                    '--gold-border-light': 'rgba(252, 174, 47, 0.12)',
+                    '--toggle-bg': '#062d31',
+                    '--toggle-active-bg': '#fcae2f',
+                    '--toggle-active-text': '#072023',
+                    '--back-btn-bg': '#0a363b',
+                    '--back-btn-hover': '#0e4349',
+                    '--back-btn-text': 'rgba(255, 255, 255, 0.9)',
+                    '--footer-border': 'rgba(255, 255, 255, 0.06)',
                   } as React.CSSProperties}
                   className="relative w-full rounded-[22.5px] overflow-hidden bg-[var(--screen-bg)] pt-10 pb-5 px-4 sm:px-5 lg:px-6 min-h-[580px] lg:min-h-[690px] flex flex-col justify-between select-text transition-all duration-300 text-[var(--text-pri)]"
                 >
@@ -1383,16 +1386,9 @@ export function Features() {
                         <span className="text-white text-base cursor-pointer">⟨</span>
                         <h3 className="font-sans font-bold text-[15px] text-white tracking-wide">Transkrypcja</h3>
                         <div className="flex items-center gap-3 text-white">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <svg onClick={(e) => { e.stopPropagation(); handleCopy("transcript"); }} className="w-4 h-4 text-white/80 hover:text-[var(--accent-color)] transition-colors cursor-pointer" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-label="Copy">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                          </svg>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <circle cx="18" cy="5" r="3" />
-                            <circle cx="6" cy="12" r="3" />
-                            <circle cx="18" cy="19" r="3" />
-                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
                           </svg>
                         </div>
                       </div>
@@ -2072,54 +2068,7 @@ export function Features() {
               {isPl ? "✨ Kliknij ekran lub strzałki, aby przełączać funkcje" : "✨ Click screen or arrows to cycle features"}
             </div>
 
-            {/* Theme Selector Widget */}
-            <div className="flex flex-col items-center gap-2 mt-5 select-none animate-[fadeIn_0.6s_ease-out]" onClick={(e) => e.stopPropagation()}>
-              <span className="font-mono text-[9px] uppercase tracking-wider text-[#004D54]/55 font-bold">
-                {isPl ? "Wybierz motyw makiety (4 wersje):" : "Choose mockup theme (4 versions):"}
-              </span>
-              <div className="flex items-center gap-1 bg-[#EDEAE3] p-0.5 rounded-full border border-[#E2DED5]/80 shadow-sm flex-wrap justify-center max-w-[280px] sm:max-w-none">
-                <button
-                  onClick={() => setMockupTheme("classic")}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
-                    mockupTheme === "classic" 
-                      ? "bg-[#004D54] text-white shadow-sm" 
-                      : "text-[#4E5A55] hover:text-[#1B2522]"
-                  }`}
-                >
-                  {isPl ? "1. Morski Forest" : "1. Deep Teal"}
-                </button>
-                <button
-                  onClick={() => setMockupTheme("cream")}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
-                    mockupTheme === "cream" 
-                      ? "bg-[#004D54] text-white shadow-sm" 
-                      : "text-[#4E5A55] hover:text-[#1B2522]"
-                  }`}
-                >
-                  {isPl ? "2. Jasny Krem" : "2. Warm Cream"}
-                </button>
-                <button
-                  onClick={() => setMockupTheme("midnight")}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
-                    mockupTheme === "midnight" 
-                      ? "bg-[#004D54] text-white shadow-sm" 
-                      : "text-[#4E5A55] hover:text-[#1B2522]"
-                  }`}
-                >
-                  {isPl ? "3. Głęboka Noc" : "3. Midnight OLED"}
-                </button>
-                <button
-                  onClick={() => setMockupTheme("slate")}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
-                    mockupTheme === "slate" 
-                      ? "bg-[#004D54] text-white shadow-sm" 
-                      : "text-[#4E5A55] hover:text-[#1B2522]"
-                  }`}
-                >
-                  {isPl ? "4. Ametyst Slate" : "4. Lavender Slate"}
-                </button>
-              </div>
-            </div>
+
 
           </div>
 
