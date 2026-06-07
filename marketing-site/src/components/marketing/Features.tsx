@@ -388,7 +388,7 @@ export function Features() {
   ];
 
   return (
-    <section className="relative w-full bg-[#FBFAF7] text-[#1B2522] py-24 sm:py-32 overflow-hidden border-y border-[#E2DED5]/60">
+    <section id="features" className="relative w-full bg-[#FBFAF7] text-[#1B2522] py-24 sm:py-32 overflow-hidden border-y border-[#E2DED5]/60">
       {/* Background Grid Pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.015)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
 

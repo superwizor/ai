@@ -77,7 +77,7 @@ export function Hero() {
                   </span>
                 </a>
                 <a
-                  href="#jak"
+                  href="#features"
                   className="inline-flex items-center justify-center rounded-[12px] border border-frost/12 text-frost/80 font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 hover:bg-frost/[0.04] hover:border-frost/20 transition-all duration-300 active:scale-[0.97] w-full sm:w-auto whitespace-nowrap backdrop-blur-sm"
                 >
                   {t("ctaSecondary")}
