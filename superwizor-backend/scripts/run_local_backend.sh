@@ -26,8 +26,9 @@ if [[ "${DB_PASSWORD}" == "superwizor_password" && "${DB_HOST}" == "127.0.0.1" &
   if DB_URL=$(gcloud secrets versions access latest --secret=postgres-database-url --project=superwizor-ai-25ecd 2>/dev/null); then
     # Wyciągnij hasło (zakodowane) z URL
     ENCODED_PASS=$(echo "${DB_URL}" | sed -E 's/postgres:\/\/[^:]+:([^@]+)@.*/\1/')
-    # Odkoduj znaki URL (%21 -> !, etc.)
-    DB_PASSWORD=$(python3 -c "import urllib.parse; print(urllib.parse.unquote('${ENCODED_PASS}'))" 2>/dev/null || echo "${ENCODED_PASS}")
+    # Zachowaj hasło w formacie zakodowanym (URL-encoded) — znaki specjalne (np. !, %, &)
+    # rozbiłyby parser URL bibliotek Go/migrate, gdyby były odkodowane w DSN.
+    DB_PASSWORD="${ENCODED_PASS}"
     echo "✅ Pomyślnie pobrano hasło z GCP Secret Manager!"
   else
     echo "⚠️  Nie udało się pobrać hasła z GCP (brak zalogowania w gcloud?). Używam domyślnego hasła deweloperskiego."
