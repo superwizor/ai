@@ -61,6 +61,68 @@ export function HowItWorks() {
 
   return (
     <section id="jak" className="w-full bg-gradient-to-b from-[#FBFAF7] to-[#F2F0EA] text-[#1B2522] py-24 sm:py-32 border-y border-[#E2DED5]/60 relative overflow-hidden">
+      {/* Dynamic Senior UI animations injected locally */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes popDesktop {
+          0% {
+            transform: translate(-50%, 0) scale(0.9);
+            box-shadow: 0 0 0 0 rgba(252, 174, 47, 0);
+          }
+          35% {
+            transform: translate(-50%, 0) scale(1.35);
+            box-shadow: 0 0 35px 15px rgba(252, 174, 47, 0.75);
+          }
+          65% {
+            transform: translate(-50%, 0) scale(0.96);
+            box-shadow: 0 0 10px 2px rgba(252, 174, 47, 0.3);
+          }
+          100% {
+            transform: translate(-50%, 0) scale(1.15);
+            box-shadow: 0 0 25px 5px rgba(252, 174, 47, 0.55);
+          }
+        }
+        @keyframes popMobile {
+          0% {
+            transform: scale(0.9);
+            box-shadow: 0 0 0 0 rgba(252, 174, 47, 0);
+          }
+          35% {
+            transform: scale(1.35);
+            box-shadow: 0 0 30px 12px rgba(252, 174, 47, 0.7);
+          }
+          65% {
+            transform: scale(0.96);
+            box-shadow: 0 0 10px 2px rgba(252, 174, 47, 0.3);
+          }
+          100% {
+            transform: scale(1.08);
+            box-shadow: 0 0 20px 4px rgba(252, 174, 47, 0.45);
+          }
+        }
+        @keyframes rippleOuter {
+          0% {
+            transform: scale(0.85);
+            opacity: 0.9;
+          }
+          100% {
+            transform: scale(2.4);
+            opacity: 0;
+          }
+        }
+        .animate-pop-desktop {
+          animation: popDesktop 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .animate-pop-mobile {
+          animation: popMobile 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .animate-ripple-1 {
+          animation: rippleOuter 0.9s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+        .animate-ripple-2 {
+          animation: rippleOuter 1.2s cubic-bezier(0.1, 0.8, 0.3, 1) 0.15s forwards;
+        }
+      `}} />
+
       <div className="mx-auto w-full max-w-[1080px] px-6 relative z-10">
         <div className="text-center mb-20">
           <p className="font-mono text-[10px] sm:text-xs uppercase text-[#004D54] tracking-[var(--tracking-overline)] mb-3 font-semibold">
@@ -94,15 +156,18 @@ export function HowItWorks() {
                 >
                   {/* Step number node on the timeline — lg only */}
                   <div 
-                    className={`hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full items-center justify-center z-20 transition-all duration-500 border-4 ${
+                    className={`hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full items-center justify-center z-20 border-4 transition-all duration-500 ${
                       activeSteps[i]
-                        ? "bg-[#ffb12c] border-[#FBFAF7] text-[#06383e] shadow-[0_0_20px_rgba(252,174,47,0.5)] scale-110"
+                        ? "bg-[#ffb12c] border-[#FBFAF7] text-[#06383e] animate-pop-desktop"
                         : "bg-[#004D54] border-[#FBFAF7] text-frost shadow-md"
                     }`}
                   >
                     <span className="font-display text-sm font-bold">{stepNum}</span>
                     {activeSteps[i] && (
-                      <span className="absolute -inset-1 rounded-full border-2 border-[#ffb12c] animate-ping opacity-0" style={{ animationDuration: '1.2s', animationIterationCount: 1 }} />
+                      <>
+                        <span className="absolute -inset-1.5 rounded-full border border-[#ffb12c]/60 animate-ripple-1 pointer-events-none" />
+                        <span className="absolute -inset-3 rounded-full border border-[#ffb12c]/30 animate-ripple-2 pointer-events-none" />
+                      </>
                     )}
                   </div>
 
@@ -111,15 +176,18 @@ export function HowItWorks() {
                     {/* Mobile step indicator */}
                     <div className="lg:hidden flex items-center gap-3 mb-4">
                       <span 
-                        className={`w-9 h-9 rounded-full flex items-center justify-center relative transition-all duration-500 ${
+                        className={`w-9 h-9 rounded-full flex items-center justify-center relative border-2 transition-all duration-500 ${
                           activeSteps[i]
-                            ? "bg-[#ffb12c] text-[#06383e] shadow-[0_0_15px_rgba(252,174,47,0.3)] scale-105"
-                            : "bg-[#004D54] text-frost"
+                            ? "bg-[#ffb12c] border-[#FBFAF7] text-[#06383e] animate-pop-mobile"
+                            : "bg-[#004D54] border-[#FBFAF7] text-frost shadow-sm"
                         }`}
                       >
                         <span className="font-display text-xs font-bold">{stepNum}</span>
                         {activeSteps[i] && (
-                          <span className="absolute -inset-1 rounded-full border-2 border-[#ffb12c] animate-ping opacity-0" style={{ animationDuration: '1s', animationIterationCount: 1 }} />
+                          <>
+                            <span className="absolute -inset-1 rounded-full border border-[#ffb12c]/60 animate-ripple-1 pointer-events-none" />
+                            <span className="absolute -inset-2.5 rounded-full border border-[#ffb12c]/30 animate-ripple-2 pointer-events-none" />
+                          </>
                         )}
                       </span>
                       <span className="font-mono text-[10px] uppercase tracking-[2px] text-[#004D54]/60 font-semibold">
