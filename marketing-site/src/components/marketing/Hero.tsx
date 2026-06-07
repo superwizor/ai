@@ -26,8 +26,8 @@ export function Hero() {
     } else if (nextCount === 7) {
       setTooltipText(
         isPl 
-          ? "Klikasz tak namiętnie, jakby to była sesja oporu pacjenta. Wszystko w porządku? :)" 
-          : "You're clicking this like it's a patient's resistance block. Everything alright? :)"
+          ? "Siedem kliknięć... To brzmi jak świetny temat na najbliższą superwizję. :)" 
+          : "Seven clicks... That sounds like a great topic for your next supervision. :)"
       );
     } else if (nextCount === 12) {
       setTooltipText(
