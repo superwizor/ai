@@ -49,7 +49,7 @@ func TestVerifyMarcinSession(t *testing.T) {
 	// (which calls identity-svc.ValidateToken) can resolve the Firebase UID
 	// → users row. Without this we get "user not registered".
 	identityConn := dial(t, cfg.identityURL, fbSession.IDToken)
-	defer identityConn.Close()
+	t.Cleanup(func() { _ = identityConn.Close() })
 	identityClient := identityv1.NewIdentityServiceClient(identityConn)
 
 	regCtx, regCancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -67,7 +67,7 @@ func TestVerifyMarcinSession(t *testing.T) {
 	require.NoError(t, err, "register user in identity-svc")
 
 	conn := dial(t, cfg.clinicalURL, fbSession.IDToken)
-	defer conn.Close()
+	t.Cleanup(func() { _ = conn.Close() })
 
 	client := clinicalv1.NewClinicalServiceClient(conn)
 	const sessionID = "020a2616-4f9b-43d0-87ec-e37d7bcac2be"

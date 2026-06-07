@@ -32,3 +32,8 @@ firebase-debug.*.log
 
 # Slice 2 — scripts/node_modules holds puppeteer (~190MB Chromium)
 scripts/node_modules/
+
+# Scratch & Logs
+scratch/
+proxy.log
+

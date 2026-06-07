@@ -87,11 +87,11 @@ func TestLongSession_Manual(t *testing.T) {
 	}
 
 	identityConn := dial(t, cfg.identityURL, idToken)
-	defer identityConn.Close()
+	t.Cleanup(func() { _ = identityConn.Close() })
 	clinicalConn := dial(t, cfg.clinicalURL, idToken)
-	defer clinicalConn.Close()
+	t.Cleanup(func() { _ = clinicalConn.Close() })
 	ingestionConn := dial(t, cfg.ingestionURL, idToken)
-	defer ingestionConn.Close()
+	t.Cleanup(func() { _ = ingestionConn.Close() })
 
 	identityClient := identityv1.NewIdentityServiceClient(identityConn)
 	clinicalClient := clinicalv1.NewClinicalServiceClient(clinicalConn)

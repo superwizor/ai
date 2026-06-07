@@ -38,8 +38,12 @@
 package e2e_test
 
 import (
+	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -57,6 +61,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
@@ -186,7 +191,12 @@ func mintBillingOIDCToken(t *testing.T, audienceURL string) string {
 
 func (e *billingTestEnv) dialBilling(t *testing.T) (*grpc.ClientConn, billingv1.BillingServiceClient) {
 	t.Helper()
-	creds := credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12})
+	var creds credentials.TransportCredentials
+	if strings.HasPrefix(e.billingURL, "http://") {
+		creds = insecure.NewCredentials()
+	} else {
+		creds = credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12})
+	}
 	conn, err := grpc.NewClient(e.billingHost,
 		grpc.WithTransportCredentials(creds),
 		grpc.WithUnaryInterceptor(authInterceptor(e.idToken)),
@@ -789,11 +799,11 @@ func TestBilling_ReserveOnUpload(t *testing.T) {
 	t.Cleanup(func() { _ = fbSession.cleanup() })
 
 	identityConn := dial(t, cfg.identityURL, fbSession.IDToken)
-	defer identityConn.Close()
+	t.Cleanup(func() { _ = identityConn.Close() })
 	clinicalConn := dial(t, cfg.clinicalURL, fbSession.IDToken)
-	defer clinicalConn.Close()
+	t.Cleanup(func() { _ = clinicalConn.Close() })
 	ingestionConn := dial(t, cfg.ingestionURL, fbSession.IDToken)
-	defer ingestionConn.Close()
+	t.Cleanup(func() { _ = ingestionConn.Close() })
 
 	identityClient := identityv1.NewIdentityServiceClient(identityConn)
 	clinicalClient := clinicalv1.NewClinicalServiceClient(clinicalConn)
@@ -946,3 +956,336 @@ func AssertBillingCommittedAfterSession(t *testing.T, env *billingTestEnv, sessi
 
 // metadata import marker (suppress unused).
 var _ = metadata.New
+
+// ---------- Stripe Webhook Mock Structs & E2E Test ----------
+
+type mockStripePrice struct {
+	ID string `json:"id"`
+}
+
+type mockStripeSubscriptionItem struct {
+	Price mockStripePrice `json:"price"`
+}
+
+type mockStripeSubscriptionItems struct {
+	Data []mockStripeSubscriptionItem `json:"data"`
+}
+
+type mockStripeSubscriptionMetadata struct {
+	OrganizationID string `json:"organization_id"`
+}
+
+type mockStripeSubscription struct {
+	ID                 string                         `json:"id"`
+	Customer           string                         `json:"customer"`
+	Status             string                         `json:"status"`
+	CurrentPeriodStart int64                          `json:"current_period_start"`
+	CurrentPeriodEnd   int64                          `json:"current_period_end"`
+	CancelAtPeriodEnd  bool                           `json:"cancel_at_period_end"`
+	CanceledAt         int64                          `json:"canceled_at"`
+	TrialEnd           int64                          `json:"trial_end"`
+	Items              mockStripeSubscriptionItems    `json:"items"`
+	Metadata           mockStripeSubscriptionMetadata `json:"metadata"`
+}
+
+type mockStripeEventData struct {
+	Object json.RawMessage `json:"object"`
+}
+
+type mockStripeEvent struct {
+	ID   string              `json:"id"`
+	Type string              `json:"type"`
+	Data mockStripeEventData `json:"data"`
+}
+
+type mockStripeInvoiceLine struct {
+	Period struct {
+		Start int64 `json:"start"`
+		End   int64 `json:"end"`
+	} `json:"period"`
+	Price mockStripePrice `json:"price"`
+}
+
+type mockStripeInvoiceLines struct {
+	Data []mockStripeInvoiceLine `json:"data"`
+}
+
+type mockStripeInvoice struct {
+	ID           string                 `json:"id"`
+	Customer     string                 `json:"customer"`
+	Subscription string                 `json:"subscription"`
+	AmountPaid   int64                  `json:"amount_paid"`
+	AmountDue    int64                  `json:"amount_due"`
+	Currency     string                 `json:"currency"`
+	PeriodStart  int64                  `json:"period_start"`
+	PeriodEnd    int64                  `json:"period_end"`
+	Lines        mockStripeInvoiceLines `json:"lines"`
+}
+
+func fetchStripeWebhookSecret(t *testing.T) string {
+	t.Helper()
+	if secret := os.Getenv("STRIPE_WEBHOOK_SECRET"); secret != "" {
+		return secret
+	}
+	project := envOr("GCP_PROJECT_ID", "superwizor-ai-25ecd")
+	args := []string{
+		"secrets", "versions", "access", "latest",
+		"--secret=stripe-webhook-secret",
+		"--project=" + project,
+	}
+	out, err := exec.Command("gcloud", args...).Output()
+	if err != nil {
+		t.Logf("⚠️ Failed to fetch Stripe webhook secret from Secret Manager: %v", err)
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func signStripePayload(t *testing.T, body []byte, secret string) (string, int64) {
+	t.Helper()
+	timestamp := time.Now().Unix()
+	payload := fmt.Sprintf("%d.%s", timestamp, string(body))
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(payload))
+	sig := hex.EncodeToString(mac.Sum(nil))
+	return fmt.Sprintf("t=%d,v1=%s", timestamp, sig), timestamp
+}
+
+func postWebhook(t *testing.T, env *billingTestEnv, eventType string, eventID string, obj any, secret string) {
+	t.Helper()
+	objBytes, err := json.Marshal(obj)
+	require.NoError(t, err)
+
+	evt := mockStripeEvent{
+		ID:   eventID,
+		Type: eventType,
+		Data: mockStripeEventData{
+			Object: objBytes,
+		},
+	}
+	payload, err := json.Marshal(evt)
+	require.NoError(t, err)
+
+	sigHeader, _ := signStripePayload(t, payload, secret)
+
+	req, err := http.NewRequest("POST", env.billingHTTPURL+"/stripe/webhook", bytes.NewReader(payload))
+	require.NoError(t, err)
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Stripe-Signature", sigHeader)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	require.Equal(t, http.StatusOK, resp.StatusCode, "POST webhook %s → %d: %s", eventType, resp.StatusCode, string(respBody))
+}
+
+func TestBilling_StripeWebhook(t *testing.T) {
+	env := loadBillingEnv(t)
+	ctx := context.Background()
+
+	// 1. Fetch stripe webhook secret from Secret Manager
+	secret := fetchStripeWebhookSecret(t)
+	if secret == "" {
+		t.Skip("Skipping Stripe Webhook E2E test: stripe-webhook-secret not set/accessible")
+	}
+
+	// 2. Create a test organization
+	testOrgID := uuid.New()
+	_, err := env.dbPool.Exec(ctx, `
+		INSERT INTO organizations (id, legal_name, type)
+		VALUES ($1, 'Stripe Webhook Test Org', 'SOLO')`, testOrgID)
+	require.NoError(t, err)
+
+	// Register cleanup for the test organization and all linked items
+	var paymentEventIDs []uuid.UUID
+	t.Cleanup(func() {
+		bg := context.Background()
+		for _, peID := range paymentEventIDs {
+			_, _ = env.dbPool.Exec(bg, `DELETE FROM payment_events WHERE id = $1`, peID)
+		}
+		// Delete usage counters first
+		_, _ = env.dbPool.Exec(bg, `
+			DELETE FROM usage_counters 
+			WHERE subscription_id IN (SELECT id FROM subscriptions WHERE organization_id = $1)`, 
+			testOrgID)
+		// Delete subscriptions
+		_, _ = env.dbPool.Exec(bg, `DELETE FROM subscriptions WHERE organization_id = $1`, testOrgID)
+		// Delete organization
+		_, _ = env.dbPool.Exec(bg, `DELETE FROM organizations WHERE id = $1`, testOrgID)
+	})
+
+	// 3. Query active stripe price ID
+	var stripePriceID string
+	var planID uuid.UUID
+	var planTokens int32
+	err = env.dbPool.QueryRow(ctx, `
+		SELECT id, stripe_price_id, tokens_per_period 
+		FROM subscription_plans 
+		WHERE stripe_price_id IS NOT NULL AND is_active = true 
+		LIMIT 1`).Scan(&planID, &stripePriceID, &planTokens)
+	require.NoError(t, err, "must have at least one active subscription plan with stripe_price_id")
+
+	stripeSubID := "sub_test_" + uuid.New().String()[:8]
+	stripeCustomerID := "cus_test_" + uuid.New().String()[:8]
+
+	// 4. Test customer.subscription.created (ACTIVE)
+	t.Log("Testing customer.subscription.created ...")
+	createdEventID := "evt_created_" + uuid.New().String()[:8]
+	nowTS := time.Now().Unix()
+	endTS := time.Now().Add(30 * 24 * time.Hour).Unix()
+
+	subObj := mockStripeSubscription{
+		ID:                 stripeSubID,
+		Customer:           stripeCustomerID,
+		Status:             "active",
+		CurrentPeriodStart: nowTS,
+		CurrentPeriodEnd:   endTS,
+		CancelAtPeriodEnd:  false,
+		CanceledAt:         0,
+		TrialEnd:           0,
+		Metadata: mockStripeSubscriptionMetadata{
+			OrganizationID: testOrgID.String(),
+		},
+	}
+	subObj.Items.Data = []mockStripeSubscriptionItem{
+		{Price: mockStripePrice{ID: stripePriceID}},
+	}
+
+	postWebhook(t, env, "customer.subscription.created", createdEventID, subObj, secret)
+
+	// Verify subscription created in DB
+	var dbSubStatus string
+	var dbSubID uuid.UUID
+	err = env.dbPool.QueryRow(ctx, `
+		SELECT id, status::text FROM subscriptions 
+		WHERE organization_id = $1 AND provider_subscription_id = $2`, 
+		testOrgID, stripeSubID).Scan(&dbSubID, &dbSubStatus)
+	require.NoError(t, err)
+	assert.Equal(t, "ACTIVE", dbSubStatus)
+
+	// Capture payment_event ID for cleanup
+	var peID uuid.UUID
+	err = env.dbPool.QueryRow(ctx, `
+		SELECT id FROM payment_events WHERE provider_event_id = $1`, 
+		createdEventID).Scan(&peID)
+	require.NoError(t, err)
+	paymentEventIDs = append(paymentEventIDs, peID)
+
+	// Verify usage_counter was created
+	var count int
+	err = env.dbPool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM usage_counters WHERE subscription_id = $1`, 
+		dbSubID).Scan(&count)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count, "usage_counter should be created on ACTIVE subscription")
+
+	// 5. Test idempotency (duplicate event should return StatusOK with duplicate message)
+	t.Log("Testing webhook idempotency (duplicate event) ...")
+	// Send the exact same event ID again
+	postWebhook(t, env, "customer.subscription.created", createdEventID, subObj, secret)
+	// Verify count of payment_events is still 1
+	var peCount int
+	err = env.dbPool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM payment_events WHERE provider_event_id = $1`, 
+		createdEventID).Scan(&peCount)
+	require.NoError(t, err)
+	assert.Equal(t, 1, peCount)
+
+	// 6. Test customer.subscription.updated (status -> past_due)
+	t.Log("Testing customer.subscription.updated ...")
+	updatedEventID := "evt_updated_" + uuid.New().String()[:8]
+	subObj.Status = "past_due"
+	postWebhook(t, env, "customer.subscription.updated", updatedEventID, subObj, secret)
+
+	// Capture payment_event ID
+	err = env.dbPool.QueryRow(ctx, `
+		SELECT id FROM payment_events WHERE provider_event_id = $1`, 
+		updatedEventID).Scan(&peID)
+	require.NoError(t, err)
+	paymentEventIDs = append(paymentEventIDs, peID)
+
+	// Verify status updated in DB
+	err = env.dbPool.QueryRow(ctx, `
+		SELECT status::text FROM subscriptions WHERE id = $1`, 
+		dbSubID).Scan(&dbSubStatus)
+	require.NoError(t, err)
+	assert.Equal(t, "PAST_DUE", dbSubStatus)
+
+	// 7. Test invoice.paid (should shift period and create a new usage counter bucket)
+	t.Log("Testing invoice.paid ...")
+	invoiceEventID := "evt_invoice_" + uuid.New().String()[:8]
+	shiftedStartTS := endTS
+	shiftedEndTS := endTS + int64(30*24*time.Hour/time.Second)
+
+	invObj := mockStripeInvoice{
+		ID:           "in_test_" + uuid.New().String()[:8],
+		Customer:     stripeCustomerID,
+		Subscription: stripeSubID,
+		AmountPaid:   10000,
+		AmountDue:    10000,
+		Currency:     "pln",
+		PeriodStart:  shiftedStartTS,
+		PeriodEnd:    shiftedEndTS,
+	}
+	invObj.Lines.Data = []mockStripeInvoiceLine{
+		{
+			Period: struct {
+				Start int64 `json:"start"`
+				End   int64 `json:"end"`
+			}{
+				Start: shiftedStartTS,
+				End:   shiftedEndTS,
+			},
+			Price: mockStripePrice{ID: stripePriceID},
+		},
+	}
+
+	postWebhook(t, env, "invoice.paid", invoiceEventID, invObj, secret)
+
+	// Capture payment_event ID
+	err = env.dbPool.QueryRow(ctx, `
+		SELECT id FROM payment_events WHERE provider_event_id = $1`, 
+		invoiceEventID).Scan(&peID)
+	require.NoError(t, err)
+	paymentEventIDs = append(paymentEventIDs, peID)
+
+	// Verify subscription period shifted
+	var currentPeriodStart, currentPeriodEnd time.Time
+	err = env.dbPool.QueryRow(ctx, `
+		SELECT current_period_start, current_period_end FROM subscriptions WHERE id = $1`, 
+		dbSubID).Scan(&currentPeriodStart, &currentPeriodEnd)
+	require.NoError(t, err)
+	assert.Equal(t, time.Unix(shiftedStartTS, 0).UTC(), currentPeriodStart.UTC())
+	assert.Equal(t, time.Unix(shiftedEndTS, 0).UTC(), currentPeriodEnd.UTC())
+
+	// Verify a new usage_counter was created
+	err = env.dbPool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM usage_counters WHERE subscription_id = $1`, 
+		dbSubID).Scan(&count)
+	require.NoError(t, err)
+	assert.Equal(t, 2, count, "should have 2 usage_counters after invoice.paid shifts period")
+
+	// 8. Test customer.subscription.deleted (CANCELED)
+	t.Log("Testing customer.subscription.deleted ...")
+	deletedEventID := "evt_deleted_" + uuid.New().String()[:8]
+	subObj.Status = "canceled"
+	subObj.CanceledAt = time.Now().Unix()
+	postWebhook(t, env, "customer.subscription.deleted", deletedEventID, subObj, secret)
+
+	// Capture payment_event ID
+	err = env.dbPool.QueryRow(ctx, `
+		SELECT id FROM payment_events WHERE provider_event_id = $1`, 
+		deletedEventID).Scan(&peID)
+	require.NoError(t, err)
+	paymentEventIDs = append(paymentEventIDs, peID)
+
+	// Verify status canceled in DB
+	err = env.dbPool.QueryRow(ctx, `
+		SELECT status::text FROM subscriptions WHERE id = $1`, 
+		dbSubID).Scan(&dbSubStatus)
+	require.NoError(t, err)
+	assert.Equal(t, "CANCELED", dbSubStatus)
+}

@@ -389,11 +389,11 @@ func TestFullSession_HappyPath(t *testing.T) {
 
 	// Dial all three services with the Firebase ID token.
 	identityConn := dial(t, cfg.identityURL, idToken)
-	defer identityConn.Close()
+	t.Cleanup(func() { _ = identityConn.Close() })
 	clinicalConn := dial(t, cfg.clinicalURL, idToken)
-	defer clinicalConn.Close()
+	t.Cleanup(func() { _ = clinicalConn.Close() })
 	ingestionConn := dial(t, cfg.ingestionURL, idToken)
-	defer ingestionConn.Close()
+	t.Cleanup(func() { _ = ingestionConn.Close() })
 
 	identityClient := identityv1.NewIdentityServiceClient(identityConn)
 	clinicalClient := clinicalv1.NewClinicalServiceClient(clinicalConn)
@@ -934,7 +934,7 @@ func assertFirestoreSessionStateDone(
 
 	fsClient, err := firestore.NewClient(ctx, projectID)
 	require.NoError(t, err, "Firestore client init failed")
-	defer func() { _ = fsClient.Close() }()
+	t.Cleanup(func() { _ = fsClient.Close() })
 
 	docPath := "session_states/" + sessionID
 	deadline := time.Now().Add(30 * time.Second)
