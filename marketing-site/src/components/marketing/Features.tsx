@@ -586,7 +586,7 @@ export function Features() {
                 <div 
                   onClick={(e) => e.stopPropagation()}
                   style={{
-                    '--screen-bg': '#08464d',
+                    '--screen-bg': '#06383e',
                     '--card-bg': 'rgba(255, 255, 255, 0.04)',
                     '--card-border': 'rgba(255, 255, 255, 0.08)',
                     '--text-pri': '#FFFFFF',
@@ -599,11 +599,11 @@ export function Features() {
                     '--gold-color': '#fcae2f',
                     '--gold-bg-light': 'rgba(252, 174, 47, 0.06)',
                     '--gold-border-light': 'rgba(252, 174, 47, 0.12)',
-                    '--toggle-bg': '#062d31',
+                    '--toggle-bg': '#042327',
                     '--toggle-active-bg': '#fcae2f',
                     '--toggle-active-text': '#072023',
-                    '--back-btn-bg': '#0a363b',
-                    '--back-btn-hover': '#0e4349',
+                    '--back-btn-bg': '#072a2e',
+                    '--back-btn-hover': '#0a3539',
                     '--back-btn-text': 'rgba(255, 255, 255, 0.9)',
                     '--footer-border': 'rgba(255, 255, 255, 0.06)',
                   } as React.CSSProperties}
@@ -2025,7 +2025,7 @@ export function Features() {
             </div> {/* Closing the wrapper div */}
 
             {/* Pagination dots with navigation arrows */}
-            <div className="flex justify-center items-center gap-4 mt-5 select-none animate-[fadeIn_0.5s_ease-out]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex lg:hidden justify-center items-center gap-4 mt-5 select-none animate-[fadeIn_0.5s_ease-out]" onClick={(e) => e.stopPropagation()}>
               {/* Left Arrow Button */}
               <button 
                 onClick={handlePrevTab}
@@ -2064,7 +2064,7 @@ export function Features() {
             </div>
 
             {/* Desktop Click Hint */}
-            <div className="hidden lg:block text-center mt-3.5 text-[11.5px] text-[#004D54]/60 font-semibold select-none tracking-wide animate-[pulse_3s_infinite]">
+            <div className="block lg:hidden text-center mt-3.5 text-[11.5px] text-[#004D54]/60 font-semibold select-none tracking-wide animate-[pulse_3s_infinite]">
               {isPl ? "✨ Kliknij ekran lub strzałki, aby przełączać funkcje" : "✨ Click screen or arrows to cycle features"}
             </div>
 
