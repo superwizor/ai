@@ -328,6 +328,7 @@ const (
 	PlanTierCLINIC  PlanTier = "CLINIC"
 	PlanTierPATIENT PlanTier = "PATIENT"
 	PlanTierTRIAL   PlanTier = "TRIAL"
+	PlanTierBETA    PlanTier = "BETA"
 )
 
 func (e *PlanTier) Scan(src interface{}) error {
@@ -744,11 +745,14 @@ type AudioUpload struct {
 	UploadCompletedAt pgtype.Timestamptz `json:"upload_completed_at"`
 	ExpiresAt         time.Time          `json:"expires_at"`
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out.
-	IdempotencyKey   *string   `json:"idempotency_key"`
-	ClientAppVersion *string   `json:"client_app_version"`
-	ClientPlatform   *string   `json:"client_platform"`
-	ErrorMessage     *string   `json:"error_message"`
-	CreatedAt        time.Time `json:"created_at"`
+	IdempotencyKey            *string            `json:"idempotency_key"`
+	ClientAppVersion          *string            `json:"client_app_version"`
+	ClientPlatform            *string            `json:"client_platform"`
+	ErrorMessage              *string            `json:"error_message"`
+	CreatedAt                 time.Time          `json:"created_at"`
+	ResumableSessionUri       *string            `json:"resumable_session_uri"`
+	ResumableSessionExpiresAt pgtype.Timestamptz `json:"resumable_session_expires_at"`
+	ProcessedGeneration       *int64             `json:"processed_generation"`
 }
 
 type AuditEvent struct {

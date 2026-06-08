@@ -237,7 +237,7 @@ SELECT
 FROM subscriptions s
 JOIN subscription_plans p ON p.id = s.plan_id
 WHERE s.provider = 'MANUAL'
-  AND s.status = 'ACTIVE'
+  AND s.status IN ('ACTIVE', 'TRIALING')
   AND s.current_period_end < now()
 `
 
@@ -250,8 +250,9 @@ type ListExpiredManualSubscriptionsRow struct {
 	TokensPerPeriod    int32     `json:"tokens_per_period"`
 }
 
-// Cron daily o 00:05 UTC — znajduje MANUAL ACTIVE subskrypcje, których
-// bieżący okres rozliczeniowy się skończył (period_end < now).
+// Cron daily o 00:05 UTC — znajduje MANUAL subskrypcje (ACTIVE + TRIALING),
+// których bieżący okres rozliczeniowy się skończył (period_end < now).
+// TRIALING status covers BETA plan subscriptions (120 tokens × 2 months).
 // Per row musimy: shift current_period_*, utworzyć nowy usage_counters.
 func (q *Queries) ListExpiredManualSubscriptions(ctx context.Context) ([]ListExpiredManualSubscriptionsRow, error) {
 	rows, err := q.db.Query(ctx, listExpiredManualSubscriptions)

@@ -159,7 +159,34 @@ func (h *AdminHandler) handleManualPeriodRenewal(w http.ResponseWriter, r *http.
 	}
 
 	renewedCount := 0
+	expiredBeta := 0
 	for _, s := range subs {
+		// BETA plan guard: max 2 periods (2 × 30 days). Count existing
+		// usage_counters for this subscription — if ≥2, cancel instead
+		// of renewing. The counter count == number of completed periods.
+		periodCount, err := h.countPeriods(ctx, s.ID)
+		if err != nil {
+			h.logger.ErrorContext(ctx, "manual renewal: count periods failed",
+				"sub_id", s.ID, "error", err)
+			continue
+		}
+
+		// Check if this is a BETA plan by looking at the provider_subscription_id
+		// prefix (set during provisionPlanOrgAndSub as "beta-<orgID>").
+		isBeta := h.isBetaSubscription(ctx, s.ID)
+		if isBeta && periodCount >= 2 {
+			// Beta expired — downgrade to CANCELED
+			if err := h.cancelSubscription(ctx, s.ID); err != nil {
+				h.logger.ErrorContext(ctx, "manual renewal: beta cancel failed",
+					"sub_id", s.ID, "error", err)
+			} else {
+				expiredBeta++
+				h.logger.InfoContext(ctx, "cron: beta subscription expired after 2 periods",
+					"sub_id", s.ID, "org_id", s.OrganizationID, "periods_used", periodCount)
+			}
+			continue
+		}
+
 		newStart := s.CurrentPeriodEnd
 		newEnd := newStart.Add(30 * 24 * time.Hour)
 
@@ -176,6 +203,7 @@ func (h *AdminHandler) handleManualPeriodRenewal(w http.ResponseWriter, r *http.
 
 	h.logger.InfoContext(ctx, "cron: manual-period-renewal done",
 		"renewed_count", renewedCount,
+		"expired_beta", expiredBeta,
 		"candidates", len(subs))
 
 	writeJSON(w, http.StatusOK, manualRenewalResponse{
@@ -293,3 +321,36 @@ func writeError(w http.ResponseWriter, code int, msg string, err error) {
 func errIsNoRows(err error) bool {
 	return err == pgx.ErrNoRows
 }
+
+// ─── Beta-specific helpers ────────────────────────────────────
+
+// countPeriods returns the number of usage_counter rows for a subscription.
+// Each row represents one billing period (30 days).
+func (h *AdminHandler) countPeriods(ctx context.Context, subID uuid.UUID) (int, error) {
+	var count int
+	err := h.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM usage_counters WHERE subscription_id = $1`, subID,
+	).Scan(&count)
+	return count, err
+}
+
+// isBetaSubscription checks if the subscription belongs to a BETA plan
+// by looking at the plan tier (via JOIN).
+func (h *AdminHandler) isBetaSubscription(ctx context.Context, subID uuid.UUID) bool {
+	var tier string
+	err := h.pool.QueryRow(ctx,
+		`SELECT p.tier FROM subscriptions s
+		 JOIN subscription_plans p ON p.id = s.plan_id
+		 WHERE s.id = $1`, subID,
+	).Scan(&tier)
+	return err == nil && tier == "BETA"
+}
+
+// cancelSubscription sets a subscription status to CANCELED.
+func (h *AdminHandler) cancelSubscription(ctx context.Context, subID uuid.UUID) error {
+	_, err := h.pool.Exec(ctx,
+		`UPDATE subscriptions SET status = 'CANCELED', updated_at = now() WHERE id = $1`, subID,
+	)
+	return err
+}
+
