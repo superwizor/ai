@@ -75,7 +75,7 @@ export async function handlePostRegistrationRedirect(
     const res = await fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId, organizationId }),
+      body: JSON.stringify({ priceId, organizationId, email }),
     });
 
     if (!res.ok) {
