@@ -400,10 +400,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                           _SettingsRow(
                             icon: Icons.open_in_new,
                             title: t.settings_waitlist,
-                            subtitle: 'euphire.pl',
+                            subtitle: 'superwizor.ai',
                             trailing: Icon(Icons.chevron_right,
                                 color: EuphireColors.mist.withValues(alpha: 0.4), size: 18),
-                            onTap: () => _openUrl('https://euphire.pl/superwizor-ai-lista-oczekujacych'),
+                            onTap: () => _openUrl('https://superwizor.ai/kontakt'),
                           ),
                         ]),
 

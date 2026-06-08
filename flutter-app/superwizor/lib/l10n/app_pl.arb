@@ -407,7 +407,7 @@
   "billing_dismiss_cta": "Rozumiem, kontynuuj",
 
   "billing_exhausted_dialog_title": "Pula tokenów wyczerpana",
-  "billing_exhausted_dialog_body": "Możesz nadal nagrywać sesję — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie na Twoim urządzeniu. Po rozszerzeniu planu lub odnowieniu puli możesz wznowić przetwarzanie sesji z poziomu Kartoteki.",
+  "billing_exhausted_dialog_body": "Wykorzystałeś dostępne sesje. Możesz nadal nagrywać — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie. Sprawdź swoją skrzynkę e-mail, aby dowiedzieć się więcej.",
   "billing_exhausted_dialog_record_locally": "Nagrywaj lokalnie",
 
   "billing_pending_sessions_title": "{n, plural, =1{Sesja oczekująca na przetworzenie} few{Sesje oczekujące na przetworzenie ({n})} many{Sesji oczekujących na przetworzenie ({n})} other{Sesji oczekujących na przetworzenie ({n})}}",
