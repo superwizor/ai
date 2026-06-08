@@ -32,6 +32,8 @@
       "cardOrgsBody": "List of all organisations with filtering, blocking, and plan changes.",
       "cardUsers": "Users",
       "cardUsersBody": "Global user list. Edit, deactivate, reset passwords.",
+      "cardCrm": "Therapist CRM",
+      "cardCrmBody": "Sort by urgency, check credits & alerts, email therapists, export CSV.",
       "cardAudit": "Audit log",
       "cardAuditBody": "Full administrative activity history with filters.",
       "cardAnalytics": "Analytics & Stats",
@@ -78,6 +80,12 @@
       "sectionAudit": "Recent activity",
       "noTherapists": "No therapists in this organisation yet.",
       "noAudit": "No audit log entries yet."
+    },
+    "crm": {
+      "metaTitle": "Therapist CRM",
+      "overline": "CRM",
+      "title": "CRM Panel",
+      "subhead": "Manage therapist relationships. Monitor credits, alerts, and subscription status."
     },
     "sessions": {
       "metaTitle": "Session activity",

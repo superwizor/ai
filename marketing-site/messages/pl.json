@@ -32,6 +32,8 @@
       "cardOrgsBody": "Lista wszystkich organizacji z filtrowaniem, blokowaniem i zmianą planów.",
       "cardUsers": "Użytkownicy",
       "cardUsersBody": "Globalna lista użytkowników. Edycja, dezaktywacja, reset hasła.",
+      "cardCrm": "CRM Terapeutów",
+      "cardCrmBody": "Sortuj po pilności, sprawdzaj kredyty i alerty, pisz do terapeutów, eksportuj CSV.",
       "cardAudit": "Dziennik audytowy",
       "cardAuditBody": "Pełna historia działań administracyjnych z filtrami.",
       "cardAnalytics": "Analityka i Statystyki",
@@ -78,6 +80,12 @@
       "sectionAudit": "Ostatnie zdarzenia",
       "noTherapists": "Brak terapeutów w tej organizacji.",
       "noAudit": "Brak zdarzeń w dzienniku audytowym."
+    },
+    "crm": {
+      "metaTitle": "CRM Terapeutów",
+      "overline": "CRM",
+      "title": "Panel CRM",
+      "subhead": "Zarządzaj relacjami z terapeutami. Monitoruj kredyty, alerty i status subskrypcji."
     },
     "sessions": {
       "metaTitle": "Aktywność sesji",

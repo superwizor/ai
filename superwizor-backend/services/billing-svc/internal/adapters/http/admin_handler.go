@@ -49,6 +49,7 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/safety-check", h.handleSafetyCheck)
 	mux.HandleFunc("POST /admin/email-drip", h.handleEmailDrip)
 	mux.HandleFunc("POST /admin/renewal-reminders", h.handleRenewalReminders)
+	mux.HandleFunc("GET /admin/crm/subscribers", h.handleCRMSubscribers)
 }
 
 // ---------- reservation-expiry ----------
@@ -602,3 +603,205 @@ func (h *AdminHandler) handleRenewalReminders(w http.ResponseWriter, r *http.Req
 	})
 }
 
+// ---------- CRM subscribers ----------
+
+// CRMSubscriber — enriched user + subscription view for Marcin's CRM panel.
+type CRMSubscriber struct {
+	UserID            string  `json:"user_id"`
+	FirstName         string  `json:"first_name"`
+	LastName          string  `json:"last_name"`
+	Email             string  `json:"email"`
+	Phone             string  `json:"phone"`
+	ProfessionalTitle string  `json:"professional_title"`
+	CreatedAt         string  `json:"created_at"`
+	// Subscription
+	SubscriptionID    string  `json:"subscription_id"`
+	PlanTier          string  `json:"plan_tier"`
+	PlanDisplayName   string  `json:"plan_display_name"`
+	SubStatus         string  `json:"sub_status"`
+	Provider          string  `json:"provider"`
+	PeriodStart       string  `json:"period_start"`
+	PeriodEnd         string  `json:"period_end"`
+	DaysUntilRenewal  int     `json:"days_until_renewal"`
+	// Usage
+	TokensLimit       int32   `json:"tokens_limit"`
+	TokensUsed        int32   `json:"tokens_used"`
+	TokensRemaining   int32   `json:"tokens_remaining"`
+	UsagePct          float64 `json:"usage_pct"`
+	// Sessions (all-time from sessions table)
+	TotalSessions     int32   `json:"total_sessions"`
+	// Urgency flags
+	CreditAlert       string  `json:"credit_alert"` // "critical" (≤1), "warning" (≤3), "low" (≤5), ""
+	ExpiryAlert       string  `json:"expiry_alert"` // "imminent" (≤3d), "soon" (≤7d), ""
+	UrgencyScore      int     `json:"urgency_score"` // higher = more urgent (for sorting)
+	// Organization
+	OrgID             string  `json:"org_id"`
+	OrgName           string  `json:"org_name"`
+}
+
+type crmResponse struct {
+	Subscribers []CRMSubscriber `json:"subscribers"`
+	Total       int             `json:"total"`
+	Message     string          `json:"message"`
+}
+
+// handleCRMSubscribers — GET /admin/crm/subscribers
+//
+// Returns enriched subscriber data for Marcin's CRM panel. Supports:
+//
+//	?tier=BETA|TRIAL|SOLO|PRO|CLINIC — filter by plan tier
+//	?status=ACTIVE|CANCELED|TRIALING — filter by sub status
+//	?alert=critical|warning — filter only users needing attention
+//
+// Sorted by urgency score by default (most critical first).
+func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	h.logger.InfoContext(ctx, "crm: subscribers list requested")
+
+	tierFilter := r.URL.Query().Get("tier")
+	statusFilter := r.URL.Query().Get("status")
+	alertFilter := r.URL.Query().Get("alert")
+
+	rows, err := h.pool.Query(ctx, `
+		SELECT
+			u.id AS user_id,
+			COALESCE(u.first_name, '') AS first_name,
+			COALESCE(u.last_name, '') AS last_name,
+			COALESCE(u.email, '') AS email,
+			COALESCE(u.phone_number, '') AS phone,
+			COALESCE(u.professional_title, '') AS professional_title,
+			u.created_at AS user_created_at,
+
+			s.id AS sub_id,
+			COALESCE(p.tier, '') AS plan_tier,
+			COALESCE(p.display_name, p.tier) AS plan_display_name,
+			COALESCE(s.status, '') AS sub_status,
+			COALESCE(s.provider, '') AS provider,
+			s.current_period_start,
+			s.current_period_end,
+			EXTRACT(DAY FROM s.current_period_end - now())::int AS days_until_renewal,
+
+			COALESCE(uc.tokens_limit, p.tokens_per_period) AS tokens_limit,
+			COALESCE(uc.tokens_used, 0) AS tokens_used,
+			GREATEST(0, COALESCE(uc.tokens_limit, p.tokens_per_period) - COALESCE(uc.tokens_used, 0)) AS tokens_remaining,
+
+			COALESCE(sess_count.cnt, 0) AS total_sessions,
+
+			o.id AS org_id,
+			COALESCE(o.display_name, o.legal_name, '') AS org_name
+		FROM subscriptions s
+		JOIN subscription_plans p ON p.id = s.plan_id
+		JOIN organizations o ON o.id = s.organization_id
+		JOIN users u ON u.organization_id = o.id
+		LEFT JOIN usage_counters uc ON uc.subscription_id = s.id
+			AND uc.period_start = s.current_period_start
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*)::int AS cnt
+			FROM sessions sess
+			WHERE sess.therapist_id = u.id
+		) sess_count ON true
+		WHERE s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
+		ORDER BY s.current_period_end ASC
+		LIMIT 500
+	`)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "crm query", err)
+		return
+	}
+	defer rows.Close()
+
+	var subscribers []CRMSubscriber
+	for rows.Next() {
+		var sub CRMSubscriber
+		var periodStart, periodEnd, userCreated time.Time
+		var daysUntilRenewal int
+		var tokensLimit, tokensUsed, tokensRemaining, totalSessions int32
+
+		if err := rows.Scan(
+			&sub.UserID, &sub.FirstName, &sub.LastName, &sub.Email, &sub.Phone,
+			&sub.ProfessionalTitle, &userCreated,
+			&sub.SubscriptionID, &sub.PlanTier, &sub.PlanDisplayName,
+			&sub.SubStatus, &sub.Provider,
+			&periodStart, &periodEnd, &daysUntilRenewal,
+			&tokensLimit, &tokensUsed, &tokensRemaining,
+			&totalSessions,
+			&sub.OrgID, &sub.OrgName,
+		); err != nil {
+			h.logger.ErrorContext(ctx, "crm: scan row", "error", err)
+			continue
+		}
+
+		sub.CreatedAt = userCreated.Format("2006-01-02")
+		sub.PeriodStart = periodStart.Format("2006-01-02")
+		sub.PeriodEnd = periodEnd.Format("2006-01-02")
+		sub.DaysUntilRenewal = daysUntilRenewal
+		sub.TokensLimit = tokensLimit
+		sub.TokensUsed = tokensUsed
+		sub.TokensRemaining = tokensRemaining
+		sub.TotalSessions = totalSessions
+		if tokensLimit > 0 {
+			sub.UsagePct = float64(tokensUsed) / float64(tokensLimit) * 100
+		}
+
+		// Credit alerts
+		urgency := 0
+		switch {
+		case tokensRemaining <= 1 && tokensLimit > 0:
+			sub.CreditAlert = "critical"
+			urgency += 30
+		case tokensRemaining <= 3 && tokensLimit > 0:
+			sub.CreditAlert = "warning"
+			urgency += 20
+		case tokensRemaining <= 5 && tokensLimit > 0:
+			sub.CreditAlert = "low"
+			urgency += 10
+		}
+
+		// Expiry alerts
+		switch {
+		case daysUntilRenewal <= 3:
+			sub.ExpiryAlert = "imminent"
+			urgency += 15
+		case daysUntilRenewal <= 7:
+			sub.ExpiryAlert = "soon"
+			urgency += 5
+		}
+
+		// Boost urgency for churned users
+		if sub.SubStatus == "CANCELED" {
+			urgency += 25
+		}
+		sub.UrgencyScore = urgency
+
+		// Apply filters
+		if tierFilter != "" && sub.PlanTier != tierFilter {
+			continue
+		}
+		if statusFilter != "" && sub.SubStatus != statusFilter {
+			continue
+		}
+		if alertFilter == "critical" && sub.CreditAlert != "critical" {
+			continue
+		}
+		if alertFilter == "warning" && sub.CreditAlert != "critical" && sub.CreditAlert != "warning" {
+			continue
+		}
+
+		subscribers = append(subscribers, sub)
+	}
+
+	// Sort by urgency score (highest first)
+	for i := 0; i < len(subscribers); i++ {
+		for j := i + 1; j < len(subscribers); j++ {
+			if subscribers[j].UrgencyScore > subscribers[i].UrgencyScore {
+				subscribers[i], subscribers[j] = subscribers[j], subscribers[i]
+			}
+		}
+	}
+
+	writeJSON(w, http.StatusOK, crmResponse{
+		Subscribers: subscribers,
+		Total:       len(subscribers),
+		Message:     "ok",
+	})
+}
