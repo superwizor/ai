@@ -122,6 +122,8 @@ export function TherapistEmailForm() {
         uiLanguage: data.uiLanguage,
         timezone: tz,
         hasAcceptedTos: true,
+        // Beta signups get BETA plan provisioning instead of TRIAL.
+        initialPlanTier: planSlug?.toUpperCase() === "BETA" ? "BETA" : "",
       });
       const created = await identityClient.createUser(createReq);
 

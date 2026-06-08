@@ -14,6 +14,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
@@ -41,6 +42,7 @@ import {
   getModalityCatalog,
   type ModalityRow,
 } from "@/lib/clinical/modalities";
+import { handlePostRegistrationRedirect } from "@/lib/register/post-registration";
 
 export function TherapistFinishForm({
   email,
@@ -74,6 +76,8 @@ export function TherapistFinishForm({
   const locale = useLocale();
   const auth = useAuth();
   const prefix = locale === "en" ? "/en" : "";
+  const searchParams = useSearchParams();
+  const planSlug = searchParams.get("plan");
 
   const {
     register,
@@ -106,7 +110,7 @@ export function TherapistFinishForm({
     try {
       const tz =
         Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Warsaw";
-      await identityClient.createUser(
+      const created = await identityClient.createUser(
         create(CreateUserRequestSchema, {
           firebaseUid: user.uid,
           email,
@@ -116,6 +120,7 @@ export function TherapistFinishForm({
           uiLanguage: data.uiLanguage,
           timezone: tz,
           hasAcceptedTos: true,
+          initialPlanTier: planSlug?.toUpperCase() === "BETA" ? "BETA" : "",
         }),
       );
 
@@ -138,11 +143,17 @@ export function TherapistFinishForm({
         );
       }
 
-      // Google sign-in marks emailVerified=true automatically (Google
-      // already vetted the address). Skip the "check your inbox" page
-      // and bounce straight to the app. DNS for app.superwizor.ai is
-      // still NXDOMAIN; use the web.app subdomain.
-      window.location.href = "https://superwizor-app.web.app/";
+      // For social sign-in with a paid plan → Stripe Checkout.
+      // For free plans or no plan → straight to the app (Google sign-in
+      // marks emailVerified=true so no verify-email interstitial needed).
+      const orgId = created.organizationId ?? "";
+      const priceNeeded = planSlug && !['trial', 'beta'].includes(planSlug.toLowerCase());
+      if (priceNeeded && orgId) {
+        await handlePostRegistrationRedirect(orgId, planSlug, prefix, email);
+      } else {
+        // Google/Apple sign-in → email already verified → go to app
+        window.location.href = "https://superwizor-app.web.app/";
+      }
     } catch {
       setServerError(tErr("unknown"));
     }
