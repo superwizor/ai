@@ -8,10 +8,10 @@ resource "google_artifact_registry_repository" "services" {
   format        = "DOCKER"
 
   cleanup_policies {
-    id     = "keep-last-30"
+    id     = "keep-last-5"
     action = "KEEP"
     most_recent_versions {
-      keep_count = 30
+      keep_count = 5  # was 30 — 8 images × 30 = 240 versions stored, overkill for staging
     }
   }
 

@@ -25,7 +25,11 @@ resource "google_sql_database_instance" "main" {
 
     backup_configuration {
       enabled                        = true
-      point_in_time_recovery_enabled = true
+      # PITR DISABLED for staging — continuous WAL archival generates
+      # significant storage costs ($10-50+/mo depending on write volume).
+      # Daily automated backups are sufficient for staging. Re-enable
+      # for production.
+      point_in_time_recovery_enabled = false
     }
   }
 }

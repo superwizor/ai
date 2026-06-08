@@ -292,8 +292,8 @@ jobs:
             --vpc-egress private-ranges-only \
             --min-instances 1 \
             --max-instances 20 \
-            --cpu 2 \
-            --memory 2Gi \
+            --cpu 1 \
+            --memory 1Gi \
             --no-cpu-throttling \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
             --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},AUDIO_BUCKET_NAME=${{ env.PROJECT_ID }}-audio-uploads,VERSION=${{ github.sha }},GCS_FINALIZE_SUB_ID=audio.objectFinalized.sub,BILLING_SVC_URL=${BILLING_SVC_URL}"

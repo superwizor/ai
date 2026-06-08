@@ -26,11 +26,10 @@ resource "google_compute_subnetwork" "main" {
 
   private_ip_google_access = true
 
-  log_config {
-    aggregation_interval = "INTERVAL_5_SEC"
-    flow_sampling        = 0.5
-    metadata             = "INCLUDE_ALL_METADATA"
-  }
+  # VPC flow logs DISABLED — staging without real users doesn't need
+  # network-level logging. Was INTERVAL_5_SEC / 50% / ALL_METADATA,
+  # which generated ~100-200 PLN/month of Cloud Logging costs.
+  # Re-enable selectively for network debugging if needed.
 }
 
 # Private Service Access dla Cloud SQL (private IP)
