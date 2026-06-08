@@ -82,4 +82,41 @@ test.describe("Smoke Navigation", () => {
     await page.goto(`${prefix}/legal/privacy`);
     await expect(page.locator("main")).toBeVisible();
   });
+
+  test("landing page passes automated a11y checks", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    await expect(page.locator("h1").first()).toBeVisible();
+
+    const AxeBuilder = (await import("@axe-core/playwright")).default;
+    const results = await new AxeBuilder({ page })
+      // Exclude known false-positive regions:
+      // - Next.js route-announcer (empty on first load)
+      // - Next.js dev tools button (dev-only element)
+      .exclude("#__next-route-announcer__")
+      .exclude("[data-next-mark]")
+      // Only check WCAG 2.x AA rules.
+      .withTags(["wcag2a", "wcag2aa"])
+      // Disable color-contrast — marketing pages have intentional
+      // low-contrast decorative text on animated backgrounds that
+      // axe can't evaluate reliably.
+      .disableRules(["color-contrast"])
+      .analyze();
+
+    // Only fail on critical-impact violations.
+    const critical = results.violations.filter(
+      (v) => v.impact === "critical",
+    );
+
+    // Build a readable message for debugging.
+    const summary = critical
+      .map(
+        (v) =>
+          `[${v.impact}] ${v.id}: ${v.description} (${v.nodes.length} nodes)`,
+      )
+      .join("\n");
+
+    expect(critical, `A11y critical violations:\n${summary}`).toHaveLength(0);
+  });
 });
+

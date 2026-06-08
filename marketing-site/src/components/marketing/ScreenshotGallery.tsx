@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations, useLocale } from "next-intl";
+import { useLocale } from "next-intl";
 import { useRef, useState, useEffect } from "react";
 
 const galleryItems = [

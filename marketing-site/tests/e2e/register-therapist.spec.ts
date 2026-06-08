@@ -162,3 +162,61 @@ test("login page loads and displays login form", async ({ page }) => {
   await expect(page.locator("input[type='email']")).toBeVisible();
   await expect(page.locator("input[type='password']")).toBeVisible();
 });
+
+// ── Password Reset Flow ────────────────────────────────────────────
+
+test("password reset shows success message when valid email submitted", async ({
+  page,
+}) => {
+  const prefix = urlPrefix();
+
+  // Mock the Firebase password reset endpoint.
+  await page.route(/accounts:sendOobCode/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ email: "test@example.com" }),
+    });
+  });
+
+  await page.goto(`${prefix}/login`);
+
+  // Fill email field.
+  await page.locator("input[type='email']").fill("test@example.com");
+
+  // Click "Nie pamiętam hasła" / "Forgot password?" button.
+  const forgotLabel = forLocale({
+    pl: /nie pamiętam hasła/i,
+    en: /forgot password/i,
+  });
+  await page.getByRole("button", { name: forgotLabel }).click();
+
+  // Should show a success status message (not an error alert).
+  const successMessage = page.locator("[role='status']");
+  await expect(successMessage).toBeVisible();
+
+  const sentText = forLocale({
+    pl: "Wysłaliśmy link do resetu hasła",
+    en: "We've sent a password-reset link",
+  });
+  await expect(successMessage).toContainText(sentText);
+});
+
+test("password reset shows error when email field is empty", async ({
+  page,
+}) => {
+  const prefix = urlPrefix();
+  await page.goto(`${prefix}/login`);
+
+  // Click forgot password without filling email.
+  const forgotLabel = forLocale({
+    pl: /nie pamiętam hasła/i,
+    en: /forgot password/i,
+  });
+  await page.getByRole("button", { name: forgotLabel }).click();
+
+  // Should show an error asking for email.
+  const errorAlert = page.locator("p[role='alert']");
+  await expect(errorAlert).toBeVisible();
+});
+

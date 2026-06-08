@@ -20,7 +20,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -42,7 +42,7 @@ const APP_URL = "https://superwizor-app.web.app/";
 
 export function AccountSections() {
   const t = useTranslations("account");
-  const locale = useLocale();
+
   const { user: fbUser, signOut } = useAuth();
 
   const [profile, setProfile] = useState<User | null>(null);
@@ -107,7 +107,7 @@ export function AccountSections() {
       )}
 
       <ProfileSection profile={profile} onUpdate={setProfile} />
-      <OrgSection profile={profile} locale={locale} />
+      <OrgSection profile={profile} />
       <BillingSection organizationId={profile?.organizationId ?? null} />
       <StripePlaceholder />
     </div>
@@ -342,7 +342,7 @@ function ProfileSection({
 // ────────────────────────────────────────────────────────────────────
 // Organisation (SOLO-therapists + ORG_ADMIN only — graceful skip otherwise)
 // ────────────────────────────────────────────────────────────────────
-function OrgSection({ profile, locale: _locale }: { profile: User | null; locale: string }) {
+function OrgSection({ profile }: { profile: User | null }) {
   const t = useTranslations("account");
   const [phase, setPhase] = useState<"loading" | "ready" | "notAllowed" | "noOrg" | "error">("loading");
   const [org, setOrg] = useState<Organization | null>(null);
@@ -754,8 +754,7 @@ function StripePlaceholder() {
 // ────────────────────────────────────────────────────────────────────
 // Shared bits
 // ────────────────────────────────────────────────────────────────────
-const inputClass =
-  "rounded-button bg-frost/5 border border-frost/15 px-3 py-2 font-mono text-sm text-frost focus:outline-none focus:border-ember w-full";
+// inputClass removed — superseded by inputClassLg (20% larger variant).
 // 20% larger variant for the Profil + Organizacja sections per the
 // 2026-05-29 design tweak. Bumps label (10px→12px), input (14px→17px,
 // roughly text-base + a tenth) and uses py-2.5 to keep proportions.

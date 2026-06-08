@@ -1,8 +1,9 @@
 // Playwright E2E: /admin/analytics dashboard.
 //
-// Focused tests for: auth gating, dashboard rendering, tab switching,
-// error handling, and KPI display. No waitForTimeout — uses Playwright's
-// built-in waiting primitives throughout.
+// Each test installs its own Firebase Auth + Connect-RPC route mocks,
+// keeping tests fully isolated. The login flow takes ~1s — acceptable
+// for 6 tests, and avoids the complexity of storageState when auth
+// lives at the mock-route level rather than real browser sessions.
 //
 // Fixtures:  fixtures/auth.ts       — Firebase Auth intercepts
 //            fixtures/connect-rpc.ts — identity-svc & clinical-svc mocks
@@ -25,19 +26,12 @@ import { AnalyticsDashboardPage } from "./pages/analytics.page";
 
 // ── Helpers ────────────────────────────────────────────────────────
 
-/** Full mock setup for an authenticated admin session. */
-async function setupAdminSession(page: import("@playwright/test").Page) {
+/** Full mock setup for an admin session (auth + identity + analytics). */
+async function setupAdminMocks(page: import("@playwright/test").Page) {
   await mockFirebaseAuth(page, ADMIN_USER);
   await mockGetMyProfile(page);
   await mockGetAdminAnalytics(page);
-}
-
-/** Navigate to admin analytics and wait for the dashboard to load. */
-async function gotoAndWaitForDashboard(
-  page: import("@playwright/test").Page,
-  prefix: string,
-) {
-  // Mock the NBP rate API that the dashboard calls for PLN conversion.
+  // Mock NBP rate API that the dashboard calls for PLN conversion.
   await page.route(/api\.nbp\.pl/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -48,8 +42,14 @@ async function gotoAndWaitForDashboard(
       }),
     });
   });
+}
 
+/** Navigate to analytics and sign in through AdminGuard. */
+async function navigateAndSignIn(page: import("@playwright/test").Page) {
+  const prefix = urlPrefix();
   await page.goto(`${prefix}/admin/analytics`);
+  const loginPage = new AdminLoginPage(page);
+  await loginPage.signIn("admin@superwizor.ai", "AdminPassword123!");
 }
 
 // ── Auth Gating ────────────────────────────────────────────────────
@@ -66,26 +66,14 @@ test.describe("Admin Analytics — Auth Gating", () => {
 
   test("authenticates via email and loads dashboard", async ({ page }) => {
     const prefix = urlPrefix();
-    // Start signed-out, then sign in.
     await mockFirebaseSignedOut(page);
 
     await page.goto(`${prefix}/admin/analytics`);
     const loginPage = new AdminLoginPage(page);
     await loginPage.expectSignInRequired();
 
-    // Now install the full admin session mocks before submitting.
-    await setupAdminSession(page);
-
-    await page.route(/api\.nbp\.pl/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          rates: [{ mid: 3.95 }],
-          effectiveDate: "2026-06-07",
-        }),
-      });
-    });
+    // Install full admin session mocks before submitting.
+    await setupAdminMocks(page);
 
     await loginPage.signIn("admin@superwizor.ai", "AdminPassword123!");
 
@@ -97,22 +85,14 @@ test.describe("Admin Analytics — Auth Gating", () => {
 // ── Dashboard Rendering ────────────────────────────────────────────
 
 test.describe("Admin Analytics — Dashboard", () => {
-  test.beforeEach(async ({ page }) => {
-    await setupAdminSession(page);
-  });
-
   test("loads Overview tab with KPI cards", async ({ page }) => {
-    const prefix = urlPrefix();
-    await gotoAndWaitForDashboard(page, prefix);
-
-    const loginPage = new AdminLoginPage(page);
-    await loginPage.signIn("admin@superwizor.ai", "AdminPassword123!");
+    await setupAdminMocks(page);
+    await navigateAndSignIn(page);
 
     const dashboard = new AnalyticsDashboardPage(page);
     await dashboard.expectDashboardLoaded();
 
     // KPI cards render the mock values via CountUp animation.
-    // Instead of waitForTimeout(2000), wait for the specific text.
     const wauTitle = forLocale({
       pl: "Aktywni terapeuci (WAU)",
       en: "Active Therapists (WAU)",
@@ -123,11 +103,8 @@ test.describe("Admin Analytics — Dashboard", () => {
   });
 
   test("switches to Costs tab and shows cost KPIs", async ({ page }) => {
-    const prefix = urlPrefix();
-    await gotoAndWaitForDashboard(page, prefix);
-
-    const loginPage = new AdminLoginPage(page);
-    await loginPage.signIn("admin@superwizor.ai", "AdminPassword123!");
+    await setupAdminMocks(page);
+    await navigateAndSignIn(page);
 
     const dashboard = new AnalyticsDashboardPage(page);
     await dashboard.expectDashboardLoaded();
@@ -143,11 +120,8 @@ test.describe("Admin Analytics — Dashboard", () => {
   test("switches to AI Quality tab and shows quality KPIs", async ({
     page,
   }) => {
-    const prefix = urlPrefix();
-    await gotoAndWaitForDashboard(page, prefix);
-
-    const loginPage = new AdminLoginPage(page);
-    await loginPage.signIn("admin@superwizor.ai", "AdminPassword123!");
+    await setupAdminMocks(page);
+    await navigateAndSignIn(page);
 
     const dashboard = new AnalyticsDashboardPage(page);
     await dashboard.expectDashboardLoaded();
@@ -165,11 +139,9 @@ test.describe("Admin Analytics — Dashboard", () => {
 
 test.describe("Admin Analytics — Error Handling", () => {
   test("shows error state when GetAdminAnalytics fails", async ({ page }) => {
-    const prefix = urlPrefix();
     await mockFirebaseAuth(page, ADMIN_USER);
     await mockGetMyProfile(page);
     await mockGetAdminAnalyticsError(page);
-
     await page.route(/api\.nbp\.pl/, async (route) => {
       await route.fulfill({
         status: 200,
@@ -181,10 +153,7 @@ test.describe("Admin Analytics — Error Handling", () => {
       });
     });
 
-    await page.goto(`${prefix}/admin/analytics`);
-
-    const loginPage = new AdminLoginPage(page);
-    await loginPage.signIn("admin@superwizor.ai", "AdminPassword123!");
+    await navigateAndSignIn(page);
 
     const dashboard = new AnalyticsDashboardPage(page);
     await dashboard.expectErrorState();

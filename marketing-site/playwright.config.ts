@@ -19,6 +19,8 @@ export default defineConfig({
   timeout: 30_000,
   fullyParallel: true,
   reporter: process.env.CI ? "github" : "list",
+  // Ignore the setup file — it's not used in the current config.
+  testIgnore: [/\.setup\.ts$/],
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",

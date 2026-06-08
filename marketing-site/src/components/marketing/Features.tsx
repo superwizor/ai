@@ -358,14 +358,6 @@ export function Features() {
     );
   };
 
-  const handleLike = () => {
-    showToast(
-      isPl
-        ? "Dziękujemy za pozytywną opinię! Twój suggestion engine uczy się Twojego stylu."
-        : "Thank you for the positive feedback! Your suggestion engine is learning your style."
-    );
-  };
-
   const tabs: FeatureKey[] = ["report", "transcript", "continuity", "modality"];
   const handleNextTab = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();

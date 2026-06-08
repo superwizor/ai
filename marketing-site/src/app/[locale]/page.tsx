@@ -16,7 +16,7 @@ import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { Features } from "@/components/marketing/Features";
 // import { ScreenshotGallery } from "@/components/marketing/ScreenshotGallery";
 import { Security } from "@/components/marketing/Security";
-import { CtaMid } from "@/components/marketing/CtaMid";
+// CtaMid removed — not currently used in the landing page layout.
 import { Audience } from "@/components/marketing/Audience";
 import { PricingCards } from "@/components/marketing/PricingCards";
 import { Faq } from "@/components/marketing/Faq";

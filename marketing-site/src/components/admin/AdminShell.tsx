@@ -23,7 +23,6 @@ export function AdminShell({
   user: User;
   children: React.ReactNode;
 }) {
-  const t = useTranslations("admin");
   const tSide = useTranslations("admin.sidebar");
   const tHeader = useTranslations("admin.header");
   const locale = useLocale();

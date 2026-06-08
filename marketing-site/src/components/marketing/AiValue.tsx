@@ -164,13 +164,8 @@ const colF = [
   <svg key="5" className={C} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={S} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22V12"/><path d="M5 12c0-4.5 3-7 7-7s7 2.5 7 7"/></svg>,
   <svg key="6" className={C} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={S} strokeLinecap="round" strokeLinejoin="round"><path d="M8 2h8v6h6v8h-6v6H8v-6H2V8h6z"/></svg>,
 ];
-// Right side mirrors with different order
-const colG = colC;
-const colH = colA;
-const colI = colD;
-const colJ = colB;
-const colK = colE;
-const colL = colF;
+// colA–colF are used directly in the IconCol grid above.
+// Aliases colG–colL were removed as unused dead code.
 
 /* ─── Feature card icons ─────────────────────────────────────── */
 function FeatureIcon({ name }: { name: string }) {

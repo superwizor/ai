@@ -89,7 +89,7 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }, [timeRange]);
+  }, [timeRange, t]);
 
   useEffect(() => {
     void fetchAnalytics();
