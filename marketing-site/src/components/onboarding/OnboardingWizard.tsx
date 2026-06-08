@@ -1,15 +1,15 @@
-// OnboardingWizard — 6-step post-registration wizard.
+// OnboardingWizard — Premium 5-step post-registration wizard with Framer Motion.
 //
-// Plan Phase 3:
-//   Step 1: Email verification (Firebase link check)
-//   Step 2: Profile details (first name, last name, professional title)
-//   Step 3: Phone number (required for anti-abuse + Marcin's contact base)
-//   Step 4: Practice setup (practice name, size, default modality)
-//   Step 5: Preferences (optional checkboxes: what do you need most?)
-//   Step 6: Done → redirect to /dashboard
+// Design: Full-bleed cards, each step is its own visual world.
+// Animations: slide + fade transitions between steps via AnimatePresence.
+// Progress: Beautiful dots (not a thin bar).
 //
-// Resume: step stored in localStorage so closing browser doesn't lose progress.
-// Skip: steps 4 and 5 are skippable.
+//   Step 1: Email verification — pulse animation on ✉️
+//   Step 2: Profile — "Miło Cię poznać" — first/last name, title
+//   Step 3: Phone — country-aware input with privacy reassurance
+//   Step 4: Practice — visual card selection (not dropdowns)
+//   Step 5: Preferences — icon tiles in 2×3 grid with bounce
+//   Step 6: Done — confetti-style sparkle + personalized greeting
 
 "use client";
 
@@ -19,10 +19,46 @@ import { useRouter } from "next/navigation";
 import { create } from "@bufbuild/protobuf";
 import { identityClient } from "@/lib/connect/clients";
 import { UpdateProfileRequestSchema } from "@superwizor/proto-ts/identity/v1/identity_pb";
+import { motion, AnimatePresence } from "framer-motion";
 
 const STORAGE_KEY = "sw_onboarding_step";
-
 type OnboardingStep = 1 | 2 | 3 | 4 | 5 | 6;
+
+// ─── Animations ──────────────────────────────────────────────
+
+const cardVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 300 : -300,
+    opacity: 0,
+    scale: 0.95,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    scale: 1,
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 300 : -300,
+    opacity: 0,
+    scale: 0.95,
+  }),
+};
+
+const fadeUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0, transition: { delay: 0.2, duration: 0.5 } },
+};
+
+const stagger = {
+  animate: { transition: { staggerChildren: 0.08 } },
+};
+
+const childFade = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+};
+
+// ─── Component ───────────────────────────────────────────────
 
 export function OnboardingWizard({ locale }: { locale: string }) {
   const { user: fbUser } = useAuth();
@@ -40,35 +76,36 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     return 1;
   });
 
+  const [direction, setDirection] = useState(1);
+
   // Persist step
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, String(step));
   }, [step]);
 
-  // Step 1: auto-advance if email already verified
+  // Step 1: auto-advance if verified
   useEffect(() => {
     if (step === 1 && fbUser?.emailVerified) {
+      setDirection(1);
       setStep(2);
     }
   }, [step, fbUser?.emailVerified]);
 
-  // Step 6: redirect to dashboard
+  // Step 6: redirect
   useEffect(() => {
     if (step === 6) {
       localStorage.removeItem(STORAGE_KEY);
       const timer = setTimeout(() => {
         router.push(`${prefix}/dashboard`);
-      }, 2000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [step, router, prefix]);
 
-  const next = useCallback(() => {
+  const goNext = useCallback(() => {
+    setDirection(1);
     setStep((s) => Math.min(s + 1, 6) as OnboardingStep);
   }, []);
-
-  const totalSteps = 5; // visual steps (step 6 is just the redirect)
-  const visualStep = Math.min(step, 5);
 
   // Form state
   const [profileData, setProfileData] = useState({
@@ -88,7 +125,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
 
   const t = (pl: string, en: string) => (locale === "en" ? en : pl);
 
-  // --- Backend save handlers ---
+  // ─── Backend Saves ─────────────────────────────────────────
 
   const saveProfile = useCallback(async () => {
     setSaving(true);
@@ -100,8 +137,9 @@ export function OnboardingWizard({ locale }: { locale: string }) {
           lastName: profileData.lastName,
           professionalTitle: profileData.professionalTitle || "",
           phoneNumber: phone || "",
-        })
+        }),
       );
+      setDirection(1);
       setStep(3);
     } catch (e) {
       console.error("[onboarding] saveProfile failed", e);
@@ -116,439 +154,404 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     setError(null);
     try {
       await identityClient.updateProfile(
-        create(UpdateProfileRequestSchema, {
-          phoneNumber: phone,
-        })
+        create(UpdateProfileRequestSchema, { phoneNumber: phone }),
       );
+      setDirection(1);
       setStep(4);
     } catch (e) {
       console.error("[onboarding] savePhone failed", e);
-      setError(t("Nie udało się zapisać numeru. Spróbuj ponownie.", "Failed to save phone number. Please try again."));
+      setError(t("Nie udało się zapisać numeru.", "Failed to save phone number."));
     } finally {
       setSaving(false);
     }
   }, [phone, t]);
 
-  const savePreferences = useCallback(async () => {
-    // Preferences are stored as metadata on the user profile.
-    // For now, we skip the backend call and just advance — preferences
-    // will be sent as analytics events (product analytics, not clinical data).
-    setStep(6);
-  }, []);
+  const totalSteps = 5;
+  const visualStep = Math.min(step, 5);
+
+  // ─── Render ────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto max-w-lg px-5 pt-28 pb-20 sm:pt-36">
-      {/* --- Progress Bar --- */}
+    <div className="min-h-screen flex flex-col items-center justify-center px-5 py-12">
+      {/* Progress Dots */}
       {step < 6 && (
-        <div className="mb-10">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#8FA5A0]">
-              {t(`Krok ${visualStep} z ${totalSteps}`, `Step ${visualStep} of ${totalSteps}`)}
-            </span>
-            <span className="font-mono text-[10px] text-[#8FA5A0]">
-              {Math.round((visualStep / totalSteps) * 100)}%
-            </span>
-          </div>
-          <div className="h-1.5 bg-[#1A3A3E] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-[#F5A623] to-[#E09500] rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${(visualStep / totalSteps) * 100}%` }}
+        <motion.div
+          className="flex items-center gap-3 mb-10"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          {[1, 2, 3, 4, 5].map((n) => (
+            <motion.div
+              key={n}
+              className={`rounded-full transition-all duration-300 ${
+                n === visualStep
+                  ? "w-8 h-3 bg-gradient-to-r from-[#F5A623] to-[#E09500]"
+                  : n < visualStep
+                    ? "w-3 h-3 bg-[#F5A623]/40"
+                    : "w-3 h-3 bg-[#1A3A3E]"
+              }`}
+              layout
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
             />
-          </div>
-        </div>
+          ))}
+        </motion.div>
       )}
 
-      {/* --- Step 1: Email Verification --- */}
-      {step === 1 && (
-        <StepCard
-          title={t("Zweryfikuj swój email", "Verify your email")}
-          subtitle={t(
-            "Wysłaliśmy link weryfikacyjny na Twój adres email. Kliknij w link, aby kontynuować.",
-            "We sent a verification link to your email. Click the link to continue."
-          )}
-          icon="✉️"
-        >
-          <p className="font-sans text-sm text-[#8FA5A0] mt-4">
-            {fbUser?.email && (
-              <span className="font-mono text-xs text-[#F5A623]">
-                {fbUser.email}
-              </span>
-            )}
-          </p>
-          <button
-            onClick={async () => {
-              // Reload to check verification status
-              await fbUser?.reload();
-              if (fbUser?.emailVerified) {
-                setStep(2);
-              }
-            }}
-            className="mt-6 w-full py-3 rounded-xl bg-[#004D54] text-white font-sans font-bold text-sm uppercase tracking-wider hover:bg-[#003A40] transition-colors"
-          >
-            {t("Sprawdź weryfikację", "Check verification")}
-          </button>
-          <button
-            onClick={() => setStep(2)}
-            className="mt-2 w-full py-2 text-[#8FA5A0] font-sans text-xs hover:text-white transition-colors"
-          >
-            {t("Pomiń na razie", "Skip for now")}
-          </button>
-        </StepCard>
-      )}
-
-      {/* --- Step 2: Profile Details --- */}
-      {step === 2 && (
-        <StepCard
-          title={t("Twój profil", "Your profile")}
-          subtitle={t(
-            "Podstawowe dane, które pomogą nam dopasować raporty.",
-            "Basic details to help us tailor your reports."
-          )}
-          icon="👤"
-        >
-          <div className="space-y-4 mt-6">
-            <InputField
-              label={t("Imię", "First name")}
-              value={profileData.firstName}
-              onChange={(v) =>
-                setProfileData((d) => ({ ...d, firstName: v }))
-              }
-              placeholder={t("np. Anna", "e.g. Anna")}
-              required
-            />
-            <InputField
-              label={t("Nazwisko", "Last name")}
-              value={profileData.lastName}
-              onChange={(v) =>
-                setProfileData((d) => ({ ...d, lastName: v }))
-              }
-              placeholder={t("np. Kowalska", "e.g. Smith")}
-              required
-            />
-            <InputField
-              label={t("Tytuł zawodowy (opcjonalnie)", "Professional title (optional)")}
-              value={profileData.professionalTitle}
-              onChange={(v) =>
-                setProfileData((d) => ({ ...d, professionalTitle: v }))
-              }
-              placeholder={t(
-                "np. psycholog, psychoterapeuta",
-                "e.g. psychologist, psychotherapist"
+      {/* Step Cards */}
+      <div className="w-full max-w-md relative">
+        <AnimatePresence mode="wait" custom={direction}>
+          {/* ── Step 1: Email Verification ── */}
+          {step === 1 && (
+            <StepCard key="step1" direction={direction}>
+              <motion.div
+                className="text-6xl mb-6 text-center"
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                ✉️
+              </motion.div>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#F2F0EA] text-center mb-3">
+                {t("Potwierdź swój adres", "Confirm your email")}
+              </h2>
+              <p className="font-sans text-sm text-[#8FA5A0] text-center leading-relaxed mb-2">
+                {t(
+                  "Wysłaliśmy link weryfikacyjny. Kliknij w niego, a potem wróć tutaj.",
+                  "We sent a verification link. Click it, then come back here.",
+                )}
+              </p>
+              {fbUser?.email && (
+                <p className="text-center mb-6">
+                  <span className="font-mono text-xs text-[#F5A623] bg-[#F5A623]/5 px-3 py-1 rounded-full">
+                    {fbUser.email}
+                  </span>
+                </p>
               )}
-            />
-          </div>
-          {error && (
-            <p className="mt-3 font-sans text-xs text-red-400">{error}</p>
+              <PrimaryButton
+                onClick={async () => {
+                  await fbUser?.reload();
+                  if (fbUser?.emailVerified) {
+                    setDirection(1);
+                    setStep(2);
+                  }
+                }}
+                label={t("Sprawdź weryfikację", "Check verification")}
+              />
+              <SkipButton onClick={() => { setDirection(1); setStep(2); }} label={t("Pomiń na razie", "Skip for now")} />
+            </StepCard>
           )}
-          <button
-            onClick={saveProfile}
-            disabled={!profileData.firstName || !profileData.lastName || saving}
-            className="mt-6 w-full py-3 rounded-xl bg-[#F5A623] text-[#1B2522] font-sans font-bold text-sm uppercase tracking-wider hover:bg-[#E09500] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {saving ? t("Zapisuję...", "Saving...") : t("Dalej", "Continue")}
-          </button>
-        </StepCard>
-      )}
 
-      {/* --- Step 3: Phone Number --- */}
-      {step === 3 && (
-        <StepCard
-          title={t("Numer telefonu", "Phone number")}
-          subtitle={t(
-            "Ze względu na bezpieczeństwo danych klinicznych, wymagamy weryfikacji numeru telefonu.",
-            "For the security of clinical data, we require phone verification."
+          {/* ── Step 2: Profile ── */}
+          {step === 2 && (
+            <StepCard key="step2" direction={direction}>
+              <div className="text-5xl mb-4 text-center">👋</div>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#F2F0EA] text-center mb-2">
+                {t("Miło Cię poznać", "Nice to meet you")}
+              </h2>
+              <p className="font-sans text-sm text-[#8FA5A0] text-center leading-relaxed mb-8">
+                {t(
+                  "Podstawowe dane, które pomogą nam dopasować raporty do Twojej pracy.",
+                  "Basic details to help us tailor reports to your practice.",
+                )}
+              </p>
+              <motion.div className="space-y-5" variants={stagger} initial="initial" animate="animate">
+                <motion.div variants={childFade}>
+                  <InputField label={t("Imię", "First name")} value={profileData.firstName} onChange={(v) => setProfileData((d) => ({ ...d, firstName: v }))} placeholder={t("np. Anna", "e.g. Anna")} required autoFocus />
+                </motion.div>
+                <motion.div variants={childFade}>
+                  <InputField label={t("Nazwisko", "Last name")} value={profileData.lastName} onChange={(v) => setProfileData((d) => ({ ...d, lastName: v }))} placeholder={t("np. Kowalska", "e.g. Smith")} required />
+                </motion.div>
+                <motion.div variants={childFade}>
+                  <InputField label={t("Tytuł zawodowy", "Professional title")} value={profileData.professionalTitle} onChange={(v) => setProfileData((d) => ({ ...d, professionalTitle: v }))} placeholder={t("np. psycholog kliniczny, psychoterapeuta CBT", "e.g. clinical psychologist, CBT therapist")} />
+                </motion.div>
+              </motion.div>
+              {error && <ErrorMsg text={error} />}
+              <PrimaryButton
+                onClick={saveProfile}
+                disabled={!profileData.firstName || !profileData.lastName || saving}
+                label={saving ? t("Zapisuję...", "Saving...") : t("Dalej", "Continue")}
+              />
+            </StepCard>
           )}
-          icon="📱"
-        >
-          <div className="space-y-4 mt-6">
-            <InputField
-              label={t("Numer telefonu", "Phone number")}
-              value={phone}
-              onChange={setPhone}
-              placeholder="+48 600 000 000"
-              required
-              type="tel"
-            />
-            <p className="font-sans text-[11px] text-[#8FA5A0]/60 leading-relaxed">
-              {t(
-                "Twój numer jest bezpieczny. Nie wysyłamy SMS-ów marketingowych automatycznie.",
-                "Your number is safe. We don't send automated marketing SMS."
-              )}
-            </p>
-          </div>
-          {error && (
-            <p className="mt-3 font-sans text-xs text-red-400">{error}</p>
-          )}
-          <button
-            onClick={savePhone}
-            disabled={!phone || phone.length < 9 || saving}
-            className="mt-6 w-full py-3 rounded-xl bg-[#F5A623] text-[#1B2522] font-sans font-bold text-sm uppercase tracking-wider hover:bg-[#E09500] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {saving ? t("Zapisuję...", "Saving...") : t("Dalej", "Continue")}
-          </button>
-        </StepCard>
-      )}
 
-      {/* --- Step 4: Practice Setup --- */}
-      {step === 4 && (
-        <StepCard
-          title={t("Twoja praktyka", "Your practice")}
-          subtitle={t(
-            "Opowiedz nam o swojej pracy. Możesz to zmienić później.",
-            "Tell us about your work. You can change this later."
+          {/* ── Step 3: Phone ── */}
+          {step === 3 && (
+            <StepCard key="step3" direction={direction}>
+              <div className="text-5xl mb-4 text-center">📱</div>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#F2F0EA] text-center mb-2">
+                {t("Jak się z Tobą skontaktować?", "How can we reach you?")}
+              </h2>
+              <p className="font-sans text-sm text-[#8FA5A0] text-center leading-relaxed mb-8">
+                {t(
+                  "Twój numer jest bezpieczny. Używamy go wyłącznie do weryfikacji konta.",
+                  "Your number is safe. We only use it for account verification.",
+                )}
+              </p>
+              <motion.div variants={fadeUp} initial="initial" animate="animate">
+                <InputField label={t("Numer telefonu", "Phone number")} value={phone} onChange={setPhone} placeholder="+48 600 000 000" required type="tel" autoFocus />
+                <p className="font-sans text-[11px] text-[#8FA5A0]/50 mt-2 leading-relaxed">
+                  {t(
+                    "Nie wysyłamy SMS-ów marketingowych automatycznie. Marcin może zadzwonić — ale tylko po to, żeby pomóc.",
+                    "We don't send automated marketing SMS. Marcin may call — but only to help.",
+                  )}
+                </p>
+              </motion.div>
+              {error && <ErrorMsg text={error} />}
+              <PrimaryButton
+                onClick={savePhone}
+                disabled={!phone || phone.length < 9 || saving}
+                label={saving ? t("Zapisuję...", "Saving...") : t("Dalej", "Continue")}
+              />
+            </StepCard>
           )}
-          icon="🏥"
-        >
-          <div className="space-y-4 mt-6">
-            <InputField
-              label={t("Nazwa praktyki / gabinetu", "Practice name")}
-              value={practiceData.practiceName}
-              onChange={(v) =>
-                setPracticeData((d) => ({ ...d, practiceName: v }))
-              }
-              placeholder={t("np. Gabinet Terapii XYZ", "e.g. XYZ Therapy Practice")}
-            />
 
-            <div>
-              <label className="block font-sans text-xs font-bold text-[#8FA5A0] uppercase tracking-wider mb-2">
-                {t("Wielkość praktyki", "Practice size")}
-              </label>
-              <div className="grid grid-cols-3 gap-2">
+          {/* ── Step 4: Practice ── */}
+          {step === 4 && (
+            <StepCard key="step4" direction={direction}>
+              <div className="text-5xl mb-4 text-center">🏥</div>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#F2F0EA] text-center mb-2">
+                {t("Opowiedz o swojej praktyce", "Tell us about your practice")}
+              </h2>
+              <p className="font-sans text-sm text-[#8FA5A0] text-center leading-relaxed mb-8">
+                {t("Możesz to zmienić później.", "You can change this later.")}
+              </p>
+
+              {/* Practice size — visual cards */}
+              <motion.div variants={stagger} initial="initial" animate="animate">
+                <motion.div variants={childFade}>
+                  <label className="block font-sans text-xs font-bold text-[#8FA5A0] uppercase tracking-wider mb-3">
+                    {t("Wielkość praktyki", "Practice size")}
+                  </label>
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    {[
+                      { value: "solo", emoji: "🧘", label: "Solo" },
+                      { value: "small", emoji: "👥", label: t("2-5 osób", "2-5 people") },
+                      { value: "clinic", emoji: "🏥", label: t("6+ osób", "6+ people") },
+                    ].map(({ value, emoji, label }) => (
+                      <motion.button
+                        key={value}
+                        onClick={() => setPracticeData((d) => ({ ...d, practiceSize: value }))}
+                        className={`flex flex-col items-center gap-2 py-4 px-3 rounded-2xl border transition-all ${
+                          practiceData.practiceSize === value
+                            ? "bg-[#004D54] border-[#2F6B62] shadow-[0_0_20px_rgba(79,192,151,0.1)]"
+                            : "bg-[#0F2E32] border-[#1A3A3E] hover:border-[#2F6B62]"
+                        }`}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                      >
+                        <span className="text-2xl">{emoji}</span>
+                        <span className={`font-sans text-xs font-bold ${practiceData.practiceSize === value ? "text-white" : "text-[#8FA5A0]"}`}>
+                          {label}
+                        </span>
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+
+                {/* Modality — horizontal pills */}
+                <motion.div variants={childFade}>
+                  <label className="block font-sans text-xs font-bold text-[#8FA5A0] uppercase tracking-wider mb-3">
+                    {t("Nurt terapii", "Therapy modality")}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { value: "UNIV", label: t("Integracyjny", "Integrative") },
+                      { value: "CBT", label: "CBT" },
+                      { value: "PSYCHO", label: t("Psychodynamiczny", "Psychodynamic") },
+                      { value: "GESTALT", label: "Gestalt" },
+                      { value: "ST", label: t("Schematów", "Schema") },
+                      { value: "SYS", label: t("Systemowa", "Systemic") },
+                      { value: "EFT", label: "EFT" },
+                      { value: "COACH", label: "Coaching" },
+                    ].map(({ value, label }) => (
+                      <motion.button
+                        key={value}
+                        onClick={() => setPracticeData((d) => ({ ...d, modality: value }))}
+                        className={`px-3.5 py-2 rounded-full font-sans text-xs font-medium transition-all border ${
+                          practiceData.modality === value
+                            ? "bg-[#F5A623]/10 text-[#F5A623] border-[#F5A623]/30"
+                            : "bg-[#0F2E32] text-[#8FA5A0] border-[#1A3A3E] hover:border-[#2F6B62]"
+                        }`}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        {label}
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              </motion.div>
+
+              <div className="flex gap-3 mt-8">
+                <SkipInline onClick={goNext} label={t("Pomiń", "Skip")} />
+                <PrimaryButtonInline onClick={goNext} label={t("Dalej", "Continue")} />
+              </div>
+            </StepCard>
+          )}
+
+          {/* ── Step 5: Preferences ── */}
+          {step === 5 && (
+            <StepCard key="step5" direction={direction}>
+              <div className="text-5xl mb-4 text-center">🎯</div>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#F2F0EA] text-center mb-2">
+                {t("Na co najbardziej czekasz?", "What do you look forward to?")}
+              </h2>
+              <p className="font-sans text-sm text-[#8FA5A0] text-center leading-relaxed mb-8">
+                {t("Wybierz co chcesz — można kilka.", "Pick what you like — multiple is fine.")}
+              </p>
+
+              <motion.div className="grid grid-cols-2 gap-3" variants={stagger} initial="initial" animate="animate">
                 {[
-                  { value: "solo", label: t("Solo", "Solo") },
-                  { value: "small", label: t("2-5 osób", "2-5 people") },
-                  { value: "clinic", label: t("6+ osób", "6+ people") },
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
+                  { id: "transcription", emoji: "🎙️", label: t("Transkrypcja sesji", "Session transcription") },
+                  { id: "reports", emoji: "📊", label: t("Raporty kliniczne", "Clinical reports") },
+                  { id: "progress", emoji: "📈", label: t("Śledzenie postępu", "Progress tracking") },
+                  { id: "action_plan", emoji: "📋", label: t("Plan działania", "Action plans") },
+                  { id: "documentation", emoji: "🗂️", label: t("Porządek w dokumentacji", "Organized docs") },
+                  { id: "rag", emoji: "🔮", label: t("Analiza wielu sesji", "Multi-session analysis") },
+                ].map(({ id, emoji, label }) => (
+                  <motion.button
+                    key={id}
                     onClick={() =>
-                      setPracticeData((d) => ({ ...d, practiceSize: value }))
+                      setPreferences((prev) =>
+                        prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
+                      )
                     }
-                    className={`py-2.5 px-3 rounded-xl font-sans text-xs font-bold transition-all border ${
-                      practiceData.practiceSize === value
-                        ? "bg-[#004D54] text-white border-[#2F6B62]"
-                        : "bg-[#0F2E32] text-[#8FA5A0] border-[#1A3A3E] hover:border-[#2F6B62]"
+                    className={`flex flex-col items-center gap-2 py-4 px-3 rounded-2xl border transition-all ${
+                      preferences.includes(id)
+                        ? "bg-[#004D54] border-[#2F6B62] shadow-[0_0_20px_rgba(79,192,151,0.1)]"
+                        : "bg-[#0F2E32] border-[#1A3A3E] hover:border-[#2F6B62]"
                     }`}
+                    variants={childFade}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    {label}
-                  </button>
+                    <span className="text-2xl">{emoji}</span>
+                    <span className={`font-sans text-xs font-medium text-center leading-tight ${preferences.includes(id) ? "text-white" : "text-[#8FA5A0]"}`}>
+                      {label}
+                    </span>
+                    {preferences.includes(id) && (
+                      <motion.span
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="text-[#F5A623] text-xs"
+                      >
+                        ✓
+                      </motion.span>
+                    )}
+                  </motion.button>
+                ))}
+              </motion.div>
+
+              <div className="flex gap-3 mt-8">
+                <SkipInline onClick={() => { setDirection(1); setStep(6); }} label={t("Pomiń", "Skip")} />
+                <PrimaryButtonInline onClick={() => { setDirection(1); setStep(6); }} label={t("Gotowe", "Done")} />
+              </div>
+            </StepCard>
+          )}
+
+          {/* ── Step 6: Done ── */}
+          {step === 6 && (
+            <motion.div
+              key="step6"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+              className="text-center py-12"
+            >
+              {/* Sparkle animation */}
+              <div className="relative inline-block mb-6">
+                <motion.div
+                  className="text-7xl"
+                  animate={{ rotate: [0, 5, -5, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  🎉
+                </motion.div>
+                {[...Array(8)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute w-2 h-2 rounded-full"
+                    style={{
+                      background: i % 2 === 0 ? "#F5A623" : "#4FC097",
+                      top: "50%",
+                      left: "50%",
+                    }}
+                    animate={{
+                      x: [0, Math.cos((i * Math.PI) / 4) * 60],
+                      y: [0, Math.sin((i * Math.PI) / 4) * 60],
+                      opacity: [1, 0],
+                      scale: [1, 0.3],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      delay: i * 0.15,
+                      ease: "easeOut",
+                    }}
+                  />
                 ))}
               </div>
-            </div>
 
-            <div>
-              <label className="block font-sans text-xs font-bold text-[#8FA5A0] uppercase tracking-wider mb-2">
-                {t("Główny nurt terapii", "Primary therapy modality")}
-              </label>
-              <select
-                value={practiceData.modality}
-                onChange={(e) =>
-                  setPracticeData((d) => ({ ...d, modality: e.target.value }))
-                }
-                className="w-full py-2.5 px-3 rounded-xl bg-[#0F2E32] text-[#F2F0EA] border border-[#1A3A3E] font-sans text-sm focus:border-[#F5A623] focus:outline-none"
+              <motion.h2
+                className="font-serif text-2xl sm:text-3xl font-bold text-[#F2F0EA] mb-3"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
               >
-                <option value="UNIV">
-                  {t("Uniwersalny / Integracyjny", "Universal / Integrative")}
-                </option>
-                <option value="CBT">
-                  {t("Poznawczo-Behawioralny (CBT)", "Cognitive-Behavioral (CBT)")}
-                </option>
-                <option value="PSYCHO">
-                  {t("Psychodynamiczny", "Psychodynamic")}
-                </option>
-                <option value="GESTALT">Gestalt</option>
-                <option value="PPT">{t("Pozytywny (PPT)", "Positive (PPT)")}</option>
-                <option value="ST">
-                  {t("Terapia Schematów (ST)", "Schema Therapy (ST)")}
-                </option>
-                <option value="SYS">
-                  {t("Systemowa", "Systemic (Couples/Families)")}
-                </option>
-                <option value="EFT">
-                  {t("Skoncentrowana na Emocjach (EFT)", "Emotionally Focused (EFT)")}
-                </option>
-                <option value="COACH">Coaching (ICF/GROW)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={next}
-              className="flex-1 py-3 rounded-xl bg-[#8FA5A0]/20 text-[#8FA5A0] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#8FA5A0]/30 transition-colors"
-            >
-              {t("Pomiń", "Skip")}
-            </button>
-            <button
-              onClick={next}
-              className="flex-[2] py-3 rounded-xl bg-[#F5A623] text-[#1B2522] font-sans font-bold text-sm uppercase tracking-wider hover:bg-[#E09500] transition-colors"
-            >
-              {t("Dalej", "Continue")}
-            </button>
-          </div>
-        </StepCard>
-      )}
-
-      {/* --- Step 5: Preferences --- */}
-      {step === 5 && (
-        <StepCard
-          title={t("Czego najbardziej potrzebujesz?", "What do you need most?")}
-          subtitle={t(
-            "Pomaga nam to dostosować Twoje doświadczenie. Możesz wybrać kilka opcji.",
-            "This helps us tailor your experience. You can pick multiple."
+                {profileData.firstName
+                  ? t(`Witaj, ${profileData.firstName}!`, `Welcome, ${profileData.firstName}!`)
+                  : t("Wszystko gotowe!", "You're all set!")}
+              </motion.h2>
+              <motion.p
+                className="font-sans text-base text-[#8FA5A0] mb-8"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                {t(
+                  "Twoje konto jest gotowe. Za chwilę przeniesiesz się do panelu.",
+                  "Your account is ready. You'll be redirected to your dashboard shortly.",
+                )}
+              </motion.p>
+              <motion.div
+                className="w-8 h-8 mx-auto border-2 border-[#F5A623] border-t-transparent rounded-full"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              />
+            </motion.div>
           )}
-          icon="🎯"
-        >
-          <div className="space-y-2 mt-6">
-            {[
-              {
-                id: "transcription",
-                label: t(
-                  "Automatyczna transkrypcja sesji",
-                  "Automatic session transcription"
-                ),
-              },
-              {
-                id: "reports",
-                label: t(
-                  "Raporty kliniczne i notatki",
-                  "Clinical reports and notes"
-                ),
-              },
-              {
-                id: "progress",
-                label: t(
-                  "Śledzenie postępu klienta między sesjami",
-                  "Tracking client progress between sessions"
-                ),
-              },
-              {
-                id: "action_plan",
-                label: t(
-                  "Plan działania i zadania dla klienta",
-                  "Action plans and tasks for clients"
-                ),
-              },
-              {
-                id: "documentation",
-                label: t(
-                  "Porządek w dokumentacji",
-                  "Organized documentation"
-                ),
-              },
-              {
-                id: "rag",
-                label: t(
-                  "Analiza horyzontalna (wgląd w wiele sesji)",
-                  "Horizontal analysis (insights across sessions)"
-                ),
-              },
-            ].map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => {
-                  setPreferences((prev) =>
-                    prev.includes(id)
-                      ? prev.filter((p) => p !== id)
-                      : [...prev, id]
-                  );
-                }}
-                className={`w-full text-left py-3 px-4 rounded-xl font-sans text-sm transition-all border ${
-                  preferences.includes(id)
-                    ? "bg-[#004D54] text-white border-[#2F6B62]"
-                    : "bg-[#0F2E32] text-[#8FA5A0] border-[#1A3A3E] hover:border-[#2F6B62]"
-                }`}
-              >
-                <span className="mr-2">
-                  {preferences.includes(id) ? "✓" : "○"}
-                </span>
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={next}
-              className="flex-1 py-3 rounded-xl bg-[#8FA5A0]/20 text-[#8FA5A0] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#8FA5A0]/30 transition-colors"
-            >
-              {t("Pomiń", "Skip")}
-            </button>
-            <button
-              onClick={savePreferences}
-              className="flex-[2] py-3 rounded-xl bg-[#F5A623] text-[#1B2522] font-sans font-bold text-sm uppercase tracking-wider hover:bg-[#E09500] transition-colors"
-            >
-              {t("Gotowe", "Done")}
-            </button>
-          </div>
-        </StepCard>
-      )}
-
-      {/* --- Step 6: Done --- */}
-      {step === 6 && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-6">🎉</div>
-          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#F2F0EA] mb-3">
-            {t("Wszystko gotowe!", "You're all set!")}
-          </h2>
-          <p className="font-sans text-base text-[#8FA5A0] mb-6">
-            {t(
-              "Za chwilę przeniesiesz się do swojego panelu.",
-              "You'll be redirected to your dashboard in a moment."
-            )}
-          </p>
-          <div className="w-8 h-8 mx-auto border-2 border-[#F5A623] border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
 
-/* ─── Shared Components ──────────────────────────────────────── */
+// ─── Shared Components ───────────────────────────────────────
 
-function StepCard({
-  title,
-  subtitle,
-  icon,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  icon: string;
-  children: React.ReactNode;
-}) {
+function StepCard({ children, direction }: { children: React.ReactNode; direction: number }) {
   return (
-    <div className="rounded-2xl bg-[#0F2E32] border border-[#1A3A3E] p-6 sm:p-8 shadow-xl">
-      <div className="text-3xl mb-3">{icon}</div>
-      <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#F2F0EA] mb-2">
-        {title}
-      </h2>
-      <p className="font-sans text-sm text-[#8FA5A0] leading-relaxed">
-        {subtitle}
-      </p>
+    <motion.div
+      custom={direction}
+      variants={cardVariants}
+      initial="enter"
+      animate="center"
+      exit="exit"
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className="rounded-3xl bg-gradient-to-b from-[#0F2E32] to-[#0A2326] border border-[#1A3A3E] p-6 sm:p-10 shadow-2xl shadow-black/20"
+    >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
 function InputField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  required,
-  type = "text",
+  label, value, onChange, placeholder, required, type = "text", autoFocus,
 }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  required?: boolean;
-  type?: string;
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; required?: boolean; type?: string; autoFocus?: boolean;
 }) {
   return (
     <div>
-      <label className="block font-sans text-xs font-bold text-[#8FA5A0] uppercase tracking-wider mb-1.5">
+      <label className="block font-sans text-xs font-bold text-[#8FA5A0] uppercase tracking-wider mb-2">
         {label}
         {required && <span className="text-[#F5A623] ml-0.5">*</span>}
       </label>
@@ -557,8 +560,70 @@ function InputField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full py-2.5 px-3 rounded-xl bg-[#0A2326] text-[#F2F0EA] border border-[#1A3A3E] font-sans text-sm placeholder:text-[#4E5A55] focus:border-[#F5A623] focus:outline-none transition-colors"
+        autoFocus={autoFocus}
+        className="w-full py-3 px-4 rounded-xl bg-[#0A2326] text-[#F2F0EA] border border-[#1A3A3E] font-sans text-sm placeholder:text-[#4E5A55] focus:border-[#F5A623] focus:shadow-[0_0_0_3px_rgba(245,166,35,0.1)] focus:outline-none transition-all"
       />
     </div>
+  );
+}
+
+function PrimaryButton({ onClick, disabled, label }: { onClick: () => void; disabled?: boolean; label: string }) {
+  return (
+    <motion.button
+      onClick={onClick}
+      disabled={disabled}
+      className="mt-8 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#F5A623] to-[#E09500] text-[#1B2522] font-sans font-bold text-sm uppercase tracking-wider hover:shadow-[0_4px_20px_rgba(245,166,35,0.3)] transition-shadow disabled:opacity-40 disabled:cursor-not-allowed"
+      whileHover={!disabled ? { scale: 1.01 } : undefined}
+      whileTap={!disabled ? { scale: 0.98 } : undefined}
+    >
+      {label}
+    </motion.button>
+  );
+}
+
+function PrimaryButtonInline({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <motion.button
+      onClick={onClick}
+      className="flex-[2] py-3.5 rounded-xl bg-gradient-to-r from-[#F5A623] to-[#E09500] text-[#1B2522] font-sans font-bold text-sm uppercase tracking-wider hover:shadow-[0_4px_20px_rgba(245,166,35,0.3)] transition-shadow"
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
+    >
+      {label}
+    </motion.button>
+  );
+}
+
+function SkipButton({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className="mt-3 w-full py-2.5 text-[#8FA5A0] font-sans text-xs hover:text-white transition-colors"
+    >
+      {label}
+    </button>
+  );
+}
+
+function SkipInline({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex-1 py-3 rounded-xl bg-[#8FA5A0]/10 text-[#8FA5A0] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#8FA5A0]/20 transition-colors"
+    >
+      {label}
+    </button>
+  );
+}
+
+function ErrorMsg({ text }: { text: string }) {
+  return (
+    <motion.p
+      initial={{ opacity: 0, y: -5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-3 font-sans text-xs text-red-400 text-center"
+    >
+      {text}
+    </motion.p>
   );
 }

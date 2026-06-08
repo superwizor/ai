@@ -700,7 +700,9 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			FROM sessions sess
 			WHERE sess.therapist_id = u.id
 		) sess_count ON true
+		LEFT JOIN crm_excluded_users ex ON ex.user_id = u.id
 		WHERE s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
+		  AND ex.user_id IS NULL
 		ORDER BY s.current_period_end ASC
 		LIMIT 500
 	`)
