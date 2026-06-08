@@ -1,7 +1,7 @@
 // POST /api/checkout — creates a Stripe Checkout Session.
 //
 // Called after registration when the user selected a paid plan.
-// Body: { priceId: string, organizationId: string }
+// Body: { priceId: string, organizationId: string, email?: string }
 //
 // The organization_id is passed as Stripe metadata so the webhook
 // (billing-svc stripe_handler.go) can link checkout.session.completed
@@ -27,9 +27,10 @@ const UUID_RE =
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { priceId, organizationId } = body as {
+    const { priceId, organizationId, email } = body as {
       priceId: string;
       organizationId: string;
+      email?: string;
     };
 
     if (!priceId || typeof priceId !== "string") {
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     const successUrl = `${origin}/register/therapist/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${origin}/register/therapist?plan=cancelled`;
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: {
@@ -70,11 +71,22 @@ export async function POST(request: NextRequest) {
       allow_promotion_codes: true,
       // Collect phone number (anti-abuse + Marcin's contact base for follow-ups)
       phone_number_collection: { enabled: true },
-      // "Chcę fakturę VAT" — optional NIP/tax ID collection
+      // "Chcę fakturę VAT" — required NIP/tax ID collection for B2B
       tax_id_collection: { enabled: true },
+      // Collect billing address — required for proper Polish VAT invoices
+      billing_address_collection: "required",
+      // EU VAT compliance — Stripe Tax handles rate calculation
+      automatic_tax: { enabled: true },
       // Polish locale
       locale: "pl",
-    });
+    };
+
+    // Pre-fill customer email if available (from Firebase auth)
+    if (email && typeof email === "string") {
+      sessionParams.customer_email = email;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return NextResponse.json({ url: session.url });
   } catch (err) {
@@ -93,3 +105,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
