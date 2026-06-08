@@ -531,5 +531,16 @@
   "@note_send_confirm_body": {
     "placeholders": { "email": { "type": "String" } }
   },
-  "note_sent_toast": "Note sent to client"
+  "note_sent_toast": "Note sent to client",
+
+  "recording_consent_missing_header": "No consent recorded",
+  "recording_consent_missing_body": "No patient consent found in the system. Did the patient consent to recording and data processing?",
+  "recording_consent_grant": "Yes, they consented",
+  "recording_mic_error_header": "Microphone error",
+  "recording_upload_error_header": "Upload error",
+  "recording_too_short_abort_body": "Recording was {duration}. Upload cancelled.",
+  "@recording_too_short_abort_body": {
+    "placeholders": { "duration": { "type": "String" } }
+  },
+  "recording_saving": "Saving recording..."
 }

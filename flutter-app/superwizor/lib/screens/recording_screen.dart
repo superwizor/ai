@@ -137,10 +137,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       final granted = await showEuphireBottomSheet<bool>(
         context: context,
         builder: (ctx) => EuphireActionSheet(
-          header: 'Brak zgody',
-          body: 'Nie odnotowano zgody pacjenta w systemie. Czy pacjent wyraził zgodę na nagrywanie i przetwarzanie danych?',
+          header: t.recording_consent_missing_header,
+          body: t.recording_consent_missing_body,
           primary: EuphireSheetAction(
-            label: 'Tak, wyraził zgode',
+            label: t.recording_consent_grant,
             onPressed: () async {
               try {
                 await ref.read(consentServiceProvider).recordConsent(
@@ -262,10 +262,11 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       setState(() => _recState = _service.state);
     } catch (e) {
       if (!mounted) return;
+      final t = AppLocalizations.of(context);
       await showEuphireBottomSheet<void>(
         context: context,
         builder: (ctx) => EuphireActionSheet(
-          header: 'Błąd mikrofonu',
+          header: t.recording_mic_error_header,
           body: e.toString(),
           primary: EuphireSheetAction(
             label: 'OK',
@@ -440,12 +441,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       debugPrint(
           '[recording] _finishAndUpload aborted: duration too short ($realDuration)');
       if (mounted) {
+        final t = AppLocalizations.of(context);
         setState(() => _uploading = false);
         await showEuphireBottomSheet<void>(
           context: context,
           builder: (ctx) => EuphireActionSheet(
-            header: 'Nagranie jest za krótkie',
-            body: 'Nagranie trwało $realDuration. Anulowano wysyłkę.',
+            header: t.recording_too_short_header,
+            body: t.recording_too_short_abort_body(realDuration.toString()),
             primary: EuphireSheetAction(
               label: 'OK',
               onPressed: () => Navigator.of(ctx).pop(),
@@ -558,11 +560,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     } catch (e, st) {
       debugPrint('[recording] _finishAndUpload FAILED: $e\n$st');
       if (mounted) {
+        final t = AppLocalizations.of(context);
         setState(() => _uploading = false);
         await showEuphireBottomSheet<void>(
           context: context,
           builder: (ctx) => EuphireActionSheet(
-            header: 'Błąd uploadu',
+            header: t.recording_upload_error_header,
             body: e.toString(),
             primary: EuphireSheetAction(
               label: 'OK',
@@ -714,7 +717,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                     const Center(child: CircularProgressIndicator()),
                     const SizedBox(height: 12),
                     Text(
-                      'Zapisuję nagranie...',
+                      t.recording_saving,
                       style: TextStyle(
                         fontFamily: 'Merriweather',
                         fontSize: 13,

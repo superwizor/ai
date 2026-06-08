@@ -532,5 +532,16 @@
   "@note_send_confirm_body": {
     "placeholders": { "email": { "type": "String" } }
   },
-  "note_sent_toast": "Notatka wysłana do klienta"
+  "note_sent_toast": "Notatka wysłana do klienta",
+
+  "recording_consent_missing_header": "Brak zgody",
+  "recording_consent_missing_body": "Nie odnotowano zgody pacjenta w systemie. Czy pacjent wyraził zgodę na nagrywanie i przetwarzanie danych?",
+  "recording_consent_grant": "Tak, wyraził zgodę",
+  "recording_mic_error_header": "Błąd mikrofonu",
+  "recording_upload_error_header": "Błąd przesyłania",
+  "recording_too_short_abort_body": "Nagranie trwało {duration}. Anulowano wysyłkę.",
+  "@recording_too_short_abort_body": {
+    "placeholders": { "duration": { "type": "String" } }
+  },
+  "recording_saving": "Zapisuję nagranie..."
 }

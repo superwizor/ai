@@ -16,6 +16,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { useRouter } from "next/navigation";
+import { create } from "@bufbuild/protobuf";
+import { identityClient } from "@/lib/connect/clients";
+import { UpdateProfileRequestSchema } from "@superwizor/proto-ts/identity/v1/identity_pb";
 
 const STORAGE_KEY = "sw_onboarding_step";
 
@@ -80,8 +83,58 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     modality: "UNIV",
   });
   const [preferences, setPreferences] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const t = (pl: string, en: string) => (locale === "en" ? en : pl);
+
+  // --- Backend save handlers ---
+
+  const saveProfile = useCallback(async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await identityClient.updateProfile(
+        create(UpdateProfileRequestSchema, {
+          firstName: profileData.firstName,
+          lastName: profileData.lastName,
+          professionalTitle: profileData.professionalTitle || "",
+          phoneNumber: phone || "",
+        })
+      );
+      setStep(3);
+    } catch (e) {
+      console.error("[onboarding] saveProfile failed", e);
+      setError(t("Nie udało się zapisać profilu. Spróbuj ponownie.", "Failed to save profile. Please try again."));
+    } finally {
+      setSaving(false);
+    }
+  }, [profileData, phone, t]);
+
+  const savePhone = useCallback(async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await identityClient.updateProfile(
+        create(UpdateProfileRequestSchema, {
+          phoneNumber: phone,
+        })
+      );
+      setStep(4);
+    } catch (e) {
+      console.error("[onboarding] savePhone failed", e);
+      setError(t("Nie udało się zapisać numeru. Spróbuj ponownie.", "Failed to save phone number. Please try again."));
+    } finally {
+      setSaving(false);
+    }
+  }, [phone, t]);
+
+  const savePreferences = useCallback(async () => {
+    // Preferences are stored as metadata on the user profile.
+    // For now, we skip the backend call and just advance — preferences
+    // will be sent as analytics events (product analytics, not clinical data).
+    setStep(6);
+  }, []);
 
   return (
     <div className="mx-auto max-w-lg px-5 pt-28 pb-20 sm:pt-36">
@@ -184,12 +237,15 @@ export function OnboardingWizard({ locale }: { locale: string }) {
               )}
             />
           </div>
+          {error && (
+            <p className="mt-3 font-sans text-xs text-red-400">{error}</p>
+          )}
           <button
-            onClick={next}
-            disabled={!profileData.firstName || !profileData.lastName}
+            onClick={saveProfile}
+            disabled={!profileData.firstName || !profileData.lastName || saving}
             className="mt-6 w-full py-3 rounded-xl bg-[#F5A623] text-[#1B2522] font-sans font-bold text-sm uppercase tracking-wider hover:bg-[#E09500] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {t("Dalej", "Continue")}
+            {saving ? t("Zapisuję...", "Saving...") : t("Dalej", "Continue")}
           </button>
         </StepCard>
       )}
@@ -220,12 +276,15 @@ export function OnboardingWizard({ locale }: { locale: string }) {
               )}
             </p>
           </div>
+          {error && (
+            <p className="mt-3 font-sans text-xs text-red-400">{error}</p>
+          )}
           <button
-            onClick={next}
-            disabled={!phone || phone.length < 9}
+            onClick={savePhone}
+            disabled={!phone || phone.length < 9 || saving}
             className="mt-6 w-full py-3 rounded-xl bg-[#F5A623] text-[#1B2522] font-sans font-bold text-sm uppercase tracking-wider hover:bg-[#E09500] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {t("Dalej", "Continue")}
+            {saving ? t("Zapisuję...", "Saving...") : t("Dalej", "Continue")}
           </button>
         </StepCard>
       )}
@@ -416,7 +475,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
               {t("Pomiń", "Skip")}
             </button>
             <button
-              onClick={next}
+              onClick={savePreferences}
               className="flex-[2] py-3 rounded-xl bg-[#F5A623] text-[#1B2522] font-sans font-bold text-sm uppercase tracking-wider hover:bg-[#E09500] transition-colors"
             >
               {t("Gotowe", "Done")}

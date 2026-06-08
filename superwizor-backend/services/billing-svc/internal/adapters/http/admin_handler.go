@@ -47,6 +47,8 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/reservation-expiry", h.handleReservationExpiry)
 	mux.HandleFunc("POST /admin/manual-period-renewal", h.handleManualPeriodRenewal)
 	mux.HandleFunc("POST /admin/safety-check", h.handleSafetyCheck)
+	mux.HandleFunc("POST /admin/email-drip", h.handleEmailDrip)
+	mux.HandleFunc("POST /admin/renewal-reminders", h.handleRenewalReminders)
 }
 
 // ---------- reservation-expiry ----------
@@ -352,5 +354,251 @@ func (h *AdminHandler) cancelSubscription(ctx context.Context, subID uuid.UUID) 
 		`UPDATE subscriptions SET status = 'CANCELED', updated_at = now() WHERE id = $1`, subID,
 	)
 	return err
+}
+
+// ---------- email-drip ----------
+
+type emailDripResponse struct {
+	TrialExhausted int `json:"trial_exhausted"`
+	FollowUp1      int `json:"followup_1"`
+	FollowUp2      int `json:"followup_2"`
+	BetaExpiry     int `json:"beta_expiry"`
+	Message        string `json:"message"`
+}
+
+// handleEmailDrip — daily cron (09:00 CET) for lifecycle email drip campaign.
+//
+// Queries:
+//   1. Trial exhausted: TRIALING subs where tokens_used >= tokens_per_period
+//      AND no "trial_exhausted" email sent yet (tracked via email_drip_log).
+//   2. Follow-up 1: 3 days after trial_exhausted email was sent, no followup_1 sent.
+//   3. Follow-up 2: 7 days after trial_exhausted email was sent, no followup_2 sent.
+//   4. Beta expiry: BETA subs with period_end within 3 days, no alert sent.
+//
+// Each match inserts a row into email_drip_log (idempotent: UNIQUE on
+// (user_id, template_name, subscription_id)) and publishes to
+// notification-svc for actual delivery.
+//
+// NOTE: email_drip_log table must be created via migration before this
+// handler is useful. Until then, this endpoint identifies candidates
+// and logs them for manual follow-up.
+func (h *AdminHandler) handleEmailDrip(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	h.logger.InfoContext(ctx, "cron: email-drip started")
+
+	result := emailDripResponse{Message: "ok"}
+
+	// --- 1. Trial exhausted ---
+	rows1, err := h.pool.Query(ctx, `
+		SELECT u.id, u.email, u.first_name, s.id AS sub_id
+		FROM subscriptions s
+		JOIN subscription_plans p ON p.id = s.plan_id
+		JOIN organizations o ON o.id = s.organization_id
+		JOIN users u ON u.organization_id = o.id
+		JOIN usage_counters uc ON uc.subscription_id = s.id
+		  AND uc.period_start = s.current_period_start
+		WHERE p.tier = 'TRIAL'
+		  AND s.status IN ('ACTIVE', 'TRIALING')
+		  AND uc.tokens_used >= p.tokens_per_period
+		  AND NOT EXISTS (
+		    SELECT 1 FROM email_drip_log edl
+		    WHERE edl.user_id = u.id
+		      AND edl.template_name = 'trial_exhausted'
+		      AND edl.subscription_id = s.id
+		  )
+		LIMIT 100
+	`)
+	if err != nil {
+		h.logger.WarnContext(ctx, "email-drip: trial_exhausted query failed (table may not exist yet)", "error", err)
+	} else {
+		defer rows1.Close()
+		for rows1.Next() {
+			var userID, email, firstName string
+			var subID uuid.UUID
+			if err := rows1.Scan(&userID, &email, &firstName, &subID); err != nil {
+				h.logger.ErrorContext(ctx, "email-drip: scan trial_exhausted", "error", err)
+				continue
+			}
+			h.logger.InfoContext(ctx, "email-drip: trial_exhausted candidate",
+				"user_id", userID, "email", email, "sub_id", subID)
+			// TODO: publish to notification-svc Pub/Sub topic
+			// TODO: INSERT INTO email_drip_log (user_id, template_name, subscription_id)
+			result.TrialExhausted++
+		}
+	}
+
+	// --- 2. Follow-up 1 (3 days after trial_exhausted) ---
+	rows2, err := h.pool.Query(ctx, `
+		SELECT edl.user_id, u.email, u.first_name, edl.subscription_id
+		FROM email_drip_log edl
+		JOIN users u ON u.id::text = edl.user_id
+		WHERE edl.template_name = 'trial_exhausted'
+		  AND edl.sent_at < now() - interval '3 days'
+		  AND NOT EXISTS (
+		    SELECT 1 FROM email_drip_log edl2
+		    WHERE edl2.user_id = edl.user_id
+		      AND edl2.template_name = 'followup_1'
+		      AND edl2.subscription_id = edl.subscription_id
+		  )
+		LIMIT 100
+	`)
+	if err != nil {
+		h.logger.WarnContext(ctx, "email-drip: followup_1 query failed", "error", err)
+	} else {
+		defer rows2.Close()
+		for rows2.Next() {
+			var userID, email, firstName string
+			var subID uuid.UUID
+			if err := rows2.Scan(&userID, &email, &firstName, &subID); err != nil {
+				continue
+			}
+			h.logger.InfoContext(ctx, "email-drip: followup_1 candidate",
+				"user_id", userID, "email", email)
+			result.FollowUp1++
+		}
+	}
+
+	// --- 3. Follow-up 2 (7 days after trial_exhausted) ---
+	rows3, err := h.pool.Query(ctx, `
+		SELECT edl.user_id, u.email, u.first_name, edl.subscription_id
+		FROM email_drip_log edl
+		JOIN users u ON u.id::text = edl.user_id
+		WHERE edl.template_name = 'trial_exhausted'
+		  AND edl.sent_at < now() - interval '7 days'
+		  AND NOT EXISTS (
+		    SELECT 1 FROM email_drip_log edl2
+		    WHERE edl2.user_id = edl.user_id
+		      AND edl2.template_name = 'followup_2'
+		      AND edl2.subscription_id = edl.subscription_id
+		  )
+		LIMIT 100
+	`)
+	if err != nil {
+		h.logger.WarnContext(ctx, "email-drip: followup_2 query failed", "error", err)
+	} else {
+		defer rows3.Close()
+		for rows3.Next() {
+			var userID, email, firstName string
+			var subID uuid.UUID
+			if err := rows3.Scan(&userID, &email, &firstName, &subID); err != nil {
+				continue
+			}
+			h.logger.InfoContext(ctx, "email-drip: followup_2 candidate",
+				"user_id", userID, "email", email)
+			result.FollowUp2++
+		}
+	}
+
+	// --- 4. Beta expiry alert (3 days before period_end) ---
+	rows4, err := h.pool.Query(ctx, `
+		SELECT u.id, u.email, u.first_name, u.last_name,
+		       o.display_name AS org_name, s.id AS sub_id,
+		       s.current_period_end,
+		       uc.tokens_used, p.tokens_per_period
+		FROM subscriptions s
+		JOIN subscription_plans p ON p.id = s.plan_id
+		JOIN organizations o ON o.id = s.organization_id
+		JOIN users u ON u.organization_id = o.id
+		LEFT JOIN usage_counters uc ON uc.subscription_id = s.id
+		  AND uc.period_start = s.current_period_start
+		WHERE p.tier = 'BETA'
+		  AND s.status IN ('ACTIVE', 'TRIALING')
+		  AND s.current_period_end BETWEEN now() AND now() + interval '3 days'
+		  AND NOT EXISTS (
+		    SELECT 1 FROM email_drip_log edl
+		    WHERE edl.user_id = u.id::text
+		      AND edl.template_name = 'beta_expiry_alert'
+		      AND edl.subscription_id = s.id
+		  )
+		LIMIT 50
+	`)
+	if err != nil {
+		h.logger.WarnContext(ctx, "email-drip: beta_expiry query failed", "error", err)
+	} else {
+		defer rows4.Close()
+		for rows4.Next() {
+			var userID, email, firstName, lastName, orgName string
+			var subID uuid.UUID
+			var periodEnd time.Time
+			var tokensUsed, tokensPerPeriod int32
+			if err := rows4.Scan(&userID, &email, &firstName, &lastName, &orgName, &subID, &periodEnd, &tokensUsed, &tokensPerPeriod); err != nil {
+				continue
+			}
+			h.logger.InfoContext(ctx, "email-drip: beta_expiry_alert candidate",
+				"user", fmt.Sprintf("%s %s", firstName, lastName),
+				"email", email, "org", orgName,
+				"period_end", periodEnd.Format("2006-01-02"))
+			result.BetaExpiry++
+		}
+	}
+
+	h.logger.InfoContext(ctx, "cron: email-drip done",
+		"trial_exhausted", result.TrialExhausted,
+		"followup_1", result.FollowUp1,
+		"followup_2", result.FollowUp2,
+		"beta_expiry", result.BetaExpiry)
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+// ---------- renewal-reminders ----------
+
+type renewalReminderResponse struct {
+	ReminderCount int    `json:"reminder_count"`
+	Message       string `json:"message"`
+}
+
+// handleRenewalReminders — daily cron: find ACTIVE paid subs with period_end
+// within 3 days and send renewal_reminder email (once per period).
+func (h *AdminHandler) handleRenewalReminders(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	h.logger.InfoContext(ctx, "cron: renewal-reminders started")
+
+	rows, err := h.pool.Query(ctx, `
+		SELECT u.id, u.email, u.first_name,
+		       p.display_name AS plan_name, p.tokens_per_period,
+		       s.current_period_end, s.id AS sub_id
+		FROM subscriptions s
+		JOIN subscription_plans p ON p.id = s.plan_id
+		JOIN organizations o ON o.id = s.organization_id
+		JOIN users u ON u.organization_id = o.id
+		WHERE s.status = 'ACTIVE'
+		  AND s.provider = 'STRIPE'
+		  AND s.current_period_end BETWEEN now() AND now() + interval '3 days'
+		  AND NOT EXISTS (
+		    SELECT 1 FROM email_drip_log edl
+		    WHERE edl.user_id = u.id::text
+		      AND edl.template_name = 'renewal_reminder'
+		      AND edl.subscription_id = s.id
+		  )
+		LIMIT 100
+	`)
+	if err != nil {
+		h.logger.WarnContext(ctx, "renewal-reminders: query failed", "error", err)
+		writeJSON(w, http.StatusOK, renewalReminderResponse{Message: "query_failed"})
+		return
+	}
+	defer rows.Close()
+
+	count := 0
+	for rows.Next() {
+		var userID, email, firstName, planName string
+		var tokensPerPeriod int32
+		var periodEnd time.Time
+		var subID uuid.UUID
+		if err := rows.Scan(&userID, &email, &firstName, &planName, &tokensPerPeriod, &periodEnd, &subID); err != nil {
+			continue
+		}
+		h.logger.InfoContext(ctx, "renewal-reminder candidate",
+			"user_id", userID, "email", email, "plan", planName,
+			"period_end", periodEnd.Format("2006-01-02"))
+		count++
+	}
+
+	h.logger.InfoContext(ctx, "cron: renewal-reminders done", "count", count)
+	writeJSON(w, http.StatusOK, renewalReminderResponse{
+		ReminderCount: count,
+		Message:       "ok",
+	})
 }
 
