@@ -338,7 +338,9 @@ func (s *Server) provisionTrialOrgAndSub(ctx context.Context, tx pgx.Tx, user *d
 	// — partial unique index idx_subscriptions_one_active_per_org accepts
 	// TRIALING as "active for the org" so no parallel paid sub can exist
 	// alongside without upgrade-time bookkeeping.
-	// current_period_end ~100 years out keeps the counter from auto-rolling.
+	// current_period_end = NOW() + 30 days — trial hard limit per business rules.
+	// After 30 days the cron won't find a renewal candidate (trial plan has
+	// max 1 period implied) and unused sessions simply expire.
 	var subID uuid.UUID
 	var periodStart, periodEnd pgtype.Timestamptz
 	if err := tx.QueryRow(ctx,
@@ -347,7 +349,7 @@ func (s *Server) provisionTrialOrgAndSub(ctx context.Context, tx pgx.Tx, user *d
 		     status, current_period_start, current_period_end
 		 ) VALUES (
 		     $1, $2, 'MANUAL', $3,
-		     'TRIALING', NOW(), NOW() + INTERVAL '100 years'
+		     'TRIALING', NOW(), NOW() + INTERVAL '30 days'
 		 )
 		 RETURNING id, current_period_start, current_period_end`,
 		orgID, planID, "trial-"+orgID.String(),

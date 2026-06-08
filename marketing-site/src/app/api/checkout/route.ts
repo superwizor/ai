@@ -68,6 +68,10 @@ export async function POST(request: NextRequest) {
       cancel_url: cancelUrl,
       // Allow promotion codes so users can apply ROWNOWAGA20 / ROZKWIT30
       allow_promotion_codes: true,
+      // Collect phone number (anti-abuse + Marcin's contact base for follow-ups)
+      phone_number_collection: { enabled: true },
+      // "Chcę fakturę VAT" — optional NIP/tax ID collection
+      tax_id_collection: { enabled: true },
       // Polish locale
       locale: "pl",
     });

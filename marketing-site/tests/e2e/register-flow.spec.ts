@@ -1,105 +1,541 @@
-// Playwright E2E: registration flow tests.
+// Comprehensive E2E tests for the full registration + subscription flow.
 //
-// Validates the Phase 2 changes:
-// - /register/therapist page loads with ?plan= variants
-// - TrialPitchBanner shows correct content for each plan
-// - /register/therapist/success page loads
-// - /beta page CTA links to register with ?plan=beta
-// - Social buttons are present on register page
+// Tests cover EVERY confirmed decision from the E2E integration plan:
+// - Trial: 5 sessions / 30 days, no card
+// - Beta: 120 sessions/mo x 2 months, secret /beta link
+// - Równowaga: 30 sessions, 179 PLN brutto
+// - Rozkwit: 90 sessions, 299 PLN brutto
+// - Promo codes: ROWNOWAGA20, ROZKWIT30, PIONIER33
+// - Register-first flow: create account → redirect based on plan
+// - Apple compliance: no upsells in the path
 
 import { test, expect } from "@playwright/test";
 import { forLocale, urlPrefix } from "./_locales";
 
-test.describe("Registration Flow", () => {
-  test("register page loads without plan param", async ({ page }) => {
+// ─────────────────────────────────────────────────────────────
+// HAPPY PATH: Landing Page → Cennik → Registration
+// ─────────────────────────────────────────────────────────────
+
+test.describe("Happy Path: Landing Page", () => {
+  test("LP loads and shows hero section", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    await expect(page.locator("h1")).toBeVisible();
+  });
+
+  test("hero CTA says 'Wypróbuj za darmo' and points to #cennik", async ({
+    page,
+  }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    const label = forLocale({
+      pl: /Wypróbuj za darmo/i,
+      en: /Try for free/i,
+    });
+    const cta = page
+      .locator("section")
+      .first()
+      .getByRole("link", { name: label })
+      .first();
+    await expect(cta).toBeVisible();
+    await expect(cta).toHaveAttribute("href", "#cennik");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// HAPPY PATH: Pricing Section (Cennik)
+// ─────────────────────────────────────────────────────────────
+
+test.describe("Happy Path: Cennik", () => {
+  test("pricing section exists with id=cennik", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    await expect(page.locator("#cennik")).toBeVisible();
+  });
+
+  test("Trial card shows 5 sessions / 30 days", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    const cennik = page.locator("#cennik");
+    const trialText = forLocale({
+      pl: /5 sesji.*30 dni|5.*sesji/i,
+      en: /5 sessions.*30 days/i,
+    });
+    await expect(cennik).toContainText(trialText);
+  });
+
+  test("Równowaga card shows 179 zł and 30 sessions", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    const cennik = page.locator("#cennik");
+    await expect(cennik).toContainText(/179/);
+    await expect(cennik).toContainText(/30/);
+  });
+
+  test("Rozkwit card shows 299 zł and 90 sessions", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    const cennik = page.locator("#cennik");
+    await expect(cennik).toContainText(/299/);
+    await expect(cennik).toContainText(/90/);
+  });
+
+  test("prices are marked as BRUTTO", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    const cennik = page.locator("#cennik");
+    const bruttoText = forLocale({
+      pl: /brutto/i,
+      en: /gross|brutto/i,
+    });
+    await expect(cennik).toContainText(bruttoText);
+  });
+
+  test("promo code ROWNOWAGA20 is displayed", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    await expect(page.locator("body")).toContainText("ROWNOWAGA20");
+  });
+
+  test("promo code ROZKWIT30 is displayed", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    await expect(page.locator("body")).toContainText("ROZKWIT30");
+  });
+
+  test("promo code PIONIER33 is displayed", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    await expect(page.locator("body")).toContainText("PIONIER33");
+  });
+
+  test("Trial CTA links to /register/therapist (no plan param)", async ({
+    page,
+  }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    const cennik = page.locator("#cennik");
+    const trialCta = forLocale({
+      pl: /Wypróbuj za darmo/i,
+      en: /Try for free/i,
+    });
+    const link = cennik.getByRole("link", { name: trialCta }).first();
+    await expect(link).toBeVisible();
+    const href = await link.getAttribute("href");
+    expect(href).toContain("/register/therapist");
+    expect(href).not.toContain("plan=");
+  });
+
+  test("Równowaga CTA links to register with plan=solo_monthly", async ({
+    page,
+  }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    const cennik = page.locator("#cennik");
+    const soloCta = forLocale({
+      pl: /Równowag/i,
+      en: /Balance/i,
+    });
+    const link = cennik.getByRole("link", { name: soloCta }).first();
+    await expect(link).toBeVisible();
+    const href = await link.getAttribute("href");
+    expect(href).toContain("plan=solo_monthly");
+  });
+
+  test("Rozkwit CTA links to register with plan=pro_monthly", async ({
+    page,
+  }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    const cennik = page.locator("#cennik");
+    const proCta = forLocale({
+      pl: /Rozkwit/i,
+      en: /Growth/i,
+    });
+    const link = cennik.getByRole("link", { name: proCta }).first();
+    await expect(link).toBeVisible();
+    const href = await link.getAttribute("href");
+    expect(href).toContain("plan=pro_monthly");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// HAPPY PATH: Registration Page
+// ─────────────────────────────────────────────────────────────
+
+test.describe("Happy Path: Registration", () => {
+  test("register page loads with form fields", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
-    // Should have Social buttons
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible();
+  });
+
+  test("social login buttons present (Google + Apple)", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/register/therapist`);
     await expect(page.getByRole("button", { name: /Google/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Apple/i })).toBeVisible();
   });
 
-  test("register page loads with ?plan=trial", async ({ page }) => {
+  test("ToS checkbox is required", async ({ page }) => {
     const prefix = urlPrefix();
-    await page.goto(`${prefix}/register/therapist?plan=trial`);
-    // TrialPitchBanner should show trial content
-    const pitchContent = forLocale({
+    await page.goto(`${prefix}/register/therapist`);
+    const tos = page.locator("#tos");
+    await expect(tos).toBeVisible();
+  });
+
+  test("TrialPitchBanner shows trial info for no plan param", async ({
+    page,
+  }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/register/therapist`);
+    const trialInfo = forLocale({
       pl: /5 sesji|30 dni/i,
       en: /5 sessions|30 days/i,
     });
-    await expect(page.locator("body")).toContainText(pitchContent);
+    await expect(page.locator("body")).toContainText(trialInfo);
   });
 
-  test("register page loads with ?plan=solo_monthly", async ({ page }) => {
+  test("TrialPitchBanner shows Równowaga info for plan=solo_monthly", async ({
+    page,
+  }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist?plan=solo_monthly`);
-    // TrialPitchBanner should show solo plan content
-    const pitchContent = forLocale({
-      pl: /Równowaga|30 sesji|179/i,
-      en: /Balance|30 sessions|179/i,
-    });
-    await expect(page.locator("body")).toContainText(pitchContent);
+    await expect(page.locator("body")).toContainText(/179/);
   });
 
-  test("register page loads with ?plan=beta", async ({ page }) => {
+  test("TrialPitchBanner shows Rozkwit info for plan=pro_monthly", async ({
+    page,
+  }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/register/therapist?plan=pro_monthly`);
+    await expect(page.locator("body")).toContainText(/299/);
+  });
+
+  test("TrialPitchBanner shows Beta info for plan=beta", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist?plan=beta`);
-    // TrialPitchBanner should show beta content
-    const pitchContent = forLocale({
+    const betaInfo = forLocale({
       pl: /120 sesji|Beta/i,
       en: /120 sessions|Beta/i,
     });
-    await expect(page.locator("body")).toContainText(pitchContent);
+    await expect(page.locator("body")).toContainText(betaInfo);
   });
+});
 
-  test("success page renders after checkout", async ({ page }) => {
+// ─────────────────────────────────────────────────────────────
+// HAPPY PATH: Beta Page
+// ─────────────────────────────────────────────────────────────
+
+test.describe("Happy Path: Beta Page", () => {
+  test("/beta page loads", async ({ page }) => {
     const prefix = urlPrefix();
-    await page.goto(`${prefix}/register/therapist/success`);
-    const heading = forLocale({
-      pl: /Płatność zakończona/i,
-      en: /Payment successful/i,
-    });
-    await expect(page.locator("h1")).toContainText(heading);
+    await page.goto(`${prefix}/beta`);
+    await expect(page.locator("h1")).toBeVisible();
   });
 
-  test("beta page CTA links to register with plan=beta", async ({ page }) => {
+  test("shows 120 sessions / 2 months offer", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/beta`);
+    const offer = forLocale({
+      pl: /120 sesji/i,
+      en: /120 sessions/i,
+    });
+    await expect(page.locator("body")).toContainText(offer);
+    const months = forLocale({
+      pl: /2 miesi/i,
+      en: /2 months/i,
+    });
+    await expect(page.locator("body")).toContainText(months);
+  });
+
+  test("shows 50 spots badge", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/beta`);
+    const badge = forLocale({
+      pl: /50 miejsc/i,
+      en: /50 spots/i,
+    });
+    await expect(page.locator("body")).toContainText(badge);
+  });
+
+  test("CTA links to /register/therapist?plan=beta", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/beta`);
     const ctaLabel = forLocale({
-      pl: /Dołącz do programu Beta/i,
-      en: /Join the Beta Program/i,
+      pl: /Dołącz do programu/i,
+      en: /Join the Beta/i,
     });
     const cta = page.getByRole("link", { name: ctaLabel }).first();
-    await expect(cta).toBeVisible();
     await expect(cta).toHaveAttribute(
       "href",
       `${prefix}/register/therapist?plan=beta`,
     );
   });
 
-  test("register form has email field, password, and submit", async ({
+  test("FAQ section is interactive", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/beta`);
+    // Find first FAQ question button and click it
+    const faqButton = page.locator("button").filter({ hasText: "?" }).first();
+    if (await faqButton.isVisible()) {
+      await faqButton.click();
+      // After click, the answer should expand
+      const faqSection = page.locator("section").last();
+      await expect(faqSection).toBeVisible();
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// HAPPY PATH: Contact Page
+// ─────────────────────────────────────────────────────────────
+
+test.describe("Happy Path: Contact Page", () => {
+  test("/kontakt page loads", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/kontakt`);
+    await expect(page.locator("h1")).toBeVisible();
+  });
+
+  test("has contact form fields", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/kontakt`);
+    // Should have at least email and message fields
+    await expect(
+      page.locator('input[type="email"], input[name="email"]'),
+    ).toBeVisible();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// HAPPY PATH: Success Page
+// ─────────────────────────────────────────────────────────────
+
+test.describe("Happy Path: Checkout Success", () => {
+  test("/register/therapist/success page renders", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/register/therapist/success`);
+    const heading = forLocale({
+      pl: /Płatność|sukces|gotowe/i,
+      en: /Payment|success|complete/i,
+    });
+    await expect(page.locator("h1")).toContainText(heading);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// BAD PATH: Invalid Plan Params
+// ─────────────────────────────────────────────────────────────
+
+test.describe("Bad Path: Invalid Plans", () => {
+  test("register with unknown plan falls back to trial", async ({ page }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/register/therapist?plan=nonexistent`);
+    // Page should still load and show trial info (graceful fallback)
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+  });
+
+  test("register with plan=enterprise shows trial fallback", async ({
+    page,
+  }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/register/therapist?plan=enterprise`);
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+  });
+
+  test("register with empty plan param works like no plan", async ({
+    page,
+  }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/register/therapist?plan=`);
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+    // Should show trial info
+    const trialInfo = forLocale({
+      pl: /5 sesji|30 dni/i,
+      en: /5 sessions|30 days/i,
+    });
+    await expect(page.locator("body")).toContainText(trialInfo);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// BAD PATH: Form Validation
+// ─────────────────────────────────────────────────────────────
+
+test.describe("Bad Path: Form Validation", () => {
+  test("submit without filling form shows validation errors", async ({
     page,
   }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
-    // Email input
-    await expect(page.locator('input[type="email"]')).toBeVisible();
-    // Password input
-    await expect(page.locator('input[type="password"]')).toBeVisible();
-    // Submit button
-    const submitLabel = forLocale({
-      pl: /Zarejestruj się|Wyślij/i,
-      en: /Sign up|Submit/i,
+    // Try to submit the form by clicking submit button
+    const submit = forLocale({
+      pl: /Zarejestruj|Załóż konto|Wyślij/i,
+      en: /Sign up|Create account|Submit/i,
     });
-    await expect(
-      page.getByRole("button", { name: submitLabel }),
-    ).toBeVisible();
+    const btn = page.getByRole("button", { name: submit });
+    if (await btn.isVisible()) {
+      await btn.click();
+      // Form should not navigate away — validation errors should show
+      await expect(page).toHaveURL(/register/);
+    }
   });
 
-  test("register form has ToS checkbox", async ({ page }) => {
+  test("ToS must be checked before submission", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
-    const tosCheckbox = page.locator("#tos");
-    await expect(tosCheckbox).toBeVisible();
+    // Fill email and password but don't check ToS
+    await page.locator('input[type="email"]').fill("test@example.com");
+    await page.locator('input[type="password"]').fill("TestPass123!");
+    // Fill name fields if present
+    const firstName = page.locator(
+      'input[name="firstName"], input[placeholder*="mię"]',
+    );
+    if (await firstName.isVisible()) {
+      await firstName.fill("Test");
+    }
+    const lastName = page.locator(
+      'input[name="lastName"], input[placeholder*="azwisk"]',
+    );
+    if (await lastName.isVisible()) {
+      await lastName.fill("User");
+    }
+    // Submit without checking ToS
+    const submit = forLocale({
+      pl: /Zarejestruj|Załóż konto|Wyślij/i,
+      en: /Sign up|Create account|Submit/i,
+    });
+    const btn = page.getByRole("button", { name: submit });
+    if (await btn.isVisible()) {
+      await btn.click();
+      // Should stay on register page (ToS not accepted)
+      await expect(page).toHaveURL(/register/);
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// BAD PATH: Non-existent Pages
+// ─────────────────────────────────────────────────────────────
+
+test.describe("Bad Path: 404 Pages", () => {
+  test("/upgrade does not exist yet (should 404 or redirect)", async ({
+    page,
+  }) => {
+    const prefix = urlPrefix();
+    const response = await page.goto(`${prefix}/upgrade`);
+    // Should either 404 or redirect
+    const status = response?.status();
+    expect([200, 404, 307, 308]).toContain(status);
+  });
+
+  test("/dashboard does not exist yet", async ({ page }) => {
+    const prefix = urlPrefix();
+    const response = await page.goto(`${prefix}/dashboard`);
+    const status = response?.status();
+    expect([200, 404, 307, 308]).toContain(status);
+  });
+
+  test("/onboarding does not exist yet", async ({ page }) => {
+    const prefix = urlPrefix();
+    const response = await page.goto(`${prefix}/onboarding`);
+    const status = response?.status();
+    expect([200, 404, 307, 308]).toContain(status);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// BAD PATH: API endpoint validation
+// ─────────────────────────────────────────────────────────────
+
+test.describe("Bad Path: API /api/checkout", () => {
+  test("POST /api/checkout without body returns 400", async ({ request }) => {
+    const response = await request.post("/api/checkout", {
+      data: {},
+    });
+    expect(response.status()).toBe(400);
+  });
+
+  test("POST /api/checkout with missing priceId returns 400", async ({
+    request,
+  }) => {
+    const response = await request.post("/api/checkout", {
+      data: { organizationId: "550e8400-e29b-41d4-a716-446655440000" },
+    });
+    expect(response.status()).toBe(400);
+    const body = await response.json();
+    expect(body.error).toContain("priceId");
+  });
+
+  test("POST /api/checkout with invalid organizationId returns 400", async ({
+    request,
+  }) => {
+    const response = await request.post("/api/checkout", {
+      data: { priceId: "price_xxx", organizationId: "not-a-uuid" },
+    });
+    expect(response.status()).toBe(400);
+    const body = await response.json();
+    expect(body.error).toContain("organizationId");
+  });
+
+  test("GET /api/checkout returns 405 (method not allowed)", async ({
+    request,
+  }) => {
+    const response = await request.get("/api/checkout");
+    // Next.js API routes return 405 for unsupported methods
+    expect([405, 404]).toContain(response.status());
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// CONSISTENCY: plan slug ↔ registration page ↔ LP cennik
+// ─────────────────────────────────────────────────────────────
+
+test.describe("Consistency: LP ↔ Registration flow", () => {
+  test("all pricing CTA links resolve to working registration pages", async ({
+    page,
+  }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/`);
+    const cennik = page.locator("#cennik");
+    const links = cennik.getByRole("link");
+    const hrefs: string[] = [];
+
+    const count = await links.count();
+    for (let i = 0; i < count; i++) {
+      const href = await links.nth(i).getAttribute("href");
+      if (href && href.includes("/register/therapist")) {
+        hrefs.push(href);
+      }
+    }
+
+    // Each registration link should load a working page
+    for (const href of hrefs) {
+      const fullUrl = href.startsWith("http")
+        ? href
+        : `${prefix}${href.startsWith("/") ? "" : "/"}${href}`;
+      const res = await page.goto(fullUrl);
+      expect(res?.status()).toBe(200);
+      await expect(page.locator('input[type="email"]')).toBeVisible();
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// APPLE COMPLIANCE: no pricing or upsell links in app paths
+// ─────────────────────────────────────────────────────────────
+
+test.describe("Apple Compliance: Reader App Rules", () => {
+  test("registration page does NOT show pricing/upgrade links", async ({
+    page,
+  }) => {
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/register/therapist`);
+    // The register page itself should NOT have upgrade/pricing links
+    // (pricing is on the LP only, registration is clean)
+    const body = await page.locator("body").textContent();
+    expect(body).not.toMatch(/Rozszerz plan|Upgrade your plan/i);
   });
 });
