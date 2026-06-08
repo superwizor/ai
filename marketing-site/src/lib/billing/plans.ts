@@ -145,3 +145,12 @@ export function formatPrice(locale: string, value: number): string {
     maximumFractionDigits: 0,
   }).format(value);
 }
+
+/** Look up a plan by tier and cycle from the static catalog. */
+export function lookupPlan(
+  tier: PlanTier,
+  cycle: BillingCycle,
+): PlanRow | undefined {
+  return PLANS.find((p) => p.tier === tier && p.cycle === cycle);
+}
+

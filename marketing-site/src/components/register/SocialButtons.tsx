@@ -23,6 +23,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { FirebaseError } from "firebase/app";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -40,6 +41,8 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
   const prefix = locale === "en" ? "/en" : "";
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const planSlug = searchParams.get("plan");
 
   // Shared post-social-sign-in routing.
   const handleSocialUser = async (user: {
@@ -69,6 +72,7 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
       firstName,
       lastName,
       email: user.email ?? "",
+      ...(planSlug ? { plan: planSlug } : {}),
     });
     window.location.href = `${prefix}/register/${flow}/finish?${params}`;
   };

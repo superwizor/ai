@@ -20,6 +20,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
@@ -48,6 +49,7 @@ import {
   getModalityCatalog,
   type ModalityRow,
 } from "@/lib/clinical/modalities";
+import { handlePostRegistrationRedirect } from "@/lib/register/post-registration";
 
 export function TherapistEmailForm() {
   // Modality catalogue is fetched live on mount via
@@ -81,6 +83,8 @@ export function TherapistEmailForm() {
   const locale = useLocale();
   const auth = useAuth();
   const prefix = locale === "en" ? "/en" : "";
+  const searchParams = useSearchParams();
+  const planSlug = searchParams.get("plan");
 
   const {
     register,
@@ -146,8 +150,14 @@ export function TherapistEmailForm() {
         await identityClient.updateProfile(updateReq);
       }
 
-      // 4. Hand off to the verification interstitial.
-      window.location.href = `${prefix}/register/therapist/verify-email?email=${encodeURIComponent(data.email)}`;
+      // 4. Redirect based on plan selection.
+      // Trial/beta → verify email. Paid plans → Stripe Checkout.
+      await handlePostRegistrationRedirect(
+        created.organizationId ?? "",
+        planSlug,
+        prefix,
+        data.email,
+      );
     } catch (e) {
       if (e instanceof FirebaseError) {
         if (e.code === "auth/email-already-in-use") {
