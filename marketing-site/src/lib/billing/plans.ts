@@ -58,7 +58,7 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tokensPerPeriod: 30,
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TclVgE5jzWcAIgeT6ec0HDh",  // TODO: update after Stripe price update
+    stripePriceId: "price_1TgAk2E5jzWcAIgeQ572wpkE",  // Równowaga monthly 179 PLN brutto
     stripePaymentLink: null,  // Stripe Checkout via backend
   },
   {
@@ -71,7 +71,7 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tokensPerPeriod: 360,
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TclVhE5jzWcAIge7YjI49Hs",  // TODO: update
+    stripePriceId: "price_1TgAlxE5jzWcAIgedH5FM8No",  // Równowaga annual 1790 PLN brutto
     stripePaymentLink: null,
   },
   {
@@ -84,20 +84,20 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tokensPerPeriod: 90,          // was 120, confirmed 90
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TclVhE5jzWcAIgeMQTPps4i",  // TODO: update
+    stripePriceId: "price_1TgAnSE5jzWcAIgeshZ6TqG8",  // Rozkwit monthly 299 PLN brutto
     stripePaymentLink: null,
   },
   {
     tier: "PRO",
     cycle: "ANNUAL",
-    priceGross: 2990.0,          // brutto (299 * 10)
-    priceIntroGross: 2093.0,     // ~2990 * 0.70
+    priceGross: 2999.0,          // brutto (Stripe: 2999 PLN)
+    priceIntroGross: 2099.0,     // ~2999 * 0.70
     couponCode: "ROZKWIT30",
     currencyCode: "PLN",
     tokensPerPeriod: 1080,        // 90 * 12
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TclViE5jzWcAIgehEFNihUP",  // TODO: update
+    stripePriceId: "price_1TgAo3E5jzWcAIge1Q6dMMwd",  // Rozkwit annual 2999 PLN brutto
     stripePaymentLink: null,
   },
   {
