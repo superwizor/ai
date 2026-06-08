@@ -26,10 +26,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
 import { FirebaseError } from "firebase/app";
+import { motion, AnimatePresence } from "framer-motion";
 
 import {
   therapistEmailSchema,
-  type TherapistEmailForm,
+  type TherapistEmailForm as TherapFormType,
 } from "@/lib/register/schema";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { identityClient } from "@/lib/connect/clients";
@@ -50,6 +51,29 @@ import {
   type ModalityRow,
 } from "@/lib/clinical/modalities";
 import { handlePostRegistrationRedirect } from "@/lib/register/post-registration";
+
+const slideVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 50 : -50,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    transition: {
+      x: { type: "spring" as const, stiffness: 350, damping: 35 },
+      opacity: { duration: 0.15 },
+    },
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 50 : -50,
+    opacity: 0,
+    transition: {
+      x: { type: "spring" as const, stiffness: 350, damping: 35 },
+      opacity: { duration: 0.15 },
+    },
+  }),
+};
 
 export function TherapistEmailForm() {
   // Modality catalogue is fetched live on mount via
@@ -86,13 +110,18 @@ export function TherapistEmailForm() {
   const searchParams = useSearchParams();
   const planSlug = searchParams.get("plan");
 
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const [serverError, setServerError] = useState<string | null>(null);
+
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    trigger,
     formState: { errors, isSubmitting },
-  } = useForm<TherapistEmailForm>({
+  } = useForm<TherapFormType>({
     resolver: zodResolver(therapistEmailSchema),
     defaultValues: {
       uiLanguage: locale === "en" ? "en" : "pl",
@@ -100,9 +129,37 @@ export function TherapistEmailForm() {
     },
   });
 
-  const [serverError, setServerError] = useState<string | null>(null);
+  const handleNext = async () => {
+    setServerError(null);
+    if (step === 1) {
+      const isValid = await trigger(["firstName", "lastName", "email"]);
+      if (isValid) {
+        setDirection(1);
+        setStep(2);
+      }
+    } else if (step === 2) {
+      const isValid = await trigger(["password", "hasAcceptedTos"]);
+      if (isValid) {
+        setDirection(1);
+        setStep(3);
+      }
+    }
+  };
+
+  const handleBack = () => {
+    setServerError(null);
+    if (step > 1) {
+      setDirection(-1);
+      setStep((s) => (s - 1) as 1 | 2 | 3);
+    }
+  };
 
   const onSubmit = handleSubmit(async (data) => {
+    if (step < 3) {
+      await handleNext();
+      return;
+    }
+
     setServerError(null);
     try {
       // 1. Firebase account + verification email.
@@ -164,10 +221,14 @@ export function TherapistEmailForm() {
       if (e instanceof FirebaseError) {
         if (e.code === "auth/email-already-in-use") {
           setServerError(tErr("emailAlreadyInUse"));
+          setDirection(-1);
+          setStep(1);
           return;
         }
         if (e.code === "auth/weak-password") {
           setServerError(tErr("weakPassword"));
+          setDirection(-1);
+          setStep(2);
           return;
         }
         // Firebase Auth emulator unreachable, or live API unreachable
@@ -205,160 +266,269 @@ export function TherapistEmailForm() {
 
   return (
     <form onSubmit={onSubmit} className="grid gap-5" noValidate>
-      <section>
-        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
-          {tTher("sectionAccount")}
-        </h2>
-        <div className="grid gap-4">
-          <FieldShell id="email" label={t("email")} required error={errors.email && tErr("emailInvalid")}>
-            <TextInput
-              id="email"
-              type="email"
-              autoComplete="email"
-              {...register("email")}
-            />
-          </FieldShell>
+      {/* Progress Indicator */}
+      <div className="flex items-center justify-center gap-2 mb-2">
+        {[1, 2, 3].map((n) => (
+          <div
+            key={n}
+            className={`h-1 rounded-full transition-all duration-300 ${
+              n === step
+                ? "w-8 bg-ember shadow-[0_0_8px_rgba(245,166,35,0.4)]"
+                : n < step
+                ? "w-2 bg-ember/50"
+                : "w-2 bg-frost/10 border border-frost/10"
+            }`}
+          />
+        ))}
+      </div>
 
-          <FieldShell
-            id="password"
-            label={t("password")}
-            hint={t("passwordHint")}
-            required
-            error={
-              errors.password?.message === "password-no-digit"
-                ? tErr("passwordNoNumber")
-                : errors.password
-                ? tErr("passwordTooShort")
-                : undefined
-            }
-          >
-            <TextInput
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              {...register("password")}
-            />
-          </FieldShell>
-        </div>
-      </section>
+      <div className="relative overflow-hidden min-h-[350px]">
+        <AnimatePresence mode="wait" initial={false} custom={direction}>
+          {step === 1 && (
+            <motion.div
+              key="step1"
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="grid gap-4 w-full"
+            >
+              <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-1">
+                {tTher("sectionAccount")} — {tTher("step")} 1/3
+              </h2>
 
-      <section>
-        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
-          {tTher("sectionProfile")}
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FieldShell id="firstName" label={t("firstName")} required error={errors.firstName && tErr("firstNameRequired")}>
-            <TextInput id="firstName" autoComplete="given-name" {...register("firstName")} />
-          </FieldShell>
-          <FieldShell id="lastName" label={t("lastName")} required error={errors.lastName && tErr("lastNameRequired")}>
-            <TextInput id="lastName" autoComplete="family-name" {...register("lastName")} />
-          </FieldShell>
-        </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FieldShell id="firstName" label={t("firstName")} required error={errors.firstName && tErr("firstNameRequired")}>
+                  <TextInput id="firstName" autoComplete="given-name" {...register("firstName")} />
+                </FieldShell>
+                <FieldShell id="lastName" label={t("lastName")} required error={errors.lastName && tErr("lastNameRequired")}>
+                  <TextInput id="lastName" autoComplete="family-name" {...register("lastName")} />
+                </FieldShell>
+              </div>
 
-        <div className="grid gap-4 mt-4">
-          <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityId && tErr("modalityRequired")}>
-            <Select id="modality" {...register("modalityId")} defaultValue="">
-              <option value="" disabled>
-                —
-              </option>
-              {modalities.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.labels[locale === "en" ? "en" : "pl"]}
-                </option>
-              ))}
-            </Select>
-          </FieldShell>
+              <FieldShell id="email" label={t("email")} required error={errors.email && tErr("emailInvalid")}>
+                <TextInput
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  {...register("email")}
+                />
+              </FieldShell>
 
-          <FieldShell id="uiLanguage" label={t("uiLanguage")} required>
-            <RadioGroup
-              name="uiLanguage"
-              value={uiLanguage}
-              onChange={(v) => setValue("uiLanguage", v as "pl" | "en", { shouldValidate: true })}
-              options={[
-                { value: "pl", label: t("polish") },
-                { value: "en", label: t("english") },
-              ]}
-            />
-          </FieldShell>
+              {serverError && (
+                <p
+                  role="alert"
+                  className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost"
+                >
+                  {serverError}
+                </p>
+              )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FieldShell id="professionalTitle" label={t("professionalTitle")}>
-              <TextInput
-                id="professionalTitle"
-                placeholder={t("professionalTitlePlaceholder")}
-                {...register("professionalTitle")}
-              />
-            </FieldShell>
-            <FieldShell id="credentialsNumber" label={t("credentialsNumber")}>
-              <TextInput id="credentialsNumber" {...register("credentialsNumber")} />
-            </FieldShell>
-          </div>
+              <button
+                id="next-step-btn"
+                type="button"
+                onClick={handleNext}
+                className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition cursor-pointer"
+              >
+                {tCommon("continue")}
+              </button>
+            </motion.div>
+          )}
 
-          <FieldShell
-            id="phoneNumber"
-            label={t("phoneNumber")}
-            error={errors.phoneNumber && tErr("phoneInvalid")}
-          >
-            <TextInput
-              id="phoneNumber"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder={t("phoneNumberPlaceholder")}
-              {...register("phoneNumber")}
-            />
-          </FieldShell>
-        </div>
-      </section>
+          {step === 2 && (
+            <motion.div
+              key="step2"
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="grid gap-4 w-full"
+            >
+              <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-1">
+                {tTher("sectionAccount")} — {tTher("step")} 2/3
+              </h2>
 
-      <section className="grid gap-3 mt-2">
-        <Checkbox
-          id="tos"
-          {...register("hasAcceptedTos")}
-          label={tCommon.rich("consentToS", {
-            termsLink: (chunks) => (
-              <a className="text-ember underline" href={`${prefix}/legal/terms`} target="_blank" rel="noreferrer">
-                {chunks}
-              </a>
-            ),
-            privacyLink: (chunks) => (
-              <a className="text-ember underline" href={`${prefix}/legal/privacy`} target="_blank" rel="noreferrer">
-                {chunks}
-              </a>
-            ),
-          })}
-        />
-        {errors.hasAcceptedTos && (
-          <p role="alert" className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-magma">
-            {tErr("tosRequired")}
-          </p>
-        )}
+              <FieldShell
+                id="password"
+                label={t("password")}
+                hint={t("passwordHint")}
+                required
+                error={
+                  errors.password?.message === "password-no-digit"
+                    ? tErr("passwordNoNumber")
+                    : errors.password
+                    ? tErr("passwordTooShort")
+                    : undefined
+                }
+              >
+                <TextInput
+                  id="password"
+                  type="password"
+                  autoComplete="new-password"
+                  {...register("password")}
+                />
+              </FieldShell>
 
-        <Checkbox
-          id="marketing"
-          {...register("hasMarketingConsent")}
-          label={tCommon("consentMarketing")}
-        />
-      </section>
+              <section className="grid gap-3 mt-2">
+                <Checkbox
+                  id="tos"
+                  {...register("hasAcceptedTos")}
+                  label={tCommon.rich("consentToS", {
+                    termsLink: (chunks) => (
+                      <a className="text-ember underline" href={`${prefix}/legal/terms`} target="_blank" rel="noreferrer">
+                        {chunks}
+                      </a>
+                    ),
+                    privacyLink: (chunks) => (
+                      <a className="text-ember underline" href={`${prefix}/legal/privacy`} target="_blank" rel="noreferrer">
+                        {chunks}
+                      </a>
+                    ),
+                  })}
+                />
+                {errors.hasAcceptedTos && (
+                  <p role="alert" className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-magma">
+                    {tErr("tosRequired")}
+                  </p>
+                )}
 
-      {serverError && (
-        <p
-          role="alert"
-          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost"
-        >
-          {serverError}
-        </p>
-      )}
+                <Checkbox
+                  id="marketing"
+                  {...register("hasMarketingConsent")}
+                  label={tCommon("consentMarketing")}
+                />
+              </section>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
-      >
-        {isSubmitting ? tCommon("submitting") : tCommon("submit")}
-      </button>
+              {serverError && (
+                <p
+                  role="alert"
+                  className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost"
+                >
+                  {serverError}
+                </p>
+              )}
 
-      <p className="font-serif text-sm text-mist text-center">
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="flex-1 inline-flex items-center justify-center rounded-button border border-frost/25 text-frost font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 hover:bg-frost/5 transition cursor-pointer"
+                >
+                  {tCommon("back")}
+                </button>
+                <button
+                  id="next-step-btn"
+                  type="button"
+                  onClick={handleNext}
+                  className="flex-[2] inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition cursor-pointer"
+                >
+                  {tCommon("continue")}
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 3 && (
+            <motion.div
+              key="step3"
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="grid gap-4 w-full"
+            >
+              <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-1">
+                {tTher("sectionProfile")} — {tTher("step")} 3/3
+              </h2>
+
+              <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityId && tErr("modalityRequired")}>
+                <Select id="modality" {...register("modalityId")} defaultValue="">
+                  <option value="" disabled>
+                    —
+                  </option>
+                  {modalities.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.labels[locale === "en" ? "en" : "pl"]}
+                    </option>
+                  ))}
+                </Select>
+              </FieldShell>
+
+              <FieldShell id="uiLanguage" label={t("uiLanguage")} required>
+                <RadioGroup
+                  name="uiLanguage"
+                  value={uiLanguage}
+                  onChange={(v) => setValue("uiLanguage", v as "pl" | "en", { shouldValidate: true })}
+                  options={[
+                    { value: "pl", label: t("polish") },
+                    { value: "en", label: t("english") },
+                  ]}
+                />
+              </FieldShell>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FieldShell id="professionalTitle" label={t("professionalTitle")}>
+                  <TextInput
+                    id="professionalTitle"
+                    placeholder={t("professionalTitlePlaceholder")}
+                    {...register("professionalTitle")}
+                  />
+                </FieldShell>
+                <FieldShell id="credentialsNumber" label={t("credentialsNumber")}>
+                  <TextInput id="credentialsNumber" {...register("credentialsNumber")} />
+                </FieldShell>
+              </div>
+
+              <FieldShell
+                id="phoneNumber"
+                label={t("phoneNumber")}
+                error={errors.phoneNumber && tErr("phoneInvalid")}
+              >
+                <TextInput
+                  id="phoneNumber"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder={t("phoneNumberPlaceholder")}
+                  {...register("phoneNumber")}
+                />
+              </FieldShell>
+
+              {serverError && (
+                <p
+                  role="alert"
+                  className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost"
+                >
+                  {serverError}
+                </p>
+              )}
+
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  disabled={isSubmitting}
+                  className="flex-1 inline-flex items-center justify-center rounded-button border border-frost/25 text-frost font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 hover:bg-frost/5 transition disabled:opacity-60 cursor-pointer"
+                >
+                  {tCommon("back")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-[2] inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {isSubmitting ? tCommon("submitting") : tCommon("submit")}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <p className="font-serif text-sm text-mist text-center mt-4">
         {tCommon("alreadyHaveAccount")}{" "}
         <a
           href={`${prefix}/login`}

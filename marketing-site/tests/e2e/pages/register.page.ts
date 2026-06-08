@@ -20,6 +20,7 @@ export class RegisterTherapistPage {
   readonly tosCheckbox: Locator;
   readonly submitButton: Locator;
   readonly validationErrors: Locator;
+  readonly nextStepButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -36,6 +37,7 @@ export class RegisterTherapistPage {
     this.lastNameInput = page.locator("#lastName");
     this.modalitySelect = page.locator("#modality");
     this.tosCheckbox = page.locator("#tos");
+    this.nextStepButton = page.locator("#next-step-btn");
 
     const submitName = forLocale({
       pl: /Załóż konto/i,
@@ -76,12 +78,19 @@ export class RegisterTherapistPage {
     };
     const data = { ...defaults, ...overrides };
 
-    await this.emailInput.fill(data.email);
-    await this.passwordInput.fill(data.password);
+    // Step 1
     await this.firstNameInput.fill(data.firstName);
     await this.lastNameInput.fill(data.lastName);
-    await this.modalitySelect.selectOption(data.modalityId);
+    await this.emailInput.fill(data.email);
+    await this.nextStepButton.click();
+
+    // Step 2
+    await this.passwordInput.fill(data.password);
     await this.tosCheckbox.check();
+    await this.nextStepButton.click();
+
+    // Step 3
+    await this.modalitySelect.selectOption(data.modalityId);
   }
 
   /** Submit the form. */

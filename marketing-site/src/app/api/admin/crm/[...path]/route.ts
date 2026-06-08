@@ -3,7 +3,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 
-const BILLING_SVC_URL = process.env.BILLING_SVC_URL || "http://localhost:8082";
+const BILLING_SVC_URL = process.env.BILLING_SVC_URL || "http://localhost:8081";
 
 export async function GET(
   req: NextRequest,

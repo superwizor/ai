@@ -673,10 +673,10 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			u.created_at AS user_created_at,
 
 			s.id AS sub_id,
-			COALESCE(p.tier, '') AS plan_tier,
-			COALESCE(p.display_name, p.tier) AS plan_display_name,
-			COALESCE(s.status, '') AS sub_status,
-			COALESCE(s.provider, '') AS provider,
+			COALESCE(p.tier::text, '') AS plan_tier,
+			COALESCE(p.display_name, p.tier::text) AS plan_display_name,
+			COALESCE(s.status::text, '') AS sub_status,
+			COALESCE(s.provider::text, '') AS provider,
 			s.current_period_start,
 			s.current_period_end,
 			EXTRACT(DAY FROM s.current_period_end - now())::int AS days_until_renewal,
@@ -688,7 +688,7 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			COALESCE(sess_count.cnt, 0) AS total_sessions,
 
 			o.id AS org_id,
-			COALESCE(o.display_name, o.legal_name, '') AS org_name
+			o.legal_name AS org_name
 		FROM subscriptions s
 		JOIN subscription_plans p ON p.id = s.plan_id
 		JOIN organizations o ON o.id = s.organization_id
@@ -703,6 +703,9 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		LEFT JOIN crm_excluded_users ex ON ex.user_id = u.id
 		WHERE s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
 		  AND ex.user_id IS NULL
+		  AND u.email NOT LIKE '%@example.com'
+		  AND u.email NOT LIKE '%@superwizor.test'
+		  AND u.email NOT LIKE '%@test.pl'
 		ORDER BY s.current_period_end ASC
 		LIMIT 500
 	`)

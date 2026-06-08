@@ -101,9 +101,9 @@ test.describe("Pricing & CTA Flow", () => {
 
     const pricingSection = page.locator("#cennik");
 
-    await expect(pricingSection.getByText("ROWNOWAGA20")).toBeVisible();
-    await expect(pricingSection.getByText("ROZKWIT30")).toBeVisible();
-    await expect(pricingSection.getByText("PIONIER33")).toBeVisible();
+    await expect(pricingSection.getByText("ROWNOWAGA20").first()).toBeVisible();
+    await expect(pricingSection.getByText("ROZKWIT30").first()).toBeVisible();
+    await expect(pricingSection.getByText("PIONIER33").first()).toBeVisible();
   });
 
   test("trial CTA links to /register/therapist", async ({ page }) => {

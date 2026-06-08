@@ -328,6 +328,7 @@ const (
 	PlanTierCLINIC  PlanTier = "CLINIC"
 	PlanTierPATIENT PlanTier = "PATIENT"
 	PlanTierTRIAL   PlanTier = "TRIAL"
+	PlanTierBETA    PlanTier = "BETA"
 )
 
 func (e *PlanTier) Scan(src interface{}) error {
@@ -744,11 +745,14 @@ type AudioUpload struct {
 	UploadCompletedAt pgtype.Timestamptz `json:"upload_completed_at"`
 	ExpiresAt         time.Time          `json:"expires_at"`
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out.
-	IdempotencyKey   *string   `json:"idempotency_key"`
-	ClientAppVersion *string   `json:"client_app_version"`
-	ClientPlatform   *string   `json:"client_platform"`
-	ErrorMessage     *string   `json:"error_message"`
-	CreatedAt        time.Time `json:"created_at"`
+	IdempotencyKey            *string            `json:"idempotency_key"`
+	ClientAppVersion          *string            `json:"client_app_version"`
+	ClientPlatform            *string            `json:"client_platform"`
+	ErrorMessage              *string            `json:"error_message"`
+	CreatedAt                 time.Time          `json:"created_at"`
+	ResumableSessionUri       *string            `json:"resumable_session_uri"`
+	ResumableSessionExpiresAt pgtype.Timestamptz `json:"resumable_session_expires_at"`
+	ProcessedGeneration       *int64             `json:"processed_generation"`
 }
 
 type AuditEvent struct {
@@ -775,6 +779,46 @@ type ConsentRecord struct {
 	IpAddress      *string   `json:"ip_address"`
 	UserAgent      *string   `json:"user_agent"`
 	RecordedAt     time.Time `json:"recorded_at"`
+}
+
+type CrmExcludedUser struct {
+	UserID     uuid.UUID `json:"user_id"`
+	ExcludedAt time.Time `json:"excluded_at"`
+	Reason     *string   `json:"reason"`
+}
+
+type CrmFollowUp struct {
+	ID           uuid.UUID          `json:"id"`
+	AdminUserID  string             `json:"admin_user_id"`
+	TargetUserID uuid.UUID          `json:"target_user_id"`
+	DueDate      pgtype.Date        `json:"due_date"`
+	Note         *string            `json:"note"`
+	Completed    bool               `json:"completed"`
+	CompletedAt  pgtype.Timestamptz `json:"completed_at"`
+	CreatedAt    time.Time          `json:"created_at"`
+}
+
+type CrmNote struct {
+	ID           uuid.UUID `json:"id"`
+	AdminUserID  string    `json:"admin_user_id"`
+	TargetUserID uuid.UUID `json:"target_user_id"`
+	Body         string    `json:"body"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type CrmTag struct {
+	ID           uuid.UUID `json:"id"`
+	TargetUserID uuid.UUID `json:"target_user_id"`
+	Tag          string    `json:"tag"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type EmailDripLog struct {
+	ID             uuid.UUID `json:"id"`
+	UserID         string    `json:"user_id"`
+	TemplateName   string    `json:"template_name"`
+	SubscriptionID uuid.UUID `json:"subscription_id"`
+	SentAt         time.Time `json:"sent_at"`
 }
 
 type EmailTemplate struct {

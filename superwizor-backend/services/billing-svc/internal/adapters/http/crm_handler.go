@@ -458,13 +458,15 @@ func (h *CRMHandler) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 	detail.UserID = userID
 
 	// User + subscription
-	var periodEnd, userCreated time.Time
+	var periodEnd *time.Time
+	var daysUntilRenewal *int
+	var userCreated time.Time
 	err := h.pool.QueryRow(ctx, `
 		SELECT
 			COALESCE(u.first_name, ''), COALESCE(u.last_name, ''),
 			COALESCE(u.email, ''), COALESCE(u.phone_number, ''),
 			COALESCE(u.professional_title, ''), u.created_at,
-			COALESCE(p.tier, ''), COALESCE(s.status, ''),
+			COALESCE(p.tier::text, ''), COALESCE(s.status::text, ''),
 			COALESCE(uc.tokens_limit, p.tokens_per_period, 0),
 			COALESCE(uc.tokens_used, 0),
 			GREATEST(0, COALESCE(uc.tokens_limit, p.tokens_per_period, 0) - COALESCE(uc.tokens_used, 0)),
@@ -487,7 +489,7 @@ func (h *CRMHandler) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 		&detail.ProfessionalTitle, &userCreated,
 		&detail.PlanTier, &detail.SubStatus,
 		&detail.TokensLimit, &detail.TokensUsed, &detail.TokensRemaining,
-		&periodEnd, &detail.DaysUntilRenewal,
+		&periodEnd, &daysUntilRenewal,
 		&detail.TotalSessions,
 	)
 	if err != nil {
@@ -495,7 +497,12 @@ func (h *CRMHandler) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	detail.CreatedAt = userCreated.Format("2006-01-02")
-	detail.PeriodEnd = periodEnd.Format("2006-01-02")
+	if periodEnd != nil {
+		detail.PeriodEnd = periodEnd.Format("2006-01-02")
+	}
+	if daysUntilRenewal != nil {
+		detail.DaysUntilRenewal = *daysUntilRenewal
+	}
 
 	// Last session
 	var lastSession time.Time

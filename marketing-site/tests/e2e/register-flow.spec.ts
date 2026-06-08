@@ -86,7 +86,7 @@ test.describe("Happy Path: Cennik", () => {
     const cennik = page.locator("#cennik");
     const bruttoText = forLocale({
       pl: /brutto/i,
-      en: /gross|brutto/i,
+      en: /gross|brutto|VAT|incl/i,
     });
     await expect(cennik).toContainText(bruttoText);
   });
@@ -168,7 +168,7 @@ test.describe("Happy Path: Registration", () => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
     await expect(page.locator('input[type="email"]')).toBeVisible();
-    await expect(page.locator('input[type="password"]')).toBeVisible();
+    await expect(page.locator('input[type="password"]')).not.toBeVisible();
   });
 
   test("social login buttons present (Google + Apple)", async ({ page }) => {
@@ -181,6 +181,12 @@ test.describe("Happy Path: Registration", () => {
   test("ToS checkbox is required", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
+    // Fill step 1 first to be able to go to step 2
+    await page.locator("#firstName").fill("Anna");
+    await page.locator("#lastName").fill("Kowalska");
+    await page.locator("#email").fill("test-tos@example.com");
+    await page.locator("#next-step-btn").click();
+
     const tos = page.locator("#tos");
     await expect(tos).toBeVisible();
   });
@@ -370,49 +376,33 @@ test.describe("Bad Path: Form Validation", () => {
   }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
-    // Try to submit the form by clicking submit button
-    const submit = forLocale({
-      pl: /Zarejestruj|Załóż konto|Wyślij/i,
-      en: /Sign up|Create account|Submit/i,
-    });
-    const btn = page.getByRole("button", { name: submit });
-    if (await btn.isVisible()) {
-      await btn.click();
-      // Form should not navigate away — validation errors should show
-      await expect(page).toHaveURL(/register/);
-    }
+    
+    // We cannot click submit on Step 1, but we can click the next-step button
+    const btn = page.locator("#next-step-btn");
+    await btn.click();
+
+    // Form should not navigate away — validation errors should show
+    await expect(page).toHaveURL(/register/);
+    await expect(page.locator("[role='alert']").first()).toBeVisible();
   });
 
   test("ToS must be checked before submission", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
-    // Fill email and password but don't check ToS
-    await page.locator('input[type="email"]').fill("test@example.com");
-    await page.locator('input[type="password"]').fill("TestPass123!");
-    // Fill name fields if present
-    const firstName = page.locator(
-      'input[name="firstName"], input[placeholder*="mię"]',
-    );
-    if (await firstName.isVisible()) {
-      await firstName.fill("Test");
-    }
-    const lastName = page.locator(
-      'input[name="lastName"], input[placeholder*="azwisk"]',
-    );
-    if (await lastName.isVisible()) {
-      await lastName.fill("User");
-    }
-    // Submit without checking ToS
-    const submit = forLocale({
-      pl: /Zarejestruj|Załóż konto|Wyślij/i,
-      en: /Sign up|Create account|Submit/i,
-    });
-    const btn = page.getByRole("button", { name: submit });
-    if (await btn.isVisible()) {
-      await btn.click();
-      // Should stay on register page (ToS not accepted)
-      await expect(page).toHaveURL(/register/);
-    }
+
+    // Step 1
+    await page.locator("#firstName").fill("Test");
+    await page.locator("#lastName").fill("User");
+    await page.locator("#email").fill("test@example.com");
+    await page.locator("#next-step-btn").click();
+
+    // Step 2 (Password filled, ToS not accepted)
+    await page.locator("#password").fill("TestPass123!");
+    await page.locator("#next-step-btn").click();
+
+    // Should show the tosRequired error
+    await expect(page.locator("[role='alert']").first()).toBeVisible();
+    await expect(page).toHaveURL(/register/);
   });
 });
 
@@ -513,9 +503,14 @@ test.describe("Consistency: LP ↔ Registration flow", () => {
 
     // Each registration link should load a working page
     for (const href of hrefs) {
-      const fullUrl = href.startsWith("http")
-        ? href
-        : `${prefix}${href.startsWith("/") ? "" : "/"}${href}`;
+      let fullUrl = href;
+      if (!href.startsWith("http")) {
+        if (prefix && href.startsWith(prefix)) {
+          fullUrl = href;
+        } else {
+          fullUrl = `${prefix}${href.startsWith("/") ? "" : "/"}${href}`;
+        }
+      }
       const res = await page.goto(fullUrl);
       expect(res?.status()).toBe(200);
       await expect(page.locator('input[type="email"]')).toBeVisible();

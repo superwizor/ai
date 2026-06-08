@@ -18,7 +18,8 @@
       "users": "Users",
       "sessions": "Sessions",
       "audit": "Audit log",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "crm": "CRM"
     },
     "header": {
       "signOut": "Sign out",
@@ -648,7 +649,9 @@
       "apple": "Continue with Apple",
       "microsoft": "Continue with Microsoft",
       "consentToS": "I accept the <termsLink>terms</termsLink> and the <privacyLink>privacy policy</privacyLink>.",
-      "consentMarketing": "I want to receive news and offers from Superwizor AI."
+      "consentMarketing": "I want to receive news and offers from Superwizor AI.",
+      "continue": "Continue",
+      "back": "Back"
     },
     "fields": {
       "email": "Email address",
@@ -689,6 +692,7 @@
       "subhead": "You'll get 5 free sessions for 30 days. No credit card required.",
       "sectionAccount": "Your account",
       "sectionProfile": "Your profile",
+      "step": "Step",
       "finishMetaTitle": "Finish your profile",
       "finishTitle": "Finish your profile",
       "finishSubhead": "Hi {firstName}. Pick a therapeutic modality and interface language to activate your account.",

@@ -192,13 +192,17 @@ jobs:
       - name: Deploy API to Cloud Run
         run: |
           IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}"
+          BILLING_URL=$(gcloud run services describe billing-svc --region ${{ env.REGION }} --format 'value(status.url)' || echo "")
+          if [ -z "$BILLING_URL" ]; then
+            BILLING_URL="https://billing-svc-e3f32b232q-lm.a.run.app"
+          fi
           gcloud run deploy api-service \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
             --vpc-connector swvpc-connector \
-            --set-env-vars="ENV=staging"
+            --set-env-vars="ENV=staging,BILLING_SVC_URL=${BILLING_URL}"
           gcloud run services add-iam-policy-binding api-service \
             --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
             --member=allUsers --role=roles/run.invoker

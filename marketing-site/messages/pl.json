@@ -18,7 +18,8 @@
       "users": "Użytkownicy",
       "sessions": "Sesje",
       "audit": "Dziennik audytowy",
-      "analytics": "Analityka"
+      "analytics": "Analityka",
+      "crm": "CRM"
     },
     "header": {
       "signOut": "Wyloguj",
@@ -648,7 +649,9 @@
       "apple": "Kontynuuj z Apple",
       "microsoft": "Kontynuuj z Microsoft",
       "consentToS": "Akceptuję <termsLink>regulamin</termsLink> oraz <privacyLink>politykę prywatności</privacyLink>.",
-      "consentMarketing": "Chcę otrzymywać informacje o nowościach i ofertach Superwizor AI."
+      "consentMarketing": "Chcę otrzymywać informacje o nowościach i ofertach Superwizor AI.",
+      "continue": "Dalej",
+      "back": "Wróć"
     },
     "fields": {
       "email": "Adres e-mail",
@@ -689,6 +692,7 @@
       "subhead": "Otrzymasz 5 darmowych sesji na 30 dni. Bez karty kredytowej.",
       "sectionAccount": "Twoje konto",
       "sectionProfile": "Twój profil",
+      "step": "Krok",
       "finishMetaTitle": "Dokończ profil",
       "finishTitle": "Dokończ swój profil",
       "finishSubhead": "Witaj {firstName}. Wybierz nurt terapeutyczny i język interfejsu, aby aktywować konto.",

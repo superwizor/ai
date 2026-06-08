@@ -37,13 +37,15 @@ test.describe("Therapist Registration", () => {
     await reg.goto(prefix);
 
     await reg.expectHeading();
-    await expect(reg.emailInput).toBeVisible();
-    await expect(reg.passwordInput).toBeVisible();
     await expect(reg.firstNameInput).toBeVisible();
     await expect(reg.lastNameInput).toBeVisible();
-    await expect(reg.modalitySelect).toBeVisible();
-    await expect(reg.tosCheckbox).toBeVisible();
-    await expect(reg.submitButton).toBeVisible();
+    await expect(reg.emailInput).toBeVisible();
+    await expect(reg.nextStepButton).toBeVisible();
+
+    // Step 2 & 3 fields should be hidden initially
+    await expect(reg.passwordInput).not.toBeVisible();
+    await expect(reg.modalitySelect).not.toBeVisible();
+    await expect(reg.tosCheckbox).not.toBeVisible();
   });
 
   test("shows validation errors on empty submit", async ({ page }) => {
@@ -51,7 +53,7 @@ test.describe("Therapist Registration", () => {
     const reg = new RegisterTherapistPage(page);
 
     await reg.goto(prefix);
-    await reg.submit();
+    await reg.nextStepButton.click();
 
     // Still on the same page — no redirect happened.
     await reg.expectStillOnRegisterPage(prefix);
