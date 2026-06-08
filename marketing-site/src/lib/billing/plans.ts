@@ -90,14 +90,14 @@ const PLANS: ReadonlyArray<PlanRow> = [
   {
     tier: "PRO",
     cycle: "ANNUAL",
-    priceGross: 2999.0,          // brutto (Stripe: 2999 PLN)
-    priceIntroGross: 2099.0,     // ~2999 * 0.70
+    priceGross: 2990.0,          // brutto (299 * 10)
+    priceIntroGross: 2093.0,     // ~2990 * 0.70
     couponCode: "ROZKWIT30",
     currencyCode: "PLN",
     tokensPerPeriod: 1080,        // 90 * 12
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TgAo3E5jzWcAIge1Q6dMMwd",  // Rozkwit annual 2999 PLN brutto
+    stripePriceId: "price_1TgAqVE5jzWcAIgeOh1veVjP",  // Rozkwit annual 2990 PLN brutto
     stripePaymentLink: null,
   },
   {
