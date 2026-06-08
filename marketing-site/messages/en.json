@@ -424,7 +424,7 @@
     "skipToContent": "Skip to content",
     "brand": "Superwizor AI",
     "login": "Log in",
-    "register": "Sign up",
+    "register": "Try for free",
     "pricing": "Pricing",
     "security": "Security",
     "languageSwitcher": "Language",
@@ -445,7 +445,7 @@
     "subhead": "You open the app and know where to start. Previous sessions are waiting with transcripts, clinical themes, and notes in your modality.",
     "ctaPrimary": "Try for free",
     "ctaSecondary": "See how it works",
-    "microtext": "3 sessions. No credit card required.",
+    "microtext": "5 sessions for 30 days. No credit card.",
     "trustBar": "Co-created by Polish psychotherapists, supervisors, and psychiatrists.",
     "chips": {
       "audio": "Audio deleted after transcription",
@@ -485,7 +485,7 @@
       }
     },
     "cta": "Try it on your own session",
-    "micro": "3 sessions. No credit card required."
+    "micro": "5 sessions for 30 days. No credit card."
   },
   "differentiator": {
     "overline": "Why Superwizor AI",
@@ -570,7 +570,7 @@
     "title": "See for yourself in your own sessions.",
     "body": "No obligations. You decide whether to stay.",
     "cta": "Try for free",
-    "micro": "3 sessions. No credit card required."
+    "micro": "5 sessions for 30 days. No credit card."
   },
   "audience": {
     "overline": "Who it's for",
@@ -678,7 +678,7 @@
       "metaTitle": "Therapist sign-up",
       "overline": "Sign up",
       "title": "Sign up as a therapist",
-      "subhead": "You'll get 3 free sessions to start. No credit card required.",
+      "subhead": "You'll get 5 free sessions for 30 days. No credit card required.",
       "sectionAccount": "Your account",
       "sectionProfile": "Your profile",
       "finishMetaTitle": "Finish your profile",
@@ -793,11 +793,11 @@
       "trial": {
         "name": "Discovery",
         "tagline": "Try with no strings attached.",
-        "tokensSuffix": "3 sessions for 14 days",
+        "tokensSuffix": "5 sessions for 30 days",
         "tokensSuffix2": "full access to the application",
         "cta": "Try for free",
         "features": [
-          "3 sessions for 14 days",
+          "5 sessions for 30 days",
           "Full access to all features",
           "No credit card required"
         ]
@@ -805,10 +805,10 @@
       "solo": {
         "name": "Balance",
         "tagline": "For individual therapists.",
-        "couponText": "CODE: INTRO_SOLO",
-        "priceIntro": "99 PLN",
-        "priceBase": "regular price 149 PLN",
-        "subprice": "introductory price with coupon forever",
+        "couponText": "CODE: ROWNOWAGA20",
+        "priceIntro": "143 PLN",
+        "priceBase": "regular price 179 PLN",
+        "subprice": "with code ROWNOWAGA20 · forever",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
         "cta": "Choose Balance",
@@ -821,15 +821,15 @@
         "name": "Growth",
         "tagline": "For power users.",
         "badge": "Most popular",
-        "couponText": "CODE: INTRO_PRO",
-        "priceIntro": "179 PLN",
-        "priceBase": "regular price 249 PLN",
-        "subprice": "introductory price with coupon forever",
+        "couponText": "CODE: ROZKWIT30",
+        "priceIntro": "209 PLN",
+        "priceBase": "regular price 299 PLN",
+        "subprice": "with code ROZKWIT30 · forever",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
         "cta": "Choose Growth",
         "features": [
-          "Up to 120 sessions / month",
+          "Up to 90 sessions / month",
           "Full access to all features"
         ]
       },
@@ -848,7 +848,7 @@
         ]
       }
     },
-    "vatNote": "Prices are net. 23% VAT added on the invoice.",
+    "vatNote": "Prices include 23% VAT.",
     "currency": "PLN",
     "perMonth": "PLN / month",
     "perYear": "PLN / year",
@@ -856,6 +856,26 @@
     "footnote1": "Annual billing — 17% off. You only pay after using your 3 free sessions.",
     "footnote2": "Get started now and lock in the introductory price forever.",
     "footnote": "Card or Przelewy24. Change or cancel your plan any time from your account."
+  },
+  "contact": {
+    "metaTitle": "Contact \u00b7 Superwizor AI",
+    "overline": "Contact",
+    "heading": "Let\u2019s talk",
+    "subhead": "Drop us a line \u2014 we respond within 24 hours on business days.",
+    "fields": {
+      "name": "Full name",
+      "email": "Email address",
+      "subject": "Subject",
+      "subjectPlaceholder": "e.g. Question about the Evolution plan",
+      "message": "Message",
+      "messagePlaceholder": "Describe your question or need..."
+    },
+    "submit": "Send message",
+    "submitting": "Sending...",
+    "success": "Thank you! We\u2019ll get back to you as soon as possible.",
+    "error": "Something went wrong. Please try again or email kontakt@superwizor.ai.",
+    "directEmail": "Or write directly:",
+    "emailAddress": "kontakt@superwizor.ai"
   },
   "footer": {
     "tagline": "Co-created by Polish psychotherapists, supervisors, and psychiatrists.",
@@ -993,7 +1013,7 @@
         }
       },
       "cta": "Try on your own session",
-      "micro": "3 sessions. No credit card."
+      "micro": "5 sessions for 30 days. No credit card."
     },
     "differentiator": {
       "title": "Not another documentation tool. A partner that lifts the weight of remembering.",
@@ -1050,7 +1070,7 @@
       "body": "Presence in the room. Without the weight of remembering between sessions. Documentation waits ready, you return to what's happening now.",
       "cta": "Try for free",
       "cta2": "See pricing",
-      "micro": "3 sessions. No credit card. Full access to the app."
+      "micro": "5 sessions for 30 days. No credit card. Full access to the app."
     },
     "audience": {
       "heading": "Built for real work in the office",
@@ -1073,7 +1093,7 @@
       "heading": "Choose the plan for your practice",
       "annualNote": "17% cheaper",
       "footnote2": "Start now. Lock in the lower price forever.",
-      "vatNote": "Prices excl. VAT 23%",
+      "vatNote": "Prices incl. 23% VAT",
       "footnote": "Card or Przelewy24. Cancel anytime.",
       "trial": { "tagline": "See if it's for you." },
       "pro": { "tagline": "For intensive practice." },

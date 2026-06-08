@@ -7,6 +7,7 @@
 // ships the email/password path. The "or" disclosure swap lands when
 // feature 2 adds the OAuth buttons.
 
+import { Suspense } from "react";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 
@@ -14,6 +15,7 @@ import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
 import { TherapistEmailForm } from "@/components/register/TherapistEmailForm";
 import { SocialButtons } from "@/components/register/SocialButtons";
+import { TrialPitchBanner } from "@/components/register/TrialPitchBanner";
 
 export async function generateMetadata({
   params,
@@ -49,7 +51,14 @@ export default async function RegisterTherapistPage({
             {t("subhead")}
           </p>
 
-          <div className="mt-10">
+          {/* Trial/Plan pitch banner */}
+          <div className="mt-8">
+            <Suspense fallback={null}>
+              <TrialPitchBanner />
+            </Suspense>
+          </div>
+
+          <div className="mt-2">
             <SocialButtons flow="therapist" />
             <TherapistEmailForm />
           </div>
@@ -59,3 +68,4 @@ export default async function RegisterTherapistPage({
     </>
   );
 }
+

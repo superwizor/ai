@@ -77,7 +77,7 @@ export function AiValue() {
         </div>
 
         <div className="mt-12 text-center">
-          <a href={`${prefix}/register/therapist`} className="inline-flex items-center justify-center rounded-[12px] bg-frost text-[#004D54] font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 hover:bg-white transition-all duration-200 active:scale-[0.97] whitespace-nowrap">
+          <a href="#cennik" className="inline-flex items-center justify-center rounded-[12px] bg-frost text-[#004D54] font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 hover:bg-white transition-all duration-200 active:scale-[0.97] whitespace-nowrap">
             {locale === "en" ? "Start for free" : "Rozpocznij za darmo"}
             <span className="ml-2">→</span>
           </a>

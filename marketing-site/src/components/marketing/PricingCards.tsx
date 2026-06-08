@@ -111,8 +111,37 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
         </p>
         <p className="font-mono text-[10px] uppercase tracking-wider text-[#4E5A55]">
           {locale === "en"
-            ? "Prices excl. VAT 23% · Secure payment via Stripe · Cancel anytime"
-            : "Ceny netto + VAT 23% · Bezpieczna płatność przez Stripe · Anuluj w dowolnym momencie"}
+            ? "Prices incl. 23% VAT · Secure payment via Stripe · Cancel anytime"
+            : "Ceny brutto z VAT 23% · Bezpieczna płatność przez Stripe · Anuluj w dowolnym momencie"}
+        </p>
+      </div>
+
+      {/* --- Promotional Codes --- */}
+      <div className="mt-12 mx-auto max-w-xl">
+        <p className="text-center font-mono text-[10px] uppercase tracking-wider text-[#4E5A55] mb-4">
+          {locale === "en" ? "Promotional codes" : "Kody promocyjne"}
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <PromoCode
+            code="ROWNOWAGA20"
+            label={locale === "en" ? "-20% on Balance" : "-20% na Równowagę"}
+            locale={locale}
+          />
+          <PromoCode
+            code="ROZKWIT30"
+            label={locale === "en" ? "-30% on Growth" : "-30% na Rozkwit"}
+            locale={locale}
+          />
+          <PromoCode
+            code="PIONIER33"
+            label={locale === "en" ? "~40% off any plan" : "~40% na każdy plan"}
+            locale={locale}
+          />
+        </div>
+        <p className="text-center font-sans text-[11px] text-[#4E5A55]/60 mt-3">
+          {locale === "en"
+            ? "Enter the code during checkout. The discount locks in forever."
+            : "Wpisz kod przy płatności. Rabat zostaje na zawsze."}
         </p>
       </div>
 
@@ -132,7 +161,7 @@ function TrialCard({ registerHref, locale }: { registerHref: string; locale: str
     <article className="flex flex-col rounded-[20px] bg-white border border-[#E2DED5] p-7 sm:p-8 justify-between h-full hover:border-[#004D54]/20 hover:shadow-lg transition-all duration-300">
       <div>
         <h3 className="font-display text-[#004D54] text-lg font-bold tracking-tight">
-          {locale === "en" ? "Trial" : "Poznanie"}
+          {locale === "en" ? "Discovery" : "Poznanie"}
         </h3>
         <p className="font-sans text-[#4E5A55]/70 text-sm mt-1">
           {locale === "en" ? "See if it's for you." : "Sprawdź, czy to dla Ciebie."}
@@ -144,7 +173,7 @@ function TrialCard({ registerHref, locale }: { registerHref: string; locale: str
         </div>
 
         <ul className="mt-7 space-y-2.5">
-          <Feat>{locale === "en" ? "3 sessions in 14 days" : "3 sesje przez 14 dni"}</Feat>
+          <Feat>{locale === "en" ? "5 sessions for 30 days" : "5 sesji przez 30 dni"}</Feat>
           <Feat>{locale === "en" ? "Full access to all features" : "Pełen dostęp do aplikacji"}</Feat>
           <Feat>{locale === "en" ? "No credit card" : "Bez karty kredytowej"}</Feat>
         </ul>
@@ -152,7 +181,7 @@ function TrialCard({ registerHref, locale }: { registerHref: string; locale: str
 
       <a
         href={registerHref}
-        className="mt-8 w-full inline-flex items-center justify-center rounded-[12px] border border-[#E2DED5] text-[#1B2522] font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 hover:bg-[#F2F0EA] hover:border-[#004D54]/20 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
+        className="mt-8 w-full inline-flex items-center justify-center rounded-[12px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 hover:brightness-110 transition-all duration-200 active:scale-[0.98] whitespace-nowrap shadow-sm"
       >
         {locale === "en" ? "Try for free" : "Wypróbuj za darmo"}
       </a>
@@ -194,7 +223,7 @@ function PaidCard({
     : (locale === "en" ? "For intensive practice." : "Dla intensywnej praktyki.");
   const sessions = tier === "solo"
     ? (locale === "en" ? "Up to 30 sessions/month" : "Do 30 sesji miesięcznie")
-    : (locale === "en" ? "Up to 120 sessions/month" : "Do 120 sesji miesięcznie");
+    : (locale === "en" ? "Up to 90 sessions/month" : "Do 90 sesji miesięcznie");
   const cta = tier === "solo"
     ? (locale === "en" ? "Choose Balance" : "Wybieram Równowagę")
     : (locale === "en" ? "Choose Growth" : "Wybieram Rozkwit");
@@ -248,7 +277,10 @@ function PaidCard({
                   {formattedBase} zł
                 </span>
                 <span className={`font-mono text-[10px] uppercase tracking-wider font-semibold ${subColor}`}>
-                  {locale === "en" ? "your price forever" : "Twoja cena na zawsze"}
+                  {row.couponCode
+                    ? (locale === "en" ? `with code ${row.couponCode} · forever` : `z kodem ${row.couponCode} · na zawsze`)
+                    : (locale === "en" ? "your price forever" : "Twoja cena na zawsze")
+                  }
                 </span>
               </div>
             </>
@@ -272,11 +304,9 @@ function PaidCard({
         </ul>
       </div>
 
-      {checkoutHref ? (
+      {row.stripePriceId ? (
         <a
-          href={checkoutHref}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={`/${locale === "en" ? "en/" : ""}register/therapist?plan=${tier}_${cycle.toLowerCase()}`}
           className={`mt-8 w-full inline-flex items-center justify-center rounded-[12px] font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 transition-all duration-200 active:scale-[0.98] cursor-pointer whitespace-nowrap ${ctaClasses}`}
         >
           {cta}
@@ -320,7 +350,7 @@ function ClinicCard({ locale }: { locale: string }) {
       </div>
 
       <a
-        href="mailto:kontakt@superwizor.ai?subject=Plan%20Ewolucja%20-%20wycena"
+        href={`/${locale === "en" ? "en/" : ""}kontakt`}
         className="mt-8 w-full inline-flex items-center justify-center rounded-[12px] border border-[#E2DED5] text-[#1B2522] font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 hover:bg-[#F2F0EA] hover:border-[#004D54]/20 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
       >
         {locale === "en" ? "Let's talk" : "Porozmawiajmy"}
@@ -346,5 +376,36 @@ function FeatCustom({ children, dotColor, textColor }: { children: React.ReactNo
       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
       <span>{children}</span>
     </li>
+  );
+}
+
+/* ─── Promo code pill ────────────────────────────────────────────── */
+
+function PromoCode({ code, label, locale }: { code: string; label: string; locale: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="group flex flex-col items-center gap-1 rounded-[12px] border border-[#E2DED5] bg-white px-4 py-3 hover:border-[#004D54]/20 hover:shadow-sm transition-all duration-200 cursor-pointer active:scale-[0.98]"
+    >
+      <span className="font-mono text-sm font-bold text-[#004D54] tracking-wider">
+        {code}
+      </span>
+      <span className="font-sans text-[10px] text-[#4E5A55]/70">{label}</span>
+      <span className="font-mono text-[9px] uppercase tracking-wider text-[#004D54]/40 group-hover:text-[#004D54]/70 transition-colors">
+        {copied
+          ? (locale === "en" ? "✓ copied" : "✓ skopiowano")
+          : (locale === "en" ? "click to copy" : "kliknij aby skopiować")}
+      </span>
+    </button>
   );
 }

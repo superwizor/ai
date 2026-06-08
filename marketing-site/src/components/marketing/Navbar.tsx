@@ -59,8 +59,8 @@ export function Navbar() {
             {t("login")}
           </a>
           <a
-            href={`${prefix}/register/therapist`}
-            className="inline-flex items-center rounded-button bg-evergreen text-frost hover:bg-[#002E32] font-mono uppercase tracking-[var(--tracking-label)] text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 transition active:scale-[0.98]"
+            href="#cennik"
+            className="inline-flex items-center rounded-button bg-ember text-obsidian hover:brightness-110 font-mono uppercase tracking-[var(--tracking-label)] text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 transition active:scale-[0.98] font-bold"
           >
             {t("register")}
           </a>

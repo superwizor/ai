@@ -80,13 +80,13 @@ export function Footer() {
 
           {/* Column 5: Register / Sign In */}
           <FooterColumn title={locale === "en" ? "Register" : "Konto"}>
-            <FooterLink href={`${prefix}/register/therapist`}>
+            <FooterLink href="#cennik">
               {tLinks("register")}
             </FooterLink>
             <FooterLink href={`${prefix}/login`}>
               {tLinks("login")}
             </FooterLink>
-            <FooterLink href="mailto:hello@superwizor.ai">
+            <FooterLink href={`${prefix}/kontakt`}>
               {tLinks("contact")}
             </FooterLink>
           </FooterColumn>

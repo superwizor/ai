@@ -178,7 +178,7 @@ export function AiSecurityBand() {
           <div className="w-16 h-px bg-gradient-to-r from-transparent via-frost/10 to-transparent mx-auto my-8" />
 
           <a
-            href={`${locale === "en" ? "/en" : "/pl"}/register/therapist`}
+            href="#cennik"
             className="group relative inline-flex items-center justify-center rounded-[12px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 transition-all duration-300 active:scale-[0.97] whitespace-nowrap overflow-hidden"
           >
             <span className="absolute inset-0 rounded-[12px] bg-ember/30 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10 scale-110" />
