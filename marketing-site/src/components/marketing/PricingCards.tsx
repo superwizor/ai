@@ -106,42 +106,13 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
       <div className="mt-10 text-center space-y-2">
         <p className="font-sans text-sm text-[#004D54] font-semibold">
           {locale === "en"
-            ? "Start now. Lock in the lower price forever."
-            : "Zacznij teraz. Zatrzymaj niższą cenę na zawsze."}
+            ? "Start now."
+            : "Zacznij teraz."}
         </p>
         <p className="font-mono text-[10px] uppercase tracking-wider text-[#4E5A55]">
           {locale === "en"
             ? "Prices incl. 23% VAT · Secure payment via Stripe · Cancel anytime"
             : "Ceny brutto z VAT 23% · Bezpieczna płatność przez Stripe · Anuluj w dowolnym momencie"}
-        </p>
-      </div>
-
-      {/* --- Promotional Codes --- */}
-      <div className="mt-12 mx-auto max-w-xl">
-        <p className="text-center font-mono text-[10px] uppercase tracking-wider text-[#4E5A55] mb-4">
-          {locale === "en" ? "Promotional codes" : "Kody promocyjne"}
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <PromoCode
-            code="ROWNOWAGA20"
-            label={locale === "en" ? "-20% on Balance" : "-20% na Równowagę"}
-            locale={locale}
-          />
-          <PromoCode
-            code="ROZKWIT30"
-            label={locale === "en" ? "-30% on Growth" : "-30% na Rozkwit"}
-            locale={locale}
-          />
-          <PromoCode
-            code="PIONIER33"
-            label={locale === "en" ? "~40% off any plan" : "~40% na każdy plan"}
-            locale={locale}
-          />
-        </div>
-        <p className="text-center font-sans text-[11px] text-[#4E5A55]/60 mt-3">
-          {locale === "en"
-            ? "Enter the code during checkout. The discount locks in forever."
-            : "Wpisz kod przy płatności. Rabat zostaje na zawsze."}
         </p>
       </div>
 

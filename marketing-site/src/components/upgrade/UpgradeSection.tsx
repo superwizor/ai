@@ -125,23 +125,6 @@ export function UpgradeSection({
           )}
         </div>
 
-        {/* --- Promo codes --- */}
-        <div className="mt-10 text-center">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-[#4E5A55] mb-3">
-            {locale === "en" ? "Promotional codes" : "Kody promocyjne"}
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <PromoTag code="ROWNOWAGA20" label={locale === "en" ? "-20% Balance" : "-20% Równowaga"} />
-            <PromoTag code="ROZKWIT30" label={locale === "en" ? "-30% Growth" : "-30% Rozkwit"} />
-            <PromoTag code="PIONIER33" label={locale === "en" ? "~40% any plan" : "~40% każdy plan"} />
-          </div>
-          <p className="font-sans text-[11px] text-[#4E5A55]/60 mt-2">
-            {locale === "en"
-              ? "Enter the code during checkout. The discount locks in forever."
-              : "Wpisz kod przy płatności. Rabat zostaje na zawsze."}
-          </p>
-        </div>
-
         {/* --- Footnote --- */}
         <div className="mt-8 text-center">
           <p className="font-mono text-[10px] uppercase tracking-wider text-[#4E5A55]">

@@ -52,8 +52,6 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tier: "SOLO",
     cycle: "MONTHLY",
     priceGross: 179.0,           // brutto
-    priceIntroGross: 143.0,      // ~179 * 0.80 (ROWNOWAGA20 = -20%)
-    couponCode: "ROWNOWAGA20",
     currencyCode: "PLN",
     tokensPerPeriod: 30,
     licensesLimit: 1,
@@ -65,8 +63,6 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tier: "SOLO",
     cycle: "ANNUAL",
     priceGross: 1790.0,          // brutto (179 * 10 months effectively)
-    priceIntroGross: 1432.0,     // ~1790 * 0.80
-    couponCode: "ROWNOWAGA20",
     currencyCode: "PLN",
     tokensPerPeriod: 360,
     licensesLimit: 1,
@@ -78,8 +74,6 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tier: "PRO",
     cycle: "MONTHLY",
     priceGross: 299.0,           // brutto
-    priceIntroGross: 209.0,      // ~299 * 0.70 (ROZKWIT30 = -30%)
-    couponCode: "ROZKWIT30",
     currencyCode: "PLN",
     tokensPerPeriod: 90,          // was 120, confirmed 90
     licensesLimit: 1,
@@ -91,8 +85,6 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tier: "PRO",
     cycle: "ANNUAL",
     priceGross: 2990.0,          // brutto (299 * 10)
-    priceIntroGross: 2093.0,     // ~2990 * 0.70
-    couponCode: "ROZKWIT30",
     currencyCode: "PLN",
     tokensPerPeriod: 1080,        // 90 * 12
     licensesLimit: 1,

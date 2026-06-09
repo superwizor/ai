@@ -33,25 +33,12 @@ export default function AdminHome() {
       {/* Grid of Section Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card
-          title={t("cardCrm")}
-          body={t("cardCrmBody")}
-          href={`${prefix}/admin/crm`}
-          icon={<HeartIcon />}
-          hoverGlow="hover:border-magma/30 hover:shadow-[0_0_30px_rgba(255,59,48,0.08)]"
-        />
-        <Card
           title={t("cardOrgs")}
           body={t("cardOrgsBody")}
           href={`${prefix}/admin/orgs`}
           icon={<BuildingIcon />}
           hoverGlow="hover:border-ember/30 hover:shadow-[0_0_30px_rgba(252,174,47,0.08)]"
-        />
-        <Card
-          title={t("cardUsers")}
-          body={t("cardUsersBody")}
-          href={`${prefix}/admin/users`}
-          icon={<UsersIcon />}
-          hoverGlow="hover:border-aurora/30 hover:shadow-[0_0_30px_rgba(103,89,255,0.08)]"
+          ctaText={t("cardOrgsCta")}
         />
         <Card
           title={t("cardAnalytics")}
@@ -59,6 +46,23 @@ export default function AdminHome() {
           href={`${prefix}/admin/analytics`}
           icon={<ChartIcon />}
           hoverGlow="hover:border-ember/30 hover:shadow-[0_0_30px_rgba(252,174,47,0.08)]"
+          ctaText={t("cardAnalyticsCta")}
+        />
+        <Card
+          title={t("cardUsers")}
+          body={t("cardUsersBody")}
+          href={`${prefix}/admin/users`}
+          icon={<UsersIcon />}
+          hoverGlow="hover:border-aurora/30 hover:shadow-[0_0_30px_rgba(103,89,255,0.08)]"
+          ctaText={t("cardUsersCta")}
+        />
+        <Card
+          title={t("cardCrm")}
+          body={t("cardCrmBody")}
+          href={`${prefix}/admin/crm`}
+          icon={<HeartIcon />}
+          hoverGlow="hover:border-magma/30 hover:shadow-[0_0_30px_rgba(255,59,48,0.08)]"
+          ctaText={t("cardCrmCta")}
         />
         <Card
           title={t("cardAudit")}
@@ -66,6 +70,7 @@ export default function AdminHome() {
           href={`${prefix}/admin/audit`}
           icon={<ShieldIcon />}
           hoverGlow="hover:border-mist/30 hover:shadow-[0_0_30px_rgba(178,202,204,0.08)]"
+          ctaText={t("cardAuditCta")}
         />
       </div>
     </div>
@@ -78,19 +83,21 @@ function Card({
   href,
   icon,
   hoverGlow,
+  ctaText,
 }: {
   title: string;
   body: string;
   href: string;
   icon: React.ReactNode;
   hoverGlow: string;
+  ctaText: string;
 }) {
   return (
     <a
       href={href}
-      className={`group block rounded-2xl border border-frost/10 bg-frost/[0.02] p-6 backdrop-blur-sm transition-all duration-300 hover:scale-[1.01] hover:bg-frost/[0.04] ${hoverGlow}`}
+      className={`group flex flex-col justify-between rounded-2xl border border-frost/10 bg-frost/[0.02] p-6 backdrop-blur-sm transition-all duration-300 hover:scale-[1.01] hover:bg-frost/[0.04] ${hoverGlow}`}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-4 mb-4">
         <div className="flex-shrink-0 p-3 rounded-xl bg-frost/[0.04] border border-frost/10 group-hover:border-frost/20 transition-all duration-300">
           {icon}
         </div>
@@ -102,11 +109,12 @@ function Card({
             {body}
           </p>
         </div>
-        <div className="flex-shrink-0 self-center text-mist/30 group-hover:text-frost group-hover:translate-x-0.5 transition-all duration-300">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
+      </div>
+      <div className="inline-flex items-center gap-1.5 self-start rounded-xl bg-frost/5 border border-frost/10 px-3.5 py-2 font-mono text-[10px] uppercase tracking-wider text-mist group-hover:bg-ember/15 group-hover:text-ember group-hover:border-ember/30 transition-all duration-300">
+        <span>{ctaText}</span>
+        <svg className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+        </svg>
       </div>
     </a>
   );

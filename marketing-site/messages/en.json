@@ -31,14 +31,19 @@
       "subhead": "Welcome to the Superwizor AI admin console. Manage organisations, monitor sessions, analyze usage metrics, and control unit costs in real-time.",
       "cardOrgs": "Organisations",
       "cardOrgsBody": "List of all organisations with filtering, blocking, and plan changes.",
+      "cardOrgsCta": "Manage organisations",
       "cardUsers": "Users",
       "cardUsersBody": "Global user list. Edit, deactivate, reset passwords.",
+      "cardUsersCta": "Manage users",
       "cardCrm": "Therapist CRM",
       "cardCrmBody": "Sort by urgency, check credits & alerts, email therapists, export CSV.",
+      "cardCrmCta": "Open CRM",
       "cardAudit": "Audit log",
       "cardAuditBody": "Full administrative activity history with filters.",
+      "cardAuditCta": "View audit log",
       "cardAnalytics": "Analytics & Stats",
-      "cardAnalyticsBody": "Dashboards, usage metrics, Unit Economics, AI Quality, funnel, and cohort retention."
+      "cardAnalyticsBody": "Dashboards, usage metrics, Unit Economics, AI Quality, funnel, and cohort retention.",
+      "cardAnalyticsCta": "View analytics"
     },
     "orgs": {
       "metaTitle": "Organisations",
@@ -820,7 +825,7 @@
         "couponText": "CODE: ROWNOWAGA20",
         "priceIntro": "143 PLN",
         "priceBase": "regular price 179 PLN",
-        "subprice": "with code ROWNOWAGA20 · forever",
+        "subprice": "with code ROWNOWAGA20",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
         "cta": "Choose Balance",
@@ -836,7 +841,7 @@
         "couponText": "CODE: ROZKWIT30",
         "priceIntro": "209 PLN",
         "priceBase": "regular price 299 PLN",
-        "subprice": "with code ROZKWIT30 · forever",
+        "subprice": "with code ROZKWIT30",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
         "cta": "Choose Growth",
@@ -866,7 +871,7 @@
     "perYear": "PLN / year",
     "free": "Free",
     "footnote1": "Annual billing — 17% off. You only pay after using your 3 free sessions.",
-    "footnote2": "Get started now and lock in the introductory price forever.",
+    "footnote2": "Get started now.",
     "footnote": "Card or Przelewy24. Change or cancel your plan any time from your account."
   },
   "contact": {
@@ -1104,13 +1109,13 @@
     "pricing": {
       "heading": "Choose the plan for your practice",
       "annualNote": "17% cheaper",
-      "footnote2": "Start now. Lock in the lower price forever.",
+      "footnote2": "Start now.",
       "vatNote": "Prices incl. 23% VAT",
       "footnote": "Card or Przelewy24. Cancel anytime.",
       "trial": { "tagline": "See if it's for you." },
       "pro": { "tagline": "For intensive practice." },
       "clinic": { "tagline": "For clinics and teams." },
-      "subprice": "this price stays with you forever"
+      "subprice": "your price"
     },
     "faq": {
       "overline": "Before you start",

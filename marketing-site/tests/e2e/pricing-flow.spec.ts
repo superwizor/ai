@@ -95,16 +95,7 @@ test.describe("Pricing & CTA Flow", () => {
     await expect(pricingSection.getByText(oldText)).toHaveCount(0);
   });
 
-  test("coupon codes are visible in pricing section", async ({ page }) => {
-    const prefix = urlPrefix();
-    await page.goto(`${prefix}/`);
 
-    const pricingSection = page.locator("#cennik");
-
-    await expect(pricingSection.getByText("ROWNOWAGA20").first()).toBeVisible();
-    await expect(pricingSection.getByText("ROZKWIT30").first()).toBeVisible();
-    await expect(pricingSection.getByText("PIONIER33").first()).toBeVisible();
-  });
 
   test("trial CTA links to /register/therapist", async ({ page }) => {
     const prefix = urlPrefix();

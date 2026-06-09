@@ -31,14 +31,19 @@
       "subhead": "Witaj w konsoli administracyjnej Superwizor AI. Zarządzaj organizacjami, monitoruj sesje, analizuj wskaźniki oraz kontroluj koszty w czasie rzeczywistym.",
       "cardOrgs": "Organizacje",
       "cardOrgsBody": "Lista wszystkich organizacji z filtrowaniem, blokowaniem i zmianą planów.",
+      "cardOrgsCta": "Zarządzaj organizacjami",
       "cardUsers": "Użytkownicy",
       "cardUsersBody": "Globalna lista użytkowników. Edycja, dezaktywacja, reset hasła.",
+      "cardUsersCta": "Zarządzaj użytkownikami",
       "cardCrm": "CRM Terapeutów",
       "cardCrmBody": "Sortuj po pilności, sprawdzaj kredyty i alerty, pisz do terapeutów, eksportuj CSV.",
+      "cardCrmCta": "Otwórz CRM",
       "cardAudit": "Dziennik audytowy",
       "cardAuditBody": "Pełna historia działań administracyjnych z filtrami.",
+      "cardAuditCta": "Przeglądaj audyt",
       "cardAnalytics": "Analityka i Statystyki",
-      "cardAnalyticsBody": "Dashboardy, wykresy użycia, Unit Economics, Jakość AI oraz zaawansowany lejek i retencja."
+      "cardAnalyticsBody": "Dashboardy, wykresy użycia, Unit Economics, Jakość AI oraz zaawansowany lejek i retencja.",
+      "cardAnalyticsCta": "Zobacz analitykę"
     },
     "orgs": {
       "metaTitle": "Organizacje",
@@ -820,7 +825,7 @@
         "couponText": "KOD: ROWNOWAGA20",
         "priceIntro": "143 zł",
         "priceBase": "cena regularna 179 zł",
-        "subprice": "z kodem ROWNOWAGA20 · na zawsze",
+        "subprice": "z kodem ROWNOWAGA20",
         "tokensSuffixMonthly": "sesji miesięcznie",
         "tokensSuffixAnnual": "sesji rocznie",
         "cta": "Wybieram Równowagę",
@@ -836,7 +841,7 @@
         "couponText": "KOD: ROZKWIT30",
         "priceIntro": "209 zł",
         "priceBase": "cena regularna 299 zł",
-        "subprice": "z kodem ROZKWIT30 · na zawsze",
+        "subprice": "z kodem ROZKWIT30",
         "tokensSuffixMonthly": "sesji miesięcznie",
         "tokensSuffixAnnual": "sesji rocznie",
         "cta": "Wybieram Rozkwit",
@@ -862,11 +867,11 @@
     },
     "vatNote": "Ceny brutto (zawierają 23% VAT).",
     "currency": "PLN",
-    "perMonth": "zł / miesiąc",
+    "perMonth": "zł / mias.",
     "perYear": "zł / rok",
     "free": "0 zł",
     "footnote1": "Rozliczenie roczne — 17% taniej. Płacisz dopiero po wykorzystaniu 3 darmowych sesji.",
-    "footnote2": "Zacznij już teraz i zatrzymaj niższą cenę na zawsze.",
+    "footnote2": "Zacznij już teraz.",
     "footnote": "Płatność kartą lub Przelewy24. Możesz zmienić lub anulować plan w dowolnym momencie z poziomu konta."
   },
   "contact": {
@@ -1104,13 +1109,13 @@
     "pricing": {
       "heading": "Wybierz plan dla swojej praktyki",
       "annualNote": "17% taniej",
-      "footnote2": "Zacznij teraz. Zatrzymaj niższą cenę na zawsze.",
+      "footnote2": "Zacznij teraz.",
       "vatNote": "Ceny brutto z VAT 23%",
       "footnote": "Karta lub Przelewy24. Anuluj w dowolnym momencie.",
       "trial": { "tagline": "Sprawdź, czy to dla Ciebie." },
       "pro": { "tagline": "Dla intensywnej praktyki." },
       "clinic": { "tagline": "Dla poradni i zespołów." },
-      "subprice": "ta cena zostaje z Tobą na zawsze"
+      "subprice": "Twoja cena"
     },
     "faq": {
       "overline": "Zanim zaczniesz",

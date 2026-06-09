@@ -91,23 +91,7 @@ test.describe("Happy Path: Cennik", () => {
     await expect(cennik).toContainText(bruttoText);
   });
 
-  test("promo code ROWNOWAGA20 is displayed", async ({ page }) => {
-    const prefix = urlPrefix();
-    await page.goto(`${prefix}/`);
-    await expect(page.locator("body")).toContainText("ROWNOWAGA20");
-  });
 
-  test("promo code ROZKWIT30 is displayed", async ({ page }) => {
-    const prefix = urlPrefix();
-    await page.goto(`${prefix}/`);
-    await expect(page.locator("body")).toContainText("ROZKWIT30");
-  });
-
-  test("promo code PIONIER33 is displayed", async ({ page }) => {
-    const prefix = urlPrefix();
-    await page.goto(`${prefix}/`);
-    await expect(page.locator("body")).toContainText("PIONIER33");
-  });
 
   test("Trial CTA links to /register/therapist (no plan param)", async ({
     page,
