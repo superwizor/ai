@@ -155,9 +155,9 @@ resource "google_cloudfunctions2_function" "stt_worker" {
   }
 
   service_config {
-    max_instance_count = 3  # was 10 — zero users, save on scaling
+    max_instance_count = 3 # was 10 — zero users, save on scaling
     min_instance_count = 0
-    available_memory   = "512Mi"  # was 1Gi — sufficient for single audio processing
+    available_memory   = "512Mi" # was 1Gi — sufficient for single audio processing
     available_cpu      = "1"
     # 120s — reverted from the 1800s band-aid (commit on 2026-05-22)
     # now that BatchRecognize uses GcsOutputConfig and stt-submit
@@ -239,9 +239,9 @@ resource "google_cloudfunctions2_function" "llm_worker" {
   }
 
   service_config {
-    max_instance_count    = 2  # was 5 — zero users, save on scaling
+    max_instance_count    = 2 # was 5 — zero users, save on scaling
     min_instance_count    = 0
-    available_memory      = "1Gi"  # was 2Gi — sufficient for single report generation
+    available_memory      = "1Gi" # was 2Gi — sufficient for single report generation
     available_cpu         = "1"
     timeout_seconds       = 540
     service_account_email = var.llm_worker_sa_email
@@ -371,9 +371,9 @@ resource "google_cloudfunctions2_function" "stt_finalize" {
   }
 
   service_config {
-    max_instance_count = 3  # was 10 — zero users, save on scaling
+    max_instance_count = 3 # was 10 — zero users, save on scaling
     min_instance_count = 0
-    available_memory   = "512Mi"  # was 1Gi — sufficient for single transcript finalization
+    available_memory   = "512Mi" # was 1Gi — sufficient for single transcript finalization
     available_cpu      = "1"
     # Finalize work: GCS download (~few MB), JSON unmarshal,
     # ParseChirp3Results, chunker, persistTranscript,
@@ -472,6 +472,10 @@ resource "google_cloudfunctions2_function" "stt_watchdog" {
       TRANSCRIPTS_RAW_BUCKET = var.transcripts_raw_bucket_name
       KMS_KEY_URI            = var.app_data_key_id
       STT_NATIVE_DIARIZATION = "on"
+      # Watchdog drives commitBillingUsageAsync when it re-drives a
+      # stuck merge (rescueStuckMerges → finalizeIfReady). Without this,
+      # watchdog-rescued sessions never bill. Matches stt_finalize.
+      BILLING_SVC_URL = var.billing_svc_url
     }
 
     secret_environment_variables {
@@ -560,7 +564,7 @@ resource "google_cloudfunctions2_function" "notification_worker_on_status" {
   }
 
   service_config {
-    max_instance_count    = 2  # was 5 — zero users
+    max_instance_count    = 2 # was 5 — zero users
     min_instance_count    = 0
     available_memory      = "256Mi"
     available_cpu         = "1"
@@ -629,7 +633,7 @@ resource "google_cloudfunctions2_function" "notification_worker_on_deleted" {
   }
 
   service_config {
-    max_instance_count    = 2  # was 5 — zero users
+    max_instance_count    = 2 # was 5 — zero users
     min_instance_count    = 0
     available_memory      = "256Mi"
     available_cpu         = "1"
