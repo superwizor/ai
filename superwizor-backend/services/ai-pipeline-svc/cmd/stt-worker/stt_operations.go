@@ -228,3 +228,50 @@ func loadPendingOperations(ctx context.Context, thresholdSeconds int) ([]sttOpRo
 	}
 	return out, rows.Err()
 }
+
+// stuckMerge identifies a session whose chunks all finalized but whose
+// merge never produced a transcript — the session is wedged in
+// TRANSCRIBING. GCSOutputURI is any one chunk's output prefix, used only
+// to recover the bucket name for the finalize re-drive.
+type stuckMerge struct {
+	SessionID    uuid.UUID
+	GCSOutputURI string
+}
+
+// loadStuckMerges finds sessions where (a) status is still TRANSCRIBING,
+// (b) every stt_operations row has finalized_at set, yet (c) no
+// transcripts row exists, and the last chunk finalized more than
+// thresholdSeconds ago. This is the failure mode where mergeAndPersist
+// hit a transient error (e.g. the now-fixed garbage-offset overflow, or
+// a DB blip) and reverted status to TRANSCRIBING without anything
+// re-triggering the merge — so it would hang forever. The watchdog
+// re-drives finalize for each.
+func loadStuckMerges(ctx context.Context, thresholdSeconds int) ([]stuckMerge, error) {
+	if dbPool == nil {
+		return nil, nil
+	}
+	rows, err := dbPool.Query(ctx, `
+		SELECT o.session_id, min(o.gcs_output_uri)
+		FROM stt_operations o
+		JOIN sessions s ON s.id = o.session_id
+		WHERE s.status = 'TRANSCRIBING'
+		  AND NOT EXISTS (
+		      SELECT 1 FROM transcripts t WHERE t.session_id = o.session_id)
+		GROUP BY o.session_id
+		HAVING count(*) FILTER (WHERE o.finalized_at IS NULL) = 0
+		   AND max(o.finalized_at) < now() - make_interval(secs => $1)`,
+		thresholdSeconds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []stuckMerge
+	for rows.Next() {
+		var m stuckMerge
+		if err := rows.Scan(&m.SessionID, &m.GCSOutputURI); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}

@@ -58,6 +58,14 @@ func ProcessWatchdog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Stuck-merge rescue runs every tick, independent of pending Chirp
+	// operations: a session can have ALL chunks finalized yet no
+	// transcript (a transient mergeAndPersist failure reverted status to
+	// TRANSCRIBING without re-triggering). loadPendingOperations won't
+	// surface those (their finalized_at is set), so handle them here —
+	// before the no-pending-ops early return below.
+	rescueStuckMerges(ctx, logger)
+
 	if len(rows) == 0 {
 		w.WriteHeader(http.StatusOK)
 		_, _ = fmt.Fprintln(w, "watchdog: 0 stuck operations")
@@ -94,6 +102,29 @@ func ProcessWatchdog(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	_, _ = fmt.Fprintf(w, "watchdog: processed %d stuck operations\n", len(rows))
+}
+
+// rescueStuckMerges re-drives finalize for sessions whose chunks all
+// finalized but never produced a transcript — e.g. a transient
+// mergeAndPersist failure (a DB blip, or the now-fixed garbage-offset
+// int4 overflow) that reverted status to TRANSCRIBING without
+// re-triggering the merge. Without this the session hangs forever.
+// Idempotent: finalizeIfReady re-acquires the merge lock under
+// FOR UPDATE and the UNIQUE on transcripts(session_id) guards a double
+// write. Errors are logged and swallowed — the next tick retries.
+func rescueStuckMerges(ctx context.Context, logger *slog.Logger) {
+	stuck, err := loadStuckMerges(ctx, watchdogStuckThresholdSeconds)
+	if err != nil {
+		logger.Error("loadStuckMerges failed", "error", err)
+		return
+	}
+	for _, m := range stuck {
+		mLogger := logger.With("session_id", m.SessionID.String())
+		mLogger.Warn("re-driving stuck merge (all chunks finalized, no transcript)")
+		if err := finalizeIfReady(ctx, mLogger, m.SessionID, bucketFromGCSURI(m.GCSOutputURI)); err != nil {
+			mLogger.Warn("stuck-merge re-drive failed; will retry next tick", "error", err)
+		}
+	}
 }
 
 // rescueOperation polls the Operations API for a single stuck row
