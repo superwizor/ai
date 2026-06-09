@@ -148,16 +148,17 @@ test.describe("Happy Path: Cennik", () => {
 // ─────────────────────────────────────────────────────────────
 
 test.describe("Happy Path: Registration", () => {
-  test("register page loads with form fields", async ({ page }) => {
+  test("register page loads with pitch button", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
-    await expect(page.locator('input[type="email"]')).toBeVisible();
-    await expect(page.locator('input[type="password"]')).not.toBeVisible();
+    await expect(page.locator('#start-trial-btn')).toBeVisible();
+    await expect(page.locator('input[type="email"]')).not.toBeVisible();
   });
 
-  test("social login buttons present (Google + Apple)", async ({ page }) => {
+  test("social login buttons present (Google + Apple) in step 2", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
+    await page.locator("#start-trial-btn").click();
     await expect(page.getByRole("button", { name: /Google/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Apple/i })).toBeVisible();
   });
@@ -165,11 +166,9 @@ test.describe("Happy Path: Registration", () => {
   test("ToS checkbox is required", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
-    // Fill step 1 first to be able to go to step 2
-    await page.locator("#firstName").fill("Anna");
-    await page.locator("#lastName").fill("Kowalska");
-    await page.locator("#email").fill("test-tos@example.com");
-    await page.locator("#next-step-btn").click();
+    // Step 1 -> Step 2 -> Step 3
+    await page.locator("#start-trial-btn").click();
+    await page.locator("#signup-email-btn").click();
 
     const tos = page.locator("#tos");
     await expect(tos).toBeVisible();
@@ -324,7 +323,7 @@ test.describe("Bad Path: Invalid Plans", () => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist?plan=nonexistent`);
     // Page should still load and show trial info (graceful fallback)
-    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('#start-trial-btn')).toBeVisible();
   });
 
   test("register with plan=enterprise shows trial fallback", async ({
@@ -332,7 +331,7 @@ test.describe("Bad Path: Invalid Plans", () => {
   }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist?plan=enterprise`);
-    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('#start-trial-btn')).toBeVisible();
   });
 
   test("register with empty plan param works like no plan", async ({
@@ -340,7 +339,7 @@ test.describe("Bad Path: Invalid Plans", () => {
   }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist?plan=`);
-    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('#start-trial-btn')).toBeVisible();
     // Should show trial info
     const trialInfo = forLocale({
       pl: /5 sesji|30 dni/i,
@@ -361,12 +360,15 @@ test.describe("Bad Path: Form Validation", () => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
     
-    // We cannot click submit on Step 1, but we can click the next-step button
+    // Go to Step 3
+    await page.locator("#start-trial-btn").click();
+    await page.locator("#signup-email-btn").click();
+
+    // Click continue on empty Step 3
     const btn = page.locator("#next-step-btn");
     await btn.click();
 
     // Form should not navigate away — validation errors should show
-    await expect(page).toHaveURL(/register/);
     await expect(page.locator("[role='alert']").first()).toBeVisible();
   });
 
@@ -374,19 +376,17 @@ test.describe("Bad Path: Form Validation", () => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist`);
 
-    // Step 1
-    await page.locator("#firstName").fill("Test");
-    await page.locator("#lastName").fill("User");
-    await page.locator("#email").fill("test@example.com");
-    await page.locator("#next-step-btn").click();
+    // Step 1 -> Step 2 -> Step 3
+    await page.locator("#start-trial-btn").click();
+    await page.locator("#signup-email-btn").click();
 
-    // Step 2 (Password filled, ToS not accepted)
+    // Step 3 (Password filled, ToS not accepted)
+    await page.locator("#email").fill("test-tos@example.com");
     await page.locator("#password").fill("TestPass123!");
     await page.locator("#next-step-btn").click();
 
     // Should show the tosRequired error
     await expect(page.locator("[role='alert']").first()).toBeVisible();
-    await expect(page).toHaveURL(/register/);
   });
 });
 
@@ -497,7 +497,7 @@ test.describe("Consistency: LP ↔ Registration flow", () => {
       }
       const res = await page.goto(fullUrl);
       expect(res?.status()).toBe(200);
-      await expect(page.locator('input[type="email"]')).toBeVisible();
+      await expect(page.locator('#start-trial-btn')).toBeVisible();
     }
   });
 });

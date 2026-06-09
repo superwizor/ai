@@ -38,7 +38,7 @@ export default async function RegisterTherapistPage({
     <>
       <Navbar />
       <main className="flex-1">
-        <section className="mx-auto w-full max-w-xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <section className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
           <p className="font-sans text-[10px] sm:text-xs font-bold uppercase text-mist/60 tracking-[var(--tracking-overline)] mb-3 text-center">
             {t("overline")}
           </p>
