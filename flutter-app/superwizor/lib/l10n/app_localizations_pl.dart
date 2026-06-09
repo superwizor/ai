@@ -455,6 +455,59 @@ class AppLocalizationsPl extends AppLocalizations {
       'Usuń to nagranie bezpowrotnie.';
 
   @override
+  String get recording_interrupted_banner_title => 'Nagrywanie wstrzymane';
+
+  @override
+  String get recording_interrupted_banner_body =>
+      'Połączenie lub inna aplikacja przerwała nagrywanie. Dotychczasowe nagranie jest bezpieczne.';
+
+  @override
+  String get recording_interrupted_resume => 'Wznów nagrywanie';
+
+  @override
+  String get recording_resume_failed_header => 'Nie udało się wznowić';
+
+  @override
+  String get recording_resume_failed_body =>
+      'Nie udało się wznowić nagrywania. Dotychczasowe nagranie jest bezpieczne — możesz zakończyć sesję i wysłać je do analizy.';
+
+  @override
+  String get recording_resume_failed_retry => 'Spróbuj ponownie';
+
+  @override
+  String get recording_resume_failed_finish => 'Zakończ i wyślij';
+
+  @override
+  String get recovery_sheet_header => 'Znaleziono przerwane nagranie';
+
+  @override
+  String recovery_sheet_body(String patientAlias, String date, int minutes) {
+    return 'Nagranie sesji z $patientAlias z $date (ok. $minutes min) nie zostało wysłane — aplikacja została przerwana w trakcie nagrywania. Co chcesz zrobić?';
+  }
+
+  @override
+  String get recovery_sheet_send => 'Wyślij do analizy';
+
+  @override
+  String get recovery_sheet_later => 'Zdecyduję później';
+
+  @override
+  String get recovery_sheet_delete => 'Usuń nagranie';
+
+  @override
+  String get recovery_delete_confirm_header => 'Usunąć bezpowrotnie?';
+
+  @override
+  String get recovery_delete_confirm_body =>
+      'Tego nagrania nie da się odzyskać.';
+
+  @override
+  String get recovery_delete_confirm_destructive => 'Usuń';
+
+  @override
+  String get recovery_enqueued_snackbar => 'Nagranie dodane do kolejki wysyłki';
+
+  @override
   String get stepper_step1_uploaded => 'Audio bezpieczne na naszych serwerach.';
 
   @override

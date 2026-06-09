@@ -35,6 +35,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
+import '../services/recording_manifest_store.dart';
 import '../services/recording_service.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/pending_upload.dart';
@@ -71,7 +72,8 @@ class RecordingScreen extends ConsumerStatefulWidget {
   ConsumerState<RecordingScreen> createState() => _RecordingScreenState();
 }
 
-class _RecordingScreenState extends ConsumerState<RecordingScreen> {
+class _RecordingScreenState extends ConsumerState<RecordingScreen>
+    with WidgetsBindingObserver {
   String? _sessionId;
   Duration _displayDuration = Duration.zero;
   RecordingState _recState = RecordingState.idle;
@@ -79,6 +81,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   StreamSubscription<RecordingState>? _stateSub;
   bool _uploading = false;
   bool _maxLimitTriggered = false;
+  // Guards double-taps on the post-interruption resume button while the
+  // capture-verification probe (~1.2 s) runs.
+  bool _resuming = false;
   // Live chunk count for the recording indicator. Encryption now runs in
   // the upload worker (not inline on finish), so this stays 0 — the
   // indicator just doesn't show a chunk tally. Kept for the widget API.
@@ -89,6 +94,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(analyticsCollectorProvider).track("screen.viewed", properties: {"screen_name": "RecordingScreen"});
       _verifyConsentAndStart();
@@ -97,9 +103,22 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _durSub?.cancel();
     _stateSub?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // The native pause event for an interruption that fired while the
+    // Flutter isolate was suspended (therapist answering a call) may
+    // never be delivered — ask the plugin directly on every return to
+    // foreground so the UI can't keep claiming "recording" while the
+    // OS holds the recorder paused. docs/28 WS2.
+    if (state == AppLifecycleState.resumed) {
+      _service.reconcileWithNative();
+    }
   }
 
   Future<void> _verifyConsentAndStart() async {
@@ -238,6 +257,20 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       await _service.start(_sessionId!);
       ref.read(analyticsCollectorProvider).track("recording.started");
 
+      // Durable manifest next to raw.flac (docs/28 WS1): from this moment
+      // an app-kill at ANY point leaves enough on disk for the orphan-
+      // recovery scan to offer the partial recording on next launch.
+      // Deleted when ownership transfers to the upload queue (enqueue)
+      // or the user discards.
+      await ref.read(recordingManifestStoreProvider).write(RecordingManifest(
+            sessionId: _sessionId!,
+            therapistId: widget.therapistId,
+            patientFileId: widget.patientFileId,
+            patientAlias: widget.patientAlias,
+            patientLanguageCode: widget.reportLanguage,
+            startedAtUtc: DateTime.now().toUtc(),
+          ));
+
       _durSub = _service.durationStream.listen((d) {
         if (!mounted) return;
         setState(() => _displayDuration = d);
@@ -257,6 +290,15 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       });
       _stateSub = _service.stateStream.listen((s) {
         if (!mounted) return;
+        if (s == RecordingState.interrupted &&
+            _recState != RecordingState.interrupted) {
+          ref.read(analyticsCollectorProvider).track(
+            "recording.interrupted",
+            properties: {
+              "at_seconds": _service.currentDuration.inSeconds,
+            },
+          );
+        }
         setState(() => _recState = s);
       });
       setState(() => _recState = _service.state);
@@ -305,12 +347,72 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     if (result == true) {
       final dur = _service.currentDuration.inSeconds;
       await _service.cancel();
+      await _deleteManifest();
       ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
         "duration_seconds": dur,
       });
       return true;
     }
     return false;
+  }
+
+  Future<void> _deleteManifest() async {
+    final id = _sessionId;
+    if (id != null) {
+      await ref.read(recordingManifestStoreProvider).delete(id);
+    }
+  }
+
+  /// Resume tap — both the control panel and the interruption banner.
+  /// RecordingService.resume() VERIFIES capture restarted after an
+  /// interruption (docs/28 WS3); on failure we tell the user loudly and
+  /// offer the safe exits instead of pretending to record.
+  Future<void> _onResumeTap() async {
+    if (_resuming) return;
+    setState(() => _resuming = true);
+    final wasInterrupted = _recState == RecordingState.interrupted;
+    final gapSeconds = _service.currentDuration.inSeconds;
+    bool ok;
+    try {
+      ok = await _service.resume();
+    } finally {
+      if (mounted) setState(() => _resuming = false);
+    }
+    if (ok) {
+      if (wasInterrupted) {
+        ref.read(analyticsCollectorProvider).track(
+          "recording.interruption_resumed",
+          properties: {"at_seconds": gapSeconds},
+        );
+      }
+      return;
+    }
+    if (!wasInterrupted || !mounted) return;
+    ref
+        .read(analyticsCollectorProvider)
+        .track("recording.interruption_resume_failed");
+    final t = AppLocalizations.of(context);
+    await showEuphireBottomSheet<void>(
+      context: context,
+      builder: (ctx) => EuphireActionSheet(
+        header: t.recording_resume_failed_header,
+        body: t.recording_resume_failed_body,
+        primary: EuphireSheetAction(
+          label: t.recording_resume_failed_finish,
+          onPressed: () async {
+            Navigator.of(ctx).pop();
+            await _finishAndUpload();
+          },
+        ),
+        secondary: EuphireSheetAction(
+          label: t.recording_resume_failed_retry,
+          onPressed: () async {
+            Navigator.of(ctx).pop();
+            await _onResumeTap();
+          },
+        ),
+      ),
+    );
   }
 
   // ---------- stop / pause logic per Etap 3 ----------
@@ -367,7 +469,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
           label: t.recording_confirm_end_secondary,
           onPressed: () async {
             Navigator.of(ctx).pop();
-            await _service.resume();
+            await _onResumeTap();
           },
         ),
         destructive: EuphireSheetAction(
@@ -415,6 +517,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   Future<void> _discardAndPop() async {
     final dur = _service.currentDuration.inSeconds;
     await _service.cancel();
+    await _deleteManifest();
     ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
       "duration_seconds": dur,
     });
@@ -459,11 +562,16 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     setState(() => _uploading = true);
     final sessionId = _sessionId ?? const Uuid().v4();
     try {
+      // Captured duration BEFORE stop() resets the service. Source of
+      // truth, not the UI stream copy — and post-WS2 it excludes
+      // interruption gaps (the clock stops while the OS holds the
+      // recorder paused), so the backend hint is honest.
+      final capturedDuration = _service.currentDuration;
       final rawPath = await _service.stop();
       if (rawPath == null) throw StateError('no recording produced');
       final rawSize = await File(rawPath).length();
       ref.read(analyticsCollectorProvider).track("recording.stopped", properties: {
-        "duration_seconds": _displayDuration.inSeconds,
+        "duration_seconds": capturedDuration.inSeconds,
       });
       debugPrint('[recording] stopped, raw=$rawPath size=${rawSize}B');
       if (rawSize == 0) {
@@ -507,7 +615,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
           contentType: 'audio/flac',
           sizeBytes: rawSize,
           chunkCount: 1,
-          actualDurationSeconds: _displayDuration.inSeconds,
+          actualDurationSeconds: capturedDuration.inSeconds,
           needsServerSideConversion: false,
           idempotencyKey: sessionId,
           now: DateTime.now().toUtc(),
@@ -525,7 +633,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
           // and chunkCount from the real chunk metadata after encrypting.
           sizeBytes: rawSize,
           chunkCount: 1,
-          actualDurationSeconds: _displayDuration.inSeconds,
+          actualDurationSeconds: capturedDuration.inSeconds,
           needsServerSideConversion: false,
           idempotencyKey: sessionId,
           now: DateTime.now().toUtc(),
@@ -536,6 +644,14 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       // before this returns, so leaving the screen / app-kill can no
       // longer lose the recording.
       await runner.enqueue(pending);
+
+      // Durability ownership just transferred to the queue row — drop
+      // the recording manifest so the orphan-recovery scan never
+      // double-offers this session (docs/28 WS1). Order matters: a kill
+      // between enqueue and delete leaves BOTH owners, which recovery
+      // resolves via its already-queued skip rule; the reverse order
+      // would leave neither.
+      await _deleteManifest();
 
       // Invalidate patient + session caches so the new session shows
       // up in the kartoteka once the server confirms.
@@ -692,6 +808,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                 ],
               ),
               const Spacer(),
+              if (_recState == RecordingState.interrupted) ...[
+                _InterruptionBanner(
+                  resuming: _resuming,
+                  onResume: _onResumeTap,
+                ),
+                const SizedBox(height: 16),
+              ],
               EuphireRecordingIndicator(
                 isRecording: _recState == RecordingState.recording,
                 formattedDuration: _formatDuration(_displayDuration),
@@ -703,7 +826,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                 state: _recState,
                 onStart: _start,
                 onPause: _service.pause,
-                onResume: _service.resume,
+                onResume: _onResumeTap,
                 onStop: _onStopPressed,
               ),
               const SizedBox(height: 16),
@@ -738,6 +861,103 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     final m = (d.inMinutes % 60).toString().padLeft(2, '0');
     final s = (d.inSeconds % 60).toString().padLeft(2, '0');
     return d.inHours > 0 ? '$h:$m:$s' : '$m:$s';
+  }
+}
+
+/// Warning card shown while the OS holds the recorder paused
+/// (phone call / alarm / audio-focus loss — docs/28 WS2). The duration
+/// counter freezes alongside it; everything captured so far is intact.
+class _InterruptionBanner extends StatelessWidget {
+  final bool resuming;
+  final Future<void> Function() onResume;
+
+  const _InterruptionBanner({
+    required this.resuming,
+    required this.onResume,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: EuphireColors.ember.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: EuphireColors.ember, width: 1),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.phone_paused_rounded,
+                  color: EuphireColors.ember, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      t.recording_interrupted_banner_title,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: EuphireColors.frostWhite,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      t.recording_interrupted_banner_body,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.4,
+                        color: EuphireColors.frostWhite.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton.icon(
+              onPressed: resuming ? null : onResume,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: EuphireColors.ember,
+                foregroundColor: EuphireColors.frostWhite,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              icon: resuming
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: EuphireColors.frostWhite,
+                      ),
+                    )
+                  : const Icon(Icons.play_arrow_rounded),
+              label: Text(
+                t.recording_interrupted_resume,
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
