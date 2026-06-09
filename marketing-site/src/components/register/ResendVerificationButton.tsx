@@ -101,10 +101,10 @@ export function ResendVerificationButton() {
         <p className="font-display text-frost text-lg font-semibold">
           ✓ {t("verifiedHeading")}
         </p>
-        <p className="font-serif text-mist text-sm">{t("verifiedBody")}</p>
+        <p className="font-sans text-mist text-sm">{t("verifiedBody")}</p>
         <a
           href={accountUrl}
-          className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition"
+          className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition"
         >
           {t("verifiedGoToAccount")}
         </a>
@@ -117,7 +117,7 @@ export function ResendVerificationButton() {
       {user && (
         <p
           aria-live="polite"
-          className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/60"
+          className="font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/60"
         >
           {t("verifyingStatus")}
         </p>
@@ -125,7 +125,7 @@ export function ResendVerificationButton() {
       <button
         onClick={onResend}
         disabled={!user || status === "sending"}
-        className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {status === "sending"
           ? t("resending")

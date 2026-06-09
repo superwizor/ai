@@ -65,7 +65,7 @@ export default async function SuccessPage({
             {heading}
           </h1>
 
-          <p className="font-serif text-mist mt-4 text-base leading-relaxed max-w-md mx-auto">
+          <p className="font-sans text-mist mt-4 text-base leading-relaxed max-w-md mx-auto">
             {subtext}
           </p>
 

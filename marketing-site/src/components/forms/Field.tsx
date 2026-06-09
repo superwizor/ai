@@ -27,19 +27,19 @@ export function FieldShell({ id, label, hint, error, required, children }: Field
       */}
       <label
         htmlFor={id}
-        className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist mb-2 min-h-[2lh] leading-snug"
+        className="font-sans text-[10px] font-semibold uppercase tracking-[var(--tracking-label)] text-mist mb-2 min-h-[2lh] leading-snug"
       >
         {label}
         {required && <span aria-hidden className="text-ember ml-1">*</span>}
       </label>
       {children}
       {hint && !error && (
-        <p className="font-serif text-xs text-mist/70 mt-1.5">{hint}</p>
+        <p className="font-sans text-xs text-mist/70 mt-1.5">{hint}</p>
       )}
       {error && (
         <p
           role="alert"
-          className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-magma mt-1.5"
+          className="font-sans text-[10px] font-semibold uppercase tracking-[var(--tracking-label)] text-magma mt-1.5"
         >
           {error}
         </p>
@@ -97,7 +97,7 @@ export function Checkbox(
         {...rest}
         className="mt-1 h-4 w-4 rounded border-frost/30 bg-frost/5 text-ember accent-ember focus:ring-ember"
       />
-      <span className="font-serif text-sm text-mist leading-relaxed">{label}</span>
+      <span className="font-sans text-sm text-mist leading-relaxed">{label}</span>
     </label>
   );
 }

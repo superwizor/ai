@@ -669,7 +669,7 @@
       "credentialsNumber": "Numer prawa wykonywania zawodu (opcjonalnie)",
       "defaultModality": "Główny nurt terapeutyczny",
       "uiLanguage": "Język interfejsu",
-      "phoneNumber": "Numer telefonu (opcjonalnie)",
+      "phoneNumber": "Numer telefonu",
       "phoneNumberPlaceholder": "+48 123 456 789",
       "terms": "regulamin",
       "privacy": "politykę prywatności",
@@ -686,6 +686,7 @@
       "tosRequired": "Musisz zaakceptować regulamin, aby się zarejestrować.",
       "emailAlreadyInUse": "Ten adres e-mail jest już zarejestrowany. Spróbuj się zalogować.",
       "weakPassword": "Hasło jest zbyt słabe.",
+      "phoneRequired": "Numer telefonu jest wymagany.",
       "phoneInvalid": "Numer telefonu powinien zawierać 6–18 cyfr; dozwolone są spacje, myślniki i nawiasy.",
       "networkError": "Brak połączenia z serwerem. Spróbuj ponownie.",
       "unknown": "Coś poszło nie tak. Spróbuj ponownie."

@@ -147,7 +147,7 @@ export function OrganizationEmailForm() {
     <form onSubmit={onSubmit} className="grid gap-5" noValidate>
       {/* Founder section --------------------------------------------- */}
       <section>
-        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
+        <h2 className="font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
           {tBody("sectionFounder")}
         </h2>
         <div className="grid gap-4">
@@ -206,7 +206,7 @@ export function OrganizationEmailForm() {
 
       {/* Organisation section ---------------------------------------- */}
       <section>
-        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
+        <h2 className="font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
           {tBody("sectionOrg")}
         </h2>
         <div className="grid gap-4">
@@ -233,7 +233,7 @@ export function OrganizationEmailForm() {
 
       {/* Headquarters address section ------------------------------- */}
       <section>
-        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
+        <h2 className="font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
           {tBody("sectionAddress")}
         </h2>
         <div className="grid gap-4">
@@ -303,7 +303,7 @@ export function OrganizationEmailForm() {
           })}
         />
         {errors.hasAcceptedTos && (
-          <p role="alert" className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-magma">
+          <p role="alert" className="font-sans text-[10px] uppercase tracking-[var(--tracking-label)] text-magma">
             {tErr("tosRequired")}
           </p>
         )}
@@ -318,7 +318,7 @@ export function OrganizationEmailForm() {
       {serverError && (
         <p
           role="alert"
-          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost"
+          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-sans text-sm text-frost"
         >
           {serverError}
         </p>
@@ -327,12 +327,12 @@ export function OrganizationEmailForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {isSubmitting ? tCommon("submitting") : tCommon("submit")}
       </button>
 
-      <p className="font-serif text-sm text-mist text-center">
+      <p className="font-sans text-sm text-mist text-center">
         {tCommon("alreadyHaveAccount")}{" "}
         <a href={`${prefix}/login`} className="text-ember underline">
           {tCommon("loginCta")}

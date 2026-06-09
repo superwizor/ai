@@ -145,7 +145,7 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
       {err && (
         <p
           role="alert"
-          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-2 font-serif text-sm text-frost text-center"
+          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-2 font-sans text-sm text-frost text-center"
         >
           {err}
         </p>
@@ -156,7 +156,7 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
           <span className="w-full border-t border-frost/10"></span>
         </div>
         <div className="relative flex justify-center">
-          <span className="bg-evergreen px-3 font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/60">
+          <span className="bg-evergreen px-3 font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/60">
             {t("or")}
           </span>
         </div>

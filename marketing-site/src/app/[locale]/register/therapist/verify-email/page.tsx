@@ -44,14 +44,14 @@ export default async function VerifyEmailPage({
       <Navbar />
       <main className="flex-1">
         <section className="mx-auto w-full max-w-lg px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-center">
-          <p className="font-mono text-[10px] uppercase text-ember tracking-[var(--tracking-overline)] mb-4">
+          <p className="font-sans text-[10px] uppercase text-ember tracking-[var(--tracking-overline)] mb-4">
             ✉
           </p>
           <h1 className="font-display text-frost text-3xl sm:text-4xl font-semibold tracking-[var(--tracking-display)] leading-tight">
             {t("title")}
           </h1>
           <VerifyEmailIntro />
-          <p className="font-serif text-mist/80 mt-6 text-sm leading-relaxed">
+          <p className="font-sans text-mist/80 mt-6 text-sm leading-relaxed">
             {t("noEmail")}
           </p>
 

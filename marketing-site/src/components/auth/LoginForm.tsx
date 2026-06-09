@@ -191,9 +191,29 @@ export function LoginForm() {
   }
 
   const disabled = phase !== "idle";
+  const homeLink = locale === "en" ? "/en/" : "/pl/";
 
   return (
     <div className="grid gap-5">
+      {/* Back Arrow Button */}
+      <div className="flex justify-start mb-2">
+        <a
+          href={homeLink}
+          className="inline-flex items-center gap-2 text-ember hover:text-ember/80 font-sans text-xs font-semibold uppercase tracking-wider transition group cursor-pointer"
+        >
+          <svg
+            className="w-4 h-4 transition-transform group-hover:-translate-x-1"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          {locale === "pl" ? "Wróć do strony głównej" : "Back to home"}
+        </a>
+      </div>
+
       {/* ── Social sign-in ───────────────────────────────────── */}
       <div className="grid gap-3">
         {/* Google */}
@@ -232,7 +252,7 @@ export function LoginForm() {
           <span className="w-full border-t border-frost/10"></span>
         </div>
         <div className="relative flex justify-center">
-          <span className="bg-evergreen px-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist/60">
+          <span className="bg-evergreen px-3 font-sans text-[10px] font-bold uppercase tracking-[var(--tracking-label)] text-mist/60">
             {t("orUseEmail")}
           </span>
         </div>
@@ -241,7 +261,7 @@ export function LoginForm() {
       {/* ── Email / password form ────────────────────────────── */}
       <form onSubmit={onSubmit} className="grid gap-5" noValidate>
         <label className="grid gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+          <span className="font-sans text-[10px] font-semibold uppercase tracking-[var(--tracking-label)] text-mist">
             {t("emailLabel")}
           </span>
           <input
@@ -251,12 +271,12 @@ export function LoginForm() {
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={disabled}
-            className="rounded-button bg-frost/5 border border-frost/15 px-3 py-2 font-mono text-sm text-frost focus:outline-none focus:border-ember disabled:opacity-60"
+            className="rounded-button bg-frost/5 border border-frost/15 px-3.5 py-2.5 font-sans text-base text-frost focus:outline-none focus:border-ember disabled:opacity-60 placeholder:text-mist/40 transition"
           />
         </label>
 
         <label className="grid gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+          <span className="font-sans text-[10px] font-semibold uppercase tracking-[var(--tracking-label)] text-mist">
             {t("passwordLabel")}
           </span>
           <input
@@ -266,14 +286,14 @@ export function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             disabled={disabled}
-            className="rounded-button bg-frost/5 border border-frost/15 px-3 py-2 font-mono text-sm text-frost focus:outline-none focus:border-ember disabled:opacity-60"
+            className="rounded-button bg-frost/5 border border-frost/15 px-3.5 py-2.5 font-sans text-base text-frost focus:outline-none focus:border-ember disabled:opacity-60 placeholder:text-mist/40 transition"
           />
         </label>
 
         {error && (
           <p
             role="alert"
-            className="rounded-button border border-magma/40 bg-magma/10 px-3 py-2 font-serif text-xs text-frost"
+            className="rounded-button border border-magma/40 bg-magma/10 px-3.5 py-2.5 font-sans text-sm text-frost"
           >
             {error}
           </p>
@@ -281,7 +301,7 @@ export function LoginForm() {
         {info && (
           <p
             role="status"
-            className="rounded-button border border-aurora/40 bg-aurora/10 px-3 py-2 font-serif text-xs text-frost"
+            className="rounded-button border border-aurora/40 bg-aurora/10 px-3.5 py-2.5 font-sans text-sm text-frost"
           >
             {info}
           </p>
@@ -290,7 +310,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={disabled}
-          className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3.5 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
           {phase === "submitting"
             ? t("submitting")
@@ -305,16 +325,16 @@ export function LoginForm() {
           type="button"
           onClick={onForgotPassword}
           disabled={disabled}
-          className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist hover:text-ember transition disabled:opacity-60"
+          className="font-sans text-[10px] font-semibold uppercase tracking-[var(--tracking-label)] text-mist hover:text-ember transition disabled:opacity-60"
         >
           {t("forgotPassword")}
         </button>
 
-        <p className="font-serif text-sm text-mist text-center">
+        <p className="font-sans text-sm text-mist/75 text-center">
           {t("noAccount")}{" "}
           <a
             href={`${adminPrefix}/register/therapist/`}
-            className="text-ember underline"
+            className="text-ember font-semibold hover:underline"
           >
             {t("createAccount")}
           </a>

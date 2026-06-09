@@ -37,15 +37,43 @@ test.describe("Therapist Registration", () => {
     await reg.goto(prefix);
 
     await reg.expectHeading();
+    
+    // Step 1: Pitch only
+    await expect(page.locator("#start-trial-btn")).toBeVisible();
+    await expect(reg.emailInput).not.toBeVisible();
+    await expect(reg.firstNameInput).not.toBeVisible();
+
+    // Go to Step 2
+    await page.locator("#start-trial-btn").click();
+    await expect(page.locator("#signup-email-btn")).toBeVisible();
+
+    // Go to Step 3
+    await page.locator("#signup-email-btn").click();
+    await expect(reg.emailInput).toBeVisible();
+    await expect(reg.passwordInput).toBeVisible();
+    await expect(reg.tosCheckbox).toBeVisible();
+    await expect(reg.firstNameInput).not.toBeVisible();
+
+    // Fill Step 3 & Go to Step 4
+    await reg.emailInput.fill("e2e@example.com");
+    await reg.passwordInput.fill("Sup3rwizor!");
+    await reg.tosCheckbox.check();
+    await reg.nextStepButton.click();
+
+    // Step 4
     await expect(reg.firstNameInput).toBeVisible();
     await expect(reg.lastNameInput).toBeVisible();
-    await expect(reg.emailInput).toBeVisible();
-    await expect(reg.nextStepButton).toBeVisible();
-
-    // Step 2 & 3 fields should be hidden initially
-    await expect(reg.passwordInput).not.toBeVisible();
+    await expect(reg.phoneNumberInput).toBeVisible();
     await expect(reg.modalitySelect).not.toBeVisible();
-    await expect(reg.tosCheckbox).not.toBeVisible();
+
+    // Fill Step 4 & Go to Step 5
+    await reg.firstNameInput.fill("Anna");
+    await reg.lastNameInput.fill("Kowalska");
+    await reg.phoneNumberInput.fill("+48500100200");
+    await reg.nextStepButton.click();
+
+    // Step 5
+    await expect(reg.modalitySelect).toBeVisible();
   });
 
   test("shows validation errors on empty submit", async ({ page }) => {
@@ -53,12 +81,45 @@ test.describe("Therapist Registration", () => {
     const reg = new RegisterTherapistPage(page);
 
     await reg.goto(prefix);
+
+    // Go to Step 3
+    await page.locator("#start-trial-btn").click();
+    await page.locator("#signup-email-btn").click();
+
+    // Submit empty fields in Step 3
     await reg.nextStepButton.click();
 
     // Still on the same page — no redirect happened.
     await reg.expectStillOnRegisterPage(prefix);
     // At least one validation error is shown.
     await reg.expectValidationErrors();
+  });
+
+  test("shows validation error on empty phone number in Step 4", async ({ page }) => {
+    const prefix = urlPrefix();
+    const reg = new RegisterTherapistPage(page);
+
+    await reg.goto(prefix);
+
+    // Go to Step 3
+    await page.locator("#start-trial-btn").click();
+    await page.locator("#signup-email-btn").click();
+
+    // Step 3 -> Step 4
+    await reg.emailInput.fill("e2e@example.com");
+    await reg.passwordInput.fill("Sup3rwizor!");
+    await reg.tosCheckbox.check();
+    await reg.nextStepButton.click();
+
+    // Step 4
+    await reg.firstNameInput.fill("Anna");
+    await reg.lastNameInput.fill("Kowalska");
+    // Leave phone number empty
+    await reg.nextStepButton.click();
+
+    // Still on Step 4 (modalitySelect is not visible)
+    await expect(reg.modalitySelect).not.toBeVisible();
+    await expect(page.locator("p[role='alert']")).toBeVisible();
   });
 
   test("happy path: fills form, fires CreateUser + UpdateProfile, redirects to verify-email", async ({
@@ -163,6 +224,20 @@ test("login page loads and displays login form", async ({ page }) => {
 
   await expect(page.locator("input[type='email']")).toBeVisible();
   await expect(page.locator("input[type='password']")).toBeVisible();
+});
+
+test("login page back button redirects to landing page", async ({ page }) => {
+  const prefix = urlPrefix();
+  await page.goto(`${prefix}/login`);
+
+  const backLabel = forLocale({
+    pl: /wróć do strony głównej/i,
+    en: /back to home/i,
+  });
+  await page.getByRole("link", { name: backLabel }).click();
+
+  // Should land on the landing page (which is /pl/ or /en/ or / depending on prefix)
+  await expect(page).toHaveURL(new RegExp(`(${prefix}|/pl|/en)?/?$`));
 });
 
 // ── Password Reset Flow ────────────────────────────────────────────

@@ -246,7 +246,7 @@ export function CRMDashboard() {
       if (filters.status) params.set("status", filters.status);
       if (filters.alert) params.set("alert", filters.alert);
       const qs = params.toString();
-      const resp = await fetch(`/api/admin/crm${qs ? `?${qs}` : ""}`);
+      const resp = await fetch(`/api/admin/crm/subscribers${qs ? `?${qs}` : ""}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       setSubscribers(data.subscribers || []);

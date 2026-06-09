@@ -21,6 +21,7 @@ export class RegisterTherapistPage {
   readonly submitButton: Locator;
   readonly validationErrors: Locator;
   readonly nextStepButton: Locator;
+  readonly phoneNumberInput: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -38,6 +39,7 @@ export class RegisterTherapistPage {
     this.modalitySelect = page.locator("#modality");
     this.tosCheckbox = page.locator("#tos");
     this.nextStepButton = page.locator("#next-step-btn");
+    this.phoneNumberInput = page.locator("#phoneNumber");
 
     const submitName = forLocale({
       pl: /Załóż konto/i,
@@ -67,6 +69,7 @@ export class RegisterTherapistPage {
     password: string;
     firstName: string;
     lastName: string;
+    phoneNumber: string;
     modalityId: string;
   }> = {}) {
     const defaults = {
@@ -74,22 +77,28 @@ export class RegisterTherapistPage {
       password: "Sup3rwizor!",
       firstName: "Anna",
       lastName: "Kowalska",
+      phoneNumber: "+48500100200",
       modalityId: "44f77c8e-8a71-4770-96f3-42e13297a7e8",
     };
     const data = { ...defaults, ...overrides };
 
-    // Step 1
-    await this.firstNameInput.fill(data.firstName);
-    await this.lastNameInput.fill(data.lastName);
-    await this.emailInput.fill(data.email);
-    await this.nextStepButton.click();
+    // Navigate Wizard Steps 1 & 2
+    await this.page.locator("#start-trial-btn").click();
+    await this.page.locator("#signup-email-btn").click();
 
-    // Step 2
+    // Step 3 (Credentials)
+    await this.emailInput.fill(data.email);
     await this.passwordInput.fill(data.password);
     await this.tosCheckbox.check();
     await this.nextStepButton.click();
 
-    // Step 3
+    // Step 4 (Personal Details)
+    await this.firstNameInput.fill(data.firstName);
+    await this.lastNameInput.fill(data.lastName);
+    await this.phoneNumberInput.fill(data.phoneNumber);
+    await this.nextStepButton.click();
+
+    // Step 5 (Clinical Details)
     await this.modalitySelect.selectOption(data.modalityId);
   }
 

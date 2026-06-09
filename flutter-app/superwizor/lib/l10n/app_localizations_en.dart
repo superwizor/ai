@@ -1117,7 +1117,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get billing_exhausted_dialog_body =>
-      'You can still record the session — audio will be securely encrypted and saved locally on your device. After upgrading your plan or pool renewal, you can resume processing from the Patient File.';
+      'You\'ve used all available sessions. You can still record — audio will be securely encrypted and saved locally. Check your email to learn more.';
 
   @override
   String get billing_exhausted_dialog_record_locally => 'Record locally';
@@ -1409,4 +1409,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get note_sent_toast => 'Note sent to client';
+
+  @override
+  String get recording_consent_missing_header => 'No consent recorded';
+
+  @override
+  String get recording_consent_missing_body =>
+      'No patient consent found in the system. Did the patient consent to recording and data processing?';
+
+  @override
+  String get recording_consent_grant => 'Yes, they consented';
+
+  @override
+  String get recording_mic_error_header => 'Microphone error';
+
+  @override
+  String get recording_upload_error_header => 'Upload error';
+
+  @override
+  String recording_too_short_abort_body(String duration) {
+    return 'Recording was $duration. Upload cancelled.';
+  }
+
+  @override
+  String get recording_saving => 'Saving recording...';
 }

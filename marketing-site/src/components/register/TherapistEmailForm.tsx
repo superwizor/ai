@@ -1,21 +1,18 @@
-// Therapist registration form (email/password path) per docs/18 §13.2.
+// Therapist registration form (email/password and social path wizard)
 //
-// Flow:
-//   1. zod-validated client side (immediate error feedback).
-//   2. Firebase createUserWithEmailAndPassword → sendEmailVerification.
-//   3. identityClient.createUser(role=THERAPIST) — passes Firebase UID +
-//      ID token (auth-provider's setTokenProvider already wired the
-//      bearer interceptor in feature 4).
-//   4. Navigate to /register/therapist/verify-email — feature 5
-//      (email-verification-gate) gates further app entry on the
-//      verification click coming back.
+// Flow (5 steps):
+//   1. Pitch (Value proposition based on selected plan or trial)
+//   2. Choose sign-up method (Google, Apple, or Email)
+//   3. Credentials (Email/Password + ToS check)
+//   4. Personal details (First Name, Last Name, Phone Number)
+//   5. Specialization & preferences (Modality, Professional Title, Credentials, Language, Marketing)
+//
+// Zod-validated step-by-step.
 //
 // Failure modes:
-//   - email-already-in-use → inline error with a Log-in link
+//   - email-already-in-use → inline error + returns to Step 3
 //   - weak-password / Firebase error → inline error
-//   - identity-svc Connect error → toast + keep user on form (Firebase
-//     account already exists at this point — feature 8 e2e covers the
-//     "stale Firebase user" reconciliation path).
+//   - identity-svc Connect error → toast + keep user on form
 
 "use client";
 
@@ -27,6 +24,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
 import { FirebaseError } from "firebase/app";
 import { motion, AnimatePresence } from "framer-motion";
+import { ConnectError, Code } from "@connectrpc/connect";
 
 import {
   therapistEmailSchema,
@@ -52,6 +50,125 @@ import {
 } from "@/lib/clinical/modalities";
 import { handlePostRegistrationRedirect } from "@/lib/register/post-registration";
 
+type PitchVariant = "trial" | "solo" | "pro" | "beta";
+
+function resolvePitch(plan: string | null): PitchVariant {
+  if (!plan) return "trial";
+  const lower = plan.toLowerCase();
+  if (lower.startsWith("solo")) return "solo";
+  if (lower.startsWith("pro")) return "pro";
+  if (lower === "beta") return "beta";
+  return "trial";
+}
+
+type ContentBlock = {
+  badge: string;
+  heading: string;
+  features: string[];
+  footnote: string;
+};
+
+const PITCH_CONTENT: Record<PitchVariant, { pl: ContentBlock; en: ContentBlock }> = {
+  trial: {
+    pl: {
+      badge: "Darmowy start",
+      heading: "Zacznij od 5 sesji za darmo",
+      features: [
+        "5 sesji terapeutycznych przez 30 dni",
+        "Pełny dostęp do wszystkich funkcji",
+        "Bez podawania karty kredytowej",
+        "Możliwość rezygnacji w każdej chwili",
+      ],
+      footnote: "Po rejestracji natychmiast przejdziesz do aplikacji.",
+    },
+    en: {
+      badge: "Free start",
+      heading: "Start with 5 free sessions",
+      features: [
+        "5 therapy sessions for 30 days",
+        "Full access to all features",
+        "No credit card required",
+        "Cancel at any time",
+      ],
+      footnote: "After signing up you'll get immediate access to the app.",
+    },
+  },
+  solo: {
+    pl: {
+      badge: "Plan Równowaga",
+      heading: "30 sesji / miesiąc \u00b7 179 zł brutto",
+      features: [
+        "Pełny dostęp do wszystkich funkcji",
+        "Raport w Twoim nurcie terapeutycznym",
+        "Ciągłość między sesjami",
+      ],
+      footnote:
+        "Załóż konto — po rejestracji przekierujemy Cię do bezpiecznej płatności.",
+    },
+    en: {
+      badge: "Balance plan",
+      heading: "30 sessions / month \u00b7 179 PLN",
+      features: [
+        "Full access to all features",
+        "Reports in your therapeutic modality",
+        "Session-to-session continuity",
+      ],
+      footnote:
+        "Create your account first — after signup we'll redirect you to secure checkout.",
+    },
+  },
+  pro: {
+    pl: {
+      badge: "Plan Rozkwit \u00b7 Najczęściej wybierany",
+      heading: "90 sesji / miesiąc \u00b7 299 zł brutto",
+      features: [
+        "Pełny dostęp do wszystkich funkcji",
+        "Raport w Twoim nurcie terapeutycznym",
+        "Ciągłość między sesjami",
+        "Idealny przy pełnym grafiku",
+      ],
+      footnote:
+        "Załóż konto — po rejestracji przekierujemy Cię do bezpiecznej płatności.",
+    },
+    en: {
+      badge: "Growth plan \u00b7 Most popular",
+      heading: "90 sessions / month \u00b7 299 PLN",
+      features: [
+        "Full access to all features",
+        "Reports in your therapeutic modality",
+        "Session-to-session continuity",
+        "Perfect for a full schedule",
+      ],
+      footnote:
+        "Create your account first — after signup we'll redirect you to secure checkout.",
+    },
+  },
+  beta: {
+    pl: {
+      badge: "Program Beta · Darmowy dostęp",
+      heading: "120 sesji / miesiąc przez 2 miesiące",
+      features: [
+        "120 sesji terapeutycznych miesięcznie",
+        "Pełny dostęp do wszystkich funkcji",
+        "2 miesiące całkowicie za darmo",
+        "Priorytetowe wsparcie zespołu",
+      ],
+      footnote: "Załóż konto — dostęp do programu beta zostanie aktywowany automatycznie.",
+    },
+    en: {
+      badge: "Beta Program · Free access",
+      heading: "120 sessions / month for 2 months",
+      features: [
+        "120 therapy sessions per month",
+        "Full access to all features",
+        "2 months completely free",
+        "Priority team support",
+      ],
+      footnote: "Create your account — beta access will be activated automatically.",
+    },
+  },
+};
+
 const slideVariants = {
   enter: (direction: number) => ({
     x: direction > 0 ? 50 : -50,
@@ -76,11 +193,6 @@ const slideVariants = {
 };
 
 export function TherapistEmailForm() {
-  // Modality catalogue is fetched live on mount via
-  // clinical-svc.ListModalities (allowlisted as anonymous on the
-  // backend interceptor). Initial value [] keeps the Select rendering
-  // a single disabled placeholder option until the RPC returns —
-  // typical staging round-trip is <200ms so no spinner is shown.
   const [modalities, setModalities] = useState<ReadonlyArray<ModalityRow>>([]);
   useEffect(() => {
     let cancelled = false;
@@ -89,10 +201,6 @@ export function TherapistEmailForm() {
         if (!cancelled) setModalities(rows);
       })
       .catch((err) => {
-        // Don't block the form — log so devtools shows the failure,
-        // user can still submit other fields. modalityId is required
-        // by zod, so the empty dropdown will surface a normal
-        // validation error rather than a silent submit.
         console.error("[register/therapist] modality fetch failed", err);
       });
     return () => {
@@ -103,16 +211,16 @@ export function TherapistEmailForm() {
   const t = useTranslations("register.fields");
   const tCommon = useTranslations("register.common");
   const tErr = useTranslations("register.errors");
-  const tTher = useTranslations("register.therapist");
   const locale = useLocale();
   const auth = useAuth();
   const prefix = locale === "en" ? "/en" : "";
   const searchParams = useSearchParams();
   const planSlug = searchParams.get("plan");
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [socialBusy, setSocialBusy] = useState(false);
 
   const {
     register,
@@ -132,16 +240,22 @@ export function TherapistEmailForm() {
   const handleNext = async () => {
     setServerError(null);
     if (step === 1) {
-      const isValid = await trigger(["firstName", "lastName", "email"]);
-      if (isValid) {
-        setDirection(1);
-        setStep(2);
-      }
+      setDirection(1);
+      setStep(2);
     } else if (step === 2) {
-      const isValid = await trigger(["password", "hasAcceptedTos"]);
+      setDirection(1);
+      setStep(3);
+    } else if (step === 3) {
+      const isValid = await trigger(["email", "password", "hasAcceptedTos"]);
       if (isValid) {
         setDirection(1);
-        setStep(3);
+        setStep(4);
+      }
+    } else if (step === 4) {
+      const isValid = await trigger(["firstName", "lastName", "phoneNumber"]);
+      if (isValid) {
+        setDirection(1);
+        setStep(5);
       }
     }
   };
@@ -150,12 +264,73 @@ export function TherapistEmailForm() {
     setServerError(null);
     if (step > 1) {
       setDirection(-1);
-      setStep((s) => (s - 1) as 1 | 2 | 3);
+      setStep((s) => (s - 1) as 1 | 2 | 3 | 4 | 5);
+    }
+  };
+
+  const handleSocialUser = async (user: {
+    uid: string;
+    displayName: string | null;
+    email: string | null;
+  }) => {
+    try {
+      await identityClient.getUserByFirebaseUID({ firebaseUid: user.uid });
+      window.location.href = "https://superwizor-app.web.app/";
+      return;
+    } catch (e) {
+      if (!(e instanceof ConnectError) || e.code !== Code.NotFound) {
+        throw e;
+      }
+    }
+
+    const dn = user.displayName ?? "";
+    const [firstName = "", ...rest] = dn.split(" ");
+    const lastName = rest.join(" ");
+    const params = new URLSearchParams({
+      firstName,
+      lastName,
+      email: user.email ?? "",
+      ...(planSlug ? { plan: planSlug } : {}),
+    });
+    window.location.href = `${prefix}/register/therapist/finish?${params}`;
+  };
+
+  const onGoogle = async () => {
+    setSocialBusy(true);
+    setServerError(null);
+    try {
+      const user = await auth.signInWithGoogle();
+      await handleSocialUser(user);
+    } catch (e) {
+      if (e instanceof FirebaseError && e.code === "auth/popup-closed-by-user") {
+        return;
+      }
+      console.error("[social-auth] Google sign-in failed:", e);
+      setServerError(tErr("unknown"));
+    } finally {
+      setSocialBusy(false);
+    }
+  };
+
+  const onApple = async () => {
+    setSocialBusy(true);
+    setServerError(null);
+    try {
+      const user = await auth.signInWithApple();
+      await handleSocialUser(user);
+    } catch (e) {
+      if (e instanceof FirebaseError && e.code === "auth/popup-closed-by-user") {
+        return;
+      }
+      console.error("[social-auth] Apple sign-in failed:", e);
+      setServerError(tErr("unknown"));
+    } finally {
+      setSocialBusy(false);
     }
   };
 
   const onSubmit = handleSubmit(async (data) => {
-    if (step < 3) {
+    if (step < 5) {
       await handleNext();
       return;
     }
@@ -165,9 +340,7 @@ export function TherapistEmailForm() {
       // 1. Firebase account + verification email.
       const user = await auth.signUpWithEmail(data.email, data.password);
 
-      // 2. CreateUser on identity-svc. ui_language is the user-chosen
-      // locale (defaults to active page locale). Timezone is best-effort
-      // from the browser; backend falls back to Europe/Warsaw if blank.
+      // 2. CreateUser on identity-svc
       const tz =
         Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Warsaw";
       const createReq = create(CreateUserRequestSchema, {
@@ -179,14 +352,11 @@ export function TherapistEmailForm() {
         uiLanguage: data.uiLanguage,
         timezone: tz,
         hasAcceptedTos: true,
-        // Beta signups get BETA plan provisioning instead of TRIAL.
         initialPlanTier: planSlug?.toUpperCase() === "BETA" ? "BETA" : "",
       });
       const created = await identityClient.createUser(createReq);
 
-      // 3. Optional profile-only fields (modality, title, credentials,
-      // phone, marketing consent) — UpdateProfile call only if at least
-      // one is set. Skips the round-trip when nothing extra to write.
+      // 3. Optional profile-only fields
       const hasExtras =
         !!data.professionalTitle ||
         !!data.credentialsNumber ||
@@ -201,16 +371,13 @@ export function TherapistEmailForm() {
           professionalTitle: data.professionalTitle ?? "",
           credentialsNumber: data.credentialsNumber ?? "",
           phoneNumber: data.phoneNumber ?? "",
-          // UUID straight from clinical-svc.ListModalities — identity-svc
-          // stores this as users.default_modality_id (FK into modalities).
           defaultModalityId: data.modalityId,
           hasMarketingConsent: data.hasMarketingConsent ?? false,
         });
         await identityClient.updateProfile(updateReq);
       }
 
-      // 4. Redirect based on plan selection.
-      // Trial/beta → verify email. Paid plans → Stripe Checkout.
+      // 4. Redirect based on plan selection
       await handlePostRegistrationRedirect(
         created.organizationId ?? "",
         planSlug,
@@ -222,20 +389,15 @@ export function TherapistEmailForm() {
         if (e.code === "auth/email-already-in-use") {
           setServerError(tErr("emailAlreadyInUse"));
           setDirection(-1);
-          setStep(1);
+          setStep(3); // Go back to credentials step
           return;
         }
         if (e.code === "auth/weak-password") {
           setServerError(tErr("weakPassword"));
           setDirection(-1);
-          setStep(2);
+          setStep(3); // Go back to credentials step
           return;
         }
-        // Firebase Auth emulator unreachable, or live API unreachable
-        // (offline, DNS, blocked egress). Surface a network-flavoured
-        // message so the user knows to retry / check connectivity
-        // rather than the generic "unknown" catch-all that previously
-        // hid this case.
         if (
           e.code === "auth/network-request-failed" ||
           e.code === "auth/internal-error"
@@ -244,9 +406,6 @@ export function TherapistEmailForm() {
           return;
         }
       }
-      // Plain TypeError("Failed to fetch") from a downed identity-svc
-      // (after Firebase succeeded). Same UX as the Firebase network
-      // error path — distinguishing the two doesn't help the user.
       if (
         e instanceof TypeError &&
         /failed to fetch|network/i.test(e.message)
@@ -254,222 +413,389 @@ export function TherapistEmailForm() {
         setServerError(tErr("networkError"));
         return;
       }
-      // Log the full error so devs hitting an unmapped case can
-      // diagnose it from devtools; the user still sees the generic
-      // fallback so nothing internal leaks.
       console.error("[register/therapist] unmapped signup error", e);
       setServerError(tErr("unknown"));
     }
   });
 
   const uiLanguage = watch("uiLanguage");
+  const pitchVariant = resolvePitch(planSlug);
+  const content = PITCH_CONTENT[pitchVariant][locale === "en" ? "en" : "pl"];
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-5" noValidate>
+    <div className="rounded-[20px] border border-frost/10 bg-frost/5 backdrop-blur-md p-6 sm:p-10 shadow-[0_8px_32px_rgba(0,0,0,0.25)]">
       {/* Progress Indicator */}
-      <div className="flex items-center justify-center gap-2 mb-2">
-        {[1, 2, 3].map((n) => (
+      <div className="flex items-center justify-center gap-2 mb-8">
+        {[1, 2, 3, 4, 5].map((n) => (
           <div
             key={n}
-            className={`h-1 rounded-full transition-all duration-300 ${
+            className={`h-1.5 rounded-full transition-all duration-300 ${
               n === step
-                ? "w-8 bg-ember shadow-[0_0_8px_rgba(245,166,35,0.4)]"
+                ? "w-10 bg-ember shadow-[0_0_12px_rgba(252,174,47,0.6)]"
                 : n < step
-                ? "w-2 bg-ember/50"
-                : "w-2 bg-frost/10 border border-frost/10"
+                ? "w-2.5 bg-ember/50"
+                : "w-2.5 bg-frost/10"
             }`}
           />
         ))}
       </div>
 
-      <div className="relative overflow-hidden min-h-[350px]">
-        <AnimatePresence mode="wait" initial={false} custom={direction}>
-          {step === 1 && (
-            <motion.div
-              key="step1"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              className="grid gap-4 w-full"
-            >
-              <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-1">
-                {tTher("sectionAccount")} — {tTher("step")} 1/3
-              </h2>
+      <form onSubmit={onSubmit} className="grid gap-5" noValidate>
+        <div className="relative overflow-hidden min-h-[360px]">
+          <AnimatePresence mode="wait" initial={false} custom={direction}>
+            {step === 1 && (
+              <motion.div
+                key="step1"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                className="grid gap-6 w-full"
+              >
+                <div className="text-center">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-ember/15 text-ember border border-ember/25 mb-4">
+                    <span className="w-1.5 h-1.5 rounded-full bg-ember animate-pulse" />
+                    {content.badge}
+                  </span>
+                  <h2 className="font-display text-frost text-2xl sm:text-3xl font-extrabold tracking-tight">
+                    {content.heading}
+                  </h2>
+                </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FieldShell id="firstName" label={t("firstName")} required error={errors.firstName && tErr("firstNameRequired")}>
-                  <TextInput id="firstName" autoComplete="given-name" {...register("firstName")} />
-                </FieldShell>
-                <FieldShell id="lastName" label={t("lastName")} required error={errors.lastName && tErr("lastNameRequired")}>
-                  <TextInput id="lastName" autoComplete="family-name" {...register("lastName")} />
-                </FieldShell>
-              </div>
+                <div className="my-2 p-5 rounded-[12px] bg-frost/[0.03] border border-frost/5">
+                  <ul className="space-y-3">
+                    {content.features.map((feat, i) => (
+                      <li key={i} className="flex items-start gap-3 text-mist text-sm leading-relaxed">
+                        <svg className="w-5 h-5 text-ember shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
-              <FieldShell id="email" label={t("email")} required error={errors.email && tErr("emailInvalid")}>
-                <TextInput
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  {...register("email")}
-                />
-              </FieldShell>
-
-              {serverError && (
-                <p
-                  role="alert"
-                  className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost"
-                >
-                  {serverError}
+                <p className="text-center text-xs text-mist/60 leading-normal">
+                  {content.footnote}
                 </p>
-              )}
 
-              <button
-                id="next-step-btn"
-                type="button"
-                onClick={handleNext}
-                className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition cursor-pointer"
+                <button
+                  type="button"
+                  id="start-trial-btn"
+                  onClick={handleNext}
+                  className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-4 shadow-[var(--shadow-ember-glow)] hover:brightness-110 active:scale-[0.98] transition cursor-pointer"
+                >
+                  {locale === "pl" ? "Tak, zakładam konto" : "Yes, create my account"}
+                </button>
+              </motion.div>
+            )}
+
+            {step === 2 && (
+              <motion.div
+                key="step2"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                className="grid gap-6 w-full"
               >
-                {tCommon("continue")}
-              </button>
-            </motion.div>
-          )}
+                <div className="text-center">
+                  <p className="text-xs font-bold uppercase text-ember tracking-[var(--tracking-overline)] mb-2">
+                    {locale === "pl" ? "Metoda rejestracji" : "Registration Method"}
+                  </p>
+                  <h2 className="font-display text-frost text-xl sm:text-2xl font-bold">
+                    {locale === "pl" ? "Wybierz jak chcesz założyć konto" : "Choose how to register"}
+                  </h2>
+                </div>
 
-          {step === 2 && (
-            <motion.div
-              key="step2"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              className="grid gap-4 w-full"
-            >
-              <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-1">
-                {tTher("sectionAccount")} — {tTher("step")} 2/3
-              </h2>
+                <div className="grid gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={onGoogle}
+                    disabled={socialBusy}
+                    className="inline-flex items-center justify-center gap-3 rounded-button border border-frost/20 bg-frost/5 hover:bg-frost/10 text-frost font-sans font-semibold text-sm px-4 py-3.5 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    <svg aria-hidden width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+                      <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.08-1.79 2.72v2.26h2.9c1.7-1.56 2.69-3.87 2.69-6.62z" opacity=".9" />
+                      <path d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.9-2.26c-.81.54-1.84.86-3.06.86-2.36 0-4.36-1.59-5.07-3.74H.96v2.34A9 9 0 0 0 9 18z" opacity=".7" />
+                      <path d="M3.93 10.71A5.4 5.4 0 0 1 3.64 9c0-.6.1-1.18.29-1.71V4.96H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.04l2.97-2.33z" opacity=".55" />
+                      <path d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58A9 9 0 0 0 9 0 9 9 0 0 0 .96 4.96l2.97 2.33C4.64 5.17 6.64 3.58 9 3.58z" opacity=".85" />
+                    </svg>
+                    {tCommon("google")}
+                  </button>
 
-              <FieldShell
-                id="password"
-                label={t("password")}
-                hint={t("passwordHint")}
-                required
-                error={
-                  errors.password?.message === "password-no-digit"
-                    ? tErr("passwordNoNumber")
-                    : errors.password
-                    ? tErr("passwordTooShort")
-                    : undefined
-                }
+                  <button
+                    type="button"
+                    onClick={onApple}
+                    disabled={socialBusy}
+                    className="inline-flex items-center justify-center gap-3 rounded-button border border-frost/20 bg-frost/5 hover:bg-frost/10 text-frost font-sans font-semibold text-sm px-4 py-3.5 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    <svg aria-hidden width="17" height="20" viewBox="0 0 814 1000" fill="currentColor">
+                      <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105.3-57.8-155.5-127.4C46 790.9 0 663.1 0 541.8c0-207.6 135.4-317.3 268.9-317.3 71.6 0 131 46.5 175.4 46.5 42.8 0 109.6-49.5 190.5-49.5 30.8 0 108.2 2.6 164.4 100.5zm-234.4-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z"/>
+                    </svg>
+                    {tCommon("apple")}
+                  </button>
+                </div>
+
+                <div className="relative my-2">
+                  <div className="absolute inset-0 flex items-center" aria-hidden>
+                    <span className="w-full border-t border-frost/10"></span>
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-evergreen px-3 font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/60">
+                      {tCommon("or")}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  id="signup-email-btn"
+                  onClick={handleNext}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-button border border-ember/30 bg-ember/5 hover:bg-ember/10 text-ember font-sans font-semibold text-sm px-4 py-3.5 transition cursor-pointer"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  {locale === "pl" ? "Załóż konto adresem e-mail" : "Sign up with Email"}
+                </button>
+
+                <div className="flex justify-between items-center mt-4 border-t border-frost/5 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="inline-flex items-center gap-1.5 text-xs text-mist hover:text-frost font-sans transition cursor-pointer"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    {tCommon("back")}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {step === 3 && (
+              <motion.div
+                key="step3"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                className="grid gap-4 w-full"
               >
-                <TextInput
+                <div className="text-center mb-2">
+                  <p className="text-xs font-bold uppercase text-ember tracking-[var(--tracking-overline)] mb-2">
+                    {locale === "pl" ? "Ścieżka e-mail \u00b7 Krok 1/3" : "Email path \u00b7 Step 1/3"}
+                  </p>
+                  <h2 className="font-display text-frost text-xl sm:text-2xl font-bold">
+                    {locale === "pl" ? "Ustaw hasło i adres e-mail" : "Set your email and password"}
+                  </h2>
+                </div>
+
+                <FieldShell id="email" label={t("email")} required error={errors.email && tErr("emailInvalid")}>
+                  <TextInput
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    {...register("email")}
+                  />
+                </FieldShell>
+
+                <FieldShell
                   id="password"
-                  type="password"
-                  autoComplete="new-password"
-                  {...register("password")}
-                />
-              </FieldShell>
+                  label={t("password")}
+                  hint={t("passwordHint")}
+                  required
+                  error={
+                    errors.password?.message === "password-no-digit"
+                      ? tErr("passwordNoNumber")
+                      : errors.password
+                      ? tErr("passwordTooShort")
+                      : undefined
+                  }
+                >
+                  <TextInput
+                    id="password"
+                    type="password"
+                    autoComplete="new-password"
+                    {...register("password")}
+                  />
+                </FieldShell>
 
-              <section className="grid gap-3 mt-2">
-                <Checkbox
-                  id="tos"
-                  {...register("hasAcceptedTos")}
-                  label={tCommon.rich("consentToS", {
-                    termsLink: (chunks) => (
-                      <a className="text-ember underline" href={`${prefix}/legal/terms`} target="_blank" rel="noreferrer">
-                        {chunks}
-                      </a>
-                    ),
-                    privacyLink: (chunks) => (
-                      <a className="text-ember underline" href={`${prefix}/legal/privacy`} target="_blank" rel="noreferrer">
-                        {chunks}
-                      </a>
-                    ),
-                  })}
-                />
-                {errors.hasAcceptedTos && (
-                  <p role="alert" className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-magma">
-                    {tErr("tosRequired")}
+                <div className="grid gap-2 mt-2">
+                  <Checkbox
+                    id="tos"
+                    {...register("hasAcceptedTos")}
+                    label={tCommon.rich("consentToS", {
+                      termsLink: (chunks) => (
+                        <a className="text-ember underline font-sans" href={`${prefix}/legal/terms`} target="_blank" rel="noreferrer">
+                          {chunks}
+                        </a>
+                      ),
+                      privacyLink: (chunks) => (
+                        <a className="text-ember underline font-sans" href={`${prefix}/legal/privacy`} target="_blank" rel="noreferrer">
+                          {chunks}
+                        </a>
+                      ),
+                    })}
+                  />
+                  {errors.hasAcceptedTos && (
+                    <p role="alert" className="font-sans text-[10px] font-semibold uppercase tracking-[var(--tracking-label)] text-magma">
+                      {tErr("tosRequired")}
+                    </p>
+                  )}
+                </div>
+
+                {serverError && (
+                  <p role="alert" className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-sans text-sm text-frost">
+                    {serverError}
                   </p>
                 )}
 
-                <Checkbox
-                  id="marketing"
-                  {...register("hasMarketingConsent")}
-                  label={tCommon("consentMarketing")}
-                />
-              </section>
+                <div className="flex gap-3 mt-4 pt-4 border-t border-frost/5">
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="flex-1 inline-flex items-center justify-center rounded-button border border-frost/25 text-frost font-sans font-semibold text-sm px-6 py-3 hover:bg-frost/5 transition cursor-pointer"
+                  >
+                    {tCommon("back")}
+                  </button>
+                  <button
+                    type="button"
+                    id="next-step-btn"
+                    onClick={handleNext}
+                    className="flex-[2] inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition cursor-pointer"
+                  >
+                    {tCommon("continue")}
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
-              {serverError && (
-                <p
-                  role="alert"
-                  className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost"
+            {step === 4 && (
+              <motion.div
+                key="step4"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                className="grid gap-4 w-full"
+              >
+                <div className="text-center mb-2">
+                  <p className="text-xs font-bold uppercase text-ember tracking-[var(--tracking-overline)] mb-2">
+                    {locale === "pl" ? "Ścieżka e-mail \u00b7 Krok 2/3" : "Email path \u00b7 Step 2/3"}
+                  </p>
+                  <h2 className="font-display text-frost text-xl sm:text-2xl font-bold">
+                    {locale === "pl" ? "Przedstaw się" : "Tell us about yourself"}
+                  </h2>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FieldShell id="firstName" label={t("firstName")} required error={errors.firstName && tErr("firstNameRequired")}>
+                    <TextInput id="firstName" autoComplete="given-name" {...register("firstName")} />
+                  </FieldShell>
+                  <FieldShell id="lastName" label={t("lastName")} required error={errors.lastName && tErr("lastNameRequired")}>
+                    <TextInput id="lastName" autoComplete="family-name" {...register("lastName")} />
+                  </FieldShell>
+                </div>
+
+                <FieldShell
+                  id="phoneNumber"
+                  label={t("phoneNumber")}
+                  required
+                  error={
+                    errors.phoneNumber?.message === "phone-required"
+                      ? tErr("phoneRequired")
+                      : errors.phoneNumber
+                      ? tErr("phoneInvalid")
+                      : undefined
+                  }
                 >
-                  {serverError}
-                </p>
-              )}
+                  <TextInput
+                    id="phoneNumber"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder={t("phoneNumberPlaceholder")}
+                    {...register("phoneNumber")}
+                  />
+                </FieldShell>
 
-              <div className="flex gap-3 mt-2">
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="flex-1 inline-flex items-center justify-center rounded-button border border-frost/25 text-frost font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 hover:bg-frost/5 transition cursor-pointer"
-                >
-                  {tCommon("back")}
-                </button>
-                <button
-                  id="next-step-btn"
-                  type="button"
-                  onClick={handleNext}
-                  className="flex-[2] inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition cursor-pointer"
-                >
-                  {tCommon("continue")}
-                </button>
-              </div>
-            </motion.div>
-          )}
+                {serverError && (
+                  <p role="alert" className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-sans text-sm text-frost">
+                    {serverError}
+                  </p>
+                )}
 
-          {step === 3 && (
-            <motion.div
-              key="step3"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              className="grid gap-4 w-full"
-            >
-              <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-1">
-                {tTher("sectionProfile")} — {tTher("step")} 3/3
-              </h2>
+                <div className="flex gap-3 mt-4 pt-4 border-t border-frost/5">
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="flex-1 inline-flex items-center justify-center rounded-button border border-frost/25 text-frost font-sans font-semibold text-sm px-6 py-3 hover:bg-frost/5 transition cursor-pointer"
+                  >
+                    {tCommon("back")}
+                  </button>
+                  <button
+                    type="button"
+                    id="next-step-btn"
+                    onClick={handleNext}
+                    className="flex-[2] inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition cursor-pointer"
+                  >
+                    {tCommon("continue")}
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
-              <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityId && tErr("modalityRequired")}>
-                <Select id="modality" {...register("modalityId")} defaultValue="">
-                  <option value="" disabled>
-                    —
-                  </option>
-                  {modalities.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.labels[locale === "en" ? "en" : "pl"]}
+            {step === 5 && (
+              <motion.div
+                key="step5"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                className="grid gap-4 w-full"
+              >
+                <div className="text-center mb-2">
+                  <p className="text-xs font-bold uppercase text-ember tracking-[var(--tracking-overline)] mb-2">
+                    {locale === "pl" ? "Ścieżka e-mail \u00b7 Krok 3/3" : "Email path \u00b7 Step 3/3"}
+                  </p>
+                  <h2 className="font-display text-frost text-xl sm:text-2xl font-bold">
+                    {locale === "pl" ? "Specjalizacja i preferencje" : "Specialization and preferences"}
+                  </h2>
+                </div>
+
+                <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityId && tErr("modalityRequired")}>
+                  <Select id="modality" {...register("modalityId")} defaultValue="">
+                    <option value="" disabled>
+                      —
                     </option>
-                  ))}
-                </Select>
-              </FieldShell>
+                    {modalities.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.labels[locale === "en" ? "en" : "pl"]}
+                      </option>
+                    ))}
+                  </Select>
+                </FieldShell>
 
-              <FieldShell id="uiLanguage" label={t("uiLanguage")} required>
-                <RadioGroup
-                  name="uiLanguage"
-                  value={uiLanguage}
-                  onChange={(v) => setValue("uiLanguage", v as "pl" | "en", { shouldValidate: true })}
-                  options={[
-                    { value: "pl", label: t("polish") },
-                    { value: "en", label: t("english") },
-                  ]}
-                />
-              </FieldShell>
+                <FieldShell id="uiLanguage" label={t("uiLanguage")} required>
+                  <RadioGroup
+                    name="uiLanguage"
+                    value={uiLanguage}
+                    onChange={(v) => setValue("uiLanguage", v as "pl" | "en", { shouldValidate: true })}
+                    options={[
+                      { value: "pl", label: `🇵🇱 ${t("polish")}` },
+                      { value: "en", label: `🇬🇧 ${t("english")}` },
+                    ]}
+                  />
+                </FieldShell>
 
-              <div className="grid gap-4 sm:grid-cols-2">
                 <FieldShell id="professionalTitle" label={t("professionalTitle")}>
                   <TextInput
                     id="professionalTitle"
@@ -477,66 +803,50 @@ export function TherapistEmailForm() {
                     {...register("professionalTitle")}
                   />
                 </FieldShell>
-                <FieldShell id="credentialsNumber" label={t("credentialsNumber")}>
-                  <TextInput id="credentialsNumber" {...register("credentialsNumber")} />
-                </FieldShell>
-              </div>
 
-              <FieldShell
-                id="phoneNumber"
-                label={t("phoneNumber")}
-                error={errors.phoneNumber && tErr("phoneInvalid")}
-              >
-                <TextInput
-                  id="phoneNumber"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  placeholder={t("phoneNumberPlaceholder")}
-                  {...register("phoneNumber")}
-                />
-              </FieldShell>
+                <div className="grid gap-2 mt-2">
+                  <Checkbox
+                    id="marketing"
+                    {...register("hasMarketingConsent")}
+                    label={tCommon("consentMarketing")}
+                  />
+                </div>
 
-              {serverError && (
-                <p
-                  role="alert"
-                  className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost"
-                >
-                  {serverError}
-                </p>
-              )}
+                {serverError && (
+                  <p role="alert" className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-sans text-sm text-frost">
+                    {serverError}
+                  </p>
+                )}
 
-              <div className="flex gap-3 mt-2">
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  disabled={isSubmitting}
-                  className="flex-1 inline-flex items-center justify-center rounded-button border border-frost/25 text-frost font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 hover:bg-frost/5 transition disabled:opacity-60 cursor-pointer"
-                >
-                  {tCommon("back")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-[2] inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {isSubmitting ? tCommon("submitting") : tCommon("submit")}
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+                <div className="flex gap-3 mt-4 pt-4 border-t border-frost/5">
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    disabled={isSubmitting}
+                    className="flex-1 inline-flex items-center justify-center rounded-button border border-frost/25 text-frost font-sans font-semibold text-sm px-6 py-3 hover:bg-frost/5 transition disabled:opacity-60 cursor-pointer"
+                  >
+                    {tCommon("back")}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-[2] inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isSubmitting ? tCommon("submitting") : tCommon("submit")}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </form>
 
-      <p className="font-serif text-sm text-mist text-center mt-4">
+      <p className="font-sans text-sm text-mist/60 text-center mt-6 pt-4 border-t border-frost/5">
         {tCommon("alreadyHaveAccount")}{" "}
-        <a
-          href={`${prefix}/login`}
-          className="text-ember underline"
-        >
+        <a href={`${prefix}/login`} className="text-ember font-semibold hover:underline">
           {tCommon("loginCta")}
         </a>
       </p>
-    </form>
+    </div>
   );
 }

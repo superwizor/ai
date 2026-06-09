@@ -2098,7 +2098,7 @@ abstract class AppLocalizations {
   /// No description provided for @billing_exhausted_dialog_body.
   ///
   /// In pl, this message translates to:
-  /// **'Możesz nadal nagrywać sesję — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie na Twoim urządzeniu. Po rozszerzeniu planu lub odnowieniu puli możesz wznowić przetwarzanie sesji z poziomu Kartoteki.'**
+  /// **'Wykorzystałeś dostępne sesje. Możesz nadal nagrywać — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie. Sprawdź swoją skrzynkę e-mail, aby dowiedzieć się więcej.'**
   String get billing_exhausted_dialog_body;
 
   /// No description provided for @billing_exhausted_dialog_record_locally.
@@ -2578,6 +2578,48 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Notatka wysłana do klienta'**
   String get note_sent_toast;
+
+  /// No description provided for @recording_consent_missing_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak zgody'**
+  String get recording_consent_missing_header;
+
+  /// No description provided for @recording_consent_missing_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie odnotowano zgody pacjenta w systemie. Czy pacjent wyraził zgodę na nagrywanie i przetwarzanie danych?'**
+  String get recording_consent_missing_body;
+
+  /// No description provided for @recording_consent_grant.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tak, wyraził zgodę'**
+  String get recording_consent_grant;
+
+  /// No description provided for @recording_mic_error_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd mikrofonu'**
+  String get recording_mic_error_header;
+
+  /// No description provided for @recording_upload_error_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd przesyłania'**
+  String get recording_upload_error_header;
+
+  /// No description provided for @recording_too_short_abort_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagranie trwało {duration}. Anulowano wysyłkę.'**
+  String recording_too_short_abort_body(String duration);
+
+  /// No description provided for @recording_saving.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisuję nagranie...'**
+  String get recording_saving;
 }
 
 class _AppLocalizationsDelegate

@@ -14,8 +14,6 @@ import type { Metadata } from "next";
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
 import { TherapistEmailForm } from "@/components/register/TherapistEmailForm";
-import { SocialButtons } from "@/components/register/SocialButtons";
-import { TrialPitchBanner } from "@/components/register/TrialPitchBanner";
 
 export async function generateMetadata({
   params,
@@ -41,25 +39,17 @@ export default async function RegisterTherapistPage({
       <Navbar />
       <main className="flex-1">
         <section className="mx-auto w-full max-w-xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-          <p className="font-mono text-[10px] sm:text-xs uppercase text-mist tracking-[var(--tracking-overline)] mb-3 text-center">
+          <p className="font-sans text-[10px] sm:text-xs font-bold uppercase text-mist/60 tracking-[var(--tracking-overline)] mb-3 text-center">
             {t("overline")}
           </p>
-          <h1 className="font-display text-frost text-center text-3xl sm:text-4xl font-semibold tracking-[var(--tracking-display)] leading-tight">
+          <h1 className="font-display text-frost text-center text-3xl sm:text-4xl font-bold tracking-[var(--tracking-display)] leading-tight">
             {t("title")}
           </h1>
-          <p className="font-serif text-mist text-center mt-4 max-w-md mx-auto text-base leading-relaxed">
+          <p className="font-sans text-mist/80 text-center mt-4 max-w-md mx-auto text-base leading-relaxed">
             {t("subhead")}
           </p>
 
-          {/* Trial/Plan pitch banner */}
           <div className="mt-8">
-            <Suspense fallback={null}>
-              <TrialPitchBanner />
-            </Suspense>
-          </div>
-
-          <div className="mt-2">
-            <SocialButtons flow="therapist" />
             <TherapistEmailForm />
           </div>
         </section>

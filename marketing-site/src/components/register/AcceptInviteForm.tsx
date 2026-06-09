@@ -197,8 +197,8 @@ export function AcceptInviteForm({ token }: { token: string }) {
             value={uiLanguage}
             onChange={(v) => setValue("uiLanguage", v as "pl" | "en", { shouldValidate: true })}
             options={[
-              { value: "pl", label: t("polish") },
-              { value: "en", label: t("english") },
+              { value: "pl", label: `🇵🇱 ${t("polish")}` },
+              { value: "en", label: `🇬🇧 ${t("english")}` },
             ]}
           />
         </FieldShell>
@@ -222,7 +222,7 @@ export function AcceptInviteForm({ token }: { token: string }) {
           })}
         />
         {errors.hasAcceptedTos && (
-          <p role="alert" className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-magma">
+          <p role="alert" className="font-sans text-[10px] uppercase tracking-[var(--tracking-label)] text-magma">
             {tErr("tosRequired")}
           </p>
         )}
@@ -236,7 +236,7 @@ export function AcceptInviteForm({ token }: { token: string }) {
       {serverError && (
         <p
           role="alert"
-          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost"
+          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-sans text-sm text-frost"
         >
           {serverError}
         </p>
@@ -245,7 +245,7 @@ export function AcceptInviteForm({ token }: { token: string }) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {isSubmitting ? tInv("submitting") : tInv("submit")}
       </button>

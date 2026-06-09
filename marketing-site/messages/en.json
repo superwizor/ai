@@ -669,7 +669,7 @@
       "credentialsNumber": "Professional licence number (optional)",
       "defaultModality": "Primary therapeutic modality",
       "uiLanguage": "Interface language",
-      "phoneNumber": "Phone number (optional)",
+      "phoneNumber": "Phone number",
       "phoneNumberPlaceholder": "+48 123 456 789",
       "terms": "terms",
       "privacy": "privacy policy",
@@ -686,6 +686,7 @@
       "tosRequired": "You must accept the terms to register.",
       "emailAlreadyInUse": "This email is already registered. Try logging in instead.",
       "weakPassword": "This password is too weak.",
+      "phoneRequired": "Phone number is required.",
       "phoneInvalid": "Phone number should contain 6–18 digits; spaces, dashes and parentheses are allowed.",
       "networkError": "Could not reach the server. Please try again.",
       "unknown": "Something went wrong. Please try again."

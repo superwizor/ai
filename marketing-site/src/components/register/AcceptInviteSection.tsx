@@ -28,7 +28,7 @@ function AcceptInviteSectionInner({ missingTokenMessage }: Props) {
     return (
       <p
         role="alert"
-        className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost text-center"
+        className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-sans text-sm text-frost text-center"
       >
         {missingTokenMessage}
       </p>
