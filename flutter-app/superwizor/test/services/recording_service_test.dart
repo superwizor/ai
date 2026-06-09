@@ -1,0 +1,242 @@
+// RecordingService interruption semantics (docs/28 WS2/WS3).
+//
+// The fake recorder mimics the verified behavior of record_ios 1.2.0 /
+// record_android 1.5.1: native pause/stop events arrive on the
+// onStateChanged stream, an OS interruption pauses WITHOUT any app
+// intent, and resume() flips the plugin state optimistically whether or
+// not capture actually restarted (the real plugin discards
+// AVAudioRecorder.record()'s Bool) — which is exactly why the service
+// verifies resumes with a file-growth probe.
+
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:record/record.dart';
+import 'package:superwizor/services/recording_service.dart';
+
+class _FakeRecorder extends Fake implements AudioRecorder {
+  final _stateCtrl = StreamController<RecordState>.broadcast();
+
+  bool permission = true;
+  bool nativePaused = false;
+  String? lastPath;
+  int pauseCalls = 0;
+  int resumeCalls = 0;
+  int stopCalls = 0;
+
+  /// When set, resume() appends bytes to [lastPath] shortly after being
+  /// called — simulating capture genuinely restarting so the service's
+  /// file-growth probe sees movement.
+  bool growFileOnResume = false;
+
+  void emitNative(RecordState s) => _stateCtrl.add(s);
+
+  @override
+  Stream<RecordState> onStateChanged() => _stateCtrl.stream;
+
+  @override
+  Future<bool> hasPermission({bool request = true}) async => permission;
+
+  @override
+  Future<void> start(RecordConfig config, {required String path}) async {
+    lastPath = path;
+    nativePaused = false;
+    await File(path).writeAsBytes(List.filled(1024, 7));
+    emitNative(RecordState.record);
+  }
+
+  @override
+  Future<void> pause() async {
+    pauseCalls++;
+    nativePaused = true;
+    emitNative(RecordState.pause);
+  }
+
+  @override
+  Future<void> resume() async {
+    resumeCalls++;
+    // Plugin behavior: state flips to `record` UNCONDITIONALLY — even
+    // when the underlying recorder failed to restart.
+    nativePaused = false;
+    emitNative(RecordState.record);
+    if (growFileOnResume && lastPath != null) {
+      unawaited(Future<void>.delayed(const Duration(milliseconds: 30))
+          .then((_) async {
+        await File(lastPath!)
+            .writeAsBytes(List.filled(512, 9), mode: FileMode.append);
+      }));
+    }
+  }
+
+  @override
+  Future<String?> stop() async {
+    stopCalls++;
+    emitNative(RecordState.stop);
+    return lastPath;
+  }
+
+  @override
+  Future<bool> isPaused() async => nativePaused;
+
+  @override
+  Future<Amplitude> getAmplitude() async =>
+      Amplitude(current: -20, max: -10);
+
+  @override
+  Future<void> dispose() async {
+    await _stateCtrl.close();
+  }
+}
+
+void main() {
+  late Directory tmp;
+  late _FakeRecorder recorder;
+  late RecordingService service;
+
+  Future<void> pump([int ms = 20]) =>
+      Future<void>.delayed(Duration(milliseconds: ms));
+
+  setUp(() async {
+    tmp = await Directory.systemTemp.createTemp('recording_test_');
+    recorder = _FakeRecorder();
+    service = RecordingService(
+      recorder: recorder,
+      documentsDirProvider: () async => tmp,
+      wakelockSetter: (_) async {},
+      captureProbeWindow: const Duration(milliseconds: 100),
+    );
+  });
+
+  tearDown(() async {
+    await service.dispose();
+    if (await tmp.exists()) await tmp.delete(recursive: true);
+  });
+
+  test('start records and exposes the active session', () async {
+    await service.start('s1');
+    expect(service.state, RecordingState.recording);
+    expect(service.activeSessionId, 's1');
+    expect(service.activeFilePath, endsWith('sessions/s1/raw.flac'));
+  });
+
+  test('OS interruption (native pause, no intent) → interrupted, clock frozen',
+      () async {
+    await service.start('s1');
+    await pump(60);
+
+    recorder.emitNative(RecordState.pause); // phone call — no app intent
+    await pump();
+
+    expect(service.state, RecordingState.interrupted);
+    final atInterruption = service.currentDuration;
+    expect(atInterruption.inMilliseconds, greaterThan(0));
+
+    await pump(120); // the "call" goes on; clock must not move
+    expect(service.currentDuration, atInterruption);
+  });
+
+  test('user pause is NOT an interruption', () async {
+    await service.start('s1');
+    await service.pause();
+    await pump();
+    expect(service.state, RecordingState.paused);
+  });
+
+  test('verified resume succeeds when bytes flow again', () async {
+    await service.start('s1');
+    recorder.emitNative(RecordState.pause);
+    await pump();
+    expect(service.state, RecordingState.interrupted);
+
+    recorder.growFileOnResume = true;
+    final ok = await service.resume();
+
+    expect(ok, isTrue);
+    expect(service.state, RecordingState.recording);
+    await pump(60);
+    expect(service.currentDuration.inMilliseconds, greaterThan(0));
+  });
+
+  test('resume that captures nothing fails loudly and stays interrupted',
+      () async {
+    await service.start('s1');
+    recorder.emitNative(RecordState.pause);
+    await pump();
+
+    recorder.growFileOnResume = false; // plugin lies; file never grows
+    final ok = await service.resume();
+
+    expect(ok, isFalse);
+    expect(service.state, RecordingState.interrupted);
+    expect(recorder.resumeCalls, 1);
+  });
+
+  test('resume from a normal user pause skips the probe (fast path)',
+      () async {
+    await service.start('s1');
+    await service.pause();
+    await pump();
+
+    final sw = Stopwatch()..start();
+    final ok = await service.resume();
+    sw.stop();
+
+    expect(ok, isTrue);
+    expect(service.state, RecordingState.recording);
+    // No 100 ms probe window on the user-pause path.
+    expect(sw.elapsedMilliseconds, lessThan(80));
+  });
+
+  test('unexpected native stop → error, file path retained for recovery',
+      () async {
+    await service.start('s1');
+    final path = service.activeFilePath;
+    await pump();
+
+    recorder.emitNative(RecordState.stop); // session teardown, no intent
+    await pump();
+
+    expect(service.state, RecordingState.error);
+    expect(service.activeFilePath, path);
+  });
+
+  test('stop() from interrupted finalizes and returns the path', () async {
+    await service.start('s1');
+    recorder.emitNative(RecordState.pause);
+    await pump();
+    expect(service.state, RecordingState.interrupted);
+
+    final path = await service.stop();
+
+    expect(path, endsWith('sessions/s1/raw.flac'));
+    expect(service.state, RecordingState.stopped);
+    expect(service.activeSessionId, isNull);
+  });
+
+  test('reconcileWithNative flips a stale recording state', () async {
+    await service.start('s1');
+    await pump(40);
+    // Interruption happened while the isolate was suspended: the native
+    // side is paused but the pause event was never delivered.
+    recorder.nativePaused = true;
+
+    await service.reconcileWithNative();
+
+    expect(service.state, RecordingState.interrupted);
+    final frozen = service.currentDuration;
+    await pump(80);
+    expect(service.currentDuration, frozen);
+  });
+
+  test('start is allowed again after error state', () async {
+    await service.start('s1');
+    recorder.emitNative(RecordState.stop);
+    await pump();
+    expect(service.state, RecordingState.error);
+
+    await service.start('s2');
+    expect(service.state, RecordingState.recording);
+    expect(service.activeSessionId, 's2');
+  });
+}
