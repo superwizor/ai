@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | PLANNED — not yet implemented |
+| **Status** | IMPLEMENTED (WS1–WS4) on `fix/recording-call-interruption` — on-device verification (§8.3 M1–M10) pending before merge |
 | **Date** | 2026-06-09 |
 | **Branch** | `fix/recording-call-interruption` (off `main`) |
 | **Owner** | Flutter app (`flutter-app/superwizor`) + 1 small iOS native helper |
@@ -472,22 +472,36 @@ Android focus re-grab is handled inside `record_android`'s own resume path).
 
 #### 5.3.2 Verified resume protocol (`RecordingService.resume()`)
 
+> **Implementation note (changed from the original draft):** during
+> implementation we verified in plugin source that `Recorder.swift`'s
+> `resume()` sets `m_state = .record` **unconditionally** after the
+> (result-discarded) `audioRecorder?.record()` call — so the plugin's
+> `isRecording()` and its state stream are *optimistic mirrors of intent*,
+> not evidence of capture. The only platform-neutral signal that survives
+> this is **bytes hitting the output file**: the service probes
+> `File(activeFilePath).length()` across a ~1.2 s window
+> (`captureProbeWindow`; 16 kHz mono FLAC writes ~10–18 KiB/s, flushed
+> well within it) and reports success iff the file grew. The probe runs
+> only on resumes from `interrupted` — a normal user pause never
+> deactivated the session, so it keeps the instant fast path. The
+> `AudioSessionHelper.reactivate()` result acts as a fast-fail gate
+> before the probe (a still-active call makes `setActive(true)` throw
+> with `insufficientPriority`).
+
 ```dart
 /// Returns true iff capture verifiably restarted.
 Future<bool> resume() async {
   if (_state != RecordingState.paused &&
       _state != RecordingState.interrupted) return false;
+  final fromInterruption = _state == RecordingState.interrupted;
   if (!kIsWeb && Platform.isIOS) {
-    await AudioSessionHelper.reactivate();      // best-effort, logged
+    final reactivated = await AudioSessionHelper.reactivate();
+    if (!reactivated && fromInterruption) return false; // call still owns audio
   }
-  _resumeRequested = true;
+  _arm(RecordState.record);                  // intent: swallow our own event
   await _recorder.resume();
-  // verify — the native call's success bool is discarded by the plugin,
-  // so ask the recorder directly.
-  final ok = await _recorder.isRecording();
-  if (!ok) {
-    _resumeRequested = false;
-    _setState(RecordingState.interrupted);      // stay honest
+  if (fromInterruption && !await _verifyCapture()) {   // file-growth probe
+    _setState(RecordingState.interrupted);   // stay honest
     return false;
   }
   _segmentStart = DateTime.now();
