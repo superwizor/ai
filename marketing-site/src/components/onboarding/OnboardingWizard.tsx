@@ -17,6 +17,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { useRouter } from "next/navigation";
 import { create } from "@bufbuild/protobuf";
+import { EmptySchema } from "@bufbuild/protobuf/wkt";
 import { identityClient } from "@/lib/connect/clients";
 import { UpdateProfileRequestSchema } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { motion, AnimatePresence } from "framer-motion";
@@ -73,7 +74,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
         if (n >= 1 && n <= 6) return n as OnboardingStep;
       }
     }
-    return 1;
+    return 4;
   });
 
   const [direction, setDirection] = useState(1);
@@ -120,10 +121,11 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     modality: "UNIV",
   });
   const [preferences, setPreferences] = useState<string[]>([]);
+  const [otherText, setOtherText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const t = (pl: string, en: string) => (locale === "en" ? en : pl);
+  const t = useCallback((pl: string, en: string) => (locale === "en" ? en : pl), [locale]);
 
   // ─── Backend Saves ─────────────────────────────────────────
 
@@ -166,7 +168,101 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     }
   }, [phone, t]);
 
-  const totalSteps = 5;
+  const handleDone = useCallback(async (skipped: boolean) => {
+    setSaving(true);
+    setError(null);
+    try {
+      // 1. If not skipped, save Modality (Step 4) to user profile
+      if (!skipped && practiceData.modality) {
+        await identityClient.updateProfile(
+          create(UpdateProfileRequestSchema, {
+            defaultModalityId: practiceData.modality,
+          }),
+        );
+      }
+
+      // 2. Fetch profile to get database UUID
+      const me = await identityClient.getMyProfile(create(EmptySchema, {}));
+      const userId = me.id;
+
+      // 3. Prepare CRM Note text
+      if (!skipped) {
+        const modalityLabel = {
+          UNIV: t("Integracyjny", "Integrative"),
+          CBT: "CBT",
+          PSYCHO: t("Psychodynamiczny", "Psychodynamic"),
+          GESTALT: "Gestalt",
+          ST: t("Schematów", "Schema"),
+          SYS: t("Systemowa", "Systemic"),
+          EFT: "EFT",
+          COACH: "Coaching",
+        }[practiceData.modality] || practiceData.modality;
+
+        const sizeLabel = {
+          solo: "Solo",
+          small: t("2-5 osób", "2-5 people"),
+          clinic: t("6+ osób", "6+ people"),
+        }[practiceData.practiceSize] || practiceData.practiceSize;
+
+        const prefLabels: Record<string, string> = {
+          transcription: t("Transkrypcja sesji", "Session transcription"),
+          reports: t("Raporty kliniczne", "Clinical reports"),
+          progress: t("Śledzenie postępu", "Progress tracking"),
+          action_plan: t("Plan działania", "Action plans"),
+          documentation: t("Porządek w dokumentacji", "Organized docs"),
+          rag: t("Analiza wielu sesji", "Multi-session analysis"),
+          other: t("INNE", "OTHER"),
+        };
+
+        const selectedPrefs = preferences
+          .map(p => prefLabels[p] || p)
+          .join(", ");
+
+        const crmNoteBody = [
+          `[Automatyczny Onboarding - Kwestionariusz]`,
+          `• Nurt terapii: ${modalityLabel}`,
+          `• Wielkość praktyki: ${sizeLabel}`,
+          `• Oczekiwania: ${selectedPrefs || t("Brak wybranych", "None selected")}`,
+          preferences.includes("other") && otherText.trim()
+            ? `• Inne szczegóły: ${otherText.trim()}`
+            : null
+        ]
+          .filter(Boolean)
+          .join("\n");
+
+        // Post CRM note
+        await fetch("/api/admin/crm/notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            target_user_id: userId,
+            body: crmNoteBody,
+          }),
+        });
+      } else {
+        // If skipped, we can log that onboarding was skipped
+        await fetch("/api/admin/crm/notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            target_user_id: userId,
+            body: `[Automatyczny Onboarding] Pominięty przez użytkownika.`,
+          }),
+        });
+      }
+
+      // Go to step 6 (Done)
+      setDirection(1);
+      setStep(6);
+    } catch (e) {
+      console.error("[onboarding] Save onboarding failed", e);
+      // If it fails, let's still let them proceed to step 6 so we don't block them from using the app
+      setDirection(1);
+      setStep(6);
+    } finally {
+      setSaving(false);
+    }
+  }, [practiceData, preferences, otherText, t]);
   const visualStep = Math.min(step, 5);
 
   // ─── Render ────────────────────────────────────────────────
@@ -383,8 +479,8 @@ export function OnboardingWizard({ locale }: { locale: string }) {
               </motion.div>
 
               <div className="flex gap-3 mt-8">
-                <SkipInline onClick={goNext} label={t("Pomiń", "Skip")} />
-                <PrimaryButtonInline onClick={goNext} label={t("Dalej", "Continue")} />
+                <SkipInline onClick={goNext} label={t("Pomiń", "Skip")} disabled={saving} />
+                <PrimaryButtonInline onClick={goNext} label={t("Dalej", "Continue")} disabled={saving} />
               </div>
             </StepCard>
           )}
@@ -408,6 +504,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
                   { id: "action_plan", emoji: "📋", label: t("Plan działania", "Action plans") },
                   { id: "documentation", emoji: "🗂️", label: t("Porządek w dokumentacji", "Organized docs") },
                   { id: "rag", emoji: "🔮", label: t("Analiza wielu sesji", "Multi-session analysis") },
+                  { id: "other", emoji: "✍️", label: t("INNE", "OTHER") },
                 ].map(({ id, emoji, label }) => (
                   <motion.button
                     key={id}
@@ -442,9 +539,31 @@ export function OnboardingWizard({ locale }: { locale: string }) {
                 ))}
               </motion.div>
 
+              <AnimatePresence>
+                {preferences.includes("other") && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-5 space-y-2 text-left overflow-hidden"
+                  >
+                    <label className="block font-sans text-xs font-bold text-[#8FA5A0] uppercase tracking-wider">
+                      {t("Napisz nam, na co najbardziej czekasz — to dla nas ważne:", "Tell us what you look forward to most — it's important to us:")}
+                    </label>
+                    <textarea
+                      value={otherText}
+                      onChange={(e) => setOtherText(e.target.value)}
+                      placeholder={t("Wpisz swoje oczekiwania...", "Write your expectations here...")}
+                      rows={3}
+                      className="w-full py-3 px-4 rounded-xl bg-[#0A2326] text-[#F2F0EA] border border-[#1A3A3E] font-sans text-sm placeholder:text-[#4E5A55] focus:border-[#F5A623] focus:shadow-[0_0_0_3px_rgba(245,166,35,0.1)] focus:outline-none transition-all resize-none"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <div className="flex gap-3 mt-8">
-                <SkipInline onClick={() => { setDirection(1); setStep(6); }} label={t("Pomiń", "Skip")} />
-                <PrimaryButtonInline onClick={() => { setDirection(1); setStep(6); }} label={t("Gotowe", "Done")} />
+                <SkipInline onClick={() => handleDone(true)} label={t("Pomiń", "Skip")} disabled={saving} />
+                <PrimaryButtonInline onClick={() => handleDone(false)} label={saving ? t("Zapisuję...", "Saving...") : t("Gotowe", "Done")} disabled={saving} />
               </div>
             </StepCard>
           )}
@@ -581,13 +700,14 @@ function PrimaryButton({ onClick, disabled, label }: { onClick: () => void; disa
   );
 }
 
-function PrimaryButtonInline({ onClick, label }: { onClick: () => void; label: string }) {
+function PrimaryButtonInline({ onClick, label, disabled }: { onClick: () => void; label: string; disabled?: boolean }) {
   return (
     <motion.button
       onClick={onClick}
-      className="flex-[2] py-3.5 rounded-xl bg-gradient-to-r from-[#F5A623] to-[#E09500] text-[#1B2522] font-sans font-bold text-sm uppercase tracking-wider hover:shadow-[0_4px_20px_rgba(245,166,35,0.3)] transition-shadow"
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.98 }}
+      disabled={disabled}
+      className="flex-[2] py-3.5 rounded-xl bg-gradient-to-r from-[#F5A623] to-[#E09500] text-[#1B2522] font-sans font-bold text-sm uppercase tracking-wider hover:shadow-[0_4px_20px_rgba(245,166,35,0.3)] transition-shadow disabled:opacity-40 disabled:cursor-not-allowed"
+      whileHover={!disabled ? { scale: 1.01 } : undefined}
+      whileTap={!disabled ? { scale: 0.98 } : undefined}
     >
       {label}
     </motion.button>
@@ -605,11 +725,12 @@ function SkipButton({ onClick, label }: { onClick: () => void; label: string }) 
   );
 }
 
-function SkipInline({ onClick, label }: { onClick: () => void; label: string }) {
+function SkipInline({ onClick, label, disabled }: { onClick: () => void; label: string; disabled?: boolean }) {
   return (
     <button
       onClick={onClick}
-      className="flex-1 py-3 rounded-xl bg-[#8FA5A0]/10 text-[#8FA5A0] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#8FA5A0]/20 transition-colors"
+      disabled={disabled}
+      className="flex-1 py-3 rounded-xl bg-[#8FA5A0]/10 text-[#8FA5A0] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#8FA5A0]/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
     >
       {label}
     </button>

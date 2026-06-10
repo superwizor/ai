@@ -671,6 +671,7 @@
       "uiLanguage": "Interface language",
       "phoneNumber": "Phone number",
       "phoneNumberPlaceholder": "+48 123 456 789",
+      "phoneNumberHint": "Phone number is required for security reasons.",
       "terms": "terms",
       "privacy": "privacy policy",
       "polish": "Polski",
@@ -771,8 +772,8 @@
       "backToLanding": "Back to home",
       "verifyingStatus": "Checking verification…",
       "verifiedHeading": "Email verified",
-      "verifiedBody": "Redirecting to your account…",
-      "verifiedGoToAccount": "Go to your account"
+      "verifiedBody": "Redirecting to dashboard…",
+      "verifiedGoToAccount": "Go to dashboard"
     }
   },
   "legal": {

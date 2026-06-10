@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "mv src/app/api ../temp_api || true; next build; status=$?; mv ../temp_api src/app/api || true; exit $status",
     "start": "next start",
     "lint": "eslint",
     "check:l10n": "node scripts/check-l10n-parity.mjs",

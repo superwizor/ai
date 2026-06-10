@@ -155,6 +155,7 @@ PORT="${PORT_BILLING}" \
 VERSION="local-dev" \
 GCP_PROJECT_ID="superwizor-ai-25ecd" \
 IDENTITY_SVC_URL="http://127.0.0.1:${PORT_IDENTITY}" \
+NOTIFICATION_SVC_URL="http://127.0.0.1:${PORT_NOTIFICATION}" \
 "${BACKEND_DIR}/bin/billing-svc" > "${LOGS_DIR}/billing-svc.log" 2>&1 &
 PIDS+=($!)
 

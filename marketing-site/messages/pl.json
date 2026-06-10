@@ -671,6 +671,7 @@
       "uiLanguage": "Język interfejsu",
       "phoneNumber": "Numer telefonu",
       "phoneNumberPlaceholder": "+48 123 456 789",
+      "phoneNumberHint": "Numer telefonu potrzebny ze względów bezpieczeństwa.",
       "terms": "regulamin",
       "privacy": "politykę prywatności",
       "polish": "Polski",
@@ -771,8 +772,8 @@
       "backToLanding": "Powrót do strony głównej",
       "verifyingStatus": "Sprawdzamy potwierdzenie…",
       "verifiedHeading": "E-mail potwierdzony",
-      "verifiedBody": "Przekierowujemy do panelu konta…",
-      "verifiedGoToAccount": "Przejdź do panelu konta"
+      "verifiedBody": "Przekierowujemy do panelu…",
+      "verifiedGoToAccount": "Przejdź do panelu"
     }
   },
   "legal": {

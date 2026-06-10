@@ -18,7 +18,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
@@ -43,6 +43,7 @@ import {
   RadioGroup,
   Select,
   TextInput,
+  PhoneInput,
 } from "@/components/forms/Field";
 import {
   getModalityCatalog,
@@ -228,6 +229,7 @@ export function TherapistEmailForm() {
     watch,
     setValue,
     trigger,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<TherapFormType>({
     resolver: zodResolver(therapistEmailSchema),
@@ -275,7 +277,7 @@ export function TherapistEmailForm() {
   }) => {
     try {
       await identityClient.getUserByFirebaseUID({ firebaseUid: user.uid });
-      window.location.href = "https://superwizor-app.web.app/";
+      window.location.href = prefix ? `${prefix}/dashboard/` : "/dashboard/";
       return;
     } catch (e) {
       if (!(e instanceof ConnectError) || e.code !== Code.NotFound) {
@@ -423,49 +425,53 @@ export function TherapistEmailForm() {
   const content = PITCH_CONTENT[pitchVariant][locale === "en" ? "en" : "pl"];
 
   return (
-    <div className={`mx-auto rounded-[20px] border border-frost/10 bg-frost/5 backdrop-blur-md p-6 sm:p-10 shadow-[0_8px_32px_rgba(0,0,0,0.25)] transition-all duration-500 ${step === 1 ? 'max-w-4xl' : 'max-w-xl'}`}>
-      {/* Progress Indicator */}
-      <div className="flex items-center justify-center gap-2 mb-8">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <div
-            key={n}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              n === step
-                ? "w-10 bg-ember shadow-[0_0_12px_rgba(252,174,47,0.6)]"
-                : n < step
-                ? "w-2.5 bg-ember/50"
-                : "w-2.5 bg-frost/10"
-            }`}
-          />
-        ))}
-      </div>
+    <div className="mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      {/* Left Spacer to center the form card on desktop */}
+      <div className="hidden lg:block lg:col-span-3" />
 
-      <form onSubmit={onSubmit} className="grid gap-5" noValidate>
-        <div className="relative overflow-hidden min-h-[360px]">
-          <AnimatePresence mode="wait" initial={false} custom={direction}>
-            {step === 1 && (
-              <motion.div
-                key="step1"
-                custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                className="grid grid-cols-1 md:grid-cols-5 gap-8 items-start w-full text-left"
-              >
-                {/* Left Column: Value Proposition */}
-                <div className="md:col-span-3 flex flex-col gap-6">
-                  <div>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-ember/15 text-ember border border-ember/25 mb-4">
+      {/* Left Column: Form inside card container */}
+      <div className="col-span-12 lg:col-span-6 w-full max-w-[480px] lg:justify-self-center rounded-[20px] border border-frost/10 bg-frost/5 backdrop-blur-md p-6 sm:p-10 shadow-[0_8px_32px_rgba(0,0,0,0.25)] transition-all duration-500">
+        {/* Progress Indicator */}
+        <div className="flex items-center justify-center gap-2 mb-8">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <div
+              key={n}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                n === step
+                  ? "w-10 bg-ember shadow-[0_0_12px_rgba(252,174,47,0.6)]"
+                  : n < step
+                  ? "w-2.5 bg-ember/50"
+                  : "w-2.5 bg-frost/10"
+              }`}
+            />
+          ))}
+        </div>
+
+        <form onSubmit={onSubmit} className="grid gap-5" noValidate>
+          <div className="relative overflow-hidden min-h-[360px]">
+            <AnimatePresence mode="wait" initial={false} custom={direction}>
+              {step === 1 && (
+                <motion.div
+                  key="step1"
+                  custom={direction}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  className="flex flex-col gap-6 text-center items-center w-full"
+                >
+                  {/* Pitch description */}
+                  <div className="flex flex-col items-center">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-ember/15 text-ember border border-ember/25 mb-4 mx-auto">
                       <span className="w-1.5 h-1.5 rounded-full bg-ember animate-pulse" />
                       {content.badge}
                     </span>
-                    <h2 className="font-display text-frost text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
+                    <h2 className="font-display text-frost text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight text-center">
                       {content.heading}
                     </h2>
                   </div>
 
-                  <div className="p-5 rounded-[12px] bg-frost/[0.03] border border-frost/5">
+                  <div className="p-5 rounded-[12px] bg-frost/[0.03] border border-frost/5 text-left max-w-md w-full mx-auto">
                     <ul className="space-y-3">
                       {content.features.map((feat, i) => (
                         <li key={i} className="flex items-start gap-3 text-mist text-sm leading-relaxed">
@@ -478,7 +484,7 @@ export function TherapistEmailForm() {
                     </ul>
                   </div>
 
-                  <p className="text-xs text-mist/60 leading-normal">
+                  <p className="text-xs text-mist/60 leading-normal text-center mx-auto max-w-md">
                     {content.footnote}
                   </p>
 
@@ -486,56 +492,12 @@ export function TherapistEmailForm() {
                     type="button"
                     id="start-trial-btn"
                     onClick={handleNext}
-                    className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-4 shadow-[var(--shadow-ember-glow)] hover:brightness-110 active:scale-[0.98] transition cursor-pointer w-full md:w-auto self-start"
+                    className="inline-flex items-center justify-center rounded-xl bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-4 shadow-[0_4px_14px_rgba(252,174,47,0.4)] hover:brightness-115 hover:shadow-[0_6px_20px_rgba(252,174,47,0.6)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 cursor-pointer w-full md:w-auto self-center"
                   >
-                    {locale === "pl" ? "Tak, zakładam konto" : "Yes, create my account"}
+                    {locale === "pl" ? "TAK, ZAKŁADAM KONTO" : "YES, CREATE MY ACCOUNT"}
                   </button>
-                </div>
-
-                {/* Right Column: Therapist Photo & Testimonial */}
-                <div className="md:col-span-2 flex flex-col gap-5 w-full">
-                  {/* Photo */}
-                  <div className="relative aspect-[4/3] md:aspect-[1.15] w-full overflow-hidden rounded-tl-[80px] rounded-br-[20px] rounded-tr-[20px] rounded-bl-[20px] border border-frost/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)]">
-                    <img
-                      src="/assets/therapy-office.jpg"
-                      alt="Therapist working"
-                      className="object-cover w-full h-full brightness-90 contrast-[1.05]"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-obsidian/40 to-transparent" />
-                  </div>
-
-                  {/* Testimonial Card */}
-                  <div className="bg-frost/[0.03] border border-frost/10 p-5 rounded-[20px] flex flex-col gap-3.5 shadow-md">
-                    {/* Stars */}
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <svg key={s} className="w-4 h-4 text-ember fill-ember" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      ))}
-                    </div>
-
-                    <p className="font-sans text-xs sm:text-[13px] text-frost/90 italic leading-relaxed before:content-['„'] after:content-['”']">
-                      {locale === "pl"
-                        ? "Pozwala uniknąć utraty od 30 do 40% informacji, które tracę przy ręcznym przygotowywaniu notatek."
-                        : "It prevents losing 30 to 40% of information that is normally lost when writing notes by hand."}
-                    </p>
-
-                    <div className="flex items-center gap-3 pt-3 border-t border-frost/5">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0e3b33] to-[#165c50] flex items-center justify-center font-sans font-bold text-xs text-[#5bf4bc] shadow-inner select-none shrink-0">
-                        A
-                      </div>
-                      <div className="flex flex-col text-left overflow-hidden">
-                        <span className="font-sans font-bold text-xs text-white">Agnieszka</span>
-                        <span className="font-sans text-[10px] text-[#5bf4bc] font-semibold">
-                          {locale === "pl" ? "psychoterapeutka CBT" : "CBT psychotherapist"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
+                </motion.div>
+              )}
 
             {step === 2 && (
               <motion.div
@@ -561,7 +523,7 @@ export function TherapistEmailForm() {
                     type="button"
                     onClick={onGoogle}
                     disabled={socialBusy}
-                    className="inline-flex items-center justify-center gap-3 rounded-button border border-frost/20 bg-frost/5 hover:bg-frost/10 text-frost font-sans font-semibold text-sm px-4 py-3.5 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-frost/5 border border-frost/20 hover:bg-frost/10 hover:border-frost/40 text-frost font-sans font-semibold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group"
                   >
                     <svg aria-hidden width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
                       <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.08-1.79 2.72v2.26h2.9c1.7-1.56 2.69-3.87 2.69-6.62z" opacity=".9" />
@@ -576,7 +538,7 @@ export function TherapistEmailForm() {
                     type="button"
                     onClick={onApple}
                     disabled={socialBusy}
-                    className="inline-flex items-center justify-center gap-3 rounded-button border border-frost/20 bg-frost/5 hover:bg-frost/10 text-frost font-sans font-semibold text-sm px-4 py-3.5 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-frost/5 border border-frost/20 hover:bg-frost/10 hover:border-frost/40 text-frost font-sans font-semibold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group"
                   >
                     <svg aria-hidden width="17" height="20" viewBox="0 0 814 1000" fill="currentColor">
                       <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105.3-57.8-155.5-127.4C46 790.9 0 663.1 0 541.8c0-207.6 135.4-317.3 268.9-317.3 71.6 0 131 46.5 175.4 46.5 42.8 0 109.6-49.5 190.5-49.5 30.8 0 108.2 2.6 164.4 100.5zm-234.4-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z"/>
@@ -600,12 +562,12 @@ export function TherapistEmailForm() {
                   type="button"
                   id="signup-email-btn"
                   onClick={handleNext}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-button border border-ember/30 bg-ember/5 hover:bg-ember/10 text-ember font-sans font-semibold text-sm px-4 py-3.5 transition cursor-pointer"
+                  className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl bg-ember text-obsidian shadow-[0_4px_14px_rgba(252,174,47,0.4)] hover:brightness-115 hover:shadow-[0_6px_20px_rgba(252,174,47,0.6)] hover:-translate-y-0.5 transition-all duration-300 group cursor-pointer font-sans text-[18px] font-semibold text-obsidian"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-5 h-5 text-obsidian" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                  {locale === "pl" ? "Załóż konto adresem e-mail" : "Sign up with Email"}
+                  <span>{locale === "pl" ? "Załóż konto adresem e-mail" : "Sign up with Email"}</span>
                 </button>
 
                 <div className="flex justify-between items-center mt-4 border-t border-frost/5 pt-4">
@@ -706,7 +668,7 @@ export function TherapistEmailForm() {
                   <button
                     type="button"
                     onClick={handleBack}
-                    className="flex-1 inline-flex items-center justify-center rounded-button border border-frost/25 text-frost font-sans font-semibold text-sm px-6 py-3 hover:bg-frost/5 transition cursor-pointer"
+                    className="flex-1 inline-flex items-center justify-center rounded-xl border border-frost/25 text-frost font-sans font-semibold text-sm px-6 py-3 hover:bg-frost/5 transition cursor-pointer"
                   >
                     {tCommon("back")}
                   </button>
@@ -714,7 +676,7 @@ export function TherapistEmailForm() {
                     type="button"
                     id="next-step-btn"
                     onClick={handleNext}
-                    className="flex-[2] inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition cursor-pointer"
+                    className="flex-[2] inline-flex items-center justify-center rounded-xl bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[0_4px_12px_rgba(252,174,47,0.3)] hover:brightness-115 hover:shadow-[0_6px_16px_rgba(252,174,47,0.5)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
                   >
                     {tCommon("continue")}
                   </button>
@@ -753,6 +715,7 @@ export function TherapistEmailForm() {
                 <FieldShell
                   id="phoneNumber"
                   label={t("phoneNumber")}
+                  hint={t("phoneNumberHint")}
                   required
                   error={
                     errors.phoneNumber?.message === "phone-required"
@@ -762,13 +725,19 @@ export function TherapistEmailForm() {
                       : undefined
                   }
                 >
-                  <TextInput
-                    id="phoneNumber"
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    placeholder={t("phoneNumberPlaceholder")}
-                    {...register("phoneNumber")}
+                  <Controller
+                    control={control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                      <PhoneInput
+                        id="phoneNumber"
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        error={!!errors.phoneNumber}
+                        defaultDialCode={locale === "pl" ? "+48" : "+44"}
+                        placeholder={t("phoneNumberPlaceholder")}
+                      />
+                    )}
                   />
                 </FieldShell>
 
@@ -782,7 +751,7 @@ export function TherapistEmailForm() {
                   <button
                     type="button"
                     onClick={handleBack}
-                    className="flex-1 inline-flex items-center justify-center rounded-button border border-frost/25 text-frost font-sans font-semibold text-sm px-6 py-3 hover:bg-frost/5 transition cursor-pointer"
+                    className="flex-1 inline-flex items-center justify-center rounded-xl border border-frost/25 text-frost font-sans font-semibold text-sm px-6 py-3 hover:bg-frost/5 transition cursor-pointer"
                   >
                     {tCommon("back")}
                   </button>
@@ -790,7 +759,7 @@ export function TherapistEmailForm() {
                     type="button"
                     id="next-step-btn"
                     onClick={handleNext}
-                    className="flex-[2] inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition cursor-pointer"
+                    className="flex-[2] inline-flex items-center justify-center rounded-xl bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[0_4px_12px_rgba(252,174,47,0.3)] hover:brightness-115 hover:shadow-[0_6px_16px_rgba(252,174,47,0.5)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
                   >
                     {tCommon("continue")}
                   </button>
@@ -869,14 +838,14 @@ export function TherapistEmailForm() {
                     type="button"
                     onClick={handleBack}
                     disabled={isSubmitting}
-                    className="flex-1 inline-flex items-center justify-center rounded-button border border-frost/25 text-frost font-sans font-semibold text-sm px-6 py-3 hover:bg-frost/5 transition disabled:opacity-60 cursor-pointer"
+                    className="flex-1 inline-flex items-center justify-center rounded-xl border border-frost/25 text-frost font-sans font-semibold text-sm px-6 py-3 hover:bg-frost/5 transition disabled:opacity-60 cursor-pointer"
                   >
                     {tCommon("back")}
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-[2] inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                    className="flex-[2] inline-flex items-center justify-center rounded-xl bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[0_4px_12px_rgba(252,174,47,0.3)] hover:brightness-115 hover:shadow-[0_6px_16px_rgba(252,174,47,0.5)] hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {isSubmitting ? tCommon("submitting") : tCommon("submit")}
                   </button>
@@ -885,14 +854,74 @@ export function TherapistEmailForm() {
             )}
           </AnimatePresence>
         </div>
-      </form>
+        </form>
 
-      <p className="font-sans text-sm text-mist/60 text-center mt-6 pt-4 border-t border-frost/5">
-        {tCommon("alreadyHaveAccount")}{" "}
-        <a href={`${prefix}/login`} className="text-ember font-semibold hover:underline">
-          {tCommon("loginCta")}
-        </a>
-      </p>
+        <p className="font-sans text-sm text-mist/60 text-center mt-6 pt-4 border-t border-frost/5">
+          {tCommon("alreadyHaveAccount")}{" "}
+          <a href={`${prefix}/login`} className="text-ember font-semibold hover:underline">
+            {tCommon("loginCta")}
+          </a>
+        </p>
+      </div>
+
+      {/* Right Column: Photo & Testimonial outside card container */}
+      <div className="col-span-12 lg:col-span-3 w-full lg:items-end lg:justify-self-end">
+        <AnimatePresence>
+          {step === 1 && (
+            <motion.div
+              key="right-column-marketing"
+              initial={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+              exit={{
+                opacity: 0,
+                scale: 0.95,
+                filter: "blur(12px)",
+                transition: { duration: 0.6, ease: "easeInOut" }
+              }}
+              className="flex flex-col gap-5 w-full lg:items-end lg:justify-self-end"
+            >
+              {/* Photo */}
+              <div className="relative aspect-[4/3] md:aspect-[1.15] w-full max-w-[360px] overflow-hidden rounded-tl-[80px] rounded-br-[20px] rounded-tr-[20px] rounded-bl-[20px] border border-frost/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)]">
+                <img
+                  src="/assets/therapy-banana.png"
+                  alt="Therapist working"
+                  className="object-cover w-full h-full brightness-90 contrast-[1.05]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-obsidian/40 to-transparent" />
+              </div>
+
+              {/* Testimonial Card */}
+              <div className="bg-frost/[0.03] border border-frost/10 p-5 rounded-[20px] flex flex-col gap-3.5 shadow-md w-full max-w-[360px]">
+                {/* Stars */}
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <svg key={s} className="w-4 h-4 text-ember fill-ember" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+
+                <p className="font-sans text-xs sm:text-[13px] text-frost/90 italic leading-relaxed before:content-['„'] after:content-['”']">
+                  {locale === "pl"
+                    ? "Pozwala uniknąć utraty od 30 do 40% informacji, które tracę przy ręcznym przygotowywaniu notatek."
+                    : "It prevents losing 30 to 40% of information that is normally lost when writing notes by hand."}
+                </p>
+
+                <div className="flex items-center gap-3 pt-3 border-t border-frost/5">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0e3b33] to-[#165c50] flex items-center justify-center font-sans font-bold text-xs text-[#5bf4bc] shadow-inner select-none shrink-0">
+                    A
+                  </div>
+                  <div className="flex flex-col text-left overflow-hidden">
+                    <span className="font-sans font-bold text-xs text-white">Agnieszka</span>
+                    <span className="font-sans text-[10px] text-[#5bf4bc] font-semibold">
+                      {locale === "pl" ? "psychoterapeutka CBT" : "CBT psychotherapist"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

@@ -6,7 +6,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
@@ -27,6 +27,7 @@ import {
   FieldShell,
   Select,
   TextInput,
+  PhoneInput,
 } from "@/components/forms/Field";
 
 export function OrganizationFinishForm({
@@ -52,6 +53,7 @@ export function OrganizationFinishForm({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<OrganizationFinishForm>({
     resolver: zodResolver(organizationFinishSchema),
@@ -112,10 +114,8 @@ export function OrganizationFinishForm({
         }),
       );
 
-      // Google already verified the email server-side — straight to the app.
-      // app.superwizor.ai DNS not wired; web.app subdomain is the live host.
-      // eslint-disable-next-line react-hooks/immutability
-      window.location.href = "https://superwizor-app.web.app/";
+      // Google already verified the email server-side — straight to dashboard.
+      window.location.assign(prefix ? `${prefix}/dashboard/` : "/dashboard/");
     } catch {
       setServerError(tErr("unknown"));
     }
@@ -136,14 +136,20 @@ export function OrganizationFinishForm({
               <TextInput id="lastName" autoComplete="family-name" {...register("lastName")} />
             </FieldShell>
           </div>
-          <FieldShell id="phoneNumber" label={t("phoneNumber")} required error={errors.phoneNumber && tOrgErr("phoneRequired")}>
-            <TextInput
-              id="phoneNumber"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder={t("phoneNumberPlaceholder")}
-              {...register("phoneNumber")}
+          <FieldShell id="phoneNumber" label={t("phoneNumber")} hint={t("phoneNumberHint")} required error={errors.phoneNumber && tOrgErr("phoneRequired")}>
+            <Controller
+              control={control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <PhoneInput
+                  id="phoneNumber"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  error={!!errors.phoneNumber}
+                  defaultDialCode={locale === "pl" ? "+48" : "+44"}
+                  placeholder={t("phoneNumberPlaceholder")}
+                />
+              )}
             />
           </FieldShell>
         </div>

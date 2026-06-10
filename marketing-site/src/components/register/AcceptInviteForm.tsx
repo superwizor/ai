@@ -245,7 +245,7 @@ export function AcceptInviteForm({ token }: { token: string }) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        className="mt-2 w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl bg-ember text-obsidian shadow-[0_4px_14px_rgba(252,174,47,0.4)] hover:brightness-115 hover:shadow-[0_6px_20px_rgba(252,174,47,0.6)] hover:-translate-y-0.5 transition-all duration-300 group cursor-pointer font-sans text-[18px] font-semibold text-obsidian disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
       >
         {isSubmitting ? tInv("submitting") : tInv("submit")}
       </button>

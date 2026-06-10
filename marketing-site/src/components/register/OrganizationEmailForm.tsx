@@ -13,7 +13,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
@@ -35,6 +35,7 @@ import {
   FieldShell,
   Select,
   TextInput,
+  PhoneInput,
 } from "@/components/forms/Field";
 
 export function OrganizationEmailForm() {
@@ -57,6 +58,7 @@ export function OrganizationEmailForm() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<OrganizationEmailForm>({
     resolver: zodResolver(organizationEmailSchema),
@@ -180,6 +182,7 @@ export function OrganizationEmailForm() {
           <FieldShell
             id="phoneNumber"
             label={t("phoneNumber")}
+            hint={t("phoneNumberHint")}
             required
             // The zod schema (requiredPhone) emits "phone-required"
             // for empty and "phone-invalid" for a malformed value; we
@@ -192,13 +195,19 @@ export function OrganizationEmailForm() {
                 : tOrgErr("phoneRequired"))
             }
           >
-            <TextInput
-              id="phoneNumber"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder={t("phoneNumberPlaceholder")}
-              {...register("phoneNumber")}
+            <Controller
+              control={control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <PhoneInput
+                  id="phoneNumber"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  error={!!errors.phoneNumber}
+                  defaultDialCode={locale === "pl" ? "+48" : "+44"}
+                  placeholder={t("phoneNumberPlaceholder")}
+                />
+              )}
             />
           </FieldShell>
         </div>

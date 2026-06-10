@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 
 export function BrandStatement() {
   const t = useTranslations("b.brandStatement");
+  const tHero = useTranslations("hero");
 
   return (
     <section className="relative w-full bg-[#FBFAF7] text-[#1B2522] py-18 sm:py-24 border-y border-[#E2DED5]/60 overflow-hidden">
@@ -33,6 +34,15 @@ export function BrandStatement() {
             )
           })}
         </p>
+        <div className="mt-8 flex justify-center">
+          <a
+            href="#cennik"
+            className="group relative inline-flex items-center justify-center rounded-[12px] bg-[#004D54] text-frost font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 transition-all duration-300 hover:bg-[#002E32] active:scale-[0.97] whitespace-nowrap overflow-hidden"
+          >
+            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+            <span className="relative">{tHero("ctaPrimary")}</span>
+          </a>
+        </div>
       </div>
     </section>
   );

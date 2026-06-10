@@ -15,7 +15,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
@@ -37,6 +37,7 @@ import {
   RadioGroup,
   Select,
   TextInput,
+  PhoneInput,
 } from "@/components/forms/Field";
 import {
   getModalityCatalog,
@@ -84,6 +85,7 @@ export function TherapistFinishForm({
     handleSubmit,
     watch,
     setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<TherapistFinishForm>({
     resolver: zodResolver(therapistFinishSchema),
@@ -151,8 +153,8 @@ export function TherapistFinishForm({
       if (priceNeeded && orgId) {
         await handlePostRegistrationRedirect(orgId, planSlug, prefix, email);
       } else {
-        // Google/Apple sign-in → email already verified → go to app
-        window.location.href = "https://superwizor-app.web.app/";
+        // Google/Apple sign-in → email already verified → go to onboarding
+        window.location.assign(prefix ? `${prefix}/onboarding/` : "/onboarding/");
       }
     } catch {
       setServerError(tErr("unknown"));
@@ -216,13 +218,19 @@ export function TherapistFinishForm({
               : undefined
           }
         >
-          <TextInput
-            id="phoneNumber"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder={t("phoneNumberPlaceholder")}
-            {...register("phoneNumber")}
+          <Controller
+            control={control}
+            name="phoneNumber"
+            render={({ field }) => (
+              <PhoneInput
+                id="phoneNumber"
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                error={!!errors.phoneNumber}
+                defaultDialCode={locale === "pl" ? "+48" : "+44"}
+                placeholder={t("phoneNumberPlaceholder")}
+              />
+            )}
           />
         </FieldShell>
       </div>
@@ -268,7 +276,7 @@ export function TherapistFinishForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        className="mt-2 w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl bg-ember text-obsidian shadow-[0_4px_14px_rgba(252,174,47,0.4)] hover:brightness-115 hover:shadow-[0_6px_20px_rgba(252,174,47,0.6)] hover:-translate-y-0.5 transition-all duration-300 group cursor-pointer font-sans text-[18px] font-semibold text-obsidian disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
       >
         {isSubmitting ? tCommon("submitting") : tCommon("submit")}
       </button>

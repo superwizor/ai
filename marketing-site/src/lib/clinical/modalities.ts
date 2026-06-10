@@ -75,12 +75,60 @@ const LABELS: Record<string, ModalityRow["labels"]> = {
 };
 
 export async function getModalityCatalog(): Promise<ReadonlyArray<ModalityRow>> {
-  const resp = await clinicalClient.listModalities({});
-  return resp.modalities.map((m) => ({
-    id: m.id,
-    systemCode: m.systemCode,
-    displayName: m.displayName,
-    labels: LABELS[m.systemCode] ?? { pl: m.displayName, en: m.displayName },
-    isSupported: m.isSupported,
-  }));
+  try {
+    const resp = await clinicalClient.listModalities({});
+    return resp.modalities.map((m) => ({
+      id: m.id,
+      systemCode: m.systemCode,
+      displayName: m.displayName,
+      labels: LABELS[m.systemCode] ?? { pl: m.displayName, en: m.displayName },
+      isSupported: m.isSupported,
+    }));
+  } catch (err) {
+    console.error("[register/therapist] modality fetch failed, using fallback catalog", err);
+    return [
+      {
+        id: "33e66b8d-8a71-4770-96f3-42e13297a7e7",
+        systemCode: "UNIV",
+        displayName: "Uniwersalny / Integracyjny",
+        labels: LABELS.UNIV,
+        isSupported: true,
+      },
+      {
+        id: "44f77c8e-8a71-4770-96f3-42e13297a7e8",
+        systemCode: "CBT",
+        displayName: "Poznawczo-behawioralna (CBT)",
+        labels: LABELS.CBT,
+        isSupported: true,
+      },
+      {
+        id: "55a88c9f-8a71-4770-96f3-42e13297a7e9",
+        systemCode: "PSYCHO",
+        displayName: "Psychodynamiczna",
+        labels: LABELS.PSYCHO,
+        isSupported: true,
+      },
+      {
+        id: "66b99ca0-8a71-4770-96f3-42e13297a7ea",
+        systemCode: "GESTALT",
+        displayName: "Gestalt",
+        labels: LABELS.GESTALT,
+        isSupported: true,
+      },
+      {
+        id: "77caaab1-8a71-4770-96f3-42e13297a7eb",
+        systemCode: "SYS",
+        displayName: "Systemowa (pary i rodziny)",
+        labels: LABELS.SYS,
+        isSupported: true,
+      },
+      {
+        id: "88dbbbc2-8a71-4770-96f3-42e13297a7ec",
+        systemCode: "ST",
+        displayName: "Terapia schematów (ST)",
+        labels: LABELS.ST,
+        isSupported: true,
+      },
+    ];
+  }
 }

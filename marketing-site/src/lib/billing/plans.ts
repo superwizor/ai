@@ -52,6 +52,8 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tier: "SOLO",
     cycle: "MONTHLY",
     priceGross: 179.0,           // brutto
+    priceIntroGross: 143.0,
+    couponCode: "ROWNOWAGA20",
     currencyCode: "PLN",
     tokensPerPeriod: 30,
     licensesLimit: 1,
@@ -74,6 +76,8 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tier: "PRO",
     cycle: "MONTHLY",
     priceGross: 299.0,           // brutto
+    priceIntroGross: 209.0,
+    couponCode: "ROZKWIT30",
     currencyCode: "PLN",
     tokensPerPeriod: 90,          // was 120, confirmed 90
     licensesLimit: 1,

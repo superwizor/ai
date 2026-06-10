@@ -11,7 +11,7 @@ import type { Metadata } from "next";
 
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
-import { PricingCards } from "@/components/marketing/PricingCards";
+import { PricingCards } from "@/components/marketing/PricingCardsDetailed";
 import { getPlanCatalog } from "@/lib/billing/plans";
 
 export async function generateMetadata({

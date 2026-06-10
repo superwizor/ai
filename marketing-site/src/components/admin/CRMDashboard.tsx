@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { TableSkeleton } from "./TableSkeleton";
 

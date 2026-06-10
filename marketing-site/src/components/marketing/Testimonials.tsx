@@ -1,6 +1,6 @@
 "use client";
 
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 interface Testimonial {
   quote: string;
@@ -121,6 +121,7 @@ const ROW2_DATA = TESTIMONIALS_DATA.slice(5);
 export function Testimonials() {
   const locale = useLocale();
   const isPl = locale === "pl";
+  const tHero = useTranslations("hero");
 
   return (
     <section className="relative w-full bg-gradient-to-b from-[#001A1D] to-[#002e32] text-frost py-24 overflow-hidden border-y border-frost/5">
@@ -265,6 +266,20 @@ export function Testimonials() {
         </div>
 
       </div>
+
+      {/* CTA Button */}
+      <div className="mt-16 flex flex-col items-center">
+        <a
+          href="#cennik"
+          className="group relative inline-flex items-center justify-center rounded-[12px] bg-frost text-[#004D54] font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 transition-all duration-300 hover:bg-white active:scale-[0.97] whitespace-nowrap overflow-hidden"
+        >
+          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-[#004D54]/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+          <span className="relative">
+            {tHero("ctaPrimary")}
+          </span>
+        </a>
+      </div>
+
     </section>
   );
 }

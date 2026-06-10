@@ -13,7 +13,7 @@ export function ContactForm() {
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSending(true);
 
@@ -24,19 +24,36 @@ export function ContactForm() {
     const subject = data.get("subject") as string;
     const message = data.get("message") as string;
 
-    // MVP: open mailto with pre-filled data
-    const body = `${message}\n\n---\nOd: ${name}\nE-mail: ${email}`;
-    const mailto = `mailto:kontakt@superwizor.ai?subject=${encodeURIComponent(
-      subject
-    )}&body=${encodeURIComponent(body)}`;
+    const billingUrl = process.env.NEXT_PUBLIC_BILLING_URL || "http://localhost:8081";
+    const endpoint = `${billingUrl}/contact`;
 
-    window.location.href = mailto;
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, subject, message }),
+      });
 
-    // Show success after a short delay
-    setTimeout(() => {
-      setSending(false);
+      if (!response.ok) {
+        throw new Error(`Server returned status: ${response.status}`);
+      }
+
       setSent(true);
-    }, 500);
+    } catch (err) {
+      console.warn("Błąd wysyłania przez backend, uruchamiam mailto fallback...", err);
+      // Fallback to mailto link
+      const body = `${message}\n\n---\nOd: ${name}\nE-mail: ${email}`;
+      const mailto = `mailto:kontakt@superwizor.ai?subject=${encodeURIComponent(
+        subject
+      )}&body=${encodeURIComponent(body)}`;
+
+      window.location.href = mailto;
+      setSent(true);
+    } finally {
+      setSending(false);
+    }
   };
 
   if (sent) {
@@ -70,7 +87,7 @@ export function ContactForm() {
       <div>
         <label
           htmlFor="contact-name"
-          className="block font-sans text-sm font-medium text-[#1B2522] mb-1.5"
+          className="block font-sans text-sm font-medium text-frost mb-1.5"
         >
           {t("fields.name")}
         </label>
@@ -79,7 +96,7 @@ export function ContactForm() {
           name="name"
           type="text"
           required
-          className="w-full rounded-[10px] border border-[#E2DED5] bg-white px-4 py-3 font-sans text-sm text-[#1B2522] placeholder:text-[#4E5A55]/40 focus:outline-none focus:ring-2 focus:ring-[#004D54]/20 focus:border-[#004D54]/40 transition"
+          className="w-full rounded-[10px] border border-frost/10 bg-white/5 backdrop-blur-sm px-4 py-3 font-sans text-sm text-white placeholder:text-mist/40 focus:outline-none focus:ring-2 focus:ring-ember/20 focus:border-ember/40 transition"
         />
       </div>
 
@@ -87,7 +104,7 @@ export function ContactForm() {
       <div>
         <label
           htmlFor="contact-email"
-          className="block font-sans text-sm font-medium text-[#1B2522] mb-1.5"
+          className="block font-sans text-sm font-medium text-frost mb-1.5"
         >
           {t("fields.email")}
         </label>
@@ -96,7 +113,7 @@ export function ContactForm() {
           name="email"
           type="email"
           required
-          className="w-full rounded-[10px] border border-[#E2DED5] bg-white px-4 py-3 font-sans text-sm text-[#1B2522] placeholder:text-[#4E5A55]/40 focus:outline-none focus:ring-2 focus:ring-[#004D54]/20 focus:border-[#004D54]/40 transition"
+          className="w-full rounded-[10px] border border-frost/10 bg-white/5 backdrop-blur-sm px-4 py-3 font-sans text-sm text-white placeholder:text-mist/40 focus:outline-none focus:ring-2 focus:ring-ember/20 focus:border-ember/40 transition"
         />
       </div>
 
@@ -104,7 +121,7 @@ export function ContactForm() {
       <div>
         <label
           htmlFor="contact-subject"
-          className="block font-sans text-sm font-medium text-[#1B2522] mb-1.5"
+          className="block font-sans text-sm font-medium text-frost mb-1.5"
         >
           {t("fields.subject")}
         </label>
@@ -114,7 +131,7 @@ export function ContactForm() {
           type="text"
           required
           placeholder={t("fields.subjectPlaceholder")}
-          className="w-full rounded-[10px] border border-[#E2DED5] bg-white px-4 py-3 font-sans text-sm text-[#1B2522] placeholder:text-[#4E5A55]/40 focus:outline-none focus:ring-2 focus:ring-[#004D54]/20 focus:border-[#004D54]/40 transition"
+          className="w-full rounded-[10px] border border-frost/10 bg-white/5 backdrop-blur-sm px-4 py-3 font-sans text-sm text-white placeholder:text-mist/40 focus:outline-none focus:ring-2 focus:ring-ember/20 focus:border-ember/40 transition"
         />
       </div>
 
@@ -122,7 +139,7 @@ export function ContactForm() {
       <div>
         <label
           htmlFor="contact-message"
-          className="block font-sans text-sm font-medium text-[#1B2522] mb-1.5"
+          className="block font-sans text-sm font-medium text-frost mb-1.5"
         >
           {t("fields.message")}
         </label>
@@ -132,7 +149,7 @@ export function ContactForm() {
           required
           rows={5}
           placeholder={t("fields.messagePlaceholder")}
-          className="w-full rounded-[10px] border border-[#E2DED5] bg-white px-4 py-3 font-sans text-sm text-[#1B2522] placeholder:text-[#4E5A55]/40 focus:outline-none focus:ring-2 focus:ring-[#004D54]/20 focus:border-[#004D54]/40 transition resize-none"
+          className="w-full rounded-[10px] border border-frost/10 bg-white/5 backdrop-blur-sm px-4 py-3 font-sans text-sm text-white placeholder:text-mist/40 focus:outline-none focus:ring-2 focus:ring-ember/20 focus:border-ember/40 transition resize-none"
         />
       </div>
 
@@ -140,17 +157,17 @@ export function ContactForm() {
       <button
         type="submit"
         disabled={sending}
-        className="w-full rounded-[12px] bg-[#004D54] text-white font-sans font-bold uppercase tracking-wider text-xs px-6 py-4 hover:bg-[#002E32] transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full rounded-[12px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs px-6 py-4 hover:brightness-110 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_12px_rgba(252,174,47,0.20)]"
       >
         {sending ? t("submitting") : t("submit")}
       </button>
 
       {/* Direct email fallback */}
-      <p className="text-center font-sans text-xs text-[#4E5A55]/60 mt-4">
+      <p className="text-center font-sans text-xs text-mist/60 mt-4">
         {t("directEmail")}{" "}
         <a
           href="mailto:kontakt@superwizor.ai"
-          className="text-[#004D54] hover:underline font-medium"
+          className="text-ember hover:underline font-semibold"
         >
           {t("emailAddress")}
         </a>
