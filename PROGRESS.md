@@ -73,6 +73,38 @@ features 3-8 can land in any order:
 - ✅ flutter-web-target — web platform live, build green, recording
   screen kIsWeb-guarded. Login renders cleanly on web.
 
+### Upload stall on large files (branch `fix/upload-stall-resilience`, 2026-06-10)
+
+Off `main` (2c771b3). **Not yet merged** — awaiting device verification on
+Marcin's iPhone (the 127 MB session from the field report is the test case).
+Full writeup: docs/26 §R2.
+
+- **Bug (field, Marcin):** 127 MB upload frozen at 57 %, "próba 3", minutes
+  of no movement. Resumable transport (docs/26) worked — failure handling
+  around it didn't.
+- **Fix (all client-side, `lib/uploads/`):** (1) timeouts on every HTTP
+  call (30 s probe; `30s + size/40KiB·s⁻¹` body PUTs) — a stalled socket
+  used to hang `putBytes` forever and freeze the runner's tick loop via
+  `_tickInFlight`; (2) transient chunk errors retry **in-attempt** against
+  the re-probed GCS offset (2→32 s, escalate only after 5 zero-progress
+  rounds); `UploadProgressMadeError` tells the worker to reset
+  `attemptCount` when bytes moved; `created`-phase backoff capped at 90 s
+  (`putRetryCap`); (3) connectivity-restore pulls `nextAttemptAt` to now
+  (was: tick fired but `dueNow()` skipped the backed-off row); (4) probe
+  offsets report to the progress bar immediately + intra-chunk 64 KiB
+  streamed progress (`_ProgressedBytesRequest`, honest via dart:io socket
+  backpressure).
+- **Gotchas:** worker `attemptCount` legitimately resets to 0 on every
+  successful phase transition (`_doCreate` etc.) — don't assert it
+  survives to `completed`. `http.MockClient` materializes streamed
+  request bodies, so `onSent` slice callbacks fire in tests. The
+  exponential ladder is *correct* for RPC phases (server protection) —
+  only the PUT phase is capped.
+- **Tests:** new `test/uploads/upload_io_resumable_test.dart` (fake GCS
+  resumable session: blips, partial acks, dead session 410, stuck
+  escalation, single-PUT fallback) + 4 worker + 1 runner test.
+  `test/uploads/` 100/100, full suite 195 green, analyze clean.
+
 ### Flutter audio-conversion data-loss fix (branch `fix/app-audio-conversion`, 2026-06-04)
 
 Commit `85c6cc3`, off `main`. **Not yet merged** — awaiting device smoke

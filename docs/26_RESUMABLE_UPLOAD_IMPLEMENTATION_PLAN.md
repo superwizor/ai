@@ -142,3 +142,43 @@ Object commits only on the final chunk ⇒ exactly one `OBJECT_FINALIZE` (also f
 - Upload survives app-kill and resumes from the last acked byte.
 - "Wgrywanie" shows real progress.
 - Old clients (single PUT) keep working throughout rollout.
+
+---
+
+## R2 — Transfer-stall resilience (fix/upload-stall-resilience, 2026-06-10)
+
+Field report (Marcin, 127 MB / 127 min session): bar frozen at 57 %, "próba 3",
+no visible movement for minutes at a time. The resumable transport itself was
+working — the 57 % was real GCS-acked progress — but everything *around* a
+chunk failure was tuned for small RPCs, not a 16-chunk transfer over flaky
+cellular. Four root causes, all client-side, fixed without proto/server changes:
+
+1. **No HTTP timeout anywhere.** A stalled socket hung the chunk PUT forever;
+   `_tickInFlight` stayed true so every later tick no-oped — the whole queue
+   froze until app restart. → every call now carries a timeout: 30 s for the
+   offset probe, `30 s + size/40 KiB/s` for body-bearing PUTs (~4 min for an
+   8 MiB chunk).
+2. **Every blip escalated the worker's exponential backoff** (~2/4/8…30 min),
+   even though GCS kept the offset and a retry is nearly free. → transient
+   chunk errors now retry *in-attempt* (re-probe acked offset, 2→32 s delays);
+   only ≥5 consecutive zero-progress rounds escalate. If the attempt moved
+   bytes before dying it throws `UploadProgressMadeError`, which makes the
+   worker reset `attemptCount` — escalation is reserved for being stuck at the
+   same byte. Additionally the `created`-phase backoff is capped at 90 s
+   (`UploadWorker.putRetryCap`): the exponential ladder protects the *server*
+   from RPC storms; a failed PUT means the phone's own link is down and there
+   is nothing to protect.
+3. **Connectivity-restore didn't cut backoff short** — the listener ticked,
+   but `dueNow()` skipped the row scheduled minutes out. → the handler now
+   pulls `nextAttemptAt` to now first (same semantics as the cold-start reset).
+4. **Progress blind spots.** The resume offset learned from the probe was
+   never reported (bar sat stale until the next full chunk), and nothing
+   reported within a chunk. → probe results report immediately, and chunk
+   bodies stream in 64 KiB slices through `_ProgressedBytesRequest`
+   (`upload_io_grpc.dart`) with per-slice progress — dart:io socket
+   backpressure keeps it honest, and each 308 ack corrects it.
+
+Tests: `test/uploads/upload_io_resumable_test.dart` (fake GCS session plays
+the full protocol — blips, partial acks, dead session, stuck escalation),
+plus new worker-cap/reset and runner-connectivity cases. 100/100 in
+`test/uploads/`, full suite 195 green.

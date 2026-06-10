@@ -479,7 +479,16 @@ class UploadQueueRunner {
   void _onConnectivityChanged(List<ConnectivityResult> results) {
     final online = results.any((r) => r != ConnectivityResult.none);
     if (online) {
-      unawaited(_tick());
+      unawaited(() async {
+        // The network is back, but rows that failed while it was gone
+        // carry a nextAttemptAt minutes in the future — a bare tick
+        // would skip them (dueNow filters on it) and the user would
+        // stare at a frozen upload until the backoff elapsed. Same
+        // semantics as the cold-start reset: pull schedules to now,
+        // keep attemptCount. Parked (quota) rows stay parked.
+        await _resetBackoffsForColdStart();
+        await _tick();
+      }());
     }
   }
 
