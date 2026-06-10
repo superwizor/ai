@@ -83,6 +83,71 @@ func TestParse_RoleOnlyGolden(t *testing.T) {
 	}
 }
 
+// goldenCluster / goldenRoleOnly carry no RAG_Theme lines — absent
+// themes must parse cleanly to an empty slice, never a parse error.
+func TestParse_RAGThemesAbsentIsEmpty(t *testing.T) {
+	got, err := ParseMetadataMarkdown(goldenCluster)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got.RAGThemes) != 0 {
+		t.Errorf("want no themes, got %v", got.RAGThemes)
+	}
+}
+
+func TestParse_RAGThemesParsed(t *testing.T) {
+	in := `# Speakers
+
+Speaker 1 — therapist (confidence 0.92)
+Speaker 2 — patient (confidence 0.95)
+
+# Metadata
+
+Title: Sesja
+Summary: Krótkie streszczenie.
+RAG_Summary: Klient pracuje nad relacjami i stresem.
+RAG_Theme: lęk przed matką — klient opisuje onieśmielenie i unikanie kontaktu.
+RAG_Theme: stres w pracy — presja terminów, objawy somatyczne.
+Overall_diarization_confidence: 0.94`
+	got, err := ParseMetadataMarkdown(in)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.RAGSummary == "" {
+		t.Errorf("RAG_Summary should still parse alongside themes")
+	}
+	if len(got.RAGThemes) != 2 {
+		t.Fatalf("want 2 themes, got %d: %v", len(got.RAGThemes), got.RAGThemes)
+	}
+	if !strings.Contains(got.RAGThemes[0], "matką") || !strings.Contains(got.RAGThemes[1], "pracy") {
+		t.Errorf("themes mis-parsed: %v", got.RAGThemes)
+	}
+}
+
+func TestParse_RAGThemesCappedAndTruncated(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("# Speakers\n\nSpeaker 1 — therapist (confidence 0.9)\n\n# Metadata\n\nTitle: T\nSummary: S\n")
+	// 8 themes — only maxRAGThemes (5) retained.
+	for i := 0; i < 8; i++ {
+		b.WriteString("RAG_Theme: temat numer ")
+		b.WriteString(strings.Repeat("x", 500)) // oversize — must truncate
+		b.WriteString("\n")
+	}
+	b.WriteString("Overall_diarization_confidence: 0.9")
+	got, err := ParseMetadataMarkdown(b.String())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got.RAGThemes) != maxRAGThemes {
+		t.Errorf("want %d themes (capped), got %d", maxRAGThemes, len(got.RAGThemes))
+	}
+	for i, th := range got.RAGThemes {
+		if len(th) > maxRAGThemeLen {
+			t.Errorf("theme %d not truncated: len %d > %d", i, len(th), maxRAGThemeLen)
+		}
+	}
+}
+
 func TestParse_EmptyInput(t *testing.T) {
 	if _, err := ParseMetadataMarkdown(""); !errors.Is(err, ErrEmptyInput) {
 		t.Errorf("want ErrEmptyInput, got %v", err)

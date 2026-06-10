@@ -50,6 +50,11 @@
     "rag_summary_chunk": {
       "type": "string",
       "description": "Krótkie streszczenie kluczowych informacji do zapisu w RAG memory (max 1500 znaków). NIE zawierać danych identyfikujących."
+    },
+    "rag_themes": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "2-5 odrębnych wątków klinicznych TEJ sesji (np. 'lęk przed matką', 'stres w pracy'), każdy 2-3 zdania, do pamięci długoterminowej. BEZ danych identyfikujących, w 3. osobie. Pomiń gdy materiał zbyt krótki."
     }
   },
   "required": [

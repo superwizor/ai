@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/diarization"
@@ -372,13 +373,11 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		logger.Warn("speaker labels", "error", err)
 	}
 
-	embedding, err := generateEmbedding(ctx, report.RAGSummaryChunk)
-	if err != nil {
-		logger.Warn("embedding", "error", err)
-	} else {
-		if err := persistRAGMemory(ctx, session, reportID, &report, embedding); err != nil {
-			logger.Warn("rag persist", "error", err)
-		}
+	// Write long-term memory: a summary row + one row per RAG_Theme,
+	// each independently embedded (docs/30 §3.2). Best-effort — a
+	// failure here Warns but never fails the report.
+	if err := persistRAGMemoryV2(ctx, session, reportID, &report); err != nil {
+		logger.Warn("rag persist", "error", err)
 	}
 
 	if err := updateSessionStatus(ctx, ev.SessionID, "COMPLETED"); err != nil {
@@ -430,6 +429,10 @@ type ReportPayload struct {
 	SpeakerRoleInference SpeakerRoleInference `json:"speaker_role_inference"`
 	ReportMarkdown       string               `json:"report_markdown"`
 	RAGSummaryChunk      string               `json:"rag_summary_chunk"`
+	// RAGThemes are 2–5 distinct clinical threads of THIS session, each
+	// persisted as its own embedded rag_memories row for thread-level
+	// cross-session retrieval (docs/30). Empty for short/legacy sessions.
+	RAGThemes []string `json:"rag_themes,omitempty"`
 }
 
 // SpeakerRoleInference reprezentuje wynik diaryzacji wykonanej przez LLM
@@ -904,6 +907,7 @@ ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 - summary_short: max 500 znaków, 2-3 zdania. Samodzielne streszczenie TEJ sesji — nie odwołuj się do wcześniejszych spotkań.
 - evidence (cytaty z transkryptu): pojedynczy cytat, max 200 znaków.
 - rag_summary_chunk: max 1500 znaków, kluczowe fakty z TEJ sesji dla pamięci długoterminowej. Nie powtarzaj treści wcześniejszych podsumowań — niech wpis będzie samodzielnym śladem tej sesji.
+- rag_themes: 2-5 odrębnych wątków klinicznych TEJ sesji (osobne pozycje tablicy), każdy 2-3 zdania, BEZ danych identyfikujących, w 3. osobie. Pomiń gdy materiał zbyt krótki.
 - Pisz konkretami, NIE parafrazuj całych wypowiedzi.`,
 		reportLanguage, transcriptText)
 
@@ -983,12 +987,14 @@ Title: <tytuł, max 100 znaków, opisuje TĘ sesję — nie buduj numeracji ani 
 Summary: <streszczenie, max 500 znaków, 2-3 zdania, samodzielne podsumowanie TEJ sesji>
 Overall_diarization_confidence: 0.94
 RAG_Summary: <streszczenie do pamięci długoterminowej, max 1500 znaków, gęsto informacyjne, BEZ danych identyfikujących (imion, miejsc, kontaktów). Skup się na kluczowych faktach klinicznych Z TEJ SESJI, wzorcach, hipotezach roboczych. Pisz w 3. osobie ("klient", "pacjent"), bez imion. Nie powtarzaj treści wcześniejszych podsumowań — niech wpis będzie samodzielnym śladem tej sesji.>
+RAG_Theme: <jeden odrębny wątek kliniczny TEJ sesji w jednej linii (2-3 zdania), np. "lęk przed matką — klient opisuje onieśmielenie i unikanie". Wygeneruj 2-5 osobnych linii "RAG_Theme:", każda inny temat mogący powrócić w przyszłych sesjach. BEZ danych identyfikujących, w 3. osobie. Nie dziel jednego tematu na kilka wpisów; nie twórz wątku ze small-talku. Pomiń gdy materiał zbyt krótki (≤1 chunk).>
 
 ZASADY:
 - Sekcje "# Speakers" i "# Metadata", dokładnie w tej kolejności.
 - Po jednym wierszu na speakera w "# Speakers".
 - Confidence: float 0.0–1.0.
 - RAG_Summary jest opcjonalne tylko gdy materiał jest zbyt krótki (≤1 chunk); inaczej WYMAGANE.
+- RAG_Theme: 2-5 osobnych linii (po jednym wątku), opcjonalne; pomiń gdy materiał zbyt krótki.
 - BEZ żadnego tekstu poza tym blokiem.`,
 			reportLanguage, transcriptStr)
 	} else {
@@ -1035,6 +1041,7 @@ Title: <tytuł, max 100 znaków, opisuje TĘ sesję — nie buduj numeracji ani 
 Summary: <streszczenie, max 500 znaków, 2-3 zdania, samodzielne podsumowanie TEJ sesji>
 Overall_diarization_confidence: 0.89
 RAG_Summary: <streszczenie do pamięci długoterminowej, max 1500 znaków, gęsto informacyjne, BEZ danych identyfikujących (imion, miejsc, kontaktów). Skup się na kluczowych faktach klinicznych Z TEJ SESJI, wzorcach, hipotezach roboczych. Pisz w 3. osobie ("klient", "pacjent"), bez imion. Nie powtarzaj treści wcześniejszych podsumowań — niech wpis będzie samodzielnym śladem tej sesji.>
+RAG_Theme: <jeden odrębny wątek kliniczny TEJ sesji w jednej linii (2-3 zdania), np. "lęk przed matką — klient opisuje onieśmielenie i unikanie". Wygeneruj 2-5 osobnych linii "RAG_Theme:", każda inny temat mogący powrócić w przyszłych sesjach. BEZ danych identyfikujących, w 3. osobie. Nie dziel jednego tematu na kilka wpisów; nie twórz wątku ze small-talku. Pomiń gdy materiał zbyt krótki (≤1 chunk).>
 
 ZASADY:
 - Sekcje "# Speakers" i "# Metadata", dokładnie w tej kolejności.
@@ -1043,6 +1050,7 @@ ZASADY:
 - "Evidence:" — pojedynczy cytat z transkrypcji w cudzysłowach.
 - Confidence: float 0.0–1.0.
 - RAG_Summary jest opcjonalne tylko gdy materiał jest zbyt krótki (≤1 chunk); inaczej WYMAGANE.
+- RAG_Theme: 2-5 osobnych linii (po jednym wątku), opcjonalne; pomiń gdy materiał zbyt krótki.
 - BEZ żadnego tekstu poza tym blokiem.`,
 			reportLanguage, transcriptStr)
 	}
@@ -1289,6 +1297,7 @@ func markdownResultToPayload(r diarization.Result, chunks []transcriptfmt.Chunk,
 		Title:           r.Title,
 		SummaryShort:    r.Summary,
 		RAGSummaryChunk: rag,
+		RAGThemes:       r.RAGThemes,
 		SpeakerRoleInference: SpeakerRoleInference{
 			Method:                       method,
 			SpeakerGroups:                groups,
@@ -1970,6 +1979,11 @@ func loadRAGContext(ctx context.Context, sessionID string, patientFileID uuid.UU
 			SELECT id, summary_ciphertext, summary_encrypted_dek, embedding
 			FROM rag_memories
 			WHERE patient_file_id = $1 AND NOT is_compacted
+			  -- chunk_type='summary' keeps this legacy reader on its
+			  -- original whole-session behavior even after persistRAGMemoryV2
+			  -- starts writing 'theme' rows. The v2 reader (docs/30 Phase 3)
+			  -- is what consumes themes; until then they accumulate dormant.
+			  AND chunk_type = 'summary'
 			ORDER BY created_at DESC
 			LIMIT $4
 		)
@@ -2112,26 +2126,81 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 	return reportID.String(), nil
 }
 
-func persistRAGMemory(ctx context.Context, session *SessionContext, reportID string, report *ReportPayload, embedding []float32) error {
+// persistRAGMemoryV2 writes this session's long-term memory: one
+// 'summary' row (always — it doubles as the previous-session anchor and
+// the fallback when no themes were emitted) plus one 'theme' row per
+// distinct RAG_Theme the model produced (docs/30 §3.2). Each row gets
+// its own embedding, generated concurrently (bounded), and all rows land
+// in a single transaction.
+//
+// Best-effort by contract: the caller Warns and continues on error. A
+// missing memory degrades future recall but must never fail the report.
+func persistRAGMemoryV2(ctx context.Context, session *SessionContext, reportID string, report *ReportPayload) error {
 	repID, err := uuid.Parse(reportID)
 	if err != nil {
 		return err
 	}
 
-	summaryCipher, summaryDEK, err := crypto.Encrypt(ctx, []byte(report.RAGSummaryChunk))
-	if err != nil {
-		return fmt.Errorf("encrypt rag summary: %w", err)
+	type ragRow struct {
+		text       string
+		chunkType  string
+		importance float64
+	}
+	// Summary first (anchor / fallback), then de-duplicated non-empty themes.
+	rows := []ragRow{{text: report.RAGSummaryChunk, chunkType: "summary", importance: 0.7}}
+	seen := map[string]bool{}
+	for _, th := range report.RAGThemes {
+		th = strings.TrimSpace(th)
+		if th == "" || seen[th] {
+			continue
+		}
+		seen[th] = true
+		rows = append(rows, ragRow{text: th, chunkType: "theme", importance: 0.5})
 	}
 
-	embeddingStr := vectorToString(embedding)
+	// Embed every row concurrently. generateEmbedding returns a zero
+	// vector for empty text, so an empty summary still yields a
+	// (neutral-ranking) anchor row rather than an error.
+	embeddings := make([][]float32, len(rows))
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(6)
+	for i := range rows {
+		i := i
+		g.Go(func() error {
+			emb, embErr := generateEmbedding(gctx, rows[i].text)
+			if embErr != nil {
+				return fmt.Errorf("embed %s row %d: %w", rows[i].chunkType, i, embErr)
+			}
+			embeddings[i] = emb
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
 
-	_, err = dbPool.Exec(ctx, `
-		INSERT INTO rag_memories (patient_file_id, source_session_id, source_report_id,
-			summary_ciphertext, summary_encrypted_dek, embedding,
-			chunk_type, importance_score)
-		VALUES ($1, $2, $3, $4, $5, $6::vector, 'summary', 0.7)`,
-		session.PatientFileID, session.ID, repID, summaryCipher, summaryDEK, embeddingStr)
-	return err
+	tx, err := dbPool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	for i, r := range rows {
+		cipher, dek, encErr := crypto.Encrypt(ctx, []byte(r.text))
+		if encErr != nil {
+			return fmt.Errorf("encrypt %s: %w", r.chunkType, encErr)
+		}
+		if _, execErr := tx.Exec(ctx, `
+			INSERT INTO rag_memories (patient_file_id, source_session_id, source_report_id,
+				summary_ciphertext, summary_encrypted_dek, embedding,
+				chunk_type, importance_score)
+			VALUES ($1, $2, $3, $4, $5, $6::vector, $7, $8)`,
+			session.PatientFileID, session.ID, repID,
+			cipher, dek, vectorToString(embeddings[i]), r.chunkType, r.importance); execErr != nil {
+			return execErr
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 func vectorToString(v []float32) string {
