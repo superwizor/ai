@@ -108,10 +108,10 @@ test on Marcin's iPhone build.
 
 ### Recording lost on phone call (branch `fix/recording-call-interruption`, 2026-06-09)
 
-6 commits off `main` (83b6e41..8610e05). **Not yet merged** — code complete
-(WS1–WS4 of `docs/28_RECORDING_INTERRUPTION_RESILIENCE.md`), awaiting the
-on-device manual matrix (docs/28 §8.3 M1–M10) on a physical iPhone; phone-
-call interruptions can't be simulated.
+Off `main` (83b6e41…). **Not yet merged** — code complete
+(WS1–**WS5** of `docs/28_RECORDING_INTERRUPTION_RESILIENCE.md`), awaiting the
+on-device manual matrix (docs/28 §8.3 M1–M10) on physical iPhone **+ Android**;
+phone-call interruptions can't be simulated.
 
 - **Bug:** incoming phone call during a session recording → recorder
   natively auto-pauses (record_ios `AudioInterruptionMode.pause` default)
@@ -134,10 +134,30 @@ call interruptions can't be simulated.
   meaningful reconcile probe (`isRecording()` = `state != stop`, so
   paused counts as recording!); new Swift file had to be hand-added to
   `project.pbxproj` (4 entries, mirror AudioConverter.swift).
-- **Tests:** 26 new unit tests (recording_service / manifest_store /
-  recovery_service), full suite 181 green, analyze at 20-issue baseline.
-- **Android leg (WS5, foreground service) deliberately deferred** — see
-  docs/28 §5.5.
+- **WS5 — Android foreground service (NOW IMPLEMENTED):** `record` plugin
+  has no FGS, so a backgrounded Android recording dies on a long call.
+  Added `RecordingForegroundService.kt` (microphone FGS +
+  `START_NOT_STICKY` + ongoing notification), `superwizor/recording_fgs`
+  channel in `MainActivity.kt`, `<service microphone>` +
+  `POST_NOTIFICATIONS` in the manifest, and
+  `recording_foreground_service.dart` (best-effort, Android-only, never
+  aborts recording). Notification strings flow from the l10n pipeline
+  (`recording_fgs_notification_*`); Kotlin has PL fallbacks. Started in
+  `RecordingService.start`, stopped on stop/cancel/unexpected-stop.
+- **R1 RESOLVED — recovered FLAC forced through server ffmpeg:** instead
+  of betting Chirp accepts an unfinalized FLAC header, `recover()` uploads
+  with content-type **`audio/x-flac`** (a real FLAC MIME that's NOT in the
+  server's `IsChirpSupported` list) → ingestion-svc runs its lossless
+  ffmpeg re-encode → clean header. Server's ext-map defaults unknown types
+  to `.flac` so ffmpeg demuxes correctly; a `audio/mp4` mislabel would
+  break the demuxer (`.m4a` path), hence x-flac. **Backend gotcha:** the
+  coupling lives in `converter.go:IsChirpSupported` — locked by a new case
+  in `converter_test.go` (`audio/x-flac` → false). The local
+  `needsServerSideConversion` bool is NOT sent on the RPC; content-type is
+  the only server trigger.
+- **Tests:** 26 recording unit tests green + backend `TestIsChirpSupported`
+  green + `go build ./services/ingestion-svc/...` clean; full Flutter suite
+  181 green, analyze at 20-issue baseline.
 
 ### Out-of-slice fixes / improvements landed 2026-05-29
 

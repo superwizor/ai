@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | IMPLEMENTED (WS1–WS4) on `fix/recording-call-interruption` — on-device verification (§8.3 M1–M10) pending before merge |
+| **Status** | IMPLEMENTED (WS1–WS5) on `fix/recording-call-interruption` — on-device verification (§8.3 M1–M10) pending before merge. R1 resolved: recovered FLAC forced through server-side ffmpeg re-encode via `audio/x-flac`. |
 | **Date** | 2026-06-09 |
 | **Branch** | `fix/recording-call-interruption` (off `main`) |
 | **Owner** | Flutter app (`flutter-app/superwizor`) + 1 small iOS native helper |
@@ -550,15 +550,38 @@ clock during the call). Additionally:
 * The max-duration check (`recording_screen.dart:247-253`) is unaffected — the
   ticker only emits while `recording`.
 
-### 5.5 WS5 — Android foreground service (phase 2 — separate branch, not in this fix)
+### 5.5 WS5 — Android foreground service (IMPLEMENTED)
 
-iOS is the shipping target; Android recording today dies on any extended
-backgrounding, calls included. When Android recording becomes a priority:
-microphone-type foreground service (`android:foregroundServiceType="microphone"`),
-started when recording starts, stopped at stop/cancel; persistent notification
-("Superwizor — nagrywanie sesji w toku"); manifest already carries both FGS
-permissions. WS1's manifest/recovery applies to Android unchanged and is the safety
-net in the meantime. Tracked as a `PROGRESS.md` follow-up item.
+The `record` plugin manages Android audio focus but NOT a foreground service, so
+an extended backgrounding (long phone call, memory pressure) lets the OS kill the
+recording process. A microphone-type foreground service keeps it alive.
+
+**Native** — `android/.../RecordingForegroundService.kt`: a `Service` that calls
+`startForeground` with `FOREGROUND_SERVICE_TYPE_MICROPHONE` (API 30+; plain
+`startForeground` below that) and a low-importance, ongoing notification carrying a
+tap-to-reopen `PendingIntent`. `START_NOT_STICKY` — a resurrected service with no
+recorder behind it would be a phantom "recording" notification; WS1's orphan scan
+is the recovery path instead. `MainActivity.kt` registers the
+`superwizor/recording_fgs` MethodChannel (`start{title,body}` / `stop`).
+
+**Manifest** — `<service android:foregroundServiceType="microphone" />`,
+`FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MICROPHONE` (already present) +
+`POST_NOTIFICATIONS` (Android 13+, for the notification to be visible — the service
+runs regardless).
+
+**Dart** — `lib/services/recording_foreground_service.dart`: best-effort
+start/stop, Android-only (`!kIsWeb && Platform.isAndroid`), swallows every error so
+a foreground-service hiccup can never abort a recording. `RecordingService.start`
+brings it up (notification strings threaded from the l10n pipeline —
+`recording_fgs_notification_title`/`_body` — so the system notification respects the
+user's locale; Kotlin has Polish-primary fallbacks); `stop()`, `cancel()`, and the
+unexpected-native-stop path all tear it down.
+
+**Notes.** WS1's manifest/recovery already covered the Android total-loss path, so
+this is defense-in-depth that lets a backgrounded Android session *survive* the call
+rather than rely on post-hoc recovery. The runtime `POST_NOTIFICATIONS` request is
+not wired (the service is unaffected; only the notification's visibility is) — a
+small follow-up if Android UX wants the prompt.
 
 ---
 
@@ -597,8 +620,13 @@ Run `flutter gen-l10n` after editing.
 |---|---|
 | `lib/services/recording_service.dart` | DI ctor; `interrupted` state; `onStateChanged` subscription + reconciliation table; intent flags; verified `resume() → bool`; `reconcileWithNative()`; `activeSessionId`; hardened stop-guard |
 | `lib/services/recording_manifest_store.dart` | **new** — manifest model + store |
-| `lib/services/recording_recovery_service.dart` | **new** — scan/skip-rules/recover/discard/sweep |
+| `lib/services/recording_recovery_service.dart` | **new** — scan/skip-rules/recover/discard/sweep; recovered rows use `audio/x-flac` to force server re-encode (R1) |
 | `lib/services/audio_session_helper.dart` | **new** — MethodChannel wrapper |
+| `lib/services/recording_foreground_service.dart` | **new (WS5)** — Android FGS control wrapper |
+| `android/.../RecordingForegroundService.kt` | **new (WS5)** — microphone foreground service + notification |
+| `android/.../MainActivity.kt` | register `superwizor/recording_fgs` channel |
+| `android/app/src/main/AndroidManifest.xml` | `<service microphone>` + `POST_NOTIFICATIONS` |
+| `superwizor-backend/.../storage/converter_test.go` | guard test: `IsChirpSupported("audio/x-flac") == false` (R1 coupling) |
 | `lib/providers/services_provider.dart` | providers for the two new services |
 | `lib/providers/recording_recovery_provider.dart` | **new** — once-per-launch orphan future |
 | `lib/screens/recording_screen.dart` | manifest write/delete hooks; lifecycle observer; interruption banner; `interrupted` in control panel/pop-guard/sheets; resume-failure sheet; `actualDurationSeconds` source |
@@ -660,9 +688,21 @@ Per CLAUDE.md "proof before passing": each case gets a screenshot/log under
 
 ## 9. Risks & open questions
 
-* **R1 — Unfinalized FLAC acceptance by Chirp.** Mitigation gate M7; fallback =
-  server-side ffmpeg conversion flag (zero new infra). Optional hardening later:
-  local remux through the existing `AudioConverter` channel.
+* **R1 — Unfinalized FLAC acceptance by Chirp. RESOLVED — forced server-side
+  re-encode.** We no longer gamble on Chirp tolerating an unfinalized header. The
+  recovery path uploads recovered FLAC under content-type **`audio/x-flac`** instead
+  of `audio/flac`. The ingestion subscriber transcodes any source whose content-type
+  is not in `IsChirpSupported` (converter.go), and `audio/x-flac` (a legitimate
+  alternative FLAC MIME) is deliberately *not* in that list — so the bytes route
+  through the server's lossless ffmpeg re-encode (`-c:a flac -ar 16000 -ac 1`), which
+  rewrites a clean STREAMINFO header. The server's content-type→extension map
+  defaults unknown types to `.flac`, so ffmpeg demuxes the real FLAC bytes correctly
+  — a *mislabel* like `audio/mp4` would set a `.m4a` object path and break ffmpeg's
+  demuxer, which is why `audio/x-flac` (truthful, `.flac` path) is the right lever.
+  Zero backend/proto/schema change. The coupling is locked by a converter unit test
+  asserting `IsChirpSupported("audio/x-flac") == false` with a comment pointing back
+  here. (The local `needsServerSideConversion` bool is set `true` for observability
+  but is never transmitted — the content-type is the actual server trigger.)
 * **R2 — Why not `AudioInterruptionMode.pauseResume`?** It would auto-resume with
   native `setActive(true)` — but (a) docs/09 deliberately chose manual resume
   (therapist may be out of the room post-call; auto-resume records unintended,
