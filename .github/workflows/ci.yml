@@ -388,7 +388,7 @@ jobs:
             --allow-unauthenticated \
             --vpc-connector swvpc-connector \
             --use-http2 \
-            --set-secrets="STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest" \
+            --set-secrets="DATABASE_URL=postgres-database-url:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest" \
             --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }},IDENTITY_SVC_URL=${IDENTITY_URL}"
           # Belt-and-braces parity with identity/clinical: pin allUsers
           # explicitly so the public invoker can't drift even if a future
