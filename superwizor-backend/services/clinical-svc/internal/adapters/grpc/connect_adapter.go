@@ -274,3 +274,29 @@ func (a *ConnectAdapter) DeletePatientData(ctx context.Context, req *connect.Req
 }
 
 
+
+// ─── Admin Prompt Studio (docs/31) ──────────────────────────────────
+
+func (a *ConnectAdapter) AdminListModalityPrompts(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[clinicalv1.AdminListModalityPromptsResponse], error) {
+	resp, err := a.s.AdminListModalityPrompts(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminGetModalityPromptHistory(ctx context.Context, req *connect.Request[clinicalv1.AdminGetModalityPromptHistoryRequest]) (*connect.Response[clinicalv1.AdminGetModalityPromptHistoryResponse], error) {
+	resp, err := a.s.AdminGetModalityPromptHistory(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminUpdateModalityPrompt(ctx context.Context, req *connect.Request[clinicalv1.AdminUpdateModalityPromptRequest]) (*connect.Response[clinicalv1.AdminUpdateModalityPromptResponse], error) {
+	resp, err := a.s.AdminUpdateModalityPrompt(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
