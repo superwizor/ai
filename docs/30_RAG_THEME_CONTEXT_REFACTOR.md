@@ -1,6 +1,8 @@
 # 30 — RAG Theme-Level Session Context (refactor plan)
 
-**Status:** PLANNED (approved direction 2026-06-10, Q&A with operator)
+**Status:** DONE (deployed + verified in prod 2026-06-10 — llm-worker-00092-cop;
+two-session e2e `TestFullSession_RAGTwoSessions` green: session 2 retrieved
+`pool_size=3 themes_count=2 hits=2 anchor_used=true`)
 **Owner:** llm-worker (`services/ai-pipeline-svc/cmd/llm-worker/main.go`)
 **Supersedes:** the read-side described in `docs/agents/05_ai-pipeline-svc.md`
 §"Long-term memory (RAG) — wired 2026-05-19" (write-side concepts carry over).
