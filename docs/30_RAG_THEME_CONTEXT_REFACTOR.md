@@ -226,14 +226,15 @@ never trimmed). Keep the `last_accessed_at` background bump and the
 | `ragContextMaxCharsV2` | 8000 | ≈4 k tokens, <10 % call-2 input |
 | `ragMaxThemes` | 5 | write-side cap, prompt + parser enforced |
 
-### 3.5 Rollback switch
+### 3.5 No legacy fallback (dev-stage decision, 2026-06-10)
 
-`LLM_RAG_MODE` env var: `v2` (default after rollout) | `legacy`. Legacy mode
-short-circuits to today's `loadRAGContext` + single-summary persist. The v2
-reader handles old summary-only rows natively (they're just `chunk_type=
-'summary'` candidates), and the legacy reader tolerates new theme rows (its
-36-row pool shrinks to ~6 sessions of lookback — degraded but correct), so
-the flag can be flipped either way at any time without data surgery.
+We are pre-GA, so there is **no rollback flag** — the v2 reader fully
+replaces the old one (`loadRAGContext` and the `LLM_RAG_MODE` switch were
+removed). The v2 reader handles pre-refactor summary-only rows natively
+(they're just `chunk_type='summary'` candidates with no themes), so the
+write-side change can land first and old history stays retrievable with
+zero data surgery. If a rollback path is ever needed post-GA, reintroduce
+the flag then.
 
 ## 4. Implementation phases
 
@@ -257,8 +258,8 @@ regression tests incl. absent-block tolerance.*
 
 **Phase 3 — read side + reorder.**
 `loadRAGContextV2` (pool SQL, per-theme embeddings, score/MMR/anchor,
-grouped block); `ProcessTranscript` reorders to call-1 → retrieve → call-2;
-`LLM_RAG_MODE` flag wired.
+grouped block); `ProcessTranscript` reorders to call-1 → retrieve → call-2.
+The old reader + `LLM_RAG_MODE` flag were removed outright (§3.5, dev-stage).
 *Gate: two-session e2e on staging — session A about distinct topics X+Y,
 session B mixing both; assert `rag.retrieved` shows ≥2 sessions represented,
 anchor present, context ≤8 000 chars; flip flag to `legacy` and re-verify

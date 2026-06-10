@@ -16,19 +16,19 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/pubsub/v2"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
-	"google.golang.org/genai"
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/genai"
 
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
+	"github.com/superwizor-ai/backend/pkg/i18n/rolelabels"
+	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/diarization"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/reportprefs"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
-	"github.com/superwizor-ai/backend/pkg/i18n/rolelabels"
-	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 )
 
 type TranscriptCompletedEvent struct {
@@ -71,36 +71,13 @@ var (
 	// text-embedding-005 produces 768-dim multilingual vectors — matches
 	// `rag_memories.embedding vector(768)` exactly. Used by
 	// generateEmbedding(); failures are non-fatal (the worker Warns and
-	// skips persistRAGMemory, preserving report save).
+	// skips persistRAGMemoryV2, preserving report save).
+	//
+	// The RAG read-side knobs live in rag.go (ragLookbackSessions,
+	// ragMaxHits, recency/MMR thresholds, ragContextMaxCharsV2) — see
+	// docs/30 for the theme-level retrieval design.
 	embeddingModel string = "text-embedding-005"
 	embeddingDims  int    = 768
-
-	// RAG read-side knobs. loadRAGContext is a two-stage filter:
-	//   1. Bound the candidate pool to the patient's last
-	//      `ragLookbackMemories` rows (most-recent first by
-	//      created_at).
-	//   2. Within that pool, pick the top-`ragTopK` nearest neighbors
-	//      by cosine similarity.
-	// Joined output is capped at `ragContextMaxChars` to keep
-	// call-1/call-2 prompts bounded.
-	//
-	// Sizing rationale:
-	//   - lookback=36: ≈9 months at weekly cadence, ≈18 months at
-	//     bi-weekly. Captures the patient's recent clinical arc
-	//     without dragging in stale states from years ago. Also
-	//     matches the typical "this client has been in therapy
-	//     ~1 year" attention window. Tunable as we observe long-run
-	//     patients.
-	//   - K=3: enough to ground "what we've worked on so far" without
-	//     drowning the prompt. Tunable from production data once read
-	//     side has flown.
-	//   - max-chars=5000: ≈3× 1500-char per-memory cap. Generous head-
-	//     room for the typical case; truncation triggers only on huge
-	//     summaries or future K bumps. Keep below ~10% of the call-2
-	//     input budget so RAG never dominates the prompt.
-	ragLookbackMemories int = 36
-	ragTopK             int = 3
-	ragContextMaxChars  int = 5000
 
 	// Two distinct sampling profiles by design. Don't collapse them
 	// into one — call 1 wants determinism for parser-friendly output,
@@ -141,10 +118,10 @@ var (
 	// from short sessions suggested 0.3 was giving the model too much
 	// "creative" room to elaborate — accuracy beats prose variety on
 	// a clinical document.
-	geminiTempMetadata             float32 = 0.1
-	geminiTempReport               float32 = 0.2
-	geminiTopP                     float32 = 0.95
-	geminiMaxOutMetadata           int32   = 16384
+	geminiTempMetadata   float32 = 0.1
+	geminiTempReport     float32 = 0.2
+	geminiTopP           float32 = 0.95
+	geminiMaxOutMetadata int32   = 16384
 	// 3× headroom over the directive's target (2026-05-19 bump from 4096):
 	// the `TargetLengthDirective` prompt already shapes report length
 	// effectively — the cap should be a remote safety net, NOT a
@@ -159,8 +136,8 @@ var (
 	// Cost impact of the bump: zero — Vertex bills on actual output
 	// tokens, not the cap. See reportprefs.MaxOutputTokens for the
 	// per-length bumps and section_emphasis scaling.
-	geminiMaxOutReportDefault      int32   = 12288
-	geminiMaxOutReportHardCeiling  int32   = 65535
+	geminiMaxOutReportDefault     int32 = 12288
+	geminiMaxOutReportHardCeiling int32 = 65535
 	// debugLogPrompts controls whether we emit the full prompt sent to
 	// Vertex + the full raw response back, to Cloud Logging. Gated by
 	// the LLM_DEBUG_LOG_PROMPTS env var ("true" = on, anything else =
@@ -335,15 +312,9 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 	}
 
 	// Retrieve prior-session context using THIS session's distilled
-	// themes (docs/30). LLM_RAG_MODE=legacy falls back to the old
-	// raw-transcript reader. Always best-effort — empty on any failure.
-	var ragContext string
-	if ragMode() == "legacy" {
-		ragContext, err = loadRAGContext(ctx, ev.SessionID, session.PatientFileID, legacyChunkFormat(chunks))
-	} else {
-		ragContext, err = loadRAGContextV2(ctx, ev.SessionID, session.PatientFileID,
-			metadataPayload.RAGThemes, metadataPayload.RAGSummaryChunk, chunks)
-	}
+	// themes (docs/30). Best-effort — empty on any failure.
+	ragContext, err := loadRAGContextV2(ctx, ev.SessionID, session.PatientFileID,
+		metadataPayload.RAGThemes, metadataPayload.RAGSummaryChunk, chunks)
 	if err != nil {
 		logger.Warn("rag context", "error", err)
 		ragContext = ""
@@ -421,10 +392,10 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 }
 
 type SessionContext struct {
-	ID                  uuid.UUID
-	PatientFileID       uuid.UUID
-	TherapistID         uuid.UUID
-	ModalityID          uuid.UUID
+	ID            uuid.UUID
+	PatientFileID uuid.UUID
+	TherapistID   uuid.UUID
+	ModalityID    uuid.UUID
 	// ModalityType discriminates the modalities catalog into
 	// therapy vs coaching (migration 000026). Drives the localized
 	// role-label vocabulary in generateAndSaveSpeakerLabels:
@@ -550,16 +521,6 @@ func diarizationMode() string {
 		return "json"
 	}
 	return v
-}
-
-// ragMode selects the retrieval reader: "v2" (default — theme-level,
-// docs/30) or "legacy" (the pre-Phase-3 raw-transcript summary reader,
-// kept as a rollback). Anything other than "legacy" is treated as v2.
-func ragMode() string {
-	if strings.ToLower(strings.TrimSpace(os.Getenv("LLM_RAG_MODE"))) == "legacy" {
-		return "legacy"
-	}
-	return "v2"
 }
 
 // generateMetadata runs call-1 (diarization + metadata + RAG_Summary +
@@ -1960,162 +1921,6 @@ func loadModalityPrompt(ctx context.Context, modalityID uuid.UUID) (string, erro
 		return "", fmt.Errorf("decode therapist_ai_general_prompt: %w", err)
 	}
 	return prompt["system"], nil
-}
-
-// loadRAGContext retrieves up to ragTopK encrypted long-term-memory
-// summaries from this patient's prior sessions, ranked by cosine
-// similarity against currentText's embedding, decrypts them, and
-// returns a newline-joined block suitable for the call-1/call-2
-// prompt's `KONTEKST POPRZEDNICH SESJI:` slot.
-//
-// Returns empty string (and nil error) for any of:
-//   - dbPool unconfigured (local/test mode)
-//   - this patient has no prior memories yet (first session)
-//   - the query embedding failed
-//   - every nearest neighbor decrypts to empty plaintext (the legacy
-//     "RAGSummaryChunk == \"\"" historical bug; option-A backfill is
-//     skipped per user direction — those rows just rank low)
-//
-// Side effect: bumps `last_accessed_at` on the retrieved rows so
-// future compaction prioritizes stale memories. Best-effort; an
-// UPDATE failure logs Warn but doesn't fail the read.
-//
-// Prompt-budget guard: caps the joined output at ragContextMaxChars
-// to avoid blowing the call-1/call-2 input window when a patient
-// accumulates 50+ sessions. Older rows truncated last (the SELECT
-// orders by similarity ascending — closest first).
-func loadRAGContext(ctx context.Context, sessionID string, patientFileID uuid.UUID, currentText string) (string, error) {
-	if dbPool == nil {
-		return "", nil
-	}
-	if strings.TrimSpace(currentText) == "" {
-		return "", nil
-	}
-
-	queryVec, err := generateEmbedding(ctx, currentText)
-	if err != nil {
-		// Non-fatal — log via the caller's Warn. Returning empty here
-		// means the model gets no prior context this round, same as
-		// the legacy stub behavior. Better than failing the report.
-		return "", fmt.Errorf("rag query embed: %w", err)
-	}
-
-	// Two-stage filter to keep the candidate pool bounded:
-	//   stage 1 (recent CTE): patient's last ragLookbackMemories rows,
-	//     newest first by created_at. Hard ceiling so a veteran patient
-	//     with 200 sessions doesn't drag in 5-year-old states.
-	//   stage 2 (outer SELECT): nearest neighbors within that pool by
-	//     pgvector cosine distance. HNSW index
-	//     `idx_rag_memories_embedding` covers the inner ORDER BY when
-	//     the candidate count is comparable to lookback size.
-	//
-	// patient_file_id filter on the CTE is BOTH a privacy guarantee
-	// (no cross-patient leakage) and an HNSW pre-filter via the
-	// partial index `idx_rag_memories_patient_file`.
-	rows, err := dbPool.Query(ctx, `
-		WITH recent AS (
-			SELECT id, summary_ciphertext, summary_encrypted_dek, embedding
-			FROM rag_memories
-			WHERE patient_file_id = $1 AND NOT is_compacted
-			  -- chunk_type='summary' keeps this legacy reader on its
-			  -- original whole-session behavior even after persistRAGMemoryV2
-			  -- starts writing 'theme' rows. The v2 reader (docs/30 Phase 3)
-			  -- is what consumes themes; until then they accumulate dormant.
-			  AND chunk_type = 'summary'
-			ORDER BY created_at DESC
-			LIMIT $4
-		)
-		SELECT id, summary_ciphertext, summary_encrypted_dek
-		FROM recent
-		ORDER BY embedding <=> $2::vector
-		LIMIT $3`,
-		patientFileID, vectorToString(queryVec), ragTopK, ragLookbackMemories)
-	if err != nil {
-		return "", fmt.Errorf("rag query: %w", err)
-	}
-	defer rows.Close()
-
-	type memHit struct {
-		id        uuid.UUID
-		plaintext string
-	}
-	var hits []memHit
-	for rows.Next() {
-		var id uuid.UUID
-		var ct, dek []byte
-		if scanErr := rows.Scan(&id, &ct, &dek); scanErr != nil {
-			return "", fmt.Errorf("rag scan: %w", scanErr)
-		}
-		pt, decErr := crypto.Decrypt(ctx, ct, dek)
-		if decErr != nil {
-			// KMS misconfig or corrupted row. Log + skip — one bad
-			// row shouldn't poison the whole retrieval.
-			slog.Warn("rag decrypt failed", "rag_memory_id", id.String(), "error", decErr)
-			continue
-		}
-		ptStr := strings.TrimSpace(string(pt))
-		if ptStr == "" {
-			// Legacy markdown-mode rows with RAGSummaryChunk="" land
-			// here. Skip silently — they got ranked by zero-vector
-			// embedding back when the stub ran, so they're high in
-			// the result set on every query. Not actionable signal.
-			continue
-		}
-		hits = append(hits, memHit{id: id, plaintext: ptStr})
-	}
-	if rerr := rows.Err(); rerr != nil {
-		return "", fmt.Errorf("rag rows: %w", rerr)
-	}
-	if len(hits) == 0 {
-		return "", nil
-	}
-
-	// Bump last_accessed_at on the retrieved rows (best-effort).
-	// Background UPDATE so the cosmetic timestamp bump doesn't add
-	// latency to the worker's critical path.
-	hitIDs := make([]uuid.UUID, len(hits))
-	for i, h := range hits {
-		hitIDs[i] = h.id
-	}
-	go func(ids []uuid.UUID) {
-		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if _, uerr := dbPool.Exec(bgCtx,
-			`UPDATE rag_memories SET last_accessed_at = now() WHERE id = ANY($1)`,
-			ids); uerr != nil {
-			slog.Warn("rag last_accessed bump failed", "ids_count", len(ids), "error", uerr)
-		}
-	}(hitIDs)
-
-	// Join with double-newlines so the LLM sees each memory as its
-	// own paragraph. Number them (1., 2., …) so prompt instructions
-	// can reference "the most relevant prior session" naturally.
-	var sb strings.Builder
-	memoriesUsed := 0
-	for i, h := range hits {
-		next := fmt.Sprintf("%d. %s\n\n", i+1, h.plaintext)
-		// Prompt-budget guard. ragContextMaxChars is generous enough
-		// for the typical top-3 hits (~4500 chars) but trims when the
-		// LLM occasionally writes a longer summary or when ragTopK
-		// grows in the future.
-		if sb.Len()+len(next) > ragContextMaxChars {
-			break
-		}
-		sb.WriteString(next)
-		memoriesUsed++
-	}
-	resultString := strings.TrimRight(sb.String(), "\n")
-
-	// Analityka: rag.retrieved
-	slog.InfoContext(ctx, "analytics",
-		"ae", "rag.retrieved",
-		"session_id", sessionID,
-		"memories_found", len(hits),
-		"memories_used", memoriesUsed,
-		"context_chars", len(resultString),
-	)
-
-	return resultString, nil
 }
 
 // loadRAGContextV2 is the theme-level retriever (docs/30). The query is
