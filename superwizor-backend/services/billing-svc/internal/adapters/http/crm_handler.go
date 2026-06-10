@@ -32,28 +32,31 @@ func NewCRMHandler(pool *pgxpool.Pool, logger *slog.Logger) *CRMHandler {
 	return &CRMHandler{pool: pool, logger: logger}
 }
 
-// RegisterCRMRoutes registers CRM routes on the mux.
-func (h *CRMHandler) RegisterCRMRoutes(mux *http.ServeMux) {
+// RegisterCRMRoutes registers CRM routes on the mux. Every route is
+// wrapped in the SUPERWIZOR_ADMIN Firebase-token middleware — billing-svc
+// is publicly invokable, so route-level auth is the ONLY gate here
+// (the 2026-06-10 exposure: these endpoints were world-readable).
+func (h *CRMHandler) RegisterCRMRoutes(mux *http.ServeMux, auth *AdminAuthMiddleware) {
 	// Notes
-	mux.HandleFunc("GET /admin/crm/user/{userId}/notes", h.handleListNotes)
-	mux.HandleFunc("POST /admin/crm/notes", h.handleCreateNote)
+	mux.HandleFunc("GET /admin/crm/user/{userId}/notes", auth.Require(h.handleListNotes))
+	mux.HandleFunc("POST /admin/crm/notes", auth.Require(h.handleCreateNote))
 
 	// Follow-ups
-	mux.HandleFunc("GET /admin/crm/follow-ups", h.handleListFollowUps)
-	mux.HandleFunc("POST /admin/crm/follow-ups", h.handleCreateFollowUp)
-	mux.HandleFunc("PATCH /admin/crm/follow-ups/{id}/complete", h.handleCompleteFollowUp)
+	mux.HandleFunc("GET /admin/crm/follow-ups", auth.Require(h.handleListFollowUps))
+	mux.HandleFunc("POST /admin/crm/follow-ups", auth.Require(h.handleCreateFollowUp))
+	mux.HandleFunc("PATCH /admin/crm/follow-ups/{id}/complete", auth.Require(h.handleCompleteFollowUp))
 
 	// Tags
-	mux.HandleFunc("GET /admin/crm/user/{userId}/tags", h.handleListTags)
-	mux.HandleFunc("POST /admin/crm/tags", h.handleCreateTag)
-	mux.HandleFunc("DELETE /admin/crm/tags/{id}", h.handleDeleteTag)
+	mux.HandleFunc("GET /admin/crm/user/{userId}/tags", auth.Require(h.handleListTags))
+	mux.HandleFunc("POST /admin/crm/tags", auth.Require(h.handleCreateTag))
+	mux.HandleFunc("DELETE /admin/crm/tags/{id}", auth.Require(h.handleDeleteTag))
 
 	// Exclusion
-	mux.HandleFunc("POST /admin/crm/exclude", h.handleExcludeUser)
-	mux.HandleFunc("DELETE /admin/crm/exclude/{userId}", h.handleIncludeUser)
+	mux.HandleFunc("POST /admin/crm/exclude", auth.Require(h.handleExcludeUser))
+	mux.HandleFunc("DELETE /admin/crm/exclude/{userId}", auth.Require(h.handleIncludeUser))
 
 	// Detail view (aggregated)
-	mux.HandleFunc("GET /admin/crm/user/{userId}/detail", h.handleUserDetail)
+	mux.HandleFunc("GET /admin/crm/user/{userId}/detail", auth.Require(h.handleUserDetail))
 }
 
 // ──────────────────── Notes ────────────────────

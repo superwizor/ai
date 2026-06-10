@@ -129,8 +129,13 @@ func main() {
 
 	// HTTP mux (admin crons + Stripe stub + /healthz + Connect-RPC).
 	httpMux := nethttp.NewServeMux()
-	httpadapter.NewAdminHandler(pool, logger).RegisterRoutes(httpMux)
-	httpadapter.NewCRMHandler(pool, logger).RegisterCRMRoutes(httpMux)
+	// Route-level admin auth for the browser-facing CRM endpoints —
+	// billing-svc is publicly invokable, so this middleware is the only
+	// gate (2026-06-10 exposure fix). Fail-closed when identity-svc is
+	// not wired.
+	adminAuth := httpadapter.NewAdminAuthMiddleware(identityClient, logger)
+	httpadapter.NewAdminHandler(pool, logger).RegisterRoutes(httpMux, adminAuth)
+	httpadapter.NewCRMHandler(pool, logger).RegisterCRMRoutes(httpMux, adminAuth)
 	httpadapter.NewStripeHandler(pool, logger).RegisterRoutes(httpMux)
 	// Connect-RPC surface — browser callers reach the same business
 	// logic as the gRPC path via the ConnectAdapter. The connectmd
