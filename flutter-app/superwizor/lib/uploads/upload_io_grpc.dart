@@ -21,12 +21,16 @@
 //   plainFile — uploads sourcePath directly. We don't take ownership
 //     of the file; cleanupSource is a no-op.
 //
-// HTTP PUT loads the whole file into memory (same as the legacy
-// UploadService — for 1–30 MB FLAC on iPhone it's fine). A streaming
-// PUT with progress is a follow-up; the worker already accepts an
-// onProgress callback in the interface so the wiring is ready.
+// Transfer resilience (docs/26 R2, fix/upload-stall-resilience):
+// every HTTP call carries a timeout (a stalled mobile socket used to
+// hang putBytes forever, freezing the runner's tick loop), chunk PUTs
+// stream their body in slices so the progress bar moves *within* a
+// chunk, and transient chunk failures retry in-attempt against the
+// GCS-acked offset instead of punting every blip to the worker's
+// exponential backoff.
 
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/foundation.dart';
@@ -63,13 +67,44 @@ class GrpcUploadIo implements UploadIo {
     required ingestion_grpc.IngestionServiceClient ingestion,
     required SecureAudioStorageService secureStorage,
     http.Client? httpClient,
+    Duration Function(int stuckRound)? chunkRetryDelay,
+    Duration Function(int transferBytes)? transferTimeout,
+    int maxStuckRounds = 4,
   })  : _ingestion = ingestion,
         _secureStorage = secureStorage,
-        _http = httpClient ?? http.Client();
+        _http = httpClient ?? http.Client(),
+        _chunkRetryDelay = chunkRetryDelay ?? _defaultChunkRetryDelay,
+        _transferTimeout = transferTimeout ?? _defaultTransferTimeout,
+        _maxStuckRounds = maxStuckRounds;
 
   final ingestion_grpc.IngestionServiceClient _ingestion;
   final SecureAudioStorageService _secureStorage;
   final http.Client _http;
+
+  /// Delay between in-attempt chunk retries, by consecutive rounds with
+  /// zero offset advance. Injectable so tests don't sleep.
+  final Duration Function(int stuckRound) _chunkRetryDelay;
+
+  /// Timeout for a body-bearing PUT, scaled by payload size.
+  final Duration Function(int transferBytes) _transferTimeout;
+
+  /// Consecutive zero-progress rounds tolerated inside one putBytes call
+  /// before escalating to the worker's (slower) retry schedule.
+  final int _maxStuckRounds;
+
+  /// 2 s, 4 s, 8 s, 16 s, 32 s — quick enough to ride out a Wi-Fi↔LTE
+  /// handoff without surfacing an attempt failure to the UI.
+  static Duration _defaultChunkRetryDelay(int stuckRound) =>
+      Duration(seconds: 1 << (1 + stuckRound.clamp(0, 4)));
+
+  /// 30 s grace + a 40 KiB/s throughput floor: an 8 MiB chunk gets
+  /// ~4 min before a stalled socket is declared dead. Generous enough
+  /// that a genuinely slow-but-moving uplink never trips it.
+  static Duration _defaultTransferTimeout(int transferBytes) =>
+      Duration(seconds: 30 + transferBytes ~/ (40 * 1024));
+
+  /// The `bytes */total` offset probe carries no body — 30 s is plenty.
+  static const Duration _offsetQueryTimeout = Duration(seconds: 30);
 
   // ── step 0b: on-device encryption (phase=encrypting only) ─────
 
@@ -304,13 +339,16 @@ class GrpcUploadIo implements UploadIo {
       // ── Legacy single-PUT path (no resumable session) ──
       final bytes = await file.readAsBytes();
       debugPrint('[upload-io] PUT ${bytes.length}B → ${_redact(signedUrl!)}');
-      final response = await _http.put(
+      final response = await _sendBody(
         Uri.parse(signedUrl),
+        bytes,
         headers: {
           'Content-Type': u.contentType,
           'x-goog-meta-source': 'superwizor-mobile',
         },
-        body: bytes,
+        onSent: onProgress == null
+            ? null
+            : (sent) => onProgress(sent / bytes.length),
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {
@@ -336,10 +374,17 @@ class GrpcUploadIo implements UploadIo {
   //
   // GCS resumable protocol: PUT byte-range chunks to the session URI.
   // The GCS-acked offset is queried live (resume()), so a single putBytes
-  // call uploads as many chunks as it can; on any failure it throws
-  // (retryable) and the worker's next attempt resume()s from the offset
-  // GCS holds — surviving network drops AND app-kill without restarting
-  // from byte 0 and without persisting the offset locally.
+  // call uploads as many chunks as it can — surviving network drops AND
+  // app-kill without restarting from byte 0 and without persisting the
+  // offset locally.
+  //
+  // Failure handling (docs/26 R2): a transient chunk error retries
+  // in-attempt — re-query the acked offset, wait a few seconds, carry
+  // on. Only [_maxStuckRounds] consecutive rounds with ZERO offset
+  // advance escalate to the worker; if bytes moved at any point in this
+  // attempt the escalation is wrapped in [UploadProgressMadeError] so
+  // the worker restarts its backoff ladder. Session-gone / terminal
+  // statuses propagate immediately — retrying those locally is wasted.
   Future<void> _putResumable(
     File file,
     String sessionUri,
@@ -360,60 +405,124 @@ class GrpcUploadIo implements UploadIo {
         : 8 * 1024 * 1024;
 
     var offset = await _resumableQueryOffset(sessionUri, total);
-    if (offset >= total) {
-      onProgress?.call(1.0); // GCS already has the whole object
-      return;
-    }
+    // Surface the resume position immediately — after an app-kill or a
+    // failed attempt the bar would otherwise sit on a stale value until
+    // the next full chunk lands.
+    onProgress?.call(offset / total);
+    if (offset >= total) return; // GCS already has the whole object
+
+    final startOffset = offset;
+    var stuckRounds = 0;
 
     final raf = await file.open(mode: FileMode.read);
     try {
       while (offset < total) {
-        final end = (offset + chunkSize < total) ? offset + chunkSize : total;
-        final len = end - offset;
-        await raf.setPosition(offset);
-        final body = await raf.read(len);
-        final resp = await _http.put(
-          Uri.parse(sessionUri),
-          headers: {
-            'Content-Length': '$len',
-            'Content-Range': 'bytes $offset-${end - 1}/$total',
-          },
-          body: body,
-        );
-        if (resp.statusCode == 200 || resp.statusCode == 201) {
-          onProgress?.call(1.0); // final chunk → object finalized exactly once
-          return;
+        final end = math.min(offset + chunkSize, total);
+        try {
+          await raf.setPosition(offset);
+          final body = await raf.read(end - offset);
+          final resp = await _sendBody(
+            Uri.parse(sessionUri),
+            body,
+            headers: {'Content-Range': 'bytes $offset-${end - 1}/$total'},
+            onSent: onProgress == null
+                ? null
+                // Intra-chunk progress: socket-buffered bytes, slightly
+                // ahead of GCS-acked — corrected on the next 308.
+                : (sent) => onProgress((offset + sent) / total),
+          );
+          if (resp.statusCode == 200 || resp.statusCode == 201) {
+            onProgress?.call(1.0); // final chunk → object finalized
+            return;
+          }
+          if (resp.statusCode == 308) {
+            final next = _parseResumeOffset(resp.headers, fallback: end);
+            if (next > offset) stuckRounds = 0;
+            offset = next;
+            onProgress?.call(offset / total);
+            continue;
+          }
+          if (resp.statusCode == 404 ||
+              resp.statusCode == 410 ||
+              resp.statusCode == 403) {
+            // Session dead/expired — surface as 403 so the worker's
+            // signedUrl-expired path drops back to pending and re-creates
+            // (CreateAudioUpload re-issues a fresh resumable session).
+            throw httpStatusError(
+                403, 'resumable session gone: ${resp.statusCode}');
+          }
+          throw httpStatusError(resp.statusCode, resp.body);
+        } catch (e) {
+          // Non-retryable (session gone, genuine 4xx) → the worker owns
+          // the next move; local retries would burn time for nothing.
+          if (classifyUploadError(e).kind != UploadErrorClass.retryable) {
+            rethrow;
+          }
+          // Transient — ask GCS what actually landed before deciding
+          // whether this round counts as stuck.
+          int acked;
+          try {
+            acked = await _resumableQueryOffset(sessionUri, total);
+          } catch (_) {
+            acked = offset; // probe failed too → stuck round
+          }
+          if (acked > offset) {
+            offset = acked;
+            onProgress?.call(offset / total);
+            stuckRounds = 0;
+          } else {
+            stuckRounds++;
+          }
+          if (stuckRounds > _maxStuckRounds) {
+            debugPrint('[upload-io] resumable stuck at $offset/$total '
+                'after $stuckRounds zero-progress rounds: $e');
+            if (offset > startOffset) throw UploadProgressMadeError(e);
+            rethrow;
+          }
+          if (stuckRounds > 0) {
+            await Future<void>.delayed(_chunkRetryDelay(stuckRounds - 1));
+          }
         }
-        if (resp.statusCode == 308) {
-          offset = _parseResumeOffset(resp.headers, fallback: end);
-          onProgress?.call(offset / total);
-          continue;
-        }
-        if (resp.statusCode == 404 ||
-            resp.statusCode == 410 ||
-            resp.statusCode == 403) {
-          // Session dead/expired — surface as 403 so the worker's
-          // signedUrl-expired path drops back to pending and re-creates
-          // (CreateAudioUpload re-issues a fresh resumable session).
-          throw httpStatusError(403, 'resumable session gone: ${resp.statusCode}');
-        }
-        // 5xx / other — retryable. Throw; the next attempt resume()s.
-        throw httpStatusError(resp.statusCode, resp.body);
       }
+      // Loop exit without a 200/201: the post-failure offset probe
+      // reported all bytes held, i.e. GCS finalized the object.
+      onProgress?.call(1.0);
     } finally {
       await raf.close();
     }
+  }
+
+  /// One body-bearing PUT with streamed intra-body progress and a
+  /// size-scaled timeout. [onSent] receives cumulative bytes handed to
+  /// the socket (dart:io applies backpressure when piping the slice
+  /// stream, so this tracks real transmission closely).
+  Future<http.Response> _sendBody(
+    Uri url,
+    Uint8List body, {
+    Map<String, String> headers = const {},
+    void Function(int sentBytes)? onSent,
+  }) {
+    final req = _ProgressedBytesRequest(url, body, onSent: onSent);
+    req.headers.addAll(headers);
+    Future<http.Response> roundTrip() async {
+      final streamed = await _http.send(req);
+      return http.Response.fromStream(streamed);
+    }
+
+    return roundTrip().timeout(_transferTimeout(body.length));
   }
 
   /// Queries the GCS resumable session for how many bytes it already holds.
   /// `Content-Range: bytes */total` with an empty body. Returns the next
   /// byte offset to send (0 if nothing held, total if already complete).
   Future<int> _resumableQueryOffset(String sessionUri, int total) async {
-    final resp = await _http.put(
-      Uri.parse(sessionUri),
-      headers: {'Content-Range': 'bytes */$total', 'Content-Length': '0'},
-      body: const <int>[],
-    );
+    final resp = await _http
+        .put(
+          Uri.parse(sessionUri),
+          headers: {'Content-Range': 'bytes */$total', 'Content-Length': '0'},
+          body: const <int>[],
+        )
+        .timeout(_offsetQueryTimeout);
     if (resp.statusCode == 200 || resp.statusCode == 201) return total;
     if (resp.statusCode == 308) {
       return _parseResumeOffset(resp.headers, fallback: 0);
@@ -548,5 +657,37 @@ class GrpcUploadIo implements UploadIo {
   String _redact(String url) {
     final q = url.indexOf('?');
     return q < 0 ? url : '${url.substring(0, q)}?<redacted>';
+  }
+}
+
+/// A PUT whose body streams in 64 KiB slices, reporting cumulative bytes
+/// after each slice is pulled by the consumer. dart:io pipes the stream
+/// into the socket with backpressure, so [onSent] approximates real
+/// transmission — close enough for a progress bar, and corrected against
+/// the GCS-acked offset on every 308. Content-Length is fixed (no
+/// chunked transfer-encoding — GCS signed PUTs reject it).
+class _ProgressedBytesRequest extends http.BaseRequest {
+  _ProgressedBytesRequest(Uri url, this._body, {this.onSent})
+      : super('PUT', url) {
+    contentLength = _body.length;
+  }
+
+  final Uint8List _body;
+  final void Function(int sentBytes)? onSent;
+
+  static const int _sliceSize = 64 * 1024;
+
+  @override
+  http.ByteStream finalize() {
+    super.finalize();
+    return http.ByteStream(_slices());
+  }
+
+  Stream<List<int>> _slices() async* {
+    for (var i = 0; i < _body.length; i += _sliceSize) {
+      final end = math.min(i + _sliceSize, _body.length);
+      yield Uint8List.sublistView(_body, i, end);
+      onSent?.call(end);
+    }
   }
 }

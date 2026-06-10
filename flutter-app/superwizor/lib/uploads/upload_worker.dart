@@ -75,10 +75,12 @@ class UploadWorker {
     DateTime Function()? clock,
     BackoffPolicy? backoff,
     int? maxAttemptsForTerminalClassError,
+    Duration? putRetryCap,
   })  : _io = io,
         _clock = clock ?? (() => DateTime.now().toUtc()),
         _backoff = backoff ?? defaultBackoff,
-        _terminalRetryCap = maxAttemptsForTerminalClassError ?? 1;
+        _terminalRetryCap = maxAttemptsForTerminalClassError ?? 1,
+        _putRetryCap = putRetryCap ?? const Duration(seconds: 90);
 
   final UploadIo _io;
   final DateTime Function() _clock;
@@ -89,6 +91,14 @@ class UploadWorker {
   /// it to assert behavior on subsequent attempts.
   // ignore: unused_field
   final int _terminalRetryCap;
+
+  /// Backoff ceiling for retryable errors in the `created` (GCS PUT)
+  /// phase. The exponential ladder exists to protect the *server* from
+  /// RPC retry storms; a PUT fails when the phone's own link is down,
+  /// so there is nothing to protect and the resumable session makes a
+  /// retry nearly free. Without the cap a 127 MB transfer over flaky
+  /// cellular escalates toward 8–30 min of idle per blip.
+  final Duration _putRetryCap;
 
   /// Advances [u] by one phase. Always returns a new PendingUpload
   /// reflecting the outcome; never throws.
@@ -263,6 +273,13 @@ class UploadWorker {
         clearLastError: true,
       );
     } catch (e) {
+      // The attempt failed but advanced the GCS resumable offset first
+      // — the network works, just not reliably. Restart the backoff
+      // ladder so the next try comes quickly; escalation is reserved
+      // for attempts stuck at the same byte.
+      if (e is UploadProgressMadeError) {
+        return _classify(u.copyWith(attemptCount: 0), e.cause);
+      }
       return _classify(u, e);
     }
   }
@@ -360,7 +377,10 @@ class UploadWorker {
 
   PendingUpload _scheduleRetry(PendingUpload u, String error) {
     final nextAttempt = u.attemptCount + 1;
-    final delay = _backoff(nextAttempt);
+    var delay = _backoff(nextAttempt);
+    if (u.phase == UploadPhase.created && delay > _putRetryCap) {
+      delay = _putRetryCap; // see _putRetryCap doc
+    }
     final now = _clock();
     return u.copyWith(
       attemptCount: nextAttempt,
