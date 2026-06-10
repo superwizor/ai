@@ -106,6 +106,59 @@ test on Marcin's iPhone build.
   retryFailed/dismiss/connectivity). Worth a separate cleanup task.
   Evidence: `evidence/fix-app-audio-conversion/`.
 
+### Recording lost on phone call (branch `fix/recording-call-interruption`, 2026-06-09)
+
+Off `main` (83b6e41…). **Not yet merged** — code complete
+(WS1–**WS5** of `docs/28_RECORDING_INTERRUPTION_RESILIENCE.md`), awaiting the
+on-device manual matrix (docs/28 §8.3 M1–M10) on physical iPhone **+ Android**;
+phone-call interruptions can't be simulated.
+
+- **Bug:** incoming phone call during a session recording → recorder
+  natively auto-pauses (record_ios `AudioInterruptionMode.pause` default)
+  and never resumes; app never subscribed to `onStateChanged` so UI kept
+  saying "recording"; if the backgrounded app was killed during the call,
+  the partial `raw.flac` was orphaned with no recovery path → session
+  totally lost.
+- **Fix:** (1) durable `manifest.json` written next to `raw.flac` at
+  recording start + once-per-launch orphan-recovery scan with send/later/
+  delete sheet on HomeScreenV2 (`RecordingRecoveryGuard`); (2) native
+  state sync with intent timestamps → new `RecordingState.interrupted` +
+  banner, frozen duration clock; (3) verified resume: iOS
+  `superwizor/audio_session` MethodChannel reactivates the AVAudioSession
+  (plugin's resume never does), then a **file-growth probe** confirms
+  capture (plugin's `isRecording()`/state stream flip optimistically even
+  when `AVAudioRecorder.record()` fails — verified in plugin source, do
+  NOT trust them); (4) `actualDurationSeconds` excludes interruption gaps.
+- **Gotchas for next time:** `RecordingService` now takes injectable
+  recorder/documentsDir/wakelock for tests; plugin `isPaused()` is the
+  meaningful reconcile probe (`isRecording()` = `state != stop`, so
+  paused counts as recording!); new Swift file had to be hand-added to
+  `project.pbxproj` (4 entries, mirror AudioConverter.swift).
+- **WS5 — Android foreground service (NOW IMPLEMENTED):** `record` plugin
+  has no FGS, so a backgrounded Android recording dies on a long call.
+  Added `RecordingForegroundService.kt` (microphone FGS +
+  `START_NOT_STICKY` + ongoing notification), `superwizor/recording_fgs`
+  channel in `MainActivity.kt`, `<service microphone>` +
+  `POST_NOTIFICATIONS` in the manifest, and
+  `recording_foreground_service.dart` (best-effort, Android-only, never
+  aborts recording). Notification strings flow from the l10n pipeline
+  (`recording_fgs_notification_*`); Kotlin has PL fallbacks. Started in
+  `RecordingService.start`, stopped on stop/cancel/unexpected-stop.
+- **R1 RESOLVED — recovered FLAC forced through server ffmpeg:** instead
+  of betting Chirp accepts an unfinalized FLAC header, `recover()` uploads
+  with content-type **`audio/x-flac`** (a real FLAC MIME that's NOT in the
+  server's `IsChirpSupported` list) → ingestion-svc runs its lossless
+  ffmpeg re-encode → clean header. Server's ext-map defaults unknown types
+  to `.flac` so ffmpeg demuxes correctly; a `audio/mp4` mislabel would
+  break the demuxer (`.m4a` path), hence x-flac. **Backend gotcha:** the
+  coupling lives in `converter.go:IsChirpSupported` — locked by a new case
+  in `converter_test.go` (`audio/x-flac` → false). The local
+  `needsServerSideConversion` bool is NOT sent on the RPC; content-type is
+  the only server trigger.
+- **Tests:** 26 recording unit tests green + backend `TestIsChirpSupported`
+  green + `go build ./services/ingestion-svc/...` clean; full Flutter suite
+  181 green, analyze at 20-issue baseline.
+
 ### Out-of-slice fixes / improvements landed 2026-05-29
 
 All on `feat/web-app`. Independent of any specific slice; ship-ready as

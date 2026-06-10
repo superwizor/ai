@@ -563,6 +563,18 @@ func submitBatchRecognize(
 // (e.g. M4A/AAC), the response carries an INTERNAL/INVALID_ARGUMENT
 // per-file Error, and ProcessAudio would otherwise see WordCount=0 and
 // keep going.
+// maxPlausibleWordOffsetMS bounds a single word's start/end timestamp.
+// Chirp occasionally emits a word with a garbage offset (observed
+// 281,646,122,235 ms ≈ 8.9 years on 2026-06-08 for session 12d8c857, a
+// 7-chunk recording). Such a value (a) overflows the int4
+// transcript_segments.start_offset_ms column → persistTranscript fails →
+// the session hangs in TRANSCRIBING forever, and (b) corrupts the merged
+// timeline / segment ordering downstream. A real word can never sit
+// beyond the recording length; the upload pipeline caps recordings well
+// under this 24h bound, so anything past it is unambiguously garbage and
+// is dropped (24h ≈ 86.4M ms, far below int4's ~24.8-day ceiling).
+const maxPlausibleWordOffsetMS = 24 * 60 * 60 * 1000
+
 func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarization bool, fallbackLanguage string) (*TranscriptResult, error) {
 	result := &TranscriptResult{
 		HasNativeDiarization: useNativeDiarization,
@@ -570,6 +582,7 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 	speakerSet := map[string]bool{}
 	totalConfidence := float32(0)
 	confidenceCount := 0
+	droppedWords := 0
 
 	// Collect every file-level error so the message names all failing
 	// inputs at once (useful if/when we ever batch multiple files).
@@ -606,10 +619,20 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 			}
 
 			for _, w := range alt.Words {
+				startMS := w.StartOffset.AsDuration().Milliseconds()
+				endMS := w.EndOffset.AsDuration().Milliseconds()
+				// Drop words with implausible timestamps (garbage from
+				// Chirp). Without this, a single bad offset overflows the
+				// int4 transcript_segments column and hangs the session.
+				// See maxPlausibleWordOffsetMS.
+				if startMS < 0 || endMS < startMS || startMS > maxPlausibleWordOffsetMS || endMS > maxPlausibleWordOffsetMS {
+					droppedWords++
+					continue
+				}
 				word := chunker.Word{
 					Text:       w.Word,
-					StartMS:    w.StartOffset.AsDuration().Milliseconds(),
-					EndMS:      w.EndOffset.AsDuration().Milliseconds(),
+					StartMS:    startMS,
+					EndMS:      endMS,
 					Confidence: w.Confidence,
 				}
 				if useNativeDiarization {
@@ -640,6 +663,15 @@ func ParseChirp3Results(resp *speechpb.BatchRecognizeResponse, useNativeDiarizat
 		result.ConfidenceAvg = totalConfidence / float32(confidenceCount)
 	}
 	result.SpeakerCount = len(speakerSet)
+
+	if droppedWords > 0 {
+		// Observability for Chirp-emitted garbage timestamps. Non-zero
+		// here means we dodged an int4 overflow / hung session.
+		slog.Warn("dropped words with implausible timestamps",
+			"dropped_words", droppedWords,
+			"kept_words", result.WordCount,
+			"max_offset_ms", maxPlausibleWordOffsetMS)
+	}
 
 	// Fallback for the case where Chirp didn't populate LanguageCode
 	// on any result (multi-detect with no recognized words, or older

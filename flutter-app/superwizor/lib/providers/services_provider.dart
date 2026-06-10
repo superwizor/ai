@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/consent_service.dart';
 import '../services/fcm_token_service.dart';
+import '../services/recording_manifest_store.dart';
 import '../services/recording_service.dart';
 import '../services/secure_audio_storage_service.dart';
 import '../services/session_state_listener.dart';
@@ -41,6 +42,10 @@ final recordingServiceProvider = Provider<RecordingService>((ref) {
   ref.onDispose(svc.dispose);
   return svc;
 });
+
+final recordingManifestStoreProvider = Provider<RecordingManifestStore>(
+  (ref) => RecordingManifestStore(),
+);
 
 final uploadServiceProvider = Provider<UploadService>((ref) {
   return UploadService(ref.watch(secureAudioStorageProvider));

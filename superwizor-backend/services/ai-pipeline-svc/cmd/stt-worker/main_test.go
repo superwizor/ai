@@ -67,6 +67,67 @@ func TestParseChirp3Results(t *testing.T) {
 	assert.Equal(t, "How are you?", chunks[1].Text)
 }
 
+// TestParseChirp3Results_DropsImplausibleWordOffsets — regression guard for
+// session 12d8c857 (2026-06-08): Chirp emitted a word whose StartOffset was
+// ~281.6 million seconds (281,646,122,235 ms). Faithfully carrying it
+// overflowed the int4 transcript_segments.start_offset_ms column →
+// persistTranscript failed → the session hung in TRANSCRIBING forever.
+// ParseChirp3Results must now drop such garbage words and keep the good ones.
+func TestParseChirp3Results_DropsImplausibleWordOffsets(t *testing.T) {
+	// The exact production value: 281,646,122,235 ms ≈ 8.9 years.
+	garbageOffset := durationpb.New(281646122235 * time.Millisecond)
+	resp := &speechpb.BatchRecognizeResponse{
+		Results: map[string]*speechpb.BatchRecognizeFileResult{
+			"file1": {
+				Result: &speechpb.BatchRecognizeFileResult_InlineResult{
+					InlineResult: &speechpb.InlineResult{
+						Transcript: &speechpb.BatchRecognizeResults{
+							Results: []*speechpb.SpeechRecognitionResult{
+								{
+									LanguageCode: "pl-PL",
+									Alternatives: []*speechpb.SpeechRecognitionAlternative{
+										{
+											Confidence: 0.9,
+											Words: []*speechpb.WordInfo{
+												{Word: "Dzień", StartOffset: durationpb.New(100 * time.Millisecond), EndOffset: durationpb.New(500 * time.Millisecond)},
+												// Garbage: absurd absolute offset (the prod bug).
+												{Word: "GARBAGE", StartOffset: garbageOffset, EndOffset: durationpb.New(garbageOffset.AsDuration() + 200*time.Millisecond)},
+												// Garbage: end before start.
+												{Word: "REVERSED", StartOffset: durationpb.New(900 * time.Millisecond), EndOffset: durationpb.New(800 * time.Millisecond)},
+												// Garbage: negative offset.
+												{Word: "NEG", StartOffset: durationpb.New(-5 * time.Millisecond), EndOffset: durationpb.New(10 * time.Millisecond)},
+												{Word: "dobry.", StartOffset: durationpb.New(600 * time.Millisecond), EndOffset: durationpb.New(1000 * time.Millisecond)},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result, err := ParseChirp3Results(resp, false, "pl-PL")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Only the two plausible words survive.
+	assert.Equal(t, 2, result.WordCount)
+	require.Len(t, result.Words, 2)
+	assert.Equal(t, "Dzień", result.Words[0].Text)
+	assert.Equal(t, "dobry.", result.Words[1].Text)
+
+	// Every surviving offset is within int4 range (the overflow is gone).
+	for _, w := range result.Words {
+		assert.LessOrEqual(t, w.StartMS, int64(maxPlausibleWordOffsetMS))
+		assert.GreaterOrEqual(t, w.StartMS, int64(0))
+		assert.GreaterOrEqual(t, w.EndMS, w.StartMS)
+		assert.Less(t, w.StartMS, int64(2147483647), "must fit int4 transcript_segments.start_offset_ms")
+	}
+}
+
 // TestParseChirp3Results_NativeDiarization — feature flag USE_NATIVE_DIARIZATION=true
 // (przyszła ścieżka gdy polski będzie supported).
 func TestParseChirp3Results_NativeDiarization(t *testing.T) {

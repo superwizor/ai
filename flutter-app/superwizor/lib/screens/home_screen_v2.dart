@@ -24,6 +24,7 @@ import '../widgets/avatar_customize_sheet.dart';
 import '../widgets/pending_uploads_pill.dart';
 import '../widgets/preference_suggestion_banner.dart';
 import '../widgets/quota_warning_banner.dart';
+import '../widgets/recording_recovery_prompt.dart';
 import 'client_details_screen.dart';
 import 'menu_screen.dart';
 
@@ -53,6 +54,9 @@ class HomeScreen extends ConsumerWidget {
           Container(
             color: const Color(0xFF173E43), // Tło: #173e43
           ),
+          // Once-per-launch orphaned-recording recovery prompt
+          // (docs/28 WS1) — zero-size, only ever shows bottom sheets.
+          const RecordingRecoveryGuard(),
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
