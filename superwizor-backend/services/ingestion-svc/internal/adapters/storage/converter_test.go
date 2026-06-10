@@ -39,6 +39,15 @@ func TestIsChirpSupported(t *testing.T) {
 		{"audio/x-ms-wma", false},
 		{"", false},
 		{"text/plain", false},
+
+		// audio/x-flac MUST stay unsupported. The Flutter orphan-recovery
+		// path (docs/28 R1) uploads possibly-unfinalized recovered FLAC
+		// under this MIME *specifically* so the subscriber routes it
+		// through ffmpeg, which rewrites a clean STREAMINFO header Chirp
+		// will accept. Adding audio/x-flac here would skip that re-encode
+		// and resurrect the unfinalized-header rejection. Do not change
+		// without updating recording_recovery_service.dart.
+		{"audio/x-flac", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.ct, func(t *testing.T) {

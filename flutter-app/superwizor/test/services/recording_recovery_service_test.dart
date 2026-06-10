@@ -173,11 +173,13 @@ void main() {
     expect(row.patientLanguageCode, 'pl-PL');
     expect(row.sourceKind, UploadSourceKind.plainFile);
     expect(row.sourcePath, r.flacPath);
-    expect(row.contentType, 'audio/flac');
+    // audio/x-flac (not audio/flac) so the server re-encodes a possibly
+    // unfinalized FLAC header via ffmpeg — see recover() docs / docs/28 R1.
+    expect(row.contentType, 'audio/x-flac');
     expect(row.sizeBytes, r.sizeBytes);
     expect(row.chunkCount, 1);
     expect(row.actualDurationSeconds, r.estimatedDuration.inSeconds);
-    expect(row.needsServerSideConversion, isFalse);
+    expect(row.needsServerSideConversion, isTrue);
     expect(row.phase, UploadPhase.pending);
     expect(runner.kicks, 1);
 

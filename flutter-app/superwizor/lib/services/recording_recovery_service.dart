@@ -160,6 +160,22 @@ class RecordingRecoveryService {
   /// deletes the manifest — ownership transfers to the queue row.
   /// sessionId doubles as the idempotency key, so a recovery retried
   /// after a mid-enqueue kill cannot create a duplicate server row.
+  ///
+  /// Content-type is `audio/x-flac`, NOT `audio/flac` — deliberately
+  /// (docs/28 R1). A recording killed mid-capture leaves an *unfinalized*
+  /// FLAC: its STREAMINFO header has `total_samples = 0` and no stream
+  /// MD5, which Chirp 3 may reject. The server transcodes any source
+  /// whose content-type is not in `IsChirpSupported` (ingestion-svc
+  /// converter.go) — and `audio/x-flac` (a legitimate alternative FLAC
+  /// MIME) is not in that list, so the bytes route through the server's
+  /// lossless ffmpeg re-encode, which rewrites a clean, finalized FLAC
+  /// header. The server's content-type→extension map defaults unknown
+  /// types to `.flac`, so ffmpeg still demuxes the real FLAC bytes
+  /// correctly (a mislabel like `audio/mp4` would set a `.m4a` object
+  /// path and break ffmpeg's demuxer). A converter unit test locks the
+  /// `IsChirpSupported("audio/x-flac") == false` coupling.
+  static const String _recoveryContentType = 'audio/x-flac';
+
   Future<PendingUpload> recover(RecoverableRecording r) async {
     final m = r.manifest;
     final pending = PendingUpload.initial(
@@ -169,11 +185,13 @@ class RecordingRecoveryService {
       patientLanguageCode: m.patientLanguageCode,
       sourceKind: UploadSourceKind.plainFile,
       sourcePath: r.flacPath,
-      contentType: 'audio/flac',
+      contentType: _recoveryContentType,
       sizeBytes: r.sizeBytes,
       chunkCount: 1,
       actualDurationSeconds: r.estimatedDuration.inSeconds,
-      needsServerSideConversion: false,
+      // Local-intent flag for observability; the actual server trigger is
+      // the content-type above (the flag itself is never sent on the RPC).
+      needsServerSideConversion: true,
       idempotencyKey: m.sessionId,
       now: DateTime.now().toUtc(),
     );
