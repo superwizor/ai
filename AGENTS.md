@@ -63,6 +63,14 @@ A clinical session co-pilot for psychotherapists. Therapist records a session in
 | GitHub repo | `superwizor/ai` |
 | WIF condition | `assertion.repository == "superwizor/ai"` |
 
+## Portal Commands (KOMENDY/)
+
+The `KOMENDY/` directory contains shortcut scripts for the developer. Each command consists of two files:
+1. A short wrapper script named `KOMENDY/<number>` (e.g. `KOMENDY/5`).
+2. The actual implementation script named `KOMENDY/<number>_<name>.sh` (e.g. `KOMENDY/5_zbuduj_i_otworz_xcode.sh`).
+
+When modifying these scripts, ensure both the wrapper's comments/behavior and the implementation script are updated and kept in sync.
+
 ## Common gotchas (real bugs we hit; don't repeat)
 
 - `Bad CPU type in executable` on `cloud-sql-proxy` → wrong arch.
