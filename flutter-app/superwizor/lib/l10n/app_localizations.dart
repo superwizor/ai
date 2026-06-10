@@ -890,6 +890,18 @@ abstract class AppLocalizations {
   /// **'Usuń to nagranie bezpowrotnie.'**
   String get recording_pending_upload_destructive;
 
+  /// No description provided for @recording_fgs_notification_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Trwa nagrywanie sesji'**
+  String get recording_fgs_notification_title;
+
+  /// No description provided for @recording_fgs_notification_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Superwizor nagrywa sesję. Nie zamykaj aplikacji.'**
+  String get recording_fgs_notification_body;
+
   /// No description provided for @recording_interrupted_banner_title.
   ///
   /// In pl, this message translates to:

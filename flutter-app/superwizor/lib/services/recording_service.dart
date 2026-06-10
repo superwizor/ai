@@ -47,6 +47,7 @@ import 'package:record/record.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'audio_session_helper.dart';
+import 'recording_foreground_service.dart';
 
 enum RecordingState { idle, recording, paused, interrupted, stopped, error }
 
@@ -133,7 +134,15 @@ class RecordingService {
   /// Begins a fresh recording for [sessionId]. The FLAC file lands at
   /// `<docs>/sessions/<sessionId>/raw.flac`. Throws if a recording is
   /// already in progress.
-  Future<void> start(String sessionId) async {
+  ///
+  /// [fgsTitle]/[fgsBody] are the localized strings for the Android
+  /// recording foreground-service notification (docs/28 WS5); the screen
+  /// passes them from the l10n pipeline. Ignored on iOS/web.
+  Future<void> start(
+    String sessionId, {
+    String? fgsTitle,
+    String? fgsBody,
+  }) async {
     if (_state != RecordingState.idle &&
         _state != RecordingState.stopped &&
         _state != RecordingState.error) {
@@ -185,6 +194,9 @@ class RecordingService {
     );
 
     await _setWakelock(true);
+    // Keep the process alive if the app is backgrounded mid-recording
+    // (phone call). Best-effort, Android-only; never blocks recording.
+    await RecordingForegroundService.start(title: fgsTitle, body: fgsBody);
 
     _activeFilePath = outPath;
     _activeSessionId = sessionId;
@@ -288,6 +300,7 @@ class RecordingService {
     _ticker?.cancel();
     _ticker = null;
     await _setWakelock(false);
+    await RecordingForegroundService.stop();
     _setState(RecordingState.stopped);
     final out = returnedPath ?? _activeFilePath;
     _activeFilePath = null;
@@ -305,6 +318,7 @@ class RecordingService {
     _segmentStart = null;
     _accumulated = Duration.zero;
     await _setWakelock(false);
+    await RecordingForegroundService.stop();
     _setState(RecordingState.idle);
 
     final target = path ?? _activeFilePath;
@@ -395,6 +409,9 @@ class RecordingService {
           _foldSegment();
           _ticker?.cancel();
           _ticker = null;
+          // Recording is over (failed) — tear down the foreground service
+          // so it doesn't linger as a phantom "recording" notification.
+          unawaited(RecordingForegroundService.stop());
           _setState(RecordingState.error);
         }
     }

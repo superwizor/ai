@@ -165,6 +165,9 @@
   "recording_pending_upload_primary": "Submit for analysis.",
   "recording_pending_upload_destructive": "Delete this recording permanently.",
 
+  "recording_fgs_notification_title": "Session recording in progress",
+  "recording_fgs_notification_body": "Superwizor is recording the session. Keep the app open.",
+
   "recording_interrupted_banner_title": "Recording paused",
   "recording_interrupted_banner_body": "A phone call or another app interrupted the recording. Everything captured so far is safe.",
   "recording_interrupted_resume": "Resume recording",

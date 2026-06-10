@@ -250,11 +250,18 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   }
 
   Future<void> _start() async {
+    // Captured before the first await so we don't reach across an async
+    // gap for context; feeds the Android FGS notification (docs/28 WS5).
+    final t = AppLocalizations.of(context);
     final ok = await _ensureMicPermission();
     if (!ok) return;
     try {
       _sessionId = const Uuid().v4();
-      await _service.start(_sessionId!);
+      await _service.start(
+        _sessionId!,
+        fgsTitle: t.recording_fgs_notification_title,
+        fgsBody: t.recording_fgs_notification_body,
+      );
       ref.read(analyticsCollectorProvider).track("recording.started");
 
       // Durable manifest next to raw.flac (docs/28 WS1): from this moment

@@ -448,6 +448,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Delete this recording permanently.';
 
   @override
+  String get recording_fgs_notification_title =>
+      'Session recording in progress';
+
+  @override
+  String get recording_fgs_notification_body =>
+      'Superwizor is recording the session. Keep the app open.';
+
+  @override
   String get recording_interrupted_banner_title => 'Recording paused';
 
   @override

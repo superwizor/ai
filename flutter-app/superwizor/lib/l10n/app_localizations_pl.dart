@@ -455,6 +455,13 @@ class AppLocalizationsPl extends AppLocalizations {
       'Usuń to nagranie bezpowrotnie.';
 
   @override
+  String get recording_fgs_notification_title => 'Trwa nagrywanie sesji';
+
+  @override
+  String get recording_fgs_notification_body =>
+      'Superwizor nagrywa sesję. Nie zamykaj aplikacji.';
+
+  @override
   String get recording_interrupted_banner_title => 'Nagrywanie wstrzymane';
 
   @override
