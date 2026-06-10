@@ -11,12 +11,10 @@ flutter pub get
 echo "📦 2. Budowanie paczki IPA dla iOS..."
 flutter build ipa
 
-echo "🖥️ 3. Otwieranie Xcode Workspace..."
-open ios/Runner.xcworkspace
+echo "🖥️ 3. Otwieranie Archiwum w Xcode Organizer..."
+open build/ios/archive/Runner.xcarchive
 
 echo "============================================================"
-echo "🎉 Xcode został otwarty!"
-echo "👉 Aby wysłać wersję do App Store:"
-echo "   1. W Xcode wybierz z górnego menu Product -> Archive."
-echo "   2. Po ukończeniu, w oknie Organizer kliknij niebieski przycisk 'Distribute App'."
+echo "🎉 Xcode Organizer został otwarty!"
+echo "👉 Kliknij niebieski przycisk 'Distribute App' po prawej stronie, aby wysłać aplikację do TestFlight."
 echo "============================================================"
