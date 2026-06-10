@@ -18,7 +18,8 @@
       "users": "Users",
       "sessions": "Sessions",
       "audit": "Audit log",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "crm": "CRM"
     },
     "header": {
       "signOut": "Sign out",
@@ -30,12 +31,19 @@
       "subhead": "Welcome to the Superwizor AI admin console. Manage organisations, monitor sessions, analyze usage metrics, and control unit costs in real-time.",
       "cardOrgs": "Organisations",
       "cardOrgsBody": "List of all organisations with filtering, blocking, and plan changes.",
+      "cardOrgsCta": "Manage organisations",
       "cardUsers": "Users",
       "cardUsersBody": "Global user list. Edit, deactivate, reset passwords.",
+      "cardUsersCta": "Manage users",
+      "cardCrm": "Therapist CRM",
+      "cardCrmBody": "Sort by urgency, check credits & alerts, email therapists, export CSV.",
+      "cardCrmCta": "Open CRM",
       "cardAudit": "Audit log",
       "cardAuditBody": "Full administrative activity history with filters.",
+      "cardAuditCta": "View audit log",
       "cardAnalytics": "Analytics & Stats",
-      "cardAnalyticsBody": "Dashboards, usage metrics, Unit Economics, AI Quality, funnel, and cohort retention."
+      "cardAnalyticsBody": "Dashboards, usage metrics, Unit Economics, AI Quality, funnel, and cohort retention.",
+      "cardAnalyticsCta": "View analytics"
     },
     "orgs": {
       "metaTitle": "Organisations",
@@ -78,6 +86,12 @@
       "sectionAudit": "Recent activity",
       "noTherapists": "No therapists in this organisation yet.",
       "noAudit": "No audit log entries yet."
+    },
+    "crm": {
+      "metaTitle": "Therapist CRM",
+      "overline": "CRM",
+      "title": "CRM Panel",
+      "subhead": "Manage therapist relationships. Monitor credits, alerts, and subscription status."
     },
     "sessions": {
       "metaTitle": "Session activity",
@@ -424,7 +438,7 @@
     "skipToContent": "Skip to content",
     "brand": "Superwizor AI",
     "login": "Log in",
-    "register": "Sign up",
+    "register": "Try for free",
     "pricing": "Pricing",
     "security": "Security",
     "languageSwitcher": "Language",
@@ -445,7 +459,7 @@
     "subhead": "You open the app and know where to start. Previous sessions are waiting with transcripts, clinical themes, and notes in your modality.",
     "ctaPrimary": "Try for free",
     "ctaSecondary": "See how it works",
-    "microtext": "3 sessions. No credit card required.",
+    "microtext": "5 sessions for 30 days. No credit card.",
     "trustBar": "Co-created by Polish psychotherapists, supervisors, and psychiatrists.",
     "chips": {
       "audio": "Audio deleted after transcription",
@@ -485,7 +499,7 @@
       }
     },
     "cta": "Try it on your own session",
-    "micro": "3 sessions. No credit card required."
+    "micro": "5 sessions for 30 days. No credit card."
   },
   "differentiator": {
     "overline": "Why Superwizor AI",
@@ -570,7 +584,7 @@
     "title": "See for yourself in your own sessions.",
     "body": "No obligations. You decide whether to stay.",
     "cta": "Try for free",
-    "micro": "3 sessions. No credit card required."
+    "micro": "5 sessions for 30 days. No credit card."
   },
   "audience": {
     "overline": "Who it's for",
@@ -640,7 +654,9 @@
       "apple": "Continue with Apple",
       "microsoft": "Continue with Microsoft",
       "consentToS": "I accept the <termsLink>terms</termsLink> and the <privacyLink>privacy policy</privacyLink>.",
-      "consentMarketing": "I want to receive news and offers from Superwizor AI."
+      "consentMarketing": "I want to receive news and offers from Superwizor AI.",
+      "continue": "Continue",
+      "back": "Back"
     },
     "fields": {
       "email": "Email address",
@@ -653,8 +669,9 @@
       "credentialsNumber": "Professional licence number (optional)",
       "defaultModality": "Primary therapeutic modality",
       "uiLanguage": "Interface language",
-      "phoneNumber": "Phone number (optional)",
+      "phoneNumber": "Phone number",
       "phoneNumberPlaceholder": "+48 123 456 789",
+      "phoneNumberHint": "Phone number is required for security reasons.",
       "terms": "terms",
       "privacy": "privacy policy",
       "polish": "Polski",
@@ -670,6 +687,7 @@
       "tosRequired": "You must accept the terms to register.",
       "emailAlreadyInUse": "This email is already registered. Try logging in instead.",
       "weakPassword": "This password is too weak.",
+      "phoneRequired": "Phone number is required.",
       "phoneInvalid": "Phone number should contain 6–18 digits; spaces, dashes and parentheses are allowed.",
       "networkError": "Could not reach the server. Please try again.",
       "unknown": "Something went wrong. Please try again."
@@ -678,9 +696,10 @@
       "metaTitle": "Therapist sign-up",
       "overline": "Sign up",
       "title": "Sign up as a therapist",
-      "subhead": "You'll get 3 free sessions to start. No credit card required.",
+      "subhead": "You'll get 5 free sessions for 30 days. No credit card required.",
       "sectionAccount": "Your account",
       "sectionProfile": "Your profile",
+      "step": "Step",
       "finishMetaTitle": "Finish your profile",
       "finishTitle": "Finish your profile",
       "finishSubhead": "Hi {firstName}. Pick a therapeutic modality and interface language to activate your account.",
@@ -753,8 +772,8 @@
       "backToLanding": "Back to home",
       "verifyingStatus": "Checking verification…",
       "verifiedHeading": "Email verified",
-      "verifiedBody": "Redirecting to your account…",
-      "verifiedGoToAccount": "Go to your account"
+      "verifiedBody": "Redirecting to dashboard…",
+      "verifiedGoToAccount": "Go to dashboard"
     }
   },
   "legal": {
@@ -793,11 +812,11 @@
       "trial": {
         "name": "Discovery",
         "tagline": "Try with no strings attached.",
-        "tokensSuffix": "3 sessions for 14 days",
+        "tokensSuffix": "5 sessions for 30 days",
         "tokensSuffix2": "full access to the application",
         "cta": "Try for free",
         "features": [
-          "3 sessions for 14 days",
+          "5 sessions for 30 days",
           "Full access to all features",
           "No credit card required"
         ]
@@ -805,10 +824,10 @@
       "solo": {
         "name": "Balance",
         "tagline": "For individual therapists.",
-        "couponText": "CODE: INTRO_SOLO",
-        "priceIntro": "99 PLN",
-        "priceBase": "regular price 149 PLN",
-        "subprice": "introductory price with coupon forever",
+        "couponText": "CODE: ROWNOWAGA20",
+        "priceIntro": "143 PLN",
+        "priceBase": "regular price 179 PLN",
+        "subprice": "with code ROWNOWAGA20",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
         "cta": "Choose Balance",
@@ -821,15 +840,15 @@
         "name": "Growth",
         "tagline": "For power users.",
         "badge": "Most popular",
-        "couponText": "CODE: INTRO_PRO",
-        "priceIntro": "179 PLN",
-        "priceBase": "regular price 249 PLN",
-        "subprice": "introductory price with coupon forever",
+        "couponText": "CODE: ROZKWIT30",
+        "priceIntro": "209 PLN",
+        "priceBase": "regular price 299 PLN",
+        "subprice": "with code ROZKWIT30",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
         "cta": "Choose Growth",
         "features": [
-          "Up to 120 sessions / month",
+          "Up to 90 sessions / month",
           "Full access to all features"
         ]
       },
@@ -848,14 +867,34 @@
         ]
       }
     },
-    "vatNote": "Prices are net. 23% VAT added on the invoice.",
+    "vatNote": "Prices include 23% VAT.",
     "currency": "PLN",
     "perMonth": "PLN / month",
     "perYear": "PLN / year",
     "free": "Free",
     "footnote1": "Annual billing — 17% off. You only pay after using your 3 free sessions.",
-    "footnote2": "Get started now and lock in the introductory price forever.",
+    "footnote2": "Get started now.",
     "footnote": "Card or Przelewy24. Change or cancel your plan any time from your account."
+  },
+  "contact": {
+    "metaTitle": "Contact \u00b7 Superwizor AI",
+    "overline": "Contact",
+    "heading": "Let\u2019s talk",
+    "subhead": "Drop us a line \u2014 we respond within 24 hours on business days.",
+    "fields": {
+      "name": "Full name",
+      "email": "Email address",
+      "subject": "Subject",
+      "subjectPlaceholder": "e.g. Question about the Evolution plan",
+      "message": "Message",
+      "messagePlaceholder": "Describe your question or need..."
+    },
+    "submit": "Send message",
+    "submitting": "Sending...",
+    "success": "Thank you! We\u2019ll get back to you as soon as possible.",
+    "error": "Something went wrong. Please try again or email kontakt@superwizor.ai.",
+    "directEmail": "Or write directly:",
+    "emailAddress": "kontakt@superwizor.ai"
   },
   "footer": {
     "tagline": "Co-created by Polish psychotherapists, supervisors, and psychiatrists.",
@@ -993,7 +1032,7 @@
         }
       },
       "cta": "Try on your own session",
-      "micro": "3 sessions. No credit card."
+      "micro": "5 sessions for 30 days. No credit card."
     },
     "differentiator": {
       "title": "Not another documentation tool. A partner that lifts the weight of remembering.",
@@ -1050,7 +1089,7 @@
       "body": "Presence in the room. Without the weight of remembering between sessions. Documentation waits ready, you return to what's happening now.",
       "cta": "Try for free",
       "cta2": "See pricing",
-      "micro": "3 sessions. No credit card. Full access to the app."
+      "micro": "5 sessions for 30 days. No credit card. Full access to the app."
     },
     "audience": {
       "heading": "Built for real work in the office",
@@ -1072,13 +1111,13 @@
     "pricing": {
       "heading": "Choose the plan for your practice",
       "annualNote": "17% cheaper",
-      "footnote2": "Start now. Lock in the lower price forever.",
-      "vatNote": "Prices excl. VAT 23%",
+      "footnote2": "Start now.",
+      "vatNote": "Prices incl. 23% VAT",
       "footnote": "Card or Przelewy24. Cancel anytime.",
       "trial": { "tagline": "See if it's for you." },
       "pro": { "tagline": "For intensive practice." },
       "clinic": { "tagline": "For clinics and teams." },
-      "subprice": "this price stays with you forever"
+      "subprice": "your price"
     },
     "faq": {
       "overline": "Before you start",

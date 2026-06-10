@@ -18,7 +18,8 @@
       "users": "Użytkownicy",
       "sessions": "Sesje",
       "audit": "Dziennik audytowy",
-      "analytics": "Analityka"
+      "analytics": "Analityka",
+      "crm": "CRM"
     },
     "header": {
       "signOut": "Wyloguj",
@@ -30,12 +31,19 @@
       "subhead": "Witaj w konsoli administracyjnej Superwizor AI. Zarządzaj organizacjami, monitoruj sesje, analizuj wskaźniki oraz kontroluj koszty w czasie rzeczywistym.",
       "cardOrgs": "Organizacje",
       "cardOrgsBody": "Lista wszystkich organizacji z filtrowaniem, blokowaniem i zmianą planów.",
+      "cardOrgsCta": "Zarządzaj organizacjami",
       "cardUsers": "Użytkownicy",
       "cardUsersBody": "Globalna lista użytkowników. Edycja, dezaktywacja, reset hasła.",
+      "cardUsersCta": "Zarządzaj użytkownikami",
+      "cardCrm": "CRM Terapeutów",
+      "cardCrmBody": "Sortuj po pilności, sprawdzaj kredyty i alerty, pisz do terapeutów, eksportuj CSV.",
+      "cardCrmCta": "Otwórz CRM",
       "cardAudit": "Dziennik audytowy",
       "cardAuditBody": "Pełna historia działań administracyjnych z filtrami.",
+      "cardAuditCta": "Przeglądaj audyt",
       "cardAnalytics": "Analityka i Statystyki",
-      "cardAnalyticsBody": "Dashboardy, wykresy użycia, Unit Economics, Jakość AI oraz zaawansowany lejek i retencja."
+      "cardAnalyticsBody": "Dashboardy, wykresy użycia, Unit Economics, Jakość AI oraz zaawansowany lejek i retencja.",
+      "cardAnalyticsCta": "Zobacz analitykę"
     },
     "orgs": {
       "metaTitle": "Organizacje",
@@ -78,6 +86,12 @@
       "sectionAudit": "Ostatnie zdarzenia",
       "noTherapists": "Brak terapeutów w tej organizacji.",
       "noAudit": "Brak zdarzeń w dzienniku audytowym."
+    },
+    "crm": {
+      "metaTitle": "CRM Terapeutów",
+      "overline": "CRM",
+      "title": "Panel CRM",
+      "subhead": "Zarządzaj relacjami z terapeutami. Monitoruj kredyty, alerty i status subskrypcji."
     },
     "sessions": {
       "metaTitle": "Aktywność sesji",
@@ -424,7 +438,7 @@
     "skipToContent": "Przejdź do treści",
     "brand": "Superwizor AI",
     "login": "Zaloguj się",
-    "register": "Zarejestruj się",
+    "register": "Wypróbuj za darmo",
     "pricing": "Cennik",
     "security": "Bezpieczeństwo",
     "languageSwitcher": "Język",
@@ -445,7 +459,7 @@
     "subhead": "Otwierasz aplikację i wiesz od czego zacząć. Poprzednie sesje czekają z transkrypcją, kluczowymi wątkami i notatkami w Twoim nurcie.",
     "ctaPrimary": "Wypróbuj za darmo",
     "ctaSecondary": "Zobacz, jak działa",
-    "microtext": "3 sesje. Bez karty kredytowej.",
+    "microtext": "5 sesji przez 30 dni. Bez karty.",
     "trustBar": "Współtworzona przez polskich psychoterapeutów, superwizorów i psychiatrów.",
     "chips": {
       "audio": "Audio usuwane po transkrypcji",
@@ -485,7 +499,7 @@
       }
     },
     "cta": "Wypróbuj na własnej sesji",
-    "micro": "3 sesje. Bez karty kredytowej."
+    "micro": "5 sesji przez 30 dni. Bez karty."
   },
   "differentiator": {
     "overline": "Dlaczego Superwizor AI",
@@ -570,7 +584,7 @@
     "title": "Przekonaj się na własnych sesjach.",
     "body": "Bez zobowiązań. Sam zdecydujesz, czy zostajesz.",
     "cta": "Wypróbuj za darmo",
-    "micro": "3 sesje. Bez karty kredytowej."
+    "micro": "5 sesji przez 30 dni. Bez karty."
   },
   "audience": {
     "overline": "Dla kogo",
@@ -640,7 +654,9 @@
       "apple": "Kontynuuj z Apple",
       "microsoft": "Kontynuuj z Microsoft",
       "consentToS": "Akceptuję <termsLink>regulamin</termsLink> oraz <privacyLink>politykę prywatności</privacyLink>.",
-      "consentMarketing": "Chcę otrzymywać informacje o nowościach i ofertach Superwizor AI."
+      "consentMarketing": "Chcę otrzymywać informacje o nowościach i ofertach Superwizor AI.",
+      "continue": "Dalej",
+      "back": "Wróć"
     },
     "fields": {
       "email": "Adres e-mail",
@@ -653,8 +669,9 @@
       "credentialsNumber": "Numer prawa wykonywania zawodu (opcjonalnie)",
       "defaultModality": "Główny nurt terapeutyczny",
       "uiLanguage": "Język interfejsu",
-      "phoneNumber": "Numer telefonu (opcjonalnie)",
+      "phoneNumber": "Numer telefonu",
       "phoneNumberPlaceholder": "+48 123 456 789",
+      "phoneNumberHint": "Numer telefonu potrzebny ze względów bezpieczeństwa.",
       "terms": "regulamin",
       "privacy": "politykę prywatności",
       "polish": "Polski",
@@ -670,6 +687,7 @@
       "tosRequired": "Musisz zaakceptować regulamin, aby się zarejestrować.",
       "emailAlreadyInUse": "Ten adres e-mail jest już zarejestrowany. Spróbuj się zalogować.",
       "weakPassword": "Hasło jest zbyt słabe.",
+      "phoneRequired": "Numer telefonu jest wymagany.",
       "phoneInvalid": "Numer telefonu powinien zawierać 6–18 cyfr; dozwolone są spacje, myślniki i nawiasy.",
       "networkError": "Brak połączenia z serwerem. Spróbuj ponownie.",
       "unknown": "Coś poszło nie tak. Spróbuj ponownie."
@@ -678,9 +696,10 @@
       "metaTitle": "Rejestracja terapeuty",
       "overline": "Rejestracja",
       "title": "Zarejestruj się jako terapeuta",
-      "subhead": "Otrzymasz 3 darmowe sesje na początek. Bez karty kredytowej.",
+      "subhead": "Otrzymasz 5 darmowych sesji na 30 dni. Bez karty kredytowej.",
       "sectionAccount": "Twoje konto",
       "sectionProfile": "Twój profil",
+      "step": "Krok",
       "finishMetaTitle": "Dokończ profil",
       "finishTitle": "Dokończ swój profil",
       "finishSubhead": "Witaj {firstName}. Wybierz nurt terapeutyczny i język interfejsu, aby aktywować konto.",
@@ -753,8 +772,8 @@
       "backToLanding": "Powrót do strony głównej",
       "verifyingStatus": "Sprawdzamy potwierdzenie…",
       "verifiedHeading": "E-mail potwierdzony",
-      "verifiedBody": "Przekierowujemy do panelu konta…",
-      "verifiedGoToAccount": "Przejdź do panelu konta"
+      "verifiedBody": "Przekierowujemy do panelu…",
+      "verifiedGoToAccount": "Przejdź do panelu"
     }
   },
   "legal": {
@@ -793,11 +812,11 @@
       "trial": {
         "name": "Poznanie",
         "tagline": "Wypróbuj bez zobowiązań.",
-        "tokensSuffix": "3 sesje przez 14 dni",
+        "tokensSuffix": "5 sesji przez 30 dni",
         "tokensSuffix2": "pełen dostęp do aplikacji",
         "cta": "Wypróbuj za darmo",
         "features": [
-          "3 sesje przez 14 dni",
+          "5 sesji przez 30 dni",
           "Pełen dostęp do wszystkich funkcji",
           "Bez karty kredytowej"
         ]
@@ -805,10 +824,10 @@
       "solo": {
         "name": "Równowaga",
         "tagline": "Dla terapeutów indywidualnych.",
-        "couponText": "KOD: INTRO_SOLO",
-        "priceIntro": "99 zł",
-        "priceBase": "cena podstawowa 149 zł",
-        "subprice": "cena wprowadzająca z kuponem na zawsze",
+        "couponText": "KOD: ROWNOWAGA20",
+        "priceIntro": "143 zł",
+        "priceBase": "cena regularna 179 zł",
+        "subprice": "z kodem ROWNOWAGA20",
         "tokensSuffixMonthly": "sesji miesięcznie",
         "tokensSuffixAnnual": "sesji rocznie",
         "cta": "Wybieram Równowagę",
@@ -821,15 +840,15 @@
         "name": "Rozkwit",
         "tagline": "Dla intensywnie pracujących.",
         "badge": "Najczęściej wybierany",
-        "couponText": "KOD: INTRO_PRO",
-        "priceIntro": "179 zł",
-        "priceBase": "cena podstawowa 249 zł",
-        "subprice": "cena wprowadzająca z kuponem na zawsze",
+        "couponText": "KOD: ROZKWIT30",
+        "priceIntro": "209 zł",
+        "priceBase": "cena regularna 299 zł",
+        "subprice": "z kodem ROZKWIT30",
         "tokensSuffixMonthly": "sesji miesięcznie",
         "tokensSuffixAnnual": "sesji rocznie",
         "cta": "Wybieram Rozkwit",
         "features": [
-          "Do 120 sesji miesięcznie",
+          "Do 90 sesji miesięcznie",
           "Pełen dostęp do wszystkich funkcji"
         ]
       },
@@ -848,14 +867,34 @@
         ]
       }
     },
-    "vatNote": "Ceny netto. VAT 23% doliczany na fakturze.",
+    "vatNote": "Ceny brutto (zawierają 23% VAT).",
     "currency": "PLN",
-    "perMonth": "zł / miesiąc",
+    "perMonth": "zł / mias.",
     "perYear": "zł / rok",
     "free": "0 zł",
     "footnote1": "Rozliczenie roczne — 17% taniej. Płacisz dopiero po wykorzystaniu 3 darmowych sesji.",
-    "footnote2": "Zacznij już teraz i zatrzymaj niższą cenę na zawsze.",
+    "footnote2": "Zacznij już teraz.",
     "footnote": "Płatność kartą lub Przelewy24. Możesz zmienić lub anulować plan w dowolnym momencie z poziomu konta."
+  },
+  "contact": {
+    "metaTitle": "Kontakt · Superwizor AI",
+    "overline": "Kontakt",
+    "heading": "Porozmawiajmy",
+    "subhead": "Napisz do nas — odpowiadamy w ciągu 24 godzin w dni robocze.",
+    "fields": {
+      "name": "Imię i nazwisko",
+      "email": "Adres e-mail",
+      "subject": "Temat",
+      "subjectPlaceholder": "np. Pytanie o plan Ewolucja",
+      "message": "Wiadomość",
+      "messagePlaceholder": "Opisz swoje pytanie lub potrzebę..."
+    },
+    "submit": "Wyślij wiadomość",
+    "submitting": "Wysyłanie...",
+    "success": "Dziękujemy! Odpowiemy najszybciej jak to możliwe.",
+    "error": "Coś poszło nie tak. Spróbuj ponownie lub napisz na kontakt@superwizor.ai.",
+    "directEmail": "Lub napisz bezpośrednio:",
+    "emailAddress": "kontakt@superwizor.ai"
   },
   "footer": {
     "tagline": "Współtworzona przez polskich psychoterapeutów, superwizorów i psychiatrów",
@@ -868,7 +907,7 @@
     },
     "links": {
       "pricing": "Cennik",
-      "register": "Zarejestruj się",
+      "register": "Wypróbuj za darmo",
       "login": "Zaloguj się",
       "terms": "Regulamin",
       "privacy": "Polityka prywatności",
@@ -993,7 +1032,7 @@
         }
       },
       "cta": "Wypróbuj na własnej sesji",
-      "micro": "3 sesje. Bez karty kredytowej."
+      "micro": "5 sesji przez 30 dni. Bez karty."
     },
     "differentiator": {
       "title": "Nie kolejne narzędzie do dokumentacji. Partner, który zdejmuje ciężar pamiętania.",
@@ -1050,7 +1089,7 @@
       "body": "Uważność w gabinecie. Bez ciężaru pamiętania między sesjami. Dokumentacja czeka gotowa, Ty wracasz do tego, co dzieje się teraz.",
       "cta": "Wypróbuj za darmo",
       "cta2": "Zobacz cennik",
-      "micro": "3 sesje. Bez karty kredytowej. Pełen dostęp do aplikacji."
+      "micro": "5 sesji przez 30 dni. Bez karty. Pełen dostęp do aplikacji."
     },
     "audience": {
       "heading": "Stworzony do realnej pracy w gabinecie",
@@ -1072,13 +1111,13 @@
     "pricing": {
       "heading": "Wybierz plan dla swojej praktyki",
       "annualNote": "17% taniej",
-      "footnote2": "Zacznij teraz. Zatrzymaj niższą cenę na zawsze.",
-      "vatNote": "Ceny netto + VAT 23%",
+      "footnote2": "Zacznij teraz.",
+      "vatNote": "Ceny brutto z VAT 23%",
       "footnote": "Karta lub Przelewy24. Anuluj w dowolnym momencie.",
       "trial": { "tagline": "Sprawdź, czy to dla Ciebie." },
       "pro": { "tagline": "Dla intensywnej praktyki." },
       "clinic": { "tagline": "Dla poradni i zespołów." },
-      "subprice": "ta cena zostaje z Tobą na zawsze"
+      "subprice": "Twoja cena"
     },
     "faq": {
       "overline": "Zanim zaczniesz",
