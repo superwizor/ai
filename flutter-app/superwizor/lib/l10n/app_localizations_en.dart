@@ -448,6 +448,68 @@ class AppLocalizationsEn extends AppLocalizations {
       'Delete this recording permanently.';
 
   @override
+  String get recording_fgs_notification_title =>
+      'Session recording in progress';
+
+  @override
+  String get recording_fgs_notification_body =>
+      'Superwizor is recording the session. Keep the app open.';
+
+  @override
+  String get recording_interrupted_banner_title => 'Recording paused';
+
+  @override
+  String get recording_interrupted_banner_body =>
+      'A phone call or another app interrupted the recording. Everything captured so far is safe.';
+
+  @override
+  String get recording_interrupted_resume => 'Resume recording';
+
+  @override
+  String get recording_resume_failed_header => 'Could not resume';
+
+  @override
+  String get recording_resume_failed_body =>
+      'Recording could not be resumed. Everything captured so far is safe — you can end the session and send it for analysis.';
+
+  @override
+  String get recording_resume_failed_retry => 'Try again';
+
+  @override
+  String get recording_resume_failed_finish => 'Finish and send';
+
+  @override
+  String get recovery_sheet_header => 'Interrupted recording found';
+
+  @override
+  String recovery_sheet_body(String patientAlias, String date, int minutes) {
+    return 'The session recording for $patientAlias from $date (~$minutes min) was never sent — the app was interrupted while recording. What would you like to do?';
+  }
+
+  @override
+  String get recovery_sheet_send => 'Send for analysis';
+
+  @override
+  String get recovery_sheet_later => 'Decide later';
+
+  @override
+  String get recovery_sheet_delete => 'Delete recording';
+
+  @override
+  String get recovery_delete_confirm_header => 'Delete permanently?';
+
+  @override
+  String get recovery_delete_confirm_body =>
+      'This recording cannot be recovered.';
+
+  @override
+  String get recovery_delete_confirm_destructive => 'Delete';
+
+  @override
+  String get recovery_enqueued_snackbar =>
+      'Recording added to the upload queue';
+
+  @override
   String get stepper_step1_uploaded => 'Audio safely on our servers.';
 
   @override

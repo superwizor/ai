@@ -890,6 +890,114 @@ abstract class AppLocalizations {
   /// **'Usuń to nagranie bezpowrotnie.'**
   String get recording_pending_upload_destructive;
 
+  /// No description provided for @recording_fgs_notification_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Trwa nagrywanie sesji'**
+  String get recording_fgs_notification_title;
+
+  /// No description provided for @recording_fgs_notification_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Superwizor nagrywa sesję. Nie zamykaj aplikacji.'**
+  String get recording_fgs_notification_body;
+
+  /// No description provided for @recording_interrupted_banner_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagrywanie wstrzymane'**
+  String get recording_interrupted_banner_title;
+
+  /// No description provided for @recording_interrupted_banner_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Połączenie lub inna aplikacja przerwała nagrywanie. Dotychczasowe nagranie jest bezpieczne.'**
+  String get recording_interrupted_banner_body;
+
+  /// No description provided for @recording_interrupted_resume.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wznów nagrywanie'**
+  String get recording_interrupted_resume;
+
+  /// No description provided for @recording_resume_failed_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się wznowić'**
+  String get recording_resume_failed_header;
+
+  /// No description provided for @recording_resume_failed_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się wznowić nagrywania. Dotychczasowe nagranie jest bezpieczne — możesz zakończyć sesję i wysłać je do analizy.'**
+  String get recording_resume_failed_body;
+
+  /// No description provided for @recording_resume_failed_retry.
+  ///
+  /// In pl, this message translates to:
+  /// **'Spróbuj ponownie'**
+  String get recording_resume_failed_retry;
+
+  /// No description provided for @recording_resume_failed_finish.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zakończ i wyślij'**
+  String get recording_resume_failed_finish;
+
+  /// No description provided for @recovery_sheet_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Znaleziono przerwane nagranie'**
+  String get recovery_sheet_header;
+
+  /// No description provided for @recovery_sheet_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagranie sesji z {patientAlias} z {date} (ok. {minutes} min) nie zostało wysłane — aplikacja została przerwana w trakcie nagrywania. Co chcesz zrobić?'**
+  String recovery_sheet_body(String patientAlias, String date, int minutes);
+
+  /// No description provided for @recovery_sheet_send.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij do analizy'**
+  String get recovery_sheet_send;
+
+  /// No description provided for @recovery_sheet_later.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zdecyduję później'**
+  String get recovery_sheet_later;
+
+  /// No description provided for @recovery_sheet_delete.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń nagranie'**
+  String get recovery_sheet_delete;
+
+  /// No description provided for @recovery_delete_confirm_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usunąć bezpowrotnie?'**
+  String get recovery_delete_confirm_header;
+
+  /// No description provided for @recovery_delete_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tego nagrania nie da się odzyskać.'**
+  String get recovery_delete_confirm_body;
+
+  /// No description provided for @recovery_delete_confirm_destructive.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń'**
+  String get recovery_delete_confirm_destructive;
+
+  /// No description provided for @recovery_enqueued_snackbar.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagranie dodane do kolejki wysyłki'**
+  String get recovery_enqueued_snackbar;
+
   /// No description provided for @stepper_step1_uploaded.
   ///
   /// In pl, this message translates to:

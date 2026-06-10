@@ -20,5 +20,10 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AudioConverter") {
       AudioConverter.register(with: registrar.messenger())
     }
+    // Audio-session reactivation channel for post-interruption resume
+    // (docs/28 WS3). See ios/Runner/AudioSessionHelper.swift.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AudioSessionHelper") {
+      AudioSessionHelper.register(with: registrar.messenger())
+    }
   }
 }
