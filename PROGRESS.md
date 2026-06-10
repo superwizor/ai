@@ -66,6 +66,27 @@ features 3-8 can land in any order:
 - ⏸ admin-user-crud
 - ⏸ admin-audit-log
 
+### Cron-endpoint OIDC auth (branch `fix/scheduler-oidc-auth`, 2026-06-10)
+
+Second half of the 119afdf CRM exposure fix: the 5 Cloud Scheduler cron
+endpoints (`/admin/reservation-expiry`, `/admin/manual-period-renewal`,
+`/admin/safety-check`, `/admin/email-drip`, `/admin/renewal-reminders`)
+were publicly callable — billing-svc has allUsers invoker, so Cloud Run
+IAM never validated the scheduler's OIDC token. New
+`SchedulerAuthMiddleware` (billing-svc `scheduler_auth.go`) validates the
+Google ID token in-process via `idtoken.Validate` (audience = billing-svc
+URL) + asserts email == cloud-scheduler-billing SA. Fail-closed (503)
+when `SCHEDULER_OIDC_AUDIENCE` / `SCHEDULER_SA_EMAIL` are unset. 8 unit
+tests with a fake validator (evidence/fix-scheduler-oidc-auth/).
+Gotchas:
+- Deploy script + cloudbuild yaml switched the gcloud env-var delimiter
+  from `^@^` to `^|^` — the SA email's own `@` would split the value.
+- Live scheduler jobs verified (gcloud): all 3 existing jobs already
+  mint exactly this SA + audience. No jobs exist yet for email-drip /
+  renewal-reminders — when created, they must use the same SA/audience.
+- **Not deployed yet** — needs a billing-svc deploy via
+  `scripts/deploy-webapp-backend.sh` (sets the two new env vars).
+
 ## In progress
 
 - **Slice 5** — Flutter Web consoles at `app.superwizor.ai`. Branch:

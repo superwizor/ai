@@ -7,9 +7,10 @@
 //   - /stripe/webhook — STUB (slice 2 da real implementację).
 //
 // Auth: Cloud Scheduler woła te endpointy z OIDC tokenem podpisanym przez
-// dedykowane SA. Cloud Run frontend waliduje token automatycznie (IAM
-// roles/run.invoker na konkretne SA). Aplikacja TYLKO sanity-checkuje
-// Header X-Goog-Scheduler-Source (opcjonalne) i loguje invoker.
+// dedykowane SA. Cloud Run frontend NIE waliduje tokenu (billing-svc ma
+// allUsers invoker dla browser-facing GetSubscription), więc walidacja
+// dzieje się w aplikacji — SchedulerAuthMiddleware (scheduler_auth.go)
+// sprawdza Google ID token + email SA na każdym cron route.
 package http
 
 import (
@@ -44,18 +45,18 @@ func NewAdminHandler(pool *pgxpool.Pool, logger *slog.Logger) *AdminHandler {
 
 // RegisterRoutes — wpina endpointy w mux. Wywoływany z cmd/server/main.go.
 //
-// The browser-facing CRM list goes through the SUPERWIZOR_ADMIN
-// Firebase-token middleware (billing-svc is publicly invokable; route
-// auth is the only gate). The five cron endpoints stay as-is for now —
-// Cloud Scheduler calls them with a Google OIDC token, NOT a Firebase
-// token, so they need a Google idtoken validator (tracked separately;
-// see the 2026-06-10 CRM exposure follow-up).
-func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux, auth *AdminAuthMiddleware) {
-	mux.HandleFunc("POST /admin/reservation-expiry", h.handleReservationExpiry)
-	mux.HandleFunc("POST /admin/manual-period-renewal", h.handleManualPeriodRenewal)
-	mux.HandleFunc("POST /admin/safety-check", h.handleSafetyCheck)
-	mux.HandleFunc("POST /admin/email-drip", h.handleEmailDrip)
-	mux.HandleFunc("POST /admin/renewal-reminders", h.handleRenewalReminders)
+// billing-svc is publicly invokable (allUsers invoker), so route-level
+// auth is the only gate. The browser-facing CRM list goes through the
+// SUPERWIZOR_ADMIN Firebase-token middleware; the five cron endpoints go
+// through the Google OIDC middleware (schedAuth) that validates the
+// Cloud Scheduler SA's ID token in-process — Cloud Run IAM never checks
+// it here. See scheduler_auth.go for the 2026-06-10 exposure writeup.
+func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux, auth *AdminAuthMiddleware, schedAuth *SchedulerAuthMiddleware) {
+	mux.HandleFunc("POST /admin/reservation-expiry", schedAuth.Require(h.handleReservationExpiry))
+	mux.HandleFunc("POST /admin/manual-period-renewal", schedAuth.Require(h.handleManualPeriodRenewal))
+	mux.HandleFunc("POST /admin/safety-check", schedAuth.Require(h.handleSafetyCheck))
+	mux.HandleFunc("POST /admin/email-drip", schedAuth.Require(h.handleEmailDrip))
+	mux.HandleFunc("POST /admin/renewal-reminders", schedAuth.Require(h.handleRenewalReminders))
 	mux.HandleFunc("GET /admin/crm/subscribers", auth.Require(h.handleCRMSubscribers))
 }
 

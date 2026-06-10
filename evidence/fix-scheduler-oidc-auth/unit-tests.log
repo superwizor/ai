@@ -1,0 +1,31 @@
+=== RUN   TestSchedulerAuth_FailClosedWithoutAudience
+2026/06/10 22:12:08 ERROR scheduler auth: audience or SA email not configured — refusing cron request path=/admin/email-drip
+2026/06/10 22:12:08 ERROR admin handler error msg="scheduler auth not configured" error=<nil>
+--- PASS: TestSchedulerAuth_FailClosedWithoutAudience (0.00s)
+=== RUN   TestSchedulerAuth_FailClosedWithoutSAEmail
+2026/06/10 22:12:08 ERROR scheduler auth: audience or SA email not configured — refusing cron request path=/admin/email-drip
+2026/06/10 22:12:08 ERROR admin handler error msg="scheduler auth not configured" error=<nil>
+--- PASS: TestSchedulerAuth_FailClosedWithoutSAEmail (0.00s)
+=== RUN   TestSchedulerAuth_MissingToken
+2026/06/10 22:12:08 ERROR admin handler error msg="missing bearer token" error=<nil>
+--- PASS: TestSchedulerAuth_MissingToken (0.00s)
+=== RUN   TestSchedulerAuth_InvalidToken
+2026/06/10 22:12:08 WARN scheduler auth: token validation failed path=/admin/email-drip error="idtoken: token expired"
+2026/06/10 22:12:08 ERROR admin handler error msg="invalid token" error=<nil>
+--- PASS: TestSchedulerAuth_InvalidToken (0.00s)
+=== RUN   TestSchedulerAuth_WrongServiceAccount
+2026/06/10 22:12:08 WARN scheduler auth: caller is not the scheduler SA path=/admin/email-drip email=attacker@evil-project.iam.gserviceaccount.com email_verified=true
+2026/06/10 22:12:08 ERROR admin handler error msg="caller not authorized" error=<nil>
+--- PASS: TestSchedulerAuth_WrongServiceAccount (0.00s)
+=== RUN   TestSchedulerAuth_UnverifiedEmail
+2026/06/10 22:12:08 WARN scheduler auth: caller is not the scheduler SA path=/admin/email-drip email=cloud-scheduler-billing@test-project.iam.gserviceaccount.com email_verified=false
+2026/06/10 22:12:08 ERROR admin handler error msg="caller not authorized" error=<nil>
+--- PASS: TestSchedulerAuth_UnverifiedEmail (0.00s)
+=== RUN   TestSchedulerAuth_MissingEmailClaim
+2026/06/10 22:12:08 WARN scheduler auth: caller is not the scheduler SA path=/admin/email-drip email="" email_verified=false
+2026/06/10 22:12:08 ERROR admin handler error msg="caller not authorized" error=<nil>
+--- PASS: TestSchedulerAuth_MissingEmailClaim (0.00s)
+=== RUN   TestSchedulerAuth_SchedulerSAPasses
+--- PASS: TestSchedulerAuth_SchedulerSAPasses (0.00s)
+PASS
+ok  	github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/http	0.546s

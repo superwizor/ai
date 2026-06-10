@@ -19,6 +19,9 @@
 substitutions:
   _REGION: europe-central2
   _CORS_ORIGINS: 'https://superwizor.ai,https://app.superwizor.ai,https://superwizor.web.app,https://superwizor-app.web.app,https://superwizor--*.web.app,https://superwizor-app--*.web.app,http://localhost:3000,http://localhost:8080'
+  # Cron-endpoint OIDC gate (billing-svc scheduler_auth.go): must match
+  # the audience minted by infra/environments/staging/billing_crons.tf.
+  _SCHED_AUDIENCE: 'https://billing-svc-e3f32b232q-lm.a.run.app'
 
 steps:
   # --- identity-svc -------------------------------------------------
@@ -75,7 +78,10 @@ steps:
       - 'billing-svc'
       - '--image=europe-central2-docker.pkg.dev/$PROJECT_ID/services/superwizor-billing:$_TAG'
       - '--region=${_REGION}'
-      - '--update-env-vars=CORS_ALLOWED_ORIGINS=${_CORS_ORIGINS},VERSION=$_TAG'
+      # ^|^ sets | as the dict-arg delimiter (not the default ,) because
+      # CORS carries commas and the SA email carries an @ — see
+      # `gcloud topic escaping`.
+      - '--update-env-vars=^|^CORS_ALLOWED_ORIGINS=${_CORS_ORIGINS}|VERSION=$_TAG|SCHEDULER_OIDC_AUDIENCE=${_SCHED_AUDIENCE}|SCHEDULER_SA_EMAIL=cloud-scheduler-billing@$PROJECT_ID.iam.gserviceaccount.com'
       - '--quiet'
     waitFor: ['push-billing']
 

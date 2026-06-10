@@ -134,7 +134,19 @@ func main() {
 	// gate (2026-06-10 exposure fix). Fail-closed when identity-svc is
 	// not wired.
 	adminAuth := httpadapter.NewAdminAuthMiddleware(identityClient, logger)
-	httpadapter.NewAdminHandler(pool, logger).RegisterRoutes(httpMux, adminAuth)
+	// Google OIDC auth for the Cloud Scheduler cron endpoints — same
+	// exposure as the CRM fix above: allUsers invoker means Cloud Run
+	// IAM never checks the scheduler's token, so the app must. Audience
+	// = billing-svc's own Cloud Run URL (what billing_crons.tf mints),
+	// allowed email = the cloud-scheduler-billing SA. Fail-closed: when
+	// either env is unset the cron routes return 503.
+	schedAudience := os.Getenv("SCHEDULER_OIDC_AUDIENCE")
+	schedSAEmail := os.Getenv("SCHEDULER_SA_EMAIL")
+	if schedAudience == "" || schedSAEmail == "" {
+		slog.Warn("billing-svc: SCHEDULER_OIDC_AUDIENCE / SCHEDULER_SA_EMAIL unset — cron endpoints will refuse all requests (503)")
+	}
+	schedAuth := httpadapter.NewSchedulerAuthMiddleware(schedAudience, schedSAEmail, logger)
+	httpadapter.NewAdminHandler(pool, logger).RegisterRoutes(httpMux, adminAuth, schedAuth)
 	httpadapter.NewCRMHandler(pool, logger).RegisterCRMRoutes(httpMux, adminAuth)
 	httpadapter.NewStripeHandler(pool, logger).RegisterRoutes(httpMux)
 	// Connect-RPC surface — browser callers reach the same business

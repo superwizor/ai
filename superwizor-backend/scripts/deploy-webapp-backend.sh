@@ -36,18 +36,25 @@ deploy_svc() {
   local svc="$1"
   local image="$2"
   echo ">>> Deploying ${svc} (image ${image})"
-  # ^@^ tells gcloud to use @ as the dict-arg delimiter instead of ,
-  # so CORS_ALLOWED_ORIGINS can carry its own commas (see
-  # `gcloud topic escaping`). VERSION is added as a second entry.
+  # ^|^ tells gcloud to use | as the dict-arg delimiter instead of ,
+  # so CORS_ALLOWED_ORIGINS can carry its own commas and
+  # SCHEDULER_SA_EMAIL its own @ (see `gcloud topic escaping`).
   #
   # billing-svc also needs IDENTITY_SVC_URL so the Connect auth
   # interceptor can validate Firebase tokens via identity-svc — the
   # browser /admin AdminReset/AdminChange RPCs depend on this. Skip
   # the env for the other services so we don't ship a noisy override
   # they don't read.
-  local env_set="^@^CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}@VERSION=${TAG}"
+  #
+  # SCHEDULER_OIDC_AUDIENCE + SCHEDULER_SA_EMAIL gate the cron
+  # endpoints (scheduler_auth.go): audience must equal the billing-svc
+  # URL that billing_crons.tf mints into the scheduler OIDC tokens,
+  # email must be the cloud-scheduler-billing SA. Unset = crons 503.
+  local env_set="^|^CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}|VERSION=${TAG}"
   if [[ "$svc" == "billing-svc" ]]; then
-    env_set="${env_set}@IDENTITY_SVC_URL=${IDENTITY_SVC_URL:-https://identity-svc-e3f32b232q-lm.a.run.app}"
+    env_set="${env_set}|IDENTITY_SVC_URL=${IDENTITY_SVC_URL:-https://identity-svc-e3f32b232q-lm.a.run.app}"
+    env_set="${env_set}|SCHEDULER_OIDC_AUDIENCE=${SCHEDULER_OIDC_AUDIENCE:-https://billing-svc-e3f32b232q-lm.a.run.app}"
+    env_set="${env_set}|SCHEDULER_SA_EMAIL=${SCHEDULER_SA_EMAIL:-cloud-scheduler-billing@${PROJECT}.iam.gserviceaccount.com}"
   fi
   gcloud run deploy "${svc}" \
     --image="${image}" \
