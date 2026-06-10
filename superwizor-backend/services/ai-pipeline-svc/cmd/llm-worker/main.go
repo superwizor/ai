@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,18 +16,19 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/pubsub/v2"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
-	"google.golang.org/genai"
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/genai"
 
 	"github.com/superwizor-ai/backend/pkg/cryptobox"
+	"github.com/superwizor-ai/backend/pkg/i18n/rolelabels"
+	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/diarization"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/reportprefs"
 	"github.com/superwizor-ai/backend/services/ai-pipeline-svc/internal/transcriptfmt"
-	"github.com/superwizor-ai/backend/pkg/i18n/rolelabels"
-	"github.com/superwizor-ai/backend/pkg/i18n/speakerlabels"
 )
 
 type TranscriptCompletedEvent struct {
@@ -69,36 +71,13 @@ var (
 	// text-embedding-005 produces 768-dim multilingual vectors — matches
 	// `rag_memories.embedding vector(768)` exactly. Used by
 	// generateEmbedding(); failures are non-fatal (the worker Warns and
-	// skips persistRAGMemory, preserving report save).
+	// skips persistRAGMemoryV2, preserving report save).
+	//
+	// The RAG read-side knobs live in rag.go (ragLookbackSessions,
+	// ragMaxHits, recency/MMR thresholds, ragContextMaxCharsV2) — see
+	// docs/30 for the theme-level retrieval design.
 	embeddingModel string = "text-embedding-005"
 	embeddingDims  int    = 768
-
-	// RAG read-side knobs. loadRAGContext is a two-stage filter:
-	//   1. Bound the candidate pool to the patient's last
-	//      `ragLookbackMemories` rows (most-recent first by
-	//      created_at).
-	//   2. Within that pool, pick the top-`ragTopK` nearest neighbors
-	//      by cosine similarity.
-	// Joined output is capped at `ragContextMaxChars` to keep
-	// call-1/call-2 prompts bounded.
-	//
-	// Sizing rationale:
-	//   - lookback=36: ≈9 months at weekly cadence, ≈18 months at
-	//     bi-weekly. Captures the patient's recent clinical arc
-	//     without dragging in stale states from years ago. Also
-	//     matches the typical "this client has been in therapy
-	//     ~1 year" attention window. Tunable as we observe long-run
-	//     patients.
-	//   - K=3: enough to ground "what we've worked on so far" without
-	//     drowning the prompt. Tunable from production data once read
-	//     side has flown.
-	//   - max-chars=5000: ≈3× 1500-char per-memory cap. Generous head-
-	//     room for the typical case; truncation triggers only on huge
-	//     summaries or future K bumps. Keep below ~10% of the call-2
-	//     input budget so RAG never dominates the prompt.
-	ragLookbackMemories int = 36
-	ragTopK             int = 3
-	ragContextMaxChars  int = 5000
 
 	// Two distinct sampling profiles by design. Don't collapse them
 	// into one — call 1 wants determinism for parser-friendly output,
@@ -139,10 +118,10 @@ var (
 	// from short sessions suggested 0.3 was giving the model too much
 	// "creative" room to elaborate — accuracy beats prose variety on
 	// a clinical document.
-	geminiTempMetadata             float32 = 0.1
-	geminiTempReport               float32 = 0.2
-	geminiTopP                     float32 = 0.95
-	geminiMaxOutMetadata           int32   = 16384
+	geminiTempMetadata   float32 = 0.1
+	geminiTempReport     float32 = 0.2
+	geminiTopP           float32 = 0.95
+	geminiMaxOutMetadata int32   = 16384
 	// 3× headroom over the directive's target (2026-05-19 bump from 4096):
 	// the `TargetLengthDirective` prompt already shapes report length
 	// effectively — the cap should be a remote safety net, NOT a
@@ -157,8 +136,8 @@ var (
 	// Cost impact of the bump: zero — Vertex bills on actual output
 	// tokens, not the cap. See reportprefs.MaxOutputTokens for the
 	// per-length bumps and section_emphasis scaling.
-	geminiMaxOutReportDefault      int32   = 12288
-	geminiMaxOutReportHardCeiling  int32   = 65535
+	geminiMaxOutReportDefault     int32 = 12288
+	geminiMaxOutReportHardCeiling int32 = 65535
 	// debugLogPrompts controls whether we emit the full prompt sent to
 	// Vertex + the full raw response back, to Cloud Logging. Gated by
 	// the LLM_DEBUG_LOG_PROMPTS env var ("true" = on, anything else =
@@ -298,40 +277,54 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("load prompt: %w", err)
 	}
 
-	// RAG-context lookup still operates on text — passes the legacy
-	// formatted transcript so existing pgvector similarity logic
-	// (Phase 3) gets the same shape it's used to. Cheap conversion;
-	// stays out of the LLM-input critical path.
-	ragContext, err := loadRAGContext(ctx, ev.SessionID, session.PatientFileID, legacyChunkFormat(chunks))
+	// Pipeline: call-1 (metadata + themes) → RAG retrieve → call-2.
+	// Vertex AI errors from EITHER call get the same terminal/transient
+	// classification; failGen returns nil to ack a terminal failure
+	// (marks FAILED + mirrors to the user) and a wrapped error to NACK a
+	// transient one for Pub/Sub retry within the ~24h window.
+	failGen := func(genErr error, stage string) error {
+		logger.Error("generate report (Vertex AI)",
+			"error", genErr, "stage", stage,
+			"prompt_len", len(modalityPrompt), "chunk_count", len(chunks))
+		if isTerminalLLMError(genErr) {
+			_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
+			if perr := publishSessionStatusChanged(ctx, ev.SessionID, "failed"); perr != nil {
+				logger.Warn("publish session.status_changed(failed) failed", "error", perr)
+			}
+			logger.Error("llm: terminal generate failure — FAILED, ack, no retry", "error", genErr, "stage", stage)
+			return nil
+		}
+		return fmt.Errorf("generate (%s): %w", stage, genErr)
+	}
+
+	mode := diarizationMode()
+	native := hasNativeSpeakers(chunks)
+	slog.Info("llm config",
+		"diarization_mode", mode,
+		"native_speakers", native,
+		"chunk_count", len(chunks),
+		"preferences", session.ReportPreferences.Summary())
+
+	// Call 1 first — its themes/summary are the retrieval query.
+	metadataPayload, stats, err := generateMetadata(ctx, ev.SessionID, session.ReportLanguage, mode, native, chunks)
+	if err != nil {
+		return failGen(err, "metadata")
+	}
+
+	// Retrieve prior-session context using THIS session's distilled
+	// themes (docs/30). Best-effort — empty on any failure.
+	ragContext, err := loadRAGContextV2(ctx, ev.SessionID, session.PatientFileID,
+		metadataPayload.RAGThemes, metadataPayload.RAGSummaryChunk, chunks)
 	if err != nil {
 		logger.Warn("rag context", "error", err)
 		ragContext = ""
 	}
 
-	reportJSON, tokenStats, err := generateReport(ctx, ev.SessionID, session.ReportLanguage, modalityPrompt, ragContext, chunks, session.ReportPreferences)
+	// Call 2 — the full report, now grounded in the retrieved context.
+	reportJSON, tokenStats, err := generateReportBody(ctx, ev.SessionID, session.ReportLanguage,
+		modalityPrompt, ragContext, chunks, session.ReportPreferences, metadataPayload, stats)
 	if err != nil {
-		// Vertex AI errors (quota, schema rejection, content filter,
-		// region availability) all land here. Log full error text so we
-		// don't have to dig through cloudaudit.googleapis.com for the
-		// reason.
-		logger.Error("generate report (Vertex AI)",
-			"error", err,
-			"prompt_len", len(modalityPrompt),
-			"chunk_count", len(chunks),
-			"rag_context_len", len(ragContext))
-		if isTerminalLLMError(err) {
-			// Content/safety block or invalid-argument — will never
-			// succeed. Mark FAILED, mirror to the user, ack (no retry).
-			_ = updateSessionStatus(ctx, ev.SessionID, "FAILED")
-			if perr := publishSessionStatusChanged(ctx, ev.SessionID, "failed"); perr != nil {
-				logger.Warn("publish session.status_changed(failed) failed", "error", perr)
-			}
-			logger.Error("llm: terminal generate failure — FAILED, ack, no retry", "error", err)
-			return nil
-		}
-		// Transient (Vertex 5xx / quota / deadline) — do NOT mark FAILED;
-		// NACK so Pub/Sub retries within the ~24h window.
-		return fmt.Errorf("generate: %w", err)
+		return failGen(err, "report")
 	}
 
 	var report ReportPayload
@@ -372,13 +365,11 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 		logger.Warn("speaker labels", "error", err)
 	}
 
-	embedding, err := generateEmbedding(ctx, report.RAGSummaryChunk)
-	if err != nil {
-		logger.Warn("embedding", "error", err)
-	} else {
-		if err := persistRAGMemory(ctx, session, reportID, &report, embedding); err != nil {
-			logger.Warn("rag persist", "error", err)
-		}
+	// Write long-term memory: a summary row + one row per RAG_Theme,
+	// each independently embedded (docs/30 §3.2). Best-effort — a
+	// failure here Warns but never fails the report.
+	if err := persistRAGMemoryV2(ctx, session, reportID, &report); err != nil {
+		logger.Warn("rag persist", "error", err)
 	}
 
 	if err := updateSessionStatus(ctx, ev.SessionID, "COMPLETED"); err != nil {
@@ -401,10 +392,10 @@ func ProcessTranscript(ctx context.Context, e event.Event) error {
 }
 
 type SessionContext struct {
-	ID                  uuid.UUID
-	PatientFileID       uuid.UUID
-	TherapistID         uuid.UUID
-	ModalityID          uuid.UUID
+	ID            uuid.UUID
+	PatientFileID uuid.UUID
+	TherapistID   uuid.UUID
+	ModalityID    uuid.UUID
 	// ModalityType discriminates the modalities catalog into
 	// therapy vs coaching (migration 000026). Drives the localized
 	// role-label vocabulary in generateAndSaveSpeakerLabels:
@@ -430,6 +421,10 @@ type ReportPayload struct {
 	SpeakerRoleInference SpeakerRoleInference `json:"speaker_role_inference"`
 	ReportMarkdown       string               `json:"report_markdown"`
 	RAGSummaryChunk      string               `json:"rag_summary_chunk"`
+	// RAGThemes are 2–5 distinct clinical threads of THIS session, each
+	// persisted as its own embedded rag_memories row for thread-level
+	// cross-session retrieval (docs/30). Empty for short/legacy sessions.
+	RAGThemes []string `json:"rag_themes,omitempty"`
 }
 
 // SpeakerRoleInference reprezentuje wynik diaryzacji wykonanej przez LLM
@@ -528,18 +523,17 @@ func diarizationMode() string {
 	return v
 }
 
-func generateReport(ctx context.Context, sessionID string, reportLanguage, modalityPrompt, ragContext string, chunks []transcriptfmt.Chunk, prefs reportprefs.Preferences) (string, TokenStats, error) {
+// generateMetadata runs call-1 (diarization + metadata + RAG_Summary +
+// RAG_Themes). It deliberately receives NO prior-session context — every
+// call-1 output is a self-contained fact about THIS session (see
+// docs/agents/05 "Why call-1 doesn't get RAG"). Its outputs (themes /
+// summary) become the *query* for v2 retrieval, which is why the pipeline
+// runs call-1 → retrieve → call-2 (docs/30). mode/native are computed by
+// the caller (which also logs the shared "llm config" line).
+func generateMetadata(ctx context.Context, sessionID, reportLanguage, mode string, native bool, chunks []transcriptfmt.Chunk) (ReportPayload, TokenStats, error) {
 	// New SDK: no per-model object. Each GenerateContent call gets
 	// its own config (call-1 metadata vs call-2 report). The
 	// package-level vertexClient (genai.Client) is shared.
-	mode := diarizationMode()
-	native := hasNativeSpeakers(chunks)
-
-	slog.Info("llm config",
-		"diarization_mode", mode,
-		"native_speakers", native,
-		"chunk_count", len(chunks),
-		"preferences", prefs.Summary())
 
 	// --- Krok 1: Diaryzacja i Metadane ---
 	var metadataPayload ReportPayload
@@ -596,7 +590,7 @@ func generateReport(ctx context.Context, sessionID string, reportLanguage, modal
 					}(),
 					"error", err.Error(),
 				)
-				return "", TokenStats{}, err
+				return ReportPayload{}, TokenStats{}, err
 			}
 			metadataPayload = markdownResultToPayload(mdResult, chunks, native)
 			stats.InputTokens += mdStats.InputTokens
@@ -616,7 +610,7 @@ func generateReport(ctx context.Context, sessionID string, reportLanguage, modal
 					}(),
 					"error", err.Error(),
 				)
-				return "", TokenStats{}, err
+				return ReportPayload{}, TokenStats{}, err
 			}
 			metadataPayload = payload
 			stats.InputTokens += jsonStats.InputTokens
@@ -638,6 +632,14 @@ func generateReport(ctx context.Context, sessionID string, reportLanguage, modal
 		)
 	}
 
+	return metadataPayload, stats, nil
+}
+
+// generateReportBody runs call-2 (the full clinical report) from call-1's
+// metadata plus the retrieved prior-session context (ragContext, empty in
+// legacy/first-session cases). stats carries call-1's token counts in; the
+// returned stats include call-2's.
+func generateReportBody(ctx context.Context, sessionID, reportLanguage, modalityPrompt, ragContext string, chunks []transcriptfmt.Chunk, prefs reportprefs.Preferences, metadataPayload ReportPayload, stats TokenStats) (string, TokenStats, error) {
 	// --- Krok 2: Pełny Raport Kliniczny (Raw Text Mode) ---
 	// Call 2's transcript is ALWAYS Format B (speaker-turn-grouped
 	// Markdown) — readable prose with speaker attribution baked in.
@@ -904,6 +906,7 @@ ZASADY ZWIĘZŁOŚCI (kluczowe — nie ignoruj):
 - summary_short: max 500 znaków, 2-3 zdania. Samodzielne streszczenie TEJ sesji — nie odwołuj się do wcześniejszych spotkań.
 - evidence (cytaty z transkryptu): pojedynczy cytat, max 200 znaków.
 - rag_summary_chunk: max 1500 znaków, kluczowe fakty z TEJ sesji dla pamięci długoterminowej. Nie powtarzaj treści wcześniejszych podsumowań — niech wpis będzie samodzielnym śladem tej sesji.
+- rag_themes: 2-5 odrębnych wątków klinicznych TEJ sesji (osobne pozycje tablicy), każdy 2-3 zdania, BEZ danych identyfikujących, w 3. osobie. Pomiń gdy materiał zbyt krótki.
 - Pisz konkretami, NIE parafrazuj całych wypowiedzi.`,
 		reportLanguage, transcriptText)
 
@@ -983,12 +986,14 @@ Title: <tytuł, max 100 znaków, opisuje TĘ sesję — nie buduj numeracji ani 
 Summary: <streszczenie, max 500 znaków, 2-3 zdania, samodzielne podsumowanie TEJ sesji>
 Overall_diarization_confidence: 0.94
 RAG_Summary: <streszczenie do pamięci długoterminowej, max 1500 znaków, gęsto informacyjne, BEZ danych identyfikujących (imion, miejsc, kontaktów). Skup się na kluczowych faktach klinicznych Z TEJ SESJI, wzorcach, hipotezach roboczych. Pisz w 3. osobie ("klient", "pacjent"), bez imion. Nie powtarzaj treści wcześniejszych podsumowań — niech wpis będzie samodzielnym śladem tej sesji.>
+RAG_Theme: <jeden odrębny wątek kliniczny TEJ sesji w jednej linii (2-3 zdania), np. "lęk przed matką — klient opisuje onieśmielenie i unikanie". Wygeneruj 2-5 osobnych linii "RAG_Theme:", każda inny temat mogący powrócić w przyszłych sesjach. BEZ danych identyfikujących, w 3. osobie. Nie dziel jednego tematu na kilka wpisów; nie twórz wątku ze small-talku. Pomiń gdy materiał zbyt krótki (≤1 chunk).>
 
 ZASADY:
 - Sekcje "# Speakers" i "# Metadata", dokładnie w tej kolejności.
 - Po jednym wierszu na speakera w "# Speakers".
 - Confidence: float 0.0–1.0.
 - RAG_Summary jest opcjonalne tylko gdy materiał jest zbyt krótki (≤1 chunk); inaczej WYMAGANE.
+- RAG_Theme: 2-5 osobnych linii (po jednym wątku), opcjonalne; pomiń gdy materiał zbyt krótki.
 - BEZ żadnego tekstu poza tym blokiem.`,
 			reportLanguage, transcriptStr)
 	} else {
@@ -1035,6 +1040,7 @@ Title: <tytuł, max 100 znaków, opisuje TĘ sesję — nie buduj numeracji ani 
 Summary: <streszczenie, max 500 znaków, 2-3 zdania, samodzielne podsumowanie TEJ sesji>
 Overall_diarization_confidence: 0.89
 RAG_Summary: <streszczenie do pamięci długoterminowej, max 1500 znaków, gęsto informacyjne, BEZ danych identyfikujących (imion, miejsc, kontaktów). Skup się na kluczowych faktach klinicznych Z TEJ SESJI, wzorcach, hipotezach roboczych. Pisz w 3. osobie ("klient", "pacjent"), bez imion. Nie powtarzaj treści wcześniejszych podsumowań — niech wpis będzie samodzielnym śladem tej sesji.>
+RAG_Theme: <jeden odrębny wątek kliniczny TEJ sesji w jednej linii (2-3 zdania), np. "lęk przed matką — klient opisuje onieśmielenie i unikanie". Wygeneruj 2-5 osobnych linii "RAG_Theme:", każda inny temat mogący powrócić w przyszłych sesjach. BEZ danych identyfikujących, w 3. osobie. Nie dziel jednego tematu na kilka wpisów; nie twórz wątku ze small-talku. Pomiń gdy materiał zbyt krótki (≤1 chunk).>
 
 ZASADY:
 - Sekcje "# Speakers" i "# Metadata", dokładnie w tej kolejności.
@@ -1043,6 +1049,7 @@ ZASADY:
 - "Evidence:" — pojedynczy cytat z transkrypcji w cudzysłowach.
 - Confidence: float 0.0–1.0.
 - RAG_Summary jest opcjonalne tylko gdy materiał jest zbyt krótki (≤1 chunk); inaczej WYMAGANE.
+- RAG_Theme: 2-5 osobnych linii (po jednym wątku), opcjonalne; pomiń gdy materiał zbyt krótki.
 - BEZ żadnego tekstu poza tym blokiem.`,
 			reportLanguage, transcriptStr)
 	}
@@ -1289,6 +1296,7 @@ func markdownResultToPayload(r diarization.Result, chunks []transcriptfmt.Chunk,
 		Title:           r.Title,
 		SummaryShort:    r.Summary,
 		RAGSummaryChunk: rag,
+		RAGThemes:       r.RAGThemes,
 		SpeakerRoleInference: SpeakerRoleInference{
 			Method:                       method,
 			SpeakerGroups:                groups,
@@ -1915,155 +1923,284 @@ func loadModalityPrompt(ctx context.Context, modalityID uuid.UUID) (string, erro
 	return prompt["system"], nil
 }
 
-// loadRAGContext retrieves up to ragTopK encrypted long-term-memory
-// summaries from this patient's prior sessions, ranked by cosine
-// similarity against currentText's embedding, decrypts them, and
-// returns a newline-joined block suitable for the call-1/call-2
-// prompt's `KONTEKST POPRZEDNICH SESJI:` slot.
-//
-// Returns empty string (and nil error) for any of:
-//   - dbPool unconfigured (local/test mode)
-//   - this patient has no prior memories yet (first session)
-//   - the query embedding failed
-//   - every nearest neighbor decrypts to empty plaintext (the legacy
-//     "RAGSummaryChunk == \"\"" historical bug; option-A backfill is
-//     skipped per user direction — those rows just rank low)
-//
-// Side effect: bumps `last_accessed_at` on the retrieved rows so
-// future compaction prioritizes stale memories. Best-effort; an
-// UPDATE failure logs Warn but doesn't fail the read.
-//
-// Prompt-budget guard: caps the joined output at ragContextMaxChars
-// to avoid blowing the call-1/call-2 input window when a patient
-// accumulates 50+ sessions. Older rows truncated last (the SELECT
-// orders by similarity ascending — closest first).
-func loadRAGContext(ctx context.Context, sessionID string, patientFileID uuid.UUID, currentText string) (string, error) {
+// loadRAGContextV2 is the theme-level retriever (docs/30). The query is
+// THIS session's distilled themes (from call-1), not the raw transcript —
+// which both fixes the embedding-truncation bug and matches query
+// representation to the stored theme/summary rows. Ranking (anchor +
+// recency-weighted cosine + MMR diversity) runs in Go via selectRAGHits;
+// only the winners are decrypted. Best-effort: returns "" + err on any
+// failure, exactly like the legacy reader.
+func loadRAGContextV2(ctx context.Context, sessionID string, patientFileID uuid.UUID, themes []string, ragSummary string, chunks []transcriptfmt.Chunk) (string, error) {
 	if dbPool == nil {
 		return "", nil
 	}
-	if strings.TrimSpace(currentText) == "" {
+	curSession, err := uuid.Parse(sessionID)
+	if err != nil {
+		return "", fmt.Errorf("parse session id: %w", err)
+	}
+
+	// Query texts: each theme is its own query vector; fall back to the
+	// summary, then the transcript head+tail. The per-theme vectors are
+	// what let selectRAGHits surface DISTINCT prior threads.
+	queryTexts := make([]string, 0, len(themes)+1)
+	for _, t := range themes {
+		if t = strings.TrimSpace(t); t != "" {
+			queryTexts = append(queryTexts, t)
+		}
+	}
+	if len(queryTexts) == 0 {
+		if s := strings.TrimSpace(ragSummary); s != "" {
+			queryTexts = append(queryTexts, s)
+		}
+	}
+	if len(queryTexts) == 0 {
+		if s := strings.TrimSpace(transcriptHeadTail(chunks, 1000)); s != "" {
+			queryTexts = append(queryTexts, s)
+		}
+	}
+	if len(queryTexts) == 0 {
 		return "", nil
 	}
 
-	queryVec, err := generateEmbedding(ctx, currentText)
-	if err != nil {
-		// Non-fatal — log via the caller's Warn. Returning empty here
-		// means the model gets no prior context this round, same as
-		// the legacy stub behavior. Better than failing the report.
+	// Embed query texts concurrently.
+	queryVecs := make([][]float32, len(queryTexts))
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(6)
+	for i := range queryTexts {
+		i := i
+		g.Go(func() error {
+			v, embErr := generateEmbedding(gctx, queryTexts[i])
+			if embErr != nil {
+				return embErr
+			}
+			queryVecs[i] = v
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
 		return "", fmt.Errorf("rag query embed: %w", err)
 	}
+	qv := make([][]float32, 0, len(queryVecs))
+	for _, v := range queryVecs {
+		if len(v) == embeddingDims {
+			qv = append(qv, v)
+		}
+	}
+	if len(qv) == 0 {
+		return "", nil
+	}
 
-	// Two-stage filter to keep the candidate pool bounded:
-	//   stage 1 (recent CTE): patient's last ragLookbackMemories rows,
-	//     newest first by created_at. Hard ceiling so a veteran patient
-	//     with 200 sessions doesn't drag in 5-year-old states.
-	//   stage 2 (outer SELECT): nearest neighbors within that pool by
-	//     pgvector cosine distance. HNSW index
-	//     `idx_rag_memories_embedding` covers the inner ORDER BY when
-	//     the candidate count is comparable to lookback size.
-	//
-	// patient_file_id filter on the CTE is BOTH a privacy guarantee
-	// (no cross-patient leakage) and an HNSW pre-filter via the
-	// partial index `idx_rag_memories_patient_file`.
-	rows, err := dbPool.Query(ctx, `
-		WITH recent AS (
-			SELECT id, summary_ciphertext, summary_encrypted_dek, embedding
-			FROM rag_memories
-			WHERE patient_file_id = $1 AND NOT is_compacted
-			ORDER BY created_at DESC
-			LIMIT $4
-		)
-		SELECT id, summary_ciphertext, summary_encrypted_dek
-		FROM recent
-		ORDER BY embedding <=> $2::vector
-		LIMIT $3`,
-		patientFileID, vectorToString(queryVec), ragTopK, ragLookbackMemories)
+	pool, anchorID, err := loadRAGPool(ctx, patientFileID, curSession)
 	if err != nil {
-		return "", fmt.Errorf("rag query: %w", err)
+		return "", err
 	}
-	defer rows.Close()
+	if len(pool) == 0 {
+		return "", nil
+	}
 
-	type memHit struct {
-		id        uuid.UUID
-		plaintext string
-	}
-	var hits []memHit
-	for rows.Next() {
-		var id uuid.UUID
-		var ct, dek []byte
-		if scanErr := rows.Scan(&id, &ct, &dek); scanErr != nil {
-			return "", fmt.Errorf("rag scan: %w", scanErr)
-		}
-		pt, decErr := crypto.Decrypt(ctx, ct, dek)
-		if decErr != nil {
-			// KMS misconfig or corrupted row. Log + skip — one bad
-			// row shouldn't poison the whole retrieval.
-			slog.Warn("rag decrypt failed", "rag_memory_id", id.String(), "error", decErr)
-			continue
-		}
-		ptStr := strings.TrimSpace(string(pt))
-		if ptStr == "" {
-			// Legacy markdown-mode rows with RAGSummaryChunk="" land
-			// here. Skip silently — they got ranked by zero-vector
-			// embedding back when the stub ran, so they're high in
-			// the result set on every query. Not actionable signal.
-			continue
-		}
-		hits = append(hits, memHit{id: id, plaintext: ptStr})
-	}
-	if rerr := rows.Err(); rerr != nil {
-		return "", fmt.Errorf("rag rows: %w", rerr)
-	}
+	hits := selectRAGHits(pool, qv, anchorID, time.Now())
 	if len(hits) == 0 {
 		return "", nil
 	}
 
-	// Bump last_accessed_at on the retrieved rows (best-effort).
-	// Background UPDATE so the cosmetic timestamp bump doesn't add
-	// latency to the worker's critical path.
+	block, used := assembleRAGContext(ctx, hits, anchorID)
+
+	// last_accessed_at bump (best-effort, background — cosmetic).
 	hitIDs := make([]uuid.UUID, len(hits))
 	for i, h := range hits {
-		hitIDs[i] = h.id
+		hitIDs[i] = h.ID
 	}
 	go func(ids []uuid.UUID) {
-		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		bg, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if _, uerr := dbPool.Exec(bgCtx,
-			`UPDATE rag_memories SET last_accessed_at = now() WHERE id = ANY($1)`,
-			ids); uerr != nil {
+		if _, uerr := dbPool.Exec(bg,
+			`UPDATE rag_memories SET last_accessed_at = now() WHERE id = ANY($1)`, ids); uerr != nil {
 			slog.Warn("rag last_accessed bump failed", "ids_count", len(ids), "error", uerr)
 		}
 	}(hitIDs)
 
-	// Join with double-newlines so the LLM sees each memory as its
-	// own paragraph. Number them (1., 2., …) so prompt instructions
-	// can reference "the most relevant prior session" naturally.
-	var sb strings.Builder
-	memoriesUsed := 0
-	for i, h := range hits {
-		next := fmt.Sprintf("%d. %s\n\n", i+1, h.plaintext)
-		// Prompt-budget guard. ragContextMaxChars is generous enough
-		// for the typical top-3 hits (~4500 chars) but trims when the
-		// LLM occasionally writes a longer summary or when ragTopK
-		// grows in the future.
-		if sb.Len()+len(next) > ragContextMaxChars {
-			break
-		}
-		sb.WriteString(next)
-		memoriesUsed++
+	sessSet := map[uuid.UUID]bool{}
+	for _, h := range hits {
+		sessSet[h.SessionID] = true
 	}
-	resultString := strings.TrimRight(sb.String(), "\n")
-
-	// Analityka: rag.retrieved
 	slog.InfoContext(ctx, "analytics",
 		"ae", "rag.retrieved",
 		"session_id", sessionID,
-		"memories_found", len(hits),
-		"memories_used", memoriesUsed,
-		"context_chars", len(resultString),
+		"mode", "v2",
+		"pool_size", len(pool),
+		"themes_count", len(qv),
+		"hits", len(hits),
+		"memories_used", used,
+		"sessions_represented", len(sessSet),
+		"anchor_used", anchorID != uuid.Nil,
+		"context_chars", len(block),
 	)
+	return block, nil
+}
 
-	return resultString, nil
+// loadRAGPool fetches the ranking pool: every memory row belonging to the
+// patient's most-recent ragLookbackSessions sessions (excluding the
+// session being processed), embeddings only — no ciphertext, no decrypt.
+// Returns the pool and the anchor id (the summary row of the most recent
+// prior session, uuid.Nil if none).
+func loadRAGPool(ctx context.Context, patientFileID, excludeSession uuid.UUID) ([]ragCandidate, uuid.UUID, error) {
+	rows, err := dbPool.Query(ctx, `
+		WITH recent_sessions AS (
+			SELECT source_session_id, max(created_at) AS session_at
+			FROM rag_memories
+			WHERE patient_file_id = $1 AND NOT is_compacted
+			  AND source_session_id IS NOT NULL
+			  AND source_session_id <> $2
+			GROUP BY source_session_id
+			ORDER BY session_at DESC
+			LIMIT $3
+		)
+		SELECT m.id, m.source_session_id, m.chunk_type, m.created_at, m.embedding::text
+		FROM rag_memories m
+		JOIN recent_sessions rs ON rs.source_session_id = m.source_session_id
+		WHERE m.patient_file_id = $1 AND NOT m.is_compacted`,
+		patientFileID, excludeSession, ragLookbackSessions)
+	if err != nil {
+		return nil, uuid.Nil, fmt.Errorf("rag pool query: %w", err)
+	}
+	defer rows.Close()
+
+	var pool []ragCandidate
+	var anchorID uuid.UUID
+	var anchorAt time.Time
+	for rows.Next() {
+		var c ragCandidate
+		var embStr string
+		if scanErr := rows.Scan(&c.ID, &c.SessionID, &c.ChunkType, &c.CreatedAt, &embStr); scanErr != nil {
+			return nil, uuid.Nil, fmt.Errorf("rag pool scan: %w", scanErr)
+		}
+		c.Embedding = parseEmbedding(embStr)
+		pool = append(pool, c)
+		if c.ChunkType == "summary" && (anchorID == uuid.Nil || c.CreatedAt.After(anchorAt)) {
+			anchorID = c.ID
+			anchorAt = c.CreatedAt
+		}
+	}
+	return pool, anchorID, rows.Err()
+}
+
+// assembleRAGContext decrypts the selected rows and renders the call-2
+// context block: hits grouped by session (anchor session first, then in
+// hit order), each session dated, items globally numbered. Honors
+// ragContextMaxCharsV2 (anchor is never trimmed). Returns the block and
+// the number of memories actually rendered.
+func assembleRAGContext(ctx context.Context, hits []ragCandidate, anchorID uuid.UUID) (string, int) {
+	ids := make([]uuid.UUID, len(hits))
+	for i, h := range hits {
+		ids[i] = h.ID
+	}
+	plain := map[uuid.UUID]string{}
+	rows, err := dbPool.Query(ctx,
+		`SELECT id, summary_ciphertext, summary_encrypted_dek FROM rag_memories WHERE id = ANY($1)`, ids)
+	if err != nil {
+		slog.Warn("rag assemble query failed", "error", err)
+		return "", 0
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id uuid.UUID
+		var ct, dek []byte
+		if rows.Scan(&id, &ct, &dek) != nil {
+			continue
+		}
+		pt, decErr := crypto.Decrypt(ctx, ct, dek)
+		if decErr != nil {
+			slog.Warn("rag decrypt failed", "rag_memory_id", id.String(), "error", decErr)
+			continue
+		}
+		if s := strings.TrimSpace(string(pt)); s != "" {
+			plain[id] = s
+		}
+	}
+
+	// Group by session, preserving hit order (anchor-first, then score).
+	type grp struct {
+		date  time.Time
+		items []ragCandidate
+	}
+	var order []*grp
+	bySession := map[uuid.UUID]*grp{}
+	for _, h := range hits {
+		gp := bySession[h.SessionID]
+		if gp == nil {
+			gp = &grp{date: h.CreatedAt}
+			bySession[h.SessionID] = gp
+			order = append(order, gp)
+		}
+		if h.CreatedAt.After(gp.date) {
+			gp.date = h.CreatedAt
+		}
+		gp.items = append(gp.items, h)
+	}
+
+	var sb strings.Builder
+	sb.WriteString("KONTEKST POPRZEDNICH SESJI:\n")
+	n, used := 0, 0
+	for _, gp := range order {
+		isAnchor := len(gp.items) > 0 && gp.items[0].ID == anchorID
+		header := fmt.Sprintf("\n[Sesja z %s — powiązane wątki]\n", gp.date.Format("2006-01-02"))
+		if isAnchor {
+			header = fmt.Sprintf("\n[Poprzednia sesja — %s]\n", gp.date.Format("2006-01-02"))
+		}
+		pending := header
+		added := 0
+		for _, it := range gp.items {
+			txt := plain[it.ID]
+			if txt == "" {
+				continue
+			}
+			line := fmt.Sprintf("%d. %s\n", n+1, txt)
+			if !isAnchor && sb.Len()+len(pending)+len(line) > ragContextMaxCharsV2 {
+				break
+			}
+			pending += line
+			n++
+			added++
+			used++
+		}
+		if added > 0 {
+			sb.WriteString(pending)
+		}
+	}
+	return strings.TrimSpace(sb.String()), used
+}
+
+// parseEmbedding parses pgvector's text form "[f1,f2,...]" into []float32.
+// A malformed value yields nil (length-0) so the row ranks neutrally
+// rather than corrupting the cosine math.
+func parseEmbedding(s string) []float32 {
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(s, "[")
+	s = strings.TrimSuffix(s, "]")
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	v := make([]float32, 0, len(parts))
+	for _, p := range parts {
+		f, perr := strconv.ParseFloat(strings.TrimSpace(p), 32)
+		if perr != nil {
+			return nil
+		}
+		v = append(v, float32(f))
+	}
+	return v
+}
+
+// transcriptHeadTail is the last-resort retrieval query when call-1
+// produced neither themes nor a summary (sub-2-chunk sessions): the
+// first + last n chars of the formatted transcript.
+func transcriptHeadTail(chunks []transcriptfmt.Chunk, n int) string {
+	full := legacyChunkFormat(chunks)
+	if len(full) <= 2*n {
+		return full
+	}
+	return full[:n] + " … " + full[len(full)-n:]
 }
 
 func persistReport(ctx context.Context, session *SessionContext, transcriptID string, report *ReportPayload, fullJSON string, tokenStats TokenStats, processingTime time.Duration) (string, error) {
@@ -2112,26 +2249,81 @@ func persistReport(ctx context.Context, session *SessionContext, transcriptID st
 	return reportID.String(), nil
 }
 
-func persistRAGMemory(ctx context.Context, session *SessionContext, reportID string, report *ReportPayload, embedding []float32) error {
+// persistRAGMemoryV2 writes this session's long-term memory: one
+// 'summary' row (always — it doubles as the previous-session anchor and
+// the fallback when no themes were emitted) plus one 'theme' row per
+// distinct RAG_Theme the model produced (docs/30 §3.2). Each row gets
+// its own embedding, generated concurrently (bounded), and all rows land
+// in a single transaction.
+//
+// Best-effort by contract: the caller Warns and continues on error. A
+// missing memory degrades future recall but must never fail the report.
+func persistRAGMemoryV2(ctx context.Context, session *SessionContext, reportID string, report *ReportPayload) error {
 	repID, err := uuid.Parse(reportID)
 	if err != nil {
 		return err
 	}
 
-	summaryCipher, summaryDEK, err := crypto.Encrypt(ctx, []byte(report.RAGSummaryChunk))
-	if err != nil {
-		return fmt.Errorf("encrypt rag summary: %w", err)
+	type ragRow struct {
+		text       string
+		chunkType  string
+		importance float64
+	}
+	// Summary first (anchor / fallback), then de-duplicated non-empty themes.
+	rows := []ragRow{{text: report.RAGSummaryChunk, chunkType: "summary", importance: 0.7}}
+	seen := map[string]bool{}
+	for _, th := range report.RAGThemes {
+		th = strings.TrimSpace(th)
+		if th == "" || seen[th] {
+			continue
+		}
+		seen[th] = true
+		rows = append(rows, ragRow{text: th, chunkType: "theme", importance: 0.5})
 	}
 
-	embeddingStr := vectorToString(embedding)
+	// Embed every row concurrently. generateEmbedding returns a zero
+	// vector for empty text, so an empty summary still yields a
+	// (neutral-ranking) anchor row rather than an error.
+	embeddings := make([][]float32, len(rows))
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(6)
+	for i := range rows {
+		i := i
+		g.Go(func() error {
+			emb, embErr := generateEmbedding(gctx, rows[i].text)
+			if embErr != nil {
+				return fmt.Errorf("embed %s row %d: %w", rows[i].chunkType, i, embErr)
+			}
+			embeddings[i] = emb
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
 
-	_, err = dbPool.Exec(ctx, `
-		INSERT INTO rag_memories (patient_file_id, source_session_id, source_report_id,
-			summary_ciphertext, summary_encrypted_dek, embedding,
-			chunk_type, importance_score)
-		VALUES ($1, $2, $3, $4, $5, $6::vector, 'summary', 0.7)`,
-		session.PatientFileID, session.ID, repID, summaryCipher, summaryDEK, embeddingStr)
-	return err
+	tx, err := dbPool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	for i, r := range rows {
+		cipher, dek, encErr := crypto.Encrypt(ctx, []byte(r.text))
+		if encErr != nil {
+			return fmt.Errorf("encrypt %s: %w", r.chunkType, encErr)
+		}
+		if _, execErr := tx.Exec(ctx, `
+			INSERT INTO rag_memories (patient_file_id, source_session_id, source_report_id,
+				summary_ciphertext, summary_encrypted_dek, embedding,
+				chunk_type, importance_score)
+			VALUES ($1, $2, $3, $4, $5, $6::vector, $7, $8)`,
+			session.PatientFileID, session.ID, repID,
+			cipher, dek, vectorToString(embeddings[i]), r.chunkType, r.importance); execErr != nil {
+			return execErr
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 func vectorToString(v []float32) string {

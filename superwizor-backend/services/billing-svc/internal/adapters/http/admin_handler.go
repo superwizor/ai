@@ -43,13 +43,20 @@ func NewAdminHandler(pool *pgxpool.Pool, logger *slog.Logger) *AdminHandler {
 }
 
 // RegisterRoutes — wpina endpointy w mux. Wywoływany z cmd/server/main.go.
-func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
+//
+// The browser-facing CRM list goes through the SUPERWIZOR_ADMIN
+// Firebase-token middleware (billing-svc is publicly invokable; route
+// auth is the only gate). The five cron endpoints stay as-is for now —
+// Cloud Scheduler calls them with a Google OIDC token, NOT a Firebase
+// token, so they need a Google idtoken validator (tracked separately;
+// see the 2026-06-10 CRM exposure follow-up).
+func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux, auth *AdminAuthMiddleware) {
 	mux.HandleFunc("POST /admin/reservation-expiry", h.handleReservationExpiry)
 	mux.HandleFunc("POST /admin/manual-period-renewal", h.handleManualPeriodRenewal)
 	mux.HandleFunc("POST /admin/safety-check", h.handleSafetyCheck)
 	mux.HandleFunc("POST /admin/email-drip", h.handleEmailDrip)
 	mux.HandleFunc("POST /admin/renewal-reminders", h.handleRenewalReminders)
-	mux.HandleFunc("GET /admin/crm/subscribers", h.handleCRMSubscribers)
+	mux.HandleFunc("GET /admin/crm/subscribers", auth.Require(h.handleCRMSubscribers))
 }
 
 // ---------- reservation-expiry ----------
@@ -313,11 +320,18 @@ func writeJSON(w http.ResponseWriter, code int, payload any) {
 
 func writeError(w http.ResponseWriter, code int, msg string, err error) {
 	slog.Error("admin handler error", "msg", msg, "error", err)
+	// nil err is legal (validation / auth failures have no wrapped
+	// error) — several CRM call sites pass nil; err.Error() on nil
+	// panicked the whole handler before 2026-06-10.
+	details := ""
+	if err != nil {
+		details = err.Error()
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"error":   msg,
-		"details": err.Error(),
+		"details": details,
 	})
 }
 

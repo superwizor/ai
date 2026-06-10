@@ -464,6 +464,86 @@ void main() {
     });
   });
 
+  group('upload-phase retry tuning (fix/upload-stall-resilience)', () {
+    test('created-phase backoff is capped at putRetryCap', () async {
+      // 6th attempt → test backoff says 360 s, but a GCS PUT failure
+      // means the phone's link is down — nothing server-side to protect,
+      // so the wait is capped (default 90 s) and the connectivity
+      // listener / periodic tick picks the row up quickly.
+      final clock = DateTime.utc(2026, 5, 20, 12);
+      final io = FakeUploadIo()
+        ..putBytesError = const SocketException('no network');
+
+      final next = await _worker(io, clock: clock).runOne(_seed(
+        phase: UploadPhase.created,
+        uploadId: 'a',
+        signedUrl: 'b',
+        attemptCount: 5,
+      ));
+
+      expect(next.attemptCount, 6);
+      expect(next.nextAttemptAt.difference(clock),
+          const Duration(seconds: 90));
+    });
+
+    test('cap does not apply to the RPC (pending) phase', () async {
+      final clock = DateTime.utc(2026, 5, 20, 12);
+      final io = FakeUploadIo()
+        ..createUploadError = grpc.GrpcError.unavailable();
+
+      final next =
+          await _worker(io, clock: clock).runOne(_seed(attemptCount: 5));
+
+      expect(next.nextAttemptAt.difference(clock),
+          const Duration(seconds: 6 * 60),
+          reason: 'server-protection backoff stays exponential for RPCs');
+    });
+
+    test('UploadProgressMadeError resets the attempt ladder', () async {
+      // The attempt failed but moved the GCS offset first — backoff
+      // escalation is for attempts stuck at the same byte, so the
+      // worker restarts the ladder (attemptCount 5 → 0 → +1 = 1).
+      final clock = DateTime.utc(2026, 5, 20, 12);
+      final io = FakeUploadIo()
+        ..putBytesError = const UploadProgressMadeError(
+            SocketException('drop after progress'));
+
+      final next = await _worker(io, clock: clock).runOne(_seed(
+        phase: UploadPhase.created,
+        uploadId: 'a',
+        signedUrl: 'b',
+        attemptCount: 5,
+      ));
+
+      expect(next.phase, UploadPhase.created);
+      expect(next.attemptCount, 1);
+      expect(next.nextAttemptAt.difference(clock),
+          const Duration(seconds: 60),
+          reason: 'retry scheduled from the bottom of the ladder');
+      expect(next.lastError, contains('drop after progress'));
+    });
+
+    test('wrapped error still classifies by its cause', () async {
+      // Progress + session death: the signedUrlExpired routing must
+      // survive the wrapper so the row re-creates instead of retrying
+      // a dead session.
+      final io = FakeUploadIo()
+        ..putBytesError =
+            UploadProgressMadeError(httpStatusError(403, 'session gone'));
+
+      final next = await _worker(io).runOne(_seed(
+        phase: UploadPhase.created,
+        uploadId: 'a',
+        signedUrl: 'b',
+        attemptCount: 4,
+      ));
+
+      expect(next.phase, UploadPhase.pending);
+      expect(next.uploadId, isNull, reason: 'credentials cleared');
+      expect(next.attemptCount, 1, reason: 'progress reset applies here too');
+    });
+  });
+
   group('error classification → terminal', () {
     test('gRPC FAILED_PRECONDITION on create marks failed', () async {
       final io = FakeUploadIo()

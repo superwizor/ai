@@ -12,6 +12,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { serviceEndpoints, getAuthToken } from "@/lib/connect/clients";
 import { useTranslations } from "next-intl";
 import { TableSkeleton } from "./TableSkeleton";
 
@@ -199,6 +200,22 @@ const SENDER_EMAIL = "kontakt@superwizor.ai";
 
 // ─── Component ───────────────────────────────────────────────
 
+
+// crmFetch — direct call to billing-svc's admin CRM endpoints with the
+// Firebase bearer token. Replaces the Next.js api proxy: the site is
+// statically exported (output: "export"), so API routes have no runtime
+// in production, and the proxy forwarded requests UNAUTHENTICATED —
+// billing-svc now requires SUPERWIZOR_ADMIN on these routes
+// (2026-06-10 exposure fix). CORS on billing-svc already allows the
+// panel origins.
+async function crmFetch(path: string, init?: RequestInit): Promise<Response> {
+  const token = await getAuthToken();
+  const headers = new Headers(init?.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (init?.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  return fetch(`${serviceEndpoints.billing}${path}`, { ...init, headers });
+}
+
 export function CRMDashboard() {
   const t = useTranslations("admin.crm");
   const [subscribers, setSubscribers] = useState<CRMSubscriber[]>([]);
@@ -246,7 +263,7 @@ export function CRMDashboard() {
       if (filters.status) params.set("status", filters.status);
       if (filters.alert) params.set("alert", filters.alert);
       const qs = params.toString();
-      const resp = await fetch(`/api/admin/crm/subscribers${qs ? `?${qs}` : ""}`);
+      const resp = await crmFetch(`/admin/crm/subscribers${qs ? `?${qs}` : ""}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       setSubscribers(data.subscribers || []);
@@ -259,7 +276,7 @@ export function CRMDashboard() {
 
   const fetchFollowUps = useCallback(async () => {
     try {
-      const resp = await fetch("/api/admin/crm/follow-ups");
+      const resp = await crmFetch("/admin/crm/follow-ups");
       if (!resp.ok) return;
       const data = await resp.json();
       setFollowUps(data.follow_ups || []);
@@ -275,7 +292,7 @@ export function CRMDashboard() {
     setDrawerLoading(true);
     setDrawerOpen(true);
     try {
-      const resp = await fetch(`/api/admin/crm/user/${userId}/detail`);
+      const resp = await crmFetch(`/admin/crm/user/${userId}/detail`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       setSelectedUser(data);
@@ -297,7 +314,7 @@ export function CRMDashboard() {
     if (!selectedUser || !newNote.trim()) return;
     setNoteSaving(true);
     try {
-      await fetch("/api/admin/crm/notes", {
+      await crmFetch("/admin/crm/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target_user_id: selectedUser.user_id, body: newNote }),
@@ -312,7 +329,7 @@ export function CRMDashboard() {
 
   const addTag = async () => {
     if (!selectedUser || !newTag.trim()) return;
-    await fetch("/api/admin/crm/tags", {
+    await crmFetch("/admin/crm/tags", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target_user_id: selectedUser.user_id, tag: newTag.trim() }),
@@ -322,12 +339,12 @@ export function CRMDashboard() {
   };
 
   const removeTag = async (tagId: string) => {
-    await fetch(`/api/admin/crm/tags/${tagId}`, { method: "DELETE" });
+    await crmFetch(`/admin/crm/tags/${tagId}`, { method: "DELETE" });
     if (selectedUser) await openUserDetail(selectedUser.user_id);
   };
 
   const excludeUser = async (userId: string) => {
-    await fetch("/api/admin/crm/exclude", {
+    await crmFetch("/admin/crm/exclude", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId, reason: "excluded from CRM" }),
@@ -338,7 +355,7 @@ export function CRMDashboard() {
 
   const createFollowUp = async () => {
     if (!followUpTarget || !followUpDate) return;
-    await fetch("/api/admin/crm/follow-ups", {
+    await crmFetch("/admin/crm/follow-ups", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target_user_id: followUpTarget, due_date: followUpDate, note: followUpNote }),
@@ -351,7 +368,7 @@ export function CRMDashboard() {
   };
 
   const completeFollowUp = async (id: string) => {
-    await fetch(`/api/admin/crm/follow-ups/${id}/complete`, { method: "PATCH" });
+    await crmFetch(`/admin/crm/follow-ups/${id}/complete`, { method: "PATCH" });
     void fetchFollowUps();
     if (selectedUser) await openUserDetail(selectedUser.user_id);
   };

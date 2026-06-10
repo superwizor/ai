@@ -14,6 +14,7 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/stretchr/testify v1.11.1
+	github.com/superwizor-ai/backend/gen/go v0.0.0-00010101000000-000000000000
 	github.com/superwizor-ai/backend/pkg/i18n v0.0.0-00010101000000-000000000000
 	github.com/superwizor-ai/backend/pkg/transcription v0.0.0-00010101000000-000000000000
 	google.golang.org/protobuf v1.36.11
@@ -97,7 +98,7 @@ require (
 	golang.org/x/crypto v0.51.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sync v0.20.0
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/time v0.15.0 // indirect

@@ -443,6 +443,51 @@ void main() {
     await connCtrl.close();
   });
 
+  test('connectivity restore pulls a scheduled backoff retry to now',
+      () async {
+    // fix/upload-stall-resilience: a row that failed while the network
+    // was down carries nextAttemptAt minutes in the future. When the
+    // link returns, dueNow() would skip it and the user would stare at
+    // a frozen upload until the backoff elapsed — the connectivity
+    // handler must reset the schedule first (cold-start semantics).
+    final io = _FakeIo()..createUploadError = const SocketException('down');
+    final connCtrl = StreamController<List<ConnectivityResult>>.broadcast();
+
+    final queue = UploadQueue(hiveBox: rawBox);
+    final runner = UploadQueueRunner(
+      queue: queue,
+      worker: UploadWorker(
+        io: io,
+        backoff: (_) => const Duration(minutes: 30),
+      ),
+      periodicInterval: const Duration(hours: 1),
+      connectivityStream: connCtrl.stream,
+      hasNetwork: () async => true,
+    );
+
+    await runner.start();
+    await runner.enqueueAndKick(_seed('a'));
+    final parked = queue.getById('a')!;
+    expect(parked.phase, UploadPhase.pending);
+    expect(parked.attemptCount, 1);
+    expect(parked.nextAttemptAt.isAfter(DateTime.now().toUtc()), isTrue,
+        reason: 'failure scheduled a 30-min backoff');
+
+    io.createUploadError = null; // network is healthy again
+    connCtrl.add([ConnectivityResult.wifi]);
+
+    final stopAt = DateTime.now().add(const Duration(milliseconds: 300));
+    while (queue.getById('a')!.phase != UploadPhase.completed &&
+        DateTime.now().isBefore(stopAt)) {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+    expect(queue.getById('a')!.phase, UploadPhase.completed,
+        reason: 'the 30-min schedule must not outlive the outage');
+
+    await runner.dispose();
+    await connCtrl.close();
+  });
+
   test('snapshots stream emits on enqueue and on phase change', () async {
     final io = _FakeIo();
     final queue = UploadQueue(hiveBox: rawBox);

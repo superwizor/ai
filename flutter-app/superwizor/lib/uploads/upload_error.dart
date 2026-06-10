@@ -41,7 +41,26 @@ class ClassifiedError {
   const ClassifiedError(this.kind, this.message);
 }
 
+/// Wrapper an UploadIo implementation throws when an attempt ultimately
+/// failed BUT moved bytes forward first (the GCS resumable offset
+/// advanced). The worker unwraps it and resets attemptCount before
+/// classifying [cause]: escalating backoff is for attempts stuck at the
+/// same offset, not for a 127 MB transfer that keeps making progress
+/// between network blips.
+class UploadProgressMadeError implements Exception {
+  final Object cause;
+  const UploadProgressMadeError(this.cause);
+  @override
+  String toString() => 'UploadProgressMadeError($cause)';
+}
+
 ClassifiedError classifyUploadError(Object error) {
+  // Defensive unwrap — the worker normally strips this before
+  // classifying, but a future call site shouldn't misroute into the
+  // catch-all retryable branch with a useless message.
+  if (error is UploadProgressMadeError) {
+    return classifyUploadError(error.cause);
+  }
   // ── gRPC ────────────────────────────────────────────────────
   if (error is grpc.GrpcError) {
     final msg = 'gRPC ${error.codeName}: ${error.message ?? ''}';

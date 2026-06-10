@@ -37,6 +37,13 @@ export function setTokenProvider(p: TokenProvider): void {
 
 const tokenProvider: TokenProvider = () => currentTokenProvider();
 
+// getAuthToken — the same token source the Connect transports use,
+// exported for the few plain-fetch callers (CRM admin HTTP endpoints
+// on billing-svc, which are REST rather than Connect-RPC).
+export async function getAuthToken(): Promise<string | null> {
+  return currentTokenProvider();
+}
+
 const identityTransport = createServiceTransport({
   baseUrl: serviceEndpoints.identity,
   tokenProvider,

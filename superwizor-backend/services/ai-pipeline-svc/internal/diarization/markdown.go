@@ -62,6 +62,13 @@ type Result struct {
 	// the legacy JSON-mode schema). Empty when the model didn't emit
 	// the line; callers should fall back to Summary or skip RAG persist.
 	RAGSummary                   string
+	// RAGThemes are the optional `RAG_Theme:` lines under # Metadata —
+	// 2–5 distinct clinical threads of THIS session (e.g. "intimidating
+	// mother", "work stress"), each its own long-term-memory entry for
+	// thread-level cross-session retrieval (docs/30). Empty when the
+	// model emitted none; never causes a parse failure. Capped at
+	// maxRAGThemes; each truncated to maxRAGThemeLen.
+	RAGThemes                    []string
 	OverallDiarizationConfidence float64
 	Speakers                     []Speaker
 	// DroppedDuplicates counts cross-group chunk-index collisions the
@@ -125,6 +132,11 @@ const (
 	maxTitleLen      = 100
 	maxSummaryLen    = 500
 	maxRAGSummaryLen = 1500
+	// maxRAGThemes caps how many RAG_Theme: lines we retain (extras
+	// dropped silently — never a parse error). maxRAGThemeLen bounds a
+	// single theme line; oversize is truncated, mirroring RAGSummary.
+	maxRAGThemes   = 5
+	maxRAGThemeLen = 400
 )
 
 // Compiled regexes — patterns are tight on purpose. The prompt
@@ -153,6 +165,11 @@ var (
 	// Optional aliases preserve the JSON-schema field name in case
 	// the model echoes that variant.
 	ragSummaryLine = regexp.MustCompile(`^(?:RAG_Summary|RAGSummary|Rag_summary|rag_summary_chunk):\s*(.+)$`)
+	// "RAG_Theme: <thread>" (optional, repeatable) — one distinct
+	// clinical thread per line for thread-level cross-session recall.
+	// Repeated-prefix form (not a sub-list) keeps the strict line-based
+	// parser happy; aliases mirror the RAG_Summary tolerance.
+	ragThemeLine = regexp.MustCompile(`^(?:RAG_Theme|RAGTheme|Rag_theme|rag_theme):\s*(.+)$`)
 )
 
 // ParseMetadataMarkdown parses an LLM call-1 response. Auto-detects
@@ -359,6 +376,23 @@ func ParseMetadataMarkdown(raw string) (Result, error) {
 					val = val[:maxRAGSummaryLen]
 				}
 				res.RAGSummary = val
+				continue
+			}
+			if m := ragThemeLine.FindStringSubmatch(line); m != nil {
+				// Optional, repeatable. Cap the count (extras dropped
+				// silently) and truncate each — themes are best-effort
+				// memory entries, never worth failing a report over.
+				if len(res.RAGThemes) >= maxRAGThemes {
+					continue
+				}
+				val := strings.TrimSpace(m[1])
+				if val == "" {
+					continue
+				}
+				if len(val) > maxRAGThemeLen {
+					val = val[:maxRAGThemeLen]
+				}
+				res.RAGThemes = append(res.RAGThemes, val)
 				continue
 			}
 			return Result{}, fmt.Errorf("%w: %q in '# Metadata'", ErrUnexpectedLine, line)

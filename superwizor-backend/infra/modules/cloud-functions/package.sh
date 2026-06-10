@@ -54,7 +54,10 @@ cd "$AI_SVC_DIR"
 echo "Packaging LLM worker..."
 rm -rf "$OUT_DIR/.tmp/llm-worker"
 mkdir -p "$OUT_DIR/.tmp/llm-worker"
-cp "$LLM_DIR/main.go" "$OUT_DIR/.tmp/llm-worker/"
+# Glob all .go files (main.go, rag.go — the docs/30 ranking core).
+# Test files stripped post-copy, same as the stt-worker section above.
+cp "$LLM_DIR"/*.go "$OUT_DIR/.tmp/llm-worker/"
+rm -f "$OUT_DIR/.tmp/llm-worker/"*_test.go
 cp -R "$LLM_DIR/schemas" "$OUT_DIR/.tmp/llm-worker/"
 cp "$AI_SVC_DIR/go.mod" "$OUT_DIR/.tmp/llm-worker/"
 cp "$AI_SVC_DIR/go.sum" "$OUT_DIR/.tmp/llm-worker/"

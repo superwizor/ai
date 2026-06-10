@@ -19,7 +19,8 @@
       "sessions": "Sessions",
       "audit": "Audit log",
       "analytics": "Analytics",
-      "crm": "CRM"
+      "crm": "CRM",
+      "prompts": "Prompts"
     },
     "header": {
       "signOut": "Sign out",
@@ -403,6 +404,38 @@
         "amount": "Amount",
         "monthly": "monthly"
       }
+    },
+    "prompts": {
+      "metaTitle": "Report prompts — Admin",
+      "title": "Report prompts",
+      "banner": "You are editing the modality prompt used to generate reports. Changes apply from the NEXT generated report and affect every therapist of this modality. Each save creates a new version — you can restore a previous one at any time.",
+      "listLabel": "Modalities",
+      "loading": "Loading…",
+      "unsaved": "unsaved changes",
+      "unsupported": "inactive",
+      "versionMeta": "version {version} · {author} · {date}",
+      "editorLabel": "Modality prompt text",
+      "saved": "New version saved",
+      "showDiff": "Show changes",
+      "discard": "Discard changes",
+      "save": "Save new version",
+      "discardConfirm": "You have unsaved changes. Discard them?",
+      "nothingSelected": "Select a modality from the list.",
+      "contextTitle": "Where does this prompt land? (call-2 context)",
+      "contextBody": "Your prompt is the FIRST block of the report-generation prompt. The surrounding elements (language rules, conciseness rules, RAG context, transcript) are fixed and not editable from the panel — they guarantee parser consistency and pipeline safety.",
+      "historyTitle": "Version history",
+      "historyEmpty": "No history for this modality.",
+      "historyMore": "Older versions exist — showing the 20 most recent.",
+      "view": "View",
+      "compare": "Compare",
+      "restore": "Restore",
+      "saveDialogTitle": "Save a new prompt version",
+      "saveDialogBody": "The change will affect all new {code} reports. Describe the reason (stored in version history and the audit log).",
+      "restoreDialogTitle": "Restore version {version}",
+      "restoreDialogBody": "Version {version}'s text will be saved as a NEW version of the {code} prompt (history stays intact). Suggested reason: „restore version {version}”.",
+      "diffTitle": "Changes vs version {version}",
+      "viewTitle": "Version {version}",
+      "compareTitle": "Version {from} → current (v{to})"
     }
   },
   "errors": {
@@ -877,10 +910,10 @@
     "footnote": "Card or Przelewy24. Change or cancel your plan any time from your account."
   },
   "contact": {
-    "metaTitle": "Contact \u00b7 Superwizor AI",
+    "metaTitle": "Contact · Superwizor AI",
     "overline": "Contact",
-    "heading": "Let\u2019s talk",
-    "subhead": "Drop us a line \u2014 we respond within 24 hours on business days.",
+    "heading": "Let’s talk",
+    "subhead": "Drop us a line — we respond within 24 hours on business days.",
     "fields": {
       "name": "Full name",
       "email": "Email address",
@@ -891,7 +924,7 @@
     },
     "submit": "Send message",
     "submitting": "Sending...",
-    "success": "Thank you! We\u2019ll get back to you as soon as possible.",
+    "success": "Thank you! We’ll get back to you as soon as possible.",
     "error": "Something went wrong. Please try again or email kontakt@superwizor.ai.",
     "directEmail": "Or write directly:",
     "emailAddress": "kontakt@superwizor.ai"
@@ -1114,9 +1147,15 @@
       "footnote2": "Start now.",
       "vatNote": "Prices incl. 23% VAT",
       "footnote": "Card or Przelewy24. Cancel anytime.",
-      "trial": { "tagline": "See if it's for you." },
-      "pro": { "tagline": "For intensive practice." },
-      "clinic": { "tagline": "For clinics and teams." },
+      "trial": {
+        "tagline": "See if it's for you."
+      },
+      "pro": {
+        "tagline": "For intensive practice."
+      },
+      "clinic": {
+        "tagline": "For clinics and teams."
+      },
       "subprice": "your price"
     },
     "faq": {

@@ -890,6 +890,16 @@ type Modality struct {
 	ModalityType              ModalityType `json:"modality_type"`
 }
 
+type ModalityPromptVersion struct {
+	ID         uuid.UUID `json:"id"`
+	ModalityID uuid.UUID `json:"modality_id"`
+	Version    int32     `json:"version"`
+	Prompt     []byte    `json:"prompt"`
+	ChangeNote string    `json:"change_note"`
+	CreatedBy  uuid.UUID `json:"created_by"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 type NotificationDelivery struct {
 	ID               uuid.UUID          `json:"id"`
 	UserID           uuid.UUID          `json:"user_id"`
