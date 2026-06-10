@@ -44,6 +44,16 @@ const (
 	// mother" AND "work stress") instead of three copies of the
 	// strongest one.
 	ragDupSimThreshold = 0.92
+
+	// ragLookbackSessions bounds the candidate pool to the patient's most
+	// recent N sessions (session-based, NOT row-based — a session now
+	// writes several rows). ≈9 months weekly / ≈18 months bi-weekly.
+	ragLookbackSessions = 36
+
+	// ragContextMaxCharsV2 caps the assembled call-2 context block.
+	// ≈4k tokens — anchor summary + ~5 theme hits, still <10% of the
+	// call-2 input window.
+	ragContextMaxCharsV2 = 8000
 )
 
 // ragCandidate is one prior-session memory row in the ranking pool.

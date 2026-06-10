@@ -204,3 +204,30 @@ func TestSelectRAGHits_EmptyPool(t *testing.T) {
 		t.Errorf("empty pool should yield no hits, got %d", len(got))
 	}
 }
+
+// parseEmbedding must invert vectorToString — a mismatch silently
+// corrupts every cosine score in the pool.
+func TestParseEmbedding_RoundTrip(t *testing.T) {
+	orig := []float32{1.5, -2.25, 0, 0.123456, 768.0}
+	got := parseEmbedding(vectorToString(orig))
+	if len(got) != len(orig) {
+		t.Fatalf("len %d != %d", len(got), len(orig))
+	}
+	for i := range orig {
+		if math.Abs(float64(got[i]-orig[i])) > 1e-4 {
+			t.Errorf("index %d: got %v, want %v", i, got[i], orig[i])
+		}
+	}
+}
+
+func TestParseEmbedding_Edge(t *testing.T) {
+	if v := parseEmbedding("[]"); v != nil {
+		t.Errorf("empty vector should be nil, got %v", v)
+	}
+	if v := parseEmbedding("[1,abc,3]"); v != nil {
+		t.Errorf("malformed vector should be nil, got %v", v)
+	}
+	if v := parseEmbedding("  [ 1 , 2 ]  "); len(v) != 2 || v[0] != 1 || v[1] != 2 {
+		t.Errorf("whitespace handling failed: %v", v)
+	}
+}
