@@ -108,8 +108,9 @@ type Querier interface {
 	// Idempotency lookup. Zwraca już zaistniały event jeśli był (no-op path
 	// w CommitUsage).
 	GetUsageEventBySession(ctx context.Context, sessionID uuid.UUID) (UsageEvent, error)
-	// Cron daily o 00:05 UTC — znajduje MANUAL ACTIVE subskrypcje, których
-	// bieżący okres rozliczeniowy się skończył (period_end < now).
+	// Cron daily o 00:05 UTC — znajduje MANUAL subskrypcje (ACTIVE + TRIALING),
+	// których bieżący okres rozliczeniowy się skończył (period_end < now).
+	// TRIALING status covers BETA plan subscriptions (120 tokens × 2 months).
 	// Per row musimy: shift current_period_*, utworzyć nowy usage_counters.
 	ListExpiredManualSubscriptions(ctx context.Context) ([]ListExpiredManualSubscriptionsRow, error)
 	// Weekly safety-check — znajdź ACTIVE/TRIALING subskrypcje, które nie mają

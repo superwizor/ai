@@ -107,7 +107,7 @@ export function AdminGuardAndShell({ children }: { children: ReactNode }) {
 function CenteredMessage({ children }: { children: ReactNode }) {
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-16">
-      <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist">
+      <p className="font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist">
         {children}
       </p>
     </main>
@@ -130,13 +130,13 @@ function ForbiddenCard({
           {title}
         </h1>
         {body && (
-          <p className="font-serif text-mist mt-3 text-sm leading-relaxed">
+          <p className="font-sans text-mist mt-3 text-sm leading-relaxed">
             {body}
           </p>
         )}
         <a
           href={cta.href}
-          className="mt-6 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition"
+          className="mt-6 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition"
         >
           {cta.label}
         </a>
@@ -198,7 +198,7 @@ function AdminSignInForm() {
         </h1>
 
         <label className="grid gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+          <span className="font-sans text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
             {t("signinEmailLabel")}
           </span>
           <input
@@ -207,12 +207,12 @@ function AdminSignInForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="rounded-button bg-frost/5 border border-frost/15 px-3 py-2 font-mono text-sm text-frost focus:outline-none focus:border-ember"
+            className="rounded-button bg-frost/5 border border-frost/15 px-3 py-2 font-sans text-sm text-frost focus:outline-none focus:border-ember"
           />
         </label>
 
         <label className="grid gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
+          <span className="font-sans text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
             {t("signinPasswordLabel")}
           </span>
           <input
@@ -221,14 +221,14 @@ function AdminSignInForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="rounded-button bg-frost/5 border border-frost/15 px-3 py-2 font-mono text-sm text-frost focus:outline-none focus:border-ember"
+            className="rounded-button bg-frost/5 border border-frost/15 px-3 py-2 font-sans text-sm text-frost focus:outline-none focus:border-ember"
           />
         </label>
 
         {error && (
           <p
             role="alert"
-            className="rounded-button border border-magma/40 bg-magma/10 px-3 py-2 font-serif text-xs text-frost"
+            className="rounded-button border border-magma/40 bg-magma/10 px-3 py-2 font-sans text-xs text-frost"
           >
             {error}
           </p>
@@ -237,7 +237,7 @@ function AdminSignInForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting ? t("signinSubmitting") : t("signinSubmit")}
         </button>

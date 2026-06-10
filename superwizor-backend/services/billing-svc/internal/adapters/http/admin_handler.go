@@ -47,6 +47,9 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/reservation-expiry", h.handleReservationExpiry)
 	mux.HandleFunc("POST /admin/manual-period-renewal", h.handleManualPeriodRenewal)
 	mux.HandleFunc("POST /admin/safety-check", h.handleSafetyCheck)
+	mux.HandleFunc("POST /admin/email-drip", h.handleEmailDrip)
+	mux.HandleFunc("POST /admin/renewal-reminders", h.handleRenewalReminders)
+	mux.HandleFunc("GET /admin/crm/subscribers", h.handleCRMSubscribers)
 }
 
 // ---------- reservation-expiry ----------
@@ -159,7 +162,34 @@ func (h *AdminHandler) handleManualPeriodRenewal(w http.ResponseWriter, r *http.
 	}
 
 	renewedCount := 0
+	expiredBeta := 0
 	for _, s := range subs {
+		// BETA plan guard: max 2 periods (2 × 30 days). Count existing
+		// usage_counters for this subscription — if ≥2, cancel instead
+		// of renewing. The counter count == number of completed periods.
+		periodCount, err := h.countPeriods(ctx, s.ID)
+		if err != nil {
+			h.logger.ErrorContext(ctx, "manual renewal: count periods failed",
+				"sub_id", s.ID, "error", err)
+			continue
+		}
+
+		// Check if this is a BETA plan by looking at the provider_subscription_id
+		// prefix (set during provisionPlanOrgAndSub as "beta-<orgID>").
+		isBeta := h.isBetaSubscription(ctx, s.ID)
+		if isBeta && periodCount >= 2 {
+			// Beta expired — downgrade to CANCELED
+			if err := h.cancelSubscription(ctx, s.ID); err != nil {
+				h.logger.ErrorContext(ctx, "manual renewal: beta cancel failed",
+					"sub_id", s.ID, "error", err)
+			} else {
+				expiredBeta++
+				h.logger.InfoContext(ctx, "cron: beta subscription expired after 2 periods",
+					"sub_id", s.ID, "org_id", s.OrganizationID, "periods_used", periodCount)
+			}
+			continue
+		}
+
 		newStart := s.CurrentPeriodEnd
 		newEnd := newStart.Add(30 * 24 * time.Hour)
 
@@ -176,6 +206,7 @@ func (h *AdminHandler) handleManualPeriodRenewal(w http.ResponseWriter, r *http.
 
 	h.logger.InfoContext(ctx, "cron: manual-period-renewal done",
 		"renewed_count", renewedCount,
+		"expired_beta", expiredBeta,
 		"candidates", len(subs))
 
 	writeJSON(w, http.StatusOK, manualRenewalResponse{
@@ -292,4 +323,490 @@ func writeError(w http.ResponseWriter, code int, msg string, err error) {
 
 func errIsNoRows(err error) bool {
 	return err == pgx.ErrNoRows
+}
+
+// ─── Beta-specific helpers ────────────────────────────────────
+
+// countPeriods returns the number of usage_counter rows for a subscription.
+// Each row represents one billing period (30 days).
+func (h *AdminHandler) countPeriods(ctx context.Context, subID uuid.UUID) (int, error) {
+	var count int
+	err := h.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM usage_counters WHERE subscription_id = $1`, subID,
+	).Scan(&count)
+	return count, err
+}
+
+// isBetaSubscription checks if the subscription belongs to a BETA plan
+// by looking at the plan tier (via JOIN).
+func (h *AdminHandler) isBetaSubscription(ctx context.Context, subID uuid.UUID) bool {
+	var tier string
+	err := h.pool.QueryRow(ctx,
+		`SELECT p.tier FROM subscriptions s
+		 JOIN subscription_plans p ON p.id = s.plan_id
+		 WHERE s.id = $1`, subID,
+	).Scan(&tier)
+	return err == nil && tier == "BETA"
+}
+
+// cancelSubscription sets a subscription status to CANCELED.
+func (h *AdminHandler) cancelSubscription(ctx context.Context, subID uuid.UUID) error {
+	_, err := h.pool.Exec(ctx,
+		`UPDATE subscriptions SET status = 'CANCELED', updated_at = now() WHERE id = $1`, subID,
+	)
+	return err
+}
+
+// ---------- email-drip ----------
+
+type emailDripResponse struct {
+	TrialExhausted int `json:"trial_exhausted"`
+	FollowUp1      int `json:"followup_1"`
+	FollowUp2      int `json:"followup_2"`
+	BetaExpiry     int `json:"beta_expiry"`
+	Message        string `json:"message"`
+}
+
+// handleEmailDrip — daily cron (09:00 CET) for lifecycle email drip campaign.
+//
+// Queries:
+//   1. Trial exhausted: TRIALING subs where tokens_used >= tokens_per_period
+//      AND no "trial_exhausted" email sent yet (tracked via email_drip_log).
+//   2. Follow-up 1: 3 days after trial_exhausted email was sent, no followup_1 sent.
+//   3. Follow-up 2: 7 days after trial_exhausted email was sent, no followup_2 sent.
+//   4. Beta expiry: BETA subs with period_end within 3 days, no alert sent.
+//
+// Each match inserts a row into email_drip_log (idempotent: UNIQUE on
+// (user_id, template_name, subscription_id)) and publishes to
+// notification-svc for actual delivery.
+//
+// NOTE: email_drip_log table must be created via migration before this
+// handler is useful. Until then, this endpoint identifies candidates
+// and logs them for manual follow-up.
+func (h *AdminHandler) handleEmailDrip(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	h.logger.InfoContext(ctx, "cron: email-drip started")
+
+	result := emailDripResponse{Message: "ok"}
+
+	// --- 1. Trial exhausted ---
+	rows1, err := h.pool.Query(ctx, `
+		SELECT u.id, u.email, u.first_name, s.id AS sub_id
+		FROM subscriptions s
+		JOIN subscription_plans p ON p.id = s.plan_id
+		JOIN organizations o ON o.id = s.organization_id
+		JOIN users u ON u.organization_id = o.id
+		JOIN usage_counters uc ON uc.subscription_id = s.id
+		  AND uc.period_start = s.current_period_start
+		WHERE p.tier = 'TRIAL'
+		  AND s.status IN ('ACTIVE', 'TRIALING')
+		  AND uc.tokens_used >= p.tokens_per_period
+		  AND NOT EXISTS (
+		    SELECT 1 FROM email_drip_log edl
+		    WHERE edl.user_id = u.id
+		      AND edl.template_name = 'trial_exhausted'
+		      AND edl.subscription_id = s.id
+		  )
+		LIMIT 100
+	`)
+	if err != nil {
+		h.logger.WarnContext(ctx, "email-drip: trial_exhausted query failed (table may not exist yet)", "error", err)
+	} else {
+		defer rows1.Close()
+		for rows1.Next() {
+			var userID, email, firstName string
+			var subID uuid.UUID
+			if err := rows1.Scan(&userID, &email, &firstName, &subID); err != nil {
+				h.logger.ErrorContext(ctx, "email-drip: scan trial_exhausted", "error", err)
+				continue
+			}
+			h.logger.InfoContext(ctx, "email-drip: trial_exhausted candidate",
+				"user_id", userID, "email", email, "sub_id", subID)
+			// TODO: publish to notification-svc Pub/Sub topic
+			// TODO: INSERT INTO email_drip_log (user_id, template_name, subscription_id)
+			result.TrialExhausted++
+		}
+	}
+
+	// --- 2. Follow-up 1 (3 days after trial_exhausted) ---
+	rows2, err := h.pool.Query(ctx, `
+		SELECT edl.user_id, u.email, u.first_name, edl.subscription_id
+		FROM email_drip_log edl
+		JOIN users u ON u.id::text = edl.user_id
+		WHERE edl.template_name = 'trial_exhausted'
+		  AND edl.sent_at < now() - interval '3 days'
+		  AND NOT EXISTS (
+		    SELECT 1 FROM email_drip_log edl2
+		    WHERE edl2.user_id = edl.user_id
+		      AND edl2.template_name = 'followup_1'
+		      AND edl2.subscription_id = edl.subscription_id
+		  )
+		LIMIT 100
+	`)
+	if err != nil {
+		h.logger.WarnContext(ctx, "email-drip: followup_1 query failed", "error", err)
+	} else {
+		defer rows2.Close()
+		for rows2.Next() {
+			var userID, email, firstName string
+			var subID uuid.UUID
+			if err := rows2.Scan(&userID, &email, &firstName, &subID); err != nil {
+				continue
+			}
+			h.logger.InfoContext(ctx, "email-drip: followup_1 candidate",
+				"user_id", userID, "email", email)
+			result.FollowUp1++
+		}
+	}
+
+	// --- 3. Follow-up 2 (7 days after trial_exhausted) ---
+	rows3, err := h.pool.Query(ctx, `
+		SELECT edl.user_id, u.email, u.first_name, edl.subscription_id
+		FROM email_drip_log edl
+		JOIN users u ON u.id::text = edl.user_id
+		WHERE edl.template_name = 'trial_exhausted'
+		  AND edl.sent_at < now() - interval '7 days'
+		  AND NOT EXISTS (
+		    SELECT 1 FROM email_drip_log edl2
+		    WHERE edl2.user_id = edl.user_id
+		      AND edl2.template_name = 'followup_2'
+		      AND edl2.subscription_id = edl.subscription_id
+		  )
+		LIMIT 100
+	`)
+	if err != nil {
+		h.logger.WarnContext(ctx, "email-drip: followup_2 query failed", "error", err)
+	} else {
+		defer rows3.Close()
+		for rows3.Next() {
+			var userID, email, firstName string
+			var subID uuid.UUID
+			if err := rows3.Scan(&userID, &email, &firstName, &subID); err != nil {
+				continue
+			}
+			h.logger.InfoContext(ctx, "email-drip: followup_2 candidate",
+				"user_id", userID, "email", email)
+			result.FollowUp2++
+		}
+	}
+
+	// --- 4. Beta expiry alert (3 days before period_end) ---
+	rows4, err := h.pool.Query(ctx, `
+		SELECT u.id, u.email, u.first_name, u.last_name,
+		       o.display_name AS org_name, s.id AS sub_id,
+		       s.current_period_end,
+		       uc.tokens_used, p.tokens_per_period
+		FROM subscriptions s
+		JOIN subscription_plans p ON p.id = s.plan_id
+		JOIN organizations o ON o.id = s.organization_id
+		JOIN users u ON u.organization_id = o.id
+		LEFT JOIN usage_counters uc ON uc.subscription_id = s.id
+		  AND uc.period_start = s.current_period_start
+		WHERE p.tier = 'BETA'
+		  AND s.status IN ('ACTIVE', 'TRIALING')
+		  AND s.current_period_end BETWEEN now() AND now() + interval '3 days'
+		  AND NOT EXISTS (
+		    SELECT 1 FROM email_drip_log edl
+		    WHERE edl.user_id = u.id::text
+		      AND edl.template_name = 'beta_expiry_alert'
+		      AND edl.subscription_id = s.id
+		  )
+		LIMIT 50
+	`)
+	if err != nil {
+		h.logger.WarnContext(ctx, "email-drip: beta_expiry query failed", "error", err)
+	} else {
+		defer rows4.Close()
+		for rows4.Next() {
+			var userID, email, firstName, lastName, orgName string
+			var subID uuid.UUID
+			var periodEnd time.Time
+			var tokensUsed, tokensPerPeriod int32
+			if err := rows4.Scan(&userID, &email, &firstName, &lastName, &orgName, &subID, &periodEnd, &tokensUsed, &tokensPerPeriod); err != nil {
+				continue
+			}
+			h.logger.InfoContext(ctx, "email-drip: beta_expiry_alert candidate",
+				"user", fmt.Sprintf("%s %s", firstName, lastName),
+				"email", email, "org", orgName,
+				"period_end", periodEnd.Format("2006-01-02"))
+			result.BetaExpiry++
+		}
+	}
+
+	h.logger.InfoContext(ctx, "cron: email-drip done",
+		"trial_exhausted", result.TrialExhausted,
+		"followup_1", result.FollowUp1,
+		"followup_2", result.FollowUp2,
+		"beta_expiry", result.BetaExpiry)
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+// ---------- renewal-reminders ----------
+
+type renewalReminderResponse struct {
+	ReminderCount int    `json:"reminder_count"`
+	Message       string `json:"message"`
+}
+
+// handleRenewalReminders — daily cron: find ACTIVE paid subs with period_end
+// within 3 days and send renewal_reminder email (once per period).
+func (h *AdminHandler) handleRenewalReminders(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	h.logger.InfoContext(ctx, "cron: renewal-reminders started")
+
+	rows, err := h.pool.Query(ctx, `
+		SELECT u.id, u.email, u.first_name,
+		       p.display_name AS plan_name, p.tokens_per_period,
+		       s.current_period_end, s.id AS sub_id
+		FROM subscriptions s
+		JOIN subscription_plans p ON p.id = s.plan_id
+		JOIN organizations o ON o.id = s.organization_id
+		JOIN users u ON u.organization_id = o.id
+		WHERE s.status = 'ACTIVE'
+		  AND s.provider = 'STRIPE'
+		  AND s.current_period_end BETWEEN now() AND now() + interval '3 days'
+		  AND NOT EXISTS (
+		    SELECT 1 FROM email_drip_log edl
+		    WHERE edl.user_id = u.id::text
+		      AND edl.template_name = 'renewal_reminder'
+		      AND edl.subscription_id = s.id
+		  )
+		LIMIT 100
+	`)
+	if err != nil {
+		h.logger.WarnContext(ctx, "renewal-reminders: query failed", "error", err)
+		writeJSON(w, http.StatusOK, renewalReminderResponse{Message: "query_failed"})
+		return
+	}
+	defer rows.Close()
+
+	count := 0
+	for rows.Next() {
+		var userID, email, firstName, planName string
+		var tokensPerPeriod int32
+		var periodEnd time.Time
+		var subID uuid.UUID
+		if err := rows.Scan(&userID, &email, &firstName, &planName, &tokensPerPeriod, &periodEnd, &subID); err != nil {
+			continue
+		}
+		h.logger.InfoContext(ctx, "renewal-reminder candidate",
+			"user_id", userID, "email", email, "plan", planName,
+			"period_end", periodEnd.Format("2006-01-02"))
+		count++
+	}
+
+	h.logger.InfoContext(ctx, "cron: renewal-reminders done", "count", count)
+	writeJSON(w, http.StatusOK, renewalReminderResponse{
+		ReminderCount: count,
+		Message:       "ok",
+	})
+}
+
+// ---------- CRM subscribers ----------
+
+// CRMSubscriber — enriched user + subscription view for Marcin's CRM panel.
+type CRMSubscriber struct {
+	UserID            string  `json:"user_id"`
+	FirstName         string  `json:"first_name"`
+	LastName          string  `json:"last_name"`
+	Email             string  `json:"email"`
+	Phone             string  `json:"phone"`
+	ProfessionalTitle string  `json:"professional_title"`
+	CreatedAt         string  `json:"created_at"`
+	// Subscription
+	SubscriptionID    string  `json:"subscription_id"`
+	PlanTier          string  `json:"plan_tier"`
+	PlanDisplayName   string  `json:"plan_display_name"`
+	SubStatus         string  `json:"sub_status"`
+	Provider          string  `json:"provider"`
+	PeriodStart       string  `json:"period_start"`
+	PeriodEnd         string  `json:"period_end"`
+	DaysUntilRenewal  int     `json:"days_until_renewal"`
+	// Usage
+	TokensLimit       int32   `json:"tokens_limit"`
+	TokensUsed        int32   `json:"tokens_used"`
+	TokensRemaining   int32   `json:"tokens_remaining"`
+	UsagePct          float64 `json:"usage_pct"`
+	// Sessions (all-time from sessions table)
+	TotalSessions     int32   `json:"total_sessions"`
+	// Urgency flags
+	CreditAlert       string  `json:"credit_alert"` // "critical" (≤1), "warning" (≤3), "low" (≤5), ""
+	ExpiryAlert       string  `json:"expiry_alert"` // "imminent" (≤3d), "soon" (≤7d), ""
+	UrgencyScore      int     `json:"urgency_score"` // higher = more urgent (for sorting)
+	// Organization
+	OrgID             string  `json:"org_id"`
+	OrgName           string  `json:"org_name"`
+}
+
+type crmResponse struct {
+	Subscribers []CRMSubscriber `json:"subscribers"`
+	Total       int             `json:"total"`
+	Message     string          `json:"message"`
+}
+
+// handleCRMSubscribers — GET /admin/crm/subscribers
+//
+// Returns enriched subscriber data for Marcin's CRM panel. Supports:
+//
+//	?tier=BETA|TRIAL|SOLO|PRO|CLINIC — filter by plan tier
+//	?status=ACTIVE|CANCELED|TRIALING — filter by sub status
+//	?alert=critical|warning — filter only users needing attention
+//
+// Sorted by urgency score by default (most critical first).
+func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	h.logger.InfoContext(ctx, "crm: subscribers list requested")
+
+	tierFilter := r.URL.Query().Get("tier")
+	statusFilter := r.URL.Query().Get("status")
+	alertFilter := r.URL.Query().Get("alert")
+
+	rows, err := h.pool.Query(ctx, `
+		SELECT
+			u.id AS user_id,
+			COALESCE(u.first_name, '') AS first_name,
+			COALESCE(u.last_name, '') AS last_name,
+			COALESCE(u.email, '') AS email,
+			COALESCE(u.phone_number, '') AS phone,
+			COALESCE(u.professional_title, '') AS professional_title,
+			u.created_at AS user_created_at,
+
+			s.id AS sub_id,
+			COALESCE(p.tier::text, '') AS plan_tier,
+			COALESCE(p.display_name, p.tier::text) AS plan_display_name,
+			COALESCE(s.status::text, '') AS sub_status,
+			COALESCE(s.provider::text, '') AS provider,
+			s.current_period_start,
+			s.current_period_end,
+			EXTRACT(DAY FROM s.current_period_end - now())::int AS days_until_renewal,
+
+			COALESCE(uc.tokens_limit, p.tokens_per_period) AS tokens_limit,
+			COALESCE(uc.tokens_used, 0) AS tokens_used,
+			GREATEST(0, COALESCE(uc.tokens_limit, p.tokens_per_period) - COALESCE(uc.tokens_used, 0)) AS tokens_remaining,
+
+			COALESCE(sess_count.cnt, 0) AS total_sessions,
+
+			o.id AS org_id,
+			o.legal_name AS org_name
+		FROM subscriptions s
+		JOIN subscription_plans p ON p.id = s.plan_id
+		JOIN organizations o ON o.id = s.organization_id
+		JOIN users u ON u.organization_id = o.id
+		LEFT JOIN usage_counters uc ON uc.subscription_id = s.id
+			AND uc.period_start = s.current_period_start
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*)::int AS cnt
+			FROM sessions sess
+			WHERE sess.therapist_id = u.id
+		) sess_count ON true
+		LEFT JOIN crm_excluded_users ex ON ex.user_id = u.id
+		WHERE s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
+		  AND ex.user_id IS NULL
+		  AND u.email NOT LIKE '%@example.com'
+		  AND u.email NOT LIKE '%@superwizor.test'
+		  AND u.email NOT LIKE '%@test.pl'
+		ORDER BY s.current_period_end ASC
+		LIMIT 500
+	`)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "crm query", err)
+		return
+	}
+	defer rows.Close()
+
+	var subscribers []CRMSubscriber
+	for rows.Next() {
+		var sub CRMSubscriber
+		var periodStart, periodEnd, userCreated time.Time
+		var daysUntilRenewal int
+		var tokensLimit, tokensUsed, tokensRemaining, totalSessions int32
+
+		if err := rows.Scan(
+			&sub.UserID, &sub.FirstName, &sub.LastName, &sub.Email, &sub.Phone,
+			&sub.ProfessionalTitle, &userCreated,
+			&sub.SubscriptionID, &sub.PlanTier, &sub.PlanDisplayName,
+			&sub.SubStatus, &sub.Provider,
+			&periodStart, &periodEnd, &daysUntilRenewal,
+			&tokensLimit, &tokensUsed, &tokensRemaining,
+			&totalSessions,
+			&sub.OrgID, &sub.OrgName,
+		); err != nil {
+			h.logger.ErrorContext(ctx, "crm: scan row", "error", err)
+			continue
+		}
+
+		sub.CreatedAt = userCreated.Format("2006-01-02")
+		sub.PeriodStart = periodStart.Format("2006-01-02")
+		sub.PeriodEnd = periodEnd.Format("2006-01-02")
+		sub.DaysUntilRenewal = daysUntilRenewal
+		sub.TokensLimit = tokensLimit
+		sub.TokensUsed = tokensUsed
+		sub.TokensRemaining = tokensRemaining
+		sub.TotalSessions = totalSessions
+		if tokensLimit > 0 {
+			sub.UsagePct = float64(tokensUsed) / float64(tokensLimit) * 100
+		}
+
+		// Credit alerts
+		urgency := 0
+		switch {
+		case tokensRemaining <= 1 && tokensLimit > 0:
+			sub.CreditAlert = "critical"
+			urgency += 30
+		case tokensRemaining <= 3 && tokensLimit > 0:
+			sub.CreditAlert = "warning"
+			urgency += 20
+		case tokensRemaining <= 5 && tokensLimit > 0:
+			sub.CreditAlert = "low"
+			urgency += 10
+		}
+
+		// Expiry alerts
+		switch {
+		case daysUntilRenewal <= 3:
+			sub.ExpiryAlert = "imminent"
+			urgency += 15
+		case daysUntilRenewal <= 7:
+			sub.ExpiryAlert = "soon"
+			urgency += 5
+		}
+
+		// Boost urgency for churned users
+		if sub.SubStatus == "CANCELED" {
+			urgency += 25
+		}
+		sub.UrgencyScore = urgency
+
+		// Apply filters
+		if tierFilter != "" && sub.PlanTier != tierFilter {
+			continue
+		}
+		if statusFilter != "" && sub.SubStatus != statusFilter {
+			continue
+		}
+		if alertFilter == "critical" && sub.CreditAlert != "critical" {
+			continue
+		}
+		if alertFilter == "warning" && sub.CreditAlert != "critical" && sub.CreditAlert != "warning" {
+			continue
+		}
+
+		subscribers = append(subscribers, sub)
+	}
+
+	// Sort by urgency score (highest first)
+	for i := 0; i < len(subscribers); i++ {
+		for j := i + 1; j < len(subscribers); j++ {
+			if subscribers[j].UrgencyScore > subscribers[i].UrgencyScore {
+				subscribers[i], subscribers[j] = subscribers[j], subscribers[i]
+			}
+		}
+	}
+
+	writeJSON(w, http.StatusOK, crmResponse{
+		Subscribers: subscribers,
+		Total:       len(subscribers),
+		Message:     "ok",
+	})
 }

@@ -278,8 +278,8 @@ cohort_activity AS (
   GROUP BY 1, 2
 )
 SELECT 
-  TO_CHAR(cs.cohort_week, 'YYYY-IW') AS cohort,
-  TO_CHAR(ca.activity_week, 'YYYY-IW')::text AS week,
+  COALESCE(TO_CHAR(cs.cohort_week, 'YYYY-IW'), '')::text AS cohort,
+  COALESCE(TO_CHAR(ca.activity_week, 'YYYY-IW')::text, '')::text AS week,
   COALESCE((ca.active_size / cs.total_size)::float, 0.0)::float AS pct
 FROM cohort_sizes cs
 JOIN cohort_activity ca ON cs.cohort_week = ca.cohort_week

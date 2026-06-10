@@ -130,6 +130,7 @@ func main() {
 	// HTTP mux (admin crons + Stripe stub + /healthz + Connect-RPC).
 	httpMux := nethttp.NewServeMux()
 	httpadapter.NewAdminHandler(pool, logger).RegisterRoutes(httpMux)
+	httpadapter.NewCRMHandler(pool, logger).RegisterCRMRoutes(httpMux)
 	httpadapter.NewStripeHandler(pool, logger).RegisterRoutes(httpMux)
 	// Connect-RPC surface — browser callers reach the same business
 	// logic as the gRPC path via the ConnectAdapter. The connectmd
