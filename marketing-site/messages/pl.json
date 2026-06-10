@@ -18,7 +18,9 @@
       "users": "Użytkownicy",
       "sessions": "Sesje",
       "audit": "Dziennik audytowy",
-      "analytics": "Analityka"
+      "analytics": "Analityka",
+      "crm": "CRM",
+      "prompts": "Prompty"
     },
     "header": {
       "signOut": "Wyloguj",
@@ -389,6 +391,38 @@
         "amount": "Kwota",
         "monthly": "miesięcznie"
       }
+    },
+    "prompts": {
+      "metaTitle": "Prompty raportów — Admin",
+      "title": "Prompty raportów",
+      "banner": "Edytujesz prompt modalności używany przy generowaniu raportów. Zmiany obowiązują od NASTĘPNEGO wygenerowanego raportu i dotyczą wszystkich terapeutów tej modalności. Każdy zapis tworzy nową wersję — możesz w każdej chwili przywrócić poprzednią.",
+      "listLabel": "Modalności",
+      "loading": "Ładowanie…",
+      "unsaved": "niezapisane zmiany",
+      "unsupported": "nieaktywna",
+      "versionMeta": "wersja {version} · {author} · {date}",
+      "editorLabel": "Treść promptu modalności",
+      "saved": "Zapisano nową wersję",
+      "showDiff": "Pokaż zmiany",
+      "discard": "Anuluj zmiany",
+      "save": "Zapisz nową wersję",
+      "discardConfirm": "Masz niezapisane zmiany. Porzucić je?",
+      "nothingSelected": "Wybierz modalność z listy.",
+      "contextTitle": "Gdzie ten prompt trafia? (kontekst call-2)",
+      "contextBody": "Twój prompt jest PIERWSZYM blokiem promptu generującego raport. Poniższe elementy są stałe (reguły językowe, zasady zwięzłości, kontekst RAG, transkrypt) i nie podlegają edycji z panelu — gwarantują spójność parsowania i bezpieczeństwo pipeline'u.",
+      "historyTitle": "Historia wersji",
+      "historyEmpty": "Brak historii dla tej modalności.",
+      "historyMore": "Starsze wersje istnieją — wyświetlamy 20 najnowszych.",
+      "view": "Pokaż",
+      "compare": "Porównaj",
+      "restore": "Przywróć",
+      "saveDialogTitle": "Zapisz nową wersję promptu",
+      "saveDialogBody": "Zmiana wpłynie na wszystkie nowe raporty modalności {code}. Opisz powód zmiany (trafi do historii wersji i dziennika audytowego).",
+      "restoreDialogTitle": "Przywróć wersję {version}",
+      "restoreDialogBody": "Treść wersji {version} zostanie zapisana jako NOWA wersja promptu modalności {code} (historia pozostaje nienaruszona). Sugerowany powód: „przywrócenie wersji {version}”.",
+      "diffTitle": "Zmiany względem wersji {version}",
+      "viewTitle": "Wersja {version}",
+      "compareTitle": "Wersja {from} → bieżąca (v{to})"
     }
   },
   "errors": {
@@ -1075,9 +1109,15 @@
       "footnote2": "Zacznij teraz. Zatrzymaj niższą cenę na zawsze.",
       "vatNote": "Ceny netto + VAT 23%",
       "footnote": "Karta lub Przelewy24. Anuluj w dowolnym momencie.",
-      "trial": { "tagline": "Sprawdź, czy to dla Ciebie." },
-      "pro": { "tagline": "Dla intensywnej praktyki." },
-      "clinic": { "tagline": "Dla poradni i zespołów." },
+      "trial": {
+        "tagline": "Sprawdź, czy to dla Ciebie."
+      },
+      "pro": {
+        "tagline": "Dla intensywnej praktyki."
+      },
+      "clinic": {
+        "tagline": "Dla poradni i zespołów."
+      },
       "subprice": "ta cena zostaje z Tobą na zawsze"
     },
     "faq": {

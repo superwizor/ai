@@ -18,7 +18,9 @@
       "users": "Users",
       "sessions": "Sessions",
       "audit": "Audit log",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "crm": "CRM",
+      "prompts": "Prompts"
     },
     "header": {
       "signOut": "Sign out",
@@ -389,6 +391,38 @@
         "amount": "Amount",
         "monthly": "monthly"
       }
+    },
+    "prompts": {
+      "metaTitle": "Report prompts — Admin",
+      "title": "Report prompts",
+      "banner": "You are editing the modality prompt used to generate reports. Changes apply from the NEXT generated report and affect every therapist of this modality. Each save creates a new version — you can restore a previous one at any time.",
+      "listLabel": "Modalities",
+      "loading": "Loading…",
+      "unsaved": "unsaved changes",
+      "unsupported": "inactive",
+      "versionMeta": "version {version} · {author} · {date}",
+      "editorLabel": "Modality prompt text",
+      "saved": "New version saved",
+      "showDiff": "Show changes",
+      "discard": "Discard changes",
+      "save": "Save new version",
+      "discardConfirm": "You have unsaved changes. Discard them?",
+      "nothingSelected": "Select a modality from the list.",
+      "contextTitle": "Where does this prompt land? (call-2 context)",
+      "contextBody": "Your prompt is the FIRST block of the report-generation prompt. The surrounding elements (language rules, conciseness rules, RAG context, transcript) are fixed and not editable from the panel — they guarantee parser consistency and pipeline safety.",
+      "historyTitle": "Version history",
+      "historyEmpty": "No history for this modality.",
+      "historyMore": "Older versions exist — showing the 20 most recent.",
+      "view": "View",
+      "compare": "Compare",
+      "restore": "Restore",
+      "saveDialogTitle": "Save a new prompt version",
+      "saveDialogBody": "The change will affect all new {code} reports. Describe the reason (stored in version history and the audit log).",
+      "restoreDialogTitle": "Restore version {version}",
+      "restoreDialogBody": "Version {version}'s text will be saved as a NEW version of the {code} prompt (history stays intact). Suggested reason: „restore version {version}”.",
+      "diffTitle": "Changes vs version {version}",
+      "viewTitle": "Version {version}",
+      "compareTitle": "Version {from} → current (v{to})"
     }
   },
   "errors": {
@@ -1075,9 +1109,15 @@
       "footnote2": "Start now. Lock in the lower price forever.",
       "vatNote": "Prices excl. VAT 23%",
       "footnote": "Card or Przelewy24. Cancel anytime.",
-      "trial": { "tagline": "See if it's for you." },
-      "pro": { "tagline": "For intensive practice." },
-      "clinic": { "tagline": "For clinics and teams." },
+      "trial": {
+        "tagline": "See if it's for you."
+      },
+      "pro": {
+        "tagline": "For intensive practice."
+      },
+      "clinic": {
+        "tagline": "For clinics and teams."
+      },
       "subprice": "this price stays with you forever"
     },
     "faq": {
