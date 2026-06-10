@@ -493,140 +493,116 @@ Trade-offs:
 
 Tests: `TestFillSpeakerLabels` in `services/ai-pipeline-svc/cmd/stt-worker/main_test.go` covers forward fill, pause-boundary stop, backward fill, all-unlabeled no-op, all-labeled invariant, empty input, and the session-26ecf316 shape. Run with `go test ./services/ai-pipeline-svc/cmd/stt-worker/...`.
 
-## Long-term memory (RAG) — wired 2026-05-19
+## Long-term memory (RAG) — theme-level v2 (2026-06-10, docs/30)
 
-The worker accrues a short, identity-stripped summary of every report into `rag_memories` and reads back the most relevant prior summaries on the next session. Implements ADR-002 (pgvector RAG, no external vector store) and ADR-DM-009-adjacent (KMS-envelope encryption on the stored summary text).
+The worker accrues an identity-stripped summary **plus 2–5 theme entries**
+per session into `rag_memories`, and on the next session retrieves the
+prior threads most relevant to THAT session's own themes. Replaces the
+2026-05-19 whole-session-summary design; the old reader and the
+`LLM_RAG_MODE` flag were removed outright (pre-GA, no rollback path).
+Design + decisions: `docs/30_RAG_THEME_CONTEXT_REFACTOR.md`.
 
-### Pipeline shape
-
-```
-   call-1 Markdown response                 (write side, every report run)
-      │ # Metadata
-      │ Title: …
-      │ Summary: …                          ← short clinical summary
-      │ RAG_Summary: …                      ← NEW: dense, no-PII summary
-      │                                       for long-term memory
-      ↓
-   markdownResultToPayload()
-   - RAGSummaryChunk = r.RAGSummary || r.Summary  (fall-back when the
-                                                   model didn't emit
-                                                   the dedicated line)
-      ↓
-   generateEmbedding(RAGSummaryChunk)
-   - Vertex AI `text-embedding-005`
-   - 768-dim multilingual vector
-   - matches `rag_memories.embedding vector(768)`
-      ↓
-   persistRAGMemory()
-   - encrypt summary via cryptobox (KMS envelope)
-   - INSERT into rag_memories (patient_file_id, source_session_id,
-                               source_report_id, summary_ciphertext,
-                               summary_encrypted_dek, embedding,
-                               chunk_type='summary',
-                               importance_score=0.7)
-
-   ────────────────────────────────────────────────────────────
-
-   ProcessTranscript (next session)         (read side)
-      │
-      ↓
-   loadRAGContext(patientFileID, currentText)
-   1. Embed currentText via text-embedding-005
-   2. pgvector cosine search — two-stage CTE:
-        WITH recent AS (
-            SELECT id, summary_ciphertext, summary_encrypted_dek, embedding
-            FROM rag_memories
-            WHERE patient_file_id = $1 AND NOT is_compacted
-            ORDER BY created_at DESC
-            LIMIT 36                      ← lookback cap (≈9 months
-                                            weekly, ≈18 months bi-weekly)
-        )
-        SELECT id, summary_ciphertext, summary_encrypted_dek
-        FROM recent
-        ORDER BY embedding <=> $2::vector
-        LIMIT 3                           ← top-K by cosine distance
-   3. Decrypt each summary (KMS envelope). Skip empty plaintext
-      (legacy rows from the pre-2026-05-19 markdown-mode bug).
-   4. Join "1. …\n\n2. …\n\n3. …" capped at 5000 chars total
-      (`ragContextMaxChars` — keep RAG below ~10% of call-2 input
-      budget).
-   5. Background UPDATE last_accessed_at on the hit rows
-      (best-effort, doesn't block worker critical path).
-      ↓
-   ragContext threaded into CALL-2 ONLY at the "KONTEKST POPRZEDNICH
-   SESJI:" placeholder. Call-1 (metadata + diarization) does NOT
-   receive ragContext — see "Why call-1 doesn't get RAG" below.
-```
-
-### Why call-1 doesn't get RAG (2026-05-19)
-
-Before the split: `ragContext` was passed to both call-1 and call-2
-prompts. Removed from call-1 because all six call-1 outputs are
-structural facts about THIS session:
-
-| call-1 output | Why prior context hurts |
-|---|---|
-| `title` (≤100 ch) | Should describe THIS session. Continuity priming caused the model to write ordinal-style titles ("Druga sesja…") that get the numbering wrong (we have `created_at` for that). |
-| `summary_short` (≤500 ch) | Self-contained recap for `GetSessionDetails`. RAG injection made the model reference prior content inside this summary. |
-| `RAG_Summary` (≤1500 ch) | This is the patient's new long-term-memory entry. Priming it with prior summaries causes duplicate-content multiplication across sessions + drops unique signal from this session. |
-| Speaker clustering / role inference | Pure transcript-content analysis. Prior context can bias labels toward "therapist/patient" from prior sessions even if this session has a different speaker mix. |
-| `overall_diarization_confidence` | Pure speaker-tag math. Irrelevant. |
-
-Plus the ZASADY (rules) section in each call-1 prompt now includes
-explicit self-containment reminders so the model doesn't fabricate
-continuity from the modality prompt alone:
+### Pipeline order (the key change)
 
 ```
-- title: ... Opisuje TĘ sesję, nie buduj numeracji ani kontynuacji
-  z wcześniejszych spotkań.
-- summary_short: ... Samodzielne streszczenie TEJ sesji — nie odwołuj
-  się do wcześniejszych spotkań.
-- rag_summary_chunk: ... Nie powtarzaj treści wcześniejszych
-  podsumowań — niech wpis będzie samodzielnym śladem tej sesji.
+ProcessTranscript
+  ├─ generateMetadata        (call-1: diarization + Title/Summary +
+  │                           RAG_Summary + 2–5 RAG_Theme lines.
+  │                           Still receives NO prior context — see
+  │                           "Why call-1 doesn't get RAG" below.)
+  ├─ loadRAGContextV2        (query = THIS session's themes)
+  ├─ generateReportBody      (call-2: report + KONTEKST POPRZEDNICH SESJI)
+  ├─ persistReport
+  └─ persistRAGMemoryV2      (1 'summary' row + N 'theme' rows,
+                              embeddings in parallel, one txn)
 ```
 
-`loadRAGContext` itself still fires once at the top of
-`ProcessTranscript` — the embedding/decrypt work is the cost; using
-the result once vs twice is free at that point. The refactor is
-purely in prompt construction.
+Call-1 → retrieve → call-2 ordering exists because call-1's output IS the
+retrieval query. The old design embedded the raw transcript as the query —
+text-embedding-005 caps input at ~2 048 tokens and silently truncates, so
+on long sessions the query vector represented only the opening ~10 minutes.
 
-### Knobs (services/ai-pipeline-svc/cmd/llm-worker/main.go)
+### Write side (`persistRAGMemoryV2`, main.go)
+
+- Row 1: `chunk_type='summary'`, importance 0.7 — doubles as the
+  previous-session **anchor** and the themeless fallback.
+- Rows 2..N: `chunk_type='theme'`, importance 0.5 — one per distinct
+  `RAG_Theme:` line from call-1 (markdown grammar: repeated-prefix lines,
+  parsed tolerantly in internal/diarization — absent block → empty slice,
+  capped at 5, each ≤400 chars; JSON mode: `rag_themes` array).
+- All embeddings concurrent (errgroup ≤6), inserts transactional,
+  whole step best-effort (Warn, never fails the report).
+- No schema migration — `chunk_type VARCHAR(50)` already supported it.
+
+### Read side (`loadRAGContextV2` + helpers, main.go; ranking in rag.go)
+
+1. **Pool** (`loadRAGPool`): every non-compacted row from the patient's
+   most-recent **36 sessions** (session-based CTE on DISTINCT
+   source_session_id; row-based lookback died with the old reader),
+   current session excluded (fixes a redelivery self-retrieval bug).
+   Embeddings only — nothing decrypted during ranking.
+2. **Queries**: one embedding per call-1 theme; fallbacks: RAG_Summary →
+   transcript head+tail (1 000 chars each side, the <2-chunk case).
+3. **Rank** (`selectRAGHits`, pure Go, unit-tested in rag_test.go):
+   - anchor = most recent prior session's summary row, ALWAYS selected;
+   - score = max cosine over theme vectors × (0.7 + 0.3·recency),
+     recency half-life 90 d;
+   - greedy fill with per-session cap (2) + near-dup gate (cosine > 0.92
+     vs already-selected) + positive-score requirement (legacy
+     zero-vector rows score 0 and never surface);
+   - ≤6 hits total (`ragMaxHits`).
+4. **Assemble** (`assembleRAGContext`): decrypt winners only (1 KMS call
+   per winner, never per pool row), group by session with dates —
+   `[Poprzednia sesja — 2026-06-03]` / `[Sesja z 2026-05-12 — powiązane
+   wątki]` — globally numbered, capped at 8 000 chars (anchor never
+   trimmed).
+5. `last_accessed_at` bumped in a background goroutine (best-effort).
+
+### Why call-1 doesn't get RAG (2026-05-19, still binding)
+
+All call-1 outputs are structural facts about THIS session. Injecting
+prior context produced: ordinal titles ("Druga sesja…"), summaries that
+referenced prior content, duplicate-content multiplication in RAG entries,
+and role-label bias. The self-containment ZASADY lines in both call-1
+grammars enforce this; `RAG_Theme` carries the same no-PII, this-session-
+only instructions.
+
+### Knobs (rag.go)
 
 | Constant | Default | Why |
 |---|---|---|
-| `embeddingModel` | `"text-embedding-005"` | Vertex AI's current 768-dim multilingual model; matches `vector(768)` schema constraint. |
-| `embeddingDims` | `768` | Defensive equality check in `generateEmbedding` — silent dim mismatch would corrupt pgvector INSERTs. |
-| `ragLookbackMemories` | `36` | Candidate pool cap (newest-first by `created_at`). Bounds the search regardless of patient tenure. |
-| `ragTopK` | `3` | Hits returned per session. Enough to ground recall without drowning the prompt. |
-| `ragContextMaxChars` | `5000` | Total-output cap on the joined block. ≈3× single-summary max (1500). |
+| `ragLookbackSessions` | 36 | session-based candidate pool (≈9 mo weekly) |
+| `ragMaxHits` | 6 | 1 anchor + ≤5 semantic hits |
+| `ragPerSessionCap` | 2 | one chatty session can't crowd the block |
+| `ragDupSimThreshold` | 0.92 | MMR near-duplicate gate |
+| `ragRecencyHalfLifeDays` | 90 | decay half-life |
+| `ragRecencyFloor` | 0.7 | recency tunes ordering, never dominates |
+| `ragContextMaxCharsV2` | 8000 | ≈4 k tok, <10 % of call-2 input |
+| `embeddingModel/Dims` | text-embedding-005 / 768 | matches `vector(768)` (main.go) |
 
-### Failure modes (intentionally all non-fatal)
+### Failure modes (all non-fatal, unchanged contract)
 
-| What fails | Behavior | Why non-fatal |
-|---|---|---|
-| `generateEmbedding` (Vertex 503, quota, etc.) | `loadRAGContext` returns `""` + err; caller logs Warn; report still saves. | Worse to fail the whole report than to skip context this round. |
-| KMS decrypt of one `rag_memories` row | Log Warn with `rag_memory_id`, skip that row, continue. | One corrupt row shouldn't poison the retrieval. |
-| Empty plaintext after decrypt | Silent skip. | Legacy Markdown-mode rows from before option-C landed have `RAGSummaryChunk == ""`. They rank high (zero-vector embedding) but carry no signal. |
-| `last_accessed_at` background UPDATE | Goroutine logs Warn, swallows error. | Cosmetic timestamp; doesn't gate functionality. |
-| Empty result set | Return `""` + nil. Prompt sees no `KONTEKST POPRZEDNICH SESJI`. | First-session-per-patient is the common case; matches pre-RAG behavior. |
+Query/theme embedding fails → context `""`, report proceeds. One row's
+KMS decrypt fails → skip row. persistRAGMemoryV2 fails → Warn, report
+already saved. Empty pool (first session) → `""`, no analytics event.
+
+### Observability
+
+`rag.retrieved` analytics event (only when hits exist): `mode=v2`,
+`pool_size`, `themes_count`, `hits`, `memories_used`,
+`sessions_represented`, `anchor_used`, `context_chars`.
+
+Verified in prod 2026-06-10 via `TestFullSession_RAGTwoSessions`
+(tests/e2e/rag_context_test.go — two sessions, one patient): session 2
+logged `pool_size=3 themes_count=2 hits=2 anchor_used=true
+context_chars=411`.
 
 ### Privacy
 
-`patient_file_id` filter is BOTH a privacy guarantee (no cross-patient leakage) and an HNSW pre-filter via the partial index `idx_rag_memories_patient_file ON rag_memories(patient_file_id, created_at DESC) WHERE NOT is_compacted`. The encrypted column means summaries are unreadable at rest without KMS; the prompt itself instructs the model to keep RAG_Summary identity-stripped (no names, no places). Combined with the `ON DELETE CASCADE` from `patient_files`, RODO erasure also wipes the patient's memory.
-
-### Cost
-
-- Embedding: 1 call per report × ~$0.0001 (Vertex AI pricing) = negligible.
-- pgvector query: HNSW index on `embedding`; partial index on `(patient_file_id, created_at DESC) WHERE NOT is_compacted` — sub-10ms for the 2-stage CTE in our scale.
-
-### Compaction (not yet wired)
-
-Schema supports it: `rag_memories.is_compacted BOOLEAN` + `compacted_into_id UUID REFERENCES rag_memories(id)`. Idea: when a patient passes the lookback window, fold the oldest N memories into a single compacted summary, mark `is_compacted=true`, and link via `compacted_into_id`. The lookback CTE already filters `NOT is_compacted`, so compacted rows fall out of candidate pool automatically — no read-side change needed when the compaction job lands.
-
-### Tests
-
-- Unit (parser): `services/ai-pipeline-svc/internal/diarization/markdown_test.go::TestParse_RAGSummary*` — three cases: present, absent, oversize truncation.
-- E2E: covered transitively by `TestFullSession_HappyPath` (Step 7). First-session-of-fresh-patient path exercises `loadRAGContext`'s empty-result branch. To exercise the populated branch we'd need a multi-session e2e — deferred until compaction lands.
+Unchanged: `patient_file_id` scoping (partial index), KMS envelope on
+every stored plaintext (theme rows included), no-PII prompt instructions
+on RAG_Summary AND RAG_Theme, `ON DELETE CASCADE` from patient_files
+wipes the whole memory. Pool fetch reads embeddings only.
 
 ## The LLM diarization prompt (Phase 2 critical path)
 
