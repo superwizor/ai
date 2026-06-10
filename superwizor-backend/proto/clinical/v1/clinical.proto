@@ -104,6 +104,16 @@ service ClinicalService {
     rpc AdminListSessions(AdminListSessionsRequest) returns (AdminListSessionsResponse);
     rpc GetAdminAnalytics(GetAdminAnalyticsRequest) returns (GetAdminAnalyticsResponse);
 
+    // ─── Admin Prompt Studio (docs/31) — SUPERWIZOR_ADMIN only ───
+    // Versioned editor for modalities.therapist_ai_general_prompt.
+    // The live column is what llm-worker reads per report; every update
+    // bumps it AND appends a snapshot to modality_prompt_versions in one
+    // transaction. Restore = AdminUpdateModalityPrompt with historical
+    // text (no separate rollback RPC).
+    rpc AdminListModalityPrompts(google.protobuf.Empty) returns (AdminListModalityPromptsResponse);
+    rpc AdminGetModalityPromptHistory(AdminGetModalityPromptHistoryRequest) returns (AdminGetModalityPromptHistoryResponse);
+    rpc AdminUpdateModalityPrompt(AdminUpdateModalityPromptRequest) returns (AdminUpdateModalityPromptResponse);
+
     // ─── RODO/GDPR DSAR endpoints ───
     // Export all clinical and personal data related to a patient file,
     // decrypting all PHI columns using KMS before returning.
@@ -642,6 +652,70 @@ message AdminSessionRow {
   string subscription_plan_name = 12;
   google.protobuf.Timestamp subscription_period_end = 13;
   int32 subscription_tokens_used = 14;
+}
+
+// ─── Admin Prompt Studio (docs/31) ──────────────────────────────────
+
+message AdminModalityPrompt {
+  string modality_id = 1;
+  string system_code = 2;        // "CBT"
+  string display_name = 3;
+  string modality_type = 4;      // therapy | coaching
+  bool   is_supported = 5;
+  // Current live prompt text — therapist_ai_general_prompt["system"].
+  string system_prompt = 6;
+  // Latest version number in modality_prompt_versions (the live text
+  // always equals this snapshot).
+  int32  version = 7;
+  // Author of the latest version, for display. Empty for the
+  // migration-seeded v1 when no admin edit happened yet.
+  string updated_by_email = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message AdminListModalityPromptsResponse {
+  repeated AdminModalityPrompt prompts = 1;
+}
+
+message AdminGetModalityPromptHistoryRequest {
+  string modality_id = 1;
+  // Pagination: 0 → server default (20), capped at 50.
+  int32 page_size = 2;
+  int32 page_offset = 3;
+}
+
+message AdminModalityPromptVersion {
+  string id = 1;
+  int32  version = 2;
+  string system_prompt = 3;
+  string change_note = 4;
+  string created_by_email = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message AdminGetModalityPromptHistoryResponse {
+  repeated AdminModalityPromptVersion versions = 1; // newest first
+  bool has_more = 2;
+}
+
+message AdminUpdateModalityPromptRequest {
+  string modality_id = 1;
+  // Full replacement text for therapist_ai_general_prompt["system"].
+  // Trimmed non-empty, ≤ 20000 chars.
+  string system_prompt = 2;
+  // Mandatory reason (≥ 10 chars) — stored on the version row and the
+  // audit_log entry.
+  string change_note = 3;
+  // Optimistic lock: must equal the current latest version for this
+  // modality or the call fails FailedPrecondition (someone else saved
+  // in between — reload before retrying).
+  int32 expected_version = 4;
+}
+
+message AdminUpdateModalityPromptResponse {
+  // The state after the save, for immediate UI refresh without a
+  // second round-trip.
+  AdminModalityPrompt prompt = 1;
 }
 
 message TrackEventsRequest {

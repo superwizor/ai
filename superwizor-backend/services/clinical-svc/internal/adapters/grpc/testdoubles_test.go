@@ -63,6 +63,13 @@ type fakeQuerier struct {
 	softDeletePatientUserForDSARFn  func(ctx context.Context, id uuid.UUID) (int64, error)
 	createAuditEventFn              func(ctx context.Context, arg db.CreateAuditEventParams) error
 
+	// Admin Prompt Studio (docs/31)
+	adminListModalityPromptsFn        func(ctx context.Context) ([]db.AdminListModalityPromptsRow, error)
+	getLatestModalityPromptVersionFn  func(ctx context.Context, id uuid.UUID) (int32, error)
+	updateModalityLivePromptFn        func(ctx context.Context, arg db.UpdateModalityLivePromptParams) error
+	insertModalityPromptVersionFn     func(ctx context.Context, arg db.InsertModalityPromptVersionParams) (db.InsertModalityPromptVersionRow, error)
+	listModalityPromptVersionsFn      func(ctx context.Context, arg db.ListModalityPromptVersionsParams) ([]db.ListModalityPromptVersionsRow, error)
+
 	// Call recorders — set non-nil to record args for later assertion.
 	deletePatientUserCalls    []uuid.UUID
 	hardDeletePatientFileArgs []db.HardDeletePatientFileParams
@@ -298,4 +305,26 @@ func (b *fakeBilling) ReleaseCredit(ctx context.Context, in *billingv1.ReleaseCr
 		return nil, b.releaseErr
 	}
 	return &emptypb.Empty{}, nil
+}
+
+// ─── Admin Prompt Studio fakes (docs/31) ────────────────────────────
+
+func (f *fakeQuerier) AdminListModalityPrompts(ctx context.Context) ([]db.AdminListModalityPromptsRow, error) {
+	return f.adminListModalityPromptsFn(ctx)
+}
+
+func (f *fakeQuerier) GetLatestModalityPromptVersion(ctx context.Context, id uuid.UUID) (int32, error) {
+	return f.getLatestModalityPromptVersionFn(ctx, id)
+}
+
+func (f *fakeQuerier) UpdateModalityLivePrompt(ctx context.Context, arg db.UpdateModalityLivePromptParams) error {
+	return f.updateModalityLivePromptFn(ctx, arg)
+}
+
+func (f *fakeQuerier) InsertModalityPromptVersion(ctx context.Context, arg db.InsertModalityPromptVersionParams) (db.InsertModalityPromptVersionRow, error) {
+	return f.insertModalityPromptVersionFn(ctx, arg)
+}
+
+func (f *fakeQuerier) ListModalityPromptVersions(ctx context.Context, arg db.ListModalityPromptVersionsParams) ([]db.ListModalityPromptVersionsRow, error) {
+	return f.listModalityPromptVersionsFn(ctx, arg)
 }

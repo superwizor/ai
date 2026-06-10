@@ -328,7 +328,6 @@ const (
 	PlanTierCLINIC  PlanTier = "CLINIC"
 	PlanTierPATIENT PlanTier = "PATIENT"
 	PlanTierTRIAL   PlanTier = "TRIAL"
-	PlanTierBETA    PlanTier = "BETA"
 )
 
 func (e *PlanTier) Scan(src interface{}) error {
@@ -813,14 +812,6 @@ type CrmTag struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-type EmailDripLog struct {
-	ID             uuid.UUID `json:"id"`
-	UserID         string    `json:"user_id"`
-	TemplateName   string    `json:"template_name"`
-	SubscriptionID uuid.UUID `json:"subscription_id"`
-	SentAt         time.Time `json:"sent_at"`
-}
-
 type EmailTemplate struct {
 	TemplateKey string    `json:"template_key"`
 	Locale      string    `json:"locale"`
@@ -888,6 +879,16 @@ type Modality struct {
 	CreatedAt                 time.Time    `json:"created_at"`
 	UpdatedAt                 time.Time    `json:"updated_at"`
 	ModalityType              ModalityType `json:"modality_type"`
+}
+
+type ModalityPromptVersion struct {
+	ID         uuid.UUID `json:"id"`
+	ModalityID uuid.UUID `json:"modality_id"`
+	Version    int32     `json:"version"`
+	Prompt     []byte    `json:"prompt"`
+	ChangeNote string    `json:"change_note"`
+	CreatedBy  uuid.UUID `json:"created_by"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type NotificationDelivery struct {

@@ -13,6 +13,16 @@ import (
 )
 
 type Querier interface {
+	// Admin Prompt Studio (docs/31) — versioned modality prompt queries.
+	// The live prompt stays in modalities.therapist_ai_general_prompt
+	// (llm-worker reads it per report); modality_prompt_versions is the
+	// append-only history. AdminUpdateModalityPrompt wraps UpdateModality-
+	// LivePrompt + InsertModalityPromptVersion in one transaction with an
+	// optimistic-lock check against GetLatestModalityPromptVersion.
+	// Every modality (supported or not) with its live prompt text and the
+	// latest version metadata. LEFT JOINs tolerate a modality that predates
+	// the 000052 backfill (version 0, empty author).
+	AdminListModalityPrompts(ctx context.Context) ([]AdminListModalityPromptsRow, error)
 	//
 	// Cross-org session activity for /admin/sessions (SUPERWIZOR_ADMIN).
 	// Filter window is on sessions.created_at (when the server-side row
@@ -120,6 +130,10 @@ type Querier interface {
 	GetIssueCategories(ctx context.Context) ([]GetIssueCategoriesRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetLatencyTrend(ctx context.Context, sessionAt time.Time) ([]GetLatencyTrendRow, error)
+	// Optimistic-lock read. FOR UPDATE on the modality row serializes two
+	// concurrent admin saves on the same modality (the version check then
+	// decides the loser deterministically).
+	GetLatestModalityPromptVersion(ctx context.Context, id uuid.UUID) (int32, error)
 	// Used by the suggestion engine to honor the 14-day cooldown after
 	// a banner is dismissed for a given dimension. Returns the most
 	// recent 'dismissed' row for (therapist, dimension) or NotFound.
@@ -232,10 +246,14 @@ type Querier interface {
 	// Returns affected rows so the handler can distinguish "not found /
 	// not yours" (0 rows) from successful delete (1 row).
 	HardDeleteSession(ctx context.Context, arg HardDeleteSessionParams) (int64, error)
+	InsertModalityPromptVersion(ctx context.Context, arg InsertModalityPromptVersionParams) (InsertModalityPromptVersionRow, error)
 	// ─── preference_suggestions_log ─────────────────────────────
 	// Telemetry-only. Three action values: 'shown' | 'applied' |
 	// 'dismissed' — DB CHECK constraint enforces.
 	InsertPreferenceSuggestionLog(ctx context.Context, arg InsertPreferenceSuggestionLogParams) error
+	// History panel: newest first, offset-paged. limit+1 pattern for
+	// has_more is applied by the handler.
+	ListModalityPromptVersions(ctx context.Context, arg ListModalityPromptVersionsParams) ([]ListModalityPromptVersionsRow, error)
 	ListPatientFilesByTherapist(ctx context.Context, arg ListPatientFilesByTherapistParams) ([]PatientFile, error)
 	// See GetPatientFileWithUser comment for the JOIN strategy. Same
 	// shape, just the WHERE switches to therapist_id + paged.
@@ -297,6 +315,7 @@ type Querier interface {
 	SoftDeletePatientNotesForDSAR(ctx context.Context, patientFileID uuid.UUID) error
 	SoftDeletePatientUserForDSAR(ctx context.Context, id uuid.UUID) (int64, error)
 	SoftDeleteSessionsForDSAR(ctx context.Context, patientFileID uuid.UUID) error
+	UpdateModalityLivePrompt(ctx context.Context, arg UpdateModalityLivePromptParams) error
 	// Mutates only the therapist-editable kartoteka fields. modality_id is
 	// intentionally NOT here: sessions/reports were analyzed under the
 	// modality picked at create time, and silently swapping it would
