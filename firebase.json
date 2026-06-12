@@ -129,6 +129,66 @@
           "type": 307
         },
         {
+          "source": "/dashboard",
+          "destination": "/pl/dashboard/",
+          "type": 307
+        },
+        {
+          "source": "/dashboard/",
+          "destination": "/pl/dashboard/",
+          "type": 307
+        },
+        {
+          "source": "/onboarding",
+          "destination": "/pl/onboarding/",
+          "type": 307
+        },
+        {
+          "source": "/onboarding/",
+          "destination": "/pl/onboarding/",
+          "type": 307
+        },
+        {
+          "source": "/upgrade",
+          "destination": "/pl/upgrade/",
+          "type": 307
+        },
+        {
+          "source": "/upgrade/",
+          "destination": "/pl/upgrade/",
+          "type": 307
+        },
+        {
+          "source": "/account",
+          "destination": "/pl/account/",
+          "type": 307
+        },
+        {
+          "source": "/account/",
+          "destination": "/pl/account/",
+          "type": 307
+        },
+        {
+          "source": "/kontakt",
+          "destination": "/pl/kontakt/",
+          "type": 307
+        },
+        {
+          "source": "/kontakt/",
+          "destination": "/pl/kontakt/",
+          "type": 307
+        },
+        {
+          "source": "/pacjent",
+          "destination": "/pl/pacjent/",
+          "type": 307
+        },
+        {
+          "source": "/pacjent/",
+          "destination": "/pl/pacjent/",
+          "type": 307
+        },
+        {
           "source": "/b",
           "destination": "/pl/",
           "type": 301
