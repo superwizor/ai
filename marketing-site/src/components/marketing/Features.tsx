@@ -219,7 +219,7 @@ const DISLIKE_OPTIONS_PL = [
   "Za dużo cytatów",
   "Za mało cytatów",
   "Niedokładna interpretacja",
-  "Brakuje mocnych stron pacjenta",
+  "Brakuje mocnych stron klienta",
   "Brakuje kontekstu / złe akcenty",
   "Inne"
 ];
@@ -328,7 +328,7 @@ export function Features() {
     }, 1200);
   };
   const [selectedModality, setSelectedModality] = useState<string>("UNIV");
-  const [transcriptFilter, setTranscriptFilter] = useState<"all" | "therapist" | "patient">("all");
+  const [transcriptFilter, setTranscriptFilter] = useState<"all" | "therapist" | "client">("all");
 
   const [toast, setToast] = useState<string | null>(null);
   const [activeDialog, setActiveDialog] = useState<"dislike" | "email" | null>(null);
@@ -503,8 +503,8 @@ export function Features() {
                     activeTab === "continuity" ? "text-frost/80" : "text-[#4E5A55]"
                   }`}>
                     {isPl 
-                      ? "Zapis wszystkich spotkań pacjenta na przejrzystej osi czasu wraz z oznaczeniem nowych raportów."
-                      : "Record of all patient meetings on a clear timeline along with indicators for new reports."}
+                      ? "Zapis wszystkich spotkań klienta na przejrzystej osi czasu wraz z oznaczeniem nowych raportów."
+                      : "Record of all client meetings on a clear timeline along with indicators for new reports."}
                   </p>
                 </div>
               </button>
@@ -973,8 +973,8 @@ export function Features() {
                             <p className="font-sans text-[11px] lg:text-[13px] leading-relaxed text-[var(--text-pri-90)]">
                               <strong className="text-[var(--gold-color)]">{isPl ? "PODSUMOWANIE: " : "SUMMARY: "}</strong>
                               {isPl 
-                                ? "Pacjent zgłasza pogorszenie samopoczucia, nietypowe bóle głowy i brak chęci do działania, pomimo wcześniejszej poprawy. Odczuwa brak postępu i poczucie „mechanicznego uszkodzenia”, co prowadzi do myśli depresyjnych. Terapeuta dopytuje o objawy i próby radzenia sobie."
-                                : "The patient reports a deterioration of well-being, unusual headaches, and a lack of desire to act, despite prior improvement. He feels a lack of progress and a sense of 'mechanical damage', leading to depressive thoughts. The therapist inquires about symptoms and coping attempts."}
+                                ? "Klient zgłasza pogorszenie samopoczucia, nietypowe bóle głowy i brak chęci do działania, pomimo wcześniejszej poprawy. Odczuwa brak postępu i poczucie „mechanicznego uszkodzenia”, co prowadzi do myśli depresyjnych. Terapeuta dopytuje o objawy i próby radzenia sobie."
+                                : "The client reports a deterioration of well-being, unusual headaches, and a lack of desire to act, despite prior improvement. He feels a lack of progress and a sense of 'mechanical damage', leading to depressive thoughts. The therapist inquires about symptoms and coping attempts."}
                             </p>
                           </div>
 
@@ -1118,7 +1118,7 @@ export function Features() {
                               <div className="bg-[var(--accent-bg-light)] border border-[var(--accent-border-light)] rounded-xl p-3 text-[11px] lg:text-[12.5px] leading-relaxed text-[var(--text-pri-90)] mt-2">
                                 <strong className="text-[var(--accent-color)] block mb-0.5">{isPl ? "Analiza w modelu CBT:" : "CBT Analysis:"}</strong>
                                 {isPl 
-                                  ? "Brak precyzji utrudnia restrukturyzację. Bez konkretnych przykładów pacjent pozostaje w ogólnym poczuciu beznadziei, a terapeuta nie ma punktu zaczepienia."
+                                  ? "Brak precyzji utrudnia restrukturyzację. Bez konkretnych przykładów klient pozostaje w ogólnym poczuciu beznadziei, a terapeuta nie ma punktu zaczepienia."
                                   : "Hinders cognitive restructuring, leaving client in generalized hopelessness."}
                               </div>
                             </div>
@@ -1544,14 +1544,14 @@ export function Features() {
                           {transcriptFilter === "therapist" && "✓ "}{isPl ? "Terapeuta" : "Therapist"}
                         </button>
                         <button
-                          onClick={() => setTranscriptFilter("patient")}
+                          onClick={() => setTranscriptFilter("client")}
                           className={`px-4 py-1.5 rounded-full text-[11px] font-bold cursor-pointer shrink-0 transition-colors ${
-                            transcriptFilter === "patient"
+                            transcriptFilter === "client"
                               ? "bg-[#ffb12c] text-[#0a1e20]"
                               : "bg-[#0f3432] border border-white/10 text-white/80 hover:bg-[#13403e]"
                           }`}
                         >
-                          {transcriptFilter === "patient" && "✓ "}{isPl ? "Pacjent" : "Patient"}
+                          {transcriptFilter === "client" && "✓ "}{isPl ? "Klient" : "Client"}
                         </button>
                       </div>
 
@@ -1583,10 +1583,10 @@ export function Features() {
                         )}
 
                         {/* 2 */}
-                        {(transcriptFilter === "all" || transcriptFilter === "patient") && (
+                        {(transcriptFilter === "all" || transcriptFilter === "client") && (
                           <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 shadow-sm animate-[fadeIn_0.3s_ease-out_both] lg:p-4 transition-all duration-300">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[var(--accent-color)] font-sans text-[11px] lg:text-[13.5px] font-bold">{isPl ? "Pacjent" : "Patient"}</span>
+                              <span className="text-[var(--accent-color)] font-sans text-[11px] lg:text-[13.5px] font-bold">{isPl ? "Klient" : "Client"}</span>
                               <span className="text-[9.5px] text-[var(--text-sec-50)] font-mono">00:08 - 00:22</span>
                             </div>
                             <p className="font-sans text-[11px] lg:text-[13.5px] leading-relaxed text-[var(--text-pri-90)]">
@@ -1613,10 +1613,10 @@ export function Features() {
                         )}
 
                         {/* 4 */}
-                        {(transcriptFilter === "all" || transcriptFilter === "patient") && (
+                        {(transcriptFilter === "all" || transcriptFilter === "client") && (
                           <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 shadow-sm animate-[fadeIn_0.3s_ease-out_both] lg:p-4 transition-all duration-300">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[var(--accent-color)] font-sans text-[11px] lg:text-[13.5px] font-bold">{isPl ? "Pacjent" : "Patient"}</span>
+                              <span className="text-[var(--accent-color)] font-sans text-[11px] lg:text-[13.5px] font-bold">{isPl ? "Klient" : "Client"}</span>
                               <span className="text-[9.5px] text-[var(--text-sec-50)] font-mono">00:31 - 00:52</span>
                             </div>
                             <p className="font-sans text-[11px] lg:text-[13.5px] leading-relaxed text-[var(--text-pri-90)]">
@@ -1643,10 +1643,10 @@ export function Features() {
                         )}
 
                         {/* 6 */}
-                        {(transcriptFilter === "all" || transcriptFilter === "patient") && (
+                        {(transcriptFilter === "all" || transcriptFilter === "client") && (
                           <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 shadow-sm animate-[fadeIn_0.3s_ease-out_both] lg:p-4 transition-all duration-300">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[var(--accent-color)] font-sans text-[11px] lg:text-[13.5px] font-bold">{isPl ? "Pacjent" : "Patient"}</span>
+                              <span className="text-[var(--accent-color)] font-sans text-[11px] lg:text-[13.5px] font-bold">{isPl ? "Klient" : "Client"}</span>
                               <span className="text-[9.5px] text-[var(--text-sec-50)] font-mono">01:04 - 01:21</span>
                             </div>
                             <p className="font-sans text-[11px] lg:text-[13.5px] leading-relaxed text-[var(--text-pri-90)]">
@@ -1673,10 +1673,10 @@ export function Features() {
                         )}
 
                         {/* 8 */}
-                        {(transcriptFilter === "all" || transcriptFilter === "patient") && (
+                        {(transcriptFilter === "all" || transcriptFilter === "client") && (
                           <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 shadow-sm animate-[fadeIn_0.3s_ease-out_both] lg:p-4 transition-all duration-300">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[var(--accent-color)] font-sans text-[11px] lg:text-[13.5px] font-bold">{isPl ? "Pacjent" : "Patient"}</span>
+                              <span className="text-[var(--accent-color)] font-sans text-[11px] lg:text-[13.5px] font-bold">{isPl ? "Klient" : "Client"}</span>
                               <span className="text-[9.5px] text-[var(--text-sec-50)] font-mono">01:32 - 01:54</span>
                             </div>
                             <p className="font-sans text-[11px] lg:text-[13.5px] leading-relaxed text-[var(--text-pri-90)]">
@@ -1703,10 +1703,10 @@ export function Features() {
                         )}
 
                         {/* 10 */}
-                        {(transcriptFilter === "all" || transcriptFilter === "patient") && (
+                        {(transcriptFilter === "all" || transcriptFilter === "client") && (
                           <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-3 shadow-sm animate-[fadeIn_0.3s_ease-out_both] lg:p-4 transition-all duration-300">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[var(--accent-color)] font-sans text-[11px] lg:text-[13.5px] font-bold">{isPl ? "Pacjent" : "Patient"}</span>
+                              <span className="text-[var(--accent-color)] font-sans text-[11px] lg:text-[13.5px] font-bold">{isPl ? "Klient" : "Client"}</span>
                               <span className="text-[9.5px] text-[var(--text-sec-50)] font-mono">02:05 - 02:28</span>
                             </div>
                             <p className="font-sans text-[11px] lg:text-[13.5px] leading-relaxed text-[var(--text-pri-90)]">
@@ -1745,7 +1745,7 @@ export function Features() {
                       {/* Header Title Info */}
                       <div className="mb-4">
                         <h3 className="font-sans font-bold text-2xl lg:text-3xl text-[#fcae2f] italic tracking-wide">
-                          {isPl ? "Pacjent Marek" : "Patient Mark"}
+                          {isPl ? "Klient Marek" : "Client Mark"}
                         </h3>
                         <p className="font-sans text-[11.5px] lg:text-[13.5px] text-white/70 mt-0.5">
                           Nad czym dzisiaj pracujemy?
@@ -2096,7 +2096,7 @@ export function Features() {
                               </label>
                               <input 
                                 type="email" 
-                                defaultValue="pacjent@example.com" 
+                                defaultValue="klient@example.com" 
                                 className="w-full bg-[var(--toggle-bg)] border border-[var(--card-border)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-pri)] placeholder-[var(--text-sec-50)]/45 focus:outline-none focus:border-[var(--accent-color)]/40"
                                 placeholder="email@klienta.pl"
                               />

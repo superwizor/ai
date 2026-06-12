@@ -27,13 +27,13 @@ export function Differentiator() {
   const painItems = isPl
     ? [
         { icon: "📓", label: "Notatki rozsypane po zeszytach", detail: "Godziny szukania dawnych zapisków" },
-        { icon: "🧠", label: "Kluczowe wątki gubione między sesjami", detail: "Pacjent wspomina — Ty nie pamiętasz" },
+        { icon: "🧠", label: "Kluczowe wątki gubione między sesjami", detail: "Klient wspomina — Ty nie pamiętasz" },
         { icon: "🌙", label: "Wieczór spędzony na dokumentacji", detail: "Zamiast z rodziną, z notatkami" },
         { icon: "😶", label: "Przygotowanie z pamięci przed spotkaniem", detail: "Niepełny obraz, luki i wątpliwości" },
       ]
     : [
         { icon: "📓", label: "Notes scattered across notebooks", detail: "Hours searching for old records" },
-        { icon: "🧠", label: "Key threads lost between sessions", detail: "Patient remembers — you don't" },
+        { icon: "🧠", label: "Key threads lost between sessions", detail: "Client remembers — you don't" },
         { icon: "🌙", label: "Evening spent writing up documentation", detail: "Instead of family, with notes" },
         { icon: "😶", label: "Preparation from memory before the meeting", detail: "Incomplete picture, gaps and doubts" },
       ];

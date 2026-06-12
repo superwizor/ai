@@ -36,7 +36,7 @@ const galleryItems = [
   },
   {
     src: "/assets/gallery_doc.webp",
-    pl: { title: "Kartoteka Pacjenta", desc: "Historia sesji klienta uporządkowana w czasie." },
+    pl: { title: "Kartoteka Klienta", desc: "Historia sesji klienta uporządkowana w czasie." },
     en: { title: "Client Records", desc: "Client session history organized over time." }
   },
   {

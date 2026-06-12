@@ -170,7 +170,7 @@
     "users": {
       "metaTitle": "Użytkownicy",
       "title": "Użytkownicy",
-      "subhead": "Wszyscy użytkownicy konta Superwizora — terapeuci, administratorzy, pacjenci.",
+      "subhead": "Wszyscy użytkownicy konta Superwizora — terapeuci, administratorzy, klienci.",
       "searchPlaceholder": "Szukaj po imieniu lub e-mailu…",
       "roleFilterAll": "Wszystkie role",
       "loading": "Ładowanie listy użytkowników…",
@@ -213,7 +213,7 @@
       "noChange": "Wprowadź jakąkolwiek zmianę przed potwierdzeniem.",
       "roleLabel": {
         "USER_ROLE_THERAPIST": "Terapeuta",
-        "USER_ROLE_PATIENT": "Pacjent",
+        "USER_ROLE_PATIENT": "Klient",
         "USER_ROLE_ORG_ADMIN": "Admin org.",
         "USER_ROLE_SUPERWIZOR_ADMIN": "Admin Superwizor",
         "USER_ROLE_UNSPECIFIED": "Brak"
@@ -376,7 +376,7 @@
         "failureRateTrendInfo": "Jaki procent wgranych sesji nie zakończył się wygenerowaniem raportu (np. błąd transkrypcji, timeout, plik uszkodzony). Cel: <2%. Rosnący trend = problem do zbadania.",
         "funnel": "Lejek aktywacji terapeutów",
         "funnelDesc": "Od rejestracji do pierwszej interakcji",
-        "funnelInfo": "Lejek pokazuje ile osób przechodzi przez kolejne etapy: rejestracja → dodanie pacjenta → nagranie sesji → ocena raportu. Duży spadek między krokami wskazuje, gdzie tracimy użytkowników.",
+        "funnelInfo": "Lejek pokazuje ile osób przechodzi przez kolejne etapy: rejestracja → dodanie klienta → nagranie sesji → ocena raportu. Duży spadek między krokami wskazuje, gdzie tracimy użytkowników.",
         "activationTime": "Czas do pierwszej sesji",
         "activationTimeDesc": "Ile godzin od rejestracji do wgrania audio",
         "activationTimeInfo": "Histogram pokazujący ile terapeutów nagrało pierwszą sesję w ciągu 1h, 4h, 24h, 48h itd. od rejestracji. Jeśli większość czeka >7 dni, onboarding wymaga poprawy.",
@@ -642,7 +642,7 @@
     "title": "Pytania, które słyszymy najczęściej",
     "items": {
       "rodo": {
-        "q": "Jak wygląda kwestia RODO i bezpieczeństwa danych pacjentów?",
+        "q": "Jak wygląda kwestia RODO i bezpieczeństwa danych klientów?",
         "a": "Wszystkie dane osobowe i medyczne są w pełni chronione. Dane przetrzymujemy w centrach danych w UE (GCP Frankfurt/Warszawa). Przesyłanie danych odbywa się za pomocą bezpiecznego połączenia SSL, a pliki audio są usuwane automatycznie z serwerów natychmiast po wygenerowaniu transkrypcji. Poufne kolumny w bazie danych są dodatkowo szyfrowane kluczem kopertowym (pattern envelope encryption)."
       },
       "dpa": {
@@ -650,8 +650,8 @@
         "a": "Tak. Zgodnie z RODO (Art. 28) każdy terapeuta korzystający z Superwizor AI musi podpisać umowę powierzenia przetwarzania danych osobowych (DPA). Udostępniamy gotowy, zgodny z polskim prawem wzór umowy, który możesz podpisać elektronicznie jednym kliknięciem bezpośrednio w panelu administracyjnym aplikacji."
       },
       "consent": {
-        "q": "Jak uzyskać zgodę pacjenta na nagrywanie sesji i analizę AI?",
-        "a": "Nagrywanie sesji wymaga wyraźnej, świadomej zgody pacjenta. W sekcji zasobów prawnych aplikacji znajdziesz gotowe do pobrania i wydrukowania szablony pisemnych zgód pacjenta na nagrywanie sesji oraz analizę za pomocą narzędzia AI, opracowane we współpracy z prawnikami specjalizującymi się w ochronie danych medycznych."
+        "q": "Jak uzyskać zgodę klienta na nagrywanie sesji i analizę AI?",
+        "a": "Nagrywanie sesji wymaga wyraźnej, świadomej zgody klienta. W sekcji zasobów prawnych aplikacji znajdziesz gotowe do pobrania i wydrukowania szablony pisemnych zgód klienta na nagrywanie sesji oraz analizę za pomocą narzędzia AI, opracowane we współpracy z prawnikami specjalizującymi się w ochronie danych medycznych."
       },
       "training": {
         "q": "Czy sztuczna inteligencja uczy się na moich nagraniach i transkrypcjach?",
@@ -1022,7 +1022,7 @@
     "planSOLO": "Poznanie",
     "planPRO": "Równowaga",
     "planCLINIC": "Rozkwit",
-    "planPATIENT": "Pacjent",
+    "planPATIENT": "Klient",
     "statusTRIALING": "Okres próbny",
     "statusACTIVE": "Aktywna",
     "statusPAST_DUE": "Zaległa płatność",
@@ -1162,7 +1162,7 @@
       "title": "Najczęstsze pytania",
       "items": {
         "rodo": {
-          "q": "Jak wygląda bezpieczeństwo danych pacjentów?",
+          "q": "Jak wygląda bezpieczeństwo danych klientów?",
           "a": "Dane w UE (Frankfurt/Warszawa). SSL, szyfrowanie kopertowe, audio usuwane po transkrypcji. Gotowa umowa DPA."
         },
         "dpa": {
@@ -1170,7 +1170,7 @@
           "a": "Tak. Gotowy wzór umowy zgodny z polskim prawem podpiszesz elektronicznie w panelu aplikacji."
         },
         "consent": {
-          "q": "Jak uzyskać zgodę pacjenta?",
+          "q": "Jak uzyskać zgodę klienta?",
           "a": "W aplikacji znajdziesz gotowe szablony pisemnych zgód na nagrywanie i analizę AI."
         },
         "training": {

@@ -170,7 +170,7 @@
     "users": {
       "metaTitle": "Users",
       "title": "Users",
-      "subhead": "Every user on the Superwizor platform — therapists, admins, patients.",
+      "subhead": "Every user on the Superwizor platform — therapists, admins, clients.",
       "searchPlaceholder": "Search by name or email…",
       "roleFilterAll": "All roles",
       "loading": "Loading users…",
@@ -213,7 +213,7 @@
       "noChange": "Edit at least one field before confirming.",
       "roleLabel": {
         "USER_ROLE_THERAPIST": "Therapist",
-        "USER_ROLE_PATIENT": "Patient",
+        "USER_ROLE_PATIENT": "Client",
         "USER_ROLE_ORG_ADMIN": "Org admin",
         "USER_ROLE_SUPERWIZOR_ADMIN": "Superwizor admin",
         "USER_ROLE_UNSPECIFIED": "None"
@@ -376,7 +376,7 @@
         "failureRateTrendInfo": "What percentage of uploaded sessions did not result in a generated report (e.g., transcription error, timeout, corrupted file). Target: <2%. Rising trend = problem to investigate.",
         "funnel": "Therapist Activation Funnel",
         "funnelDesc": "From signup to first interaction",
-        "funnelInfo": "The funnel shows how many people pass through each stage: registration → adding a patient → recording a session → rating a report. A large drop between steps indicates where we lose users.",
+        "funnelInfo": "The funnel shows how many people pass through each stage: registration → adding a client → recording a session → rating a report. A large drop between steps indicates where we lose users.",
         "activationTime": "Time to First Session",
         "activationTimeDesc": "Hours from signup to audio upload",
         "activationTimeInfo": "Histogram showing how many therapists recorded their first session within 1h, 4h, 24h, 48h, etc. from registration. If most wait >7 days, onboarding needs improvement.",
@@ -642,7 +642,7 @@
     "title": "Frequently asked questions",
     "items": {
       "rodo": {
-        "q": "How does GDPR and patient data security work?",
+        "q": "How does GDPR and client data security work?",
         "a": "All personal and medical data is fully protected. Data is hosted in EU data centers (GCP Frankfurt/Warsaw). Data transmission is encrypted via SSL, and audio files are automatically purged from the servers immediately after transcription. Confidential database columns are additionally encrypted using envelope encryption."
       },
       "dpa": {
@@ -651,7 +651,7 @@
       },
       "consent": {
         "q": "How do I get client consent for recording and AI analysis?",
-        "a": "Recording sessions requires the patient's explicit, informed consent. In the legal resources section of the app, you will find ready-to-download and printable templates for patient consent forms covering session recording and AI-assisted analysis, prepared by medical data protection lawyers."
+        "a": "Recording sessions requires the client's explicit, informed consent. In the legal resources section of the app, you will find ready-to-download and printable templates for client consent forms covering session recording and AI-assisted analysis, prepared by medical data protection lawyers."
       },
       "training": {
         "q": "Does the AI learn from my recordings or transcripts?",
@@ -1022,7 +1022,7 @@
     "planSOLO": "Discovery",
     "planPRO": "Balance",
     "planCLINIC": "Flourishing",
-    "planPATIENT": "Patient",
+    "planPATIENT": "Client",
     "statusTRIALING": "Trial",
     "statusACTIVE": "Active",
     "statusPAST_DUE": "Payment overdue",
@@ -1162,7 +1162,7 @@
       "title": "Common questions",
       "items": {
         "rodo": {
-          "q": "How is patient data security handled?",
+          "q": "How is client data security handled?",
           "a": "Data in the EU (Frankfurt/Warsaw). SSL, envelope encryption, audio deleted after transcription. Ready DPA agreement."
         },
         "dpa": {
@@ -1170,7 +1170,7 @@
           "a": "Yes. A ready template compliant with Polish law can be signed electronically in the app panel."
         },
         "consent": {
-          "q": "How to obtain patient consent?",
+          "q": "How to obtain client consent?",
           "a": "The app includes ready templates for written consent to recording and AI analysis."
         },
         "training": {

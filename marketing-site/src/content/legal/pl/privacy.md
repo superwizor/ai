@@ -1,7 +1,7 @@
 ## Wstęp
 
 ### Cel i Zakres Polityki
-Niniejsza Polityka Prywatności („Polityka") określa zasady przetwarzania danych osobowych Użytkowników Profesjonalnych oraz Pacjentów w związku z korzystaniem z aplikacji mobilnej i/lub webowej Superwizor AI („Aplikacja"), świadczonej przez Euphire sp. z o.o. („Usługodawca", „My").
+Niniejsza Polityka Prywatności („Polityka") określa zasady przetwarzania danych osobowych Użytkowników Profesjonalnych oraz Klientów w związku z korzystaniem z aplikacji mobilnej i/lub webowej Superwizor AI („Aplikacja"), świadczonej przez Euphire sp. z o.o. („Usługodawca", „My").
 
 Celem Polityki jest zapewnienie transparentności oraz realizacja obowiązków informacyjnych wynikających z art. 13 i 14 Rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. („RODO"). Usługodawca jest zaangażowany w ochronę prywatności wszystkich osób, których dane przetwarza, oraz w zapewnienie zgodności swoich działań z przepisami RODO.
 
@@ -10,7 +10,7 @@ Dla celów niniejszej Polityki, poniższe terminy mają następujące znaczenie:
 * **Aplikacja:** Oprogramowanie Superwizor AI w wersji mobilnej (iOS, Android) i/lub webowej, służące jako narzędzie wspierające Użytkowników Profesjonalnych w analizie sesji terapeutycznych i coachingowych.
 * **Usługodawca:** Euphire sp. z o.o. z siedzibą w ul. Odrzańska 10a/48, Kraków, zarejestrowana pod numerem KRS 0000907254, NIP 6793219020.
 * **Użytkownik Profesjonalny (Profesjonalista):** Psychoanalityk, psycholog, psychiatra, terapeuta, coach, praktyka grupowa lub inna organizacja świadcząca usługi w zakresie zdrowia psychicznego lub rozwoju osobistego.
-* **Pacjent:** Osoba fizyczna, której dane osobowe są przetwarzane przez Użytkownika Profesjonalnego w związku ze świadczonymi przez niego usługami, przy użyciu Aplikacji. Postanowienia dotyczące Pacjentów stosuje się odpowiednio do innych osób uczestniczących w sesji (np. partnera w terapii par, członków rodziny).
+* **Klient:** Osoba fizyczna, której dane osobowe są przetwarzane przez Użytkownika Profesjonalnego w związku ze świadczonymi przez niego usługami, przy użyciu Aplikacji. Postanowienia dotyczące Klientów stosuje się odpowiednio do innych osób uczestniczących w sesji (np. partnera w terapii par, członków rodziny).
 * **Dane Osobowe:** Wszelkie informacje o zidentyfikowanej lub możliwej do zidentyfikowania osobie fizycznej.
 * **Dane Dotyczące Zdrowia:** Dane osobowe o zdrowiu fizycznym lub psychicznym ujawniające informacje o stanie zdrowia (Art. 4 pkt 15 RODO).
 * **Transkrypcja:** Automatyczny zapis tekstowy nagrania audio, generowany przez technologię rozpoznawania mowy.
@@ -52,18 +52,18 @@ Przetwarzamy następujące kategorie danych Użytkowników Profesjonalnych:
 6. **Komunikacja związana z cyklem życia usługi** (Art. 6 ust. 1 lit. b i f RODO) — wiadomości e-mail niezbędne do wykonania Umowy lub informujące o jej stanie (np. powitanie, weryfikacja adresu, ostrzeżenie o wyczerpaniu limitu, przypomnienie o odnowieniu subskrypcji) — przez czas trwania Umowy.
 7. **Marketing bezpośredni własnych usług drogą elektroniczną** (Art. 6 ust. 1 lit. a RODO w zw. z art. 398 ustawy z dnia 12 lipca 2024 r. — Prawo komunikacji elektronicznej) — wyłącznie po wyrażeniu odrębnej, dobrowolnej zgody (np. podczas rejestracji); zgodę można wycofać w każdej chwili, bez wpływu na zgodność z prawem przetwarzania dokonanego przed jej wycofaniem. Każda wiadomość marketingowa zawiera możliwość rezygnacji.
 
-### 3. Rola Usługodawcy w Przetwarzaniu Danych Pacjentów
+### 3. Rola Usługodawcy w Przetwarzaniu Danych Klientów
 
-W odniesieniu do danych osobowych Pacjentów, Użytkownik Profesjonalny jest Administratorem Danych Osobowych. Usługodawca jest wyłącznie Podmiotem Przetwarzającym (Procesorem) przetwarzającym dane na udokumentowane polecenie Administratora w ramach zawartej Umowy Powierzenia Przetwarzania Danych (DPA).
+W odniesieniu do danych osobowych Klientów, Użytkownik Profesjonalny jest Administratorem Danych Osobowych. Usługodawca jest wyłącznie Podmiotem Przetwarzającym (Procesorem) przetwarzającym dane na udokumentowane polecenie Administratora w ramach zawartej Umowy Powierzenia Przetwarzania Danych (DPA).
 
-Usługodawca przetwarza dane Pacjentów wyłącznie w celu świadczenia Usług na rzecz Użytkownika Profesjonalnego, tj. transkrypcji nagrań, generowania Raportów z Sesji, pomiarów HiTOP oraz budowania pamięci kontekstowej. Usługodawca nie wykorzystuje danych Pacjentów do żadnych własnych celów, w tym marketingowych, badawczych ani do trenowania modeli sztucznej inteligencji.
+Usługodawca przetwarza dane Klientów wyłącznie w celu świadczenia Usług na rzecz Użytkownika Profesjonalnego, tj. transkrypcji nagrań, generowania Raportów z Sesji, pomiarów HiTOP oraz budowania pamięci kontekstowej. Usługodawca nie wykorzystuje danych Klientów do żadnych własnych celów, w tym marketingowych, badawczych ani do trenowania modeli sztucznej inteligencji.
 
 ### 4. Obowiązki Użytkownika Profesjonalnego jako Administratora
 
 Jako Administratorzy, ponoszą Państwo pełną odpowiedzialność za zgodność przetwarzania z przepisami, w tym za:
 * Zapewnienie odpowiedniej podstawy prawnej (np. Art. 9 ust. 2 lit. h lub lit. a RODO).
-* Spełnienie obowiązku informacyjnego (Art. 13 RODO) — w szczególności poinformowanie Pacjenta oraz wszystkich innych osób uczestniczących w sesji o fakcie nagrywania sesji i korzystaniu z Aplikacji.
-* Realizację praw Pacjentów (dostęp, sprostowanie, usunięcie, przenoszenie danych, sprzeciw).
+* Spełnienie obowiązku informacyjnego (Art. 13 RODO) — w szczególności poinformowanie Klienta oraz wszystkich innych osób uczestniczących w sesji o fakcie nagrywania sesji i korzystaniu z Aplikacji.
+* Realizację praw Klientów (dostęp, sprostowanie, usunięcie, przenoszenie danych, sprzeciw).
 * Zapewnienie bezpieczeństwa danych po swojej stronie.
 
 ### 5. Środki Techniczne i Organizacyjne
@@ -95,7 +95,7 @@ Usługodawca stosuje zaawansowane środki bezpieczeństwa odpowiadające wysokie
 * Niezależnie od wyniku przetwarzania, każde nagranie podlega automatycznemu, trwałemu usunięciu przez mechanizm Object Lifecycle Management (OLM) skonfigurowany na poziomie zasobnika GCS, uruchamiany po upływie 48 godzin od przesłania. Po wykonaniu usunięcia odtworzenie nagrania nie jest możliwe.
 
 **Usuwanie danych i audyt:**
-* Dane Użytkowników i Pacjentów są usuwane mechanizmem soft delete (oznaczanie `deleted_at`), co zapewnia ścieżkę audytową wymaganą przez RODO.
+* Dane Użytkowników i Klientów są usuwane mechanizmem soft delete (oznaczanie `deleted_at`), co zapewnia ścieżkę audytową wymaganą przez RODO.
 * Trwałe, nieodwracalne usunięcie z bazy danych następuje po upływie 30 dni od oznaczenia, w ramach cyklicznego procesu trwałego usuwania danych; każde uruchomienie procesu jest odnotowywane w rejestrze zdarzeń audytowych.
 * Każda istotna operacja na danych jest rejestrowana w tabeli zdarzeń audytowych.
 
@@ -115,13 +115,13 @@ W ramach świadczenia usług korzystamy z następujących zaufanych dostawców (
 | **Stripe** (Stripe Payments Europe, Ltd. — Irlandia; Stripe, Inc. — USA) | Przetwarzanie płatności, zarządzanie subskrypcjami | Dane płatnicze, dane do faktur | UE (Irlandia); transfer do Stripe, Inc. (USA) na podstawie EU-US DPF oraz standardowych klauzul umownych (certyfikat PCI DSS Level 1) |
 | **Resend, Inc.** (USA) | Wysyłka transakcyjnych wiadomości e-mail (powitanie, weryfikacja, powiadomienia o subskrypcji) oraz — za zgodą — wiadomości marketingowych | Adres e-mail, imię, treść wiadomości systemowych | USA; transfer na podstawie standardowych klauzul umownych (art. 46 ust. 2 lit. c RODO) |
 
-**Dane sesji Pacjentów (nagrania audio, transkrypcje, raporty z sesji, pomiary HiTOP, pamięć kontekstowa) są przetwarzane i przechowywane wyłącznie w obrębie Europejskiego Obszaru Gospodarczego (EOG)** — w regionach europe-central2 (Warszawa) i europe-west4 (Holandia) — i nie są przekazywane do państw trzecich.
+**Dane sesji Klientów (nagrania audio, transkrypcje, raporty z sesji, pomiary HiTOP, pamięć kontekstowa) są przetwarzane i przechowywane wyłącznie w obrębie Europejskiego Obszaru Gospodarczego (EOG)** — w regionach europe-central2 (Warszawa) i europe-west4 (Holandia) — i nie są przekazywane do państw trzecich.
 
 W odniesieniu do wybranych danych Użytkowników Profesjonalnych (dane płatnicze, adres e-mail na potrzeby wysyłki wiadomości, dane uwierzytelniające, tokeny push) może dochodzić do przekazania danych do USA — wyłącznie do podmiotów zapewniających odpowiednie zabezpieczenia, o których mowa w rozdziale V RODO (decyzja wykonawcza Komisji w sprawie EU-US Data Privacy Framework lub standardowe klauzule umowne). Kopię stosownych zabezpieczeń można uzyskać kontaktując się z nami.
 
 Wszyscy dostawcy podlegają umowom powierzenia przetwarzania danych. Google Cloud Platform posiada certyfikaty ISO 27001, ISO 27017, ISO 27018, SOC 1/2/3.
 
-Użytkownik zostanie poinformowany o każdej zamierzonej zmianie dotyczącej dodania lub zastąpienia Sub-procesora przetwarzającego dane Pacjentów z co najmniej 14-dniowym wyprzedzeniem, zgodnie z warunkami DPA.
+Użytkownik zostanie poinformowany o każdej zamierzonej zmianie dotyczącej dodania lub zastąpienia Sub-procesora przetwarzającego dane Klientów z co najmniej 14-dniowym wyprzedzeniem, zgodnie z warunkami DPA.
 
 ### 7. Prawa Użytkownika Profesjonalnego
 
@@ -137,7 +137,7 @@ Przysługują Państwu następujące prawa:
 
 Aby skorzystać ze swoich praw, prosimy o kontakt na adres: kontakt@superwizor.ai.
 
-## Część II: Informacje dla Pacjentów
+## Część II: Informacje dla Klientów
 
 ### 1. Kto jest Odpowiedzialny za Twoje Dane?
 Administratorem Twoich danych w ramach sesji terapeutycznych lub coachingowych jest Twój terapeuta/coach/lekarz. To on decyduje, jakie dane są zbierane, w jakim celu korzysta z Aplikacji Superwizor AI i odpowiada za poinformowanie Cię o nagrywaniu sesji.
@@ -159,7 +159,7 @@ Twoje dane są chronione zaawansowanymi technologiami szyfrowania:
 * Nagrania, transkrypcje i raporty są szyfrowane zarówno podczas przesyłania (TLS/SSL), jak i przechowywania (szyfrowanie kopertowe z kluczami zarządzanymi w Google Cloud KMS).
 * Nagrania audio są usuwane natychmiast po transkrypcji, najpóźniej w ramach automatycznego mechanizmu uruchamianego po 48 godzinach.
 * Dane Twoich sesji przechowywane są wyłącznie na serwerach zlokalizowanych w Europejskim Obszarze Gospodarczym (Warszawa, Polska; analiza AI — Holandia).
-* Usunięcie konta przez Twojego terapeutę skutkuje kaskadowym usunięciem wszystkich powiązanych danych Pacjentów (trwałe usunięcie następuje po upływie 30-dniowego okresu ochronnego).
+* Usunięcie konta przez Twojego terapeutę skutkuje kaskadowym usunięciem wszystkich powiązanych danych Klientów (trwałe usunięcie następuje po upływie 30-dniowego okresu ochronnego).
 
 ### 5. Twoje Prawa
 Masz prawo do dostępu, sprostowania, usunięcia, ograniczenia przetwarzania oraz przenoszenia swoich danych. Aby skorzystać ze swoich praw, skontaktuj się ze swoim terapeutą/coachem/lekarzem, który jest Administratorem Twoich danych i jest bezpośrednio odpowiedzialny za realizację Twoich praw.
@@ -180,7 +180,7 @@ Formularze rejestracyjne w Serwisie (rejestracja terapeuty lub organizacji) zbie
 Proces zakupu subskrypcji odbywa się na stronach płatności Stripe. W ramach procesu płatności Stripe zbiera — jako podmiot przetwarzający, a w zakresie wymaganym przepisami o usługach płatniczych jako odrębny administrator — dane takie jak: adres e-mail, numer telefonu, dane karty płatniczej, adres rozliczeniowy oraz NIP (na potrzeby faktur B2B i automatycznego rozliczenia VAT). Szczegóły — Część I, pkt 6 oraz polityka prywatności Stripe.
 
 ### 4. Materiały Informacyjne (Lead Magnet)
-W Serwisie udostępniamy materiały informacyjne (np. stronę dla pacjentów), z których pobranie lub zapis może odbywać się przez formularz obsługiwany przez zewnętrznego dostawcę **Tally** (Tally Forms — dostawca z siedzibą w Belgii, EOG), działającego jako nasz podmiot przetwarzający. Zakres danych obejmuje dane podane w formularzu (np. adres e-mail). Dane te przetwarzamy w celu dostarczenia zamówionego materiału (Art. 6 ust. 1 lit. b RODO), a do celów dalszej komunikacji marketingowej — wyłącznie za odrębną zgodą (Art. 6 ust. 1 lit. a RODO), którą można wycofać w każdej chwili.
+W Serwisie udostępniamy materiały informacyjne (np. stronę dla klientów), z których pobranie lub zapis może odbywać się przez formularz obsługiwany przez zewnętrznego dostawcę **Tally** (Tally Forms — dostawca z siedzibą w Belgii, EOG), działającego jako nasz podmiot przetwarzający. Zakres danych obejmuje dane podane w formularzu (np. adres e-mail). Dane te przetwarzamy w celu dostarczenia zamówionego materiału (Art. 6 ust. 1 lit. b RODO), a do celów dalszej komunikacji marketingowej — wyłącznie za odrębną zgodą (Art. 6 ust. 1 lit. a RODO), którą można wycofać w każdej chwili.
 
 ### 5. Logi Serwera
 Podczas przeglądania Serwisu infrastruktura hostingowa automatycznie rejestruje standardowe dane techniczne: adres IP, datę i godzinę żądania, adres URL, identyfikator przeglądarki (user agent). Dane te przetwarzamy w celu zapewnienia bezpieczeństwa i prawidłowego działania Serwisu (Art. 6 ust. 1 lit. f RODO) i przechowujemy przez ograniczony okres (co do zasady do 30 dni).

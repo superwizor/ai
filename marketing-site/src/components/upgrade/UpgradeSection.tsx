@@ -52,7 +52,7 @@ export function UpgradeSection({
 
           <p className="font-sans text-base sm:text-lg text-[#4E5A55] leading-relaxed max-w-xl mx-auto">
             {locale === "en"
-              ? "Choose the plan that fits your practice. All your sessions, reports, and patient files stay exactly where you left them."
+              ? "Choose the plan that fits your practice. All your sessions, reports, and client files stay exactly where you left them."
               : "Wybierz plan dopasowany do Twojej praktyki. Wszystkie Twoje sesje, raporty i kartoteki czekają na Ciebie dokładnie tam, gdzie je zostawiłeś."}
           </p>
         </div>
@@ -183,7 +183,7 @@ function UpgradeCard({
         ? [
             "30 AI-analyzed sessions/month",
             "Full clinical reports + HiTOP",
-            "Unlimited patient files",
+            "Unlimited client files",
             "Encrypted local recording",
           ]
         : [

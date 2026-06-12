@@ -15,7 +15,7 @@ export function PatientLanding({ locale }: PatientLandingProps) {
 
   const content = {
     hero: {
-      overline: isPl ? "Program dla Pacjentów" : "Patient Companion Program",
+      overline: isPl ? "Program dla Klientów" : "Client Companion Program",
       heading: isPl ? "Wyciągnij 100% z każdej sesji psychoterapii" : "Get 100% Out of Every Therapy Session",
       subtitle: isPl 
         ? "Twój osobisty, w 100% bezpieczny asystent terapii. Pomoże Ci uporządkować myśli po sesji, zapisać kluczowe wnioski i śledzić powtarzające się wzorce w Twoim życiu."

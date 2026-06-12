@@ -59,8 +59,8 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     nurtEn: "integrative approach",
   },
   {
-    quote: "Doraźny superwizor po wizycie, pomoc w nadaniu kierunku pracy przy wielu pacjentach miesięcznie.",
-    quoteEn: "An ad-hoc supervisor after the session, helping to steer the treatment direction with dozens of patients a month.",
+    quote: "Doraźny superwizor po wizycie, pomoc w nadaniu kierunku pracy przy wielu klientach miesięcznie.",
+    quoteEn: "An ad-hoc supervisor after the session, helping to steer the treatment direction with dozens of clients a month.",
     author: "Rafał",
     role: "psychoterapeuta",
     roleEn: "psychotherapist",
@@ -179,7 +179,7 @@ export function Testimonials() {
         </h2>
         <p className="font-serif text-mist/75 text-base sm:text-lg mt-4 max-w-2xl mx-auto">
           {isPl
-            ? "Prawdziwe opinie psychoterapeutów, którzy wdrożyli Superwizor AI do pracy z pacjentami."
+            ? "Prawdziwe opinie psychoterapeutów, którzy wdrożyli Superwizor AI do pracy z klientami."
             : "Real reviews from psychotherapists who integrated Superwizor AI into their work with clients."}
         </p>
       </div>

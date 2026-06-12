@@ -22,8 +22,8 @@ export function Hero() {
     if (nextCount === 3) {
       setTooltipText(
         isPl 
-          ? "Hej! Przycisk działa, ale pacjenta z powietrza nie stworzę... :)" 
-          : "Hey! The button works, but I can't materialize a patient out of thin air... :)"
+          ? "Hej! Przycisk działa, ale klienta z powietrza nie stworzę... :)" 
+          : "Hey! The button works, but I can't materialize a client out of thin air... :)"
       );
       setTooltipKey("click3");
     } else if (nextCount === 7) {
@@ -336,7 +336,7 @@ export function Hero() {
                             </div>
                             <div>
                               <div className="font-sans text-[13px] font-bold text-white">
-                                {isPl ? "Próbny Pacjent" : "Demo Patient"}
+                                {isPl ? "Próbny Klient" : "Demo Client"}
                               </div>
                               <div className="font-sans text-[10px] text-[#8ba4a6] mt-0.5">
                                 {isPl ? "Sesje: 4 · Ostatnio: 31 Maj" : "Sessions: 4 · Last: May 31"}
@@ -356,7 +356,7 @@ export function Hero() {
                             </div>
                             <div>
                               <div className="font-sans text-[13px] font-bold text-white">
-                                {isPl ? "Kuba Pacjent" : "Jacob Patient"}
+                                {isPl ? "Kuba Klient" : "Jacob Client"}
                               </div>
                               <div className="font-sans text-[10px] text-[#8ba4a6] mt-0.5">
                                 {isPl ? "Sesje: 2 · Ostatnio: 28 Maj" : "Sessions: 2 · Last: May 28"}
@@ -397,7 +397,7 @@ export function Hero() {
                             <div className="min-w-0">
                               <div className="font-sans text-[13px] font-bold text-white flex items-center gap-1.5 flex-wrap">
                                 <span className="truncate">
-                                  {isPl ? "Pacjent Marek" : "Patient Mark"}
+                                  {isPl ? "Klient Marek" : "Client Mark"}
                                 </span>
                                 <span className="bg-[#1b5042] text-[#5bf4bc] text-[8px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0">
                                   <span className="w-1 h-1 rounded-full bg-[#5bf4bc]" /> 

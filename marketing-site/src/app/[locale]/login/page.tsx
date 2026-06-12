@@ -35,8 +35,8 @@ export default async function LoginPage({
   const t = await getTranslations("login");
 
   const quote = locale === "en"
-    ? "I feel an incredible relief when I don't have to feverishly write during sessions. I have full mindfulness for my patient."
-    : "Widzę niesamowitą ulgę, gdy nie muszę gorączkowo pisać podczas sesji. Mam pełną uważność na pacjenta.";
+    ? "I feel an incredible relief when I don't have to feverishly write during sessions. I have full mindfulness for my client."
+    : "Widzę niesamowitą ulgę, gdy nie muszę gorączkowo pisać podczas sesji. Mam pełną uważność na klienta.";
   const roleText = locale === "en" ? "cognitive psychotherapist" : "psychoterapeuta poznawczy";
 
   return (
