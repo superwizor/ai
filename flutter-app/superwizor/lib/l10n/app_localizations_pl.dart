@@ -221,7 +221,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get addPatient_no_consent_body =>
-      'Nie możemy rozpocząć sesji bez wyraźnej zgody pacjenta. Wymagają tego przepisy o ochronie danych.';
+      'Nie możemy rozpocząć sesji bez wyraźnej zgody klienta. Wymagają tego przepisy o ochronie danych.';
 
   @override
   String get addPatient_no_consent_primary => 'Rozumiem.';
@@ -291,16 +291,16 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addSession_subtitle => 'Wybierz nurt dla tej sesji:';
 
   @override
-  String get home_title => 'Twoi pacjenci.';
+  String get home_title => 'Twoi klienci.';
 
   @override
-  String get home_empty_title => 'Nie masz jeszcze żadnych pacjentów.';
+  String get home_empty_title => 'Nie masz jeszcze żadnych klientów.';
 
   @override
-  String get home_empty_body => 'Dodaj pacjenta, aby rozpocząć pierwszą sesję.';
+  String get home_empty_body => 'Dodaj klienta, aby rozpocząć pierwszą sesję.';
 
   @override
-  String get home_add_patient_fab => 'Dodaj pacjenta';
+  String get home_add_patient_fab => 'Dodaj klienta';
 
   @override
   String get patient_no_sessions => 'Brak sesji.';
@@ -617,7 +617,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String transcript_pdf_meta_patient(String name) {
-    return 'Pacjent: $name';
+    return 'Klient: $name';
   }
 
   @override
@@ -632,7 +632,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get transcript_pdf_footer =>
-      'Wygenerowane przez Superwizor AI · Dokument zawiera dane wrażliwe pacjenta.';
+      'Wygenerowane przez Superwizor AI · Dokument zawiera dane wrażliwe klienta.';
 
   @override
   String get report_section_summary => 'Podsumowanie sesji';
@@ -793,7 +793,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get settings_logout_confirm_body =>
-      'Będziesz musiał zalogować się ponownie, aby uzyskać dostęp do swoich pacjentów.';
+      'Będziesz musiał zalogować się ponownie, aby uzyskać dostęp do swoich klientów.';
 
   @override
   String get settings_logout_confirm_cancel => 'Zostań';
@@ -837,7 +837,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get settings_delete_confirm_body =>
-      'Ta operacja jest NIEODWRACALNA.\nUstracisz całą dokumentację kliniczną i dane pacjentów.';
+      'Ta operacja jest NIEODWRACALNA.\nUstracisz całą dokumentację kliniczną i dane klientów.';
 
   @override
   String get settings_delete_confirm_proceed => 'Rozumiem — przejdź dalej.';
@@ -853,7 +853,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get delete_account_consequence_1 =>
-      'Cała dokumentacja kliniczna — wszystkich pacjentów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.';
+      'Cała dokumentacja kliniczna — wszystkich klientów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.';
 
   @override
   String get delete_account_consequence_2 =>
@@ -950,7 +950,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get report_rating_chip_missing_strengths =>
-      'Brakuje mocnych stron pacjenta';
+      'Brakuje mocnych stron klienta';
 
   @override
   String get report_rating_chip_missing_context =>
@@ -1099,7 +1099,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get report_prefs_free_text_hint =>
-      'np. Skupiaj się na obserwacjach języka ciała pacjenta…';
+      'np. Skupiaj się na obserwacjach języka ciała klienta…';
 
   @override
   String get report_prefs_value_not_set => 'Domyślne';
@@ -1419,7 +1419,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get note_deleted => 'Notatka usunięta';
 
   @override
-  String get action_plan_send_button => 'Wyślij plan działania do pacjenta';
+  String get action_plan_send_button => 'Wyślij plan działania do klienta';
 
   @override
   String get action_plan_save_only => 'Zapisz';
@@ -1432,7 +1432,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get action_plan_no_email_body =>
-      'Nie można wysłać planu — pacjent nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.';
+      'Nie można wysłać planu — klient nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.';
 
   @override
   String get action_plan_send_confirm_title => 'Wyślij plan działania?';
@@ -1492,7 +1492,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get recording_consent_missing_body =>
-      'Nie odnotowano zgody pacjenta w systemie. Czy pacjent wyraził zgodę na nagrywanie i przetwarzanie danych?';
+      'Nie odnotowano zgody klienta w systemie. Czy klient wyraził zgodę na nagrywanie i przetwarzanie danych?';
 
   @override
   String get recording_consent_grant => 'Tak, wyraził zgodę';

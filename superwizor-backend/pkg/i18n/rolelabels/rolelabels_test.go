@@ -9,8 +9,8 @@ func TestGenerate_TherapyPolish(t *testing.T) {
 		t.Fatalf("first therapist (pl, therapy): got (%q,%q), want (Terapeuta,therapist)", label, role)
 	}
 	label, role = Generate("pl-PL", "therapy", "patient", 2, taken)
-	if label != "Pacjent" || role != "patient" {
-		t.Fatalf("first patient (pl, therapy): got (%q,%q), want (Pacjent,patient)", label, role)
+	if label != "Klient" || role != "patient" {
+		t.Fatalf("first patient (pl, therapy): got (%q,%q), want (Klient,patient)", label, role)
 	}
 }
 
@@ -19,7 +19,7 @@ func TestGenerate_TherapyEnglish(t *testing.T) {
 	if got, _ := Generate("en-US", "therapy", "therapist", 1, taken); got != "Therapist" {
 		t.Errorf("therapy/therapist en-US: got %q, want Therapist", got)
 	}
-	if got, _ := Generate("en-US", "therapy", "patient", 2, taken); got != "Patient" {
+	if got, _ := Generate("en-US", "therapy", "patient", 2, taken); got != "Client" {
 		t.Errorf("therapy/patient en-US: got %q, want Patient", got)
 	}
 }
@@ -46,10 +46,10 @@ func TestGenerate_CoachingEnglish(t *testing.T) {
 
 func TestGenerate_MultiPatient_NumericSuffix(t *testing.T) {
 	// Couples therapy: two speakers classified as "patient". First
-	// gets the bare label, second gets "Pacjent 2", third gets
-	// "Pacjent 3", and so on.
+	// gets the bare label, second gets "Klient 2", third gets
+	// "Klient 3", and so on.
 	taken := map[string]int{}
-	expected := []string{"Pacjent", "Pacjent 2", "Pacjent 3"}
+	expected := []string{"Klient", "Klient 2", "Klient 3"}
 	for i, want := range expected {
 		got, role := Generate("pl-PL", "therapy", "patient", i+1, taken)
 		if got != want {
@@ -118,8 +118,8 @@ func TestGenerate_UnknownModality_FallsToTherapy(t *testing.T) {
 	if got, _ := Generate("pl-PL", "", "therapist", 1, taken); got != "Terapeuta" {
 		t.Errorf("empty modality: got %q, want Terapeuta (therapy fallback)", got)
 	}
-	if got, _ := Generate("pl-PL", "supervision", "patient", 2, taken); got != "Pacjent" {
-		t.Errorf("unknown modality: got %q, want Pacjent (therapy fallback)", got)
+	if got, _ := Generate("pl-PL", "supervision", "patient", 2, taken); got != "Klient" {
+		t.Errorf("unknown modality: got %q, want Klient (therapy fallback)", got)
 	}
 }
 
@@ -143,10 +143,10 @@ func TestGenerate_NilTakenRoles_Panics(t *testing.T) {
 func TestGenerate_CountersIndependent(t *testing.T) {
 	// Therapist and patient counters are independent: a session
 	// with one therapist + two patients should produce
-	// "Terapeuta" + "Pacjent" + "Pacjent 2", NOT "Terapeuta" +
-	// "Pacjent" + "Pacjent 3".
+	// "Terapeuta" + "Klient" + "Klient 2", NOT "Terapeuta" +
+	// "Klient" + "Klient 3".
 	taken := map[string]int{}
-	want := []string{"Terapeuta", "Pacjent", "Pacjent 2"}
+	want := []string{"Terapeuta", "Klient", "Klient 2"}
 	roles := []string{"therapist", "patient", "patient"}
 	for i, r := range roles {
 		got, _ := Generate("pl-PL", "therapy", r, i+1, taken)

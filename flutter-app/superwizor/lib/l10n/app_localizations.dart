@@ -491,7 +491,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_no_consent_body.
   ///
   /// In pl, this message translates to:
-  /// **'Nie możemy rozpocząć sesji bez wyraźnej zgody pacjenta. Wymagają tego przepisy o ochronie danych.'**
+  /// **'Nie możemy rozpocząć sesji bez wyraźnej zgody klienta. Wymagają tego przepisy o ochronie danych.'**
   String get addPatient_no_consent_body;
 
   /// No description provided for @addPatient_no_consent_primary.
@@ -623,25 +623,25 @@ abstract class AppLocalizations {
   /// No description provided for @home_title.
   ///
   /// In pl, this message translates to:
-  /// **'Twoi pacjenci.'**
+  /// **'Twoi klienci.'**
   String get home_title;
 
   /// No description provided for @home_empty_title.
   ///
   /// In pl, this message translates to:
-  /// **'Nie masz jeszcze żadnych pacjentów.'**
+  /// **'Nie masz jeszcze żadnych klientów.'**
   String get home_empty_title;
 
   /// No description provided for @home_empty_body.
   ///
   /// In pl, this message translates to:
-  /// **'Dodaj pacjenta, aby rozpocząć pierwszą sesję.'**
+  /// **'Dodaj klienta, aby rozpocząć pierwszą sesję.'**
   String get home_empty_body;
 
   /// No description provided for @home_add_patient_fab.
   ///
   /// In pl, this message translates to:
-  /// **'Dodaj pacjenta'**
+  /// **'Dodaj klienta'**
   String get home_add_patient_fab;
 
   /// No description provided for @patient_no_sessions.
@@ -1187,7 +1187,7 @@ abstract class AppLocalizations {
   /// No description provided for @transcript_pdf_meta_patient.
   ///
   /// In pl, this message translates to:
-  /// **'Pacjent: {name}'**
+  /// **'Klient: {name}'**
   String transcript_pdf_meta_patient(String name);
 
   /// No description provided for @transcript_pdf_meta_date.
@@ -1205,7 +1205,7 @@ abstract class AppLocalizations {
   /// No description provided for @transcript_pdf_footer.
   ///
   /// In pl, this message translates to:
-  /// **'Wygenerowane przez Superwizor AI · Dokument zawiera dane wrażliwe pacjenta.'**
+  /// **'Wygenerowane przez Superwizor AI · Dokument zawiera dane wrażliwe klienta.'**
   String get transcript_pdf_footer;
 
   /// No description provided for @report_section_summary.
@@ -1517,7 +1517,7 @@ abstract class AppLocalizations {
   /// No description provided for @settings_logout_confirm_body.
   ///
   /// In pl, this message translates to:
-  /// **'Będziesz musiał zalogować się ponownie, aby uzyskać dostęp do swoich pacjentów.'**
+  /// **'Będziesz musiał zalogować się ponownie, aby uzyskać dostęp do swoich klientów.'**
   String get settings_logout_confirm_body;
 
   /// No description provided for @settings_logout_confirm_cancel.
@@ -1601,7 +1601,7 @@ abstract class AppLocalizations {
   /// No description provided for @settings_delete_confirm_body.
   ///
   /// In pl, this message translates to:
-  /// **'Ta operacja jest NIEODWRACALNA.\nUstracisz całą dokumentację kliniczną i dane pacjentów.'**
+  /// **'Ta operacja jest NIEODWRACALNA.\nUstracisz całą dokumentację kliniczną i dane klientów.'**
   String get settings_delete_confirm_body;
 
   /// No description provided for @settings_delete_confirm_proceed.
@@ -1631,7 +1631,7 @@ abstract class AppLocalizations {
   /// No description provided for @delete_account_consequence_1.
   ///
   /// In pl, this message translates to:
-  /// **'Cała dokumentacja kliniczna — wszystkich pacjentów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.'**
+  /// **'Cała dokumentacja kliniczna — wszystkich klientów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.'**
   String get delete_account_consequence_1;
 
   /// No description provided for @delete_account_consequence_2.
@@ -1805,7 +1805,7 @@ abstract class AppLocalizations {
   /// No description provided for @report_rating_chip_missing_strengths.
   ///
   /// In pl, this message translates to:
-  /// **'Brakuje mocnych stron pacjenta'**
+  /// **'Brakuje mocnych stron klienta'**
   String get report_rating_chip_missing_strengths;
 
   /// No description provided for @report_rating_chip_missing_context.
@@ -2075,7 +2075,7 @@ abstract class AppLocalizations {
   /// No description provided for @report_prefs_free_text_hint.
   ///
   /// In pl, this message translates to:
-  /// **'np. Skupiaj się na obserwacjach języka ciała pacjenta…'**
+  /// **'np. Skupiaj się na obserwacjach języka ciała klienta…'**
   String get report_prefs_free_text_hint;
 
   /// No description provided for @report_prefs_value_not_set.
@@ -2570,7 +2570,7 @@ abstract class AppLocalizations {
   /// No description provided for @action_plan_send_button.
   ///
   /// In pl, this message translates to:
-  /// **'Wyślij plan działania do pacjenta'**
+  /// **'Wyślij plan działania do klienta'**
   String get action_plan_send_button;
 
   /// No description provided for @action_plan_save_only.
@@ -2594,7 +2594,7 @@ abstract class AppLocalizations {
   /// No description provided for @action_plan_no_email_body.
   ///
   /// In pl, this message translates to:
-  /// **'Nie można wysłać planu — pacjent nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.'**
+  /// **'Nie można wysłać planu — klient nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.'**
   String get action_plan_no_email_body;
 
   /// No description provided for @action_plan_send_confirm_title.
@@ -2696,7 +2696,7 @@ abstract class AppLocalizations {
   /// No description provided for @recording_consent_missing_body.
   ///
   /// In pl, this message translates to:
-  /// **'Nie odnotowano zgody pacjenta w systemie. Czy pacjent wyraził zgodę na nagrywanie i przetwarzanie danych?'**
+  /// **'Nie odnotowano zgody klienta w systemie. Czy klient wyraził zgodę na nagrywanie i przetwarzanie danych?'**
   String get recording_consent_missing_body;
 
   /// No description provided for @recording_consent_grant.

@@ -89,7 +89,21 @@ Gotchas:
 
 ## In progress
 
-### Legal docs v2 (branch `docs/legal-docs-v2`, 2026-06-12) — AWAITING USER/LAWYER REVIEW
+### Pacjent→Klient w produkcie (branch `feat/rename-patient-client-labels`, 2026-06-12)
+
+Dokończenie de-medykalizacji: backend `pkg/i18n/rolelabels` — `therapy|patient`
+generuje teraz „Klient"/"Client" (wszystkie 14 języków, identycznie jak
+coaching); testy zaktualizowane, zielone. Flutter: `app_pl.arb` (14 stringów)
++ regeneracja l10n + 2 hardkodowane 'Usuń pacjenta' w home_screen*.dart.
+Dokumenty prawne: 6 przykładów etykiet zaktualizowanych na „Klient" (zero
+Pacjent/Patient w 12 dokumentach). Prompty LLM w llm-worker celowo NIE
+ruszone (wewnętrzne, wpływ na jakość diaryzacji). Istniejące sesje zachowują
+zapisane etykiety „Pacjent" (dane historyczne w speaker_label_mapping).
+NIEZMERGOWANE — czeka na decyzję; deploy etykiet = terraform cloud-functions
+(llm-worker). UWAGA dysk: przejściowe ENOSPC przy ciężkich komendach —
+czyść flutter build/ + Xcode DerivedData.
+
+### Legal docs v2 (branch `docs/legal-docs-v2`, 2026-06-12) — MERGED to main (0d446c9)
 
 Audited `flutter-app/superwizor/assets/legal/*` against the live architecture
 and rewrote all 6 docs (PL+EN: privacy policy, DPA, terms). Key fixes: speaker

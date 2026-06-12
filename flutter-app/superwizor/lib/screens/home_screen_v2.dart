@@ -1901,7 +1901,7 @@ class _DeletePatientConfirmSheetState
                               ),
                             )
                           : const Text(
-                              'Usuń pacjenta',
+                              'Usuń klienta',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontFamily: 'Montserrat',

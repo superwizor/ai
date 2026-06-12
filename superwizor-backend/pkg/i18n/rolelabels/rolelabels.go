@@ -7,7 +7,8 @@
 // Conventions:
 //
 //   • therapy modality → "Terapeuta" (pl) / "Therapist" (en) for the
-//     therapist role, "Pacjent" / "Patient" for the patient role.
+//     therapist role, "Klient" / "Client" for the patient role
+//     (client terminology since 2026-06-12 — see the vocab comment).
 //   • coaching modality → "Trener" / "Coach" for the therapist role
 //     (the LLM's role-hint vocabulary keeps `therapist` as the
 //     "professional" slot regardless of modality; modality_type just
@@ -15,15 +16,15 @@
 //     the patient role.
 //   • Multi-participant sessions (couples, family, group): the first
 //     speaker classified into a role gets the bare role label; the
-//     second-plus get a numeric suffix ("Pacjent 2", "Coach 3", …).
+//     second-plus get a numeric suffix ("Klient 2", "Coach 3", …).
 //     Caller owns the collision counter so the per-session state stays
 //     in one place.
 //   • Non-dyadic roles (couple_partner, family_member_*, third_party,
 //     unknown, filler) fall through to pkg/i18n/speakerlabels — the
 //     existing neutral "Osoba N" / "Person N" naming is preserved.
 //
-// Privacy: role descriptors ("Therapist", "Patient", "Coach",
-// "Client") are NOT personal data — they describe the session-level
+// Privacy: role descriptors ("Therapist", "Coach", "Client") are
+// NOT personal data — they describe the session-level
 // relationship, not the participant's identity. Storing them in
 // sessions.speaker_label_mapping is OK under ADR-IMPL-002 (amended
 // 2026-05-25; see docs/agents/05_ai-pipeline-svc.md). Never put raw
@@ -105,7 +106,7 @@ func Generate(
 	if count == 0 {
 		return base, role
 	}
-	// Second-plus speaker in this role. "Pacjent" → "Pacjent 2".
+	// Second-plus speaker in this role. "Klient" → "Klient 2".
 	// We use count+1 (1-indexed for the suffix, but the first
 	// claimant got no suffix, so the second claimant displays "2").
 	return fmt.Sprintf("%s %d", base, count+1), role
@@ -167,21 +168,28 @@ var vocab = map[string]map[string]string{
 		"no": "Terapeut",
 		"fi": "Terapeutti",
 	},
+	// therapy|patient deliberately uses CLIENT terminology, not
+	// "Pacjent"/"Patient" (changed 2026-06-12). Two reasons:
+	// (1) MDR intended-purpose risk — "patient" frames the product as
+	// medical; all user-facing materials (legal docs, website) were
+	// de-medicalized the same day. (2) Many therapy modalities
+	// (humanistic, systemic) natively say "klient". Existing sessions
+	// keep whatever label was stored at generation time.
 	"therapy|patient": {
-		"en": "Patient",
-		"pl": "Pacjent",
-		"de": "Patient",
-		"es": "Paciente",
-		"fr": "Patient",
-		"it": "Paziente",
-		"pt": "Paciente",
-		"nl": "Patiënt",
-		"cs": "Pacient",
-		"sk": "Pacient",
-		"sv": "Patient",
-		"da": "Patient",
-		"no": "Pasient",
-		"fi": "Potilas",
+		"en": "Client",
+		"pl": "Klient",
+		"de": "Klient",
+		"es": "Cliente",
+		"fr": "Client",
+		"it": "Cliente",
+		"pt": "Cliente",
+		"nl": "Cliënt",
+		"cs": "Klient",
+		"sk": "Klient",
+		"sv": "Klient",
+		"da": "Klient",
+		"no": "Klient",
+		"fi": "Asiakas",
 	},
 	"coaching|therapist": {
 		"en": "Coach",

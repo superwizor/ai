@@ -399,7 +399,7 @@ type SessionContext struct {
 	// ModalityType discriminates the modalities catalog into
 	// therapy vs coaching (migration 000026). Drives the localized
 	// role-label vocabulary in generateAndSaveSpeakerLabels:
-	// therapy → "Terapeuta"/"Pacjent", coaching → "Trener"/"Klient".
+	// therapy → "Terapeuta"/"Klient", coaching → "Trener"/"Klient".
 	// Unknown / NULL falls back to "therapy" (conservative; almost
 	// every modality in the catalog is clinical).
 	ModalityType        string
@@ -1446,7 +1446,7 @@ func schemaToVertexSchema(s map[string]any) *genai.Schema {
 //     and falls through to speakerlabels.Generate for non-dyadic
 //     roles like couple_partner / family_member / third_party).
 //  4. UPDATE transcript_segments — wszystkie segmenty należące do chunków z grupy.
-//  5. UPDATE sessions.speaker_label_mapping = {1: "Terapeuta", 2: "Pacjent"}
+//  5. UPDATE sessions.speaker_label_mapping = {1: "Terapeuta", 2: "Klient"}
 //     (or "Trener"/"Klient" for coaching modality, or "Osoba N" for
 //     non-dyadic roles, or numeric suffix for collisions).
 //

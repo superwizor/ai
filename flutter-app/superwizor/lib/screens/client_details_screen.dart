@@ -2891,7 +2891,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   }
 
   /// Masks an e-mail address: keep the first char of the local part, then
-  /// `***`, then the domain. e.g. `pacjent@example.com` -> `p***@example.com`.
+  /// `***`, then the domain. e.g. `klient@example.com` -> `k***@example.com`.
   String _maskEmail(String email) {
     final at = email.indexOf('@');
     if (at <= 0) return email;

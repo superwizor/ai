@@ -1394,7 +1394,7 @@ class _DeletePatientConfirmSheetState extends ConsumerState<_DeletePatientConfir
                       ),
                       child: _deleting
                           ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Usuń pacjenta', style: TextStyle(color: Colors.white, fontFamily: 'Montserrat', fontWeight: FontWeight.w800, letterSpacing: 1)),
+                          : const Text('Usuń klienta', style: TextStyle(color: Colors.white, fontFamily: 'Montserrat', fontWeight: FontWeight.w800, letterSpacing: 1)),
                     ),
                   ),
                 ),
