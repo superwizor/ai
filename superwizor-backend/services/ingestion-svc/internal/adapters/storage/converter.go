@@ -161,37 +161,103 @@ func (c *Converter) Convert(
 	}, nil
 }
 
-// ProbeDuration returns the duration in seconds of the audio object
-// at (bucketName, objectPath). Downloads the file into a tmp dir,
-// runs `ffprobe -show_format`, parses the `duration=` line.
+// maxPlausibleBytesPerSec is the upper bound on how many bytes per
+// second of audio any codec we accept can sustain. 16 kHz mono FLAC
+// (our recording format) runs ~16-20 KB/s; even uncompressed 48 kHz
+// stereo s16 WAV is ~192 KB/s, and 96 kHz stereo s24 is ~576 KB/s.
+// We set the bar at 1 MB/s (~8 Mbps) — an order of magnitude above any
+// real speech recording — so a legitimate file never trips it, while a
+// container whose header duration is a small fraction of the real
+// length always does.
 //
-// This is the AUTHORITATIVE duration source — Flutter clients vary
-// in what they report (0 for some upload flows; the actual recording
+// This is the signature of the pause/resume corruption (session
+// 028b7dcc): a 59 MB FLAC whose STREAMINFO claims ~14 s ⇒ ~4 MB/s,
+// when the audio is really ~32 min. ffprobe trusts the header, so the
+// long-audio chunking trigger was silently bypassed and the whole
+// >20-min file was rejected by Chirp ("too long").
+const maxPlausibleBytesPerSec = 1_000_000
+
+// decodeSampleRate / decodeBytesPerSample define the raw PCM stream we
+// decode to when the header duration can't be trusted. Forcing mono
+// s16le @ 16 kHz makes the byte count translate directly to wall-clock
+// seconds (resampling preserves duration), independent of the source's
+// declared rate/channels — which is exactly what we can't trust here.
+const (
+	decodeSampleRate     int64 = 16000
+	decodeBytesPerSample int64 = 2
+)
+
+// ProbeDuration returns the duration in seconds of the audio object at
+// (bucketName, objectPath), plus a `suspect` flag indicating the
+// container's declared duration could not be trusted (corrupt /
+// unfinalized header — the pause/resume bug, or a mid-capture kill).
+//
+// This is the AUTHORITATIVE duration source — Flutter clients vary in
+// what they report (0 for some upload flows; the actual recording
 // elapsed time for live recordings). Server-side probing makes the
 // long-audio chunking trigger client-implementation-independent.
 //
-// Cost: ~5s for a 100 MB FLAC (download + parse). Acceptable since
-// it runs once per CompleteAudioUpload.
+// Two-tier strategy:
+//  1. Read the container header via `ffprobe format=duration` (cheap).
+//  2. Sanity-check it against the file size. If the implied bitrate is
+//     impossible for real audio (> maxPlausibleBytesPerSec), the header
+//     is lying — re-derive the true duration by decoding the whole
+//     stream to raw PCM and counting samples. This ignores the corrupt
+//     timestamps entirely. `suspect` is returned true so the caller
+//     re-encodes the file (clean STREAMINFO + monotonic DTS) before it
+//     ever reaches the chunker / Chirp.
 //
-// Returns 0 + nil error when ffprobe succeeds but reports no duration
-// (rare; broken media). Caller treats 0 as "skip chunking" and lets
-// Chirp see whatever it sees.
-func (c *Converter) ProbeDuration(ctx context.Context, bucketName, objectPath string) (int, error) {
+// Cost: header read is ~5s for a 100 MB FLAC (download + parse); the
+// decode-count fallback adds a full decode pass (~seconds), but only
+// runs on the rare corrupt file. Both run once per CompleteAudioUpload.
+//
+// Returns (0, false, nil) when ffprobe succeeds but reports no duration
+// on a trivially small file (broken/empty media with no real audio).
+func (c *Converter) ProbeDuration(ctx context.Context, bucketName, objectPath string) (durationSec int, suspect bool, err error) {
 	ext := filepath.Ext(objectPath)
 	if ext == "" {
 		ext = ".bin"
 	}
 	tmpDir, err := os.MkdirTemp("", "audioprobe-*")
 	if err != nil {
-		return 0, fmt.Errorf("mktmp: %w", err)
+		return 0, false, fmt.Errorf("mktmp: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	local := filepath.Join(tmpDir, "input"+ext)
 	if err := c.downloadObject(ctx, bucketName, objectPath, local); err != nil {
-		return 0, fmt.Errorf("download src: %w", err)
+		return 0, false, fmt.Errorf("download src: %w", err)
 	}
 
+	fi, statErr := os.Stat(local)
+	var fileSizeBytes int64
+	if statErr == nil {
+		fileSizeBytes = fi.Size()
+	}
+
+	headerSec, headerErr := probeHeaderDuration(ctx, local)
+	if headerErr != nil {
+		return 0, false, headerErr
+	}
+
+	if !isDurationSuspect(headerSec, fileSizeBytes) {
+		return headerSec, false, nil
+	}
+
+	// Header is untrustworthy — decode the real stream to get the true
+	// length. If the decode itself fails (genuinely broken media), fall
+	// back to whatever the header said rather than blocking the pipeline.
+	trueSec, decErr := decodeDurationSec(ctx, local)
+	if decErr != nil {
+		return headerSec, true, nil
+	}
+	return trueSec, true, nil
+}
+
+// probeHeaderDuration reads the container's declared duration via
+// ffprobe. Returns 0 (no error) when the header reports no usable
+// duration (e.g. an unfinalized FLAC with total_samples=0).
+func probeHeaderDuration(ctx context.Context, local string) (int, error) {
 	cmd := exec.CommandContext(ctx, "ffprobe",
 		"-v", "error",
 		"-show_entries", "format=duration",
@@ -215,6 +281,62 @@ func (c *Converter) ProbeDuration(ctx context.Context, bucketName, objectPath st
 		return 0, fmt.Errorf("parse duration %q: %w", raw, err)
 	}
 	return int(secs), nil
+}
+
+// isDurationSuspect decides whether a header-reported duration can be
+// trusted given the file size. Pure function so the heuristic is
+// unit-testable without ffmpeg.
+//
+//   - fileSize ≤ 0: no size signal (stat failed) — trust the header.
+//   - headerSec ≤ 0 with real bytes: broken/unfinalized header — suspect.
+//   - implied bytes/sec above the plausible ceiling: the header
+//     under-reports the real length — suspect.
+func isDurationSuspect(headerSec int, fileSizeBytes int64) bool {
+	if fileSizeBytes <= 0 {
+		return false
+	}
+	if headerSec <= 0 {
+		return true
+	}
+	return fileSizeBytes/int64(headerSec) > maxPlausibleBytesPerSec
+}
+
+// decodeDurationSec returns the true audio length by decoding the whole
+// stream to raw mono s16le @ 16 kHz and counting the bytes produced.
+// Decoding to raw PCM ignores the container's (corrupt) timestamps and
+// reconstructs the real sample count, so it is immune to the
+// non-monotonic-DTS / bad-STREAMINFO corruption that fools ffprobe.
+//
+// The PCM is counted, never buffered — a 50-min file decodes to ~95 MB
+// of s16le, which we stream through a counter rather than hold in RAM.
+func decodeDurationSec(ctx context.Context, local string) (int, error) {
+	cmd := exec.CommandContext(ctx, "ffmpeg",
+		"-v", "error",
+		"-i", local,
+		"-map", "0:a:0",
+		"-ac", "1",
+		"-ar", strconv.FormatInt(decodeSampleRate, 10),
+		"-f", "s16le",
+		"-",
+	)
+	counter := &byteCounter{}
+	cmd.Stdout = counter
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return 0, fmt.Errorf("ffmpeg decode-count: %w (stderr: %s)", err, truncate(stderr.String(), 512))
+	}
+	samples := counter.n / decodeBytesPerSample
+	return int(samples / decodeSampleRate), nil
+}
+
+// byteCounter is an io.Writer that discards its input and tallies the
+// byte count — used to measure a decoded PCM stream without buffering it.
+type byteCounter struct{ n int64 }
+
+func (b *byteCounter) Write(p []byte) (int, error) {
+	b.n += int64(len(p))
+	return len(p), nil
 }
 
 // downloadObject pulls the GCS object into a local file. We stream to
@@ -286,6 +408,12 @@ func (c *Converter) uploadObject(
 //                          but the flag costs nothing)
 func runFFmpeg(ctx context.Context, srcPath, dstPath, targetContentType string) error {
 	args := []string{"-hide_banner", "-loglevel", "error",
+		// `+genpts` regenerates presentation timestamps before decode.
+		// Sources from the on-device recorder can carry non-monotonic DTS
+		// after a pause/resume (phone-call interruption); re-encoding then
+		// rewrites a clean, finalized header with a monotonic timeline.
+		// Mirrors the proven fix in chunker.go::ffmpegExtractSlice.
+		"-fflags", "+genpts",
 		"-i", srcPath,
 		"-ar", "16000",
 		"-ac", "1",

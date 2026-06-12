@@ -229,23 +229,33 @@ func (s *Subscriber) handleMessage(ctx context.Context, msg *pubsub.Message) {
 		return
 	}
 
-	// 6. Autoritative Duration Probe via ffprobe
-	durationSec, probeErr := s.converter.ProbeDuration(ctx, upload.BucketName, upload.ObjectPath)
+	// 6. Autoritative Duration Probe via ffprobe. `suspect` is true when
+	//    the container's declared duration can't be trusted (corrupt /
+	//    unfinalized header from the pause/resume bug) — in that case the
+	//    returned duration is re-derived by decoding the real stream.
+	durationSec, suspectAudio, probeErr := s.converter.ProbeDuration(ctx, upload.BucketName, upload.ObjectPath)
 	if probeErr != nil {
 		slog.Warn("subscriber: ffprobe failed; using default/claimed duration", "session_id", sessionID, "error", probeErr)
 		if upload.DurationSeconds != nil {
 			durationSec = int(*upload.DurationSeconds)
 		}
 	} else {
-		slog.Info("subscriber: probed duration successfully", "session_id", sessionID, "duration_sec", durationSec)
+		slog.Info("subscriber: probed duration successfully", "session_id", sessionID, "duration_sec", durationSec, "suspect_metadata", suspectAudio)
 	}
 
-	// 7. Codec Normalization (Transcode to FLAC if not Chirp-supported)
-	skipTranscode := storage.IsChirpSupported(upload.ContentType)
+	// 7. Codec Normalization. Transcode when the source codec isn't
+	//    Chirp-supported OR when the duration probe flagged the container
+	//    metadata as corrupt: a FLAC with a bad STREAMINFO + non-monotonic
+	//    DTS (the pause/resume bug) must be re-encoded to a clean,
+	//    finalized header before chunking and Chirp see it — otherwise the
+	//    real >20-min audio is sent uncut and rejected. The re-encode
+	//    rewrites a monotonic timeline; mirrors the audio/x-flac recovery
+	//    path.
+	skipTranscode := storage.IsChirpSupported(upload.ContentType) && !suspectAudio
 	finalObjectPath := upload.ObjectPath
 
 	if !skipTranscode {
-		slog.Info("subscriber: transcoding non-FLAC audio source to FLAC", "session_id", sessionID, "src", upload.ObjectPath, "contentType", upload.ContentType)
+		slog.Info("subscriber: normalizing audio source to clean FLAC", "session_id", sessionID, "src", upload.ObjectPath, "contentType", upload.ContentType, "suspect_metadata", suspectAudio)
 		t0 := time.Now()
 		result, convErr := s.converter.Convert(ctx, upload.BucketName, upload.ObjectPath, upload.ContentType, "audio/flac")
 		if convErr != nil {
