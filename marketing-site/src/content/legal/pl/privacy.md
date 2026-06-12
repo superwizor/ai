@@ -14,7 +14,7 @@ Dla celów niniejszej Polityki, poniższe terminy mają następujące znaczenie:
 * **Dane Osobowe:** Wszelkie informacje o zidentyfikowanej lub możliwej do zidentyfikowania osobie fizycznej.
 * **Dane Dotyczące Zdrowia:** Dane osobowe o zdrowiu fizycznym lub psychicznym ujawniające informacje o stanie zdrowia (Art. 4 pkt 15 RODO).
 * **Transkrypcja:** Automatyczny zapis tekstowy nagrania audio, generowany przez technologię rozpoznawania mowy.
-* **Raport Kliniczny:** Ustrukturyzowany dokument generowany automatycznie przez sztuczną inteligencję na podstawie transkrypcji sesji.
+* **Raport z Sesji:** Ustrukturyzowany dokument generowany automatycznie przez sztuczną inteligencję na podstawie transkrypcji sesji.
 * **HiTOP:** Hierarchiczna Taksonomia Psychopatologii — system wymiarowej oceny objawów psychopatologicznych, którego pomiary generuje Aplikacja na podstawie transkrypcji.
 * **Przetwarzanie:** Operacja lub zestaw operacji wykonywanych na danych osobowych.
 * **Administrator:** Podmiot, który samodzielnie lub wspólnie z innymi ustala cele i sposoby przetwarzania danych osobowych.
@@ -56,7 +56,7 @@ Przetwarzamy następujące kategorie danych Użytkowników Profesjonalnych:
 
 W odniesieniu do danych osobowych Pacjentów, Użytkownik Profesjonalny jest Administratorem Danych Osobowych. Usługodawca jest wyłącznie Podmiotem Przetwarzającym (Procesorem) przetwarzającym dane na udokumentowane polecenie Administratora w ramach zawartej Umowy Powierzenia Przetwarzania Danych (DPA).
 
-Usługodawca przetwarza dane Pacjentów wyłącznie w celu świadczenia Usług na rzecz Użytkownika Profesjonalnego, tj. transkrypcji nagrań, generowania Raportów Klinicznych, pomiarów HiTOP oraz budowania pamięci klinicznej. Usługodawca nie wykorzystuje danych Pacjentów do żadnych własnych celów, w tym marketingowych, badawczych ani do trenowania modeli sztucznej inteligencji.
+Usługodawca przetwarza dane Pacjentów wyłącznie w celu świadczenia Usług na rzecz Użytkownika Profesjonalnego, tj. transkrypcji nagrań, generowania Raportów z Sesji, pomiarów HiTOP oraz budowania pamięci kontekstowej. Usługodawca nie wykorzystuje danych Pacjentów do żadnych własnych celów, w tym marketingowych, badawczych ani do trenowania modeli sztucznej inteligencji.
 
 ### 4. Obowiązki Użytkownika Profesjonalnego jako Administratora
 
@@ -71,12 +71,12 @@ Jako Administratorzy, ponoszą Państwo pełną odpowiedzialność za zgodność
 Usługodawca stosuje zaawansowane środki bezpieczeństwa odpowiadające wysokiemu ryzyku związanemu z przetwarzaniem danych szczególnych kategorii (dane dotyczące zdrowia):
 
 **Rezydencja danych i kontrola regionu:**
-* Infrastruktura przetwarzająca dane sesji (nagrania, transkrypcje, raporty, pamięć kliniczna) jest zlokalizowana w regionie **europe-central2 (Warszawa, Polska)** platformy Google Cloud Platform. Lokalizacja zasobów jest określona w konfiguracji infrastruktury zarządzanej jako kod (Infrastructure as Code) i podlega kontroli wersji oraz przeglądom.
+* Infrastruktura przetwarzająca dane sesji (nagrania, transkrypcje, raporty, pamięć kontekstowa) jest zlokalizowana w regionie **europe-central2 (Warszawa, Polska)** platformy Google Cloud Platform. Lokalizacja zasobów jest określona w konfiguracji infrastruktury zarządzanej jako kod (Infrastructure as Code) i podlega kontroli wersji oraz przeglądom.
 * Jedynym wyjątkiem jest usługa Vertex AI (służąca do generowania raportów i embeddings), zlokalizowana w regionie **europe-west4 (Holandia)** — nadal w obrębie Europejskiego Obszaru Gospodarczego (EOG). Usługa Speech-to-Text korzysta z dedykowanego endpointu europejskiego (`eu-speech.googleapis.com`).
 
 **Szyfrowanie danych w spoczynku:**
 * **CMEK (Customer-Managed Encryption Keys):** Kluczowe usługi infrastrukturalne (Cloud Storage, Cloud SQL, Secret Manager) korzystają z kluczy szyfrowania zarządzanych przez Usługodawcę w Cloud KMS (keyring `superwizor-keyring`), z automatyczną rotacją co 90 dni.
-* **Szyfrowanie kopertowe (Envelope Encryption):** Wszystkie dane szczególnych kategorii (transkrypcje, raporty kliniczne, pomiary HiTOP, pamięć kliniczna RAG) są szyfrowane na poziomie aplikacji z użyciem algorytmu AEAD. Każdy rekord posiada unikalny klucz danych (DEK), który jest szyfrowany kluczem głównym (KEK) zarządzanym w Cloud KMS. Oznacza to, że nawet w przypadku uzyskania dostępu do bazy danych, dane pozostają nieczytelne bez dostępu do Cloud KMS.
+* **Szyfrowanie kopertowe (Envelope Encryption):** Wszystkie dane szczególnych kategorii (transkrypcje, raporty z sesji, pomiary HiTOP, pamięć kontekstowa RAG) są szyfrowane na poziomie aplikacji z użyciem algorytmu AEAD. Każdy rekord posiada unikalny klucz danych (DEK), który jest szyfrowany kluczem głównym (KEK) zarządzanym w Cloud KMS. Oznacza to, że nawet w przypadku uzyskania dostępu do bazy danych, dane pozostają nieczytelne bez dostępu do Cloud KMS.
 
 **Szyfrowanie danych w tranzycie:**
 * Wszystkie połączenia wykorzystują protokół TLS/SSL.
@@ -110,12 +110,12 @@ W ramach świadczenia usług korzystamy z następujących zaufanych dostawców (
 | Dostawca | Usługa | Przetwarzane dane | Lokalizacja / podstawa transferu |
 |---|---|---|---|
 | **Google Cloud Platform** (Google Cloud EMEA Ltd / Google LLC) | Cloud Run, Cloud SQL PostgreSQL, Cloud Storage, Cloud KMS, Pub/Sub, Secret Manager | Przetwarzanie backendowe i przechowywanie danych | europe-central2 (Warszawa, Polska) |
-| **Google Cloud — Vertex AI** | Speech-to-Text (Chirp 3), Gemini (generowanie raportów), Text Embeddings (pamięć RAG) | Transkrypcja audio, generowanie raportów klinicznych, embeddingi pamięci | europe-west4 (Holandia) dla Vertex AI; eu-speech.googleapis.com dla STT |
-| **Google Firebase** | Authentication, Cloud Firestore (wyłącznie synchronizacja statusów — nie jest źródłem prawdy), Cloud Storage (zdjęcia profilowe), FCM (powiadomienia push) | Tokeny uwierzytelniające, lustrzane statusy sesji (bez treści klinicznych), zdjęcia profilowe, tokeny push | Firestore i Storage: europe-central2. Authentication i FCM są usługami globalnymi Google — dane uwierzytelniające i tokeny push mogą być przetwarzane poza EOG; Google LLC posiada certyfikację EU-US Data Privacy Framework (DPF) |
+| **Google Cloud — Vertex AI** | Speech-to-Text (Chirp 3), Gemini (generowanie raportów), Text Embeddings (pamięć RAG) | Transkrypcja audio, generowanie raportów z sesji, embeddingi pamięci | europe-west4 (Holandia) dla Vertex AI; eu-speech.googleapis.com dla STT |
+| **Google Firebase** | Authentication, Cloud Firestore (wyłącznie synchronizacja statusów — nie jest źródłem prawdy), Cloud Storage (zdjęcia profilowe), FCM (powiadomienia push) | Tokeny uwierzytelniające, lustrzane statusy sesji (bez treści sesji), zdjęcia profilowe, tokeny push | Firestore i Storage: europe-central2. Authentication i FCM są usługami globalnymi Google — dane uwierzytelniające i tokeny push mogą być przetwarzane poza EOG; Google LLC posiada certyfikację EU-US Data Privacy Framework (DPF) |
 | **Stripe** (Stripe Payments Europe, Ltd. — Irlandia; Stripe, Inc. — USA) | Przetwarzanie płatności, zarządzanie subskrypcjami | Dane płatnicze, dane do faktur | UE (Irlandia); transfer do Stripe, Inc. (USA) na podstawie EU-US DPF oraz standardowych klauzul umownych (certyfikat PCI DSS Level 1) |
 | **Resend, Inc.** (USA) | Wysyłka transakcyjnych wiadomości e-mail (powitanie, weryfikacja, powiadomienia o subskrypcji) oraz — za zgodą — wiadomości marketingowych | Adres e-mail, imię, treść wiadomości systemowych | USA; transfer na podstawie standardowych klauzul umownych (art. 46 ust. 2 lit. c RODO) |
 
-**Dane sesji Pacjentów (nagrania audio, transkrypcje, raporty kliniczne, pomiary HiTOP, pamięć kliniczna) są przetwarzane i przechowywane wyłącznie w obrębie Europejskiego Obszaru Gospodarczego (EOG)** — w regionach europe-central2 (Warszawa) i europe-west4 (Holandia) — i nie są przekazywane do państw trzecich.
+**Dane sesji Pacjentów (nagrania audio, transkrypcje, raporty z sesji, pomiary HiTOP, pamięć kontekstowa) są przetwarzane i przechowywane wyłącznie w obrębie Europejskiego Obszaru Gospodarczego (EOG)** — w regionach europe-central2 (Warszawa) i europe-west4 (Holandia) — i nie są przekazywane do państw trzecich.
 
 W odniesieniu do wybranych danych Użytkowników Profesjonalnych (dane płatnicze, adres e-mail na potrzeby wysyłki wiadomości, dane uwierzytelniające, tokeny push) może dochodzić do przekazania danych do USA — wyłącznie do podmiotów zapewniających odpowiednie zabezpieczenia, o których mowa w rozdziale V RODO (decyzja wykonawcza Komisji w sprawie EU-US Data Privacy Framework lub standardowe klauzule umowne). Kopię stosownych zabezpieczeń można uzyskać kontaktując się z nami.
 
@@ -149,8 +149,8 @@ Firma Euphire sp. z o.o. (Dostawca Aplikacji) przetwarza Twoje dane wyłącznie 
 W ramach korzystania z Aplikacji przez Twojego terapeutę, przetwarzane są następujące dane:
 1. **Nagranie audio** Twojej sesji — jest przesyłane na zaszyfrowane serwery w Unii Europejskiej (Warszawa), usuwane natychmiast po wykonaniu transkrypcji, a najpóźniej — niezależnie od wyniku przetwarzania — w ramach automatycznego mechanizmu czyszczenia uruchamianego po upływie 48 godzin od przesłania. Po usunięciu odtworzenie nagrania nie jest możliwe.
 2. **Transkrypcja** (zapis tekstowy rozmowy) — jest generowana automatycznie przez technologię rozpoznawania mowy. Mówcy w transkrypcji są oznaczani etykietami opisującymi rolę w rozmowie (np. „Terapeuta", „Pacjent", a w sesjach coachingowych „Trener", „Klient") lub neutralnymi etykietami (np. „Osoba 1"), gdy roli nie można ustalić — bez używania imion i nazwisk. Etykiety te są przypisywane automatycznie i mogą zostać skorygowane przez Twojego terapeutę. Transkrypcja jest szyfrowana i przechowywana w zaszyfrowanej formie.
-3. **Raport kliniczny** — jest generowany automatycznie przez sztuczną inteligencję na podstawie transkrypcji. Zawiera analizę sesji i pomiary wymiarowe. Jest dostępny wyłącznie dla Twojego terapeuty w trybie tylko do odczytu (nie może go edytować w Aplikacji). Raport jest szyfrowany. Raport ma charakter pomocniczy — nie stanowi diagnozy, a jego ostateczna interpretacja należy do Twojego terapeuty.
-4. **Pamięć kliniczna** — krótkie podsumowanie sesji oraz powiązane wątki tematyczne, pozbawione bezpośrednich danych identyfikujących (bez imion, nazwisk, nazw miejsc — pseudonimizowane), mogą być zachowane w zaszyfrowanej formie, aby pomóc Twojemu terapeucie zachować ciągłość opieki pomiędzy sesjami.
+3. **Raport z sesji** — jest generowany automatycznie przez sztuczną inteligencję na podstawie transkrypcji. Zawiera analizę sesji i pomiary wymiarowe. Jest dostępny wyłącznie dla Twojego terapeuty w trybie tylko do odczytu (nie może go edytować w Aplikacji). Raport jest szyfrowany. Raport ma charakter pomocniczy — nie stanowi diagnozy, a jego ostateczna interpretacja należy do Twojego terapeuty.
+4. **Pamięć kontekstowa** — krótkie podsumowanie sesji oraz powiązane wątki tematyczne, pozbawione bezpośrednich danych identyfikujących (bez imion, nazwisk, nazw miejsc — pseudonimizowane), mogą być zachowane w zaszyfrowanej formie, aby pomóc Twojemu terapeucie zachować ciągłość opieki pomiędzy sesjami.
 
 Twoje dane są dostępne wyłącznie dla Twojego terapeuty — żaden inny Użytkownik Aplikacji nie ma do nich dostępu.
 

@@ -36,24 +36,24 @@ Strony postanawiają, co następuje:
 ## § 2. PRZEDMIOT, ZAKRES I CEL PRZETWARZANIA
 
 1.  Administrator powierza Podmiotowi Przetwarzającemu Dane Osobowe do przetwarzania na zasadach i w celu określonym w niniejszej Umowie. 
-2.  **Przedmiot przetwarzania:** Realizacja usług świadczonych przez Podmiot Przetwarzający na podstawie Umowy Głównej, polegających na przetwarzaniu nagrań audio sesji terapeutycznych i coachingowych, ich transkrypcji, analizie z wykorzystaniem sztucznej inteligencji oraz generowaniu raportów klinicznych. 
+2.  **Przedmiot przetwarzania:** Realizacja usług świadczonych przez Podmiot Przetwarzający na podstawie Umowy Głównej, polegających na przetwarzaniu nagrań audio sesji terapeutycznych i coachingowych, ich transkrypcji, analizie z wykorzystaniem sztucznej inteligencji oraz generowaniu raportów z sesji. 
 3.  **Charakter i cel przetwarzania:** Wykonywanie operacji na Danych Osobowych niezbędnych do świadczenia na rzecz Administratora usług Aplikacji, zgodnie z funkcjonalnościami opisanymi w § 4 Regulaminu, w szczególności: 
     *   Przechowywanie nagrań audio (tymczasowo — nagranie jest usuwane natychmiast po pomyślnej transkrypcji, a najpóźniej w ramach automatycznego mechanizmu czyszczenia uruchamianego po upływie 48 godzin od przesłania).
     *   Automatyczna transkrypcja nagrań audio z wykorzystaniem technologii Speech-to-Text (Chirp 3).
     *   Diaryzacja (identyfikacja i rozróżnienie mówców) wraz z automatycznym przypisaniem etykiet opisujących rolę mówcy w rozmowie (np. „Terapeuta", „Pacjent", w sesjach coachingowych „Trener", „Klient") albo etykiet neutralnych (np. „Osoba 1"), gdy rola nie może zostać ustalona; etykiety nie zawierają imion ani nazwisk i mogą być korygowane przez Administratora.
-    *   Generowanie ustrukturyzowanych raportów klinicznych z wykorzystaniem sztucznej inteligencji (Vertex AI / Gemini).
+    *   Generowanie ustrukturyzowanych raportów z sesji z wykorzystaniem sztucznej inteligencji (Vertex AI / Gemini).
     *   Generowanie pomiarów wymiarowych HiTOP.
-    *   Tworzenie i przechowywanie zaszyfrowanej pamięci klinicznej (RAG) — pseudonimizowanych (pozbawionych bezpośrednich identyfikatorów) podsumowań sesji oraz powiązanych wątków tematycznych, służących zapewnieniu ciągłości terapeutycznej.
-    *   Generowanie embeddings (reprezentacji wektorowych) na potrzeby pamięci klinicznej.
+    *   Tworzenie i przechowywanie zaszyfrowanej pamięci kontekstowej (RAG) — pseudonimizowanych (pozbawionych bezpośrednich identyfikatorów) podsumowań sesji oraz powiązanych wątków tematycznych, służących zapewnieniu ciągłości terapeutycznej.
+    *   Generowanie embeddings (reprezentacji wektorowych) na potrzeby pamięci kontekstowej.
     *   Przechowywanie zaszyfrowanych transkrypcji i raportów jako Materiałów Użytkownika.
 4.  **Rodzaj Danych Osobowych:** Dane określone w Części II Polityki Prywatności („Informacje dla Pacjentów"), w szczególności: 
     *   Dane identyfikacyjne i kontaktowe, w zakresie w jakim pojawią się w nagraniu lub transkrypcji. 
     *   Dane Osobowe szczególnych kategorii, tj. dane dotyczące zdrowia fizycznego lub psychicznego Pacjentów (art. 9 ust. 1 RODO). 
-    *   Wszelkie inne Dane Osobowe zawarte w nagraniach audio, ich transkrypcjach, raportach klinicznych i pamięci klinicznej. 
+    *   Wszelkie inne Dane Osobowe zawarte w nagraniach audio, ich transkrypcjach, raportach z sesji i pamięci kontekstowej. 
 5.  **Kategorie osób, których dane dotyczą:** Pacjenci Administratora, zgodnie z definicją w § 2 pkt 9 Regulaminu, a także inne osoby uczestniczące w nagrywanych sesjach (np. partner w terapii par, członkowie rodziny, opiekunowie). 
 6.  **Czas trwania przetwarzania:** Dane Osobowe będą przetwarzane przez czas obowiązywania Umowy Głównej, zgodnie z § 13 Regulaminu, z zastrzeżeniem że:
     *   Nagrania audio są usuwane natychmiast po pomyślnej transkrypcji, a najpóźniej w ramach automatycznego mechanizmu czyszczenia uruchamianego po upływie 48 godzin od przesłania (niezależnie od statusu Umowy).
-    *   Po rozwiązaniu Umowy Głównej, pozostałe Dane Osobowe (transkrypcje, raporty, pamięć kliniczna) są oznaczane jako usunięte (soft delete) i trwale usuwane po upływie 30 dni, w ramach cyklicznego procesu trwałego usuwania danych.
+    *   Po rozwiązaniu Umowy Głównej, pozostałe Dane Osobowe (transkrypcje, raporty, pamięć kontekstowa) są oznaczane jako usunięte (soft delete) i trwale usuwane po upływie 30 dni, w ramach cyklicznego procesu trwałego usuwania danych.
 
 ---
 
@@ -76,7 +76,7 @@ Podmiot Przetwarzający zobowiązuje się do:
 6.  **Zgłaszania naruszeń:** Po stwierdzeniu Naruszenia Ochrony Danych Osobowych, bez zbędnej zwłoki zgłosić je Administratorowi, nie później niż w ciągu **48 godzin** od stwierdzenia naruszenia. Zgłoszenie będzie zawierać co najmniej: opis charakteru naruszenia, kategorie i przybliżoną liczbę osób, których dane dotyczą, prawdopodobne konsekwencje naruszenia oraz środki podjęte lub proponowane w celu zaradzenia naruszeniu. 
 7.  **Usuwania lub zwrotu danych:** Po zakończeniu świadczenia usług (rozwiązaniu Umowy Głównej), w zależności od decyzji Administratora, usunąć lub zwrócić mu wszelkie Dane Osobowe oraz usunąć ich kopie, chyba że prawo nakazuje ich przechowywanie. Procedura usuwania danych po zakończeniu umowy jest następująca:
     *   **Nagrania audio:** usunięte natychmiast po transkrypcji, najpóźniej w ramach automatycznego mechanizmu po upływie 48 godzin od przesłania (niezależnie od statusu Umowy) — brak działań wymaganych.
-    *   **Transkrypcje, raporty, pomiary HiTOP, pamięć kliniczna RAG:** oznaczone jako usunięte (soft delete) i trwale usunięte z bazy danych po upływie 30 dni, w ramach cyklicznego procesu trwałego usuwania.
+    *   **Transkrypcje, raporty, pomiary HiTOP, pamięć kontekstowa RAG:** oznaczone jako usunięte (soft delete) i trwale usunięte z bazy danych po upływie 30 dni, w ramach cyklicznego procesu trwałego usuwania.
     *   **Dane kartotekowe Pacjentów:** usuwane kaskadowo wraz z kontem Użytkownika, z zachowaniem 30-dniowego okresu retencji soft delete.
     *   **Zaszyfrowane kopie zapasowe:** dane mogą być obecne w zaszyfrowanych kopiach zapasowych Cloud SQL przez okres ich retencji (nie dłużej niż 30 dni), po czym są automatycznie nadpisywane. Bez dostępu do Cloud KMS dane w kopiach zapasowych pozostają nieczytelne.
     *   **Klucze szyfrowania:** Rotacja klucza KEK (co 90 dni) powoduje, że zaszyfrowane DEK z poprzednich wersji klucza stają się nieprzydatne po usunięciu materiału kryptograficznego starszych wersji.
@@ -107,7 +107,7 @@ Administrator oświadcza i gwarantuje, że:
 |---|---|---|---|
 | **Google Cloud Platform** (Google Cloud EMEA Ltd / Google LLC) | Cloud Run, Cloud SQL PostgreSQL, Cloud Storage, Cloud KMS, Pub/Sub, Secret Manager | Przetwarzanie backendowe i przechowywanie Danych Osobowych | europe-central2 (Warszawa, Polska) |
 | **Google Cloud — Vertex AI** | Speech-to-Text (Chirp 3), Gemini (raporty), Text Embeddings (RAG) | Transkrypcja, generowanie raportów, embeddingi | europe-west4 (Holandia) — EOG |
-| **Google Firebase** | Cloud Firestore (lustrzane statusy przetwarzania sesji — bez treści klinicznych), FCM (powiadomienia push — bez treści klinicznych) | Pseudonimowe identyfikatory sesji i statusy przetwarzania | Firestore: europe-central2; FCM: usługa globalna Google (treść powiadomień nie zawiera Danych Osobowych Pacjentów) |
+| **Google Firebase** | Cloud Firestore (lustrzane statusy przetwarzania sesji — bez treści sesji), FCM (powiadomienia push — bez treści sesji) | Pseudonimowe identyfikatory sesji i statusy przetwarzania | Firestore: europe-central2; FCM: usługa globalna Google (treść powiadomień nie zawiera Danych Osobowych Pacjentów) |
 
     Dostawcy przetwarzający wyłącznie dane Użytkowników Profesjonalnych (w szczególności Stripe — obsługa płatności, oraz Resend — wysyłka wiadomości e-mail do Użytkownika), nie przetwarzają Danych Osobowych Pacjentów i nie są Sub-procesorami w rozumieniu niniejszej DPA; są oni wskazani w Polityce Prywatności jako odbiorcy danych Użytkowników Profesjonalnych.
 
@@ -115,7 +115,7 @@ Administrator oświadcza i gwarantuje, że:
 
 3.  **Obowiązki przy podpowierzeniu:** Podmiot Przetwarzający zapewni, że umowa z każdym Sub-procesorem nakłada na niego co najmniej takie same obowiązki w zakresie ochrony danych, jakie niniejsza DPA nakłada na Podmiot Przetwarzający. Podmiot Przetwarzający ponosi pełną odpowiedzialność wobec Administratora za niewywiązanie się przez Sub-procesora z jego obowiązków ochrony danych. 
 4.  **Prawo do sprzeciwu:** Podmiot Przetwarzający poinformuje Administratora (drogą mailową na adres powiązany z Kontem lub poprzez powiadomienie w Aplikacji) o każdym zamierzonym dodaniu lub zastąpieniu Sub-procesora, dając Administratorowi możliwość wyrażenia uzasadnionego sprzeciwu wobec takich zmian w terminie 14 dni od otrzymania informacji. W przypadku wniesienia uzasadnionego sprzeciwu, Strony podejmą próbę rozwiązania sytuacji. Jeśli rozwiązanie nie będzie możliwe, Administrator ma prawo wypowiedzieć Umowę Główną.
-5.  **Brak transferu Danych Osobowych do Państw Trzecich:** Podmiot Przetwarzający gwarantuje, że Dane Osobowe Pacjentów (nagrania audio, transkrypcje, raporty kliniczne, pomiary HiTOP, pamięć kliniczna) **nie są przekazywane do Państw Trzecich** (poza EOG). Infrastruktura przetwarzająca te dane jest zlokalizowana w Europejskim Obszarze Gospodarczym (region europe-central2 — Warszawa oraz region europe-west4 — Holandia), a lokalizacja zasobów jest określona w konfiguracji infrastruktury zarządzanej jako kod i podlega kontroli wersji oraz przeglądom.
+5.  **Brak transferu Danych Osobowych do Państw Trzecich:** Podmiot Przetwarzający gwarantuje, że Dane Osobowe Pacjentów (nagrania audio, transkrypcje, raporty z sesji, pomiary HiTOP, pamięć kontekstowa) **nie są przekazywane do Państw Trzecich** (poza EOG). Infrastruktura przetwarzająca te dane jest zlokalizowana w Europejskim Obszarze Gospodarczym (region europe-central2 — Warszawa oraz region europe-west4 — Holandia), a lokalizacja zasobów jest określona w konfiguracji infrastruktury zarządzanej jako kod i podlega kontroli wersji oraz przeglądom.
 
 ---
 

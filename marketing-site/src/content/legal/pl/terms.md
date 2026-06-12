@@ -19,12 +19,12 @@ Terminy użyte w niniejszym Regulaminie, pisane wielką literą, mają następuj
 3. **Dane Logowania:** Unikalny identyfikator Użytkownika (adres e-mail) oraz hasło lub uwierzytelnienie za pośrednictwem dostawców tożsamości (Google, Apple), umożliwiające dostęp do Konta w Aplikacji.
 4. **DPA (Umowa Powierzenia Przetwarzania Danych):** Umowa regulująca zasady powierzenia przetwarzania Danych Osobowych Pacjentów Usługodawcy przez Użytkownika Profesjonalnego.
 5. **Konto Użytkownika (Konto):** Indywidualne konto Użytkownika w Aplikacji, tworzone podczas procesu Rejestracji.
-6. **Materiały Użytkownika:** Wszelkie dane, informacje, nagrania audio, transkrypcje, raporty kliniczne, pomiary HiTOP, notatki sesyjne i inne treści wprowadzane, przesyłane, przechowywane lub generowane przez Użytkownika Profesjonalnego w Aplikacji.
+6. **Materiały Użytkownika:** Wszelkie dane, informacje, nagrania audio, transkrypcje, raporty z sesji, pomiary HiTOP, notatki sesyjne i inne treści wprowadzane, przesyłane, przechowywane lub generowane przez Użytkownika Profesjonalnego w Aplikacji.
 7. **Okres Próbny:** Okres rozpoczynający się z chwilą Rejestracji, podczas którego Użytkownik może bezpłatnie korzystać z funkcjonalności Aplikacji w ramach przydzielonej puli Tokenów próbnych.
 8. **Opłata Abonamentowa:** Opłata za korzystanie z płatnych funkcjonalności Aplikacji, określona w aktualnym Cenniku.
 9. **Pacjent:** Osoba fizyczna, której Dane Osobowe, w szczególności dane dotyczące zdrowia, są przetwarzane przez Użytkownika Profesjonalnego w ramach korzystania z Aplikacji. Postanowienia dotyczące Pacjentów stosuje się odpowiednio do innych osób uczestniczących w nagrywanej sesji (np. partnera w terapii par, członków rodziny).
 10. **Polityka Prywatności:** Dokument określający zasady przetwarzania danych osobowych Użytkowników Profesjonalnych oraz Pacjentów, dostępny w Aplikacji.
-11. **Raport Kliniczny:** Ustrukturyzowany dokument generowany automatycznie przez sztuczną inteligencję na podstawie transkrypcji sesji, zawierający analizę kliniczną, pomiary wymiarowe HiTOP oraz podsumowanie sesji. Raport ma charakter wyłącznie pomocniczy.
+11. **Raport z Sesji:** Ustrukturyzowany dokument generowany automatycznie przez sztuczną inteligencję na podstawie transkrypcji sesji, zawierający analizę sesji, pomiary wymiarowe HiTOP oraz podsumowanie sesji. Raport ma charakter wyłącznie pomocniczy.
 12. **Regulamin:** Niniejszy regulamin świadczenia usług drogą elektroniczną, stanowiący regulamin w rozumieniu art. 8 ustawy z dnia 18 lipca 2002 r. o świadczeniu usług drogą elektroniczną.
 13. **Rejestracja:** Proces tworzenia Konta Użytkownika w Aplikacji.
 14. **Siła Wyższa:** Zdarzenie zewnętrzne, niemożliwe do przewidzenia i zapobieżenia.
@@ -61,20 +61,20 @@ Terminy użyte w niniejszym Regulaminie, pisane wielką literą, mają następuj
    * Umożliwieniu Użytkownikowi nagrywania sesji na żywo bezpośrednio w Aplikacji lub przesyłania wcześniej nagranych plików audio.
    * Automatycznej transkrypcji nagrań audio z wykorzystaniem technologii rozpoznawania mowy (Speech-to-Text).
    * Automatycznej identyfikacji i rozróżnieniu mówców w nagraniu (diaryzacja) wraz z przypisaniem etykiet ról (np. „Terapeuta", „Pacjent") lub etykiet neutralnych, z możliwością ich korekty przez Użytkownika.
-   * Generowaniu ustrukturyzowanego Raportu Klinicznego przez sztuczną inteligencję, obejmującego analizę sesji, pomiary wymiarowe HiTOP oraz podsumowanie.
+   * Generowaniu ustrukturyzowanego Raportu z Sesji przez sztuczną inteligencję, obejmującego analizę sesji, pomiary wymiarowe HiTOP oraz podsumowanie.
    * Zarządzaniu kartotekami Pacjentów i historią sesji.
-   * Budowaniu pamięci klinicznej (pseudonimizowanych podsumowań i wątków tematycznych poprzednich sesji danego Pacjenta) w celu zapewnienia ciągłości terapeutycznej.
+   * Budowaniu pamięci kontekstowej (pseudonimizowanych podsumowań i wątków tematycznych poprzednich sesji danego Pacjenta) w celu zapewnienia ciągłości terapeutycznej.
    * Dostosowywaniu stylu i długości generowanych raportów do preferencji Użytkownika.
    * Przechowywaniu Materiałów Użytkownika na szyfrowanych serwerach Usługodawcy zlokalizowanych na terenie Europejskiego Obszaru Gospodarczego.
    * Udostępnianiu Użytkownikowi narzędzi do zarządzania jego Kontem, w tym wyboru modalności terapeutycznej, ustawień językowych i preferencji raportów.
    * Świadczeniu wsparcia technicznego.
 2. Szczegółowy zakres funkcjonalności poszczególnych planów abonamentowych jest określony w aktualnym Cenniku dostępnym w Aplikacji.
 3. Usługodawca zastrzega sobie prawo do modyfikowania, dodawania lub usuwania poszczególnych funkcji Aplikacji, z zastrzeżeniem zachowania kluczowych funkcjonalności w ramach opłaconego Okresu Abonamentowego.
-4. **Charakter pomocniczy Aplikacji.** Aplikacja jest narzędziem wspomagającym pracę Użytkownika Profesjonalnego. Raporty Kliniczne generowane przez sztuczną inteligencję mają charakter wyłącznie pomocniczy i informacyjny. Nie stanowią diagnozy klinicznej, opinii medycznej ani rekomendacji terapeutycznej. Ostateczna interpretacja wyników i decyzje kliniczne leżą wyłącznie po stronie Użytkownika Profesjonalnego.
+4. **Charakter pomocniczy Aplikacji.** Aplikacja jest narzędziem wspomagającym pracę Użytkownika Profesjonalnego. Raporty z Sesji generowane przez sztuczną inteligencję mają charakter wyłącznie pomocniczy i informacyjny. Nie stanowią diagnozy, opinii medycznej ani rekomendacji terapeutycznej. Ostateczna interpretacja wyników i decyzje dotyczące pracy z Pacjentem leżą wyłącznie po stronie Użytkownika Profesjonalnego.
 5. **Aplikacja nie jest wyrobem medycznym.** Aplikacja nie jest przeznaczona do diagnozowania, zapobiegania, monitorowania, przewidywania, prognozowania, leczenia ani łagodzenia chorób i nie stanowi wyrobu medycznego w rozumieniu rozporządzenia Parlamentu Europejskiego i Rady (UE) 2017/745 (MDR).
-6. **Przejrzystość AI.** Treści generowane automatycznie (Transkrypcje, Raporty Kliniczne, pomiary HiTOP, podsumowania pamięci klinicznej) są wytworem systemów sztucznej inteligencji i są jako takie oznaczone w Aplikacji, zgodnie z zasadami przejrzystości wynikającymi z rozporządzenia Parlamentu Europejskiego i Rady (UE) 2024/1689 w sprawie sztucznej inteligencji (AI Act). Użytkownik Profesjonalny sprawuje nadzór merytoryczny nad wykorzystaniem tych treści w swojej praktyce.
+6. **Przejrzystość AI.** Treści generowane automatycznie (Transkrypcje, Raporty z Sesji, pomiary HiTOP, podsumowania pamięci kontekstowej) są wytworem systemów sztucznej inteligencji i są jako takie oznaczone w Aplikacji, zgodnie z zasadami przejrzystości wynikającymi z rozporządzenia Parlamentu Europejskiego i Rady (UE) 2024/1689 w sprawie sztucznej inteligencji (AI Act). Użytkownik Profesjonalny sprawuje nadzór merytoryczny nad wykorzystaniem tych treści w swojej praktyce.
 7. **Ograniczenia technologii AI.** Użytkownik przyjmuje do wiadomości, że technologie sztucznej inteligencji mogą generować treści niedokładne, niepełne lub nieadekwatne (w tym błędy transkrypcji, błędne przypisanie wypowiedzi do mówcy lub nietrafne wnioski analityczne). Użytkownik zobowiązuje się do krytycznej oceny wszelkich wyników generowanych przez Aplikację.
-8. **Tryb tylko do odczytu.** Raporty Kliniczne generowane przez AI są udostępniane Użytkownikowi w trybie tylko do odczytu. Aplikacja nie umożliwia edycji treści wygenerowanych raportów.
+8. **Tryb tylko do odczytu.** Raporty z Sesji generowane przez AI są udostępniane Użytkownikowi w trybie tylko do odczytu. Aplikacja nie umożliwia edycji treści wygenerowanych raportów.
 9. **Automatyczne usuwanie nagrań audio.** Nagrania audio przesyłane do Aplikacji są usuwane z serwerów Usługodawcy natychmiast po pomyślnym zakończeniu transkrypcji, a najpóźniej — niezależnie od wyniku przetwarzania — w ramach automatycznego mechanizmu czyszczenia uruchamianego po upływie 48 godzin od przesłania. Po usunięciu odtworzenie nagrania nie jest możliwe.
 
 ## § 5. Warunki Korzystania z Aplikacji
@@ -120,9 +120,9 @@ Terminy użyte w niniejszym Regulaminie, pisane wielką literą, mają następuj
 2. Całkowita odpowiedzialność Usługodawcy z jakiegokolwiek tytułu jest ograniczona do wysokości Opłat Abonamentowych uiszczonych przez Użytkownika w ciągu ostatnich 12 miesięcy poprzedzających zdarzenie powodujące szkodę. Ograniczenie to nie dotyczy szkód wyrządzonych umyślnie (art. 473 § 2 Kodeksu cywilnego) ani innych przypadków, w których ograniczenie odpowiedzialności jest niedopuszczalne na mocy bezwzględnie obowiązujących przepisów prawa.
 3. Usługodawca nie ponosi odpowiedzialności za:
    * Szkody wynikające z nieprawidłowego korzystania z Aplikacji przez Użytkownika.
-   * Decyzje terapeutyczne, diagnostyczne lub kliniczne podejmowane przez Użytkownika na podstawie wyników generowanych przez Aplikację.
+   * Decyzje terapeutyczne, diagnostyczne lub inne decyzje zawodowe podejmowane przez Użytkownika na podstawie wyników generowanych przez Aplikację.
    * Działanie Siły Wyższej lub przerwy w działaniu usługodawców zewnętrznych (w tym dostawców infrastruktury chmurowej).
-   * Brak lub niedokładność wyników analizy AI, w tym błędy w transkrypcji, diaryzacji lub treści Raportów Klinicznych.
+   * Brak lub niedokładność wyników analizy AI, w tym błędy w transkrypcji, diaryzacji lub treści Raportów z Sesji.
    * Utratę nagrań audio usuniętych zgodnie z § 4 ust. 9 (automatyczne usuwanie nagrań).
 
 ## § 9. Ochrona Danych Osobowych i Prywatność
@@ -168,7 +168,7 @@ Terminy użyte w niniejszym Regulaminie, pisane wielką literą, mają następuj
 5. Użytkownik ma prawo do usunięcia swojego Konta za pośrednictwem funkcji „Usuń konto" dostępnej w ustawieniach Aplikacji. Usunięcie Konta jest operacją nieodwracalną.
 6. Po usunięciu Konta lub rozwiązaniu Umowy:
    * Nagrania audio: zostały usunięte natychmiast po transkrypcji, a najpóźniej w ramach automatycznego mechanizmu czyszczenia uruchamianego po upływie 48 godzin od przesłania (niezależnie od statusu Konta).
-   * Transkrypcje, Raporty Kliniczne, dane sesji i kartoteki Pacjentów: zostaną oznaczone jako usunięte (soft delete) i trwale usunięte z systemów Usługodawcy po upływie 30 dni od daty usunięcia Konta, w ramach cyklicznego procesu trwałego usuwania danych.
+   * Transkrypcje, Raporty z Sesji, dane sesji i kartoteki Pacjentów: zostaną oznaczone jako usunięte (soft delete) i trwale usunięte z systemów Usługodawcy po upływie 30 dni od daty usunięcia Konta, w ramach cyklicznego procesu trwałego usuwania danych.
    * Dane rozliczeniowe: zostaną zachowane przez okres wymagany przepisami prawa podatkowego (5 lat od końca roku podatkowego, w którym dokonano ostatniej transakcji).
    * Kopie zapasowe: dane mogą być obecne w zaszyfrowanych kopiach zapasowych przez okres ich retencji (nie dłużej niż 30 dni), po czym zostaną automatycznie nadpisane.
 

@@ -36,24 +36,24 @@ The Parties agree as follows:
 ## § 2. SUBJECT, SCOPE AND PURPOSE OF PROCESSING
 
 1.  The Controller entrusts the Processor with Personal Data for processing on the terms and for the purpose specified in this Agreement. 
-2.  **Subject of processing:** Performance of services provided by the Processor under the Main Agreement, consisting of processing audio recordings of therapy and coaching sessions, their transcription, analysis using artificial intelligence, and generation of clinical reports. 
+2.  **Subject of processing:** Performance of services provided by the Processor under the Main Agreement, consisting of processing audio recordings of therapy and coaching sessions, their transcription, analysis using artificial intelligence, and generation of session reports. 
 3.  **Nature and purpose of processing:** Performing operations on Personal Data necessary to provide the Application services to the Controller, in accordance with the functionalities described in § 4 of the Terms, in particular: 
     *   Temporary storage of audio recordings (the recording is deleted immediately after successful transcription, and at the latest by an automatic cleanup mechanism triggered 48 hours after upload).
     *   Automatic transcription of audio recordings using Speech-to-Text technology (Chirp 3).
     *   Diarization (identification and differentiation of speakers) together with automatic assignment of labels describing the speaker's role in the conversation (e.g., "Therapist", "Patient", or in coaching sessions "Coach", "Client") or neutral labels (e.g., "Person 1") when the role cannot be determined; labels do not contain first or last names and may be corrected by the Controller.
-    *   Generation of structured clinical reports using artificial intelligence (Vertex AI / Gemini).
+    *   Generation of structured session reports using artificial intelligence (Vertex AI / Gemini).
     *   Generation of HiTOP dimensional measurements.
-    *   Creation and storage of encrypted clinical memory (RAG) — pseudonymized (stripped of direct identifiers) session summaries and related thematic threads to ensure therapeutic continuity.
-    *   Generation of embeddings (vector representations) for clinical memory.
+    *   Creation and storage of encrypted contextual memory (RAG) — pseudonymized (stripped of direct identifiers) session summaries and related thematic threads to ensure therapeutic continuity.
+    *   Generation of embeddings (vector representations) for contextual memory.
     *   Storage of encrypted transcriptions and reports as User Materials.
 4.  **Type of Personal Data:** Data specified in Part II of the Privacy Policy ("Information for Patients"), in particular: 
     *   Identification and contact data, insofar as they appear in the recording or transcription. 
     *   Special categories of Personal Data, i.e., data concerning the physical or mental health of Patients (Art. 9 sec. 1 of the GDPR). 
-    *   Any other Personal Data contained in audio recordings, their transcriptions, clinical reports, and clinical memory. 
+    *   Any other Personal Data contained in audio recordings, their transcriptions, session reports, and contextual memory. 
 5.  **Categories of data subjects:** Patients of the Controller, as defined in § 2 point 9 of the Terms, as well as other persons participating in recorded sessions (e.g., a partner in couples therapy, family members, guardians). 
 6.  **Duration of processing:** Personal Data will be processed for the duration of the Main Agreement, in accordance with § 13 of the Terms, subject to the following:
     *   Audio recordings are deleted immediately after successful transcription, and at the latest by the automatic cleanup mechanism triggered 48 hours after upload (regardless of the Agreement status).
-    *   After termination of the Main Agreement, remaining Personal Data (transcriptions, reports, clinical memory) is marked as deleted (soft delete) and permanently deleted after 30 days, as part of a recurring permanent data deletion process.
+    *   After termination of the Main Agreement, remaining Personal Data (transcriptions, reports, contextual memory) is marked as deleted (soft delete) and permanently deleted after 30 days, as part of a recurring permanent data deletion process.
 
 ---
 
@@ -76,7 +76,7 @@ The Processor undertakes to:
 6.  **Report breaches:** Notify the Controller without undue delay after becoming aware of a Personal Data Breach, no later than within **48 hours** of detecting the breach. The notification will include at least: a description of the nature of the breach, the categories and approximate number of data subjects affected, the likely consequences of the breach, and the measures taken or proposed to address the breach. 
 7.  **Delete or return data:** At the choice of the Controller, delete or return all the Personal Data to the Controller after the end of the provision of services relating to processing (termination of the Main Agreement), and delete existing copies unless law requires storage of the personal data. The data deletion procedure after agreement termination is as follows:
     *   **Audio recordings:** deleted immediately after transcription, at the latest by the automatic mechanism triggered 48 hours after upload (regardless of Agreement status) — no action required.
-    *   **Transcriptions, reports, HiTOP measurements, RAG clinical memory:** marked as deleted (soft delete) and permanently deleted from the database after 30 days, as part of the recurring permanent deletion process.
+    *   **Transcriptions, reports, HiTOP measurements, RAG contextual memory:** marked as deleted (soft delete) and permanently deleted from the database after 30 days, as part of the recurring permanent deletion process.
     *   **Patient file data:** deleted cascadingly with the User's account, subject to the 30-day soft-delete retention period.
     *   **Encrypted backups:** data may be present in encrypted Cloud SQL backups for the duration of their retention period (no longer than 30 days), after which they are automatically overwritten. Without access to Cloud KMS, data in backups remains unreadable.
     *   **Encryption keys:** KEK rotation (every 90 days) renders encrypted DEKs from previous key versions unusable after the cryptographic material of older versions is deleted.
@@ -107,7 +107,7 @@ The Controller declares and warrants that:
 |---|---|---|---|
 | **Google Cloud Platform** (Google Cloud EMEA Ltd / Google LLC) | Cloud Run, Cloud SQL PostgreSQL, Cloud Storage, Cloud KMS, Pub/Sub, Secret Manager | Backend processing and storage of Personal Data | europe-central2 (Warsaw, Poland) |
 | **Google Cloud — Vertex AI** | Speech-to-Text (Chirp 3), Gemini (reports), Text Embeddings (RAG) | Transcription, report generation, embeddings | europe-west4 (Netherlands) — EEA |
-| **Google Firebase** | Cloud Firestore (mirrored session processing statuses — no clinical content), FCM (push notifications — no clinical content) | Pseudonymous session identifiers and processing statuses | Firestore: europe-central2; FCM: a global Google service (notification content does not contain Patients' Personal Data) |
+| **Google Firebase** | Cloud Firestore (mirrored session processing statuses — no session content), FCM (push notifications — no session content) | Pseudonymous session identifiers and processing statuses | Firestore: europe-central2; FCM: a global Google service (notification content does not contain Patients' Personal Data) |
 
     Providers processing exclusively Professional Users' data (in particular Stripe — payment processing, and Resend — sending e-mails to the User) do not process Patients' Personal Data and are not Sub-processors within the meaning of this DPA; they are listed in the Privacy Policy as recipients of Professional Users' data.
 
@@ -115,7 +115,7 @@ The Controller declares and warrants that:
 
 3.  **Obligations upon sub-processing:** The Processor shall ensure that the contract with each Sub-processor imposes on them at least the same data protection obligations as set out in this DPA for the Processor. The Processor remains fully liable to the Controller for the performance of that Sub-processor's data protection obligations. 
 4.  **Right to object:** The Processor will inform the Controller (by email to the address associated with the Account or via an in-App notification) of any intended changes concerning the addition or replacement of Sub-processors, thereby giving the Controller the opportunity to raise a justified objection to such changes within 14 days of receiving the information. In the event of a justified objection, the Parties will attempt to resolve the situation. If a resolution is not possible, the Controller has the right to terminate the Main Agreement.
-5.  **No transfer of Personal Data to Third Countries:** The Processor guarantees that Patients' Personal Data (audio recordings, transcriptions, clinical reports, HiTOP measurements, clinical memory) **is not transferred to Third Countries** (outside the EEA). The infrastructure processing this data is located within the European Economic Area (region europe-central2 — Warsaw and region europe-west4 — Netherlands), and resource locations are defined in infrastructure-as-code configuration subject to version control and reviews.
+5.  **No transfer of Personal Data to Third Countries:** The Processor guarantees that Patients' Personal Data (audio recordings, transcriptions, session reports, HiTOP measurements, contextual memory) **is not transferred to Third Countries** (outside the EEA). The infrastructure processing this data is located within the European Economic Area (region europe-central2 — Warsaw and region europe-west4 — Netherlands), and resource locations are defined in infrastructure-as-code configuration subject to version control and reviews.
 
 ---
 
