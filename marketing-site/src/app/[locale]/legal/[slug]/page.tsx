@@ -14,7 +14,6 @@ import type { Metadata } from "next";
 
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
-import { LegalDraftBanner } from "@/components/marketing/LegalDraftBanner";
 import { MarkdownRenderer } from "@/components/marketing/MarkdownRenderer";
 import { routing } from "@/i18n/routing";
 
@@ -78,7 +77,6 @@ export default async function LegalPage({
   return (
     <>
       <Navbar />
-      <LegalDraftBanner />
       <main className="flex-1">
         <article className="mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
           <h1 className="font-display text-frost text-4xl sm:text-5xl font-semibold tracking-[var(--tracking-display)] leading-tight">
