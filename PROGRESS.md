@@ -89,6 +89,38 @@ Gotchas:
 
 ## In progress
 
+### Legal docs v2 (branch `docs/legal-docs-v2`, 2026-06-12) — AWAITING USER/LAWYER REVIEW
+
+Audited `flutter-app/superwizor/assets/legal/*` against the live architecture
+and rewrote all 6 docs (PL+EN: privacy policy, DPA, terms). Key fixes: speaker
+labels are role-aware since 2026-05-25 (was "Osoba 1/2 only"); org-policy
+claims (`gcp.resourceLocations`, `sql.restrictPublicIp`,
+`iam.disableServiceAccountKeyCreation`) are NOT live → softened to IaC-based
+claims; Cloud SQL has an authorized public network (contradicted "no public
+IP"); added missing sub-processor Resend (US, SCC) + corrected Stripe entities
+(DPF); scoped "all data in EEA" to patient session data (Firebase Auth/FCM are
+global); RAG described as pseudonymized summary+themes (not "anonymized");
+DPA sub-processor list now patient-data-scoped (Stripe/Resend removed); terms
+gained: MDR not-a-medical-device, AI Act transparency, UŚUDE unlawful-content
+ban, art. 473 §2 KC liability carve-out, przedsiębiorca-na-prawach-konsumenta
+section (§12, renumbered §13-15), venue carve-out. DPA cross-refs updated.
+Engineering gaps flagged (purger not scheduled; drip emails ignore marketing
+consent + no unsubscribe; org policies not applied). Do NOT merge without
+explicit user sign-off — legal content.
+
+Website (superwizor.ai) legal docs added on the same branch: replaced the
+placeholder drafts in marketing-site/src/content/legal/{pl,en}/ (which named
+the wrong company, "Superwizor sp. z o.o.") with the corrected app docs;
+privacy.md gained a website-specific Part III (contact form, registration,
+Stripe Checkout, Tally lead magnet, server logs, cookies — site has NO
+analytics). lastUpdated bumped in legal/[slug]/page.tsx. Verified: dev render
++ full pnpm build, SSG HTML contains new content in both locales. Gotcha:
+`pnpm` from PATH resolves to corepack pnpm 11 which crashes on Node 20
+(node:sqlite) — use /usr/local/bin/pnpm. Site build was also broken by a stale
+node_modules copy of @superwizor/proto-ts (file: dep) — `pnpm install`
+refreshed it; lockfile committed. The LegalDraftBanner ("wersja robocza")
+stays up pending lawyer sign-off.
+
 ### Corrupt-FLAC on pause/resume (branch `fix/corrupt-flac-pause-resume`, 2026-06-12)
 
 Incident: session `028b7dcc-…` (patient "Maciek", 2026-06-12 16:04 CEST) stuck
