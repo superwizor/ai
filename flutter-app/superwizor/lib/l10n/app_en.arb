@@ -434,7 +434,7 @@
   "billing_dismiss_cta": "OK, continue",
 
   "billing_exhausted_dialog_title": "Token pool exhausted",
-  "billing_exhausted_dialog_body": "You can still record the session — audio will be securely encrypted and saved locally on your device. After upgrading your plan or pool renewal, you can resume processing from the Patient File.",
+  "billing_exhausted_dialog_body": "You've used all available sessions. You can still record — audio will be securely encrypted and saved locally. Check your email to learn more.",
   "billing_exhausted_dialog_record_locally": "Record locally",
 
   "billing_pending_sessions_title": "{n, plural, =1{1 session waiting to be processed} other{{n} sessions waiting to be processed}}",
@@ -559,5 +559,16 @@
   "@note_send_confirm_body": {
     "placeholders": { "email": { "type": "String" } }
   },
-  "note_sent_toast": "Note sent to client"
+  "note_sent_toast": "Note sent to client",
+
+  "recording_consent_missing_header": "No consent recorded",
+  "recording_consent_missing_body": "No patient consent found in the system. Did the patient consent to recording and data processing?",
+  "recording_consent_grant": "Yes, they consented",
+  "recording_mic_error_header": "Microphone error",
+  "recording_upload_error_header": "Upload error",
+  "recording_too_short_abort_body": "Recording was {duration}. Upload cancelled.",
+  "@recording_too_short_abort_body": {
+    "placeholders": { "duration": { "type": "String" } }
+  },
+  "recording_saving": "Saving recording..."
 }

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 
 export function Problem() {
   const t = useTranslations("b.problem");
+  const tHero = useTranslations("hero");
 
   return (
     <section className="relative w-full bg-gradient-to-b from-[#004D54] to-[#00383C] text-frost py-24 sm:py-32 border-b border-white/5 overflow-hidden">
@@ -22,7 +23,7 @@ export function Problem() {
               {t("body")}
             </p>
 
-            <blockquote className="border-l-2 border-ember/40 pl-5">
+            <blockquote className="border-l-2 border-ember/40 pl-5 mb-10">
               <p className="font-serif text-base sm:text-lg text-frost/90 italic leading-relaxed">
                 &ldquo;{t("quote")}&rdquo;
               </p>
@@ -30,6 +31,16 @@ export function Problem() {
                 {t("cite")}
               </footer>
             </blockquote>
+
+            <div className="flex justify-start">
+              <a
+                href="#cennik"
+                className="group relative inline-flex items-center justify-center rounded-[12px] bg-frost text-[#004D54] font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 transition-all duration-300 hover:bg-white active:scale-[0.97] whitespace-nowrap overflow-hidden"
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-[#004D54]/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                <span className="relative">{tHero("ctaPrimary")}</span>
+              </a>
+            </div>
           </div>
 
           <div className="lg:col-span-5 flex justify-center relative">

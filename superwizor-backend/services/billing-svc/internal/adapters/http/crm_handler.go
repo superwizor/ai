@@ -55,6 +55,13 @@ func (h *CRMHandler) RegisterCRMRoutes(mux *http.ServeMux, auth *AdminAuthMiddle
 	mux.HandleFunc("POST /admin/crm/exclude", auth.Require(h.handleExcludeUser))
 	mux.HandleFunc("DELETE /admin/crm/exclude/{userId}", auth.Require(h.handleIncludeUser))
 
+	// Email log
+	mux.HandleFunc("POST /admin/crm/email-log", auth.Require(h.handleCreateEmailLog))
+	mux.HandleFunc("GET /admin/crm/user/{userId}/email-log", auth.Require(h.handleListEmailLog))
+
+	// Bulk actions
+	mux.HandleFunc("POST /admin/crm/bulk/remind", auth.Require(h.handleBulkRemind))
+
 	// Detail view (aggregated)
 	mux.HandleFunc("GET /admin/crm/user/{userId}/detail", auth.Require(h.handleUserDetail))
 }
@@ -440,10 +447,11 @@ type userDetail struct {
 	DaysUntilRenewal int    `json:"days_until_renewal"`
 	TotalSessions    int32  `json:"total_sessions"`
 	// CRM data
-	Notes      []crmNote    `json:"notes"`
-	Tags       []crmTag     `json:"tags"`
+	Notes      []crmNote     `json:"notes"`
+	Tags       []crmTag      `json:"tags"`
 	FollowUps  []crmFollowUp `json:"follow_ups"`
-	Excluded   bool         `json:"excluded"`
+	EmailLogs  []crmEmailLog `json:"email_logs"`
+	Excluded   bool          `json:"excluded"`
 	// Lifecycle
 	LifecycleStage string `json:"lifecycle_stage"`
 	LastSessionAt  string `json:"last_session_at"`
@@ -590,6 +598,28 @@ func (h *CRMHandler) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 	`, userID).Scan(&exCount)
 	detail.Excluded = exCount > 0
 
+	// Email logs
+	emailRows, _ := h.pool.Query(ctx, `
+		SELECT id, template_id, subject, recipient_email, sent_at
+		FROM crm_email_log
+		WHERE target_user_id = $1
+		ORDER BY sent_at DESC LIMIT 50
+	`, userID)
+	if emailRows != nil {
+		defer emailRows.Close()
+		for emailRows.Next() {
+			var e crmEmailLog
+			var sentAt time.Time
+			if err := emailRows.Scan(&e.ID, &e.TemplateID, &e.Subject, &e.RecipientEmail, &sentAt); err == nil {
+				e.SentAt = sentAt.Format(time.RFC3339)
+				detail.EmailLogs = append(detail.EmailLogs, e)
+			}
+		}
+	}
+	if detail.EmailLogs == nil {
+		detail.EmailLogs = []crmEmailLog{}
+	}
+
 	writeJSON(w, http.StatusOK, detail)
 }
 
@@ -629,4 +659,134 @@ func readJSON(r *http.Request, v any) error {
 		return err
 	}
 	return json.Unmarshal(body, v)
+}
+
+// ──────────────────── Email Log ────────────────────
+
+type crmEmailLog struct {
+	ID             string `json:"id"`
+	TemplateID     string `json:"template_id"`
+	Subject        string `json:"subject"`
+	RecipientEmail string `json:"recipient_email"`
+	SentAt         string `json:"sent_at"`
+}
+
+type createEmailLogRequest struct {
+	TargetUserID   string `json:"target_user_id"`
+	TemplateID     string `json:"template_id"`
+	Subject        string `json:"subject"`
+	RecipientEmail string `json:"recipient_email"`
+}
+
+func (h *CRMHandler) handleCreateEmailLog(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req createEmailLogRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json", err)
+		return
+	}
+	if req.TargetUserID == "" || req.TemplateID == "" {
+		writeError(w, http.StatusBadRequest, "target_user_id and template_id required", nil)
+		return
+	}
+
+	var id string
+	err := h.pool.QueryRow(ctx, `
+		INSERT INTO crm_email_log (admin_user_id, target_user_id, template_id, subject, recipient_email)
+		VALUES ('admin', $1, $2, $3, $4)
+		RETURNING id
+	`, req.TargetUserID, req.TemplateID, req.Subject, req.RecipientEmail).Scan(&id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "insert email log", err)
+		return
+	}
+
+	h.logger.InfoContext(ctx, "crm: email logged", "target", req.TargetUserID, "template", req.TemplateID)
+	writeJSON(w, http.StatusCreated, map[string]string{"id": id, "message": "ok"})
+}
+
+func (h *CRMHandler) handleListEmailLog(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID := r.PathValue("userId")
+	if userID == "" {
+		writeError(w, http.StatusBadRequest, "missing userId", nil)
+		return
+	}
+
+	rows, err := h.pool.Query(ctx, `
+		SELECT id, template_id, subject, recipient_email, sent_at
+		FROM crm_email_log
+		WHERE target_user_id = $1
+		ORDER BY sent_at DESC
+		LIMIT 100
+	`, userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "query email log", err)
+		return
+	}
+	defer rows.Close()
+
+	var logs []crmEmailLog
+	for rows.Next() {
+		var e crmEmailLog
+		var sentAt time.Time
+		if err := rows.Scan(&e.ID, &e.TemplateID, &e.Subject, &e.RecipientEmail, &sentAt); err != nil {
+			h.logger.ErrorContext(ctx, "crm: scan email log", "error", err)
+			continue
+		}
+		e.SentAt = sentAt.Format(time.RFC3339)
+		logs = append(logs, e)
+	}
+	if logs == nil {
+		logs = []crmEmailLog{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"email_logs": logs})
+}
+
+// ──────────────────── Bulk Actions ────────────────────
+
+type bulkRemindRequest struct {
+	UserIDs []string `json:"user_ids"`
+	DueDate string   `json:"due_date"`
+	Note    string   `json:"note"`
+}
+
+// handleBulkRemind creates follow-ups for multiple users at once.
+func (h *CRMHandler) handleBulkRemind(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req bulkRemindRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json", err)
+		return
+	}
+	if len(req.UserIDs) == 0 || req.DueDate == "" {
+		writeError(w, http.StatusBadRequest, "user_ids and due_date required", nil)
+		return
+	}
+	if len(req.UserIDs) > 100 {
+		writeError(w, http.StatusBadRequest, "max 100 users per bulk action", nil)
+		return
+	}
+
+	created := 0
+	for _, uid := range req.UserIDs {
+		_, err := h.pool.Exec(ctx, `
+			INSERT INTO crm_follow_ups (admin_user_id, target_user_id, due_date, note)
+			VALUES ('admin', $1, $2, $3)
+			ON CONFLICT (admin_user_id, target_user_id, due_date)
+			DO UPDATE SET note = EXCLUDED.note
+		`, uid, req.DueDate, req.Note)
+		if err != nil {
+			h.logger.ErrorContext(ctx, "crm: bulk remind failed for user", "user_id", uid, "error", err)
+			continue
+		}
+		created++
+	}
+
+	h.logger.InfoContext(ctx, "crm: bulk remind done", "requested", len(req.UserIDs), "created", created)
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"created": created,
+		"total":   len(req.UserIDs),
+		"message": "ok",
+	})
 }

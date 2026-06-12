@@ -1187,7 +1187,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get billing_exhausted_dialog_body =>
-      'Możesz nadal nagrywać sesję — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie na Twoim urządzeniu. Po rozszerzeniu planu lub odnowieniu puli możesz wznowić przetwarzanie sesji z poziomu Kartoteki.';
+      'Wykorzystałeś dostępne sesje. Możesz nadal nagrywać — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie. Sprawdź swoją skrzynkę e-mail, aby dowiedzieć się więcej.';
 
   @override
   String get billing_exhausted_dialog_record_locally => 'Nagrywaj lokalnie';
@@ -1486,4 +1486,28 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get note_sent_toast => 'Notatka wysłana do klienta';
+
+  @override
+  String get recording_consent_missing_header => 'Brak zgody';
+
+  @override
+  String get recording_consent_missing_body =>
+      'Nie odnotowano zgody pacjenta w systemie. Czy pacjent wyraził zgodę na nagrywanie i przetwarzanie danych?';
+
+  @override
+  String get recording_consent_grant => 'Tak, wyraził zgodę';
+
+  @override
+  String get recording_mic_error_header => 'Błąd mikrofonu';
+
+  @override
+  String get recording_upload_error_header => 'Błąd przesyłania';
+
+  @override
+  String recording_too_short_abort_body(String duration) {
+    return 'Nagranie trwało $duration. Anulowano wysyłkę.';
+  }
+
+  @override
+  String get recording_saving => 'Zapisuję nagranie...';
 }

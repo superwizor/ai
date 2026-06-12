@@ -49,7 +49,17 @@ service NotificationService {
   // embedded default.
   rpc SendActionPlanEmail(SendActionPlanEmailRequest) returns (SendActionPlanEmailResponse);
 
+  // Send a contact form submission to the administrator.
+  rpc SendContactEmail(SendContactEmailRequest) returns (google.protobuf.Empty);
+
   rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
+}
+
+message SendContactEmailRequest {
+  string name = 1;
+  string email = 2;
+  string subject = 3;
+  string message = 4;
 }
 
 message SendActionPlanEmailRequest {

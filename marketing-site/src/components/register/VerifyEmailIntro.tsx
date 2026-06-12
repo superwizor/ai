@@ -16,7 +16,7 @@ function Inner() {
   const email = params?.get("email") ?? "";
 
   return (
-    <p className="font-serif text-mist mt-4 leading-relaxed">
+    <p className="font-sans text-mist mt-4 leading-relaxed">
       {t("intro", { email })}
     </p>
   );

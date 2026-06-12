@@ -158,7 +158,7 @@ export function Hero() {
               {/* CTA Buttons */}
               <div className="hero-s4 flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
                 <a
-                  href={`${prefix}/register/therapist`}
+                  href="#cennik"
                   className="group relative inline-flex items-center justify-center rounded-[12px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 transition-all duration-300 active:scale-[0.97] w-full sm:w-auto whitespace-nowrap overflow-hidden"
                 >
                   <span className="absolute inset-0 rounded-[12px] bg-ember/40 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10 scale-110" />
@@ -236,7 +236,10 @@ export function Hero() {
                       {/* Fake Status Bar */}
                       <div className="absolute top-1 left-0 right-0 px-6 flex justify-between items-center text-[10px] text-white/70 font-sans z-20">
                         <span className="font-semibold flex items-center gap-1">
-                          20:37 <span className="text-[8px]">👤</span>
+                          20:37 <svg className="w-2.5 h-2.5 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                          </svg>
                         </span>
                         <div className="flex items-center gap-1.5">
                           {/* signal bars */}
@@ -325,8 +328,11 @@ export function Hero() {
                         {/* Item 1 */}
                         <div className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-[#526466] flex items-center justify-center font-sans font-bold text-xs text-white">
-                              PI
+                            <div className="w-8 h-8 rounded-full bg-[#FBFAF7] flex items-center justify-center shrink-0 shadow-sm">
+                              <svg className="w-4 h-4 text-[#004D54]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                              </svg>
                             </div>
                             <div>
                               <div className="font-sans text-[13px] font-bold text-white">
@@ -339,12 +345,14 @@ export function Hero() {
                           </div>
                           <span className="text-[#8ba4a6] text-xs">⋮</span>
                         </div>
- 
+  
                         {/* Item 2 */}
                         <div className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-[#d6855c] flex items-center justify-center text-[15px]">
-                              👍
+                            <div className="w-8 h-8 rounded-full bg-[#FBFAF7] flex items-center justify-center shrink-0 shadow-sm">
+                              <svg className="w-4 h-4 text-[#004D54]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                              </svg>
                             </div>
                             <div>
                               <div className="font-sans text-[13px] font-bold text-white">
@@ -357,12 +365,14 @@ export function Hero() {
                           </div>
                           <span className="text-[#8ba4a6] text-xs">⋮</span>
                         </div>
- 
+  
                         {/* Item 3 */}
                         <div className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-[#586fa6] flex items-center justify-center text-[15px]">
-                              🧘
+                            <div className="w-8 h-8 rounded-full bg-[#FBFAF7] flex items-center justify-center shrink-0 shadow-sm">
+                              <svg className="w-4 h-4 text-[#004D54]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                              </svg>
                             </div>
                             <div>
                               <div className="font-sans text-[13px] font-bold text-white">
@@ -375,12 +385,14 @@ export function Hero() {
                           </div>
                           <span className="text-[#8ba4a6] text-xs">⋮</span>
                         </div>
- 
+  
                         {/* Item 4 */}
                         <div className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-[#a35b5b] flex items-center justify-center text-[14px]">
-                              ✨
+                            <div className="w-8 h-8 rounded-full bg-[#FBFAF7] flex items-center justify-center shrink-0 shadow-sm">
+                              <svg className="w-4 h-4 text-[#004D54]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707-.707M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" />
+                              </svg>
                             </div>
                             <div className="min-w-0">
                               <div className="font-sans text-[13px] font-bold text-white flex items-center gap-1.5 flex-wrap">
@@ -399,7 +411,7 @@ export function Hero() {
                           </div>
                           <span className="text-[#8ba4a6] text-xs">⋮</span>
                         </div>
- 
+  
                       </div>
  
                       {/* collapsed section "WSTRZYMANE (3)" */}

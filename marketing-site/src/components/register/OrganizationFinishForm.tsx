@@ -6,7 +6,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
@@ -27,6 +27,7 @@ import {
   FieldShell,
   Select,
   TextInput,
+  PhoneInput,
 } from "@/components/forms/Field";
 
 export function OrganizationFinishForm({
@@ -52,6 +53,7 @@ export function OrganizationFinishForm({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<OrganizationFinishForm>({
     resolver: zodResolver(organizationFinishSchema),
@@ -112,10 +114,8 @@ export function OrganizationFinishForm({
         }),
       );
 
-      // Google already verified the email server-side — straight to the app.
-      // app.superwizor.ai DNS not wired; web.app subdomain is the live host.
-      // eslint-disable-next-line react-hooks/immutability
-      window.location.href = "https://superwizor-app.web.app/";
+      // Google already verified the email server-side — straight to dashboard.
+      window.location.assign(prefix ? `${prefix}/dashboard/` : "/dashboard/");
     } catch {
       setServerError(tErr("unknown"));
     }
@@ -124,7 +124,7 @@ export function OrganizationFinishForm({
   return (
     <form onSubmit={onSubmit} className="grid gap-5" noValidate>
       <section>
-        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
+        <h2 className="font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
           {tBody("sectionFounder")}
         </h2>
         <div className="grid gap-4">
@@ -136,21 +136,27 @@ export function OrganizationFinishForm({
               <TextInput id="lastName" autoComplete="family-name" {...register("lastName")} />
             </FieldShell>
           </div>
-          <FieldShell id="phoneNumber" label={t("phoneNumber")} required error={errors.phoneNumber && tOrgErr("phoneRequired")}>
-            <TextInput
-              id="phoneNumber"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder={t("phoneNumberPlaceholder")}
-              {...register("phoneNumber")}
+          <FieldShell id="phoneNumber" label={t("phoneNumber")} hint={t("phoneNumberHint")} required error={errors.phoneNumber && tOrgErr("phoneRequired")}>
+            <Controller
+              control={control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <PhoneInput
+                  id="phoneNumber"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  error={!!errors.phoneNumber}
+                  defaultDialCode={locale === "pl" ? "+48" : "+44"}
+                  placeholder={t("phoneNumberPlaceholder")}
+                />
+              )}
             />
           </FieldShell>
         </div>
       </section>
 
       <section>
-        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
+        <h2 className="font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
           {tBody("sectionOrg")}
         </h2>
         <div className="grid gap-4">
@@ -176,7 +182,7 @@ export function OrganizationFinishForm({
       </section>
 
       <section>
-        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
+        <h2 className="font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
           {tBody("sectionAddress")}
         </h2>
         <div className="grid gap-4">
@@ -244,7 +250,7 @@ export function OrganizationFinishForm({
           })}
         />
         {errors.hasAcceptedTos && (
-          <p role="alert" className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-magma">
+          <p role="alert" className="font-sans text-[10px] uppercase tracking-[var(--tracking-label)] text-magma">
             {tErr("tosRequired")}
           </p>
         )}
@@ -258,7 +264,7 @@ export function OrganizationFinishForm({
       {serverError && (
         <p
           role="alert"
-          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost"
+          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-sans text-sm text-frost"
         >
           {serverError}
         </p>
@@ -267,7 +273,7 @@ export function OrganizationFinishForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {isSubmitting ? tCommon("submitting") : tCommon("submit")}
       </button>

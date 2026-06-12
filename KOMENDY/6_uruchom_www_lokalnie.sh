@@ -8,5 +8,5 @@ cd "$(dirname "$0")/../marketing-site"
 echo "Otwieranie http://localhost:3000 w przeglądarce..."
 open "http://localhost:3000" || true
 
-# Uruchomienie deweloperskiego serwera Next.js za pomocą pnpm
-pnpm dev
+# Uruchomienie deweloperskiego serwera Next.js za pomocą pnpm (wymuszamy webpack, aby uniknąć wycieków pamięci i 100% obciążenia CPU przez Turbopack)
+pnpm dev --webpack

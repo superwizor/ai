@@ -14,7 +14,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useSearchParams } from "next/navigation";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
@@ -36,11 +37,13 @@ import {
   RadioGroup,
   Select,
   TextInput,
+  PhoneInput,
 } from "@/components/forms/Field";
 import {
   getModalityCatalog,
   type ModalityRow,
 } from "@/lib/clinical/modalities";
+import { handlePostRegistrationRedirect } from "@/lib/register/post-registration";
 
 export function TherapistFinishForm({
   email,
@@ -74,12 +77,15 @@ export function TherapistFinishForm({
   const locale = useLocale();
   const auth = useAuth();
   const prefix = locale === "en" ? "/en" : "";
+  const searchParams = useSearchParams();
+  const planSlug = searchParams.get("plan");
 
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<TherapistFinishForm>({
     resolver: zodResolver(therapistFinishSchema),
@@ -106,7 +112,7 @@ export function TherapistFinishForm({
     try {
       const tz =
         Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Warsaw";
-      await identityClient.createUser(
+      const created = await identityClient.createUser(
         create(CreateUserRequestSchema, {
           firebaseUid: user.uid,
           email,
@@ -116,6 +122,7 @@ export function TherapistFinishForm({
           uiLanguage: data.uiLanguage,
           timezone: tz,
           hasAcceptedTos: true,
+          initialPlanTier: planSlug?.toUpperCase() === "BETA" ? "BETA" : "",
         }),
       );
 
@@ -138,11 +145,17 @@ export function TherapistFinishForm({
         );
       }
 
-      // Google sign-in marks emailVerified=true automatically (Google
-      // already vetted the address). Skip the "check your inbox" page
-      // and bounce straight to the app. DNS for app.superwizor.ai is
-      // still NXDOMAIN; use the web.app subdomain.
-      window.location.href = "https://superwizor-app.web.app/";
+      // For social sign-in with a paid plan → Stripe Checkout.
+      // For free plans or no plan → straight to the app (Google sign-in
+      // marks emailVerified=true so no verify-email interstitial needed).
+      const orgId = created.organizationId ?? "";
+      const priceNeeded = planSlug && !['trial', 'beta'].includes(planSlug.toLowerCase());
+      if (priceNeeded && orgId) {
+        await handlePostRegistrationRedirect(orgId, planSlug, prefix, email);
+      } else {
+        // Google/Apple sign-in → email already verified → go to onboarding
+        window.location.assign(prefix ? `${prefix}/onboarding/` : "/onboarding/");
+      }
     } catch {
       setServerError(tErr("unknown"));
     }
@@ -179,8 +192,8 @@ export function TherapistFinishForm({
             value={uiLanguage}
             onChange={(v) => setValue("uiLanguage", v as "pl" | "en", { shouldValidate: true })}
             options={[
-              { value: "pl", label: t("polish") },
-              { value: "en", label: t("english") },
+              { value: "pl", label: `🇵🇱 ${t("polish")}` },
+              { value: "en", label: `🇬🇧 ${t("english")}` },
             ]}
           />
         </FieldShell>
@@ -193,14 +206,31 @@ export function TherapistFinishForm({
           />
         </FieldShell>
 
-        <FieldShell id="phoneNumber" label={t("phoneNumber")}>
-          <TextInput
-            id="phoneNumber"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder={t("phoneNumberPlaceholder")}
-            {...register("phoneNumber")}
+        <FieldShell
+          id="phoneNumber"
+          label={t("phoneNumber")}
+          required
+          error={
+            errors.phoneNumber?.message === "phone-required"
+              ? tErr("phoneRequired")
+              : errors.phoneNumber
+              ? tErr("phoneInvalid")
+              : undefined
+          }
+        >
+          <Controller
+            control={control}
+            name="phoneNumber"
+            render={({ field }) => (
+              <PhoneInput
+                id="phoneNumber"
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                error={!!errors.phoneNumber}
+                defaultDialCode={locale === "pl" ? "+48" : "+44"}
+                placeholder={t("phoneNumberPlaceholder")}
+              />
+            )}
           />
         </FieldShell>
       </div>
@@ -223,7 +253,7 @@ export function TherapistFinishForm({
           })}
         />
         {errors.hasAcceptedTos && (
-          <p role="alert" className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-magma">
+          <p role="alert" className="font-sans text-[10px] font-semibold uppercase tracking-[var(--tracking-label)] text-magma">
             {tErr("tosRequired")}
           </p>
         )}
@@ -237,7 +267,7 @@ export function TherapistFinishForm({
       {serverError && (
         <p
           role="alert"
-          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost"
+          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-sans text-sm text-frost"
         >
           {serverError}
         </p>
@@ -246,7 +276,7 @@ export function TherapistFinishForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        className="mt-2 w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl bg-ember text-obsidian shadow-[0_4px_14px_rgba(252,174,47,0.4)] hover:brightness-115 hover:shadow-[0_6px_20px_rgba(252,174,47,0.6)] hover:-translate-y-0.5 transition-all duration-300 group cursor-pointer font-sans text-[18px] font-semibold text-obsidian disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
       >
         {isSubmitting ? tCommon("submitting") : tCommon("submit")}
       </button>

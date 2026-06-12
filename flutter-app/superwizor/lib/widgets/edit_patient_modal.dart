@@ -1,12 +1,13 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/patient.dart';
+import '../providers/patient_avatar_provider.dart';
 import '../providers/patient_provider.dart';
 import '../theme/euphire_theme.dart';
+import 'avatar_customize_sheet.dart';
 import 'euphire_toast.dart';
 import 'euphire_button.dart';
 
@@ -24,7 +25,6 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
   late final TextEditingController _lastNameController;
   late final TextEditingController _emailController;
   bool _saving = false;
-  bool _deleting = false;
   String? _emailError;
 
   // Light e-mail format check. Empty is allowed (optional field); a
@@ -50,10 +50,105 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
     super.dispose();
   }
 
+  String get _initials {
+    final f = widget.patient.firstName;
+    final l = widget.patient.lastName;
+    if (f.isEmpty && l.isEmpty) return '?';
+    final first = f.isNotEmpty ? f.characters.first.toUpperCase() : '';
+    final last = l.isNotEmpty ? l.characters.first.toUpperCase() : '';
+    return '$first$last'.trim();
+  }
+
+  Widget _buildAvatarHeader() {
+    final avatarConfigs = ref.watch(patientAvatarProvider);
+    final avatarConfig =
+        avatarConfigs[widget.patient.id] ?? const PatientAvatarConfig();
+    final color = avatarConfig.color;
+    final avatarLabel = avatarConfig.customLabel ?? _initials;
+    final isEmoji = avatarLabel.runes.any((r) => r > 0x2600);
+
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (_) => AvatarCustomizeSheet(
+            patientId: widget.patient.id,
+            defaultInitials: _initials,
+          ),
+        );
+      },
+      child: SizedBox(
+        width: 72,
+        height: 72,
+        child: Stack(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color,
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.35),
+                    blurRadius: 24,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: isEmoji
+                  ? FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        avatarLabel,
+                        style: const TextStyle(fontSize: 28, height: 1.0),
+                      ),
+                    )
+                  : Text(
+                      avatarLabel,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: EuphireColors.frostWhite,
+                      ),
+                    ),
+            ),
+            // Pencil badge
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: EuphireColors.ember,
+                  border: Border.all(
+                    color: const Color(0xFF0A2326),
+                    width: 2,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.edit_rounded,
+                  size: 13,
+                  color: EuphireColors.nocturne,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    final canSave = !_saving && !_deleting && _firstNameController.text.trim().isNotEmpty;
+    final canSave = !_saving && _firstNameController.text.trim().isNotEmpty;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -80,27 +175,9 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
               ),
             ),
 
-            // ── Header: Icon + Title + Subtitle ──
+            // ── Header: Avatar + Title + Subtitle ──
             Center(
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: EuphireColors.ember.withValues(alpha: 0.12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: EuphireColors.ember.withValues(alpha: 0.15),
-                      blurRadius: 24, spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.edit_note_rounded,
-                  color: EuphireColors.ember,
-                  size: 30,
-                ),
-              ),
+              child: _buildAvatarHeader(),
             ),
             const SizedBox(height: 16),
             Text(
@@ -210,70 +287,7 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
     }
   }
 
-  Future<void> _onDelete() async {
-    final t = AppLocalizations.of(context);
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF0A3438),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Text(
-          t.editPatient_erase_confirm_header,
-          style: const TextStyle(
-            fontFamily: 'Montserrat',
-            fontWeight: FontWeight.w600,
-            color: EuphireColors.frostWhite,
-          ),
-        ),
-        content: Text(
-          t.editPatient_erase_confirm_body,
-          style: TextStyle(
-            fontFamily: 'Montserrat',
-            color: EuphireColors.mist.withValues(alpha: 0.85),
-            height: 1.4,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              t.common_cancel,
-              style: const TextStyle(color: EuphireColors.mist),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              t.editPatient_erase_destructive,
-              style: const TextStyle(
-                color: EuphireColors.magma,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
 
-    if (confirm != true) return;
-
-    setState(() => _deleting = true);
-    try {
-      await ref.read(patientsProvider.notifier).deletePatientUser(widget.patient.id);
-      if (mounted) {
-        Navigator.of(context).pop(); // close modal
-        Navigator.of(context).pop(); // pop back to home screen
-      }
-    } catch (e) {
-      if (mounted) {
-        EuphireToast.error(context, message: 'Błąd: $e');
-      }
-    } finally {
-      if (mounted) setState(() => _deleting = false);
-    }
-  }
 }
 
 // ─── Glass-styled text field (consistent with AddPatientModal) ──────

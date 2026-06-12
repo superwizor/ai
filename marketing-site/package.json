@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build",
+    "build": "mv src/app/api ../temp_api || true; next build; status=$?; mv ../temp_api src/app/api || true; exit $status",
     "start": "next start",
     "lint": "eslint",
     "check:l10n": "node scripts/check-l10n-parity.mjs",

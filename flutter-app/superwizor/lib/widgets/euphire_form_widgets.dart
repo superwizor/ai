@@ -17,8 +17,11 @@ class GlassTextField extends StatelessWidget {
   final String? hint;
   final String? errorText;
   final TextInputType keyboardType;
+  final TextInputAction? textInputAction;
   final bool autofocus;
+  final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
 
   const GlassTextField({
     super.key,
@@ -27,8 +30,11 @@ class GlassTextField extends StatelessWidget {
     this.hint,
     this.errorText,
     this.keyboardType = TextInputType.text,
+    this.textInputAction,
     this.autofocus = false,
+    this.focusNode,
     this.onChanged,
+    this.onSubmitted,
   });
 
   @override
@@ -36,8 +42,11 @@ class GlassTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      textInputAction: textInputAction,
       autofocus: autofocus,
+      focusNode: focusNode,
       onChanged: onChanged,
+      onSubmitted: onSubmitted,
       style: const TextStyle(
         fontFamily: 'Montserrat',
         fontSize: 15,

@@ -1,15 +1,13 @@
 // Public plan catalog for the marketing pricing page.
 //
-// docs/18 §8.1 says the pricing page should "read from subscription_plans"
-// — long-term that means calling `billingClient.listSubscriptionPlans({})`
-// (RPC not yet defined). For now this module mirrors the values from
-// migration `000029_billing_phase3_seed_plans.up.sql` 1:1. When the
-// ListSubscriptionPlans RPC lands in a follow-up backend slice, swap
-// `getPlanCatalog()` to return the RPC response and delete this file.
+// PRICING DECISION (2026-06-08, Maciek+Marcin):
+//   Trial:      5 sessions / 30 days, free, no card
+//   Równowaga:  179 zł BRUTTO /mo, 30 sessions. Coupon ROWNOWAGA20 = -20% = ~143 zł
+//   Rozkwit:    299 zł BRUTTO /mo, 90 sessions. Coupon ROZKWIT30  = -30% = ~209 zł
+//   Prices are BRUTTO (incl. 23% VAT). Stripe Tax handles the split.
 //
 // Source of truth: superwizor-backend/migrations/000029_billing_phase3_seed_plans.up.sql
-// Drift check (manual until we have RPC): when you bump prices here,
-// bump the migration in the same PR.
+// Drift check: when you bump prices here, bump the migration in the same PR.
 
 export type PlanTier = "TRIAL" | "SOLO" | "PRO" | "CLINIC";
 export type BillingCycle = "MONTHLY" | "ANNUAL";
@@ -44,7 +42,7 @@ const PLANS: ReadonlyArray<PlanRow> = [
     cycle: "MONTHLY",
     priceGross: 0,
     currencyCode: "PLN",
-    tokensPerPeriod: 3,
+    tokensPerPeriod: 5,
     licensesLimit: 1,
     hasB2BDashboard: false,
     stripePriceId: null,
@@ -53,54 +51,50 @@ const PLANS: ReadonlyArray<PlanRow> = [
   {
     tier: "SOLO",
     cycle: "MONTHLY",
-    priceGross: 149.0,
-    priceIntroGross: 99.0,
-    couponCode: "INTRO_SOLO",
+    priceGross: 179.0,           // brutto
+    priceIntroGross: 143.0,
+    couponCode: "ROWNOWAGA20",
     currencyCode: "PLN",
     tokensPerPeriod: 30,
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TclVgE5jzWcAIgeT6ec0HDh",
-    stripePaymentLink: "https://buy.stripe.com/test_dRmbJ14s21tYfZ1fAF48000",
+    stripePriceId: "price_1TgAk2E5jzWcAIgeQ572wpkE",  // Równowaga monthly 179 PLN brutto
+    stripePaymentLink: null,  // Stripe Checkout via backend
   },
   {
     tier: "SOLO",
     cycle: "ANNUAL",
-    priceGross: 1490.0,
-    priceIntroGross: 990.0,
-    couponCode: "INTRO_SOLO",
+    priceGross: 1790.0,          // brutto (179 * 10 months effectively)
     currencyCode: "PLN",
     tokensPerPeriod: 360,
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TclVhE5jzWcAIge7YjI49Hs",
-    stripePaymentLink: "https://buy.stripe.com/test_4gM00j8Ii6Oi147gEJ48001",
+    stripePriceId: "price_1TgAlxE5jzWcAIgedH5FM8No",  // Równowaga annual 1790 PLN brutto
+    stripePaymentLink: null,
   },
   {
     tier: "PRO",
     cycle: "MONTHLY",
-    priceGross: 249.0,
-    priceIntroGross: 179.0,
-    couponCode: "INTRO_PRO",
+    priceGross: 299.0,           // brutto
+    priceIntroGross: 209.0,
+    couponCode: "ROZKWIT30",
     currencyCode: "PLN",
-    tokensPerPeriod: 120,
+    tokensPerPeriod: 90,          // was 120, confirmed 90
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TclVhE5jzWcAIgeMQTPps4i",
-    stripePaymentLink: "https://buy.stripe.com/test_bJebJ12jUc8C5kn2NT48002",
+    stripePriceId: "price_1TgAnSE5jzWcAIgeshZ6TqG8",  // Rozkwit monthly 299 PLN brutto
+    stripePaymentLink: null,
   },
   {
     tier: "PRO",
     cycle: "ANNUAL",
-    priceGross: 2490.0,
-    priceIntroGross: 1790.0,
-    couponCode: "INTRO_PRO",
+    priceGross: 2990.0,          // brutto (299 * 10)
     currencyCode: "PLN",
-    tokensPerPeriod: 1440,
+    tokensPerPeriod: 1080,        // 90 * 12
     licensesLimit: 1,
     hasB2BDashboard: false,
-    stripePriceId: "price_1TclViE5jzWcAIgehEFNihUP",
-    stripePaymentLink: "https://buy.stripe.com/test_fZueVd5w67SmeUXdsx48003",
+    stripePriceId: "price_1TgAqVE5jzWcAIgeOh1veVjP",  // Rozkwit annual 2990 PLN brutto
+    stripePaymentLink: null,
   },
   {
     tier: "CLINIC",
@@ -110,7 +104,7 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tokensPerPeriod: 150,
     licensesLimit: 5,
     hasB2BDashboard: true,
-    stripePriceId: null, // B2B — manual pricing
+    stripePriceId: null,
     stripePaymentLink: null,
   },
   {
@@ -121,7 +115,7 @@ const PLANS: ReadonlyArray<PlanRow> = [
     tokensPerPeriod: 1800,
     licensesLimit: 5,
     hasB2BDashboard: true,
-    stripePriceId: null, // B2B — manual pricing
+    stripePriceId: null,
     stripePaymentLink: null,
   },
 ];
@@ -147,3 +141,12 @@ export function formatPrice(locale: string, value: number): string {
     maximumFractionDigits: 0,
   }).format(value);
 }
+
+/** Look up a plan by tier and cycle from the static catalog. */
+export function lookupPlan(
+  tier: PlanTier,
+  cycle: BillingCycle,
+): PlanRow | undefined {
+  return PLANS.find((p) => p.tier === tier && p.cycle === cycle);
+}
+

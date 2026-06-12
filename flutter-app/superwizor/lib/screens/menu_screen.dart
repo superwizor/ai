@@ -148,7 +148,9 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     final locale = ref.watch(localeProvider);
 
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      // userChanges() fires on PROFILE mutations (displayName, email,
+      // photoURL, etc.) — not just sign-in/sign-out like authStateChanges().
+      stream: FirebaseAuth.instance.userChanges(),
       builder: (context, _) {
         final user = FirebaseAuth.instance.currentUser;
         final displayName = (user?.displayName?.isNotEmpty == true) ? user!.displayName! : 'Terapeuta';
@@ -400,10 +402,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                           _SettingsRow(
                             icon: Icons.open_in_new,
                             title: t.settings_waitlist,
-                            subtitle: 'euphire.pl',
+                            subtitle: 'superwizor.ai',
                             trailing: Icon(Icons.chevron_right,
                                 color: EuphireColors.mist.withValues(alpha: 0.4), size: 18),
-                            onTap: () => _openUrl('https://euphire.pl/superwizor-ai-lista-oczekujacych'),
+                            onTap: () => _openUrl('https://superwizor.ai/kontakt'),
                           ),
                         ]),
 

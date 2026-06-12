@@ -187,6 +187,12 @@ message CreateUserRequest {
   string ui_language = 6;
   string timezone = 7;
   bool has_accepted_tos = 8;
+  // Optional: plan tier to provision on signup. Valid values:
+  //   - "" or "TRIAL" → default trial (5 tokens)
+  //   - "BETA"        → beta program (120 tokens × 2 months)
+  // Paid tiers (SOLO/PRO) are provisioned via Stripe Checkout,
+  // not through this field.
+  string initial_plan_tier = 9;
 }
 
 // UpdateProfileRequest is the iOS-compatible profile mutation. Per

@@ -435,7 +435,7 @@
   "billing_dismiss_cta": "Rozumiem, kontynuuj",
 
   "billing_exhausted_dialog_title": "Pula tokenów wyczerpana",
-  "billing_exhausted_dialog_body": "Możesz nadal nagrywać sesję — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie na Twoim urządzeniu. Po rozszerzeniu planu lub odnowieniu puli możesz wznowić przetwarzanie sesji z poziomu Kartoteki.",
+  "billing_exhausted_dialog_body": "Wykorzystałeś dostępne sesje. Możesz nadal nagrywać — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie. Sprawdź swoją skrzynkę e-mail, aby dowiedzieć się więcej.",
   "billing_exhausted_dialog_record_locally": "Nagrywaj lokalnie",
 
   "billing_pending_sessions_title": "{n, plural, =1{Sesja oczekująca na przetworzenie} few{Sesje oczekujące na przetworzenie ({n})} many{Sesji oczekujących na przetworzenie ({n})} other{Sesji oczekujących na przetworzenie ({n})}}",
@@ -560,5 +560,16 @@
   "@note_send_confirm_body": {
     "placeholders": { "email": { "type": "String" } }
   },
-  "note_sent_toast": "Notatka wysłana do klienta"
+  "note_sent_toast": "Notatka wysłana do klienta",
+
+  "recording_consent_missing_header": "Brak zgody",
+  "recording_consent_missing_body": "Nie odnotowano zgody pacjenta w systemie. Czy pacjent wyraził zgodę na nagrywanie i przetwarzanie danych?",
+  "recording_consent_grant": "Tak, wyraził zgodę",
+  "recording_mic_error_header": "Błąd mikrofonu",
+  "recording_upload_error_header": "Błąd przesyłania",
+  "recording_too_short_abort_body": "Nagranie trwało {duration}. Anulowano wysyłkę.",
+  "@recording_too_short_abort_body": {
+    "placeholders": { "duration": { "type": "String" } }
+  },
+  "recording_saving": "Zapisuję nagranie..."
 }

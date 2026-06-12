@@ -328,6 +328,7 @@ const (
 	PlanTierCLINIC  PlanTier = "CLINIC"
 	PlanTierPATIENT PlanTier = "PATIENT"
 	PlanTierTRIAL   PlanTier = "TRIAL"
+	PlanTierBETA    PlanTier = "BETA"
 )
 
 func (e *PlanTier) Scan(src interface{}) error {
@@ -810,6 +811,14 @@ type CrmTag struct {
 	TargetUserID uuid.UUID `json:"target_user_id"`
 	Tag          string    `json:"tag"`
 	CreatedAt    time.Time `json:"created_at"`
+}
+
+type EmailDripLog struct {
+	ID             uuid.UUID `json:"id"`
+	UserID         string    `json:"user_id"`
+	TemplateName   string    `json:"template_name"`
+	SubscriptionID uuid.UUID `json:"subscription_id"`
+	SentAt         time.Time `json:"sent_at"`
 }
 
 type EmailTemplate struct {

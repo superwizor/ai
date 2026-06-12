@@ -1,8 +1,5 @@
-// Form primitives styled with Euphire tokens. Keep these dumb +
-// composable — registration / profile / admin forms across slices all
 // route through this set so input feel stays consistent.
-
-import { forwardRef, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { forwardRef, Children, cloneElement, isValidElement, useState, useEffect, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 
 type FieldShellProps = {
   id: string;
@@ -14,32 +11,33 @@ type FieldShellProps = {
 };
 
 export function FieldShell({ id, label, hint, error, required, children }: FieldShellProps) {
+  const styledChildren = Children.map(children, (child) => {
+    if (error && isValidElement(child)) {
+      const childProps = (child as any).props || {};
+      return cloneElement(child as any, {
+        className: `${childProps.className ?? ""} !border-magma !focus:border-magma`,
+      });
+    }
+    return child;
+  });
+
   return (
     <div className="flex flex-col">
-      {/*
-        min-h-[2lh] reserves the vertical space of two label lines.
-        Side-by-side fields with labels of mismatched length (e.g.
-        "Tytuł zawodowy (opcjonalnie)" next to "Numer prawa wykonywania
-        zawodu (opcjonalnie)") would otherwise wrap one to two lines
-        and shove its input below the neighbour. Reserving two lines
-        keeps inputs aligned across responsive widths without
-        introducing a CSS grid subgrid dependency.
-      */}
       <label
         htmlFor={id}
-        className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist mb-2 min-h-[2lh] leading-snug"
+        className="font-sans text-[10px] font-semibold uppercase tracking-[var(--tracking-label)] text-mist mb-2 min-h-[2lh] leading-snug"
       >
         {label}
         {required && <span aria-hidden className="text-ember ml-1">*</span>}
       </label>
-      {children}
+      {styledChildren}
       {hint && !error && (
-        <p className="font-serif text-xs text-mist/70 mt-1.5">{hint}</p>
+        <p className="font-sans text-xs text-mist/70 mt-1.5">{hint}</p>
       )}
       {error && (
         <p
           role="alert"
-          className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-magma mt-1.5"
+          className="font-sans text-[10px] font-semibold uppercase tracking-[var(--tracking-label)] text-magma mt-1.5"
         >
           {error}
         </p>
@@ -47,7 +45,6 @@ export function FieldShell({ id, label, hint, error, required, children }: Field
     </div>
   );
 }
-
 const inputClasses =
   "rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] placeholder:text-mist/40 transition";
 
@@ -97,7 +94,7 @@ export function Checkbox(
         {...rest}
         className="mt-1 h-4 w-4 rounded border-frost/30 bg-frost/5 text-ember accent-ember focus:ring-ember"
       />
-      <span className="font-serif text-sm text-mist leading-relaxed">{label}</span>
+      <span className="font-sans text-sm text-mist leading-relaxed">{label}</span>
     </label>
   );
 }
@@ -138,6 +135,140 @@ export function RadioGroup({
           </label>
         );
       })}
+    </div>
+  );
+}
+
+type PhoneInputProps = {
+  value: string;
+  onChange: (val: string) => void;
+  error?: boolean;
+  defaultDialCode?: string;
+  placeholder?: string;
+  id?: string;
+};
+
+export function PhoneInput({
+  value,
+  onChange,
+  error,
+  defaultDialCode = "+48",
+  placeholder,
+  id,
+}: PhoneInputProps) {
+  const dialCodes = [
+    { code: "+48", label: "🇵🇱 +48" },
+    { code: "+44", label: "🇬🇧 +44" },
+    { code: "+1", label: "🇺🇸 +1" },
+    { code: "+49", label: "🇩🇪 +49" },
+    { code: "+33", label: "🇫🇷 +33" },
+    { code: "+34", label: "🇪🇸 +34" },
+    { code: "+39", label: "🇮🇹 +39" },
+    { code: "+351", label: "🇵🇹 +351" },
+    { code: "+31", label: "🇳🇱 +31" },
+    { code: "+32", label: "🇧🇪 +32" },
+    { code: "+41", label: "🇨🇭 +41" },
+    { code: "+43", label: "🇦🇹 +43" },
+    { code: "+46", label: "🇸🇪 +46" },
+    { code: "+47", label: "🇳🇴 +47" },
+    { code: "+45", label: "🇩🇰 +45" },
+    { code: "+358", label: "🇫🇮 +358" },
+    { code: "+353", label: "🇮🇪 +353" },
+    { code: "+380", label: "🇺🇦 +380" },
+    { code: "+420", label: "🇨🇿 +420" },
+    { code: "+421", label: "🇸🇰 +421" },
+    { code: "+36", label: "🇭🇺 +36" },
+    { code: "+30", label: "🇬🇷 +30" },
+    { code: "+40", label: "🇷🇴 +40" },
+    { code: "+359", label: "🇧🇬 +359" },
+    { code: "+385", label: "🇭🇷 +385" },
+  ];
+
+  const parseValue = (val: string) => {
+    if (!val) return { selectedPrefix: defaultDialCode, localNum: "" };
+    const sortedCodes = [...dialCodes].sort((a, b) => b.code.length - a.code.length);
+    for (const dc of sortedCodes) {
+      if (val.startsWith(dc.code)) {
+        return {
+          selectedPrefix: dc.code,
+          localNum: val.slice(dc.code.length).trim(),
+        };
+      }
+    }
+    if (val.startsWith("+")) {
+      const match = val.match(/^(\+\d{1,4})/);
+      if (match) {
+        return {
+          selectedPrefix: match[1],
+          localNum: val.slice(match[1].length).trim(),
+        };
+      }
+    }
+    return { selectedPrefix: defaultDialCode, localNum: val };
+  };
+
+  const { selectedPrefix, localNum } = parseValue(value);
+
+  const handlePrefixChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newPrefix = e.target.value;
+    onChange(newPrefix + localNum);
+  };
+
+  const handleLocalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawLocal = e.target.value;
+    let newPrefix = selectedPrefix;
+    let newLocal = rawLocal;
+
+    if (rawLocal.startsWith("+")) {
+      const parsed = parseValue(rawLocal);
+      newPrefix = parsed.selectedPrefix;
+      newLocal = parsed.localNum;
+    }
+
+    onChange(newPrefix + newLocal);
+  };
+
+  const prefixExists = dialCodes.some((dc) => dc.code === selectedPrefix);
+
+  return (
+    <div className="flex gap-2 w-full">
+      <div className="relative shrink-0 w-[100px]">
+        <select
+          value={selectedPrefix}
+          onChange={handlePrefixChange}
+          className={`appearance-none cursor-pointer rounded-button bg-frost/5 border border-frost/15 text-frost pl-3.5 pr-8 py-2.5 font-sans text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition h-full w-full ${
+            error ? "!border-magma !focus:border-magma" : ""
+          }`}
+        >
+          {dialCodes.map((dc) => {
+            return (
+              <option key={dc.code} value={dc.code} className="bg-obsidian text-frost">
+                {dc.label}
+              </option>
+            );
+          })}
+          {!prefixExists && selectedPrefix ? (
+            <option value={selectedPrefix} className="bg-obsidian text-frost">
+              🌐 {selectedPrefix}
+            </option>
+          ) : null}
+        </select>
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-mist/60">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+      <TextInput
+        id={id}
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel"
+        placeholder={placeholder}
+        value={localNum}
+        onChange={handleLocalChange}
+        className="flex-1"
+      />
     </div>
   );
 }

@@ -134,7 +134,7 @@ export function CtaBand() {
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center w-full sm:w-auto">
             {/* Primary CTA — glowing ember button */}
             <a
-              href={`${prefix}/register/therapist`}
+              href="#cennik"
               className="group relative inline-flex items-center justify-center rounded-[12px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 transition-all duration-300 active:scale-[0.97] w-full sm:w-auto whitespace-nowrap overflow-hidden"
             >
               {/* Glow behind button */}

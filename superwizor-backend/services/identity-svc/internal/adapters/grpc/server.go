@@ -206,13 +206,20 @@ func (s *Server) CreateUser(ctx context.Context, req *identityv1.CreateUserReque
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// Auto-provision a Trial subscription for every new THERAPIST.
-	// CreateUserRequest has no organization_id field today, so this
-	// always fires on therapist signup. Patients are skipped — their
-	// quota comes from the therapist's org via patient_files.
+	// Auto-provision a subscription for every new THERAPIST.
+	// initial_plan_tier selects BETA vs TRIAL. Paid plans go through
+	// Stripe Checkout (separate flow) — the user starts with a Trial
+	// and the Stripe webhook upgrades them.
 	if dbRole == "THERAPIST" {
-		if err := s.provisionTrialOrgAndSub(ctx, tx, &user, req); err != nil {
-			return nil, err
+		planTier := strings.ToUpper(req.InitialPlanTier)
+		if planTier == "BETA" {
+			if err := s.provisionPlanOrgAndSub(ctx, tx, &user, req, "BETA"); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := s.provisionTrialOrgAndSub(ctx, tx, &user, req); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -331,7 +338,9 @@ func (s *Server) provisionTrialOrgAndSub(ctx context.Context, tx pgx.Tx, user *d
 	// — partial unique index idx_subscriptions_one_active_per_org accepts
 	// TRIALING as "active for the org" so no parallel paid sub can exist
 	// alongside without upgrade-time bookkeeping.
-	// current_period_end ~100 years out keeps the counter from auto-rolling.
+	// current_period_end = NOW() + 30 days — trial hard limit per business rules.
+	// After 30 days the cron won't find a renewal candidate (trial plan has
+	// max 1 period implied) and unused sessions simply expire.
 	var subID uuid.UUID
 	var periodStart, periodEnd pgtype.Timestamptz
 	if err := tx.QueryRow(ctx,
@@ -340,7 +349,7 @@ func (s *Server) provisionTrialOrgAndSub(ctx context.Context, tx pgx.Tx, user *d
 		     status, current_period_start, current_period_end
 		 ) VALUES (
 		     $1, $2, 'MANUAL', $3,
-		     'TRIALING', NOW(), NOW() + INTERVAL '100 years'
+		     'TRIALING', NOW(), NOW() + INTERVAL '30 days'
 		 )
 		 RETURNING id, current_period_start, current_period_end`,
 		orgID, planID, "trial-"+orgID.String(),
@@ -364,6 +373,87 @@ func (s *Server) provisionTrialOrgAndSub(ctx context.Context, tx pgx.Tx, user *d
 	slog.InfoContext(ctx, "provisionTrial: trial subscription seeded",
 		"user_id", user.ID, "org_id", orgID, "subscription_id", subID,
 		"tokens_per_period", tokensPerPeriod, "org_name", orgName)
+	return nil
+}
+
+// provisionPlanOrgAndSub creates a SOLO org and provisions a
+// subscription with the specified plan tier. Currently used for BETA
+// signups. Unlike provisionTrialOrgAndSub, the period is 30 days
+// (not 100 years) so the cron-based auto-renewal can work.
+func (s *Server) provisionPlanOrgAndSub(ctx context.Context, tx pgx.Tx, user *db.User, req *identityv1.CreateUserRequest, tier string) error {
+	displayName := strings.TrimSpace(req.FirstName + " " + req.LastName)
+	if displayName == "" {
+		displayName = strings.TrimSpace(req.Email)
+		if at := strings.IndexByte(displayName, '@'); at > 0 {
+			displayName = displayName[:at]
+		}
+	}
+	orgName := displayName + " Org"
+
+	var orgID uuid.UUID
+	if err := tx.QueryRow(ctx,
+		`INSERT INTO organizations (legal_name, type)
+		 VALUES ($1, 'SOLO')
+		 RETURNING id`,
+		orgName,
+	).Scan(&orgID); err != nil {
+		slog.ErrorContext(ctx, "provisionPlan: create org", "error", err, "name", orgName, "tier", tier)
+		return status.Errorf(codes.Internal, "create org: %v", err)
+	}
+
+	if err := tx.QueryRow(ctx,
+		`UPDATE users SET organization_id = $1 WHERE id = $2 RETURNING organization_id`,
+		orgID, user.ID,
+	).Scan(&user.OrganizationID); err != nil {
+		slog.ErrorContext(ctx, "provisionPlan: link user to org", "error", err, "tier", tier)
+		return status.Errorf(codes.Internal, "link org: %v", err)
+	}
+
+	var planID uuid.UUID
+	var tokensPerPeriod int32
+	if err := tx.QueryRow(ctx,
+		`SELECT id, tokens_per_period FROM subscription_plans
+		 WHERE tier = $1 AND cycle = 'MONTHLY' AND is_active = TRUE
+		 LIMIT 1`, tier,
+	).Scan(&planID, &tokensPerPeriod); err != nil {
+		slog.ErrorContext(ctx, "provisionPlan: lookup plan", "error", err, "tier", tier)
+		return status.Errorf(codes.Internal, "lookup %s plan: %v", tier, err)
+	}
+
+	// BETA gets a real 30-day period (auto-renewal cron handles the
+	// second month). TRIAL keeps 100 years per provisionTrialOrgAndSub.
+	periodInterval := "30 days"
+
+	var subID uuid.UUID
+	var periodStart, periodEnd pgtype.Timestamptz
+	if err := tx.QueryRow(ctx,
+		`INSERT INTO subscriptions (
+		     organization_id, plan_id, provider, provider_subscription_id,
+		     status, current_period_start, current_period_end
+		 ) VALUES (
+		     $1, $2, 'MANUAL', $3,
+		     'TRIALING', NOW(), NOW() + $4::INTERVAL
+		 )
+		 RETURNING id, current_period_start, current_period_end`,
+		orgID, planID, strings.ToLower(tier)+"-"+orgID.String(), periodInterval,
+	).Scan(&subID, &periodStart, &periodEnd); err != nil {
+		slog.ErrorContext(ctx, "provisionPlan: create subscription", "error", err, "tier", tier)
+		return status.Errorf(codes.Internal, "create subscription: %v", err)
+	}
+
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO usage_counters (
+		     subscription_id, period_start, period_end, tokens_limit
+		 ) VALUES ($1, $2, $3, $4)`,
+		subID, periodStart, periodEnd, tokensPerPeriod,
+	); err != nil {
+		slog.ErrorContext(ctx, "provisionPlan: create counter", "error", err, "tier", tier)
+		return status.Errorf(codes.Internal, "create counter: %v", err)
+	}
+
+	slog.InfoContext(ctx, "provisionPlan: subscription seeded",
+		"user_id", user.ID, "org_id", orgID, "subscription_id", subID,
+		"tier", tier, "tokens_per_period", tokensPerPeriod, "org_name", orgName)
 	return nil
 }
 

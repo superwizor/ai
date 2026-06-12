@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -645,6 +647,8 @@ type CRMSubscriber struct {
 	UsagePct          float64 `json:"usage_pct"`
 	// Sessions (all-time from sessions table)
 	TotalSessions     int32   `json:"total_sessions"`
+	// Last activity
+	LastSessionAt     string  `json:"last_session_at"`
 	// Urgency flags
 	CreditAlert       string  `json:"credit_alert"` // "critical" (≤1), "warning" (≤3), "low" (≤5), ""
 	ExpiryAlert       string  `json:"expiry_alert"` // "imminent" (≤3d), "soon" (≤7d), ""
@@ -654,9 +658,22 @@ type CRMSubscriber struct {
 	OrgName           string  `json:"org_name"`
 }
 
+// CRMGlobalStats — aggregate stats across the entire subscriber base (unfiltered).
+type CRMGlobalStats struct {
+	Total    int `json:"total"`
+	Critical int `json:"critical"`
+	Warning  int `json:"warning"`
+	Expiring int `json:"expiring"`
+	Churned  int `json:"churned"`
+}
+
 type crmResponse struct {
 	Subscribers []CRMSubscriber `json:"subscribers"`
 	Total       int             `json:"total"`
+	TotalAll    int             `json:"total_all"`
+	Page        int             `json:"page"`
+	PerPage     int             `json:"per_page"`
+	GlobalStats CRMGlobalStats  `json:"global_stats"`
 	Message     string          `json:"message"`
 }
 
@@ -677,6 +694,44 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 	statusFilter := r.URL.Query().Get("status")
 	alertFilter := r.URL.Query().Get("alert")
 
+	// Pagination params
+	page := 1
+	perPage := 25
+	if p := r.URL.Query().Get("page"); p != "" {
+		if v, err := strconv.Atoi(p); err == nil && v > 0 {
+			page = v
+		}
+	}
+	if pp := r.URL.Query().Get("per_page"); pp != "" {
+		if v, err := strconv.Atoi(pp); err == nil && v > 0 && v <= 100 {
+			perPage = v
+		}
+	}
+
+	// ── Global stats (unfiltered, for KPI chips) ──
+	var globalStats CRMGlobalStats
+	_ = h.pool.QueryRow(ctx, `
+		SELECT
+			COUNT(*) AS total,
+			COUNT(*) FILTER (WHERE GREATEST(0, COALESCE(uc.tokens_limit, p.tokens_per_period, 0) - COALESCE(uc.tokens_used, 0)) <= 1 AND COALESCE(uc.tokens_limit, p.tokens_per_period, 0) > 0) AS critical,
+			COUNT(*) FILTER (WHERE GREATEST(0, COALESCE(uc.tokens_limit, p.tokens_per_period, 0) - COALESCE(uc.tokens_used, 0)) BETWEEN 2 AND 3 AND COALESCE(uc.tokens_limit, p.tokens_per_period, 0) > 0) AS warning,
+			COUNT(*) FILTER (WHERE COALESCE(EXTRACT(DAY FROM s.current_period_end - now())::int, 999) <= 3) AS expiring,
+			COUNT(*) FILTER (WHERE s.status = 'CANCELED') AS churned
+		FROM subscriptions s
+		JOIN subscription_plans p ON p.id = s.plan_id
+		JOIN organizations o ON o.id = s.organization_id
+		JOIN users u ON u.organization_id = o.id
+		LEFT JOIN usage_counters uc ON uc.subscription_id = s.id
+			AND uc.period_start = s.current_period_start
+		LEFT JOIN crm_excluded_users ex ON ex.user_id = u.id
+		WHERE s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
+		  AND ex.user_id IS NULL
+		  AND u.email NOT LIKE '%@example.com'
+		  AND u.email NOT LIKE '%@superwizor.test'
+		  AND u.email NOT LIKE '%@test.pl'
+	`).Scan(&globalStats.Total, &globalStats.Critical, &globalStats.Warning, &globalStats.Expiring, &globalStats.Churned)
+
+	// ── Main subscriber query (with last_session_at + fixed days_until_renewal) ──
 	rows, err := h.pool.Query(ctx, `
 		SELECT
 			u.id AS user_id,
@@ -694,16 +749,17 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			COALESCE(s.provider::text, '') AS provider,
 			s.current_period_start,
 			s.current_period_end,
-			EXTRACT(DAY FROM s.current_period_end - now())::int AS days_until_renewal,
+			COALESCE(EXTRACT(DAY FROM s.current_period_end - now())::int, 0) AS days_until_renewal,
 
-			COALESCE(uc.tokens_limit, p.tokens_per_period) AS tokens_limit,
+			COALESCE(uc.tokens_limit, p.tokens_per_period, 0) AS tokens_limit,
 			COALESCE(uc.tokens_used, 0) AS tokens_used,
-			GREATEST(0, COALESCE(uc.tokens_limit, p.tokens_per_period) - COALESCE(uc.tokens_used, 0)) AS tokens_remaining,
+			GREATEST(0, COALESCE(uc.tokens_limit, p.tokens_per_period, 0) - COALESCE(uc.tokens_used, 0)) AS tokens_remaining,
 
 			COALESCE(sess_count.cnt, 0) AS total_sessions,
+			last_sess.last_session_at,
 
 			o.id AS org_id,
-			o.legal_name AS org_name
+			COALESCE(o.legal_name, '') AS org_name
 		FROM subscriptions s
 		JOIN subscription_plans p ON p.id = s.plan_id
 		JOIN organizations o ON o.id = s.organization_id
@@ -715,6 +771,11 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			FROM sessions sess
 			WHERE sess.therapist_id = u.id
 		) sess_count ON true
+		LEFT JOIN LATERAL (
+			SELECT MAX(created_at) AS last_session_at
+			FROM sessions sess2
+			WHERE sess2.therapist_id = u.id
+		) last_sess ON true
 		LEFT JOIN crm_excluded_users ex ON ex.user_id = u.id
 		WHERE s.status IN ('ACTIVE', 'TRIALING', 'PAST_DUE', 'CANCELED')
 		  AND ex.user_id IS NULL
@@ -730,10 +791,11 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 	}
 	defer rows.Close()
 
-	var subscribers []CRMSubscriber
+	var allSubscribers []CRMSubscriber
 	for rows.Next() {
 		var sub CRMSubscriber
 		var periodStart, periodEnd, userCreated time.Time
+		var lastSessionAt *time.Time
 		var daysUntilRenewal int
 		var tokensLimit, tokensUsed, tokensRemaining, totalSessions int32
 
@@ -745,6 +807,7 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			&periodStart, &periodEnd, &daysUntilRenewal,
 			&tokensLimit, &tokensUsed, &tokensRemaining,
 			&totalSessions,
+			&lastSessionAt,
 			&sub.OrgID, &sub.OrgName,
 		); err != nil {
 			h.logger.ErrorContext(ctx, "crm: scan row", "error", err)
@@ -753,8 +816,13 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 
 		sub.CreatedAt = userCreated.Format("2006-01-02")
 		sub.PeriodStart = periodStart.Format("2006-01-02")
-		sub.PeriodEnd = periodEnd.Format("2006-01-02")
-		sub.DaysUntilRenewal = daysUntilRenewal
+		if !periodEnd.IsZero() && periodEnd.Year() > 2000 {
+			sub.PeriodEnd = periodEnd.Format("2006-01-02")
+			sub.DaysUntilRenewal = daysUntilRenewal
+		}
+		if lastSessionAt != nil && !lastSessionAt.IsZero() {
+			sub.LastSessionAt = lastSessionAt.Format("2006-01-02")
+		}
 		sub.TokensLimit = tokensLimit
 		sub.TokensUsed = tokensUsed
 		sub.TokensRemaining = tokensRemaining
@@ -777,14 +845,16 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			urgency += 10
 		}
 
-		// Expiry alerts
-		switch {
-		case daysUntilRenewal <= 3:
-			sub.ExpiryAlert = "imminent"
-			urgency += 15
-		case daysUntilRenewal <= 7:
-			sub.ExpiryAlert = "soon"
-			urgency += 5
+		// Expiry alerts — only for valid period_end
+		if sub.PeriodEnd != "" {
+			switch {
+			case daysUntilRenewal <= 3:
+				sub.ExpiryAlert = "imminent"
+				urgency += 15
+			case daysUntilRenewal <= 7:
+				sub.ExpiryAlert = "soon"
+				urgency += 5
+			}
 		}
 
 		// Boost urgency for churned users
@@ -807,21 +877,33 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			continue
 		}
 
-		subscribers = append(subscribers, sub)
+		allSubscribers = append(allSubscribers, sub)
 	}
 
 	// Sort by urgency score (highest first)
-	for i := 0; i < len(subscribers); i++ {
-		for j := i + 1; j < len(subscribers); j++ {
-			if subscribers[j].UrgencyScore > subscribers[i].UrgencyScore {
-				subscribers[i], subscribers[j] = subscribers[j], subscribers[i]
-			}
-		}
+	sort.Slice(allSubscribers, func(i, j int) bool {
+		return allSubscribers[i].UrgencyScore > allSubscribers[j].UrgencyScore
+	})
+
+	// Paginate
+	totalFiltered := len(allSubscribers)
+	start := (page - 1) * perPage
+	if start > totalFiltered {
+		start = totalFiltered
 	}
+	end := start + perPage
+	if end > totalFiltered {
+		end = totalFiltered
+	}
+	pageSubscribers := allSubscribers[start:end]
 
 	writeJSON(w, http.StatusOK, crmResponse{
-		Subscribers: subscribers,
-		Total:       len(subscribers),
+		Subscribers: pageSubscribers,
+		Total:       totalFiltered,
+		TotalAll:    globalStats.Total,
+		Page:        page,
+		PerPage:     perPage,
+		GlobalStats: globalStats,
 		Message:     "ok",
 	})
 }

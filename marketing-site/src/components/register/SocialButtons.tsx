@@ -23,6 +23,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { FirebaseError } from "firebase/app";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -40,6 +41,8 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
   const prefix = locale === "en" ? "/en" : "";
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const planSlug = searchParams.get("plan");
 
   // Shared post-social-sign-in routing.
   const handleSocialUser = async (user: {
@@ -49,11 +52,7 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
   }) => {
     try {
       await identityClient.getUserByFirebaseUID({ firebaseUid: user.uid });
-      // Existing user → bounce to Flutter app. Firebase Auth is
-      // origin-scoped so they'll re-auth on the Flutter origin —
-      // unavoidable cost of R3 origin discipline. DNS for
-      // app.superwizor.ai is still NXDOMAIN; use web.app subdomain.
-      window.location.href = "https://superwizor-app.web.app/";
+      window.location.href = prefix ? `${prefix}/dashboard/` : "/dashboard/";
       return;
     } catch (e) {
       if (!(e instanceof ConnectError) || e.code !== Code.NotFound) {
@@ -69,6 +68,7 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
       firstName,
       lastName,
       email: user.email ?? "",
+      ...(planSlug ? { plan: planSlug } : {}),
     });
     window.location.href = `${prefix}/register/${flow}/finish?${params}`;
   };
@@ -141,7 +141,7 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
       {err && (
         <p
           role="alert"
-          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-2 font-serif text-sm text-frost text-center"
+          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-2 font-sans text-sm text-frost text-center"
         >
           {err}
         </p>
@@ -152,7 +152,7 @@ export function SocialButtons({ flow }: { flow: FlowKind }) {
           <span className="w-full border-t border-frost/10"></span>
         </div>
         <div className="relative flex justify-center">
-          <span className="bg-evergreen px-3 font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/60">
+          <span className="bg-evergreen px-3 font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/60">
             {t("or")}
           </span>
         </div>

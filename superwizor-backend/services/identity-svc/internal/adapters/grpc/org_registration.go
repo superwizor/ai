@@ -283,7 +283,7 @@ func (s *Server) seedTrialForOrg(ctx context.Context, tx pgx.Tx, orgID uuid.UUID
 		     status, current_period_start, current_period_end
 		 ) VALUES (
 		     $1, $2, 'MANUAL', $3,
-		     'TRIALING', NOW(), NOW() + INTERVAL '100 years'
+		     'TRIALING', NOW(), NOW() + INTERVAL '30 days'
 		 )
 		 RETURNING id, current_period_start, current_period_end`,
 		orgID, planID, "trial-"+orgID.String(),

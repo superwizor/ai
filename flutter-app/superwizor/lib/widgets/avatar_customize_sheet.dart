@@ -202,9 +202,9 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
               TextField(
                 controller: _labelController,
                 textAlign: TextAlign.center,
-                maxLength: 2,
+                maxLength: null,
                 inputFormatters: [
-                  LengthLimitingTextInputFormatter(2),
+                  _GraphemeClusterLengthFormatter(2),
                 ],
                 onChanged: (_) {
                   setState(() {});
@@ -319,6 +319,30 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A [TextInputFormatter] that limits input by grapheme cluster count rather
+/// than UTF-16 code-unit count.  This allows emoji characters (which are
+/// multi-code-unit) to be treated as a single "character" toward [maxLength].
+class _GraphemeClusterLengthFormatter extends TextInputFormatter {
+  final int maxLength;
+  const _GraphemeClusterLengthFormatter(this.maxLength);
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final clusters = newValue.text.characters;
+    if (clusters.length <= maxLength) return newValue;
+
+    // Truncate to maxLength grapheme clusters
+    final truncated = clusters.take(maxLength).toString();
+    return TextEditingValue(
+      text: truncated,
+      selection: TextSelection.collapsed(offset: truncated.length),
     );
   }
 }

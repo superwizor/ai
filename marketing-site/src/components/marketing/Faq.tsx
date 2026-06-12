@@ -8,6 +8,7 @@ const faqKeys = ["rodo", "dpa", "consent", "training", "modality"] as const;
 export function Faq() {
   const t = useTranslations("b.faq");
   const tItems = useTranslations("b.faq.items");
+  const tHero = useTranslations("hero");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const toggleFaq = (index: number) => {
@@ -62,6 +63,20 @@ export function Faq() {
             );
           })}
         </div>
+
+        {/* CTA Button */}
+        <div className="mt-16 flex flex-col items-center">
+          <a
+            href="#cennik"
+            className="group relative inline-flex items-center justify-center rounded-[12px] bg-[#004D54] text-frost font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 transition-all duration-300 hover:bg-[#002E32] active:scale-[0.97] whitespace-nowrap overflow-hidden"
+          >
+            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+            <span className="relative">
+              {tHero("ctaPrimary")}
+            </span>
+          </a>
+        </div>
+
       </div>
     </section>
   );

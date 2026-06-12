@@ -40,6 +40,7 @@ import (
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	billingv1connect "github.com/superwizor-ai/backend/gen/go/billing/v1/billingv1connect"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
+	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	"connectrpc.com/connect"
 
 	"github.com/superwizor-ai/backend/pkg/analytics"
@@ -117,6 +118,14 @@ func main() {
 		identityClient = dialIdentitySvc(rootCtx, identityURL)
 	}
 
+	notificationURL := os.Getenv("NOTIFICATION_SVC_URL")
+	var notificationClient notificationv1.NotificationServiceClient
+	if notificationURL != "" {
+		notificationClient = dialNotificationSvc(rootCtx, notificationURL)
+	} else {
+		slog.Warn("billing-svc: NOTIFICATION_SVC_URL unset — /contact endpoint will fail to forward submissions")
+	}
+
 	billingServer := grpcadapter.NewServer(pool, version, analyticsCollector)
 
 	// gRPC server (in-process — handler reused via ServeHTTP).
@@ -149,6 +158,7 @@ func main() {
 	httpadapter.NewAdminHandler(pool, logger).RegisterRoutes(httpMux, adminAuth, schedAuth)
 	httpadapter.NewCRMHandler(pool, logger).RegisterCRMRoutes(httpMux, adminAuth)
 	httpadapter.NewStripeHandler(pool, logger).RegisterRoutes(httpMux)
+	httpadapter.NewContactHandler(notificationClient, logger).RegisterRoutes(httpMux)
 	// Connect-RPC surface — browser callers reach the same business
 	// logic as the gRPC path via the ConnectAdapter. The connectmd
 	// interceptor copies HTTP request headers into the ctx as gRPC
@@ -319,4 +329,49 @@ func dialIdentitySvc(ctx context.Context, identityURL string) identityv1.Identit
 		os.Exit(1)
 	}
 	return identityv1.NewIdentityServiceClient(conn)
+}
+
+// dialNotificationSvc dial the notification-svc over gRPC.
+func dialNotificationSvc(ctx context.Context, notificationURL string) notificationv1.NotificationServiceClient {
+	if strings.HasPrefix(notificationURL, "https://") {
+		tokenSource, err := idtoken.NewTokenSource(ctx, notificationURL)
+		if err != nil {
+			slog.Error("idtoken source for notification", "error", err)
+			os.Exit(1)
+		}
+		u, err := url.Parse(notificationURL)
+		if err != nil {
+			slog.Error("parse notification url", "error", err)
+			os.Exit(1)
+		}
+		target := u.Host
+		if u.Port() == "" {
+			target = u.Host + ":443"
+		}
+		conn, err := grpc.NewClient(
+			target,
+			grpc.WithTransportCredentials(credentials.NewTLS(nil)),
+			grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
+		)
+		if err != nil {
+			slog.Error("dial notification https", "error", err)
+			os.Exit(1)
+		}
+		return notificationv1.NewNotificationServiceClient(conn)
+	}
+	u, err := url.Parse(notificationURL)
+	if err != nil {
+		slog.Error("parse notification url", "error", err)
+		os.Exit(1)
+	}
+	target := u.Host
+	if target == "" {
+		target = notificationURL
+	}
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		slog.Error("dial notification insecure", "error", err)
+		os.Exit(1)
+	}
+	return notificationv1.NewNotificationServiceClient(conn)
 }

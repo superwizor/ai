@@ -20,7 +20,7 @@ export function CtaMid() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
-            href={`${prefix}/register/therapist`}
+            href="#cennik"
             className="group relative inline-flex items-center justify-center rounded-[12px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 transition-all duration-300 active:scale-[0.97] whitespace-nowrap overflow-hidden"
           >
             <span className="absolute inset-0 rounded-[12px] bg-ember/40 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10 scale-110" />

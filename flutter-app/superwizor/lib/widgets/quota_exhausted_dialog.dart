@@ -4,12 +4,16 @@
 // Reference: docs/16_BILLING_SERVICE_PHASE_3.md §16.4.1 + UX-1.
 //
 // Critical UX rule (UX-1, design doc): NIE wolno zablokować nagrywania.
-// Three actions:
-//   - Anuluj           → returns QuotaExhaustedChoice.cancel
-//   - Rozszerz plan    → QuotaExhaustedChoice.upgrade (caller may navigate)
-//   - Nagrywaj lokalnie → QuotaExhaustedChoice.recordLocally — caller
-//                          continues recording into encrypted local store.
-//                          Audio survives until tokens refresh.
+//
+// Apple Reader App compliance: ZERO upgrade buttons, ZERO pricing links,
+// ZERO references to web store. Upsell happens asynchronously via email
+// (notification-svc sends trial_exhausted email with /upgrade link).
+//
+// Two actions:
+//   - Anuluj             → returns QuotaExhaustedChoice.cancel
+//   - Nagrywaj lokalnie  → QuotaExhaustedChoice.recordLocally — caller
+//                           continues recording into encrypted local store.
+//                           Audio survives until tokens refresh.
 
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
@@ -17,7 +21,6 @@ import '../theme/euphire_theme.dart';
 
 enum QuotaExhaustedChoice {
   cancel,
-  upgrade,
   recordLocally,
 }
 
@@ -68,17 +71,8 @@ Future<QuotaExhaustedChoice> showQuotaExhaustedDialog(BuildContext context) asyn
             ),
           ),
         ),
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, QuotaExhaustedChoice.upgrade),
-          child: Text(
-            l.billing_expand_plan_cta,
-            style: const TextStyle(
-              color: EuphireColors.frostWhite,
-              fontFamily: 'Montserrat',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
+        // NOTE: "Rozszerz plan" / "Upgrade plan" button REMOVED for Apple
+        // Reader App compliance. Upsell goes via email (outside the app).
         FilledButton(
           onPressed: () => Navigator.pop(ctx, QuotaExhaustedChoice.recordLocally),
           style: FilledButton.styleFrom(
@@ -98,3 +92,4 @@ Future<QuotaExhaustedChoice> showQuotaExhaustedDialog(BuildContext context) asyn
   );
   return choice ?? QuotaExhaustedChoice.cancel;
 }
+

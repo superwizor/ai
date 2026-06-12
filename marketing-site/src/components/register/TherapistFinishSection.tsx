@@ -27,7 +27,7 @@ function Inner() {
 
   return (
     <>
-      <p className="font-serif text-mist text-center mt-4 max-w-md mx-auto text-base leading-relaxed">
+      <p className="font-sans text-mist text-center mt-4 max-w-md mx-auto text-base leading-relaxed">
         {firstName
           ? t("finishSubhead", { firstName })
           : t("finishGenericSubhead")}

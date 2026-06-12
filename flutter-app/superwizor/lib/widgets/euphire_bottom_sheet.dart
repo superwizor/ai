@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/euphire_theme.dart';
 
 Future<T?> showEuphireBottomSheet<T>({
   required BuildContext context,

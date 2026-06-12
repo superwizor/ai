@@ -39,7 +39,7 @@ export function ResendVerificationButton() {
   // Post-verification destination on the same origin. Same-origin
   // relative path so this works in dev (localhost), preview channels,
   // and prod without per-env config.
-  const accountUrl = `/${locale}/account/`;
+  const onboardingUrl = `/${locale}/onboarding/`;
 
   // Poll for verification. We use auth.currentUser.reload() because
   // the Firebase JS SDK doesn't push email-verified changes
@@ -58,7 +58,7 @@ export function ResendVerificationButton() {
           // before the redirect — better UX than instant
           // window.location change with no feedback.
           setTimeout(() => {
-            window.location.href = accountUrl;
+            window.location.href = onboardingUrl;
           }, 1500);
         }
       } catch {
@@ -80,7 +80,7 @@ export function ResendVerificationButton() {
       if (pollRef.current) clearInterval(pollRef.current);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [user, status, accountUrl]);
+  }, [user, status, onboardingUrl]);
 
   const onResend = async () => {
     if (!user) return;
@@ -101,10 +101,10 @@ export function ResendVerificationButton() {
         <p className="font-display text-frost text-lg font-semibold">
           ✓ {t("verifiedHeading")}
         </p>
-        <p className="font-serif text-mist text-sm">{t("verifiedBody")}</p>
+        <p className="font-sans text-mist text-sm">{t("verifiedBody")}</p>
         <a
-          href={accountUrl}
-          className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition"
+          href={onboardingUrl}
+          className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition"
         >
           {t("verifiedGoToAccount")}
         </a>
@@ -117,7 +117,7 @@ export function ResendVerificationButton() {
       {user && (
         <p
           aria-live="polite"
-          className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/60"
+          className="font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/60"
         >
           {t("verifyingStatus")}
         </p>
@@ -125,7 +125,7 @@ export function ResendVerificationButton() {
       <button
         onClick={onResend}
         disabled={!user || status === "sending"}
-        className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {status === "sending"
           ? t("resending")

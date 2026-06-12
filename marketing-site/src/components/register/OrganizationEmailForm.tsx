@@ -13,7 +13,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
@@ -35,6 +35,7 @@ import {
   FieldShell,
   Select,
   TextInput,
+  PhoneInput,
 } from "@/components/forms/Field";
 
 export function OrganizationEmailForm() {
@@ -57,6 +58,7 @@ export function OrganizationEmailForm() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<OrganizationEmailForm>({
     resolver: zodResolver(organizationEmailSchema),
@@ -147,7 +149,7 @@ export function OrganizationEmailForm() {
     <form onSubmit={onSubmit} className="grid gap-5" noValidate>
       {/* Founder section --------------------------------------------- */}
       <section>
-        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
+        <h2 className="font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
           {tBody("sectionFounder")}
         </h2>
         <div className="grid gap-4">
@@ -180,6 +182,7 @@ export function OrganizationEmailForm() {
           <FieldShell
             id="phoneNumber"
             label={t("phoneNumber")}
+            hint={t("phoneNumberHint")}
             required
             // The zod schema (requiredPhone) emits "phone-required"
             // for empty and "phone-invalid" for a malformed value; we
@@ -192,13 +195,19 @@ export function OrganizationEmailForm() {
                 : tOrgErr("phoneRequired"))
             }
           >
-            <TextInput
-              id="phoneNumber"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder={t("phoneNumberPlaceholder")}
-              {...register("phoneNumber")}
+            <Controller
+              control={control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <PhoneInput
+                  id="phoneNumber"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  error={!!errors.phoneNumber}
+                  defaultDialCode={locale === "pl" ? "+48" : "+44"}
+                  placeholder={t("phoneNumberPlaceholder")}
+                />
+              )}
             />
           </FieldShell>
         </div>
@@ -206,7 +215,7 @@ export function OrganizationEmailForm() {
 
       {/* Organisation section ---------------------------------------- */}
       <section>
-        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
+        <h2 className="font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
           {tBody("sectionOrg")}
         </h2>
         <div className="grid gap-4">
@@ -233,7 +242,7 @@ export function OrganizationEmailForm() {
 
       {/* Headquarters address section ------------------------------- */}
       <section>
-        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
+        <h2 className="font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
           {tBody("sectionAddress")}
         </h2>
         <div className="grid gap-4">
@@ -303,7 +312,7 @@ export function OrganizationEmailForm() {
           })}
         />
         {errors.hasAcceptedTos && (
-          <p role="alert" className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-magma">
+          <p role="alert" className="font-sans text-[10px] uppercase tracking-[var(--tracking-label)] text-magma">
             {tErr("tosRequired")}
           </p>
         )}
@@ -318,7 +327,7 @@ export function OrganizationEmailForm() {
       {serverError && (
         <p
           role="alert"
-          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost"
+          className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-sans text-sm text-frost"
         >
           {serverError}
         </p>
@@ -327,12 +336,12 @@ export function OrganizationEmailForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        className="mt-2 inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-sans uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {isSubmitting ? tCommon("submitting") : tCommon("submit")}
       </button>
 
-      <p className="font-serif text-sm text-mist text-center">
+      <p className="font-sans text-sm text-mist text-center">
         {tCommon("alreadyHaveAccount")}{" "}
         <a href={`${prefix}/login`} className="text-ember underline">
           {tCommon("loginCta")}

@@ -46,6 +46,9 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _firstNameFocus = FocusNode();
+  final _lastNameFocus = FocusNode();
+  final _emailFocus = FocusNode();
   String _languageCode = 'pl-PL';
   bool _duplicateError = false;
 
@@ -79,7 +82,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     final last = _lastNameController.text.trim();
     if (first.isEmpty && last.isEmpty) return '';
     if (last.isNotEmpty) {
-      return '$first ${last[0]}.'.trim();
+      return '$first ${last.characters.first}.'.trim();
     }
     return first;
   }
@@ -91,6 +94,9 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
+    _firstNameFocus.dispose();
+    _lastNameFocus.dispose();
+    _emailFocus.dispose();
     _avatarLabelController.dispose();
     _pageController.dispose();
     super.dispose();
@@ -106,8 +112,8 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     final f = _firstNameController.text.trim();
     final l = _lastNameController.text.trim();
     if (f.isEmpty && l.isEmpty) return '?';
-    final first = f.isNotEmpty ? f[0].toUpperCase() : '';
-    final last = l.isNotEmpty ? l[0].toUpperCase() : '';
+    final first = f.isNotEmpty ? f.characters.first.toUpperCase() : '';
+    final last = l.isNotEmpty ? l.characters.first.toUpperCase() : '';
     return '$first$last'.trim();
   }
 
@@ -329,6 +335,9 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
             label: t.addPatient_first_name_label,
             errorText: _duplicateError ? t.addPatient_duplicate_header : null,
             autofocus: true,
+            focusNode: _firstNameFocus,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => _lastNameFocus.requestFocus(),
           ),
           const SizedBox(height: 12),
 
@@ -337,6 +346,9 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
             controller: _lastNameController,
             label: t.addPatient_last_name_label,
             errorText: _duplicateError ? '' : null,
+            focusNode: _lastNameFocus,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => _emailFocus.requestFocus(),
           ),
           const SizedBox(height: 12),
 
@@ -346,6 +358,15 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
             label: t.addPatient_email_label,
             hint: t.addPatient_email_hint,
             keyboardType: TextInputType.emailAddress,
+            focusNode: _emailFocus,
+            // "Done" on the last text field — pressing it auto-advances
+            // to Step 2 when the first name (required field) is filled.
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) {
+              if (_firstNameController.text.trim().isNotEmpty) {
+                _goToPage(1);
+              }
+            },
           ),
           const SizedBox(height: 20),
 
@@ -619,8 +640,8 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
             child: TextField(
               controller: _avatarLabelController,
               textAlign: TextAlign.center,
-              maxLength: 2,
-              inputFormatters: [LengthLimitingTextInputFormatter(2)],
+              maxLength: null,
+              inputFormatters: [_GraphemeClusterLengthFormatter(2)],
               onChanged: (_) => setState(() {}),
               style: const TextStyle(
                 fontFamily: 'Montserrat',
@@ -911,6 +932,29 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
           onPressed: () => Navigator.of(ctx).pop(),
         ),
       ),
+    );
+  }
+}
+
+/// A [TextInputFormatter] that limits input by grapheme cluster count rather
+/// than UTF-16 code-unit count.  This allows emoji characters (which are
+/// multi-code-unit) to be treated as a single "character" toward [maxLength].
+class _GraphemeClusterLengthFormatter extends TextInputFormatter {
+  final int maxLength;
+  const _GraphemeClusterLengthFormatter(this.maxLength);
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final clusters = newValue.text.characters;
+    if (clusters.length <= maxLength) return newValue;
+
+    final truncated = clusters.take(maxLength).toString();
+    return TextEditingValue(
+      text: truncated,
+      selection: TextSelection.collapsed(offset: truncated.length),
     );
   }
 }

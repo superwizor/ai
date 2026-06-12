@@ -2097,87 +2097,217 @@ class _NoteCard extends ConsumerWidget {
                 ],
               ),
             ),
-            // ── Options menu (edit + delete) ──
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'edit') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => NoteEditorScreen(
-                        patientId: patientId,
-                        existingNote: note,
-                      ),
-                    ),
-                  );
-                } else if (value == 'send') {
-                  _sendNoteToClient(context, ref, l, patientId, note);
-                } else if (value == 'delete') {
-                  _showDeleteConfirmation(context, ref, l);
-                }
-              },
+            // ── Options menu (bottom sheet) ──
+            IconButton(
+              onPressed: () => _showNoteOptionsSheet(
+                context, ref, patientId, note),
               icon: Icon(
                 Icons.more_vert,
                 color: EuphireColors.mist.withValues(alpha: 0.4),
                 size: 20,
               ),
-              color: const Color(0xFF0A2326),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit_rounded, size: 18,
-                          color: EuphireColors.mist.withValues(alpha: 0.7)),
-                      const SizedBox(width: 10),
-                      Text(l.note_edit_label,
-                          style: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 14,
-                              color: EuphireColors.frostWhite)),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'send',
-                  child: Row(
-                    children: [
-                      Icon(Icons.outgoing_mail, size: 18,
-                          color: EuphireColors.ember.withValues(alpha: 0.9)),
-                      const SizedBox(width: 10),
-                      Text(l.note_send_to_client,
-                          style: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 14,
-                              color: EuphireColors.frostWhite)),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete_outline_rounded, size: 18,
-                          color: EuphireColors.magma.withValues(alpha: 0.8)),
-                      const SizedBox(width: 10),
-                      Text(l.note_delete_action,
-                          style: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 14,
-                              color: EuphireColors.magma)),
-                    ],
-                  ),
-                ),
-              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  void _showNoteOptionsSheet(
+      BuildContext context, WidgetRef ref, String patientId, PatientNote note) {
+    final l = AppLocalizations.of(context);
+    final months = [
+      'Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze',
+      'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru',
+    ];
+    final d = note.createdAt;
+    final dateStr = '${d.day} ${months[d.month - 1]} ${d.year}';
+    final timeStr =
+        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    final displayTitle =
+        note.title.isNotEmpty ? note.title : l.note_untitled;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0A2326),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Drag handle ──
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Note header (emoji + title + date) ──
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: EuphireColors.ember.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text('📝', style: TextStyle(fontSize: 22)),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            displayTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: EuphireColors.frostWhite,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '$dateStr  •  $timeStr',
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 12,
+                              color: EuphireColors.mist.withValues(alpha: 0.55),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+                Divider(
+                  color: Colors.white.withValues(alpha: 0.08), height: 1),
+                const SizedBox(height: 8),
+
+                // ── Action: Edit ──
+                _NoteOptionTile(
+                  icon: Icons.edit_rounded,
+                  iconColor: EuphireColors.ember,
+                  title: l.note_edit_label,
+                  subtitle: 'Zmień tytuł lub treść notatki',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NoteEditorScreen(
+                          patientId: patientId,
+                          existingNote: note,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                // ── Action: Copy ──
+                _NoteOptionTile(
+                  icon: Icons.copy_rounded,
+                  iconColor: EuphireColors.mist,
+                  title: 'Kopiuj treść',
+                  subtitle: 'Skopiuj notatkę do schowka',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    final content = [
+                      if (note.title.isNotEmpty) note.title,
+                      if (note.text.isNotEmpty) note.text,
+                    ].join('\n\n');
+                    Clipboard.setData(ClipboardData(text: content));
+                    EuphireToast.success(context,
+                        message: 'Skopiowano do schowka');
+                  },
+                ),
+
+                // ── Action: Send to client ──
+                _NoteOptionTile(
+                  icon: note.sentToPatient
+                      ? Icons.mark_email_read_outlined
+                      : Icons.outgoing_mail,
+                  iconColor: EuphireColors.ember,
+                  title: l.note_send_to_client,
+                  subtitle: note.sentToPatient
+                      ? 'Wysłano ${_formatSentDate(note.sentToPatientAt!)}'
+                      : 'Wyślij notatkę mailem do klienta',
+                  trailing: note.sentToPatient
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2E7D32).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text('Wysłano',
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF81C784),
+                              )),
+                        )
+                      : null,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _sendNoteToClient(context, ref, l, patientId, note);
+                  },
+                ),
+
+                const SizedBox(height: 4),
+                Divider(
+                  color: Colors.white.withValues(alpha: 0.08), height: 1),
+                const SizedBox(height: 4),
+
+                // ── Action: Delete (destructive) ──
+                _NoteOptionTile(
+                  icon: Icons.delete_outline_rounded,
+                  iconColor: EuphireColors.magma,
+                  title: l.note_delete_action,
+                  subtitle: 'Trwale usuń tę notatkę',
+                  titleColor: EuphireColors.magma,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showDeleteConfirmation(context, ref, l);
+                  },
+                ),
+
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatSentDate(DateTime dt) {
+    final months = [
+      'sty', 'lut', 'mar', 'kwi', 'maj', 'cze',
+      'lip', 'sie', 'wrz', 'paź', 'lis', 'gru',
+    ];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 
   void _showDeleteConfirmation(
@@ -2438,6 +2568,96 @@ class _NoteCard extends ConsumerWidget {
         EuphireToast.error(context, message: l.note_save_error);
       }
     }
+  }
+}
+
+// ─── Note Option Tile (used in the note options bottom sheet) ────────
+
+class _NoteOptionTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final Color? titleColor;
+  final Widget? trailing;
+  final VoidCallback onTap;
+
+  const _NoteOptionTile({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    this.titleColor,
+    this.trailing,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        splashColor: EuphireColors.ember.withValues(alpha: 0.08),
+        highlightColor: Colors.white.withValues(alpha: 0.04),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          child: Row(
+            children: [
+              // ── Icon circle ──
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, size: 20, color: iconColor),
+              ),
+              const SizedBox(width: 14),
+              // ── Text ──
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: titleColor ?? EuphireColors.frostWhite,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 12,
+                        color: EuphireColors.mist.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // ── Trailing ──
+              if (trailing != null) ...[
+                const SizedBox(width: 8),
+                trailing!,
+              ],
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: EuphireColors.mist.withValues(alpha: 0.3),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -2932,6 +3152,13 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                       maxLength: 5000,
                       textAlignVertical: TextAlignVertical.top,
                       textCapitalization: TextCapitalization.sentences,
+                      // In action-plan mode, show a "Done" key so the user can
+                      // dismiss the keyboard and reach the Save / Send buttons
+                      // in the bottom bar — without this, iOS has no way to
+                      // close the keyboard for a multiline + expands field.
+                      textInputAction: widget.actionPlanMode
+                          ? TextInputAction.done
+                          : TextInputAction.newline,
                       style: const TextStyle(
                         fontFamily: 'Montserrat',
                         fontSize: 15,

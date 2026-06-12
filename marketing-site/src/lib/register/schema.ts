@@ -52,7 +52,7 @@ export const therapistEmailSchema = z.object({
   credentialsNumber: z.string().optional(),
   modalityId: z.string().uuid({ message: "modality-required" }),
   uiLanguage: z.enum(["pl", "en"]),
-  phoneNumber: optionalPhone,
+  phoneNumber: requiredPhone,
   hasAcceptedTos: z.literal(true),
   hasMarketingConsent: z.boolean().optional(),
 });
@@ -127,7 +127,7 @@ export const therapistFinishSchema = z.object({
   lastName: z.string().min(1),
   modalityId: z.string().uuid({ message: "modality-required" }),
   uiLanguage: z.enum(["pl", "en"]),
-  phoneNumber: optionalPhone,
+  phoneNumber: requiredPhone,
   professionalTitle: z.string().optional(),
   hasAcceptedTos: z.literal(true),
   hasMarketingConsent: z.boolean().optional(),

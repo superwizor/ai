@@ -1,3 +1,5 @@
+"use client";
+
 // Top navigation for the marketing surfaces.
 //
 // Brand mark on the left, language switcher + "Log in" (origin-discipline
@@ -5,14 +7,28 @@
 // right. Sticky on scroll so the CTA is always one tap away.
 
 import { useTranslations, useLocale } from "next-intl";
+import { usePathname } from "next/navigation";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 
 export function Navbar() {
   const t = useTranslations("nav");
   const locale = useLocale();
+  const pathname = usePathname() ?? "";
 
   // Marketing routes — PL has no prefix, EN gets /en
   const prefix = locale === "en" ? "/en" : "";
+
+  // Check if we are on the homepage to keep relative anchor links for Playwright E2E tests
+  const isHome =
+    pathname === "/" ||
+    pathname === "/pl" ||
+    pathname === "/en" ||
+    pathname === "/pl/" ||
+    pathname === "/en/";
+
+  const cennikHref = isHome ? "#cennik" : `${prefix}/#cennik`;
+  const jakHref = isHome ? "#jak" : `${prefix}/#jak`;
+  const bezpieczenstwoHref = isHome ? "#bezpieczenstwo" : `${prefix}/#bezpieczenstwo`;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[#E2DED5]/60 bg-[#FBFAF7]/85 backdrop-blur-md">
@@ -33,19 +49,19 @@ export function Navbar() {
 
         <nav className="flex items-center gap-2 sm:gap-3">
           <a
-            href="#jak"
+            href={jakHref}
             className="hidden sm:inline font-display text-sm font-semibold text-[#4E5A55] hover:text-[#1B2522] transition px-3 py-2"
           >
             {locale === "en" ? "How it works" : "Jak to działa"}
           </a>
           <a
-            href="#cennik"
+            href={cennikHref}
             className="hidden sm:inline font-display text-sm font-semibold text-[#4E5A55] hover:text-[#1B2522] transition px-3 py-2"
           >
             {t("pricing")}
           </a>
           <a
-            href="#bezpieczenstwo"
+            href={bezpieczenstwoHref}
             className="hidden sm:inline font-display text-sm font-semibold text-[#4E5A55] hover:text-[#1B2522] transition px-3 py-2"
           >
             {t("security")}
@@ -59,8 +75,8 @@ export function Navbar() {
             {t("login")}
           </a>
           <a
-            href={`${prefix}/register/therapist`}
-            className="inline-flex items-center rounded-button bg-evergreen text-frost hover:bg-[#002E32] font-mono uppercase tracking-[var(--tracking-label)] text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 transition active:scale-[0.98]"
+            href={cennikHref}
+            className="inline-flex items-center rounded-button bg-ember text-obsidian hover:brightness-110 font-sans uppercase tracking-[var(--tracking-label)] text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 transition active:scale-[0.98] font-bold"
           >
             {t("register")}
           </a>

@@ -33,7 +33,7 @@
   └─ *Wgrywa aplikację kablem na telefon (wymagane do testowania audio)*
 
 * 🍏 **`./KOMENDY/5`**
-  └─ *Buduje produkcyjną paczkę .ipa i otwiera środowisko Xcode*
+  └─ *Buduje produkcyjną paczkę .ipa i otwiera Xcode Organizer (gotowy do wysłania do TestFlight)*
 
 ---
 

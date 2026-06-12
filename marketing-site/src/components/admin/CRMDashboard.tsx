@@ -39,6 +39,7 @@ type CRMSubscriber = {
   tokens_remaining: number;
   usage_pct: number;
   total_sessions: number;
+  last_session_at: string;
   credit_alert: string;
   expiry_alert: string;
   urgency_score: number;
@@ -65,6 +66,7 @@ type UserDetail = {
   notes: CRMNote[];
   tags: CRMTag[];
   follow_ups: FollowUp[];
+  email_logs: EmailLog[];
   excluded: boolean;
   lifecycle_stage: string;
   last_session_at: string;
@@ -72,6 +74,7 @@ type UserDetail = {
 
 type CRMNote = { id: string; body: string; created_at: string };
 type CRMTag = { id: string; tag: string };
+type EmailLog = { id: string; template_id: string; subject: string; recipient_email: string; sent_at: string };
 type FollowUp = {
   id: string;
   target_user_id: string;
@@ -84,6 +87,14 @@ type FollowUp = {
   completed: boolean;
   overdue: boolean;
   created_at: string;
+};
+
+type GlobalStats = {
+  total: number;
+  critical: number;
+  warning: number;
+  expiring: number;
+  churned: number;
 };
 
 type FilterState = {
@@ -221,14 +232,42 @@ export function CRMDashboard() {
   const [subscribers, setSubscribers] = useState<CRMSubscriber[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FilterState>({
-    tier: "", status: "", alert: "", search: "",
+  const [filters, setFilters] = useState<FilterState>(() => {
+    if (typeof window === "undefined") return { tier: "", status: "", alert: "", search: "" };
+    const p = new URLSearchParams(window.location.search);
+    return { tier: p.get("tier") || "", status: p.get("status") || "", alert: p.get("alert") || "", search: p.get("search") || "" };
   });
+
+  // Pagination
+  const [page, setPage] = useState(() => {
+    if (typeof window === "undefined") return 1;
+    return parseInt(new URLSearchParams(window.location.search).get("page") || "1");
+  });
+  const [perPage] = useState(25);
+  const [totalFiltered, setTotalFiltered] = useState(0);
+  const [totalAll, setTotalAll] = useState(0);
+
+  // Global stats (KPI chips — always full database)
+  const [globalStats, setGlobalStats] = useState<GlobalStats>({ total: 0, critical: 0, warning: 0, expiring: 0, churned: 0 });
+
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<string>("urgency");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  // Bulk selection
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Confirmation modal
+  const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
+  // Toast notification
+  const [toast, setToast] = useState<string | null>(null);
 
   // Detail drawer
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerLoading, setDrawerLoading] = useState(false);
+  const [drawerError, setDrawerError] = useState<string | null>(null);
 
   // Notes
   const [newNote, setNewNote] = useState("");
@@ -243,14 +282,30 @@ export function CRMDashboard() {
   const [overdueCount, setOverdueCount] = useState(0);
 
   // Email composer
-  const [emailTarget, setEmailTarget] = useState<{ name: string; email: string; remaining?: number; period_end?: string } | null>(null);
+  const [emailTarget, setEmailTarget] = useState<{ name: string; email: string; userId: string; remaining?: number; period_end?: string } | null>(null);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
+  const [emailTemplateId, setEmailTemplateId] = useState("");
 
   // Follow-up modal
   const [followUpTarget, setFollowUpTarget] = useState<string | null>(null);
   const [followUpDate, setFollowUpDate] = useState("");
   const [followUpNote, setFollowUpNote] = useState("");
+
+  // ─── URL sync ──────────────────────────────────────────────
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams();
+    if (filters.tier) p.set("tier", filters.tier);
+    if (filters.status) p.set("status", filters.status);
+    if (filters.alert) p.set("alert", filters.alert);
+    if (filters.search) p.set("search", filters.search);
+    if (page > 1) p.set("page", String(page));
+    const qs = p.toString();
+    const url = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
+    window.history.replaceState(null, "", url);
+  }, [filters, page]);
 
   // ─── Data Fetching ─────────────────────────────────────────
 
@@ -262,17 +317,22 @@ export function CRMDashboard() {
       if (filters.tier) params.set("tier", filters.tier);
       if (filters.status) params.set("status", filters.status);
       if (filters.alert) params.set("alert", filters.alert);
+      params.set("page", String(page));
+      params.set("per_page", String(perPage));
       const qs = params.toString();
       const resp = await crmFetch(`/admin/crm/subscribers${qs ? `?${qs}` : ""}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       setSubscribers(data.subscribers || []);
+      setTotalFiltered(data.total || 0);
+      setTotalAll(data.total_all || 0);
+      setGlobalStats(data.global_stats || { total: 0, critical: 0, warning: 0, expiring: 0, churned: 0 });
     } catch (err: any) {
       setError(err.message || "Błąd ładowania danych CRM");
     } finally {
       setLoading(false);
     }
-  }, [filters.tier, filters.status, filters.alert]);
+  }, [filters.tier, filters.status, filters.alert, page, perPage]);
 
   const fetchFollowUps = useCallback(async () => {
     try {
@@ -291,13 +351,15 @@ export function CRMDashboard() {
   const openUserDetail = async (userId: string) => {
     setDrawerLoading(true);
     setDrawerOpen(true);
+    setDrawerError(null);
     try {
       const resp = await crmFetch(`/admin/crm/user/${userId}/detail`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       setSelectedUser(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to load user detail:", err);
+      setDrawerError(err.message || "Nie udało się załadować szczegółów");
     } finally {
       setDrawerLoading(false);
     }
@@ -388,25 +450,47 @@ export function CRMDashboard() {
           .replace(/{remaining}/g, String((sub as any).tokens_remaining ?? ""))
           .replace(/{period_end}/g, (sub as any).period_end ?? "")
       : `Cześć ${name},\n\n`;
-    setEmailTarget({ name, email: sub.email, remaining: (sub as any).tokens_remaining, period_end: (sub as any).period_end });
+    setEmailTarget({ name, email: sub.email, userId: sub.user_id, remaining: (sub as any).tokens_remaining, period_end: (sub as any).period_end });
     setEmailSubject(subj);
     setEmailBody(body);
+    setEmailTemplateId(templateId || "custom");
   };
 
   const sendEmail = () => {
     if (!emailTarget) return;
-    const subject = encodeURIComponent(emailSubject);
-    const body = encodeURIComponent(emailBody);
-    window.open(
-      `mailto:${emailTarget.email}?from=${SENDER_EMAIL}&subject=${subject}&body=${body}`,
-      "_blank",
-    );
-    setEmailTarget(null);
-    setEmailSubject("");
-    setEmailBody("");
+    setConfirmAction({
+      message: `Czy na pewno chcesz otworzyć emaila do ${emailTarget.name} (${emailTarget.email})?`,
+      onConfirm: async () => {
+        const subject = encodeURIComponent(emailSubject);
+        const body = encodeURIComponent(emailBody);
+        window.open(
+          `mailto:${emailTarget.email}?from=${SENDER_EMAIL}&subject=${subject}&body=${body}`,
+          "_blank",
+        );
+        // Log the email
+        try {
+          await crmFetch("/admin/crm/email-log", {
+            method: "POST",
+            body: JSON.stringify({
+              target_user_id: emailTarget.userId,
+              template_id: emailTemplateId,
+              subject: emailSubject,
+              recipient_email: emailTarget.email,
+            }),
+          });
+        } catch { /* silent — email was already opened */ }
+        setEmailTarget(null);
+        setEmailSubject("");
+        setEmailBody("");
+        setEmailTemplateId("");
+        showToast("📧 Email otwarty i zapisany w historii");
+        if (selectedUser) await openUserDetail(selectedUser.user_id);
+        setConfirmAction(null);
+      },
+    });
   };
 
-  // ─── Filters ───────────────────────────────────────────────
+  // ─── Sorting & Filtering ───────────────────────────────────
 
   const filtered = subscribers.filter((s) => {
     if (!filters.search) return true;
@@ -419,12 +503,121 @@ export function CRMDashboard() {
     );
   });
 
-  const stats = {
-    total: filtered.length,
-    critical: filtered.filter((s) => s.credit_alert === "critical").length,
-    warning: filtered.filter((s) => s.credit_alert === "warning" || s.credit_alert === "low").length,
-    expiring: filtered.filter((s) => s.expiry_alert !== "").length,
-    churned: filtered.filter((s) => s.sub_status === "CANCELED").length,
+  const sorted = [...filtered].sort((a, b) => {
+    const dir = sortDirection === "asc" ? 1 : -1;
+    switch (sortColumn) {
+      case "credits": return (a.tokens_remaining - b.tokens_remaining) * dir;
+      case "sessions": return (a.total_sessions - b.total_sessions) * dir;
+      case "renewal": return (a.days_until_renewal - b.days_until_renewal) * dir;
+      case "activity": {
+        const aDate = a.last_session_at || "1970-01-01";
+        const bDate = b.last_session_at || "1970-01-01";
+        return aDate.localeCompare(bDate) * dir;
+      }
+      default: return (a.urgency_score - b.urgency_score) * -dir; // urgency default DESC
+    }
+  });
+
+  const toggleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection(column === "urgency" ? "desc" : "asc");
+    }
+  };
+
+  const sortIndicator = (column: string) => {
+    if (sortColumn !== column) return "";
+    return sortDirection === "asc" ? " ▲" : " ▼";
+  };
+
+  // ─── Bulk actions ──────────────────────────────────────────
+
+  const toggleSelect = (userId: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === sorted.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(sorted.map((s) => s.user_id)));
+    }
+  };
+
+  const bulkRemind = async () => {
+    if (selected.size === 0) return;
+    setConfirmAction({
+      message: `Zaplanować follow-up dla ${selected.size} ${selected.size === 1 ? "osoby" : selected.size < 5 ? "osób" : "osób"}?`,
+      onConfirm: async () => {
+        try {
+          await crmFetch("/admin/crm/bulk/remind", {
+            method: "POST",
+            body: JSON.stringify({
+              user_ids: Array.from(selected),
+              due_date: quickDate(3),
+              note: "Bulk follow-up z CRM",
+            }),
+          });
+          showToast(`🔔 Zaplanowano ${selected.size} follow-upów`);
+          setSelected(new Set());
+          void fetchFollowUps();
+        } catch { showToast("❌ Błąd przy tworzeniu follow-upów"); }
+        setConfirmAction(null);
+      },
+    });
+  };
+
+  const bulkEmail = () => {
+    if (selected.size === 0) return;
+    const selectedSubs = sorted.filter((s) => selected.has(s.user_id));
+    // Open mailto for each (limited to 10 to prevent browser spam)
+    const batch = selectedSubs.slice(0, 10);
+    batch.forEach((s) => {
+      window.open(`mailto:${s.email}?from=${SENDER_EMAIL}&subject=${encodeURIComponent("SuperWizor AI — wiadomość od zespołu")}`, "_blank");
+    });
+    if (selectedSubs.length > 10) {
+      showToast(`📧 Otwarto 10 z ${selectedSubs.length} emaili (limit przeglądarki)`);
+    } else {
+      showToast(`📧 Otwarto ${batch.length} ${batch.length === 1 ? "email" : "emaili"}`);
+    }
+  };
+
+  // ─── Toast helper ─────────────────────────────────────────
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Pagination
+  const totalPages = Math.ceil(totalFiltered / perPage);
+
+  // Helper: format relative date
+  const formatRelativeDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const days = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+    if (days === 0) return "dziś";
+    if (days === 1) return "wczoraj";
+    if (days < 7) return `${days} dni temu`;
+    if (days < 30) return `${Math.floor(days / 7)} tyg. temu`;
+    if (days < 365) return `${Math.floor(days / 30)} mies. temu`;
+    return `${Math.floor(days / 365)} lat temu`;
+  };
+
+  const getActivityColor = (dateStr: string) => {
+    const days = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+    if (days < 7) return "text-aurora";
+    if (days < 14) return "text-frost";
+    if (days < 30) return "text-ember";
+    return "text-magma";
   };
 
   // CSV export
@@ -506,13 +699,13 @@ export function CRMDashboard() {
         </div>
       )}
 
-      {/* ── KPI Chips ─────────────────────────────────────── */}
+      {/* ── KPI Chips (always global — full database) ────── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-        <KPIChip label="Łącznie" value={stats.total} color="frost" />
-        <KPIChip label="🔴 Krytyczne" value={stats.critical} color="magma" />
-        <KPIChip label="🟡 Ostrzeżenie" value={stats.warning} color="ember" />
-        <KPIChip label="⏰ Wygasa" value={stats.expiring} color="aurora" />
-        <KPIChip label="❌ Churned" value={stats.churned} color="mist" />
+        <KPIChip label="Łącznie" value={globalStats.total} color="frost" />
+        <KPIChip label="🔴 Krytyczne" value={globalStats.critical} color="magma" />
+        <KPIChip label="🟡 Ostrzeżenie" value={globalStats.warning} color="ember" />
+        <KPIChip label="⏰ Wygasa" value={globalStats.expiring} color="aurora" />
+        <KPIChip label="❌ Churned" value={globalStats.churned} color="mist" />
       </div>
 
       {/* ── Filters ───────────────────────────────────────── */}
@@ -537,69 +730,128 @@ export function CRMDashboard() {
           <button onClick={() => void fetchSubscribers()} className="mt-3 inline-flex items-center rounded-button border border-frost/20 px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] text-frost hover:bg-frost/5">Ponów</button>
         </div>
       )}
-      {!loading && !error && filtered.length === 0 && (
+      {/* ── Counter + Table ────────────────────────────────── */}
+      {!loading && !error && sorted.length === 0 && (
         <p className="font-serif text-mist text-center py-12">Brak użytkowników dla wybranych filtrów</p>
       )}
-      {!loading && !error && filtered.length > 0 && (
-        <div className="overflow-x-auto rounded-card border border-frost/10 bg-frost/[0.03]">
-          <table className="w-full text-sm">
-            <thead className="bg-frost/5">
-              <tr>
-                {["Użytkownik", "Plan", "Kredyty", "Sesje", "Odnowienie", "Alerty", "Akcje"].map((h) => (
-                  <th key={h} className={`${h === "Akcje" ? "text-right" : h === "Kredyty" || h === "Sesje" || h === "Odnowienie" || h === "Alerty" ? "text-center" : "text-left"} px-3 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist`}>
-                    {h}
+      {!loading && !error && sorted.length > 0 && (
+        <>
+          <div className="flex items-center justify-between mb-2">
+            <p className="font-mono text-xs text-mist/60">
+              Pokazano {sorted.length} z {totalAll}
+              {totalFiltered !== totalAll && <span className="text-mist/40"> (filtrowane: {totalFiltered})</span>}
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-card border border-frost/10 bg-frost/[0.03]">
+            <table className="w-full text-sm">
+              <thead className="bg-frost/5">
+                <tr>
+                  <th className="px-3 py-3 text-left w-8">
+                    <input
+                      type="checkbox"
+                      checked={selected.size === sorted.length && sorted.length > 0}
+                      onChange={toggleSelectAll}
+                      className="rounded border-frost/30 bg-frost/5 accent-ember cursor-pointer"
+                      title="Zaznacz / odznacz wszystkich"
+                    />
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s) => (
-                <tr
-                  key={s.subscription_id}
-                  onClick={() => openUserDetail(s.user_id)}
-                  className="border-t border-frost/5 hover:bg-frost/[0.03] transition-colors cursor-pointer"
-                >
-                  <td className="px-3 py-3">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-display text-frost text-sm font-medium">{s.first_name} {s.last_name}</span>
-                      <span className="font-mono text-[11px] text-mist/60">{s.email}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${getTierBadge(s.plan_tier)}`}>{s.plan_display_name}</span>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <span className={`font-mono text-sm font-bold ${s.credit_alert === "critical" ? "text-magma" : s.credit_alert === "warning" ? "text-ember" : "text-frost"}`}>
-                      {s.tokens_remaining}/{s.tokens_limit}
-                    </span>
-                    <div className="w-16 h-1.5 bg-frost/10 rounded-full overflow-hidden mx-auto mt-1">
-                      <div className={`h-full rounded-full ${s.usage_pct >= 90 ? "bg-magma" : s.usage_pct >= 70 ? "bg-ember" : "bg-aurora"}`} style={{ width: `${Math.min(s.usage_pct, 100)}%` }} />
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-center font-mono text-sm text-frost">{s.total_sessions}</td>
-                  <td className="px-3 py-3 text-center">
-                    <span className={`font-mono text-xs ${s.days_until_renewal <= 3 ? "text-magma font-bold" : s.days_until_renewal <= 7 ? "text-ember" : "text-mist"}`}>
-                      {s.days_until_renewal > 0 ? `${s.days_until_renewal}d` : "wygasł"}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    {s.credit_alert === "critical" && <AlertPill color="magma" text="🔴 ≤1" />}
-                    {s.credit_alert === "warning" && <AlertPill color="ember" text="🟡 ≤3" />}
-                    {s.expiry_alert === "imminent" && <AlertPill color="magma" text="⏰ ≤3d" />}
-                    {!s.credit_alert && !s.expiry_alert && <span className="text-mist/30 text-[10px]">—</span>}
-                  </td>
-                  <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="inline-flex gap-1.5">
-                      {s.phone && <ActionBtn href={`tel:${s.phone}`} title="Zadzwoń" color="aurora"><PhoneIcon /></ActionBtn>}
-                      <ActionBtn onClick={() => openEmail(s)} title="Email" color="ember"><MailIcon /></ActionBtn>
-                      <ActionBtn onClick={() => { setFollowUpTarget(s.user_id); setFollowUpDate(quickDate(3)); }} title="Przypomnij" color="frost">🔔</ActionBtn>
-                    </div>
-                  </td>
+                  <th className="px-3 py-3 text-left font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">Użytkownik</th>
+                  <th className="px-3 py-3 text-left font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">Plan</th>
+                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition" onClick={() => toggleSort("credits")} title="Sortuj po kredytach">Kredyty{sortIndicator("credits")}</th>
+                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition" onClick={() => toggleSort("sessions")} title="Sortuj po sesjach">Sesje{sortIndicator("sessions")}</th>
+                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition" onClick={() => toggleSort("activity")} title="Sortuj po ostatniej aktywności">Aktywność{sortIndicator("activity")}</th>
+                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition" onClick={() => toggleSort("renewal")} title="Sortuj po dacie odnowienia">Odnowienie{sortIndicator("renewal")}</th>
+                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">Alerty</th>
+                  <th className="px-3 py-3 text-right font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">Akcje</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {sorted.map((s) => (
+                  <tr
+                    key={s.subscription_id}
+                    onClick={() => openUserDetail(s.user_id)}
+                    className={`border-t border-frost/5 hover:bg-frost/[0.03] transition-colors cursor-pointer ${selected.has(s.user_id) ? "bg-ember/[0.04]" : ""}`}
+                  >
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(s.user_id)}
+                        onChange={() => toggleSelect(s.user_id)}
+                        className="rounded border-frost/30 bg-frost/5 accent-ember cursor-pointer"
+                      />
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-display text-frost text-sm font-medium">{s.first_name} {s.last_name}</span>
+                        <span className="font-mono text-[11px] text-mist/60">{s.email}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${getTierBadge(s.plan_tier)}`}>{s.plan_display_name}</span>
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <span className={`font-mono text-sm font-bold ${s.credit_alert === "critical" ? "text-magma" : s.credit_alert === "warning" ? "text-ember" : "text-frost"}`}>
+                        {s.tokens_remaining}/{s.tokens_limit}
+                      </span>
+                      <div className="w-16 h-1.5 bg-frost/10 rounded-full overflow-hidden mx-auto mt-1">
+                        <div className={`h-full rounded-full ${s.usage_pct >= 90 ? "bg-magma" : s.usage_pct >= 70 ? "bg-ember" : "bg-aurora"}`} style={{ width: `${Math.min(s.usage_pct, 100)}%` }} />
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-center font-mono text-sm text-frost">{s.total_sessions}</td>
+                    <td className="px-3 py-3 text-center">
+                      {s.last_session_at ? (
+                        <span className={`font-mono text-xs ${getActivityColor(s.last_session_at)}`} title={s.last_session_at}>
+                          {formatRelativeDate(s.last_session_at)}
+                        </span>
+                      ) : (
+                        <span className="text-mist/30 text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {!s.period_end || s.days_until_renewal > 365 ? (
+                        <span className="text-mist/30 font-mono text-xs">—</span>
+                      ) : (
+                        <span className={`font-mono text-xs ${s.days_until_renewal <= 3 ? "text-magma font-bold" : s.days_until_renewal <= 7 ? "text-ember" : "text-mist"}`}>
+                          {s.days_until_renewal > 0 ? `${s.days_until_renewal}d` : "wygasł"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {s.credit_alert === "critical" && <AlertPill color="magma" text="🔴 ≤1" />}
+                      {s.credit_alert === "warning" && <AlertPill color="ember" text="🟡 ≤3" />}
+                      {s.expiry_alert === "imminent" && <AlertPill color="magma" text="⏰ ≤3d" />}
+                      {!s.credit_alert && !s.expiry_alert && <span className="text-mist/30 text-[10px]">—</span>}
+                    </td>
+                    <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="inline-flex gap-1.5">
+                        {s.phone && <ActionBtn href={`tel:${s.phone}`} title="Zadzwoń do terapeuty" color="aurora"><PhoneIcon /></ActionBtn>}
+                        <ActionBtn onClick={() => openEmail(s)} title="Wyślij email do terapeuty" color="ember"><MailIcon /></ActionBtn>
+                        <ActionBtn onClick={() => { setFollowUpTarget(s.user_id); setFollowUpDate(quickDate(3)); }} title="Zaplanuj przypomnienie follow-up" color="frost">🔔</ActionBtn>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ── Pagination ─────────────────────────────────── */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-4">
+              <button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page <= 1}
+                className="rounded-button border border-frost/15 px-3 py-1.5 font-mono text-xs text-frost hover:bg-frost/5 transition disabled:opacity-30 disabled:cursor-not-allowed"
+              >← Poprzednia</button>
+              <span className="font-mono text-xs text-mist/60">Strona {page} z {totalPages}</span>
+              <button
+                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                disabled={page >= totalPages}
+                className="rounded-button border border-frost/15 px-3 py-1.5 font-mono text-xs text-frost hover:bg-frost/5 transition disabled:opacity-30 disabled:cursor-not-allowed"
+              >Następna →</button>
+            </div>
+          )}
+        </>
       )}
 
       {/* ── Detail Drawer ─────────────────────────────────── */}
@@ -610,6 +862,11 @@ export function CRMDashboard() {
             {drawerLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="w-8 h-8 border-2 border-ember border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : drawerError ? (
+              <div className="flex flex-col items-center justify-center h-64 gap-3">
+                <p className="font-serif text-magma text-sm">{drawerError}</p>
+                <button onClick={closeDrawer} className="rounded-button border border-frost/15 px-4 py-2 font-mono text-xs text-frost hover:bg-frost/5">Zamknij</button>
               </div>
             ) : selectedUser && (
               <div className="p-6 space-y-6">
@@ -704,6 +961,24 @@ export function CRMDashboard() {
                   </div>
                 </div>
 
+                {/* Email History */}
+                {selectedUser.email_logs && selectedUser.email_logs.length > 0 && (
+                  <div>
+                    <h3 className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist/60 mb-2">📬 Historia kontaktu ({selectedUser.email_logs.length})</h3>
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                      {selectedUser.email_logs.map((log) => (
+                        <div key={log.id} className="flex items-center justify-between rounded px-2 py-1.5 bg-frost/[0.03] border border-frost/8 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="text-ember">📧</span>
+                            <span className="font-display text-frost">{log.subject}</span>
+                          </div>
+                          <span className="font-mono text-[9px] text-mist/40">{new Date(log.sent_at).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Notes Journal */}
                 <div>
                   <h3 className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist/60 mb-2">📓 Notatki ({selectedUser.notes.length})</h3>
@@ -733,7 +1008,15 @@ export function CRMDashboard() {
                 {/* Exclusion */}
                 <div className="border-t border-frost/10 pt-4">
                   <button
-                    onClick={() => excludeUser(selectedUser.user_id)}
+                    onClick={() => {
+                      setConfirmAction({
+                        message: `Czy na pewno chcesz wykluczyć ${selectedUser.first_name} ${selectedUser.last_name} z CRM?`,
+                        onConfirm: () => {
+                          excludeUser(selectedUser.user_id);
+                          setConfirmAction(null);
+                        },
+                      });
+                    }}
                     className="w-full rounded bg-magma/5 border border-magma/20 px-3 py-2 text-magma text-xs font-mono uppercase tracking-wider hover:bg-magma/10 transition"
                   >
                     🚫 Wyklucz z CRM
@@ -802,6 +1085,44 @@ export function CRMDashboard() {
               <button onClick={createFollowUp} disabled={!followUpDate} className="rounded-button bg-ember text-obsidian px-5 py-2 font-mono text-xs uppercase hover:brightness-110 transition disabled:opacity-50">Zapisz</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Bulk Actions Bar ─────────────────────────────── */}
+      {selected.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-obsidian border border-ember/30 rounded-card px-6 py-3 shadow-2xl flex items-center gap-4">
+          <span className="font-mono text-xs text-frost">
+            Zaznaczono: <span className="text-ember font-bold">{selected.size}</span>
+          </span>
+          <button onClick={bulkEmail} className="rounded-button bg-ember/10 text-ember px-3 py-1.5 font-mono text-xs hover:bg-ember/20 transition" title="Otwórz email do zaznaczonych osób">
+            📧 Email
+          </button>
+          <button onClick={bulkRemind} className="rounded-button bg-frost/10 text-frost px-3 py-1.5 font-mono text-xs hover:bg-frost/20 transition" title="Zaplanuj follow-up za 3 dni dla zaznaczonych">
+            🔔 Przypomnij
+          </button>
+          <button onClick={() => setSelected(new Set())} className="text-mist/40 hover:text-frost transition text-xs font-mono" title="Odznacz wszystkich">
+            ✕ Odznacz
+          </button>
+        </div>
+      )}
+
+      {/* ── Confirmation Modal ───────────────────────────── */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-nocturne/70 backdrop-blur-sm">
+          <div className="bg-obsidian border border-frost/15 rounded-card p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <p className="font-serif text-frost text-sm mb-6">{confirmAction.message}</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setConfirmAction(null)} className="rounded-button border border-frost/15 px-4 py-2 font-mono text-xs uppercase text-mist hover:text-frost transition">Anuluj</button>
+              <button onClick={confirmAction.onConfirm} className="rounded-button bg-ember text-obsidian px-5 py-2 font-mono text-xs uppercase hover:brightness-110 transition">Tak, potwierdź</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Toast Notification ───────────────────────────── */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[70] bg-obsidian border border-aurora/30 rounded-card px-5 py-3 shadow-2xl animate-[slideIn_0.3s_ease-out]">
+          <p className="font-display text-frost text-sm">{toast}</p>
         </div>
       )}
     </div>

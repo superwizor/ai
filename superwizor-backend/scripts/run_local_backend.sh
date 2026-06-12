@@ -13,6 +13,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# Automatyczna konfiguracja poświadczeń z sa-key.json (jeśli istnieje)
+SA_KEY_PATH="${BACKEND_DIR}/../sa-key.json"
+if [[ -s "${SA_KEY_PATH}" ]]; then
+  echo "🔑 Wykryto plik sa-key.json. Konfiguruję uwierzytelnianie kontem usługowym GCP..."
+  export GOOGLE_APPLICATION_CREDENTIALS="${SA_KEY_PATH}"
+  # Aktywujemy konto usługowe w gcloud na potrzeby pobierania sekretów i zarządzania nimi
+  gcloud auth activate-service-account --key-file="${SA_KEY_PATH}" --quiet >/dev/null 2>&1 || true
+fi
+
 # Konfiguracja bazy danych (zgodnie z AGENTS.md / Makefile)
 DB_USER="${DB_USER:-superwizor_app}"
 DB_PASSWORD="${DB_PASSWORD:-superwizor_password}"
@@ -84,6 +93,12 @@ if ! nc -z -w 1 "${DB_HOST}" "${DB_PORT}" >/dev/null 2>&1; then
       if ! nc -z -w 1 "${DB_HOST}" "${DB_PORT}" >/dev/null 2>&1; then
         echo "❌ Błąd: Uruchomiono cloud-sql-proxy (PID ${PROXY_PID}), ale port ${DB_PORT} nadal nie odpowiada."
         echo "Sprawdź szczegóły w pliku logu: proxy.log"
+        PROXY_LOG="${BACKEND_DIR}/../proxy.log"
+        if [[ -f "${PROXY_LOG}" ]] && grep -q -E "invalid_rapt|invalid_grant|cannot fetch token" "${PROXY_LOG}"; then
+          echo -e "\n🔑 [GCP Auth Alert] Wykryto problem z autoryzacją GCP w proxy.log!"
+          echo "Aby się zautentykować, uruchom w terminalu:"
+          echo "   gcloud auth login && gcloud auth application-default login"
+        fi
         exit 1
       fi
       echo "✅ Połączenie nawiązane pomyślnie!"
@@ -104,6 +119,12 @@ fi
 echo "🔄 Uruchamianie migracji bazy danych..."
 (cd "${BACKEND_DIR}" && DB_USER="${DB_USER}" DB_PASSWORD="${DB_PASSWORD}" make migrate-up) || {
   echo "❌ Migracje nie powiodły się! Sprawdź logi lub dane uwierzytelniające."
+  PROXY_LOG="${BACKEND_DIR}/../proxy.log"
+  if [[ -f "${PROXY_LOG}" ]] && grep -q -E "invalid_rapt|invalid_grant|cannot fetch token" "${PROXY_LOG}"; then
+    echo -e "\n🔑 [GCP Auth Alert] Wykryto problem z autoryzacją GCP w proxy.log!"
+    echo "Aby się zautentykować, uruchom w terminalu:"
+    echo "   gcloud auth login && gcloud auth application-default login"
+  fi
   exit 1
 }
 
@@ -134,6 +155,7 @@ PORT="${PORT_BILLING}" \
 VERSION="local-dev" \
 GCP_PROJECT_ID="superwizor-ai-25ecd" \
 IDENTITY_SVC_URL="http://127.0.0.1:${PORT_IDENTITY}" \
+NOTIFICATION_SVC_URL="http://127.0.0.1:${PORT_NOTIFICATION}" \
 "${BACKEND_DIR}/bin/billing-svc" > "${LOGS_DIR}/billing-svc.log" 2>&1 &
 PIDS+=($!)
 
