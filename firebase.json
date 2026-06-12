@@ -43,6 +43,21 @@
           "type": 307
         },
         {
+          "source": "/auth",
+          "destination": "/pl/auth/",
+          "type": 307
+        },
+        {
+          "source": "/auth/",
+          "destination": "/pl/auth/",
+          "type": 307
+        },
+        {
+          "source": "/auth/:rest*",
+          "destination": "/pl/auth/:rest*",
+          "type": 307
+        },
+        {
           "//": "Bare /admin needs its own exact-match peer because Firebase Hosting's :rest* requires at least one segment after the slash — `/admin` alone doesn't match `/admin/:rest*`. Same for /register, but most users land on a deeper register path.",
           "source": "/admin",
           "destination": "/pl/admin/",
@@ -111,6 +126,66 @@
         {
           "source": "/accept-invite/",
           "destination": "/pl/accept-invite/",
+          "type": 307
+        },
+        {
+          "source": "/dashboard",
+          "destination": "/pl/dashboard/",
+          "type": 307
+        },
+        {
+          "source": "/dashboard/",
+          "destination": "/pl/dashboard/",
+          "type": 307
+        },
+        {
+          "source": "/onboarding",
+          "destination": "/pl/onboarding/",
+          "type": 307
+        },
+        {
+          "source": "/onboarding/",
+          "destination": "/pl/onboarding/",
+          "type": 307
+        },
+        {
+          "source": "/upgrade",
+          "destination": "/pl/upgrade/",
+          "type": 307
+        },
+        {
+          "source": "/upgrade/",
+          "destination": "/pl/upgrade/",
+          "type": 307
+        },
+        {
+          "source": "/account",
+          "destination": "/pl/account/",
+          "type": 307
+        },
+        {
+          "source": "/account/",
+          "destination": "/pl/account/",
+          "type": 307
+        },
+        {
+          "source": "/kontakt",
+          "destination": "/pl/kontakt/",
+          "type": 307
+        },
+        {
+          "source": "/kontakt/",
+          "destination": "/pl/kontakt/",
+          "type": 307
+        },
+        {
+          "source": "/pacjent",
+          "destination": "/pl/pacjent/",
+          "type": 307
+        },
+        {
+          "source": "/pacjent/",
+          "destination": "/pl/pacjent/",
           "type": 307
         },
         {

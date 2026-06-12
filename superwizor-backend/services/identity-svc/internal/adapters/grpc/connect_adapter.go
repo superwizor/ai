@@ -267,3 +267,12 @@ func (a *ConnectAdapter) RecordConsent(ctx context.Context, req *connect.Request
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) CheckEmailExists(ctx context.Context, req *connect.Request[identityv1.CheckEmailExistsRequest]) (*connect.Response[identityv1.CheckEmailExistsResponse], error) {
+	resp, err := a.s.CheckEmailExists(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+

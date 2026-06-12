@@ -36,6 +36,7 @@ import {
   UserRole,
   CreateUserRequestSchema,
   UpdateProfileRequestSchema,
+  CheckEmailExistsRequestSchema,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import {
   Checkbox,
@@ -45,10 +46,7 @@ import {
   TextInput,
   PhoneInput,
 } from "@/components/forms/Field";
-import {
-  getModalityCatalog,
-  type ModalityRow,
-} from "@/lib/clinical/modalities";
+
 import { handlePostRegistrationRedirect } from "@/lib/register/post-registration";
 
 type PitchVariant = "trial" | "solo" | "pro" | "beta";
@@ -160,7 +158,7 @@ const PITCH_CONTENT: Record<PitchVariant, { pl: ContentBlock; en: ContentBlock }
       badge: "Beta Program · Free access",
       heading: "120 sessions / month for 2 months",
       features: [
-        "120 therapy sessions per month",
+        "120 sessions therapy per month",
         "Full access to all features",
         "2 months completely free",
         "Priority team support",
@@ -194,20 +192,6 @@ const slideVariants = {
 };
 
 export function TherapistEmailForm() {
-  const [modalities, setModalities] = useState<ReadonlyArray<ModalityRow>>([]);
-  useEffect(() => {
-    let cancelled = false;
-    getModalityCatalog()
-      .then((rows) => {
-        if (!cancelled) setModalities(rows);
-      })
-      .catch((err) => {
-        console.error("[register/therapist] modality fetch failed", err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const t = useTranslations("register.fields");
   const tCommon = useTranslations("register.common");
@@ -222,6 +206,7 @@ export function TherapistEmailForm() {
   const [direction, setDirection] = useState<1 | -1>(1);
   const [serverError, setServerError] = useState<string | null>(null);
   const [socialBusy, setSocialBusy] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
 
   const {
     register,
@@ -230,6 +215,7 @@ export function TherapistEmailForm() {
     setValue,
     trigger,
     control,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<TherapFormType>({
     resolver: zodResolver(therapistEmailSchema),
@@ -250,8 +236,27 @@ export function TherapistEmailForm() {
     } else if (step === 3) {
       const isValid = await trigger(["email", "password", "hasAcceptedTos"]);
       if (isValid) {
-        setDirection(1);
-        setStep(4);
+        setCheckingEmail(true);
+        try {
+          const checkResp = await identityClient.checkEmailExists(
+            create(CheckEmailExistsRequestSchema, { email: watch("email") })
+          );
+          if (checkResp.exists) {
+            setError("email", {
+              type: "manual",
+              message: "email-already-in-use",
+            });
+            setServerError(tErr("emailAlreadyInUse"));
+            return;
+          }
+          setDirection(1);
+          setStep(4);
+        } catch (e) {
+          console.error("Failed to check email exists:", e);
+          setServerError(tErr("networkError"));
+        } finally {
+          setCheckingEmail(false);
+        }
       }
     } else if (step === 4) {
       const isValid = await trigger(["firstName", "lastName", "phoneNumber"]);
@@ -340,7 +345,8 @@ export function TherapistEmailForm() {
     setServerError(null);
     try {
       // 1. Firebase account + verification email.
-      const user = await auth.signUpWithEmail(data.email, data.password);
+      const continueUrl = `${window.location.origin}${prefix}/register/therapist/verify-email?email=${encodeURIComponent(data.email)}${planSlug ? `&plan=${encodeURIComponent(planSlug)}` : ""}`;
+      const user = await auth.signUpWithEmail(data.email, data.password, continueUrl);
 
       // 2. CreateUser on identity-svc
       const tz =
@@ -362,9 +368,8 @@ export function TherapistEmailForm() {
       const hasExtras =
         !!data.professionalTitle ||
         !!data.credentialsNumber ||
-        !!data.phoneNumber ||
-        !!data.modalityId ||
-        data.hasMarketingConsent === true;
+        !!data.phoneNumber;
+
       if (hasExtras) {
         const updateReq = create(UpdateProfileRequestSchema, {
           userId: created.id,
@@ -373,7 +378,6 @@ export function TherapistEmailForm() {
           professionalTitle: data.professionalTitle ?? "",
           credentialsNumber: data.credentialsNumber ?? "",
           phoneNumber: data.phoneNumber ?? "",
-          defaultModalityId: data.modalityId,
           hasMarketingConsent: data.hasMarketingConsent ?? false,
         });
         await identityClient.updateProfile(updateReq);
@@ -389,12 +393,20 @@ export function TherapistEmailForm() {
     } catch (e) {
       if (e instanceof FirebaseError) {
         if (e.code === "auth/email-already-in-use") {
+          setError("email", {
+            type: "manual",
+            message: "email-already-in-use",
+          });
           setServerError(tErr("emailAlreadyInUse"));
           setDirection(-1);
           setStep(3); // Go back to credentials step
           return;
         }
         if (e.code === "auth/weak-password") {
+          setError("password", {
+            type: "manual",
+            message: "weak-password",
+          });
           setServerError(tErr("weakPassword"));
           setDirection(-1);
           setStep(3); // Go back to credentials step
@@ -604,7 +616,18 @@ export function TherapistEmailForm() {
                   </h2>
                 </div>
 
-                <FieldShell id="email" label={t("email")} required error={errors.email && tErr("emailInvalid")}>
+                <FieldShell
+                  id="email"
+                  label={t("email")}
+                  required
+                  error={
+                    errors.email?.message === "email-already-in-use"
+                      ? tErr("emailAlreadyInUse")
+                      : errors.email
+                      ? tErr("emailInvalid")
+                      : undefined
+                  }
+                >
                   <TextInput
                     id="email"
                     type="email"
@@ -621,6 +644,8 @@ export function TherapistEmailForm() {
                   error={
                     errors.password?.message === "password-no-digit"
                       ? tErr("passwordNoNumber")
+                      : errors.password?.message === "weak-password"
+                      ? tErr("weakPassword")
                       : errors.password
                       ? tErr("passwordTooShort")
                       : undefined
@@ -676,9 +701,10 @@ export function TherapistEmailForm() {
                     type="button"
                     id="next-step-btn"
                     onClick={handleNext}
-                    className="flex-[2] inline-flex items-center justify-center rounded-xl bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[0_4px_12px_rgba(252,174,47,0.3)] hover:brightness-115 hover:shadow-[0_6px_16px_rgba(252,174,47,0.5)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+                    disabled={checkingEmail}
+                    className="flex-[2] inline-flex items-center justify-center rounded-xl bg-ember text-obsidian font-sans font-bold uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[0_4px_12px_rgba(252,174,47,0.3)] hover:brightness-115 hover:shadow-[0_6px_16px_rgba(252,174,47,0.5)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    {tCommon("continue")}
+                    {checkingEmail ? (locale === "pl" ? "Sprawdzam..." : "Checking...") : tCommon("continue")}
                   </button>
                 </div>
               </motion.div>
@@ -786,18 +812,7 @@ export function TherapistEmailForm() {
                   </h2>
                 </div>
 
-                <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityId && tErr("modalityRequired")}>
-                  <Select id="modality" {...register("modalityId")} defaultValue="">
-                    <option value="" disabled>
-                      —
-                    </option>
-                    {modalities.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.labels[locale === "en" ? "en" : "pl"]}
-                      </option>
-                    ))}
-                  </Select>
-                </FieldShell>
+
 
                 <FieldShell id="uiLanguage" label={t("uiLanguage")} required>
                   <RadioGroup

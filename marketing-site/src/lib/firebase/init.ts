@@ -35,6 +35,10 @@ import {
   connectAuthEmulator,
   type Auth,
 } from "firebase/auth";
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+} from "firebase/app-check";
 
 import { setTokenProvider } from "@/lib/connect/clients";
 import {
@@ -47,10 +51,33 @@ let _app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
 let _emulatorConnected = false;
 let _tokenProviderWired = false;
+let _appCheckInitialized = false;
 
 function ensureApp(): FirebaseApp {
   if (_app) return _app;
   _app = getApps().length > 0 ? getApp() : initializeApp(readFirebaseConfig());
+
+  if (typeof window !== "undefined" && !_appCheckInitialized) {
+    const recaptchaKey = process.env.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_KEY;
+    if (recaptchaKey) {
+      try {
+        // Enable App Check debug token during local development
+        if (process.env.NODE_ENV !== "production") {
+          const debugToken = process.env.NEXT_PUBLIC_APP_CHECK_DEBUG_TOKEN;
+          (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken || true;
+        }
+        initializeAppCheck(_app, {
+          provider: new ReCaptchaEnterpriseProvider(recaptchaKey),
+          isTokenAutoRefreshEnabled: true,
+        });
+        _appCheckInitialized = true;
+        console.log("[Firebase Init] App Check successfully initialised with reCAPTCHA Enterprise.");
+      } catch (err) {
+        console.error("[Firebase Init] App Check initialisation failed:", err);
+      }
+    }
+  }
+
   return _app;
 }
 

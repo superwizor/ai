@@ -109,6 +109,9 @@ service IdentityService {
   // Records a user consent choice (TOS, MARKETING, RECORDING, etc.)
   // for auditing compliance.
   rpc RecordConsent(RecordConsentRequest) returns (RecordConsentResponse);
+
+  // Checks if an email address is already registered in our system
+  rpc CheckEmailExists(CheckEmailExistsRequest) returns (CheckEmailExistsResponse);
 }
 
 message AppLoginToken {
@@ -563,3 +566,12 @@ message RecordConsentResponse {
   string consent_record_id = 1;
   google.protobuf.Timestamp recorded_at = 2;
 }
+
+message CheckEmailExistsRequest {
+  string email = 1;
+}
+
+message CheckEmailExistsResponse {
+  bool exists = 2; // Tag 2 is fine, let's use 1
+}
+

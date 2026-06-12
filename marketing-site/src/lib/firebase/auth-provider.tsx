@@ -46,7 +46,7 @@ export type AuthContextValue = {
   status: Status;
   user: User | null;
   signInWithEmail: (email: string, password: string) => Promise<User>;
-  signUpWithEmail: (email: string, password: string) => Promise<User>;
+  signUpWithEmail: (email: string, password: string, continueUrl?: string) => Promise<User>;
   signInWithGoogle: () => Promise<User>;
   signInWithApple: () => Promise<User>;
   signInWithMicrosoft: () => Promise<User>;
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       signInWithEmail: async (email, password) =>
         (await signInWithEmailAndPassword(requireAuth(), email, password)).user,
-      signUpWithEmail: async (email, password) => {
+      signUpWithEmail: async (email, password, continueUrl) => {
         const cred = await createUserWithEmailAndPassword(
           requireAuth(),
           email,
@@ -109,7 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Fire-and-forget verification email. Failures here aren't fatal
         // (the user can resend from settings). docs/18 §6.5 R2 — every
         // new account gets verification at signup.
-        void sendEmailVerification(cred.user);
+        const actionCodeSettings = continueUrl ? { url: continueUrl } : undefined;
+        void sendEmailVerification(cred.user, actionCodeSettings);
         return cred.user;
       },
       signInWithGoogle: async () => {

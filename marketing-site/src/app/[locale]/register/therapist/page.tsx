@@ -36,7 +36,7 @@ export default async function RegisterTherapistPage({
 
   return (
     <>
-      <Navbar />
+      <Navbar variant="auth" />
       <main className="flex-1">
         <section className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-12 xl:px-16 py-12 sm:py-16">
           <p className="font-sans text-[10px] sm:text-xs font-bold uppercase text-mist/60 tracking-[var(--tracking-overline)] mb-3 text-center">

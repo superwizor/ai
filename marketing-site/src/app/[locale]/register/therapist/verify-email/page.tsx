@@ -13,8 +13,7 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
-import { ResendVerificationButton } from "@/components/register/ResendVerificationButton";
-import { VerifyEmailIntro } from "@/components/register/VerifyEmailIntro";
+import { EmailVerificationManager } from "@/components/register/EmailVerificationManager";
 
 export async function generateMetadata({
   params,
@@ -27,7 +26,7 @@ export async function generateMetadata({
 }
 
 // Static-export contract: see /register/therapist/finish/page.tsx
-// for the rationale. The ?email= read moved to VerifyEmailIntro
+// for the rationale. The ?email= read moved to EmailVerificationManager
 // (a client component) so this shell can prerender per locale.
 export default async function VerifyEmailPage({
   params,
@@ -41,7 +40,7 @@ export default async function VerifyEmailPage({
 
   return (
     <>
-      <Navbar />
+      <Navbar variant="tunnel" />
       <main className="flex-1">
         <section className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-12 xl:px-16 py-12 sm:py-16">
           <div className="mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start text-left">
@@ -57,25 +56,11 @@ export default async function VerifyEmailPage({
                 </svg>
               </div>
 
-              <h1 className="font-display text-frost text-3xl sm:text-4xl font-semibold tracking-[var(--tracking-display)] leading-tight">
+              <h1 className="font-display text-frost text-3xl sm:text-4xl font-semibold tracking-[var(--tracking-display)] leading-tight mb-2">
                 {t("title")}
               </h1>
               
-              <VerifyEmailIntro />
-
-              <p className="font-sans text-mist/80 mt-2 text-sm leading-relaxed">
-                {t("noEmail")}
-              </p>
-
-              <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-center">
-                <ResendVerificationButton />
-                <a
-                  href={`${prefix}/`}
-                  className="inline-flex items-center justify-center rounded-button border border-frost/20 text-frost font-display text-sm px-6 py-3 hover:bg-frost/5 transition"
-                >
-                  {t("backToLanding")}
-                </a>
-              </div>
+              <EmailVerificationManager />
             </div>
 
             {/* Right Column: Photo & Quote outside card container */}

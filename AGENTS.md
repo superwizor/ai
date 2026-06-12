@@ -42,6 +42,7 @@ A clinical session co-pilot for psychotherapists. Therapist records a session in
 - **ADR-DM-002** — PHI columns are envelope-encrypted (`*_ciphertext` + `*_encrypted_dek`). Use `pkg/cryptobox`.
 - **ADR-IMPL-006** — `transcripts.transcript_ciphertext` is the canonical blob; segments are derived.
 - **ADR-IMPL-002** — neutral speaker labels via `pkg/i18n/speakerlabels`; never "Therapist"/"Patient" in code or DB.
+- **App Check Enforcement Safety** — NEVER click "Enforce" (Wymuszaj) on Firebase Authentication or other APIs in the Firebase Console until the iOS app is registered with DeviceCheck/App Attest, and the Android app is registered with Play Integrity. Unregistered platforms will be 100% blocked immediately upon enforcement.
 
 ## Code conventions (compressed)
 

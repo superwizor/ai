@@ -35,7 +35,7 @@ export default async function AccountPage({
 
   return (
     <>
-      <Navbar />
+      <Navbar variant="app" />
       <main className="flex-1">
         <section className="mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
           <h1 className="font-display text-frost text-3xl sm:text-4xl font-semibold tracking-[var(--tracking-display)] leading-tight">

@@ -43,7 +43,7 @@ export default async function SuccessPage({
 
   return (
     <>
-      <Navbar />
+      <Navbar variant="tunnel" />
       <main className="flex-1 flex flex-col justify-center items-center min-h-[60vh]">
         <SuccessContent
           locale={locale}

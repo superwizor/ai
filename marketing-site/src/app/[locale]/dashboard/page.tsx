@@ -43,7 +43,7 @@ export default async function DashboardPage({
 
   return (
     <>
-      <Navbar />
+      <Navbar variant="app" />
       <main className="flex-1">
         <DashboardHub locale={locale} />
       </main>

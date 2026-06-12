@@ -90,6 +90,9 @@ export function LoginForm() {
     if (isAdmin) {
       setPhase("redirect_admin");
       router.push(`${adminPrefix}/admin/`);
+    } else if (!me.defaultModalityId) {
+      setPhase("redirect_app");
+      router.push(`${adminPrefix}/onboarding/`);
     } else {
       setPhase("redirect_app");
       router.push(`${adminPrefix}/dashboard/`);

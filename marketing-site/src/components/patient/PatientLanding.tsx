@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+
+const stepImages = [
+  "/assets/mockup_record_green_real.webp",
+  "/assets/mockup_status_green_real.webp",
+  "/assets/mockup_transcript_green_real.webp",
+];
 
 interface PatientLandingProps {
   locale: string;
@@ -13,13 +19,71 @@ export function PatientLanding({ locale }: PatientLandingProps) {
 
   const tallyLink = "https://tally.so/r/1ABr6O";
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [maxProgress, setMaxProgress] = useState(0);
+  const [activeSteps, setActiveSteps] = useState([false, false, false]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      const isMobile = window.innerWidth < 1024;
+
+      const containerTop = rect.top;
+      const containerHeight = rect.height;
+
+      const triggerPoint = windowHeight * 0.60;
+
+      const scrolledDistance = triggerPoint - containerTop;
+      let pct = (scrolledDistance / containerHeight) * 100;
+      pct = Math.max(0, Math.min(100, pct));
+
+      setMaxProgress((prevMax) => Math.max(prevMax, pct));
+
+      setActiveSteps((prev) => {
+        if (!isMobile) {
+          return [
+            pct >= 2 || prev[0],
+            pct >= 50 || prev[1],
+            pct >= 95 || prev[2],
+          ];
+        } else {
+          const mobileTriggerPoint = windowHeight * 0.72;
+          const nextActive = [...prev];
+          for (let i = 0; i < 3; i++) {
+            const el = container.querySelector(`#step-row-${i}`);
+            if (el) {
+              const elTop = el.getBoundingClientRect().top;
+              if (elTop <= mobileTriggerPoint) {
+                nextActive[i] = true;
+              }
+            }
+          }
+          return nextActive;
+        }
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+    handleScroll();
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, []);
+
   const content = {
     hero: {
       overline: isPl ? "Program dla Klientów" : "Client Companion Program",
       heading: isPl ? "Wyciągnij 100% z każdej sesji psychoterapii" : "Get 100% Out of Every Therapy Session",
       subtitle: isPl 
-        ? "Twój osobisty, w 100% bezpieczny asystent terapii. Pomoże Ci uporządkować myśli po sesji, zapisać kluczowe wnioski i śledzić powtarzające się wzorce w Twoim życiu."
-        : "Your personal, 100% secure therapy companion. Organize your post-session thoughts, capture key insights, and track recurring patterns in your life.",
+        ? "Twój osobisty, w 100% bezpieczny asystent terapii. Pomoże Ci uporządkować myśli po sesji, zapisać wnioski i aktywnie wdrażać wypracowany plan działania w codzienne życie. Z nami nic Ci nie ucieknie."
+        : "Your personal, 100% secure therapy companion. Organize your post-session thoughts, capture key insights, and actively practice your action plan in daily life. Nothing slips away.",
       cta: isPl ? "Zarezerwuj wczesny dostęp" : "Get Early Access",
       badgeRODO: isPl ? "Szyfrowanie i RODO" : "Encrypted & GDPR",
       badgeNoTrain: isPl ? "Prywatne dane (brak treningu AI)" : "Zero AI Model Training",
@@ -44,8 +108,8 @@ export function PatientLanding({ locale }: PatientLandingProps) {
         : "Feeling guilty when saying no to loved ones stems from a deep fear of rejection.",
       sectionHomework: isPl ? "Zadania i obszary do obserwacji" : "Homework & Reflections",
       homework1: isPl 
-        ? "Zauważyć i zapisać sytuacje w tym tygodniu, w których chciałem powiedzieć 'nie', ale powiedziałem 'tak'." 
-        : "Notice and write down situations this week where I wanted to say 'no' but ended up saying 'yes'.",
+        ? "Wdrożyć plan z sesji: 1. Zauważyć momenty uległości w relacjach, 2. Ćwiczyć odmawianie z łagodnością. Nic mi nie umknie." 
+        : "Implement session plan: 1. Notice submissive moments in relationships, 2. Practice saying no with kindness. Nothing slips away.",
       sectionPatterns: isPl ? "Wykryte wzorce emocjonalne" : "Detected Emotional Patterns",
       pattern1: isPl ? "Lęk przed konfrontacją (wystąpił w 3 ostatnich sesjach)" : "Fear of confrontation (seen in last 3 sessions)",
     },
@@ -68,6 +132,35 @@ export function PatientLanding({ locale }: PatientLandingProps) {
         item3: isPl ? "Przejrzysty brief przed kolejnym spotkaniem" : "A concise brief ready before your next appointment",
         item4: isPl ? "Jedno bezpieczne miejsce na całą historię Twojego rozwoju" : "One secure space for your entire growth history",
       }
+    },
+    how: {
+      overline: isPl ? "Jak to działa" : "How It Works",
+      heading: isPl ? "Trzy kroki do pełnego wdrożenia wniosków z terapii" : "Three Steps to Actionable Therapy Progress",
+      cta: isPl ? "Zapisz się na listę oczekujących" : "Join the Waitlist Now",
+      micro: isPl ? "Wczesny dostęp do zamkniętej bety. Całkowicie za darmo." : "Early access to closed beta. Completely free.",
+      steps: [
+        {
+          tag: "01",
+          title: isPl ? "Nagraj swoje myśli zaraz po sesji" : "Record Your Thoughts Post-Session",
+          body: isPl 
+            ? "Po wyjściu z gabinetu otwórz aplikację i nagraj krótką notatkę głosową. Opowiedz o tym, co było ważne, jakie emocje Ci towarzyszyły i co chcesz zapamiętać. Nie przejmuj się chaosem – aplikacja uporządkuje Twoje myśli." 
+            : "Right after leaving your session, open the app and record a quick voice note. Share what was important, how you felt, and what you want to remember. Don't worry about flow – the AI structures it for you.",
+        },
+        {
+          tag: "02",
+          title: isPl ? "Odbierz ustrukturyzowane podsumowanie" : "Get a Structured Summary",
+          body: isPl 
+            ? "Aplikacja automatycznie wygeneruje pełną transkrypcję (zapis słowo w słowo) oraz czytelne podsumowanie. Zobaczysz w nim kluczowe wglądy, wnioski, zadane ćwiczenia oraz powtarzające się wzorce emocjonalne." 
+            : "The app automatically transcribes your voice note word-for-word and generates a clean summary. You'll see key insights, conclusions, homework exercises, and recurring emotional patterns.",
+        },
+        {
+          tag: "03",
+          title: isPl ? "Wdrażaj plan działania w życie" : "Actively Implement Your Plan",
+          body: isPl 
+            ? "Aplikacja pomaga Ci przekuć teorię w praktykę. Twoje cele i zadania domowe są zawsze pod ręką – śledzisz postępy między sesjami, zauważasz zmiany i wchodzisz na kolejne spotkanie w pełni przygotowanym." 
+            : "The app helps you translate theory into everyday practice. Your goals and homework are always at hand – track progress between sessions, notice changes, and enter your next session fully prepared.",
+        }
+      ]
     },
     features: {
       title: isPl ? "Zaprojektowane z myślą o Twoim spokoju" : "Designed For Your Peace of Mind",
@@ -95,10 +188,10 @@ export function PatientLanding({ locale }: PatientLandingProps) {
               <line x1="9" y1="17" x2="13" y2="17" />
             </svg>
           ),
-          title: isPl ? "Struktura bez nadinterpretacji" : "Structure Without Over-Analysis",
+          title: isPl ? "Wdrażanie planów i działań w życie" : "Action Plan Implementation",
           desc: isPl 
-            ? "AI nie analizuje Twojej psychiki ani nie zastępuje terapeuty. Porządkuje Twoją sesję w przejrzyste punkty: wglądy, wnioski i zadania domowe." 
-            : "The AI does not analyze your psyche or replace a therapist. It organizes your session into clean points: insights, takeaways, and homework.",
+            ? "Aplikacja wspiera Cię w praktycznym wdrażaniu planu działania wypracowanego na sesjach. Twoje wnioski i zadania są zawsze pod ręką – nic Ci nie ucieknie." 
+            : "The app supports you in putting your therapy action plans into practice between sessions. Your insights and homework are always within reach, so nothing slips away.",
         },
         {
           icon: (
@@ -592,6 +685,168 @@ export function PatientLanding({ locale }: PatientLandingProps) {
               {isPl ? "Przejdź do formularza zapisu" : "Go to Signup Form"}
               <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
             </a>
+          </div>
+        </div>
+      </section>
+
+      {/* HOW IT WORKS SECTION (3 STEPS) */}
+      <section className="relative py-24 sm:py-32 bg-gradient-to-b from-[#002E32]/50 to-[#001114] text-frost border-b border-frost/5 overflow-hidden">
+        
+        {/* Scoped CSS animations for the pop circles and ripples */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes popCircleDark {
+            0% {
+              scale: 0.95;
+              box-shadow: 0 0 0 0 rgba(252, 174, 47, 0);
+            }
+            100% {
+              scale: 1.12;
+              box-shadow: 0 0 18px 4px rgba(252, 174, 47, 0.4);
+            }
+          }
+          @keyframes rippleOuterDark {
+            0% {
+              scale: 0.9;
+              opacity: 0.87;
+            }
+            100% {
+              scale: 2.9;
+              opacity: 0;
+            }
+          }
+          .animate-pop-circle-dark {
+            animation: popCircleDark 1.1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+          }
+          .animate-ripple-1-dark {
+            animation: rippleOuterDark 1.9s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+            filter: blur(1.0px);
+          }
+          .animate-ripple-2-dark {
+            animation: rippleOuterDark 2.4s cubic-bezier(0.1, 0.8, 0.3, 1) 0.4s forwards;
+            filter: blur(2.0px);
+          }
+        `}} />
+
+        <div className="mx-auto w-full max-w-[1080px] px-6 relative z-10">
+          <div className="text-center mb-20">
+            <p className="font-mono text-[10px] sm:text-xs uppercase text-ember tracking-[var(--tracking-overline)] mb-3 font-semibold">
+              {content.how.overline}
+            </p>
+            <h2 className="font-display text-frost text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight max-w-2xl mx-auto leading-tight">
+              {content.how.heading}
+            </h2>
+          </div>
+
+          {/* Timeline container */}
+          <div ref={containerRef} className="relative">
+            {/* Vertical connector line — visible on lg only */}
+            <div className="hidden lg:block absolute left-1/2 top-8 bottom-8 w-[2px] -translate-x-1/2 bg-white/10">
+              {/* Dynamic progress fill (Ember orange/yellow line) */}
+              <div 
+                className="absolute top-0 left-0 w-[4px] -translate-x-[1px] bg-ember rounded-full transition-all duration-300 ease-out" 
+                style={{ height: `${maxProgress}%` }}
+              />
+            </div>
+
+            <div className="space-y-20 sm:space-y-28">
+              {content.how.steps.map((step, i) => {
+                const isReversed = i % 2 !== 0;
+
+                return (
+                  <div 
+                    key={i} 
+                    id={`step-row-${i}`}
+                    className="relative grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center"
+                  >
+                    {/* Step number node on the timeline — lg only */}
+                    <div 
+                      className={`hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full items-center justify-center z-20 border-4 transition-all duration-500 ${
+                        activeSteps[i]
+                          ? "bg-ember border-[#001114] text-[#10211d] animate-pop-circle-dark font-bold"
+                          : "bg-[#004D54] border-[#001114] text-frost shadow-md"
+                      }`}
+                    >
+                      <span className="font-display text-sm font-bold">{step.tag}</span>
+                      {activeSteps[i] && (
+                        <>
+                          <span className="absolute -inset-1.5 rounded-full border-2 border-ember/55 animate-ripple-1-dark pointer-events-none" />
+                          <span className="absolute -inset-3 rounded-full border-[3px] border-ember/25 animate-ripple-2-dark pointer-events-none" />
+                        </>
+                      )}
+                    </div>
+
+                    {/* Text side */}
+                    <div className={`lg:col-span-5 flex flex-col items-start text-left ${isReversed ? "order-1 lg:order-2 lg:col-start-8 lg:pl-4" : "order-1 lg:order-1 lg:pr-4"}`}>
+                      {/* Mobile step indicator */}
+                      <div className="lg:hidden flex items-center gap-3 mb-4">
+                        <span 
+                          className={`w-9 h-9 rounded-full flex items-center justify-center relative border-2 transition-all duration-500 ${
+                            activeSteps[i]
+                              ? "bg-ember border-[#001114] text-[#10211d] animate-pop-circle-dark font-bold"
+                              : "bg-[#004D54] border-[#001114] text-frost shadow-sm"
+                          }`}
+                        >
+                          <span className="font-display text-xs font-bold">{step.tag}</span>
+                          {activeSteps[i] && (
+                            <>
+                              <span className="absolute -inset-1 rounded-full border-2 border-ember/55 animate-ripple-1-dark pointer-events-none" />
+                              <span className="absolute -inset-2.5 rounded-full border-[3px] border-ember/25 animate-ripple-2-dark pointer-events-none" />
+                            </>
+                          )}
+                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-[2px] text-ember font-semibold">
+                          {isPl ? "Krok" : "Step"} {step.tag}
+                        </span>
+                      </div>
+
+                      <h3 className="font-display text-frost text-2xl sm:text-3xl font-semibold tracking-tight leading-snug">
+                        {step.title}
+                      </h3>
+                      <p className="font-serif text-mist/70 text-base leading-relaxed mt-3">
+                        {step.body}
+                      </p>
+                    </div>
+
+                    {/* Image side */}
+                    <div className={`lg:col-span-5 flex justify-center relative ${isReversed ? "order-2 lg:order-1 lg:col-start-1" : "order-2 lg:order-2 lg:col-start-8"}`}>
+                      <div className="relative group max-w-[320px] w-full">
+                        {/* Glow behind */}
+                        <div className="absolute -inset-4 rounded-[32px] bg-ember/5 blur-xl group-hover:bg-ember/10 transition-all duration-500" />
+                        <div className="relative rounded-[24px] border border-white/10 bg-gradient-to-b from-[#002e32] to-[#001114] shadow-xl overflow-hidden select-none transition-transform duration-300 group-hover:scale-[1.02]">
+                          <img
+                            src={stepImages[i]}
+                            alt={step.title}
+                            loading="lazy"
+                            width={640}
+                            height={480}
+                            className="w-full h-auto object-cover"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="mt-20 flex flex-col items-center">
+            <a
+              href={tallyLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative inline-flex items-center justify-center rounded-[12px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4.5 transition-all duration-300 active:scale-[0.97] whitespace-nowrap overflow-hidden shadow-ember-glow"
+            >
+              <span className="absolute inset-0 rounded-[12px] bg-ember/30 blur-lg group-hover:blur-xl transition-all duration-500 -z-10 scale-110" />
+              <span className="relative z-10 flex items-center gap-2">
+                {content.how.cta}
+                <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+              </span>
+            </a>
+            <span className="mt-3 font-mono text-[10px] uppercase text-mist/60 tracking-[2px]">
+              {content.how.micro}
+            </span>
           </div>
         </div>
       </section>

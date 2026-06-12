@@ -39,10 +39,7 @@ import {
   TextInput,
   PhoneInput,
 } from "@/components/forms/Field";
-import {
-  getModalityCatalog,
-  type ModalityRow,
-} from "@/lib/clinical/modalities";
+
 import { handlePostRegistrationRedirect } from "@/lib/register/post-registration";
 
 export function TherapistFinishForm({
@@ -54,22 +51,7 @@ export function TherapistFinishForm({
   firstName: string;
   lastName: string;
 }) {
-  // See TherapistEmailForm for the rationale on client-side modality
-  // fetch (mirror the same pattern).
-  const [modalities, setModalities] = useState<ReadonlyArray<ModalityRow>>([]);
-  useEffect(() => {
-    let cancelled = false;
-    getModalityCatalog()
-      .then((rows) => {
-        if (!cancelled) setModalities(rows);
-      })
-      .catch((err) => {
-        console.error("[register/therapist/finish] modality fetch failed", err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+
 
   const t = useTranslations("register.fields");
   const tCommon = useTranslations("register.common");
@@ -129,7 +111,6 @@ export function TherapistFinishForm({
       const extras =
         !!data.phoneNumber ||
         !!data.professionalTitle ||
-        !!data.modalityId ||
         data.hasMarketingConsent === true;
       if (extras) {
         await identityClient.updateProfile(
@@ -139,7 +120,6 @@ export function TherapistFinishForm({
             lastName: data.lastName,
             professionalTitle: data.professionalTitle ?? "",
             phoneNumber: data.phoneNumber ?? "",
-            defaultModalityId: data.modalityId,
             hasMarketingConsent: data.hasMarketingConsent ?? false,
           }),
         );
@@ -154,7 +134,7 @@ export function TherapistFinishForm({
         await handlePostRegistrationRedirect(orgId, planSlug, prefix, email);
       } else {
         // Google/Apple sign-in → email already verified → go to onboarding
-        window.location.assign(prefix ? `${prefix}/onboarding/` : "/onboarding/");
+        window.location.replace(prefix ? `${prefix}/onboarding/` : "/onboarding/");
       }
     } catch {
       setServerError(tErr("unknown"));
@@ -175,16 +155,7 @@ export function TherapistFinishForm({
           </FieldShell>
         </div>
 
-        <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityId && tErr("modalityRequired")}>
-          <Select id="modality" {...register("modalityId")} defaultValue="">
-            <option value="" disabled>—</option>
-            {modalities.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.labels[locale === "en" ? "en" : "pl"]}
-              </option>
-            ))}
-          </Select>
-        </FieldShell>
+
 
         <FieldShell id="uiLanguage" label={t("uiLanguage")} required>
           <RadioGroup
