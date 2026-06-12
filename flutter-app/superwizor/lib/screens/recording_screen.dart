@@ -610,6 +610,16 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       final conn = await Connectivity().checkConnectivity();
       final online = conn.any((r) => r != ConnectivityResult.none);
 
+      // An OS interruption (phone call) during recording can leave the
+      // single FLAC with a corrupt STREAMINFO + non-monotonic frame DTS
+      // even though it resumed and finished cleanly (the recorder's
+      // state is `recording` here, so we rely on the sticky flag). Upload
+      // such files as `audio/x-flac` so ingestion-svc routes them through
+      // its lossless ffmpeg re-encode (rewrites a clean, finalized header
+      // and a monotonic timeline) before STT — the same mechanism the
+      // orphan-recovery path uses for unfinalized recordings.
+      final hadInterruption = _service.hadInterruption;
+
       final PendingUpload pending;
       if (online) {
         pending = PendingUpload.initial(
@@ -619,15 +629,20 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           patientLanguageCode: widget.reportLanguage,
           sourceKind: UploadSourceKind.plainFile,
           sourcePath: rawPath, // <sessionDir>/raw.flac — PUT directly
-          contentType: 'audio/flac',
+          contentType: hadInterruption ? 'audio/x-flac' : 'audio/flac',
           sizeBytes: rawSize,
           chunkCount: 1,
           actualDurationSeconds: capturedDuration.inSeconds,
-          needsServerSideConversion: false,
+          needsServerSideConversion: hadInterruption,
           idempotencyKey: sessionId,
           now: DateTime.now().toUtc(),
         );
       } else {
+        // NOTE: the offline path encrypts the FLAC into chunks on-device,
+        // so the server cannot re-encode it; an interrupted offline
+        // recording isn't covered here. ingestion-svc's duration probe is
+        // the safety net for the online path; full coverage for the
+        // offline path needs the segmented-recording follow-up (PROGRESS).
         pending = PendingUpload.initial(
           localId: sessionId,
           therapistId: widget.therapistId,

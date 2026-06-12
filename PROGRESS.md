@@ -89,6 +89,33 @@ Gotchas:
 
 ## In progress
 
+### Corrupt-FLAC on pause/resume (branch `fix/corrupt-flac-pause-resume`, 2026-06-12)
+
+Incident: session `028b7dcc-…` (patient "Maciek", 2026-06-12 16:04 CEST) stuck
+in TRANSCRIBING → would auto-FAIL. Root cause: client recorded with an
+interruption (phone call → pause/resume); the produced FLAC has a corrupt
+STREAMINFO (header claims 14 s) + non-monotonic frame DTS, but the real audio
+is ~32 min. ingestion-svc's `ProbeDuration` trusted the 14 s header ⇒ skipped
+chunking ⇒ whole >20-min file sent to Chirp ⇒ rejected "too long" ⇒ no output
+JSON ⇒ stt-finalize never fired. (The chunker's `ffmpegExtractSlice` was already
+hardened for non-monotonic DTS via `+genpts` for session e55b7c1e — but the
+*probe* that gates chunking was not.)
+
+Two-layer fix (both layers, per user):
+- **Server (ingestion-svc):** `ProbeDuration` now cross-checks the header
+  duration against file size; if implausible (>1 MB/s ⇒ corrupt container) it
+  re-derives the true duration by full PCM decode-count, and returns a
+  `suspect` flag. Subscriber normalizes suspect FLACs through the existing
+  ffmpeg re-encode (clean STREAMINFO + monotonic timeline) before chunking.
+  Universal P1 safety net for ANY malformed audio on the plainFile path.
+- **Client (Flutter):** `RecordingService` latches a sticky `hadInterruption`
+  flag (set whenever an OS interruption occurs, reset on `start()`).
+  `recording_screen.dart` uploads interrupted recordings as `audio/x-flac` +
+  `needsServerSideConversion` (same established pattern as orphan recovery), so
+  the server re-encodes a clean header. NOTE: scoped to the online plainFile
+  path; offline encrypted-chunk path relies on the server probe net. Needs
+  on-device QA (reproduce phone-call interruption).
+
 - **Slice 5** — Flutter Web consoles at `app.superwizor.ai`. Branch:
   `feat/web-app-slice-5` (branched off post-Slice-4-partial merge).
 - ✅ flutter-web-target — web platform live, build green, recording

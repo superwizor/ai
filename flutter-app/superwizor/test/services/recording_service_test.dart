@@ -229,6 +229,53 @@ void main() {
     expect(service.currentDuration, frozen);
   });
 
+  test('hadInterruption is false for a clean recording', () async {
+    await service.start('s1');
+    await pump(40);
+    expect(service.hadInterruption, isFalse);
+    await service.stop();
+    expect(service.hadInterruption, isFalse);
+  });
+
+  test('hadInterruption latches on OS interruption and survives resume+stop',
+      () async {
+    await service.start('s1');
+    recorder.emitNative(RecordState.pause); // phone call
+    await pump();
+    expect(service.hadInterruption, isTrue);
+
+    // Resume cleanly and finish in the `recording` state — the live state
+    // no longer shows the interruption, but the sticky flag must persist
+    // so the upload still routes through the server re-encode.
+    recorder.growFileOnResume = true;
+    final ok = await service.resume();
+    expect(ok, isTrue);
+    expect(service.state, RecordingState.recording);
+    expect(service.hadInterruption, isTrue);
+
+    await service.stop();
+    expect(service.hadInterruption, isTrue);
+  });
+
+  test('hadInterruption latches via reconcileWithNative', () async {
+    await service.start('s1');
+    await pump(40);
+    recorder.nativePaused = true;
+    await service.reconcileWithNative();
+    expect(service.hadInterruption, isTrue);
+  });
+
+  test('start() resets hadInterruption for the next recording', () async {
+    await service.start('s1');
+    recorder.emitNative(RecordState.pause);
+    await pump();
+    expect(service.hadInterruption, isTrue);
+    await service.stop();
+
+    await service.start('s2');
+    expect(service.hadInterruption, isFalse);
+  });
+
   test('start is allowed again after error state', () async {
     await service.start('s1');
     recorder.emitNative(RecordState.stop);

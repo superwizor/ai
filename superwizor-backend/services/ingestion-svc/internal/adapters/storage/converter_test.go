@@ -193,3 +193,82 @@ func TestRunFFmpeg_UnsupportedTarget(t *testing.T) {
 		t.Fatalf("expected error for audio/mpeg target, got nil")
 	}
 }
+
+// TestIsDurationSuspect locks the heuristic that decides when a
+// container's declared duration can't be trusted. The pause/resume
+// corruption (session 028b7dcc) is the headline case: a 59 MB FLAC
+// whose STREAMINFO claims ~14 s ⇒ ~4 MB/s, an order of magnitude past
+// any real speech codec. Legit files (FLAC, even uncompressed WAV) must
+// never trip it, or every upload eats a needless full-decode pass.
+func TestIsDurationSuspect(t *testing.T) {
+	cases := []struct {
+		name      string
+		headerSec int
+		sizeBytes int64
+		want      bool
+	}{
+		// The real incident: 62,179,235 bytes claiming 14 s ⇒ ~4.4 MB/s.
+		{"incident_028b7dcc", 14, 62_179_235, true},
+		// Healthy 16 kHz mono FLAC: ~32 min, ~32 MB ⇒ ~17 KB/s.
+		{"healthy_flac_32min", 1932, 33_000_000, false},
+		// Healthy 1 h FLAC at the same rate.
+		{"healthy_flac_1h", 3600, 62_000_000, false},
+		// Uncompressed 48 kHz stereo s16 WAV: ~192 KB/s — well under cap.
+		{"uncompressed_wav_10min", 600, 115_000_000, false},
+		// Broken/unfinalized header (total_samples=0) but real bytes.
+		{"unfinalized_header", 0, 50_000_000, true},
+		// No size signal (stat failed) — can't judge, trust header.
+		{"no_size_signal", 14, 0, false},
+		// Empty/no-audio file with zero header — nothing to suspect.
+		{"empty_file", 0, 0, false},
+		// Exactly at the 1 MB/s ceiling is NOT suspect (strict >).
+		{"at_ceiling", 1, maxPlausibleBytesPerSec, false},
+		// Just over the ceiling is suspect.
+		{"over_ceiling", 1, maxPlausibleBytesPerSec + 1, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isDurationSuspect(tc.headerSec, tc.sizeBytes); got != tc.want {
+				t.Errorf("isDurationSuspect(%d, %d) = %v, want %v",
+					tc.headerSec, tc.sizeBytes, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestDecodeDurationSec verifies the decode-count fallback recovers the
+// true length by decoding to raw PCM (immune to corrupt timestamps /
+// STREAMINFO). We synthesize a known-length sine FLAC and assert the
+// measured duration matches. Skips when ffmpeg isn't on PATH (CI image
+// has it).
+func TestDecodeDurationSec(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg not on PATH; skipping (CI image has ffmpeg)")
+	}
+
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "in.flac")
+
+	// 7-second 440 Hz sine, 16 kHz mono FLAC — matches our recording fmt.
+	const wantSec = 7
+	gen := exec.Command("ffmpeg",
+		"-hide_banner", "-loglevel", "error",
+		"-f", "lavfi",
+		"-i", "sine=frequency=440:duration=7:sample_rate=16000",
+		"-ac", "1",
+		"-c:a", "flac",
+		"-y", src,
+	)
+	if out, err := gen.CombinedOutput(); err != nil {
+		t.Fatalf("generate sample flac: %v\n%s", err, out)
+	}
+
+	got, err := decodeDurationSec(context.Background(), src)
+	if err != nil {
+		t.Fatalf("decodeDurationSec: %v", err)
+	}
+	// Allow ±1 s for frame-boundary rounding in the sample count.
+	if got < wantSec-1 || got > wantSec+1 {
+		t.Fatalf("decodeDurationSec = %d, want ~%d", got, wantSec)
+	}
+}
