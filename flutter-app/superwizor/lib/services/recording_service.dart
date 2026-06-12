@@ -110,6 +110,20 @@ class RecordingService {
   DateTime? _segmentStart;
   Duration _accumulated = Duration.zero;
 
+  /// Latches true the moment an OS interruption (phone call, alarm, Siri,
+  /// audio-focus loss) pauses the recorder, and STAYS true even after a
+  /// successful resume. The `record` plugin's native pause/resume on a
+  /// single FLAC file can leave a corrupt STREAMINFO + non-monotonic
+  /// frame timestamps (the resumed recording plays back fine but the
+  /// header under-reports length). Callers read this at upload time to
+  /// route the file through the server's lossless re-encode (upload as
+  /// `audio/x-flac`, same path as orphan recovery) which rewrites a clean
+  /// header. Sticky-by-design: the recording usually finishes in the
+  /// `recording` state, so the live state no longer shows the interruption.
+  /// Reset on every start().
+  bool _hadInterruption = false;
+  bool get hadInterruption => _hadInterruption;
+
   // Intent timestamps: armed right before we drive the recorder ourselves,
   // consumed by the matching native event so it isn't misread as an
   // OS-initiated transition. Stale intents (event never delivered, e.g.
@@ -201,6 +215,7 @@ class RecordingService {
     _activeFilePath = outPath;
     _activeSessionId = sessionId;
     _accumulated = Duration.zero;
+    _hadInterruption = false;
     _segmentStart = DateTime.now();
     _setState(RecordingState.recording);
     _startTicker();
@@ -347,6 +362,7 @@ class RecordingService {
         debugPrint('[recording] reconcile: native paused while Dart thought '
             'recording — marking interrupted');
         _foldSegment();
+        _hadInterruption = true;
         _setState(RecordingState.interrupted);
       }
     } catch (e) {
@@ -384,6 +400,7 @@ class RecordingService {
           debugPrint('[recording] OS interruption — native pause '
               'without app intent (call / alarm / focus loss)');
           _foldSegment();
+          _hadInterruption = true;
           _setState(RecordingState.interrupted);
         }
       case RecordState.record:
