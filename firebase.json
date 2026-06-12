@@ -43,6 +43,21 @@
           "type": 307
         },
         {
+          "source": "/auth",
+          "destination": "/pl/auth/",
+          "type": 307
+        },
+        {
+          "source": "/auth/",
+          "destination": "/pl/auth/",
+          "type": 307
+        },
+        {
+          "source": "/auth/:rest*",
+          "destination": "/pl/auth/:rest*",
+          "type": 307
+        },
+        {
           "//": "Bare /admin needs its own exact-match peer because Firebase Hosting's :rest* requires at least one segment after the slash — `/admin` alone doesn't match `/admin/:rest*`. Same for /register, but most users land on a deeper register path.",
           "source": "/admin",
           "destination": "/pl/admin/",

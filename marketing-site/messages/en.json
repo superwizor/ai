@@ -476,7 +476,12 @@
     "security": "Security",
     "languageSwitcher": "Language",
     "polish": "Polski",
-    "english": "English"
+    "english": "English",
+    "dashboard": "Dashboard",
+    "account": "My account",
+    "openApp": "Open app",
+    "logout": "Log out",
+    "contact": "Contact"
   },
   "topbar": {
     "rodo": "GDPR compliance",
@@ -693,6 +698,7 @@
     },
     "fields": {
       "email": "Email address",
+      "confirmEmail": "Confirm email address",
       "password": "Password",
       "passwordHint": "Min. 8 characters, one digit.",
       "firstName": "First name",
@@ -703,7 +709,7 @@
       "defaultModality": "Primary therapeutic modality",
       "uiLanguage": "Interface language",
       "phoneNumber": "Phone number",
-      "phoneNumberPlaceholder": "+48 123 456 789",
+      "phoneNumberPlaceholder": "123 456 789",
       "phoneNumberHint": "Phone number is required for security reasons.",
       "terms": "terms",
       "privacy": "privacy policy",
@@ -712,6 +718,7 @@
     },
     "errors": {
       "emailInvalid": "Enter a valid email address.",
+      "emailsMismatch": "The email addresses do not match.",
       "passwordTooShort": "Password must be at least 8 characters.",
       "passwordNoNumber": "Password must contain at least one digit.",
       "firstNameRequired": "First name is required.",
@@ -721,7 +728,7 @@
       "emailAlreadyInUse": "This email is already registered. Try logging in instead.",
       "weakPassword": "This password is too weak.",
       "phoneRequired": "Phone number is required.",
-      "phoneInvalid": "Phone number should contain 6–18 digits; spaces, dashes and parentheses are allowed.",
+      "phoneInvalid": "Please enter a valid phone number (e.g. 9 digits for Poland). Sequential or repeating digits are not allowed.",
       "networkError": "Could not reach the server. Please try again.",
       "unknown": "Something went wrong. Please try again."
     },
@@ -796,8 +803,8 @@
     "verifyEmail": {
       "metaTitle": "Verify your email",
       "title": "Check your inbox",
-      "intro": "We sent an activation link to {email}. Click it to finish creating your account.",
-      "noEmail": "Don't see the email? Check your spam folder or click below to resend.",
+      "intro": "We sent an activation link. Click it in the email to confirm your account.",
+      "noEmail": "Didn't receive the email? Check your spam folder or click below to resend.",
       "resend": "Resend",
       "resending": "Sending…",
       "resent": "We sent a new link. Check your inbox.",
@@ -806,7 +813,21 @@
       "verifyingStatus": "Checking verification…",
       "verifiedHeading": "Email verified",
       "verifiedBody": "Redirecting to dashboard…",
-      "verifiedGoToAccount": "Go to dashboard"
+      "verifiedGoToAccount": "Go to dashboard",
+      "changeEmail": "Made a typo? Change email",
+      "newEmailLabel": "New email address",
+      "cancel": "Cancel",
+      "saveAndSend": "Save & send",
+      "invalidEmail": "Invalid email address.",
+      "sessionExpired": "Session expired. Please log in again to change email.",
+      "emailInUse": "This email is already in use.",
+      "saveError": "An error occurred while saving the email.",
+      "emailUpdated": "Email updated! We sent a new verification link.",
+      "checkingStatus": "Waiting for you to click the verification link...",
+      "recipientEmail": "Email address we sent the link to:",
+      "signedOutHeading": "Session expired or not logged in",
+      "signedOutBody": "Email verification requires an active session. Please log in to resend the verification link or update your email.",
+      "logIn": "Log in"
     }
   },
   "legal": {
@@ -1183,5 +1204,32 @@
         }
       }
     }
+  },
+  "authAction": {
+    "metaTitle": "Account verification",
+    "verifyingTitle": "Verifying your email...",
+    "verifyingBody": "This will take only a moment. Preparing your cognitive exoskeleton...",
+    "successTitle": "Email verified!",
+    "successBody": "Your email address has been successfully verified. Welcome to Superwizor AI!",
+    "successCta": "Go to the app",
+    "errorTitle": "Invalid or expired link",
+    "errorBody": "This verification link has expired, has already been used, or is invalid. Please try generating a new verification link in the app or contact support.",
+    "errorCta": "Back to home page",
+    "errorVerifyCta": "Back to email verification",
+    "resetPasswordTitle": "Set new password",
+    "resetPasswordBody": "Please enter a new secure password for your account.",
+    "newPasswordLabel": "New password",
+    "confirmNewPasswordLabel": "Confirm new password",
+    "passwordHint": "Min. 8 characters, including one number.",
+    "resetPasswordSubmit": "Change password",
+    "resetPasswordSubmitting": "Changing password...",
+    "resetPasswordSuccessTitle": "Password changed",
+    "resetPasswordSuccessBody": "Your new password has been successfully saved. You can now log in using your new password.",
+    "resetPasswordSuccessCta": "Log in",
+    "unsupportedTitle": "Unsupported action",
+    "unsupportedBody": "This authorization action is not currently supported by this page. Please try performing it in the mobile app.",
+    "errorPasswordsMismatch": "Passwords do not match.",
+    "errorPasswordTooShort": "Password must be at least 8 characters long."
   }
 }
+

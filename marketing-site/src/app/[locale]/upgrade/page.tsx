@@ -47,7 +47,7 @@ export default async function UpgradePage({
 
   return (
     <>
-      <Navbar />
+      <Navbar variant="app" />
       <main className="flex-1">
         <UpgradeSection catalog={catalog} locale={locale} />
       </main>

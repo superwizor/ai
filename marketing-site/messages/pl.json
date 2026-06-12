@@ -476,7 +476,12 @@
     "security": "Bezpieczeństwo",
     "languageSwitcher": "Język",
     "polish": "Polski",
-    "english": "English"
+    "english": "English",
+    "dashboard": "Panel",
+    "account": "Moje konto",
+    "openApp": "Otwórz aplikację",
+    "logout": "Wyloguj się",
+    "contact": "Kontakt"
   },
   "topbar": {
     "rodo": "Zgodność z RODO",
@@ -693,6 +698,7 @@
     },
     "fields": {
       "email": "Adres e-mail",
+      "confirmEmail": "Potwierdź adres e-mail",
       "password": "Hasło",
       "passwordHint": "Min. 8 znaków, jedna cyfra.",
       "firstName": "Imię",
@@ -703,7 +709,7 @@
       "defaultModality": "Główny nurt terapeutyczny",
       "uiLanguage": "Język interfejsu",
       "phoneNumber": "Numer telefonu",
-      "phoneNumberPlaceholder": "+48 123 456 789",
+      "phoneNumberPlaceholder": "123 456 789",
       "phoneNumberHint": "Numer telefonu potrzebny ze względów bezpieczeństwa.",
       "terms": "regulamin",
       "privacy": "politykę prywatności",
@@ -712,6 +718,7 @@
     },
     "errors": {
       "emailInvalid": "Wprowadź poprawny adres e-mail.",
+      "emailsMismatch": "Wprowadzone adresy e-mail różnią się.",
       "passwordTooShort": "Hasło musi mieć co najmniej 8 znaków.",
       "passwordNoNumber": "Hasło musi zawierać co najmniej jedną cyfrę.",
       "firstNameRequired": "Imię jest wymagane.",
@@ -721,7 +728,7 @@
       "emailAlreadyInUse": "Ten adres e-mail jest już zarejestrowany. Spróbuj się zalogować.",
       "weakPassword": "Hasło jest zbyt słabe.",
       "phoneRequired": "Numer telefonu jest wymagany.",
-      "phoneInvalid": "Numer telefonu powinien zawierać 6–18 cyfr; dozwolone są spacje, myślniki i nawiasy.",
+      "phoneInvalid": "Wprowadź poprawny numer telefonu (np. 9 cyfr dla Polski). Sekwencje lub powtórzone cyfry są niedozwolone.",
       "networkError": "Brak połączenia z serwerem. Spróbuj ponownie.",
       "unknown": "Coś poszło nie tak. Spróbuj ponownie."
     },
@@ -796,8 +803,8 @@
     "verifyEmail": {
       "metaTitle": "Potwierdź e-mail",
       "title": "Sprawdź swoją skrzynkę",
-      "intro": "Wysłaliśmy link aktywacyjny na adres {email}. Kliknij go, aby dokończyć rejestrację.",
-      "noEmail": "Nie widzisz wiadomości? Sprawdź folder spam lub kliknij poniżej, aby wysłać ponownie.",
+      "intro": "Wysłaliśmy link aktywacyjny. Kliknij go w wiadomości, aby potwierdzić konto.",
+      "noEmail": "Nie otrzymałeś wiadomości? Sprawdź folder spam lub kliknij poniżej, aby wysłać ponownie.",
       "resend": "Wyślij ponownie",
       "resending": "Wysyłanie…",
       "resent": "Wysłaliśmy nowy link. Sprawdź skrzynkę.",
@@ -806,7 +813,21 @@
       "verifyingStatus": "Sprawdzamy potwierdzenie…",
       "verifiedHeading": "E-mail potwierdzony",
       "verifiedBody": "Przekierowujemy do panelu…",
-      "verifiedGoToAccount": "Przejdź do panelu"
+      "verifiedGoToAccount": "Przejdź do panelu",
+      "changeEmail": "Pomyliłeś się? Zmień e-mail",
+      "newEmailLabel": "Nowy adres e-mail",
+      "cancel": "Anuluj",
+      "saveAndSend": "Zapisz i wyślij",
+      "invalidEmail": "Niepoprawny adres e-mail.",
+      "sessionExpired": "Sesja wygasła. Zaloguj się ponownie, aby zmienić e-mail.",
+      "emailInUse": "Ten adres e-mail jest już zajęty.",
+      "saveError": "Wystąpił błąd podczas zapisywania adresu.",
+      "emailUpdated": "Adres zaktualizowany! Wysłaliśmy nowy link weryfikacyjny.",
+      "checkingStatus": "Czekamy, aż klikniesz w link weryfikacyjny...",
+      "recipientEmail": "Adres e-mail, na który wysłaliśmy link:",
+      "signedOutHeading": "Sesja wygasła lub brak logowania",
+      "signedOutBody": "Weryfikacja e-mail wymaga aktywnej sesji. Zaloguj się na swoje konto, aby wysłać link ponownie lub zmienić e-mail.",
+      "logIn": "Zaloguj się"
     }
   },
   "legal": {
@@ -1183,5 +1204,32 @@
         }
       }
     }
+  },
+  "authAction": {
+    "metaTitle": "Weryfikacja konta",
+    "verifyingTitle": "Weryfikujemy Twój e-mail...",
+    "verifyingBody": "To potrwa tylko chwilkę. Przygotowujemy Twój kognitywny egzoszkielet...",
+    "successTitle": "E-mail zweryfikowany!",
+    "successBody": "Twój adres e-mail został pomyślnie potwierdzony. Witamy w gronie użytkowników Superwizor AI!",
+    "successCta": "Przejdź do aplikacji",
+    "errorTitle": "Niepoprawny lub wygasły link",
+    "errorBody": "Ten link weryfikacyjny wygasł, został już użyty lub jest nieprawidłowy. Spróbuj wygenerować nowy link weryfikacyjny w aplikacji lub skontaktuj się ze wsparciem.",
+    "errorCta": "Powrót do strony głównej",
+    "errorVerifyCta": "Wróć do weryfikacji e-mail",
+    "resetPasswordTitle": "Ustaw nowe hasło",
+    "resetPasswordBody": "Wprowadź nowe bezpieczne hasło dla swojego konta.",
+    "newPasswordLabel": "Nowe hasło",
+    "confirmNewPasswordLabel": "Potwierdź nowe hasło",
+    "passwordHint": "Min. 8 znaków, w tym jedna cyfra.",
+    "resetPasswordSubmit": "Zmień hasło",
+    "resetPasswordSubmitting": "Zmieniam hasło...",
+    "resetPasswordSuccessTitle": "Hasło zostało zmienione",
+    "resetPasswordSuccessBody": "Twoje nowe hasło zostało pomyślnie zapisane. Możesz się teraz zalogować za pomocą nowego hasła.",
+    "resetPasswordSuccessCta": "Zaloguj się",
+    "unsupportedTitle": "Nieobsługiwana akcja",
+    "unsupportedBody": "Ta akcja autoryzacyjna nie jest obecnie obsługiwana przez tę stronę. Spróbuj wykonać ją w aplikacji mobilnej.",
+    "errorPasswordsMismatch": "Hasła nie są identyczne.",
+    "errorPasswordTooShort": "Hasło musi mieć co najmniej 8 znaków."
   }
 }
+

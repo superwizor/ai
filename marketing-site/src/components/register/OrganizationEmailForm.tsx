@@ -59,6 +59,7 @@ export function OrganizationEmailForm() {
     register,
     handleSubmit,
     control,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<OrganizationEmailForm>({
     resolver: zodResolver(organizationEmailSchema),
@@ -75,7 +76,8 @@ export function OrganizationEmailForm() {
   const onSubmit = handleSubmit(async (data) => {
     setServerError(null);
     try {
-      const user = await auth.signUpWithEmail(data.email, data.password);
+      const continueUrl = `${window.location.origin}${prefix}/register/therapist/verify-email?email=${encodeURIComponent(data.email)}`;
+      const user = await auth.signUpWithEmail(data.email, data.password, continueUrl);
 
       const tz =
         Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Warsaw";
@@ -118,10 +120,18 @@ export function OrganizationEmailForm() {
     } catch (e) {
       if (e instanceof FirebaseError) {
         if (e.code === "auth/email-already-in-use") {
+          setError("email", {
+            type: "manual",
+            message: "email-already-in-use",
+          });
           setServerError(tErr("emailAlreadyInUse"));
           return;
         }
         if (e.code === "auth/weak-password") {
+          setError("password", {
+            type: "manual",
+            message: "weak-password",
+          });
           setServerError(tErr("weakPassword"));
           return;
         }
@@ -153,7 +163,18 @@ export function OrganizationEmailForm() {
           {tBody("sectionFounder")}
         </h2>
         <div className="grid gap-4">
-          <FieldShell id="email" label={t("email")} required error={errors.email && tErr("emailInvalid")}>
+          <FieldShell
+            id="email"
+            label={t("email")}
+            required
+            error={
+              errors.email?.message === "email-already-in-use"
+                ? tErr("emailAlreadyInUse")
+                : errors.email
+                ? tErr("emailInvalid")
+                : undefined
+            }
+          >
             <TextInput id="email" type="email" autoComplete="email" {...register("email")} />
           </FieldShell>
           <FieldShell
@@ -164,6 +185,8 @@ export function OrganizationEmailForm() {
             error={
               errors.password?.message === "password-no-digit"
                 ? tErr("passwordNoNumber")
+                : errors.password?.message === "weak-password"
+                ? tErr("weakPassword")
                 : errors.password
                 ? tErr("passwordTooShort")
                 : undefined

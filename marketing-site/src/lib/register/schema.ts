@@ -12,27 +12,69 @@ const password = z
   .min(8)
   .regex(/\d/, "password-no-digit");
 
-// E.164-ish phone format. Accept an optional leading `+`, then 6–18
-// digits with allowed spaces / dashes / parens between them. We
-// deliberately don't require `+48` — the placeholder hints at the
-// PL format but visitors from other countries still need to type a
-// usable number. Backend stores the canonical form per docs/18
-// §13.2 D5.
-const PHONE_REGEX = /^[+\d][\d\s\-()]{5,18}$/;
+function isValidPhone(v: string): boolean {
+  const stripped = v.replace(/[^\d+]/g, "");
+  // Must start with + followed by 7 to 15 digits
+  if (!/^\+\d{7,15}$/.test(stripped)) {
+    return false;
+  }
 
-// optionalPhone: accept empty (react-hook-form's default for an
-// untouched field) OR a string matching PHONE_REGEX. Anything else
-// fails with "phone-invalid" — surfaced to the user as a localized
-// hint by the form via tErr("phoneInvalid").
-const optionalPhone = z
-  .string()
-  .optional()
-  .refine((v) => !v || PHONE_REGEX.test(v), { message: "phone-invalid" });
+  const digits = stripped.replace("+", "");
+
+  // 1. Block numbers with all identical digits (e.g. +48 111 111 111)
+  const firstDigit = digits[0];
+  const allSame = digits.split("").every((d) => d === firstDigit);
+  if (allSame) return false;
+
+  // 2. Block sequential digits (e.g. +48 123 456 789, +48 987 654 321)
+  const sequentialAsc = "01234567890123456789";
+  const sequentialDesc = "98765432109876543210";
+  if (sequentialAsc.includes(digits) || sequentialDesc.includes(digits)) {
+    return false;
+  }
+
+  // 3. Special rules for Polish phone numbers (+48)
+  if (stripped.startsWith("+48")) {
+    const local = stripped.slice(3);
+    // Polish numbers (mobile and landline) must have exactly 9 digits
+    if (local.length !== 9) {
+      return false;
+    }
+    // Polish numbers do not start with 0
+    if (local.startsWith("0")) {
+      return false;
+    }
+    // Block all-same or sequential in the local part specifically
+    const firstLocalDigit = local[0];
+    const localAllSame = local.split("").every((d) => d === firstLocalDigit);
+    if (localAllSame) return false;
+
+    if (sequentialAsc.includes(local) || sequentialDesc.includes(local)) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 const requiredPhone = z
   .string()
   .min(1, { message: "phone-required" })
-  .regex(PHONE_REGEX, { message: "phone-invalid" });
+  .refine(
+    (v) => isValidPhone(v),
+    { message: "phone-invalid" }
+  );
+
+const optionalPhone = z
+  .string()
+  .optional()
+  .refine(
+    (v) => {
+      if (!v) return true;
+      return isValidPhone(v);
+    },
+    { message: "phone-invalid" }
+  );
 
 // Therapist registration via email/password — fields from docs/18 §13.2.
 //
@@ -43,59 +85,60 @@ const requiredPhone = z
 // schema took `modalityCode` (a "CBT"-style system_code string) and
 // passed it through unchanged — identity-svc rejected with
 // InvalidArgument "invalid default_modality_id". Fixed 2026-05-28.
-export const therapistEmailSchema = z.object({
-  email: z.string().email(),
-  password,
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  professionalTitle: z.string().optional(),
-  credentialsNumber: z.string().optional(),
-  modalityId: z.string().uuid({ message: "modality-required" }),
-  uiLanguage: z.enum(["pl", "en"]),
-  phoneNumber: requiredPhone,
-  hasAcceptedTos: z.literal(true),
-  hasMarketingConsent: z.boolean().optional(),
-});
+export const therapistEmailSchema = z
+  .object({
+    email: z.string().email(),
+    password,
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+    professionalTitle: z.string().optional(),
+    credentialsNumber: z.string().optional(),
+    uiLanguage: z.enum(["pl", "en"]),
+    phoneNumber: requiredPhone,
+    hasAcceptedTos: z.literal(true),
+    hasMarketingConsent: z.boolean().optional(),
+  });
 
 export type TherapistEmailForm = z.infer<typeof therapistEmailSchema>;
 
 // Organisation registration via email/password — fields from docs/18 §13.3.
 // Combines founder + organisation + headquarters address in one payload,
 // matching the single-transaction RegisterOrganization RPC.
-export const organizationEmailSchema = z.object({
-  // Founder account
-  email: z.string().email(),
-  password,
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  phoneNumber: requiredPhone, // required for org admins
-  uiLanguage: z.enum(["pl", "en"]),
+export const organizationEmailSchema = z
+  .object({
+    // Founder account
+    email: z.string().email(),
+    password,
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+    phoneNumber: requiredPhone, // required for org admins
+    uiLanguage: z.enum(["pl", "en"]),
 
-  // Organisation
-  legalName: z.string().min(1),
-  orgType: z.enum(["SOLO", "CLINIC", "ENTERPRISE"]),
-  // Polish NIP is 10 digits. Strict for the launch (PL-only); relax
-  // once we expand to other tax jurisdictions.
-  taxId: z.string().regex(/^\d{10}$/, "tax-id-invalid"),
-  vatIdEu: z.string().optional(),
+    // Organisation
+    legalName: z.string().min(1),
+    orgType: z.enum(["SOLO", "CLINIC", "ENTERPRISE"]),
+    // Polish NIP is 10 digits. Strict for the launch (PL-only); relax
+    // once we expand to other tax jurisdictions.
+    taxId: z.string().regex(/^\d{10}$/, "tax-id-invalid"),
+    vatIdEu: z.string().optional(),
 
-  // Headquarters address
-  // No zod default — react-hook-form's defaultValues handles that.
-  // Keeping the .default() here breaks the input/output type-split.
-  countryCode: z.string().length(2),
-  region: z.string().optional(),
-  city: z.string().min(1),
-  // PL postal-code format: 00-000. Loose for non-PL countries.
-  postalCode: z.string().min(3),
-  streetLine: z.string().min(1),
-  buildingNumber: z.string().min(1),
-  unitNumber: z.string().optional(),
-  directions: z.string().optional(),
+    // Headquarters address
+    // No zod default — react-hook-form's defaultValues handles that.
+    // Keeping the .default() here breaks the input/output type-split.
+    countryCode: z.string().length(2),
+    region: z.string().optional(),
+    city: z.string().min(1),
+    // PL postal-code format: 00-000. Loose for non-PL countries.
+    postalCode: z.string().min(3),
+    streetLine: z.string().min(1),
+    buildingNumber: z.string().min(1),
+    unitNumber: z.string().optional(),
+    directions: z.string().optional(),
 
-  // Consents
-  hasAcceptedTos: z.literal(true),
-  hasMarketingConsent: z.boolean().optional(),
-});
+    // Consents
+    hasAcceptedTos: z.literal(true),
+    hasMarketingConsent: z.boolean().optional(),
+  });
 
 export type OrganizationEmailForm = z.infer<typeof organizationEmailSchema>;
 
@@ -125,7 +168,6 @@ export type AcceptInviteForm = z.infer<typeof acceptInviteSchema>;
 export const therapistFinishSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  modalityId: z.string().uuid({ message: "modality-required" }),
   uiLanguage: z.enum(["pl", "en"]),
   phoneNumber: requiredPhone,
   professionalTitle: z.string().optional(),

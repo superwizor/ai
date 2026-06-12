@@ -44,7 +44,7 @@ export default async function OnboardingPage({
 
   return (
     <>
-      <Navbar />
+      <Navbar variant="tunnel" />
       <main className="flex-1 bg-gradient-to-b from-[#0A2326] to-[#0D1B1E] min-h-screen">
         <OnboardingWizard locale={locale} />
       </main>

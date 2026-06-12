@@ -186,6 +186,15 @@ export function PhoneInput({
 
   const parseValue = (val: string) => {
     if (!val) return { selectedPrefix: defaultDialCode, localNum: "" };
+
+    // If there is a space, split by it to get the prefix and local number cleanly
+    const spaceIndex = val.indexOf(" ");
+    if (spaceIndex !== -1) {
+      const prefix = val.slice(0, spaceIndex).trim();
+      const local = val.slice(spaceIndex + 1).trim();
+      return { selectedPrefix: prefix, localNum: local };
+    }
+
     const sortedCodes = [...dialCodes].sort((a, b) => b.code.length - a.code.length);
     for (const dc of sortedCodes) {
       if (val.startsWith(dc.code)) {
@@ -209,13 +218,24 @@ export function PhoneInput({
 
   const { selectedPrefix, localNum } = parseValue(value);
 
-  const handlePrefixChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newPrefix = e.target.value;
-    onChange(newPrefix + localNum);
+  const handlePrefixInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.trim();
+    // Allow digits and a single leading plus
+    val = val.replace(/[^\d+]/g, "");
+    if (val && !val.startsWith("+")) {
+      val = "+" + val;
+    }
+    onChange(val + " " + localNum);
   };
 
   const handleLocalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawLocal = e.target.value;
+    let rawLocal = e.target.value;
+
+    // Normalize leading '00' to '+'
+    if (rawLocal.startsWith("00")) {
+      rawLocal = "+" + rawLocal.slice(2);
+    }
+
     let newPrefix = selectedPrefix;
     let newLocal = rawLocal;
 
@@ -223,41 +243,57 @@ export function PhoneInput({
       const parsed = parseValue(rawLocal);
       newPrefix = parsed.selectedPrefix;
       newLocal = parsed.localNum;
+    } else {
+      // Check if user typed the prefix digits manually without leading +
+      const prefixDigits = selectedPrefix.replace(/[^\d]/g, ""); // e.g. "48"
+      const cleanedLocalDigits = rawLocal.replace(/[^\d]/g, "");
+
+      if (prefixDigits && cleanedLocalDigits.startsWith(prefixDigits)) {
+        const remainingDigits = cleanedLocalDigits.slice(prefixDigits.length);
+        if (remainingDigits.length >= 6) {
+          let digitsFound = 0;
+          let cutIndex = 0;
+          for (let i = 0; i < rawLocal.length; i++) {
+            if (/\d/.test(rawLocal[i])) {
+              digitsFound++;
+              if (digitsFound === prefixDigits.length) {
+                cutIndex = i + 1;
+                break;
+              }
+            }
+          }
+          newLocal = rawLocal.slice(cutIndex).trim();
+        }
+      }
     }
 
-    onChange(newPrefix + newLocal);
-  };
+    // Keep only digits, spaces, dashes, or parentheses
+    newLocal = newLocal.replace(/[^\d\s\-()]/g, "");
 
-  const prefixExists = dialCodes.some((dc) => dc.code === selectedPrefix);
+    onChange(newPrefix + " " + newLocal);
+  };
 
   return (
     <div className="flex gap-2 w-full">
-      <div className="relative shrink-0 w-[100px]">
-        <select
+      <div className="relative shrink-0 w-[85px]">
+        <input
+          id={`${id}-prefix`}
+          type="text"
+          list="dial-codes"
           value={selectedPrefix}
-          onChange={handlePrefixChange}
-          className={`appearance-none cursor-pointer rounded-button bg-frost/5 border border-frost/15 text-frost pl-3.5 pr-8 py-2.5 font-sans text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition h-full w-full ${
+          onChange={handlePrefixInputChange}
+          placeholder="+48"
+          className={`rounded-button bg-frost/5 border border-frost/15 text-frost text-center px-3 py-2.5 font-sans text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition h-full w-full ${
             error ? "!border-magma !focus:border-magma" : ""
           }`}
-        >
-          {dialCodes.map((dc) => {
-            return (
-              <option key={dc.code} value={dc.code} className="bg-obsidian text-frost">
-                {dc.label}
-              </option>
-            );
-          })}
-          {!prefixExists && selectedPrefix ? (
-            <option value={selectedPrefix} className="bg-obsidian text-frost">
-              🌐 {selectedPrefix}
+        />
+        <datalist id="dial-codes">
+          {dialCodes.map((dc) => (
+            <option key={dc.code} value={dc.code}>
+              {dc.label}
             </option>
-          ) : null}
-        </select>
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-mist/60">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
+          ))}
+        </datalist>
       </div>
       <TextInput
         id={id}

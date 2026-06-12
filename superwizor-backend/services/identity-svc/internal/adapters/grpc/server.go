@@ -119,6 +119,25 @@ func (s *Server) ValidateToken(ctx context.Context, req *identityv1.ValidateToke
 		}
 	}
 
+	// Synchronize email from Firebase claims if it differs from the database email
+	if emailVal, ok := claims["email"].(string); ok && emailVal != "" {
+		emailLC := strings.ToLower(strings.TrimSpace(emailVal))
+		currentEmail := strings.ToLower(strings.TrimSpace(derefString(user.Email)))
+		if emailLC != currentEmail {
+			_, errUpdate := s.pool.Exec(ctx,
+				`UPDATE users SET email = $1 WHERE id = $2 AND deleted_at IS NULL`,
+				emailLC, user.ID,
+			)
+			if errUpdate == nil {
+				slog.InfoContext(ctx, "synced user email from firebase claims on the fly",
+					"old_email", currentEmail, "new_email", emailLC, "user_id", user.ID)
+				user.Email = &emailLC
+			} else {
+				slog.ErrorContext(ctx, "failed to sync user email", "error", errUpdate, "user_id", user.ID)
+			}
+		}
+	}
+
 	// Per migration 000013, users.firebase_uid and users.email are
 	// nullable for patient rows (which don't authenticate). Therapist
 	// rows still have both populated — the partial CHECK constraint
@@ -137,6 +156,24 @@ func (s *Server) ValidateToken(ctx context.Context, req *identityv1.ValidateToke
 	}
 	return resp, nil
 }
+
+func (s *Server) CheckEmailExists(ctx context.Context, req *identityv1.CheckEmailExistsRequest) (*identityv1.CheckEmailExistsResponse, error) {
+	if req.Email == "" {
+		return nil, status.Error(codes.InvalidArgument, "email is required")
+	}
+
+	emailLC := strings.ToLower(strings.TrimSpace(req.Email))
+	_, err := s.queries.GetUserByEmail(ctx, &emailLC)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &identityv1.CheckEmailExistsResponse{Exists: false}, nil
+		}
+		return nil, status.Errorf(codes.Internal, "database query failed: %v", err)
+	}
+
+	return &identityv1.CheckEmailExistsResponse{Exists: true}, nil
+}
+
 
 func (s *Server) GetUser(ctx context.Context, req *identityv1.GetUserRequest) (*identityv1.User, error) {
 	id, err := uuid.Parse(req.UserId)

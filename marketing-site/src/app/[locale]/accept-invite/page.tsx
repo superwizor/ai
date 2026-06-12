@@ -42,7 +42,7 @@ export default async function AcceptInvitePage({
 
   return (
     <>
-      <Navbar />
+      <Navbar variant="auth" />
       <main className="flex-1">
         <section className="mx-auto w-full max-w-xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
           <p className="font-sans text-[10px] sm:text-xs uppercase text-aurora tracking-[var(--tracking-overline)] mb-3 text-center">

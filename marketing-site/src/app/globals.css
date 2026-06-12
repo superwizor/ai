@@ -80,11 +80,17 @@ html, body {
   color: var(--color-obsidian);
 }
 
-/* Focus ring — accessible orange, matches Ember on every surface */
-:focus-visible {
+/* Focus ring — accessible orange, matches Ember on every surface (exclude form controls to prevent double borders and clipping) */
+:focus-visible:not(input):not(select):not(textarea) {
   outline: 2px solid var(--color-ember);
   outline-offset: 2px;
   border-radius: var(--radius-button);
+}
+
+/* Premium links style: prevent browser from cutting underlines on descenders (y, ę, ć, etc.) */
+a {
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
 }
 
 /* ── Custom Animations for Design Taste Skill ── */
