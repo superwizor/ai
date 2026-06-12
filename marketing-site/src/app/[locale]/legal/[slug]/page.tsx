@@ -73,7 +73,7 @@ export default async function LegalPage({
   const lastUpdated = new Intl.DateTimeFormat(
     locale === "en" ? "en-GB" : "pl-PL",
     { year: "numeric", month: "long", day: "numeric" },
-  ).format(new Date("2026-05-28"));
+  ).format(new Date("2026-06-12"));
 
   return (
     <>
