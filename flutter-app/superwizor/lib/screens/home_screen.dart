@@ -212,12 +212,16 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
       }
     }
 
-    // Sort active by last activity (newest first)
+    // Sort active by last activity (newest first).
+    // Patients with zero sessions use DateTime.now() so they float to the
+    // top right after creation — the therapist should see a just-added
+    // client immediately without scrolling through 15+ existing entries.
+    final now = DateTime.now();
     activePatients.sort((a, b) {
       final aSessions = sessionsMap[a.id] ?? [];
       final bSessions = sessionsMap[b.id] ?? [];
-      final aDate = aSessions.isNotEmpty ? aSessions.last.date : DateTime(2000);
-      final bDate = bSessions.isNotEmpty ? bSessions.last.date : DateTime(2000);
+      final aDate = aSessions.isNotEmpty ? aSessions.last.date : now;
+      final bDate = bSessions.isNotEmpty ? bSessions.last.date : now;
       return bDate.compareTo(aDate);
     });
     completedPatients.sort((a, b) => a.firstName.compareTo(b.firstName));
@@ -426,44 +430,6 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
   }
 }
 
-// ─── Section label helper ─────────────────────────────────────────────────────
-
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  final int count;
-  const _SectionLabel({required this.label, required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Montserrat',
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.5,
-              color: EuphireColors.mist.withValues(alpha: 0.5),
-            ),
-          ),
-          Text(
-            '$count',
-            style: TextStyle(
-              fontFamily: 'Montserrat',
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: EuphireColors.mist.withValues(alpha: 0.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─── Patient status enum ──────────────────────────────────────────────────
 
@@ -499,8 +465,8 @@ class _PatientCompactCard extends ConsumerWidget {
     final f = patient.firstName;
     final l = patient.lastName;
     if (f.isEmpty && l.isEmpty) return '?';
-    final first = f.isNotEmpty ? f[0].toUpperCase() : '';
-    final last = l.isNotEmpty ? l[0].toUpperCase() : '';
+    final first = f.isNotEmpty ? f.characters.first.toUpperCase() : '';
+    final last = l.isNotEmpty ? l.characters.first.toUpperCase() : '';
     return '$first$last'.trim();
   }
 

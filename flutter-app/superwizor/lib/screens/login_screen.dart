@@ -53,7 +53,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _nameCtrl = TextEditingController();
   late final PageController _pageCtrl;
   bool _loading = false;
-  bool _isLogin = true;
   String? _error;
   bool _obscurePassword = true;
   bool _tosAccepted = false;
@@ -82,7 +81,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _goToRegister() {
     if (_loading) return;
-    setState(() { _isLogin = false; _error = null; _passwordCtrl.clear(); });
+    setState(() { _error = null; _passwordCtrl.clear(); });
     _pageCtrl.animateToPage(1,
         duration: const Duration(milliseconds: 450),
         curve: Curves.easeInOutCubicEmphasized);
@@ -90,7 +89,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _goToLogin() {
     if (_loading) return;
-    setState(() { _isLogin = true; _error = null; _passwordCtrl.clear(); });
+    setState(() { _error = null; _passwordCtrl.clear(); });
     _pageCtrl.animateToPage(0,
         duration: const Duration(milliseconds: 450),
         curve: Curves.easeInOutCubicEmphasized);

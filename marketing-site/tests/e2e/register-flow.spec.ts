@@ -395,14 +395,17 @@ test.describe("Bad Path: Form Validation", () => {
 // ─────────────────────────────────────────────────────────────
 
 test.describe("Bad Path: 404 Pages", () => {
-  test("/upgrade does not exist yet (should 404 or redirect)", async ({
+  test("/upgrade page loads with heading", async ({
     page,
   }) => {
     const prefix = urlPrefix();
     const response = await page.goto(`${prefix}/upgrade`);
-    // Should either 404 or redirect
-    const status = response?.status();
-    expect([200, 404, 307, 308]).toContain(status);
+    expect(response?.status()).toBe(200);
+    const heading = forLocale({
+      pl: /Twój okres próbny/i,
+      en: /Your trial has ended/i,
+    });
+    await expect(page.locator("h1")).toContainText(heading);
   });
 
   test("/dashboard does not exist yet", async ({ page }) => {

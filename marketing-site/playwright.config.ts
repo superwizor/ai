@@ -29,7 +29,9 @@ export default defineConfig({
     // Use a bash wrapper so node@20 + pnpm resolve via the project
     // .bash_profile PATH. Re-uses an already-running dev server if
     // one is up (so iterating locally doesn't spawn duplicates).
-    command: "bash -lc 'pnpm start'",
+    // Note: `pnpm start` won't work with `output: export` config.
+    // The dev server is used instead which has no export constraint.
+    command: "bash -lc 'pnpm dev'",
     url: "http://localhost:3000",
     timeout: 60_000,
     reuseExistingServer: !process.env.CI,

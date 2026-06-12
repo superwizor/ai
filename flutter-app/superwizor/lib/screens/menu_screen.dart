@@ -148,7 +148,9 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     final locale = ref.watch(localeProvider);
 
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      // userChanges() fires on PROFILE mutations (displayName, email,
+      // photoURL, etc.) — not just sign-in/sign-out like authStateChanges().
+      stream: FirebaseAuth.instance.userChanges(),
       builder: (context, _) {
         final user = FirebaseAuth.instance.currentUser;
         final displayName = (user?.displayName?.isNotEmpty == true) ? user!.displayName! : 'Terapeuta';

@@ -38,7 +38,7 @@ export default async function SuccessPage({
       ? "Your subscription is being activated. Please check your email to verify your account and start using Superwizor AI."
       : "Twoja subskrypcja jest aktywowana. Sprawdź swoją skrzynkę e-mail, aby zweryfikować konto i rozpocząć korzystanie z Superwizor AI.";
   const cta =
-    locale === "en" ? "Go to login" : "Przejdź do logowania";
+    locale === "en" ? "Verify your email" : "Zweryfikuj swój email";
   const prefix = locale === "en" ? "/en" : "";
 
   return (
@@ -51,6 +51,7 @@ export default async function SuccessPage({
           subtext={subtext}
           cta={cta}
           prefix={prefix}
+          ctaHref={`${prefix}/register/therapist/verify-email`}
         />
       </main>
       <Footer />

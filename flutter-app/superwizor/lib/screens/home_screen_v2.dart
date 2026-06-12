@@ -319,10 +319,12 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     List<Session> sessions,
     Set<String> viewedReports,
   ) {
-    if (sessions.isEmpty && patient.sessionCount == 0)
+    if (sessions.isEmpty && patient.sessionCount == 0) {
       return _PatientStatus.awaiting;
-    if (sessions.isEmpty)
+    }
+    if (sessions.isEmpty) {
       return _PatientStatus.active; // has sessions on backend, not loaded yet
+    }
     final hasInProgress = sessions.any(
       (s) => s.status == SessionStatus.inProgress,
     );
@@ -375,12 +377,16 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
       }
     }
 
-    // Sort active by last activity (newest first)
+    // Sort active by last activity (newest first).
+    // Patients with zero sessions use DateTime.now() so they float to the
+    // top right after creation — the therapist should see a just-added
+    // client immediately without scrolling through 15+ existing entries.
+    final now = DateTime.now();
     activePatients.sort((a, b) {
       final aSessions = sessionsMap[a.id] ?? [];
       final bSessions = sessionsMap[b.id] ?? [];
-      final aDate = aSessions.isNotEmpty ? aSessions.last.date : DateTime(2000);
-      final bDate = bSessions.isNotEmpty ? bSessions.last.date : DateTime(2000);
+      final aDate = aSessions.isNotEmpty ? aSessions.last.date : now;
+      final bDate = bSessions.isNotEmpty ? bSessions.last.date : now;
       return bDate.compareTo(aDate);
     });
     completedPatients.sort((a, b) => a.firstName.compareTo(b.firstName));
@@ -685,8 +691,8 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
     final f = widget.patient.firstName;
     final l = widget.patient.lastName;
     if (f.isEmpty && l.isEmpty) return '?';
-    final first = f.isNotEmpty ? f[0].toUpperCase() : '';
-    final last = l.isNotEmpty ? l[0].toUpperCase() : '';
+    final first = f.isNotEmpty ? f.characters.first.toUpperCase() : '';
+    final last = l.isNotEmpty ? l.characters.first.toUpperCase() : '';
     return '$first$last'.trim();
   }
 
@@ -732,8 +738,9 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
         ];
       }
     }
-    if (widget.sessionCount > 0)
+    if (widget.sessionCount > 0) {
       return [TextSpan(text: 'Sesje: ${widget.sessionCount}')];
+    }
     return [
       TextSpan(
         text: full ? 'Oczekuje na pierwsz\u0105 sesj\u0119' : 'Nowy klient',

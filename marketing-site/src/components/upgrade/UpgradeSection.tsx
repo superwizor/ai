@@ -3,12 +3,17 @@
 // Plan: "bez opcji free, krótki pitch + 2 plany (Równowaga + Rozkwit)"
 // Design: short motivational pitch + two large cards + promo codes.
 // No trial card — they already had their trial.
+//
+// Auth-aware: if user is logged in, CTA calls /api/checkout directly
+// with their organizationId. If not logged in, falls back to registration.
 
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { getAuth } from "firebase/auth";
 import type { BillingCycle, PlanRow } from "@/lib/billing/plans";
 import { findPlan, formatPrice } from "@/lib/billing/plans";
+import { identityClient } from "@/lib/connect/clients";
 
 export function UpgradeSection({
   catalog,
@@ -157,6 +162,9 @@ function UpgradeCard({
   prefix: string;
   isHero: boolean;
 }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const monthlyPrice =
     cycle === "ANNUAL" ? Math.round(row.priceGross / 12) : row.priceGross;
   const introMonthlyPrice = row.priceIntroGross
@@ -198,8 +206,83 @@ function UpgradeCard({
             "Rozszerzona personalizacja raportów",
           ];
 
-  const planSlug = tier === "solo" ? "solo_monthly" : "pro_monthly";
-  const checkoutHref = `${prefix}/register/therapist?plan=${planSlug}`;
+  // Build the correct planSlug reflecting the selected cycle
+  const cycleSuffix = cycle === "ANNUAL" ? "annual" : "monthly";
+  const planSlug = `${tier}_${cycleSuffix}`;
+  const registerHref = `${prefix}/register/therapist?plan=${planSlug}`;
+
+  // Checkout handler: if logged in → /api/checkout direct; else → registration
+  const handleCheckout = useCallback(async () => {
+    if (!row.stripePriceId) {
+      // No Stripe price configured (e.g. CLINIC tier) — go to contact
+      window.location.href = `${prefix}/kontakt`;
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+
+      if (!user) {
+        // Not logged in — redirect to registration with plan pre-selected
+        window.location.href = registerHref;
+        return;
+      }
+
+      // Logged in: resolve organizationId via identity-svc
+      const token = await user.getIdToken();
+      const ctx = await identityClient.validateToken(
+        { firebaseIdToken: token },
+      );
+      const organizationId = ctx.organizationId;
+
+      if (!organizationId) {
+        // User exists but no org (edge case) — fallback to registration
+        console.warn("[UpgradeCard] No organizationId, falling back to register");
+        window.location.href = registerHref;
+        return;
+      }
+
+      // Call /api/checkout with the user's org and email
+      const resp = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          priceId: row.stripePriceId,
+          organizationId,
+          email: user.email ?? undefined,
+        }),
+      });
+
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        throw new Error(body.error || `Checkout failed (${resp.status})`);
+      }
+
+      const { url } = await resp.json();
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unexpected error";
+      console.error("[UpgradeCard] checkout error:", err);
+      setError(
+        locale === "en"
+          ? `Error: ${msg}`
+          : `Błąd: ${msg}`,
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [row.stripePriceId, prefix, registerHref, locale]);
 
   return (
     <div
@@ -304,30 +387,30 @@ function UpgradeCard({
         ))}
       </ul>
 
+      {/* Error message */}
+      {error && (
+        <p className={`text-xs font-sans mb-3 ${
+          isHero ? "text-red-300" : "text-red-600"
+        }`}>
+          {error}
+        </p>
+      )}
+
       {/* CTA */}
-      <a
-        href={checkoutHref}
-        className={`block w-full text-center py-3.5 rounded-xl font-sans font-bold text-sm uppercase tracking-wider transition-all duration-200 ${
+      <button
+        onClick={handleCheckout}
+        disabled={loading}
+        className={`block w-full text-center py-3.5 rounded-xl font-sans font-bold text-sm uppercase tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
           isHero
             ? "bg-[#F5A623] text-[#1B2522] hover:bg-[#E09500] shadow-lg shadow-[#F5A623]/30"
             : "bg-[#004D54] text-white hover:bg-[#003A40] shadow-md"
         }`}
       >
-        {locale === "en" ? "Choose this plan" : "Wybierz ten plan"}
-      </a>
+        {loading
+          ? (locale === "en" ? "Redirecting…" : "Przekierowuję…")
+          : (locale === "en" ? "Choose this plan" : "Wybierz ten plan")}
+      </button>
     </div>
   );
 }
 
-/* ─── Promo Tag ──────────────────────────────────────────────── */
-
-function PromoTag({ code, label }: { code: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#E2DED5] shadow-sm">
-      <span className="font-mono text-xs font-bold text-[#004D54] tracking-wider">
-        {code}
-      </span>
-      <span className="text-[10px] text-[#4E5A55]">{label}</span>
-    </span>
-  );
-}

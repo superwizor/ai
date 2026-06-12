@@ -10,6 +10,7 @@ type Particle = {
   color: string;
   size: number;
   delay: number;
+  duration: number;
   rotate: number;
   shape: "circle" | "square" | "triangle";
 };
@@ -93,17 +94,18 @@ function playSuccessSound() {
 }
 
 export function SuccessContent({
-  locale,
   heading,
   subtext,
   cta,
   prefix,
+  ctaHref,
 }: {
   locale: string;
   heading: string;
   subtext: string;
   cta: string;
   prefix: string;
+  ctaHref?: string;
 }) {
   const [particles, setParticles] = useState<Particle[]>([]);
 
@@ -143,6 +145,7 @@ export function SuccessContent({
         color: colors[Math.floor(Math.random() * colors.length)],
         size: 6 + Math.random() * 8,
         delay: Math.random() * 0.15,
+        duration: 1.6 + Math.random() * 0.8,
         rotate: Math.random() * 360,
         shape: shapes[Math.floor(Math.random() * shapes.length)],
       });
@@ -180,7 +183,7 @@ export function SuccessContent({
               opacity: [1, 1, 1, 0.9, 0],
             }}
             transition={{
-              duration: 1.6 + Math.random() * 0.8,
+              duration: p.duration,
               ease: [0.1, 0.8, 0.25, 1], // Custom overshoot bezier
               delay: p.delay,
             }}
@@ -262,7 +265,7 @@ export function SuccessContent({
           transition={{ delay: 0.4, duration: 0.5 }}
         >
           <a
-            href={`${prefix}/login`}
+            href={ctaHref ?? `${prefix}/login`}
             onClick={playSuccessSound}
             className="relative inline-flex items-center justify-center w-full sm:w-auto min-w-[200px] rounded-2xl bg-gradient-to-r from-[#F5A623] to-[#E09500] text-[#1B2522] font-sans font-bold text-xs uppercase tracking-wider px-8 py-4.5 overflow-hidden shadow-lg shadow-black/25 hover:shadow-[0_8px_30px_rgba(245,166,35,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
           >

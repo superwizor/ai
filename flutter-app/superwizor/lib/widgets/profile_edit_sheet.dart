@@ -22,6 +22,7 @@ class ProfileEditSheet extends ConsumerStatefulWidget {
 class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
   final _firstController = TextEditingController();
   final _lastController = TextEditingController();
+  final _titleController = TextEditingController();
   bool _isSaving = false;
 
   @override
@@ -33,11 +34,17 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
       _firstController.text = parts.isNotEmpty ? parts.first : '';
       _lastController.text = parts.length > 1 ? parts.sublist(1).join(' ') : '';
     }
+    // Load professional title from backend user profile
+    final backendUser = ref.read(currentUserProvider).value;
+    if (backendUser != null && backendUser.professionalTitle.isNotEmpty) {
+      _titleController.text = backendUser.professionalTitle;
+    }
   }
 
   Future<void> _saveProfile() async {
     final firstName = _firstController.text.trim();
     final lastName = _lastController.text.trim();
+    final professionalTitle = _titleController.text.trim();
     if (firstName.isEmpty) return;
 
     setState(() => _isSaving = true);
@@ -53,7 +60,11 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
       // 2. identity-svc gRPC — aktualizuje rejestr backendu
       try {
         await ref.read(grpcClientsProvider).identity.updateProfile(
-          UpdateProfileRequest(firstName: firstName, lastName: lastName),
+          UpdateProfileRequest(
+            firstName: firstName,
+            lastName: lastName,
+            professionalTitle: professionalTitle,
+          ),
         );
       } catch (_) {
         // Nie blokuj UI jeśli backend niedostępny
@@ -77,6 +88,7 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
   void dispose() {
     _firstController.dispose();
     _lastController.dispose();
+    _titleController.dispose();
     super.dispose();
   }
 
@@ -99,7 +111,7 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
           Text('Edytuj profil.', style: theme.textTheme.headlineMedium),
           const SizedBox(height: 6),
           Text(
-            'Podaj swoje imię i nazwisko.',
+            'Podaj swoje imię, nazwisko i tytuł zawodowy.',
             style: theme.textTheme.bodyMedium?.copyWith(color: EuphireColors.mist),
           ),
           const SizedBox(height: 24),
@@ -111,6 +123,11 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
           EuphireTextField(
             controller: _lastController,
             labelText: 'Nazwisko (opcjonalne)',
+          ),
+          const SizedBox(height: 12),
+          EuphireTextField(
+            controller: _titleController,
+            labelText: 'Tytuł zawodowy (np. mgr, dr)',
           ),
           const SizedBox(height: 24),
           SizedBox(
