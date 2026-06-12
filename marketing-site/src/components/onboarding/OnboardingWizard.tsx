@@ -190,7 +190,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
         const prefLabels: Record<string, string> = {
           transcription: t("Dokładna transkrypcja i notatki z sesji", "Accurate session transcriptions & notes"),
           reports: t("Automatyczne podsumowania i raporty kliniczne", "Automated summaries & clinical reports"),
-          patterns: t("Analiza historii i wątków z wielu sesji pacjenta", "Analyzing patterns across multiple client sessions"),
+          patterns: t("Analiza historii i wątków z wielu sesji klienta", "Analyzing patterns across multiple client sessions"),
           modality: t("Raporty dopasowane do mojego nurtu", "Reports tailored to my therapy modality"),
           gdpr: t("Pełne bezpieczeństwo danych i zgodność z RODO", "Full GDPR compliance & secure data storage"),
           review: t("Błyskawiczne przygotowanie przed sesją (wgląd w 3 minuty)", "Quick review before sessions (3-minute prep)"),
@@ -435,7 +435,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
                 {[
                   { id: "transcription", emoji: "🎙️", label: t("Dokładna transkrypcja i notatki z sesji", "Accurate session transcriptions & notes") },
                   { id: "reports", emoji: "📊", label: t("Automatyczne podsumowania i raporty kliniczne", "Automated summaries & clinical reports") },
-                  { id: "patterns", emoji: "🔮", label: t("Analiza historii i wątków z wielu sesji pacjenta", "Analyzing patterns across multiple client sessions") },
+                  { id: "patterns", emoji: "🔮", label: t("Analiza historii i wątków z wielu sesji klienta", "Analyzing patterns across multiple client sessions") },
                   { id: "modality", emoji: "📋", label: t("Raporty dopasowane do mojego nurtu", "Reports tailored to my therapy modality") },
                   { id: "gdpr", emoji: "🛡️", label: t("Pełne bezpieczeństwo danych i zgodność z RODO", "Full GDPR compliance & secure data storage") },
                   { id: "review", emoji: "⚡", label: t("Błyskawiczne przygotowanie przed sesją (wgląd w 3 minuty)", "Quick review before sessions (3-minute prep)") },
