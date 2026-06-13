@@ -15,6 +15,7 @@ import {
   mockCreateUser,
   mockUpdateProfile,
   mockListModalities,
+  mockCheckEmailExists,
 } from "./fixtures/connect-rpc";
 import { RegisterTherapistPage } from "./pages/register.page";
 
@@ -23,6 +24,7 @@ import { RegisterTherapistPage } from "./pages/register.page";
 test.beforeEach(async ({ page }) => {
   await mockFirebaseAuth(page, THERAPIST_USER);
   await mockListModalities(page);
+  await mockCheckEmailExists(page, false);
 });
 
 // ── Scenarios ──────────────────────────────────────────────────────
@@ -64,7 +66,7 @@ test.describe("Therapist Registration", () => {
     await expect(reg.firstNameInput).toBeVisible();
     await expect(reg.lastNameInput).toBeVisible();
     await expect(reg.phoneNumberInput).toBeVisible();
-    await expect(reg.modalitySelect).not.toBeVisible();
+    await expect(reg.professionalTitleInput).not.toBeVisible();
 
     // Fill Step 4 & Go to Step 5
     await reg.firstNameInput.fill("Anna");
@@ -73,7 +75,7 @@ test.describe("Therapist Registration", () => {
     await reg.nextStepButton.click();
 
     // Step 5
-    await expect(reg.modalitySelect).toBeVisible();
+    await expect(reg.professionalTitleInput).toBeVisible();
   });
 
   test("shows validation errors on empty submit", async ({ page }) => {
@@ -117,8 +119,8 @@ test.describe("Therapist Registration", () => {
     // Leave phone number empty
     await reg.nextStepButton.click();
 
-    // Still on Step 4 (modalitySelect is not visible)
-    await expect(reg.modalitySelect).not.toBeVisible();
+    // Still on Step 4 (professionalTitleInput is not visible)
+    await expect(reg.professionalTitleInput).not.toBeVisible();
     await expect(page.locator("p[role='alert']")).toBeVisible();
   });
 
@@ -146,12 +148,11 @@ test.describe("Therapist Registration", () => {
     expect(created!.firstName).toBe("Anna");
     expect(created!.lastName).toBe("Kowalska");
 
-    // Assert UpdateProfile was called with the selected modality.
+    // Assert UpdateProfile was called with the professional details.
     const updated = updateProfile.getCaptured();
     expect(updated).not.toBeNull();
-    expect(updated!.defaultModalityId).toBe(
-      "44f77c8e-8a71-4770-96f3-42e13297a7e8",
-    );
+    expect(updated!.professionalTitle).toBe("Psychoterapeutka CBT");
+    expect(updated!.phoneNumber).toBe("+48 500100200");
   });
 
   test("shows server error when Firebase rejects email-already-in-use", async ({
@@ -182,7 +183,7 @@ test.describe("Therapist Registration", () => {
     // Should stay on the page and show an error alert.
     await reg.expectStillOnRegisterPage(prefix);
     // Use p[role='alert'] to exclude Next.js __next-route-announcer__ div.
-    await expect(page.locator("p[role='alert']")).toBeVisible();
+    await expect(page.locator("p[role='alert']").first()).toBeVisible();
   });
 
   test("shows server error when identity-svc is unreachable", async ({
@@ -205,7 +206,7 @@ test.describe("Therapist Registration", () => {
 
     // Should stay on page and show network error.
     await reg.expectStillOnRegisterPage(prefix);
-    await expect(page.locator("p[role='alert']")).toBeVisible();
+    await expect(page.locator("p[role='alert']").first()).toBeVisible();
   });
 });
 

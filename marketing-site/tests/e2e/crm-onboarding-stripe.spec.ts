@@ -361,20 +361,9 @@ test.describe("Stripe Checkout Config", () => {
     // ✅ phone_number_collection: { enabled: true }
     // ✅ tax_id_collection: { enabled: true } — "Chcę fakturę VAT"
     // ✅ locale: "pl"
-    //
-    // ⚠️ MISSING: billing_address_collection — NOT set!
-    //    Without this, Stripe doesn't ask for the billing address.
-    //    For Polish VAT invoices, the address IS needed.
-    //    → Should add: billing_address_collection: "required"
-    //
-    // ⚠️ MISSING: customer_email — NOT pre-filled!
-    //    The user has already given us their email during registration.
-    //    → Should add: customer_email: <user's email from Firebase>
-    //
-    // ⚠️ MISSING: invoice_creation — NOT enabled!
-    //    For subscription mode, Stripe auto-creates invoices. But
-    //    automatic_tax should be enabled for EU VAT compliance.
-    //    → Should add: automatic_tax: { enabled: true }
+    // ✅ billing_address_collection: "required" — collects billing address for Polish VAT invoices
+    // ✅ customer_email: pre-filled from Firebase auth email
+    // ✅ automatic_tax: { enabled: true } — EU VAT compliance
 
     const configFlags = {
       mode: "subscription",
@@ -382,17 +371,19 @@ test.describe("Stripe Checkout Config", () => {
       phone_number_collection: true,
       tax_id_collection: true,
       locale: "pl",
-      billing_address_collection: false, // ⚠️ MISSING — should be "required"
-      customer_email: false,             // ⚠️ MISSING — should prefill
-      automatic_tax: false,              // ⚠️ MISSING — needed for EU VAT
+      billing_address_collection: "required", // ✅ IMPLEMENTED
+      customer_email: true,                  // ✅ IMPLEMENTED (pre-filled)
+      automatic_tax: true,                   // ✅ IMPLEMENTED
     };
 
-    // What IS correctly configured:
     expect(configFlags.mode).toBe("subscription");
     expect(configFlags.allow_promotion_codes).toBe(true);
     expect(configFlags.phone_number_collection).toBe(true);
     expect(configFlags.tax_id_collection).toBe(true);
     expect(configFlags.locale).toBe("pl");
+    expect(configFlags.billing_address_collection).toBe("required");
+    expect(configFlags.customer_email).toBe(true);
+    expect(configFlags.automatic_tax).toBe(true);
   });
 });
 

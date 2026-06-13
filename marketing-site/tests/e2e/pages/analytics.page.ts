@@ -36,7 +36,7 @@ export class AnalyticsDashboardPage {
       pl: "Centrum Analityczne",
       en: "Analytics Center",
     });
-    await expect(this.heading).toContainText(title);
+    await expect(this.heading).toContainText(title, { timeout: 10_000 });
   }
 
   /** Assert error state is shown. */

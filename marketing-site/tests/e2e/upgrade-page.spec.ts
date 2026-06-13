@@ -172,7 +172,7 @@ test.describe("Upgrade Page", () => {
 
     const kartotekiFeature = forLocale({
       pl: /kartoteki/i,
-      en: /patient files/i,
+      en: /client files/i,
     });
     await expect(page.getByText(kartotekiFeature).first()).toBeVisible();
   });

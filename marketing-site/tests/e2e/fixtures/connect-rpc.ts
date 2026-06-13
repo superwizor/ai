@@ -91,6 +91,25 @@ export async function mockUpdateProfile(
   return { getCaptured: () => captured };
 }
 
+/**
+ * Mock identity.v1.IdentityService/CheckEmailExists.
+ */
+export async function mockCheckEmailExists(
+  page: Page,
+  exists = false,
+) {
+  await page.route(
+    /identity\.v1\.IdentityService\/CheckEmailExists/,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ exists }),
+      });
+    },
+  );
+}
+
 // ── Clinical Service ───────────────────────────────────────────────
 
 /** Minimal valid GetAdminAnalytics response with all required fields. */

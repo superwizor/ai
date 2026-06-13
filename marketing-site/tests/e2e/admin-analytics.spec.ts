@@ -98,8 +98,15 @@ test.describe("Admin Analytics — Dashboard", () => {
       en: "Active Therapists (WAU)",
     });
     await dashboard.expectKpiVisible(wauTitle);
-    await expect(page.locator("text=120").first()).toBeVisible();
-    await expect(page.locator("text=450").first()).toBeVisible();
+    const wauCard = page.locator("div.rounded-card", { has: page.locator("p", { hasText: wauTitle }) });
+    await expect(wauCard.locator("span.font-display")).toContainText("120", { timeout: 10_000 });
+
+    const sessionsTitle = forLocale({
+      pl: "Sesje w tym tygodniu",
+      en: "Sessions This Week",
+    });
+    const sessionsCard = page.locator("div.rounded-card", { has: page.locator("p", { hasText: sessionsTitle }) });
+    await expect(sessionsCard.locator("span.font-display")).toContainText("450", { timeout: 10_000 });
   });
 
   test("switches to Costs tab and shows cost KPIs", async ({ page }) => {

@@ -16,7 +16,7 @@ export class RegisterTherapistPage {
   readonly passwordInput: Locator;
   readonly firstNameInput: Locator;
   readonly lastNameInput: Locator;
-  readonly modalitySelect: Locator;
+  readonly professionalTitleInput: Locator;
   readonly tosCheckbox: Locator;
   readonly submitButton: Locator;
   readonly validationErrors: Locator;
@@ -36,7 +36,7 @@ export class RegisterTherapistPage {
     this.passwordInput = page.locator("#password");
     this.firstNameInput = page.locator("#firstName");
     this.lastNameInput = page.locator("#lastName");
-    this.modalitySelect = page.locator("#modality");
+    this.professionalTitleInput = page.locator("#professionalTitle");
     this.tosCheckbox = page.locator("#tos");
     this.nextStepButton = page.locator("#next-step-btn");
     this.phoneNumberInput = page.locator("#phoneNumber");
@@ -70,7 +70,7 @@ export class RegisterTherapistPage {
     firstName: string;
     lastName: string;
     phoneNumber: string;
-    modalityId: string;
+    professionalTitle: string;
   }> = {}) {
     const defaults = {
       email: "e2e@example.com",
@@ -78,7 +78,7 @@ export class RegisterTherapistPage {
       firstName: "Anna",
       lastName: "Kowalska",
       phoneNumber: "+48500100200",
-      modalityId: "44f77c8e-8a71-4770-96f3-42e13297a7e8",
+      professionalTitle: "Psychoterapeutka CBT",
     };
     const data = { ...defaults, ...overrides };
 
@@ -98,8 +98,8 @@ export class RegisterTherapistPage {
     await this.phoneNumberInput.fill(data.phoneNumber);
     await this.nextStepButton.click();
 
-    // Step 5 (Clinical Details)
-    await this.modalitySelect.selectOption(data.modalityId);
+    // Step 5 (Clinical Details / specialization & preferences)
+    await this.professionalTitleInput.fill(data.professionalTitle);
   }
 
   /** Submit the form. */

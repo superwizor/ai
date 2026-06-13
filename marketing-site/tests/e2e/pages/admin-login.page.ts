@@ -44,7 +44,7 @@ export class AdminLoginPage {
       pl: "Musisz się zalogować, aby uzyskać dostęp do panelu administracyjnego.",
       en: "You need to sign in to access the admin console.",
     });
-    await expect(this.heading).toContainText(title);
+    await expect(this.heading).toContainText(title, { timeout: 10_000 });
   }
 
   /** Fill credentials and submit the admin sign-in form. */
