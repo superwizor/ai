@@ -1,8 +1,57 @@
 {
   "metadata": {
-    "title": "Superwizor AI — a supervisor's second brain",
-    "description": "Polish-built co-pilot for therapists and supervisors. Record a session and receive transcript, report, and pointers in minutes.",
-    "ogSiteName": "Superwizor AI"
+    "title": "Superwizor AI — AI Copilot for Psychotherapists and Coaches",
+    "description": "Record your therapy sessions and get a dynamic transcript and clinical report in minutes. Secure EU hosting, fully GDPR-compliant.",
+    "ogSiteName": "Superwizor AI",
+    "home": {
+      "title": "Superwizor AI — AI Copilot for Psychotherapists and Coaches",
+      "description": "Record your therapy sessions and get a dynamic transcript and clinical report in minutes. Secure EU hosting, fully GDPR-compliant.",
+      "keywords": "psychotherapy, supervision, AI copilot, session transcription, clinical notes, GDPR, Vertex AI, clinical reports, CBT, psychodynamic therapy"
+    },
+    "pacjent": {
+      "title": "Personal Therapy Assistant — Organize Your Session Insights | Superwizor AI",
+      "description": "Make the most of your therapy. Securely record insights, track emotional patterns, and prepare for your sessions with a private AI assistant. Zero-trust privacy.",
+      "keywords": "patient assistant, therapy notes, personal growth, emotions, session preparation, privacy, zero-trust, post-session reflection"
+    },
+    "beta": {
+      "title": "Join our Exclusive Free Beta Program | Superwizor AI",
+      "description": "Become one of 50 exclusive beta testers. Get 120 free sessions per month for 2 months. Help us build the ultimate clinical copilot.",
+      "keywords": "beta program, free copilot, AI testing, therapist assistant, free sessions, free assistant"
+    },
+    "pricing": {
+      "title": "Simple Pricing and Plans for Psychotherapists | Superwizor AI",
+      "description": "Find the perfect plan for your practice. From our free trial to pro and clinic plans. Transparent billing.",
+      "keywords": "superwizor pricing, ai assistant prices, subscription plans, free trial, clinic license"
+    },
+    "contact": {
+      "title": "Contact Us — Get in Touch | Superwizor AI",
+      "description": "Have questions about Superwizor AI, data privacy, or clinic integration? Contact our support team via form or email.",
+      "keywords": "contact superwizor, technical support, GDPR questions, psychotherapist help"
+    },
+    "dashboard": {
+      "title": "Your Dashboard",
+      "description": "Access your sessions or manage your account."
+    },
+    "account": {
+      "title": "My Account",
+      "description": "Manage your profile, organization, and subscription."
+    },
+    "onboarding": {
+      "title": "Account Setup",
+      "description": "Complete your account setup on Superwizor AI."
+    },
+    "login": {
+      "title": "Log In",
+      "description": "Log in to your Superwizor AI dashboard."
+    },
+    "register": {
+      "title": "Register",
+      "description": "Create an account on Superwizor AI."
+    },
+    "upgrade": {
+      "title": "Upgrade Plan",
+      "description": "Choose a higher tier subscription plan."
+    }
   },
   "admin": {
     "metaTitle": "Admin console",

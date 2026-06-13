@@ -9,7 +9,7 @@
 // Apple compliance: this page lives on the WEB only,
 // never linked from inside the iOS app.
 
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 
 import { Navbar } from "@/components/marketing/Navbar";
@@ -23,15 +23,14 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata.upgrade" });
   return {
-    title:
-      locale === "en"
-        ? "Upgrade your plan · Superwizor AI"
-        : "Rozszerz swój plan · Superwizor AI",
-    description:
-      locale === "en"
-        ? "Choose the plan that fits your practice. Continue your work with Superwizor AI."
-        : "Wybierz plan dopasowany do Twojej praktyki. Kontynuuj pracę z Superwizor AI.",
+    title: t("title"),
+    description: t("description"),
+    robots: {
+      index: false,
+      follow: false,
+    },
   };
 }
 

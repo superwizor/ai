@@ -22,7 +22,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "register.verifyEmail" });
-  return { title: t("metaTitle") };
+  return {
+    title: t("metaTitle"),
+    robots: {
+      index: false,
+      follow: false,
+    },
+  };
 }
 
 // Static-export contract: see /register/therapist/finish/page.tsx

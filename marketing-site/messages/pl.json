@@ -1,8 +1,57 @@
 {
   "metadata": {
-    "title": "Superwizor AI — drugi mózg superwizora",
-    "description": "Polski co-pilot dla terapeutów i superwizorów. Nagraj sesję, otrzymaj transkrypcję, raport i wskazówki w kilka minut.",
-    "ogSiteName": "Superwizor AI"
+    "title": "Superwizor AI — Polski Copilot dla Psychoterapeutów",
+    "description": "Nagraj sesję terapeutyczną i otrzymaj transkrypcję oraz profesjonalny raport kliniczny w kilka minut. Narzędzie stworzone specjalnie dla psychoterapii. Serwery w UE, pełna zgodność z RODO.",
+    "ogSiteName": "Superwizor AI",
+    "home": {
+      "title": "Superwizor AI — Polski Copilot dla Psychoterapeutów",
+      "description": "Nagraj sesję terapeutyczną i otrzymaj transkrypcję oraz profesjonalny raport kliniczny w kilka minut. Narzędzie stworzone specjalnie dla psychoterapii. Serwery w UE, pełna zgodność z RODO.",
+      "keywords": "psychoterapia, superwizja, asystent AI, transkrypcja sesji, notatki kliniczne, RODO, polski AI, raport kliniczny, CBT, psychodynamika"
+    },
+    "pacjent": {
+      "title": "Osobisty Asystent Terapii — Uporządkuj Swoje Wnioski i Emocje | Superwizor AI",
+      "description": "Zwiększ efektywność swojej terapii. Bezpiecznie zapisuj wnioski po sesji, śledź wzorce emocjonalne i przygotowuj się do kolejnych spotkań z terapeutą. Twoja prywatność jest chroniona szyfrowaniem zero-trust.",
+      "keywords": "asystent pacjenta, notatki z terapii, rozwój osobisty, emocje, przygotowanie do sesji, prywatność, zero-trust, refleksja po terapii"
+    },
+    "beta": {
+      "title": "Dołącz do darmowego programu Beta | Superwizor AI",
+      "description": "Zostań jednym z 50 pionierów testujących polskiego asystenta AI za darmo. Otrzymaj limit 120 sesji miesięcznie na 2 miesiące bez żadnych opłat. Pomóż nam stworzyć idealnego copilota.",
+      "keywords": "program beta, darmowy copilot, testowanie AI, asystent terapeuty, darmowe sesje, darmowy asystent"
+    },
+    "pricing": {
+      "title": "Przejrzysty Cennik i Plany dla Terapeutów | Superwizor AI",
+      "description": "Wybierz plan dopasowany do swojej praktyki. Darmowy okres próbny, plany SOLO, PRO i CLINIC dla gabinetów i klinik.",
+      "keywords": "cennik superwizor, ceny asystenta ai, plany subskrypcji, superwizor za darmo, licencja próbna"
+    },
+    "contact": {
+      "title": "Kontakt i Wsparcie | Superwizor AI",
+      "description": "Masz pytania o bezpieczeństwo danych, RODO lub funkcje asystenta? Skontaktuj się z naszym zespołem.",
+      "keywords": "kontakt superwizor, wsparcie techniczne, RODO pytania, pomoc psychoterapeutyczna"
+    },
+    "dashboard": {
+      "title": "Twój Panel",
+      "description": "Otwórz sesje lub zarządzaj swoim kontem."
+    },
+    "account": {
+      "title": "Moje Konto",
+      "description": "Zarządzaj swoim profilem, organizacją i subskrypcją."
+    },
+    "onboarding": {
+      "title": "Konfiguracja Konta",
+      "description": "Dokończ konfigurację konta w Superwizor AI."
+    },
+    "login": {
+      "title": "Zaloguj się",
+      "description": "Zaloguj się do swojego panelu Superwizor AI."
+    },
+    "register": {
+      "title": "Rejestracja",
+      "description": "Utwórz konto w Superwizor AI."
+    },
+    "upgrade": {
+      "title": "Zmień Plan",
+      "description": "Wybierz wyższy pakiet subskrypcji."
+    }
   },
   "admin": {
     "metaTitle": "Panel administracyjny",

@@ -16,15 +16,43 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata.beta" });
+
+  const title = t("title");
+  const description = t("description");
+  const keywords = t("keywords");
+
   return {
-    title:
-      locale === "en"
-        ? "Beta Program · Superwizor AI"
-        : "Program Beta · Superwizor AI",
-    description:
-      locale === "en"
-        ? "Join our exclusive beta program. 120 sessions/month for 2 months, free."
-        : "Dołącz do programu beta. 120 sesji miesięcznie przez 2 miesiące, za darmo.",
+    title,
+    description,
+    keywords,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      locale: locale === "en" ? "en_US" : "pl_PL",
+      siteName: "Superwizor AI",
+      images: [
+        {
+          url: "/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: "Superwizor AI",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/og-image.png"],
+    },
+    other: {
+      "geo.region": "PL-MZ",
+      "geo.placename": "Warszawa",
+      "geo.position": "52.2297;21.0122",
+      "ICBM": "52.2297, 21.0122",
+    },
   };
 }
 

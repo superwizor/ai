@@ -52,7 +52,15 @@ export async function generateMetadata({
   const { locale, slug } = await params;
   if (!isSlug(slug)) return {};
   const t = await getTranslations({ locale, namespace: `legal.pages.${slug}` });
-  return { title: t("metaTitle") };
+  return {
+    title: t("metaTitle"),
+    other: {
+      "geo.region": "PL-MZ",
+      "geo.placename": "Warszawa",
+      "geo.position": "52.2297;21.0122",
+      "ICBM": "52.2297, 21.0122",
+    },
+  };
 }
 
 export default async function LegalPage({

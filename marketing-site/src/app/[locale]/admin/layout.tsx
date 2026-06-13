@@ -22,7 +22,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "admin" });
-  return { title: t("metaTitle") };
+  return {
+    title: t("metaTitle"),
+    robots: {
+      index: false,
+      follow: false,
+    },
+  };
 }
 
 export default async function AdminLayout({

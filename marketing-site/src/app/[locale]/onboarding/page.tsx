@@ -10,7 +10,7 @@
 //
 // Resume after browser close via progress stored in localStorage.
 
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 
 import { Navbar } from "@/components/marketing/Navbar";
@@ -22,15 +22,14 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata.onboarding" });
   return {
-    title:
-      locale === "en"
-        ? "Set up your account · Superwizor AI"
-        : "Skonfiguruj swoje konto · Superwizor AI",
-    description:
-      locale === "en"
-        ? "Complete your profile to start using Superwizor AI."
-        : "Uzupełnij swój profil, aby rozpocząć pracę z Superwizor AI.",
+    title: t("title"),
+    description: t("description"),
+    robots: {
+      index: false,
+      follow: false,
+    },
   };
 }
 

@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 
 import { Navbar } from "@/components/marketing/Navbar";
@@ -11,15 +11,43 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata.pacjent" });
+
+  const title = t("title");
+  const description = t("description");
+  const keywords = t("keywords");
+
   return {
-    title:
-      locale === "en"
-        ? "Personal Therapy Assistant · Superwizor AI"
-        : "Osobisty Asystent Terapii · Superwizor AI",
-    description:
-      locale === "en"
-        ? "Organize your therapy insights, track patterns, and prepare for sessions securely with AI built for privacy."
-        : "Uporządkuj swoje wnioski z sesji, śledź wzorce i przygotuj się do spotkań z bezpiecznym asystentem AI.",
+    title,
+    description,
+    keywords,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      locale: locale === "en" ? "en_US" : "pl_PL",
+      siteName: "Superwizor AI",
+      images: [
+        {
+          url: "/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: "Superwizor AI",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/og-image.png"],
+    },
+    other: {
+      "geo.region": "PL-MZ",
+      "geo.placename": "Warszawa",
+      "geo.position": "52.2297;21.0122",
+      "ICBM": "52.2297, 21.0122",
+    },
   };
 }
 

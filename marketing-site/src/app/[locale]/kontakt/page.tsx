@@ -13,8 +13,21 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "contact" });
-  return { title: t("metaTitle") };
+  const t = await getTranslations({ locale, namespace: "metadata.contact" });
+  const title = t("title");
+  const description = t("description");
+  const keywords = t("keywords");
+  return {
+    title,
+    description,
+    keywords,
+    other: {
+      "geo.region": "PL-MZ",
+      "geo.placename": "Warszawa",
+      "geo.position": "52.2297;21.0122",
+      "ICBM": "52.2297, 21.0122",
+    },
+  };
 }
 
 export default async function ContactPage({

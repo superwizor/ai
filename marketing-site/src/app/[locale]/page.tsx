@@ -34,19 +34,16 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata.home" });
 
-  const title =
-    locale === "en"
-      ? "Superwizor AI — AI copilot for psychotherapy"
-      : "Superwizor AI — AI copilot dla psychoterapii";
-  const description =
-    locale === "en"
-      ? "Record your therapy session, get a clinical report in minutes. A tool built for psychotherapy — designed with care and attention to your needs. EU servers, GDPR compliant."
-      : "Nagraj sesję terapeutyczną, otrzymaj raport kliniczny w kilka minut. Narzędzie stworzone dla psychoterapii. Z uwagą i starannością na Twoje potrzeby. Serwery w UE, zgodność z RODO.";
+  const title = t("title");
+  const description = t("description");
+  const keywords = t("keywords");
 
   return {
     title,
     description,
+    keywords,
     openGraph: {
       title,
       description,
@@ -67,6 +64,12 @@ export async function generateMetadata({
       title,
       description,
       images: ["/og-image.png"],
+    },
+    other: {
+      "geo.region": "PL-MZ",
+      "geo.placename": "Warszawa",
+      "geo.position": "52.2297;21.0122",
+      "ICBM": "52.2297, 21.0122",
     },
   };
 }

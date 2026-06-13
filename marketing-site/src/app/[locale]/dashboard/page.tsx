@@ -8,7 +8,7 @@
 // This is the redirect target after successful registration/checkout.
 // Uses client-side auth to show the user's name and guide them.
 
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 
 import { Navbar } from "@/components/marketing/Navbar";
@@ -21,15 +21,14 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata.dashboard" });
   return {
-    title:
-      locale === "en"
-        ? "Your Dashboard · Superwizor AI"
-        : "Twój panel · Superwizor AI",
-    description:
-      locale === "en"
-        ? "Access your sessions or manage your account."
-        : "Otwórz sesje lub zarządzaj swoim kontem.",
+    title: t("title"),
+    description: t("description"),
+    robots: {
+      index: false,
+      follow: false,
+    },
   };
 }
 
