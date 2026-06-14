@@ -52,7 +52,7 @@ export async function generateMetadata({
       siteName: "Superwizor AI",
       images: [
         {
-          url: "/og-image.png",
+          url: "/og-home.png",
           width: 1200,
           height: 630,
           alt: "Superwizor AI",
@@ -63,7 +63,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title,
       description,
-      images: ["/og-image.png"],
+      images: ["/og-home.png"],
     },
     other: {
       "geo.region": "PL-MZ",

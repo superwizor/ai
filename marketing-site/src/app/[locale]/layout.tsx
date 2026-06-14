@@ -77,7 +77,7 @@ export async function generateMetadata({
       siteName: t("ogSiteName"),
       images: [
         {
-          url: "/og-image.png",
+          url: "/og-home.png",
           width: 1200,
           height: 630,
           alt: "Superwizor AI",
@@ -86,7 +86,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      images: ["/og-image.png"],
+      images: ["/og-home.png"],
     },
     alternates: { languages },
     icons: {
