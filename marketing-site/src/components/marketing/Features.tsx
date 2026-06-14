@@ -28,13 +28,9 @@ const FEATURE_ICONS: Record<FeatureKey, React.ReactNode> = {
   ),
   continuity: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-      <path d="M5 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-      <path d="M19 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-      <path d="M19 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-      <line x1="7.7" y1="10.5" x2="9.3" y2="11.5" />
-      <line x1="14.7" y1="12.5" x2="16.3" y2="13.5" />
-      <line x1="16.5" y1="6.5" x2="13.5" y2="8.5" />
+      <circle cx="6" cy="12" r="3" />
+      <path d="M9 12c1.5-3 4.5 3 6 0" />
+      <circle cx="18" cy="12" r="3" />
     </svg>
   ),
   modality: (
@@ -700,49 +696,55 @@ export function Features() {
               {(["record", "transcript", "report", "continuity", "modality", "folder"] as const).map((key) => {
                 const isActive = activeTab === key;
                 return (
-                  <button
-                    key={key}
-                    onClick={() => changeTab(key)}
-                    data-feature={key}
-                    className={`flex flex-col items-start text-left rounded-xl p-4 transition-all duration-300 cursor-pointer border snap-center shrink-0 w-[270px] sm:w-[290px] lg:w-full ${
-                      isActive
-                        ? "bg-gradient-to-br from-[#004D54] to-[#002E32] text-white border-transparent shadow-[0_12px_32px_-12px_rgba(0,77,84,0.35)]"
-                        : "bg-white border border-[#E2DED5]/80 hover:bg-[#EDEAE3]/50 text-[#1B2522]"
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 border transition-colors duration-300 shrink-0 ${
-                      isActive
-                        ? "bg-white/10 border-white/20 text-[#5bf4bc]"
-                        : "bg-[#004D54]/[0.06] border-[#004D54]/[0.1] text-[#004D54]"
+                  <div key={key} className="flex flex-col snap-center shrink-0 w-[270px] sm:w-[290px] lg:w-full">
+                    <button
+                      onClick={() => changeTab(key)}
+                      data-feature={key}
+                      className={`flex flex-row items-center justify-between text-left rounded-xl p-4 transition-all duration-300 cursor-pointer border w-full ${
+                        isActive
+                          ? "bg-gradient-to-br from-[#004D54] to-[#002E32] text-white border-transparent shadow-[0_12px_32px_-12px_rgba(0,77,84,0.35)]"
+                          : "bg-white border border-[#E2DED5]/80 hover:bg-[#EDEAE3]/50 text-[#1B2522]"
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <h3 className={`font-display text-sm sm:text-[15px] lg:text-base font-bold tracking-tight flex items-center gap-1.5 transition-colors ${
+                          isActive ? "text-white" : "text-[#1B2522]"
+                        }`}>
+                          <span>{tItem(`${key}.title`)}</span>
+                          {isActive && <span className="text-[#5bf4bc] text-xs">✦</span>}
+                        </h3>
+                      </div>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-colors duration-300 shrink-0 ml-3 ${
+                        isActive
+                          ? "bg-white/10 border-white/20 text-[#5bf4bc]"
+                          : "bg-[#004D54]/[0.06] border-[#004D54]/[0.1] text-[#004D54]"
+                      }`}>
+                        {FEATURE_ICONS[key]}
+                      </div>
+                    </button>
+ 
+                    {/* Separate description block below button */}
+                    <div className={`hidden lg:grid transition-all duration-300 ease-in-out ${
+                      isActive ? "grid-rows-[1fr] opacity-100 mt-2.5" : "grid-rows-[0fr] opacity-0"
                     }`}>
-                      {FEATURE_ICONS[key]}
-                    </div>
-                    <div className="w-full">
-                      <h3 className={`font-display text-sm sm:text-[15px] lg:text-base font-bold tracking-tight flex items-center gap-1.5 transition-colors ${
-                        isActive ? "text-white" : "text-[#1B2522]"
-                      }`}>
-                        <span>{tItem(`${key}.title`)}</span>
-                        {isActive && <span className="text-[#5bf4bc] text-xs">✦</span>}
-                      </h3>
-                      <div className={`hidden lg:grid transition-all duration-300 ease-in-out ${
-                        isActive ? "grid-rows-[1fr] opacity-100 mt-2" : "grid-rows-[0fr] opacity-0"
-                      }`}>
-                        <div className="overflow-hidden">
-                          <p className={`font-serif text-xs sm:text-[13px] lg:text-[14px] leading-relaxed transition-colors ${
-                            isActive ? "text-frost/90" : "text-[#4E5A55]"
-                          }`}>
-                            {tItem.rich(`${key}.body`, {
-                              bold: (chunks) => (
-                                <strong className={`font-bold ${isActive ? "text-white" : "text-[#1B2522]"}`}>
-                                  {chunks}
-                                </strong>
-                              )
-                            })}
-                          </p>
+                      <div className="overflow-hidden">
+                        <div className={`relative p-4 rounded-xl border text-left leading-relaxed font-sans text-xs sm:text-[13px] transition-all duration-300 shadow-md ${
+                          isActive
+                            ? "bg-gradient-to-br from-[#08363a] to-[#042528] border-[#08363a]/30 text-white/90 shadow-black/15"
+                            : "bg-[#FBFAF7]/50 border-black/5 text-[#4E5A55]"
+                        }`}>
+                          {tItem.rich(`${key}.body`, {
+                            bold: (chunks) => (
+                              <strong className={`font-bold ${isActive ? "text-white" : "text-[#1B2522]"}`}>
+                                {chunks}
+                              </strong>
+                            ),
+                            enter: (chunks) => <span className="block mt-2 sm:mt-2.5">{chunks}</span>
+                          })}
                         </div>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -751,8 +753,8 @@ export function Features() {
           {/* Right Side: High-Fidelity App Demo Mockup (1:1 Replica, High Contrast) */}
           <div className="lg:col-span-7 flex flex-col justify-center relative">
             
-            {/* White Backing Glow (outside the overflow-hidden frame to let it expand onto the dark background) */}
-            <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,rgba(0,77,84,0.06),transparent_65%)] blur-[60px] pointer-events-none animate-pulse z-0" />
+            {/* White Backing Glow (static for GPU performance, avoiding expensive repaint filters on iOS) */}
+            <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,rgba(0,77,84,0.05),transparent_65%)] blur-[60px] pointer-events-none z-0 transform-gpu" />
             
             {/* Wrapper for mockup and outside arrows on desktop */}
             <div className="relative w-full max-w-[460px] lg:max-w-[540px] mx-auto">
@@ -782,7 +784,7 @@ export function Features() {
               {/* Live demo frame */}
               <div 
                 onClick={handleNextTab}
-                className="relative w-full rounded-[24px] p-[1.5px] bg-[#2C3533] overflow-hidden shadow-[0_30px_60px_-15px_rgba(27,37,34,0.18)] border border-white/[0.06] z-10 cursor-pointer group hover:shadow-2xl transition-all duration-300"
+                className="relative w-full rounded-[24px] p-[1.5px] bg-[#2C3533] overflow-hidden shadow-[0_30px_60px_-15px_rgba(27,37,34,0.18)] border border-white/[0.06] z-10 cursor-pointer group hover:shadow-2xl transition-all duration-300 transform-gpu"
               >
                 {/* Phone/Tablet Screen Interface */}
                 <div 
@@ -809,7 +811,7 @@ export function Features() {
                     '--back-btn-text': 'rgba(255, 255, 255, 0.9)',
                     '--footer-border': 'rgba(255, 255, 255, 0.06)',
                   } as React.CSSProperties}
-                  className="relative w-full rounded-[22.5px] overflow-hidden bg-[var(--screen-bg)] pt-5 pb-6 px-2.5 sm:px-5 lg:px-6 h-[580px] lg:h-[690px] flex flex-col justify-between select-text transition-all duration-300 text-[var(--text-pri)]"
+                  className="relative w-full rounded-[22.5px] overflow-hidden bg-[var(--screen-bg)] pt-5 pb-6 px-2.5 sm:px-5 lg:px-6 h-[580px] lg:h-[690px] flex flex-col justify-between select-text transition-all duration-300 text-[var(--text-pri)] transform-gpu"
                 >
 
                 {/* Main Dynamic View Content */}

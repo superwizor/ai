@@ -1150,27 +1150,27 @@
       "items": {
         "record": {
           "title": "Recording in complete confidentiality",
-          "body": "Start recording with one tap, knowing that everything important will be captured. <bold>The encrypted recording is protected according to the highest data security standards.</bold> Immediately after transcription is generated, the audio is automatically and permanently deleted."
+          "body": "Start recording with one tap, knowing that everything important will be captured. <enter><bold>The encrypted recording is protected according to the highest data security standards.</bold> Immediately after transcription is generated, the audio is automatically and permanently deleted.</enter>"
         },
         "transcript": {
           "title": "Transcription with speaker separation",
-          "body": "Every session is automatically converted into a readable transcript in your chosen language, <bold>divided by speakers</bold>. Revisit any part of the conversation, search specific utterances, and export the transcript with one click."
+          "body": "Every session is automatically converted into a readable transcript in your chosen language, <bold>divided by speakers</bold>. <enter>Revisit any part of the conversation, search specific utterances, and export the transcript with one click.</enter>"
         },
         "report": {
           "title": "Insightful insights after each session",
-          "body": "Shortly after the session, you receive a report with the essence of the meeting, insightful observations, client homework, and threads to deepen. <bold>Before the next meeting, a short note is waiting for you</bold>, allowing you to return to the full session context in minutes. All written in the language of your modality."
+          "body": "Shortly after the session, you receive a report with the essence of the meeting, insightful observations, client homework, and threads to deepen. <enter><bold>Before the next meeting, a short note is waiting for you</bold>, allowing you to return to the full session context in minutes. All written in the language of your modality.</enter>"
         },
         "continuity": {
           "title": "Themes captured between sessions",
-          "body": "Recurring themes from subsequent meetings are <bold>semantically linked with the earlier context</bold>. This makes it easier to maintain continuity of work and see how the process with the client develops over time."
+          "body": "Recurring themes from subsequent meetings are <bold>semantically linked with the earlier context</bold>. <enter>This makes it easier to maintain continuity of work and see how the process with the client develops over time.</enter>"
         },
         "modality": {
           "title": "We work in your modality",
-          "body": "All summaries, observations, and recommendations are <bold>created in the language of your modality</bold>. You can customize their length, tone, number of quotes, and how they are formulated."
+          "body": "All summaries, observations, and recommendations are <bold>created in the language of your modality</bold>. <enter>You can customize their length, tone, number of quotes, and how they are formulated.</enter>"
         },
         "folder": {
           "title": "Documentation and history",
-          "body": "Each client has their own folder, and <bold>all sessions are arranged on a clear timeline</bold>. Return to any meeting in seconds, and new reports are visible immediately."
+          "body": "Each client has their own folder, and <bold>all sessions are arranged on a clear timeline</bold>. <enter>Return to any meeting in seconds, and new reports are visible immediately.</enter>"
         }
       }
     },

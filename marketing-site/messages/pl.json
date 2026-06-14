@@ -1150,27 +1150,27 @@
       "items": {
         "record": {
           "title": "Nagrywanie w pełnej poufności",
-          "body": "Jednym tapnięciem rozpoczynasz nagrywanie sesji, wiedząc, że wszystko, co ważne, zostanie uchwycone. <bold>Zaszyfrowane nagranie jest chronione zgodnie z najwyższymi standardami bezpieczeństwa danych.</bold> Zaraz po utworzeniu transkrypcji nagranie audio jest automatycznie i trwale usuwane."
+          "body": "Jednym tapnięciem rozpoczynasz nagrywanie sesji, wiedząc, że wszystko, co ważne, zostanie uchwycone. <enter><bold>Zaszyfrowane nagranie jest chronione zgodnie z najwyższymi standardami bezpieczeństwa danych.</bold> Zaraz po utworzeniu transkrypcji nagranie audio jest automatycznie i trwale usuwane.</enter>"
         },
         "transcript": {
           "title": "Transkrypcja z podziałem na mówców",
-          "body": "Każda sesja jest automatycznie przekształcana w czytelną transkrypcję w wybranym przez Ciebie języku, <bold>z podziałem na mówców</bold>. W każdej chwili wrócisz do dowolnego fragmentu rozmowy, wyszukasz konkretne wypowiedzi i wyeksportujesz zapis jednym kliknięciem."
+          "body": "Każda sesja jest automatycznie przekształcana w czytelną transkrypcję w wybranym przez Ciebie języku, <bold>z podziałem na mówców</bold>. <enter>W każdej chwili wrócisz do dowolnego fragmentu rozmowy, wyszukasz konkretne wypowiedzi i wyeksportujesz zapis jednym kliknięciem.</enter>"
         },
         "report": {
           "title": "Wnikliwe wnioski po każdej sesji",
-          "body": "Chwilę po zakończeniu sesji otrzymujesz raport z esencją spotkania, wnikliwymi obserwacjami, zadaniami dla klienta i wątkami wartymi pogłębienia. <bold>Przed kolejnym spotkaniem czeka na Ciebie krótka notatka</bold>, dzięki której w kilka minut wracasz do pełnego kontekstu sesji. Wszystko napisane w języku Twojego nurtu."
+          "body": "Chwilę po zakończeniu sesji otrzymujesz raport z esencją spotkania, wnikliwymi obserwacjami, zadaniami dla klienta i wątkami wartymi pogłębienia. <enter><bold>Przed kolejnym spotkaniem czeka na Ciebie krótka notatka</bold>, dzięki której w kilka minut wracasz do pełnego kontekstu sesji. Wszystko napisane w języku Twojego nurtu.</enter>"
         },
         "continuity": {
           "title": "Wątki wyłapywane pomiędzy sesjami",
-          "body": "Powracające tematy z kolejnych spotkań są <bold>semantycznie łączone z wcześniejszym kontekstem</bold>. Dzięki temu łatwiej zachowujesz ciągłość pracy i widzisz, jak proces z klientem rozwija się w czasie."
+          "body": "Powracające tematy z kolejnych spotkań są <bold>semantycznie łączone z wcześniejszym kontekstem</bold>. <enter>Dzięki temu łatwiej zachowujesz ciągłość pracy i widzisz, jak proces z klientem rozwija się w czasie.</enter>"
         },
         "modality": {
           "title": "Pracujemy w Twoim nurcie",
-          "body": "Wszystkie podsumowania, obserwacje i wskazówki są <bold>tworzone w języku Twojego nurtu</bold>. Możesz dopasować ich długość, ton, liczbę cytatów oraz sposób, w jaki są formułowane."
+          "body": "Wszystkie podsumowania, obserwacje i wskazówki są <bold>tworzone w języku Twojego nurtu</bold>. <enter>Możesz dopasować ich długość, ton, liczbę cytatów oraz sposób, w jaki są formułowane.</enter>"
         },
         "folder": {
           "title": "Dokumentacja i historia",
-          "body": "Każdy klient ma swoją kartotekę, a <bold>wszystkie sesje układają się na przejrzystej osi czasu</bold>. Wracasz do dowolnego spotkania w kilka sekund, a nowe raporty widać od razu."
+          "body": "Każdy klient ma swoją kartotekę, a <bold>wszystkie sesje układają się na przejrzystej osi czasu</bold>. <enter>Wracasz do dowolnego spotkania w kilka sekund, a nowe raporty widać od razu.</enter>"
         }
       }
     },
