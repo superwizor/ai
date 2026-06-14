@@ -11,8 +11,8 @@ const galleryItems = [
   },
   {
     src: "/assets/gallery_menu.webp",
-    pl: { title: "Menu Główne", desc: "Szybki dostęp do wszystkich narzędzi klinicznych." },
-    en: { title: "Main Menu", desc: "Quick access to all key clinical tools." }
+    pl: { title: "Menu Główne", desc: "Szybki dostęp do wszystkich kluczowych narzędzi." },
+    en: { title: "Main Menu", desc: "Quick access to all key tools." }
   },
   {
     src: "/assets/gallery_upload.webp",
@@ -31,8 +31,8 @@ const galleryItems = [
   },
   {
     src: "/assets/screen_report.webp",
-    pl: { title: "Raport Kliniczny", desc: "Strukturyzowane podsumowanie sesji w Twoim nurcie." },
-    en: { title: "Clinical Report", desc: "Structured session summaries in your modality." }
+    pl: { title: "Raport", desc: "Strukturyzowane podsumowanie sesji w Twoim nurcie." },
+    en: { title: "Report", desc: "Structured session summaries in your modality." }
   },
   {
     src: "/assets/gallery_doc.webp",
@@ -47,7 +47,7 @@ const galleryItems = [
   {
     src: "/assets/gallery_options.webp",
     pl: { title: "Dodatkowe Opcje", desc: "Eksport, udostępnianie i zarządzanie danymi." },
-    en: { title: "More Options", desc: "Export, sharing, and clinical data management." }
+    en: { title: "More Options", desc: "Export, sharing, and secure data management." }
   }
 ];
 

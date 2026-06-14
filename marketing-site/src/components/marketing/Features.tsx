@@ -1,17 +1,15 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 
-type FeatureKey = "report" | "transcript" | "continuity" | "modality";
+type FeatureKey = "record" | "transcript" | "report" | "continuity" | "modality" | "folder";
 
 const FEATURE_ICONS: Record<FeatureKey, React.ReactNode> = {
-  report: (
+  record: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
+      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
     </svg>
   ),
   transcript: (
@@ -20,23 +18,45 @@ const FEATURE_ICONS: Record<FeatureKey, React.ReactNode> = {
       <path d="M8 10h.01M12 10h.01M16 10h.01" />
     </svg>
   ),
+  report: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+  ),
   continuity: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-      <path d="M3 3v5h5" />
-      <line x1="12" y1="7" x2="12" y2="12" />
-      <line x1="12" y1="12" x2="16" y2="14" />
+      <path d="M5 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+      <path d="M19 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+      <path d="M19 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+      <line x1="7.7" y1="10.5" x2="9.3" y2="11.5" />
+      <line x1="14.7" y1="12.5" x2="16.3" y2="13.5" />
+      <line x1="16.5" y1="6.5" x2="13.5" y2="8.5" />
     </svg>
   ),
   modality: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-      <circle cx="12" cy="12" r="3" />
-      <circle cx="6" cy="6" r="2" />
-      <circle cx="18" cy="6" r="2" />
-      <circle cx="12" cy="19" r="2" />
-      <line x1="7.5" y1="7.5" x2="10.5" y2="10.5" />
-      <line x1="16.5" y1="7.5" x2="13.5" y2="10.5" />
-      <line x1="12" y1="15" x2="12" y2="17" />
+      <line x1="4" y1="21" x2="4" y2="14" />
+      <line x1="4" y1="10" x2="4" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12" y2="3" />
+      <line x1="20" y1="21" x2="20" y2="16" />
+      <line x1="20" y1="12" x2="20" y2="3" />
+      <line x1="1" y1="14" x2="7" y2="14" />
+      <line x1="9" y1="8" x2="15" y2="8" />
+      <line x1="17" y1="16" x2="23" y2="16" />
+    </svg>
+  ),
+  folder: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M9 14h.01" />
+      <path d="M15 14h.01" />
+      <path d="M9 17h6" />
     </svg>
   ),
 };
@@ -236,6 +256,162 @@ const DISLIKE_OPTIONS_EN = [
   "Other"
 ];
 
+interface RecordTabContentProps {
+  isPl: boolean;
+  setToast: (msg: string | null) => void;
+}
+
+function RecordTabContent({ isPl, setToast }: RecordTabContentProps) {
+  const [recordingSeconds, setRecordingSeconds] = useState(3);
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!isTimerRunning) return;
+    const interval = setInterval(() => {
+      setRecordingSeconds((prev) => (prev + 1) % 3600);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isTimerRunning]);
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, "0");
+    const s = (secs % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
+  return (
+    <div className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1 justify-between text-left h-full">
+      {/* Top bar with back and info */}
+      <div className="flex items-center justify-between w-full mb-4 shrink-0">
+        <button className="p-1 text-white/60 hover:text-white cursor-pointer" aria-label="Back">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+        </button>
+        <div className="text-center">
+          <div className="text-[9px] uppercase tracking-widest text-white/50 font-bold font-mono">
+            {isPl ? "14 CZERWCA 2026" : "JUNE 14, 2026"}
+          </div>
+          <h3 className="font-sans font-bold text-[15px] sm:text-[17px] text-white mt-0.5 leading-snug">
+            {isPl ? "Próbny Klient" : "Demo Client"}
+          </h3>
+          <p className="text-[#fcae2f] italic font-serif text-[11px] sm:text-xs">
+            {isPl ? "Sesja #5" : "Session #5"}
+          </p>
+        </div>
+        <button className="p-1 text-white/60 hover:text-white cursor-pointer" aria-label="Info">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Center Waveform & Ripple Area */}
+      <div className="flex-1 flex flex-col items-center justify-center relative my-6">
+        {/* Ripple circles */}
+        {recordingSeconds > 0 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1]">
+            {Array.from({ length: 3 }, (_, i) => i + 1).map((num) => (
+              <div 
+                key={num}
+                style={{ 
+                  animation: `recording-ripple 6s cubic-bezier(0.05, 0.95, 0.1, 1) infinite`,
+                  animationDelay: `${(num - 1) * 2}s`,
+                  animationPlayState: isTimerRunning ? "running" : "paused" 
+                }} 
+                className="absolute w-44 h-44 rounded-full border-2 border-[#fcae2f]/50" 
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Middle Circle */}
+        <div className="relative w-40 h-40 sm:w-44 sm:h-44 rounded-full bg-[#032226] border border-[#fcae2f]/20 shadow-[0_0_30px_rgba(252,174,47,0.12)] flex flex-col items-center justify-center z-10 select-none">
+          {/* Live Waveform */}
+          <div className="flex items-center gap-[4px] mb-3 h-10 shrink-0">
+            {[12, 24, 16, 34, 22, 28, 20, 14, 32, 26, 18, 30, 24, 12, 22, 16, 10].map((h, i) => (
+              <div
+                key={i}
+                style={{
+                  height: recordingSeconds === 0 ? "4px" : `${h}px`,
+                  animation: recordingSeconds === 0 ? "none" : `waveform 1.2s ease-in-out infinite alternate`,
+                  animationDelay: `${i * 0.07}s`,
+                  transformOrigin: "center",
+                  animationPlayState: isTimerRunning ? "running" : "paused"
+                }}
+                className="w-[3px] bg-white/95 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.4)]"
+              />
+            ))}
+          </div>
+          {/* Recording status text */}
+          <div className="text-[10px] text-white/60 font-semibold tracking-wide uppercase font-sans">
+            {recordingSeconds === 0 
+              ? (isPl ? "Nagrywanie zatrzymane" : "Recording stopped")
+              : (!isTimerRunning 
+                  ? (isPl ? "Nagrywanie wstrzymane" : "Recording paused") 
+                  : (isPl ? "Nagrywanie trwa" : "Recording"))
+            }
+          </div>
+          {/* Timer */}
+          <div className="text-2xl sm:text-3xl font-bold font-sans mt-0.5 text-white tracking-widest">
+            {formatTime(recordingSeconds)}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom control buttons */}
+      <div className="flex items-center justify-center gap-6 mb-2 shrink-0">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            if (recordingSeconds === 0) {
+              setRecordingSeconds(3);
+              setIsTimerRunning(true);
+              setToast(isPl ? "Rozpoczęto nagrywanie!" : "Recording started!");
+            } else {
+              setIsTimerRunning(!isTimerRunning);
+              setToast(isTimerRunning 
+                ? (isPl ? "Wstrzymano nagrywanie" : "Recording paused")
+                : (isPl ? "Wznowiono nagrywanie" : "Recording resumed")
+              );
+            }
+            setTimeout(() => setToast(null), 1500);
+          }}
+          className="w-11 h-11 rounded-full border-2 border-[#fcae2f] flex items-center justify-center text-[#fcae2f] hover:bg-[#fcae2f]/10 active:scale-95 transition-all cursor-pointer" 
+          aria-label="Pause/Resume"
+        >
+          {isTimerRunning && recordingSeconds > 0 ? (
+            <svg className="w-4.5 h-4.5 fill-current" viewBox="0 0 24 24">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+            </svg>
+          ) : (
+            <svg className="w-4.5 h-4.5 fill-current ml-0.5" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            if (recordingSeconds > 0) {
+              setRecordingSeconds(0);
+              setIsTimerRunning(false);
+              setToast(isPl ? "Zapisano nagranie sesji!" : "Session recording saved!");
+              setTimeout(() => setToast(null), 2000);
+            }
+          }}
+          className={`w-13 h-13 rounded-full bg-[#d84515] flex items-center justify-center text-white hover:brightness-110 active:scale-95 transition-all shadow-md cursor-pointer ${
+            recordingSeconds === 0 ? "opacity-40 cursor-not-allowed" : ""
+          }`} 
+          aria-label="Stop"
+        >
+          <div className="w-4 h-4 bg-white rounded-[3px]" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function Features() {
   const t = useTranslations("b.features");
   const tItem = useTranslations("b.features.items");
@@ -243,14 +419,121 @@ export function Features() {
   const isPl = locale === "pl";
   const tHero = useTranslations("hero");
 
-  const [activeTab, setActiveTab] = useState<FeatureKey>("report");
+  const [activeTab, setActiveTab] = useState<FeatureKey>("record");
+  const [selectedClientName, setSelectedClientName] = useState<string>("");
+  const [modalitySubTab, setModalitySubTab] = useState<"choose" | "settings">("choose");
   const [reportSubTab, setReportSubTab] = useState<string>("summary");
   const [isEmailMode, setIsEmailMode] = useState<boolean>(false);
   const [isAnalyzingView, setIsAnalyzingView] = useState<boolean>(false);
 
+  const [expandedSection, setExpandedSection] = useState<'none' | 'wstrzymane' | 'zakonczone'>('none');
+  const [activeSettingSheet, setActiveSettingSheet] = useState<string | null>(null);
+  const [settingValues, setSettingValues] = useState<Record<string, string>>({
+    length: "Standardowa",
+    tone: "Kliniczny",
+    quotes: "Kluczowe (3-5)",
+    jargon: "Domyślny",
+    assertiveness: "Zrównoważony",
+    strengths: "Standardowy",
+    sections: "Standardowe",
+    additional: "Brak"
+  });
+
+  const getSettingSheetTitle = (id: string) => {
+    switch (id) {
+      case "length": return isPl ? "Długość raportu" : "Report length";
+      case "tone": return isPl ? "Ton" : "Tone";
+      case "quotes": return isPl ? "Liczba cytatów z sesji" : "Number of session quotes";
+      case "jargon": return isPl ? "Język opisu (konceptualizacji)" : "Conceptualization language";
+      case "assertiveness": return isPl ? "Stopień asertywności hipotez" : "Hypothesis assertiveness level";
+      case "strengths": return isPl ? "Akcent na mocnych stronach" : "Emphasis on strengths";
+      case "sections": return isPl ? "Sekcje do rozwinięcia" : "Sections to expand";
+      case "additional": return isPl ? "Dodatkowe wskazówki" : "Additional instructions";
+      default: return "";
+    }
+  };
+
+  const getSettingSheetOptions = (id: string) => {
+    switch (id) {
+      case "length":
+        return [
+          { value: isPl ? "Krótka" : "Short", label: isPl ? "Krótki (zwięzłe podsumowanie)" : "Short (concise summary)" },
+          { value: isPl ? "Standardowa" : "Standard", label: isPl ? "Standardowy (optymalny)" : "Standard (optimal)" },
+          { value: isPl ? "Szczegółowa" : "Detailed", label: isPl ? "Szczegółowy (pełna konceptualizacja)" : "Detailed (full conceptualization)" }
+        ];
+      case "tone":
+        return [
+          { value: isPl ? "Kliniczny" : "Clinical", label: isPl ? "Profesjonalny & Kliniczny" : "Professional & Clinical" },
+          { value: isPl ? "Empatyczny" : "Empathetic", label: isPl ? "Empatyczny & Humanistyczny" : "Empathetic & Humanistic" },
+          { value: isPl ? "Techniczny" : "Technical", label: isPl ? "Strukturyzowany & Techniczny" : "Structured & Technical" }
+        ];
+      case "quotes":
+        return [
+          { value: isPl ? "Brak" : "None", label: isPl ? "Brak (tylko synteza)" : "None (synthesis only)" },
+          { value: isPl ? "Kluczowe (3-5)" : "Key (3-5)", label: isPl ? "Kluczowe cytaty (3-5)" : "Key quotes (3-5)" },
+          { value: isPl ? "Maksymalna" : "Maximum", label: isPl ? "Maksymalna (bogata ilustracja)" : "Maximum (rich illustration)" }
+        ];
+      case "jargon":
+        return [
+          { value: isPl ? "Domyślny" : "Default", label: isPl ? "Domyślny (neutralny)" : "Default (neutral)" },
+          { value: isPl ? "Ścisły" : "Strict", label: isPl ? "Ścisły (specyficzny dla nurtu)" : "Strict (modality-specific)" },
+          { value: isPl ? "Przystępny" : "Accessible", label: isPl ? "Przystępny (dla klienta)" : "Accessible (for client)" }
+        ];
+      case "assertiveness":
+        return [
+          { value: isPl ? "Medyczny" : "Medical", label: isPl ? "Medyczny (ostrożne hipotezy)" : "Medical (cautious hypotheses)" },
+          { value: isPl ? "Zrównoważony" : "Balanced", label: isPl ? "Zrównoważony" : "Balanced" },
+          { value: isPl ? "Kreatywny" : "Creative", label: isPl ? "Kreatywny (odważne wnioski)" : "Creative (bold assertions)" }
+        ];
+      case "strengths":
+        return [
+          { value: isPl ? "Standardowy" : "Standard", label: isPl ? "Standardowy" : "Standard" },
+          { value: isPl ? "Wysoki" : "High", label: isPl ? "Wysoki (zasoby i rezyliencja)" : "High (resources & resilience)" }
+        ];
+      case "sections":
+        return [
+          { value: isPl ? "Standardowe" : "Standard", label: isPl ? "Wszystkie sekcje standardowe" : "All standard sections" },
+          { value: isPl ? "Interwencje" : "Interventions", label: isPl ? "Rozszerzona sekcja interwencji" : "Expanded interventions section" },
+          { value: isPl ? "Przeciwprzeniesienie" : "Countertransference", label: isPl ? "Rozszerzona sekcja przeciwprzeniesienia" : "Expanded countertransference" }
+        ];
+      case "additional":
+        return [
+          { value: isPl ? "Brak" : "None", label: isPl ? "Brak" : "None" },
+          { value: isPl ? "DSM-5 / ICD-11" : "DSM-5 / ICD-11", label: isPl ? "Uwzględnij kryteria DSM-5 / ICD-11" : "Include DSM-5 / ICD-11 criteria" },
+          { value: isPl ? "Superwizja" : "Supervision", label: isPl ? "Formatuj pod superwizję" : "Format for supervision" }
+        ];
+      default: return [];
+    }
+  };
+
+
+
+  const buttonsContainerRef = useRef<HTMLDivElement>(null);
+
   const changeTab = (tab: FeatureKey) => {
     setActiveTab(tab);
     setIsAnalyzingView(false);
+    
+    // Smoothly scroll the active button into view on mobile horizontal overflow
+    setTimeout(() => {
+      const container = buttonsContainerRef.current;
+      const activeBtn = container?.querySelector(`[data-feature="${tab}"]`) as HTMLElement | null;
+      if (container && activeBtn) {
+        const buttonOffsetLeft = activeBtn.offsetLeft;
+        const buttonWidth = activeBtn.offsetWidth;
+        const containerWidth = container.clientWidth;
+        const targetScrollLeft = buttonOffsetLeft - (containerWidth / 2) + (buttonWidth / 2);
+        container.scrollTo({
+          left: targetScrollLeft,
+          behavior: "smooth"
+        });
+      }
+    }, 50);
+  };
+
+  const handleClientClick = (clientName: string) => {
+    setSelectedClientName(clientName);
+    changeTab("continuity");
   };
 
   const reportScrollRef = useRef<HTMLDivElement>(null);
@@ -357,7 +640,7 @@ export function Features() {
     );
   };
 
-  const tabs: FeatureKey[] = ["report", "transcript", "continuity", "modality"];
+  const tabs: FeatureKey[] = ["record", "transcript", "report", "continuity", "modality", "folder"];
   const handleNextTab = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const currentIndex = tabs.indexOf(activeTab);
@@ -378,7 +661,7 @@ export function Features() {
     { id: "proposals", label: "Propozycje interwencji", labelEn: "Intervention proposals" },
     { id: "threads", label: "Wątki do pogłębienia", labelEn: "Threads to deepen" },
     { id: "supervision", label: "Wskazówki superwizyjne", labelEn: "Supervisory tips" },
-    { id: "diagnosis", label: "Wstępne hipotezy diagnostyczne", labelEn: "Preliminary diagnostic hypotheses" },
+    { id: "diagnosis", label: "Wstępna konceptualizacja", labelEn: "Preliminary case formulation" },
   ];
 
   return (
@@ -409,141 +692,60 @@ export function Features() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           
           {/* Left Side: Interactive Selector */}
-          <div className="lg:col-span-5 flex flex-col justify-start">
-            
-            {/* Scrollable container on mobile, stacked list on desktop */}
-            <div className="flex lg:flex-col gap-3 overflow-x-auto lg:overflow-x-visible pb-4 lg:pb-0 scrollbar-none snap-x snap-mandatory">
-              
-              {/* Tab 1: Report */}
-              <button
-                onClick={() => changeTab("report")}
-                className={`snap-center min-w-[140px] sm:min-w-[160px] lg:min-w-0 flex-shrink-0 text-left rounded-xl lg:rounded-[20px] p-3 lg:p-6 transition-all duration-300 cursor-pointer border flex flex-row items-center gap-2.5 lg:flex-col lg:items-start lg:gap-0 ${
-                  activeTab === "report"
-                    ? "bg-gradient-to-br from-[#004D54] to-[#002E32] text-white border-transparent shadow-[0_12px_32px_-12px_rgba(0,77,84,0.35)]"
-                    : "bg-white border border-[#E2DED5]/80 hover:bg-[#EDEAE3]/50 text-[#1B2522]"
-                }`}
-              >
-                <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl flex items-center justify-center mb-0 lg:mb-4 border transition-colors duration-300 shrink-0 ${
-                  activeTab === "report"
-                    ? "bg-white/10 border-white/20 text-[#5bf4bc]"
-                    : "bg-[#004D54]/[0.06] border-[#004D54]/[0.1] text-[#004D54]"
-                }`}>
-                  {FEATURE_ICONS.report}
-                </div>
-                <div>
-                  <h3 className={`font-display text-xs sm:text-sm lg:text-base font-bold tracking-tight mb-0 lg:mb-1.5 flex items-center gap-1.5 transition-colors ${
-                    activeTab === "report" ? "text-white" : "text-[#1B2522]"
-                  }`}>
-                    <span>{tItem("report.title")}</span>
-                    {activeTab === "report" && <span className="text-[#5bf4bc] text-xs">✦</span>}
-                  </h3>
-                  <p className={`font-serif text-xs sm:text-[13px] leading-relaxed transition-colors hidden lg:block mt-1 ${
-                    activeTab === "report" ? "text-frost/80" : "text-[#4E5A55]"
-                  }`}>
-                    {tItem("report.body")}
-                  </p>
-                </div>
-              </button>
-
-              {/* Tab 2: Transcript */}
-              <button
-                onClick={() => changeTab("transcript")}
-                className={`snap-center min-w-[140px] sm:min-w-[160px] lg:min-w-0 flex-shrink-0 text-left rounded-xl lg:rounded-[20px] p-3 lg:p-6 transition-all duration-300 cursor-pointer border flex flex-row items-center gap-2.5 lg:flex-col lg:items-start lg:gap-0 ${
-                  activeTab === "transcript"
-                    ? "bg-gradient-to-br from-[#004D54] to-[#002E32] text-white border-transparent shadow-[0_12px_32px_-12px_rgba(0,77,84,0.35)]"
-                    : "bg-white border border-[#E2DED5]/80 hover:bg-[#EDEAE3]/50 text-[#1B2522]"
-                }`}
-              >
-                <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl flex items-center justify-center mb-0 lg:mb-4 border transition-colors duration-300 shrink-0 ${
-                  activeTab === "transcript"
-                    ? "bg-white/10 border-white/20 text-[#5bf4bc]"
-                    : "bg-[#004D54]/[0.06] border-[#004D54]/[0.1] text-[#004D54]"
-                }`}>
-                  {FEATURE_ICONS.transcript}
-                </div>
-                <div>
-                  <h3 className={`font-display text-xs sm:text-sm lg:text-base font-bold tracking-tight mb-0 lg:mb-1.5 flex items-center gap-1.5 transition-colors ${
-                    activeTab === "transcript" ? "text-white" : "text-[#1B2522]"
-                  }`}>
-                    <span>{tItem("transcript.title")}</span>
-                    {activeTab === "transcript" && <span className="text-[#5bf4bc] text-xs">✦</span>}
-                  </h3>
-                  <p className={`font-serif text-xs sm:text-[13px] leading-relaxed transition-colors hidden lg:block mt-1 ${
-                    activeTab === "transcript" ? "text-frost/80" : "text-[#4E5A55]"
-                  }`}>
-                    {tItem("transcript.body")}
-                  </p>
-                </div>
-              </button>
-
-              {/* Tab 3: Continuity */}
-              <button
-                onClick={() => changeTab("continuity")}
-                className={`snap-center min-w-[140px] sm:min-w-[160px] lg:min-w-0 flex-shrink-0 text-left rounded-xl lg:rounded-[20px] p-3 lg:p-6 transition-all duration-300 cursor-pointer border flex flex-row items-center gap-2.5 lg:flex-col lg:items-start lg:gap-0 ${
-                  activeTab === "continuity"
-                    ? "bg-gradient-to-br from-[#004D54] to-[#002E32] text-white border-transparent shadow-[0_12px_32px_-12px_rgba(0,77,84,0.35)]"
-                    : "bg-white border border-[#E2DED5]/80 hover:bg-[#EDEAE3]/50 text-[#1B2522]"
-                }`}
-              >
-                <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl flex items-center justify-center mb-0 lg:mb-4 border transition-colors duration-300 shrink-0 ${
-                  activeTab === "continuity"
-                    ? "bg-white/10 border-white/20 text-[#5bf4bc]"
-                    : "bg-[#004D54]/[0.06] border-[#004D54]/[0.1] text-[#004D54]"
-                }`}>
-                  {FEATURE_ICONS.continuity}
-                </div>
-                <div>
-                  <h3 className={`font-display text-xs sm:text-sm lg:text-base font-bold tracking-tight mb-0 lg:mb-1.5 flex items-center gap-1.5 transition-colors ${
-                    activeTab === "continuity" ? "text-white" : "text-[#1B2522]"
-                  }`}>
-                    <span>{isPl ? "Dokumentacja i historia" : "Documentation & history"}</span>
-                    {activeTab === "continuity" && <span className="text-[#5bf4bc] text-xs">✦</span>}
-                  </h3>
-                  <p className={`font-serif text-xs sm:text-[13px] leading-relaxed transition-colors hidden lg:block mt-1 ${
-                    activeTab === "continuity" ? "text-frost/80" : "text-[#4E5A55]"
-                  }`}>
-                    {isPl 
-                      ? "Zapis wszystkich spotkań klienta na przejrzystej osi czasu wraz z oznaczeniem nowych raportów."
-                      : "Record of all client meetings on a clear timeline along with indicators for new reports."}
-                  </p>
-                </div>
-              </button>
-
-              {/* Tab 4: Modality */}
-              <button
-                onClick={() => changeTab("modality")}
-                className={`snap-center min-w-[140px] sm:min-w-[160px] lg:min-w-0 flex-shrink-0 text-left rounded-xl lg:rounded-[20px] p-3 lg:p-6 transition-all duration-300 cursor-pointer border flex flex-row items-center gap-2.5 lg:flex-col lg:items-start lg:gap-0 ${
-                  activeTab === "modality"
-                    ? "bg-gradient-to-br from-[#004D54] to-[#002E32] text-white border-transparent shadow-[0_12px_32px_-12px_rgba(0,77,84,0.35)]"
-                    : "bg-white border border-[#E2DED5]/80 hover:bg-[#EDEAE3]/50 text-[#1B2522]"
-                }`}
-              >
-                <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl flex items-center justify-center mb-0 lg:mb-4 border transition-colors duration-300 shrink-0 ${
-                  activeTab === "modality"
-                    ? "bg-white/10 border-white/20 text-[#5bf4bc]"
-                    : "bg-[#004D54]/[0.06] border-[#004D54]/[0.1] text-[#004D54]"
-                }`}>
-                  {FEATURE_ICONS.modality}
-                </div>
-                <div>
-                  <h3 className={`font-display text-xs sm:text-sm lg:text-base font-bold tracking-tight mb-0 lg:mb-1.5 flex items-center gap-1.5 transition-colors ${
-                    activeTab === "modality" ? "text-white" : "text-[#1B2522]"
-                  }`}>
-                    <span>{tItem("modality.title")}</span>
-                    {activeTab === "modality" && <span className="text-[#5bf4bc] text-xs">✦</span>}
-                  </h3>
-                  <p className={`font-serif text-xs sm:text-[13px] leading-relaxed transition-colors hidden lg:block mt-1 ${
-                    activeTab === "modality" ? "text-frost/80" : "text-[#4E5A55]"
-                  }`}>
-                    {tItem("modality.body")}
-                  </p>
-                </div>
-              </button>
-
+          <div className="lg:col-span-5 flex flex-col justify-start min-w-0">
+            <div 
+              ref={buttonsContainerRef}
+              className="flex items-stretch overflow-x-auto gap-3 pb-4 scrollbar-none snap-x snap-mandatory lg:grid lg:grid-cols-1 lg:gap-3 w-full"
+            >
+              {(["record", "transcript", "report", "continuity", "modality", "folder"] as const).map((key) => {
+                const isActive = activeTab === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => changeTab(key)}
+                    data-feature={key}
+                    className={`flex flex-col items-start text-left rounded-xl p-4 transition-all duration-300 cursor-pointer border snap-center shrink-0 w-[270px] sm:w-[290px] lg:w-full ${
+                      isActive
+                        ? "bg-gradient-to-br from-[#004D54] to-[#002E32] text-white border-transparent shadow-[0_12px_32px_-12px_rgba(0,77,84,0.35)]"
+                        : "bg-white border border-[#E2DED5]/80 hover:bg-[#EDEAE3]/50 text-[#1B2522]"
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 border transition-colors duration-300 shrink-0 ${
+                      isActive
+                        ? "bg-white/10 border-white/20 text-[#5bf4bc]"
+                        : "bg-[#004D54]/[0.06] border-[#004D54]/[0.1] text-[#004D54]"
+                    }`}>
+                      {FEATURE_ICONS[key]}
+                    </div>
+                    <div className="w-full">
+                      <h3 className={`font-display text-sm sm:text-[15px] lg:text-base font-bold tracking-tight flex items-center gap-1.5 transition-colors ${
+                        isActive ? "text-white" : "text-[#1B2522]"
+                      }`}>
+                        <span>{tItem(`${key}.title`)}</span>
+                        {isActive && <span className="text-[#5bf4bc] text-xs">✦</span>}
+                      </h3>
+                      <div className={`hidden lg:grid transition-all duration-300 ease-in-out ${
+                        isActive ? "grid-rows-[1fr] opacity-100 mt-2" : "grid-rows-[0fr] opacity-0"
+                      }`}>
+                        <div className="overflow-hidden">
+                          <p className={`font-serif text-xs sm:text-[13px] lg:text-[14px] leading-relaxed transition-colors ${
+                            isActive ? "text-frost/90" : "text-[#4E5A55]"
+                          }`}>
+                            {tItem.rich(`${key}.body`, {
+                              bold: (chunks) => (
+                                <strong className={`font-bold ${isActive ? "text-white" : "text-[#1B2522]"}`}>
+                                  {chunks}
+                                </strong>
+                              )
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-
-
-
           </div>
 
           {/* Right Side: High-Fidelity App Demo Mockup (1:1 Replica, High Contrast) */}
@@ -607,157 +809,25 @@ export function Features() {
                     '--back-btn-text': 'rgba(255, 255, 255, 0.9)',
                     '--footer-border': 'rgba(255, 255, 255, 0.06)',
                   } as React.CSSProperties}
-                  className="relative w-full rounded-[22.5px] overflow-hidden bg-[var(--screen-bg)] pt-10 pb-5 px-2.5 sm:px-5 lg:px-6 min-h-[580px] lg:min-h-[690px] flex flex-col justify-between select-text transition-all duration-300 text-[var(--text-pri)]"
+                  className="relative w-full rounded-[22.5px] overflow-hidden bg-[var(--screen-bg)] pt-5 pb-6 px-2.5 sm:px-5 lg:px-6 h-[580px] lg:h-[690px] flex flex-col justify-between select-text transition-all duration-300 text-[var(--text-pri)]"
                 >
-                
-                {/* 1:1 Fake Status Bar */}
-                <div className="absolute top-1.5 left-0 right-0 px-4 sm:px-6 flex justify-between items-center text-[10.5px] text-[var(--text-pri)]/80 font-sans z-20">
-                  <span className="font-semibold flex items-center gap-1 text-[var(--text-pri)]/80">
-                    {activeTab === "report" ? "21:14" : activeTab === "transcript" ? "21:13" : activeTab === "continuity" ? "18:32" : "18:18"} 
-                    <svg className="w-2.5 h-2.5 text-[var(--text-pri)]/80 ml-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                  </span>
-                  <div className="flex items-center gap-1.5 text-[var(--text-pri)]/80">
-                    <div className="flex items-end gap-[1px] h-2">
-                      <div className="w-[1.5px] h-[3px] bg-white" />
-                      <div className="w-[1.5px] h-[4.5px] bg-white" />
-                      <div className="w-[1.5px] h-[6px] bg-white" />
-                      <div className="w-[1.5px] h-[7.5px] bg-white" />
-                    </div>
-                    <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 24 24">
-                      <path d="M12 21l-12-12c4-4 9-6 12-6s8 2 12 6l-12 12z" />
-                    </svg>
-                    {/* Battery percentage */}
-                    <span className="font-semibold">
-                      {activeTab === "report" ? "85%" : activeTab === "transcript" ? "90%" : activeTab === "continuity" ? "45%" : "95%"}
-                    </span>
-                    <div className="w-5 h-2.5 bg-[var(--toggle-bg)]/80 border border-[var(--text-sec-50)]/20 rounded-[3px] p-[1px] flex items-center">
-                      <div className={`h-full rounded-[1px] ${
-                        activeTab === "report" ? "w-[85%] bg-emerald-400" :
-                        activeTab === "transcript" ? "w-[90%] bg-emerald-400" :
-                        activeTab === "continuity" ? "w-[45%] bg-yellow-400" :
-                        "w-[95%] bg-emerald-400"
-                      }`} />
-                    </div>
-                  </div>
-                </div>
 
                 {/* Main Dynamic View Content */}
-                <div className="flex-1 flex flex-col justify-start">
+                <div className="flex-1 flex flex-col justify-start min-h-0">
                   
+                  {/* ──────────────────────────────────────────────────────────── */}
+                  {/* TAB 0: RECORD VIEW (Safe analysis in progress) */}
+                  {/* ──────────────────────────────────────────────────────────── */}
+                  {activeTab === "record" && (
+                    <RecordTabContent isPl={isPl} setToast={setToast} />
+                  )}
+
                   {/* ──────────────────────────────────────────────────────────── */}
                   {/* TAB 1: REPORT VIEW (1:1 Screnn_app_raport.PNG) */}
                   {/* ──────────────────────────────────────────────────────────── */}
                   {activeTab === "report" && (
-                    <div className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1">
-                      {isAnalyzingView ? (
-                        <div className="flex flex-col flex-1 justify-between text-left animate-[fadeIn_0.2s_ease-out]">
-                          {/* App Bar with Back Arrow */}
-                          <div className="flex items-center mb-4 shrink-0">
-                            <button 
-                              onClick={() => {
-                                setIsAnalyzingView(false);
-                                setActiveTab("continuity");
-                              }}
-                              className="w-8 h-8 rounded-full bg-[var(--back-btn-bg)] hover:bg-[var(--back-btn-hover)] border border-white/5 flex items-center justify-center text-[var(--back-btn-text)] transition-all cursor-pointer shadow-md"
-                              aria-label="Back"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                              </svg>
-                            </button>
-                          </div>
-
-                          {/* Content Wrapper */}
-                          <div className="flex-1 flex flex-col justify-start">
-                            <h3 className="font-sans font-bold text-xl lg:text-2xl text-[#fcae2f] leading-snug">
-                              Bezpieczna analiza w toku.
-                            </h3>
-                            <p className="font-sans text-[11px] lg:text-[13px] text-white/70 mt-2 leading-relaxed">
-                              Opracowujemy dla Ciebie raporty i transkrypcje. Może to potrwać 15 minut. Możesz tutaj wrócić za chwilę.
-                            </p>
-
-                            {/* Timeline Steps */}
-                            <div className="mt-8 space-y-6 relative pl-9">
-                              {/* Connecting line between steps */}
-                              <div className="absolute left-[13px] top-[14px] bottom-[14px] w-[2px] bg-white/10 z-0">
-                                {/* Active orange segment from step 1 to step 2 */}
-                                <div className="h-[30%] bg-[#ffb12c]" />
-                              </div>
-
-                              {/* Step 1 */}
-                              <div className="relative flex items-start gap-3.5 z-10">
-                                <div className="w-7 h-7 rounded-full bg-[#ffb12c] flex items-center justify-center text-[#06383e] text-xs font-bold shrink-0 shadow-lg">
-                                  ✓
-                                </div>
-                                <div>
-                                  <h4 className="font-sans text-[12.5px] text-white/90 font-medium">
-                                    Audio bezpieczne na naszych serwerach.
-                                  </h4>
-                                </div>
-                              </div>
-
-                              {/* Step 2 */}
-                              <div className="relative flex items-start gap-3.5 z-10">
-                                <div className="w-7 h-7 rounded-full bg-[#ffb12c] text-[#06383e] flex items-center justify-center font-sans text-xs font-bold shrink-0 shadow-lg">
-                                  2
-                                </div>
-                                <div>
-                                  <h4 className="font-sans text-[12.5px] text-white font-semibold">
-                                    Tworzymy transkrypcję.
-                                  </h4>
-                                  <div className="flex items-center gap-2 mt-1.5">
-                                    <div className="w-3.5 h-3.5 border-[1.5px] border-[#ffb12c]/30 border-t-[#ffb12c] rounded-full animate-spin" />
-                                    <span className="text-[10px] text-[#ffb12c] font-medium">{isPl ? "Przetwarzanie..." : "Processing..."}</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Step 3 */}
-                              <div className="relative flex items-start gap-3.5 z-10">
-                                <div className="w-7 h-7 rounded-full bg-[#0d2a2c]/80 border border-white/10 text-white/40 flex items-center justify-center font-sans text-xs font-medium shrink-0">
-                                  3
-                                </div>
-                                <div>
-                                  <h4 className="font-sans text-[12.5px] text-white/40 font-medium">
-                                    Sztuczna Inteligencja przygotowuje wnioski.
-                                  </h4>
-                                </div>
-                              </div>
-
-                              {/* Step 4 */}
-                              <div className="relative flex items-start gap-3.5 z-10">
-                                <div className="w-7 h-7 rounded-full bg-[#0d2a2c]/80 border border-white/10 text-white/40 flex items-center justify-center font-sans text-xs font-medium shrink-0">
-                                  4
-                                </div>
-                                <div>
-                                  <h4 className="font-sans text-[12.5px] text-white/40 font-medium">
-                                    Gotowe! Wysyłamy wnioski do Ciebie.
-                                  </h4>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Bottom Return Button */}
-                          <div className="mt-8 shrink-0">
-                            <button
-                              onClick={() => {
-                                setIsAnalyzingView(false);
-                                setActiveTab("continuity");
-                              }}
-                              className="w-full py-2.5 rounded-xl border border-white/15 text-white/90 hover:bg-white/[0.03] text-xs font-semibold cursor-pointer transition-all flex items-center justify-center gap-2"
-                            >
-                              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                              </svg>
-                              <span>{isPl ? "Wróć do kartotek" : "Wróć do kartotek"}</span>
-                            </button>
-                          </div>
-                        </div>
-                      ) : isEmailMode ? (
+                    <div className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1 relative min-h-0">
+                      {isEmailMode ? (
                         <div className="flex flex-col flex-1 justify-between text-left animate-[fadeIn_0.2s_ease-out]">
                           {/* App Bar matching Screenshot 4 */}
                           <div className="flex items-center gap-3.5 mb-3 shrink-0">
@@ -958,7 +1028,7 @@ export function Features() {
                       <div 
                         ref={reportScrollRef}
                         onScroll={handleReportScroll}
-                        className="space-y-4 max-h-[430px] overflow-y-auto pr-0.5 scrollbar-thin select-text scroll-smooth"
+                        className="flex-1 space-y-4 overflow-y-auto pr-0.5 scrollbar-thin select-text scroll-smooth min-h-0 pb-6"
                       >
                         
                         {/* Session Title Header & Overview */}
@@ -981,7 +1051,7 @@ export function Features() {
                         {/* SECTION 1: PODSUMOWANIE SESJI */}
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
-                              {isPl ? "Raport Kliniczny • Część I" : "Clinical Report • Part I"}
+                              {isPl ? "Raport • Część I" : "Report • Part I"}
                             </div>
                             <h4 className="font-sans text-[13.5px] lg:text-[15.5px] font-bold text-[var(--text-pri)] mb-3 pb-1 border-b border-[var(--card-border)]">
                               <span>{isPl ? "Podsumowanie sesji" : "Session Summary"}</span>
@@ -1050,7 +1120,7 @@ export function Features() {
                         <div id="sec-observations" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3.5">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
-                              {isPl ? "Raport Kliniczny • Część II" : "Clinical Report • Part II"}
+                              {isPl ? "Raport • Część II" : "Report • Part II"}
                             </div>
                             <h4 className="font-sans text-[13.5px] lg:text-[15.5px] font-bold text-[var(--text-pri)] mb-3 pb-1 border-b border-[var(--card-border)] flex items-center justify-between">
                               <span>{isPl ? "Wnikliwe obserwacje" : "Insightful Observations"}</span>
@@ -1129,7 +1199,7 @@ export function Features() {
                         <div id="sec-plan" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3.5">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
-                              {isPl ? "Raport Kliniczny • Część III" : "Clinical Report • Part III"}
+                              {isPl ? "Raport • Część III" : "Report • Part III"}
                             </div>
                             <h4 className="font-sans text-[13.5px] lg:text-[15.5px] font-bold text-[var(--text-pri)] mb-3 pb-1 border-b border-[var(--card-border)] flex items-center justify-between">
                               <span>{isPl ? "Plan działania klienta" : "Client Action Plan"}</span>
@@ -1231,7 +1301,7 @@ export function Features() {
                         <div id="sec-proposals" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3.5">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
-                              {isPl ? "Raport Kliniczny • Część IV" : "Clinical Report • Part IV"}
+                              {isPl ? "Raport • Część IV" : "Report • Part IV"}
                             </div>
                             <h4 className="font-sans text-[13.5px] lg:text-[15.5px] font-bold text-[var(--text-pri)] mb-3 pb-1 border-b border-[var(--card-border)] flex items-center justify-between">
                               <span>{isPl ? "Propozycje interwencji" : "Intervention Proposals"}</span>
@@ -1248,7 +1318,7 @@ export function Features() {
                               
                               <div className="space-y-1.5 p-3 bg-[var(--accent-bg-light)] border border-[var(--accent-border-light)] rounded-xl text-[11px] text-[var(--text-pri-90)]">
                                 <div>
-                                  <strong className="text-[var(--accent-color)] block text-[9px] uppercase font-bold tracking-wider">{isPl ? "Cel kliniczny:" : "Clinical Goal:"}</strong>
+                                  <strong className="text-[var(--accent-color)] block text-[9px] uppercase font-bold tracking-wider">{isPl ? "Cel główny:" : "Main Goal:"}</strong>
                                   <span>{isPl ? "Podważenie i osłabienie przekonania klienta o jego „mechanicznym uszkodzeniu” i „dysfunkcji,” które wzmacnia jego poczucie beznadziei i bierności." : "Challenge and weaken the client's belief in 'mechanical damage'."}</span>
                                 </div>
                                 <div className="pt-2 border-t border-[var(--accent-border-light)]">
@@ -1312,7 +1382,7 @@ export function Features() {
                         <div id="sec-threads" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3.5">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
-                              {isPl ? "Raport Kliniczny • Część V" : "Clinical Report • Part V"}
+                              {isPl ? "Raport • Część V" : "Report • Part V"}
                             </div>
                             <h4 className="font-sans text-[13.5px] lg:text-[15.5px] font-bold text-[var(--text-pri)] mb-3 pb-1 border-b border-[var(--card-border)] flex items-center justify-between">
                               <span>{isPl ? "Wątki do pogłębienia" : "Threads to Deepen"}</span>
@@ -1320,7 +1390,7 @@ export function Features() {
                             
                             {/* 1. Przekonania pośredniczące */}
                             <div className="bg-white/[0.015] border border-[var(--card-border)] rounded-xl p-3.5 space-y-3">
-                              <span className="text-[9px] uppercase tracking-wider font-bold text-[var(--accent-color)]">{isPl ? "Hipotezy • Przekonania pośredniczące" : "Hypotheses • Intermediate Beliefs"}</span>
+                              <span className="text-[9px] uppercase tracking-wider font-bold text-[var(--accent-color)]">{isPl ? "Konceptualizacja • Przekonania pośredniczące" : "Formulation • Intermediate Beliefs"}</span>
                               <div className="space-y-2 text-[11px] text-[var(--text-pri-90)]">
                                 <div className="bg-[var(--toggle-bg)] border border-[var(--card-border)] p-3 rounded-lg leading-relaxed">
                                   <strong className="text-[var(--gold-color)] block mb-1">{isPl ? "„Jeśli nie widzę natychmiastowych zmian/postępu, to znaczy, że nic nie działa i jestem beznadziejny/uszkodzony.”" : "„If I don't see immediate changes, it means nothing works and I am hopeless.”"}</strong>
@@ -1335,7 +1405,7 @@ export function Features() {
 
                             {/* 2. Przekonania rdzenne */}
                             <div className="bg-white/[0.015] border border-[var(--card-border)] rounded-xl p-3.5 space-y-2.5">
-                              <span className="text-[9px] uppercase tracking-wider font-bold text-[var(--accent-color)]">{isPl ? "Hipotezy • Przekonania rdzenne (Core Beliefs)" : "Hypotheses • Core Beliefs"}</span>
+                              <span className="text-[9px] uppercase tracking-wider font-bold text-[var(--accent-color)]">{isPl ? "Konceptualizacja • Przekonania rdzenne (Core Beliefs)" : "Formulation • Core Beliefs"}</span>
                               <div className="grid grid-cols-2 gap-2 text-[11px]">
                                 <div className="p-3 bg-[var(--toggle-bg)] border border-[var(--card-border)] rounded-lg text-center">
                                   <span className="block text-[8px] uppercase tracking-wider text-[var(--text-sec-50)] font-bold mb-1">{isPl ? "O sobie" : "Self"}</span>
@@ -1373,14 +1443,14 @@ export function Features() {
                         <div id="sec-supervision" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3.5">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
-                              {isPl ? "Raport Kliniczny • Część VI" : "Clinical Report • Part VI"}
+                              {isPl ? "Raport • Część VI" : "Report • Part VI"}
                             </div>
                             <h4 className="font-sans text-[13.5px] lg:text-[15.5px] font-bold text-[var(--text-pri)] mb-3 pb-1 border-b border-[var(--card-border)] flex items-center justify-between">
                               <span>{isPl ? "Wskazówki superwizyjne" : "Supervisory Tips"}</span>
                             </h4>
                             
                             <div className="bg-white/[0.015] border border-[var(--card-border)] rounded-xl p-3.5 space-y-3">
-                              <span className="text-[9px] uppercase tracking-wider font-bold text-[var(--accent-color)]">{isPl ? "Superwizja kliniczna" : "Clinical Supervision"}</span>
+                              <span className="text-[9px] uppercase tracking-wider font-bold text-[var(--accent-color)]">{isPl ? "Superwizja" : "Supervision"}</span>
                               
                               <div className="space-y-3.5 text-[11px] text-[var(--text-pri-90)]">
                                 <div className="bg-[var(--toggle-bg)] border border-[var(--card-border)] p-3 rounded-lg">
@@ -1417,10 +1487,10 @@ export function Features() {
                         <div id="sec-diagnosis" className="space-y-4 pt-1">
                           <div className="bg-[var(--card-bg)] rounded-xl p-4 border border-[var(--card-border)] text-left transition-all duration-300 space-y-3.5">
                             <div className="text-[9px] lg:text-[11px] uppercase tracking-wider text-[var(--accent-color)] font-mono mb-0.5 font-bold">
-                              {isPl ? "Raport Kliniczny • Część VII" : "Clinical Report • Part VII"}
+                              {isPl ? "Raport • Część VII" : "Report • Part VII"}
                             </div>
                             <h4 className="font-sans text-[13.5px] lg:text-[15.5px] font-bold text-[var(--text-pri)] mb-3 pb-1 border-b border-[var(--card-border)] flex items-center justify-between">
-                              <span>{isPl ? "Wstępne hipotezy diagnostyczne" : "Preliminary Diagnostic Hypotheses"}</span>
+                              <span>{isPl ? "Wstępna konceptualizacja" : "Preliminary Case Formulation"}</span>
                             </h4>
                             
                             <div className="bg-white/[0.015] border border-[var(--card-border)] rounded-xl p-3.5 space-y-3">
@@ -1492,7 +1562,7 @@ export function Features() {
                   )}
                   {/* ──────────────────────────────────────────────────────────── */}
                   {activeTab === "transcript" && (
-                    <div className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1">
+                    <div className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1 relative min-h-0">
                       {/* App Bar */}
                       <div className="flex justify-between items-center mb-3">
                         <span className="text-white text-base cursor-pointer">⟨</span>
@@ -1565,7 +1635,7 @@ export function Features() {
                       </div>
 
                       {/* Dialogue List */}
-                      <div className="space-y-2 max-h-[380px] overflow-y-auto pr-0.5 scrollbar-thin select-text text-left">
+                      <div className="flex-1 space-y-2 overflow-y-auto pr-0.5 scrollbar-thin select-text text-left min-h-0 pb-6">
                         
                         {/* 1 */}
                         {(transcriptFilter === "all" || transcriptFilter === "therapist") && (
@@ -1724,7 +1794,7 @@ export function Features() {
                   {/* TAB 3: CONTINUITY VIEW (1:1 Screnn_app_widok dokumentacji.PNG) */}
                   {/* ──────────────────────────────────────────────────────────── */}
                   {activeTab === "continuity" && (
-                    <div className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1 relative min-h-[380px]">
+                    <div className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1 relative min-h-0">
                       {/* App Bar */}
                       <div className="flex justify-between items-center mb-4">
                         <span 
@@ -1745,7 +1815,7 @@ export function Features() {
                       {/* Header Title Info */}
                       <div className="mb-4">
                         <h3 className="font-sans font-bold text-2xl lg:text-3xl text-[#fcae2f] italic tracking-wide">
-                          {isPl ? "Klient Marek" : "Client Mark"}
+                          {selectedClientName || (isPl ? "Klient Marek" : "Client Mark")}
                         </h3>
                         <p className="font-sans text-[11.5px] lg:text-[13.5px] text-white/70 mt-0.5">
                           Nad czym dzisiaj pracujemy?
@@ -1765,7 +1835,7 @@ export function Features() {
                       </div>
 
                       {/* Session Cards list with glowing vertical RAG connector line */}
-                      <div className="relative pl-11 space-y-3 max-h-[220px] lg:max-h-[290px] overflow-y-auto pr-0.5 scrollbar-thin">
+                      <div className="relative flex-1 pl-11 space-y-3 overflow-y-auto pr-0.5 scrollbar-thin min-h-0 pb-6">
                         
                         {/* Clean vertical straight connector line */}
                         <div className="absolute left-[23px] top-6 bottom-6 w-[2px] bg-white/10 z-0">
@@ -1916,57 +1986,587 @@ export function Features() {
                   {/* TAB 4: MODALITY VIEW (1:1 Screnn_app_nurty terapii.PNG) */}
                   {/* ──────────────────────────────────────────────────────────── */}
                   {activeTab === "modality" && (
-                    <div className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1">
+                    <div className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1 relative min-h-0">
                       {/* Modal Bar indicator */}
-                      <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+                      <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3" />
 
-                      {/* Headers */}
-                      <div className="mb-4">
-                        <h3 className="font-sans font-bold text-xl text-[var(--text-pri)]">
-                          Wybierz swój nurt
-                        </h3>
-                        <p className="font-sans text-[11px] text-[var(--text-sec)] italic leading-relaxed mt-1">
-                          To ustawienie wpływa na generowane raporty. Możesz je zmienić w każdej chwili.
-                        </p>
+                      {/* Pill Toggle for Modality Sub-tabs */}
+                      <div className="bg-[var(--toggle-bg)] rounded-lg p-0.5 flex items-center mb-4 border border-[var(--card-border)] select-none shrink-0">
+                        <button 
+                          onClick={() => setModalitySubTab("choose")}
+                          className={`flex-1 text-center py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
+                            modalitySubTab === "choose"
+                              ? "bg-[var(--toggle-active-bg)] text-[var(--toggle-active-text)]"
+                              : "text-[var(--text-sec)] hover:text-white"
+                          }`}
+                        >
+                          {isPl ? "Wybierz nurt" : "Choose modality"}
+                        </button>
+                        <button 
+                          onClick={() => setModalitySubTab("settings")}
+                          className={`flex-1 text-center py-1 text-[11px] font-bold rounded-md transition-colors cursor-pointer ${
+                            modalitySubTab === "settings"
+                              ? "bg-[var(--toggle-active-bg)] text-[var(--toggle-active-text)]"
+                              : "text-[var(--text-sec)] hover:text-white"
+                          }`}
+                        >
+                          {isPl ? "Preferencje" : "Preferences"}
+                        </button>
                       </div>
 
-                      {/* Modality options list — SHOWING ALL 9 OPTIONS FROM THE SCREENSHOT */}
-                      <div className="space-y-0.5 max-h-[420px] overflow-y-auto pr-1.5 scrollbar-thin">
-                        {MODALITIES_LIST.map((m) => {
-                          const isSelected = selectedModality === m.id;
-                          return (
-                            <div
-                              key={m.id}
-                              onClick={() => setSelectedModality(m.id)}
-                              className={`transition-all duration-200 p-2.5 flex items-center justify-between border cursor-pointer ${
-                                isSelected
-                                  ? "bg-[#0b3c40] border-transparent rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.15)] my-1"
-                                  : "bg-transparent border-transparent border-b border-white/[0.05] hover:bg-white/[0.02]"
-                              }`}
-                            >
-                              <div className="flex items-center gap-3.5">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors duration-200 ${
-                                  isSelected
-                                    ? "bg-[#ffb12c]/15 text-[#ffb12c]"
-                                    : "bg-[#042528] text-white/60"
-                                }`}>
-                                  {m.icon}
+                      {modalitySubTab === "choose" ? (
+                        <>
+                          {/* Headers */}
+                          <div className="mb-3 text-left shrink-0">
+                            <h3 className="font-sans font-bold text-xl text-[var(--text-pri)]">
+                              {isPl ? "Wybierz swój nurt" : "Choose your modality"}
+                            </h3>
+                            <p className="font-sans text-[11px] text-[var(--text-sec)] italic leading-relaxed mt-1">
+                              {isPl 
+                                ? "To ustawienie wpływa na generowane raporty. Możesz je zmienić w każdej chwili."
+                                : "This setting affects generated reports. You can change it at any time."}
+                            </p>
+                          </div>
+
+                          {/* Modality options list — SHOWING ALL 9 OPTIONS */}
+                          <div className="flex-1 space-y-0.5 overflow-y-auto pr-1.5 scrollbar-thin min-h-0 pb-6">
+                            {MODALITIES_LIST.map((m) => {
+                              const isSelected = selectedModality === m.id;
+                              return (
+                                <div
+                                  key={m.id}
+                                  onClick={() => setSelectedModality(m.id)}
+                                  className={`transition-all duration-200 p-2.5 flex items-center justify-between border cursor-pointer ${
+                                    isSelected
+                                      ? "bg-[#0b3c40] border-transparent rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.15)] my-1"
+                                      : "bg-transparent border-transparent border-b border-white/[0.05] hover:bg-white/[0.02]"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-3.5">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors duration-200 ${
+                                      isSelected
+                                        ? "bg-[#ffb12c]/15 text-[#ffb12c]"
+                                        : "bg-[#042528] text-white/60"
+                                    }`}>
+                                      {m.icon}
+                                    </div>
+                                    <span className={`font-sans text-[12.5px] transition-colors duration-200 ${
+                                      isSelected ? "font-semibold text-white" : "text-white/80"
+                                    }`}>
+                                      {isPl ? m.label : m.labelEn}
+                                    </span>
+                                  </div>
+                                  {isSelected && (
+                                    <div className="w-[18px] h-[18px] rounded-full bg-[#ffb12c] flex items-center justify-center text-[#06383e] text-[10px] font-extrabold shrink-0 animate-[fadeIn_0.2s_ease-out]">
+                                      ✓
+                                    </div>
+                                  )}
                                 </div>
-                                <span className={`font-sans text-[12.5px] transition-colors duration-200 ${
-                                  isSelected ? "font-semibold text-white" : "text-white/80"
-                                }`}>
-                                  {isPl ? m.label : m.labelEn}
-                                </span>
-                              </div>
-                              {isSelected && (
-                                <div className="w-[18px] h-[18px] rounded-full bg-[#ffb12c] flex items-center justify-center text-[#06383e] text-[10px] font-extrabold shrink-0 animate-[fadeIn_0.2s_ease-out]">
-                                  ✓
-                                </div>
-                              )}
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-left animate-[fadeIn_0.2s_ease-out] flex-1 flex flex-col justify-start min-h-0">
+                          {/* Headers */}
+                          <div className="flex items-center justify-between mb-4 shrink-0 px-1">
+                            <div>
+                              <h3 className="font-serif text-2xl font-bold text-[#fcae2f] italic leading-tight">
+                                {isPl ? "Ustawienia" : "Settings"}
+                              </h3>
+                              <p className="font-sans text-[8.5px] font-bold tracking-widest text-[#8ba4a6] uppercase mt-0.5">
+                                {isPl ? "DOSTOSUJ SWOJE DOŚWIADCZENIE" : "CUSTOMIZE YOUR EXPERIENCE"}
+                              </p>
                             </div>
-                          );
-                        })}
+                            <button 
+                              onClick={() => setModalitySubTab("choose")}
+                              className="w-7.5 h-7.5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white cursor-pointer active:scale-95 transition-all"
+                              aria-label="Close settings"
+                            >
+                              <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+
+                          {/* Scrollable list of settings */}
+                          <div className="flex-1 space-y-4 overflow-y-auto pr-1.5 scrollbar-thin min-h-0 pb-6">
+                            {/* PREFERENCJE RAPORTÓW SECTION */}
+                            <div className="space-y-2">
+                              <span className="font-sans text-[9px] uppercase font-bold tracking-wider text-[#8ba4a6] px-1">
+                                {isPl ? "PREFERENCJE RAPORTÓW" : "REPORT PREFERENCES"}
+                              </span>
+                              
+                              <div className="space-y-2">
+                                {[
+                                  {
+                                    id: "length",
+                                    label: isPl ? "Długość raportu" : "Report length",
+                                    value: settingValues.length,
+                                    icon: (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M3 6h18M3 18h18" />
+                                      </svg>
+                                    )
+                                  },
+                                  {
+                                    id: "tone",
+                                    label: isPl ? "Ton" : "Tone",
+                                    value: settingValues.tone,
+                                    icon: (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 16v-2m0 2a2 2 0 100-4m0 4a2 2 0 110-4m0-4v-2m0 2V4" />
+                                      </svg>
+                                    )
+                                  },
+                                  {
+                                    id: "quotes",
+                                    label: isPl ? "Liczba cytatów z sesji" : "Number of quotes",
+                                    value: settingValues.quotes,
+                                    icon: (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                      </svg>
+                                    )
+                                  },
+                                  {
+                                    id: "jargon",
+                                    label: isPl ? "Język opisu (konceptualizacji)" : "Conceptualization language",
+                                    value: settingValues.jargon,
+                                    icon: (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                      </svg>
+                                    )
+                                  },
+                                  {
+                                    id: "assertiveness",
+                                    label: isPl ? "Stopień asertywności hipotez" : "Hypothesis assertiveness level",
+                                    value: settingValues.assertiveness,
+                                    icon: (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l.707-.707m2.808 13.064a3 3 0 01-2.244-2.577 3.5 3.5 0 013.123-3.79c.642-.062 1.252-.455 1.554-1.042A6 6 0 0118 12c0 2.22-.8 4.24-2.126 5.8a1 1 0 01-.774.38H12v1m-2-1h4" />
+                                      </svg>
+                                    )
+                                  },
+                                  {
+                                    id: "strengths",
+                                    label: isPl ? "Akcent na mocnych stronach" : "Emphasis on strengths",
+                                    value: settingValues.strengths,
+                                    icon: (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-7.682-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                      </svg>
+                                    )
+                                  },
+                                  {
+                                    id: "sections",
+                                    label: isPl ? "Sekcje do rozwinięcia" : "Sections to expand",
+                                    value: settingValues.sections,
+                                    icon: (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                      </svg>
+                                    )
+                                  },
+                                  {
+                                    id: "additional",
+                                    label: isPl ? "Dodatkowe wskazówki" : "Additional instructions",
+                                    value: settingValues.additional,
+                                    icon: (
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                    )
+                                  }
+                                ].map((item) => (
+                                  <div 
+                                    key={item.id}
+                                    onClick={() => setActiveSettingSheet(item.id)}
+                                    className="bg-[#163639]/40 border border-[#1d4447]/45 rounded-xl p-2.5 flex items-center justify-between shadow-sm hover:bg-[#163639]/70 hover:border-[#2f6b62]/40 transition-all duration-200 cursor-pointer"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-7.5 h-7.5 rounded-full bg-[#042528] text-[#ffb12c] flex items-center justify-center shrink-0 border border-white/5">
+                                        {item.icon}
+                                      </div>
+                                      <div>
+                                        <div className="font-sans text-[11.5px] font-bold text-white leading-snug">
+                                          {item.label}
+                                        </div>
+                                        <div className="font-sans text-[9px] text-[#8ba4a6] mt-0.5">
+                                          {item.value}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <svg className="w-3.5 h-3.5 text-[#8ba4a6]/60" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* WSPARCIE SECTION */}
+                            <div className="space-y-2 border-t border-white/5 pt-3">
+                              <span className="font-sans text-[9px] uppercase font-bold tracking-wider text-[#8ba4a6] px-1">
+                                {isPl ? "WSPARCIE" : "SUPPORT"}
+                              </span>
+                              <div className="bg-[#163639]/40 border border-[#1d4447]/45 rounded-xl p-2.5 flex items-center justify-between shadow-sm hover:bg-[#163639]/70 hover:border-[#2f6b62]/40 transition-all duration-200 cursor-pointer">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-7.5 h-7.5 rounded-full bg-[#042528] text-[#ffb12c] flex items-center justify-center shrink-0 border border-white/5">
+                                    <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                      <rect width="20" height="16" x="2" y="4" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+                                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  </div>
+                                  <div>
+                                    <div className="font-sans text-[11.5px] font-bold text-white leading-snug">
+                                      {isPl ? "Napisz do nas" : "Contact support"}
+                                    </div>
+                                  </div>
+                                </div>
+                                <svg className="w-3.5 h-3.5 text-[#8ba4a6]/60" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                </svg>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bottom Sheet for interactive settings */}
+                      {activeSettingSheet && (
+                        <div 
+                          className="absolute inset-0 bg-black/60 backdrop-blur-[1px] z-30 flex items-end justify-center animate-[fadeIn_0.2s_ease-out]"
+                          onClick={() => setActiveSettingSheet(null)}
+                        >
+                          <div 
+                            className="bg-[#0a474e] border-t border-[var(--card-border)] rounded-t-[24px] p-5 w-full shadow-2xl text-left animate-[slideUp_0.3s_cubic-bezier(0.16,1,0.3,1)_both]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-4" />
+                            
+                            <div className="flex items-center justify-between mb-4 px-1">
+                              <h4 className="font-sans font-bold text-white text-[13px] sm:text-[14px]">
+                                {getSettingSheetTitle(activeSettingSheet)}
+                              </h4>
+                              <button 
+                                onClick={() => setActiveSettingSheet(null)}
+                                className="text-[#fcae2f] hover:text-[#e09825] text-xs font-bold px-2.5 py-1 bg-white/5 rounded-md border border-white/5 active:scale-95 transition-all cursor-pointer"
+                              >
+                                {isPl ? "Gotowe" : "Done"}
+                              </button>
+                            </div>
+                            
+                            <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1 pb-4 scrollbar-none">
+                              {getSettingSheetOptions(activeSettingSheet).map((opt) => {
+                                const isSelected = settingValues[activeSettingSheet] === opt.value;
+                                return (
+                                  <div
+                                    key={opt.value}
+                                    onClick={() => {
+                                      setSettingValues({ ...settingValues, [activeSettingSheet]: opt.value });
+                                      setToast(isPl ? `Zmieniono: ${opt.value}` : `Updated: ${opt.value}`);
+                                      setTimeout(() => setToast(null), 1500);
+                                    }}
+                                    className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                                      isSelected 
+                                        ? "bg-[#0b3c40] border-[#5bf4bc]/35 text-[#5bf4bc]" 
+                                        : "bg-white/[0.02] border-white/5 text-white/70 hover:bg-white/[0.05]"
+                                    }`}
+                                  >
+                                    <span className="text-[11.5px] font-medium">{opt.label}</span>
+                                    {isSelected && <span className="text-xs">✓</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ──────────────────────────────────────────────────────────── */}
+                  {/* TAB 5: FOLDER VIEW */}
+                  {/* ──────────────────────────────────────────────────────────── */}
+                  {activeTab === "folder" && (
+                    <div onClick={(e) => e.stopPropagation()} className="animate-[fadeIn_0.3s_ease-out_both] flex flex-col flex-1 text-left h-full min-h-0 relative">
+                      {/* Header bar */}
+                      <div className="flex justify-between items-center mb-4 shrink-0 px-1 select-none">
+                        <div className="flex items-center gap-2">
+                          {/* Brandmark SVG Logo */}
+                          <div className="w-7 h-7 rounded-full bg-[#042528] border border-[#ffb12c]/10 flex items-center justify-center text-[#ffb12c] shrink-0">
+                            <svg className="w-4 h-4 fill-current" viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M600,0C269.17,0,0,269.17,0,600s269.17,600,600,600,600-269.17,600-600S930.83,0,600,0ZM600,1144.8c-300.4,0-544.8-244.4-544.8-544.8S299.6,55.2,600,55.2s544.8,244.4,544.8,544.8-244.4,544.8-544.8,544.8Z"/>
+                              <path d="M729.21,278.76c5.62,0,10.17-4.55,10.17-10.17v-33.33c0-5.62-4.55-10.17-10.17-10.17h-212.62c-5.62,0-10.17,4.55-10.17,10.17v33.33c0,5.62,4.55,10.17,10.17,10.17h39.67v156.04h-39.67c-5.62,0-10.17,4.55-10.17,10.17v34.18c0,5.62,4.55,10.17,10.17,10.17h39.67v258.04h-39.67c-5.62,0-10.17,4.55-10.17,10.17v34.18c0,5.62,4.55,10.17,10.17,10.17h15.96c-8.55,9.24-14.57,20.23-17.18,32.12-12.75,2.81-24.67,9.19-34.28,18.78-27.29,27.34-27.29,71.83.03,99.19,9.62,9.58,21.51,15.96,34.23,18.76,2.8,12.76,9.19,24.67,18.81,34.25,13.23,13.24,30.85,20.54,49.58,20.54s36.35-7.3,49.56-20.53c9.62-9.61,16.01-21.51,18.81-34.26,12.72-2.81,24.64-9.19,34.23-18.77,27.37-27.35,27.37-71.84,0-99.2-9.62-9.58-21.51-15.94-34.23-18.76-2.62-11.91-8.65-22.89-17.21-32.12h18.54c5.62,0,10.17-4.55,10.17-10.17v-34.18c0-5.62-4.55-10.17-10.17-10.17h-42.22v-258.04h118c5.62,0,10.17-4.55,10.17-10.17v-34.18c0-5.62-4.55-10.17-10.17-10.17h-118v-51.6h68.16c5.62,0,10.17-4.56,10.17-10.17v-31.24c0-5.62-4.55-10.17-10.17-10.17h-68.16v-52.85h118ZM542.52,875.2c7.44,0,13.46-6.02,13.46-13.46,0-15.35,12.45-27.8,27.8-27.8s26.93,11.99,27.44,26.9c-.02.31,0,.58,0,.89,0,7.43,6.02,13.46,13.46,13.46h.71c15.35,0,27.8,12.45,27.8,27.8s-12.45,27.8-27.8,27.8h-.71c-7.43,0-13.46,6.02-13.46,13.46,0,.37-.03.68,0,1.05-.42,14.99-12.35,27.05-27.44,27.05s-27.8-12.45-27.8-27.8v-.3c0-7.43-6.02-13.46-13.46-13.46h-.45c-15.35,0-27.8-12.45-27.8-27.8s12.45-27.8,27.8-27.8h.45Z"/>
+                            </svg>
+                          </div>
+                          <span className="font-sans font-bold text-xs tracking-wide text-white">Superwizor AI</span>
+                        </div>
+                        {/* Hamburger menu icon */}
+                        <svg className="w-5 h-5 text-white/95" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                          <line x1="4" y1="6" x2="20" y2="6" strokeLinecap="round" />
+                          <line x1="4" y1="12" x2="20" y2="12" strokeLinecap="round" />
+                          <line x1="4" y1="18" x2="20" y2="18" strokeLinecap="round" />
+                        </svg>
                       </div>
+
+                      {/* Main Scrollable Content */}
+                      <div className="flex-1 overflow-y-auto scrollbar-none pr-0.5 pb-6 space-y-4 min-h-0">
+                        {/* Greeting */}
+                        <div className="px-1 shrink-0">
+                          <div className="font-serif text-2xl font-medium leading-tight">
+                            {isPl ? (
+                              <>Witaj, <span className="text-amber font-bold italic">Marku :)</span></>
+                            ) : (
+                              <>Hello, <span className="text-amber font-bold italic">Marc :)</span></>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-[#8ba4a6] mt-0.5">
+                            {isPl ? "Z kim dzisiaj pracujemy?" : "Who are we working with today?"}
+                          </div>
+                        </div>
+
+                        {/* Search Bar */}
+                        <div onClick={(e) => e.stopPropagation()} className="bg-[#133235] border border-[#1b4043] rounded-lg px-3 py-1.5 flex items-center gap-2 mx-1 shrink-0">
+                          <svg className="w-3.5 h-3.5 text-[#8ba4a6]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                          </svg>
+                          <span className="text-[11px] text-[#8ba4a6]">
+                            {isPl ? "Szukaj klienta..." : "Search client..."}
+                          </span>
+                        </div>
+
+                        {/* Section Header */}
+                        <div className="flex justify-between items-center px-1 shrink-0">
+                          <span className="font-sans text-[10px] uppercase font-bold tracking-wider text-[#8ba4a6]">
+                            {isPl ? "Twoje kartoteki" : "Your records"}
+                          </span>
+                          <span className="font-sans text-[10px] text-[#8ba4a6] font-semibold">5</span>
+                        </div>
+
+                        {/* Client List */}
+                        <div className="space-y-2 px-0.5 shrink-0">
+                          
+                          {/* Item 1: Klient Anna */}
+                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Klient Anna" : "Client Anna"); }} className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#163639]/80 transition-colors">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-[#042528] border border-[#ffb12c]/20 flex items-center justify-center shrink-0 shadow-sm text-[#ffb12c] text-[12px] font-bold">
+                                AK
+                              </div>
+                              <div>
+                                <div className="font-sans text-[13px] font-bold text-white flex items-center gap-1">
+                                  {isPl ? "Klient Anna" : "Client Anna"}
+                                </div>
+                                <div className="font-sans text-[10px] text-[#8ba4a6] mt-0.5">
+                                  {isPl ? "Sesje: 1 · Ostatnio: 12 Cze" : "Sessions: 1 · Last: Jun 12"}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[#8ba4a6] text-xs">⋮</span>
+                          </div>
+
+                          {/* Item 2: Próbny Klient */}
+                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Próbny Klient" : "Demo Client"); }} className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#163639]/80 transition-colors">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-[#0e3a3e] border border-white/5 flex items-center justify-center shrink-0 shadow-sm text-white text-[12px] font-bold">
+                                PK
+                              </div>
+                              <div>
+                                <div className="font-sans text-[13px] font-bold text-white">
+                                  {isPl ? "Próbny Klient" : "Demo Client"}
+                                </div>
+                                <div className="font-sans text-[10px] text-[#8ba4a6] mt-0.5">
+                                  {isPl ? "Sesje: 4 · Ostatnio: 31 Maj" : "Sessions: 4 · Last: May 31"}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[#8ba4a6] text-xs">⋮</span>
+                          </div>
+
+                          {/* Item 3: Klient Jakub */}
+                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Klient Jakub" : "Client Jacob"); }} className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#163639]/80 transition-colors">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-[#3d2a1b] border border-white/5 flex items-center justify-center shrink-0 shadow-sm text-sm">
+                                👍
+                              </div>
+                              <div>
+                                <div className="font-sans text-[13px] font-bold text-white">
+                                  {isPl ? "Klient Jakub" : "Client Jacob"}
+                                </div>
+                                <div className="font-sans text-[10px] text-[#8ba4a6] mt-0.5">
+                                  {isPl ? "Sesje: 1 · Ostatnio: 29 Maj" : "Sessions: 1 · Last: May 29"}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[#8ba4a6] text-xs">⋮</span>
+                          </div>
+
+                          {/* Item 4: Klient Paweł */}
+                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Klient Paweł" : "Client Paul"); }} className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#163639]/80 transition-colors">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-[#1b253d] border border-white/5 flex items-center justify-center shrink-0 shadow-sm text-sm">
+                                👌
+                              </div>
+                              <div>
+                                <div className="font-sans text-[13px] font-bold text-white">
+                                  {isPl ? "Klient Paweł" : "Client Paul"}
+                                </div>
+                                <div className="font-sans text-[10px] text-[#8ba4a6] mt-0.5">
+                                  {isPl ? "Sesje: 2 · Ostatnio: 28 Maj" : "Sessions: 2 · Last: May 28"}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[#8ba4a6] text-xs">⋮</span>
+                          </div>
+
+                          {/* Item 5: Klient Monika */}
+                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Klient Monika" : "Client Monica"); }} className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#163639]/80 transition-colors">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-[#3d1b1b] border border-white/5 flex items-center justify-center shrink-0 shadow-sm text-sm">
+                                ✨
+                              </div>
+                              <div>
+                                <div className="font-sans text-[13px] font-bold text-white">
+                                  {isPl ? "Klient Monika" : "Client Monica"}
+                                </div>
+                                <div className="font-sans text-[10px] text-[#8ba4a6] mt-0.5">
+                                  {isPl ? "Sesje: 7 · Ostatnio: 11 Maj" : "Sessions: 7 · Last: May 11"}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[#8ba4a6] text-xs">⋮</span>
+                          </div>
+
+                        </div>
+
+                        {/* Collapsible Sections */}
+                        <div className="space-y-3 pt-2">
+                          {/* Wstrzymane */}
+                          <div className="space-y-2">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedSection(expandedSection === 'wstrzymane' ? 'none' : 'wstrzymane');
+                              }}
+                              className="w-full flex items-center gap-2 px-1 py-1 text-[#8ba4a6]/95 hover:text-white transition-colors cursor-pointer select-none text-left"
+                            >
+                              <svg 
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedSection === 'wstrzymane' ? 'rotate-90' : ''}`} 
+                                fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                              </svg>
+                              <span className="font-sans text-[11px] uppercase font-bold tracking-wider">
+                                {isPl ? "Wstrzymane (4)" : "Paused (4)"}
+                              </span>
+                            </button>
+                            
+                            {expandedSection === 'wstrzymane' && (
+                              <div className="space-y-2 pl-3 animate-[fadeIn_0.2s_ease-out]">
+                                {[
+                                  { name: isPl ? "Klient Weronika" : "Client Veronica", sessions: 3, date: isPl ? "15 Maj" : "May 15", initials: "KW" },
+                                  { name: isPl ? "Klient Tomasz" : "Client Thomas", sessions: 5, date: isPl ? "12 Maj" : "May 12", initials: "KT" },
+                                  { name: isPl ? "Klient Anna" : "Client Anna", sessions: 2, date: isPl ? "8 Maj" : "May 8", initials: "AK" },
+                                  { name: isPl ? "Klient Piotr" : "Client Peter", sessions: 1, date: isPl ? "3 Maj" : "May 3", initials: "KP" }
+                                ].map((client, idx) => (
+                                  <div key={idx} onClick={(e) => { e.stopPropagation(); handleClientClick(client.name); }} className="bg-[#163639]/50 border border-[#1d4447]/40 rounded-xl p-2.5 flex items-center justify-between shadow-sm opacity-80 animate-[fadeIn_0.2s_ease-out] cursor-pointer hover:bg-[#163639]/70 transition-colors">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-8 h-8 rounded-full bg-[#1c2e30] border border-white/5 flex items-center justify-center shrink-0 text-[#8ba4a6] text-xs font-bold font-mono">
+                                        {client.initials}
+                                      </div>
+                                      <div>
+                                        <div className="font-sans text-[13px] font-bold text-white/95">
+                                          {client.name}
+                                        </div>
+                                        <div className="font-sans text-[10px] text-[#8ba4a6] mt-0.5">
+                                          {isPl ? `Sesje: ${client.sessions} · Ostatnio: ${client.date}` : `Sessions: ${client.sessions} · Last: ${client.date}`}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <span className="bg-[#2a2d21] text-[#eab308] text-[8px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0 border border-[#eab308]/20">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#eab308]" />
+                                      {isPl ? "Wstrzymane" : "Paused"}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Zakończone */}
+                          <div className="space-y-2">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedSection(expandedSection === 'zakonczone' ? 'none' : 'zakonczone');
+                              }}
+                              className="w-full flex items-center gap-2 px-1 py-1 text-[#5bf4bc] hover:text-[#4ad6a2] transition-colors cursor-pointer select-none text-left"
+                            >
+                              <svg 
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedSection === 'zakonczone' ? 'rotate-90' : ''}`} 
+                                fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                              </svg>
+                              <span className="font-sans text-[11px] uppercase font-bold tracking-wider">
+                                {isPl ? "Zakończone (6)" : "Completed (6)"}
+                              </span>
+                            </button>
+                            
+                            {expandedSection === 'zakonczone' && (
+                              <div className="space-y-2 pl-3 animate-[fadeIn_0.2s_ease-out]">
+                                {[
+                                  { name: isPl ? "Klient Monika" : "Client Monica", sessions: 12, date: isPl ? "25 Kwi" : "Apr 25", initials: "KM" },
+                                  { name: isPl ? "Klient Karol" : "Client Charles", sessions: 8, date: isPl ? "18 Kwi" : "Apr 18", initials: "KK" },
+                                  { name: isPl ? "Klient Zofia" : "Client Sophia", sessions: 10, date: isPl ? "10 Kwi" : "Apr 10", initials: "KZ" },
+                                  { name: isPl ? "Klient Michał" : "Client Michael", sessions: 6, date: isPl ? "5 Kwi" : "Apr 5", initials: "KM" },
+                                  { name: isPl ? "Klient Ewa" : "Client Eve", sessions: 15, date: isPl ? "28 Mar" : "Mar 28", initials: "KE" },
+                                  { name: isPl ? "Klient Jan" : "Client John", sessions: 4, date: isPl ? "15 Mar" : "Mar 15", initials: "KJ" }
+                                ].map((client, idx) => (
+                                  <div key={idx} onClick={(e) => { e.stopPropagation(); handleClientClick(client.name); }} className="bg-[#163639]/50 border border-[#1d4447]/40 rounded-xl p-2.5 flex items-center justify-between shadow-sm opacity-85 animate-[fadeIn_0.2s_ease-out] cursor-pointer hover:bg-[#163639]/70 transition-colors">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-8 h-8 rounded-full bg-[#153a33] border border-white/5 flex items-center justify-center shrink-0 text-[#5bf4bc] text-xs font-bold font-mono">
+                                        {client.initials}
+                                      </div>
+                                      <div>
+                                        <div className="font-sans text-[13px] font-bold text-white/95">
+                                          {client.name}
+                                        </div>
+                                        <div className="font-sans text-[10px] text-[#8ba4a6] mt-0.5">
+                                          {isPl ? `Sesje: ${client.sessions} · Ostatnio: ${client.date}` : `Sessions: ${client.sessions} · Last: ${client.date}`}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <span className="bg-[#15352c] text-[#5bf4bc] text-[8px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0 border border-[#5bf4bc]/20">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#5bf4bc]" />
+                                      {isPl ? "Zakończona" : "Completed"}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Floating Action Button */}
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setToast(isPl ? "Funkcja tworzenia kartoteki (wersja demonstracyjna)" : "Create record feature (demo)");
+                          setTimeout(() => setToast(null), 2000);
+                        }}
+                        className="absolute bottom-4 right-4 w-12 h-12 rounded-2xl bg-[#fcae2f] hover:bg-[#e09825] shadow-lg border border-white/10 flex items-center justify-center text-[#06383e] active:scale-95 transition-all duration-200 cursor-pointer z-20"
+                        aria-label="Add client"
+                      >
+                        <svg className="w-6 h-6 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                      </button>
                     </div>
                   )}
 
@@ -2084,7 +2684,7 @@ export function Features() {
                         </h4>
                         <p className="font-sans text-[10.5px] text-[var(--text-sec-50)] mb-4 leading-relaxed">
                           {isPl 
-                            ? "Prześlij bezpieczną, pozbawioną żargonu klinicznego notatkę z zaleceniami po sesji." 
+                            ? "Prześlij bezpieczną, pozbawioną żargonu notatkę z zaleceniami po sesji." 
                             : "Send a secure, jargon-free summary note with recommendations directly to your client."}
                         </p>
 
@@ -2194,7 +2794,7 @@ export function Features() {
 
               {/* Pagination dots */}
               <div className="flex gap-2">
-                {(["report", "transcript", "continuity", "modality"] as const).map((key) => (
+                {(["record", "transcript", "report", "continuity", "modality", "folder"] as const).map((key) => (
                   <button
                     key={key}
                     onClick={(e) => { e.stopPropagation(); setActiveTab(key); }}
@@ -2252,6 +2852,24 @@ export function Features() {
         @keyframes slideUp {
           from { transform: translateY(100%); }
           to { transform: translateY(0); }
+        }
+        @keyframes recording-ripple {
+          0% {
+            transform: scale(0.1);
+            opacity: 0.9;
+          }
+          100% {
+            transform: scale(2.65);
+            opacity: 0;
+          }
+        }
+        @keyframes waveform {
+          0% {
+            transform: scaleY(0.35);
+          }
+          100% {
+            transform: scaleY(1.25);
+          }
         }
         .scrollbar-none::-webkit-scrollbar { display: none; }
         .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }

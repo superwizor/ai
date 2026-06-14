@@ -1,31 +1,32 @@
 {
   "metadata": {
-    "title": "Superwizor AI — Polski Copilot dla Psychoterapeutów",
-    "description": "Nagraj sesję terapeutyczną i otrzymaj transkrypcję oraz profesjonalny raport kliniczny w kilka minut. Narzędzie stworzone specjalnie dla psychoterapii. Serwery w UE, pełna zgodność z RODO.",
+    "title": "Superwizor AI — poznawczy partner w gabinecie",
+    "description": "Po sesji otrzymujesz transkrypcję, wnikliwe wnioski w swoim nurcie i krótką notatkę przed kolejnym spotkaniem. Dane szyfrowane, serwery w UE, zgodność z RODO.",
     "ogSiteName": "Superwizor AI",
     "home": {
-      "title": "Superwizor AI — Polski Copilot dla Psychoterapeutów",
-      "description": "Nagraj sesję terapeutyczną i otrzymaj transkrypcję oraz profesjonalny raport kliniczny w kilka minut. Narzędzie stworzone specjalnie dla psychoterapii. Serwery w UE, pełna zgodność z RODO.",
-      "keywords": "psychoterapia, superwizja, asystent AI, transkrypcja sesji, notatki kliniczne, RODO, polski AI, raport kliniczny, CBT, psychodynamika"
+      "title": "Superwizor AI — poznawczy partner w gabinecie",
+      "description": "Po sesji otrzymujesz transkrypcję, wnikliwe wnioski w swoim nurcie i krótką notatkę przed kolejnym spotkaniem. Dane szyfrowane, serwery w UE, zgodność z RODO.",
+      "keywords": "psychoterapia, superwizja, transkrypcja sesji, RODO, polski AI, CBT, psychodynamika, wnioski w nurcie",
+      "ogImageAlt": "Superwizor AI aplikacja dla terapeutów: nagrywanie sesji, transkrypcja i wnikliwe wnioski w Twoim nurcie."
     },
     "pacjent": {
       "title": "Osobisty Asystent Terapii — Uporządkuj Swoje Wnioski i Emocje | Superwizor AI",
       "description": "Zwiększ efektywność swojej terapii. Bezpiecznie zapisuj wnioski po sesji, śledź wzorce emocjonalne i przygotowuj się do kolejnych spotkań z terapeutą. Twoja prywatność jest chroniona szyfrowaniem zero-trust.",
-      "keywords": "asystent pacjenta, notatki z terapii, rozwój osobisty, emocje, przygotowanie do sesji, prywatność, zero-trust, refleksja po terapii"
+      "keywords": "notatki z terapii, rozwój osobisty, emocje, przygotowanie do sesji, prywatność, zero-trust, refleksja po terapii"
     },
     "beta": {
       "title": "Dołącz do darmowego programu Beta | Superwizor AI",
-      "description": "Zostań jednym z 50 pionierów testujących polskiego asystenta AI za darmo. Otrzymaj limit 120 sesji miesięcznie na 2 miesiące bez żadnych opłat. Pomóż nam stworzyć idealnego copilota.",
-      "keywords": "program beta, darmowy copilot, testowanie AI, asystent terapeuty, darmowe sesje, darmowy asystent"
+      "description": "Zostań jednym z 50 pionierów testujących platformę za darmo. Otrzymaj limit 120 sesji miesięcznie na 2 miesiące bez żadnych opłat. Pomóż nam w jej rozwoju.",
+      "keywords": "program beta, testowanie AI, darmowe sesje, poznawczy partner, rozwój platformy"
     },
     "pricing": {
       "title": "Przejrzysty Cennik i Plany dla Terapeutów | Superwizor AI",
       "description": "Wybierz plan dopasowany do swojej praktyki. Darmowy okres próbny, plany SOLO, PRO i CLINIC dla gabinetów i klinik.",
-      "keywords": "cennik superwizor, ceny asystenta ai, plany subskrypcji, superwizor za darmo, licencja próbna"
+      "keywords": "cennik superwizor, plany subskrypcji, superwizor za darmo, licencja próbna"
     },
     "contact": {
       "title": "Kontakt i Wsparcie | Superwizor AI",
-      "description": "Masz pytania o bezpieczeństwo danych, RODO lub funkcje asystenta? Skontaktuj się z naszym zespołem.",
+      "description": "Masz pytania o bezpieczeństwo danych, RODO lub funkcje platformy? Skontaktuj się z naszym zespołem.",
       "keywords": "kontakt superwizor, wsparcie techniczne, RODO pytania, pomoc psychoterapeutyczna"
     },
     "dashboard": {
@@ -534,9 +535,9 @@
   },
   "topbar": {
     "rodo": "Zgodność z RODO",
-    "audio": "Audio usuwane po transkrypcji",
-    "access": "Dostęp tylko dla Ciebie",
-    "noTraining": "Nie uczymy AI na Twoich sesjach"
+    "encryption": "Szyfrowanie AES-256 (UE)",
+    "audio": "Audio usuwane po sesji",
+    "confidentiality": "Poufność wszystkich sesji"
   },
   "hero": {
     "overline": "Superwizor AI — poznawczy partner w gabinecie",
@@ -546,7 +547,7 @@
     "subhead": "Otwierasz aplikację i wiesz od czego zacząć. Poprzednie sesje czekają z transkrypcją, kluczowymi wątkami i notatkami w Twoim nurcie.",
     "ctaPrimary": "Wypróbuj za darmo",
     "ctaSecondary": "Zobacz, jak działa",
-    "microtext": "5 sesji przez 30 dni. Bez karty.",
+    "microtext": "30 dni / 5 sesji. Bez karty kredytowej.",
     "trustBar": "Współtworzona przez polskich psychoterapeutów, superwizorów i psychiatrów.",
     "chips": {
       "audio": "Audio usuwane po transkrypcji",
@@ -904,7 +905,7 @@
     "metaTitle": "Cennik",
     "overline": "Cennik",
     "heading": "Plan dopasowany do Twojej praktyki",
-    "subhead": "Plany indywidualne mają te same funkcje — różnią się tylko liczbą sesji. Ewolucja to opcja dla zespołów i poradni.",
+    "subhead": "Plany indywidualne mają te same funkcje — różnią się tylko liczbą sesji. Ewolucja to opcja dla zespołów, poradni i terapeutów z ponad 90 sesjami miesięcznie.",
     "cycle": {
       "monthly": "Miesięcznie",
       "annual": "Rocznie",
@@ -927,9 +928,9 @@
         "name": "Równowaga",
         "tagline": "Dla terapeutów indywidualnych.",
         "couponText": "KOD: ROWNOWAGA20",
-        "priceIntro": "143 zł",
-        "priceBase": "cena regularna 179 zł",
-        "subprice": "z kodem ROWNOWAGA20",
+        "priceIntro": "99 zł",
+        "priceBase": "cena regularna 149 zł",
+        "subprice": "cena dla wczesnych użytkowników",
         "tokensSuffixMonthly": "sesji miesięcznie",
         "tokensSuffixAnnual": "sesji rocznie",
         "cta": "Wybieram Równowagę",
@@ -943,9 +944,9 @@
         "tagline": "Dla intensywnie pracujących.",
         "badge": "Najczęściej wybierany",
         "couponText": "KOD: ROZKWIT30",
-        "priceIntro": "209 zł",
+        "priceIntro": "199 zł",
         "priceBase": "cena regularna 299 zł",
-        "subprice": "z kodem ROZKWIT30",
+        "subprice": "cena dla wczesnych użytkowników",
         "tokensSuffixMonthly": "sesji miesięcznie",
         "tokensSuffixAnnual": "sesji rocznie",
         "cta": "Wybieram Rozkwit",
@@ -956,7 +957,7 @@
       },
       "clinic": {
         "name": "Ewolucja",
-        "tagline": "Dla poradni i zespołów terapeutycznych.",
+        "tagline": "Dla poradni, zespołów i terapeutów z ponad 90 sesjami miesięcznie.",
         "price": "Wycena",
         "subprice": "indywidualne warunki",
         "tokensSuffixMonthly": "sesji miesięcznie",
@@ -969,12 +970,12 @@
         ]
       }
     },
-    "vatNote": "Ceny brutto (zawierają 23% VAT).",
+    "vatNote": "Ceny zawierają VAT.",
     "currency": "PLN",
     "perMonth": "zł / mias.",
     "perYear": "zł / rok",
     "free": "0 zł",
-    "footnote1": "Rozliczenie roczne — 17% taniej. Płacisz dopiero po wykorzystaniu 3 darmowych sesji.",
+    "footnote1": "Rozliczenie roczne — 17% taniej. Płacisz dopiero po wykorzystaniu 5 darmowych sesji.",
     "footnote2": "Zacznij już teraz.",
     "footnote": "Płatność kartą lub Przelewy24. Możesz zmienić lub anulować plan w dowolnym momencie z poziomu konta."
   },
@@ -1148,28 +1149,28 @@
       "body": "Możesz ze spokojem zająć się tym, co w Twojej pracy jest najważniejsze.",
       "items": {
         "record": {
-          "title": "Nagrywanie sesji",
-          "body": "Na żywo, online albo z pliku. Działa w tle, nawet bez zasięgu."
+          "title": "Nagrywanie w pełnej poufności",
+          "body": "Jednym tapnięciem rozpoczynasz nagrywanie sesji, wiedząc, że wszystko, co ważne, zostanie uchwycone. <bold>Zaszyfrowane nagranie jest chronione zgodnie z najwyższymi standardami bezpieczeństwa danych.</bold> Zaraz po utworzeniu transkrypcji nagranie audio jest automatycznie i trwale usuwane."
         },
         "transcript": {
-          "title": "Transkrypcja po polsku",
-          "body": "Całe spotkanie z podziałem na role. Eksport do PDF."
+          "title": "Transkrypcja z podziałem na mówców",
+          "body": "Każda sesja jest automatycznie przekształcana w czytelną transkrypcję w wybranym przez Ciebie języku, <bold>z podziałem na mówców</bold>. W każdej chwili wrócisz do dowolnego fragmentu rozmowy, wyszukasz konkretne wypowiedzi i wyeksportujesz zapis jednym kliknięciem."
         },
         "report": {
-          "title": "Raport w Twoim nurcie",
-          "body": "Tematy, wątki i propozycje kroków. Gotowe w minuty."
-        },
-        "modality": {
-          "title": "Pracuje w Twojej modalności",
-          "body": "CBT, psychodynamika, TSR, podejście integracyjne i inne."
+          "title": "Wnikliwe wnioski po każdej sesji",
+          "body": "Chwilę po zakończeniu sesji otrzymujesz raport z esencją spotkania, wnikliwymi obserwacjami, zadaniami dla klienta i wątkami wartymi pogłębienia. <bold>Przed kolejnym spotkaniem czeka na Ciebie krótka notatka</bold>, dzięki której w kilka minut wracasz do pełnego kontekstu sesji. Wszystko napisane w języku Twojego nurtu."
         },
         "continuity": {
-          "title": "Ciągłość między sesjami",
-          "body": "Powracające tematy połączone w całość. Wracasz z pełnym obrazem."
+          "title": "Wątki wyłapywane pomiędzy sesjami",
+          "body": "Powracające tematy z kolejnych spotkań są <bold>semantycznie łączone z wcześniejszym kontekstem</bold>. Dzięki temu łatwiej zachowujesz ciągłość pracy i widzisz, jak proces z klientem rozwija się w czasie."
         },
-        "supervisor": {
-          "title": "Wskazówki superwizyjne",
-          "body": "Pytania do pogłębienia. Gotowa baza do rozmowy z superwizorem."
+        "modality": {
+          "title": "Pracujemy w Twoim nurcie",
+          "body": "Wszystkie podsumowania, obserwacje i wskazówki są <bold>tworzone w języku Twojego nurtu</bold>. Możesz dopasować ich długość, ton, liczbę cytatów oraz sposób, w jaki są formułowane."
+        },
+        "folder": {
+          "title": "Dokumentacja i historia",
+          "body": "Każdy klient ma swoją kartotekę, a <bold>wszystkie sesje układają się na przejrzystej osi czasu</bold>. Wracasz do dowolnego spotkania w kilka sekund, a nowe raporty widać od razu."
         }
       }
     },

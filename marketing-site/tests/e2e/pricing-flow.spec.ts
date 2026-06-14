@@ -38,7 +38,7 @@ test.describe("Pricing & CTA Flow", () => {
     }) }).first();
     await expect(navCta).toBeVisible();
     await expect(navCta).toHaveAttribute("href", "#cennik");
-    // Check it has the ember background class
+    // Check it has the bg-ember class
     await expect(navCta).toHaveClass(/bg-ember/);
   });
 
@@ -56,20 +56,20 @@ test.describe("Pricing & CTA Flow", () => {
     await expect(pricingSection).toContainText(trialText);
   });
 
-  test("pricing section shows correct prices (179 PLN, 299 PLN brutto)", async ({ page }) => {
+  test("pricing section shows correct prices (149 PLN, 299 PLN brutto)", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/`);
 
     const pricingSection = page.locator("#cennik");
 
     // Równowaga price
-    await expect(pricingSection).toContainText("179");
+    await expect(pricingSection).toContainText("149");
     // Rozkwit price
     await expect(pricingSection).toContainText("299");
 
-    // VAT note says brutto
+    // VAT note says zawierają VAT
     const vatText = forLocale({
-      pl: /brutto/i,
+      pl: /zawierają.*VAT/i,
       en: /incl.*23%.*VAT/i,
     });
     await expect(pricingSection.getByText(vatText).first()).toBeVisible();

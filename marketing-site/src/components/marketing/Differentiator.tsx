@@ -42,13 +42,13 @@ export function Differentiator() {
     ? [
         { icon: "🔍", label: "Wszystko przeszukiwalne w jednym miejscu", metric: "0 sec", metricLabel: "szukania" },
         { icon: "🤖", label: "AI pamięta wątki przez wszystkie sesje", metric: "100%", metricLabel: "ciągłości" },
-        { icon: "⚡", label: "Raport kliniczny gotowy w minuty", metric: "3 min", metricLabel: "zamiast godziny" },
+        { icon: "⚡", label: "Raport gotowy w minuty", metric: "3 min", metricLabel: "zamiast godziny" },
         { icon: "📋", label: "Pełny obraz klienta zanim zaczniesz", metric: "360°", metricLabel: "perspektywy" },
       ]
     : [
         { icon: "🔍", label: "Everything searchable in one place", metric: "0 sec", metricLabel: "searching" },
         { icon: "🤖", label: "AI remembers threads across all sessions", metric: "100%", metricLabel: "continuity" },
-        { icon: "⚡", label: "Clinical report ready in minutes", metric: "3 min", metricLabel: "instead of hours" },
+        { icon: "⚡", label: "Report ready in minutes", metric: "3 min", metricLabel: "instead of hours" },
         { icon: "📋", label: "Full client picture before you begin", metric: "360°", metricLabel: "perspective" },
       ];
 

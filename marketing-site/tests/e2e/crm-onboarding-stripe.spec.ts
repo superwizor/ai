@@ -339,8 +339,8 @@ test.describe("Stripe Checkout Config", () => {
     //   Rozkwit Annual:     price_1TgAqVE5jzWcAIgeOh1veVjP  (2990 PLN)
 
     const expectedPrices = {
-      "SOLO_MONTHLY": { price: 179, priceId: "price_1TgAk2E5jzWcAIgeQ572wpkE" },
-      "SOLO_ANNUAL": { price: 1790, priceId: "price_1TgAlxE5jzWcAIgedH5FM8No" },
+      "SOLO_MONTHLY": { price: 149, priceId: "price_1TgAk2E5jzWcAIgeQ572wpkE" },
+      "SOLO_ANNUAL": { price: 1490, priceId: "price_1TgAlxE5jzWcAIgedH5FM8No" },
       "PRO_MONTHLY": { price: 299, priceId: "price_1TgAnSE5jzWcAIgeshZ6TqG8" },
       "PRO_ANNUAL": { price: 2990, priceId: "price_1TgAqVE5jzWcAIgeOh1veVjP" },
     };
@@ -507,7 +507,7 @@ test.describe("Pricing & Invoice Config", () => {
     const pricingSection = page.locator("#cennik");
     if (await pricingSection.isVisible()) {
       const vatText = forLocale({
-        pl: /brutto/i,
+        pl: /brutto|VAT/i,
         en: /incl.*VAT/i,
       });
       await expect(pricingSection.getByText(vatText).first()).toBeVisible();
@@ -546,9 +546,9 @@ test.describe("Pricing & Invoice Config", () => {
   });
 
   test("annual pricing offers ~17% discount vs monthly", async () => {
-    // Równowaga: 179/mo × 12 = 2148 → annual 1790 → ~17% off
+    // Równowaga: 149/mo × 12 = 1788 → annual 1490 → ~17% off
     // Rozkwit:   299/mo × 12 = 3588 → annual 2990 → ~17% off
-    const soloMonthly = 179, soloAnnual = 1790;
+    const soloMonthly = 149, soloAnnual = 1490;
     const proMonthly = 299, proAnnual = 2990;
 
     const soloSavings = 1 - soloAnnual / (soloMonthly * 12);

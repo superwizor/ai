@@ -1,27 +1,28 @@
 {
   "metadata": {
-    "title": "Superwizor AI — AI Copilot for Psychotherapists and Coaches",
-    "description": "Record your therapy sessions and get a dynamic transcript and clinical report in minutes. Secure EU hosting, fully GDPR-compliant.",
+    "title": "Superwizor AI — cognitive partner in the session",
+    "description": "After the session, you receive a transcript, insightful insights in your modality, and a short note before the next meeting. Encrypted data, servers in EU, GDPR-compliant.",
     "ogSiteName": "Superwizor AI",
     "home": {
-      "title": "Superwizor AI — AI Copilot for Psychotherapists and Coaches",
-      "description": "Record your therapy sessions and get a dynamic transcript and clinical report in minutes. Secure EU hosting, fully GDPR-compliant.",
-      "keywords": "psychotherapy, supervision, AI copilot, session transcription, clinical notes, GDPR, Vertex AI, clinical reports, CBT, psychodynamic therapy"
+      "title": "Superwizor AI — cognitive partner in the session",
+      "description": "After the session, you receive a transcript, insightful insights in your modality, and a short note before the next meeting. Encrypted data, servers in EU, GDPR-compliant.",
+      "keywords": "psychotherapy, supervision, session transcription, GDPR, CBT, psychodynamic therapy, insights in modality",
+      "ogImageAlt": "Superwizor AI application for therapists: session recording, transcription, and insightful insights in your modality."
     },
     "pacjent": {
       "title": "Personal Therapy Assistant — Organize Your Session Insights | Superwizor AI",
       "description": "Make the most of your therapy. Securely record insights, track emotional patterns, and prepare for your sessions with a private AI assistant. Zero-trust privacy.",
-      "keywords": "patient assistant, therapy notes, personal growth, emotions, session preparation, privacy, zero-trust, post-session reflection"
+      "keywords": "therapy notes, personal growth, emotions, session preparation, privacy, zero-trust, post-session reflection"
     },
     "beta": {
       "title": "Join our Exclusive Free Beta Program | Superwizor AI",
-      "description": "Become one of 50 exclusive beta testers. Get 120 free sessions per month for 2 months. Help us build the ultimate clinical copilot.",
-      "keywords": "beta program, free copilot, AI testing, therapist assistant, free sessions, free assistant"
+      "description": "Become one of 50 exclusive beta testers. Get 120 free sessions per month for 2 months. Help us build the ultimate partner in the session.",
+      "keywords": "beta program, AI testing, free sessions, cognitive partner, platform feedback"
     },
     "pricing": {
       "title": "Simple Pricing and Plans for Psychotherapists | Superwizor AI",
       "description": "Find the perfect plan for your practice. From our free trial to pro and clinic plans. Transparent billing.",
-      "keywords": "superwizor pricing, ai assistant prices, subscription plans, free trial, clinic license"
+      "keywords": "superwizor pricing, subscription plans, free trial, clinic license"
     },
     "contact": {
       "title": "Contact Us — Get in Touch | Superwizor AI",
@@ -534,9 +535,9 @@
   },
   "topbar": {
     "rodo": "GDPR compliance",
-    "audio": "Audio deleted after transcription",
-    "access": "Access only for you",
-    "noTraining": "We don't train AI on your sessions"
+    "encryption": "AES-256 encryption (EU)",
+    "audio": "Audio deleted after session",
+    "confidentiality": "Confidentiality of all sessions"
   },
   "hero": {
     "overline": "Superwizor AI — your cognitive partner in the session",
@@ -927,9 +928,9 @@
         "name": "Balance",
         "tagline": "For individual therapists.",
         "couponText": "CODE: ROWNOWAGA20",
-        "priceIntro": "143 PLN",
-        "priceBase": "regular price 179 PLN",
-        "subprice": "with code ROWNOWAGA20",
+        "priceIntro": "99 PLN",
+        "priceBase": "regular price 149 PLN",
+        "subprice": "early adopter price",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
         "cta": "Choose Balance",
@@ -943,9 +944,9 @@
         "tagline": "For power users.",
         "badge": "Most popular",
         "couponText": "CODE: ROZKWIT30",
-        "priceIntro": "209 PLN",
+        "priceIntro": "199 PLN",
         "priceBase": "regular price 299 PLN",
-        "subprice": "with code ROZKWIT30",
+        "subprice": "early adopter price",
         "tokensSuffixMonthly": "sessions / month",
         "tokensSuffixAnnual": "sessions / year",
         "cta": "Choose Growth",
@@ -1148,28 +1149,28 @@
       "body": "You can peacefully focus on what is most important in your work.",
       "items": {
         "record": {
-          "title": "Session recording",
-          "body": "Live, online, or from a file. Works in the background, even offline."
+          "title": "Recording in complete confidentiality",
+          "body": "Start recording with one tap, knowing that everything important will be captured. <bold>The encrypted recording is protected according to the highest data security standards.</bold> Immediately after transcription is generated, the audio is automatically and permanently deleted."
         },
         "transcript": {
-          "title": "Full Polish transcription",
-          "body": "The whole session with speaker labels. Export to PDF."
+          "title": "Transcription with speaker separation",
+          "body": "Every session is automatically converted into a readable transcript in your chosen language, <bold>divided by speakers</bold>. Revisit any part of the conversation, search specific utterances, and export the transcript with one click."
         },
         "report": {
-          "title": "Report in your modality",
-          "body": "Topics, threads, and suggested steps. Ready in minutes."
-        },
-        "modality": {
-          "title": "Works in your modality",
-          "body": "CBT, psychodynamic, SFT, integrative, and more."
+          "title": "Insightful insights after each session",
+          "body": "Shortly after the session, you receive a report with the essence of the meeting, insightful observations, client homework, and threads to deepen. <bold>Before the next meeting, a short note is waiting for you</bold>, allowing you to return to the full session context in minutes. All written in the language of your modality."
         },
         "continuity": {
-          "title": "Continuity between sessions",
-          "body": "Recurring themes connected as a whole. You return with the full picture."
+          "title": "Themes captured between sessions",
+          "body": "Recurring themes from subsequent meetings are <bold>semantically linked with the earlier context</bold>. This makes it easier to maintain continuity of work and see how the process with the client develops over time."
         },
-        "supervisor": {
-          "title": "Supervisory pointers",
-          "body": "Questions to explore. A ready base for your supervisor meeting."
+        "modality": {
+          "title": "We work in your modality",
+          "body": "All summaries, observations, and recommendations are <bold>created in the language of your modality</bold>. You can customize their length, tone, number of quotes, and how they are formulated."
+        },
+        "folder": {
+          "title": "Documentation and history",
+          "body": "Each client has their own folder, and <bold>all sessions are arranged on a clear timeline</bold>. Return to any meeting in seconds, and new reports are visible immediately."
         }
       }
     },

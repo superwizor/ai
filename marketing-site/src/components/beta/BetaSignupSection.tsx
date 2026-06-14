@@ -11,14 +11,14 @@ import { Testimonials } from "@/components/marketing/Testimonials";const CONTENT
     overline: "Program Beta",
     heading: "Zostań jednym z 50 pionierów",
     subhead:
-      "Zapraszamy do zamkniętej grupy terapeutów, którzy jako pierwsi przetestują Superwizor AI w praktyce klinicznej.",
+      "Zapraszamy do zamkniętej grupy terapeutów, którzy jako pierwsi przetestują Superwizor AI w swojej praktyce.",
     badge: "Tylko 50 miejsc",
     features: [
       {
         icon: "🎯",
         tag: "LIMIT",
         title: "120 sesji co miesiąc",
-        desc: "Pełny dostęp do transkrypcji i generowania ustrukturyzowanych raportów klinicznych bez obaw o zużycie limitu.",
+        desc: "Pełny dostęp do transkrypcji i generowania ustrukturyzowanych raportów bez obaw o zużycie limitu.",
         detail: "120 sesji / mies. przez cały okres testów",
       },
       {
@@ -45,7 +45,7 @@ import { Testimonials } from "@/components/marketing/Testimonials";const CONTENT
     ],
     security: {
       tag: "BEZPIECZEŃSTWO",
-      title: "Kliniczne standardy poufności danych",
+      title: "Najwyższe standardy poufności danych",
       desc: "Jako platforma dla psychoterapeutów, bezpieczeństwo informacji stawiamy na pierwszym miejscu. Twoje nagrania i dane są w pełni chronione w oparciu o restrykcyjne standardy.",
       items: [
         "Szyfrowanie kopertowe (AES-256 + KMS) wrażliwych danych PHI",
@@ -79,14 +79,14 @@ import { Testimonials } from "@/components/marketing/Testimonials";const CONTENT
     overline: "Beta Program",
     heading: "Be one of 50 pioneers",
     subhead:
-      "Join a closed group of therapists who will be the first to test Superwizor AI in clinical practice.",
+      "Join a closed group of therapists who will be the first to test Superwizor AI in their daily practice.",
     badge: "Only 50 spots",
     features: [
       {
         icon: "🎯",
         tag: "LIMIT",
         title: "120 sessions every month",
-        desc: "Full access to transcription and structured clinical reports without worrying about usage limits.",
+        desc: "Full access to transcription and structured reports without worrying about usage limits.",
         detail: "120 sessions / mo throughout the test period",
       },
       {
@@ -107,13 +107,13 @@ import { Testimonials } from "@/components/marketing/Testimonials";const CONTENT
         icon: "💬",
         tag: "COLLABORATION",
         title: "Shape the product directly",
-        desc: "A dedicated support line directly to the founders and developer team. Propose features and help build the future of clinical co-pilots.",
+        desc: "A dedicated support line directly to the founders and developer team. Propose features and help build the future of therapy.",
         detail: "Priority feedback loop",
       },
     ],
     security: {
       tag: "SECURITY",
-      title: "Clinical-grade data confidentiality",
+      title: "Highest data confidentiality standards",
       desc: "As a platform built for psychotherapists, data security and privacy is our absolute priority. Your files are fully protected.",
       items: [
         "Envelope encryption (AES-256 + KMS) for sensitive PHI fields",
@@ -209,9 +209,9 @@ export function BetaSignupSection({ locale }: { locale: string }) {
               <div className="animate-fade-up-3 mt-10 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
                 <a
                   href={`${prefix}/register/therapist?plan=beta`}
-                  className="group relative inline-flex items-center justify-center rounded-[12px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-10 py-4.5 transition-all duration-300 active:scale-[0.97] w-full sm:w-auto whitespace-nowrap overflow-hidden shadow-lg hover:brightness-110"
+                  className="group relative inline-flex items-center justify-center rounded-[5px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-10 py-4.5 transition-all duration-300 active:scale-[0.97] w-full sm:w-auto whitespace-nowrap overflow-hidden shadow-lg hover:brightness-110"
                 >
-                  <span className="absolute inset-0 rounded-[12px] bg-ember/40 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10 scale-110" />
+                  <span className="absolute inset-0 rounded-[5px] bg-ember/40 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10 scale-110" />
                   <span className="relative z-10 flex items-center gap-2">
                     {c.cta}
                     <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
@@ -530,9 +530,9 @@ export function BetaSignupSection({ locale }: { locale: string }) {
           </p>
           <a
             href={`${prefix}/register/therapist?plan=beta`}
-            className="group relative inline-flex items-center justify-center rounded-[12px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs px-10 py-4 transition-all duration-300 active:scale-[0.97] whitespace-nowrap overflow-hidden hover:brightness-110 shadow-lg"
+            className="group relative inline-flex items-center justify-center rounded-[5px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs px-10 py-4 transition-all duration-300 active:scale-[0.97] whitespace-nowrap overflow-hidden hover:brightness-110 shadow-lg"
           >
-            <span className="absolute inset-0 rounded-[12px] bg-ember/40 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10 scale-110" />
+            <span className="absolute inset-0 rounded-[5px] bg-ember/40 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10 scale-110" />
             <span className="relative z-10 flex items-center gap-2">
               {c.cta}
               <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>

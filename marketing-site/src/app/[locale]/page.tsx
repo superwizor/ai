@@ -98,8 +98,8 @@ export default async function Home({
             url: "https://superwizor.ai",
             description:
               locale === "en"
-                ? "AI copilot for psychotherapy. Record sessions, get clinical reports in minutes."
-                : "AI copilot dla psychoterapii. Nagraj sesję, otrzymaj raport kliniczny w kilka minut.",
+                ? "After the session, you receive a transcript, insightful conclusions in your modality, and a brief note before the next meeting. Encrypted data, EU servers, GDPR compliance."
+                : "Po sesji otrzymujesz transkrypcję, wnikliwe wnioski w swoim nurcie i krótką notatkę przed kolejnym spotkaniem. Dane szyfrowane, serwery w UE, zgodność z RODO.",
             offers: {
               "@type": "Offer",
               price: "0",
@@ -108,8 +108,8 @@ export default async function Home({
             },
             publisher: {
               "@type": "Organization",
-              name: "Euphire",
-              url: "https://euphire.pl",
+              name: "Superwizor AI",
+              url: "https://superwizor.ai",
               sameAs: [
                 "https://www.facebook.com/EUPHIRE/",
                 "https://www.instagram.com/euphire_pl/",

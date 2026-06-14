@@ -112,7 +112,7 @@ export function PricingCards({ catalog }: { catalog: ReadonlyArray<PlanRow> }) {
         <p className="font-mono text-[10px] uppercase tracking-wider text-[#4E5A55]">
           {locale === "en"
             ? "Prices incl. 23% VAT · Secure payment via Stripe · Cancel anytime"
-            : "Ceny brutto z VAT 23% · Bezpieczna płatność przez Stripe · Anuluj w dowolnym momencie"}
+            : "Ceny zawierają VAT · Bezpieczna płatność przez Stripe · Anuluj w dowolnym momencie"}
         </p>
       </div>
 
@@ -152,7 +152,7 @@ function TrialCard({ registerHref, locale }: { registerHref: string; locale: str
 
       <a
         href={registerHref}
-        className="mt-8 w-full inline-flex items-center justify-center rounded-[12px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 hover:brightness-110 transition-all duration-200 active:scale-[0.98] whitespace-nowrap shadow-sm"
+        className="mt-8 w-full inline-flex items-center justify-center rounded-[5px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 hover:brightness-110 transition-all duration-200 active:scale-[0.98] whitespace-nowrap shadow-sm"
       >
         {locale === "en" ? "Try for free" : "Wypróbuj za darmo"}
       </a>
@@ -235,18 +235,22 @@ function PaidCard({
         <div className="mt-7">
           {formattedIntro ? (
             <>
-              <div className="flex items-baseline gap-1.5">
+              <div className="flex items-baseline flex-wrap gap-x-2 gap-y-0.5">
+                <span className={`relative inline-block text-2xl sm:text-3xl font-medium tracking-tight ${priceColor}`}>
+                  <span className="opacity-35">{formattedBase}</span>
+                  <span className="absolute left-0 right-0 top-[52%] h-[3px] bg-[#fcae2f] -translate-y-1/2 rounded-full shadow-[0_0_3px_rgba(252,174,47,0.35)]" />
+                </span>
                 <span className={`font-display text-5xl font-bold tracking-tight ${priceColor}`}>
                   {formattedIntro}
                 </span>
-                <span className={`font-sans text-sm font-medium ${priceUnitColor}`}>
+                <span className={`font-display text-xl font-bold ${priceColor}`}>
+                  zł
+                </span>
+                <span className={`font-sans text-sm font-medium ${priceUnitColor} ml-0.5`}>
                   {priceUnit}
                 </span>
               </div>
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className={`line-through text-sm ${strikeColor}`}>
-                  {formattedBase} zł
-                </span>
+              <div className="mt-1.5 flex items-center">
                 <span className={`font-mono text-[10px] uppercase tracking-wider font-semibold ${subColor}`}>
                   {row.couponCode
                     ? (locale === "en" ? `with code ${row.couponCode} · forever` : `z kodem ${row.couponCode} · na zawsze`)
@@ -256,11 +260,14 @@ function PaidCard({
               </div>
             </>
           ) : (
-            <div className="flex items-baseline gap-1.5">
+            <div className="flex items-baseline gap-1">
               <span className={`font-display text-5xl font-bold tracking-tight ${priceColor}`}>
                 {formattedBase}
               </span>
-              <span className={`font-sans text-sm font-medium ${priceUnitColor}`}>
+              <span className={`font-display text-xl font-bold ${priceColor}`}>
+                zł
+              </span>
+              <span className={`font-sans text-sm font-medium ${priceUnitColor} ml-1`}>
                 {priceUnit}
               </span>
             </div>
@@ -278,12 +285,12 @@ function PaidCard({
       {row.stripePriceId ? (
         <a
           href={`/${locale === "en" ? "en/" : ""}register/therapist?plan=${tier}_${cycle.toLowerCase()}`}
-          className={`mt-8 w-full inline-flex items-center justify-center rounded-[12px] font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 transition-all duration-200 active:scale-[0.98] cursor-pointer whitespace-nowrap ${ctaClasses}`}
+          className={`mt-8 w-full inline-flex items-center justify-center rounded-[5px] font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 transition-all duration-200 active:scale-[0.98] cursor-pointer whitespace-nowrap ${ctaClasses}`}
         >
           {cta}
         </a>
       ) : (
-        <span className="mt-8 w-full inline-flex items-center justify-center rounded-[12px] border border-[#E2DED5]/40 text-[#1B2522]/40 font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 cursor-not-allowed whitespace-nowrap">
+        <span className="mt-8 w-full inline-flex items-center justify-center rounded-[5px] border border-[#E2DED5]/40 text-[#1B2522]/40 font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 cursor-not-allowed whitespace-nowrap">
           {cta}
         </span>
       )}
@@ -322,7 +329,7 @@ function ClinicCard({ locale }: { locale: string }) {
 
       <a
         href={`/${locale === "en" ? "en/" : ""}kontakt`}
-        className="mt-8 w-full inline-flex items-center justify-center rounded-[12px] border border-[#E2DED5] text-[#1B2522] font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 hover:bg-[#F2F0EA] hover:border-[#004D54]/20 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
+        className="mt-8 w-full inline-flex items-center justify-center rounded-[5px] border border-[#E2DED5] text-[#1B2522] font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 hover:bg-[#F2F0EA] hover:border-[#004D54]/20 transition-all duration-200 active:scale-[0.98] whitespace-nowrap"
       >
         {locale === "en" ? "Let's talk" : "Porozmawiajmy"}
       </a>

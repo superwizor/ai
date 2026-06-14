@@ -179,9 +179,9 @@ export function AiSecurityBand() {
 
           <a
             href="#cennik"
-            className="group relative inline-flex items-center justify-center rounded-[12px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 transition-all duration-300 active:scale-[0.97] whitespace-nowrap overflow-hidden"
+            className="group relative inline-flex items-center justify-center rounded-[5px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 transition-all duration-300 active:scale-[0.97] whitespace-nowrap overflow-hidden hover:brightness-110 shadow-lg"
           >
-            <span className="absolute inset-0 rounded-[12px] bg-ember/30 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10 scale-110" />
+            <span className="absolute inset-0 rounded-[5px] bg-ember/30 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10 scale-110" />
             <span className="relative z-10 flex items-center gap-2">
               {locale === "pl" ? "Rozpocznij za darmo" : "Start For Free"}
               <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>

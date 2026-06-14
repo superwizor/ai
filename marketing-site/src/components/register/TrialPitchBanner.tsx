@@ -8,6 +8,8 @@
 
 import { useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
+import { lookupPlan, formatPrice } from "@/lib/billing/plans";
+import type { PlanTier, BillingCycle } from "@/lib/billing/plans";
 
 type PitchVariant = "trial" | "solo" | "pro" | "beta";
 
@@ -20,6 +22,71 @@ function resolvePitch(plan: string | null): PitchVariant {
   return "trial";
 }
 
+function renderPitchHeading(
+  planSlug: string | null,
+  variant: PitchVariant,
+  locale: string,
+  fallbackHeading: string,
+  isForm: boolean = false
+) {
+  if (variant !== "solo" && variant !== "pro") {
+    return fallbackHeading;
+  }
+
+  const isAnnual = planSlug ? planSlug.toLowerCase().endsWith("annual") : false;
+  const cycle: BillingCycle = isAnnual ? "ANNUAL" : "MONTHLY";
+  const tier: PlanTier = variant === "solo" ? "SOLO" : "PRO";
+  const planRow = lookupPlan(tier, cycle);
+
+  if (!planRow) {
+    return fallbackHeading;
+  }
+
+  const formattedBase = formatPrice(locale, planRow.priceGross);
+  const formattedIntro = planRow.priceIntroGross !== undefined
+    ? formatPrice(locale, planRow.priceIntroGross)
+    : null;
+
+  let sessionText = "";
+  if (locale === "en") {
+    const cycleText = cycle === "ANNUAL" ? "year" : "month";
+    sessionText = `${planRow.tokensPerPeriod} sessions / ${cycleText} · `;
+  } else {
+    const cycleText = cycle === "ANNUAL" ? "rok" : "miesiąc";
+    sessionText = `${planRow.tokensPerPeriod} sesji / ${cycleText} · `;
+  }
+
+  const priceSuffix = locale === "en" ? " PLN" : " zł brutto";
+  const strikeTextColor = isForm ? "text-frost/40" : "text-[#1B2522]/40";
+  const activeTextColor = isForm ? "text-frost" : "text-[#1B2522]";
+
+  if (formattedIntro) {
+    return (
+      <span className="flex items-center justify-center flex-wrap gap-x-1.5 leading-tight">
+        <span>{sessionText}</span>
+        <span className="whitespace-nowrap inline-flex items-center gap-x-1.5">
+          <span className={`relative inline-block font-medium ${strikeTextColor}`}>
+            <span className="opacity-70">{formattedBase}</span>
+            <span className="absolute left-0 right-0 top-[52%] h-[2px] bg-[#fcae2f] -translate-y-1/2 rounded-full shadow-[0_0_3px_rgba(252,174,47,0.35)]" />
+          </span>
+          <span className={`font-extrabold ${activeTextColor}`}>
+            {formattedIntro}
+          </span>
+          <span>{priceSuffix}</span>
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span>
+      {sessionText}
+      {formattedBase}
+      {priceSuffix}
+    </span>
+  );
+}
+
 const CONTENT: Record<PitchVariant, { pl: ContentBlock; en: ContentBlock }> = {
   trial: {
     pl: {
@@ -27,11 +94,11 @@ const CONTENT: Record<PitchVariant, { pl: ContentBlock; en: ContentBlock }> = {
       heading: "Zacznij od 5 sesji za darmo",
       features: [
         "5 sesji terapeutycznych przez 30 dni",
-        "Pe\u0142ny dost\u0119p do wszystkich funkcji",
+        "Pełny dostęp do wszystkich funkcji",
         "Bez karty kredytowej",
         "Anuluj w dowolnym momencie",
       ],
-      footnote: "Po zarejestrowaniu otrzymasz natychmiast dost\u0119p do aplikacji.",
+      footnote: "Po zarejestrowaniu otrzymasz natychmiast dostęp do aplikacji.",
     },
     en: {
       badge: "Free start",
@@ -42,49 +109,49 @@ const CONTENT: Record<PitchVariant, { pl: ContentBlock; en: ContentBlock }> = {
         "No credit card required",
         "Cancel anytime",
       ],
-      footnote: "After signing up you\u2019ll get immediate access to the app.",
+      footnote: "After signing up you’ll get immediate access to the app.",
     },
   },
   solo: {
     pl: {
-      badge: "Plan R\u00f3wnowaga",
-      heading: "30 sesji / miesi\u0105c \u00b7 179 z\u0142 brutto",
+      badge: "Plan Równowaga",
+      heading: "30 sesji / miesiąc · 149 zł brutto",
       features: [
-        "Pe\u0142ny dost\u0119p do wszystkich funkcji",
+        "Pełny dostęp do wszystkich funkcji",
         "Raport w Twoim nurcie terapeutycznym",
-        "Ci\u0105g\u0142o\u015b\u0107 mi\u0119dzy sesjami",
+        "Ciągłość między sesjami",
       ],
       footnote:
-        "Najpierw za\u0142\u00f3\u017c konto \u2014 po rejestracji przekierujemy Ci\u0119 do bezpiecznej p\u0142atno\u015bci.",
+        "Najpierw załóż konto — po rejestracji przekierujemy Cię do bezpiecznej płatności.",
     },
     en: {
       badge: "Balance plan",
-      heading: "30 sessions / month \u00b7 179 PLN",
+      heading: "30 sessions / month · 149 PLN",
       features: [
         "Full access to all features",
         "Reports in your therapeutic modality",
         "Session-to-session continuity",
       ],
       footnote:
-        "Create your account first \u2014 after signup we\u2019ll redirect you to secure checkout.",
+        "Create your account first — after signup we’ll redirect you to secure checkout.",
     },
   },
   pro: {
     pl: {
-      badge: "Plan Rozkwit \u00b7 Najcz\u0119\u015bciej wybierany",
-      heading: "90 sesji / miesi\u0105c \u00b7 299 z\u0142 brutto",
+      badge: "Plan Rozkwit · Najczęściej wybierany",
+      heading: "90 sesji / miesiąc · 299 zł brutto",
       features: [
-        "Pe\u0142ny dost\u0119p do wszystkich funkcji",
+        "Pełny dostęp do wszystkich funkcji",
         "Raport w Twoim nurcie terapeutycznym",
-        "Ci\u0105g\u0142o\u015b\u0107 mi\u0119dzy sesjami",
-        "Idealny przy pe\u0142nym grafiku",
+        "Ciągłość między sesjami",
+        "Idealny przy pełnym grafiku",
       ],
       footnote:
-        "Najpierw za\u0142\u00f3\u017c konto \u2014 po rejestracji przekierujemy Ci\u0119 do bezpiecznej p\u0142atno\u015bci.",
+        "Najpierw załóż konto — po rejestracji przekierujemy Cię do bezpiecznej płatności.",
     },
     en: {
-      badge: "Growth plan \u00b7 Most popular",
-      heading: "90 sessions / month \u00b7 299 PLN",
+      badge: "Growth plan · Most popular",
+      heading: "90 sessions / month · 299 PLN",
       features: [
         "Full access to all features",
         "Reports in your therapeutic modality",
@@ -92,7 +159,7 @@ const CONTENT: Record<PitchVariant, { pl: ContentBlock; en: ContentBlock }> = {
         "Perfect for a full schedule",
       ],
       footnote:
-        "Create your account first \u2014 after signup we\u2019ll redirect you to secure checkout.",
+        "Create your account first — after signup we’ll redirect you to secure checkout.",
     },
   },
   beta: {
@@ -162,7 +229,7 @@ export function TrialPitchBanner() {
 
       {/* Heading */}
       <h2 className="font-display text-[#1B2522] text-xl sm:text-2xl font-bold tracking-tight mt-2">
-        {content.heading}
+        {renderPitchHeading(plan, variant, locale, content.heading, false)}
       </h2>
 
       {/* Features */}

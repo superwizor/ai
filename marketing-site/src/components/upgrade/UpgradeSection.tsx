@@ -135,7 +135,7 @@ export function UpgradeSection({
           <p className="font-mono text-[10px] uppercase tracking-wider text-[#4E5A55]">
             {locale === "en"
               ? "Prices incl. 23% VAT · Secure payment via Stripe · Cancel anytime"
-              : "Ceny brutto z VAT 23% · Bezpieczna płatność przez Stripe · Anuluj w dowolnym momencie"}
+              : "Ceny zawierają VAT · Bezpieczna płatność przez Stripe · Anuluj w dowolnym momencie"}
           </p>
         </div>
       </div>
@@ -182,13 +182,13 @@ function UpgradeCard({
       ? locale === "en"
         ? [
             "30 AI-analyzed sessions/month",
-            "Full clinical reports + HiTOP",
+            "Full reports + HiTOP",
             "Unlimited client files",
             "Encrypted local recording",
           ]
         : [
             "30 sesji z analizą AI/mies.",
-            "Pełne raporty kliniczne + HiTOP",
+            "Pełne raporty + HiTOP",
             "Nieograniczone kartoteki",
             "Szyfrowane nagrywanie lokalne",
           ]
@@ -400,9 +400,9 @@ function UpgradeCard({
       <button
         onClick={handleCheckout}
         disabled={loading}
-        className={`block w-full text-center py-3.5 rounded-xl font-sans font-bold text-sm uppercase tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`block w-full text-center py-3.5 rounded-full font-sans font-bold text-sm uppercase tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
           isHero
-            ? "bg-[#F5A623] text-[#1B2522] hover:bg-[#E09500] shadow-lg shadow-[#F5A623]/30"
+            ? "bg-gradient-to-r from-[#FCAE2F] to-[#F97316] text-obsidian hover:brightness-110 shadow-lg shadow-[#FCAE2F]/20"
             : "bg-[#004D54] text-white hover:bg-[#003A40] shadow-md"
         }`}
       >

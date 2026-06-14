@@ -9,12 +9,12 @@ export function AiValue() {
   const features = locale === "en"
     ? [
         { icon: "brain", title: "Modality-aware reports", body: "The AI understands your therapeutic approach. Reports adapt to CBT, psychodynamic, gestalt, and other modalities." },
-        { icon: "memory", title: "Clinical memory across sessions", body: "The system connects threads from previous sessions. You see the full picture before each meeting." },
+        { icon: "memory", title: "Memory across sessions", body: "The system connects threads from previous sessions. You see the full picture before each meeting." },
         { icon: "shield", title: "Safe by design", body: "Audio deleted after transcription. Envelope encryption. EU servers. GDPR-ready with DPA included." },
       ]
     : [
         { icon: "brain", title: "Raporty dopasowane do nurtu", body: "AI rozumie Twoje podejście terapeutyczne. Raporty dostosowują się do CBT, psychodynamiki, gestaltu i innych modalności." },
-        { icon: "memory", title: "Pamięć kliniczna między sesjami", body: "System łączy wątki z poprzednich sesji. Widzisz pełny obraz klienta przed każdym spotkaniem." },
+        { icon: "memory", title: "Pamięć między sesjami", body: "System łączy wątki z poprzednich sesji. Widzisz pełny obraz klienta przed każdym spotkaniem." },
         { icon: "shield", title: "Bezpieczeństwo w standardzie", body: "Audio usuwane po transkrypcji. Szyfrowanie kopertowe. Serwery w UE. Zgodność z RODO i gotowa umowa DPA." },
       ];
 
@@ -59,8 +59,8 @@ export function AiValue() {
           </h2>
           <p className="font-sans text-frost/60 text-base sm:text-lg mt-4 max-w-2xl mx-auto leading-relaxed">
             {locale === "en"
-              ? "Every report is generated through prompts designed by clinical specialists, tailored to your modality and your way of working."
-              : "Każdy raport generowany jest przez prompty zaprojektowane ze specjalistami klinicznymi, dopasowane do Twojego nurtu i sposobu pracy."}
+              ? "Every report is generated through prompts designed with psychotherapists and supervisors, tailored to your modality and your way of working."
+              : "Każdy raport generowany jest przez prompty zaprojektowane z psychoterapeutami i superwizorami, dopasowane do Twojego nurtu i sposobu pracy."}
           </p>
         </div>
 
@@ -77,7 +77,7 @@ export function AiValue() {
         </div>
 
         <div className="mt-12 text-center">
-          <a href="#cennik" className="inline-flex items-center justify-center rounded-[12px] bg-frost text-[#004D54] font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 hover:bg-white transition-all duration-200 active:scale-[0.97] whitespace-nowrap">
+          <a href="#cennik" className="inline-flex items-center justify-center rounded-full bg-frost text-[#004D54] font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 hover:bg-white transition-all duration-200 active:scale-[0.97] whitespace-nowrap">
             {locale === "en" ? "Start for free" : "Rozpocznij za darmo"}
             <span className="ml-2">→</span>
           </a>

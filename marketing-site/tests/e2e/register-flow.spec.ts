@@ -64,11 +64,11 @@ test.describe("Happy Path: Cennik", () => {
     await expect(cennik).toContainText(trialText);
   });
 
-  test("Równowaga card shows 179 zł and 30 sessions", async ({ page }) => {
+  test("Równowaga card shows 149 zł and 30 sessions", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/`);
     const cennik = page.locator("#cennik");
-    await expect(cennik).toContainText(/179/);
+    await expect(cennik).toContainText(/149/);
     await expect(cennik).toContainText(/30/);
   });
 
@@ -85,7 +85,7 @@ test.describe("Happy Path: Cennik", () => {
     await page.goto(`${prefix}/`);
     const cennik = page.locator("#cennik");
     const bruttoText = forLocale({
-      pl: /brutto/i,
+      pl: /brutto|VAT/i,
       en: /gross|brutto|VAT|incl/i,
     });
     await expect(cennik).toContainText(bruttoText);
@@ -191,7 +191,7 @@ test.describe("Happy Path: Registration", () => {
   }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/register/therapist?plan=solo_monthly`);
-    await expect(page.locator("body")).toContainText(/179/);
+    await expect(page.locator("body")).toContainText(/149/);
   });
 
   test("TrialPitchBanner shows Rozkwit info for plan=pro_monthly", async ({

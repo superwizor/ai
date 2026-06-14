@@ -135,10 +135,10 @@ export function CtaBand() {
             {/* Primary CTA — glowing ember button */}
             <a
               href="#cennik"
-              className="group relative inline-flex items-center justify-center rounded-[12px] bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 transition-all duration-300 active:scale-[0.97] w-full sm:w-auto whitespace-nowrap overflow-hidden"
+              className="group relative inline-flex items-center justify-center rounded-[5px] bg-gradient-to-r from-[#FCAE2F] to-[#F97316] text-obsidian font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 transition-all duration-300 active:scale-[0.97] w-full sm:w-auto whitespace-nowrap overflow-hidden"
             >
               {/* Glow behind button */}
-              <span className="absolute inset-0 rounded-[12px] bg-ember/40 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10 scale-110" />
+              <span className="absolute inset-0 rounded-[5px] bg-gradient-to-r from-[#FCAE2F]/40 to-[#F97316]/40 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10 scale-110" />
               <span className="relative z-10 flex items-center gap-2">
                 {t("primary")}
                 <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
@@ -148,7 +148,7 @@ export function CtaBand() {
             {/* Secondary CTA — glass button */}
             <a
               href="#cennik"
-              className="inline-flex items-center justify-center rounded-[12px] border border-frost/15 text-frost/90 font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 hover:bg-frost/[0.04] hover:border-frost/25 transition-all duration-300 active:scale-[0.97] w-full sm:w-auto whitespace-nowrap backdrop-blur-sm"
+              className="inline-flex items-center justify-center rounded-[5px] border border-frost/15 text-frost/90 font-sans font-bold uppercase tracking-wider text-xs sm:text-sm px-8 py-4 hover:bg-frost/[0.04] hover:border-frost/25 transition-all duration-300 active:scale-[0.97] w-full sm:w-auto whitespace-nowrap backdrop-blur-sm"
             >
               {t("secondary")}
             </a>

@@ -47,6 +47,8 @@ import {
   PhoneInput,
 } from "@/components/forms/Field";
 
+import { lookupPlan, formatPrice } from "@/lib/billing/plans";
+import type { PlanTier, BillingCycle } from "@/lib/billing/plans";
 import { handlePostRegistrationRedirect } from "@/lib/register/post-registration";
 
 type PitchVariant = "trial" | "solo" | "pro" | "beta";
@@ -58,6 +60,71 @@ function resolvePitch(plan: string | null): PitchVariant {
   if (lower.startsWith("pro")) return "pro";
   if (lower === "beta") return "beta";
   return "trial";
+}
+
+function renderPitchHeading(
+  planSlug: string | null,
+  variant: PitchVariant,
+  locale: string,
+  fallbackHeading: string,
+  isForm: boolean = false
+) {
+  if (variant !== "solo" && variant !== "pro") {
+    return fallbackHeading;
+  }
+
+  const isAnnual = planSlug ? planSlug.toLowerCase().endsWith("annual") : false;
+  const cycle: BillingCycle = isAnnual ? "ANNUAL" : "MONTHLY";
+  const tier: PlanTier = variant === "solo" ? "SOLO" : "PRO";
+  const planRow = lookupPlan(tier, cycle);
+
+  if (!planRow) {
+    return fallbackHeading;
+  }
+
+  const formattedBase = formatPrice(locale, planRow.priceGross);
+  const formattedIntro = planRow.priceIntroGross !== undefined
+    ? formatPrice(locale, planRow.priceIntroGross)
+    : null;
+
+  let sessionText = "";
+  if (locale === "en") {
+    const cycleText = cycle === "ANNUAL" ? "year" : "month";
+    sessionText = `${planRow.tokensPerPeriod} sessions / ${cycleText} · `;
+  } else {
+    const cycleText = cycle === "ANNUAL" ? "rok" : "miesiąc";
+    sessionText = `${planRow.tokensPerPeriod} sesji / ${cycleText} · `;
+  }
+
+  const priceSuffix = locale === "en" ? " PLN" : " zł brutto";
+  const strikeTextColor = isForm ? "text-frost/40" : "text-[#1B2522]/40";
+  const activeTextColor = isForm ? "text-frost" : "text-[#1B2522]";
+
+  if (formattedIntro) {
+    return (
+      <span className="flex items-center justify-center flex-wrap gap-x-1.5 leading-tight">
+        <span>{sessionText}</span>
+        <span className="whitespace-nowrap inline-flex items-center gap-x-1.5">
+          <span className={`relative inline-block font-medium ${strikeTextColor}`}>
+            <span className="opacity-70">{formattedBase}</span>
+            <span className="absolute left-0 right-0 top-[52%] h-[2px] bg-[#fcae2f] -translate-y-1/2 rounded-full shadow-[0_0_3px_rgba(252,174,47,0.35)]" />
+          </span>
+          <span className={`font-extrabold ${activeTextColor}`}>
+            {formattedIntro}
+          </span>
+          <span>{priceSuffix}</span>
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span>
+      {sessionText}
+      {formattedBase}
+      {priceSuffix}
+    </span>
+  );
 }
 
 type ContentBlock = {
@@ -95,7 +162,7 @@ const PITCH_CONTENT: Record<PitchVariant, { pl: ContentBlock; en: ContentBlock }
   solo: {
     pl: {
       badge: "Plan Równowaga",
-      heading: "30 sesji / miesiąc \u00b7 179 zł brutto",
+      heading: "30 sesji / miesiąc \u00b7 149 zł brutto",
       features: [
         "Pełny dostęp do wszystkich funkcji",
         "Raport w Twoim nurcie terapeutycznym",
@@ -106,7 +173,7 @@ const PITCH_CONTENT: Record<PitchVariant, { pl: ContentBlock; en: ContentBlock }
     },
     en: {
       badge: "Balance plan",
-      heading: "30 sessions / month \u00b7 179 PLN",
+      heading: "30 sessions / month \u00b7 149 PLN",
       features: [
         "Full access to all features",
         "Reports in your therapeutic modality",
@@ -479,7 +546,7 @@ export function TherapistEmailForm() {
                       {content.badge}
                     </span>
                     <h2 className="font-display text-frost text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight text-center">
-                      {content.heading}
+                      {renderPitchHeading(planSlug, pitchVariant, locale, content.heading, true)}
                     </h2>
                   </div>
 

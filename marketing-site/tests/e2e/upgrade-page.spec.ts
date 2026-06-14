@@ -38,7 +38,7 @@ test.describe("Upgrade Page", () => {
     await expect(page.locator("body")).toContainText(pitch);
   });
 
-  test("shows Równowaga (Balance) card with 179 zł", async ({ page }) => {
+  test("shows Równowaga (Balance) card with 149 zł", async ({ page }) => {
     const prefix = urlPrefix();
     await page.goto(`${prefix}/upgrade`);
 
@@ -48,7 +48,7 @@ test.describe("Upgrade Page", () => {
     });
     // Use heading role to avoid matching "Everything in Balance, plus:" text
     await expect(page.getByRole("heading", { name: cardTitle })).toBeVisible();
-    await expect(page.locator("body")).toContainText("179");
+    await expect(page.locator("body")).toContainText("149");
   });
 
   test("shows Rozkwit (Growth) card with 299 zł", async ({ page }) => {
@@ -153,7 +153,7 @@ test.describe("Upgrade Page", () => {
     await page.goto(`${prefix}/upgrade`);
 
     const vatText = forLocale({
-      pl: /brutto.*VAT.*23%/i,
+      pl: /zawierają.*VAT/i,
       en: /23%.*VAT/i,
     });
     await expect(page.getByText(vatText).first()).toBeVisible();
@@ -165,8 +165,8 @@ test.describe("Upgrade Page", () => {
 
     // Check that feature lists contain key items
     const reportFeature = forLocale({
-      pl: /raporty kliniczne/i,
-      en: /clinical reports/i,
+      pl: /Pełne raporty/i,
+      en: /Full reports/i,
     });
     await expect(page.getByText(reportFeature).first()).toBeVisible();
 
