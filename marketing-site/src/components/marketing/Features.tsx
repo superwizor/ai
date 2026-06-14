@@ -28,9 +28,13 @@ const FEATURE_ICONS: Record<FeatureKey, React.ReactNode> = {
   ),
   continuity: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-      <circle cx="6" cy="12" r="3" />
-      <path d="M9 12c1.5-3 4.5 3 6 0" />
-      <circle cx="18" cy="12" r="3" />
+      <path d="M5 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+      <path d="M19 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+      <path d="M19 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+      <line x1="7.7" y1="10.5" x2="9.3" y2="11.5" />
+      <line x1="14.7" y1="12.5" x2="16.3" y2="13.5" />
+      <line x1="16.5" y1="6.5" x2="13.5" y2="8.5" />
     </svg>
   ),
   modality: (
@@ -753,8 +757,8 @@ export function Features() {
           {/* Right Side: High-Fidelity App Demo Mockup (1:1 Replica, High Contrast) */}
           <div className="lg:col-span-7 flex flex-col justify-center relative">
             
-            {/* White Backing Glow (static for GPU performance, avoiding expensive repaint filters on iOS) */}
-            <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,rgba(0,77,84,0.05),transparent_65%)] blur-[60px] pointer-events-none z-0 transform-gpu" />
+            {/* White Backing Glow (outside the overflow-hidden frame to let it expand onto the dark background) */}
+            <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,rgba(0,77,84,0.06),transparent_65%)] blur-[60px] pointer-events-none animate-pulse z-0" />
             
             {/* Wrapper for mockup and outside arrows on desktop */}
             <div className="relative w-full max-w-[460px] lg:max-w-[540px] mx-auto">
@@ -784,7 +788,7 @@ export function Features() {
               {/* Live demo frame */}
               <div 
                 onClick={handleNextTab}
-                className="relative w-full rounded-[24px] p-[1.5px] bg-[#2C3533] overflow-hidden shadow-[0_30px_60px_-15px_rgba(27,37,34,0.18)] border border-white/[0.06] z-10 cursor-pointer group hover:shadow-2xl transition-all duration-300 transform-gpu"
+                className="relative w-full rounded-[24px] p-[1.5px] bg-[#2C3533] overflow-hidden shadow-[0_30px_60px_-15px_rgba(27,37,34,0.18)] border border-white/[0.06] z-10 cursor-pointer group hover:shadow-2xl transition-all duration-300"
               >
                 {/* Phone/Tablet Screen Interface */}
                 <div 
@@ -811,7 +815,7 @@ export function Features() {
                     '--back-btn-text': 'rgba(255, 255, 255, 0.9)',
                     '--footer-border': 'rgba(255, 255, 255, 0.06)',
                   } as React.CSSProperties}
-                  className="relative w-full rounded-[22.5px] overflow-hidden bg-[var(--screen-bg)] pt-5 pb-6 px-2.5 sm:px-5 lg:px-6 h-[580px] lg:h-[690px] flex flex-col justify-between select-text transition-all duration-300 text-[var(--text-pri)] transform-gpu"
+                  className="relative w-full rounded-[22.5px] overflow-hidden bg-[var(--screen-bg)] pt-5 pb-6 px-2.5 sm:px-5 lg:px-6 h-[580px] lg:h-[690px] flex flex-col justify-between select-text transition-all duration-300 text-[var(--text-pri)]"
                 >
 
                 {/* Main Dynamic View Content */}
