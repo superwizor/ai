@@ -778,15 +778,14 @@ export function CRMDashboard() {
       {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
         <div>
-          <p className="font-mono text-xs uppercase text-ember tracking-[0.2em] mb-1.5">{t("overline")}</p>
-          <h1 className="font-display text-frost text-2xl sm:text-3xl font-semibold tracking-[var(--tracking-display)]">{t("title")}</h1>
-          <p className="font-serif text-mist mt-1 text-sm">{t("subhead")}</p>
+          <h1 className="font-sans text-frost text-2xl sm:text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-mist mt-1 text-sm">{t("subhead")}</p>
         </div>
         <div className="flex gap-2 self-start sm:self-auto">
-          <button onClick={() => { void fetchSubscribers(); void fetchFollowUps(); }} className="rounded-button border border-frost/15 bg-frost/5 text-frost px-3 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-frost/10 transition" title="Odśwież dane">
+          <button onClick={() => { void fetchSubscribers(); void fetchFollowUps(); }} className="rounded-button bg-surface-teal border border-glass-border text-frost px-4 py-2.5 text-xs font-semibold uppercase tracking-wide hover:bg-frost/10 transition" title="Odśwież dane">
             ↻ Odśwież
           </button>
-          <button onClick={exportCSV} className="rounded-button border border-ember/30 bg-ember/5 text-ember px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/10 transition">
+          <button onClick={exportCSV} className="rounded-button bg-ember/10 border border-ember/30 text-ember px-4 py-2.5 text-xs font-semibold uppercase tracking-wide hover:bg-ember/20 transition">
             📥 Eksport CSV
           </button>
         </div>
@@ -794,59 +793,56 @@ export function CRMDashboard() {
 
       {/* ── Priority Inbox ────────────────────────────────── */}
       {priorityItems.length > 0 && (
-        <div className="mb-8 rounded-card border border-ember/30 bg-gradient-to-r from-ember/5 via-magma/3 to-ember/5 p-5">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-8 rounded-glass bg-surface-teal border border-glass-border p-5 sm:p-6">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-ember/15 flex items-center justify-center">
-                <span className="text-lg">📋</span>
+              <div className="w-10 h-10 rounded-xl bg-ember/20 flex items-center justify-center">
+                <span className="text-xl">📋</span>
               </div>
               <div>
-                <h2 className="font-display text-frost font-semibold text-sm">
+                <h2 className="font-sans text-frost font-bold text-lg">
                   Dziś do kontaktu
                 </h2>
-                <p className="font-mono text-[10px] text-mist/60 uppercase">
-                  {overdueCount > 0 && <span className="text-magma">{overdueCount} zaległe</span>}
-                  {overdueCount > 0 && todayCount > 0 && " · "}
-                  {todayCount > 0 && <span className="text-ember">{todayCount} na dziś</span>}
-                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {overdueCount > 0 && <span className="text-magma text-xs font-semibold bg-magma/15 px-2 py-0.5 rounded-full">{overdueCount} zaległe</span>}
+                  {todayCount > 0 && <span className="text-ember text-xs font-semibold bg-ember/15 px-2 py-0.5 rounded-full">{todayCount} na dziś</span>}
+                </div>
               </div>
             </div>
           </div>
-          <div className="grid gap-2">
+          <div className="grid gap-2.5">
             {priorityItems.map((f) => (
-              <div key={f.id} className={`flex items-center justify-between rounded-xl px-4 py-3 transition-all duration-200 hover:scale-[1.005] ${f.overdue ? "bg-magma/8 border border-magma/20" : "bg-ember/8 border border-ember/15"}`}>
+              <div key={f.id} className={`flex items-center justify-between rounded-card px-4 py-3.5 transition-all duration-200 hover:brightness-110 ${f.overdue ? "bg-magma/10 border border-magma/25" : "bg-ember/8 border border-ember/20"}`}>
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  {/* P2.3: Avatar — clickable to open drawer */}
                   <button
                     onClick={() => openUserDetail(f.target_user_id)}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 transition-transform hover:scale-110 ${getAvatarColor(f.first_name + f.last_name)}`}
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 transition-transform hover:scale-110 ${getAvatarColor(f.first_name + f.last_name)}`}
                   >
                     {getInitials(f.first_name, f.last_name)}
                   </button>
                   <div className="min-w-0">
-                    {/* P2.3: Name — clickable to open drawer */}
                     <button
                       onClick={() => openUserDetail(f.target_user_id)}
-                      className="font-display text-frost text-sm font-medium hover:text-ember transition-colors cursor-pointer text-left"
+                      className="font-sans text-frost text-sm font-semibold hover:text-ember transition-colors cursor-pointer text-left"
                     >
                       {f.first_name} {f.last_name}
                     </button>
                     <div className="flex items-center gap-2 mt-0.5">
-                      {f.note && <span className="font-serif text-mist/50 text-xs italic truncate">{f.note}</span>}
-                      {f.overdue && <span className="text-magma font-mono text-[8px] uppercase bg-magma/10 px-1.5 py-0.5 rounded-full">zaległe</span>}
+                      {f.note && <span className="text-mist text-xs truncate max-w-[300px]">{f.note}</span>}
+                      {f.overdue && <span className="text-magma text-[10px] font-bold uppercase bg-magma/15 px-2 py-0.5 rounded-full">zaległe</span>}
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-1.5 flex-shrink-0 ml-3">
+                <div className="flex gap-2 flex-shrink-0 ml-3">
                   {f.phone && isValidPhone(f.phone) && (
-                    <a href={`tel:${normalizePhone(f.phone)}`} className="p-1.5 rounded-lg bg-frost/5 text-aurora hover:bg-frost/10 transition" title="Zadzwoń">
+                    <a href={`tel:${normalizePhone(f.phone)}`} className="w-8 h-8 rounded-lg bg-frost/8 border border-frost/15 text-aurora hover:bg-frost/15 transition flex items-center justify-center" title="Zadzwoń">
                       <PhoneIcon />
                     </a>
                   )}
-                  <button onClick={() => completeFollowUp(f.id)} className="p-1.5 rounded-lg bg-aurora/10 text-aurora hover:bg-aurora/20 transition text-xs font-mono" title="Oznacz jako zrobione">
+                  <button onClick={() => completeFollowUp(f.id)} className="w-8 h-8 rounded-lg bg-aurora/15 border border-aurora/25 text-aurora hover:bg-aurora/25 transition flex items-center justify-center text-sm font-bold" title="Oznacz jako zrobione">
                     ✓
                   </button>
-                  <button onClick={() => deleteFollowUp(f.id)} className="p-1.5 rounded-lg bg-magma/5 text-mist/40 hover:text-magma hover:bg-magma/10 transition text-xs font-mono" title="Usuń follow-up">
+                  <button onClick={() => deleteFollowUp(f.id)} className="w-8 h-8 rounded-lg bg-frost/5 border border-frost/10 text-mist hover:text-magma hover:bg-magma/10 hover:border-magma/25 transition flex items-center justify-center text-sm" title="Usuń follow-up">
                     ×
                   </button>
                 </div>
@@ -870,20 +866,20 @@ export function CRMDashboard() {
         <FilterSelect value={filters.tier} onChange={(v) => updateFilter("tier", v)} options={TIER_OPTIONS} />
         <FilterSelect value={filters.status} onChange={(v) => updateFilter("status", v)} options={STATUS_OPTIONS} />
         <FilterSelect value={filters.alert} onChange={(v) => updateFilter("alert", v)} options={ALERT_OPTIONS} />
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-[220px]">
           <input
             type="search"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Szukaj (imię, email, telefon, organizacja)..."
-            className="w-full rounded-button bg-frost/5 border border-frost/15 text-frost pl-9 pr-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] placeholder:text-mist/40 transition"
+            className="w-full rounded-button bg-surface-teal border border-glass-border text-frost pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-ember placeholder:text-mist/60 transition"
           />
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mist/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mist" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
         </div>
         {activeFilterCount > 0 && (
           <button
             onClick={() => { setFilters({ tier: "", status: "", alert: "", search: "" }); setSearchInput(""); setPage(1); }}
-            className="rounded-button bg-frost/5 border border-frost/15 text-mist px-3 py-2 font-mono text-xs hover:text-frost hover:bg-frost/10 transition"
+            className="rounded-button bg-surface-teal border border-glass-border text-mist px-3 py-2.5 text-xs font-semibold hover:text-frost hover:bg-frost/10 transition"
           >
             ✕ Wyczyść ({activeFilterCount})
           </button>
@@ -893,47 +889,47 @@ export function CRMDashboard() {
       {/* ── Table ─────────────────────────────────────────── */}
       {loading && <TableSkeleton columns={7} />}
       {error && (
-        <div className="rounded-card border border-magma/40 bg-magma/10 px-4 py-6 text-center">
-          <p className="font-serif text-frost text-sm">{error}</p>
-          <button onClick={() => void fetchSubscribers()} className="mt-3 inline-flex items-center rounded-button border border-frost/20 px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] text-frost hover:bg-frost/5">Ponów</button>
+        <div className="rounded-glass border border-magma/40 bg-magma/10 px-6 py-8 text-center">
+          <p className="text-frost text-sm font-medium">{error}</p>
+          <button onClick={() => void fetchSubscribers()} className="mt-4 inline-flex items-center rounded-button bg-surface-teal border border-glass-border px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-frost hover:bg-frost/10 transition">Ponów</button>
         </div>
       )}
       {!loading && !error && sorted.length === 0 && (
-        <div className="rounded-card border border-frost/10 bg-frost/[0.02] px-6 py-16 text-center">
-          <div className="text-4xl mb-3">🔍</div>
-          <p className="font-display text-frost text-sm font-medium mb-1">Brak wyników</p>
-          <p className="font-serif text-mist/60 text-xs">Spróbuj zmienić filtry lub wyszukiwanie</p>
+        <div className="rounded-glass border border-glass-border bg-surface-teal px-6 py-16 text-center">
+          <div className="text-5xl mb-4">🔍</div>
+          <p className="text-frost text-base font-semibold mb-1">Brak wyników</p>
+          <p className="text-mist text-sm">Spróbuj zmienić filtry lub wyszukiwanie</p>
         </div>
       )}
       {!loading && !error && sorted.length > 0 && (
         <>
-          <div className="flex items-center justify-between mb-2">
-            <p className="font-mono text-xs text-mist/60">
-              Pokazano {(page - 1) * perPage + 1}–{Math.min(page * perPage, totalFiltered)} z {totalFiltered}
-              {totalFiltered !== totalAll && <span className="text-mist/40"> (z {totalAll} wszystkich)</span>}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-mist text-xs">
+              Pokazano <span className="text-frost font-semibold">{(page - 1) * perPage + 1}–{Math.min(page * perPage, totalFiltered)}</span> z {totalFiltered}
+              {totalFiltered !== totalAll && <span className="text-mist/70"> (z {totalAll} wszystkich)</span>}
             </p>
           </div>
-          <div className="overflow-x-auto rounded-card border border-frost/10 bg-frost/[0.03]">
-            <table className="w-full text-sm">
-              <thead className="bg-frost/5 sticky top-0 z-10">
+          <div className="overflow-x-auto rounded-glass border border-glass-border bg-deep-teal">
+            <table className="w-full text-[13px]">
+              <thead className="bg-surface-teal border-b border-glass-border sticky top-0 z-10">
                 <tr>
-                  <th className="px-3 py-3 text-left w-8">
+                  <th className="px-4 py-3.5 text-left w-10">
                     <input
                       type="checkbox"
                       checked={selected.size === sorted.length && sorted.length > 0}
                       onChange={toggleSelectAll}
-                      className="rounded border-frost/30 bg-frost/5 accent-ember cursor-pointer"
+                      className="rounded border-glass-border bg-surface-teal accent-ember cursor-pointer w-4 h-4"
                       title="Zaznacz / odznacz wszystkich"
                     />
                   </th>
-                  <th className="px-3 py-3 text-left font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">Użytkownik</th>
-                  <th className="px-3 py-3 text-left font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">Plan</th>
-                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition select-none" onClick={() => toggleSort("credits")} title="Sortuj po kredytach">Kredyty{sortIndicator("credits")}</th>
-                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition select-none" onClick={() => toggleSort("sessions")} title="Sortuj po sesjach">Sesje{sortIndicator("sessions")}</th>
-                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition select-none" onClick={() => toggleSort("activity")} title="Sortuj po ostatniej aktywności">Aktywność{sortIndicator("activity")}</th>
-                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition select-none" onClick={() => toggleSort("renewal")} title="Sortuj po dacie odnowienia">Odnowienie{sortIndicator("renewal")}</th>
-                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">Alerty</th>
-                  <th className="px-3 py-3 text-right font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">Akcje</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-mist">Użytkownik</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-mist">Plan</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-mist cursor-pointer hover:text-frost transition select-none" onClick={() => toggleSort("credits")}>Kredyty{sortIndicator("credits")}</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-mist cursor-pointer hover:text-frost transition select-none" onClick={() => toggleSort("sessions")}>Sesje{sortIndicator("sessions")}</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-mist cursor-pointer hover:text-frost transition select-none" onClick={() => toggleSort("activity")}>Aktywność{sortIndicator("activity")}</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-mist cursor-pointer hover:text-frost transition select-none" onClick={() => toggleSort("renewal")}>Odnowienie{sortIndicator("renewal")}</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-semibold uppercase tracking-wider text-mist">Alerty</th>
+                  <th className="px-4 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-mist">Akcje</th>
                 </tr>
               </thead>
               <tbody>
@@ -943,70 +939,68 @@ export function CRMDashboard() {
                     <tr
                       key={s.subscription_id}
                       onClick={() => openUserDetail(s.user_id)}
-                      className={`border-t border-frost/5 hover:bg-frost/[0.04] transition-colors cursor-pointer ${selected.has(s.user_id) ? "bg-ember/[0.04]" : idx % 2 === 1 ? "bg-frost/[0.01]" : ""}`}
+                      className={`border-t border-glass-border/50 hover:bg-surface-teal/80 transition-colors cursor-pointer ${selected.has(s.user_id) ? "bg-ember/[0.06]" : idx % 2 === 1 ? "bg-frost/[0.015]" : ""}`}
                     >
-                      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={selected.has(s.user_id)}
                           onChange={() => toggleSelect(s.user_id)}
-                          className="rounded border-frost/30 bg-frost/5 accent-ember cursor-pointer"
+                          className="rounded border-glass-border bg-surface-teal accent-ember cursor-pointer w-4 h-4"
                         />
                       </td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${getAvatarColor(s.first_name + s.last_name)}`}>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${getAvatarColor(s.first_name + s.last_name)}`}>
                             {getInitials(s.first_name, s.last_name)}
                           </div>
                           <div className="flex flex-col gap-0.5 min-w-0">
-                            <span className="font-display text-frost text-sm font-medium truncate">{s.first_name} {s.last_name}</span>
-                            <span className="font-mono text-[11px] text-mist/60 truncate">{s.email}</span>
+                            <span className="text-frost font-semibold truncate">{s.first_name} {s.last_name}</span>
+                            <span className="text-mist text-xs truncate">{s.email}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${getTierBadge(s.plan_tier)}`}>{s.plan_display_name}</span>
+                      <td className="px-4 py-3.5">
+                        <span className={`inline-flex px-2.5 py-1 rounded-button text-[10px] font-bold uppercase tracking-wider ${getTierBadge(s.plan_tier)}`}>{s.plan_display_name}</span>
                       </td>
-                      {/* P3.9: Credit bar shows % remaining */}
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-4 py-3.5 text-center">
                         <span className={`font-mono text-sm font-bold ${s.credit_alert === "critical" ? "text-magma" : s.credit_alert === "warning" ? "text-ember" : "text-frost"}`}>
                           {s.tokens_remaining}/{s.tokens_limit}
                         </span>
-                        <div className="w-16 h-1.5 bg-frost/10 rounded-full overflow-hidden mx-auto mt-1">
+                        <div className="w-16 h-1.5 bg-frost/10 rounded-full overflow-hidden mx-auto mt-1.5">
                           <div className={`h-full rounded-full transition-all duration-500 ${creditBar.color}`} style={{ width: `${Math.min(creditBar.pct, 100)}%` }} />
                         </div>
                       </td>
-                      <td className="px-3 py-3 text-center font-mono text-sm text-frost">{s.total_sessions}</td>
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-4 py-3.5 text-center font-mono text-frost">{s.total_sessions}</td>
+                      <td className="px-4 py-3.5 text-center">
                         {s.last_session_at ? (
-                          <span className={`font-mono text-xs ${getActivityColor(s.last_session_at)}`} title={s.last_session_at}>
+                          <span className={`text-xs font-medium ${getActivityColor(s.last_session_at)}`} title={s.last_session_at}>
                             {formatRelativeDate(s.last_session_at)}
                           </span>
                         ) : (
-                          <span className="text-mist/30 text-xs">—</span>
+                          <span className="text-mist/60 text-xs">—</span>
                         )}
                       </td>
-                      {/* P3.7: Guard for absurd days_until_renewal */}
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-4 py-3.5 text-center">
                         {!s.period_end || s.days_until_renewal > 365 ? (
-                          <span className="text-mist/30 font-mono text-xs">—</span>
+                          <span className="text-mist/60 font-mono text-xs">—</span>
                         ) : (
-                          <span className={`font-mono text-xs ${s.days_until_renewal <= 3 ? "text-magma font-bold" : s.days_until_renewal <= 7 ? "text-ember" : "text-mist"}`}>
+                          <span className={`font-mono text-xs font-semibold ${s.days_until_renewal <= 3 ? "text-magma" : s.days_until_renewal <= 7 ? "text-ember" : "text-mist"}`}>
                             {s.days_until_renewal > 0 ? `${s.days_until_renewal}d` : "wygasł"}
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-4 py-3.5 text-center">
                         {s.credit_alert === "critical" && <AlertPill color="magma" text="🔴 ≤1" />}
                         {s.credit_alert === "warning" && <AlertPill color="ember" text="🟡 ≤3" />}
                         {s.expiry_alert === "imminent" && <AlertPill color="magma" text="⏰ ≤3d" />}
-                        {!s.credit_alert && !s.expiry_alert && <span className="text-mist/30 text-[10px]">—</span>}
+                        {!s.credit_alert && !s.expiry_alert && <span className="text-mist/50 text-xs">—</span>}
                       </td>
-                      <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="inline-flex gap-1.5">
-                          {s.phone && isValidPhone(s.phone) && <ActionBtn href={`tel:${normalizePhone(s.phone)}`} title="Zadzwoń do terapeuty" color="aurora"><PhoneIcon /></ActionBtn>}
-                          <ActionBtn onClick={() => openEmail(s)} title="Wyślij email do terapeuty" color="ember"><MailIcon /></ActionBtn>
-                          <ActionBtn onClick={() => { setFollowUpTarget(s.user_id); setFollowUpDate(quickDate(3)); }} title="Zaplanuj przypomnienie follow-up" color="frost">🔔</ActionBtn>
+                          {s.phone && isValidPhone(s.phone) && <ActionBtn href={`tel:${normalizePhone(s.phone)}`} title="Zadzwoń" color="aurora"><PhoneIcon /></ActionBtn>}
+                          <ActionBtn onClick={() => openEmail(s)} title="Email" color="ember"><MailIcon /></ActionBtn>
+                          <ActionBtn onClick={() => { setFollowUpTarget(s.user_id); setFollowUpDate(quickDate(3)); }} title="Follow-up" color="frost">🔔</ActionBtn>
                         </div>
                       </td>
                     </tr>
@@ -1016,18 +1010,17 @@ export function CRMDashboard() {
             </table>
           </div>
 
-          {/* ── Pagination — P2.4/P2.5 fix ─────────────────── */}
-          <div className="flex items-center justify-between mt-4">
-            <p className="font-mono text-[10px] text-mist/40">
+          {/* ── Pagination ─────────────────────────────────── */}
+          <div className="flex items-center justify-between mt-5">
+            <p className="text-mist text-xs">
               Strona {page} z {totalPages}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page <= 1}
-                className="rounded-button border border-frost/15 px-3 py-1.5 font-mono text-xs text-frost hover:bg-frost/5 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                className="rounded-button bg-surface-teal border border-glass-border px-3.5 py-2 text-xs font-semibold text-frost hover:bg-frost/10 transition disabled:opacity-30 disabled:cursor-not-allowed"
               >← Poprzednia</button>
-              {/* Page number buttons */}
               {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                 let pageNum: number;
                 if (totalPages <= 5) pageNum = i + 1;
@@ -1038,7 +1031,7 @@ export function CRMDashboard() {
                   <button
                     key={pageNum}
                     onClick={() => setPage(pageNum)}
-                    className={`w-8 h-8 rounded-lg font-mono text-xs transition ${page === pageNum ? "bg-ember text-obsidian font-bold" : "text-mist hover:bg-frost/5 hover:text-frost"}`}
+                    className={`w-9 h-9 rounded-lg text-xs font-semibold transition ${page === pageNum ? "bg-ember text-obsidian" : "text-mist hover:bg-surface-teal hover:text-frost"}`}
                   >
                     {pageNum}
                   </button>
@@ -1047,7 +1040,7 @@ export function CRMDashboard() {
               <button
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page >= totalPages}
-                className="rounded-button border border-frost/15 px-3 py-1.5 font-mono text-xs text-frost hover:bg-frost/5 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                className="rounded-button bg-surface-teal border border-glass-border px-3.5 py-2 text-xs font-semibold text-frost hover:bg-frost/10 transition disabled:opacity-30 disabled:cursor-not-allowed"
               >Następna →</button>
             </div>
           </div>
@@ -1057,24 +1050,24 @@ export function CRMDashboard() {
       {/* ── Detail Drawer ─────────────────────────────────── */}
       {drawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-nocturne/60 backdrop-blur-sm" onClick={closeDrawer} />
-          <div className={`relative w-full max-w-lg bg-obsidian border-l border-frost/15 overflow-y-auto shadow-2xl transition-transform duration-300 ${drawerOpen ? "translate-x-0" : "translate-x-full"}`}>
+          <div className="absolute inset-0 bg-nocturne/70 backdrop-blur-sm" onClick={closeDrawer} />
+          <div className={`relative w-full max-w-lg bg-evergreen border-l border-glass-border overflow-y-auto shadow-2xl transition-transform duration-300 ${drawerOpen ? "translate-x-0" : "translate-x-full"}`}>
             {drawerLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="w-8 h-8 border-2 border-ember border-t-transparent rounded-full animate-spin" />
               </div>
             ) : drawerError ? (
               <div className="flex flex-col items-center justify-center h-64 gap-3">
-                <p className="font-serif text-magma text-sm">{drawerError}</p>
-                <button onClick={closeDrawer} className="rounded-button border border-frost/15 px-4 py-2 font-mono text-xs text-frost hover:bg-frost/5">Zamknij</button>
+                <p className="text-magma text-sm font-medium">{drawerError}</p>
+                <button onClick={closeDrawer} className="rounded-button bg-surface-teal border border-glass-border px-4 py-2 text-xs font-semibold text-frost hover:bg-frost/10">Zamknij</button>
               </div>
             ) : selectedUser && (
               <div className="p-6 space-y-6">
                 {/* Close */}
-                <button onClick={closeDrawer} className="absolute top-4 right-4 text-mist hover:text-frost transition p-1 rounded-lg hover:bg-frost/5">✕</button>
+                <button onClick={closeDrawer} className="absolute top-4 right-4 text-mist hover:text-frost transition w-8 h-8 rounded-lg hover:bg-surface-teal flex items-center justify-center">✕</button>
 
                 {/* Contact Card */}
-                <div className="border-b border-frost/10 pb-6">
+                <div className="border-b border-glass-border pb-6">
                   <div className="flex items-start gap-4">
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold flex-shrink-0 ${getAvatarColor(selectedUser.first_name + selectedUser.last_name)}`}>
                       {getInitials(selectedUser.first_name, selectedUser.last_name)}
@@ -1082,8 +1075,8 @@ export function CRMDashboard() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <h2 className="font-display text-frost text-xl font-bold">{selectedUser.first_name} {selectedUser.last_name}</h2>
-                          {selectedUser.professional_title && <p className="font-serif text-mist/60 text-sm italic">{selectedUser.professional_title}</p>}
+                          <h2 className="text-frost text-xl font-bold">{selectedUser.first_name} {selectedUser.last_name}</h2>
+                          {selectedUser.professional_title && <p className="text-mist text-sm mt-0.5">{selectedUser.professional_title}</p>}
                         </div>
                         {LIFECYCLE_LABELS[selectedUser.lifecycle_stage] && (
                           <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase flex-shrink-0 ${LIFECYCLE_LABELS[selectedUser.lifecycle_stage].color}`}>
@@ -1093,19 +1086,18 @@ export function CRMDashboard() {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 space-y-1.5">
-                    <p className="font-mono text-xs text-mist/80">📧 <a href={`mailto:${selectedUser.email}`} className="text-frost hover:text-ember transition">{selectedUser.email}</a></p>
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm text-mist">📧 <a href={`mailto:${selectedUser.email}`} className="text-frost hover:text-ember transition">{selectedUser.email}</a></p>
                     {selectedUser.phone && (
-                      <p className="font-mono text-xs text-mist/80">
-                        📱 <a href={isValidPhone(selectedUser.phone) ? `tel:${normalizePhone(selectedUser.phone)}` : undefined} className={`${isValidPhone(selectedUser.phone) ? "text-aurora hover:underline" : "text-mist/40"}`}>
+                      <p className="text-sm text-mist">
+                        📱 <a href={isValidPhone(selectedUser.phone) ? `tel:${normalizePhone(selectedUser.phone)}` : undefined} className={`${isValidPhone(selectedUser.phone) ? "text-frost hover:text-ember transition" : "text-mist"}`}>
                           {formatPhoneDisplay(selectedUser.phone)}
                         </a>
                       </p>
                     )}
-                    <p className="font-mono text-xs text-mist/50">Dołączył: {selectedUser.created_at}</p>
-                    {selectedUser.last_session_at && <p className="font-mono text-xs text-mist/50">Ostatnia sesja: {selectedUser.last_session_at}</p>}
+                    <p className="text-xs text-mist">Dołączył: {selectedUser.created_at}</p>
+                    {selectedUser.last_session_at && <p className="text-xs text-mist">Ostatnia sesja: {selectedUser.last_session_at}</p>}
                   </div>
-                  {/* Quick stats — P3.7: guard for days_until_renewal > 365 */}
                   <div className="grid grid-cols-3 gap-2 mt-4">
                     <MiniStat label="Sesje" value={selectedUser.total_sessions} />
                     <MiniStat label="Kredyty" value={`${selectedUser.tokens_remaining}/${selectedUser.tokens_limit}`} />
@@ -1115,40 +1107,40 @@ export function CRMDashboard() {
 
                 {/* Tags */}
                 <div>
-                  <h3 className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist/60 mb-2">Tagi</h3>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-mist mb-3">Tagi</h3>
+                  <div className="flex flex-wrap gap-1.5 mb-3">
                     {selectedUser.tags.map((tag) => (
-                      <span key={tag.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-frost/10 border border-frost/15 text-frost text-[11px] font-mono">
+                      <span key={tag.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-teal border border-glass-border text-frost text-xs font-medium">
                         {tag.tag}
-                        <button onClick={() => removeTag(tag.id)} className="text-mist/40 hover:text-magma transition ml-0.5">×</button>
+                        <button onClick={() => removeTag(tag.id)} className="text-mist hover:text-magma transition ml-0.5">×</button>
                       </span>
                     ))}
                   </div>
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-2">
                     <input
                       value={newTag}
                       onChange={(e) => setNewTag(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && addTag()}
                       placeholder="nowy tag..."
-                      className="flex-1 rounded bg-frost/5 border border-frost/15 px-2 py-1 text-frost text-xs font-mono focus:outline-none focus:border-ember"
+                      className="flex-1 rounded-button bg-surface-teal border border-glass-border px-3 py-2 text-frost text-xs focus:outline-none focus:border-ember"
                     />
-                    <button onClick={addTag} className="px-2 py-1 rounded bg-ember/10 text-ember text-xs font-mono hover:bg-ember/20 transition">+</button>
+                    <button onClick={addTag} className="px-3 py-2 rounded-button bg-ember/15 border border-ember/30 text-ember text-xs font-semibold hover:bg-ember/25 transition">+</button>
                   </div>
                 </div>
 
                 {/* Follow-ups */}
                 <div>
-                  <h3 className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist/60 mb-2">Follow-upy</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-mist mb-3">Follow-upy</h3>
                   {selectedUser.follow_ups.length > 0 ? (
-                    <div className="space-y-1.5 mb-2">
+                    <div className="space-y-2 mb-3">
                       {selectedUser.follow_ups.map((f) => (
-                        <div key={f.id} className={`flex items-center justify-between rounded px-2 py-1.5 text-xs ${f.completed ? "bg-frost/5 text-mist/40 line-through" : f.overdue ? "bg-magma/10 text-magma" : "bg-ember/5 text-frost"}`}>
+                        <div key={f.id} className={`flex items-center justify-between rounded-button px-3 py-2.5 text-xs ${f.completed ? "bg-frost/5 text-mist line-through" : f.overdue ? "bg-magma/10 border border-magma/20 text-frost" : "bg-surface-teal border border-glass-border text-frost"}`}>
                           <span className="font-mono">{f.due_date} {f.note && `— ${f.note}`}</span>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1.5">
                             {!f.completed && (
                               <>
-                                <button onClick={() => completeFollowUp(f.id)} className="text-aurora hover:text-frost transition" title="Zakończ">✓</button>
-                                <button onClick={() => deleteFollowUp(f.id)} className="text-mist/30 hover:text-magma transition" title="Usuń">×</button>
+                                <button onClick={() => completeFollowUp(f.id)} className="text-aurora hover:text-frost transition font-bold" title="Zakończ">✓</button>
+                                <button onClick={() => deleteFollowUp(f.id)} className="text-mist hover:text-magma transition" title="Usuń">×</button>
                               </>
                             )}
                           </div>
@@ -1156,22 +1148,22 @@ export function CRMDashboard() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-mist/30 text-xs font-serif mb-2">Brak zaplanowanych follow-upów</p>
+                    <p className="text-mist text-xs mb-3">Brak zaplanowanych follow-upów</p>
                   )}
-                  <button onClick={() => { setFollowUpTarget(selectedUser.user_id); setFollowUpDate(quickDate(3)); }} className="w-full rounded bg-frost/5 border border-frost/15 px-3 py-1.5 text-frost text-xs font-mono hover:bg-frost/10 transition">
+                  <button onClick={() => { setFollowUpTarget(selectedUser.user_id); setFollowUpDate(quickDate(3)); }} className="w-full rounded-button bg-surface-teal border border-glass-border px-3 py-2.5 text-frost text-xs font-semibold hover:bg-frost/10 transition">
                     + Zaplanuj follow-up
                   </button>
                 </div>
 
                 {/* Email Templates */}
                 <div>
-                  <h3 className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist/60 mb-2">Szybki email</h3>
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-mist mb-3">Szybki email</h3>
+                  <div className="grid grid-cols-2 gap-2">
                     {EMAIL_TEMPLATES.map((tmpl) => (
                       <button
                         key={tmpl.id}
                         onClick={() => openEmail(selectedUser, tmpl.id)}
-                        className="text-left rounded bg-frost/5 border border-frost/10 px-2.5 py-2 text-xs font-display text-frost hover:bg-frost/10 hover:border-ember/20 transition"
+                        className="text-left rounded-button bg-surface-teal border border-glass-border px-3 py-2.5 text-xs font-medium text-frost hover:bg-frost/10 hover:border-ember/30 transition"
                       >
                         {tmpl.label}
                       </button>
@@ -1182,15 +1174,15 @@ export function CRMDashboard() {
                 {/* Email History */}
                 {selectedUser.email_logs && selectedUser.email_logs.length > 0 && (
                   <div>
-                    <h3 className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist/60 mb-2">📬 Historia kontaktu ({selectedUser.email_logs.length})</h3>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-mist mb-3">📬 Historia kontaktu ({selectedUser.email_logs.length})</h3>
                     <div className="space-y-1.5 max-h-40 overflow-y-auto">
                       {selectedUser.email_logs.map((log) => (
-                        <div key={log.id} className="flex items-center justify-between rounded px-2 py-1.5 bg-frost/[0.03] border border-frost/8 text-xs">
+                        <div key={log.id} className="flex items-center justify-between rounded-button px-3 py-2.5 bg-surface-teal border border-glass-border text-xs">
                           <div className="flex items-center gap-2">
                             <span className="text-ember">📧</span>
-                            <span className="font-display text-frost">{log.subject}</span>
+                            <span className="text-frost font-medium">{log.subject}</span>
                           </div>
-                          <span className="font-mono text-[9px] text-mist/40">{new Date(log.sent_at).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}</span>
+                          <span className="text-mist text-[10px]">{new Date(log.sent_at).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}</span>
                         </div>
                       ))}
                     </div>
@@ -1199,32 +1191,32 @@ export function CRMDashboard() {
 
                 {/* Notes Journal */}
                 <div>
-                  <h3 className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist/60 mb-2">📓 Notatki ({selectedUser.notes.length})</h3>
-                  <div className="flex gap-1.5 mb-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-mist mb-3">📓 Notatki ({selectedUser.notes.length})</h3>
+                  <div className="flex gap-2 mb-3">
                     <textarea
                       value={newNote}
                       onChange={(e) => setNewNote(e.target.value)}
                       placeholder="Dodaj notatkę..."
                       rows={2}
-                      className="flex-1 rounded bg-frost/5 border border-frost/15 px-2.5 py-1.5 text-frost text-xs font-serif resize-none focus:outline-none focus:border-ember transition"
+                      className="flex-1 rounded-button bg-surface-teal border border-glass-border px-3 py-2.5 text-frost text-xs resize-none focus:outline-none focus:border-ember transition"
                     />
-                    <button onClick={addNote} disabled={!newNote.trim() || noteSaving} className="px-3 rounded bg-ember/10 text-ember text-xs font-mono hover:bg-ember/20 transition disabled:opacity-40 self-end">
+                    <button onClick={addNote} disabled={!newNote.trim() || noteSaving} className="px-4 rounded-button bg-ember/15 border border-ember/30 text-ember text-xs font-semibold hover:bg-ember/25 transition disabled:opacity-40 self-end">
                       {noteSaving ? "..." : "📝"}
                     </button>
                   </div>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {selectedUser.notes.map((note) => (
-                      <div key={note.id} className="rounded bg-frost/[0.03] border border-frost/8 px-3 py-2">
-                        <p className="font-serif text-frost text-xs leading-relaxed whitespace-pre-wrap">{note.body}</p>
-                        <p className="font-mono text-[9px] text-mist/30 mt-1">{new Date(note.created_at).toLocaleDateString("pl-PL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                      <div key={note.id} className="rounded-button bg-surface-teal border border-glass-border px-3.5 py-3">
+                        <p className="text-frost text-xs leading-relaxed whitespace-pre-wrap">{note.body}</p>
+                        <p className="text-mist text-[10px] mt-1.5">{new Date(note.created_at).toLocaleDateString("pl-PL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
                       </div>
                     ))}
-                    {selectedUser.notes.length === 0 && <p className="text-mist/30 text-xs font-serif">Brak notatek</p>}
+                    {selectedUser.notes.length === 0 && <p className="text-mist text-xs">Brak notatek</p>}
                   </div>
                 </div>
 
                 {/* Exclusion */}
-                <div className="border-t border-frost/10 pt-4">
+                <div className="border-t border-glass-border pt-4">
                   <button
                     onClick={() => {
                       setConfirmAction({
@@ -1235,7 +1227,7 @@ export function CRMDashboard() {
                         },
                       });
                     }}
-                    className="w-full rounded bg-magma/5 border border-magma/20 px-3 py-2 text-magma text-xs font-mono uppercase tracking-wider hover:bg-magma/10 transition"
+                    className="w-full rounded-button bg-magma/8 border border-magma/25 px-3 py-2.5 text-magma text-xs font-semibold uppercase tracking-wider hover:bg-magma/15 transition"
                   >
                     🚫 Wyklucz z CRM
                   </button>
@@ -1249,25 +1241,25 @@ export function CRMDashboard() {
       {/* ── Email Composer Modal ──────────────────────────── */}
       {emailTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-nocturne/70 backdrop-blur-sm">
-          <div className="bg-obsidian border border-frost/15 rounded-card p-6 w-full max-w-lg mx-4 shadow-2xl">
-            <h3 className="font-display text-frost text-lg font-semibold mb-1">✉️ Email do {emailTarget.name}</h3>
-            <p className="font-mono text-xs text-mist/60 mb-1">{emailTarget.email}</p>
-            <p className="font-mono text-[10px] text-mist/40 mb-4">od: {SENDER_EMAIL}</p>
+          <div className="bg-evergreen border border-glass-border rounded-glass p-6 w-full max-w-lg mx-4 shadow-2xl">
+            <h3 className="text-frost text-lg font-bold mb-1">✉️ Email do {emailTarget.name}</h3>
+            <p className="text-mist text-xs mb-0.5">{emailTarget.email}</p>
+            <p className="text-mist/70 text-[10px] mb-4">od: {SENDER_EMAIL}</p>
             <input
               value={emailSubject}
               onChange={(e) => setEmailSubject(e.target.value)}
               placeholder="Temat..."
-              className="w-full rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember mb-3"
+              className="w-full rounded-button bg-surface-teal border border-glass-border text-frost px-4 py-2.5 text-sm focus:outline-none focus:border-ember mb-3"
             />
             <textarea
               value={emailBody}
               onChange={(e) => setEmailBody(e.target.value)}
               rows={10}
-              className="w-full rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-serif text-sm focus:outline-none focus:border-ember transition resize-y mb-4"
+              className="w-full rounded-button bg-surface-teal border border-glass-border text-frost px-4 py-3 text-sm focus:outline-none focus:border-ember transition resize-y mb-4"
             />
             <div className="flex justify-end gap-3">
-              <button onClick={() => { setEmailTarget(null); setEmailSubject(""); setEmailBody(""); }} className="rounded-button border border-frost/15 px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost transition">Anuluj</button>
-              <button onClick={sendEmail} disabled={!emailBody.trim()} className="rounded-button bg-ember text-obsidian px-5 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:brightness-110 transition disabled:opacity-50">
+              <button onClick={() => { setEmailTarget(null); setEmailSubject(""); setEmailBody(""); }} className="rounded-button bg-surface-teal border border-glass-border px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-mist hover:text-frost transition">Anuluj</button>
+              <button onClick={sendEmail} disabled={!emailBody.trim()} className="rounded-button bg-ember text-obsidian px-5 py-2.5 text-xs font-bold uppercase tracking-wide hover:brightness-110 transition disabled:opacity-50">
                 Otwórz w kliencie email
               </button>
             </div>
@@ -1278,8 +1270,8 @@ export function CRMDashboard() {
       {/* ── Follow-up Modal ───────────────────────────────── */}
       {followUpTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-nocturne/70 backdrop-blur-sm">
-          <div className="bg-obsidian border border-frost/15 rounded-card p-6 w-full max-w-sm mx-4 shadow-2xl">
-            <h3 className="font-display text-frost text-lg font-semibold mb-4">🔔 Zaplanuj follow-up</h3>
+          <div className="bg-evergreen border border-glass-border rounded-glass p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <h3 className="text-frost text-lg font-bold mb-4">🔔 Zaplanuj follow-up</h3>
             <div className="flex flex-wrap gap-2 mb-4">
               <QuickDateBtn label="Jutro" onClick={() => setFollowUpDate(quickDate(1))} active={followUpDate === quickDate(1)} />
               <QuickDateBtn label="Za 3 dni" onClick={() => setFollowUpDate(quickDate(3))} active={followUpDate === quickDate(3)} />
@@ -1290,17 +1282,17 @@ export function CRMDashboard() {
               type="date"
               value={followUpDate}
               onChange={(e) => setFollowUpDate(e.target.value)}
-              className="w-full rounded-button bg-frost/5 border border-frost/15 text-frost px-3 py-2 font-mono text-sm focus:outline-none focus:border-ember mb-3"
+              className="w-full rounded-button bg-surface-teal border border-glass-border text-frost px-3 py-2.5 text-sm focus:outline-none focus:border-ember mb-3"
             />
             <input
               value={followUpNote}
               onChange={(e) => setFollowUpNote(e.target.value)}
               placeholder="Notatka (opcjonalna)..."
-              className="w-full rounded-button bg-frost/5 border border-frost/15 text-frost px-3 py-2 font-display text-sm focus:outline-none focus:border-ember mb-4"
+              className="w-full rounded-button bg-surface-teal border border-glass-border text-frost px-3 py-2.5 text-sm focus:outline-none focus:border-ember mb-4"
             />
             <div className="flex justify-end gap-3">
-              <button onClick={() => { setFollowUpTarget(null); setFollowUpDate(""); setFollowUpNote(""); }} className="rounded-button border border-frost/15 px-4 py-2 font-mono text-xs uppercase text-mist hover:text-frost transition">Anuluj</button>
-              <button onClick={createFollowUp} disabled={!followUpDate} className="rounded-button bg-ember text-obsidian px-5 py-2 font-mono text-xs uppercase hover:brightness-110 transition disabled:opacity-50">Zapisz</button>
+              <button onClick={() => { setFollowUpTarget(null); setFollowUpDate(""); setFollowUpNote(""); }} className="rounded-button bg-surface-teal border border-glass-border px-4 py-2.5 text-xs font-semibold uppercase text-mist hover:text-frost transition">Anuluj</button>
+              <button onClick={createFollowUp} disabled={!followUpDate} className="rounded-button bg-ember text-obsidian px-5 py-2.5 text-xs font-bold uppercase hover:brightness-110 transition disabled:opacity-50">Zapisz</button>
             </div>
           </div>
         </div>
@@ -1308,17 +1300,17 @@ export function CRMDashboard() {
 
       {/* ── Bulk Actions Bar ─────────────────────────────── */}
       {selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-obsidian border border-ember/30 rounded-card px-6 py-3 shadow-2xl flex items-center gap-4 animate-[slideUp_0.2s_ease-out]">
-          <span className="font-mono text-xs text-frost">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-evergreen border border-ember/30 rounded-glass px-6 py-3.5 shadow-2xl flex items-center gap-4 animate-[slideUp_0.2s_ease-out]">
+          <span className="text-xs text-frost font-medium">
             Zaznaczono: <span className="text-ember font-bold">{selected.size}</span>
           </span>
-          <button onClick={bulkEmail} className="rounded-button bg-ember/10 text-ember px-3 py-1.5 font-mono text-xs hover:bg-ember/20 transition" title="Otwórz email do zaznaczonych osób">
+          <button onClick={bulkEmail} className="rounded-button bg-ember/15 border border-ember/30 text-ember px-3.5 py-2 text-xs font-semibold hover:bg-ember/25 transition">
             📧 Email
           </button>
-          <button onClick={bulkRemind} className="rounded-button bg-frost/10 text-frost px-3 py-1.5 font-mono text-xs hover:bg-frost/20 transition" title="Zaplanuj follow-up za 3 dni dla zaznaczonych">
+          <button onClick={bulkRemind} className="rounded-button bg-surface-teal border border-glass-border text-frost px-3.5 py-2 text-xs font-semibold hover:bg-frost/10 transition">
             🔔 Przypomnij
           </button>
-          <button onClick={() => setSelected(new Set())} className="text-mist/40 hover:text-frost transition text-xs font-mono" title="Odznacz wszystkich">
+          <button onClick={() => setSelected(new Set())} className="text-mist hover:text-frost transition text-xs font-semibold">
             ✕ Odznacz
           </button>
         </div>
@@ -1327,11 +1319,11 @@ export function CRMDashboard() {
       {/* ── Confirmation Modal ───────────────────────────── */}
       {confirmAction && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-nocturne/70 backdrop-blur-sm">
-          <div className="bg-obsidian border border-frost/15 rounded-card p-6 w-full max-w-sm mx-4 shadow-2xl">
-            <p className="font-serif text-frost text-sm mb-6">{confirmAction.message}</p>
+          <div className="bg-evergreen border border-glass-border rounded-glass p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <p className="text-frost text-sm mb-6">{confirmAction.message}</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setConfirmAction(null)} className="rounded-button border border-frost/15 px-4 py-2 font-mono text-xs uppercase text-mist hover:text-frost transition">Anuluj</button>
-              <button onClick={confirmAction.onConfirm} className="rounded-button bg-ember text-obsidian px-5 py-2 font-mono text-xs uppercase hover:brightness-110 transition">Tak, potwierdź</button>
+              <button onClick={() => setConfirmAction(null)} className="rounded-button bg-surface-teal border border-glass-border px-4 py-2.5 text-xs font-semibold uppercase text-mist hover:text-frost transition">Anuluj</button>
+              <button onClick={confirmAction.onConfirm} className="rounded-button bg-ember text-obsidian px-5 py-2.5 text-xs font-bold uppercase hover:brightness-110 transition">Tak, potwierdź</button>
             </div>
           </div>
         </div>
@@ -1339,13 +1331,13 @@ export function CRMDashboard() {
 
       {/* ── Toast Notification ───────────────────────────── */}
       {toast && (
-        <div className="fixed top-6 right-6 z-[70] bg-obsidian border border-aurora/30 rounded-card px-5 py-3 shadow-2xl animate-[slideIn_0.3s_ease-out]">
-          <p className="font-display text-frost text-sm">{toast}</p>
-          <div className="h-0.5 bg-aurora/30 rounded-full mt-2 animate-[shrink_3.5s_linear_forwards]" />
+        <div className="fixed top-6 right-6 z-[70] bg-evergreen border border-aurora/30 rounded-glass px-5 py-3.5 shadow-2xl animate-[slideIn_0.3s_ease-out]">
+          <p className="text-frost text-sm font-medium">{toast}</p>
+          <div className="h-0.5 bg-aurora/30 rounded-full mt-2.5 animate-[shrink_3.5s_linear_forwards]" />
         </div>
       )}
 
-      {/* ── Animation keyframes (injected) ────────────────── */}
+      {/* ── Animation keyframes ────────────────────────────── */}
       <style>{`
         @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
@@ -1359,46 +1351,46 @@ export function CRMDashboard() {
 
 function KPIChip({ label, value, color, icon }: { label: string; value: number; color: string; icon: string }) {
   return (
-    <div className="rounded-card border border-frost/10 bg-frost/[0.03] px-3 py-3 text-center hover:bg-frost/[0.05] transition-colors">
-      <div className="flex items-center justify-center gap-1.5">
-        <span className="text-sm">{icon}</span>
-        <div className={`font-display text-${color} text-2xl font-bold`}>{value}</div>
+    <div className="rounded-glass bg-surface-teal border border-glass-border px-4 py-4 text-center hover:bg-frost/[0.06] transition-colors">
+      <div className="flex items-center justify-center gap-2">
+        <span className="text-base">{icon}</span>
+        <div className={`text-${color} text-3xl font-bold`}>{value}</div>
       </div>
-      <div className="font-mono text-[9px] text-mist/60 uppercase tracking-[0.1em] mt-1">{label}</div>
+      <div className="text-[11px] font-semibold text-mist uppercase tracking-wider mt-1.5">{label}</div>
     </div>
   );
 }
 
 function FilterSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3 py-2 font-display text-sm focus:outline-none focus:border-ember transition cursor-pointer">
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded-button bg-surface-teal border border-glass-border text-frost px-3.5 py-2.5 text-sm focus:outline-none focus:border-ember transition cursor-pointer">
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
 }
 
 function AlertPill({ color, text }: { color: string; text: string }) {
-  return <span className={`px-1.5 py-0.5 rounded bg-${color}/15 text-${color} text-[9px] font-bold uppercase`}>{text}</span>;
+  return <span className={`px-2 py-0.5 rounded-button bg-${color}/15 text-${color} text-[10px] font-bold uppercase`}>{text}</span>;
 }
 
 function ActionBtn({ children, onClick, href, title, color }: { children: React.ReactNode; onClick?: () => void; href?: string; title: string; color: string }) {
-  const cls = `p-1.5 rounded-lg bg-frost/5 border border-frost/10 text-${color} hover:bg-frost/10 hover:border-${color}/30 transition`;
+  const cls = `w-8 h-8 rounded-lg bg-surface-teal border border-glass-border text-${color} hover:bg-frost/10 hover:border-${color}/40 transition flex items-center justify-center`;
   if (href) return <a href={href} title={title} className={cls}>{children}</a>;
   return <button onClick={onClick} title={title} className={cls}>{children}</button>;
 }
 
 function MiniStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded bg-frost/5 px-2 py-1.5 text-center">
-      <div className="font-mono text-frost text-sm font-bold">{value}</div>
-      <div className="font-mono text-[8px] text-mist/50 uppercase">{label}</div>
+    <div className="rounded-button bg-surface-teal border border-glass-border px-3 py-2.5 text-center">
+      <div className="font-mono text-frost text-base font-bold">{value}</div>
+      <div className="text-[10px] font-semibold text-mist uppercase tracking-wide mt-0.5">{label}</div>
     </div>
   );
 }
 
 function QuickDateBtn({ label, onClick, active }: { label: string; onClick: () => void; active: boolean }) {
   return (
-    <button onClick={onClick} className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${active ? "bg-ember text-obsidian" : "bg-frost/5 border border-frost/15 text-frost hover:bg-frost/10"}`}>
+    <button onClick={onClick} className={`px-3.5 py-2 rounded-button text-xs font-semibold transition ${active ? "bg-ember text-obsidian" : "bg-surface-teal border border-glass-border text-frost hover:bg-frost/10"}`}>
       {label}
     </button>
   );
@@ -1406,12 +1398,12 @@ function QuickDateBtn({ label, onClick, active }: { label: string; onClick: () =
 
 function getTierBadge(tier: string): string {
   switch (tier) {
-    case "BETA": return "bg-aurora/10 text-aurora border border-aurora/20";
-    case "TRIAL": return "bg-mist/10 text-mist border border-mist/20";
-    case "SOLO": return "bg-ember/10 text-ember border border-ember/20";
-    case "PRO": return "bg-magma/10 text-magma border border-magma/20";
-    case "CLINIC": return "bg-frost/10 text-frost border border-frost/20";
-    default: return "bg-frost/5 text-mist border border-frost/10";
+    case "BETA": return "bg-aurora/15 text-aurora border border-aurora/25";
+    case "TRIAL": return "bg-mist/15 text-mist border border-mist/25";
+    case "SOLO": return "bg-ember/15 text-ember border border-ember/25";
+    case "PRO": return "bg-magma/15 text-magma border border-magma/25";
+    case "CLINIC": return "bg-frost/15 text-frost border border-frost/25";
+    default: return "bg-frost/10 text-mist border border-frost/15";
   }
 }
 
@@ -1422,3 +1414,4 @@ function PhoneIcon() {
 function MailIcon() {
   return <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
 }
+
