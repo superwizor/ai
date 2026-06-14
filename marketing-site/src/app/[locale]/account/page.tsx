@@ -44,11 +44,11 @@ export default async function AccountPage({
     <>
       <Navbar variant="app" />
       <main className="flex-1">
-        <section className="mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-          <h1 className="font-display text-frost text-3xl sm:text-4xl font-semibold tracking-[var(--tracking-display)] leading-tight">
+        <section className="mx-auto w-full max-w-2xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+          <h1 className="font-sans text-[#F2F0EA] text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
             {t("title")}
           </h1>
-          <p className="font-serif text-mist mt-3 text-base leading-relaxed">
+          <p className="font-sans text-[#8FA5A0] mt-3 text-base leading-relaxed">
             {t("subhead")}
           </p>
           <div className="mt-10">

@@ -34,19 +34,9 @@ import {
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import type { Subscription } from "@superwizor/proto-ts/billing/v1/billing_pb";
 
-const APP_URL = "https://superwizor-app.web.app/";
+import { getModalityCatalog, type ModalityRow } from "@/lib/clinical/modalities";
 
-// ── Shared modality map (same IDs as Flutter's ModalitySheet) ────
-const MODALITY_LABELS: Record<string, { pl: string; en: string }> = {
-  MODALITY_UNIVERSAL:       { pl: "Uniwersalny", en: "Universal" },
-  MODALITY_CBT:             { pl: "Poznawczo-behawioralny (CBT)", en: "Cognitive-Behavioral (CBT)" },
-  MODALITY_PSYCHODYNAMIC:   { pl: "Psychodynamiczny", en: "Psychodynamic" },
-  MODALITY_HUMANISTIC:      { pl: "Humanistyczno-doświadczeniowy", en: "Humanistic-Experiential" },
-  MODALITY_SFBT:            { pl: "Terapia Skoncentrowana na Rozwiązaniach (TSR)", en: "Solution-Focused Brief Therapy (SFBT)" },
-  MODALITY_SYSTEMIC:        { pl: "Systemowy", en: "Systemic" },
-  MODALITY_EFT:             { pl: "Terapia Skoncentrowana na Emocjach (EFT)", en: "Emotionally Focused Therapy (EFT)" },
-  MODALITY_INTEGRATIVE:     { pl: "Integracyjny", en: "Integrative" },
-};
+const APP_URL = "https://superwizor-app.web.app/";
 
 export function AccountSections() {
   const t = useTranslations("account");
@@ -228,6 +218,16 @@ function ProfileSection({
   const [submitting, setSubmitting] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [modalities, setModalities] = useState<ReadonlyArray<ModalityRow>>([]);
+
+  // Fetch modality catalog for label resolution (UUID → display name)
+  useEffect(() => {
+    let cancelled = false;
+    getModalityCatalog().then((catalog) => {
+      if (!cancelled) setModalities(catalog);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!profile) return;
@@ -266,11 +266,12 @@ function ProfileSection({
     }
   }
 
-  // Resolve modality label
+  // Resolve modality label from live catalog (UUID-keyed)
   const modalityId = profile?.defaultModalityId ?? "";
-  const modalityLabel = modalityId
-    ? (MODALITY_LABELS[modalityId]?.[locale as "pl" | "en"] ?? modalityId)
-    : t("modalityNone");
+  const modalityRow = modalities.find((m) => m.id === modalityId);
+  const modalityLabel = modalityRow
+    ? modalityRow.labels[locale as "pl" | "en"] ?? modalityRow.displayName
+    : (modalityId ? modalityId : t("modalityNone"));
 
   if (!profile) {
     return (
@@ -670,7 +671,7 @@ function BillingSection({ organizationId, locale }: { organizationId: string | n
         <div className="px-4 pb-4">
           <p className="font-sans text-sm text-[#8FA5A0] mb-1">{t("billingNone")}</p>
           <p className="font-sans text-[13px] text-[#8FA5A0]/60 mb-4">{t("billingNoneBody")}</p>
-          <UpgradeLink href={`${prefix}/upgrade`} label={t("billingNoneCta")} />
+          <UpgradeLink href={`${prefix}/upgrade?from=account`} label={t("billingNoneCta")} />
         </div>
       </SettingsCard>
     );
@@ -729,7 +730,7 @@ function BillingSection({ organizationId, locale }: { organizationId: string | n
           </div>
         )}
 
-        <UpgradeLink href={`${prefix}/upgrade`} label={t("billingUpgrade")} />
+        <UpgradeLink href={`${prefix}/upgrade?from=account`} label={t("billingUpgrade")} />
       </div>
     </SettingsCard>
   );

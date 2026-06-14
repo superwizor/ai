@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { getAuth } from "firebase/auth";
 import type { BillingCycle, PlanRow } from "@/lib/billing/plans";
 import { findPlan, formatPrice } from "@/lib/billing/plans";
@@ -164,6 +165,11 @@ function UpgradeCard({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  // When user arrives from /account → ?from=account, we pass returnUrl
+  // to the checkout API so Stripe redirects back to /account after payment.
+  const fromAccount = searchParams.get("from") === "account";
+  const returnUrl = fromAccount ? `${prefix}/account` : undefined;
 
   const monthlyPrice =
     cycle === "ANNUAL" ? Math.round(row.priceGross / 12) : row.priceGross;
@@ -257,6 +263,7 @@ function UpgradeCard({
           priceId: row.stripePriceId,
           organizationId,
           email: user.email ?? undefined,
+          ...(returnUrl ? { returnUrl } : {}),
         }),
       });
 
