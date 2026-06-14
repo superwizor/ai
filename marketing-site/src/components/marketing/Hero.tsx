@@ -190,7 +190,7 @@ export function Hero() {
               <div className="hero-s5 relative w-[290px] transition-transform duration-500 hover:scale-[1.01] z-10">
                 
                 {/* Large white backlighting glow for clean, high contrast */}
-                <div className="absolute -inset-24 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12),transparent_70%)] blur-[80px] pointer-events-none animate-pulse [animation-duration:8s]" />
+                <div className="absolute -inset-24 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12),transparent_70%)] blur-[60px] pointer-events-none animate-pulse [animation-duration:8s] [will-change:opacity]" />
                 <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_60%)] blur-[40px] pointer-events-none" />
                 
                 {/* Floating Badge 1: Top-Left */}

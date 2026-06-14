@@ -117,12 +117,11 @@ export default async function LocaleLayout({
       className={`${montserrat.variable} ${merriweather.variable} ${robotoMono.variable} h-full antialiased`}
     >
       <head>
-        {/* Preconnect to Firebase Auth + Google API origins so that when
-            the lazy-loaded AuthProvider finally requests them, the TLS
-            handshake is already done. Saves ~300-400ms per origin. */}
-        <link rel="preconnect" href="https://superwizor-ai-25ecd.firebaseapp.com" />
-        <link rel="preconnect" href="https://apis.google.com" />
-        <link rel="preconnect" href="https://www.googleapis.com" />
+        {/* Preconnect hints removed — Firebase Auth is lazy-loaded and
+            skipped entirely on public pages (landing, pricing, legal).
+            Adding them here wastes connection slots and triggers
+            Lighthouse "Unused preconnect" warnings. Auth-specific
+            layouts can add them if needed. */}
       </head>
       <body className="min-h-full flex flex-col">
         <NextIntlClientProvider>
