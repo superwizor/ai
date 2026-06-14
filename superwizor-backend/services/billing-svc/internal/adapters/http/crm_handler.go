@@ -308,13 +308,15 @@ func (h *CRMHandler) handleDeleteFollowUp(w http.ResponseWriter, r *http.Request
 // ──────────────────── Tags ────────────────────
 
 type crmTag struct {
-	ID  string `json:"id"`
-	Tag string `json:"tag"`
+	ID    string `json:"id"`
+	Tag   string `json:"tag"`
+	Color string `json:"color"`
 }
 
 type createTagRequest struct {
 	TargetUserID string `json:"target_user_id"`
 	Tag          string `json:"tag"`
+	Color        string `json:"color"`
 }
 
 func (h *CRMHandler) handleListTags(w http.ResponseWriter, r *http.Request) {
@@ -326,7 +328,7 @@ func (h *CRMHandler) handleListTags(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := h.pool.Query(ctx, `
-		SELECT id, tag FROM crm_tags
+		SELECT id, tag, COALESCE(color, '') FROM crm_tags
 		WHERE target_user_id = $1
 		ORDER BY created_at
 	`, userID)
@@ -339,7 +341,7 @@ func (h *CRMHandler) handleListTags(w http.ResponseWriter, r *http.Request) {
 	var tags []crmTag
 	for rows.Next() {
 		var t crmTag
-		if err := rows.Scan(&t.ID, &t.Tag); err != nil {
+		if err := rows.Scan(&t.ID, &t.Tag, &t.Color); err != nil {
 			continue
 		}
 		tags = append(tags, t)
@@ -363,16 +365,16 @@ func (h *CRMHandler) handleCreateTag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	color := strings.TrimSpace(req.Color)
 	var id string
 	err := h.pool.QueryRow(ctx, `
-		INSERT INTO crm_tags (target_user_id, tag)
-		VALUES ($1, $2)
-		ON CONFLICT (target_user_id, tag) DO NOTHING
+		INSERT INTO crm_tags (target_user_id, tag, color)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (target_user_id, tag) DO UPDATE SET color = EXCLUDED.color
 		RETURNING id
-	`, req.TargetUserID, tag).Scan(&id)
+	`, req.TargetUserID, tag, color).Scan(&id)
 	if err != nil {
-		// ON CONFLICT DO NOTHING means scan may fail if already exists
-		writeJSON(w, http.StatusOK, map[string]string{"message": "already exists"})
+		writeError(w, http.StatusInternalServerError, "insert tag", err)
 		return
 	}
 
@@ -572,13 +574,13 @@ func (h *CRMHandler) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 
 	// Tags
 	tagRows, _ := h.pool.Query(ctx, `
-		SELECT id, tag FROM crm_tags WHERE target_user_id = $1
+		SELECT id, tag, COALESCE(color, '') FROM crm_tags WHERE target_user_id = $1
 	`, userID)
 	if tagRows != nil {
 		defer tagRows.Close()
 		for tagRows.Next() {
 			var t crmTag
-			if err := tagRows.Scan(&t.ID, &t.Tag); err == nil {
+			if err := tagRows.Scan(&t.ID, &t.Tag, &t.Color); err == nil {
 				detail.Tags = append(detail.Tags, t)
 			}
 		}

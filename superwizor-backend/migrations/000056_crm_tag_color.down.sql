@@ -1,0 +1,1 @@
+ALTER TABLE crm_tags DROP COLUMN IF EXISTS color;
