@@ -51,20 +51,25 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/postgres/db"
+	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 )
 
 // StripeHandler obsługuje POST /stripe/webhook z pełną weryfikacją sygnatury
 // i routingiem eventów do logiki billing-svc.
 type StripeHandler struct {
-	pool          *pgxpool.Pool
-	logger        *slog.Logger
-	webhookSecret string // wartość STRIPE_WEBHOOK_SECRET (z Secret Manager przez env)
+	pool           *pgxpool.Pool
+	logger         *slog.Logger
+	webhookSecret  string // wartość STRIPE_WEBHOOK_SECRET (z Secret Manager przez env)
+	identityClient identityv1.IdentityServiceClient // opcjonalny — do syncu danych org ze Stripe
 }
 
 // NewStripeHandler tworzy handler. Jeśli STRIPE_WEBHOOK_SECRET nie jest ustawiony,
 // handler loguje ostrzeżenie i ODRZUCA wszystkie requesty z 503 — celowo, żeby
 // nie deployować przypadkowo bez weryfikacji.
-func NewStripeHandler(pool *pgxpool.Pool, logger *slog.Logger) *StripeHandler {
+//
+// identityClient jest opcjonalny — jeśli nil, synchronizacja danych firmy
+// ze Stripe do organizations jest pomijana (graceful degradation).
+func NewStripeHandler(pool *pgxpool.Pool, logger *slog.Logger, identityClient identityv1.IdentityServiceClient) *StripeHandler {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -72,10 +77,14 @@ func NewStripeHandler(pool *pgxpool.Pool, logger *slog.Logger) *StripeHandler {
 	if secret == "" {
 		logger.Warn("STRIPE_WEBHOOK_SECRET not set — /stripe/webhook will reject all requests with 503")
 	}
+	if identityClient == nil {
+		logger.Warn("stripe webhook: identityClient nil — Stripe→org sync disabled")
+	}
 	return &StripeHandler{
-		pool:          pool,
-		logger:        logger,
-		webhookSecret: secret,
+		pool:           pool,
+		logger:         logger,
+		webhookSecret:  secret,
+		identityClient: identityClient,
 	}
 }
 
@@ -98,13 +107,38 @@ type stripeEventData struct {
 
 // stripeCheckoutSession — pola potrzebne przy checkout.session.completed.
 type stripeCheckoutSession struct {
-	ID             string `json:"id"`
-	Customer       string `json:"customer"`
-	Subscription   string `json:"subscription"`
-	PaymentStatus  string `json:"payment_status"`
-	ClientMetadata struct {
+	ID              string                `json:"id"`
+	Customer        string                `json:"customer"`
+	Subscription    string                `json:"subscription"`
+	PaymentStatus   string                `json:"payment_status"`
+	ClientMetadata  struct {
 		OrganizationID string `json:"organization_id"`
 	} `json:"metadata"`
+	CustomerDetails *stripeCustomerDetails `json:"customer_details"`
+}
+
+// stripeCustomerDetails — dane klienta zbierane przez Stripe Checkout.
+// Stripe wypełnia te pola automatycznie (name, email, address, tax_ids)
+// na podstawie tego co klient podał w formularzu płatności.
+type stripeCustomerDetails struct {
+	Name    string        `json:"name"`
+	Email   string        `json:"email"`
+	Address stripeAddress `json:"address"`
+	TaxIDs  []stripeTaxID `json:"tax_ids"`
+}
+
+type stripeAddress struct {
+	Line1      string `json:"line1"`
+	Line2      string `json:"line2"`
+	City       string `json:"city"`
+	PostalCode string `json:"postal_code"`
+	State      string `json:"state"`
+	Country    string `json:"country"`
+}
+
+type stripeTaxID struct {
+	Type  string `json:"type"`  // "eu_vat" | "pl_nip"
+	Value string `json:"value"` // "PL1234567890"
 }
 
 // stripeSubscription — pola potrzebne przy subscription.created/updated/deleted.
@@ -307,6 +341,15 @@ func (h *StripeHandler) handleCheckoutSessionCompleted(ctx context.Context, even
 		"session_id", sess.ID,
 		"org_id", orgIDStr,
 		"stripe_sub_id", sess.Subscription)
+
+	// ── Sync danych firmy ze Stripe do organizations (best-effort) ───
+	// Stripe Checkout zbiera dane klienta (imię/firma, adres, NIP) —
+	// synchronizujemy je do tabeli organizations przez identity-svc
+	// AdminUpdateOrganization RPC. Failure nie blokuje checkout flow.
+	if sess.CustomerDetails != nil && h.identityClient != nil {
+		go h.syncCustomerDetailsToOrg(context.WithoutCancel(ctx), orgIDStr, sess.CustomerDetails)
+	}
+
 	return nil
 }
 
@@ -688,3 +731,87 @@ func isUniqueViolation(err error) bool {
 
 // Compile-time check że context.Context import nie jest unused.
 var _ = context.Background
+
+// syncCustomerDetailsToOrg synchronizuje dane firmy ze Stripe Checkout
+// do tabeli organizations w identity-svc via AdminUpdateOrganization RPC.
+//
+// Best-effort: błędy są logowane ale nie blokują checkout flow.
+// Wywoływana w goroutine z context.WithoutCancel żeby przeżyć
+// zamknięcie HTTP response (webhook musi oddać 200 szybko).
+//
+// Mapowanie Stripe → Organization:
+//   customer_details.name         → legal_name
+//   customer_details.address.*    → headquarters_address.{street_line, city, postal_code, region, country_code}
+//   customer_details.tax_ids[0]   → tax_id (pl_nip) lub vat_id_eu (eu_vat)
+func (h *StripeHandler) syncCustomerDetailsToOrg(ctx context.Context, orgIDStr string, details *stripeCustomerDetails) {
+	if details == nil {
+		return
+	}
+
+	// Build the AdminUpdateOrganizationRequest
+	req := &identityv1.AdminUpdateOrganizationRequest{
+		OrganizationId: orgIDStr,
+		Reason:         "Stripe checkout auto-sync: customer_details → organization",
+	}
+
+	hasData := false
+
+	// Legal name
+	if details.Name != "" {
+		req.LegalName = &details.Name
+		hasData = true
+	}
+
+	// Tax IDs — NIP (pl_nip) or EU VAT (eu_vat)
+	for _, tid := range details.TaxIDs {
+		if tid.Value == "" {
+			continue
+		}
+		switch tid.Type {
+		case "pl_nip":
+			req.TaxId = &tid.Value
+			hasData = true
+		case "eu_vat":
+			req.VatIdEu = &tid.Value
+			hasData = true
+		}
+	}
+
+	// Address
+	addr := details.Address
+	if addr.Line1 != "" || addr.City != "" || addr.PostalCode != "" || addr.Country != "" {
+		req.HeadquartersAddress = &identityv1.Address{
+			StreetLine:  addr.Line1,
+			City:        addr.City,
+			PostalCode:  addr.PostalCode,
+			Region:      addr.State,
+			CountryCode: addr.Country,
+		}
+		// Append Line2 to directions if present
+		if addr.Line2 != "" {
+			req.HeadquartersAddress.Directions = addr.Line2
+		}
+		hasData = true
+	}
+
+	if !hasData {
+		h.logger.InfoContext(ctx, "stripe checkout: no customer_details to sync",
+			"org_id", orgIDStr)
+		return
+	}
+
+	_, err := h.identityClient.AdminUpdateOrganization(ctx, req)
+	if err != nil {
+		// Best-effort — log and continue. Manual correction via admin panel.
+		h.logger.WarnContext(ctx, "stripe checkout: org sync failed (best-effort)",
+			"org_id", orgIDStr,
+			"error", err)
+		return
+	}
+
+	h.logger.InfoContext(ctx, "stripe checkout: org data synced from Stripe",
+		"org_id", orgIDStr,
+		"legal_name", details.Name,
+		"has_tax_ids", len(details.TaxIDs) > 0,
+		"has_address", addr.Line1 != "")
+}
