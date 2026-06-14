@@ -81,9 +81,9 @@ export function Navbar({ variant = "marketing" }: { variant?: NavbarVariant }) {
               <span className="bg-gradient-to-b from-[#1B2522] to-[#1B2522]/60 bg-clip-text text-transparent font-semibold">
                 Superwizor
               </span>
-              <span className="bg-[#004D54] text-white text-[10px] sm:text-[11px] md:text-[12px] font-extrabold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-[5px] shadow-sm tracking-widest leading-none transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,77,84,0.35)] group-hover:brightness-110 uppercase flex items-center gap-1 relative -top-[3px] sm:-top-[4px] shrink-0">
+              <span className="bg-[#004D54] text-white text-[9.5px] sm:text-[10.5px] md:text-[11px] font-semibold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-[5px] shadow-sm tracking-widest leading-none transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,77,84,0.35)] group-hover:brightness-110 uppercase flex items-center gap-1 relative -top-[3px] sm:-top-[4px] shrink-0">
                 <span>AI</span>
-                <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#fcae2f] fill-current shrink-0" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5 text-[#fcae2f] fill-current shrink-0" viewBox="0 0 24 24">
                   <path d="M12 2 L14.8 9.2 L22 12 L14.8 14.8 L12 22 L9.2 14.8 L2 12 L9.2 9.2 Z" />
                 </svg>
               </span>
@@ -95,9 +95,9 @@ export function Navbar({ variant = "marketing" }: { variant?: NavbarVariant }) {
               <span className="bg-gradient-to-b from-[#1B2522] to-[#1B2522]/60 bg-clip-text text-transparent font-semibold">
                 Superwizor
               </span>
-              <span className="bg-[#004D54] text-white text-[10px] sm:text-[11px] md:text-[12px] font-extrabold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-[5px] shadow-sm tracking-widest leading-none uppercase flex items-center gap-1 relative -top-[3px] sm:-top-[4px] shrink-0">
+              <span className="bg-[#004D54] text-white text-[9.5px] sm:text-[10.5px] md:text-[11px] font-semibold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-[5px] shadow-sm tracking-widest leading-none uppercase flex items-center gap-1 relative -top-[3px] sm:-top-[4px] shrink-0">
                 <span>AI</span>
-                <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#fcae2f] fill-current shrink-0" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5 text-[#fcae2f] fill-current shrink-0" viewBox="0 0 24 24">
                   <path d="M12 2 L14.8 9.2 L22 12 L14.8 14.8 L12 22 L9.2 14.8 L2 12 L9.2 9.2 Z" />
                 </svg>
               </span>
