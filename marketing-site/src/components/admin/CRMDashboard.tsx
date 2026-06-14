@@ -810,9 +810,12 @@ export function CRMDashboard() {
     <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-[1400px] mx-auto">
       {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-white text-2xl sm:text-3xl font-bold tracking-tight">Panel CRM</h1>
-          <p className="text-[#8b949e] mt-1 text-sm">{t("subhead")}</p>
+        <div className="flex items-center gap-4">
+          <img src="/images/capybara-crm.png" alt="Kapibara CRM" className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover" />
+          <div>
+            <h1 className="text-white text-2xl sm:text-3xl font-bold tracking-tight">Panel CRM</h1>
+            <p className="text-[#8b949e] mt-0.5 text-sm">{t("subhead")}</p>
+          </div>
         </div>
         <div className="flex gap-2 self-start sm:self-auto">
           <button onClick={() => { void fetchSubscribers(); void fetchFollowUps(); }} className="rounded-lg bg-[#21262d] border border-[#30363d] text-[#c9d1d9] px-4 py-2.5 text-xs font-semibold hover:bg-[#30363d] hover:border-[#8b949e] transition" title="Odśwież dane">
