@@ -1192,8 +1192,8 @@ export function CRMDashboard() {
       {/* ── Detail Drawer ─────────────────────────────────── */}
       {drawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-[var(--crm-overlay)]" onClick={closeDrawer} />
-          <div className={`relative w-full max-w-lg bg-[var(--crm-surface)] border-l border-[var(--crm-border)] overflow-y-auto shadow-2xl transition-transform duration-300 ${drawerOpen ? "translate-x-0" : "translate-x-full"}`}>
+          <div className="absolute inset-0" style={{ backgroundColor: isDark ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.2)" }} onClick={closeDrawer} />
+          <div className={`relative w-full max-w-lg bg-[var(--crm-surface)] border-l border-[var(--crm-border)] overflow-y-auto transition-transform duration-300 ${drawerOpen ? "translate-x-0" : "translate-x-full"}`} style={{ boxShadow: isDark ? "-8px 0 30px rgba(0,0,0,0.7)" : "-8px 0 30px rgba(0,0,0,0.15)" }}>
             {drawerLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="w-8 h-8 border-2 border-ember border-t-transparent rounded-full animate-spin" />
@@ -1387,7 +1387,7 @@ export function CRMDashboard() {
 
       {/* ── Email Composer Modal ──────────────────────────── */}
       {emailTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--crm-overlay)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: isDark ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.25)" }}>
           <div className="bg-[var(--crm-card)] border border-[var(--crm-border)] rounded-xl p-6 w-full max-w-lg mx-4 shadow-2xl">
             <h3 className="text-[var(--crm-heading)] text-lg font-bold mb-1">✉️ Email do {emailTarget.name}</h3>
             <p className="text-[var(--crm-muted)] text-xs mb-0.5">{emailTarget.email}</p>
@@ -1404,7 +1404,7 @@ export function CRMDashboard() {
 
       {/* ── Follow-up Modal ───────────────────────────────── */}
       {followUpTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--crm-overlay)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: isDark ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.25)" }}>
           <div className="bg-[var(--crm-card)] border border-[var(--crm-border)] rounded-xl p-6 w-full max-w-sm mx-4 shadow-2xl">
             <h3 className="text-[var(--crm-heading)] text-lg font-bold mb-4">🔔 Zaplanuj follow-up</h3>
             <div className="flex flex-wrap gap-2 mb-4">
@@ -1435,7 +1435,7 @@ export function CRMDashboard() {
 
       {/* ── Confirmation Modal ───────────────────────────── */}
       {confirmAction && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--crm-overlay)]">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: isDark ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.25)" }}>
           <div className="bg-[var(--crm-card)] border border-[var(--crm-border)] rounded-xl p-6 w-full max-w-sm mx-4 shadow-2xl">
             <p className="text-[var(--crm-text)] text-sm mb-6">{confirmAction.message}</p>
             <div className="flex justify-end gap-3">
