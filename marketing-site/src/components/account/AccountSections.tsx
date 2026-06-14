@@ -31,7 +31,6 @@ import {
   OrganizationType,
   type User,
   type Organization,
-  type ReportPreferences,
   GetReportPreferencesRequestSchema,
   UpdateReportPreferencesRequestSchema,
   ReportPreferencesSchema,
@@ -276,12 +275,7 @@ function ProfileSection({
     }
   }
 
-  // Resolve modality label from live catalog (UUID-keyed)
-  const modalityId = profile?.defaultModalityId ?? "";
-  const modalityRow = modalities.find((m) => m.id === modalityId);
-  const modalityLabel = modalityRow
-    ? modalityRow.labels[locale as "pl" | "en"] ?? modalityRow.displayName
-    : (modalityId ? modalityId : t("modalityNone"));
+
 
   if (!profile) {
     return (
