@@ -193,6 +193,20 @@ export function Testimonials() {
           animation-play-state: paused;
         }
 
+        /* On mobile touch: pause animation so user can swipe freely */
+        @media (pointer: coarse) {
+          .marquee-row-touch {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+          .marquee-row-touch::-webkit-scrollbar { display: none; }
+          .marquee-row-touch:active .animate-marquee-row,
+          .marquee-row-touch:active .animate-marquee-row-reverse {
+            animation-play-state: paused;
+          }
+        }
+
         @keyframes waveFloat1 {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-5px); }
@@ -207,10 +221,6 @@ export function Testimonials() {
         .animate-wave-2 {
           animation: waveFloat2 7s ease-in-out infinite;
         }
-
-        /* Hide native scrollbar for snap-scroll on mobile */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}} />
 
       {/* Decorative background glow elements */}
@@ -232,43 +242,15 @@ export function Testimonials() {
         </p>
       </div>
 
-      {/* ── MOBILE: Horizontal snap-scroll ──────────────── */}
-      <div className="relative w-full md:hidden z-10 py-2">
-        {/* Edge fade overlays */}
-        <div className="absolute top-0 bottom-0 left-0 w-8 bg-gradient-to-r from-[#001A1D] to-transparent z-20 pointer-events-none" />
-        <div className="absolute top-0 bottom-0 right-0 w-8 bg-gradient-to-l from-[#002e32] to-transparent z-20 pointer-events-none" />
-
-        <div
-          className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth px-6 pb-4 no-scrollbar"
-          style={{ WebkitOverflowScrolling: "touch" }}
-        >
-          {TESTIMONIALS_DATA.map((item, idx) => (
-            <TestimonialCard
-              key={`mob-${idx}`}
-              item={item}
-              isPl={isPl}
-              className="w-[280px] flex-shrink-0 snap-center bg-[#122B2E]/50 border border-white/[0.08] p-5 rounded-[20px] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.3)] flex flex-col justify-between select-text"
-            />
-          ))}
-        </div>
-
-        {/* Scroll indicator dots */}
-        <div className="flex justify-center mt-3 gap-1">
-          {TESTIMONIALS_DATA.map((_, idx) => (
-            <div key={`dot-${idx}`} className="w-1.5 h-1.5 rounded-full bg-white/20" />
-          ))}
-        </div>
-      </div>
-
-      {/* ── DESKTOP: Two-row marquee ──────────────────────── */}
-      <div className="relative w-full overflow-hidden marquee-container hidden md:flex flex-col gap-4 lg:gap-6 z-10 py-2">
+      {/* ── Two-row marquee (touch-scrollable on mobile) ─── */}
+      <div className="relative w-full overflow-hidden marquee-container flex flex-col gap-4 lg:gap-6 z-10 py-2">
 
         {/* Portal Fade Overlays */}
         <div className="absolute top-0 bottom-0 left-0 w-24 md:w-48 bg-gradient-to-r from-[#001A1D] to-transparent z-20 pointer-events-none" />
         <div className="absolute top-0 bottom-0 right-0 w-24 md:w-48 bg-gradient-to-l from-[#002e32] to-transparent z-20 pointer-events-none" />
 
         {/* Row 1: reverse direction */}
-        <div className="flex w-full py-2.5">
+        <div className="flex w-full py-2.5 marquee-row-touch">
           <div className="animate-marquee-row-reverse flex gap-6 lg:gap-8 px-4">
             {[...ROW1_DATA, ...ROW1_DATA].map((item, idx) => (
               <TestimonialCard
@@ -282,7 +264,7 @@ export function Testimonials() {
         </div>
 
         {/* Row 2: forward direction */}
-        <div className="flex w-full py-2.5">
+        <div className="flex w-full py-2.5 marquee-row-touch">
           <div className="animate-marquee-row flex gap-6 lg:gap-8 px-4">
             {[...ROW2_DATA, ...ROW2_DATA].map((item, idx) => (
               <TestimonialCard
