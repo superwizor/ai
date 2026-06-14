@@ -1,26 +1,22 @@
-// Therapist account management surface — landing page after sign-in
-// on the marketing origin for users with role != SUPERWIZOR_ADMIN.
+// Therapist account management surface — Apple Settings-style layout
 //
-// Three independent sections, each with its own load / save state:
-//   1. Profile (UpdateProfile)             — all roles can self-edit
-//   2. Organisation (UpdateMyOrganization) — SOLO therapists + ORG_ADMIN
-//   3. Subscription (read-only via clinical.GetMyBillingState) + a
-//      placeholder for the future Stripe connect button.
+// Five category sections, each as a frosted-glass card:
+//   1. TWOJE KONTO (Profile — editable profile fields + modality)
+//   2. ORGANIZACJA (Org — legal name, NIP, address, etc.)
+//   3. SUBSKRYPCJA (Billing — read-only + active upgrade CTA)
+//   4. INFORMACJE PRAWNE (Legal links)
+//   5. ZARZĄDZANIE KONTEM (Logout + delete account)
 //
-// Plus a "kartoteki" CTA that opens the Flutter console in a new tab.
-// Email is shown read-only — Firebase Auth owns email changes and
-// they need their own verification roundtrip.
-//
-// The org section silently degrades when the caller can't manage the
-// org (e.g. THERAPIST in a CLINIC org): we catch PermissionDenied on
-// GetMyOrganization and render a neutral "not allowed" notice with no
-// editable controls. Keeps the page useful for users whose admin
-// lives elsewhere.
+// Plus a header card with email + kartoteki CTA + sign-out.
+// Typography: Montserrat (font-sans) for all labels, fields, headings.
+// Roboto Mono (font-mono) only for tiny meta details (email badge, version).
 
 "use client";
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
+import Link from "next/link";
 import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -40,9 +36,21 @@ import type { Subscription } from "@superwizor/proto-ts/billing/v1/billing_pb";
 
 const APP_URL = "https://superwizor-app.web.app/";
 
+// ── Shared modality map (same IDs as Flutter's ModalitySheet) ────
+const MODALITY_LABELS: Record<string, { pl: string; en: string }> = {
+  MODALITY_UNIVERSAL:       { pl: "Uniwersalny", en: "Universal" },
+  MODALITY_CBT:             { pl: "Poznawczo-behawioralny (CBT)", en: "Cognitive-Behavioral (CBT)" },
+  MODALITY_PSYCHODYNAMIC:   { pl: "Psychodynamiczny", en: "Psychodynamic" },
+  MODALITY_HUMANISTIC:      { pl: "Humanistyczno-doświadczeniowy", en: "Humanistic-Experiential" },
+  MODALITY_SFBT:            { pl: "Terapia Skoncentrowana na Rozwiązaniach (TSR)", en: "Solution-Focused Brief Therapy (SFBT)" },
+  MODALITY_SYSTEMIC:        { pl: "Systemowy", en: "Systemic" },
+  MODALITY_EFT:             { pl: "Terapia Skoncentrowana na Emocjach (EFT)", en: "Emotionally Focused Therapy (EFT)" },
+  MODALITY_INTEGRATIVE:     { pl: "Integracyjny", en: "Integrative" },
+};
+
 export function AccountSections() {
   const t = useTranslations("account");
-
+  const locale = useLocale();
   const { user: fbUser, signOut } = useAuth();
 
   const [profile, setProfile] = useState<User | null>(null);
@@ -65,26 +73,19 @@ export function AccountSections() {
     };
   }, [fbUser, t]);
 
-  if (!fbUser) {
-    // Should not happen — the page-level guard redirects to /login —
-    // but render nothing rather than crash if the auth hook is
-    // hydrating mid-render.
-    return null;
-  }
+  if (!fbUser) return null;
+
+  const prefix = locale === "en" ? "/en" : "";
 
   return (
-    <div className="grid gap-8">
-      {/* Email + sign-out + kartoteki link. Sizes here are 20% bigger
-          than the original spec — email label 10→12px, hint xs→sm
-          (12→14px), kartoteki CTA xs→sm with bigger padding, sign-out
-          link 10→12px. Keeps proportions intact while reading more
-          comfortably on a desktop browser. */}
-      <header className="rounded-glass border border-glass-border/40 bg-frost/[0.04] p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="grid gap-5 max-w-2xl mx-auto">
+      {/* ── Header card: email + kartoteki + sign out ─────────── */}
+      <header className="rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-md p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <p className="font-mono text-[12px] uppercase tracking-[var(--tracking-label)] text-mist">
+          <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[#8FA5A0]">
             {fbUser.email}
           </p>
-          <p className="font-serif text-sm text-mist/70 mt-1">
+          <p className="font-sans text-[13px] text-[#8FA5A0]/70 mt-1">
             {t("emailReadOnly")}
           </p>
         </div>
@@ -93,7 +94,7 @@ export function AccountSections() {
           <button
             type="button"
             onClick={() => signOut()}
-            className="font-mono text-[12px] uppercase tracking-[var(--tracking-label)] text-mist hover:text-ember transition"
+            className="font-sans text-[12px] font-medium text-[#8FA5A0] hover:text-[#F5A623] transition"
           >
             {t("signOut")}
           </button>
@@ -101,15 +102,59 @@ export function AccountSections() {
       </header>
 
       {profileError && (
-        <p role="alert" className="rounded-button border border-magma/40 bg-magma/10 px-4 py-3 font-serif text-sm text-frost">
+        <p role="alert" className="rounded-xl border border-[#ff4444]/40 bg-[#ff4444]/10 px-4 py-3 font-sans text-sm text-[#F2F0EA]">
           {profileError}
         </p>
       )}
 
-      <ProfileSection profile={profile} onUpdate={setProfile} />
+      {/* ── 1. TWOJE KONTO ──────────────────────────────────── */}
+      <ProfileSection profile={profile} onUpdate={setProfile} locale={locale} />
+
+      {/* ── 2. ORGANIZACJA ──────────────────────────────────── */}
       <OrgSection profile={profile} />
-      <BillingSection organizationId={profile?.organizationId ?? null} />
-      <StripePlaceholder />
+
+      {/* ── 3. SUBSKRYPCJA ──────────────────────────────────── */}
+      <BillingSection organizationId={profile?.organizationId ?? null} locale={locale} />
+
+      {/* ── 4. INFORMACJE PRAWNE ────────────────────────────── */}
+      <SettingsCard>
+        <SectionLabel>{t("sectionLegal")}</SectionLabel>
+        <div className="divide-y divide-white/[0.06]">
+          <LinkRow href={`${prefix}/legal/terms`} label={t("legalTerms")} />
+          <LinkRow href={`${prefix}/legal/privacy`} label={t("legalPrivacy")} />
+          <LinkRow href={`${prefix}/legal/dpa`} label={t("legalDpa")} />
+        </div>
+      </SettingsCard>
+
+      {/* ── 5. ZARZĄDZANIE KONTEM ────────────────────────────── */}
+      <SettingsCard>
+        <SectionLabel>{t("sectionAccountMgmt")}</SectionLabel>
+        <div className="divide-y divide-white/[0.06]">
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-white/[0.03] transition-colors"
+          >
+            <span className="font-sans text-[15px] text-[#F2F0EA]">{t("signOut")}</span>
+            <ChevronRight />
+          </button>
+          <a
+            href="mailto:kontakt@superwizor.ai?subject=Usunięcie konta"
+            className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-white/[0.03] transition-colors"
+          >
+            <div>
+              <span className="font-sans text-[15px] text-[#ff4444]">{t("deleteAccount")}</span>
+              <p className="font-sans text-[11px] text-[#8FA5A0]/70 mt-0.5">{t("deleteAccountHint")}</p>
+            </div>
+            <ChevronRight color="#ff4444" />
+          </a>
+        </div>
+      </SettingsCard>
+
+      {/* ── Footer version ──────────────────────────────────── */}
+      <p className="text-center font-mono text-[11px] text-[#8FA5A0]/40 pb-4">
+        {t("version")}
+      </p>
     </div>
   );
 }
@@ -117,26 +162,6 @@ export function AccountSections() {
 // ────────────────────────────────────────────────────────────────────
 // Otwórz kartoteki — cross-origin SSO into the Flutter web app
 // ────────────────────────────────────────────────────────────────────
-//
-// Firebase Auth IndexedDB is origin-scoped, so a signed-in user on
-// superwizor.web.app has NO session on superwizor-app.web.app. We
-// bridge by calling identity-svc.MintAppLoginToken (returns a
-// short-lived Firebase custom token) and handing it to the Flutter
-// origin via URL fragment (#auth_token=...). The Flutter app reads
-// the hash on bootstrap, calls signInWithCustomToken, then strips
-// the hash from the URL.
-//
-// Why fragment, not query: the hash isn't sent to the server, isn't
-// stored in server access logs, and isn't included in the Referer
-// header on cross-origin links. Defence-in-depth for a credential
-// that's already short-lived (~1h).
-//
-// UX detail — popup blocking: window.open() must be called
-// synchronously inside the click handler or Safari/Firefox block
-// it. We open a placeholder window first, mint the token, then set
-// the window's location. If the mint fails we still navigate to
-// the Flutter origin with just the email prefill so the user can
-// type their password — degrades to the pre-SSO behaviour.
 function OpenKartotekiButton({ email }: { email: string }) {
   const t = useTranslations("account");
   const [busy, setBusy] = useState(false);
@@ -144,32 +169,20 @@ function OpenKartotekiButton({ email }: { email: string }) {
   const onClick = async () => {
     if (busy) return;
     setBusy(true);
-    // Open the popup IMMEDIATELY (during the user-gesture frame) so
-    // browser popup heuristics let it through. We update its
-    // location after the mint completes.
     const popup = window.open("about:blank", "_blank");
     try {
       const res = await identityClient.mintAppLoginToken(create(EmptySchema, {}));
       const token = res?.token ?? "";
-      // Fragment shape: #auth_token=<jwt>&email=<email>. Email kept
-      // around purely so the Flutter app can still pre-fill on the
-      // very rare path where signInWithCustomToken fails and falls
-      // through to the email login form.
       const url = token
         ? `${APP_URL}#auth_token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`
         : `${APP_URL}?email=${encodeURIComponent(email)}`;
       if (popup) {
         popup.location.href = url;
       } else {
-        // Popup blocked anyway — best-effort: navigate the current
-        // tab. Loses the marketing-site /account context, but better
-        // than silently failing.
         window.location.href = url;
       }
     } catch (e) {
       console.error("[account] mintAppLoginToken failed", e);
-      // Graceful degradation: open the Flutter app with just the
-      // email prefill, exactly like the pre-SSO version did.
       const fallback = `${APP_URL}?email=${encodeURIComponent(email)}`;
       if (popup) popup.location.href = fallback;
       else window.location.href = fallback;
@@ -183,7 +196,7 @@ function OpenKartotekiButton({ email }: { email: string }) {
       type="button"
       onClick={onClick}
       disabled={busy}
-      className="inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-5 py-2.5 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-progress"
+      className="inline-flex items-center justify-center rounded-xl bg-[#F5A623] text-[#1B2522] font-sans font-bold text-[13px] uppercase tracking-wider px-5 py-2.5 shadow-[0_0_20px_rgba(245,166,35,0.2)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-progress"
       title={t("kartotekiHint")}
     >
       {busy ? t("kartotekiOpening") : t("kartotekiCta")} →
@@ -192,14 +205,16 @@ function OpenKartotekiButton({ email }: { email: string }) {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// Profile
+// Profile Section
 // ────────────────────────────────────────────────────────────────────
 function ProfileSection({
   profile,
   onUpdate,
+  locale,
 }: {
   profile: User | null;
   onUpdate: (u: User) => void;
+  locale: string;
 }) {
   const t = useTranslations("account");
   const [draft, setDraft] = useState({
@@ -214,7 +229,6 @@ function ProfileSection({
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Hydrate the draft once the profile arrives.
   useEffect(() => {
     if (!profile) return;
     setDraft({
@@ -232,12 +246,6 @@ function ProfileSection({
     setSubmitting(true);
     setError(null);
     try {
-      // UpdateProfile expects empty userId — server resolves from the
-      // auth context. Send field values as-is; the handler treats
-      // empty strings as "leave alone" for legacy fields (firstName,
-      // lastName, phoneNumber, professionalTitle, credentialsNumber,
-      // biography). proto-optional fields (avatarUrl, modalityId,
-      // uiLanguage, etc.) are not included here.
       const req = create(UpdateProfileRequestSchema, {
         userId: "",
         firstName: draft.firstName,
@@ -258,73 +266,94 @@ function ProfileSection({
     }
   }
 
+  // Resolve modality label
+  const modalityId = profile?.defaultModalityId ?? "";
+  const modalityLabel = modalityId
+    ? (MODALITY_LABELS[modalityId]?.[locale as "pl" | "en"] ?? modalityId)
+    : t("modalityNone");
+
   if (!profile) {
-    return <Section title={t("profileSection")} collapsible defaultOpen={false}>{t("orgLoading")}</Section>;
+    return (
+      <SettingsCard>
+        <SectionLabel>{t("sectionProfile")}</SectionLabel>
+        <p className="px-4 pb-4 font-sans text-sm text-[#8FA5A0]">{t("orgLoading")}</p>
+      </SettingsCard>
+    );
   }
 
   return (
-    <Section title={t("profileSection")} collapsible defaultOpen={false}>
-      <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+    <SettingsCard>
+      <SectionLabel>{t("sectionProfile")}</SectionLabel>
+      <form onSubmit={onSubmit} className="px-4 pb-4 grid gap-4" noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t("firstName")} large>
+          <SettingsField label={t("firstName")}>
             <input
               type="text"
               value={draft.firstName}
               onChange={(e) => setDraft((d) => ({ ...d, firstName: e.target.value }))}
-              className={inputClassLg}
+              className={inputClass}
             />
-          </Field>
-          <Field label={t("lastName")} large>
+          </SettingsField>
+          <SettingsField label={t("lastName")}>
             <input
               type="text"
               value={draft.lastName}
               onChange={(e) => setDraft((d) => ({ ...d, lastName: e.target.value }))}
-              className={inputClassLg}
+              className={inputClass}
             />
-          </Field>
+          </SettingsField>
         </div>
-        <Field label={t("phoneNumber")} large>
+        <SettingsField label={t("phoneNumber")}>
           <input
             type="tel"
             value={draft.phoneNumber}
             onChange={(e) => setDraft((d) => ({ ...d, phoneNumber: e.target.value }))}
-            className={inputClassLg}
+            className={inputClass}
           />
-        </Field>
+        </SettingsField>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t("professionalTitle")} large>
+          <SettingsField label={t("professionalTitle")}>
             <input
               type="text"
               value={draft.professionalTitle}
               onChange={(e) => setDraft((d) => ({ ...d, professionalTitle: e.target.value }))}
-              className={inputClassLg}
+              className={inputClass}
             />
-          </Field>
-          <Field label={t("credentialsNumber")} large>
+          </SettingsField>
+          <SettingsField label={t("credentialsNumber")}>
             <input
               type="text"
               value={draft.credentialsNumber}
               onChange={(e) => setDraft((d) => ({ ...d, credentialsNumber: e.target.value }))}
-              className={inputClassLg}
+              className={inputClass}
             />
-          </Field>
+          </SettingsField>
         </div>
-        <Field label={t("biography")} large>
+        <SettingsField label={t("biography")}>
           <textarea
             rows={3}
             value={draft.biography}
             onChange={(e) => setDraft((d) => ({ ...d, biography: e.target.value }))}
-            className={`${inputClassLg} resize-y`}
+            className={`${inputClass} resize-y`}
           />
-        </Field>
+        </SettingsField>
+
+        {/* Modality (read-only from profile) */}
+        <SettingsField label={t("modality")}>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-[#F5A623]/10 border border-[#F5A623]/20 font-sans text-[13px] font-semibold text-[#F5A623]">
+              {modalityLabel}
+            </span>
+          </div>
+        </SettingsField>
 
         {error && (
-          <p role="alert" className="rounded-button border border-magma/40 bg-magma/10 px-3 py-2 font-serif text-xs text-frost">
+          <p role="alert" className="rounded-xl border border-[#ff4444]/40 bg-[#ff4444]/10 px-3 py-2 font-sans text-xs text-[#F2F0EA]">
             {error}
           </p>
         )}
         {savedAt && !error && !submitting && (
-          <p role="status" className="rounded-button border border-aurora/40 bg-aurora/10 px-3 py-2 font-serif text-xs text-frost">
+          <p role="status" className="rounded-xl border border-green-500/40 bg-green-500/10 px-3 py-2 font-sans text-xs text-[#F2F0EA]">
             {t("profileSaved")}
           </p>
         )}
@@ -335,12 +364,12 @@ function ProfileSection({
           </button>
         </div>
       </form>
-    </Section>
+    </SettingsCard>
   );
 }
 
 // ────────────────────────────────────────────────────────────────────
-// Organisation (SOLO-therapists + ORG_ADMIN only — graceful skip otherwise)
+// Organisation
 // ────────────────────────────────────────────────────────────────────
 function OrgSection({ profile }: { profile: User | null }) {
   const t = useTranslations("account");
@@ -364,9 +393,6 @@ function OrgSection({ profile }: { profile: User | null }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Wait until the parent has loaded the profile so we know whether
-    // the user even has an organization. Avoids a noisy NotFound on
-    // accounts that signed up as a lone therapist with no org row.
     if (!profile) return;
     if (!profile.organizationId) {
       setPhase("noOrg");
@@ -412,10 +438,6 @@ function OrgSection({ profile }: { profile: User | null }) {
     setSubmitting(true);
     setError(null);
     try {
-      // Build address only if any field is set. Send legalName/taxId/
-      // vatIdEu unconditionally — backend honours proto-optional
-      // presence so missing-field means leave-alone (we always pass
-      // them so the user can blank one if they want).
       const address = create(AddressSchema, {
         countryCode: draft.countryCode || "PL",
         region: draft.region,
@@ -444,115 +466,128 @@ function OrgSection({ profile }: { profile: User | null }) {
   }
 
   if (phase === "loading") {
-    return <Section title={t("orgSection")} collapsible defaultOpen={false}>{t("orgLoading")}</Section>;
+    return (
+      <SettingsCard>
+        <SectionLabel>{t("sectionOrg")}</SectionLabel>
+        <p className="px-4 pb-4 font-sans text-sm text-[#8FA5A0]">{t("orgLoading")}</p>
+      </SettingsCard>
+    );
   }
   if (phase === "noOrg") {
-    return <Section title={t("orgSection")} collapsible defaultOpen={false}>{t("orgNone")}</Section>;
+    return (
+      <SettingsCard>
+        <SectionLabel>{t("sectionOrg")}</SectionLabel>
+        <p className="px-4 pb-4 font-sans text-sm text-[#8FA5A0]">{t("orgNone")}</p>
+      </SettingsCard>
+    );
   }
   if (phase === "notAllowed") {
     return (
-      <Section title={t("orgSection")} collapsible defaultOpen={false}>
-        <p className="font-serif text-sm text-mist">{t("orgNotAllowed")}</p>
-      </Section>
+      <SettingsCard>
+        <SectionLabel>{t("sectionOrg")}</SectionLabel>
+        <p className="px-4 pb-4 font-sans text-sm text-[#8FA5A0]">{t("orgNotAllowed")}</p>
+      </SettingsCard>
     );
   }
   if (phase === "error") {
-    return <Section title={t("orgSection")} collapsible defaultOpen={false}>{t("errLoad")}</Section>;
+    return (
+      <SettingsCard>
+        <SectionLabel>{t("sectionOrg")}</SectionLabel>
+        <p className="px-4 pb-4 font-sans text-sm text-[#8FA5A0]">{t("errLoad")}</p>
+      </SettingsCard>
+    );
   }
 
   return (
-    <Section title={t("orgSection")} collapsible defaultOpen={false}>
-      <form onSubmit={onSubmit} className="grid gap-4" noValidate>
-        <Field label={t("legalName")} large>
+    <SettingsCard>
+      <SectionLabel>{t("sectionOrg")}</SectionLabel>
+      <form onSubmit={onSubmit} className="px-4 pb-4 grid gap-4" noValidate>
+        <SettingsField label={t("legalName")}>
           <input
             type="text"
             value={draft.legalName}
             onChange={(e) => setDraft((d) => ({ ...d, legalName: e.target.value }))}
-            className={inputClassLg}
+            className={inputClass}
           />
-        </Field>
+        </SettingsField>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t("taxId")} large>
+          <SettingsField label={t("taxId")}>
             <input
               type="text"
               value={draft.taxId}
               onChange={(e) => setDraft((d) => ({ ...d, taxId: e.target.value }))}
-              className={inputClassLg}
+              className={inputClass}
             />
-          </Field>
-          <Field label={t("vatIdEu")} large>
+          </SettingsField>
+          <SettingsField label={t("vatIdEu")}>
             <input
               type="text"
               value={draft.vatIdEu}
               onChange={(e) => setDraft((d) => ({ ...d, vatIdEu: e.target.value }))}
-              className={inputClassLg}
+              className={inputClass}
             />
-          </Field>
+          </SettingsField>
         </div>
-
-        {/* HQ address — flat inputs; AddressFields wasn't reused
-            because it lives under /admin and is tied to an admin
-            UpdateUserParams shape. Keep this lightweight. */}
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Ulica" large>
+          <SettingsField label={t("streetLine")}>
             <input
               type="text"
               value={draft.streetLine}
               onChange={(e) => setDraft((d) => ({ ...d, streetLine: e.target.value }))}
-              className={inputClassLg}
+              className={inputClass}
             />
-          </Field>
-          <Field label="Nr budynku" large>
+          </SettingsField>
+          <SettingsField label={t("buildingNumber")}>
             <input
               type="text"
               value={draft.buildingNumber}
               onChange={(e) => setDraft((d) => ({ ...d, buildingNumber: e.target.value }))}
-              className={inputClassLg}
+              className={inputClass}
             />
-          </Field>
-          <Field label="Nr lokalu" large>
+          </SettingsField>
+          <SettingsField label={t("unitNumber")}>
             <input
               type="text"
               value={draft.unitNumber}
               onChange={(e) => setDraft((d) => ({ ...d, unitNumber: e.target.value }))}
-              className={inputClassLg}
+              className={inputClass}
             />
-          </Field>
+          </SettingsField>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Kod pocztowy" large>
+          <SettingsField label={t("postalCode")}>
             <input
               type="text"
               value={draft.postalCode}
               onChange={(e) => setDraft((d) => ({ ...d, postalCode: e.target.value }))}
-              className={inputClassLg}
+              className={inputClass}
             />
-          </Field>
-          <Field label="Miasto" large>
+          </SettingsField>
+          <SettingsField label={t("city")}>
             <input
               type="text"
               value={draft.city}
               onChange={(e) => setDraft((d) => ({ ...d, city: e.target.value }))}
-              className={inputClassLg}
+              className={inputClass}
             />
-          </Field>
-          <Field label="Województwo" large>
+          </SettingsField>
+          <SettingsField label={t("region")}>
             <input
               type="text"
               value={draft.region}
               onChange={(e) => setDraft((d) => ({ ...d, region: e.target.value }))}
-              className={inputClassLg}
+              className={inputClass}
             />
-          </Field>
+          </SettingsField>
         </div>
 
         {error && (
-          <p role="alert" className="rounded-button border border-magma/40 bg-magma/10 px-3 py-2 font-serif text-xs text-frost">
+          <p role="alert" className="rounded-xl border border-[#ff4444]/40 bg-[#ff4444]/10 px-3 py-2 font-sans text-xs text-[#F2F0EA]">
             {error}
           </p>
         )}
         {savedAt && !error && !submitting && (
-          <p role="status" className="rounded-button border border-aurora/40 bg-aurora/10 px-3 py-2 font-serif text-xs text-frost">
+          <p role="status" className="rounded-xl border border-green-500/40 bg-green-500/10 px-3 py-2 font-sans text-xs text-[#F2F0EA]">
             {t("orgSaved")}
           </p>
         )}
@@ -562,13 +597,13 @@ function OrgSection({ profile }: { profile: User | null }) {
             {submitting ? t("orgSubmitting") : t("orgSubmit")}
           </button>
           {org && (
-            <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist/70">
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-[#8FA5A0]/70">
               {t("orgType")}: {orgTypeName(org.type)}
             </span>
           )}
         </div>
       </form>
-    </Section>
+    </SettingsCard>
   );
 }
 
@@ -582,23 +617,15 @@ function orgTypeName(t: OrganizationType): string {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// Subscription (read-only — calls billing-svc directly, bypassing the
-// clinical-svc.GetMyBillingState proxy because that hop intermittently
-// returns PROTOCOL_ERROR (RST_STREAM) inside Cloud Run. The admin
-// /admin/orgs ZMIEŃ PLAN button uses the same direct billingClient
-// pattern and works reliably. The backend GetSubscription handler
-// enforces caller-org scope so any authenticated user can only fetch
-// their own organization's subscription (SUPERWIZOR_ADMIN bypasses).
+// Subscription
 // ────────────────────────────────────────────────────────────────────
-function BillingSection({ organizationId }: { organizationId: string | null }) {
+function BillingSection({ organizationId, locale }: { organizationId: string | null; locale: string }) {
   const t = useTranslations("account");
   const [sub, setSub] = useState<Subscription | null>(null);
   const [phase, setPhase] = useState<"loading" | "ready" | "none" | "error">("loading");
+  const prefix = locale === "en" ? "/en" : "";
 
   useEffect(() => {
-    // Wait until the profile arrives — we need organizationId to scope
-    // the call. While we wait we stay in "loading" so the section
-    // doesn't flash an empty state.
     if (!organizationId) return;
     let cancelled = false;
     (async () => {
@@ -614,12 +641,6 @@ function BillingSection({ organizationId }: { organizationId: string | null }) {
           setPhase("ready");
         }
       } catch (e) {
-        // Distinguish "no active subscription" (NotFound) and "user
-        // has no organization" (FailedPrecondition) from real errors.
-        // Both manifest as ConnectError; show the calmer "no
-        // subscription" copy instead of the alarming generic banner.
-        // Anything else still becomes the error state — kept for
-        // debugging visibility.
         if (e instanceof ConnectError &&
             (e.code === Code.NotFound || e.code === Code.FailedPrecondition)) {
           if (!cancelled) setPhase("none");
@@ -634,21 +655,42 @@ function BillingSection({ organizationId }: { organizationId: string | null }) {
     };
   }, [organizationId]);
 
-  if (phase === "loading") return <Section title={t("billingSection")}>{t("billingLoading")}</Section>;
-  if (phase === "none") {
-    // No subscription yet — give the user a CTA placeholder for the
-    // future Stripe-driven plan picker. Same disabled-button language
-    // as the active-sub upgrade CTA below so the two states feel
-    // consistent.
+  if (phase === "loading") {
     return (
-      <Section title={t("billingSection")}>
-        <p className="font-serif text-sm text-mist mb-4">{t("billingNone")}</p>
-        <UpgradeCta label={t("billingNoneCta")} hint={t("billingUpgradeHint")} />
-      </Section>
+      <SettingsCard>
+        <SectionLabel>{t("sectionBilling")}</SectionLabel>
+        <p className="px-4 pb-4 font-sans text-sm text-[#8FA5A0]">{t("billingLoading")}</p>
+      </SettingsCard>
     );
   }
-  if (phase === "error")   return <Section title={t("billingSection")}>{t("errLoad")}</Section>;
-  if (!sub)                return <Section title={t("billingSection")}>{t("billingNone")}</Section>;
+  if (phase === "none") {
+    return (
+      <SettingsCard>
+        <SectionLabel>{t("sectionBilling")}</SectionLabel>
+        <div className="px-4 pb-4">
+          <p className="font-sans text-sm text-[#8FA5A0] mb-1">{t("billingNone")}</p>
+          <p className="font-sans text-[13px] text-[#8FA5A0]/60 mb-4">{t("billingNoneBody")}</p>
+          <UpgradeLink href={`${prefix}/upgrade`} label={t("billingNoneCta")} />
+        </div>
+      </SettingsCard>
+    );
+  }
+  if (phase === "error") {
+    return (
+      <SettingsCard>
+        <SectionLabel>{t("sectionBilling")}</SectionLabel>
+        <p className="px-4 pb-4 font-sans text-sm text-[#8FA5A0]">{t("errLoad")}</p>
+      </SettingsCard>
+    );
+  }
+  if (!sub) {
+    return (
+      <SettingsCard>
+        <SectionLabel>{t("sectionBilling")}</SectionLabel>
+        <p className="px-4 pb-4 font-sans text-sm text-[#8FA5A0]">{t("billingNone")}</p>
+      </SettingsCard>
+    );
+  }
 
   const total = sub.tokensPerPeriod;
   const used = sub.tokensUsedThisPeriod + sub.tokensReservedThisPeriod;
@@ -661,58 +703,51 @@ function BillingSection({ organizationId }: { organizationId: string | null }) {
     : "—";
 
   return (
-    <Section title={t("billingSection")}>
-      <dl className="grid gap-3 sm:grid-cols-2">
-        <Stat label={t("billingPlanName")}    value={planName} />
-        <Stat label={t("billingStatus")}      value={statusName} />
-        <Stat label={t("billingTokensLeft")}  value={String(left)} />
-        <Stat label={t("billingTokensTotal")} value={String(total)} />
-        <Stat label={t("billingPeriodEnd")}   value={periodEnd} />
-      </dl>
-
-      {/* Usage bar — visual reinforcement of "tokens left / total" so
-          the user can eyeball where they are in the cycle. */}
-      {total > 0 && (
-        <div className="mt-6">
-          <div className="h-2 w-full rounded-full bg-frost/10 overflow-hidden">
-            <div
-              className="h-full bg-ember transition-all"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist/70">
-            {t("billingUsedBar", { used: used, total: total })}
-          </p>
+    <SettingsCard>
+      <SectionLabel>{t("sectionBilling")}</SectionLabel>
+      <div className="px-4 pb-4">
+        <div className="grid gap-3 sm:grid-cols-2 mb-5">
+          <StatRow label={t("billingPlanName")} value={planName} />
+          <StatRow label={t("billingStatus")} value={statusName} />
+          <StatRow label={t("billingTokensLeft")} value={String(left)} />
+          <StatRow label={t("billingTokensTotal")} value={String(total)} />
+          <StatRow label={t("billingPeriodEnd")} value={periodEnd} />
         </div>
-      )}
 
-      <div className="mt-6">
-        <UpgradeCta label={t("billingUpgrade")} hint={t("billingUpgradeHint")} />
+        {/* Usage bar */}
+        {total > 0 && (
+          <div className="mb-5">
+            <div className="h-2.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#F5A623] to-[#E09500] transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="mt-2 font-sans text-[11px] text-[#8FA5A0]/70">
+              {t("billingUsedBar", { used, total })}
+            </p>
+          </div>
+        )}
+
+        <UpgradeLink href={`${prefix}/upgrade`} label={t("billingUpgrade")} />
       </div>
-    </Section>
+    </SettingsCard>
   );
 }
 
-// Disabled CTA placeholder for the future Stripe-driven plan upgrade
-// flow. Looks like a primary button so the user knows where the
-// action will live; hover reveals the "coming soon" hint.
-function UpgradeCta({ label, hint }: { label: string; hint: string }) {
+// Active upgrade link → navigates to /upgrade page
+function UpgradeLink({ href, label }: { href: string; label: string }) {
   return (
-    <button
-      type="button"
-      disabled
-      title={hint}
-      className="inline-flex items-center justify-center rounded-button bg-ember/70 text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] cursor-not-allowed opacity-80"
+    <Link
+      href={href}
+      className="inline-flex items-center justify-center rounded-xl bg-[#F5A623] text-[#1B2522] font-sans font-bold text-[13px] uppercase tracking-wider px-6 py-3 shadow-[0_0_20px_rgba(245,166,35,0.2)] hover:brightness-110 hover:shadow-[0_0_30px_rgba(245,166,35,0.3)] transition-all"
     >
       {label}
-    </button>
+    </Link>
   );
 }
 
-// planLabel + statusLabel map raw enum strings off the wire to
-// localised display copy. Falls back to the raw value if a new tier /
-// status lands before we update the i18n table — visible but ugly,
-// which is the right default.
+// planLabel + statusLabel map raw enum strings to localised copy
 function planLabel(t: ReturnType<typeof useTranslations>, raw: string): string {
   if (!raw) return "—";
   const k = `plan${raw.toUpperCase()}`;
@@ -733,108 +768,73 @@ function statusLabel(t: ReturnType<typeof useTranslations>, raw: string): string
 }
 
 // ────────────────────────────────────────────────────────────────────
-// Stripe placeholder
+// Shared UI components — Apple Settings style
 // ────────────────────────────────────────────────────────────────────
-function StripePlaceholder() {
-  const t = useTranslations("account");
-  return (
-    <Section title={t("stripeSection")}>
-      <p className="font-serif text-sm text-mist mb-4">{t("stripeBody")}</p>
-      <button
-        type="button"
-        disabled
-        className="inline-flex items-center justify-center rounded-button bg-frost/10 text-mist font-mono uppercase tracking-[var(--tracking-label)] text-xs px-4 py-2 border border-frost/15 cursor-not-allowed opacity-70"
-      >
-        {t("stripeConnect")}
-      </button>
-    </Section>
-  );
-}
 
-// ────────────────────────────────────────────────────────────────────
-// Shared bits
-// ────────────────────────────────────────────────────────────────────
-// inputClass removed — superseded by inputClassLg (20% larger variant).
-// 20% larger variant for the Profil + Organizacja sections per the
-// 2026-05-29 design tweak. Bumps label (10px→12px), input (14px→17px,
-// roughly text-base + a tenth) and uses py-2.5 to keep proportions.
-const inputClassLg =
-  "rounded-button bg-frost/5 border border-frost/15 px-3 py-2.5 font-mono text-[17px] text-frost focus:outline-none focus:border-ember w-full";
+const inputClass =
+  "rounded-xl bg-white/[0.04] border border-white/[0.08] px-3.5 py-2.5 font-sans text-[15px] text-[#F2F0EA] focus:outline-none focus:border-[#F5A623]/50 focus:ring-1 focus:ring-[#F5A623]/20 w-full transition placeholder:text-[#8FA5A0]/40";
+
 const submitBtnClass =
-  "inline-flex items-center justify-center rounded-button bg-ember text-obsidian font-mono uppercase tracking-[var(--tracking-label)] text-sm px-6 py-3 shadow-[var(--shadow-ember-glow)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center rounded-xl bg-[#F5A623] text-[#1B2522] font-sans font-bold text-[13px] uppercase tracking-wider px-6 py-3 shadow-[0_0_20px_rgba(245,166,35,0.2)] hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed";
 
-function Section({
-  title,
-  children,
-  collapsible = false,
-  defaultOpen = true,
-}: {
-  title: string;
-  children: React.ReactNode;
-  collapsible?: boolean;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  if (!collapsible) {
-    return (
-      <section className="rounded-glass border border-glass-border/40 bg-frost/[0.04] p-6">
-        <h2 className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-ember mb-4">
-          {title}
-        </h2>
-        <div>{children}</div>
-      </section>
-    );
-  }
+function SettingsCard({ children }: { children: React.ReactNode }) {
   return (
-    <section className="rounded-glass border border-glass-border/40 bg-frost/[0.04] p-6">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-4 text-left"
-      >
-        <h2 className="font-mono text-[12px] uppercase tracking-[var(--tracking-overline)] text-ember">
-          {title}
-        </h2>
-        <span
-          aria-hidden="true"
-          className={`font-mono text-xs text-mist/70 transition-transform ${open ? "rotate-180" : ""}`}
-        >
-          ▾
-        </span>
-      </button>
-      {open && <div className="mt-4">{children}</div>}
+    <section className="rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-md overflow-hidden">
+      {children}
     </section>
   );
 }
 
-function Field({
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="px-4 pt-4 pb-2 font-sans text-[11px] font-bold uppercase tracking-[0.15em] text-[#8FA5A0]">
+      {children}
+    </h2>
+  );
+}
+
+function SettingsField({
   label,
   children,
-  large = false,
 }: {
   label: string;
   children: React.ReactNode;
-  large?: boolean;
 }) {
-  // `large` shifts the label up from 10px to 12px (also 20% bigger)
-  // so it stays proportional to the bigger input next to it.
-  const labelClass = large
-    ? "font-mono text-[12px] uppercase tracking-[var(--tracking-label)] text-mist"
-    : "font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist";
   return (
-    <label className="grid gap-2">
-      <span className={labelClass}>{label}</span>
+    <label className="grid gap-1.5">
+      <span className="font-sans text-[12px] font-medium uppercase tracking-wider text-[#8FA5A0]">
+        {label}
+      </span>
       {children}
     </label>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function StatRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">{label}</dt>
-      <dd className="font-display text-lg text-frost mt-1">{value}</dd>
+      <dt className="font-sans text-[11px] font-medium uppercase tracking-wider text-[#8FA5A0]">{label}</dt>
+      <dd className="font-sans text-lg font-semibold text-[#F2F0EA] mt-0.5">{value}</dd>
     </div>
+  );
+}
+
+function LinkRow({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center justify-between px-4 py-3.5 hover:bg-white/[0.03] transition-colors"
+    >
+      <span className="font-sans text-[15px] text-[#F2F0EA]">{label}</span>
+      <ChevronRight />
+    </Link>
+  );
+}
+
+function ChevronRight({ color = "#8FA5A0" }: { color?: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-40 flex-shrink-0">
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
   );
 }

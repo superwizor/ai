@@ -27,10 +27,11 @@ const UUID_RE =
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { priceId, organizationId, email } = body as {
+    const { priceId, organizationId, email, returnUrl } = body as {
       priceId: string;
       organizationId: string;
       email?: string;
+      returnUrl?: string;
     };
 
     if (!priceId || typeof priceId !== "string") {
@@ -47,12 +48,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine success/cancel URLs. The success page will show
-    // a "setting up your account" spinner while the Stripe webhook
-    // provisions the subscription on the backend.
+    // Determine success/cancel URLs. If a returnUrl is provided
+    // (e.g. from the /account upgrade flow), use it so the user
+    // lands back on their account page. Otherwise fall back to the
+    // registration success page for new sign-ups.
     const origin = request.nextUrl.origin;
-    const successUrl = `${origin}/register/therapist/success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${origin}/register/therapist?plan=cancelled`;
+    const successUrl = returnUrl
+      ? `${origin}${returnUrl}?session_id={CHECKOUT_SESSION_ID}&upgraded=1`
+      : `${origin}/register/therapist/success?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = returnUrl
+      ? `${origin}${returnUrl}?plan=cancelled`
+      : `${origin}/register/therapist?plan=cancelled`;
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",

@@ -46,8 +46,8 @@ export function UpgradeSection({
 
           <h1 className="font-serif text-3xl sm:text-4xl font-bold text-[#1B2522] leading-tight mb-4">
             {locale === "en"
-              ? "Your trial has ended.\nYour insights don't have to."
-              : "Twój okres próbny się skończył.\nTwoje wnioski nie muszą."}
+              ? "Choose the plan that\nfits your practice."
+              : "Wybierz plan dopasowany\ndo Twojej praktyki."}
           </h1>
 
           <p className="font-sans text-base sm:text-lg text-[#4E5A55] leading-relaxed max-w-xl mx-auto">
