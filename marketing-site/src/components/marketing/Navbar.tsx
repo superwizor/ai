@@ -81,7 +81,7 @@ export function Navbar({ variant = "marketing" }: { variant?: NavbarVariant }) {
               <span className="bg-gradient-to-b from-[#1B2522] to-[#1B2522]/60 bg-clip-text text-transparent font-semibold">
                 Superwizor
               </span>
-              <span className="bg-ember text-[#002E32] text-[9px] sm:text-[10px] md:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-[4px] shadow-sm tracking-widest leading-none transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(252,174,47,0.45)] group-hover:brightness-105 uppercase">
+              <span className="bg-[#004D54] text-white text-[9px] sm:text-[10px] md:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-[4px] shadow-sm tracking-widest leading-none transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,77,84,0.35)] group-hover:brightness-110 uppercase">
                 AI
               </span>
             </span>
@@ -92,7 +92,7 @@ export function Navbar({ variant = "marketing" }: { variant?: NavbarVariant }) {
               <span className="bg-gradient-to-b from-[#1B2522] to-[#1B2522]/60 bg-clip-text text-transparent font-semibold">
                 Superwizor
               </span>
-              <span className="bg-ember text-[#002E32] text-[9px] sm:text-[10px] md:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-[4px] shadow-sm tracking-widest leading-none uppercase">
+              <span className="bg-[#004D54] text-white text-[9px] sm:text-[10px] md:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-[4px] shadow-sm tracking-widest leading-none uppercase">
                 AI
               </span>
             </span>
