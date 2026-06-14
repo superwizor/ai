@@ -309,7 +309,10 @@ function RecordTabContent({ isPl, setToast }: RecordTabContentProps) {
               <div 
                 key={num}
                 style={{ 
-                  animation: `recording-ripple 6s cubic-bezier(0.05, 0.95, 0.1, 1) infinite`,
+                  animationName: `recording-ripple`,
+                  animationDuration: `6s`,
+                  animationTimingFunction: `cubic-bezier(0.05, 0.95, 0.1, 1)`,
+                  animationIterationCount: `infinite`,
                   animationDelay: `${(num - 1) * 2}s`,
                   animationPlayState: isTimerRunning ? "running" : "paused" 
                 }} 
@@ -328,7 +331,11 @@ function RecordTabContent({ isPl, setToast }: RecordTabContentProps) {
                 key={i}
                 style={{
                   height: recordingSeconds === 0 ? "4px" : `${h}px`,
-                  animation: recordingSeconds === 0 ? "none" : `waveform 1.2s ease-in-out infinite alternate`,
+                  animationName: recordingSeconds === 0 ? "none" : "waveform",
+                  animationDuration: "1.2s",
+                  animationTimingFunction: "ease-in-out",
+                  animationIterationCount: "infinite",
+                  animationDirection: "alternate",
                   animationDelay: `${i * 0.07}s`,
                   transformOrigin: "center",
                   animationPlayState: isTimerRunning ? "running" : "paused"
