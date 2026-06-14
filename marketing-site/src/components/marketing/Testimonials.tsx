@@ -114,9 +114,52 @@ const TESTIMONIALS_DATA: Testimonial[] = [
   }
 ];
 
-// Split testimonials into two sets for the two scrolling rows
+// Split testimonials into two sets for the two scrolling rows (desktop)
 const ROW1_DATA = TESTIMONIALS_DATA.slice(0, 6);
 const ROW2_DATA = TESTIMONIALS_DATA.slice(5);
+
+/* ── Reusable card for a single testimonial ─────────────────────── */
+function TestimonialCard({
+  item,
+  isPl,
+  avatarGradient = "from-[#0e3b33] to-[#165c50]",
+  avatarTextColor = "text-[#5bf4bc]",
+  className = "",
+}: {
+  item: Testimonial;
+  isPl: boolean;
+  avatarGradient?: string;
+  avatarTextColor?: string;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <p className={`font-sans text-[13px] sm:text-[14px] leading-relaxed text-white/90 italic font-medium relative before:content-['\u201E'] after:content-['\u201D']`}>
+        {isPl ? item.quote : item.quoteEn}
+      </p>
+
+      <div className="mt-5 pt-4 border-t border-white/5 flex items-center gap-3">
+        <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center font-sans font-bold text-xs ${avatarTextColor} shadow-inner select-none shrink-0`}>
+          {item.author[0]}
+        </div>
+        <div className="flex flex-col text-left overflow-hidden">
+          <span className="font-sans font-bold text-xs sm:text-[13px] text-white truncate">{item.author}</span>
+          <span className="font-sans text-[10px] sm:text-[11px] text-[#5bf4bc] font-semibold mt-0.5 truncate flex items-center gap-1.5">
+            <span>{isPl ? item.role : item.roleEn}</span>
+            {item.nurt && (
+              <>
+                <span className="text-white/20">&bull;</span>
+                <span className="text-[#fcae2f] border border-[#fcae2f]/20 bg-[#fcae2f]/5 px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0">
+                  {isPl ? item.nurt : item.nurtEn}
+                </span>
+              </>
+            )}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function Testimonials() {
   const locale = useLocale();
@@ -164,12 +207,17 @@ export function Testimonials() {
         .animate-wave-2 {
           animation: waveFloat2 7s ease-in-out infinite;
         }
+
+        /* Hide native scrollbar for snap-scroll on mobile */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}} />
 
       {/* Decorative background glow elements */}
       <div className="absolute top-1/4 left-1/10 w-[400px] h-[400px] bg-[#5bf4bc]/[0.02] rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/10 w-[400px] h-[400px] bg-[#fcae2f]/[0.02] rounded-full blur-[120px] pointer-events-none" />
 
+      {/* Header */}
       <div className="relative mx-auto w-full max-w-[1200px] px-6 mb-16 text-center">
         <p className="font-mono text-[10px] sm:text-xs uppercase text-[#5bf4bc] tracking-[3px] font-bold mb-3">
           {isPl ? "Głosy z gabinetów" : "Voices from the practices"}
@@ -184,83 +232,67 @@ export function Testimonials() {
         </p>
       </div>
 
-      {/* Marquee Wrapper Container */}
-      <div className="relative w-full overflow-hidden marquee-container flex flex-col gap-4 lg:gap-6 z-10 py-2">
+      {/* ── MOBILE: Horizontal snap-scroll ──────────────── */}
+      <div className="relative w-full md:hidden z-10 py-2">
+        {/* Edge fade overlays */}
+        <div className="absolute top-0 bottom-0 left-0 w-8 bg-gradient-to-r from-[#001A1D] to-transparent z-20 pointer-events-none" />
+        <div className="absolute top-0 bottom-0 right-0 w-8 bg-gradient-to-l from-[#002e32] to-transparent z-20 pointer-events-none" />
 
-        {/* Portal Fade Overlays (dark theme matching background) */}
+        <div
+          className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth px-6 pb-4 no-scrollbar"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          {TESTIMONIALS_DATA.map((item, idx) => (
+            <TestimonialCard
+              key={`mob-${idx}`}
+              item={item}
+              isPl={isPl}
+              className="w-[280px] flex-shrink-0 snap-center bg-[#122B2E]/50 border border-white/[0.08] p-5 rounded-[20px] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.3)] flex flex-col justify-between select-text"
+            />
+          ))}
+        </div>
+
+        {/* Scroll indicator dots */}
+        <div className="flex justify-center mt-3 gap-1">
+          {TESTIMONIALS_DATA.map((_, idx) => (
+            <div key={`dot-${idx}`} className="w-1.5 h-1.5 rounded-full bg-white/20" />
+          ))}
+        </div>
+      </div>
+
+      {/* ── DESKTOP: Two-row marquee ──────────────────────── */}
+      <div className="relative w-full overflow-hidden marquee-container hidden md:flex flex-col gap-4 lg:gap-6 z-10 py-2">
+
+        {/* Portal Fade Overlays */}
         <div className="absolute top-0 bottom-0 left-0 w-24 md:w-48 bg-gradient-to-r from-[#001A1D] to-transparent z-20 pointer-events-none" />
         <div className="absolute top-0 bottom-0 right-0 w-24 md:w-48 bg-gradient-to-l from-[#002e32] to-transparent z-20 pointer-events-none" />
 
-        {/* Row 1: Left to Right (Moving backwards) */}
+        {/* Row 1: reverse direction */}
         <div className="flex w-full py-2.5">
           <div className="animate-marquee-row-reverse flex gap-6 lg:gap-8 px-4">
             {[...ROW1_DATA, ...ROW1_DATA].map((item, idx) => (
-              <div
+              <TestimonialCard
                 key={`r1-${idx}`}
-                className={`w-[290px] sm:w-[360px] flex-shrink-0 bg-[#122B2E]/50 border border-white/[0.08] hover:border-white/15 p-5 sm:p-6 rounded-[20px] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.3)] hover:bg-[#153235]/65 transition-all duration-300 flex flex-col justify-between select-text ${idx % 2 === 0 ? "animate-wave-1" : "animate-wave-2"
-                  }`}
-              >
-                <p className="font-sans text-[12.5px] sm:text-[14px] leading-relaxed text-white/90 italic font-medium relative before:content-['„'] after:content-['”']">
-                  {isPl ? item.quote : item.quoteEn}
-                </p>
-
-                <div className="mt-5 pt-4 border-t border-white/5 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0e3b33] to-[#165c50] flex items-center justify-center font-sans font-bold text-xs text-[#5bf4bc] shadow-inner select-none shrink-0">
-                    {item.author[0]}
-                  </div>
-                  <div className="flex flex-col text-left overflow-hidden">
-                    <span className="font-sans font-bold text-xs sm:text-[13px] text-white truncate">{item.author}</span>
-                    <span className="font-sans text-[10px] sm:text-[11px] text-[#5bf4bc] font-semibold mt-0.5 truncate flex items-center gap-1.5">
-                      <span>{isPl ? item.role : item.roleEn}</span>
-                      {item.nurt && (
-                        <>
-                          <span className="text-white/20">•</span>
-                          <span className="text-[#fcae2f] border border-[#fcae2f]/20 bg-[#fcae2f]/5 px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0">
-                            {isPl ? item.nurt : item.nurtEn}
-                          </span>
-                        </>
-                      )}
-                    </span>
-                  </div>
-                </div>
-              </div>
+                item={item}
+                isPl={isPl}
+                className={`w-[290px] sm:w-[360px] flex-shrink-0 bg-[#122B2E]/50 border border-white/[0.08] hover:border-white/15 p-5 sm:p-6 rounded-[20px] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.3)] hover:bg-[#153235]/65 transition-all duration-300 flex flex-col justify-between select-text ${idx % 2 === 0 ? "animate-wave-1" : "animate-wave-2"}`}
+              />
             ))}
           </div>
         </div>
 
-        {/* Row 2: Right to Left (Moving forward) */}
+        {/* Row 2: forward direction */}
         <div className="flex w-full py-2.5">
           <div className="animate-marquee-row flex gap-6 lg:gap-8 px-4">
             {[...ROW2_DATA, ...ROW2_DATA].map((item, idx) => (
-              <div
+              <TestimonialCard
                 key={`r2-${idx}`}
-                className={`w-[290px] sm:w-[360px] flex-shrink-0 bg-[#122B2E]/50 border border-white/[0.08] hover:border-white/15 p-5 sm:p-6 rounded-[20px] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.3)] hover:bg-[#153235]/65 transition-all duration-300 flex flex-col justify-between select-text ${idx % 2 === 0 ? "animate-wave-2" : "animate-wave-1"
-                  }`}
-              >
-                <p className="font-sans text-[12.5px] sm:text-[14px] leading-relaxed text-white/90 italic font-medium relative before:content-['„'] after:content-['”']">
-                  {isPl ? item.quote : item.quoteEn}
-                </p>
-
-                <div className="mt-5 pt-4 border-t border-white/5 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#122e2a] to-[#2b5952] flex items-center justify-center font-sans font-bold text-xs text-[#fcae2f] shadow-inner select-none shrink-0">
-                    {item.author[0]}
-                  </div>
-                  <div className="flex flex-col text-left overflow-hidden">
-                    <span className="font-sans font-bold text-xs sm:text-[13px] text-white truncate">{item.author}</span>
-                    <span className="font-sans text-[10px] sm:text-[11px] text-[#5bf4bc] font-semibold mt-0.5 truncate flex items-center gap-1.5">
-                      <span>{isPl ? item.role : item.roleEn}</span>
-                      {item.nurt && (
-                        <>
-                          <span className="text-white/20">•</span>
-                          <span className="text-[#fcae2f] border border-[#fcae2f]/20 bg-[#fcae2f]/5 px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0">
-                            {isPl ? item.nurt : item.nurtEn}
-                          </span>
-                        </>
-                      )}
-                    </span>
-                  </div>
-                </div>
-              </div>
+                item={item}
+                isPl={isPl}
+                avatarGradient="from-[#122e2a] to-[#2b5952]"
+                avatarTextColor="text-[#fcae2f]"
+                className={`w-[290px] sm:w-[360px] flex-shrink-0 bg-[#122B2E]/50 border border-white/[0.08] hover:border-white/15 p-5 sm:p-6 rounded-[20px] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.3)] hover:bg-[#153235]/65 transition-all duration-300 flex flex-col justify-between select-text ${idx % 2 === 0 ? "animate-wave-2" : "animate-wave-1"}`}
+              />
             ))}
           </div>
         </div>

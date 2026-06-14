@@ -11,7 +11,7 @@
 // Brand mark on the left, contextual links + language switcher on the right.
 // Sticky on scroll so the CTA is always one tap away.
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { usePathname } from "next/navigation";
 import { LocaleSwitcher } from "./LocaleSwitcher";
@@ -45,27 +45,7 @@ export function Navbar({ variant = "marketing" }: { variant?: NavbarVariant }) {
   const logoIsLink = variant !== "tunnel";
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showFloating, setShowFloating] = useState(false);
 
-  useEffect(() => {
-    if (variant !== "marketing") return;
-    const handleScroll = () => {
-      const cennikEl = document.getElementById("cennik");
-      let isOverCennik = false;
-      if (cennikEl) {
-        const rect = cennikEl.getBoundingClientRect();
-        isOverCennik = rect.top < window.innerHeight - 100 && rect.bottom > 100;
-      }
-
-      const threshold = document.documentElement.scrollHeight - window.innerHeight - 250;
-      const isNearBottom = window.scrollY > threshold;
-
-      setShowFloating(window.scrollY > 400 && !isOverCennik && !isNearBottom && !isMobileMenuOpen);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [variant, isMobileMenuOpen]);
 
   return (
     <>
@@ -272,23 +252,6 @@ export function Navbar({ variant = "marketing" }: { variant?: NavbarVariant }) {
       )}
     </header>
 
-    {/* ── Floating Mobile CTA ────────────────────────────── */}
-    {variant === "marketing" && (
-      <div
-        className={`fixed bottom-5 left-4 right-4 z-50 md:hidden transition-all duration-300 transform ${
-          showFloating
-            ? "opacity-100 translate-y-0 pointer-events-auto"
-            : "opacity-0 translate-y-4 pointer-events-none"
-        }`}
-      >
-        <a
-          href={cennikHref}
-          className="w-full inline-flex items-center justify-center rounded-[5px] bg-ember text-obsidian hover:brightness-110 font-sans uppercase tracking-[var(--tracking-label)] text-sm font-bold py-3.5 shadow-[0_8px_30px_rgba(252,174,47,0.35)] active:scale-[0.98] transition"
-        >
-          {t("register")}
-        </a>
-      </div>
-    )}
     </>
   );
 }
