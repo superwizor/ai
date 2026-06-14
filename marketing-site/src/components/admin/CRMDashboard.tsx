@@ -199,13 +199,13 @@ Marcin — zespół SuperWizor AI`,
 ];
 
 const LIFECYCLE_LABELS: Record<string, { label: string; color: string; emoji: string }> = {
-  new: { label: "Nowy", color: "text-[#58a6ff] bg-[var(--crm-info-bg)]", emoji: "🆕" },
-  onboarding: { label: "Onboarding", color: "text-ember bg-[var(--crm-ember-subtle)]", emoji: "📋" },
-  first_session: { label: "Pierwsza sesja", color: "text-[#a855f7] bg-[var(--crm-purple-bg)]", emoji: "🎯" },
-  active: { label: "Aktywny", color: "text-[#22c55e] bg-[var(--crm-success-bg)]", emoji: "✅" },
-  power_user: { label: "Power User", color: "text-ember bg-[var(--crm-ember-subtle)]", emoji: "⚡" },
-  at_risk: { label: "Zagrożony", color: "text-[#ef4444] bg-[var(--crm-danger-subtle)]", emoji: "⚠️" },
-  churned: { label: "Odszedł", color: "text-[#6b7280] bg-[var(--crm-neutral-bg)]", emoji: "❌" },
+  new: { label: "Nowy", color: "text-[var(--crm-accent-blue)] bg-[var(--crm-info-bg)]", emoji: "🆕" },
+  onboarding: { label: "Onboarding", color: "text-[var(--crm-ember-text)] bg-[var(--crm-ember-subtle)]", emoji: "📋" },
+  first_session: { label: "Pierwsza sesja", color: "text-[var(--crm-accent-purple)] bg-[var(--crm-purple-bg)]", emoji: "🎯" },
+  active: { label: "Aktywny", color: "text-[var(--crm-accent-green)] bg-[var(--crm-success-bg)]", emoji: "✅" },
+  power_user: { label: "Power User", color: "text-[var(--crm-ember-text)] bg-[var(--crm-ember-subtle)]", emoji: "⚡" },
+  at_risk: { label: "Zagrożony", color: "text-[var(--crm-accent-red)] bg-[var(--crm-danger-subtle)]", emoji: "⚠️" },
+  churned: { label: "Odszedł", color: "text-[var(--crm-muted)] bg-[var(--crm-neutral-bg)]", emoji: "❌" },
 };
 
 // Tag color presets
@@ -270,11 +270,11 @@ function getInitials(firstName: string, lastName: string): string {
 
 function getAvatarColor(name: string): string {
   const colors = [
-    "bg-[var(--crm-warning-bg)] text-[#f97316]",
-    "bg-[var(--crm-purple-bg)] text-[#a855f7]",
-    "bg-[var(--crm-info-bg)] text-[#3b82f6]",
-    "bg-[var(--crm-success-bg)] text-[#22c55e]",
-    "bg-[var(--crm-pink-bg)] text-[#ec4899]",
+    "bg-[var(--crm-warning-bg)] text-[var(--crm-accent-orange)]",
+    "bg-[var(--crm-purple-bg)] text-[var(--crm-accent-purple)]",
+    "bg-[var(--crm-info-bg)] text-[var(--crm-accent-blue)]",
+    "bg-[var(--crm-success-bg)] text-[var(--crm-accent-green)]",
+    "bg-[var(--crm-pink-bg)] text-[var(--crm-accent-pink)]",
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -353,6 +353,13 @@ export function CRMDashboard() {
     "--crm-overlay": "#000000",
     "--crm-toast-bar": "#7A5F2E",
     "--crm-credit-empty": "#2A2D33",
+    "--crm-ember-text": "#FCAE2F",
+    "--crm-accent-blue": "#58a6ff",
+    "--crm-accent-purple": "#a855f7",
+    "--crm-accent-green": "#22c55e",
+    "--crm-accent-red": "#ef4444",
+    "--crm-accent-orange": "#f97316",
+    "--crm-accent-pink": "#ec4899",
   } as React.CSSProperties : {
     "--crm-bg": "#FAFAFA",
     "--crm-card": "#ffffff",
@@ -367,26 +374,33 @@ export function CRMDashboard() {
     "--crm-focus": "#004D54",
     "--crm-row-alt": "#f5f7f8",
     "--crm-row-base": "#ffffff",
-    // Solid accent states (no transparency)
-    "--crm-ember-subtle": "#FFF5E1",
-    "--crm-ember-bg": "#FEECCC",
-    "--crm-ember-bg-hover": "#FDE3B5",
-    "--crm-ember-border": "#D4982A",
-    "--crm-ember-faint": "#FFFBF2",
-    "--crm-danger-subtle": "#FFF1F0",
-    "--crm-danger-bg": "#FFE4E1",
-    "--crm-danger-border": "#E87070",
-    "--crm-success-bg": "#ECFDF3",
-    "--crm-success-border": "#4ADE80",
-    "--crm-purple-bg": "#F3E8FF",
-    "--crm-purple-border": "#A78BFA",
-    "--crm-info-bg": "#EFF6FF",
-    "--crm-warning-bg": "#FFF7ED",
-    "--crm-pink-bg": "#FDF2F8",
-    "--crm-neutral-bg": "#F3F4F6",
+    // Solid accent states — BOLD, high contrast for light mode
+    "--crm-ember-subtle": "#FDE68A",
+    "--crm-ember-bg": "#FBBF24",
+    "--crm-ember-bg-hover": "#F59E0B",
+    "--crm-ember-border": "#D97706",
+    "--crm-ember-faint": "#FEF9C3",
+    "--crm-danger-subtle": "#FEE2E2",
+    "--crm-danger-bg": "#FECACA",
+    "--crm-danger-border": "#DC2626",
+    "--crm-success-bg": "#D1FAE5",
+    "--crm-success-border": "#16A34A",
+    "--crm-purple-bg": "#E9D5FF",
+    "--crm-purple-border": "#7C3AED",
+    "--crm-info-bg": "#DBEAFE",
+    "--crm-warning-bg": "#FED7AA",
+    "--crm-pink-bg": "#FBCFE8",
+    "--crm-neutral-bg": "#E5E7EB",
     "--crm-overlay": "#1F1F1F",
-    "--crm-toast-bar": "#D4982A",
+    "--crm-toast-bar": "#D97706",
     "--crm-credit-empty": "#D0D7DE",
+    "--crm-ember-text": "#92400E",
+    "--crm-accent-blue": "#1D4ED8",
+    "--crm-accent-purple": "#6D28D9",
+    "--crm-accent-green": "#15803D",
+    "--crm-accent-red": "#DC2626",
+    "--crm-accent-orange": "#C2410C",
+    "--crm-accent-pink": "#BE185D",
   } as React.CSSProperties;
 
   const [subscribers, setSubscribers] = useState<CRMSubscriber[]>([]);
@@ -845,7 +859,7 @@ export function CRMDashboard() {
     const days = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
     if (days < 7) return "text-aurora";
     if (days < 14) return "text-frost";
-    if (days < 30) return "text-ember";
+    if (days < 30) return "text-[var(--crm-ember-text)]";
     return "text-magma";
   };
 
@@ -915,7 +929,7 @@ export function CRMDashboard() {
           <button onClick={() => { void fetchSubscribers(); void fetchFollowUps(); }} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-text)] px-4 py-2.5 text-xs font-semibold hover:bg-[var(--crm-border)] hover:border-[var(--crm-muted)] transition" title="Odśwież dane">
             ↻ Odśwież
           </button>
-          <button onClick={exportCSV} className="rounded-lg bg-[var(--crm-ember-subtle)] border border-[var(--crm-ember-border)] text-ember px-4 py-2.5 text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition">
+          <button onClick={exportCSV} className="rounded-lg bg-[var(--crm-ember-subtle)] border border-[var(--crm-ember-border)] text-[var(--crm-ember-text)] px-4 py-2.5 text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition">
             📥 Eksport CSV
           </button>
         </div>
@@ -934,8 +948,8 @@ export function CRMDashboard() {
                   Dziś do kontaktu
                 </h2>
                 <div className="flex items-center gap-2 mt-0.5">
-                  {overdueCount > 0 && <span className="text-[#ef4444] text-xs font-semibold bg-[var(--crm-danger-bg)] px-2 py-0.5 rounded-full">{overdueCount} zaległe</span>}
-                  {todayCount > 0 && <span className="text-ember text-xs font-semibold bg-[var(--crm-ember-bg)] px-2 py-0.5 rounded-full">{todayCount} na dziś</span>}
+                  {overdueCount > 0 && <span className="text-[var(--crm-accent-red)] text-xs font-semibold bg-[var(--crm-danger-bg)] px-2 py-0.5 rounded-full">{overdueCount} zaległe</span>}
+                  {todayCount > 0 && <span className="text-[var(--crm-ember-text)] text-xs font-semibold bg-[var(--crm-ember-bg)] px-2 py-0.5 rounded-full">{todayCount} na dziś</span>}
                 </div>
               </div>
             </div>
@@ -953,26 +967,26 @@ export function CRMDashboard() {
                   <div className="min-w-0">
                     <button
                       onClick={() => openUserDetail(f.target_user_id)}
-                      className="text-[var(--crm-heading)] text-sm font-semibold hover:text-ember transition-colors cursor-pointer text-left"
+                      className="text-[var(--crm-heading)] text-sm font-semibold hover:text-[var(--crm-ember-text)] transition-colors cursor-pointer text-left"
                     >
                       {f.first_name} {f.last_name}
                     </button>
                     <div className="flex items-center gap-2 mt-0.5">
                       {f.note && <span className="text-[var(--crm-muted)] text-xs truncate max-w-[300px]">{f.note}</span>}
-                      {f.overdue && <span className="text-[#ef4444] text-[10px] font-bold uppercase bg-[var(--crm-danger-bg)] px-2 py-0.5 rounded-full">zaległe</span>}
+                      {f.overdue && <span className="text-[var(--crm-accent-red)] text-[10px] font-bold uppercase bg-[var(--crm-danger-bg)] px-2 py-0.5 rounded-full">zaległe</span>}
                     </div>
                   </div>
                 </div>
                 <div className="flex gap-2 flex-shrink-0 ml-3">
                   {f.phone && isValidPhone(f.phone) && (
-                    <a href={`tel:${normalizePhone(f.phone)}`} className="w-8 h-8 rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[#58a6ff] hover:bg-[var(--crm-border)] transition flex items-center justify-center" title="Zadzwoń">
+                    <a href={`tel:${normalizePhone(f.phone)}`} className="w-8 h-8 rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-accent-blue)] hover:bg-[var(--crm-border)] transition flex items-center justify-center" title="Zadzwoń">
                       <PhoneIcon />
                     </a>
                   )}
-                  <button onClick={() => completeFollowUp(f.id)} className="w-8 h-8 rounded-lg bg-[var(--crm-success-bg)] border border-[var(--crm-success-border)] text-[#22c55e] hover:bg-[var(--crm-success-border)] transition flex items-center justify-center text-sm font-bold" title="Oznacz jako zrobione">
+                  <button onClick={() => completeFollowUp(f.id)} className="w-8 h-8 rounded-lg bg-[var(--crm-success-bg)] border border-[var(--crm-success-border)] text-[var(--crm-accent-green)] hover:bg-[var(--crm-success-border)] transition flex items-center justify-center text-sm font-bold" title="Oznacz jako zrobione">
                     ✓
                   </button>
-                  <button onClick={() => deleteFollowUp(f.id)} className="w-8 h-8 rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-muted)] hover:text-[#ef4444] hover:bg-[var(--crm-danger-subtle)] hover:border-[var(--crm-danger-border)] transition flex items-center justify-center text-sm" title="Usuń follow-up">
+                  <button onClick={() => deleteFollowUp(f.id)} className="w-8 h-8 rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-muted)] hover:text-[var(--crm-accent-red)] hover:bg-[var(--crm-danger-subtle)] hover:border-[var(--crm-danger-border)] transition flex items-center justify-center text-sm" title="Usuń follow-up">
                     ×
                   </button>
                 </div>
@@ -1103,10 +1117,10 @@ export function CRMDashboard() {
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getTierBadge(s.plan_tier)}`}>{s.plan_display_name}</span>
+                        <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getTierBadge(s.plan_tier, isDark)}`}>{s.plan_display_name}</span>
                       </td>
                       <td className="px-4 py-3.5 text-center">
-                        <span className={`font-mono text-sm font-bold ${s.credit_alert === "critical" ? "text-[#ef4444]" : s.credit_alert === "warning" ? "text-ember" : "text-[var(--crm-text)]"}`}>
+                        <span className={`font-mono text-sm font-bold ${s.credit_alert === "critical" ? "text-[var(--crm-accent-red)]" : s.credit_alert === "warning" ? "text-[var(--crm-ember-text)]" : "text-[var(--crm-text)]"}`}>
                           {s.tokens_remaining}/{s.tokens_limit}
                         </span>
                         <div className="w-16 h-1.5 bg-[var(--crm-elevated)] rounded-full overflow-hidden mx-auto mt-1.5">
@@ -1127,7 +1141,7 @@ export function CRMDashboard() {
                         {!s.period_end || s.days_until_renewal > 365 ? (
                           <span className="text-[var(--crm-faint)] font-mono text-xs">—</span>
                         ) : (
-                          <span className={`font-mono text-xs font-semibold ${s.days_until_renewal <= 3 ? "text-[#ef4444]" : s.days_until_renewal <= 7 ? "text-ember" : "text-[var(--crm-muted)]"}`}>
+                          <span className={`font-mono text-xs font-semibold ${s.days_until_renewal <= 3 ? "text-[var(--crm-accent-red)]" : s.days_until_renewal <= 7 ? "text-[var(--crm-ember-text)]" : "text-[var(--crm-muted)]"}`}>
                             {s.days_until_renewal > 0 ? `${s.days_until_renewal}d` : "wygasł"}
                           </span>
                         )}
@@ -1186,7 +1200,7 @@ export function CRMDashboard() {
               </div>
             ) : drawerError ? (
               <div className="flex flex-col items-center justify-center h-64 gap-3">
-                <p className="text-[#ef4444] text-sm font-medium">{drawerError}</p>
+                <p className="text-[var(--crm-accent-red)] text-sm font-medium">{drawerError}</p>
                 <button onClick={closeDrawer} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] px-4 py-2 text-xs font-semibold text-[var(--crm-text)] hover:bg-[var(--crm-border)]">Zamknij</button>
               </div>
             ) : selectedUser && (
@@ -1214,10 +1228,10 @@ export function CRMDashboard() {
                     </div>
                   </div>
                   <div className="mt-4 space-y-2">
-                    <p className="text-sm text-[var(--crm-muted)]">📧 <a href={`mailto:${selectedUser.email}`} className="text-[var(--crm-text)] hover:text-ember transition">{selectedUser.email}</a></p>
+                    <p className="text-sm text-[var(--crm-muted)]">📧 <a href={`mailto:${selectedUser.email}`} className="text-[var(--crm-text)] hover:text-[var(--crm-ember-text)] transition">{selectedUser.email}</a></p>
                     {selectedUser.phone && (
                       <p className="text-sm text-[var(--crm-muted)]">
-                        📱 <a href={isValidPhone(selectedUser.phone) ? `tel:${normalizePhone(selectedUser.phone)}` : undefined} className={`${isValidPhone(selectedUser.phone) ? "text-[var(--crm-text)] hover:text-ember transition" : "text-[var(--crm-muted)]"}`}>
+                        📱 <a href={isValidPhone(selectedUser.phone) ? `tel:${normalizePhone(selectedUser.phone)}` : undefined} className={`${isValidPhone(selectedUser.phone) ? "text-[var(--crm-text)] hover:text-[var(--crm-ember-text)] transition" : "text-[var(--crm-muted)]"}`}>
                           {formatPhoneDisplay(selectedUser.phone)}
                         </a>
                       </p>
@@ -1264,7 +1278,7 @@ export function CRMDashboard() {
                         ))}
                       </div>
                     </div>
-                    <button onClick={addTag} disabled={!newTag.trim()} className="px-3 py-2 rounded-lg bg-[var(--crm-ember-bg)] border border-[var(--crm-ember-border)] text-ember text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition disabled:opacity-30">+</button>
+                    <button onClick={addTag} disabled={!newTag.trim()} className="px-3 py-2 rounded-lg bg-[var(--crm-ember-bg)] border border-[var(--crm-ember-border)] text-[var(--crm-ember-text)] text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition disabled:opacity-30">+</button>
                   </div>
                 </div>
 
@@ -1279,8 +1293,8 @@ export function CRMDashboard() {
                           <div className="flex gap-1.5">
                             {!f.completed && (
                               <>
-                                <button onClick={() => completeFollowUp(f.id)} className="text-[#22c55e] hover:text-[var(--crm-heading)] transition font-bold" title="Zakończ">✓</button>
-                                <button onClick={() => deleteFollowUp(f.id)} className="text-[var(--crm-muted)] hover:text-[#ef4444] transition" title="Usuń">×</button>
+                                <button onClick={() => completeFollowUp(f.id)} className="text-[var(--crm-accent-green)] hover:text-[var(--crm-heading)] transition font-bold" title="Zakończ">✓</button>
+                                <button onClick={() => deleteFollowUp(f.id)} className="text-[var(--crm-muted)] hover:text-[var(--crm-accent-red)] transition" title="Usuń">×</button>
                               </>
                             )}
                           </div>
@@ -1315,7 +1329,7 @@ export function CRMDashboard() {
                       {selectedUser.email_logs.map((log) => (
                         <div key={log.id} className="flex items-center justify-between rounded-lg px-3 py-2.5 bg-[var(--crm-card)] border border-[var(--crm-border)] text-xs">
                           <div className="flex items-center gap-2">
-                            <span className="text-ember">📧</span>
+                            <span className="text-[var(--crm-ember-text)]">📧</span>
                             <span className="text-[var(--crm-text)] font-medium">{log.subject}</span>
                           </div>
                           <span className="text-[var(--crm-faint)] text-[10px]">{new Date(log.sent_at).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}</span>
@@ -1336,7 +1350,7 @@ export function CRMDashboard() {
                       rows={2}
                       className="flex-1 rounded-lg bg-[var(--crm-surface)] border border-[var(--crm-border)] px-3 py-2.5 text-[var(--crm-text)] text-xs resize-none focus:outline-none focus:border-[var(--crm-focus)] transition"
                     />
-                    <button onClick={addNote} disabled={!newNote.trim() || noteSaving} className="px-4 rounded-lg bg-[var(--crm-ember-bg)] border border-[var(--crm-ember-border)] text-ember text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition disabled:opacity-40 self-end">
+                    <button onClick={addNote} disabled={!newNote.trim() || noteSaving} className="px-4 rounded-lg bg-[var(--crm-ember-bg)] border border-[var(--crm-ember-border)] text-[var(--crm-ember-text)] text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition disabled:opacity-40 self-end">
                       {noteSaving ? "..." : "📝"}
                     </button>
                   </div>
@@ -1360,7 +1374,7 @@ export function CRMDashboard() {
                         onConfirm: () => { excludeUser(selectedUser.user_id); setConfirmAction(null); },
                       });
                     }}
-                    className="w-full rounded-lg bg-[var(--crm-danger-subtle)] border border-[var(--crm-danger-border)] px-3 py-2.5 text-[#ef4444] text-xs font-semibold uppercase tracking-wider hover:bg-[var(--crm-danger-bg)] transition"
+                    className="w-full rounded-lg bg-[var(--crm-danger-subtle)] border border-[var(--crm-danger-border)] px-3 py-2.5 text-[var(--crm-accent-red)] text-xs font-semibold uppercase tracking-wider hover:bg-[var(--crm-danger-bg)] transition"
                   >
                     🚫 Wyklucz z CRM
                   </button>
@@ -1412,8 +1426,8 @@ export function CRMDashboard() {
       {/* ── Bulk Actions Bar ─────────────────────────────── */}
       {selected.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[var(--crm-card)] border border-[var(--crm-ember-border)] rounded-xl px-6 py-3.5 shadow-2xl flex items-center gap-4 animate-[slideUp_0.2s_ease-out]">
-          <span className="text-xs text-[var(--crm-text)] font-medium">Zaznaczono: <span className="text-ember font-bold">{selected.size}</span></span>
-          <button onClick={bulkEmail} className="rounded-lg bg-[var(--crm-ember-bg)] border border-[var(--crm-ember-border)] text-ember px-3.5 py-2 text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition">📧 Email</button>
+          <span className="text-xs text-[var(--crm-text)] font-medium">Zaznaczono: <span className="text-[var(--crm-ember-text)] font-bold">{selected.size}</span></span>
+          <button onClick={bulkEmail} className="rounded-lg bg-[var(--crm-ember-bg)] border border-[var(--crm-ember-border)] text-[var(--crm-ember-text)] px-3.5 py-2 text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition">📧 Email</button>
           <button onClick={bulkRemind} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-text)] px-3.5 py-2 text-xs font-semibold hover:bg-[var(--crm-border)] transition">🔔 Przypomnij</button>
           <button onClick={() => setSelected(new Set())} className="text-[var(--crm-muted)] hover:text-[var(--crm-heading)] transition text-xs font-semibold">✕ Odznacz</button>
         </div>
@@ -1496,14 +1510,26 @@ function QuickDateBtn({ label, onClick, active }: { label: string; onClick: () =
   );
 }
 
-function getTierBadge(tier: string): string {
+function getTierBadge(tier: string, isDark: boolean): string {
+  if (!isDark) {
+    // Light mode: SOLID full-color backgrounds, maximum contrast text
+    switch (tier) {
+      case "BETA": return "bg-[#7C3AED] text-white border border-[#7C3AED]";
+      case "TRIAL": return "bg-[#6B7280] text-white border border-[#6B7280]";
+      case "SOLO": return "bg-ember text-[#1F1F1F] border border-ember";
+      case "PRO": return "bg-[#DC2626] text-white border border-[#DC2626]";
+      case "CLINIC": return "bg-[#1F2937] text-white border border-[#1F2937]";
+      default: return "bg-[var(--crm-elevated)] text-[var(--crm-heading)] border border-[var(--crm-border)]";
+    }
+  }
+  // Dark mode: subtle tinted backgrounds
   switch (tier) {
-    case "BETA": return "bg-[var(--crm-purple-bg)] text-[#a855f7] border border-[var(--crm-purple-border)]";
+    case "BETA": return "bg-[var(--crm-purple-bg)] text-[var(--crm-accent-purple)] border border-[var(--crm-purple-border)]";
     case "TRIAL": return "bg-[var(--crm-neutral-bg)] text-[var(--crm-muted)] border border-[var(--crm-muted)]";
-    case "SOLO": return "bg-[var(--crm-ember-bg)] text-ember border border-[var(--crm-ember-border)]";
-    case "PRO": return "bg-[var(--crm-danger-bg)] text-[#ef4444] border border-[var(--crm-danger-border)]";
-    case "CLINIC": return "bg-[var(--crm-neutral-bg)] text-[var(--crm-text)] border border-[#c9d1d9]/25";
-    default: return "bg-[#30363d] text-[var(--crm-muted)] border border-[var(--crm-border)]";
+    case "SOLO": return "bg-[var(--crm-ember-bg)] text-[var(--crm-ember-text)] border border-[var(--crm-ember-border)]";
+    case "PRO": return "bg-[var(--crm-danger-bg)] text-[var(--crm-accent-red)] border border-[var(--crm-danger-border)]";
+    case "CLINIC": return "bg-[var(--crm-neutral-bg)] text-[var(--crm-text)] border border-[var(--crm-border)]";
+    default: return "bg-[var(--crm-elevated)] text-[var(--crm-muted)] border border-[var(--crm-border)]";
   }
 }
 
