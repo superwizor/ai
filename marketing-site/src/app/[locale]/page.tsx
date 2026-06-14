@@ -13,7 +13,7 @@ import { BrandStatement } from "@/components/marketing/BrandStatement";
 import { Problem } from "@/components/marketing/Problem";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 // import { Differentiator } from "@/components/marketing/Differentiator";
-import { Features } from "@/components/marketing/Features";
+import { DeferredFeatures } from "@/components/marketing/DeferredFeatures";
 // import { ScreenshotGallery } from "@/components/marketing/ScreenshotGallery";
 import { Security } from "@/components/marketing/Security";
 // CtaMid removed — not currently used in the landing page layout.
@@ -126,8 +126,10 @@ export default async function Home({
         <ScrollEffects />
         {/* DARK */}
         <Hero />
-        {/* LIGHT */}
-        <Features />
+        {/* LIGHT — Features is deferred (205KB client component).
+           HTML is pre-rendered at build time; JS hydration is deferred
+           until the user scrolls near for ~200ms TBT savings. */}
+        <DeferredFeatures />
         {/* DARK — AI Security */}
         <AiSecurityBand />
         {/* LIGHT */}

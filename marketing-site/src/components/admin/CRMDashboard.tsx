@@ -126,8 +126,8 @@ const STATUS_OPTIONS = [
 
 const ALERT_OPTIONS = [
   { value: "", label: "Wszystkie alerty" },
-  { value: "critical", label: "🔴 Krytyczne (≤1)" },
-  { value: "warning", label: "🟡 Ostrzeżenie (≤3)" },
+  { value: "critical", label: "🔴 Krytyczne (1 lub mniej)" },
+  { value: "warning", label: "🟡 Ostrzeżenie (3 lub mniej)" },
 ];
 
 const EMAIL_TEMPLATES = [
@@ -199,13 +199,13 @@ Marcin — zespół SuperWizor AI`,
 ];
 
 const LIFECYCLE_LABELS: Record<string, { label: string; color: string; emoji: string }> = {
-  new: { label: "Nowy", color: "text-[#58a6ff] bg-[#58a6ff]/10", emoji: "🆕" },
-  onboarding: { label: "Onboarding", color: "text-ember bg-ember/10", emoji: "📋" },
-  first_session: { label: "Pierwsza sesja", color: "text-[#a855f7] bg-[#a855f7]/10", emoji: "🎯" },
-  active: { label: "Aktywny", color: "text-[#22c55e] bg-[#22c55e]/10", emoji: "✅" },
-  power_user: { label: "Power User", color: "text-ember bg-ember/10", emoji: "⚡" },
-  at_risk: { label: "Zagrożony", color: "text-[#ef4444] bg-[#ef4444]/10", emoji: "⚠️" },
-  churned: { label: "Odszedł", color: "text-[#6b7280] bg-[#6b7280]/10", emoji: "❌" },
+  new: { label: "Nowy", color: "text-[#58a6ff] bg-[var(--crm-info-bg)]", emoji: "🆕" },
+  onboarding: { label: "Onboarding", color: "text-ember bg-[var(--crm-ember-subtle)]", emoji: "📋" },
+  first_session: { label: "Pierwsza sesja", color: "text-[#a855f7] bg-[var(--crm-purple-bg)]", emoji: "🎯" },
+  active: { label: "Aktywny", color: "text-[#22c55e] bg-[var(--crm-success-bg)]", emoji: "✅" },
+  power_user: { label: "Power User", color: "text-ember bg-[var(--crm-ember-subtle)]", emoji: "⚡" },
+  at_risk: { label: "Zagrożony", color: "text-[#ef4444] bg-[var(--crm-danger-subtle)]", emoji: "⚠️" },
+  churned: { label: "Odszedł", color: "text-[#6b7280] bg-[var(--crm-neutral-bg)]", emoji: "❌" },
 };
 
 // Tag color presets
@@ -255,6 +255,14 @@ function formatPhoneDisplay(phone: string): string {
   return normalized;
 }
 
+// Solid color tint — mixes foreground hex with background hex at given ratio (0-1). No transparency.
+function solidTint(fgHex: string, bgHex: string, ratio: number): string {
+  const p = (h: string, o: number) => parseInt(h.slice(o, o + 2), 16);
+  const mix = (a: number, b: number) => Math.round(b + (a - b) * ratio);
+  const r = mix(p(fgHex, 1), p(bgHex, 1)), g = mix(p(fgHex, 3), p(bgHex, 3)), b = mix(p(fgHex, 5), p(bgHex, 5));
+  return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;
+}
+
 // Avatar initials
 function getInitials(firstName: string, lastName: string): string {
   return ((firstName?.[0] || "") + (lastName?.[0] || "")).toUpperCase() || "?";
@@ -262,11 +270,11 @@ function getInitials(firstName: string, lastName: string): string {
 
 function getAvatarColor(name: string): string {
   const colors = [
-    "bg-[#f97316]/20 text-[#f97316]",
-    "bg-[#a855f7]/20 text-[#a855f7]",
-    "bg-[#3b82f6]/20 text-[#3b82f6]",
-    "bg-[#22c55e]/20 text-[#22c55e]",
-    "bg-[#ec4899]/20 text-[#ec4899]",
+    "bg-[var(--crm-warning-bg)] text-[#f97316]",
+    "bg-[var(--crm-purple-bg)] text-[#a855f7]",
+    "bg-[var(--crm-info-bg)] text-[#3b82f6]",
+    "bg-[var(--crm-success-bg)] text-[#22c55e]",
+    "bg-[var(--crm-pink-bg)] text-[#ec4899]",
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -325,6 +333,26 @@ export function CRMDashboard() {
     "--crm-focus": "#58a6ff",
     "--crm-row-alt": "#0d1117",
     "--crm-row-base": "#010409",
+    // Solid accent states (no transparency)
+    "--crm-ember-subtle": "#2B2210",
+    "--crm-ember-bg": "#3D3117",
+    "--crm-ember-bg-hover": "#4A3B1C",
+    "--crm-ember-border": "#7A5F2E",
+    "--crm-ember-faint": "#1E1C15",
+    "--crm-danger-subtle": "#2D161A",
+    "--crm-danger-bg": "#381C21",
+    "--crm-danger-border": "#7D3333",
+    "--crm-success-bg": "#162E1F",
+    "--crm-success-border": "#256B3F",
+    "--crm-purple-bg": "#241C38",
+    "--crm-purple-border": "#4C3278",
+    "--crm-info-bg": "#1A2740",
+    "--crm-warning-bg": "#2D2013",
+    "--crm-pink-bg": "#2D1525",
+    "--crm-neutral-bg": "#252830",
+    "--crm-overlay": "#000000",
+    "--crm-toast-bar": "#7A5F2E",
+    "--crm-credit-empty": "#2A2D33",
   } as React.CSSProperties : {
     "--crm-bg": "#FAFAFA",
     "--crm-card": "#ffffff",
@@ -335,10 +363,30 @@ export function CRMDashboard() {
     "--crm-text": "#1F2937",
     "--crm-heading": "#1F1F1F",
     "--crm-muted": "#57606a",
-    "--crm-faint": "#8b949e",
+    "--crm-faint": "#6b7280",
     "--crm-focus": "#004D54",
     "--crm-row-alt": "#f5f7f8",
     "--crm-row-base": "#ffffff",
+    // Solid accent states (no transparency)
+    "--crm-ember-subtle": "#FFF5E1",
+    "--crm-ember-bg": "#FEECCC",
+    "--crm-ember-bg-hover": "#FDE3B5",
+    "--crm-ember-border": "#D4982A",
+    "--crm-ember-faint": "#FFFBF2",
+    "--crm-danger-subtle": "#FFF1F0",
+    "--crm-danger-bg": "#FFE4E1",
+    "--crm-danger-border": "#E87070",
+    "--crm-success-bg": "#ECFDF3",
+    "--crm-success-border": "#4ADE80",
+    "--crm-purple-bg": "#F3E8FF",
+    "--crm-purple-border": "#A78BFA",
+    "--crm-info-bg": "#EFF6FF",
+    "--crm-warning-bg": "#FFF7ED",
+    "--crm-pink-bg": "#FDF2F8",
+    "--crm-neutral-bg": "#F3F4F6",
+    "--crm-overlay": "#1F1F1F",
+    "--crm-toast-bar": "#D4982A",
+    "--crm-credit-empty": "#D0D7DE",
   } as React.CSSProperties;
 
   const [subscribers, setSubscribers] = useState<CRMSubscriber[]>([]);
@@ -803,7 +851,7 @@ export function CRMDashboard() {
 
   // P3.9 fix: credit bar shows % REMAINING (not % used)
   const getCreditBarInfo = (remaining: number, limit: number) => {
-    if (limit === 0) return { pct: 0, color: "bg-mist/30" };
+    if (limit === 0) return { pct: 0, color: "bg-[var(--crm-credit-empty)]" };
     const pct = (remaining / limit) * 100;
     if (pct <= 10) return { pct, color: "bg-magma" };
     if (pct <= 30) return { pct, color: "bg-ember" };
@@ -867,7 +915,7 @@ export function CRMDashboard() {
           <button onClick={() => { void fetchSubscribers(); void fetchFollowUps(); }} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-text)] px-4 py-2.5 text-xs font-semibold hover:bg-[var(--crm-border)] hover:border-[var(--crm-muted)] transition" title="Odśwież dane">
             ↻ Odśwież
           </button>
-          <button onClick={exportCSV} className="rounded-lg bg-ember/10 border border-ember/30 text-ember px-4 py-2.5 text-xs font-semibold hover:bg-ember/20 transition">
+          <button onClick={exportCSV} className="rounded-lg bg-[var(--crm-ember-subtle)] border border-[var(--crm-ember-border)] text-ember px-4 py-2.5 text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition">
             📥 Eksport CSV
           </button>
         </div>
@@ -878,7 +926,7 @@ export function CRMDashboard() {
         <div className="mb-8 rounded-xl bg-[var(--crm-card)] border border-[var(--crm-border)] p-5 sm:p-6">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-ember/15 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-[var(--crm-ember-bg)] flex items-center justify-center">
                 <span className="text-xl">📋</span>
               </div>
               <div>
@@ -886,15 +934,15 @@ export function CRMDashboard() {
                   Dziś do kontaktu
                 </h2>
                 <div className="flex items-center gap-2 mt-0.5">
-                  {overdueCount > 0 && <span className="text-[#ef4444] text-xs font-semibold bg-[#ef4444]/15 px-2 py-0.5 rounded-full">{overdueCount} zaległe</span>}
-                  {todayCount > 0 && <span className="text-ember text-xs font-semibold bg-ember/15 px-2 py-0.5 rounded-full">{todayCount} na dziś</span>}
+                  {overdueCount > 0 && <span className="text-[#ef4444] text-xs font-semibold bg-[var(--crm-danger-bg)] px-2 py-0.5 rounded-full">{overdueCount} zaległe</span>}
+                  {todayCount > 0 && <span className="text-ember text-xs font-semibold bg-[var(--crm-ember-bg)] px-2 py-0.5 rounded-full">{todayCount} na dziś</span>}
                 </div>
               </div>
             </div>
           </div>
           <div className="grid gap-2.5">
             {priorityItems.map((f) => (
-              <div key={f.id} className={`flex items-center justify-between rounded-lg px-4 py-3.5 transition-all duration-200 hover:brightness-110 ${f.overdue ? "bg-[#ef4444]/8 border border-[#ef4444]/20" : "bg-ember/5 border border-ember/15"}`}>
+              <div key={f.id} className={`flex items-center justify-between rounded-lg px-4 py-3.5 transition-all duration-200 hover:brightness-110 ${f.overdue ? "bg-[var(--crm-danger-subtle)] border border-[var(--crm-danger-border)]" : "bg-[var(--crm-ember-subtle)] border border-[var(--crm-ember-border)]"}`}>
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <button
                     onClick={() => openUserDetail(f.target_user_id)}
@@ -911,7 +959,7 @@ export function CRMDashboard() {
                     </button>
                     <div className="flex items-center gap-2 mt-0.5">
                       {f.note && <span className="text-[var(--crm-muted)] text-xs truncate max-w-[300px]">{f.note}</span>}
-                      {f.overdue && <span className="text-[#ef4444] text-[10px] font-bold uppercase bg-[#ef4444]/15 px-2 py-0.5 rounded-full">zaległe</span>}
+                      {f.overdue && <span className="text-[#ef4444] text-[10px] font-bold uppercase bg-[var(--crm-danger-bg)] px-2 py-0.5 rounded-full">zaległe</span>}
                     </div>
                   </div>
                 </div>
@@ -921,10 +969,10 @@ export function CRMDashboard() {
                       <PhoneIcon />
                     </a>
                   )}
-                  <button onClick={() => completeFollowUp(f.id)} className="w-8 h-8 rounded-lg bg-[#22c55e]/15 border border-[#22c55e]/25 text-[#22c55e] hover:bg-[#22c55e]/25 transition flex items-center justify-center text-sm font-bold" title="Oznacz jako zrobione">
+                  <button onClick={() => completeFollowUp(f.id)} className="w-8 h-8 rounded-lg bg-[var(--crm-success-bg)] border border-[var(--crm-success-border)] text-[#22c55e] hover:bg-[var(--crm-success-border)] transition flex items-center justify-center text-sm font-bold" title="Oznacz jako zrobione">
                     ✓
                   </button>
-                  <button onClick={() => deleteFollowUp(f.id)} className="w-8 h-8 rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-muted)] hover:text-[#ef4444] hover:bg-[#ef4444]/10 hover:border-[#ef4444]/25 transition flex items-center justify-center text-sm" title="Usuń follow-up">
+                  <button onClick={() => deleteFollowUp(f.id)} className="w-8 h-8 rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-muted)] hover:text-[#ef4444] hover:bg-[var(--crm-danger-subtle)] hover:border-[var(--crm-danger-border)] transition flex items-center justify-center text-sm" title="Usuń follow-up">
                     ×
                   </button>
                 </div>
@@ -971,7 +1019,7 @@ export function CRMDashboard() {
       {/* ── Table ─────────────────────────────────────────── */}
       {loading && <TableSkeleton columns={7} />}
       {error && (
-        <div className="rounded-xl border border-[#ef4444]/40 bg-[#ef4444]/10 px-6 py-8 text-center">
+        <div className="rounded-xl border border-[var(--crm-danger-border)] bg-[var(--crm-danger-subtle)] px-6 py-8 text-center">
           <p className="text-[var(--crm-text)] text-sm font-medium">{error}</p>
           <button onClick={() => void fetchSubscribers()} className="mt-4 inline-flex items-center rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] px-5 py-2.5 text-xs font-semibold text-[var(--crm-text)] hover:bg-[var(--crm-border)] transition">Ponów</button>
         </div>
@@ -1033,7 +1081,7 @@ export function CRMDashboard() {
                     <tr
                       key={s.subscription_id}
                       onClick={() => openUserDetail(s.user_id)}
-                      className={`border-t border-[var(--crm-border-subtle)] hover:bg-[var(--crm-card)] transition-colors cursor-pointer ${selected.has(s.user_id) ? "bg-ember/[0.06]" : idx % 2 === 1 ? "bg-[var(--crm-surface)]" : "bg-[var(--crm-bg)]"}`}
+                      className={`border-t border-[var(--crm-border-subtle)] hover:bg-[var(--crm-card)] transition-colors cursor-pointer ${selected.has(s.user_id) ? "bg-[var(--crm-ember-faint)]" : idx % 2 === 1 ? "bg-[var(--crm-surface)]" : "bg-[var(--crm-bg)]"}`}
                     >
                       <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <input
@@ -1085,9 +1133,9 @@ export function CRMDashboard() {
                         )}
                       </td>
                       <td className="px-4 py-3.5 text-center">
-                        {s.credit_alert === "critical" && <AlertPill color="#ef4444" text="≤1" />}
-                        {s.credit_alert === "warning" && <AlertPill color="#f97316" text="≤3" />}
-                        {s.expiry_alert === "imminent" && <AlertPill color="#ef4444" text="≤3d" />}
+                        {s.credit_alert === "critical" && <AlertPill color="#ef4444" label="1 kredyt" bgVar="--crm-danger-subtle" />}
+                        {s.credit_alert === "warning" && <AlertPill color="#f97316" label="3 kredyty" bgVar="--crm-warning-bg" />}
+                        {s.expiry_alert === "imminent" && <AlertPill color="#ef4444" label="3 dni" bgVar="--crm-danger-subtle" />}
                         {!s.credit_alert && !s.expiry_alert && <span className="text-[var(--crm-faint)] text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
@@ -1130,7 +1178,7 @@ export function CRMDashboard() {
       {/* ── Detail Drawer ─────────────────────────────────── */}
       {drawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/60" onClick={closeDrawer} />
+          <div className="absolute inset-0 bg-[var(--crm-overlay)]" onClick={closeDrawer} />
           <div className={`relative w-full max-w-lg bg-[var(--crm-surface)] border-l border-[var(--crm-border)] overflow-y-auto shadow-2xl transition-transform duration-300 ${drawerOpen ? "translate-x-0" : "translate-x-full"}`}>
             {drawerLoading ? (
               <div className="flex items-center justify-center h-64">
@@ -1188,13 +1236,17 @@ export function CRMDashboard() {
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--crm-muted)] mb-3">Tagi</h3>
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    {selectedUser.tags.map((tag) => (
-                      <span key={tag.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium" style={{ borderColor: getTagColor(tag.color) + "40", backgroundColor: getTagColor(tag.color) + "15", color: getTagColor(tag.color) }}>
-                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getTagColor(tag.color) }} />
-                        {tag.tag}
-                        <button onClick={() => removeTag(tag.id)} className="hover:brightness-150 transition ml-0.5 opacity-70 hover:opacity-100">×</button>
-                      </span>
-                    ))}
+                    {selectedUser.tags.map((tag) => {
+                      const hex = getTagColor(tag.color);
+                      const surfaceBg = isDark ? "#0d1117" : "#ffffff";
+                      return (
+                        <span key={tag.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium" style={{ borderColor: solidTint(hex, surfaceBg, 0.3), backgroundColor: solidTint(hex, surfaceBg, 0.12), color: hex }}>
+                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
+                          {tag.tag}
+                          <button onClick={() => removeTag(tag.id)} className="hover:brightness-150 transition ml-0.5 opacity-70 hover:opacity-100">×</button>
+                        </span>
+                      );
+                    })}
                     {selectedUser.tags.length === 0 && <p className="text-[var(--crm-faint)] text-xs">Brak tagów</p>}
                   </div>
                   <div className="flex gap-2 items-end">
@@ -1208,11 +1260,11 @@ export function CRMDashboard() {
                       />
                       <div className="flex gap-1 mt-1.5">
                         {TAG_COLORS.map((c) => (
-                          <button key={c.name} onClick={() => setNewTagColor(c.name)} className={`w-4 h-4 rounded-full transition-all ${newTagColor === c.name ? "ring-2 ring-offset-1 ring-offset-[var(--crm-surface)] ring-white/50" : "opacity-50 hover:opacity-100"}`} style={{ backgroundColor: c.hex }} title={c.name} />
+                          <button key={c.name} onClick={() => setNewTagColor(c.name)} className={`w-4 h-4 rounded-full transition-all ${newTagColor === c.name ? "ring-2 ring-offset-1 ring-offset-[var(--crm-surface)] ring-[var(--crm-muted)]" : "opacity-50 hover:opacity-100"}`} style={{ backgroundColor: c.hex }} title={c.name} />
                         ))}
                       </div>
                     </div>
-                    <button onClick={addTag} disabled={!newTag.trim()} className="px-3 py-2 rounded-lg bg-ember/15 border border-ember/30 text-ember text-xs font-semibold hover:bg-ember/25 transition disabled:opacity-30">+</button>
+                    <button onClick={addTag} disabled={!newTag.trim()} className="px-3 py-2 rounded-lg bg-[var(--crm-ember-bg)] border border-[var(--crm-ember-border)] text-ember text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition disabled:opacity-30">+</button>
                   </div>
                 </div>
 
@@ -1222,7 +1274,7 @@ export function CRMDashboard() {
                   {selectedUser.follow_ups.length > 0 ? (
                     <div className="space-y-2 mb-3">
                       {selectedUser.follow_ups.map((f) => (
-                        <div key={f.id} className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-xs ${f.completed ? "bg-[var(--crm-elevated)]/50 text-[var(--crm-faint)] line-through" : f.overdue ? "bg-[#ef4444]/8 border border-[#ef4444]/20 text-[var(--crm-text)]" : "bg-[var(--crm-card)] border border-[var(--crm-border)] text-[var(--crm-text)]"}`}>
+                        <div key={f.id} className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-xs ${f.completed ? "bg-[var(--crm-elevated)]/50 text-[var(--crm-faint)] line-through" : f.overdue ? "bg-[var(--crm-danger-subtle)] border border-[var(--crm-danger-border)] text-[var(--crm-text)]" : "bg-[var(--crm-card)] border border-[var(--crm-border)] text-[var(--crm-text)]"}`}>
                           <span className="font-mono">{f.due_date} {f.note && `— ${f.note}`}</span>
                           <div className="flex gap-1.5">
                             {!f.completed && (
@@ -1284,7 +1336,7 @@ export function CRMDashboard() {
                       rows={2}
                       className="flex-1 rounded-lg bg-[var(--crm-surface)] border border-[var(--crm-border)] px-3 py-2.5 text-[var(--crm-text)] text-xs resize-none focus:outline-none focus:border-[var(--crm-focus)] transition"
                     />
-                    <button onClick={addNote} disabled={!newNote.trim() || noteSaving} className="px-4 rounded-lg bg-ember/15 border border-ember/30 text-ember text-xs font-semibold hover:bg-ember/25 transition disabled:opacity-40 self-end">
+                    <button onClick={addNote} disabled={!newNote.trim() || noteSaving} className="px-4 rounded-lg bg-[var(--crm-ember-bg)] border border-[var(--crm-ember-border)] text-ember text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition disabled:opacity-40 self-end">
                       {noteSaving ? "..." : "📝"}
                     </button>
                   </div>
@@ -1308,7 +1360,7 @@ export function CRMDashboard() {
                         onConfirm: () => { excludeUser(selectedUser.user_id); setConfirmAction(null); },
                       });
                     }}
-                    className="w-full rounded-lg bg-[#ef4444]/8 border border-[#ef4444]/25 px-3 py-2.5 text-[#ef4444] text-xs font-semibold uppercase tracking-wider hover:bg-[#ef4444]/15 transition"
+                    className="w-full rounded-lg bg-[var(--crm-danger-subtle)] border border-[var(--crm-danger-border)] px-3 py-2.5 text-[#ef4444] text-xs font-semibold uppercase tracking-wider hover:bg-[var(--crm-danger-bg)] transition"
                   >
                     🚫 Wyklucz z CRM
                   </button>
@@ -1321,7 +1373,7 @@ export function CRMDashboard() {
 
       {/* ── Email Composer Modal ──────────────────────────── */}
       {emailTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--crm-overlay)]">
           <div className="bg-[var(--crm-card)] border border-[var(--crm-border)] rounded-xl p-6 w-full max-w-lg mx-4 shadow-2xl">
             <h3 className="text-[var(--crm-heading)] text-lg font-bold mb-1">✉️ Email do {emailTarget.name}</h3>
             <p className="text-[var(--crm-muted)] text-xs mb-0.5">{emailTarget.email}</p>
@@ -1338,7 +1390,7 @@ export function CRMDashboard() {
 
       {/* ── Follow-up Modal ───────────────────────────────── */}
       {followUpTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--crm-overlay)]">
           <div className="bg-[var(--crm-card)] border border-[var(--crm-border)] rounded-xl p-6 w-full max-w-sm mx-4 shadow-2xl">
             <h3 className="text-[var(--crm-heading)] text-lg font-bold mb-4">🔔 Zaplanuj follow-up</h3>
             <div className="flex flex-wrap gap-2 mb-4">
@@ -1359,9 +1411,9 @@ export function CRMDashboard() {
 
       {/* ── Bulk Actions Bar ─────────────────────────────── */}
       {selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[var(--crm-card)] border border-ember/30 rounded-xl px-6 py-3.5 shadow-2xl flex items-center gap-4 animate-[slideUp_0.2s_ease-out]">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[var(--crm-card)] border border-[var(--crm-ember-border)] rounded-xl px-6 py-3.5 shadow-2xl flex items-center gap-4 animate-[slideUp_0.2s_ease-out]">
           <span className="text-xs text-[var(--crm-text)] font-medium">Zaznaczono: <span className="text-ember font-bold">{selected.size}</span></span>
-          <button onClick={bulkEmail} className="rounded-lg bg-ember/15 border border-ember/30 text-ember px-3.5 py-2 text-xs font-semibold hover:bg-ember/25 transition">📧 Email</button>
+          <button onClick={bulkEmail} className="rounded-lg bg-[var(--crm-ember-bg)] border border-[var(--crm-ember-border)] text-ember px-3.5 py-2 text-xs font-semibold hover:bg-[var(--crm-ember-bg-hover)] transition">📧 Email</button>
           <button onClick={bulkRemind} className="rounded-lg bg-[var(--crm-elevated)] border border-[var(--crm-border)] text-[var(--crm-text)] px-3.5 py-2 text-xs font-semibold hover:bg-[var(--crm-border)] transition">🔔 Przypomnij</button>
           <button onClick={() => setSelected(new Set())} className="text-[var(--crm-muted)] hover:text-[var(--crm-heading)] transition text-xs font-semibold">✕ Odznacz</button>
         </div>
@@ -1369,7 +1421,7 @@ export function CRMDashboard() {
 
       {/* ── Confirmation Modal ───────────────────────────── */}
       {confirmAction && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--crm-overlay)]">
           <div className="bg-[var(--crm-card)] border border-[var(--crm-border)] rounded-xl p-6 w-full max-w-sm mx-4 shadow-2xl">
             <p className="text-[var(--crm-text)] text-sm mb-6">{confirmAction.message}</p>
             <div className="flex justify-end gap-3">
@@ -1384,7 +1436,7 @@ export function CRMDashboard() {
       {toast && (
         <div className="fixed top-6 right-6 z-[70] bg-[var(--crm-card)] border border-[var(--crm-border)] rounded-xl px-5 py-3.5 shadow-2xl animate-[slideIn_0.3s_ease-out]">
           <p className="text-[var(--crm-text)] text-sm font-medium">{toast}</p>
-          <div className="h-0.5 bg-ember/30 rounded-full mt-2.5 animate-[shrink_3.5s_linear_forwards]" />
+          <div className="h-0.5 bg-[var(--crm-toast-bar)] rounded-full mt-2.5 animate-[shrink_3.5s_linear_forwards]" />
         </div>
       )}
 
@@ -1417,8 +1469,8 @@ function FilterSelect({ value, onChange, options }: { value: string; onChange: (
   );
 }
 
-function AlertPill({ color, text }: { color: string; text: string }) {
-  return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase" style={{ backgroundColor: color + "20", color }}>{text}</span>;
+function AlertPill({ color, label, bgVar }: { color: string; label: string; bgVar: string }) {
+  return <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase" style={{ backgroundColor: `var(${bgVar})`, color }}>{label}</span>;
 }
 
 function ActionBtn({ children, onClick, href, title, color }: { children: React.ReactNode; onClick?: () => void; href?: string; title: string; color: string }) {
@@ -1446,11 +1498,11 @@ function QuickDateBtn({ label, onClick, active }: { label: string; onClick: () =
 
 function getTierBadge(tier: string): string {
   switch (tier) {
-    case "BETA": return "bg-[#a855f7]/15 text-[#a855f7] border border-[#a855f7]/25";
-    case "TRIAL": return "bg-[#8b949e]/15 text-[var(--crm-muted)] border border-[#8b949e]/25";
-    case "SOLO": return "bg-ember/15 text-ember border border-ember/25";
-    case "PRO": return "bg-[#ef4444]/15 text-[#ef4444] border border-[#ef4444]/25";
-    case "CLINIC": return "bg-[#c9d1d9]/15 text-[var(--crm-text)] border border-[#c9d1d9]/25";
+    case "BETA": return "bg-[var(--crm-purple-bg)] text-[#a855f7] border border-[var(--crm-purple-border)]";
+    case "TRIAL": return "bg-[var(--crm-neutral-bg)] text-[var(--crm-muted)] border border-[var(--crm-muted)]";
+    case "SOLO": return "bg-[var(--crm-ember-bg)] text-ember border border-[var(--crm-ember-border)]";
+    case "PRO": return "bg-[var(--crm-danger-bg)] text-[#ef4444] border border-[var(--crm-danger-border)]";
+    case "CLINIC": return "bg-[var(--crm-neutral-bg)] text-[var(--crm-text)] border border-[#c9d1d9]/25";
     default: return "bg-[#30363d] text-[var(--crm-muted)] border border-[var(--crm-border)]";
   }
 }
