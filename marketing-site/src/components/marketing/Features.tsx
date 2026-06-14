@@ -28,10 +28,10 @@ const FEATURE_ICONS: Record<FeatureKey, React.ReactNode> = {
   ),
   continuity: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-      <circle cx="4" cy="12" r="2.5" />
-      <circle cx="12" cy="12" r="2.5" />
-      <circle cx="20" cy="12" r="2.5" />
-      <path d="M4 12c2-5 6-5 8 0s6 5 8 0" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="12" cy="12" r="3" />
+      <circle cx="18" cy="12" r="3" />
+      <path d="M3 12c2.5-5.5 6.5-5.5 9 0s6.5 5.5 9 0" />
     </svg>
   ),
   modality: (
