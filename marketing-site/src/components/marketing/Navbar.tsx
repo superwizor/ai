@@ -81,8 +81,11 @@ export function Navbar({ variant = "marketing" }: { variant?: NavbarVariant }) {
               <span className="bg-gradient-to-b from-[#1B2522] to-[#1B2522]/60 bg-clip-text text-transparent font-semibold">
                 Superwizor
               </span>
-              <span className="bg-[#004D54] text-white text-[9px] sm:text-[10px] md:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-[4px] shadow-sm tracking-widest leading-none transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,77,84,0.35)] group-hover:brightness-110 uppercase">
-                AI
+              <span className="bg-[#004D54] text-white text-[9px] sm:text-[10px] md:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-[4px] shadow-sm tracking-widest leading-none transition-all duration-300 group-hover:shadow-[0_2px_8px_rgba(0,77,84,0.35)] group-hover:brightness-110 uppercase flex items-center gap-1">
+                <span>AI</span>
+                <svg className="w-2.5 h-2.5 text-[#fcae2f] fill-current shrink-0" viewBox="0 0 24 24">
+                  <path d="M12 2 L14.8 9.2 L22 12 L14.8 14.8 L12 22 L9.2 14.8 L2 12 L9.2 9.2 Z" />
+                </svg>
               </span>
             </span>
           </a>
@@ -92,8 +95,11 @@ export function Navbar({ variant = "marketing" }: { variant?: NavbarVariant }) {
               <span className="bg-gradient-to-b from-[#1B2522] to-[#1B2522]/60 bg-clip-text text-transparent font-semibold">
                 Superwizor
               </span>
-              <span className="bg-[#004D54] text-white text-[9px] sm:text-[10px] md:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-[4px] shadow-sm tracking-widest leading-none uppercase">
-                AI
+              <span className="bg-[#004D54] text-white text-[9px] sm:text-[10px] md:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-[4px] shadow-sm tracking-widest leading-none uppercase flex items-center gap-1">
+                <span>AI</span>
+                <svg className="w-2.5 h-2.5 text-[#fcae2f] fill-current shrink-0" viewBox="0 0 24 24">
+                  <path d="M12 2 L14.8 9.2 L22 12 L14.8 14.8 L12 22 L9.2 14.8 L2 12 L9.2 9.2 Z" />
+                </svg>
               </span>
             </span>
           </span>
