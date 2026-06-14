@@ -28,13 +28,18 @@ const FEATURE_ICONS: Record<FeatureKey, React.ReactNode> = {
   ),
   continuity: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-      <path d="M5 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-      <path d="M19 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-      <path d="M19 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-      <line x1="7.7" y1="10.5" x2="9.3" y2="11.5" />
-      <line x1="14.7" y1="12.5" x2="16.3" y2="13.5" />
-      <line x1="16.5" y1="6.5" x2="13.5" y2="8.5" />
+      {/* Clean, well-spaced node graph layout */}
+      <circle cx="5" cy="12" r="2.2" />
+      <circle cx="12" cy="6" r="2.2" />
+      <circle cx="12" cy="18" r="2.2" />
+      <circle cx="19" cy="12" r="2.2" />
+      
+      {/* Connections with proper spacing */}
+      <line x1="6.6" y1="10.6" x2="10.4" y2="7.4" />
+      <line x1="6.6" y1="13.4" x2="10.4" y2="16.6" />
+      <line x1="13.6" y1="7.4" x2="17.4" y2="10.6" />
+      <line x1="13.6" y1="16.6" x2="17.4" y2="13.4" />
+      <line x1="12" y1="8.2" x2="12" y2="15.8" />
     </svg>
   ),
   modality: (
@@ -2357,7 +2362,7 @@ export function Features() {
                         <div className="space-y-2 px-0.5 shrink-0">
                           
                           {/* Item 1: Klient Anna */}
-                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Klient Anna" : "Client Anna"); }} className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#163639]/80 transition-colors">
+                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Klient Anna" : "Client Anna"); }} className="bg-[#0f4f56] border border-[#1c646d]/40 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#135c64] transition-colors">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-full bg-[#042528] border border-[#ffb12c]/20 flex items-center justify-center shrink-0 shadow-sm text-[#ffb12c] text-[12px] font-bold">
                                 AK
@@ -2371,11 +2376,16 @@ export function Features() {
                                 </div>
                               </div>
                             </div>
-                            <span className="text-[#8ba4a6] text-xs">⋮</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold font-sans rounded bg-[#5bf4bc]/10 border border-[#5bf4bc]/20 text-[#5bf4bc] uppercase tracking-wider">
+                                {isPl ? "raport gotowy" : "report ready"}
+                              </span>
+                              <span className="text-[#8ba4a6] text-xs">⋮</span>
+                            </div>
                           </div>
 
                           {/* Item 2: Próbny Klient */}
-                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Próbny Klient" : "Demo Client"); }} className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#163639]/80 transition-colors">
+                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Próbny Klient" : "Demo Client"); }} className="bg-[#0f4f56] border border-[#1c646d]/40 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#135c64] transition-colors">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-full bg-[#0e3a3e] border border-white/5 flex items-center justify-center shrink-0 shadow-sm text-white text-[12px] font-bold">
                                 PK
@@ -2393,7 +2403,7 @@ export function Features() {
                           </div>
 
                           {/* Item 3: Klient Jakub */}
-                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Klient Jakub" : "Client Jacob"); }} className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#163639]/80 transition-colors">
+                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Klient Jakub" : "Client Jacob"); }} className="bg-[#0f4f56] border border-[#1c646d]/40 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#135c64] transition-colors">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-full bg-[#3d2a1b] border border-white/5 flex items-center justify-center shrink-0 shadow-sm text-sm">
                                 👍
@@ -2411,7 +2421,7 @@ export function Features() {
                           </div>
 
                           {/* Item 4: Klient Paweł */}
-                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Klient Paweł" : "Client Paul"); }} className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#163639]/80 transition-colors">
+                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Klient Paweł" : "Client Paul"); }} className="bg-[#0f4f56] border border-[#1c646d]/40 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#135c64] transition-colors">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-full bg-[#1b253d] border border-white/5 flex items-center justify-center shrink-0 shadow-sm text-sm">
                                 👌
@@ -2429,7 +2439,7 @@ export function Features() {
                           </div>
 
                           {/* Item 5: Klient Monika */}
-                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Klient Monika" : "Client Monica"); }} className="bg-[#163639] border border-[#1d4447]/60 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#163639]/80 transition-colors">
+                          <div onClick={(e) => { e.stopPropagation(); handleClientClick(isPl ? "Klient Monika" : "Client Monica"); }} className="bg-[#0f4f56] border border-[#1c646d]/40 rounded-xl p-2.5 flex items-center justify-between shadow-sm cursor-pointer hover:bg-[#135c64] transition-colors">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-full bg-[#3d1b1b] border border-white/5 flex items-center justify-center shrink-0 shadow-sm text-sm">
                                 ✨
@@ -2478,7 +2488,7 @@ export function Features() {
                                   { name: isPl ? "Klient Anna" : "Client Anna", sessions: 2, date: isPl ? "8 Maj" : "May 8", initials: "AK" },
                                   { name: isPl ? "Klient Piotr" : "Client Peter", sessions: 1, date: isPl ? "3 Maj" : "May 3", initials: "KP" }
                                 ].map((client, idx) => (
-                                  <div key={idx} onClick={(e) => { e.stopPropagation(); handleClientClick(client.name); }} className="bg-[#163639]/50 border border-[#1d4447]/40 rounded-xl p-2.5 flex items-center justify-between shadow-sm opacity-80 animate-[fadeIn_0.2s_ease-out] cursor-pointer hover:bg-[#163639]/70 transition-colors">
+                                  <div key={idx} onClick={(e) => { e.stopPropagation(); handleClientClick(client.name); }} className="bg-[#0f4f56]/50 border border-[#1c646d]/30 rounded-xl p-2.5 flex items-center justify-between shadow-sm opacity-80 animate-[fadeIn_0.2s_ease-out] cursor-pointer hover:bg-[#135c64]/50 transition-colors">
                                     <div className="flex items-center gap-2.5">
                                       <div className="w-8 h-8 rounded-full bg-[#1c2e30] border border-white/5 flex items-center justify-center shrink-0 text-[#8ba4a6] text-xs font-bold font-mono">
                                         {client.initials}
@@ -2532,7 +2542,7 @@ export function Features() {
                                   { name: isPl ? "Klient Ewa" : "Client Eve", sessions: 15, date: isPl ? "28 Mar" : "Mar 28", initials: "KE" },
                                   { name: isPl ? "Klient Jan" : "Client John", sessions: 4, date: isPl ? "15 Mar" : "Mar 15", initials: "KJ" }
                                 ].map((client, idx) => (
-                                  <div key={idx} onClick={(e) => { e.stopPropagation(); handleClientClick(client.name); }} className="bg-[#163639]/50 border border-[#1d4447]/40 rounded-xl p-2.5 flex items-center justify-between shadow-sm opacity-85 animate-[fadeIn_0.2s_ease-out] cursor-pointer hover:bg-[#163639]/70 transition-colors">
+                                  <div key={idx} onClick={(e) => { e.stopPropagation(); handleClientClick(client.name); }} className="bg-[#0f4f56]/50 border border-[#1c646d]/30 rounded-xl p-2.5 flex items-center justify-between shadow-sm opacity-85 animate-[fadeIn_0.2s_ease-out] cursor-pointer hover:bg-[#135c64]/50 transition-colors">
                                     <div className="flex items-center gap-2.5">
                                       <div className="w-8 h-8 rounded-full bg-[#153a33] border border-white/5 flex items-center justify-center shrink-0 text-[#5bf4bc] text-xs font-bold font-mono">
                                         {client.initials}
