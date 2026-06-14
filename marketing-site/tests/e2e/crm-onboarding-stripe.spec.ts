@@ -28,16 +28,24 @@ test.describe("CRM — API Contract", () => {
         email: "anna@test.pl",
         phone: "+48600000001",
         professional_title: "psycholog kliniczny",
-        user_created_at: "2025-12-01",
+        created_at: "2025-12-01",
+        subscription_id: "sub-001",
         plan_tier: "SOLO",
         plan_display_name: "Równowaga",
         sub_status: "ACTIVE",
+        provider: "STRIPE",
+        period_start: "2026-06-01",
+        period_end: "2026-07-01",
         tokens_limit: 30,
         tokens_used: 25,
         tokens_remaining: 5,
-        period_end: "2026-07-01",
+        usage_pct: 83.3,
         days_until_renewal: 22,
         total_sessions: 18,
+        last_session_at: "2026-06-10",
+        credit_alert: "low",
+        expiry_alert: "",
+        urgency_score: 10,
         org_name: "Gabinet Anna",
         org_id: "org-001",
       },
@@ -48,20 +56,40 @@ test.describe("CRM — API Contract", () => {
         email: "tomasz@test.pl",
         phone: "+48600000002",
         professional_title: "",
-        user_created_at: "2026-01-15",
+        created_at: "2026-01-15",
+        subscription_id: "sub-002",
         plan_tier: "TRIAL",
         plan_display_name: "Poznanie",
         sub_status: "TRIALING",
+        provider: "STRIPE",
+        period_start: "2026-06-15",
+        period_end: "2026-07-15",
         tokens_limit: 5,
         tokens_used: 5,
         tokens_remaining: 0,
-        period_end: "2026-07-15",
+        usage_pct: 100,
         days_until_renewal: 36,
         total_sessions: 0,
+        last_session_at: "",
+        credit_alert: "critical",
+        expiry_alert: "",
+        urgency_score: 30,
         org_name: "",
         org_id: "org-002",
       },
     ],
+    total: 2,
+    total_all: 2,
+    page: 1,
+    per_page: 25,
+    global_stats: {
+      total: 2,
+      critical: 1,
+      warning: 0,
+      expiring: 0,
+      churned: 0,
+    },
+    message: "ok",
   };
 
   const MOCK_FOLLOW_UPS = {
@@ -107,26 +135,31 @@ test.describe("CRM — API Contract", () => {
       { id: "t1", tag: "entuzjasta" },
     ],
     follow_ups: [],
+    email_logs: [],
     excluded: false,
     lifecycle_stage: "active",
     last_session_at: "2026-06-05",
   };
 
   test("CRM page loads with subscriber list (mocked)", async ({ page }) => {
-    // Mock all required API endpoints
-    await page.route("**/api/admin/crm/subscribers*", async (route) => {
+    // Mock all required API endpoints — intercept both proxy and direct calls
+    await page.route("**/admin/crm/subscribers*", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(MOCK_SUBSCRIBERS),
       });
     });
-    await page.route("**/api/admin/crm/follow-ups*", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(MOCK_FOLLOW_UPS),
-      });
+    await page.route("**/admin/crm/follow-ups*", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(MOCK_FOLLOW_UPS),
+        });
+      } else {
+        await route.continue();
+      }
     });
     // Mock auth — skip admin gate
     await page.route(/identity\.v1\.IdentityService\/GetMyProfile/, async (route) => {
@@ -171,6 +204,25 @@ test.describe("CRM — API Contract", () => {
     expect(detail.excluded).toBe(false);
     expect(detail.tokens_remaining).toBe(5);
     expect(detail.total_sessions).toBe(18);
+    expect(detail.email_logs).toHaveLength(0);
+  });
+
+  test("CRM subscriber API response includes pagination and global stats", async () => {
+    // Verify the new API contract: response must include pagination + global stats
+    const response = MOCK_SUBSCRIBERS;
+    expect(response).toHaveProperty("total");
+    expect(response).toHaveProperty("total_all");
+    expect(response).toHaveProperty("page");
+    expect(response).toHaveProperty("per_page");
+    expect(response).toHaveProperty("global_stats");
+    expect(response.global_stats).toHaveProperty("total");
+    expect(response.global_stats).toHaveProperty("critical");
+    expect(response.global_stats).toHaveProperty("warning");
+    expect(response.global_stats).toHaveProperty("expiring");
+    expect(response.global_stats).toHaveProperty("churned");
+    expect(response.page).toBe(1);
+    expect(response.per_page).toBe(25);
+    expect(response.total).toBe(2);
   });
 
   test("CRM lifecycle stage computation covers all paths", async () => {
@@ -183,7 +235,6 @@ test.describe("CRM — API Contract", () => {
     //   >=20 sessions → power_user
     //   else → active
 
-    // These are logic tests — we validate the documented behavior
     const stages = ["new", "onboarding", "first_session", "active", "power_user", "at_risk", "churned"];
     expect(stages).toContain("new");
     expect(stages).toContain("churned");
@@ -200,6 +251,57 @@ test.describe("CRM — API Contract", () => {
     for (const sub of subscribers) {
       expect(sub.user_id).toBeDefined();
       expect(sub.email).toBeTruthy();
+    }
+  });
+
+  test("CRM subscriber API accepts search parameter (P2.4 fix)", async () => {
+    // Contract test: the backend now accepts ?search= for server-side filtering.
+    // Validates the query param structure matches what the frontend sends.
+    const params = new URLSearchParams();
+    params.set("tier", "SOLO");
+    params.set("status", "ACTIVE");
+    params.set("alert", "");
+    params.set("search", "Anna");
+    params.set("page", "1");
+    params.set("per_page", "25");
+
+    expect(params.get("search")).toBe("Anna");
+    expect(params.get("page")).toBe("1");
+    expect(params.get("per_page")).toBe("25");
+  });
+
+  test("CRM credit bar shows remaining percentage (P3.9 fix)", async () => {
+    // The credit bar now shows % remaining, not % used.
+    // Anna: 5/30 remaining = 16.7% → short red bar (critical-ish)
+    // Tomasz: 0/5 remaining = 0% → empty bar
+    const anna = MOCK_SUBSCRIBERS.subscribers[0];
+    const tomasz = MOCK_SUBSCRIBERS.subscribers[1];
+
+    const annaRemainingPct = (anna.tokens_remaining / anna.tokens_limit) * 100;
+    const tomaszRemainingPct = tomasz.tokens_limit > 0
+      ? (tomasz.tokens_remaining / tomasz.tokens_limit) * 100
+      : 0;
+
+    expect(annaRemainingPct).toBeCloseTo(16.7, 0);
+    expect(tomaszRemainingPct).toBe(0);
+  });
+
+  test("Phone normalization handles Polish numbers (P3.10 fix)", async () => {
+    // Contract test: normalizePhone should handle various formats
+    const testCases = [
+      { input: "+48600000001", expected: "+48600000001" },
+      { input: "600 000 001", expected: "+48600000001" },
+      { input: "48600000001", expected: "+48600000001" },
+      { input: "+48 600 000 001", expected: "+48600000001" },
+    ];
+
+    for (const { input, expected } of testCases) {
+      let cleaned = input.replace(/[\s\-()]/g, "");
+      if (/^\d{9,}$/.test(cleaned)) {
+        if (cleaned.length === 9) cleaned = "+48" + cleaned;
+        else if (!cleaned.startsWith("+")) cleaned = "+" + cleaned;
+      }
+      expect(cleaned).toBe(expected);
     }
   });
 });

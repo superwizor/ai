@@ -3,15 +3,16 @@
 // Features:
 // - Priority inbox ("Dziś do kontaktu" — overdue + today's follow-ups)
 // - Urgency-sorted subscriber table with credit/expiry alerts
-// - Filter by tier, status, alert, tags, free-text search
+// - Filter by tier, status, alert, tags, free-text search (server-side)
 // - Slide-out detail drawer per user (notes, tags, follow-ups, lifecycle)
 // - Email composer with templates (mailto: kontakt@superwizor.ai)
 // - User exclusion/blocking
 // - CSV export
+// - Phone normalization & validation
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { serviceEndpoints, getAuthToken } from "@/lib/connect/clients";
 import { useTranslations } from "next-intl";
 import { TableSkeleton } from "./TableSkeleton";
@@ -209,6 +210,56 @@ const LIFECYCLE_LABELS: Record<string, { label: string; color: string; emoji: st
 
 const SENDER_EMAIL = "kontakt@superwizor.ai";
 
+// ─── Helpers ─────────────────────────────────────────────────
+
+// P3.10: Phone normalization
+function normalizePhone(phone: string): string {
+  if (!phone) return "";
+  // Remove all whitespace
+  let cleaned = phone.replace(/\s+/g, "");
+  // Remove dashes and parentheses
+  cleaned = cleaned.replace(/[-()]/g, "");
+  // Add + prefix if missing and starts with country code
+  if (/^\d{9,}$/.test(cleaned)) {
+    // Assume Polish number if 9 digits
+    if (cleaned.length === 9) cleaned = "+48" + cleaned;
+    // If 11+ digits, assume starts with country code (e.g. 48...)
+    else if (!cleaned.startsWith("+")) cleaned = "+" + cleaned;
+  }
+  return cleaned;
+}
+
+function isValidPhone(phone: string): boolean {
+  if (!phone) return false;
+  const cleaned = normalizePhone(phone);
+  // E.164 max is 15 digits (including country code without +)
+  const digits = cleaned.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15;
+}
+
+function formatPhoneDisplay(phone: string): string {
+  const normalized = normalizePhone(phone);
+  if (!isValidPhone(phone)) return phone + " ⚠️";
+  return normalized;
+}
+
+// Avatar initials
+function getInitials(firstName: string, lastName: string): string {
+  return ((firstName?.[0] || "") + (lastName?.[0] || "")).toUpperCase() || "?";
+}
+
+function getAvatarColor(name: string): string {
+  const colors = [
+    "bg-ember/20 text-ember",
+    "bg-aurora/20 text-aurora",
+    "bg-frost/20 text-frost",
+    "bg-magma/20 text-magma",
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
 // ─── Component ───────────────────────────────────────────────
 
 
@@ -237,6 +288,10 @@ export function CRMDashboard() {
     const p = new URLSearchParams(window.location.search);
     return { tier: p.get("tier") || "", status: p.get("status") || "", alert: p.get("alert") || "", search: p.get("search") || "" };
   });
+
+  // Debounced search
+  const [searchInput, setSearchInput] = useState(filters.search);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pagination
   const [page, setPage] = useState(() => {
@@ -307,6 +362,16 @@ export function CRMDashboard() {
     window.history.replaceState(null, "", url);
   }, [filters, page]);
 
+  // Debounce search input → filters.search
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setFilters((f) => ({ ...f, search: searchInput }));
+      setPage(1); // P2.5: reset page on search
+    }, 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [searchInput]);
+
   // ─── Data Fetching ─────────────────────────────────────────
 
   const fetchSubscribers = useCallback(async () => {
@@ -317,6 +382,7 @@ export function CRMDashboard() {
       if (filters.tier) params.set("tier", filters.tier);
       if (filters.status) params.set("status", filters.status);
       if (filters.alert) params.set("alert", filters.alert);
+      if (filters.search) params.set("search", filters.search); // P2.4: send search to backend
       params.set("page", String(page));
       params.set("per_page", String(perPage));
       const qs = params.toString();
@@ -332,7 +398,7 @@ export function CRMDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [filters.tier, filters.status, filters.alert, page, perPage]);
+  }, [filters.tier, filters.status, filters.alert, filters.search, page, perPage]);
 
   const fetchFollowUps = useCallback(async () => {
     try {
@@ -347,6 +413,12 @@ export function CRMDashboard() {
 
   useEffect(() => { void fetchSubscribers(); }, [fetchSubscribers]);
   useEffect(() => { void fetchFollowUps(); }, [fetchFollowUps]);
+
+  // P2.5: Reset page when filters change (except search which resets via debounce)
+  const updateFilter = useCallback((key: keyof FilterState, value: string) => {
+    setFilters((f) => ({ ...f, [key]: value }));
+    setPage(1);
+  }, []);
 
   const openUserDetail = async (userId: string) => {
     setDrawerLoading(true);
@@ -376,14 +448,17 @@ export function CRMDashboard() {
     if (!selectedUser || !newNote.trim()) return;
     setNoteSaving(true);
     try {
-      await crmFetch("/admin/crm/notes", {
+      const resp = await crmFetch("/admin/crm/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target_user_id: selectedUser.user_id, body: newNote }),
       });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       setNewNote("");
-      // Refresh detail
       await openUserDetail(selectedUser.user_id);
+      showToast("📝 Notatka zapisana");
+    } catch (err: any) {
+      showToast(`❌ Błąd: ${err.message}`);
     } finally {
       setNoteSaving(false);
     }
@@ -391,48 +466,89 @@ export function CRMDashboard() {
 
   const addTag = async () => {
     if (!selectedUser || !newTag.trim()) return;
-    await crmFetch("/admin/crm/tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ target_user_id: selectedUser.user_id, tag: newTag.trim() }),
-    });
-    setNewTag("");
-    await openUserDetail(selectedUser.user_id);
+    try {
+      const resp = await crmFetch("/admin/crm/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_user_id: selectedUser.user_id, tag: newTag.trim() }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setNewTag("");
+      await openUserDetail(selectedUser.user_id);
+    } catch (err: any) {
+      showToast(`❌ Nie udało się dodać tagu: ${err.message}`);
+    }
   };
 
   const removeTag = async (tagId: string) => {
-    await crmFetch(`/admin/crm/tags/${tagId}`, { method: "DELETE" });
-    if (selectedUser) await openUserDetail(selectedUser.user_id);
+    try {
+      const resp = await crmFetch(`/admin/crm/tags/${tagId}`, { method: "DELETE" });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      if (selectedUser) await openUserDetail(selectedUser.user_id);
+      showToast("🏷️ Tag usunięty");
+    } catch (err: any) {
+      showToast(`❌ Nie udało się usunąć tagu: ${err.message}`);
+    }
   };
 
   const excludeUser = async (userId: string) => {
-    await crmFetch("/admin/crm/exclude", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, reason: "excluded from CRM" }),
-    });
-    closeDrawer();
-    void fetchSubscribers();
+    try {
+      const resp = await crmFetch("/admin/crm/exclude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, reason: "excluded from CRM" }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      closeDrawer();
+      void fetchSubscribers();
+      showToast("🚫 Użytkownik wykluczony z CRM");
+    } catch (err: any) {
+      showToast(`❌ Błąd: ${err.message}`);
+    }
   };
 
   const createFollowUp = async () => {
     if (!followUpTarget || !followUpDate) return;
-    await crmFetch("/admin/crm/follow-ups", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ target_user_id: followUpTarget, due_date: followUpDate, note: followUpNote }),
-    });
-    setFollowUpTarget(null);
-    setFollowUpDate("");
-    setFollowUpNote("");
-    void fetchFollowUps();
-    if (selectedUser) await openUserDetail(selectedUser.user_id);
+    try {
+      const resp = await crmFetch("/admin/crm/follow-ups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_user_id: followUpTarget, due_date: followUpDate, note: followUpNote }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setFollowUpTarget(null);
+      setFollowUpDate("");
+      setFollowUpNote("");
+      void fetchFollowUps();
+      if (selectedUser) await openUserDetail(selectedUser.user_id);
+      showToast("🔔 Follow-up zaplanowany");
+    } catch (err: any) {
+      showToast(`❌ Błąd: ${err.message}`);
+    }
   };
 
   const completeFollowUp = async (id: string) => {
-    await crmFetch(`/admin/crm/follow-ups/${id}/complete`, { method: "PATCH" });
-    void fetchFollowUps();
-    if (selectedUser) await openUserDetail(selectedUser.user_id);
+    try {
+      const resp = await crmFetch(`/admin/crm/follow-ups/${id}/complete`, { method: "PATCH" });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      void fetchFollowUps();
+      if (selectedUser) await openUserDetail(selectedUser.user_id);
+      showToast("✅ Follow-up zakończony");
+    } catch (err: any) {
+      showToast(`❌ Nie udało się zakończyć follow-upa: ${err.message}`);
+    }
+  };
+
+  const deleteFollowUp = async (id: string) => {
+    try {
+      const resp = await crmFetch(`/admin/crm/follow-ups/${id}`, { method: "DELETE" });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      void fetchFollowUps();
+      if (selectedUser) await openUserDetail(selectedUser.user_id);
+      showToast("🗑️ Follow-up usunięty");
+    } catch (err: any) {
+      showToast(`❌ Nie udało się usunąć: ${err.message}`);
+    }
   };
 
   const openEmail = (sub: CRMSubscriber | UserDetail, templateId?: string) => {
@@ -490,33 +606,24 @@ export function CRMDashboard() {
     });
   };
 
-  // ─── Sorting & Filtering ───────────────────────────────────
+  // ─── Sorting ───────────────────────────────────────────────
 
-  const filtered = subscribers.filter((s) => {
-    if (!filters.search) return true;
-    const q = filters.search.toLowerCase();
-    return (
-      s.first_name.toLowerCase().includes(q) ||
-      s.last_name.toLowerCase().includes(q) ||
-      s.email.toLowerCase().includes(q) ||
-      s.org_name.toLowerCase().includes(q)
-    );
-  });
-
-  const sorted = [...filtered].sort((a, b) => {
-    const dir = sortDirection === "asc" ? 1 : -1;
-    switch (sortColumn) {
-      case "credits": return (a.tokens_remaining - b.tokens_remaining) * dir;
-      case "sessions": return (a.total_sessions - b.total_sessions) * dir;
-      case "renewal": return (a.days_until_renewal - b.days_until_renewal) * dir;
-      case "activity": {
-        const aDate = a.last_session_at || "1970-01-01";
-        const bDate = b.last_session_at || "1970-01-01";
-        return aDate.localeCompare(bDate) * dir;
+  const sorted = useMemo(() => {
+    return [...subscribers].sort((a, b) => {
+      const dir = sortDirection === "asc" ? 1 : -1;
+      switch (sortColumn) {
+        case "credits": return (a.tokens_remaining - b.tokens_remaining) * dir;
+        case "sessions": return (a.total_sessions - b.total_sessions) * dir;
+        case "renewal": return (a.days_until_renewal - b.days_until_renewal) * dir;
+        case "activity": {
+          const aDate = a.last_session_at || "1970-01-01";
+          const bDate = b.last_session_at || "1970-01-01";
+          return aDate.localeCompare(bDate) * dir;
+        }
+        default: return (a.urgency_score - b.urgency_score) * -dir;
       }
-      default: return (a.urgency_score - b.urgency_score) * -dir; // urgency default DESC
-    }
-  });
+    });
+  }, [subscribers, sortColumn, sortDirection]);
 
   const toggleSort = (column: string) => {
     if (sortColumn === column) {
@@ -577,7 +684,6 @@ export function CRMDashboard() {
   const bulkEmail = () => {
     if (selected.size === 0) return;
     const selectedSubs = sorted.filter((s) => selected.has(s.user_id));
-    // Open mailto for each (limited to 10 to prevent browser spam)
     const batch = selectedSubs.slice(0, 10);
     batch.forEach((s) => {
       window.open(`mailto:${s.email}?from=${SENDER_EMAIL}&subject=${encodeURIComponent("SuperWizor AI — wiadomość od zespołu")}`, "_blank");
@@ -593,11 +699,11 @@ export function CRMDashboard() {
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
-  // Pagination
-  const totalPages = Math.ceil(totalFiltered / perPage);
+  // Pagination — P2.4 fix: use totalFiltered from backend (already filtered by search)
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / perPage));
 
   // Helper: format relative date
   const formatRelativeDate = (dateStr: string) => {
@@ -620,10 +726,19 @@ export function CRMDashboard() {
     return "text-magma";
   };
 
+  // P3.9 fix: credit bar shows % REMAINING (not % used)
+  const getCreditBarInfo = (remaining: number, limit: number) => {
+    if (limit === 0) return { pct: 0, color: "bg-mist/30" };
+    const pct = (remaining / limit) * 100;
+    if (pct <= 10) return { pct, color: "bg-magma" };
+    if (pct <= 30) return { pct, color: "bg-ember" };
+    return { pct, color: "bg-aurora" };
+  };
+
   // CSV export
   const exportCSV = () => {
     const headers = ["Imię","Nazwisko","Email","Telefon","Plan","Status","Sesje","Kredyty użyte","Kredyty pozostałe","Limit","Koniec okresu","Dni do odnowienia","Alert","Pilność","Dołączył"];
-    const rows = filtered.map((s) => [s.first_name, s.last_name, s.email, s.phone, s.plan_display_name, s.sub_status, s.total_sessions, s.tokens_used, s.tokens_remaining, s.tokens_limit, s.period_end, s.days_until_renewal, s.credit_alert || s.expiry_alert || "-", s.urgency_score, s.created_at]);
+    const rows = sorted.map((s) => [s.first_name, s.last_name, s.email, s.phone, s.plan_display_name, s.sub_status, s.total_sessions, s.tokens_used, s.tokens_remaining, s.tokens_limit, s.period_end, s.days_until_renewal, s.credit_alert || s.expiry_alert || "-", s.urgency_score, s.created_at]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -649,48 +764,90 @@ export function CRMDashboard() {
     return d.toISOString().slice(0, 10);
   };
 
+  // Active filters count
+  const activeFilterCount = [filters.tier, filters.status, filters.alert, filters.search].filter(Boolean).length;
+
+  // Priority inbox items — P3.8: show overdue (due_date < today) + today's (due_date == today)
+  const today = new Date().toISOString().slice(0, 10);
+  const priorityItems = followUps.filter((f) => !f.completed && (f.overdue || f.due_date === today)).slice(0, 8);
+
   // ─── Render ────────────────────────────────────────────────
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-[1400px] mx-auto">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
         <div>
           <p className="font-mono text-xs uppercase text-ember tracking-[0.2em] mb-1.5">{t("overline")}</p>
           <h1 className="font-display text-frost text-2xl sm:text-3xl font-semibold tracking-[var(--tracking-display)]">{t("title")}</h1>
           <p className="font-serif text-mist mt-1 text-sm">{t("subhead")}</p>
         </div>
-        <button onClick={exportCSV} className="rounded-button border border-ember/30 bg-ember/5 text-ember px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/10 transition self-start sm:self-auto">
-          📥 Eksport CSV
-        </button>
+        <div className="flex gap-2 self-start sm:self-auto">
+          <button onClick={() => { void fetchSubscribers(); void fetchFollowUps(); }} className="rounded-button border border-frost/15 bg-frost/5 text-frost px-3 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-frost/10 transition" title="Odśwież dane">
+            ↻ Odśwież
+          </button>
+          <button onClick={exportCSV} className="rounded-button border border-ember/30 bg-ember/5 text-ember px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/10 transition">
+            📥 Eksport CSV
+          </button>
+        </div>
       </header>
 
       {/* ── Priority Inbox ────────────────────────────────── */}
-      {(todayCount > 0 || overdueCount > 0) && (
-        <div className="mb-6 rounded-card border border-ember/30 bg-gradient-to-r from-ember/5 to-magma/5 p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-xl">📋</span>
-            <h2 className="font-display text-frost font-semibold text-sm">
-              Dziś do kontaktu: {todayCount + overdueCount} {todayCount + overdueCount === 1 ? "osoba" : overdueCount + todayCount < 5 ? "osoby" : "osób"}
-              {overdueCount > 0 && <span className="text-magma ml-2">({overdueCount} zaległe!)</span>}
-            </h2>
+      {priorityItems.length > 0 && (
+        <div className="mb-8 rounded-card border border-ember/30 bg-gradient-to-r from-ember/5 via-magma/3 to-ember/5 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-ember/15 flex items-center justify-center">
+                <span className="text-lg">📋</span>
+              </div>
+              <div>
+                <h2 className="font-display text-frost font-semibold text-sm">
+                  Dziś do kontaktu
+                </h2>
+                <p className="font-mono text-[10px] text-mist/60 uppercase">
+                  {overdueCount > 0 && <span className="text-magma">{overdueCount} zaległe</span>}
+                  {overdueCount > 0 && todayCount > 0 && " · "}
+                  {todayCount > 0 && <span className="text-ember">{todayCount} na dziś</span>}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="space-y-2">
-            {followUps.filter((f) => f.overdue || f.due_date === new Date().toISOString().slice(0, 10)).slice(0, 5).map((f) => (
-              <div key={f.id} className={`flex items-center justify-between rounded-lg px-3 py-2 ${f.overdue ? "bg-magma/10 border border-magma/20" : "bg-ember/10 border border-ember/20"}`}>
-                <div className="flex items-center gap-3">
-                  <span className="font-display text-frost text-sm font-medium">{f.first_name} {f.last_name}</span>
-                  {f.note && <span className="font-serif text-mist/60 text-xs italic">— {f.note}</span>}
-                  {f.overdue && <span className="text-magma font-mono text-[9px] uppercase">zaległe</span>}
+          <div className="grid gap-2">
+            {priorityItems.map((f) => (
+              <div key={f.id} className={`flex items-center justify-between rounded-xl px-4 py-3 transition-all duration-200 hover:scale-[1.005] ${f.overdue ? "bg-magma/8 border border-magma/20" : "bg-ember/8 border border-ember/15"}`}>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {/* P2.3: Avatar — clickable to open drawer */}
+                  <button
+                    onClick={() => openUserDetail(f.target_user_id)}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 transition-transform hover:scale-110 ${getAvatarColor(f.first_name + f.last_name)}`}
+                  >
+                    {getInitials(f.first_name, f.last_name)}
+                  </button>
+                  <div className="min-w-0">
+                    {/* P2.3: Name — clickable to open drawer */}
+                    <button
+                      onClick={() => openUserDetail(f.target_user_id)}
+                      className="font-display text-frost text-sm font-medium hover:text-ember transition-colors cursor-pointer text-left"
+                    >
+                      {f.first_name} {f.last_name}
+                    </button>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {f.note && <span className="font-serif text-mist/50 text-xs italic truncate">{f.note}</span>}
+                      {f.overdue && <span className="text-magma font-mono text-[8px] uppercase bg-magma/10 px-1.5 py-0.5 rounded-full">zaległe</span>}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  {f.phone && (
-                    <a href={`tel:${f.phone}`} className="p-1 rounded bg-frost/5 text-aurora hover:bg-frost/10 transition" title="Zadzwoń">
+                <div className="flex gap-1.5 flex-shrink-0 ml-3">
+                  {f.phone && isValidPhone(f.phone) && (
+                    <a href={`tel:${normalizePhone(f.phone)}`} className="p-1.5 rounded-lg bg-frost/5 text-aurora hover:bg-frost/10 transition" title="Zadzwoń">
                       <PhoneIcon />
                     </a>
                   )}
-                  <button onClick={() => completeFollowUp(f.id)} className="p-1 rounded bg-aurora/10 text-aurora hover:bg-aurora/20 transition text-xs font-mono" title="Oznacz jako zrobione">
+                  <button onClick={() => completeFollowUp(f.id)} className="p-1.5 rounded-lg bg-aurora/10 text-aurora hover:bg-aurora/20 transition text-xs font-mono" title="Oznacz jako zrobione">
                     ✓
+                  </button>
+                  <button onClick={() => deleteFollowUp(f.id)} className="p-1.5 rounded-lg bg-magma/5 text-mist/40 hover:text-magma hover:bg-magma/10 transition text-xs font-mono" title="Usuń follow-up">
+                    ×
                   </button>
                 </div>
               </div>
@@ -699,27 +856,38 @@ export function CRMDashboard() {
         </div>
       )}
 
-      {/* ── KPI Chips (always global — full database) ────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-        <KPIChip label="Łącznie" value={globalStats.total} color="frost" />
-        <KPIChip label="🔴 Krytyczne" value={globalStats.critical} color="magma" />
-        <KPIChip label="🟡 Ostrzeżenie" value={globalStats.warning} color="ember" />
-        <KPIChip label="⏰ Wygasa" value={globalStats.expiring} color="aurora" />
-        <KPIChip label="❌ Churned" value={globalStats.churned} color="mist" />
+      {/* ── KPI Chips ────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
+        <KPIChip label="Łącznie" value={globalStats.total} color="frost" icon="👥" />
+        <KPIChip label="Krytyczne" value={globalStats.critical} color="magma" icon="🔴" />
+        <KPIChip label="Ostrzeżenie" value={globalStats.warning} color="ember" icon="🟡" />
+        <KPIChip label="Wygasa" value={globalStats.expiring} color="aurora" icon="⏰" />
+        <KPIChip label="Churned" value={globalStats.churned} color="mist" icon="❌" />
       </div>
 
       {/* ── Filters ───────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <FilterSelect value={filters.tier} onChange={(v) => setFilters((f) => ({ ...f, tier: v }))} options={TIER_OPTIONS} />
-        <FilterSelect value={filters.status} onChange={(v) => setFilters((f) => ({ ...f, status: v }))} options={STATUS_OPTIONS} />
-        <FilterSelect value={filters.alert} onChange={(v) => setFilters((f) => ({ ...f, alert: v }))} options={ALERT_OPTIONS} />
-        <input
-          type="search"
-          value={filters.search}
-          onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-          placeholder="Szukaj (imię, email, organizacja)..."
-          className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] placeholder:text-mist/40 transition flex-1 min-w-[200px]"
-        />
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <FilterSelect value={filters.tier} onChange={(v) => updateFilter("tier", v)} options={TIER_OPTIONS} />
+        <FilterSelect value={filters.status} onChange={(v) => updateFilter("status", v)} options={STATUS_OPTIONS} />
+        <FilterSelect value={filters.alert} onChange={(v) => updateFilter("alert", v)} options={ALERT_OPTIONS} />
+        <div className="relative flex-1 min-w-[200px]">
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Szukaj (imię, email, telefon, organizacja)..."
+            className="w-full rounded-button bg-frost/5 border border-frost/15 text-frost pl-9 pr-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] placeholder:text-mist/40 transition"
+          />
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mist/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+        </div>
+        {activeFilterCount > 0 && (
+          <button
+            onClick={() => { setFilters({ tier: "", status: "", alert: "", search: "" }); setSearchInput(""); setPage(1); }}
+            className="rounded-button bg-frost/5 border border-frost/15 text-mist px-3 py-2 font-mono text-xs hover:text-frost hover:bg-frost/10 transition"
+          >
+            ✕ Wyczyść ({activeFilterCount})
+          </button>
+        )}
       </div>
 
       {/* ── Table ─────────────────────────────────────────── */}
@@ -730,21 +898,24 @@ export function CRMDashboard() {
           <button onClick={() => void fetchSubscribers()} className="mt-3 inline-flex items-center rounded-button border border-frost/20 px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] text-frost hover:bg-frost/5">Ponów</button>
         </div>
       )}
-      {/* ── Counter + Table ────────────────────────────────── */}
       {!loading && !error && sorted.length === 0 && (
-        <p className="font-serif text-mist text-center py-12">Brak użytkowników dla wybranych filtrów</p>
+        <div className="rounded-card border border-frost/10 bg-frost/[0.02] px-6 py-16 text-center">
+          <div className="text-4xl mb-3">🔍</div>
+          <p className="font-display text-frost text-sm font-medium mb-1">Brak wyników</p>
+          <p className="font-serif text-mist/60 text-xs">Spróbuj zmienić filtry lub wyszukiwanie</p>
+        </div>
       )}
       {!loading && !error && sorted.length > 0 && (
         <>
           <div className="flex items-center justify-between mb-2">
             <p className="font-mono text-xs text-mist/60">
-              Pokazano {sorted.length} z {totalAll}
-              {totalFiltered !== totalAll && <span className="text-mist/40"> (filtrowane: {totalFiltered})</span>}
+              Pokazano {(page - 1) * perPage + 1}–{Math.min(page * perPage, totalFiltered)} z {totalFiltered}
+              {totalFiltered !== totalAll && <span className="text-mist/40"> (z {totalAll} wszystkich)</span>}
             </p>
           </div>
           <div className="overflow-x-auto rounded-card border border-frost/10 bg-frost/[0.03]">
             <table className="w-full text-sm">
-              <thead className="bg-frost/5">
+              <thead className="bg-frost/5 sticky top-0 z-10">
                 <tr>
                   <th className="px-3 py-3 text-left w-8">
                     <input
@@ -757,100 +928,129 @@ export function CRMDashboard() {
                   </th>
                   <th className="px-3 py-3 text-left font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">Użytkownik</th>
                   <th className="px-3 py-3 text-left font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">Plan</th>
-                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition" onClick={() => toggleSort("credits")} title="Sortuj po kredytach">Kredyty{sortIndicator("credits")}</th>
-                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition" onClick={() => toggleSort("sessions")} title="Sortuj po sesjach">Sesje{sortIndicator("sessions")}</th>
-                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition" onClick={() => toggleSort("activity")} title="Sortuj po ostatniej aktywności">Aktywność{sortIndicator("activity")}</th>
-                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition" onClick={() => toggleSort("renewal")} title="Sortuj po dacie odnowienia">Odnowienie{sortIndicator("renewal")}</th>
+                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition select-none" onClick={() => toggleSort("credits")} title="Sortuj po kredytach">Kredyty{sortIndicator("credits")}</th>
+                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition select-none" onClick={() => toggleSort("sessions")} title="Sortuj po sesjach">Sesje{sortIndicator("sessions")}</th>
+                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition select-none" onClick={() => toggleSort("activity")} title="Sortuj po ostatniej aktywności">Aktywność{sortIndicator("activity")}</th>
+                  <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist cursor-pointer hover:text-frost transition select-none" onClick={() => toggleSort("renewal")} title="Sortuj po dacie odnowienia">Odnowienie{sortIndicator("renewal")}</th>
                   <th className="px-3 py-3 text-center font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">Alerty</th>
                   <th className="px-3 py-3 text-right font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">Akcje</th>
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((s) => (
-                  <tr
-                    key={s.subscription_id}
-                    onClick={() => openUserDetail(s.user_id)}
-                    className={`border-t border-frost/5 hover:bg-frost/[0.03] transition-colors cursor-pointer ${selected.has(s.user_id) ? "bg-ember/[0.04]" : ""}`}
-                  >
-                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selected.has(s.user_id)}
-                        onChange={() => toggleSelect(s.user_id)}
-                        className="rounded border-frost/30 bg-frost/5 accent-ember cursor-pointer"
-                      />
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-display text-frost text-sm font-medium">{s.first_name} {s.last_name}</span>
-                        <span className="font-mono text-[11px] text-mist/60">{s.email}</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${getTierBadge(s.plan_tier)}`}>{s.plan_display_name}</span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className={`font-mono text-sm font-bold ${s.credit_alert === "critical" ? "text-magma" : s.credit_alert === "warning" ? "text-ember" : "text-frost"}`}>
-                        {s.tokens_remaining}/{s.tokens_limit}
-                      </span>
-                      <div className="w-16 h-1.5 bg-frost/10 rounded-full overflow-hidden mx-auto mt-1">
-                        <div className={`h-full rounded-full ${s.usage_pct >= 90 ? "bg-magma" : s.usage_pct >= 70 ? "bg-ember" : "bg-aurora"}`} style={{ width: `${Math.min(s.usage_pct, 100)}%` }} />
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-center font-mono text-sm text-frost">{s.total_sessions}</td>
-                    <td className="px-3 py-3 text-center">
-                      {s.last_session_at ? (
-                        <span className={`font-mono text-xs ${getActivityColor(s.last_session_at)}`} title={s.last_session_at}>
-                          {formatRelativeDate(s.last_session_at)}
+                {sorted.map((s, idx) => {
+                  const creditBar = getCreditBarInfo(s.tokens_remaining, s.tokens_limit);
+                  return (
+                    <tr
+                      key={s.subscription_id}
+                      onClick={() => openUserDetail(s.user_id)}
+                      className={`border-t border-frost/5 hover:bg-frost/[0.04] transition-colors cursor-pointer ${selected.has(s.user_id) ? "bg-ember/[0.04]" : idx % 2 === 1 ? "bg-frost/[0.01]" : ""}`}
+                    >
+                      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selected.has(s.user_id)}
+                          onChange={() => toggleSelect(s.user_id)}
+                          className="rounded border-frost/30 bg-frost/5 accent-ember cursor-pointer"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${getAvatarColor(s.first_name + s.last_name)}`}>
+                            {getInitials(s.first_name, s.last_name)}
+                          </div>
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className="font-display text-frost text-sm font-medium truncate">{s.first_name} {s.last_name}</span>
+                            <span className="font-mono text-[11px] text-mist/60 truncate">{s.email}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${getTierBadge(s.plan_tier)}`}>{s.plan_display_name}</span>
+                      </td>
+                      {/* P3.9: Credit bar shows % remaining */}
+                      <td className="px-3 py-3 text-center">
+                        <span className={`font-mono text-sm font-bold ${s.credit_alert === "critical" ? "text-magma" : s.credit_alert === "warning" ? "text-ember" : "text-frost"}`}>
+                          {s.tokens_remaining}/{s.tokens_limit}
                         </span>
-                      ) : (
-                        <span className="text-mist/30 text-xs">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      {!s.period_end || s.days_until_renewal > 365 ? (
-                        <span className="text-mist/30 font-mono text-xs">—</span>
-                      ) : (
-                        <span className={`font-mono text-xs ${s.days_until_renewal <= 3 ? "text-magma font-bold" : s.days_until_renewal <= 7 ? "text-ember" : "text-mist"}`}>
-                          {s.days_until_renewal > 0 ? `${s.days_until_renewal}d` : "wygasł"}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      {s.credit_alert === "critical" && <AlertPill color="magma" text="🔴 ≤1" />}
-                      {s.credit_alert === "warning" && <AlertPill color="ember" text="🟡 ≤3" />}
-                      {s.expiry_alert === "imminent" && <AlertPill color="magma" text="⏰ ≤3d" />}
-                      {!s.credit_alert && !s.expiry_alert && <span className="text-mist/30 text-[10px]">—</span>}
-                    </td>
-                    <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="inline-flex gap-1.5">
-                        {s.phone && <ActionBtn href={`tel:${s.phone}`} title="Zadzwoń do terapeuty" color="aurora"><PhoneIcon /></ActionBtn>}
-                        <ActionBtn onClick={() => openEmail(s)} title="Wyślij email do terapeuty" color="ember"><MailIcon /></ActionBtn>
-                        <ActionBtn onClick={() => { setFollowUpTarget(s.user_id); setFollowUpDate(quickDate(3)); }} title="Zaplanuj przypomnienie follow-up" color="frost">🔔</ActionBtn>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        <div className="w-16 h-1.5 bg-frost/10 rounded-full overflow-hidden mx-auto mt-1">
+                          <div className={`h-full rounded-full transition-all duration-500 ${creditBar.color}`} style={{ width: `${Math.min(creditBar.pct, 100)}%` }} />
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-center font-mono text-sm text-frost">{s.total_sessions}</td>
+                      <td className="px-3 py-3 text-center">
+                        {s.last_session_at ? (
+                          <span className={`font-mono text-xs ${getActivityColor(s.last_session_at)}`} title={s.last_session_at}>
+                            {formatRelativeDate(s.last_session_at)}
+                          </span>
+                        ) : (
+                          <span className="text-mist/30 text-xs">—</span>
+                        )}
+                      </td>
+                      {/* P3.7: Guard for absurd days_until_renewal */}
+                      <td className="px-3 py-3 text-center">
+                        {!s.period_end || s.days_until_renewal > 365 ? (
+                          <span className="text-mist/30 font-mono text-xs">—</span>
+                        ) : (
+                          <span className={`font-mono text-xs ${s.days_until_renewal <= 3 ? "text-magma font-bold" : s.days_until_renewal <= 7 ? "text-ember" : "text-mist"}`}>
+                            {s.days_until_renewal > 0 ? `${s.days_until_renewal}d` : "wygasł"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        {s.credit_alert === "critical" && <AlertPill color="magma" text="🔴 ≤1" />}
+                        {s.credit_alert === "warning" && <AlertPill color="ember" text="🟡 ≤3" />}
+                        {s.expiry_alert === "imminent" && <AlertPill color="magma" text="⏰ ≤3d" />}
+                        {!s.credit_alert && !s.expiry_alert && <span className="text-mist/30 text-[10px]">—</span>}
+                      </td>
+                      <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex gap-1.5">
+                          {s.phone && isValidPhone(s.phone) && <ActionBtn href={`tel:${normalizePhone(s.phone)}`} title="Zadzwoń do terapeuty" color="aurora"><PhoneIcon /></ActionBtn>}
+                          <ActionBtn onClick={() => openEmail(s)} title="Wyślij email do terapeuty" color="ember"><MailIcon /></ActionBtn>
+                          <ActionBtn onClick={() => { setFollowUpTarget(s.user_id); setFollowUpDate(quickDate(3)); }} title="Zaplanuj przypomnienie follow-up" color="frost">🔔</ActionBtn>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
-          {/* ── Pagination ─────────────────────────────────── */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 mt-4">
+          {/* ── Pagination — P2.4/P2.5 fix ─────────────────── */}
+          <div className="flex items-center justify-between mt-4">
+            <p className="font-mono text-[10px] text-mist/40">
+              Strona {page} z {totalPages}
+            </p>
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page <= 1}
                 className="rounded-button border border-frost/15 px-3 py-1.5 font-mono text-xs text-frost hover:bg-frost/5 transition disabled:opacity-30 disabled:cursor-not-allowed"
               >← Poprzednia</button>
-              <span className="font-mono text-xs text-mist/60">Strona {page} z {totalPages}</span>
+              {/* Page number buttons */}
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum: number;
+                if (totalPages <= 5) pageNum = i + 1;
+                else if (page <= 3) pageNum = i + 1;
+                else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                else pageNum = page - 2 + i;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setPage(pageNum)}
+                    className={`w-8 h-8 rounded-lg font-mono text-xs transition ${page === pageNum ? "bg-ember text-obsidian font-bold" : "text-mist hover:bg-frost/5 hover:text-frost"}`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
               <button
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page >= totalPages}
                 className="rounded-button border border-frost/15 px-3 py-1.5 font-mono text-xs text-frost hover:bg-frost/5 transition disabled:opacity-30 disabled:cursor-not-allowed"
               >Następna →</button>
             </div>
-          )}
+          </div>
         </>
       )}
 
@@ -871,32 +1071,45 @@ export function CRMDashboard() {
             ) : selectedUser && (
               <div className="p-6 space-y-6">
                 {/* Close */}
-                <button onClick={closeDrawer} className="absolute top-4 right-4 text-mist hover:text-frost transition">✕</button>
+                <button onClick={closeDrawer} className="absolute top-4 right-4 text-mist hover:text-frost transition p-1 rounded-lg hover:bg-frost/5">✕</button>
 
                 {/* Contact Card */}
                 <div className="border-b border-frost/10 pb-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h2 className="font-display text-frost text-xl font-bold">{selectedUser.first_name} {selectedUser.last_name}</h2>
-                      {selectedUser.professional_title && <p className="font-serif text-mist/60 text-sm italic">{selectedUser.professional_title}</p>}
+                  <div className="flex items-start gap-4">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold flex-shrink-0 ${getAvatarColor(selectedUser.first_name + selectedUser.last_name)}`}>
+                      {getInitials(selectedUser.first_name, selectedUser.last_name)}
                     </div>
-                    {LIFECYCLE_LABELS[selectedUser.lifecycle_stage] && (
-                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase ${LIFECYCLE_LABELS[selectedUser.lifecycle_stage].color}`}>
-                        {LIFECYCLE_LABELS[selectedUser.lifecycle_stage].emoji} {LIFECYCLE_LABELS[selectedUser.lifecycle_stage].label}
-                      </span>
-                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h2 className="font-display text-frost text-xl font-bold">{selectedUser.first_name} {selectedUser.last_name}</h2>
+                          {selectedUser.professional_title && <p className="font-serif text-mist/60 text-sm italic">{selectedUser.professional_title}</p>}
+                        </div>
+                        {LIFECYCLE_LABELS[selectedUser.lifecycle_stage] && (
+                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase flex-shrink-0 ${LIFECYCLE_LABELS[selectedUser.lifecycle_stage].color}`}>
+                            {LIFECYCLE_LABELS[selectedUser.lifecycle_stage].emoji} {LIFECYCLE_LABELS[selectedUser.lifecycle_stage].label}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="mt-3 space-y-1.5">
-                    <p className="font-mono text-xs text-mist/80">📧 {selectedUser.email}</p>
-                    {selectedUser.phone && <p className="font-mono text-xs text-mist/80">📱 <a href={`tel:${selectedUser.phone}`} className="text-aurora hover:underline">{selectedUser.phone}</a></p>}
+                  <div className="mt-4 space-y-1.5">
+                    <p className="font-mono text-xs text-mist/80">📧 <a href={`mailto:${selectedUser.email}`} className="text-frost hover:text-ember transition">{selectedUser.email}</a></p>
+                    {selectedUser.phone && (
+                      <p className="font-mono text-xs text-mist/80">
+                        📱 <a href={isValidPhone(selectedUser.phone) ? `tel:${normalizePhone(selectedUser.phone)}` : undefined} className={`${isValidPhone(selectedUser.phone) ? "text-aurora hover:underline" : "text-mist/40"}`}>
+                          {formatPhoneDisplay(selectedUser.phone)}
+                        </a>
+                      </p>
+                    )}
                     <p className="font-mono text-xs text-mist/50">Dołączył: {selectedUser.created_at}</p>
                     {selectedUser.last_session_at && <p className="font-mono text-xs text-mist/50">Ostatnia sesja: {selectedUser.last_session_at}</p>}
                   </div>
-                  {/* Quick stats */}
+                  {/* Quick stats — P3.7: guard for days_until_renewal > 365 */}
                   <div className="grid grid-cols-3 gap-2 mt-4">
                     <MiniStat label="Sesje" value={selectedUser.total_sessions} />
                     <MiniStat label="Kredyty" value={`${selectedUser.tokens_remaining}/${selectedUser.tokens_limit}`} />
-                    <MiniStat label="Dni do końca" value={selectedUser.days_until_renewal} />
+                    <MiniStat label="Dni do końca" value={selectedUser.days_until_renewal > 365 ? "—" : selectedUser.days_until_renewal} />
                   </div>
                 </div>
 
@@ -931,9 +1144,14 @@ export function CRMDashboard() {
                       {selectedUser.follow_ups.map((f) => (
                         <div key={f.id} className={`flex items-center justify-between rounded px-2 py-1.5 text-xs ${f.completed ? "bg-frost/5 text-mist/40 line-through" : f.overdue ? "bg-magma/10 text-magma" : "bg-ember/5 text-frost"}`}>
                           <span className="font-mono">{f.due_date} {f.note && `— ${f.note}`}</span>
-                          {!f.completed && (
-                            <button onClick={() => completeFollowUp(f.id)} className="text-aurora hover:text-frost transition">✓</button>
-                          )}
+                          <div className="flex gap-1">
+                            {!f.completed && (
+                              <>
+                                <button onClick={() => completeFollowUp(f.id)} className="text-aurora hover:text-frost transition" title="Zakończ">✓</button>
+                                <button onClick={() => deleteFollowUp(f.id)} className="text-mist/30 hover:text-magma transition" title="Usuń">×</button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1090,7 +1308,7 @@ export function CRMDashboard() {
 
       {/* ── Bulk Actions Bar ─────────────────────────────── */}
       {selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-obsidian border border-ember/30 rounded-card px-6 py-3 shadow-2xl flex items-center gap-4">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-obsidian border border-ember/30 rounded-card px-6 py-3 shadow-2xl flex items-center gap-4 animate-[slideUp_0.2s_ease-out]">
           <span className="font-mono text-xs text-frost">
             Zaznaczono: <span className="text-ember font-bold">{selected.size}</span>
           </span>
@@ -1123,18 +1341,29 @@ export function CRMDashboard() {
       {toast && (
         <div className="fixed top-6 right-6 z-[70] bg-obsidian border border-aurora/30 rounded-card px-5 py-3 shadow-2xl animate-[slideIn_0.3s_ease-out]">
           <p className="font-display text-frost text-sm">{toast}</p>
+          <div className="h-0.5 bg-aurora/30 rounded-full mt-2 animate-[shrink_3.5s_linear_forwards]" />
         </div>
       )}
+
+      {/* ── Animation keyframes (injected) ────────────────── */}
+      <style>{`
+        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes shrink { from { width: 100%; } to { width: 0%; } }
+      `}</style>
     </div>
   );
 }
 
 // ─── Sub-components ──────────────────────────────────────────
 
-function KPIChip({ label, value, color }: { label: string; value: number; color: string }) {
+function KPIChip({ label, value, color, icon }: { label: string; value: number; color: string; icon: string }) {
   return (
-    <div className="rounded-card border border-frost/10 bg-frost/[0.03] px-3 py-3 text-center">
-      <div className={`font-display text-${color} text-2xl font-bold`}>{value}</div>
+    <div className="rounded-card border border-frost/10 bg-frost/[0.03] px-3 py-3 text-center hover:bg-frost/[0.05] transition-colors">
+      <div className="flex items-center justify-center gap-1.5">
+        <span className="text-sm">{icon}</span>
+        <div className={`font-display text-${color} text-2xl font-bold`}>{value}</div>
+      </div>
       <div className="font-mono text-[9px] text-mist/60 uppercase tracking-[0.1em] mt-1">{label}</div>
     </div>
   );

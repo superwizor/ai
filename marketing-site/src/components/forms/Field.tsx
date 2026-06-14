@@ -117,11 +117,10 @@ export function RadioGroup({
         return (
           <label
             key={o.value}
-            className={`cursor-pointer rounded-button border px-4 py-2 font-display text-sm transition ${
-              active
+            className={`cursor-pointer rounded-button border px-4 py-2 font-display text-sm transition ${active
                 ? "border-ember bg-ember/10 text-frost"
                 : "border-frost/15 bg-frost/5 text-mist hover:border-frost/30"
-            }`}
+              }`}
           >
             <input
               type="radio"
@@ -283,9 +282,8 @@ export function PhoneInput({
           value={selectedPrefix}
           onChange={handlePrefixInputChange}
           placeholder="+48"
-          className={`rounded-button bg-frost/5 border border-frost/15 text-frost text-center px-3 py-2.5 font-sans text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition h-full w-full ${
-            error ? "!border-magma !focus:border-magma" : ""
-          }`}
+          className={`rounded-button bg-frost/5 border border-frost/15 text-frost text-center px-3 py-2.5 font-sans text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition h-full w-full ${error ? "!border-magma !focus:border-magma" : ""
+            }`}
         />
         <datalist id="dial-codes">
           {dialCodes.map((dc) => (

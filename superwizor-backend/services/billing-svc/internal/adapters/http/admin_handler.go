@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -693,6 +694,7 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 	tierFilter := r.URL.Query().Get("tier")
 	statusFilter := r.URL.Query().Get("status")
 	alertFilter := r.URL.Query().Get("alert")
+	searchFilter := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("search")))
 
 	// Pagination params
 	page := 1
@@ -877,6 +879,19 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 			continue
 		}
 
+		// Server-side text search (P2.4 fix — search must run before
+		// pagination so totalFiltered reflects the real count)
+		if searchFilter != "" {
+			nameMatch := strings.Contains(strings.ToLower(sub.FirstName), searchFilter) ||
+				strings.Contains(strings.ToLower(sub.LastName), searchFilter) ||
+				strings.Contains(strings.ToLower(sub.Email), searchFilter) ||
+				strings.Contains(strings.ToLower(sub.OrgName), searchFilter) ||
+				strings.Contains(strings.ToLower(sub.Phone), searchFilter)
+			if !nameMatch {
+				continue
+			}
+		}
+
 		allSubscribers = append(allSubscribers, sub)
 	}
 
@@ -907,3 +922,4 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		Message:     "ok",
 	})
 }
+

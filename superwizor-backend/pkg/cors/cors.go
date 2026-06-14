@@ -12,11 +12,11 @@
 //     and credentials, and we deliberately want auth headers on these
 //     requests.
 //
-//   - Allowed methods are POST + OPTIONS only. Connect-RPC and gRPC-Web
-//     are both POST-shaped. Admin HTTP endpoints (e.g. billing-svc
-//     /admin/*) are also POST.  GET is not in the allowlist because the
-//     browser would only ever GET via XHR for things like health checks,
-//     which can use a simple-request path that bypasses pre-flight.
+//   - Allowed methods are GET, POST, PATCH, DELETE, OPTIONS.
+//     Connect-RPC and gRPC-Web are POST-shaped. Admin CRM HTTP
+//     endpoints use GET (list), POST (create), PATCH (update),
+//     and DELETE (remove tags / follow-ups). All need preflight
+//     approval when called cross-origin from the marketing-site.
 //
 //   - Allowed headers cover what Connect-RPC, gRPC-Web, and Firebase
 //     auth pre-flight checks need. Anything else triggers a fresh
@@ -153,7 +153,7 @@ func New(cfg Config) func(http.Handler) http.Handler {
 			// origin is allowed and short-circuit the response.
 			if r.Method == http.MethodOptions &&
 				r.Header.Get("Access-Control-Request-Method") != "" {
-				w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Headers", allowedHeadersJoined)
 				if cfg.MaxAgeSeconds > 0 {
 					w.Header().Set("Access-Control-Max-Age",

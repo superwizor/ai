@@ -45,6 +45,7 @@ func (h *CRMHandler) RegisterCRMRoutes(mux *http.ServeMux, auth *AdminAuthMiddle
 	mux.HandleFunc("GET /admin/crm/follow-ups", auth.Require(h.handleListFollowUps))
 	mux.HandleFunc("POST /admin/crm/follow-ups", auth.Require(h.handleCreateFollowUp))
 	mux.HandleFunc("PATCH /admin/crm/follow-ups/{id}/complete", auth.Require(h.handleCompleteFollowUp))
+	mux.HandleFunc("DELETE /admin/crm/follow-ups/{id}", auth.Require(h.handleDeleteFollowUp))
 
 	// Tags
 	mux.HandleFunc("GET /admin/crm/user/{userId}/tags", auth.Require(h.handleListTags))
@@ -210,7 +211,7 @@ func (h *CRMHandler) handleListFollowUps(w http.ResponseWriter, r *http.Request)
 		}
 		f.DueDate = dueDate.Format("2006-01-02")
 		f.CreatedAt = createdAt.Format(time.RFC3339)
-		f.Overdue = f.DueDate <= today && !f.Completed
+		f.Overdue = f.DueDate < today && !f.Completed
 		followUps = append(followUps, f)
 	}
 	if followUps == nil {
@@ -282,6 +283,25 @@ func (h *CRMHandler) handleCompleteFollowUp(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	writeJSON(w, http.StatusOK, map[string]string{"message": "ok"})
+}
+
+// handleDeleteFollowUp deletes a follow-up by ID (for cleaning up orphans).
+func (h *CRMHandler) handleDeleteFollowUp(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "missing id", nil)
+		return
+	}
+
+	_, err := h.pool.Exec(ctx, `DELETE FROM crm_follow_ups WHERE id = $1`, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "delete follow-up", err)
+		return
+	}
+
+	h.logger.InfoContext(ctx, "crm: follow-up deleted", "id", id)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "ok"})
 }
 
