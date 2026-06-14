@@ -31,6 +31,10 @@ import {
   OrganizationType,
   type User,
   type Organization,
+  type ReportPreferences,
+  GetReportPreferencesRequestSchema,
+  UpdateReportPreferencesRequestSchema,
+  ReportPreferencesSchema,
 } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import type { Subscription } from "@superwizor/proto-ts/billing/v1/billing_pb";
 
@@ -102,6 +106,9 @@ export function AccountSections() {
 
       {/* ── 2. ORGANIZACJA ──────────────────────────────────── */}
       <OrgSection profile={profile} />
+
+      {/* ── 2.5. PREFERENCJE RAPORTÓW ────────────────────────── */}
+      <ReportPreferencesSection userId={profile?.id ?? null} locale={locale} />
 
       {/* ── 3. SUBSKRYPCJA ──────────────────────────────────── */}
       <BillingSection organizationId={profile?.organizationId ?? null} locale={locale} />
@@ -214,6 +221,7 @@ function ProfileSection({
     professionalTitle: "",
     credentialsNumber: "",
     biography: "",
+    selectedModalityId: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -238,6 +246,7 @@ function ProfileSection({
       professionalTitle: profile.professionalTitle ?? "",
       credentialsNumber: profile.credentialsNumber ?? "",
       biography: profile.biography ?? "",
+      selectedModalityId: profile.defaultModalityId ?? "",
     });
   }, [profile]);
 
@@ -254,6 +263,7 @@ function ProfileSection({
         professionalTitle: draft.professionalTitle,
         credentialsNumber: draft.credentialsNumber,
         biography: draft.biography,
+        defaultModalityId: draft.selectedModalityId || undefined,
       });
       const updated = await identityClient.updateProfile(req);
       onUpdate(updated);
@@ -339,13 +349,22 @@ function ProfileSection({
           />
         </SettingsField>
 
-        {/* Modality (read-only from profile) */}
+        {/* Modality (editable dropdown) */}
         <SettingsField label={t("modality")}>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-[#F5A623]/10 border border-[#F5A623]/20 font-sans text-[13px] font-semibold text-[#F5A623]">
-              {modalityLabel}
-            </span>
-          </div>
+          <select
+            value={draft.selectedModalityId}
+            onChange={(e) => setDraft((d) => ({ ...d, selectedModalityId: e.target.value }))}
+            className={inputClass}
+          >
+            <option value="">
+              {locale === "pl" ? "— Wybierz nurt terapii —" : "— Choose therapy modality —"}
+            </option>
+            {modalities.filter((m) => m.isSupported).map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.labels[locale as "pl" | "en"] ?? m.displayName}
+              </option>
+            ))}
+          </select>
         </SettingsField>
 
         {error && (
@@ -615,6 +634,275 @@ function orgTypeName(t: OrganizationType): string {
     case OrganizationType.ENTERPRISE: return "ENTERPRISE";
     default: return "—";
   }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Report Preferences
+// ────────────────────────────────────────────────────────────────────
+
+const LENGTH_OPTIONS = [
+  { value: "brief", pl: "Krótki", en: "Brief" },
+  { value: "standard", pl: "Standardowy", en: "Standard" },
+  { value: "detailed", pl: "Szczegółowy", en: "Detailed" },
+];
+const TONE_OPTIONS = [
+  { value: "clinical_formal", pl: "Kliniczny, formalny", en: "Clinical, formal" },
+  { value: "empathic_warm", pl: "Empatyczny, ciepły", en: "Empathic, warm" },
+  { value: "pragmatic_direct", pl: "Pragmatyczny, bezpośredni", en: "Pragmatic, direct" },
+  { value: "academic_rigorous", pl: "Akademicki, rygorystyczny", en: "Academic, rigorous" },
+];
+const QUOTE_OPTIONS = [
+  { value: "few", pl: "Mało (1–2)", en: "Few (1–2)" },
+  { value: "selective", pl: "Selektywnie (3–5)", en: "Selective (3–5)" },
+  { value: "many", pl: "Dużo (6+)", en: "Many (6+)" },
+];
+const DIAG_OPTIONS = [
+  { value: "descriptive", pl: "Opisowy", en: "Descriptive" },
+  { value: "clinical_labels", pl: "Etykiety kliniczne", en: "Clinical labels" },
+  { value: "dsm_icd", pl: "DSM / ICD", en: "DSM / ICD" },
+];
+const HEDGE_OPTIONS = [
+  { value: "tentative", pl: "Ostrożne", en: "Tentative" },
+  { value: "balanced", pl: "Zbalansowane", en: "Balanced" },
+  { value: "assertive", pl: "Asertywne", en: "Assertive" },
+];
+const STRENGTHS_OPTIONS = [
+  { value: "problem_focused", pl: "Zorientowany na problem", en: "Problem-focused" },
+  { value: "balanced", pl: "Zbalansowany", en: "Balanced" },
+  { value: "strengths_first", pl: "Mocne strony najpierw", en: "Strengths-first" },
+];
+const SECTION_OPTIONS = [
+  { value: "clinical_picture", pl: "Obraz kliniczny", en: "Clinical picture" },
+  { value: "interventions", pl: "Interwencje", en: "Interventions" },
+  { value: "case_formulation", pl: "Konceptualizacja przypadku", en: "Case formulation" },
+  { value: "supervisory_recommendations", pl: "Rekomendacje superwizyjne", en: "Supervisory recommendations" },
+  { value: "homework_between_sessions", pl: "Zadania międzysesyjne", en: "Homework between sessions" },
+  { value: "cultural_context", pl: "Kontekst kulturowy", en: "Cultural context" },
+  { value: "safety_and_risk", pl: "Bezpieczeństwo i ryzyko", en: "Safety & risk" },
+];
+
+function ReportPreferencesSection({ userId, locale }: { userId: string | null; locale: string }) {
+  const t = useTranslations("account");
+  const lang = locale as "pl" | "en";
+
+  const [prefs, setPrefs] = useState({
+    length: "standard",
+    tone: "clinical_formal",
+    quoteDensity: "selective",
+    diagnosticLanguage: "descriptive",
+    hypothesisHedging: "balanced",
+    strengthsFraming: "balanced",
+    sectionEmphasis: [] as string[],
+    freeText: "",
+  });
+  const [loaded, setLoaded] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await identityClient.getReportPreferences(
+          create(GetReportPreferencesRequestSchema, { therapistId: userId }),
+        );
+        if (!cancelled && resp) {
+          setPrefs({
+            length: resp.length || "standard",
+            tone: resp.tone || "clinical_formal",
+            quoteDensity: resp.quoteDensity || "selective",
+            diagnosticLanguage: resp.diagnosticLanguage || "descriptive",
+            hypothesisHedging: resp.hypothesisHedging || "balanced",
+            strengthsFraming: resp.strengthsFraming || "balanced",
+            sectionEmphasis: [...resp.sectionEmphasis],
+            freeText: resp.freeText || "",
+          });
+        }
+      } catch {
+        // No preferences set yet — use defaults
+      } finally {
+        if (!cancelled) setLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!userId) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const req = create(UpdateReportPreferencesRequestSchema, {
+        therapistId: userId,
+        preferences: create(ReportPreferencesSchema, {
+          version: 1,
+          length: prefs.length,
+          tone: prefs.tone,
+          quoteDensity: prefs.quoteDensity,
+          diagnosticLanguage: prefs.diagnosticLanguage,
+          hypothesisHedging: prefs.hypothesisHedging,
+          strengthsFraming: prefs.strengthsFraming,
+          sectionEmphasis: prefs.sectionEmphasis,
+          freeText: prefs.freeText,
+        }),
+        idempotencyKey: crypto.randomUUID(),
+      });
+      await identityClient.updateReportPreferences(req);
+      setSavedAt(Date.now());
+    } catch {
+      setError(t("errGeneric"));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function toggleSection(val: string) {
+    setPrefs((p) => ({
+      ...p,
+      sectionEmphasis: p.sectionEmphasis.includes(val)
+        ? p.sectionEmphasis.filter((s) => s !== val)
+        : [...p.sectionEmphasis, val],
+    }));
+  }
+
+  if (!userId) return null;
+
+  return (
+    <SettingsCard>
+      <SectionLabel>{t("sectionReportPrefs")}</SectionLabel>
+      {!loaded ? (
+        <p className="px-4 pb-4 font-sans text-sm text-[#8FA5A0]">{t("orgLoading")}</p>
+      ) : (
+        <form onSubmit={onSubmit} className="px-4 pb-4 grid gap-4" noValidate>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SettingsField label={t("reportLength")}>
+              <select
+                value={prefs.length}
+                onChange={(e) => setPrefs((p) => ({ ...p, length: e.target.value }))}
+                className={inputClass}
+              >
+                {LENGTH_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o[lang]}</option>
+                ))}
+              </select>
+            </SettingsField>
+            <SettingsField label={t("reportTone")}>
+              <select
+                value={prefs.tone}
+                onChange={(e) => setPrefs((p) => ({ ...p, tone: e.target.value }))}
+                className={inputClass}
+              >
+                {TONE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o[lang]}</option>
+                ))}
+              </select>
+            </SettingsField>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SettingsField label={t("reportQuoteDensity")}>
+              <select
+                value={prefs.quoteDensity}
+                onChange={(e) => setPrefs((p) => ({ ...p, quoteDensity: e.target.value }))}
+                className={inputClass}
+              >
+                {QUOTE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o[lang]}</option>
+                ))}
+              </select>
+            </SettingsField>
+            <SettingsField label={t("reportDiagnosticLanguage")}>
+              <select
+                value={prefs.diagnosticLanguage}
+                onChange={(e) => setPrefs((p) => ({ ...p, diagnosticLanguage: e.target.value }))}
+                className={inputClass}
+              >
+                {DIAG_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o[lang]}</option>
+                ))}
+              </select>
+            </SettingsField>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SettingsField label={t("reportHypothesisHedging")}>
+              <select
+                value={prefs.hypothesisHedging}
+                onChange={(e) => setPrefs((p) => ({ ...p, hypothesisHedging: e.target.value }))}
+                className={inputClass}
+              >
+                {HEDGE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o[lang]}</option>
+                ))}
+              </select>
+            </SettingsField>
+            <SettingsField label={t("reportStrengthsFraming")}>
+              <select
+                value={prefs.strengthsFraming}
+                onChange={(e) => setPrefs((p) => ({ ...p, strengthsFraming: e.target.value }))}
+                className={inputClass}
+              >
+                {STRENGTHS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o[lang]}</option>
+                ))}
+              </select>
+            </SettingsField>
+          </div>
+
+          {/* Section emphasis toggles */}
+          <SettingsField label={t("reportSectionEmphasis")}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {SECTION_OPTIONS.map((s) => (
+                <label key={s.value} className="flex items-center gap-2.5 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={prefs.sectionEmphasis.includes(s.value)}
+                    onChange={() => toggleSection(s.value)}
+                    className="w-4 h-4 rounded border-white/20 bg-white/5 text-[#F5A623] focus:ring-[#F5A623]/50 accent-[#F5A623]"
+                  />
+                  <span className="font-sans text-[13px] text-[#F2F0EA]/80 group-hover:text-[#F2F0EA] transition-colors">
+                    {s[lang]}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </SettingsField>
+
+          {/* Free text */}
+          <SettingsField label={t("reportFreeText")}>
+            <textarea
+              rows={2}
+              maxLength={500}
+              value={prefs.freeText}
+              onChange={(e) => setPrefs((p) => ({ ...p, freeText: e.target.value }))}
+              className={`${inputClass} resize-y`}
+              placeholder={locale === "pl"
+                ? "Dodatkowe instrukcje dla AI (max 500 znaków)..."
+                : "Additional instructions for AI (max 500 chars)..."}
+            />
+          </SettingsField>
+
+          {error && (
+            <p role="alert" className="rounded-xl border border-[#ff4444]/40 bg-[#ff4444]/10 px-3 py-2 font-sans text-xs text-[#F2F0EA]">
+              {error}
+            </p>
+          )}
+          {savedAt && !error && !submitting && (
+            <p role="status" className="rounded-xl border border-green-500/40 bg-green-500/10 px-3 py-2 font-sans text-xs text-[#F2F0EA]">
+              {t("reportPrefsSaved")}
+            </p>
+          )}
+
+          <div>
+            <button type="submit" disabled={submitting} className={submitBtnClass}>
+              {submitting ? t("profileSubmitting") : t("reportPrefsSave")}
+            </button>
+          </div>
+        </form>
+      )}
+    </SettingsCard>
+  );
 }
 
 // ────────────────────────────────────────────────────────────────────
