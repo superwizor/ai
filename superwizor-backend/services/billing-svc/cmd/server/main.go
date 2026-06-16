@@ -158,6 +158,7 @@ func main() {
 	httpadapter.NewAdminHandler(pool, logger).RegisterRoutes(httpMux, adminAuth, schedAuth)
 	httpadapter.NewCRMHandler(pool, logger).RegisterCRMRoutes(httpMux, adminAuth)
 	httpadapter.NewStripeHandler(pool, logger, identityClient).RegisterRoutes(httpMux)
+	httpadapter.NewCheckoutHandler(logger).RegisterRoutes(httpMux)
 	httpadapter.NewContactHandler(notificationClient, logger).RegisterRoutes(httpMux)
 	// Connect-RPC surface — browser callers reach the same business
 	// logic as the gRPC path via the ConnectAdapter. The connectmd

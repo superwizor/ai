@@ -201,6 +201,21 @@
       ],
       "rewrites": [
         {
+          "//": "Stripe Checkout Session — browser POST from registration + upgrade flows. Served by billing-svc on Cloud Run (replaces broken Next.js API route which returned 404 on static export).",
+          "source": "/api/checkout",
+          "run": { "serviceId": "billing-svc", "region": "europe-central2" }
+        },
+        {
+          "//": "Stripe Billing Portal — browser POST from /account Subskrypcja card. Same migration rationale as /api/checkout.",
+          "source": "/api/billing-portal",
+          "run": { "serviceId": "billing-svc", "region": "europe-central2" }
+        },
+        {
+          "//": "NIP (Polish tax ID) lookup — browser GET from /account VAT form. Proxied by identity-svc (domain purity: NIP is an org data concern).",
+          "source": "/api/nip-lookup",
+          "run": { "serviceId": "identity-svc", "region": "europe-central2" }
+        },
+        {
           "//": "Admin org-detail catch-all. Static export can't pre-render every /admin/orgs/<id> because the IDs aren't known at build time. We ship a single template per locale (out/{pl,en}/admin/orgs/[id]/index.html — literal bracketed directory) and rewrite all matching /admin/orgs/<id> traffic to it. The client component reads usePathname() at runtime and fetches the matching org via AdminGetOrganization.",
           "source": "/pl/admin/orgs/**",
           "destination": "/pl/admin/orgs/[id]/index.html"

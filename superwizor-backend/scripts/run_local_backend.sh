@@ -171,6 +171,21 @@ else
   echo "✅ Używam podanego STRIPE_WEBHOOK_SECRET"
 fi
 
+# Stripe secret key — potrzebny dla /api/checkout i /api/billing-portal.
+# Pobieramy z marketing-site/.env.local (jeśli nie podano ręcznie).
+if [[ -z "${STRIPE_SECRET_KEY:-}" ]]; then
+  ENV_LOCAL="${BACKEND_DIR}/../marketing-site/.env.local"
+  if [[ -f "${ENV_LOCAL}" ]]; then
+    STRIPE_SECRET_KEY="$(grep '^STRIPE_SECRET_KEY=' "${ENV_LOCAL}" | cut -d= -f2-)"
+    if [[ -n "${STRIPE_SECRET_KEY}" ]]; then
+      echo "✅ STRIPE_SECRET_KEY pobrano z marketing-site/.env.local"
+    fi
+  fi
+fi
+if [[ -z "${STRIPE_SECRET_KEY:-}" ]]; then
+  echo "⚠️  STRIPE_SECRET_KEY nie ustawiony — /api/checkout zwróci 503"
+fi
+
 DATABASE_URL="${LOCAL_DSN}" \
 PORT="${PORT_BILLING}" \
 VERSION="local-dev" \
@@ -178,6 +193,7 @@ GCP_PROJECT_ID="superwizor-ai-25ecd" \
 IDENTITY_SVC_URL="http://127.0.0.1:${PORT_IDENTITY}" \
 NOTIFICATION_SVC_URL="http://127.0.0.1:${PORT_NOTIFICATION}" \
 STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET}" \
+STRIPE_SECRET_KEY="${STRIPE_SECRET_KEY:-}" \
 "${BACKEND_DIR}/bin/billing-svc" > "${LOGS_DIR}/billing-svc.log" 2>&1 &
 PIDS+=($!)
 
