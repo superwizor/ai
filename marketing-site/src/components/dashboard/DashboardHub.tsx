@@ -247,6 +247,13 @@ export function DashboardHub({ locale }: { locale: string }) {
                 badgeClass = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
               }
 
+              const resetDate = sub.currentPeriodEnd
+                ? new Date(Number(sub.currentPeriodEnd.seconds) * 1000).toLocaleDateString(
+                    locale === "en" ? "en-US" : "pl-PL",
+                    { day: "numeric", month: "short" }
+                  )
+                : null;
+
               return (
                 <div className="bg-white/[0.02] border border-white/[0.04] backdrop-blur-md rounded-2xl py-3.5 px-5 sm:px-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg">
                   <div className="flex items-center gap-3">
@@ -274,8 +281,8 @@ export function DashboardHub({ locale }: { locale: string }) {
 
                   <div className="font-sans text-xs text-[#8FA5A0] whitespace-nowrap">
                     {locale === "en"
-                      ? `Remaining: ${left} of ${total} sessions`
-                      : `Pozostało: ${left} z ${total} sesji`}
+                      ? `Remaining: ${left} of ${total} sessions${resetDate ? ` • Resets: ${resetDate}` : ""}`
+                      : `Pozostało: ${left} z ${total} sesji${resetDate ? ` • Odnowienie: ${resetDate}` : ""}`}
                   </div>
                 </div>
               );
