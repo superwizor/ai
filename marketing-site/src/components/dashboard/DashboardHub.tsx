@@ -168,7 +168,7 @@ export function DashboardHub({ locale }: { locale: string }) {
 
       <div className="relative mx-auto max-w-5xl px-5">
         {/* --- Welcome --- */}
-        <div className="mb-8">
+        <div className="mb-14">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#F5A623] mb-2">
             {greeting}
           </p>
@@ -190,7 +190,7 @@ export function DashboardHub({ locale }: { locale: string }) {
 
         {/* --- Quota Status Strip (Option A) --- */}
         {fbUser && (
-          <div className="mb-10">
+          <div className="mb-14">
             {loadingSub ? (
               <div className="bg-white/[0.02] border border-white/[0.04] backdrop-blur-md rounded-2xl py-3.5 px-5 sm:px-6 animate-pulse flex items-center justify-between">
                 <div className="h-4 bg-white/[0.06] rounded w-28" />

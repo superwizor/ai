@@ -11,6 +11,12 @@ import (
 )
 
 func TestStripeSubscriptionUnmarshal(t *testing.T) {
+	// This is a diagnostic test that connects to a real database.
+	// Skip in CI where no database is available.
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
 	ctx := context.Background()
 	url := "postgres://superwizor_app:Zjee%21ZoYyd78%25%26lCk-%7D47N74J-9OE%21M%21@127.0.0.1:5432/superwizor?sslmode=disable"
 	conn, err := pgx.Connect(ctx, url)
