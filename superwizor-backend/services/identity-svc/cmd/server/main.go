@@ -34,6 +34,7 @@ import (
 	"github.com/superwizor-ai/backend/pkg/cors"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/firebase"
 	grpcadapter "github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/grpc"
+	httpadapter "github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/http"
 	"github.com/superwizor-ai/backend/services/identity-svc/internal/adapters/postgres/db"
 
 	"go.opentelemetry.io/contrib/detectors/gcp"
@@ -185,6 +186,7 @@ func main() {
 		connect.WithInterceptors(connectmd.HeadersToGRPCMetadata()),
 	)
 	httpMux.Handle(connectPath, connectHandler)
+	httpadapter.NewNIPHandler(logger).RegisterRoutes(httpMux)
 	httpMux.HandleFunc("GET /healthz", func(w nethttp.ResponseWriter, _ *nethttp.Request) {
 		w.WriteHeader(nethttp.StatusOK)
 		_, _ = w.Write([]byte("ok"))

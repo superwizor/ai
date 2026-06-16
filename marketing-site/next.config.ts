@@ -32,6 +32,21 @@ const nextConfig: NextConfig = {
   // the standard pattern for monorepo-local TS packages.
   transpilePackages: ["@superwizor/proto-ts"],
 
+  // ── Local dev rewrites ──────────────────────────────────────────
+  // In production the static export is served by Firebase Hosting
+  // which has Cloud Run rewrites for /api/* (see firebase.json).
+  // In dev mode we proxy these routes to the local Go backend
+  // services (started by KOMENDY/1 → run_local_backend.sh).
+  async rewrites() {
+    return [
+      // billing-svc (port 8081)
+      { source: "/api/checkout", destination: "http://127.0.0.1:8081/api/checkout" },
+      { source: "/api/billing-portal", destination: "http://127.0.0.1:8081/api/billing-portal" },
+      // identity-svc (port 8080)
+      { source: "/api/nip-lookup", destination: "http://127.0.0.1:8080/api/nip-lookup" },
+    ];
+  },
+
   // Note: the /login → app.superwizor.ai redirect that previously
   // lived in `redirects()` is now handled by Firebase Hosting (see
   // firebase.json `hosting[0].redirects`). Static export builds
