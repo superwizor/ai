@@ -548,14 +548,24 @@ func (h *StripeHandler) upsertSubscriptionFromStripe(ctx context.Context, event 
 		return fmt.Errorf("unmarshal subscription: %w", err)
 	}
 
+	q := db.New(h.pool)
+
 	orgIDStr := sub.Metadata.OrganizationID
 	if orgIDStr == "" {
-		h.logger.WarnContext(ctx, "stripe subscription: organization_id missing in metadata — cannot link",
-			"stripe_sub_id", sub.ID,
-			"event_type", event.Type)
-		// Nie failujemy — robimy co możemy bez org_id.
-		// Ewentualnie Darek linkuje ręcznie przez panel admina.
-		return nil
+		// Fallback: legacy subscriptions created before metadata was added.
+		// Try to find org_id from existing DB record matched by stripe sub ID.
+		existingSub, dbErr := q.GetSubscriptionByStripeID(ctx, sub.ID)
+		if dbErr == nil {
+			orgIDStr = existingSub.OrganizationID.String()
+			h.logger.InfoContext(ctx, "stripe subscription: resolved organization_id from DB fallback",
+				"stripe_sub_id", sub.ID,
+				"org_id", orgIDStr)
+		} else {
+			h.logger.WarnContext(ctx, "stripe subscription: organization_id missing in metadata and not found in DB — cannot link",
+				"stripe_sub_id", sub.ID,
+				"event_type", event.Type)
+			return nil
+		}
 	}
 
 	orgID, err := uuid.Parse(orgIDStr)
@@ -569,7 +579,6 @@ func (h *StripeHandler) upsertSubscriptionFromStripe(ctx context.Context, event 
 		priceID = sub.Items.Data[0].Price.ID
 	}
 
-	q := db.New(h.pool)
 	plan, err := q.GetPlanByStripePriceID(ctx, &priceID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
