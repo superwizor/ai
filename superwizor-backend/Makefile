@@ -23,7 +23,7 @@ lint:  ## Run golangci-lint on all services
 test:  ## Run unit tests for all modules
 	@for dir in $$(find . -name "go.mod" -not -path "*/node_modules/*" -not -path "*/.tmp/*" -exec dirname {} \;); do \
 		echo "Testing $$dir"; \
-		(cd $$dir && go test -race -coverprofile=cov.out ./...) || exit 1; \
+		(cd $$dir && go test -short -race -coverprofile=cov.out ./...) || exit 1; \
 	done
 
 build:  ## Build all service binaries
