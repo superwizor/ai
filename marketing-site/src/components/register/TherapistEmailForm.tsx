@@ -456,6 +456,8 @@ export function TherapistEmailForm() {
         planSlug,
         prefix,
         data.email,
+        data.phoneNumber ?? undefined,
+        `${data.firstName || ""} ${data.lastName || ""}`.trim() || undefined,
       );
     } catch (e) {
       if (e instanceof FirebaseError) {

@@ -17,7 +17,7 @@ type Particle = {
 
 // Web Audio API Synthesizer for a premium, clean iOS-style success chime.
 // PROGRAMMATIC: No external asset requests, zero 404s, instantaneous load.
-function playSuccessSound() {
+export function playSuccessSound() {
   const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
   if (!AudioContext) return;
   const ctx = new AudioContext();

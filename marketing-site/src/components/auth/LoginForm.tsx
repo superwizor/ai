@@ -33,8 +33,8 @@
 
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
@@ -45,7 +45,7 @@ import { sendPasswordResetEmail } from "firebase/auth";
 
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { identityClient } from "@/lib/connect/clients";
-import { UserRole } from "@superwizor/proto-ts/identity/v1/identity_pb";
+import { UserRole, CheckEmailExistsRequestSchema } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { getFirebaseAuth } from "@/lib/firebase/init";
 
 // APP_URL kept as a comment for grep — the post-login Flutter-app
@@ -60,6 +60,8 @@ export function LoginForm() {
   const locale = useLocale();
   const adminPrefix = locale === "en" ? "/en" : "/pl";
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const errParam = searchParams.get("err");
   const { signInWithEmail, signInWithGoogle, signInWithApple } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -67,6 +69,12 @@ export function LoginForm() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (errParam === "reauth") {
+      setError(t("errorReauth"));
+    }
+  }, [errParam, t]);
 
   // After any sign-in (email or social) we resolve the user's role and
   // route accordingly. Returns false if we redirected to register/finish.
@@ -100,6 +108,26 @@ export function LoginForm() {
     return true;
   };
 
+  useEffect(() => {
+    const isDemo = searchParams.get("demo") === "1" || searchParams.get("demo") === "true";
+    if (isDemo && phase === "idle") {
+      const runAutoLogin = async () => {
+        setPhase("submitting");
+        setError(null);
+        setInfo(locale === "pl" ? "Logowanie do konta demonstracyjnego..." : "Logging into demonstration account...");
+        try {
+          await signInWithEmail("demo@superwizor.ai", "SuperwizorDemo123!");
+          await resolveAndRoute();
+        } catch (e) {
+          console.error("[login] autologin error", e);
+          setError(locale === "pl" ? "Nie udało się zalogować automatycznie." : "Auto-login failed.");
+          setPhase("idle");
+        }
+      };
+      runAutoLogin();
+    }
+  }, [searchParams, phase]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -117,7 +145,18 @@ export function LoginForm() {
           e.code === "auth/user-not-found" ||
           e.code === "auth/invalid-email")
       ) {
-        setError(t("errorBadCreds"));
+        try {
+          const checkResp = await identityClient.checkEmailExists(
+            create(CheckEmailExistsRequestSchema, { email: email.trim().toLowerCase() })
+          );
+          if (checkResp.exists && checkResp.isPendingDeletion) {
+            setError(t("errorPendingDeletion"));
+          } else {
+            setError(t("errorBadCreds"));
+          }
+        } catch (checkErr) {
+          setError(t("errorBadCreds"));
+        }
       } else {
         console.error("[login] unexpected error", e);
         setError(t("errorGeneric"));

@@ -49,3 +49,21 @@ SET tokens_used = tokens_used + $2,
     tokens_reserved = GREATEST(0, tokens_reserved - $3),
     updated_at = now()
 WHERE id = $1;
+
+-- name: CheckUsageCounterExists :one
+-- Sprawdza czy istnieje usage_counter dla danej subskrypcji i okresu.
+-- Używane w upsertSubscriptionFromStripe żeby uniknąć UNIQUE violation
+-- w transakcji (które by ją unieważniły w Postgresie).
+SELECT EXISTS(
+    SELECT 1 FROM usage_counters
+    WHERE subscription_id = $1 AND period_start = $2
+) AS exists;
+
+-- name: UpdateUsageCounterOnPlanChange :exec
+-- Aktualizuje tokens_limit i period_end dla istniejącego usage_counter
+-- przy zmianie planu (upgrade/downgrade). Nie resetuje tokens_used/reserved.
+UPDATE usage_counters
+SET tokens_limit = $3,
+    period_end = $4,
+    updated_at = now()
+WHERE subscription_id = $1 AND period_start = $2;

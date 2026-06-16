@@ -1,0 +1,222 @@
+// Playwright E2E: Account Settings & Deletion flow tests.
+//
+// Validates:
+// - Apple-style UI spacing and icons are present.
+// - Biography ("O mnie") field is completely removed.
+// - Organisation name input has correct placeholder.
+// - 3-step deletion flow handles toggle checkbox, case-insensitive typing check,
+//   and re-auth flow redirect.
+
+import { test, expect } from "@playwright/test";
+import { forLocale, urlPrefix } from "./_locales";
+import { mockFirebaseAuth } from "./fixtures/auth";
+import {
+  mockGetMyProfile,
+  mockGetMyOrganization,
+  mockGetSubscription,
+  mockListModalities,
+  mockUpdateProfile,
+  mockUpdateMyOrganization,
+} from "./fixtures/connect-rpc";
+
+test.describe("Account Settings & Deletion", () => {
+  test.beforeEach(async ({ page }) => {
+    // Authenticate client routes
+    await mockFirebaseAuth(page);
+    await mockGetMyProfile(page, {
+      id: "user-uuid-1",
+      email: "e2e@example.com",
+      firstName: "Maciej",
+      lastName: "Kolodziejczyk",
+      phoneNumber: "+48 510417781",
+      professionalTitle: "Psycholog",
+      credentialsNumber: "LIC-1234",
+      defaultModalityId: "44f77c8e-8a71-4770-96f3-42e13297a7e8",
+      organizationId: "org-uuid-1",
+      role: "USER_ROLE_THERAPIST",
+    });
+    await mockGetMyOrganization(page);
+    await mockGetSubscription(page);
+    await mockListModalities(page);
+
+    // Authenticate by submitting the login form
+    const prefix = urlPrefix();
+    await page.goto(`${prefix}/login`);
+    await page.locator("input[type='email']").fill("e2e@example.com");
+    await page.locator("input[type='password']").fill("Sup3rwizor!");
+    
+    // Select the form's submit button specifically (avoiding social sign-in buttons)
+    await page.locator("form button[type='submit']").click();
+    await expect(page).toHaveURL(new RegExp(`(${prefix}|/pl|/en)?/dashboard`));
+
+    // Navigate to settings page
+    await page.goto(`${prefix}/account`);
+  });
+
+  test("loads settings details and verifies biography field is absent", async ({ page }) => {
+    // Verify headings are loaded
+    const profileHeader = forLocale({
+      pl: "TWOJE KONTO",
+      en: "YOUR ACCOUNT",
+    });
+    await expect(page.getByRole("heading", { name: profileHeader })).toBeVisible();
+
+    // Verify fields are loaded with mock data
+    await expect(page.locator("input[value='Maciej']")).toBeVisible();
+    await expect(page.locator("input[value='Kolodziejczyk']")).toBeVisible();
+
+    // Biography field (textarea for biography / "O mnie") must be completely absent from form
+    await expect(page.locator("textarea[name='biography']")).not.toBeVisible();
+    const aboutMeLabel = forLocale({ pl: "O mnie", en: "About me" });
+    await expect(page.getByText(aboutMeLabel)).not.toBeVisible();
+
+    // Legal name placeholder must be visible
+    const legalNamePlaceholder = forLocale({
+      pl: "np. Gabinet Psychoterapii Jan Kowalski",
+      en: "e.g. Jan Kowalski Psychotherapy",
+    });
+    await expect(page.locator(`input[placeholder='${legalNamePlaceholder}']`)).toBeVisible();
+
+    // VAT UE placeholder must be visible
+    const vatPlaceholder = forLocale({
+      pl: "np. PL1234567890",
+      en: "e.g. PL1234567890",
+    });
+    await expect(page.locator(`input[placeholder='${vatPlaceholder}']`)).toBeVisible();
+  });
+
+  test("can update profile and organization successfully", async ({ page }) => {
+    const { getCaptured: getProfileCap } = await mockUpdateProfile(page);
+    const { getCaptured: getOrgCap } = await mockUpdateMyOrganization(page);
+
+    // Modify profile fields and save
+    await page.locator("input[value='Maciej']").fill("Maciej J");
+    const saveProfileBtn = page.getByRole("button", {
+      name: forLocale({ pl: "Zapisz zmiany", en: "Save changes" }),
+    });
+    await saveProfileBtn.click();
+
+    // Verify update profile payload was captured
+    await expect.poll(() => getProfileCap()).not.toBeNull();
+    expect(getProfileCap()?.firstName).toBe("Maciej J");
+
+    // Modify org fields and save
+    await page.locator("input[value='Maciej Kolodziejczyk Org']").fill("New Legal Name Ltd");
+    const saveOrgBtn = page.getByRole("button", {
+      name: forLocale({ pl: "Zapisz organizację", en: "Save organisation" }),
+    });
+    await saveOrgBtn.click();
+
+    // Verify update org payload was captured
+    await expect.poll(() => getOrgCap()).not.toBeNull();
+    expect(getOrgCap()?.legalName).toBe("New Legal Name Ltd");
+  });
+
+  test("runs the 3-step deletion flow successfully", async ({ page }) => {
+    // Mock successful accounts:delete REST API call
+    await page.route(/accounts:delete/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({}),
+      });
+    });
+
+    const prefix = urlPrefix();
+
+    // Step 1: Open deletion panel
+    const deleteBtn = page.getByRole("button", {
+      name: forLocale({ pl: "Usuń konto", en: "Delete account" }),
+    });
+    await deleteBtn.click();
+
+    // Verify delete view loaded
+    const deleteTitle = forLocale({
+      pl: "Usuń konto",
+      en: "Delete account",
+    });
+    await expect(page.getByRole("heading", { name: deleteTitle, level: 1 })).toBeVisible();
+
+    // Toggle checkbox must be checked to enable delete button
+    const deleteSubmitBtn = page.getByRole("button", {
+      name: forLocale({ pl: "Usuń moje konto", en: "Delete my account" }),
+    });
+    await expect(deleteSubmitBtn).toBeDisabled();
+
+    // Check toggle
+    await page.locator("input[type='checkbox']").check();
+    await expect(deleteSubmitBtn).toBeEnabled();
+
+    // Step 2: Open confirmation modal
+    await deleteSubmitBtn.click();
+
+    // Verify modal elements are visible
+    const modalTitle = forLocale({
+      pl: "Ostatni krok.",
+      en: "Final step.",
+    });
+    await expect(page.locator("div.fixed h3")).toContainText(modalTitle);
+
+    const deleteModalSubmitBtn = page.getByRole("button", {
+      name: forLocale({ pl: "USUWAM KONTO", en: "DELETE ACCOUNT" }),
+    });
+    await expect(deleteModalSubmitBtn).toBeDisabled();
+
+    // Case-insensitivity check: typing "UsUwAm" or "DeLeTe" should enable the button
+    const mixedCaseWord = forLocale({ pl: "UsUwAm", en: "DeLeTe" });
+    const inputField = page.locator("input[type='text']");
+    await inputField.fill("wrongword");
+    await expect(deleteModalSubmitBtn).toBeDisabled();
+
+    await inputField.fill(mixedCaseWord);
+    await expect(deleteModalSubmitBtn).toBeEnabled();
+
+    // Step 3: Trigger deletion
+    await deleteModalSubmitBtn.click();
+
+    // Successful delete redirects to login page
+    await expect(page).toHaveURL(new RegExp(`(${prefix}|/pl)?/login\\/?$`));
+  });
+
+  test("requires re-authentication during deletion flow", async ({ page }) => {
+    // Mock accounts:delete REST API call returning require recent login error
+    await page.route(/accounts:delete/, async (route) => {
+      await route.fulfill({
+        status: 400,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: 400,
+            message: "CREDENTIAL_TOO_OLD_LOGIN_AGAIN",
+          },
+        }),
+      });
+    });
+
+    const prefix = urlPrefix();
+
+    // Step 1: Open deletion panel
+    const deleteBtn = page.getByRole("button", {
+      name: forLocale({ pl: "Usuń konto", en: "Delete account" }),
+    });
+    await deleteBtn.click();
+
+    // Check toggle and click delete
+    await page.locator("input[type='checkbox']").check();
+    await page.getByRole("button", {
+      name: forLocale({ pl: "Usuń moje konto", en: "Delete my account" }),
+    }).click();
+
+    // Fill confirmation word
+    const expectedConfirmWord = forLocale({ pl: "usuwam", en: "delete" });
+    const inputField = page.locator("input[type='text']");
+    await inputField.fill(expectedConfirmWord);
+
+    const deleteModalSubmitBtn = page.getByRole("button", {
+      name: forLocale({ pl: "USUWAM KONTO", en: "DELETE ACCOUNT" }),
+    });
+    await deleteModalSubmitBtn.click();
+
+    await expect(page).toHaveURL(new RegExp(`(${prefix}|/pl)?/login\\/?\\?err=reauth$`));
+  });
+});

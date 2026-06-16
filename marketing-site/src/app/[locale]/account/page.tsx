@@ -9,6 +9,7 @@
 
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { Navbar } from "@/components/marketing/Navbar";
 import { Footer } from "@/components/marketing/Footer";
@@ -39,15 +40,33 @@ export default async function AccountPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("account");
+  const prefix = locale === "en" ? "/en" : "";
 
   return (
     <>
       <Navbar variant="app" />
       <main className="flex-1">
-        <section className="mx-auto w-full max-w-2xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-          <h1 className="font-sans text-[#F2F0EA] text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
-            {t("title")}
-          </h1>
+        <section className="mx-auto w-full max-w-2xl lg:max-w-[1080px] px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+          <div className="flex items-center gap-4">
+            <Link
+              href={`${prefix}/dashboard`}
+              className="group flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-300 active:scale-95 text-[#8FA5A0] hover:text-[#F2F0EA]"
+              title={locale === "pl" ? "Powrót do panelu" : "Back to dashboard"}
+            >
+              <svg
+                className="w-5 h-5 transition-transform duration-300 group-hover:-translate-x-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <h1 className="font-sans text-[#F2F0EA] text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
+              {t("title")}
+            </h1>
+          </div>
           <p className="font-sans text-[#8FA5A0] mt-3 text-base leading-relaxed">
             {t("subhead")}
           </p>

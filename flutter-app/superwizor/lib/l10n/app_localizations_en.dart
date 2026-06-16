@@ -720,6 +720,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_name => 'Name';
 
   @override
+  String get settings_professional_title => 'Professional title';
+
+  @override
   String get settings_email => 'Email';
 
   @override

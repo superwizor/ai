@@ -29,6 +29,9 @@ DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-5432}"
 DB_NAME="${DB_NAME:-superwizor}"
 
+# Wskazujemy SDK Firebase na lokalny emulator Auth
+export FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:9099"
+
 # Automatyczne pobieranie prawdziwego hasła ze stagingu z Secret Managera, jeśli deweloper używa portu 5432
 if [[ "${DB_PASSWORD}" == "superwizor_password" && "${DB_HOST}" == "127.0.0.1" && "${DB_PORT}" == "5432" ]]; then
   echo "🔑 Hasło deweloperskie nie zostało podane. Próba pobrania sekretu ze stagingu GCP..."
@@ -41,6 +44,11 @@ if [[ "${DB_PASSWORD}" == "superwizor_password" && "${DB_HOST}" == "127.0.0.1" &
     echo "✅ Pomyślnie pobrano hasło z GCP Secret Manager!"
   else
     echo "⚠️  Nie udało się pobrać hasła z GCP (brak zalogowania w gcloud?). Używam domyślnego hasła deweloperskiego."
+    echo ""
+    echo "🔑 [GCP Auth Alert] Jeśli chcesz pobrać prawdziwe hasło ze stagingu GCP, zaloguj się za pomocą:"
+    echo "   gcloud auth login"
+    echo "   gcloud auth application-default login"
+    echo ""
   fi
 fi
 
@@ -119,6 +127,12 @@ fi
 echo "🔄 Uruchamianie migracji bazy danych..."
 (cd "${BACKEND_DIR}" && DB_USER="${DB_USER}" DB_PASSWORD="${DB_PASSWORD}" make migrate-up) || {
   echo "❌ Migracje nie powiodły się! Sprawdź logi lub dane uwierzytelniające."
+  echo ""
+  echo "🔑 [GCP Auth Alert] Najczęstszą przyczyną jest wygaśnięcie sesji GCP lub brak hasła."
+  echo "Uruchom w nowym terminalu te komendy, aby odświeżyć tokeny GCP:"
+  echo "   gcloud auth login"
+  echo "   gcloud auth application-default login"
+  echo ""
   PROXY_LOG="${BACKEND_DIR}/../proxy.log"
   if [[ -f "${PROXY_LOG}" ]] && grep -q -E "invalid_rapt|invalid_grant|cannot fetch token" "${PROXY_LOG}"; then
     echo -e "\n🔑 [GCP Auth Alert] Wykryto problem z autoryzacją GCP w proxy.log!"
@@ -150,12 +164,20 @@ PIDS+=($!)
 
 # B. billing-svc
 echo "🟢 Uruchamianie billing-svc na porcie ${PORT_BILLING}..."
+STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET:-skip}"
+if [[ "${STRIPE_WEBHOOK_SECRET}" == "skip" ]]; then
+  echo "✅ STRIPE_WEBHOOK_SECRET ustawiono na 'skip' (weryfikacja sygnatur wyłączona dla deweloperki)"
+else
+  echo "✅ Używam podanego STRIPE_WEBHOOK_SECRET"
+fi
+
 DATABASE_URL="${LOCAL_DSN}" \
 PORT="${PORT_BILLING}" \
 VERSION="local-dev" \
 GCP_PROJECT_ID="superwizor-ai-25ecd" \
 IDENTITY_SVC_URL="http://127.0.0.1:${PORT_IDENTITY}" \
 NOTIFICATION_SVC_URL="http://127.0.0.1:${PORT_NOTIFICATION}" \
+STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET}" \
 "${BACKEND_DIR}/bin/billing-svc" > "${LOGS_DIR}/billing-svc.log" 2>&1 &
 PIDS+=($!)
 
@@ -192,6 +214,38 @@ GCP_PROJECT_ID="superwizor-ai-25ecd" \
 "${BACKEND_DIR}/bin/notification-svc" > "${LOGS_DIR}/notification-svc.log" 2>&1 &
 PIDS+=($!)
 
+# F. Firebase Auth Emulator
+if ! nc -z -w 1 127.0.0.1 9099 >/dev/null 2>&1; then
+  echo "🟢 Uruchamianie emulatora Firebase Auth na porcie 9099..."
+  (cd "${BACKEND_DIR}/.." && npx firebase-tools emulators:start --only auth > "${LOGS_DIR}/firebase-emulator.log" 2>&1) &
+  PIDS+=($!)
+  sleep 2
+else
+  echo "✅ Firebase Auth Emulator już działa na porcie 9099."
+fi
+
+# G. Stripe CLI Webhook Listener
+# Forwarduje eventy Stripe do lokalnego billing-svc. Bez tego webhook
+# po checkout/upgrade nie dociera do localhost i subskrypcja nie zostanie
+# zaktualizowana w bazie (TRIAL → SOLO/PRO).
+# Wymaga zainstalowania Stripe CLI: brew install stripe/stripe-cli/stripe
+# i jednorazowego: stripe login
+if command -v stripe &>/dev/null; then
+  echo "🟢 Uruchamianie Stripe webhook listener (forward → billing-svc:${PORT_BILLING})..."
+  stripe listen \
+    --forward-to "http://127.0.0.1:${PORT_BILLING}/stripe/webhook" \
+    --events checkout.session.completed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,invoice.paid,invoice.payment_failed \
+    --skip-verify \
+    > "${LOGS_DIR}/stripe-listen.log" 2>&1 &
+  PIDS+=($!)
+  sleep 1
+  echo "✅ Stripe webhook listener działa. Logi: ${LOGS_DIR}/stripe-listen.log"
+else
+  echo "⚠️  Stripe CLI nie jest zainstalowane. Webhooks Stripe nie będą forwardowane do localhost."
+  echo "   Zainstaluj: brew install stripe/stripe-cli/stripe"
+  echo "   Zaloguj się: stripe login"
+fi
+
 echo "============================================================"
 echo "🎉 Wszystkie usługi działają w tle!"
 echo "👉 Aby uruchomić testy E2E lokalnie, otwórz nowy terminal i wpisz:"
@@ -204,5 +258,9 @@ echo "============================================================"
 echo "Podgląd logów na żywo (Naciśnij Ctrl+C aby zatrzymać wszystkie usługi):"
 echo "------------------------------------------------------------"
 
-# Pokazuj logi na bieżąco
-tail -f "${LOGS_DIR}/clinical-svc.log" "${LOGS_DIR}/identity-svc.log" "${LOGS_DIR}/billing-svc.log"
+# Pokazuj logi na bieżąco (dodajemy stripe-listen.log jeśli istnieje)
+TAIL_FILES=("${LOGS_DIR}/clinical-svc.log" "${LOGS_DIR}/identity-svc.log" "${LOGS_DIR}/billing-svc.log")
+if [[ -f "${LOGS_DIR}/stripe-listen.log" ]]; then
+  TAIL_FILES+=("${LOGS_DIR}/stripe-listen.log")
+fi
+tail -f "${TAIL_FILES[@]}"

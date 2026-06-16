@@ -21,10 +21,16 @@ if [[ "${DB_PASSWORD}" == "superwizor_password" && "${DB_HOST}" == "127.0.0.1" &
     echo "✅ Pomyślnie pobrano hasło z GCP Secret Manager!"
   else
     echo "⚠️  Nie udało się pobrać hasła z GCP. Używam domyślnego hasła deweloperskiego."
+    echo ""
+    echo "🔑 [GCP Auth Alert] Jeśli chcesz pobrać prawdziwe hasło ze stagingu GCP, zaloguj się za pomocą:"
+    echo "   gcloud auth login"
+    echo "   gcloud auth application-default login"
+    echo ""
   fi
 fi
 
 export DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+export FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:9099"
 
 cd "$(dirname "$0")/../superwizor-backend"
 make test-e2e-local

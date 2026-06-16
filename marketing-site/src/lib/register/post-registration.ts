@@ -11,6 +11,9 @@
 // the paid subscription when checkout completes.
 
 import { lookupPlan } from "@/lib/billing/plans";
+import { identityClient } from "@/lib/connect/clients";
+import { create } from "@bufbuild/protobuf";
+import { EmptySchema } from "@bufbuild/protobuf/wkt";
 
 /** Plan slugs the frontend uses in ?plan= query params. */
 export type PlanSlug =
@@ -61,6 +64,8 @@ export async function handlePostRegistrationRedirect(
   planSlug: string | null,
   prefix: string,
   email: string,
+  phoneNumber?: string,
+  name?: string,
 ): Promise<void> {
   const priceId = resolveStripePriceId(planSlug);
 
@@ -70,12 +75,64 @@ export async function handlePostRegistrationRedirect(
     return;
   }
 
+  let promoCode: string | undefined;
+  if (planSlug) {
+    const slug = planSlug.toLowerCase();
+    const mapping: Record<string, { tier: string; cycle: string }> = {
+      solo_monthly: { tier: "SOLO", cycle: "MONTHLY" },
+      solo_annual: { tier: "SOLO", cycle: "ANNUAL" },
+      pro_monthly: { tier: "PRO", cycle: "MONTHLY" },
+      pro_annual: { tier: "PRO", cycle: "ANNUAL" },
+    };
+    const planKey = mapping[slug];
+    if (planKey) {
+      const plan = lookupPlan(planKey.tier as any, planKey.cycle as any);
+      promoCode = plan?.couponCode;
+    }
+  }
+
   // Paid flow: create Stripe Checkout session
   try {
+    let address: any = undefined;
+    let taxId: string | undefined;
+    let vatIdEu: string | undefined;
+    try {
+      const org = await identityClient.getMyOrganization(create(EmptySchema, {}));
+      if (org) {
+        if (org.legalName) {
+          name = org.legalName;
+        }
+        taxId = org.taxId || undefined;
+        vatIdEu = org.vatIdEu || undefined;
+
+        if (org.headquartersAddress) {
+          const street = org.headquartersAddress.streetLine || "";
+          const bldg = org.headquartersAddress.buildingNumber || "";
+          const unit = org.headquartersAddress.unitNumber || "";
+
+          let line1 = `${street} ${bldg}`.trim();
+          if (unit) {
+            line1 = `${line1}/${unit}`;
+          }
+
+          address = {
+            line1: line1 || undefined,
+            line2: org.headquartersAddress.directions || undefined,
+            city: org.headquartersAddress.city || undefined,
+            postal_code: org.headquartersAddress.postalCode || undefined,
+            state: org.headquartersAddress.region || undefined,
+            country: org.headquartersAddress.countryCode || undefined,
+          };
+        }
+      }
+    } catch (err) {
+      console.warn("[post-registration] Failed to fetch organization details for prefilling:", err);
+    }
+
     const res = await fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId, organizationId, email }),
+      body: JSON.stringify({ priceId, organizationId, email, phoneNumber, name, promoCode, address, taxId, vatIdEu }),
     });
 
     if (!res.ok) {

@@ -83,7 +83,18 @@ export async function mockUpdateProfile(
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ id: "user-uuid-1" }),
+        body: JSON.stringify({
+          id: "user-uuid-1",
+          email: "e2e@example.com",
+          firstName: captured?.firstName || "Maciej",
+          lastName: captured?.lastName || "Kolodziejczyk",
+          phoneNumber: captured?.phoneNumber || "+48 510417781",
+          professionalTitle: captured?.professionalTitle || "Psycholog",
+          credentialsNumber: captured?.credentialsNumber || "LIC-1234",
+          defaultModalityId: captured?.defaultModalityId || "44f77c8e-8a71-4770-96f3-42e13297a7e8",
+          organizationId: "org-uuid-1",
+          role: "USER_ROLE_THERAPIST",
+        }),
       });
     },
   );
@@ -105,6 +116,93 @@ export async function mockCheckEmailExists(
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({ exists }),
+      });
+    },
+  );
+}
+
+/**
+ * Mock identity.v1.IdentityService/GetMyOrganization.
+ */
+export async function mockGetMyOrganization(
+  page: Page,
+  overrides: Record<string, unknown> = {},
+) {
+  await page.route(
+    /identity\.v1\.IdentityService\/GetMyOrganization/,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "org-uuid-1",
+          legalName: "Maciej Kolodziejczyk Org",
+          type: 1, // solo
+          taxId: "6793219020",
+          vatIdEu: "PL6793219020",
+          headquartersAddress: {
+            countryCode: "PL",
+            city: "Kraków",
+            streetLine: "Odrzańska",
+            buildingNumber: "10",
+            unitNumber: "48",
+            postalCode: "30-408",
+            region: "Małopolskie",
+          },
+          ...overrides,
+        }),
+      });
+    },
+  );
+}
+
+/**
+ * Mock identity.v1.IdentityService/UpdateMyOrganization.
+ */
+export async function mockUpdateMyOrganization(
+  page: Page,
+): Promise<{ getCaptured: () => Record<string, unknown> | null }> {
+  let captured: Record<string, unknown> | null = null;
+
+  await page.route(
+    /identity\.v1\.IdentityService\/UpdateMyOrganization/,
+    async (route) => {
+      captured = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ id: "org-uuid-1" }),
+      });
+    },
+  );
+
+  return { getCaptured: () => captured };
+}
+
+/**
+ * Mock billing.v1.BillingService/GetSubscription.
+ */
+export async function mockGetSubscription(
+  page: Page,
+  overrides: Record<string, unknown> = {},
+) {
+  await page.route(
+    /billing\.v1\.BillingService\/GetSubscription/,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "sub-uuid-1",
+          organizationId: "org-uuid-1",
+          planTier: "TRIAL",
+          status: "TRIALING",
+          tokensPerPeriod: 30,
+          tokensUsedThisPeriod: 5,
+          tokensReservedThisPeriod: 0,
+          currentPeriodEnd: { seconds: "1781526809" },
+          ...overrides,
+        }),
       });
     },
   );

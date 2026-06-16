@@ -723,6 +723,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settings_name => 'Nazwa';
 
   @override
+  String get settings_professional_title => 'Tytuł zawodowy';
+
+  @override
   String get settings_email => 'Email';
 
   @override

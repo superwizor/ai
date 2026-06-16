@@ -68,3 +68,16 @@ func (a *AuthClient) CustomToken(ctx context.Context, uid string) (string, error
 	}
 	return tok, nil
 }
+
+// UserExistsByEmail checks if a user with the given email exists in Firebase Auth.
+func (a *AuthClient) UserExistsByEmail(ctx context.Context, email string) (bool, error) {
+	_, err := a.client.GetUserByEmail(ctx, email)
+	if err != nil {
+		if auth.IsUserNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+

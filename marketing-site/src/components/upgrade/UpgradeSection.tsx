@@ -14,7 +14,11 @@ import { useSearchParams } from "next/navigation";
 import { getAuth } from "firebase/auth";
 import type { BillingCycle, PlanRow } from "@/lib/billing/plans";
 import { findPlan, formatPrice } from "@/lib/billing/plans";
-import { identityClient } from "@/lib/connect/clients";
+import { identityClient, billingClient } from "@/lib/connect/clients";
+import { GetSubscriptionRequestSchema } from "@superwizor/proto-ts/billing/v1/billing_pb";
+import { create } from "@bufbuild/protobuf";
+import { EmptySchema } from "@bufbuild/protobuf/wkt";
+import { useEffect } from "react";
 
 export function UpgradeSection({
   catalog,
@@ -24,8 +28,33 @@ export function UpgradeSection({
   locale: string;
 }) {
   const [cycle, setCycle] = useState<BillingCycle>("MONTHLY");
+  const [currentPlanTier, setCurrentPlanTier] = useState<string | undefined>(undefined);
   const prefix = locale === "en" ? "/en" : "";
   const isAnnual = cycle === "ANNUAL";
+
+  useEffect(() => {
+    const fetchCurrentPlan = async () => {
+      try {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const token = await user.getIdToken();
+        const ctx = await identityClient.validateToken({ firebaseIdToken: token });
+        if (ctx.organizationId) {
+          const s = await billingClient.getSubscription(
+            create(GetSubscriptionRequestSchema, { organizationId: ctx.organizationId }),
+          );
+          if (s && s.planTier) {
+            setCurrentPlanTier(s.planTier.toUpperCase());
+          }
+        }
+      } catch (err) {
+        console.warn("[UpgradeSection] Failed to fetch current subscription tier for UI:", err);
+      }
+    };
+    fetchCurrentPlan();
+  }, []);
 
   const solo = findPlan(catalog, "SOLO", cycle);
   const pro = findPlan(catalog, "PRO", cycle);
@@ -116,6 +145,7 @@ export function UpgradeSection({
               locale={locale}
               prefix={prefix}
               isHero={false}
+              currentPlanTier={currentPlanTier}
             />
           )}
           {pro && (
@@ -127,6 +157,7 @@ export function UpgradeSection({
               locale={locale}
               prefix={prefix}
               isHero={true}
+              currentPlanTier={currentPlanTier}
             />
           )}
         </div>
@@ -154,6 +185,7 @@ function UpgradeCard({
   locale,
   prefix,
   isHero,
+  currentPlanTier,
 }: {
   tier: string;
   tierName: string;
@@ -162,6 +194,7 @@ function UpgradeCard({
   locale: string;
   prefix: string;
   isHero: boolean;
+  currentPlanTier?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -252,6 +285,56 @@ function UpgradeCard({
         return;
       }
 
+      // Fetch user profile details to prefill name and phone number
+      let phoneNumber: string | undefined;
+      let name: string | undefined;
+      try {
+        const profile = await identityClient.getMyProfile(create(EmptySchema, {}));
+        if (profile) {
+          phoneNumber = profile.phoneNumber || undefined;
+          name = `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || undefined;
+        }
+      } catch (err) {
+        console.warn("[UpgradeCard] Failed to fetch profile details for prefilling:", err);
+      }
+
+      // Fetch organization details for B2B billing prefill
+      let address: any = undefined;
+      let taxId: string | undefined;
+      let vatIdEu: string | undefined;
+      try {
+        const org = await identityClient.getMyOrganization(create(EmptySchema, {}));
+        if (org) {
+          if (org.legalName) {
+            name = org.legalName;
+          }
+          taxId = org.taxId || undefined;
+          vatIdEu = org.vatIdEu || undefined;
+
+          if (org.headquartersAddress) {
+            const street = org.headquartersAddress.streetLine || "";
+            const bldg = org.headquartersAddress.buildingNumber || "";
+            const unit = org.headquartersAddress.unitNumber || "";
+
+            let line1 = `${street} ${bldg}`.trim();
+            if (unit) {
+              line1 = `${line1}/${unit}`;
+            }
+
+            address = {
+              line1: line1 || undefined,
+              line2: org.headquartersAddress.directions || undefined,
+              city: org.headquartersAddress.city || undefined,
+              postal_code: org.headquartersAddress.postalCode || undefined,
+              state: org.headquartersAddress.region || undefined,
+              country: org.headquartersAddress.countryCode || undefined,
+            };
+          }
+        }
+      } catch (err) {
+        console.warn("[UpgradeCard] Failed to fetch organization details for prefilling:", err);
+      }
+
       // Call /api/checkout with the user's org and email
       const resp = await fetch("/api/checkout", {
         method: "POST",
@@ -263,6 +346,12 @@ function UpgradeCard({
           priceId: row.stripePriceId,
           organizationId,
           email: user.email ?? undefined,
+          phoneNumber,
+          name,
+          taxId,
+          vatIdEu,
+          address,
+          promoCode: row.couponCode || undefined,
           ...(returnUrl ? { returnUrl } : {}),
         }),
       });
@@ -406,17 +495,37 @@ function UpgradeCard({
       {/* CTA */}
       <button
         onClick={handleCheckout}
-        disabled={loading}
+        disabled={loading || currentPlanTier === tier.toUpperCase()}
         className={`block w-full text-center py-3.5 rounded-full font-sans font-bold text-sm uppercase tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-          isHero
-            ? "bg-gradient-to-r from-[#FCAE2F] to-[#F97316] text-obsidian hover:brightness-110 shadow-lg shadow-[#FCAE2F]/20"
-            : "bg-[#004D54] text-white hover:bg-[#003A40] shadow-md"
+          currentPlanTier === tier.toUpperCase()
+            ? isHero
+              ? "bg-white/10 text-white/40 cursor-not-allowed border border-white/10"
+              : "bg-neutral-100 text-[#8FA5A0] cursor-not-allowed border border-[#E2DED5]"
+            : isHero
+              ? "bg-gradient-to-r from-[#FCAE2F] to-[#F97316] text-[#1B2522] hover:brightness-110 shadow-lg shadow-[#FCAE2F]/20"
+              : "bg-[#004D54] text-white hover:bg-[#003A40] shadow-md"
         }`}
       >
         {loading
           ? (locale === "en" ? "Redirecting…" : "Przekierowuję…")
-          : (locale === "en" ? "Choose this plan" : "Wybierz ten plan")}
+          : currentPlanTier === tier.toUpperCase()
+            ? (locale === "en" ? "Your current plan" : "Twój aktualny plan")
+            : currentPlanTier === "SOLO" && tier.toUpperCase() === "PRO"
+              ? (locale === "en" ? "Upgrade plan" : "Przejdź na wyższy plan")
+              : (locale === "en" ? "Choose this plan" : "Wybierz ten plan")
+        }
       </button>
+
+      {/* Invoice prefill helper text */}
+      <p className={`text-[11px] font-sans text-center mt-3.5 leading-snug ${
+        isHero ? "text-white/60" : "text-[#4E5A55]/70"
+      }`}>
+        {locale === "pl" ? (
+          "Dane firmy i NIP z Twojego profilu zostaną automatycznie przeniesione na fakturę VAT."
+        ) : (
+          "Company details & NIP from your profile will be automatically added to the VAT invoice."
+        )}
+      </p>
     </div>
   );
 }

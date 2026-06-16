@@ -358,6 +358,11 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 		return nil, status.Errorf(codes.Internal, "commit failed")
 	}
 
+	var canceledAt *time.Time
+	if sub.CanceledAt.Valid {
+		canceledAt = &sub.CanceledAt.Time
+	}
+
 	stateAfter := buildSubscriptionProto(subFields{
 		ID:                 sub.ID,
 		PlanTier:           string(sub.PlanTier),
@@ -365,6 +370,8 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 		Status:             string(sub.Status),
 		CurrentPeriodStart: sub.CurrentPeriodStart,
 		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
+		CanceledAt:         canceledAt,
 	}, tokensUsedAfter, tokensReservedAfter, tokensLimitAfter)
 	return reservationToProto(res, stateAfter), nil
 }
@@ -386,6 +393,11 @@ func (s *Server) subscriptionStateNow(ctx context.Context, sub db.GetActiveSubsc
 		tokensReserved = counter.TokensReserved
 		tokensLimit = counter.TokensLimit
 	}
+	var canceledAt *time.Time
+	if sub.CanceledAt.Valid {
+		canceledAt = &sub.CanceledAt.Time
+	}
+
 	return buildSubscriptionProto(subFields{
 		ID:                 sub.ID,
 		PlanTier:           string(sub.PlanTier),
@@ -393,6 +405,8 @@ func (s *Server) subscriptionStateNow(ctx context.Context, sub db.GetActiveSubsc
 		Status:             string(sub.Status),
 		CurrentPeriodStart: sub.CurrentPeriodStart,
 		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
+		CanceledAt:         canceledAt,
 	}, tokensUsed, tokensReserved, tokensLimit)
 }
 
@@ -584,6 +598,11 @@ func (s *Server) commitInternal(ctx context.Context, in commitInput) (*billingv1
 			LimitTokens:     counter.TokensLimit,
 		}, nil
 	}
+	var canceledAt *time.Time
+	if sub.CanceledAt.Valid {
+		canceledAt = &sub.CanceledAt.Time
+	}
+
 	return &billingv1.UsageCommit{
 		TokensConsumed:  createdEvent.TokensConsumed,
 		RemainingTokens: remainingTokens(freshCounter),
@@ -595,6 +614,8 @@ func (s *Server) commitInternal(ctx context.Context, in commitInput) (*billingv1
 			Status:             string(sub.Status),
 			CurrentPeriodStart: sub.CurrentPeriodStart,
 			CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+			CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
+			CanceledAt:         canceledAt,
 		}, freshCounter.TokensUsed, freshCounter.TokensReserved, freshCounter.TokensLimit),
 	}, nil
 }
@@ -608,6 +629,12 @@ func (s *Server) snapshotAfterCommit(ctx context.Context, orgID uuid.UUID, alrea
 	if err != nil {
 		return &billingv1.UsageCommit{TokensConsumed: alreadyCharged}, nil
 	}
+
+	var canceledAt *time.Time
+	if sub.CanceledAt.Valid {
+		canceledAt = &sub.CanceledAt.Time
+	}
+
 	return &billingv1.UsageCommit{
 		TokensConsumed:  alreadyCharged,
 		RemainingTokens: remainingTokens(counter),
@@ -619,6 +646,8 @@ func (s *Server) snapshotAfterCommit(ctx context.Context, orgID uuid.UUID, alrea
 			Status:             string(sub.Status),
 			CurrentPeriodStart: sub.CurrentPeriodStart,
 			CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+			CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
+			CanceledAt:         canceledAt,
 		}, counter.TokensUsed, counter.TokensReserved, counter.TokensLimit),
 	}, nil
 }
@@ -737,6 +766,11 @@ func (s *Server) GetSubscription(ctx context.Context, req *billingv1.GetSubscrip
 		tokensLimit = counter.TokensLimit
 	}
 
+	var canceledAt *time.Time
+	if sub.CanceledAt.Valid {
+		canceledAt = &sub.CanceledAt.Time
+	}
+
 	return buildSubscriptionProto(subFields{
 		ID:                 sub.ID,
 		PlanTier:           string(sub.PlanTier),
@@ -744,7 +778,61 @@ func (s *Server) GetSubscription(ctx context.Context, req *billingv1.GetSubscrip
 		Status:             string(sub.Status),
 		CurrentPeriodStart: sub.CurrentPeriodStart,
 		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
+		CanceledAt:         canceledAt,
 	}, tokensUsed, tokensReserved, tokensLimit), nil
+}
+
+func (s *Server) ListInvoices(ctx context.Context, req *billingv1.ListInvoicesRequest) (*billingv1.ListInvoicesResponse, error) {
+	orgID, err := parseUUID("organization_id", req.GetOrganizationId())
+	if err != nil {
+		return nil, err
+	}
+
+	// Browser-caller scope check (similar to GetSubscription)
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		var callerRole, callerOrgID string
+		if v := md.Get("x-superwizor-role"); len(v) > 0 {
+			callerRole = v[0]
+		}
+		if v := md.Get("x-superwizor-organization-id"); len(v) > 0 {
+			callerOrgID = v[0]
+		}
+		if callerOrgID != "" && callerOrgID != req.GetOrganizationId() && callerRole != "SUPERWIZOR_ADMIN" {
+			return nil, status.Errorf(codes.PermissionDenied,
+				"caller's organization does not match requested organization_id")
+		}
+	}
+
+	dbInvoices, err := s.queries.ListInvoicesByOrg(ctx, orgID)
+	if err != nil {
+		slog.ErrorContext(ctx, "ListInvoices: database query failed", "error", err, "org_id", orgID)
+		return nil, status.Errorf(codes.Internal, "failed to query invoices")
+	}
+
+	protoInvoices := make([]*billingv1.Invoice, 0, len(dbInvoices))
+	for _, dbInv := range dbInvoices {
+		var amountPaid float64
+		if val, err := dbInv.AmountPaid.Float64Value(); err == nil && val.Valid {
+			amountPaid = val.Float64
+		}
+
+		protoInvoices = append(protoInvoices, &billingv1.Invoice{
+			Id:               dbInv.ID.String(),
+			StripeInvoiceId:  dbInv.StripeInvoiceID,
+			AmountPaid:       amountPaid,
+			Currency:         dbInv.Currency,
+			InvoicePdf:       dbInv.InvoicePdf,
+			HostedInvoiceUrl: dbInv.HostedInvoiceUrl,
+			PeriodStart:      timestamppb.New(dbInv.PeriodStart),
+			PeriodEnd:        timestamppb.New(dbInv.PeriodEnd),
+			CreatedAt:        timestamppb.New(dbInv.CreatedAt),
+		})
+	}
+
+	return &billingv1.ListInvoicesResponse{
+		Invoices: protoInvoices,
+	}, nil
 }
 
 // subFields collects the subset of sqlc-generated subscription row
@@ -759,6 +847,8 @@ type subFields struct {
 	Status             string
 	CurrentPeriodStart time.Time
 	CurrentPeriodEnd   time.Time
+	CancelAtPeriodEnd  bool
+	CanceledAt         *time.Time
 }
 
 // buildSubscriptionProto is the single source of truth for converting a
@@ -774,6 +864,10 @@ func buildSubscriptionProto(s subFields, tokensUsed, tokensReserved, tokensLimit
 	if remaining < 0 {
 		remaining = 0
 	}
+	var canceledAtProto *timestamppb.Timestamp
+	if s.CanceledAt != nil {
+		canceledAtProto = timestamppb.New(*s.CanceledAt)
+	}
 	return &billingv1.Subscription{
 		Id:                       s.ID.String(),
 		PlanTier:                 s.PlanTier,
@@ -787,6 +881,8 @@ func buildSubscriptionProto(s subFields, tokensUsed, tokensReserved, tokensLimit
 		TokensRemaining:          remaining,
 		CurrentPeriodStart:       timestamppb.New(s.CurrentPeriodStart),
 		CurrentPeriodEnd:         timestamppb.New(s.CurrentPeriodEnd),
+		CancelAtPeriodEnd:        s.CancelAtPeriodEnd,
+		CanceledAt:               canceledAtProto,
 	}
 }
 

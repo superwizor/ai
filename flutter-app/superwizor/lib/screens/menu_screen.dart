@@ -20,6 +20,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../providers/current_user_provider.dart';
 import '../providers/locale_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/euphire_theme.dart';
@@ -253,6 +254,36 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                 builder: (_) => const ProfileEditSheet(),
                               );
                               setState(() {}); // refresh after sheet closes
+                            },
+                          ),
+                          _Divider(),
+                          Consumer(
+                            builder: (ctx, ref, _) {
+                              final backendUserVal = ref.watch(currentUserProvider);
+                              final professionalTitle = backendUserVal.value?.professionalTitle ?? '';
+                              return _SettingsRow(
+                                icon: Icons.badge_outlined,
+                                title: t.settings_professional_title,
+                                trailing: Expanded(
+                                  child: Text(
+                                    professionalTitle.isNotEmpty ? professionalTitle : '—',
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      fontFamily: 'Montserrat',
+                                      fontSize: 14,
+                                      color: EuphireColors.frostWhite.withValues(alpha: 0.4),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                onTap: () async {
+                                  await showEuphireBottomSheet(
+                                    context: context,
+                                    builder: (_) => const ProfileEditSheet(),
+                                  );
+                                  setState(() {}); // refresh after sheet closes
+                                },
+                              );
                             },
                           ),
                           _Divider(),

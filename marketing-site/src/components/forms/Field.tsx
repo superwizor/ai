@@ -155,6 +155,18 @@ export function PhoneInput({
   placeholder,
   id,
 }: PhoneInputProps) {
+  const formatLocalNumber = (raw: string) => {
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) {
+      return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    }
+    if (digits.length <= 9) {
+      return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 9)}-${digits.slice(9)}`;
+  };
+
   const dialCodes = [
     { code: "+48", label: "🇵🇱 +48" },
     { code: "+44", label: "🇬🇧 +44" },
@@ -266,10 +278,8 @@ export function PhoneInput({
       }
     }
 
-    // Keep only digits, spaces, dashes, or parentheses
-    newLocal = newLocal.replace(/[^\d\s\-()]/g, "");
-
-    onChange(newPrefix + " " + newLocal);
+    const formattedLocal = formatLocalNumber(newLocal);
+    onChange(newPrefix + " " + formattedLocal);
   };
 
   return (
@@ -299,7 +309,7 @@ export function PhoneInput({
         inputMode="tel"
         autoComplete="tel"
         placeholder={placeholder}
-        value={localNum}
+        value={formatLocalNumber(localNum)}
         onChange={handleLocalChange}
         className="flex-1"
       />

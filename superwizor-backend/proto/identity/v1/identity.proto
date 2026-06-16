@@ -572,6 +572,7 @@ message CheckEmailExistsRequest {
 }
 
 message CheckEmailExistsResponse {
-  bool exists = 2; // Tag 2 is fine, let's use 1
+  bool exists = 2;
+  bool is_pending_deletion = 3;
 }
 

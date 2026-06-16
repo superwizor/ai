@@ -28,6 +28,7 @@ import (
 type TokenVerifier interface {
 	VerifyToken(ctx context.Context, idToken string) (uid string, claims map[string]any, err error)
 	CustomToken(ctx context.Context, uid string) (string, error)
+	UserExistsByEmail(ctx context.Context, email string) (bool, error)
 }
 
 type Server struct {
@@ -166,12 +167,22 @@ func (s *Server) CheckEmailExists(ctx context.Context, req *identityv1.CheckEmai
 	_, err := s.queries.GetUserByEmail(ctx, &emailLC)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return &identityv1.CheckEmailExistsResponse{Exists: false}, nil
+			return &identityv1.CheckEmailExistsResponse{Exists: false, IsPendingDeletion: false}, nil
 		}
 		return nil, status.Errorf(codes.Internal, "database query failed: %v", err)
 	}
 
-	return &identityv1.CheckEmailExistsResponse{Exists: true}, nil
+	// Email exists in database. Check if user exists in Firebase Auth.
+	existsInAuth, err := s.auth.UserExistsByEmail(ctx, emailLC)
+	if err != nil {
+		slog.Error("failed to check user in firebase auth", "email", emailLC, "err", err)
+		return &identityv1.CheckEmailExistsResponse{Exists: true, IsPendingDeletion: false}, nil
+	}
+
+	return &identityv1.CheckEmailExistsResponse{
+		Exists:            true,
+		IsPendingDeletion: !existsInAuth,
+	}, nil
 }
 
 
@@ -333,7 +344,7 @@ func (s *Server) provisionTrialOrgAndSub(ctx context.Context, tx pgx.Tx, user *d
 			displayName = displayName[:at]
 		}
 	}
-	orgName := displayName + " Org"
+	orgName := displayName + " - Praktyka"
 
 	// Create organization. type=SOLO since this is a single-therapist
 	// trial; CLINIC plans upgrade via a different flow that switches
@@ -425,7 +436,7 @@ func (s *Server) provisionPlanOrgAndSub(ctx context.Context, tx pgx.Tx, user *db
 			displayName = displayName[:at]
 		}
 	}
-	orgName := displayName + " Org"
+	orgName := displayName + " - Praktyka"
 
 	var orgID uuid.UUID
 	if err := tx.QueryRow(ctx,

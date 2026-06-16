@@ -41,6 +41,9 @@ service BillingService {
   // Stan subskrypcji + bieżące zużycie.
   rpc GetSubscription(GetSubscriptionRequest) returns (Subscription);
 
+  // Pobiera historię faktur dla organizacji.
+  rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);
+
   // ─── Web app: SUPERWIZOR_ADMIN actions (docs/18 §6.1, §13.7) ──
   // Both RPCs are role-gated at the handler level (caller must
   // have role=SUPERWIZOR_ADMIN). Both write audit_events with
@@ -160,7 +163,10 @@ message Subscription {
   // never have to reimplement the formula (max(0, limit - used - reserved)).
   string plan_cycle                  = 11;  // MONTHLY | ANNUAL
   int32  tokens_remaining            = 12;  // = max(0, limit - used - reserved)
+  bool   cancel_at_period_end        = 13;
+  google.protobuf.Timestamp canceled_at = 14;
 }
+
 
 // ──────────────────────────────────────────────────────────────────
 // Web admin messages — docs/18 §13.7 (Superwizor admin org form).
@@ -189,4 +195,24 @@ message AdminChangePlanRequest {
   // Required, >= 10 chars.
   string reason = 4;
   string idempotency_key = 5;
+}
+
+message ListInvoicesRequest {
+  string organization_id = 1;
+}
+
+message ListInvoicesResponse {
+  repeated Invoice invoices = 1;
+}
+
+message Invoice {
+  string id = 1;
+  string stripe_invoice_id = 2;
+  double amount_paid = 3;
+  string currency = 4;
+  string invoice_pdf = 5;
+  string hosted_invoice_url = 6;
+  google.protobuf.Timestamp period_start = 7;
+  google.protobuf.Timestamp period_end = 8;
+  google.protobuf.Timestamp created_at = 9;
 }

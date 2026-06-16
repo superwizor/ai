@@ -85,3 +85,11 @@ func (a *ConnectAdapter) AdminChangePlan(ctx context.Context, req *connect.Reque
 	}
 	return connect.NewResponse(resp), nil
 }
+
+func (a *ConnectAdapter) ListInvoices(ctx context.Context, req *connect.Request[billingv1.ListInvoicesRequest]) (*connect.Response[billingv1.ListInvoicesResponse], error) {
+	resp, err := a.s.ListInvoices(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}

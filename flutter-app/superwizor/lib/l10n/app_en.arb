@@ -272,6 +272,7 @@
     "placeholders": { "email": { "type": "String" } }
   },
   "settings_name": "Name",
+  "settings_professional_title": "Professional title",
   "settings_email": "Email",
   "settings_avatar": "Profile picture",
   "settings_modality": "Default therapy modality",

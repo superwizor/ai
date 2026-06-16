@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -28,6 +29,28 @@ type AddReservedTokensParams struct {
 func (q *Queries) AddReservedTokens(ctx context.Context, arg AddReservedTokensParams) error {
 	_, err := q.db.Exec(ctx, addReservedTokens, arg.ID, arg.TokensReserved)
 	return err
+}
+
+const checkUsageCounterExists = `-- name: CheckUsageCounterExists :one
+SELECT EXISTS(
+    SELECT 1 FROM usage_counters
+    WHERE subscription_id = $1 AND period_start = $2
+) AS exists
+`
+
+type CheckUsageCounterExistsParams struct {
+	SubscriptionID uuid.UUID `json:"subscription_id"`
+	PeriodStart    time.Time `json:"period_start"`
+}
+
+// Sprawdza czy istnieje usage_counter dla danej subskrypcji i okresu.
+// Używane w upsertSubscriptionFromStripe żeby uniknąć UNIQUE violation
+// w transakcji (które by ją unieważniły w Postgresie).
+func (q *Queries) CheckUsageCounterExists(ctx context.Context, arg CheckUsageCounterExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, checkUsageCounterExists, arg.SubscriptionID, arg.PeriodStart)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const commitTokens = `-- name: CommitTokens :exec
@@ -128,5 +151,32 @@ type ReleaseReservedTokensParams struct {
 // i przy CommitUsage (transfer rezerwacja → used).
 func (q *Queries) ReleaseReservedTokens(ctx context.Context, arg ReleaseReservedTokensParams) error {
 	_, err := q.db.Exec(ctx, releaseReservedTokens, arg.ID, arg.TokensReserved)
+	return err
+}
+
+const updateUsageCounterOnPlanChange = `-- name: UpdateUsageCounterOnPlanChange :exec
+UPDATE usage_counters
+SET tokens_limit = $3,
+    period_end = $4,
+    updated_at = now()
+WHERE subscription_id = $1 AND period_start = $2
+`
+
+type UpdateUsageCounterOnPlanChangeParams struct {
+	SubscriptionID uuid.UUID `json:"subscription_id"`
+	PeriodStart    time.Time `json:"period_start"`
+	TokensLimit    int32     `json:"tokens_limit"`
+	PeriodEnd      time.Time `json:"period_end"`
+}
+
+// Aktualizuje tokens_limit i period_end dla istniejącego usage_counter
+// przy zmianie planu (upgrade/downgrade). Nie resetuje tokens_used/reserved.
+func (q *Queries) UpdateUsageCounterOnPlanChange(ctx context.Context, arg UpdateUsageCounterOnPlanChangeParams) error {
+	_, err := q.db.Exec(ctx, updateUsageCounterOnPlanChange,
+		arg.SubscriptionID,
+		arg.PeriodStart,
+		arg.TokensLimit,
+		arg.PeriodEnd,
+	)
 	return err
 }

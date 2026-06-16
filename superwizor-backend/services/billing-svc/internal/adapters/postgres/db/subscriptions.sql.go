@@ -257,13 +257,15 @@ INSERT INTO subscriptions (
     provider, provider_subscription_id,
     status,
     current_period_start, current_period_end,
-    cancel_at_period_end, trial_end_at
+    cancel_at_period_end, trial_end_at,
+    canceled_at
 ) VALUES (
     $1, $2,
     'STRIPE', $3,
     $4,
     $5, $6,
-    $7, $8
+    $7, $8,
+    $9
 )
 ON CONFLICT (provider, provider_subscription_id) DO UPDATE
     SET plan_id              = EXCLUDED.plan_id,
@@ -272,6 +274,7 @@ ON CONFLICT (provider, provider_subscription_id) DO UPDATE
         current_period_end   = EXCLUDED.current_period_end,
         cancel_at_period_end = EXCLUDED.cancel_at_period_end,
         trial_end_at         = EXCLUDED.trial_end_at,
+        canceled_at          = EXCLUDED.canceled_at,
         updated_at           = now()
 RETURNING id, organization_id, plan_id, provider, provider_subscription_id,
           status, current_period_start, current_period_end,
@@ -287,6 +290,7 @@ type UpsertStripeSubscriptionParams struct {
 	CurrentPeriodEnd       time.Time          `json:"current_period_end"`
 	CancelAtPeriodEnd      bool               `json:"cancel_at_period_end"`
 	TrialEndAt             pgtype.Timestamptz `json:"trial_end_at"`
+	CanceledAt             pgtype.Timestamptz `json:"canceled_at"`
 }
 
 type UpsertStripeSubscriptionRow struct {
@@ -318,6 +322,7 @@ func (q *Queries) UpsertStripeSubscription(ctx context.Context, arg UpsertStripe
 		arg.CurrentPeriodEnd,
 		arg.CancelAtPeriodEnd,
 		arg.TrialEndAt,
+		arg.CanceledAt,
 	)
 	var i UpsertStripeSubscriptionRow
 	err := row.Scan(

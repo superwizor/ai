@@ -1376,6 +1376,12 @@ abstract class AppLocalizations {
   /// **'Nazwa'**
   String get settings_name;
 
+  /// No description provided for @settings_professional_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tytuł zawodowy'**
+  String get settings_professional_title;
+
   /// No description provided for @settings_email.
   ///
   /// In pl, this message translates to:

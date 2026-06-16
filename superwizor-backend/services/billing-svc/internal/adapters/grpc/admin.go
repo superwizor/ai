@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -148,6 +149,11 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 		return nil, status.Errorf(codes.Internal, "commit: %v", err)
 	}
 
+	var canceledAt *time.Time
+	if sub.CanceledAt.Valid {
+		canceledAt = &sub.CanceledAt.Time
+	}
+
 	return buildSubscriptionProto(subFields{
 		ID:                 sub.ID,
 		PlanTier:           string(sub.PlanTier),
@@ -155,6 +161,8 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 		Status:             string(sub.Status),
 		CurrentPeriodStart: sub.CurrentPeriodStart,
 		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
+		CanceledAt:         canceledAt,
 	}, updated.TokensUsed, updated.TokensReserved, updated.TokensLimit), nil
 }
 
@@ -265,6 +273,11 @@ func (s *Server) AdminChangePlan(ctx context.Context, req *billingv1.AdminChange
 	// used by GetActiveSubscriptionByOrg. For the response we know
 	// the new values came from the request itself.
 	_ = subAfter
+	var canceledAt *time.Time
+	if sub.CanceledAt.Valid {
+		canceledAt = &sub.CanceledAt.Time
+	}
+
 	return buildSubscriptionProto(subFields{
 		ID:                 sub.ID,
 		PlanTier:           req.PlanTier,
@@ -272,6 +285,8 @@ func (s *Server) AdminChangePlan(ctx context.Context, req *billingv1.AdminChange
 		Status:             string(sub.Status),
 		CurrentPeriodStart: sub.CurrentPeriodStart,
 		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
+		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
+		CanceledAt:         canceledAt,
 	}, counterAfter.TokensUsed, counterAfter.TokensReserved, counterAfter.TokensLimit), nil
 }
 

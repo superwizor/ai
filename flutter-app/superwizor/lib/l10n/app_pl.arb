@@ -272,6 +272,7 @@
     "placeholders": { "email": { "type": "String" } }
   },
   "settings_name": "Nazwa",
+  "settings_professional_title": "Tytuł zawodowy",
   "settings_email": "Email",
   "settings_avatar": "Zdjęcie profilowe",
   "settings_modality": "Domyślny nurt terapii",

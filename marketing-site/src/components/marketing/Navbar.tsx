@@ -49,7 +49,7 @@ export function Navbar({ variant = "marketing" }: { variant?: NavbarVariant }) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full border-b border-[#E2DED5]/60 bg-[#FBFAF7]/85 backdrop-blur-md">
+      <header className="sticky top-0 z-40 w-full border-b border-[#E2DED5]/60 bg-[#FBFAF7]/85 backdrop-blur-md [transform:translateZ(0)]">
       <div className="mx-auto flex w-full max-w-[1080px] items-center justify-between px-3 sm:px-6 lg:px-8 py-2.5 sm:py-4">
         {/* ── Logo ──────────────────────────────────────────── */}
         {logoIsLink ? (

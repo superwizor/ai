@@ -39,6 +39,10 @@ type Querier interface {
 	// tokens_limit to leave that column unchanged. The handler maps proto
 	// value -1 (sentinel) to NULL before calling.
 	AdminUpdateCounter(ctx context.Context, arg AdminUpdateCounterParams) (UsageCounter, error)
+	// Sprawdza czy istnieje usage_counter dla danej subskrypcji i okresu.
+	// Używane w upsertSubscriptionFromStripe żeby uniknąć UNIQUE violation
+	// w transakcji (które by ją unieważniły w Postgresie).
+	CheckUsageCounterExists(ctx context.Context, arg CheckUsageCounterExistsParams) (bool, error)
 	// Atomic: inkrement tokens_used + dekrement tokens_reserved.
 	// Używane w CommitUsage tylko jeśli usage_events INSERT zwrócił nowy row.
 	CommitTokens(ctx context.Context, arg CommitTokensParams) error
@@ -47,6 +51,7 @@ type Querier interface {
 	// the handler level, NOT NULL-allowed at the schema level (legacy events
 	// don't have it populated).
 	CreateBillingAuditEvent(ctx context.Context, arg CreateBillingAuditEventParams) (AuditEvent, error)
+	CreateInvoice(ctx context.Context, arg CreateInvoiceParams) (Invoice, error)
 	// Idempotent insert zdarzenia płatności (ADR-BL-002).
 	// UNIQUE(provider, provider_event_id) zapewnia że to samo zdarzenie
 	// Stripe nie zostanie przetworzone dwukrotnie — zwraca pusty RETURNING
@@ -113,6 +118,7 @@ type Querier interface {
 	// TRIALING status covers BETA plan subscriptions (120 tokens × 2 months).
 	// Per row musimy: shift current_period_*, utworzyć nowy usage_counters.
 	ListExpiredManualSubscriptions(ctx context.Context) ([]ListExpiredManualSubscriptionsRow, error)
+	ListInvoicesByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invoice, error)
 	// Weekly safety-check — znajdź ACTIVE/TRIALING subskrypcje, które nie mają
 	// aktywnego usage_counters dla bieżącego momentu. Jeśli się pojawi
 	// którakolwiek — alert (cron triggeruje monitoring).
@@ -142,6 +148,9 @@ type Querier interface {
 	// Używane przy invoice.payment_failed, customer.subscription.deleted,
 	// customer.subscription.updated.
 	UpdateSubscriptionStatusByStripeID(ctx context.Context, arg UpdateSubscriptionStatusByStripeIDParams) error
+	// Aktualizuje tokens_limit i period_end dla istniejącego usage_counter
+	// przy zmianie planu (upgrade/downgrade). Nie resetuje tokens_used/reserved.
+	UpdateUsageCounterOnPlanChange(ctx context.Context, arg UpdateUsageCounterOnPlanChangeParams) error
 	// Tworzy lub aktualizuje subskrypcję po zdarzeniu Stripe.
 	// ON CONFLICT (provider, provider_subscription_id) aktualizuje pola.
 	// Używane przy checkout.session.completed i customer.subscription.created.

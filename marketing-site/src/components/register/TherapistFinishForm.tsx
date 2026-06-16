@@ -131,7 +131,14 @@ export function TherapistFinishForm({
       const orgId = created.organizationId ?? "";
       const priceNeeded = planSlug && !['trial', 'beta'].includes(planSlug.toLowerCase());
       if (priceNeeded && orgId) {
-        await handlePostRegistrationRedirect(orgId, planSlug, prefix, email);
+        await handlePostRegistrationRedirect(
+          orgId,
+          planSlug,
+          prefix,
+          email,
+          data.phoneNumber ?? undefined,
+          `${data.firstName || ""} ${data.lastName || ""}`.trim() || undefined,
+        );
       } else {
         // Google/Apple sign-in → email already verified → go to onboarding
         window.location.replace(prefix ? `${prefix}/onboarding/` : "/onboarding/");

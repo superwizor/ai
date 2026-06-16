@@ -781,6 +781,57 @@ type ConsentRecord struct {
 	RecordedAt     time.Time `json:"recorded_at"`
 }
 
+type CrmEmailLog struct {
+	ID             uuid.UUID `json:"id"`
+	AdminUserID    string    `json:"admin_user_id"`
+	TargetUserID   uuid.UUID `json:"target_user_id"`
+	TemplateID     string    `json:"template_id"`
+	Subject        string    `json:"subject"`
+	RecipientEmail string    `json:"recipient_email"`
+	SentAt         time.Time `json:"sent_at"`
+}
+
+type CrmExcludedUser struct {
+	UserID     uuid.UUID `json:"user_id"`
+	ExcludedAt time.Time `json:"excluded_at"`
+	Reason     *string   `json:"reason"`
+}
+
+type CrmFollowUp struct {
+	ID           uuid.UUID          `json:"id"`
+	AdminUserID  string             `json:"admin_user_id"`
+	TargetUserID uuid.UUID          `json:"target_user_id"`
+	DueDate      pgtype.Date        `json:"due_date"`
+	Note         *string            `json:"note"`
+	Completed    bool               `json:"completed"`
+	CompletedAt  pgtype.Timestamptz `json:"completed_at"`
+	CreatedAt    time.Time          `json:"created_at"`
+}
+
+type CrmNote struct {
+	ID           uuid.UUID `json:"id"`
+	AdminUserID  string    `json:"admin_user_id"`
+	TargetUserID uuid.UUID `json:"target_user_id"`
+	Body         string    `json:"body"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type CrmTag struct {
+	ID           uuid.UUID `json:"id"`
+	TargetUserID uuid.UUID `json:"target_user_id"`
+	Tag          string    `json:"tag"`
+	CreatedAt    time.Time `json:"created_at"`
+	Color        string    `json:"color"`
+}
+
+type EmailDripLog struct {
+	ID             uuid.UUID `json:"id"`
+	UserID         string    `json:"user_id"`
+	TemplateName   string    `json:"template_name"`
+	SubscriptionID uuid.UUID `json:"subscription_id"`
+	SentAt         time.Time `json:"sent_at"`
+}
+
 type EmailTemplate struct {
 	TemplateKey string    `json:"template_key"`
 	Locale      string    `json:"locale"`
@@ -836,6 +887,20 @@ type Invitation struct {
 	CreatedAt      time.Time          `json:"created_at"`
 }
 
+type Invoice struct {
+	ID               uuid.UUID      `json:"id"`
+	OrganizationID   uuid.UUID      `json:"organization_id"`
+	SubscriptionID   pgtype.UUID    `json:"subscription_id"`
+	StripeInvoiceID  string         `json:"stripe_invoice_id"`
+	AmountPaid       pgtype.Numeric `json:"amount_paid"`
+	Currency         string         `json:"currency"`
+	InvoicePdf       string         `json:"invoice_pdf"`
+	HostedInvoiceUrl string         `json:"hosted_invoice_url"`
+	PeriodStart      time.Time      `json:"period_start"`
+	PeriodEnd        time.Time      `json:"period_end"`
+	CreatedAt        time.Time      `json:"created_at"`
+}
+
 type Modality struct {
 	ID                        uuid.UUID    `json:"id"`
 	SystemCode                string       `json:"system_code"`
@@ -848,6 +913,16 @@ type Modality struct {
 	CreatedAt                 time.Time    `json:"created_at"`
 	UpdatedAt                 time.Time    `json:"updated_at"`
 	ModalityType              ModalityType `json:"modality_type"`
+}
+
+type ModalityPromptVersion struct {
+	ID         uuid.UUID `json:"id"`
+	ModalityID uuid.UUID `json:"modality_id"`
+	Version    int32     `json:"version"`
+	Prompt     []byte    `json:"prompt"`
+	ChangeNote string    `json:"change_note"`
+	CreatedBy  uuid.UUID `json:"created_by"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type NotificationDelivery struct {
