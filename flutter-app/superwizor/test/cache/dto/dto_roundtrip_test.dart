@@ -23,6 +23,7 @@ void main() {
         languageCode: 'pl-PL',
         sessionCount: 7,
         email: 'anna@example.com',
+        lifecycleStatus: 'ACTIVE',
       );
       final encoded = jsonEncode(original.toJson());
       final decoded = PatientDto.fromJson(
@@ -34,7 +35,8 @@ void main() {
       expect(decoded.languageCode, original.languageCode);
       expect(decoded.sessionCount, original.sessionCount);
       expect(decoded.email, original.email);
-      expect((jsonDecode(encoded) as Map).length, 7,
+      expect(decoded.lifecycleStatus, original.lifecycleStatus);
+      expect((jsonDecode(encoded) as Map).length, 8,
           reason: 'field-count guard — add toJson/fromJson coverage for new fields');
     });
   });

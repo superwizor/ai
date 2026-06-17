@@ -92,8 +92,11 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.344724821207-3i6ag6t8qrrpeeaurej7qnqh2bgdvjae</string>
+				<string>superwizor</string>
 			</array>
 		</dict>
 	</array>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 </dict>
 </plist>

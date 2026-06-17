@@ -945,8 +945,9 @@ type PatientFile struct {
 	UpdatedAt             time.Time          `json:"updated_at"`
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out (legacy clients).
-	IdempotencyKey *string `json:"idempotency_key"`
-	PatientEmail   *string `json:"patient_email"`
+	IdempotencyKey  *string `json:"idempotency_key"`
+	PatientEmail    *string `json:"patient_email"`
+	LifecycleStatus string  `json:"lifecycle_status"`
 }
 
 type PatientNote struct {

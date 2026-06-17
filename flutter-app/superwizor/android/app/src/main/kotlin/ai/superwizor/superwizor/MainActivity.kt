@@ -8,6 +8,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val fgsChannel = "superwizor/recording_fgs"
+    private val liveActivityChannel = "ai.superwizor/live_activity"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -38,6 +39,59 @@ class MainActivity : FlutterActivity() {
                         action = RecordingForegroundService.ACTION_STOP
                     }
                     startService(intent)
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Live Activity / AppWidget control — mirrors recording state
+        // to the home-screen widget so therapists can see session
+        // status without opening the app.
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            liveActivityChannel,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "start" -> {
+                    ActiveSessionWidgetProvider.patientAlias =
+                        call.argument<String>("patientAlias") ?: ""
+                    ActiveSessionWidgetProvider.elapsedSeconds =
+                        call.argument<Int>("elapsedSeconds") ?: 0
+                    ActiveSessionWidgetProvider.statusText = "Sesja w toku"
+                    ActiveSessionWidgetProvider.isPaused = false
+                    ActiveSessionWidgetProvider.isActive = true
+                    ActiveSessionWidgetProvider.reportSessionId = null
+                    ActiveSessionWidgetProvider.pushUpdate(this)
+                    result.success(true)
+                }
+                "update" -> {
+                    val status = call.argument<String>("status") ?: "recording"
+                    ActiveSessionWidgetProvider.elapsedSeconds =
+                        call.argument<Int>("elapsedSeconds") ?: 0
+                    ActiveSessionWidgetProvider.isPaused = status == "paused"
+                    ActiveSessionWidgetProvider.statusText = when (status) {
+                        "recording" -> "Sesja w toku"
+                        "paused" -> "Pauza"
+                        "uploading" -> "Wgrywanie nagrania..."
+                        "analyzing" -> "Analizowanie sesji..."
+                        "reportReady" -> "Nowy raport czeka w kartotece"
+                        else -> status
+                    }
+                    ActiveSessionWidgetProvider.pushUpdate(this)
+                    result.success(true)
+                }
+                "reportReady" -> {
+                    val sessionId = call.argument<String>("sessionId")
+                    ActiveSessionWidgetProvider.reportSessionId = sessionId
+                    ActiveSessionWidgetProvider.statusText = "Nowy raport czeka w kartotece"
+                    ActiveSessionWidgetProvider.pushUpdate(this)
+                    result.success(true)
+                }
+                "stop" -> {
+                    ActiveSessionWidgetProvider.isActive = false
+                    ActiveSessionWidgetProvider.reportSessionId = null
+                    ActiveSessionWidgetProvider.pushUpdate(this)
                     result.success(true)
                 }
                 else -> result.notImplemented()

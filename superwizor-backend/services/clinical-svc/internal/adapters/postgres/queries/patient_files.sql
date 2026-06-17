@@ -103,11 +103,20 @@ WHERE therapist_id = $1 AND deleted_at IS NULL;
 -- clinical.proto. process_type follows the same logic.
 -- Patient-user fields (first_name/last_name/language_code) live in
 -- patient_users.sql::UpdatePatientUser.
+--
+-- lifecycle_status ($6): when non-empty, sets the lifecycle and derives
+-- is_process_closed (COMPLETED → true, otherwise → false). When empty,
+-- both fields keep their current values (is_process_closed still
+-- honors $5 for backward compat with older clients).
 UPDATE patient_files SET
   working_alias = COALESCE(NULLIF($2, ''), working_alias),
   initial_complaint = NULLIF($3, ''),
   private_therapist_notes = NULLIF($4, ''),
-  is_process_closed = $5,
+  is_process_closed = CASE
+    WHEN $6::text <> '' THEN ($6::text = 'COMPLETED')
+    ELSE $5
+  END,
+  lifecycle_status = COALESCE(NULLIF($6::text, ''), lifecycle_status),
   updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;

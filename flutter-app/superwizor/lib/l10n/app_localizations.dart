@@ -743,13 +743,13 @@ abstract class AppLocalizations {
   /// No description provided for @recording_discard_confirm_header.
   ///
   /// In pl, this message translates to:
-  /// **'Wyjść z nagrywania?'**
+  /// **'Czy na pewno chcesz skasować nagranie?'**
   String get recording_discard_confirm_header;
 
   /// No description provided for @recording_discard_confirm_body.
   ///
   /// In pl, this message translates to:
-  /// **'Trwa nagrywanie sesji. Jeśli wyjdziesz, sesja zostanie usunięta bezpowrotnie.'**
+  /// **'Tego nagrania nie będzie się dało odzyskać. Zostanie ono bezpowrotnie usunięte z urządzenia i nie zostanie wysłane do analizy.'**
   String get recording_discard_confirm_body;
 
   /// No description provided for @recording_discard_confirm_destructive.
@@ -2734,6 +2734,156 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Zapisuję nagranie...'**
   String get recording_saving;
+
+  /// No description provided for @recording_minimize_confirm_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyjście z ekranu nagrywania'**
+  String get recording_minimize_confirm_header;
+
+  /// No description provided for @recording_minimize_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja jest w toku. Możesz zminimalizować ten ekran, aby np. przejść do notatek (nagrywanie będzie kontynuowane w tle).'**
+  String get recording_minimize_confirm_body;
+
+  /// No description provided for @recording_minimize_action.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zminimalizuj (zostaw w tle)'**
+  String get recording_minimize_action;
+
+  /// No description provided for @recording_minimize_discard.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zatrzymaj i skasuj nagranie'**
+  String get recording_minimize_discard;
+
+  /// No description provided for @recording_minimize_resume.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wróć do nagrywania'**
+  String get recording_minimize_resume;
+
+  /// No description provided for @recording_discard_confirm_action.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tak, skasuj bezpowrotnie'**
+  String get recording_discard_confirm_action;
+
+  /// No description provided for @recording_discard_confirm_cancel.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie, wróć'**
+  String get recording_discard_confirm_cancel;
+
+  /// No description provided for @active_session_card_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja w toku...'**
+  String get active_session_card_title;
+
+  /// No description provided for @active_session_card_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wróć do trwającej sesji'**
+  String get active_session_card_subtitle;
+
+  /// No description provided for @active_session_card_paused_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja wstrzymana'**
+  String get active_session_card_paused_title;
+
+  /// No description provided for @active_session_card_paused_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wznów lub zakończ sesję'**
+  String get active_session_card_paused_subtitle;
+
+  /// No description provided for @settings_live_activities.
+  ///
+  /// In pl, this message translates to:
+  /// **'Aktywność na ekranie blokady'**
+  String get settings_live_activities;
+
+  /// No description provided for @settings_live_activities_on.
+  ///
+  /// In pl, this message translates to:
+  /// **'Czas i status sesji są widoczne na zablokowanym ekranie i w Dynamic Island — nie musisz odblokowywać telefonu.'**
+  String get settings_live_activities_on;
+
+  /// No description provided for @settings_live_activities_off.
+  ///
+  /// In pl, this message translates to:
+  /// **'Status trwającej sesji widoczny tylko w aplikacji.'**
+  String get settings_live_activities_off;
+
+  /// No description provided for @live_activity_info_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Miej sesję zawsze na oku'**
+  String get live_activity_info_title;
+
+  /// No description provided for @live_activity_info_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Włącz podgląd na ekranie blokady, aby widzieć czas sesji bez otwierania aplikacji — również w Dynamic Island.'**
+  String get live_activity_info_body;
+
+  /// No description provided for @live_activity_info_enable.
+  ///
+  /// In pl, this message translates to:
+  /// **'Włącz podgląd'**
+  String get live_activity_info_enable;
+
+  /// No description provided for @live_activity_info_dismiss.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie teraz'**
+  String get live_activity_info_dismiss;
+
+  /// No description provided for @live_activity_minimize_toast.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja działa w tle. Aby widzieć jej czas na ekranie blokady, włącz podgląd w Ustawieniach.'**
+  String get live_activity_minimize_toast;
+
+  /// No description provided for @live_activity_status_recording.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja w toku'**
+  String get live_activity_status_recording;
+
+  /// No description provided for @live_activity_status_paused.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pauza'**
+  String get live_activity_status_paused;
+
+  /// No description provided for @live_activity_status_uploading.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wgrywanie nagrania...'**
+  String get live_activity_status_uploading;
+
+  /// No description provided for @live_activity_status_analyzing.
+  ///
+  /// In pl, this message translates to:
+  /// **'Analizowanie sesji...'**
+  String get live_activity_status_analyzing;
+
+  /// No description provided for @live_activity_status_report_ready.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowy raport czeka w kartotece'**
+  String get live_activity_status_report_ready;
+
+  /// No description provided for @live_activity_show_report.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pokaż raport'**
+  String get live_activity_show_report;
 }
 
 class _AppLocalizationsDelegate

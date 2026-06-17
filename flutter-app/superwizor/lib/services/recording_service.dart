@@ -106,6 +106,18 @@ class RecordingService {
   String? _activeSessionId;
   String? get activeSessionId => _activeSessionId;
 
+  String? _patientFileId;
+  String? get patientFileId => _patientFileId;
+
+  String? _therapistId;
+  String? get therapistId => _therapistId;
+
+  String? _patientAlias;
+  String? get patientAlias => _patientAlias;
+
+  String? _reportLanguage;
+  String? get reportLanguage => _reportLanguage;
+
   Timer? _ticker;
   DateTime? _segmentStart;
   Duration _accumulated = Duration.zero;
@@ -154,6 +166,10 @@ class RecordingService {
   /// passes them from the l10n pipeline. Ignored on iOS/web.
   Future<void> start(
     String sessionId, {
+    String patientFileId = '',
+    String therapistId = '',
+    String patientAlias = '',
+    String reportLanguage = '',
     String? fgsTitle,
     String? fgsBody,
   }) async {
@@ -214,6 +230,10 @@ class RecordingService {
 
     _activeFilePath = outPath;
     _activeSessionId = sessionId;
+    _patientFileId = patientFileId;
+    _therapistId = therapistId;
+    _patientAlias = patientAlias;
+    _reportLanguage = reportLanguage;
     _accumulated = Duration.zero;
     _hadInterruption = false;
     _segmentStart = DateTime.now();
@@ -320,6 +340,10 @@ class RecordingService {
     final out = returnedPath ?? _activeFilePath;
     _activeFilePath = null;
     _activeSessionId = null;
+    _patientFileId = null;
+    _therapistId = null;
+    _patientAlias = null;
+    _reportLanguage = null;
     return out;
   }
 
@@ -345,6 +369,10 @@ class RecordingService {
     }
     _activeFilePath = null;
     _activeSessionId = null;
+    _patientFileId = null;
+    _therapistId = null;
+    _patientAlias = null;
+    _reportLanguage = null;
   }
 
   /// Re-checks the native recorder state and fixes a desynced Dart state.

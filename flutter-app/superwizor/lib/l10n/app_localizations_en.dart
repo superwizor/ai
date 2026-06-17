@@ -362,11 +362,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recording_mic_denied_cancel => 'Back.';
 
   @override
-  String get recording_discard_confirm_header => 'Exit recording?';
+  String get recording_discard_confirm_header =>
+      'Are you sure you want to delete this recording?';
 
   @override
   String get recording_discard_confirm_body =>
-      'Recording is in progress. If you exit, the session will be permanently deleted.';
+      'This recording cannot be recovered. It will be permanently deleted from this device and will not be sent for analysis.';
 
   @override
   String get recording_discard_confirm_destructive =>
@@ -1498,4 +1499,84 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recording_saving => 'Saving recording...';
+
+  @override
+  String get recording_minimize_confirm_header => 'Exit recording screen';
+
+  @override
+  String get recording_minimize_confirm_body =>
+      'Recording is in progress. You can minimize this screen to access notes (recording will continue in the background).';
+
+  @override
+  String get recording_minimize_action => 'Minimize (keep in background)';
+
+  @override
+  String get recording_minimize_discard => 'Stop and delete recording';
+
+  @override
+  String get recording_minimize_resume => 'Return to recording';
+
+  @override
+  String get recording_discard_confirm_action => 'Yes, delete permanently';
+
+  @override
+  String get recording_discard_confirm_cancel => 'No, go back';
+
+  @override
+  String get active_session_card_title => 'Session in progress...';
+
+  @override
+  String get active_session_card_subtitle => 'Return to the ongoing session';
+
+  @override
+  String get active_session_card_paused_title => 'Session paused';
+
+  @override
+  String get active_session_card_paused_subtitle => 'Resume or end the session';
+
+  @override
+  String get settings_live_activities => 'Lock screen activity';
+
+  @override
+  String get settings_live_activities_on =>
+      'Session time and status are visible on the lock screen and Dynamic Island — no need to unlock your phone.';
+
+  @override
+  String get settings_live_activities_off =>
+      'Ongoing session status is only visible inside the app.';
+
+  @override
+  String get live_activity_info_title => 'Keep your session in sight';
+
+  @override
+  String get live_activity_info_body =>
+      'Enable lock screen preview to see your session timer without opening the app — also in Dynamic Island.';
+
+  @override
+  String get live_activity_info_enable => 'Enable preview';
+
+  @override
+  String get live_activity_info_dismiss => 'Not now';
+
+  @override
+  String get live_activity_minimize_toast =>
+      'Session is running in the background. To see its timer on the lock screen, enable the preview in Settings.';
+
+  @override
+  String get live_activity_status_recording => 'Session in progress';
+
+  @override
+  String get live_activity_status_paused => 'Paused';
+
+  @override
+  String get live_activity_status_uploading => 'Uploading recording...';
+
+  @override
+  String get live_activity_status_analyzing => 'Analyzing session...';
+
+  @override
+  String get live_activity_status_report_ready => 'New report is ready';
+
+  @override
+  String get live_activity_show_report => 'Show report';
 }

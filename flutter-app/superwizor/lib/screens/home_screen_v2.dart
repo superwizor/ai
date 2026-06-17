@@ -385,8 +385,8 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     activePatients.sort((a, b) {
       final aSessions = sessionsMap[a.id] ?? [];
       final bSessions = sessionsMap[b.id] ?? [];
-      final aDate = aSessions.isNotEmpty ? aSessions.last.date : now;
-      final bDate = bSessions.isNotEmpty ? bSessions.last.date : now;
+      final aDate = aSessions.isNotEmpty ? aSessions.first.date : now;
+      final bDate = bSessions.isNotEmpty ? bSessions.first.date : now;
       return bDate.compareTo(aDate);
     });
     completedPatients.sort((a, b) => a.firstName.compareTo(b.firstName));
@@ -474,7 +474,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
                 final patient = activeFiltered[index];
                 final sessions = sessionsMap[patient.id] ?? [];
                 final lastDate = sessions.isNotEmpty
-                    ? sessions.last.date
+                    ? sessions.first.date
                     : null;
                 return _PatientCompactCard(
                   patient: patient,
@@ -588,7 +588,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
                   final patient = completedFiltered[index];
                   final sessions = sessionsMap[patient.id] ?? [];
                   final lastDate = sessions.isNotEmpty
-                      ? sessions.last.date
+                      ? sessions.first.date
                       : null;
                   return _PatientCompactCard(
                     patient: patient,

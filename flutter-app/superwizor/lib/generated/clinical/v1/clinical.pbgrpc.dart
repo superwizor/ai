@@ -294,6 +294,58 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getAdminAnalytics, request, options: options);
   }
 
+  /// ─── Admin Prompt Studio (docs/31) — SUPERWIZOR_ADMIN only ───
+  /// Versioned editor for modalities.therapist_ai_general_prompt.
+  /// The live column is what llm-worker reads per report; every update
+  /// bumps it AND appends a snapshot to modality_prompt_versions in one
+  /// transaction. Restore = AdminUpdateModalityPrompt with historical
+  /// text (no separate rollback RPC).
+  $grpc.ResponseFuture<$0.AdminListModalityPromptsResponse>
+      adminListModalityPrompts(
+    $1.Empty request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminListModalityPrompts, request,
+        options: options);
+  }
+
+  $grpc.ResponseFuture<$0.AdminGetModalityPromptHistoryResponse>
+      adminGetModalityPromptHistory(
+    $0.AdminGetModalityPromptHistoryRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminGetModalityPromptHistory, request,
+        options: options);
+  }
+
+  $grpc.ResponseFuture<$0.AdminUpdateModalityPromptResponse>
+      adminUpdateModalityPrompt(
+    $0.AdminUpdateModalityPromptRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminUpdateModalityPrompt, request,
+        options: options);
+  }
+
+  /// ─── RODO/GDPR DSAR endpoints ───
+  /// Export all clinical and personal data related to a patient file,
+  /// decrypting all PHI columns using KMS before returning.
+  $grpc.ResponseFuture<$0.ExportPatientDataResponse> exportPatientData(
+    $0.ExportPatientDataRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$exportPatientData, request, options: options);
+  }
+
+  /// Cascaded soft-delete of all patient data (patient file, sessions, notes).
+  /// The daily hard-delete purger will physically delete the records after 30 days.
+  $grpc.ResponseFuture<$1.Empty> deletePatientData(
+    $0.DeletePatientDataRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$deletePatientData, request, options: options);
+  }
+
   // method descriptors
 
   static final _$createPatientFile =
@@ -441,6 +493,33 @@ class ClinicalServiceClient extends $grpc.Client {
       '/clinical.v1.ClinicalService/GetAdminAnalytics',
       ($0.GetAdminAnalyticsRequest value) => value.writeToBuffer(),
       $0.GetAdminAnalyticsResponse.fromBuffer);
+  static final _$adminListModalityPrompts =
+      $grpc.ClientMethod<$1.Empty, $0.AdminListModalityPromptsResponse>(
+          '/clinical.v1.ClinicalService/AdminListModalityPrompts',
+          ($1.Empty value) => value.writeToBuffer(),
+          $0.AdminListModalityPromptsResponse.fromBuffer);
+  static final _$adminGetModalityPromptHistory = $grpc.ClientMethod<
+          $0.AdminGetModalityPromptHistoryRequest,
+          $0.AdminGetModalityPromptHistoryResponse>(
+      '/clinical.v1.ClinicalService/AdminGetModalityPromptHistory',
+      ($0.AdminGetModalityPromptHistoryRequest value) => value.writeToBuffer(),
+      $0.AdminGetModalityPromptHistoryResponse.fromBuffer);
+  static final _$adminUpdateModalityPrompt = $grpc.ClientMethod<
+          $0.AdminUpdateModalityPromptRequest,
+          $0.AdminUpdateModalityPromptResponse>(
+      '/clinical.v1.ClinicalService/AdminUpdateModalityPrompt',
+      ($0.AdminUpdateModalityPromptRequest value) => value.writeToBuffer(),
+      $0.AdminUpdateModalityPromptResponse.fromBuffer);
+  static final _$exportPatientData = $grpc.ClientMethod<
+          $0.ExportPatientDataRequest, $0.ExportPatientDataResponse>(
+      '/clinical.v1.ClinicalService/ExportPatientData',
+      ($0.ExportPatientDataRequest value) => value.writeToBuffer(),
+      $0.ExportPatientDataResponse.fromBuffer);
+  static final _$deletePatientData =
+      $grpc.ClientMethod<$0.DeletePatientDataRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/DeletePatientData',
+          ($0.DeletePatientDataRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
 }
 
 @$pb.GrpcServiceName('clinical.v1.ClinicalService')
@@ -687,6 +766,51 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.GetAdminAnalyticsRequest.fromBuffer(value),
         ($0.GetAdminAnalyticsResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$1.Empty, $0.AdminListModalityPromptsResponse>(
+            'AdminListModalityPrompts',
+            adminListModalityPrompts_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
+            ($0.AdminListModalityPromptsResponse value) =>
+                value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminGetModalityPromptHistoryRequest,
+            $0.AdminGetModalityPromptHistoryResponse>(
+        'AdminGetModalityPromptHistory',
+        adminGetModalityPromptHistory_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminGetModalityPromptHistoryRequest.fromBuffer(value),
+        ($0.AdminGetModalityPromptHistoryResponse value) =>
+            value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminUpdateModalityPromptRequest,
+            $0.AdminUpdateModalityPromptResponse>(
+        'AdminUpdateModalityPrompt',
+        adminUpdateModalityPrompt_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminUpdateModalityPromptRequest.fromBuffer(value),
+        ($0.AdminUpdateModalityPromptResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ExportPatientDataRequest,
+            $0.ExportPatientDataResponse>(
+        'ExportPatientData',
+        exportPatientData_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ExportPatientDataRequest.fromBuffer(value),
+        ($0.ExportPatientDataResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DeletePatientDataRequest, $1.Empty>(
+        'DeletePatientData',
+        deletePatientData_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DeletePatientDataRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.PatientFile> createPatientFile_Pre($grpc.ServiceCall $call,
@@ -930,4 +1054,51 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$0.GetAdminAnalyticsResponse> getAdminAnalytics(
       $grpc.ServiceCall call, $0.GetAdminAnalyticsRequest request);
+
+  $async.Future<$0.AdminListModalityPromptsResponse>
+      adminListModalityPrompts_Pre(
+          $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {
+    return adminListModalityPrompts($call, await $request);
+  }
+
+  $async.Future<$0.AdminListModalityPromptsResponse> adminListModalityPrompts(
+      $grpc.ServiceCall call, $1.Empty request);
+
+  $async.Future<$0.AdminGetModalityPromptHistoryResponse>
+      adminGetModalityPromptHistory_Pre(
+          $grpc.ServiceCall $call,
+          $async.Future<$0.AdminGetModalityPromptHistoryRequest>
+              $request) async {
+    return adminGetModalityPromptHistory($call, await $request);
+  }
+
+  $async.Future<$0.AdminGetModalityPromptHistoryResponse>
+      adminGetModalityPromptHistory($grpc.ServiceCall call,
+          $0.AdminGetModalityPromptHistoryRequest request);
+
+  $async.Future<$0.AdminUpdateModalityPromptResponse>
+      adminUpdateModalityPrompt_Pre($grpc.ServiceCall $call,
+          $async.Future<$0.AdminUpdateModalityPromptRequest> $request) async {
+    return adminUpdateModalityPrompt($call, await $request);
+  }
+
+  $async.Future<$0.AdminUpdateModalityPromptResponse> adminUpdateModalityPrompt(
+      $grpc.ServiceCall call, $0.AdminUpdateModalityPromptRequest request);
+
+  $async.Future<$0.ExportPatientDataResponse> exportPatientData_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ExportPatientDataRequest> $request) async {
+    return exportPatientData($call, await $request);
+  }
+
+  $async.Future<$0.ExportPatientDataResponse> exportPatientData(
+      $grpc.ServiceCall call, $0.ExportPatientDataRequest request);
+
+  $async.Future<$1.Empty> deletePatientData_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.DeletePatientDataRequest> $request) async {
+    return deletePatientData($call, await $request);
+  }
+
+  $async.Future<$1.Empty> deletePatientData(
+      $grpc.ServiceCall call, $0.DeletePatientDataRequest request);
 }

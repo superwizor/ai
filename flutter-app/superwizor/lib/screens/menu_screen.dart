@@ -404,6 +404,18 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                             onChanged: settingsNotifier.toggleHaptics,
                           ),
                           _Divider(),
+                          // Live Activities / Lock Screen
+                          _ToggleRow(
+                            icon: Icons.stay_current_portrait_outlined,
+                            iconColor: EuphireColors.ember,
+                            title: t.settings_live_activities,
+                            subtitle: settings.liveActivitiesEnabled
+                                ? t.settings_live_activities_on
+                                : t.settings_live_activities_off,
+                            value: settings.liveActivitiesEnabled,
+                            onChanged: (v) => settingsNotifier.toggleLiveActivities(v),
+                          ),
+                          _Divider(),
                           // Język aplikacji — inline selector
                           _LanguageRow(locale: locale),
                         ]),

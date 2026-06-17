@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/consent_service.dart';
 import '../services/fcm_token_service.dart';
+import '../services/live_activity_service.dart';
 import '../services/recording_manifest_store.dart';
 import '../services/recording_service.dart';
 import '../services/secure_audio_storage_service.dart';
@@ -56,4 +57,8 @@ final uploadServiceProvider = Provider<UploadService>((ref) {
 
 final transcriptPdfExporterProvider = Provider<TranscriptPdfExporter>(
   (ref) => TranscriptPdfExporter(),
+);
+
+final liveActivityServiceProvider = Provider<LiveActivityService>(
+  (ref) => LiveActivityService(),
 );

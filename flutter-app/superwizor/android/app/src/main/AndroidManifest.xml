@@ -43,6 +43,21 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
+        <!-- Home-screen widget that mirrors the active recording
+             session status (timer, pause, report-ready). Updated
+             from Flutter via the ai.superwizor/live_activity
+             MethodChannel. -->
+        <receiver
+            android:name=".ActiveSessionWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/active_session_widget_info" />
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

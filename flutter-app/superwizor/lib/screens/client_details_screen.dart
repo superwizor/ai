@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_toast.dart';
+import '../providers/services_provider.dart';
+import '../services/recording_service.dart';
 
 import '../analytics/analytics_collector.dart';
 import '../widgets/euphire_bottom_sheet.dart';
@@ -55,6 +57,12 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
   late Animation<double> _pulseScale;
   bool _hasCollapsedExtendedFab = false; // first-session extended FAB state
 
+  StreamSubscription<RecordingState>? _recStateSub;
+  StreamSubscription<Duration>? _recDurSub;
+  RecordingState _activeRecState = RecordingState.idle;
+  Duration _activeRecDuration = Duration.zero;
+  String? _activeRecPatientId;
+
   bool get _isExpanded =>
       _fabController.status == AnimationStatus.completed ||
       _fabController.status == AnimationStatus.forward;
@@ -80,6 +88,28 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
         );
       }
     });
+    final recSvc = ref.read(recordingServiceProvider);
+    _activeRecState = recSvc.state;
+    _activeRecDuration = recSvc.currentDuration;
+    _activeRecPatientId = recSvc.patientFileId;
+
+    _recStateSub = recSvc.stateStream.listen((s) {
+      if (mounted) {
+        setState(() {
+          _activeRecState = s;
+          _activeRecPatientId = recSvc.patientFileId;
+        });
+      }
+    });
+    _recDurSub = recSvc.durationStream.listen((d) {
+      if (mounted) {
+        setState(() {
+          _activeRecDuration = d;
+          _activeRecPatientId = recSvc.patientFileId;
+        });
+      }
+    });
+
     _fabController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350),
@@ -133,6 +163,8 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
   void dispose() {
     _fabController.dispose();
     _pulseController.dispose();
+    _recStateSub?.cancel();
+    _recDurSub?.cancel();
     super.dispose();
   }
 
@@ -428,7 +460,13 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                   ? true
                                   : !knownSessionIds.contains(u.sessionId))
                               .toList(growable: false);
-                          if (filteredSessions.isEmpty && visiblePending.isEmpty) {
+
+                          final hasActiveRecording = (_activeRecState == RecordingState.recording ||
+                                                      _activeRecState == RecordingState.paused ||
+                                                      _activeRecState == RecordingState.interrupted) &&
+                                                     _activeRecPatientId == widget.patientId;
+
+                          if (filteredSessions.isEmpty && visiblePending.isEmpty && !hasActiveRecording) {
                             return Center(
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 120.0, left: 32.0, right: 32.0),
@@ -499,19 +537,45 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                               b.sortDate.compareTo(a.sortDate));
 
                           final totalCount =
-                              visiblePending.length + timeline.length;
+                              (hasActiveRecording ? 1 : 0) + visiblePending.length + timeline.length;
                           return ListView.builder(
                             shrinkWrap: true,
                             physics:
                                 const NeverScrollableScrollPhysics(),
                             itemCount: totalCount,
                             itemBuilder: (context, index) {
-                              if (index < visiblePending.length) {
+                              int offset = 0;
+                              if (hasActiveRecording) {
+                                if (index == 0) {
+                                  return _ActiveRecordingCard(
+                                    patientId: widget.patientId,
+                                    duration: _activeRecDuration,
+                                    state: _activeRecState,
+                                    onTap: () {
+                                      final svc = ref.read(recordingServiceProvider);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => RecordingScreen(
+                                            patientFileId: svc.patientFileId ?? '',
+                                            therapistId: svc.therapistId ?? '',
+                                            patientAlias: svc.patientAlias ?? '',
+                                            reportLanguage: svc.reportLanguage ?? 'pl-PL',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                }
+                                offset = 1;
+                              }
+                              final adjustedIdx = index - offset;
+                              if (adjustedIdx < visiblePending.length) {
                                 return _PendingUploadCard(
-                                  upload: visiblePending[index],
+                                  upload: visiblePending[adjustedIdx],
                                 );
                               }
-                              final timelineIdx = index - visiblePending.length;
+                              final timelineIdx = adjustedIdx - visiblePending.length;
                               final item = timeline[timelineIdx];
 
                               if (item.isNote) {
@@ -3512,4 +3576,208 @@ class _ArcBottomClipper extends CustomClipper<Path> {
   @override
   bool shouldReclip(covariant _ArcBottomClipper oldClipper) =>
       oldClipper.arcDip != arcDip;
+}
+
+class _ActiveRecordingCard extends StatelessWidget {
+  final String patientId;
+  final Duration duration;
+  final RecordingState state;
+  final VoidCallback onTap;
+
+  const _ActiveRecordingCard({
+    required this.patientId,
+    required this.duration,
+    required this.state,
+    required this.onTap,
+  });
+
+  String _formatDuration(Duration d) {
+    final hh = d.inHours.toString().padLeft(2, '0');
+    final mm = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final ss = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return d.inHours > 0 ? '$hh:$mm:$ss' : '$mm:$ss';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPaused = state == RecordingState.paused;
+    final formattedDuration = _formatDuration(duration);
+    final l = AppLocalizations.of(context);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            EuphireColors.ember.withValues(alpha: 0.08),
+            Colors.white.withValues(alpha: 0.02),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: EuphireColors.ember.withValues(alpha: 0.25),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: EuphireColors.ember.withValues(alpha: 0.05),
+            blurRadius: 10,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          splashColor: EuphireColors.ember.withValues(alpha: 0.08),
+          highlightColor: EuphireColors.ember.withValues(alpha: 0.04),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                _CardPulsingDot(isRecording: state == RecordingState.recording),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isPaused ? l.active_session_card_paused_title : l.active_session_card_title,
+                        style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: EuphireColors.frostWhite,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isPaused ? l.active_session_card_paused_subtitle : l.active_session_card_subtitle,
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 12,
+                          color: EuphireColors.mist.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  formattedDuration,
+                  style: const TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: EuphireColors.ember,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: EuphireColors.mist,
+                  size: 14,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CardPulsingDot extends StatefulWidget {
+  final bool isRecording;
+  const _CardPulsingDot({required this.isRecording});
+
+  @override
+  State<_CardPulsingDot> createState() => _CardPulsingDotState();
+}
+
+class _CardPulsingDotState extends State<_CardPulsingDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+    if (widget.isRecording) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _CardPulsingDot oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isRecording && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (!widget.isRecording && _controller.isAnimating) {
+      _controller.stop();
+      _controller.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            if (widget.isRecording) ...[
+              _buildRipple(1.0 + (_controller.value * 2.0), 1.0 - _controller.value),
+              _buildRipple(1.0 + (((_controller.value + 0.5) % 1.0) * 2.0), 1.0 - ((_controller.value + 0.5) % 1.0)),
+            ],
+            Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.isRecording ? EuphireColors.magma : EuphireColors.mist,
+                boxShadow: widget.isRecording
+                    ? [
+                        BoxShadow(
+                          color: EuphireColors.magma.withValues(alpha: 0.4),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        )
+                      ]
+                    : null,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildRipple(double scale, double opacity) {
+    return Transform.scale(
+      scale: scale,
+      child: Container(
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: EuphireColors.magma.withValues(alpha: opacity * 0.4),
+        ),
+      ),
+    );
+  }
 }

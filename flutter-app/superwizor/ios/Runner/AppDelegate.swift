@@ -25,5 +25,21 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AudioSessionHelper") {
       AudioSessionHelper.register(with: registrar.messenger())
     }
+    // Live Activity channel — bridges Flutter recording state to the
+    // iOS Dynamic Island / Lock Screen via ActivityKit.
+    // See ios/Runner/LiveActivityManager.swift.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "LiveActivityManager") {
+      let channel = FlutterMethodChannel(
+        name: "ai.superwizor/live_activity",
+        binaryMessenger: registrar.messenger()
+      )
+      channel.setMethodCallHandler { call, result in
+        if #available(iOS 16.1, *) {
+          LiveActivityManager.shared.handle(call, result: result)
+        } else {
+          LiveActivityManagerFallback.shared.handle(call, result: result)
+        }
+      }
+    }
   }
 }

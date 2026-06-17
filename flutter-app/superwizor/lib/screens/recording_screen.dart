@@ -37,6 +37,8 @@ import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
 import '../services/recording_manifest_store.dart';
 import '../services/recording_service.dart';
+import '../services/live_activity_service.dart';
+import '../providers/settings_provider.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
@@ -46,6 +48,8 @@ import '../widgets/euphire_button.dart';
 import '../widgets/euphire_recording_indicator.dart';
 import 'session_status_screen.dart';
 import '../analytics/analytics_collector.dart';
+
+import '../widgets/minimized_recording_bar.dart';
 
 // TODO(pre-prod): restore to Duration(minutes: 5) before TestFlight.
 // Lowered to 30s for end-to-end smoke testing on real device — saves us
@@ -90,12 +94,15 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   final int _chunkCount = 0;
 
   RecordingService get _service => ref.read(recordingServiceProvider);
+  late final RecordingScreenVisibleNotifier _visibleNotifier;
 
   @override
   void initState() {
     super.initState();
+    _visibleNotifier = ref.read(recordingScreenVisibleProvider.notifier);
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _visibleNotifier.setVisible(true);
       ref.read(analyticsCollectorProvider).track("screen.viewed", properties: {"screen_name": "RecordingScreen"});
       _verifyConsentAndStart();
     });
@@ -106,6 +113,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     WidgetsBinding.instance.removeObserver(this);
     _durSub?.cancel();
     _stateSub?.cancel();
+    Future.microtask(() {
+      _visibleNotifier.setVisible(false);
+    });
     super.dispose();
   }
 
@@ -122,6 +132,35 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   }
 
   Future<void> _verifyConsentAndStart() async {
+    // If the service is already recording/paused/interrupted, just attach to it!
+    if (_service.state == RecordingState.recording ||
+        _service.state == RecordingState.paused ||
+        _service.state == RecordingState.interrupted) {
+      _sessionId = _service.activeSessionId;
+      _displayDuration = _service.currentDuration;
+      _recState = _service.state;
+
+      _durSub = _service.durationStream.listen((d) {
+        if (!mounted) return;
+        setState(() => _displayDuration = d);
+        if (!_maxLimitTriggered &&
+            d >= kMaxSessionDuration &&
+            d < const Duration(hours: 4)) {
+          _maxLimitTriggered = true;
+          debugPrint('[recording] max duration reached at $d');
+          _onMaxDurationReached();
+        } else if (d >= const Duration(hours: 4)) {
+          debugPrint(
+              '[recording] WARNING insane duration $d ignored — clock jump?');
+        }
+      });
+      _stateSub = _service.stateStream.listen((s) {
+        if (!mounted) return;
+        setState(() => _recState = s);
+      });
+      return;
+    }
+
     // SOURCE OF TRUTH: the backend's patient_files.has_recording_consent
     // (set at CreatePatientFile time, never cleared in the current
     // schema). The local Hive cache below (ConsentService.hasConsent)
@@ -259,10 +298,23 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       _sessionId = const Uuid().v4();
       await _service.start(
         _sessionId!,
+        patientFileId: widget.patientFileId,
+        therapistId: widget.therapistId,
+        patientAlias: widget.patientAlias,
+        reportLanguage: widget.reportLanguage,
         fgsTitle: t.recording_fgs_notification_title,
         fgsBody: t.recording_fgs_notification_body,
       );
       ref.read(analyticsCollectorProvider).track("recording.started");
+
+      // Push to native widget if the user opted in.
+      final laEnabled = ref.read(appSettingsProvider).liveActivitiesEnabled;
+      if (laEnabled) {
+        ref.read(liveActivityServiceProvider).start(
+          patientAlias: widget.patientAlias,
+          elapsedSeconds: 0,
+        );
+      }
 
       // Durable manifest next to raw.flac (docs/28 WS1): from this moment
       // an app-kill at ANY point leaves enough on disk for the orphan-
@@ -307,6 +359,22 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           );
         }
         setState(() => _recState = s);
+        // Mirror state to native widget.
+        final laOn = ref.read(appSettingsProvider).liveActivitiesEnabled;
+        if (laOn) {
+          final la = ref.read(liveActivityServiceProvider);
+          final elapsed = _service.currentDuration.inSeconds;
+          switch (s) {
+            case RecordingState.recording:
+              la.update(status: LiveActivityStatus.recording, elapsedSeconds: elapsed);
+            case RecordingState.paused:
+              la.update(status: LiveActivityStatus.paused, elapsedSeconds: elapsed);
+            case RecordingState.interrupted:
+              la.update(status: LiveActivityStatus.paused, elapsedSeconds: elapsed);
+            default:
+              break;
+          }
+        }
       });
       setState(() => _recState = _service.state);
     } catch (e) {
@@ -327,9 +395,28 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     }
   }
 
-  /// Back-button gate: if we're actively recording or paused, ask
-  /// the user before throwing away the session. Returns whether the
-  /// pop should proceed.
+  Future<bool> _showDiscardConfirmationSheet() async {
+    if (!mounted) return false;
+    final t = AppLocalizations.of(context);
+    final doubleConfirm = await showEuphireBottomSheet<bool>(
+      context: context,
+      builder: (ctx) => EuphireActionSheet(
+        header: t.recording_discard_confirm_header,
+        body: t.recording_discard_confirm_body,
+        topIcon: Icons.warning_rounded,
+        primary: EuphireSheetAction(
+          label: t.recording_discard_confirm_cancel,
+          onPressed: () => Navigator.of(ctx).pop(false),
+        ),
+        destructive: EuphireSheetAction(
+          label: t.recording_discard_confirm_action,
+          onPressed: () => Navigator.of(ctx).pop(true),
+        ),
+      ),
+    );
+    return doubleConfirm == true;
+  }
+
   Future<bool> _confirmDiscardOnBack() async {
     if (_recState == RecordingState.idle ||
         _recState == RecordingState.stopped ||
@@ -337,29 +424,59 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       return true; // nothing to discard
     }
     final t = AppLocalizations.of(context);
-    final result = await showEuphireBottomSheet<bool>(
+    final result = await showEuphireBottomSheet<String>(
       context: context,
       builder: (ctx) => EuphireActionSheet(
-        header: t.recording_discard_confirm_header,
-        body: t.recording_discard_confirm_body,
-        secondary: EuphireSheetAction(
-          label: t.recording_discard_confirm_secondary,
-          onPressed: () => Navigator.of(ctx).pop(false),
-        ),
+        header: t.recording_minimize_confirm_header,
+        body: t.recording_minimize_confirm_body,
         primary: EuphireSheetAction(
-          label: t.recording_discard_confirm_destructive,
-          onPressed: () => Navigator.of(ctx).pop(true),
+          label: t.recording_minimize_action,
+          onPressed: () => Navigator.of(ctx).pop('minimize'),
+        ),
+        secondary: EuphireSheetAction(
+          label: t.recording_minimize_resume,
+          onPressed: () => Navigator.of(ctx).pop('stay'),
+        ),
+        destructive: EuphireSheetAction(
+          label: t.recording_minimize_discard,
+          onPressed: () => Navigator.of(ctx).pop('discard'),
         ),
       ),
     );
-    if (result == true) {
-      final dur = _service.currentDuration.inSeconds;
-      await _service.cancel();
-      await _deleteManifest();
-      ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
-        "duration_seconds": dur,
-      });
+    if (result == 'minimize') {
+      // Show first-time Live Activities toast if the feature is off
+      // and the user hasn't seen the prompt yet.
+      final settings = ref.read(appSettingsProvider);
+      if (!settings.liveActivitiesEnabled && !settings.hasSeenLiveActivitiesPrompt) {
+        ref.read(appSettingsProvider.notifier).markLiveActivitiesPromptSeen();
+        if (mounted) {
+          final t = AppLocalizations.of(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                t.live_activity_minimize_toast,
+                style: const TextStyle(fontFamily: 'Montserrat', fontSize: 13),
+              ),
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: const Color(0xFF0A2326),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
       return true;
+    } else if (result == 'discard') {
+      final confirmed = await _showDiscardConfirmationSheet();
+      if (confirmed) {
+        final dur = _service.currentDuration.inSeconds;
+        await _service.cancel();
+        await _deleteManifest();
+        ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
+          "duration_seconds": dur,
+        });
+        return true;
+      }
     }
     return false;
   }
@@ -523,9 +640,16 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   }
 
   Future<void> _discardAndPop() async {
+    final confirmed = await _showDiscardConfirmationSheet();
+    if (!confirmed) return;
+
     final dur = _service.currentDuration.inSeconds;
     await _service.cancel();
     await _deleteManifest();
+    // Dismiss native widget.
+    if (ref.read(appSettingsProvider).liveActivitiesEnabled) {
+      ref.read(liveActivityServiceProvider).stop();
+    }
     ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
       "duration_seconds": dur,
     });
@@ -582,6 +706,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       ref.read(analyticsCollectorProvider).track("recording.stopped", properties: {
         "duration_seconds": capturedDuration.inSeconds,
       });
+      // Transition native widget to uploading state.
+      if (ref.read(appSettingsProvider).liveActivitiesEnabled) {
+        ref.read(liveActivityServiceProvider).update(
+          status: LiveActivityStatus.uploading,
+          elapsedSeconds: capturedDuration.inSeconds,
+        );
+      }
       debugPrint('[recording] stopped, raw=$rawPath size=${rawSize}B');
       if (rawSize == 0) {
         throw StateError(
@@ -1071,11 +1202,12 @@ class _CircleButton extends StatelessWidget {
   }
 }
 
-class _InstructionsBlock extends StatelessWidget {
+class _InstructionsBlock extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
+    final settings = ref.watch(appSettingsProvider);
     final items = [
       t.recording_instruction_1,
       t.recording_instruction_2,
@@ -1170,6 +1302,84 @@ class _InstructionsBlock extends StatelessWidget {
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: EuphireColors.frostWhite.withValues(alpha: 0.85),
                             height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // ── Live Activities info card ───────────────────────
+              // Only show when the feature is disabled — once enabled
+              // from here or from Settings, this card disappears.
+              if (!settings.liveActivitiesEnabled) ...[
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: EuphireColors.ember.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: EuphireColors.ember.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.stay_current_portrait_outlined,
+                            color: EuphireColors.ember,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              t.live_activity_info_title,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: EuphireColors.frostWhite,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        t.live_activity_info_body,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: EuphireColors.mist,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 40,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            ref.read(appSettingsProvider.notifier)
+                                .toggleLiveActivities(true);
+                            Navigator.of(context).pop();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: EuphireColors.ember,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            t.live_activity_info_enable,
+                            style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ),

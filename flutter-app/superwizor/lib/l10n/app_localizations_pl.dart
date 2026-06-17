@@ -369,11 +369,12 @@ class AppLocalizationsPl extends AppLocalizations {
   String get recording_mic_denied_cancel => 'Wróć.';
 
   @override
-  String get recording_discard_confirm_header => 'Wyjść z nagrywania?';
+  String get recording_discard_confirm_header =>
+      'Czy na pewno chcesz skasować nagranie?';
 
   @override
   String get recording_discard_confirm_body =>
-      'Trwa nagrywanie sesji. Jeśli wyjdziesz, sesja zostanie usunięta bezpowrotnie.';
+      'Tego nagrania nie będzie się dało odzyskać. Zostanie ono bezpowrotnie usunięte z urządzenia i nie zostanie wysłane do analizy.';
 
   @override
   String get recording_discard_confirm_destructive => 'Wyjdź i usuń nagranie.';
@@ -1513,4 +1514,85 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get recording_saving => 'Zapisuję nagranie...';
+
+  @override
+  String get recording_minimize_confirm_header => 'Wyjście z ekranu nagrywania';
+
+  @override
+  String get recording_minimize_confirm_body =>
+      'Sesja jest w toku. Możesz zminimalizować ten ekran, aby np. przejść do notatek (nagrywanie będzie kontynuowane w tle).';
+
+  @override
+  String get recording_minimize_action => 'Zminimalizuj (zostaw w tle)';
+
+  @override
+  String get recording_minimize_discard => 'Zatrzymaj i skasuj nagranie';
+
+  @override
+  String get recording_minimize_resume => 'Wróć do nagrywania';
+
+  @override
+  String get recording_discard_confirm_action => 'Tak, skasuj bezpowrotnie';
+
+  @override
+  String get recording_discard_confirm_cancel => 'Nie, wróć';
+
+  @override
+  String get active_session_card_title => 'Sesja w toku...';
+
+  @override
+  String get active_session_card_subtitle => 'Wróć do trwającej sesji';
+
+  @override
+  String get active_session_card_paused_title => 'Sesja wstrzymana';
+
+  @override
+  String get active_session_card_paused_subtitle => 'Wznów lub zakończ sesję';
+
+  @override
+  String get settings_live_activities => 'Aktywność na ekranie blokady';
+
+  @override
+  String get settings_live_activities_on =>
+      'Czas i status sesji są widoczne na zablokowanym ekranie i w Dynamic Island — nie musisz odblokowywać telefonu.';
+
+  @override
+  String get settings_live_activities_off =>
+      'Status trwającej sesji widoczny tylko w aplikacji.';
+
+  @override
+  String get live_activity_info_title => 'Miej sesję zawsze na oku';
+
+  @override
+  String get live_activity_info_body =>
+      'Włącz podgląd na ekranie blokady, aby widzieć czas sesji bez otwierania aplikacji — również w Dynamic Island.';
+
+  @override
+  String get live_activity_info_enable => 'Włącz podgląd';
+
+  @override
+  String get live_activity_info_dismiss => 'Nie teraz';
+
+  @override
+  String get live_activity_minimize_toast =>
+      'Sesja działa w tle. Aby widzieć jej czas na ekranie blokady, włącz podgląd w Ustawieniach.';
+
+  @override
+  String get live_activity_status_recording => 'Sesja w toku';
+
+  @override
+  String get live_activity_status_paused => 'Pauza';
+
+  @override
+  String get live_activity_status_uploading => 'Wgrywanie nagrania...';
+
+  @override
+  String get live_activity_status_analyzing => 'Analizowanie sesji...';
+
+  @override
+  String get live_activity_status_report_ready =>
+      'Nowy raport czeka w kartotece';
+
+  @override
+  String get live_activity_show_report => 'Pokaż raport';
 }

@@ -571,5 +571,36 @@
   "@recording_too_short_abort_body": {
     "placeholders": { "duration": { "type": "String" } }
   },
-  "recording_saving": "Saving recording..."
+  "recording_saving": "Saving recording...",
+  "recording_minimize_confirm_header": "Exit recording screen",
+  "recording_minimize_confirm_body": "Recording is in progress. You can minimize this screen to access notes (recording will continue in the background).",
+  "recording_minimize_action": "Minimize (keep in background)",
+  "recording_minimize_discard": "Stop and delete recording",
+  "recording_minimize_resume": "Return to recording",
+  "recording_discard_confirm_header": "Are you sure you want to delete this recording?",
+  "recording_discard_confirm_body": "This recording cannot be recovered. It will be permanently deleted from this device and will not be sent for analysis.",
+  "recording_discard_confirm_action": "Yes, delete permanently",
+  "recording_discard_confirm_cancel": "No, go back",
+  "active_session_card_title": "Session in progress...",
+  "active_session_card_subtitle": "Return to the ongoing session",
+  "active_session_card_paused_title": "Session paused",
+  "active_session_card_paused_subtitle": "Resume or end the session",
+
+  "settings_live_activities": "Lock screen activity",
+  "settings_live_activities_on": "Session time and status are visible on the lock screen and Dynamic Island — no need to unlock your phone.",
+  "settings_live_activities_off": "Ongoing session status is only visible inside the app.",
+
+  "live_activity_info_title": "Keep your session in sight",
+  "live_activity_info_body": "Enable lock screen preview to see your session timer without opening the app — also in Dynamic Island.",
+  "live_activity_info_enable": "Enable preview",
+  "live_activity_info_dismiss": "Not now",
+
+  "live_activity_minimize_toast": "Session is running in the background. To see its timer on the lock screen, enable the preview in Settings.",
+
+  "live_activity_status_recording": "Session in progress",
+  "live_activity_status_paused": "Paused",
+  "live_activity_status_uploading": "Uploading recording...",
+  "live_activity_status_analyzing": "Analyzing session...",
+  "live_activity_status_report_ready": "New report is ready",
+  "live_activity_show_report": "Show report"
 }

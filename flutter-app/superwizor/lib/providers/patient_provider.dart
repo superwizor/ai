@@ -94,6 +94,7 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
           languageCode: pf.patientLanguageCode,
           sessionCount: 0, // skip the fan-out in the fallback path
           email: pf.patientEmail,
+          lifecycleStatus: pf.lifecycleStatus.isNotEmpty ? pf.lifecycleStatus : 'ACTIVE',
         );
       }).toList();
     } catch (e) {
@@ -324,6 +325,8 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
               ? SessionStatus.pendingUpload
               : s.status == 'COMPLETED'
               ? SessionStatus.completed
+              : (s.status == 'FAILED' || s.status == 'ERROR')
+              ? SessionStatus.error
               : SessionStatus.inProgress,
         );
       }).toList();

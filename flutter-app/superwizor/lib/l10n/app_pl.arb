@@ -572,5 +572,36 @@
   "@recording_too_short_abort_body": {
     "placeholders": { "duration": { "type": "String" } }
   },
-  "recording_saving": "Zapisuję nagranie..."
+  "recording_saving": "Zapisuję nagranie...",
+  "recording_minimize_confirm_header": "Wyjście z ekranu nagrywania",
+  "recording_minimize_confirm_body": "Sesja jest w toku. Możesz zminimalizować ten ekran, aby np. przejść do notatek (nagrywanie będzie kontynuowane w tle).",
+  "recording_minimize_action": "Zminimalizuj (zostaw w tle)",
+  "recording_minimize_discard": "Zatrzymaj i skasuj nagranie",
+  "recording_minimize_resume": "Wróć do nagrywania",
+  "recording_discard_confirm_header": "Czy na pewno chcesz skasować nagranie?",
+  "recording_discard_confirm_body": "Tego nagrania nie będzie się dało odzyskać. Zostanie ono bezpowrotnie usunięte z urządzenia i nie zostanie wysłane do analizy.",
+  "recording_discard_confirm_action": "Tak, skasuj bezpowrotnie",
+  "recording_discard_confirm_cancel": "Nie, wróć",
+  "active_session_card_title": "Sesja w toku...",
+  "active_session_card_subtitle": "Wróć do trwającej sesji",
+  "active_session_card_paused_title": "Sesja wstrzymana",
+  "active_session_card_paused_subtitle": "Wznów lub zakończ sesję",
+
+  "settings_live_activities": "Aktywność na ekranie blokady",
+  "settings_live_activities_on": "Czas i status sesji są widoczne na zablokowanym ekranie i w Dynamic Island — nie musisz odblokowywać telefonu.",
+  "settings_live_activities_off": "Status trwającej sesji widoczny tylko w aplikacji.",
+
+  "live_activity_info_title": "Miej sesję zawsze na oku",
+  "live_activity_info_body": "Włącz podgląd na ekranie blokady, aby widzieć czas sesji bez otwierania aplikacji — również w Dynamic Island.",
+  "live_activity_info_enable": "Włącz podgląd",
+  "live_activity_info_dismiss": "Nie teraz",
+
+  "live_activity_minimize_toast": "Sesja działa w tle. Aby widzieć jej czas na ekranie blokady, włącz podgląd w Ustawieniach.",
+
+  "live_activity_status_recording": "Sesja w toku",
+  "live_activity_status_paused": "Pauza",
+  "live_activity_status_uploading": "Wgrywanie nagrania...",
+  "live_activity_status_analyzing": "Analizowanie sesji...",
+  "live_activity_status_report_ready": "Nowy raport czeka w kartotece",
+  "live_activity_show_report": "Pokaż raport"
 }

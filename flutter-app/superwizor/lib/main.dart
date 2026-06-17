@@ -18,6 +18,7 @@ import 'screens/home_screen_v2.dart';
 import 'screens/login_screen.dart';
 import 'theme/euphire_theme.dart';
 import 'uploads/upload_queue_provider.dart';
+import 'widgets/minimized_recording_bar.dart';
 
 /// Top-level handler for FCM messages while the app is in the
 /// background or terminated. Must be a top-level function (or static)
@@ -84,8 +85,6 @@ void main() async {
 
   runApp(const ProviderScope(child: SuperWizorApp()));
 }
-
-
 class SuperWizorApp extends ConsumerWidget {
   const SuperWizorApp({super.key});
 
@@ -102,6 +101,9 @@ class SuperWizorApp extends ConsumerWidget {
       supportedLocales: const [Locale('pl'), Locale('en')],
       locale: locale,
       home: const _AuthGate(),
+      builder: (context, child) {
+        return ActiveRecordingOverlay(child: child!);
+      },
     );
   }
 }

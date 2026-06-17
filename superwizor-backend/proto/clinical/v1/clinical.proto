@@ -163,6 +163,11 @@ message PatientFile {
     // Patient contact e-mail (patient_files.patient_email, docs/22). Empty
     // when none is on file. Drives the "send action plan" e-mail flow.
     string patient_email         = 19;
+    // Therapist-managed lifecycle: "ACTIVE" | "COMPLETED" | "PAUSED".
+    // Persisted in patient_files.lifecycle_status (migration 000058).
+    // Replaces the Flutter-only SharedPreferences-backed lifecycle.
+    // COMPLETED also sets is_process_closed=true for backward compat.
+    string lifecycle_status       = 20;
 }
 
 message Modality {
@@ -226,6 +231,11 @@ message UpdatePatientFileRequest {
     string initial_complaint = 3;
     string private_therapist_notes = 4;
     bool is_process_closed = 5;
+    // Lifecycle status: "ACTIVE" | "COMPLETED" | "PAUSED".
+    // When set to "COMPLETED", also flips is_process_closed=true.
+    // When set to "ACTIVE" or "PAUSED", flips is_process_closed=false.
+    // Empty string means "leave unchanged".
+    string lifecycle_status = 6;
 }
 
 message DeletePatientFileRequest {

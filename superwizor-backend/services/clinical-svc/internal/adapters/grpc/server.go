@@ -489,6 +489,7 @@ func (s *Server) UpdatePatientFile(ctx context.Context, req *clinicalv1.UpdatePa
 		Column3:         req.InitialComplaint,
 		Column4:         req.PrivateTherapistNotes,
 		IsProcessClosed: req.IsProcessClosed,
+		LifecycleStatus: req.LifecycleStatus,
 	}); err != nil {
 		if isUniqueViolation(err) {
 			return nil, status.Errorf(codes.AlreadyExists,
@@ -820,6 +821,7 @@ func toProtoPatientFileFromJoinRow(row db.GetPatientFileWithUserRow, modalityCod
 	if row.FirstConsultationAt.Valid {
 		resp.FirstConsultationAt = timestamppb.New(row.FirstConsultationAt.Time)
 	}
+	resp.LifecycleStatus = row.LifecycleStatus
 	return resp
 }
 
@@ -871,6 +873,7 @@ func toProtoPatientFileFromListJoinRow(row db.ListPatientFilesByTherapistWithUse
 	if row.FirstConsultationAt.Valid {
 		resp.FirstConsultationAt = timestamppb.New(row.FirstConsultationAt.Time)
 	}
+	resp.LifecycleStatus = row.LifecycleStatus
 	return resp
 }
 
@@ -906,6 +909,7 @@ func toProtoPatientFile(pf db.PatientFile, modalityCode string) *clinicalv1.Pati
 	if pf.FirstConsultationAt.Valid {
 		resp.FirstConsultationAt = timestamppb.New(pf.FirstConsultationAt.Time)
 	}
+	resp.LifecycleStatus = pf.LifecycleStatus
 	return resp
 }
 
