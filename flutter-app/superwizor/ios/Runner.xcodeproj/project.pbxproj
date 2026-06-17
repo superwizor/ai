@@ -19,6 +19,15 @@
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		9A9E0BC3F8E940D28E7CF16E /* AudioConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A503FC97418148DC83D62264 /* AudioConverter.swift */; };
 		7C1D2E3F4A5B6C7D8E9F0A1B /* AudioSessionHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B0C1D2E3F4A5B6C7D8E9F0A /* AudioSessionHelper.swift */; };
+		/* LiveActivity files in Runner target */
+		AA11223344556677AABB0001 /* LiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11223344556677AABB0010 /* LiveActivityAttributes.swift */; };
+		AA11223344556677AABB0002 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11223344556677AABB0011 /* LiveActivityManager.swift */; };
+		/* Widget Extension files */
+		AA11223344556677AABB0003 /* SessionActivityWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11223344556677AABB0020 /* SessionActivityWidgetBundle.swift */; };
+		AA11223344556677AABB0004 /* SessionActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11223344556677AABB0021 /* SessionActivityWidget.swift */; };
+		AA11223344556677AABB0005 /* LiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11223344556677AABB0010 /* LiveActivityAttributes.swift */; };
+		AA11223344556677AABB0006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA11223344556677AABB0022 /* Assets.xcassets */; };
+		AA11223344556677AABB0007 /* SessionActivityWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AA11223344556677AABB0040 /* SessionActivityWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,6 +37,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
+		};
+		AA11223344556677AABB0050 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA11223344556677AABB0030;
+			remoteInfo = SessionActivityWidgetExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -40,6 +56,17 @@
 			files = (
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA11223344556677AABB0060 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				AA11223344556677AABB0007 /* SessionActivityWidgetExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -71,6 +98,14 @@
 		CFA87AC4F62D255731019343 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		DBE923D52B0C3DFC4CEFD4EF /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		EA5E87C141C469E7D98F36FF /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
+		/* LiveActivity files */
+		AA11223344556677AABB0010 /* LiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityAttributes.swift; sourceTree = "<group>"; };
+		AA11223344556677AABB0011 /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		/* Widget Extension files */
+		AA11223344556677AABB0020 /* SessionActivityWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionActivityWidgetBundle.swift; sourceTree = "<group>"; };
+		AA11223344556677AABB0021 /* SessionActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionActivityWidget.swift; sourceTree = "<group>"; };
+		AA11223344556677AABB0022 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA11223344556677AABB0040 /* SessionActivityWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SessionActivityWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -87,6 +122,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				683347DCE61AA3A1E4651671 /* Pods_RunnerTests.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA11223344556677AABB0070 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -141,6 +183,7 @@
 				97C146F01CF9000F007C117D /* Runner */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
+				AA11223344556677AABB0080 /* SessionActivityWidget */,
 				BB9E9B1C80CBBE3AED7D89A1 /* GoogleService-Info.plist */,
 				6B917603F3ABB36F54131157 /* Pods */,
 				610521ED565C498130FBD5AD /* Frameworks */,
@@ -152,6 +195,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				AA11223344556677AABB0040 /* SessionActivityWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -168,9 +212,21 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				A503FC97418148DC83D62264 /* AudioConverter.swift */,
 				6B0C1D2E3F4A5B6C7D8E9F0A /* AudioSessionHelper.swift */,
+				AA11223344556677AABB0010 /* LiveActivityAttributes.swift */,
+				AA11223344556677AABB0011 /* LiveActivityManager.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		AA11223344556677AABB0080 /* SessionActivityWidget */ = {
+			isa = PBXGroup;
+			children = (
+				AA11223344556677AABB0020 /* SessionActivityWidgetBundle.swift */,
+				AA11223344556677AABB0021 /* SessionActivityWidget.swift */,
+				AA11223344556677AABB0022 /* Assets.xcassets */,
+			);
+			path = SessionActivityWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -205,6 +261,7 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+				AA11223344556677AABB0060 /* Embed App Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				A89FF7C16036556DF81B2B82 /* [CP] Embed Pods Frameworks */,
 				F59871EEDC513F1111D325CF /* [CP] Copy Pods Resources */,
@@ -212,11 +269,29 @@
 			buildRules = (
 			);
 			dependencies = (
+				AA11223344556677AABB0051 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
 			productType = "com.apple.product-type.application";
+		};
+		AA11223344556677AABB0030 /* SessionActivityWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA11223344556677AABB00C0 /* Build configuration list for PBXNativeTarget "SessionActivityWidgetExtension" */;
+			buildPhases = (
+				AA11223344556677AABB0090 /* Sources */,
+				AA11223344556677AABB0070 /* Frameworks */,
+				AA11223344556677AABB00A0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SessionActivityWidgetExtension;
+			productName = SessionActivityWidgetExtension;
+			productReference = AA11223344556677AABB0040 /* SessionActivityWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -236,6 +311,9 @@
 						CreatedOnToolsVersion = 7.3.1;
 						LastSwiftMigration = 1100;
 					};
+					AA11223344556677AABB0030 = {
+						CreatedOnToolsVersion = 15.0;
+					};
 				};
 			};
 			buildConfigurationList = 97C146E91CF9000F007C117D /* Build configuration list for PBXProject "Runner" */;
@@ -253,6 +331,7 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				AA11223344556677AABB0030 /* SessionActivityWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -274,6 +353,14 @@
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 				5645C925E58661E413361B2D /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA11223344556677AABB00A0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA11223344556677AABB0006 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -407,7 +494,19 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				9A9E0BC3F8E940D28E7CF16E /* AudioConverter.swift in Sources */,
 				7C1D2E3F4A5B6C7D8E9F0A1B /* AudioSessionHelper.swift in Sources */,
+				AA11223344556677AABB0001 /* LiveActivityAttributes.swift in Sources */,
+				AA11223344556677AABB0002 /* LiveActivityManager.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA11223344556677AABB0090 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA11223344556677AABB0003 /* SessionActivityWidgetBundle.swift in Sources */,
+				AA11223344556677AABB0004 /* SessionActivityWidget.swift in Sources */,
+				AA11223344556677AABB0005 /* LiveActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -418,6 +517,11 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		AA11223344556677AABB0051 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AA11223344556677AABB0030 /* SessionActivityWidgetExtension */;
+			targetProxy = AA11223344556677AABB0050 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -727,6 +831,90 @@
 			};
 			name = Release;
 		};
+		/* Widget Extension build configs */
+		AA11223344556677AABB00D0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 256MRX722W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SessionActivityWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.superwizor.superwizor.SessionActivityWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AA11223344556677AABB00E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 256MRX722W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SessionActivityWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.superwizor.superwizor.SessionActivityWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		AA11223344556677AABB00F0 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 256MRX722W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SessionActivityWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.superwizor.superwizor.SessionActivityWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Profile;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -756,6 +944,16 @@
 				97C147061CF9000F007C117D /* Debug */,
 				97C147071CF9000F007C117D /* Release */,
 				249021D4217E4FDB00AE95B9 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA11223344556677AABB00C0 /* Build configuration list for PBXNativeTarget "SessionActivityWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA11223344556677AABB00D0 /* Debug */,
+				AA11223344556677AABB00E0 /* Release */,
+				AA11223344556677AABB00F0 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
