@@ -12,7 +12,7 @@ import WidgetKit
 @main
 struct SessionActivityWidgetBundle: WidgetBundle {
     var body: some Widget {
-        if #available(iOSApplicationExtension 16.1, *) {
+        if #available(iOSApplicationExtension 16.2, *) {
             SessionActivityWidget()
         }
     }

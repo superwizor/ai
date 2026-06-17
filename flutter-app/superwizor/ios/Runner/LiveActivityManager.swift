@@ -15,7 +15,7 @@ import ActivityKit
 import Flutter
 import Foundation
 
-@available(iOS 16.1, *)
+@available(iOS 16.2, *)
 class LiveActivityManager {
     static let shared = LiveActivityManager()
 
@@ -158,7 +158,7 @@ class LiveActivityManager {
     }
 }
 
-// MARK: - Fallback for iOS < 16.1
+// MARK: - Fallback for iOS < 16.2
 
 /// Stub used on iOS versions that don't support Live Activities.
 class LiveActivityManagerFallback {

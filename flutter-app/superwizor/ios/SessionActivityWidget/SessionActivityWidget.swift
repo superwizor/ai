@@ -12,7 +12,7 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
-@available(iOSApplicationExtension 16.1, *)
+@available(iOSApplicationExtension 16.2, *)
 struct SessionActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: LiveActivityAttributes.self) { context in
@@ -115,7 +115,7 @@ struct SessionActivityWidget: Widget {
 
 // MARK: - Lock Screen View
 
-@available(iOSApplicationExtension 16.1, *)
+@available(iOSApplicationExtension 16.2, *)
 private struct LockScreenView: View {
     let context: ActivityViewContext<LiveActivityAttributes>
 

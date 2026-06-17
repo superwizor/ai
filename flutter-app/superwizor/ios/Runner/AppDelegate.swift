@@ -34,7 +34,7 @@ import UIKit
         binaryMessenger: registrar.messenger()
       )
       channel.setMethodCallHandler { call, result in
-        if #available(iOS 16.1, *) {
+        if #available(iOS 16.2, *) {
           LiveActivityManager.shared.handle(call, result: result)
         } else {
           LiveActivityManagerFallback.shared.handle(call, result: result)
