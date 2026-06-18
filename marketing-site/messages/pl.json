@@ -52,6 +52,11 @@
     "upgrade": {
       "title": "Zmień Plan",
       "description": "Wybierz wyższy pakiet subskrypcji."
+    },
+    "about": {
+      "title": "O nas — Zespół i Misja | Superwizor AI",
+      "description": "Poznaj twórców Superwizor AI. Wspólnie rozwijamy technologię wspierającą uważność psychoterapeutów w gabinecie.",
+      "keywords": "o nas, zespół superwizor, Maciej Kołodziejczyk, Marcin Archacki, Dariusz Piotrak, misja, psychoterapia AI"
     }
   },
   "admin": {
@@ -1337,6 +1342,53 @@
     "unsupportedBody": "Ta akcja autoryzacyjna nie jest obecnie obsługiwana przez tę stronę. Spróbuj wykonać ją w aplikacji mobilnej.",
     "errorPasswordsMismatch": "Hasła nie są identyczne.",
     "errorPasswordTooShort": "Hasło musi mieć co najmniej 8 znaków."
+  },
+  "about": {
+    "overline": "Misja",
+    "mission": {
+      "heading": "W psychoterapii obecność leczy.",
+      "body": "Każda sekunda ucieczki wzrokiem do notatek to chwila utraconej uważności. Zdejmujemy z Ciebie ciężar pamiętania, by przywrócić pełne skupienie na relacji z człowiekiem. Wspieramy ciągłość procesu, skracając czas terapii i zwiększając jej skuteczność, pomagając ratować ludzkie życia."
+    },
+    "team": {
+      "title": "Zespół założycielski",
+      "maciej": {
+        "role": "Współzałożyciel & Product Owner",
+        "description": "Psycholog, założyciel EUPHIRE i lider zmian w obszarze technologii oraz cyfrowej edukacji. Łączy rzetelność akademicką ze skutecznością rynkową.",
+        "bio": "Czerpie wiedzę bezpośrednio z neuronauki i psychologii poznawczej, przekładając skomplikowane badania na proste protokoły działania. Przeszkolił ponad 2000 osób — od menedżerów wysokiego szczebla po liderów NGO — ucząc ich zarządzania własnym potencjałem, emocjami i zespołem. W EUPHIRE tworzy przestrzeń, w której spotykają się największe autorytety polskiej psychologii z nowoczesną technologią."
+      },
+      "marcin": {
+        "role": "Współzałożyciel & Go-To-Market Lead",
+        "description": "Odpowiada za strategię sprzedaży i rozwoju rynkowego. Koordynuje komunikację, buduje relacje z partnerami i współtworzy modele pricingowe.",
+        "bio": "Posiada ponad 15 lat doświadczenia jako przedsiębiorca, budując zespoły sprzedażowe i rozwijając firmy od podstaw. Specjalizuje się w automatyzacji pozyskiwania leadów oraz zintegrowanych kampaniach marketingowych, w tym na rynkach międzynarodowych. Obecnie koncentruje się na odpowiedzialnej komercjalizacji innowacyjnych rozwiązań sztucznej inteligencji."
+      },
+      "dariusz": {
+        "role": "Współzałożyciel & Chief Technology Officer",
+        "description": "Odpowiada za architekturę techniczną, bezpieczeństwo danych i standardy kryptograficzne platformy. Lider technologii i innowacji.",
+        "bio": "Menedżer i architekt z ponad 10-letnim doświadczeniem w cyfrowej transformacji i zaawansowanej analityce danych. Założyciel Lisa.Care oraz dyrektor ds. innowacji w AILIS Care. Wcześniej zarządzał technologią jako CTO w DELVE EMEA oraz jako Technical Director w Minto. Integrował platformy transakcyjne dla globalnych podmiotów, w tym Glencore w Londynie. Absolwent Uniwersytetu Warszawskiego."
+      }
+    },
+    "collaborators": {
+      "title": "Zaplecze eksperckie i interdyscyplinarne",
+      "subtitle": "Superwizor AI to nie tylko technologia. Współpracujemy z ekspertami z wielu dziedzin, aby zapewnić najwyższy poziom merytoryki, ergonomii i zgodności prawnej.",
+      "items": {
+        "clinical": {
+          "title": "Metodyka i nurt",
+          "body": "Doświadczeni psychoterapeuci i superwizorzy wiodących nurtów (CBT, psychodynamiczny, systemowy, TSR) dbający o strukturę i język naszych raportów."
+        },
+        "compliance": {
+          "title": "Prawo i ochrona danych",
+          "body": "Radcowie prawni specjalizujący się w ochronie danych osobowych i medycznych, dbający o pełną zgodność z RODO oraz standardy umów powierzenia (DPA)."
+        },
+        "ux": {
+          "title": "UX i ergonomia",
+          "body": "Projektanci dbający o to, by aplikacja nie odwracała uwagi od procesu terapeutycznego, a interakcja trwała sekundy i była intuicyjna."
+        },
+        "development": {
+          "title": "Technologia i bezpieczeństwo chmurowe",
+          "body": "Architekci systemów i deweloperzy dbający o stabilność infrastruktury chmurowej w UE, szyfrowanie KMS oraz bezpieczną integrację modeli AI."
+        }
+      }
+    }
   }
 }
 
