@@ -52,6 +52,11 @@
     "upgrade": {
       "title": "Upgrade Plan",
       "description": "Choose a higher tier subscription plan."
+    },
+    "about": {
+      "title": "About Us — Team and Mission | Superwizor AI",
+      "description": "Meet the creators of Superwizor AI. We develop technology to support the presence of psychotherapists in the therapy room.",
+      "keywords": "about us, superwizor team, Maciej Kolodziejczyk, Marcin Archacki, Dariusz Piotrak, mission, psychotherapy AI"
     }
   },
   "admin": {
@@ -1337,6 +1342,53 @@
     "unsupportedBody": "This authorization action is not currently supported by this page. Please try performing it in the mobile app.",
     "errorPasswordsMismatch": "Passwords do not match.",
     "errorPasswordTooShort": "Password must be at least 8 characters long."
+  },
+  "about": {
+    "overline": "Mission",
+    "mission": {
+      "heading": "In psychotherapy, presence is what heals.",
+      "body": "Every second spent looking away to take notes is a moment of lost attentiveness. We lift the burden of remembering to restore complete focus on the client. We support process continuity, shortening therapy time and increasing its effectiveness, helping to save human lives."
+    },
+    "team": {
+      "title": "Founding team",
+      "maciej": {
+        "role": "Co-founder & Product Owner",
+        "description": "Psychologist, founder of EUPHIRE and change leader in technology and digital education. Bridging academic rigor with market effectiveness.",
+        "bio": "Draws knowledge directly from neuroscience and cognitive psychology, translating complex research into simple protocols. Trained over 2000 individuals — from C-level executives to NGO leaders — teaching potential management, emotional regulation, and team leadership. In EUPHIRE, he builds a space where leading figures in Polish psychology meet modern educational technology."
+      },
+      "marcin": {
+        "role": "Co-founder & Go-To-Market Lead",
+        "description": "Responsible for sales and market growth strategy. Coordinates communication, builds partner relationships, and co-creates pricing models.",
+        "bio": "Over 15 years of entrepreneurial experience managing sales teams and growing companies from the ground up. Specializes in lead generation automation and integrated marketing campaigns, including international markets. Currently focuses on the responsible commercialization of innovative AI solutions."
+      },
+      "dariusz": {
+        "role": "Co-founder & Chief Technology Officer",
+        "description": "Responsible for technical architecture, data security, and cryptographic standards of the platform. Technology and innovation leader.",
+        "bio": "Senior executive and tech enthusiast with more than 10 years of experience in digital transformation of businesses and application of technology. Founder of Lisa.Care and Chief Innovation Officer at AILIS Care. Previously managed technology as CTO at DELVE EMEA and Technical Director at Minto. Integrated electronic trading platforms and exchanges with Glencore's trading and risk management systems in London. Graduate of the University of Warsaw."
+      }
+    },
+    "collaborators": {
+      "title": "Expert and Interdisciplinary Team",
+      "subtitle": "Superwizor AI is more than just technology. We collaborate with experts from multiple fields to ensure the highest level of methodology, ergonomics, and legal compliance.",
+      "items": {
+        "clinical": {
+          "title": "Methodology & Modality",
+          "body": "Experienced psychotherapists and supervisors of leading schools (CBT, psychodynamic, systemic, TSR) overseeing our report structures and language."
+        },
+        "compliance": {
+          "title": "Law & Data Protection",
+          "body": "Legal advisors specializing in personal and medical data protection, ensuring GDPR compliance and DPA processing agreements."
+        },
+        "ux": {
+          "title": "UX & Ergonomics",
+          "body": "Designers ensuring the application does not distract from the therapeutic process, with quick, quiet, and intuitive interactions."
+        },
+        "development": {
+          "title": "Technology & Cloud Security",
+          "body": "System architects and developers managing EU cloud infrastructure, KMS key encryption, and secure AI integrations."
+        }
+      }
+    }
   }
 }
 

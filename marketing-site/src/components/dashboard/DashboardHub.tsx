@@ -254,6 +254,11 @@ export function DashboardHub({ locale }: { locale: string }) {
                   )
                 : null;
 
+              const isTrial = sub.planTier === "TRIAL" || sub.status === "TRIALING";
+              const dateLabel = isTrial
+                ? (locale === "en" ? "Trial ends" : "Koniec okresu próbnego")
+                : (locale === "en" ? "Resets" : "Odnowienie");
+
               return (
                 <div className="bg-white/[0.02] border border-white/[0.04] backdrop-blur-md rounded-2xl py-3.5 px-5 sm:px-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg">
                   <div className="flex items-center gap-3">
@@ -281,8 +286,8 @@ export function DashboardHub({ locale }: { locale: string }) {
 
                   <div className="font-sans text-xs text-[#8FA5A0] whitespace-nowrap">
                     {locale === "en"
-                      ? `Remaining: ${left} of ${total} sessions${resetDate ? ` • Resets: ${resetDate}` : ""}`
-                      : `Pozostało: ${left} z ${total} sesji${resetDate ? ` • Odnowienie: ${resetDate}` : ""}`}
+                      ? `Remaining: ${left} of ${total} sessions${resetDate ? ` • ${dateLabel}: ${resetDate}` : ""}`
+                      : `Pozostało: ${left} z ${total} sesji${resetDate ? ` • ${dateLabel}: ${resetDate}` : ""}`}
                   </div>
                 </div>
               );
