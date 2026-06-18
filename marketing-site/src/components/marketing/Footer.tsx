@@ -66,7 +66,7 @@ export function Footer() {
             <FooterLink href="https://www.tiktok.com/@euphire7" target="_blank" rel="noopener noreferrer">
               TikTok
             </FooterLink>
-            <FooterLink href="https://www.linkedin.com/search/results/all/?keywords=Superwizor%20AI&origin=RICH_QUERY_SUGGESTION&heroEntityKey=urn%3Ali%3Aorganization%3A134434093&position=1" target="_blank" rel="noopener noreferrer">
+            <FooterLink href="https://www.linkedin.com/company/superwizor-ai" target="_blank" rel="noopener noreferrer">
               LinkedIn
             </FooterLink>
           </FooterColumn>

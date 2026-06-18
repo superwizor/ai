@@ -179,6 +179,16 @@
           "type": 307
         },
         {
+          "source": "/o-nas",
+          "destination": "/pl/o-nas/",
+          "type": 307
+        },
+        {
+          "source": "/o-nas/",
+          "destination": "/pl/o-nas/",
+          "type": 307
+        },
+        {
           "source": "/pacjent",
           "destination": "/pl/pacjent/",
           "type": 307
