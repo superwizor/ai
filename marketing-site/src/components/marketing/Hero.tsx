@@ -99,11 +99,11 @@ export function Hero() {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .hero-s1 { animation: hero-fade-up 0.8s ease-out 0.1s both; }
-        .hero-s2 { animation: hero-fade-up 0.8s ease-out 0.3s both; }
-        .hero-s3 { animation: hero-fade-up 0.8s ease-out 0.5s both; }
-        .hero-s4 { animation: hero-fade-up 0.8s ease-out 0.7s both; }
-        .hero-s5 { animation: hero-fade-up 0.8s ease-out 0.9s both; }
+        .hero-s1 { animation: hero-fade-up 0.6s ease-out 0s both; }
+        .hero-s2 { animation: hero-fade-up 0.6s ease-out 0.1s both; }
+        .hero-s3 { animation: hero-fade-up 0.6s ease-out 0.2s both; }
+        .hero-s4 { animation: hero-fade-up 0.6s ease-out 0.3s both; }
+        .hero-s5 { animation: hero-fade-up 0.8s ease-out 0.2s both; }
 
         @keyframes floaty {
           0%, 100% { transform: translateY(0); }
@@ -128,7 +128,7 @@ export function Hero() {
       `}} />
 
       {/* Subtle background glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] max-w-[900px] h-[500px] bg-gradient-to-b from-ember/[0.06] to-transparent blur-[140px] pointer-events-none rounded-full" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] max-w-[900px] h-[500px] bg-gradient-to-b from-ember/[0.08] to-transparent pointer-events-none rounded-full" />
 
       <div className="relative pt-20 sm:pt-28 lg:pt-36 pb-20 lg:pb-28">
         <div className="relative mx-auto w-full max-w-[1080px] px-6">
@@ -190,8 +190,8 @@ export function Hero() {
               <div className="hero-s5 relative w-[290px] transition-transform duration-500 hover:scale-[1.01] z-10">
                 
                 {/* Large white backlighting glow for clean, high contrast */}
-                <div className="absolute -inset-24 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12),transparent_70%)] blur-[60px] pointer-events-none animate-pulse [animation-duration:8s] [will-change:opacity]" />
-                <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_60%)] blur-[40px] pointer-events-none" />
+                <div className="absolute -inset-24 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12),transparent_70%)] pointer-events-none animate-pulse [animation-duration:8s] [will-change:opacity]" />
+                <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_60%)] pointer-events-none" />
                 
                 {/* Floating Badge 1: Top-Left */}
                 <div className="absolute top-[58px] -left-4 sm:top-[58px] sm:-left-8 z-20 bg-white border border-[#e2ded5] rounded-xl px-2 py-1.5 sm:px-3.5 sm:py-2.5 shadow-[0_12px_32px_-12px_rgba(27,37,34,0.3)] flex items-center gap-1.5 sm:gap-2.5 animate-floaty-1">

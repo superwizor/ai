@@ -670,9 +670,9 @@ export function Features() {
       {/* Background Grid Pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.015)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
 
-      {/* Decorative side glows */}
-      <div className="absolute top-1/2 left-0 -translate-y-1/2 w-[350px] h-[350px] bg-[#5bf4bc]/[0.03] rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[350px] h-[350px] bg-ember/[0.03] rounded-full blur-[100px] pointer-events-none" />
+      {/* Decorative side glows — using gradient instead of blur for GPU perf */}
+      <div className="absolute top-1/2 left-0 -translate-y-1/2 w-[350px] h-[350px] bg-[radial-gradient(circle,rgba(91,244,188,0.03),transparent_70%)] rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[350px] h-[350px] bg-[radial-gradient(circle,rgba(252,174,47,0.03),transparent_70%)] rounded-full pointer-events-none" />
 
       <div className="relative mx-auto w-full max-w-[1200px] px-2 sm:px-6">
         
@@ -759,7 +759,7 @@ export function Features() {
           <div className="lg:col-span-7 flex flex-col justify-center relative">
             
             {/* White Backing Glow (outside the overflow-hidden frame to let it expand onto the dark background) */}
-            <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,rgba(0,77,84,0.06),transparent_65%)] blur-[60px] pointer-events-none animate-pulse z-0" />
+            <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,rgba(0,77,84,0.06),transparent_65%)] pointer-events-none animate-pulse z-0" />
             
             {/* Wrapper for mockup and outside arrows on desktop */}
             <div className="relative w-full max-w-[460px] lg:max-w-[540px] mx-auto">

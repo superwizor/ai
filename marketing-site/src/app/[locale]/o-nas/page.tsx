@@ -47,7 +47,7 @@ export default async function AboutPage({
       role: t("team.maciej.role"),
       description: t("team.maciej.description"),
       bio: t("team.maciej.bio"),
-      image: "/assets/team/maciej_kolodziejczyk.png",
+      image: "/assets/team/maciej_kolodziejczyk.webp",
       linkedin: "https://www.linkedin.com/in/maciek-ko%C5%82odziejczyk-59a91a157/",
       euphire: "https://euphire.pl/o-nas/maciej-kolodziejczyk/",
     },
@@ -57,7 +57,7 @@ export default async function AboutPage({
       role: t("team.dariusz.role"),
       description: t("team.dariusz.description"),
       bio: t("team.dariusz.bio"),
-      image: "/assets/team/dariusz_piotrak.png",
+      image: "/assets/team/dariusz_piotrak.webp",
       linkedin: "https://www.linkedin.com/in/dariusz-piotrak-1812a8?utm_source=share_via&utm_content=profile&utm_medium=member_ios",
     },
     {
@@ -66,7 +66,7 @@ export default async function AboutPage({
       role: t("team.marcin.role"),
       description: t("team.marcin.description"),
       bio: t("team.marcin.bio"),
-      image: "/assets/team/marcin_archacki.png",
+      image: "/assets/team/marcin_archacki.webp",
       linkedin: "https://www.linkedin.com/in/marcin-archacki-ba901425/",
     },
   ];
@@ -137,8 +137,12 @@ export default async function AboutPage({
               <div className="rounded-[20px] border border-white/[0.06] bg-white/[0.015] p-5 hover:bg-white/[0.03] transition-all duration-300 flex flex-col gap-4">
                 <div className="w-full aspect-video rounded-[12px] overflow-hidden bg-[#022123] border border-white/[0.08]">
                   <img 
-                    src="/assets/collaborators/clinical_methodology.png" 
+                    src="/assets/collaborators/clinical_methodology.webp" 
                     alt={t("collaborators.items.clinical.title")}
+                    width={1024}
+                    height={576}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover brightness-[0.9] hover:scale-105 transition-transform duration-500"
                   />
                 </div>
@@ -161,8 +165,12 @@ export default async function AboutPage({
               <div className="rounded-[20px] border border-white/[0.06] bg-white/[0.015] p-5 hover:bg-white/[0.03] transition-all duration-300 flex flex-col gap-4">
                 <div className="w-full aspect-video rounded-[12px] overflow-hidden bg-[#022123] border border-white/[0.08]">
                   <img 
-                    src="/assets/collaborators/legal_compliance.png" 
+                    src="/assets/collaborators/legal_compliance.webp" 
                     alt={t("collaborators.items.compliance.title")}
+                    width={1024}
+                    height={576}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover brightness-[0.9] hover:scale-105 transition-transform duration-500"
                   />
                 </div>
@@ -185,8 +193,12 @@ export default async function AboutPage({
               <div className="rounded-[20px] border border-white/[0.06] bg-white/[0.015] p-5 hover:bg-white/[0.03] transition-all duration-300 flex flex-col gap-4">
                 <div className="w-full aspect-video rounded-[12px] overflow-hidden bg-[#022123] border border-white/[0.08]">
                   <img 
-                    src="/assets/collaborators/ux_ergonomics.png" 
+                    src="/assets/collaborators/ux_ergonomics.webp" 
                     alt={t("collaborators.items.ux.title")}
+                    width={1024}
+                    height={576}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover brightness-[0.9] hover:scale-105 transition-transform duration-500"
                   />
                 </div>
@@ -209,8 +221,12 @@ export default async function AboutPage({
               <div className="rounded-[20px] border border-white/[0.06] bg-white/[0.015] p-5 hover:bg-white/[0.03] transition-all duration-300 flex flex-col gap-4">
                 <div className="w-full aspect-video rounded-[12px] overflow-hidden bg-[#022123] border border-white/[0.08]">
                   <img 
-                    src="/assets/collaborators/cloud_technology.png" 
+                    src="/assets/collaborators/cloud_technology.webp" 
                     alt={t("collaborators.items.development.title")}
+                    width={1024}
+                    height={576}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover brightness-[0.9] hover:scale-105 transition-transform duration-500"
                   />
                 </div>

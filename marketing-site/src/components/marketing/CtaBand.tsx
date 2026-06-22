@@ -103,7 +103,7 @@ export function CtaBand() {
       </div>
 
       {/* Horizon glow — warm ember sunrise at bottom */}
-      <div className="cta-horizon absolute bottom-0 left-1/2 -translate-x-1/2 w-[120%] max-w-[1400px] h-[180px] bg-gradient-to-t from-[#FCAE2F]/[0.08] via-[#FCAE2F]/[0.03] to-transparent blur-[80px] pointer-events-none rounded-full" />
+      <div className="cta-horizon absolute bottom-0 left-1/2 -translate-x-1/2 w-[120%] max-w-[1400px] h-[180px] bg-[radial-gradient(ellipse_at_center,rgba(252,174,47,0.08),rgba(252,174,47,0.03)_40%,transparent_70%)] pointer-events-none rounded-full" />
 
       {/* Very subtle top-edge frost line */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-frost/[0.06] to-transparent" />
