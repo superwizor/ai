@@ -33,7 +33,13 @@ func (s *Server) ListSessions(ctx context.Context, req *clinicalv1.ListSessionsR
 
 	resp := &clinicalv1.ListSessionsResponse{}
 	for _, sess := range sessions {
-		resp.Sessions = append(resp.Sessions, toProtoSession(sess))
+		protoSess := toProtoSession(sess)
+		if sess.AudioUploadID.Valid {
+			if size, err := s.queries.GetAudioUploadSize(ctx, uuid.UUID(sess.AudioUploadID.Bytes)); err == nil && size != nil {
+				protoSess.FileSizeBytes = *size
+			}
+		}
+		resp.Sessions = append(resp.Sessions, protoSess)
 	}
 	return resp, nil
 }
@@ -49,8 +55,15 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 		return nil, status.Error(codes.NotFound, "session not found")
 	}
 
+	protoSess := toProtoSession(session)
+	if session.AudioUploadID.Valid {
+		if size, err := s.queries.GetAudioUploadSize(ctx, uuid.UUID(session.AudioUploadID.Bytes)); err == nil && size != nil {
+			protoSess.FileSizeBytes = *size
+		}
+	}
+
 	resp := &clinicalv1.GetSessionDetailsResponse{
-		Session: toProtoSession(session),
+		Session: protoSess,
 	}
 
 	// 1. Fetch transcript if any
@@ -251,7 +264,14 @@ func (s *Server) UpdateSession(ctx context.Context, req *clinicalv1.UpdateSessio
 		return nil, status.Errorf(codes.Internal, "update name: %v", err)
 	}
 
-	return toProtoSession(updated), nil
+	protoSess := toProtoSession(updated)
+	if updated.AudioUploadID.Valid {
+		if size, err := s.queries.GetAudioUploadSize(ctx, uuid.UUID(updated.AudioUploadID.Bytes)); err == nil && size != nil {
+			protoSess.FileSizeBytes = *size
+		}
+	}
+
+	return protoSess, nil
 }
 
 // DeleteSession hard-deletes a single session. Migration 000012 turned

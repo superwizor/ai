@@ -6,13 +6,16 @@
 // runner advances rows through their phases.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../l10n/app_localizations.dart';
 import '../theme/euphire_theme.dart';
+import '../providers/patient_provider.dart';
 import '../uploads/cancel_upload_action.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
@@ -26,41 +29,92 @@ class PendingUploadsScreen extends ConsumerWidget {
     final async = ref.watch(pendingUploadsStreamProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF173E43),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text('Wgrywanie',
-            style: TextStyle(
-                fontFamily: 'Montserrat',
-                fontWeight: FontWeight.w700,
-                color: EuphireColors.frostWhite)),
-        iconTheme: const IconThemeData(color: EuphireColors.frostWhite),
-      ),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Text('Błąd: $e',
-              style: const TextStyle(color: EuphireColors.frostWhite)),
+      backgroundColor: const Color(0xFF131313),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Custom Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 12, 20, 16),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded, color: EuphireColors.frostWhite),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Kolejka sesji',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            color: EuphireColors.ember,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Status przesyłania i przetwarzania nagrań.',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 14,
+                            color: EuphireColors.mist.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: async.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(
+                  child: Text('Błąd: $e',
+                      style: const TextStyle(color: EuphireColors.frostWhite)),
+                ),
+                data: (rows) {
+                  if (rows.isEmpty) {
+                    return const _EmptyState();
+                  }
+                  // Sort: quota-blocked and failed first (needs attention), then by queuedAt asc.
+                  final sorted = [...rows]..sort((a, b) {
+                      final aPriority = _sortPriority(a.phase);
+                      final bPriority = _sortPriority(b.phase);
+                      if (aPriority != bPriority) return aPriority.compareTo(bPriority);
+                      return a.queuedAt.compareTo(b.queuedAt);
+                    });
+                  
+                  final hasActive = sorted.any((u) => !u.isTerminal && !u.isParked);
+
+                  return Column(
+                    children: [
+                      if (hasActive)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: _AnimatedHeroCloud(),
+                        ),
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          itemCount: sorted.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 10),
+                          itemBuilder: (ctx, i) => _UploadRow(upload: sorted[i]),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
-        data: (rows) {
-          if (rows.isEmpty) {
-            return const _EmptyState();
-          }
-          // Sort: quota-blocked and failed first (needs attention), then by queuedAt asc.
-          final sorted = [...rows]..sort((a, b) {
-              final aPriority = _sortPriority(a.phase);
-              final bPriority = _sortPriority(b.phase);
-              if (aPriority != bPriority) return aPriority.compareTo(bPriority);
-              return a.queuedAt.compareTo(b.queuedAt);
-            });
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            itemCount: sorted.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (ctx, i) => _UploadRow(upload: sorted[i]),
-          );
-        },
       ),
     );
   }
@@ -113,6 +167,296 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+// ─── Animated Hero Cloud ──────────────────────────────────────────
+
+class _AnimatedHeroCloud extends StatefulWidget {
+  const _AnimatedHeroCloud();
+
+  @override
+  State<_AnimatedHeroCloud> createState() => _AnimatedHeroCloudState();
+}
+
+class _AnimatedHeroCloudState extends State<_AnimatedHeroCloud>
+    with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late AnimationController _arrowController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
+    
+    _arrowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _arrowController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([_pulseController, _arrowController]),
+      builder: (context, _) {
+        final pulseOpacity = 0.08 + (_pulseController.value * 0.12);
+        final pulseScale = 1.0 + (_pulseController.value * 0.15);
+        final arrowOffset = -12.0 * _arrowController.value;
+        final arrowOpacity = _arrowController.value < 0.7
+            ? 1.0
+            : 1.0 - ((_arrowController.value - 0.7) / 0.3);
+
+        return SizedBox(
+          width: 80,
+          height: 80,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Transform.scale(
+                scale: pulseScale,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: EuphireColors.ember.withValues(alpha: pulseOpacity),
+                  ),
+                ),
+              ),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: EuphireColors.ember.withValues(alpha: 0.15),
+                  border: Border.all(
+                    color: EuphireColors.ember.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.cloud_upload_rounded,
+                      size: 32,
+                      color: EuphireColors.ember,
+                    ),
+                    Positioned(
+                      bottom: 12 + arrowOffset.abs(),
+                      child: Opacity(
+                        opacity: arrowOpacity.clamp(0.0, 1.0),
+                        child: Icon(
+                          Icons.arrow_upward_rounded,
+                          size: 16,
+                          color: EuphireColors.ember.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── Network Error Bottom Sheet ──────────────────────────────────
+
+class _BottomSheetNetworkError extends StatelessWidget {
+  const _BottomSheetNetworkError({
+    required this.upload,
+    required this.isResending,
+    required this.onResend,
+  });
+
+  final PendingUpload upload;
+  final bool isResending;
+  final VoidCallback onResend;
+
+  @override
+  Widget build(BuildContext context) {
+    final rawError = upload.lastError ?? '';
+    final lower = rawError.toLowerCase();
+    final isNetworkErr = lower.contains('socket') ||
+        lower.contains('network') ||
+        lower.contains('clientexception');
+
+    final title = isNetworkErr ? 'Brak połączenia z internetem' : 'Błąd przesyłania';
+    final desc = isNetworkErr
+        ? 'Przesyłanie zostało przerwane, ale Twoje nagranie jest bezpiecznie zapisane na tym urządzeniu. Spróbuj przesłać je ponownie, gdy odzyskasz zasięg.'
+        : 'Przesyłanie zostało przerwane z powodu błędu, ale Twoje nagranie jest bezpiecznie zapisane na tym urządzeniu. Spróbuj przesłać je ponownie.';
+    final icon = isNetworkErr ? Icons.wifi_off_rounded : Icons.cloud_off_rounded;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF131313),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(
+          top: BorderSide(
+              color: const Color(0xFF40484A).withValues(alpha: 0.5)),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: EuphireColors.frostWhite.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Icon
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: EuphireColors.ember.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: EuphireColors.ember, size: 28),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Montserrat',
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: EuphireColors.frostWhite,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              desc,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Merriweather',
+                fontSize: 14,
+                height: 1.5,
+                color: EuphireColors.mist.withValues(alpha: 0.9),
+              ),
+            ),
+            if (rawError.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: EuphireColors.ember.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(5),
+                  border: Border.all(
+                    color: EuphireColors.ember.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: EuphireColors.ember,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _UploadRowState._friendlyError(rawError),
+                        style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: EuphireColors.frostWhite,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 32),
+            // CTA
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: isResending ? null : onResend,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: EuphireColors.ember,
+                  foregroundColor: EuphireColors.nocturne,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  elevation: 0,
+                ),
+                child: isResending
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: EuphireColors.nocturne,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : const Text(
+                        'Prześlij ponownie',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: EuphireColors.frostWhite,
+                  side: BorderSide(
+                    color: EuphireColors.frostWhite.withValues(alpha: 0.25),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                ),
+                child: const Text(
+                  'Zamknij',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _UploadRow extends ConsumerStatefulWidget {
   const _UploadRow({required this.upload});
   final PendingUpload upload;
@@ -121,10 +465,49 @@ class _UploadRow extends ConsumerStatefulWidget {
   ConsumerState<_UploadRow> createState() => _UploadRowState();
 }
 
-class _UploadRowState extends ConsumerState<_UploadRow> {
+class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProviderStateMixin {
   bool _isResending = false;
+  late AnimationController _rotationController;
 
   PendingUpload get upload => widget.upload;
+
+  @override
+  void initState() {
+    super.initState();
+    _rotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    );
+    _updateRotationState();
+  }
+
+  @override
+  void didUpdateWidget(covariant _UploadRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _updateRotationState();
+  }
+
+  void _updateRotationState() {
+    final p = widget.upload.phase;
+    final isActive = p == UploadPhase.encrypting ||
+        p == UploadPhase.converting ||
+        p == UploadPhase.created ||
+        p == UploadPhase.uploaded ||
+        p == UploadPhase.converted;
+    if (isActive) {
+      if (!_rotationController.isAnimating) {
+        _rotationController.repeat();
+      }
+    } else {
+      _rotationController.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,6 +517,12 @@ class _UploadRowState extends ConsumerState<_UploadRow> {
     final isQuotaBlocked = upload.phase == UploadPhase.quotaBlocked;
     final isRetrying = !isFailed && !isQuotaBlocked &&
         upload.lastError != null && upload.attemptCount > 0;
+
+    // Fetch patient name and session count reactively.
+    final patients = ref.watch(patientsProvider).value;
+    final patient = patients?.where((p) => p.id == upload.patientFileId).firstOrNull;
+    final patientName = patient != null ? '${patient.firstName} ${patient.lastName}' : 'Pacjent';
+    final sessionNumber = (patient?.sessionCount ?? 0) + 1;
 
     // Quota-blocked rows get a special premium card
     if (isQuotaBlocked) {
@@ -148,11 +537,13 @@ class _UploadRowState extends ConsumerState<_UploadRow> {
           sessionId: upload.sessionId,
           localId: upload.localId,
         ),
+        patientName: patientName,
+        sessionNumber: sessionNumber,
       );
     }
 
     final color = isFailed
-        ? Colors.redAccent.shade200
+        ? EuphireColors.ember
         : isCompleted
             ? Colors.greenAccent.shade200
             : EuphireColors.ember;
@@ -162,179 +553,276 @@ class _UploadRowState extends ConsumerState<_UploadRow> {
         upload.sessionId != null && upload.sessionId!.isNotEmpty;
     final canTap = !isFailed;
 
+    final iconData = _phaseIcon(upload.phase, isRetrying: isRetrying);
+    final isSpinning = upload.phase == UploadPhase.encrypting ||
+        upload.phase == UploadPhase.converting ||
+        upload.phase == UploadPhase.created ||
+        upload.phase == UploadPhase.uploaded ||
+        upload.phase == UploadPhase.converted;
+
+    Widget iconWidget = Icon(iconData, color: color, size: 20);
+    if (isSpinning) {
+      iconWidget = RotationTransition(
+        turns: _rotationController,
+        child: iconWidget,
+      );
+    }
+
     return Material(
-      color: Colors.white.withValues(alpha: 0.05),
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: canTap
+        onTap: isFailed
             ? () {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => SessionStatusScreen(
-                    sessionId: hasSessionId ? upload.sessionId : null,
-                    localId: hasSessionId ? null : upload.localId,
+                HapticFeedback.lightImpact();
+                showModalBottomSheet(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  isScrollControlled: true,
+                  builder: (_) => _BottomSheetNetworkError(
+                    upload: upload,
+                    isResending: _isResending,
+                    onResend: () {
+                      Navigator.pop(context);
+                      _handleResend(context, l);
+                    },
                   ),
-                ));
+                );
               }
-            : null,
+            : canTap
+                ? () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => SessionStatusScreen(
+                        sessionId: hasSessionId ? upload.sessionId : null,
+                        localId: hasSessionId ? null : upload.localId,
+                      ),
+                    ));
+                  }
+                : null,
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
+            color: EuphireColors.frostWhite.withValues(alpha: 0.03),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: EuphireColors.frostWhite.withValues(alpha: 0.08),
+              width: 1.0,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          Row(
-            children: [
-              Icon(_phaseIcon(upload.phase, isRetrying: isRetrying),
-                  color: color, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  _phaseLabel(upload.phase, l, isRetrying: isRetrying),
-                  style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: EuphireColors.frostWhite,
+              Row(
+                children: [
+                  iconWidget,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _phaseLabel(upload.phase, l, isRetrying: isRetrying),
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: EuphireColors.frostWhite,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              Text(
-                DateFormat('HH:mm').format(upload.queuedAt.toLocal()),
-                style: TextStyle(
-                  fontFamily: 'RobotoMono',
-                  fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.6),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _detailLine(upload),
-            style: TextStyle(
-              fontFamily: 'Merriweather',
-              fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.7),
-            ),
-          ),
-          // Live upload progress
-          if (upload.phase == UploadPhase.created) ...[
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: upload.uploadProgress > 0
-                    ? upload.uploadProgress.clamp(0.0, 1.0)
-                    : null,
-                minHeight: 4,
-                backgroundColor: Colors.white.withValues(alpha: 0.1),
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(EuphireColors.ember),
-              ),
-            ),
-            if (upload.uploadProgress > 0) ...[
-              const SizedBox(height: 4),
-              Text(
-                '${(upload.uploadProgress * 100).clamp(0, 100).toStringAsFixed(0)}%',
-                style: TextStyle(
-                  fontFamily: 'RobotoMono',
-                  fontSize: 10,
-                  color: Colors.white.withValues(alpha: 0.6),
-                ),
-              ),
-            ],
-          ],
-          // Show error text for failed rows AND retrying rows so
-          // the user sees what caused the hiccup (e.g. "network:
-          // SocketException"). Red for failed, amber for retrying.
-          if (upload.lastError != null &&
-              (isFailed || upload.attemptCount > 0)) ...[
-            const SizedBox(height: 6),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!isFailed) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(top: 1, right: 4),
-                    child: Icon(
-                      Icons.refresh_rounded,
-                      size: 12,
-                      color: EuphireColors.ember.withValues(alpha: 0.7),
+                  Text(
+                    DateFormat('HH:mm').format(upload.queuedAt.toLocal()),
+                    style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
-                Expanded(
-                  child: Text(
-                    isFailed
-                        ? upload.lastError!
-                        : 'Wznawiam automatycznie: ${_friendlyError(upload.lastError!)}',
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: 'RobotoMono',
-                      fontSize: 10,
-                      color: isFailed
-                          ? Colors.redAccent.shade200
-                          : EuphireColors.ember.withValues(alpha: 0.7),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '$patientName / Sesja #$sessionNumber',
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: EuphireColors.ember,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: EuphireColors.frostWhite.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: EuphireColors.frostWhite.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.music_note_rounded,
+                      size: 15,
+                      color: EuphireColors.mist.withValues(alpha: 0.6),
                     ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _detailLine(upload),
+                      style: TextStyle(
+                        fontFamily: 'RobotoMono',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: EuphireColors.mist.withValues(alpha: 0.8),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Live upload progress
+              if (upload.phase == UploadPhase.created) ...[
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: upload.uploadProgress > 0
+                              ? upload.uploadProgress.clamp(0.0, 1.0)
+                              : null,
+                          minHeight: 6,
+                          backgroundColor: const Color(0xFF353535),
+                          valueColor:
+                              const AlwaysStoppedAnimation<Color>(EuphireColors.ember),
+                        ),
+                      ),
+                    ),
+                    if (upload.uploadProgress > 0) ...[
+                      const SizedBox(width: 12),
+                      Text(
+                        '${(upload.uploadProgress * 100).clamp(0, 100).toStringAsFixed(0)}%',
+                        style: TextStyle(
+                          fontFamily: 'RobotoMono',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: EuphireColors.mist.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+              // Show error text for failed rows AND retrying rows
+              if (upload.lastError != null &&
+                  (isFailed || upload.attemptCount > 0)) ...[
+                const SizedBox(height: 10),
+                Text(
+                  isFailed
+                      ? _friendlyError(upload.lastError!).toUpperCase()
+                      : 'WZNAWIAM AUTOMATYCZNIE: ${_friendlyError(upload.lastError!)}'.toUpperCase(),
+                  style: TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: isFailed
+                        ? EuphireColors.ember
+                        : EuphireColors.ember.withValues(alpha: 0.8),
+                    letterSpacing: 0.5,
                   ),
                 ),
               ],
-            ),
-          ],
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              // Retry for failed rows
-              if (isFailed)
-                TextButton.icon(
-                  icon: _isResending
-                      ? SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: EuphireColors.ember,
-                          ),
-                        )
-                      : const Icon(Icons.refresh, size: 16),
-                  label: Text(_isResending ? 'Ponawiam...' : 'Ponów'),
-                  onPressed: _isResending
-                      ? null
-                      : () => _handleResend(context, l),
-                ),
-              // Completed rows just close locally
-              if (isCompleted)
-                TextButton.icon(
-                  icon: const Icon(Icons.close, size: 16),
-                  label: const Text('Zamknij'),
-                  onPressed: () async {
-                    final runner =
-                        await ref.read(uploadQueueRunnerProvider.future);
-                    await runner?.dismiss(upload.localId);
-                  },
-                )
-              else
-                TextButton.icon(
-                  icon: const Icon(Icons.delete_rounded, size: 18),
-                  label: Text(l.upload_cancel_processing),
-                  style: TextButton.styleFrom(
-                      foregroundColor: EuphireColors.magma),
-                  onPressed: () => confirmAndCancelUpload(
-                    context,
-                    ref,
-                    patientFileId: upload.patientFileId,
-                    sessionId: upload.sessionId,
-                    localId: upload.localId,
-                  ),
-                ),
-            ],
-          ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Cancel/Delete action on the left
+                  if (isCompleted)
+                    TextButton.icon(
+                      onPressed: () async {
+                        final runner = await ref.read(uploadQueueRunnerProvider.future);
+                        await runner?.dismiss(upload.localId);
+                      },
+                      icon: const Icon(Icons.close, size: 18, color: EuphireColors.frostWhite),
+                      label: const Text(
+                        'Zamknij',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: EuphireColors.frostWhite,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    )
+                  else
+                    TextButton.icon(
+                      onPressed: () => confirmAndCancelUpload(
+                        context,
+                        ref,
+                        patientFileId: upload.patientFileId,
+                        sessionId: upload.sessionId,
+                        localId: upload.localId,
+                      ),
+                      icon: Icon(
+                        isFailed ? Icons.delete_outline_rounded : Icons.cancel_outlined,
+                        size: 18,
+                        color: EuphireColors.magma,
+                      ),
+                      label: Text(
+                        isFailed ? 'Usuń' : 'Anuluj',
+                        style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: EuphireColors.magma,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+
+                  // Retry as primary CTA on the right for failed uploads
+                  if (isFailed)
+                    ElevatedButton(
+                      onPressed: _isResending ? null : () => _handleResend(context, l),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: EuphireColors.ember,
+                        foregroundColor: EuphireColors.nocturne,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        elevation: 0,
+                      ),
+                      child: _isResending
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: EuphireColors.nocturne,
+                              ),
+                            )
+                          : const Text(
+                              'Prześlij ponownie',
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
+                            ),
+                    ),
+                ],
+              ),
             ],
           ),
         ),
@@ -370,7 +858,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> {
           currentRow.phase == UploadPhase.quotaBlocked) {
         // Still quota-blocked — show feedback
         if (context.mounted) {
-          _showQuotaStillBlockedDialog(context);
+          _showQuotaStillBlockedBottomSheet(context);
         }
       }
     } finally {
@@ -378,62 +866,76 @@ class _UploadRowState extends ConsumerState<_UploadRow> {
     }
   }
 
-  void _showQuotaStillBlockedDialog(BuildContext context) {
-    showDialog(
+  void _showQuotaStillBlockedBottomSheet(BuildContext context) {
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: EuphireColors.nocturne,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: EuphireColors.ember.withValues(alpha: 0.3),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+        decoration: BoxDecoration(
+          color: const Color(0xFF131313),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(
+            top: BorderSide(color: const Color(0xFF40484A).withValues(alpha: 0.5)),
           ),
         ),
-        title: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
-              Icons.account_balance_wallet_outlined,
-              color: EuphireColors.ember,
-              size: 22,
+            Row(
+              children: [
+                Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: EuphireColors.ember,
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Brak dostępnych sesji',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.frostWhite,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Pula nadal wyczerpana',
+            const SizedBox(height: 16),
+            Text(
+              'Twoja pula sesji w tym miesiącu została wyczerpana. Aby przetworzyć to nagranie, odwiedź platformę Superwizor w przeglądarce internetowej, aby zarządzać swoim planem.',
+              style: TextStyle(
+                fontFamily: 'Merriweather',
+                fontSize: 14,
+                height: 1.5,
+                color: EuphireColors.frostWhite.withValues(alpha: 0.8),
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: EuphireColors.ember,
+                foregroundColor: EuphireColors.nocturne,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              child: const Text(
+                'Zrozumiałem',
                 style: TextStyle(
                   fontFamily: 'Montserrat',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: EuphireColors.frostWhite,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ],
         ),
-        content: Text(
-          'Twoje tokeny nie zostały jeszcze odnowione. '
-          'Sesja pozostanie bezpiecznie zapisana i zostanie przetworzona '
-          'po odnowieniu planu.',
-          style: TextStyle(
-            fontFamily: 'Merriweather',
-            fontSize: 13,
-            height: 1.5,
-            color: EuphireColors.frostWhite.withValues(alpha: 0.75),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Rozumiem',
-              style: TextStyle(
-                fontFamily: 'Montserrat',
-                fontWeight: FontWeight.w600,
-                color: EuphireColors.ember,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -441,42 +943,39 @@ class _UploadRowState extends ConsumerState<_UploadRow> {
   /// Map a user-hostile error string to a friendlier one-liner.
   static String _friendlyError(String raw) {
     final lower = raw.toLowerCase();
+    String reason = raw;
     if (lower.contains('socket') || lower.contains('network') ||
         lower.contains('clientexception')) {
-      return 'brak połączenia z internetem';
+      reason = 'brak połączenia z internetem';
+    } else if (lower.contains('timeout') || lower.contains('deadline')) {
+      reason = 'serwer nie odpowiedział w terminie';
+    } else if (lower.contains('expiredtoken') || lower.contains('signedurl')) {
+      reason = 'link do przesyłania wygasł';
+    } else if (lower.contains('unavailable')) {
+      reason = 'serwer chwilowo niedostępny';
+    } else if (raw.length > 60) {
+      reason = '${raw.substring(0, 57)}...';
     }
-    if (lower.contains('timeout') || lower.contains('deadline')) {
-      return 'serwer nie odpowiedział w terminie';
-    }
-    if (lower.contains('expiredtoken') || lower.contains('signedurl')) {
-      return 'link do przesyłania wygasł';
-    }
-    if (lower.contains('unavailable')) {
-      return 'serwer chwilowo niedostępny';
-    }
-    // Truncate raw technical strings to something reasonable
-    if (raw.length > 60) return '${raw.substring(0, 57)}...';
-    return raw;
+    return 'Powód błędu: $reason';
   }
 
   static IconData _phaseIcon(UploadPhase p, {bool isRetrying = false}) {
-    if (isRetrying) return Icons.refresh_rounded;
+    if (isRetrying) return Icons.sync_rounded;
     switch (p) {
       case UploadPhase.encrypting:
-        return Icons.lock_outline;
+        return Icons.lock_outline_rounded;
       case UploadPhase.converting:
-        return Icons.transform;
+        return Icons.transform_rounded;
       case UploadPhase.pending:
-        return Icons.schedule;
+        return Icons.schedule_rounded;
       case UploadPhase.created:
-        return Icons.cloud_upload_outlined;
       case UploadPhase.uploaded:
       case UploadPhase.converted:
-        return Icons.cloud_upload_outlined;
+        return Icons.sync_rounded;
       case UploadPhase.completed:
-        return Icons.check_circle_outline;
+        return Icons.check_circle_outline_rounded;
       case UploadPhase.failed:
-        return Icons.error_outline;
+        return Icons.error_outline_rounded;
       case UploadPhase.quotaBlocked:
         return Icons.account_balance_wallet_outlined;
     }
@@ -501,7 +1000,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> {
       case UploadPhase.completed:
         return 'Wgrane';
       case UploadPhase.failed:
-        return 'Nie udało się wgrać';
+        return 'Przesyłanie przerwane';
       case UploadPhase.quotaBlocked:
         return l.quota_blocked_queue_label;
     }
@@ -522,12 +1021,16 @@ class _QuotaBlockedCard extends StatelessWidget {
   final bool isResending;
   final VoidCallback onResend;
   final VoidCallback onCancel;
+  final String patientName;
+  final int sessionNumber;
 
   const _QuotaBlockedCard({
     required this.upload,
     required this.isResending,
     required this.onResend,
     required this.onCancel,
+    required this.patientName,
+    required this.sessionNumber,
   });
 
   @override
@@ -543,11 +1046,11 @@ class _QuotaBlockedCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             EuphireColors.ember.withValues(alpha: 0.08),
-            EuphireColors.nocturne.withValues(alpha: 0.6),
+            const Color(0xFF202020),
           ],
         ),
         border: Border.all(
-          color: EuphireColors.ember.withValues(alpha: 0.25),
+          color: const Color(0xFF40484A),
           width: 1,
         ),
         boxShadow: [
@@ -584,7 +1087,17 @@ class _QuotaBlockedCard extends StatelessWidget {
                           height: 1.3,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
+                      Text(
+                        '$patientName / Sesja #$sessionNumber',
+                        style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: EuphireColors.ember,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
                       Text(
                         'Pula sesji została wyczerpana. '
                         'Sesja jest bezpiecznie zapisana i zostanie '
@@ -611,8 +1124,11 @@ class _QuotaBlockedCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(
                   horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
+                color: const Color(0xFF2A2A2A),
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFF40484A).withValues(alpha: 0.5),
+                ),
               ),
               child: Row(
                 children: [
@@ -665,7 +1181,7 @@ class _QuotaBlockedCard extends StatelessWidget {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: isResending ? null : onResend,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -673,7 +1189,7 @@ class _QuotaBlockedCard extends StatelessWidget {
                           color: isResending
                               ? EuphireColors.ember.withValues(alpha: 0.08)
                               : EuphireColors.ember.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: EuphireColors.ember
                                 .withValues(alpha: isResending ? 0.15 : 0.35),
@@ -725,13 +1241,13 @@ class _QuotaBlockedCard extends StatelessWidget {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: onCancel,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: EuphireColors.magma.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: EuphireColors.magma.withValues(alpha: 0.2),
                         ),

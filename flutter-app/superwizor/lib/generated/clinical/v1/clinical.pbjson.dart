@@ -706,6 +706,7 @@ const Session$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'reportViewedAt'
     },
+    {'1': 'file_size_bytes', '3': 14, '4': 1, '5': 3, '10': 'fileSizeBytes'},
   ],
   '3': [Session_SpeakerLabelMappingEntry$json],
 };
@@ -732,8 +733,9 @@ final $typed_data.Uint8List sessionDescriptor = $convert.base64Decode(
     'luZxIWCgZzdGF0dXMYCiABKAlSBnN0YXR1cxI5CgpjcmVhdGVkX2F0GAsgASgLMhouZ29vZ2xl'
     'LnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYXRlZEF0EhIKBG5hbWUYDCABKAlSBG5hbWUSRAoQcm'
     'Vwb3J0X3ZpZXdlZF9hdBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSDnJlcG9y'
-    'dFZpZXdlZEF0GkYKGFNwZWFrZXJMYWJlbE1hcHBpbmdFbnRyeRIQCgNrZXkYASABKAlSA2tleR'
-    'IUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
+    'dFZpZXdlZEF0EiYKD2ZpbGVfc2l6ZV9ieXRlcxgOIAEoA1INZmlsZVNpemVCeXRlcxpGChhTcG'
+    'Vha2VyTGFiZWxNYXBwaW5nRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAiABKAlS'
+    'BXZhbHVlOgI4AQ==');
 
 @$core.Deprecated('Use listSessionsRequestDescriptor instead')
 const ListSessionsRequest$json = {

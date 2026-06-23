@@ -6,6 +6,7 @@ class EuphireButton extends StatelessWidget {
   final bool isLoading;
   final IconData? icon;
   final Color? backgroundColor;
+  final bool iconOnRight;
 
   const EuphireButton({
     super.key,
@@ -14,6 +15,7 @@ class EuphireButton extends StatelessWidget {
     this.isLoading = false,
     this.icon,
     this.backgroundColor,
+    this.iconOnRight = false,
   });
 
   @override
@@ -31,11 +33,23 @@ class EuphireButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (icon != null) ...[
+              if (icon != null && !iconOnRight) ...[
                 Icon(icon, size: 20),
                 const SizedBox(width: 8),
               ],
-              Text(text),
+              Text(
+                text,
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              if (icon != null && iconOnRight) ...[
+                const SizedBox(width: 8),
+                Icon(icon, size: 20),
+              ],
             ],
           );
 

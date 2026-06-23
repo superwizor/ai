@@ -223,9 +223,9 @@ export function Testimonials() {
         }
       `}} />
 
-      {/* Decorative background glow elements — gradient instead of blur for GPU perf */}
-      <div className="absolute top-1/4 left-1/10 w-[400px] h-[400px] bg-[radial-gradient(circle,rgba(91,244,188,0.02),transparent_70%)] rounded-full pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/10 w-[400px] h-[400px] bg-[radial-gradient(circle,rgba(252,174,47,0.02),transparent_70%)] rounded-full pointer-events-none" />
+      {/* Decorative background glow elements */}
+      <div className="absolute top-1/4 left-1/10 w-[400px] h-[400px] bg-[#5bf4bc]/[0.02] rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/10 w-[400px] h-[400px] bg-[#fcae2f]/[0.02] rounded-full blur-[120px] pointer-events-none" />
 
       {/* Header */}
       <div className="relative mx-auto w-full max-w-[1200px] px-6 mb-16 text-center">

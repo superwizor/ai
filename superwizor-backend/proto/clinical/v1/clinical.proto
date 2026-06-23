@@ -397,6 +397,7 @@ message Session {
   // session. Zero/empty when unviewed — Flutter shows "nowy raport"
   // badge. Set via MarkReportViewed RPC. Migration 000059.
   google.protobuf.Timestamp report_viewed_at = 13;
+  int64 file_size_bytes = 14;
 }
 
 message ListSessionsRequest {

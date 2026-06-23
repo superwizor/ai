@@ -1073,7 +1073,7 @@ abstract class AppLocalizations {
   /// No description provided for @session_status_back_to_records.
   ///
   /// In pl, this message translates to:
-  /// **'Wróć do kartotek'**
+  /// **'Zamknij ekran'**
   String get session_status_back_to_records;
 
   /// No description provided for @session_loading.

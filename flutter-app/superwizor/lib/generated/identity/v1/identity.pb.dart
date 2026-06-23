@@ -642,6 +642,7 @@ class CreateUserRequest extends $pb.GeneratedMessage {
     $core.String? uiLanguage,
     $core.String? timezone,
     $core.bool? hasAcceptedTos,
+    $core.String? initialPlanTier,
   }) {
     final result = create();
     if (firebaseUid != null) result.firebaseUid = firebaseUid;
@@ -652,6 +653,7 @@ class CreateUserRequest extends $pb.GeneratedMessage {
     if (uiLanguage != null) result.uiLanguage = uiLanguage;
     if (timezone != null) result.timezone = timezone;
     if (hasAcceptedTos != null) result.hasAcceptedTos = hasAcceptedTos;
+    if (initialPlanTier != null) result.initialPlanTier = initialPlanTier;
     return result;
   }
 
@@ -677,6 +679,7 @@ class CreateUserRequest extends $pb.GeneratedMessage {
     ..aOS(6, _omitFieldNames ? '' : 'uiLanguage')
     ..aOS(7, _omitFieldNames ? '' : 'timezone')
     ..aOB(8, _omitFieldNames ? '' : 'hasAcceptedTos')
+    ..aOS(9, _omitFieldNames ? '' : 'initialPlanTier')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -769,6 +772,20 @@ class CreateUserRequest extends $pb.GeneratedMessage {
   $core.bool hasHasAcceptedTos() => $_has(7);
   @$pb.TagNumber(8)
   void clearHasAcceptedTos() => $_clearField(8);
+
+  /// Optional: plan tier to provision on signup. Valid values:
+  ///   - "" or "TRIAL" → default trial (5 tokens)
+  ///   - "BETA"        → beta program (120 tokens × 2 months)
+  /// Paid tiers (SOLO/PRO) are provisioned via Stripe Checkout,
+  /// not through this field.
+  @$pb.TagNumber(9)
+  $core.String get initialPlanTier => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set initialPlanTier($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasInitialPlanTier() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearInitialPlanTier() => $_clearField(9);
 }
 
 /// UpdateProfileRequest is the iOS-compatible profile mutation. Per
@@ -4385,6 +4402,312 @@ class AdminListAuditEventsResponse extends $pb.GeneratedMessage {
   $core.bool hasNextPageToken() => $_has(1);
   @$pb.TagNumber(2)
   void clearNextPageToken() => $_clearField(2);
+}
+
+class RecordConsentRequest extends $pb.GeneratedMessage {
+  factory RecordConsentRequest({
+    $core.String? userId,
+    $core.String? consentType,
+    $core.bool? granted,
+    $core.String? consentVersion,
+    $core.String? ipAddress,
+    $core.String? userAgent,
+  }) {
+    final result = create();
+    if (userId != null) result.userId = userId;
+    if (consentType != null) result.consentType = consentType;
+    if (granted != null) result.granted = granted;
+    if (consentVersion != null) result.consentVersion = consentVersion;
+    if (ipAddress != null) result.ipAddress = ipAddress;
+    if (userAgent != null) result.userAgent = userAgent;
+    return result;
+  }
+
+  RecordConsentRequest._();
+
+  factory RecordConsentRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory RecordConsentRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RecordConsentRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'userId')
+    ..aOS(2, _omitFieldNames ? '' : 'consentType')
+    ..aOB(3, _omitFieldNames ? '' : 'granted')
+    ..aOS(4, _omitFieldNames ? '' : 'consentVersion')
+    ..aOS(5, _omitFieldNames ? '' : 'ipAddress')
+    ..aOS(6, _omitFieldNames ? '' : 'userAgent')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RecordConsentRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RecordConsentRequest copyWith(void Function(RecordConsentRequest) updates) =>
+      super.copyWith((message) => updates(message as RecordConsentRequest))
+          as RecordConsentRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RecordConsentRequest create() => RecordConsentRequest._();
+  @$core.override
+  RecordConsentRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static RecordConsentRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RecordConsentRequest>(create);
+  static RecordConsentRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get userId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set userId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUserId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUserId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get consentType => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set consentType($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasConsentType() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearConsentType() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get granted => $_getBF(2);
+  @$pb.TagNumber(3)
+  set granted($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasGranted() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearGranted() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get consentVersion => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set consentVersion($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasConsentVersion() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearConsentVersion() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get ipAddress => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set ipAddress($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasIpAddress() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearIpAddress() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get userAgent => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set userAgent($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasUserAgent() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearUserAgent() => $_clearField(6);
+}
+
+class RecordConsentResponse extends $pb.GeneratedMessage {
+  factory RecordConsentResponse({
+    $core.String? consentRecordId,
+    $2.Timestamp? recordedAt,
+  }) {
+    final result = create();
+    if (consentRecordId != null) result.consentRecordId = consentRecordId;
+    if (recordedAt != null) result.recordedAt = recordedAt;
+    return result;
+  }
+
+  RecordConsentResponse._();
+
+  factory RecordConsentResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory RecordConsentResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RecordConsentResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'consentRecordId')
+    ..aOM<$2.Timestamp>(2, _omitFieldNames ? '' : 'recordedAt',
+        subBuilder: $2.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RecordConsentResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RecordConsentResponse copyWith(
+          void Function(RecordConsentResponse) updates) =>
+      super.copyWith((message) => updates(message as RecordConsentResponse))
+          as RecordConsentResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RecordConsentResponse create() => RecordConsentResponse._();
+  @$core.override
+  RecordConsentResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static RecordConsentResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RecordConsentResponse>(create);
+  static RecordConsentResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get consentRecordId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set consentRecordId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasConsentRecordId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearConsentRecordId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $2.Timestamp get recordedAt => $_getN(1);
+  @$pb.TagNumber(2)
+  set recordedAt($2.Timestamp value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasRecordedAt() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearRecordedAt() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $2.Timestamp ensureRecordedAt() => $_ensure(1);
+}
+
+class CheckEmailExistsRequest extends $pb.GeneratedMessage {
+  factory CheckEmailExistsRequest({
+    $core.String? email,
+  }) {
+    final result = create();
+    if (email != null) result.email = email;
+    return result;
+  }
+
+  CheckEmailExistsRequest._();
+
+  factory CheckEmailExistsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory CheckEmailExistsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CheckEmailExistsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'email')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CheckEmailExistsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CheckEmailExistsRequest copyWith(
+          void Function(CheckEmailExistsRequest) updates) =>
+      super.copyWith((message) => updates(message as CheckEmailExistsRequest))
+          as CheckEmailExistsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static CheckEmailExistsRequest create() => CheckEmailExistsRequest._();
+  @$core.override
+  CheckEmailExistsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static CheckEmailExistsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CheckEmailExistsRequest>(create);
+  static CheckEmailExistsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get email => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set email($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEmail() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEmail() => $_clearField(1);
+}
+
+class CheckEmailExistsResponse extends $pb.GeneratedMessage {
+  factory CheckEmailExistsResponse({
+    $core.bool? exists,
+    $core.bool? isPendingDeletion,
+  }) {
+    final result = create();
+    if (exists != null) result.exists = exists;
+    if (isPendingDeletion != null) result.isPendingDeletion = isPendingDeletion;
+    return result;
+  }
+
+  CheckEmailExistsResponse._();
+
+  factory CheckEmailExistsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory CheckEmailExistsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CheckEmailExistsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOB(2, _omitFieldNames ? '' : 'exists')
+    ..aOB(3, _omitFieldNames ? '' : 'isPendingDeletion')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CheckEmailExistsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CheckEmailExistsResponse copyWith(
+          void Function(CheckEmailExistsResponse) updates) =>
+      super.copyWith((message) => updates(message as CheckEmailExistsResponse))
+          as CheckEmailExistsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static CheckEmailExistsResponse create() => CheckEmailExistsResponse._();
+  @$core.override
+  CheckEmailExistsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static CheckEmailExistsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CheckEmailExistsResponse>(create);
+  static CheckEmailExistsResponse? _defaultInstance;
+
+  @$pb.TagNumber(2)
+  $core.bool get exists => $_getBF(0);
+  @$pb.TagNumber(2)
+  set exists($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(2)
+  $core.bool hasExists() => $_has(0);
+  @$pb.TagNumber(2)
+  void clearExists() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get isPendingDeletion => $_getBF(1);
+  @$pb.TagNumber(3)
+  set isPendingDeletion($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(3)
+  $core.bool hasIsPendingDeletion() => $_has(1);
+  @$pb.TagNumber(3)
+  void clearIsPendingDeletion() => $_clearField(3);
 }
 
 const $core.bool _omitFieldNames =

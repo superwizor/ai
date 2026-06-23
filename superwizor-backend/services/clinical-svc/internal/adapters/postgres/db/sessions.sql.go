@@ -265,6 +265,17 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 	return i, err
 }
 
+const getAudioUploadSize = `-- name: GetAudioUploadSize :one
+SELECT file_size_bytes FROM audio_uploads WHERE id = $1
+`
+
+func (q *Queries) GetAudioUploadSize(ctx context.Context, id uuid.UUID) (*int64, error) {
+	row := q.db.QueryRow(ctx, getAudioUploadSize, id)
+	var file_size_bytes *int64
+	err := row.Scan(&file_size_bytes)
+	return file_size_bytes, err
+}
+
 const getDefaultSessionName = `-- name: GetDefaultSessionName :one
 SELECT COALESCE(m.display_name, 'Sesja') || ' ' || $2::text AS default_name
 FROM patient_files pf

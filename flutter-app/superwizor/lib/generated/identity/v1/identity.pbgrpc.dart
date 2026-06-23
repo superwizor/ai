@@ -282,6 +282,24 @@ class IdentityServiceClient extends $grpc.Client {
     return $createUnaryCall(_$healthCheck, request, options: options);
   }
 
+  /// ─── RODO/GDPR Consent Logging ───
+  /// Records a user consent choice (TOS, MARKETING, RECORDING, etc.)
+  /// for auditing compliance.
+  $grpc.ResponseFuture<$0.RecordConsentResponse> recordConsent(
+    $0.RecordConsentRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$recordConsent, request, options: options);
+  }
+
+  /// Checks if an email address is already registered in our system
+  $grpc.ResponseFuture<$0.CheckEmailExistsResponse> checkEmailExists(
+    $0.CheckEmailExistsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$checkEmailExists, request, options: options);
+  }
+
   // method descriptors
 
   static final _$validateToken =
@@ -416,6 +434,16 @@ class IdentityServiceClient extends $grpc.Client {
           '/identity.v1.IdentityService/HealthCheck',
           ($1.Empty value) => value.writeToBuffer(),
           $0.HealthCheckResponse.fromBuffer);
+  static final _$recordConsent =
+      $grpc.ClientMethod<$0.RecordConsentRequest, $0.RecordConsentResponse>(
+          '/identity.v1.IdentityService/RecordConsent',
+          ($0.RecordConsentRequest value) => value.writeToBuffer(),
+          $0.RecordConsentResponse.fromBuffer);
+  static final _$checkEmailExists = $grpc.ClientMethod<
+          $0.CheckEmailExistsRequest, $0.CheckEmailExistsResponse>(
+      '/identity.v1.IdentityService/CheckEmailExists',
+      ($0.CheckEmailExistsRequest value) => value.writeToBuffer(),
+      $0.CheckEmailExistsResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('identity.v1.IdentityService')
@@ -644,6 +672,24 @@ abstract class IdentityServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
         ($0.HealthCheckResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.RecordConsentRequest, $0.RecordConsentResponse>(
+            'RecordConsent',
+            recordConsent_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.RecordConsentRequest.fromBuffer(value),
+            ($0.RecordConsentResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.CheckEmailExistsRequest,
+            $0.CheckEmailExistsResponse>(
+        'CheckEmailExists',
+        checkEmailExists_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.CheckEmailExistsRequest.fromBuffer(value),
+        ($0.CheckEmailExistsResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.UserContext> validateToken_Pre($grpc.ServiceCall $call,
@@ -872,4 +918,22 @@ abstract class IdentityServiceBase extends $grpc.Service {
 
   $async.Future<$0.HealthCheckResponse> healthCheck(
       $grpc.ServiceCall call, $1.Empty request);
+
+  $async.Future<$0.RecordConsentResponse> recordConsent_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.RecordConsentRequest> $request) async {
+    return recordConsent($call, await $request);
+  }
+
+  $async.Future<$0.RecordConsentResponse> recordConsent(
+      $grpc.ServiceCall call, $0.RecordConsentRequest request);
+
+  $async.Future<$0.CheckEmailExistsResponse> checkEmailExists_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.CheckEmailExistsRequest> $request) async {
+    return checkEmailExists($call, await $request);
+  }
+
+  $async.Future<$0.CheckEmailExistsResponse> checkEmailExists(
+      $grpc.ServiceCall call, $0.CheckEmailExistsRequest request);
 }

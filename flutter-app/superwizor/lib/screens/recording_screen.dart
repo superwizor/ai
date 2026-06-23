@@ -22,6 +22,7 @@ import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
@@ -103,6 +104,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   // ── Entrance animations ──
   // Staggered fade+slide for a premium, fluid screen entry.
   late final AnimationController _entranceController;
+  late final AnimationController _headerController;
   late final Animation<Offset> _headerSlide;
   late final Animation<double> _headerFade;
   late final Animation<double> _waveformScale;
@@ -122,27 +124,32 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
-    // Header: fade in + slide down from -20% (0–60% of total)
+    _headerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    // Header: fade in + slide down
     _headerFade = CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      parent: _headerController,
+      curve: Curves.easeOut,
     );
     _headerSlide = Tween<Offset>(
       begin: const Offset(0, -0.15),
       end: Offset.zero,
     ).animate(CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
+      parent: _headerController,
+      curve: Curves.easeOutCubic,
     ));
-    // Waveform: scale up from 0.85 + fade in (20–80% of total)
+    // Waveform: scale up from 0.85 + fade in
     _waveformFade = CurvedAnimation(
       parent: _entranceController,
-      curve: const Interval(0.2, 0.8, curve: Curves.easeOut),
+      curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
     );
     _waveformScale = Tween<double>(begin: 0.85, end: 1.0).animate(
       CurvedAnimation(
         parent: _entranceController,
-        curve: const Interval(0.2, 0.8, curve: Curves.easeOutCubic),
+        curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic),
       ),
     );
     // Start the entrance animation immediately.
@@ -211,6 +218,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   @override
   void dispose() {
     _entranceController.dispose();
+    _headerController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _durSub?.cancel();
     _stateSub?.cancel();
@@ -255,7 +263,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       setState(() {
         _displayDuration = _service.currentDuration;
         _recState = _service.state;
+        _initializing = false;
       });
+      _headerController.value = 1.0;
 
       _durSub = _service.durationStream.listen((d) {
         if (!mounted) return;
@@ -490,6 +500,14 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         _initializing = false;
         _recState = _service.state;
       });
+      
+      // Haptic feedback when the recording actually begins.
+      HapticFeedback.lightImpact();
+
+      // Animate header with a slight delay so it emerges at the very end.
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted) _headerController.forward();
+      });
 
       // ── Non-critical work below: fire-and-forget ──
       // None of this blocks the recording UI update.
@@ -522,6 +540,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() => _initializing = false);
+      _headerController.forward();
       final t = AppLocalizations.of(context);
       await showEuphireBottomSheet<void>(
         context: context,

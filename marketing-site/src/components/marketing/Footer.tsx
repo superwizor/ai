@@ -27,10 +27,10 @@ export function Footer() {
               {t("tagline")}
             </p>
             <div className="mt-4 space-y-1">
-              <p className="font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-mist/40">
+              <p className="font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-mist/60">
                 {t("copyright")}
               </p>
-              <p className="font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-mist/40">
+              <p className="font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-mist/60">
                 {t("made")}
               </p>
             </div>

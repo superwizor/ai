@@ -111,6 +111,14 @@ class NotificationServiceClient extends $grpc.Client {
     return $createUnaryCall(_$sendActionPlanEmail, request, options: options);
   }
 
+  /// Send a contact form submission to the administrator.
+  $grpc.ResponseFuture<$1.Empty> sendContactEmail(
+    $0.SendContactEmailRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$sendContactEmail, request, options: options);
+  }
+
   $grpc.ResponseFuture<$0.HealthCheckResponse> healthCheck(
     $1.Empty request, {
     $grpc.CallOptions? options,
@@ -155,6 +163,11 @@ class NotificationServiceClient extends $grpc.Client {
       '/notification.v1.NotificationService/SendActionPlanEmail',
       ($0.SendActionPlanEmailRequest value) => value.writeToBuffer(),
       $0.SendActionPlanEmailResponse.fromBuffer);
+  static final _$sendContactEmail =
+      $grpc.ClientMethod<$0.SendContactEmailRequest, $1.Empty>(
+          '/notification.v1.NotificationService/SendContactEmail',
+          ($0.SendContactEmailRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
   static final _$healthCheck =
       $grpc.ClientMethod<$1.Empty, $0.HealthCheckResponse>(
           '/notification.v1.NotificationService/HealthCheck',
@@ -224,6 +237,14 @@ abstract class NotificationServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.SendActionPlanEmailRequest.fromBuffer(value),
         ($0.SendActionPlanEmailResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SendContactEmailRequest, $1.Empty>(
+        'SendContactEmail',
+        sendContactEmail_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SendContactEmailRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$1.Empty, $0.HealthCheckResponse>(
         'HealthCheck',
         healthCheck_Pre,
@@ -290,6 +311,14 @@ abstract class NotificationServiceBase extends $grpc.Service {
 
   $async.Future<$0.SendActionPlanEmailResponse> sendActionPlanEmail(
       $grpc.ServiceCall call, $0.SendActionPlanEmailRequest request);
+
+  $async.Future<$1.Empty> sendContactEmail_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.SendContactEmailRequest> $request) async {
+    return sendContactEmail($call, await $request);
+  }
+
+  $async.Future<$1.Empty> sendContactEmail(
+      $grpc.ServiceCall call, $0.SendContactEmailRequest request);
 
   $async.Future<$0.HealthCheckResponse> healthCheck_Pre(
       $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {

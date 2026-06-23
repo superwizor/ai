@@ -31,6 +31,23 @@ final $typed_data.Uint8List platformDescriptor = $convert.base64Decode(
     'CghQbGF0Zm9ybRIYChRQTEFURk9STV9VTlNQRUNJRklFRBAAEhAKDFBMQVRGT1JNX0lPUxABEh'
     'QKEFBMQVRGT1JNX0FORFJPSUQQAhIQCgxQTEFURk9STV9XRUIQAw==');
 
+@$core.Deprecated('Use sendContactEmailRequestDescriptor instead')
+const SendContactEmailRequest$json = {
+  '1': 'SendContactEmailRequest',
+  '2': [
+    {'1': 'name', '3': 1, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'email', '3': 2, '4': 1, '5': 9, '10': 'email'},
+    {'1': 'subject', '3': 3, '4': 1, '5': 9, '10': 'subject'},
+    {'1': 'message', '3': 4, '4': 1, '5': 9, '10': 'message'},
+  ],
+};
+
+/// Descriptor for `SendContactEmailRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List sendContactEmailRequestDescriptor = $convert.base64Decode(
+    'ChdTZW5kQ29udGFjdEVtYWlsUmVxdWVzdBISCgRuYW1lGAEgASgJUgRuYW1lEhQKBWVtYWlsGA'
+    'IgASgJUgVlbWFpbBIYCgdzdWJqZWN0GAMgASgJUgdzdWJqZWN0EhgKB21lc3NhZ2UYBCABKAlS'
+    'B21lc3NhZ2U=');
+
 @$core.Deprecated('Use sendActionPlanEmailRequestDescriptor instead')
 const SendActionPlanEmailRequest$json = {
   '1': 'SendActionPlanEmailRequest',

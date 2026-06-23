@@ -102,6 +102,7 @@ type Querier interface {
 	GetActivationRate(ctx context.Context) (float64, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetActivationTimeHistogram(ctx context.Context) ([]GetActivationTimeHistogramRow, error)
+	GetAudioUploadSize(ctx context.Context, id uuid.UUID) (*int64, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetAvgSessionDuration(ctx context.Context) (float64, error)
 	// CROSS-SERVICE READ: analytics-only

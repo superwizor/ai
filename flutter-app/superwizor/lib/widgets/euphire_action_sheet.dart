@@ -105,7 +105,7 @@ class EuphireActionSheet extends StatelessWidget {
                   backgroundColor: EuphireColors.ember,
                   foregroundColor: EuphireColors.obsidianBlack,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
+                      borderRadius: BorderRadius.circular(5)),
                   elevation: 0,
                 ),
                 child: Text(
@@ -129,7 +129,7 @@ class EuphireActionSheet extends StatelessWidget {
                     foregroundColor: EuphireColors.frostWhite,
                     side: BorderSide(color: EuphireColors.mist.withValues(alpha: 0.5)),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
+                        borderRadius: BorderRadius.circular(5)),
                   ),
                   child: Text(
                     secondary!.label,
@@ -151,7 +151,7 @@ class EuphireActionSheet extends StatelessWidget {
                   style: TextButton.styleFrom(
                     foregroundColor: EuphireColors.magma,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
+                        borderRadius: BorderRadius.circular(5)),
                   ),
                   child: Text(
                     destructive!.label,

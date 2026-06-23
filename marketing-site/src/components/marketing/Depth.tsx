@@ -6,7 +6,7 @@ export function Depth() {
   return (
     <section className="relative w-full bg-gradient-to-b from-[#004D54] to-[#002E32] text-frost py-24 sm:py-32 overflow-hidden border-y border-frost/5">
       {/* Subtle background glow */}
-      <div className="absolute top-1/2 left-2/3 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-[radial-gradient(circle,rgba(252,174,47,0.05),transparent_70%)] rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 left-2/3 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-ember/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="relative mx-auto w-full max-w-[1080px] px-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">

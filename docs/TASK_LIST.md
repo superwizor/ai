@@ -10,8 +10,8 @@
 ### 1. Debug Mode — Dokończenie stanów i komunikatów
 **Claude robi:**
 - [x] Upload pada w 50% → dopisać komunikat dla usera (dialog/banner: "Przesyłanie zostało przerwane. Spróbuj ponownie.")
-- [ ] Przejrzeć wszystkie stany (`pendingUpload`, `error`, `inProgress`, `quotaBlocked`) i upewnić się, że każdy ma czytelny feedback w UI
-- [ ] Sprawdzić czy `ActiveAnalysisBanner` poprawnie reaguje na każdy stan 
+- [x] Przejrzeć wszystkie stany (`pendingUpload`, `error`, `inProgress`, `quotaBlocked`) i upewnić się, że każdy ma czytelny feedback w UI
+- [x] Sprawdzić czy `ActiveAnalysisBanner` poprawnie reaguje na każdy stan 
 
 ### 2. Tryb Debug → ukryty gest (7 kliknięć)
 **Claude robi:**
@@ -39,7 +39,7 @@
 - [ ] Screenshoty problematycznych raportów → wrzucić do docs/
 
 **Claude robi:**
-- [ ] Quick fix: jeśli problem to rendering markdown w Flutter → poprawić parser/widgety
+- [x] Quick fix: jeśli problem to rendering markdown w Flutter → poprawić parser/widgety (dodano poprawkę ignorującą nagłówki 3 rzędu przy generowaniu zakładek)
 - [ ] Jeśli problem po stronie LLM prompt → przejrzeć prompt i dodać constraints (max sections, format enforcement)
 - [ ] Opcja fundamentalna: structured output (JSON schema) zamiast raw markdown → do dyskusji
 

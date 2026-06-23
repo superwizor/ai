@@ -1246,8 +1246,9 @@ class _PendingUploadCard extends StatelessWidget {
         return 'Przetwarzanie audio…';
       case UploadPhase.converted:
         return 'Finalizowanie sesji…';
-      case UploadPhase.completed:
       case UploadPhase.failed:
+        return 'Przesyłanie przerwane';
+      case UploadPhase.completed:
       case UploadPhase.quotaBlocked:
         // Shouldn't reach this widget — pendingUploadsForPatientProvider
         // filters terminal + quota-hold states out (quota holds render
@@ -1260,74 +1261,77 @@ class _PendingUploadCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sessionId = upload.sessionId;
-    final canNavigate = sessionId != null && sessionId.isNotEmpty;
+    final hasSessionId = sessionId != null && sessionId.isNotEmpty;
+    final isFailed = upload.phase == UploadPhase.failed;
+    
+    final color = EuphireColors.ember;
+    final bgColor = isFailed 
+        ? EuphireColors.ember.withValues(alpha: 0.06) 
+        : EuphireColors.frostWhite.withValues(alpha: 0.05);
+
     return InkWell(
-      onTap: canNavigate
-          ? () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => SessionStatusScreen(sessionId: sessionId),
-                ),
-              );
-            }
-          : null,
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SessionStatusScreen(
+              sessionId: hasSessionId ? sessionId : null,
+              localId: hasSessionId ? null : upload.localId,
+            ),
+          ),
+        );
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: EuphireColors.frostWhite.withValues(alpha: 0.05),
+          color: bgColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: EuphireColors.ember.withValues(alpha: 0.3),
+            color: color.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
         child: Row(
           children: [
-            const SizedBox(
+            SizedBox(
               width: 18,
               height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: EuphireColors.ember,
-              ),
+              child: isFailed 
+                  ? Icon(Icons.error_outline_rounded, color: color, size: 18)
+                  : CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: color,
+                    ),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    // Mirrors the server-side in-progress card's title
-                    // ("Przetwarzanie") so the kartoteka reads
-                    // consistently regardless of whether the row is
-                    // backed by a Hive-queue entry (very early phase)
-                    // or a server-side session in PENDING_UPLOAD /
-                    // CREATED / TRANSCRIBING / ANALYZING.
-                    'Przetwarzanie',
+                  Text(
+                    isFailed ? 'Wymaga uwagi' : 'Przetwarzanie',
                     style: TextStyle(
                       fontFamily: 'Merriweather',
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: EuphireColors.frostWhite,
+                      color: isFailed ? color : EuphireColors.frostWhite,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     _statusLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 13,
-                      color: EuphireColors.mist,
+                      color: isFailed ? color.withValues(alpha: 0.8) : EuphireColors.mist,
                     ),
                   ),
                 ],
               ),
             ),
-            if (canNavigate)
-              const Icon(
-                Icons.chevron_right,
-                color: EuphireColors.mist,
+            Icon(
+              Icons.chevron_right,
+              color: isFailed ? color : EuphireColors.mist,
                 size: 20,
               ),
           ],

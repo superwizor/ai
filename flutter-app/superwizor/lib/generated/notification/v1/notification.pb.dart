@@ -20,6 +20,98 @@ export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 
 export 'notification.pbenum.dart';
 
+class SendContactEmailRequest extends $pb.GeneratedMessage {
+  factory SendContactEmailRequest({
+    $core.String? name,
+    $core.String? email,
+    $core.String? subject,
+    $core.String? message,
+  }) {
+    final result = create();
+    if (name != null) result.name = name;
+    if (email != null) result.email = email;
+    if (subject != null) result.subject = subject;
+    if (message != null) result.message = message;
+    return result;
+  }
+
+  SendContactEmailRequest._();
+
+  factory SendContactEmailRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SendContactEmailRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SendContactEmailRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'notification.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'name')
+    ..aOS(2, _omitFieldNames ? '' : 'email')
+    ..aOS(3, _omitFieldNames ? '' : 'subject')
+    ..aOS(4, _omitFieldNames ? '' : 'message')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendContactEmailRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendContactEmailRequest copyWith(
+          void Function(SendContactEmailRequest) updates) =>
+      super.copyWith((message) => updates(message as SendContactEmailRequest))
+          as SendContactEmailRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SendContactEmailRequest create() => SendContactEmailRequest._();
+  @$core.override
+  SendContactEmailRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SendContactEmailRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SendContactEmailRequest>(create);
+  static SendContactEmailRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get name => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set name($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get email => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set email($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEmail() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEmail() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get subject => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set subject($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSubject() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSubject() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get message => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set message($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasMessage() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMessage() => $_clearField(4);
+}
+
 class SendActionPlanEmailRequest extends $pb.GeneratedMessage {
   factory SendActionPlanEmailRequest({
     $core.String? toEmail,

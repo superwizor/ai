@@ -223,3 +223,7 @@ UPDATE sessions SET
   report_viewed_at = COALESCE(report_viewed_at, now())
 WHERE id = $1 AND therapist_id = $2
   AND status = 'COMPLETED' AND deleted_at IS NULL;
+
+-- name: GetAudioUploadSize :one
+SELECT file_size_bytes FROM audio_uploads WHERE id = $1;
+

@@ -556,7 +556,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get session_status_success => 'Gotowe!';
 
   @override
-  String get session_status_back_to_records => 'Wróć do kartotek';
+  String get session_status_back_to_records => 'Zamknij ekran';
 
   @override
   String get session_loading =>

@@ -49,32 +49,38 @@ Future<bool> confirmAndCancelUpload(
   );
   if (confirmed != true) return false;
 
-  // 1. Server-side cancel (best-effort — never blocks local cleanup).
-  if (sessionId != null && sessionId.isNotEmpty) {
+  // 1. Drop the local upload-queue row first so the UI updates instantly.
+  if (localId != null) {
     try {
-      if (patientFileId != null && patientFileId.isNotEmpty) {
-        // Cache-aware path: also drops the row from the patient's
-        // cached session list so the kartoteka updates immediately.
-        await ref
-            .read(sessionsProvider.notifier)
-            .cancelSession(patientFileId, sessionId);
-      } else {
-        // No patient context (session-only screen): just fire the RPC.
-        // ListSessions will exclude the CANCELLED_BY_USER row on the
-        // next kartoteka load.
-        await ref.read(grpcClientsProvider).clinical.cancelSession(
-              grpc_clinical.CancelSessionRequest(sessionId: sessionId),
-            );
-      }
+      final runner = await ref.read(uploadQueueRunnerProvider.future);
+      await runner?.dismiss(localId);
     } catch (e) {
-      debugPrint('[cancel-upload] CancelSession failed (continuing): $e');
+      debugPrint('[cancel-upload] local dismiss failed: $e');
     }
   }
 
-  // 2. Drop the local upload-queue row.
-  if (localId != null) {
-    final runner = await ref.read(uploadQueueRunnerProvider.future);
-    await runner?.dismiss(localId);
+  // 2. Server-side cancel (best-effort — asynchronously in the background, never blocks).
+  if (sessionId != null && sessionId.isNotEmpty) {
+    // We do not await the server call so that the UI updates immediately
+    // even on slow or offline connections.
+    Future(() async {
+      try {
+        if (patientFileId != null && patientFileId.isNotEmpty) {
+          // Cache-aware path: also drops the row from the patient's
+          // cached session list so the kartoteka updates immediately.
+          await ref
+              .read(sessionsProvider.notifier)
+              .cancelSession(patientFileId, sessionId);
+        } else {
+          // No patient context (session-only screen): just fire the RPC.
+          await ref.read(grpcClientsProvider).clinical.cancelSession(
+                grpc_clinical.CancelSessionRequest(sessionId: sessionId),
+              );
+        }
+      } catch (e) {
+        debugPrint('[cancel-upload] Server-side CancelSession failed (continuing): $e');
+      }
+    });
   }
 
   if (context.mounted) {
@@ -176,45 +182,49 @@ class _CancelConfirmSheetState extends State<_CancelConfirmSheet> {
         Row(
           children: [
             Expanded(
-              child: TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 54,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: EuphireColors.mist,
                     side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
                   ),
-                ),
-                child: Text(
-                  widget.l.cancel_session_keep,
-                  style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: EuphireColors.mist,
+                  child: Text(
+                    widget.l.cancel_session_keep,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: ElevatedButton(
-                onPressed: () => setState(() => _showDoubleConfirm = true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: EuphireColors.magma,
-                  foregroundColor: EuphireColors.frostWhite,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: () => setState(() => _showDoubleConfirm = true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: EuphireColors.magma,
+                    foregroundColor: EuphireColors.frostWhite,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Usuń z analizy',
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                  child: const Text(
+                    'Usuń z analizy',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -280,44 +290,49 @@ class _CancelConfirmSheetState extends State<_CancelConfirmSheet> {
         Row(
           children: [
             Expanded(
-              child: TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 54,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: EuphireColors.mist,
                     side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  'Wróć',
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: EuphireColors.mist,
+                  child: const Text(
+                    'Wróć',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: EuphireColors.magma,
-                  foregroundColor: EuphireColors.frostWhite,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: EuphireColors.magma,
+                    foregroundColor: EuphireColors.frostWhite,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    elevation: 0,
                   ),
-                ),
-                child: Text(
-                  widget.l.cancel_session_confirm_action,
-                  style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                  child: Text(
+                    widget.l.cancel_session_confirm_action,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

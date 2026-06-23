@@ -23,6 +23,7 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../utils/haptics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -38,11 +39,16 @@ import '../theme/euphire_theme.dart';
 import '../uploads/cancel_upload_action.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
-import '../widgets/euphire_action_sheet.dart';
-import '../widgets/euphire_bottom_sheet.dart';
+import '../models/session.dart';
+import '../providers/patient_provider.dart';
+
 import '../widgets/euphire_session_status_stepper.dart';
 import 'home_screen.dart';
 import 'transcript_screen.dart';
+
+/// Error classification for the failure view — 3 buckets cover
+/// all possible errors without per-error copy.
+enum _ErrorBucket { upload, processing, unknown }
 
 class SessionStatusScreen extends ConsumerStatefulWidget {
   /// The server-side session UUID. Optional — when launched via
@@ -114,6 +120,13 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     if (widget.sessionId != null) {
       _resolvedSessionId = widget.sessionId;
       _startListeners();
+      // Immediate check for sessions that are already terminal (e.g.
+      // user tapped a FAILED card from kartoteka). Firestore won't
+      // fire a new event for an already-written terminal status.
+      _pollClinicalSvc();
+      // Also check sessionsProvider — covers debug-sim injections
+      // AND locally-cached sessions from a previous Firestore sync.
+      _checkCachedSessionStatus();
     }
   }
 
@@ -153,6 +166,36 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     }
   }
 
+  /// Synchronous check against the in-memory sessions cache (which
+  /// includes debug-sim injected sessions). If the session is already
+  /// in a terminal state, skip the async listener/poll wait.
+  void _checkCachedSessionStatus() {
+    final sid = _resolvedSessionId;
+    if (sid == null || _routedAway || _failureShown) return;
+    final sessionsMap = ref.read(sessionsProvider).value;
+    if (sessionsMap == null) return;
+    for (final sessions in sessionsMap.values) {
+      for (final s in sessions) {
+        if (s.id == sid) {
+          if (s.status == SessionStatus.error && !_failureShown) {
+            _failureShown = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() => _phase = SessionStepperPhase.failed);
+              }
+            });
+          } else if (s.status == SessionStatus.completed && !_routedAway) {
+            _routedAway = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _runSuccessCascade();
+            });
+          }
+          return;
+        }
+      }
+    }
+  }
+
   void _startListeners() {
     final sid = _resolvedSessionId;
     if (sid == null) return; // queue-mode: not ready yet
@@ -188,13 +231,14 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     }
 
     // Failure surface: queue worker classified the upload as
-    // terminal-failed. Show the existing failure sheet with the
-    // worker's lastError so the user sees what actually happened.
+    // terminal-failed. Route to the inline _buildFailureView via
+    // _phase = failed (build() switches on it).
     if (row.phase == UploadPhase.failed &&
         !_failureShown &&
         !_routedAway) {
       _failureShown = true;
-      _scheduleFailureSheet(reason: row.lastError);
+      _failureReason = row.lastError;
+      if (mounted) setState(() => _phase = SessionStepperPhase.failed);
       return;
     }
 
@@ -231,6 +275,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   }
 
   void _onState(SessionState s) {
+    if (_failureShown || _routedAway) return; // Do not override terminal states!
     final phase = s.status.toStepperPhase();
     if (mounted) setState(() => _phase = phase);
     _resetFallbackTimer();
@@ -258,12 +303,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       _dismissFailureSheet();
       _runSuccessCascade();
     } else if (phase == SessionStepperPhase.failed && !_failureShown && !_routedAway) {
-      // Delay showing failure to allow for pipeline retries.
-      // Pub/Sub can retry a failed message while a new (valid) upload
-      // is being processed — showing the error immediately would flash
-      // a false failure.
+      // The inline _buildFailureView renders automatically via the
+      // build() routing (phase == failed). No bottom sheet needed —
+      // the inline view is persistent and can't be accidentally dismissed.
       _failureShown = true;
-      _scheduleFailureSheet();
     }
   }
 
@@ -292,7 +335,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         _runSuccessCascade();
       } else if (status == 'FAILED' && !_failureShown && !_routedAway) {
         _failureShown = true;
-        _scheduleFailureSheet();
+        if (mounted) setState(() => _phase = SessionStepperPhase.failed);
       } else {
         _resetFallbackTimer();
       }
@@ -364,41 +407,12 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   Timer? _failureDelayTimer;
   String? _failureReason;
 
-  void _scheduleFailureSheet({String? reason}) {
-    _failureReason = reason;
-    _failureDelayTimer?.cancel();
-    _failureDelayTimer = Timer(const Duration(seconds: 5), () {
-      if (_routedAway) return; // success arrived in the meantime
-      _showFailureSheet();
-    });
-  }
-
   void _dismissFailureSheet() {
     _failureDelayTimer?.cancel();
-    // Pop the failure sheet if it's currently shown
+    // Pop the failure sheet if it's currently shown (legacy path)
     if (_failureShown && mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
-  }
-
-  Future<void> _showFailureSheet() async {
-    if (!mounted || _routedAway) return;
-    final t = AppLocalizations.of(context);
-    final reason = _failureReason;
-    await showEuphireBottomSheet<void>(
-      context: context,
-      isDismissible: true, // Allow user to dismiss and wait
-      builder: (ctx) => EuphireActionSheet(
-        header: t.session_failed_header,
-        body: reason != null && reason.isNotEmpty
-            ? '${t.session_failed_body}\n\n$reason'
-            : t.session_failed_body,
-        primary: EuphireSheetAction(
-          label: t.session_failed_primary,
-          onPressed: () => Navigator.of(ctx).pop(),
-        ),
-      ),
-    );
   }
 
   void _navigateBackToRecords() {
@@ -429,6 +443,36 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
           .whenData(_onQueueSnapshot);
     }
 
+    // Resolve details for the top card
+    final sessionsMap = ref.watch(sessionsProvider).value;
+    Session? session;
+    if (sessionsMap != null && _resolvedSessionId != null) {
+      for (final list in sessionsMap.values) {
+        for (final s in list) {
+          if (s.id == _resolvedSessionId) {
+            session = s;
+            break;
+          }
+        }
+        if (session != null) break;
+      }
+    }
+
+    final patients = ref.watch(patientsProvider).value;
+    final patientId = _lastRow?.patientFileId ?? session?.patientId;
+    final patient = patients?.where((p) => p.id == patientId).firstOrNull;
+    final patientName = patient != null ? '${patient.firstName} ${patient.lastName}' : 'Pacjent';
+
+    final date = session?.date ?? _lastRow?.queuedAt.toLocal() ?? DateTime.now();
+    final formattedTime = DateFormat('HH:mm').format(date);
+    final formattedDate = DateFormat('d MMMM yyyy', 'pl').format(date);
+
+    final duration = session?.duration ?? Duration(seconds: _lastRow?.actualDurationSeconds ?? 0);
+    final minutes = (duration.inSeconds / 60).toStringAsFixed(0);
+
+    final sizeBytes = _lastRow?.sizeBytes ?? ((session?.fileSizeBytes != null && session!.fileSizeBytes > 0) ? session.fileSizeBytes : null);
+    final formattedSize = sizeBytes != null ? '${(sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB' : null;
+
     return Scaffold(
       backgroundColor: EuphireColors.evergreen,
       body: Container(
@@ -456,41 +500,22 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                     // or we resolved a server session_id. Confirm →
                     // CancelSession (CANCELLED_BY_USER + token release)
                     // → leave this screen.
-                    if (!_showCheck && _canCancel)
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: _onCancelPressed,
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: EuphireColors.magma.withValues(alpha: 0.25),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: EuphireColors.magma.withValues(alpha: 0.5)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.cancel_outlined, size: 18, color: EuphireColors.magma),
-                                const SizedBox(width: 6),
-                                const Text(
-                                  'Usuń z analizy',
-                                  style: TextStyle(
-                                    fontFamily: 'Montserrat',
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: EuphireColors.magma,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ),
+
+              // ── Recording Details Card ──
+              if (!_showCheck) ...[
+                _buildRecordingDetailsCard(
+                  session,
+                  patientName,
+                  formattedTime,
+                  formattedDate,
+                  minutes,
+                  formattedSize,
+                ),
+                const SizedBox(height: 8),
+              ],
 
               // ── Main content ──
               Expanded(
@@ -498,7 +523,9 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 28),
                   child: _showCheck
                       ? _buildSuccessView(t)
-                      : _buildProcessingView(t),
+                      : _phase == SessionStepperPhase.failed
+                          ? _buildFailureView(t)
+                          : _buildProcessingView(t),
                 ),
               ),
 
@@ -515,24 +542,51 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                       // is off; this is the only way to re-attempt once the
                       // plan tops up. Filled style so it reads as the
                       // primary action, above the secondary "back" link.
-                      if (_isQuotaBlocked) ...[
+                      if (_isQuotaBlocked || _phase == SessionStepperPhase.failed) ...[
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton.icon(
                             onPressed: _onResendPressed,
                             icon: const Icon(Icons.refresh_rounded, size: 20),
-                            label: Text(t.upload_resend),
+                            label: Text(_isQuotaBlocked ? t.upload_resend : 'Spróbuj ponownie'),
                             style: FilledButton.styleFrom(
                               backgroundColor: EuphireColors.ember,
                               foregroundColor: EuphireColors.obsidianBlack,
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(5),
                               ),
                               textStyle: const TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (_phase == SessionStepperPhase.failed) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _onCancelPressed,
+                            icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                            label: const Text('Usuń sesję'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: EuphireColors.magma,
+                              side: BorderSide(
+                                color: EuphireColors.magma.withValues(alpha: 0.35),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              textStyle: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
                                 letterSpacing: 0.3,
                               ),
                             ),
@@ -556,7 +610,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                               vertical: 16,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(5),
                             ),
                             textStyle: const TextStyle(
                               fontFamily: 'Montserrat',
@@ -628,95 +682,14 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
           quotaBlocked: _lastRow?.phase == UploadPhase.quotaBlocked,
         ),
         const SizedBox(height: 16),
-        // ── Live upload progress (resumable chunked PUT) ──
-        // Shown whenever the bytes are still going up (phase=created),
-        // INDEPENDENT of _resolvedSessionId — under Option E the session_id
-        // arrives at CreateAudioUpload (so the screen "hands off" to the
-        // server listeners) while the actual PUT is still in flight.
-        if (_lastRow?.phase == UploadPhase.created && !_isQuotaBlocked)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 48),
-            child: Column(
-              children: [
-                Text(
-                  _lastRow!.uploadProgress > 0
-                      ? 'Przesyłam plik na serwer...'
-                      : 'Przygotowuję wysyłkę...',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'RobotoMono',
-                    fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.7),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: _lastRow!.uploadProgress > 0
-                        ? _lastRow!.uploadProgress.clamp(0.0, 1.0)
-                        : null,
-                    minHeight: 6,
-                    backgroundColor: Colors.white.withValues(alpha: 0.1),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                        EuphireColors.ember),
-                  ),
-                ),
-                if (_lastRow!.uploadProgress > 0) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    '${(_lastRow!.uploadProgress * 100).clamp(0, 100).toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      fontFamily: 'RobotoMono',
-                      fontSize: 11,
-                      color: Colors.white.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        // ── Queue-state diagnostic ──
-        // Only shown while we're in the upload phase (sessionId hasn't
-        // materialised yet) AND not quota-blocked (the stepper step-1
-        // label already says "Pula tokenów wyczerpana", so the mono
-        // diagnostic would just duplicate it).
-        if (_lastRow != null && _resolvedSessionId == null && !_isQuotaBlocked)
+        if (_lastRow != null && !_isQuotaBlocked && 
+            (_lastRow!.phase == UploadPhase.created || 
+             _lastRow!.phase == UploadPhase.pending ||
+             _lastRow!.phase == UploadPhase.encrypting ||
+             _lastRow!.phase == UploadPhase.converting))
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              children: [
-                Text(
-                  _queuePhaseLabel(_lastRow!),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'RobotoMono',
-                    fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.7),
-                  ),
-                ),
-                // (The upload progress bar renders above, under the stepper —
-                // it must show during phase=created regardless of
-                // _resolvedSessionId, which is already set by then.)
-                const SizedBox(height: 10),
-                // Reassurance: the row is durable in the upload queue, so
-                // the user can leave without losing the session. This
-                // directly answers the "what do I do to not lose it / no
-                // info" confusion on the long processing/upload wait.
-                Text(
-                  'Możesz bezpiecznie opuścić ten ekran, '
-                  'sesja przetworzy się w tle.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Merriweather',
-                    fontSize: 12,
-                    height: 1.5,
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
-            ),
+            child: _UploadProgressCard(upload: _lastRow!),
           ),
         // Resend lives in the bottom button area (below) so it never
         // overlaps "Wróć do kartotek". The raw gRPC last-error text used
@@ -739,7 +712,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   /// something to cancel — a local queue row (drop it) and/or a server
   /// session (CancelSession). Not gated on a session_id, so quota-blocked
   /// rows (no session_id) still get the bin.
-  /// Whether the "Usuń z analizy" control is shown.
+  /// Whether the trash icon (cancel) action is shown.
   ///
   /// Only while the audio is still WAITING LOCALLY — queued / mid-upload
   /// (pending, created) or parked on a quota hold. Once the bytes are in
@@ -753,6 +726,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       case UploadPhase.converting:
       case UploadPhase.pending:
       case UploadPhase.created:
+      case UploadPhase.failed:
       case UploadPhase.quotaBlocked:
         return true;
       default:
@@ -786,39 +760,169 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     await runner?.resend(localId);
   }
 
-  String _queuePhaseLabel(PendingUpload u) {
-    final t = AppLocalizations.of(context);
-    final attempt = u.attemptCount > 0 ? ' • próba ${u.attemptCount + 1}' : '';
+  // ── Failure View ─────────────────────────────────────────────────
+  // Three error buckets — the classifier maps every possible error
+  // to exactly one bucket, so we never need per-error copy.
+  //
+  //   upload     – connection / timeout / local queue failure
+  //   processing – server-side STT / LLM pipeline error
+  //   unknown    – catch-all (shouldn't happen, but solid UX)
 
-    // Upload interrupted — worker will auto-retry
-    final isRetrying = u.lastError != null &&
-        u.attemptCount > 0 &&
-        !u.isTerminal &&
-        !u.isParked;
-    if (isRetrying) {
-      return 'Wznawianie przesyłania...$attempt';
-    }
 
-    switch (u.phase) {
-      case UploadPhase.encrypting:
-        return 'Szyfrowanie nagrania...$attempt';
-      case UploadPhase.converting:
-        return 'Konwersja pliku audio...$attempt';
-      case UploadPhase.pending:
-        return 'W kolejce$attempt';
-      case UploadPhase.created:
-        return 'Przesyłam na serwer...$attempt';
-      case UploadPhase.uploaded:
-        return 'Plik na serwerze, finalizuję...$attempt';
-      case UploadPhase.converted:
-        return 'Konwersja gotowa, finalizuję...$attempt';
-      case UploadPhase.completed:
-        return 'Wgrane';
-      case UploadPhase.failed:
-        return 'Nie udało się wgrać';
-      case UploadPhase.quotaBlocked:
-        return t.quota_blocked_queue_label;
+  _ErrorBucket _classifyError() {
+    final row = _lastRow;
+    // Queue-based: classify from the phase the failure occurred in.
+    if (row != null) {
+      switch (row.phase) {
+        case UploadPhase.encrypting:
+        case UploadPhase.converting:
+        case UploadPhase.pending:
+        case UploadPhase.created:
+          return _ErrorBucket.upload;
+        case UploadPhase.uploaded:
+        case UploadPhase.converted:
+        case UploadPhase.completed:
+        case UploadPhase.failed:
+        case UploadPhase.quotaBlocked:
+          break; // fall through to heuristic
+      }
+      // Heuristic on lastError string for queue rows in ambiguous phases.
+      final err = (row.lastError ?? '').toLowerCase();
+      if (err.contains('network') ||
+          err.contains('connection') ||
+          err.contains('timeout') ||
+          err.contains('socket') ||
+          err.contains('dns') ||
+          err.contains('tls') ||
+          err.contains('ssl') ||
+          err.contains('upload')) {
+        return _ErrorBucket.upload;
+      }
     }
+    // Heuristic on _failureReason (set by queue snapshot or poll).
+    final reason = (_failureReason ?? '').toLowerCase();
+    if (reason.contains('network') ||
+        reason.contains('connection') ||
+        reason.contains('timeout') ||
+        reason.contains('socket')) {
+      return _ErrorBucket.upload;
+    }
+    // Server-side failure (Firestore-driven or poll-driven) → processing.
+    if (_resolvedSessionId != null) {
+      return _ErrorBucket.processing;
+    }
+    return _ErrorBucket.unknown;
+  }
+
+  Widget _buildFailureView(AppLocalizations t) {
+    final bucket = _classifyError();
+
+    // 3 templates — natural, calming, actionable.
+    final (IconData icon, String title, String body) = switch (bucket) {
+      _ErrorBucket.upload => (
+          Icons.wifi_off_rounded,
+          'Przesyłanie zatrzymane',
+          'Wystąpił problem z połączeniem sieciowym.\n\n'
+              'Nagranie jest bezpieczne na Twoim urządzeniu. '
+              'System wznowi przesyłanie, gdy odzyskasz zasięg.',
+        ),
+      _ErrorBucket.processing => (
+          Icons.sync_problem_rounded,
+          'Przetwarzanie zatrzymane',
+          'Proces tworzenia raportu napotkał trudność.\n\n'
+              'Nagranie z sesji jest bezpieczne. Znajdziesz je w kartotece klienta. '
+              'Spróbuj ponowić analizę za jakiś czas.',
+        ),
+      _ErrorBucket.unknown => (
+          Icons.help_outline_rounded,
+          'Przetwarzanie przerwane',
+          'Nie udało się wygenerować raportu dla tej sesji.\n\n'
+              'Twoje nagranie jest bezpieczne w kartotece klienta. '
+              'Jeśli sytuacja się powtarza, daj nam znać.',
+        ),
+    };
+
+    return Column(
+      children: [
+        const Spacer(flex: 2),
+        // ── Icon ──
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOutBack,
+          builder: (context, value, child) => Transform.scale(
+            scale: value,
+            child: child,
+          ),
+          child: Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              color: EuphireColors.ember.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: EuphireColors.ember.withValues(alpha: 0.2),
+                width: 1.5,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 40,
+              color: EuphireColors.ember.withValues(alpha: 0.8),
+            ),
+          ),
+        ),
+        const SizedBox(height: 28),
+        // ── Title ──
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOut,
+          builder: (context, value, child) => Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, 12 * (1 - value)),
+              child: child,
+            ),
+          ),
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: EuphireColors.frostWhite,
+              height: 1.3,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // ── Body ──
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOut,
+          builder: (context, value, child) => Opacity(
+            opacity: value,
+            child: child,
+          ),
+          child: Text(
+            body,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: EuphireColors.mist.withValues(alpha: 0.85),
+              height: 1.6,
+            ),
+          ),
+        ),
+        const Spacer(flex: 3),
+      ],
+    );
   }
 
   Widget _buildSuccessView(AppLocalizations t) {
@@ -891,6 +995,277 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordingDetailsCard(
+    Session? session,
+    String patientName,
+    String formattedTime,
+    String formattedDate,
+    String minutes,
+    String? formattedSize,
+  ) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 28, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.person_outline_rounded,
+                size: 20,
+                color: EuphireColors.ember.withValues(alpha: 0.8),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  patientName,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: EuphireColors.frostWhite,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Divider(color: Colors.white10, height: 1),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              // Time & Date
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.access_time_rounded,
+                    size: 14,
+                    color: EuphireColors.mist.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$formattedTime  •  $formattedDate',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: EuphireColors.mist.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+              // Duration
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.timer_outlined,
+                    size: 14,
+                    color: EuphireColors.mist.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$minutes min',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: EuphireColors.mist.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+              if (formattedSize != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.audiotrack_rounded,
+                      size: 14,
+                      color: EuphireColors.mist.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      formattedSize,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: EuphireColors.mist.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Upload Progress Card ─────────────────────────────────────────
+
+class _UploadProgressCard extends StatelessWidget {
+  const _UploadProgressCard({required this.upload});
+  final PendingUpload upload;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUploading = upload.phase == UploadPhase.created;
+    final mb = (upload.sizeBytes / 1024 / 1024).toStringAsFixed(1);
+    final mins = (upload.actualDurationSeconds / 60).toStringAsFixed(0);
+    // e.g. "audio/flac" -> "flac", or keep full "audio/flac" if preferred. The plan says "audio/flac".
+    final cType = upload.contentType.isNotEmpty ? upload.contentType : 'audio';
+    final time = DateFormat('HH:mm').format(upload.queuedAt.toLocal());
+
+    return Container(
+      decoration: EuphireColors.glassDecoration(
+        surfaceOpacity: 0.05,
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header Row
+          Row(
+            children: [
+              Icon(
+                isUploading ? Icons.cloud_upload_rounded : Icons.schedule_rounded,
+                color: EuphireColors.ember,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  isUploading ? 'Przesyłanie na serwer' : 'W kolejce do przesłania',
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: EuphireColors.frostWhite,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          if (isUploading) ...[
+            const SizedBox(height: 20),
+            // Progress Bar Row
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: upload.uploadProgress > 0
+                          ? upload.uploadProgress.clamp(0.0, 1.0)
+                          : null,
+                      minHeight: 6,
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      valueColor: const AlwaysStoppedAnimation<Color>(EuphireColors.ember),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 36,
+                  child: Text(
+                    '${(upload.uploadProgress * 100).clamp(0, 100).toStringAsFixed(0)}%',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: EuphireColors.mist.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          
+          const SizedBox(height: 20),
+          
+          // Details Sub-card
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: EuphireColors.obsidianBlack.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Icon(
+                    Icons.audiotrack_rounded,
+                    size: 14,
+                    color: EuphireColors.mist.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$mb MB  •  $mins min',
+                        style: TextStyle(
+                          fontFamily: 'RobotoMono',
+                          fontSize: 11,
+                          color: EuphireColors.mist.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$cType  •  $time',
+                        style: TextStyle(
+                          fontFamily: 'RobotoMono',
+                          fontSize: 11,
+                          color: EuphireColors.mist.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 20),
+          
+          // Reassurance Text
+          Text(
+            'Możesz bezpiecznie opuścić ten ekran,\nsesja przetworzy się w tle.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Merriweather',
+              fontSize: 12,
+              height: 1.5,
+              color: Colors.white.withValues(alpha: 0.5),
             ),
           ),
         ],

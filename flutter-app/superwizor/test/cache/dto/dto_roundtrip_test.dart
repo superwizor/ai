@@ -55,6 +55,7 @@ void main() {
         audioUploadId: 'au-1',
         speakerLabelMapping: const {'1': 'Therapist', '2': 'Client'},
         reportViewedAt: DateTime.utc(2026, 5, 21, 10, 0, 0),
+        fileSizeBytes: 1048576,
       );
       final json = jsonDecode(jsonEncode(original.toJson())) as Map<String, dynamic>;
       final decoded = SessionDto.fromJson(json);
@@ -64,9 +65,10 @@ void main() {
       expect(decoded.status, 'COMPLETED');
       expect(decoded.speakerLabelMapping, original.speakerLabelMapping);
       expect(decoded.reportViewedAt?.toUtc(), original.reportViewedAt?.toUtc());
+      expect(decoded.fileSizeBytes, original.fileSizeBytes);
       // field-count guard — bump this when adding a new DTO field so
       // toJson/fromJson are updated in lockstep.
-      expect(json.length, 11,
+      expect(json.length, 12,
           reason: 'field-count guard — add toJson/fromJson coverage for new fields');
     });
 

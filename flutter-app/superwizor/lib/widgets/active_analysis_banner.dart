@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../screens/pending_uploads_screen.dart';
+import '../screens/session_status_screen.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
@@ -33,10 +34,14 @@ class ActiveAnalysisBanner extends ConsumerWidget {
     if (list.isEmpty) return const SizedBox.shrink();
 
     // ── Classify rows by state ──────────────────────────────────
-    final hasFailure = list.any((u) => u.phase == UploadPhase.failed);
-    final hasQuotaBlocked =
-        list.any((u) => u.phase == UploadPhase.quotaBlocked);
+    final failures = list.where((u) => u.phase == UploadPhase.failed).toList();
+    final hasFailure = failures.isNotEmpty;
+    final quotaBlocked = list.where((u) => u.phase == UploadPhase.quotaBlocked).toList();
+    final hasQuotaBlocked = quotaBlocked.isNotEmpty;
     final allCompleted = list.every((u) => u.phase == UploadPhase.completed);
+    
+    final inProgressCount = list.length - failures.length - quotaBlocked.length;
+    final isMixedErrorState = hasFailure && inProgressCount > 0;
 
     final encrypting =
         list.where((u) => u.phase == UploadPhase.encrypting).toList();
@@ -61,21 +66,50 @@ class ActiveAnalysisBanner extends ConsumerWidget {
     // Pick the highest-priority upload progress for the bar
     final double? progress = hasActiveUpload
         ? uploading.map((u) => u.uploadProgress).reduce(math.max)
+        : hasEncrypting || hasConverting
+            ? null  // indeterminate for encrypting/converting
         : null;
+
+    // Session details summary for the badge
+    final totalBytes = list.fold<int>(0, (s, u) => s + u.sizeBytes);
+    final totalMb = (totalBytes / 1024 / 1024).toStringAsFixed(1);
+    // For single upload, show duration; for multiple, show count
+    final singleUpload = list.length == 1 ? list.first : null;
+    final String detailsBadge;
+    if (singleUpload != null) {
+      final mins = (singleUpload.actualDurationSeconds / 60).toStringAsFixed(0);
+      detailsBadge = '$totalMb MB${singleUpload.actualDurationSeconds > 0 ? ' • $mins min' : ''}';
+    } else {
+      detailsBadge = '${list.length} sesje • $totalMb MB';
+    }
 
     // ── Determine copy — priority order: failure > quota > retry >
     //    encrypting > converting > uploading > analyzing > mixed ──
     final _BannerContent content;
-    if (hasFailure) {
+    if (isMixedErrorState) {
       content = _BannerContent(
         icon: Icons.error_outline_rounded,
-        iconColor: EuphireColors.magma,
+        iconColor: EuphireColors.ember,
+        headline: 'Wgrywanie: ${failures.length} błąd, $inProgressCount w toku.',
+        body: 'Część plików wymaga uwagi, ale przesyłanie reszty trwa bez zakłóceń.',
+        ctaLabel: 'Sprawdź szczegóły',
+        accentColor: EuphireColors.ember,
+        borderColor: EuphireColors.ember,
+        showProgress: true,
+        progressValue: progress,
+        isError: true,
+      );
+    } else if (hasFailure) {
+      content = _BannerContent(
+        icon: Icons.error_outline_rounded,
+        iconColor: EuphireColors.ember,
         headline: 'Przesyłanie wymaga uwagi.',
         body:
-            'Sesja nie mogła zostać wgrana. Sprawdź szczegóły — nagranie jest bezpiecznie zapisane na urządzeniu.',
+            'Sesja nie mogła zostać wgrana. Sprawdź szczegóły.',
         ctaLabel: 'Sprawdź szczegóły',
-        accentColor: EuphireColors.magma,
-        borderColor: EuphireColors.magma,
+        accentColor: EuphireColors.ember,
+        borderColor: EuphireColors.ember,
+        isError: true,
       );
     } else if (hasQuotaBlocked) {
       content = _BannerContent(
@@ -165,14 +199,28 @@ class ActiveAnalysisBanner extends ConsumerWidget {
       child: _BannerCard(
         content: content,
         count: list.length,
+        detailsBadge: detailsBadge,
         onTap: () {
           ref.read(analyticsCollectorProvider).track(
             'analysis_banner.tapped',
             properties: {'pending_count': list.length},
           );
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => const PendingUploadsScreen(),
-          ));
+          // Smart routing: 1 file → direct to SessionStatusScreen
+          if (list.length == 1) {
+            final single = list.first;
+            final hasSessionId =
+                single.sessionId != null && single.sessionId!.isNotEmpty;
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => SessionStatusScreen(
+                sessionId: hasSessionId ? single.sessionId : null,
+                localId: hasSessionId ? null : single.localId,
+              ),
+            ));
+          } else {
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const PendingUploadsScreen(),
+            ));
+          }
         },
       ),
     );
@@ -191,6 +239,7 @@ class _BannerContent {
   final Color borderColor;
   final bool showProgress;
   final double? progressValue;
+  final bool isError;
 
   const _BannerContent({
     required this.icon,
@@ -202,6 +251,7 @@ class _BannerContent {
     required this.borderColor,
     this.showProgress = false,
     this.progressValue,
+    this.isError = false,
   });
 }
 
@@ -210,11 +260,13 @@ class _BannerContent {
 class _BannerCard extends StatefulWidget {
   final _BannerContent content;
   final int count;
+  final String detailsBadge;
   final VoidCallback onTap;
 
   const _BannerCard({
     required this.content,
     required this.count,
+    required this.detailsBadge,
     required this.onTap,
   });
 
@@ -255,8 +307,8 @@ class _BannerCardState extends State<_BannerCard>
         return Container(
           decoration: BoxDecoration(
             // Glass surface
-            color: c.borderColor == EuphireColors.magma
-                ? EuphireColors.magma.withValues(alpha: 0.06)
+            color: c.isError
+                ? EuphireColors.ember.withValues(alpha: 0.05)
                 : EuphireColors.evergreen.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
@@ -315,8 +367,12 @@ class _BannerCardState extends State<_BannerCard>
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Animated activity dot
-                    _ActivityIndicator(color: c.iconColor),
+                    // Animated cloud upload icon
+                    _AnimatedUploadIcon(
+                      color: c.iconColor,
+                      isError: c.isError,
+                      icon: c.icon,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -383,41 +439,89 @@ class _BannerCardState extends State<_BannerCard>
                   ],
                 ],
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-                // CTA button
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: c.accentColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: c.accentColor.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          c.ctaLabel,
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: c.accentColor,
+                // Balanced bottom Row
+                SizedBox(
+                  width: double.infinity,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Session details badge
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.audiotrack_rounded,
+                                size: 14,
+                                color: EuphireColors.mist.withValues(alpha: 0.4),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  widget.detailsBadge,
+                                  style: TextStyle(
+                                    fontFamily: 'RobotoMono',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color:
+                                        EuphireColors.mist.withValues(alpha: 0.7),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 11,
-                          color: c.accentColor,
+                      ),
+                      const SizedBox(width: 12),
+                      // CTA button
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: c.accentColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: c.accentColor.withValues(alpha: 0.3),
+                            width: 1,
+                          ),
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              c.ctaLabel,
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: c.accentColor,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 12,
+                              color: c.accentColor,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -429,72 +533,138 @@ class _BannerCardState extends State<_BannerCard>
   }
 }
 
-// ─── Animated activity dot (breathing pulse, not spinner) ─────────
+// ─── Animated cloud upload icon ───────────────────────────────────
 
-class _ActivityIndicator extends StatefulWidget {
+class _AnimatedUploadIcon extends StatefulWidget {
   final Color color;
-  const _ActivityIndicator({required this.color});
+  final bool isError;
+  final IconData icon;
+  const _AnimatedUploadIcon({
+    required this.color,
+    this.isError = false,
+    required this.icon,
+  });
 
   @override
-  State<_ActivityIndicator> createState() => _ActivityIndicatorState();
+  State<_AnimatedUploadIcon> createState() => _AnimatedUploadIconState();
 }
 
-class _ActivityIndicatorState extends State<_ActivityIndicator>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+class _AnimatedUploadIconState extends State<_AnimatedUploadIcon>
+    with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late AnimationController _arrowController;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    // Pulse halo
+    _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 2000),
+    );
+    // Arrow slide up (for upload states)
+    _arrowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    if (!widget.isError) {
+      _pulseController.repeat(reverse: true);
+      _arrowController.repeat();
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _pulseController.dispose();
+    _arrowController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // For error states, show a static icon without animation
+    if (widget.isError) {
+      return Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: widget.color.withValues(alpha: 0.12),
+          border: Border.all(
+            color: widget.color.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Icon(
+          widget.icon,
+          size: 18,
+          color: widget.color,
+        ),
+      );
+    }
+
     return AnimatedBuilder(
-      animation: _controller,
+      animation: Listenable.merge([_pulseController, _arrowController]),
       builder: (context, _) {
-        final pulseScale = 1.0 + (_controller.value * 0.5);
-        final pulseOpacity = 0.15 + (_controller.value * 0.15);
+        final pulseOpacity = 0.08 + (_pulseController.value * 0.12);
+        final pulseScale = 1.0 + (_pulseController.value * 0.15);
+        // Arrow slides from 0 to -6px then fades out
+        final arrowOffset = -6.0 * _arrowController.value;
+        final arrowOpacity = _arrowController.value < 0.7
+            ? 1.0
+            : 1.0 - ((_arrowController.value - 0.7) / 0.3);
+
         return SizedBox(
-          width: 32,
-          height: 32,
+          width: 38,
+          height: 38,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Outer pulse ring
+              // Outer pulse halo
               Transform.scale(
                 scale: pulseScale,
                 child: Container(
-                  width: 24,
-                  height: 24,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: widget.color.withValues(alpha: pulseOpacity),
                   ),
                 ),
               ),
-              // Inner solid dot
+              // Inner icon circle
               Container(
-                width: 10,
-                height: 10,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: widget.color,
-                  boxShadow: [
-                    BoxShadow(
-                      color: widget.color.withValues(alpha: 0.4),
-                      blurRadius: 6,
+                  color: widget.color.withValues(alpha: 0.15),
+                  border: Border.all(
+                    color: widget.color.withValues(alpha: 0.25),
+                    width: 1,
+                  ),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Cloud icon (static)
+                    Icon(
+                      widget.icon,
+                      size: 16,
+                      color: widget.color,
                     ),
+                    // Animated upload arrow overlay
+                    if (widget.icon == Icons.cloud_upload_rounded)
+                      Positioned(
+                        bottom: 6 + arrowOffset.abs(),
+                        child: Opacity(
+                          opacity: arrowOpacity.clamp(0.0, 1.0),
+                          child: Icon(
+                            Icons.arrow_upward_rounded,
+                            size: 8,
+                            color: widget.color.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

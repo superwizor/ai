@@ -279,132 +279,139 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   Widget _buildStep1(AppLocalizations t) {
     final canProceed = _firstNameController.text.trim().isNotEmpty;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16),
-          // ── Header ──
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: EuphireColors.ember.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.person_add_rounded,
-                  color: EuphireColors.ember,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 16),
+                // ── Header ──
+                Row(
                   children: [
-                    Text(
-                      t.addPatient_title,
-                      style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: EuphireColors.frostWhite,
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: EuphireColors.ember.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.person_add_rounded,
+                        color: EuphireColors.ember,
+                        size: 24,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      t.addPatient_step1_subtitle,
-                      style: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 13,
-                        color: EuphireColors.mist.withValues(alpha: 0.7),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            t.addPatient_title,
+                            style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: EuphireColors.frostWhite,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            t.addPatient_step1_subtitle,
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 13,
+                              color: EuphireColors.mist.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 28),
+                const SizedBox(height: 28),
 
-          // ── First Name ──
-          GlassTextField(
-            controller: _firstNameController,
-            label: t.addPatient_first_name_label,
-            errorText: _duplicateError ? t.addPatient_duplicate_header : null,
-            autofocus: true,
-            focusNode: _firstNameFocus,
-            textInputAction: TextInputAction.next,
-            onSubmitted: (_) => _lastNameFocus.requestFocus(),
-          ),
-          const SizedBox(height: 12),
-
-          // ── Last Name ──
-          GlassTextField(
-            controller: _lastNameController,
-            label: t.addPatient_last_name_label,
-            errorText: _duplicateError ? '' : null,
-            focusNode: _lastNameFocus,
-            textInputAction: TextInputAction.next,
-            onSubmitted: (_) => _emailFocus.requestFocus(),
-          ),
-          const SizedBox(height: 12),
-
-          // ── Email (optional) ──
-          GlassTextField(
-            controller: _emailController,
-            label: t.addPatient_email_label,
-            hint: t.addPatient_email_hint,
-            keyboardType: TextInputType.emailAddress,
-            focusNode: _emailFocus,
-            // "Done" on the last text field — pressing it auto-advances
-            // to Step 2 when the first name (required field) is filled.
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) {
-              if (_firstNameController.text.trim().isNotEmpty) {
-                _goToPage(1);
-              }
-            },
-          ),
-          const SizedBox(height: 20),
-
-          // ── Language Dropdown ──
-          FormSectionLabel(text: t.addPatient_language_label),
-          const SizedBox(height: 8),
-          GlassDropdown<String>(
-            value: _languageCode,
-            items: const [
-              DropdownMenuItem(
-                value: 'pl-PL',
-                child: Row(
-                  children: [
-                    Text('🇵🇱', style: TextStyle(fontSize: 18)),
-                    SizedBox(width: 10),
-                    Text('Polski'),
-                  ],
+                // ── First Name ──
+                GlassTextField(
+                  controller: _firstNameController,
+                  label: t.addPatient_first_name_label,
+                  errorText: _duplicateError ? t.addPatient_duplicate_header : null,
+                  autofocus: true,
+                  focusNode: _firstNameFocus,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _lastNameFocus.requestFocus(),
                 ),
-              ),
-              DropdownMenuItem(
-                value: 'en-US',
-                child: Row(
-                  children: [
-                    Text('🇬🇧', style: TextStyle(fontSize: 18)),
-                    SizedBox(width: 10),
-                    Text('English'),
-                  ],
-                ),
-              ),
-            ],
-            onChanged: (v) => setState(() => _languageCode = v!),
-          ),
-          const SizedBox(height: 32),
+                const SizedBox(height: 12),
 
-          // ── CTA: Dalej ──
-          SizedBox(
+                // ── Last Name ──
+                GlassTextField(
+                  controller: _lastNameController,
+                  label: t.addPatient_last_name_label,
+                  errorText: _duplicateError ? '' : null,
+                  focusNode: _lastNameFocus,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _emailFocus.requestFocus(),
+                ),
+                const SizedBox(height: 12),
+
+                // ── Email (optional) ──
+                GlassTextField(
+                  controller: _emailController,
+                  label: t.addPatient_email_label,
+                  hint: t.addPatient_email_hint,
+                  keyboardType: TextInputType.emailAddress,
+                  focusNode: _emailFocus,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) {
+                    if (_firstNameController.text.trim().isNotEmpty) {
+                      _goToPage(1);
+                    }
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                // ── Language Dropdown ──
+                FormSectionLabel(text: t.addPatient_language_label),
+                const SizedBox(height: 8),
+                GlassDropdown<String>(
+                  value: _languageCode,
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'pl-PL',
+                      child: Row(
+                        children: [
+                          Text('🇵🇱', style: TextStyle(fontSize: 18)),
+                          SizedBox(width: 10),
+                          Text('Polski'),
+                        ],
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'en-US',
+                      child: Row(
+                        children: [
+                          Text('🇬🇧', style: TextStyle(fontSize: 18)),
+                          SizedBox(width: 10),
+                          Text('English'),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() => _languageCode = v!),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+        
+        // ── Sticky Bottom CTA: Dalej ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+          child: SizedBox(
             width: double.infinity,
             height: 52,
             child: AnimatedOpacity(
@@ -413,13 +420,13 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               child: EuphireButton(
                 text: t.addPatient_step1_next,
                 icon: Icons.arrow_forward_rounded,
+                iconOnRight: true,
                 onPressed: canProceed ? () => _goToPage(1) : null,
               ),
             ),
           ),
-          const SizedBox(height: 24),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -428,133 +435,142 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   Widget _buildStep2(AppLocalizations t) {
     final canSave = !_saving && _consentGiven;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16),
-          // ── Header ──
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: EuphireColors.ember.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.tune_rounded,
-                  color: EuphireColors.ember,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 16),
+                // ── Header ──
+                Row(
                   children: [
-                    Text(
-                      t.addPatient_step2_title,
-                      style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: EuphireColors.frostWhite,
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: EuphireColors.ember.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.tune_rounded,
+                        color: EuphireColors.ember,
+                        size: 24,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      t.addPatient_step2_subtitle,
-                      style: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 13,
-                        color: EuphireColors.mist.withValues(alpha: 0.7),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            t.addPatient_step2_title,
+                            style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: EuphireColors.frostWhite,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            t.addPatient_step2_subtitle,
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 13,
+                              color: EuphireColors.mist.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-          // ── Modality Selection (expanded list) ──
-          FormSectionLabel(text: t.addPatient_modality_label),
-          const SizedBox(height: 12),
-          ...kModalities.map((m) {
-            final isSelected = m.code == _modalityCode;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: GestureDetector(
-                onTap: () {
-                  AppHapticFeedback.selectionClick();
-                  setState(() => _modalityCode = m.code);
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? EuphireColors.ember.withValues(alpha: 0.12)
-                        : Colors.white.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isSelected
-                          ? EuphireColors.ember.withValues(alpha: 0.6)
-                          : Colors.white.withValues(alpha: 0.08),
-                      width: isSelected ? 1.5 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        m.icon,
-                        size: 20,
-                        color: isSelected
-                            ? EuphireColors.ember
-                            : EuphireColors.mist.withValues(alpha: 0.6),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _modalityDisplayName(context, m.code),
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 15,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w400,
+                // ── Modality Selection (expanded list) ──
+                FormSectionLabel(text: t.addPatient_modality_label),
+                const SizedBox(height: 12),
+                ...kModalities.map((m) {
+                  final isSelected = m.code == _modalityCode;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: GestureDetector(
+                      onTap: () {
+                        AppHapticFeedback.selectionClick();
+                        setState(() => _modalityCode = m.code);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? EuphireColors.ember.withValues(alpha: 0.12)
+                              : Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
                             color: isSelected
-                                ? EuphireColors.frostWhite
-                                : EuphireColors.mist,
+                                ? EuphireColors.ember.withValues(alpha: 0.6)
+                                : Colors.white.withValues(alpha: 0.08),
+                            width: isSelected ? 1.5 : 1,
                           ),
                         ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              m.icon,
+                              size: 20,
+                              color: isSelected
+                                  ? EuphireColors.ember
+                                  : EuphireColors.mist.withValues(alpha: 0.6),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _modalityDisplayName(context, m.code),
+                                style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 15,
+                                  fontWeight:
+                                      isSelected ? FontWeight.w600 : FontWeight.w400,
+                                  color: isSelected
+                                      ? EuphireColors.frostWhite
+                                      : EuphireColors.mist,
+                                ),
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(Icons.check_circle_rounded,
+                                  size: 20, color: EuphireColors.ember),
+                          ],
+                        ),
                       ),
-                      if (isSelected)
-                        const Icon(Icons.check_circle_rounded,
-                            size: 20, color: EuphireColors.ember),
-                    ],
-                  ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 20),
+
+                // ── Consent Checkbox ──
+                ConsentCheckbox(
+                  value: _consentGiven,
+                  onChanged: (v) => setState(() => _consentGiven = v),
+                  labelText: t.addPatient_consent_label,
+                  linkLabel: t.addPatient_consent_link_label,
+                  onLinkTap: _openDpa,
                 ),
-              ),
-            );
-          }),
-          const SizedBox(height: 20),
-
-          // ── Consent Checkbox ──
-          ConsentCheckbox(
-            value: _consentGiven,
-            onChanged: (v) => setState(() => _consentGiven = v),
-            labelText: t.addPatient_consent_label,
-            linkLabel: t.addPatient_consent_link_label,
-            onLinkTap: _openDpa,
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
-          const SizedBox(height: 28),
+        ),
 
-          // ── CTA: Utwórz kartotekę ──
-          SizedBox(
+        // ── Sticky Bottom CTA: Utwórz kartotekę ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+          child: SizedBox(
             width: double.infinity,
             height: 52,
             child: AnimatedOpacity(
@@ -568,222 +584,232 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   // ── Step 3: "Spersonalizuj oznaczenie" — Optional avatar customization ──
 
   Widget _buildStep3(AppLocalizations t) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          const SizedBox(height: 24),
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                const SizedBox(height: 24),
 
-          // ── Live preview avatar ──
-          Container(
-            width: 88,
-            height: 88,
-            decoration: BoxDecoration(
-              color: AvatarColors.fromIndex(_selectedColorIndex),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AvatarColors.fromIndex(_selectedColorIndex)
-                      .withValues(alpha: 0.4),
-                  blurRadius: 24,
-                  spreadRadius: 2,
+                // ── Live preview avatar ──
+                Container(
+                  width: 88,
+                  height: 88,
+                  decoration: BoxDecoration(
+                    color: AvatarColors.fromIndex(_selectedColorIndex),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AvatarColors.fromIndex(_selectedColorIndex)
+                            .withValues(alpha: 0.4),
+                        blurRadius: 24,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _avatarPreviewLabel,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.frostWhite,
+                    ),
+                  ),
                 ),
+                const SizedBox(height: 20),
+
+                // ── Title ──
+                const Text(
+                  'Spersonalizuj oznaczenie',
+                  style: TextStyle(
+                    fontFamily: 'Merriweather',
+                    fontStyle: FontStyle.italic,
+                    fontSize: 20,
+                    color: EuphireColors.frostWhite,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Nadaj klientowi unikalne oznaczenie — ułatwi nawigację.',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 13,
+                    color: EuphireColors.mist.withValues(alpha: 0.6),
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+
+                // ── Label input ──
+                SizedBox(
+                  width: 160,
+                  child: TextField(
+                    controller: _avatarLabelController,
+                    textAlign: TextAlign.center,
+                    maxLength: null,
+                    inputFormatters: [_GraphemeClusterLengthFormatter(2)],
+                    onChanged: (_) => setState(() {}),
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: EuphireColors.frostWhite,
+                      letterSpacing: 3,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: _defaultInitials,
+                      hintStyle: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 3,
+                        color: EuphireColors.mist.withValues(alpha: 0.25),
+                      ),
+                      counterText: '',
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.06),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide:
+                            BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide:
+                            BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide:
+                            const BorderSide(color: EuphireColors.ember, width: 1.5),
+                      ),
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Litery, cyfry lub emoji (max 2)',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 11,
+                    color: EuphireColors.mist.withValues(alpha: 0.4),
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // ── Color grid ──
+                Text(
+                  'KOLOR TŁA',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 1.5,
+                    color: EuphireColors.mist.withValues(alpha: 0.5),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 10,
+                  runSpacing: 12,
+                  children: List.generate(AvatarColors.palette.length, (i) {
+                    final isSelected = i == _selectedColorIndex;
+                    return GestureDetector(
+                      onTap: () {
+                        AppHapticFeedback.selectionClick();
+                        setState(() => _selectedColorIndex = i);
+                        _saveAvatarConfig();
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        width: isSelected ? 44 : 38,
+                        height: isSelected ? 44 : 38,
+                        decoration: BoxDecoration(
+                          color: AvatarColors.palette[i],
+                          shape: BoxShape.circle,
+                          border: isSelected
+                              ? Border.all(color: EuphireColors.ember, width: 2.5)
+                              : Border.all(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                  width: 1),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color:
+                                        EuphireColors.ember.withValues(alpha: 0.3),
+                                    blurRadius: 12,
+                                    spreadRadius: 1,
+                                  )
+                                ]
+                              : null,
+                        ),
+                        child: isSelected
+                            ? const Icon(Icons.check,
+                                size: 18, color: EuphireColors.frostWhite)
+                            : null,
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 24),
               ],
             ),
-            alignment: Alignment.center,
-            child: Text(
-              _avatarPreviewLabel,
-              style: const TextStyle(
-                fontFamily: 'Montserrat',
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: EuphireColors.frostWhite,
-              ),
-            ),
           ),
-          const SizedBox(height: 20),
+        ),
 
-          // ── Title ──
-          const Text(
-            'Spersonalizuj oznaczenie',
-            style: TextStyle(
-              fontFamily: 'Merriweather',
-              fontStyle: FontStyle.italic,
-              fontSize: 20,
-              color: EuphireColors.frostWhite,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Nadaj klientowi unikalne oznaczenie — ułatwi nawigację.',
-            style: TextStyle(
-              fontFamily: 'Montserrat',
-              fontSize: 13,
-              color: EuphireColors.mist.withValues(alpha: 0.6),
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 28),
-
-          // ── Label input ──
-          SizedBox(
-            width: 160,
-            child: TextField(
-              controller: _avatarLabelController,
-              textAlign: TextAlign.center,
-              maxLength: null,
-              inputFormatters: [_GraphemeClusterLengthFormatter(2)],
-              onChanged: (_) => setState(() {}),
-              style: const TextStyle(
-                fontFamily: 'Montserrat',
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: EuphireColors.frostWhite,
-                letterSpacing: 3,
+        // ── Sticky Bottom Buttons (Gotowe + Pomiń) ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: EuphireButton(
+                  text: 'Gotowe',
+                  icon: Icons.check_rounded,
+                  onPressed: () {
+                    _saveAvatarConfig();
+                    Navigator.of(context).pop();
+                  },
+                ),
               ),
-              decoration: InputDecoration(
-                hintText: _defaultInitials,
-                hintStyle: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 3,
-                  color: EuphireColors.mist.withValues(alpha: 0.25),
-                ),
-                counterText: '',
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.06),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide:
-                      BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide:
-                      BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide:
-                      const BorderSide(color: EuphireColors.ember, width: 1.5),
-                ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Litery, cyfry lub emoji (max 2)',
-            style: TextStyle(
-              fontFamily: 'Montserrat',
-              fontSize: 11,
-              color: EuphireColors.mist.withValues(alpha: 0.4),
-            ),
-          ),
-          const SizedBox(height: 28),
-
-          // ── Color grid ──
-          Text(
-            'KOLOR TŁA',
-            style: TextStyle(
-              fontFamily: 'Montserrat',
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 1.5,
-              color: EuphireColors.mist.withValues(alpha: 0.5),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 10,
-            runSpacing: 12,
-            children: List.generate(AvatarColors.palette.length, (i) {
-              final isSelected = i == _selectedColorIndex;
-              return GestureDetector(
-                onTap: () {
-                  AppHapticFeedback.selectionClick();
-                  setState(() => _selectedColorIndex = i);
-                  _saveAvatarConfig();
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  width: isSelected ? 44 : 38,
-                  height: isSelected ? 44 : 38,
-                  decoration: BoxDecoration(
-                    color: AvatarColors.palette[i],
-                    shape: BoxShape.circle,
-                    border: isSelected
-                        ? Border.all(color: EuphireColors.ember, width: 2.5)
-                        : Border.all(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            width: 1),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color:
-                                  EuphireColors.ember.withValues(alpha: 0.3),
-                              blurRadius: 12,
-                              spreadRadius: 1,
-                            )
-                          ]
-                        : null,
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'Pomiń na razie',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: EuphireColors.mist.withValues(alpha: 0.6),
                   ),
-                  child: isSelected
-                      ? const Icon(Icons.check,
-                          size: 18, color: EuphireColors.frostWhite)
-                      : null,
                 ),
-              );
-            }),
-          ),
-          const SizedBox(height: 36),
-
-          // ── CTA: Gotowe ──
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: EuphireButton(
-              text: 'Gotowe',
-              icon: Icons.check_rounded,
-              onPressed: () {
-                _saveAvatarConfig();
-                Navigator.of(context).pop();
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // ── Skip link ──
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Pomiń na razie',
-              style: TextStyle(
-                fontFamily: 'Montserrat',
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: EuphireColors.mist.withValues(alpha: 0.6),
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 24),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

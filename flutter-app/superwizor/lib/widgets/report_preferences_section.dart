@@ -192,7 +192,6 @@ class _ReportPreferencesSectionState
   Future<void> _load() async {
     final therapistId = ref.read(therapistIdProvider);
     if (therapistId == null) {
-      if (mounted) setState(() => _loading = false);
       return;
     }
     try {
@@ -248,6 +247,13 @@ class _ReportPreferencesSectionState
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final therapistId = ref.watch(therapistIdProvider);
+
+    // Listen to changes in therapistId to trigger loading when it resolves.
+    ref.listen<String?>(therapistIdProvider, (previous, next) {
+      if (next != null && next != previous) {
+        _load();
+      }
+    });
 
     // Hide entirely if auth not resolved — no useful state to show.
     if (therapistId == null) return const SizedBox.shrink();

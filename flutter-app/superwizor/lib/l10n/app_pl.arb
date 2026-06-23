@@ -207,7 +207,7 @@
   "session_status_title": "Bezpieczna analiza w toku.",
   "session_status_subtitle": "Opracowujemy dla Ciebie raporty i transkrypcje. Może to potrwać 15 minut. Możesz tutaj wrócić za chwilę.",
   "session_status_success": "Gotowe!",
-  "session_status_back_to_records": "Wróć do kartotek",
+  "session_status_back_to_records": "Zamknij ekran",
   "session_loading": "Opracowujemy dla Ciebie raporty i transkrypcje. Możesz tutaj wrócić za chwilę.",
   "session_load_error_header": "Nie udało się pobrać sesji.",
   "session_load_error_body": "Coś nie zadziałało po naszej stronie. Spróbuj ponownie za chwilę.",

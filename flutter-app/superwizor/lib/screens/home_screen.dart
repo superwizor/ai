@@ -29,6 +29,8 @@ import '../widgets/avatar_customize_sheet.dart';
 
 
 import '../widgets/active_analysis_banner.dart';
+import '../uploads/pending_upload.dart';
+import '../uploads/upload_queue_provider.dart';
 import '../widgets/preference_suggestion_banner.dart';
 import '../widgets/quota_warning_banner.dart';
 import '../widgets/recording_recovery_prompt.dart';
@@ -299,6 +301,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     Map<String, List<Session>> sessionsMap,
     Set<String> viewedReports,
     BuildContext context,
+    List<PendingUpload> pendingUploads,
   ) {
     for (final p in patients) {
       final sessions = sessionsMap[p.id] ?? [];
@@ -309,7 +312,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
           ? svc.patientFileId
           : null;
       final newStatus = _statusFor(p, sessions, viewedReports,
-          recordingPatientId: recId);
+          recordingPatientId: recId, pendingUploads: pendingUploads);
       final prev = _prevStatuses[p.id];
       _prevStatuses[p.id] = newStatus;
 
@@ -336,10 +339,36 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     List<Session> sessions,
     Set<String> viewedReports, {
     String? recordingPatientId,
+    List<PendingUpload> pendingUploads = const [],
   }) {
     // Recording takes top priority — show blue "Nagrywanie" badge
     if (recordingPatientId != null && patient.id == recordingPatientId) {
       return _PatientStatus.recording;
+    }
+    // Check local pending uploads for this patient first
+    if (pendingUploads.isNotEmpty) {
+      final patientUploads =
+          pendingUploads.where((u) => u.patientFileId == patient.id).toList();
+      if (patientUploads.isNotEmpty) {
+        final hasFailedUpload =
+            patientUploads.any((u) => u.phase == UploadPhase.failed);
+        if (hasFailedUpload) {
+          return _PatientStatus.uploadFailed;
+        }
+        final hasQuotaBlocked =
+            patientUploads.any((u) => u.phase == UploadPhase.quotaBlocked);
+        if (hasQuotaBlocked) {
+          return _PatientStatus.uploadFailed;
+        }
+        final hasActiveUpload = patientUploads.any((u) =>
+            u.phase == UploadPhase.encrypting ||
+            u.phase == UploadPhase.converting ||
+            u.phase == UploadPhase.pending ||
+            u.phase == UploadPhase.created);
+        if (hasActiveUpload) {
+          return _PatientStatus.uploading;
+        }
+      }
     }
     if (sessions.isEmpty && patient.sessionCount == 0) {
       return _PatientStatus.awaiting;
@@ -376,19 +405,20 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     return _PatientStatus.active;
   }
 
-  /// Compute the number of patients that "need attention" (new report,
-  /// AI analyzing, or error) — used for the filter badge and bottom sheet.
   int _needsAttentionCount(
     List<Patient> patients,
     Map<String, List<Session>> sessionsMap,
     Set<String> viewedReports,
+    List<PendingUpload> pendingUploads,
   ) {
     int count = 0;
     for (final p in patients) {
-      final status = _statusFor(p, sessionsMap[p.id] ?? [], viewedReports);
+      final status = _statusFor(p, sessionsMap[p.id] ?? [], viewedReports,
+          pendingUploads: pendingUploads);
       if (status == _PatientStatus.hasNewReport ||
           status == _PatientStatus.analyzing ||
           status == _PatientStatus.uploading ||
+          status == _PatientStatus.uploadFailed ||
           status == _PatientStatus.error) {
         count++;
       }
@@ -428,6 +458,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     final lifecycleMap = ref.watch(patientLifecycleProvider);
     final viewedReports = ref.watch(viewedReportsProvider).value ?? <String>{};
     final sortFilter = ref.watch(sortFilterProvider).value ?? const SortFilterState();
+    final pendingUploads = ref.watch(pendingUploadsStreamProvider).value ?? [];
 
     // Detect status transitions (analyzing → hasNewReport) and celebrate.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -437,6 +468,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
           sessionsMap,
           viewedReports,
           context,
+          pendingUploads,
         );
       }
     });
@@ -461,7 +493,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     // Precompute attention count and available modalities (before filtering)
     // so the bottom sheet can display them accurately.
     final attentionCount =
-        _needsAttentionCount(activePatients, sessionsMap, viewedReports);
+        _needsAttentionCount(activePatients, sessionsMap, viewedReports, pendingUploads);
     final availableModalities = _uniqueModalities(activePatients);
 
     // Sort active patients based on chosen SortMode.
@@ -520,11 +552,16 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
         // Needs attention filter
         if (sortFilter.needsAttentionOnly) {
           result = result.where((p) {
-            final status =
-                _statusFor(p, sessionsMap[p.id] ?? [], viewedReports);
+            final status = _statusFor(
+              p,
+              sessionsMap[p.id] ?? [],
+              viewedReports,
+              pendingUploads: pendingUploads,
+            );
             return status == _PatientStatus.hasNewReport ||
                 status == _PatientStatus.analyzing ||
                 status == _PatientStatus.uploading ||
+                status == _PatientStatus.uploadFailed ||
                 status == _PatientStatus.error;
           }).toList();
         }
@@ -690,8 +727,13 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
                   patient: patient,
                   sessionCount: patient.sessionCount,
                   lastSessionDate: lastDate,
-                  status: _statusFor(patient, sessions, viewedReports,
-                      recordingPatientId: recId),
+                  status: _statusFor(
+                    patient,
+                    sessions,
+                    viewedReports,
+                    recordingPatientId: recId,
+                    pendingUploads: pendingUploads,
+                  ),
                   justCompleted: _justCompletedIds.remove(patient.id),
                 );
               },
@@ -866,6 +908,7 @@ enum _PatientStatus {
   hasNewReport, // green     — unread report available
   analyzing, // ember     — AI processing
   uploading, // orange    — file upload in progress
+  uploadFailed, // ember  — file upload stopped/failed
   error, // red       — analysis failed
   completed, // mist      — therapy finished
   paused, // mist dim  — on hold
@@ -977,6 +1020,11 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
         ),
         _PatientStatus.analyzing => ('AI analizuje', EuphireColors.ember, true),
         _PatientStatus.uploading => ('Wgrywanie...', Colors.orangeAccent, true),
+        _PatientStatus.uploadFailed => (
+          'Przesyłanie\nprzerwane',
+          EuphireColors.ember,
+          true,
+        ),
         _PatientStatus.error => ('Błąd analizy', Colors.redAccent, true),
         _PatientStatus.active => ('Aktywny', EuphireColors.ember, false),
         _PatientStatus.completed => (
@@ -1157,7 +1205,8 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
                       final isAnalyzing =
                           widget.status == _PatientStatus.analyzing;
                       final isError =
-                          widget.status == _PatientStatus.error;
+                          widget.status == _PatientStatus.error ||
+                          widget.status == _PatientStatus.uploadFailed;
                       final scale = isNewReport ? _pulseAnimation.value : 1.0;
                       return Transform.scale(
                         scale: scale,
@@ -1236,6 +1285,7 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
                                   fontSize: 10,
                                   fontWeight: FontWeight.w500,
                                   color: statusColor,
+                                  height: 1.1,
                                 ),
                               ),
                             ],

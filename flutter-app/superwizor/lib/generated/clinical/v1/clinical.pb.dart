@@ -2371,6 +2371,7 @@ class Session extends $pb.GeneratedMessage {
     $3.Timestamp? createdAt,
     $core.String? name,
     $3.Timestamp? reportViewedAt,
+    $fixnum.Int64? fileSizeBytes,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -2387,6 +2388,7 @@ class Session extends $pb.GeneratedMessage {
     if (createdAt != null) result.createdAt = createdAt;
     if (name != null) result.name = name;
     if (reportViewedAt != null) result.reportViewedAt = reportViewedAt;
+    if (fileSizeBytes != null) result.fileSizeBytes = fileSizeBytes;
     return result;
   }
 
@@ -2423,6 +2425,7 @@ class Session extends $pb.GeneratedMessage {
     ..aOS(12, _omitFieldNames ? '' : 'name')
     ..aOM<$3.Timestamp>(13, _omitFieldNames ? '' : 'reportViewedAt',
         subBuilder: $3.Timestamp.create)
+    ..aInt64(14, _omitFieldNames ? '' : 'fileSizeBytes')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2564,6 +2567,15 @@ class Session extends $pb.GeneratedMessage {
   void clearReportViewedAt() => $_clearField(13);
   @$pb.TagNumber(13)
   $3.Timestamp ensureReportViewedAt() => $_ensure(12);
+
+  @$pb.TagNumber(14)
+  $fixnum.Int64 get fileSizeBytes => $_getI64(13);
+  @$pb.TagNumber(14)
+  set fileSizeBytes($fixnum.Int64 value) => $_setInt64(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasFileSizeBytes() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearFileSizeBytes() => $_clearField(14);
 }
 
 class ListSessionsRequest extends $pb.GeneratedMessage {

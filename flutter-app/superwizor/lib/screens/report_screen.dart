@@ -1332,12 +1332,19 @@ class _ReportSection {
 }
 
 List<_ReportSection> _parseSections(String md) {
-  final headerRegex = RegExp(r'^#+\s+(.*)');
-  if (!md.split('\n').any((l) => headerRegex.hasMatch(l))) {
+  final lines = md.split('\n');
+  
+  // Ograniczamy parsowanie do nagłówków poziomu 1 i 2, o ile takie występują.
+  // Zapobiega to łapaniu potnagłówków (###) wygenerowanych przez LLM jako osobne zakładki.
+  bool hasLevel1or2 = lines.any((l) => RegExp(r'^#{1,2}\s').hasMatch(l));
+  final headerRegex = hasLevel1or2 
+      ? RegExp(r'^#{1,2}\s+(.*)') 
+      : RegExp(r'^#+\s+(.*)');
+
+  if (!lines.any((l) => headerRegex.hasMatch(l))) {
     return [_ReportSection(title: 'Raport', content: md, key: GlobalKey(), tabKey: GlobalKey())];
   }
   
-  final lines = md.split('\n');
   final sections = <_ReportSection>[];
   String currentTitle = 'Wstęp';
   StringBuffer currentContent = StringBuffer();

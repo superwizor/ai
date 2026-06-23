@@ -24,6 +24,7 @@ class SessionDto {
   final Map<String, String> speakerLabelMapping;
   /// When the therapist first opened the report. null = unviewed.
   final DateTime? reportViewedAt;
+  final int fileSizeBytes;
 
   const SessionDto({
     required this.id,
@@ -37,6 +38,7 @@ class SessionDto {
     required this.audioUploadId,
     required this.speakerLabelMapping,
     this.reportViewedAt,
+    this.fileSizeBytes = 0,
   });
 
   Map<String, dynamic> toJson() => {
@@ -52,6 +54,7 @@ class SessionDto {
         'speakerLabelMapping': speakerLabelMapping,
         if (reportViewedAt != null)
           'reportViewedAt': reportViewedAt!.toUtc().toIso8601String(),
+        'fileSizeBytes': fileSizeBytes,
       };
 
   factory SessionDto.fromJson(Map<String, dynamic> j) => SessionDto(
@@ -70,6 +73,7 @@ class SessionDto {
         reportViewedAt: j['reportViewedAt'] != null
             ? DateTime.parse(j['reportViewedAt'] as String).toUtc()
             : null,
+        fileSizeBytes: (j['fileSizeBytes'] as num?)?.toInt() ?? 0,
       );
 
   factory SessionDto.fromProto(clinical_pb.Session s) => SessionDto(
@@ -86,6 +90,7 @@ class SessionDto {
         reportViewedAt: s.hasReportViewedAt()
             ? s.reportViewedAt.toDateTime().toUtc()
             : null,
+        fileSizeBytes: s.fileSizeBytes.toInt(),
       );
 
   // UI-facing Session model. Mirrors the mapping in
@@ -112,5 +117,6 @@ class SessionDto {
                     ? SessionStatus.error
                     : SessionStatus.inProgress,
         reportViewedAt: reportViewedAt?.toLocal(),
+        fileSizeBytes: fileSizeBytes,
       );
 }

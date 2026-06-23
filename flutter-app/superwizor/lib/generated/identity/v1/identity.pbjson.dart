@@ -234,6 +234,7 @@ const CreateUserRequest$json = {
     {'1': 'ui_language', '3': 6, '4': 1, '5': 9, '10': 'uiLanguage'},
     {'1': 'timezone', '3': 7, '4': 1, '5': 9, '10': 'timezone'},
     {'1': 'has_accepted_tos', '3': 8, '4': 1, '5': 8, '10': 'hasAcceptedTos'},
+    {'1': 'initial_plan_tier', '3': 9, '4': 1, '5': 9, '10': 'initialPlanTier'},
   ],
 };
 
@@ -244,7 +245,7 @@ final $typed_data.Uint8List createUserRequestDescriptor = $convert.base64Decode(
     'bGVSBHJvbGUSHQoKZmlyc3RfbmFtZRgEIAEoCVIJZmlyc3ROYW1lEhsKCWxhc3RfbmFtZRgFIA'
     'EoCVIIbGFzdE5hbWUSHwoLdWlfbGFuZ3VhZ2UYBiABKAlSCnVpTGFuZ3VhZ2USGgoIdGltZXpv'
     'bmUYByABKAlSCHRpbWV6b25lEigKEGhhc19hY2NlcHRlZF90b3MYCCABKAhSDmhhc0FjY2VwdG'
-    'VkVG9z');
+    'VkVG9zEioKEWluaXRpYWxfcGxhbl90aWVyGAkgASgJUg9pbml0aWFsUGxhblRpZXI=');
 
 @$core.Deprecated('Use updateProfileRequestDescriptor instead')
 const UpdateProfileRequest$json = {
@@ -1480,3 +1481,79 @@ final $typed_data.Uint8List adminListAuditEventsResponseDescriptor =
         'ChxBZG1pbkxpc3RBdWRpdEV2ZW50c1Jlc3BvbnNlEi8KBmV2ZW50cxgBIAMoCzIXLmlkZW50aX'
         'R5LnYxLkF1ZGl0RW50cnlSBmV2ZW50cxImCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAlSDW5leHRQ'
         'YWdlVG9rZW4=');
+
+@$core.Deprecated('Use recordConsentRequestDescriptor instead')
+const RecordConsentRequest$json = {
+  '1': 'RecordConsentRequest',
+  '2': [
+    {'1': 'user_id', '3': 1, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'consent_type', '3': 2, '4': 1, '5': 9, '10': 'consentType'},
+    {'1': 'granted', '3': 3, '4': 1, '5': 8, '10': 'granted'},
+    {'1': 'consent_version', '3': 4, '4': 1, '5': 9, '10': 'consentVersion'},
+    {'1': 'ip_address', '3': 5, '4': 1, '5': 9, '10': 'ipAddress'},
+    {'1': 'user_agent', '3': 6, '4': 1, '5': 9, '10': 'userAgent'},
+  ],
+};
+
+/// Descriptor for `RecordConsentRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List recordConsentRequestDescriptor = $convert.base64Decode(
+    'ChRSZWNvcmRDb25zZW50UmVxdWVzdBIXCgd1c2VyX2lkGAEgASgJUgZ1c2VySWQSIQoMY29uc2'
+    'VudF90eXBlGAIgASgJUgtjb25zZW50VHlwZRIYCgdncmFudGVkGAMgASgIUgdncmFudGVkEicK'
+    'D2NvbnNlbnRfdmVyc2lvbhgEIAEoCVIOY29uc2VudFZlcnNpb24SHQoKaXBfYWRkcmVzcxgFIA'
+    'EoCVIJaXBBZGRyZXNzEh0KCnVzZXJfYWdlbnQYBiABKAlSCXVzZXJBZ2VudA==');
+
+@$core.Deprecated('Use recordConsentResponseDescriptor instead')
+const RecordConsentResponse$json = {
+  '1': 'RecordConsentResponse',
+  '2': [
+    {'1': 'consent_record_id', '3': 1, '4': 1, '5': 9, '10': 'consentRecordId'},
+    {
+      '1': 'recorded_at',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'recordedAt'
+    },
+  ],
+};
+
+/// Descriptor for `RecordConsentResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List recordConsentResponseDescriptor = $convert.base64Decode(
+    'ChVSZWNvcmRDb25zZW50UmVzcG9uc2USKgoRY29uc2VudF9yZWNvcmRfaWQYASABKAlSD2Nvbn'
+    'NlbnRSZWNvcmRJZBI7CgtyZWNvcmRlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1l'
+    'c3RhbXBSCnJlY29yZGVkQXQ=');
+
+@$core.Deprecated('Use checkEmailExistsRequestDescriptor instead')
+const CheckEmailExistsRequest$json = {
+  '1': 'CheckEmailExistsRequest',
+  '2': [
+    {'1': 'email', '3': 1, '4': 1, '5': 9, '10': 'email'},
+  ],
+};
+
+/// Descriptor for `CheckEmailExistsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List checkEmailExistsRequestDescriptor =
+    $convert.base64Decode(
+        'ChdDaGVja0VtYWlsRXhpc3RzUmVxdWVzdBIUCgVlbWFpbBgBIAEoCVIFZW1haWw=');
+
+@$core.Deprecated('Use checkEmailExistsResponseDescriptor instead')
+const CheckEmailExistsResponse$json = {
+  '1': 'CheckEmailExistsResponse',
+  '2': [
+    {'1': 'exists', '3': 2, '4': 1, '5': 8, '10': 'exists'},
+    {
+      '1': 'is_pending_deletion',
+      '3': 3,
+      '4': 1,
+      '5': 8,
+      '10': 'isPendingDeletion'
+    },
+  ],
+};
+
+/// Descriptor for `CheckEmailExistsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List checkEmailExistsResponseDescriptor =
+    $convert.base64Decode(
+        'ChhDaGVja0VtYWlsRXhpc3RzUmVzcG9uc2USFgoGZXhpc3RzGAIgASgIUgZleGlzdHMSLgoTaX'
+        'NfcGVuZGluZ19kZWxldGlvbhgDIAEoCFIRaXNQZW5kaW5nRGVsZXRpb24=');
