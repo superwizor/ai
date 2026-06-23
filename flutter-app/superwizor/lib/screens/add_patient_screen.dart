@@ -14,6 +14,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart' as grpc;
 
+import '../utils/haptics.dart';
+
 import '../constants/modalities.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/patient_avatar_provider.dart';
@@ -487,7 +489,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               padding: const EdgeInsets.only(bottom: 8),
               child: GestureDetector(
                 onTap: () {
-                  HapticFeedback.selectionClick();
+                  AppHapticFeedback.selectionClick();
                   setState(() => _modalityCode = m.code);
                 },
                 child: AnimatedContainer(
@@ -713,7 +715,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               final isSelected = i == _selectedColorIndex;
               return GestureDetector(
                 onTap: () {
-                  HapticFeedback.selectionClick();
+                  AppHapticFeedback.selectionClick();
                   setState(() => _selectedColorIndex = i);
                   _saveAvatarConfig();
                 },
@@ -884,7 +886,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
       }
 
       if (mounted) {
-        HapticFeedback.mediumImpact();
+        AppHapticFeedback.mediumImpact();
         // Navigate to Step 3 (avatar customization)
         _goToPage(2);
       }

@@ -22,5 +22,11 @@ struct LiveActivityAttributes: ActivityAttributes {
         /// Non-nil when the backend report is ready — the widget
         /// shows a "Show report" deep link targeting this session.
         var reportSessionId: String?
+        /// Processing phase: "uploading", "analyzing", or nil.
+        /// Used by the widget to show appropriate spinner color.
+        var processingPhase: String?
+        /// When > 1, widget shows "Nowe raporty czekają" with count
+        /// instead of a single patient name.
+        var readyReportCount: Int?
     }
 }

@@ -43,6 +43,9 @@ import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
+import '../widgets/euphire_toast.dart';
+import '../providers/services_provider.dart';
+import '../services/recording_service.dart';
 import 'recording_screen.dart';
 import 'session_status_screen.dart';
 
@@ -454,6 +457,15 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
   }
 
   void _goToRecording() {
+    // Guard: block if another recording is already active.
+    final svc = ref.read(recordingServiceProvider);
+    if (svc.state == RecordingState.recording ||
+        svc.state == RecordingState.paused ||
+        svc.state == RecordingState.interrupted) {
+      EuphireToast.info(context,
+          message: 'Trwa nagrywanie innej sesji. Wróć do niej, aby kontynuować.');
+      return;
+    }
     Navigator.of(context).pushReplacement(MaterialPageRoute(
       builder: (_) => RecordingScreen(
         patientFileId: widget.patientFileId,
@@ -577,6 +589,18 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
   }
 
   Future<void> _pickAndUploadFile() async {
+    // Guard: block if a recording is active — uploading a file would
+    // create a second session while the first is still being captured.
+    final svc = ref.read(recordingServiceProvider);
+    if (svc.state == RecordingState.recording ||
+        svc.state == RecordingState.paused ||
+        svc.state == RecordingState.interrupted) {
+      if (mounted) {
+        EuphireToast.info(context,
+            message: 'Trwa nagrywanie sesji. Wróć do niej, aby kontynuować.');
+      }
+      return;
+    }
     // Web has no filesystem path / dart:io staging — use the bytes-based
     // direct-upload path instead.
     if (kIsWeb) return _pickAndUploadFileWeb();

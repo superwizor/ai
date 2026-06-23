@@ -207,7 +207,7 @@ INSERT INTO sessions (
     status
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-) RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name
+) RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name, report_viewed_at
 `
 
 type CreateSessionParams struct {
@@ -260,6 +260,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.DeletedAt,
 		&i.ReportLanguage,
 		&i.Name,
+		&i.ReportViewedAt,
 	)
 	return i, err
 }
@@ -289,7 +290,7 @@ func (q *Queries) GetDefaultSessionName(ctx context.Context, arg GetDefaultSessi
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name FROM sessions
+SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name, report_viewed_at FROM sessions
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -317,6 +318,7 @@ func (q *Queries) GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 		&i.DeletedAt,
 		&i.ReportLanguage,
 		&i.Name,
+		&i.ReportViewedAt,
 	)
 	return i, err
 }
@@ -496,7 +498,7 @@ func (q *Queries) ListReportsBySession(ctx context.Context, sessionID uuid.UUID)
 }
 
 const listSessionsByPatient = `-- name: ListSessionsByPatient :many
-SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name FROM sessions
+SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name, report_viewed_at FROM sessions
 WHERE patient_file_id = $1
   AND deleted_at IS NULL
   AND status <> 'CANCELLED_BY_USER'
@@ -538,6 +540,7 @@ func (q *Queries) ListSessionsByPatient(ctx context.Context, patientFileID uuid.
 			&i.DeletedAt,
 			&i.ReportLanguage,
 			&i.Name,
+			&i.ReportViewedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -587,11 +590,32 @@ func (q *Queries) ListTranscriptSegments(ctx context.Context, transcriptID uuid.
 	return items, nil
 }
 
+const markReportViewed = `-- name: MarkReportViewed :exec
+UPDATE sessions SET
+  report_viewed_at = COALESCE(report_viewed_at, now())
+WHERE id = $1 AND therapist_id = $2
+  AND status = 'COMPLETED' AND deleted_at IS NULL
+`
+
+type MarkReportViewedParams struct {
+	ID          uuid.UUID `json:"id"`
+	TherapistID uuid.UUID `json:"therapist_id"`
+}
+
+// Sets report_viewed_at to now() if not already set (idempotent).
+// Only marks COMPLETED sessions — viewing a non-complete session is a
+// no-op (the status filter prevents accidental marking). The therapist_id
+// predicate is the authz guard at the SQL layer.
+func (q *Queries) MarkReportViewed(ctx context.Context, arg MarkReportViewedParams) error {
+	_, err := q.db.Exec(ctx, markReportViewed, arg.ID, arg.TherapistID)
+	return err
+}
+
 const updateSessionName = `-- name: UpdateSessionName :one
 UPDATE sessions
 SET name = $2, updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name
+RETURNING id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name, report_viewed_at
 `
 
 type UpdateSessionNameParams struct {
@@ -626,6 +650,7 @@ func (q *Queries) UpdateSessionName(ctx context.Context, arg UpdateSessionNamePa
 		&i.DeletedAt,
 		&i.ReportLanguage,
 		&i.Name,
+		&i.ReportViewedAt,
 	)
 	return i, err
 }

@@ -928,6 +928,8 @@ class Subscription extends $pb.GeneratedMessage {
     $2.Timestamp? currentPeriodEnd,
     $core.String? planCycle,
     $core.int? tokensRemaining,
+    $core.bool? cancelAtPeriodEnd,
+    $2.Timestamp? canceledAt,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -947,6 +949,8 @@ class Subscription extends $pb.GeneratedMessage {
     if (currentPeriodEnd != null) result.currentPeriodEnd = currentPeriodEnd;
     if (planCycle != null) result.planCycle = planCycle;
     if (tokensRemaining != null) result.tokensRemaining = tokensRemaining;
+    if (cancelAtPeriodEnd != null) result.cancelAtPeriodEnd = cancelAtPeriodEnd;
+    if (canceledAt != null) result.canceledAt = canceledAt;
     return result;
   }
 
@@ -977,6 +981,9 @@ class Subscription extends $pb.GeneratedMessage {
         subBuilder: $2.Timestamp.create)
     ..aOS(11, _omitFieldNames ? '' : 'planCycle')
     ..aI(12, _omitFieldNames ? '' : 'tokensRemaining')
+    ..aOB(13, _omitFieldNames ? '' : 'cancelAtPeriodEnd')
+    ..aOM<$2.Timestamp>(14, _omitFieldNames ? '' : 'canceledAt',
+        subBuilder: $2.Timestamp.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1117,6 +1124,26 @@ class Subscription extends $pb.GeneratedMessage {
   $core.bool hasTokensRemaining() => $_has(11);
   @$pb.TagNumber(12)
   void clearTokensRemaining() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.bool get cancelAtPeriodEnd => $_getBF(12);
+  @$pb.TagNumber(13)
+  set cancelAtPeriodEnd($core.bool value) => $_setBool(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasCancelAtPeriodEnd() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearCancelAtPeriodEnd() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $2.Timestamp get canceledAt => $_getN(13);
+  @$pb.TagNumber(14)
+  set canceledAt($2.Timestamp value) => $_setField(14, value);
+  @$pb.TagNumber(14)
+  $core.bool hasCanceledAt() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearCanceledAt() => $_clearField(14);
+  @$pb.TagNumber(14)
+  $2.Timestamp ensureCanceledAt() => $_ensure(13);
 }
 
 class AdminResetTokensRequest extends $pb.GeneratedMessage {
@@ -1332,6 +1359,267 @@ class AdminChangePlanRequest extends $pb.GeneratedMessage {
   $core.bool hasIdempotencyKey() => $_has(4);
   @$pb.TagNumber(5)
   void clearIdempotencyKey() => $_clearField(5);
+}
+
+class ListInvoicesRequest extends $pb.GeneratedMessage {
+  factory ListInvoicesRequest({
+    $core.String? organizationId,
+  }) {
+    final result = create();
+    if (organizationId != null) result.organizationId = organizationId;
+    return result;
+  }
+
+  ListInvoicesRequest._();
+
+  factory ListInvoicesRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListInvoicesRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListInvoicesRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'organizationId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListInvoicesRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListInvoicesRequest copyWith(void Function(ListInvoicesRequest) updates) =>
+      super.copyWith((message) => updates(message as ListInvoicesRequest))
+          as ListInvoicesRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListInvoicesRequest create() => ListInvoicesRequest._();
+  @$core.override
+  ListInvoicesRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListInvoicesRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListInvoicesRequest>(create);
+  static ListInvoicesRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get organizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set organizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganizationId() => $_clearField(1);
+}
+
+class ListInvoicesResponse extends $pb.GeneratedMessage {
+  factory ListInvoicesResponse({
+    $core.Iterable<Invoice>? invoices,
+  }) {
+    final result = create();
+    if (invoices != null) result.invoices.addAll(invoices);
+    return result;
+  }
+
+  ListInvoicesResponse._();
+
+  factory ListInvoicesResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListInvoicesResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListInvoicesResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..pPM<Invoice>(1, _omitFieldNames ? '' : 'invoices',
+        subBuilder: Invoice.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListInvoicesResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListInvoicesResponse copyWith(void Function(ListInvoicesResponse) updates) =>
+      super.copyWith((message) => updates(message as ListInvoicesResponse))
+          as ListInvoicesResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListInvoicesResponse create() => ListInvoicesResponse._();
+  @$core.override
+  ListInvoicesResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListInvoicesResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListInvoicesResponse>(create);
+  static ListInvoicesResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<Invoice> get invoices => $_getList(0);
+}
+
+class Invoice extends $pb.GeneratedMessage {
+  factory Invoice({
+    $core.String? id,
+    $core.String? stripeInvoiceId,
+    $core.double? amountPaid,
+    $core.String? currency,
+    $core.String? invoicePdf,
+    $core.String? hostedInvoiceUrl,
+    $2.Timestamp? periodStart,
+    $2.Timestamp? periodEnd,
+    $2.Timestamp? createdAt,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (stripeInvoiceId != null) result.stripeInvoiceId = stripeInvoiceId;
+    if (amountPaid != null) result.amountPaid = amountPaid;
+    if (currency != null) result.currency = currency;
+    if (invoicePdf != null) result.invoicePdf = invoicePdf;
+    if (hostedInvoiceUrl != null) result.hostedInvoiceUrl = hostedInvoiceUrl;
+    if (periodStart != null) result.periodStart = periodStart;
+    if (periodEnd != null) result.periodEnd = periodEnd;
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  Invoice._();
+
+  factory Invoice.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory Invoice.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Invoice',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'stripeInvoiceId')
+    ..aD(3, _omitFieldNames ? '' : 'amountPaid')
+    ..aOS(4, _omitFieldNames ? '' : 'currency')
+    ..aOS(5, _omitFieldNames ? '' : 'invoicePdf')
+    ..aOS(6, _omitFieldNames ? '' : 'hostedInvoiceUrl')
+    ..aOM<$2.Timestamp>(7, _omitFieldNames ? '' : 'periodStart',
+        subBuilder: $2.Timestamp.create)
+    ..aOM<$2.Timestamp>(8, _omitFieldNames ? '' : 'periodEnd',
+        subBuilder: $2.Timestamp.create)
+    ..aOM<$2.Timestamp>(9, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $2.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Invoice clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Invoice copyWith(void Function(Invoice) updates) =>
+      super.copyWith((message) => updates(message as Invoice)) as Invoice;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static Invoice create() => Invoice._();
+  @$core.override
+  Invoice createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static Invoice getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Invoice>(create);
+  static Invoice? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get stripeInvoiceId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set stripeInvoiceId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStripeInvoiceId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStripeInvoiceId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.double get amountPaid => $_getN(2);
+  @$pb.TagNumber(3)
+  set amountPaid($core.double value) => $_setDouble(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAmountPaid() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAmountPaid() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get currency => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set currency($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCurrency() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCurrency() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get invoicePdf => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set invoicePdf($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasInvoicePdf() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearInvoicePdf() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get hostedInvoiceUrl => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set hostedInvoiceUrl($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasHostedInvoiceUrl() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearHostedInvoiceUrl() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $2.Timestamp get periodStart => $_getN(6);
+  @$pb.TagNumber(7)
+  set periodStart($2.Timestamp value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPeriodStart() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPeriodStart() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $2.Timestamp ensurePeriodStart() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $2.Timestamp get periodEnd => $_getN(7);
+  @$pb.TagNumber(8)
+  set periodEnd($2.Timestamp value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasPeriodEnd() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearPeriodEnd() => $_clearField(8);
+  @$pb.TagNumber(8)
+  $2.Timestamp ensurePeriodEnd() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  $2.Timestamp get createdAt => $_getN(8);
+  @$pb.TagNumber(9)
+  set createdAt($2.Timestamp value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCreatedAt() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCreatedAt() => $_clearField(9);
+  @$pb.TagNumber(9)
+  $2.Timestamp ensureCreatedAt() => $_ensure(8);
 }
 
 const $core.bool _omitFieldNames =

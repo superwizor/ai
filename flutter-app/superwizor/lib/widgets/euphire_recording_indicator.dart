@@ -3,6 +3,7 @@ import 'euphire_waveform_indicator.dart';
 
 class EuphireRecordingIndicator extends StatelessWidget {
   final bool isRecording;
+  final bool isInitializing;
   final String formattedDuration;
   final int chunkCount;
   final String? errorMessage;
@@ -11,6 +12,7 @@ class EuphireRecordingIndicator extends StatelessWidget {
   const EuphireRecordingIndicator({
     super.key,
     required this.isRecording,
+    this.isInitializing = false,
     required this.formattedDuration,
     required this.chunkCount,
     this.errorMessage,
@@ -27,6 +29,7 @@ class EuphireRecordingIndicator extends StatelessWidget {
       children: [
         EuphireWaveformIndicator(
           isRecording: isRecording,
+          isInitializing: isInitializing,
           amplitudeStream: amplitudeStream,
           formattedDuration: formattedDuration,
         ),

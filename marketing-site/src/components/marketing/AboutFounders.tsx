@@ -53,6 +53,10 @@ export function AboutFounders({ title, founders }: AboutFoundersProps) {
                     <img
                       src={founder.image}
                       alt={founder.name}
+                      width={500}
+                      height={625}
+                      loading="lazy"
+                      decoding="async"
                       className="object-cover w-full h-full brightness-[0.98] contrast-[1.01]"
                     />
                   </div>

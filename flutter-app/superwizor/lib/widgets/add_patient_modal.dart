@@ -12,9 +12,10 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart' as grpc;
+
+import '../utils/haptics.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/patient_provider.dart';
@@ -315,7 +316,7 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
 
 
       if (mounted) {
-        HapticFeedback.mediumImpact();
+        AppHapticFeedback.mediumImpact();
         Navigator.of(context).pop();
       }
     } on grpc.GrpcError catch (e) {

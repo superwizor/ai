@@ -58,10 +58,16 @@ class LiveActivityService {
 
   /// Transition the widget to "Report Ready" state with a deep link
   /// to the specific session's report.
-  Future<void> showReportReady({required String sessionId}) async {
+  /// [reportCount] > 1 shows a badge with the count and
+  /// "Nowe raporty czekają w kartotece" instead of single-report copy.
+  Future<void> showReportReady({
+    required String sessionId,
+    int reportCount = 1,
+  }) async {
     try {
       await _channel.invokeMethod('reportReady', {
         'sessionId': sessionId,
+        'reportCount': reportCount,
       });
     } catch (e) {
       debugPrint('[live-activity] reportReady failed (ignored): $e');
@@ -74,6 +80,29 @@ class LiveActivityService {
       await _channel.invokeMethod('stop');
     } catch (e) {
       debugPrint('[live-activity] stop failed (ignored): $e');
+    }
+  }
+
+  /// Check whether the OS-level Live Activities permission is enabled.
+  /// On iOS this reflects Settings → [App] → Live Activities toggle.
+  /// On Android returns true (no system-level toggle for widgets).
+  Future<bool> isSystemEnabled() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('checkPermission');
+      return result ?? true;
+    } catch (e) {
+      debugPrint('[live-activity] checkPermission failed (ignored): $e');
+      return true; // Assume enabled if channel doesn't exist.
+    }
+  }
+
+  /// Open the OS settings page for this app (iOS only).
+  /// On Android this is a no-op.
+  Future<void> openSystemSettings() async {
+    try {
+      await _channel.invokeMethod('openSettings');
+    } catch (e) {
+      debugPrint('[live-activity] openSettings failed (ignored): $e');
     }
   }
 }

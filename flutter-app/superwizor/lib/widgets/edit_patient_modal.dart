@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
+import '../utils/haptics.dart';
 import '../models/patient.dart';
 import '../providers/patient_avatar_provider.dart';
 import '../providers/patient_provider.dart';
@@ -275,7 +275,7 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
           );
 
       if (mounted) {
-        HapticFeedback.mediumImpact();
+        AppHapticFeedback.mediumImpact();
         Navigator.of(context).pop();
       }
     } catch (e) {

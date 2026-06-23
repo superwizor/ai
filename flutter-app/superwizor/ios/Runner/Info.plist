@@ -98,5 +98,10 @@
 	</array>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<!-- Opt out of Apple Intelligence / Siri data analysis.
+	     Critical for GDPR & PHI — clinical session data must NOT
+	     be processed by Apple Intelligence on-device or server-side. -->
+	<key>NSSensitiveContentAnalysisOptOut</key>
+	<true/>
 </dict>
 </plist>

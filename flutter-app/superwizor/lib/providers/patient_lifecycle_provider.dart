@@ -16,6 +16,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as grpc_clinical;
+import '../models/patient.dart';
 import 'current_user_provider.dart';
 import 'grpc_provider.dart';
 import 'patient_provider.dart';
@@ -55,6 +56,23 @@ class PatientLifecycleNotifier extends Notifier<Map<String, PatientLifecycle>> {
     _loadFromPrefs();
     // Also sync from backend data if patients are already loaded.
     _syncFromPatientsProvider();
+    // Reactively sync whenever patientsProvider emits new data.
+    // This covers the common case where patients load AFTER this
+    // provider's build() has already returned {} — without this
+    // listen, the lifecycle map would stay empty (or stale from
+    // SharedPreferences) until the next full provider rebuild.
+    ref.listen<AsyncValue<List<Patient>>>(patientsProvider, (_, next) {
+      next.whenData((patients) {
+        final backendMap = <String, PatientLifecycle>{};
+        for (final p in patients) {
+          backendMap[p.id] = _fromBackend(p.lifecycleStatus);
+        }
+        if (backendMap.isNotEmpty) {
+          state = {...state, ...backendMap};
+          _saveToPrefs();
+        }
+      });
+    }, fireImmediately: true);
     return {};
   }
 

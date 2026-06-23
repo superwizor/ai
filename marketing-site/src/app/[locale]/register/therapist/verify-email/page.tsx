@@ -74,7 +74,7 @@ export default async function VerifyEmailPage({
               {/* Photo */}
               <div className="relative aspect-[4/3] md:aspect-[1.15] w-full max-w-[360px] overflow-hidden rounded-tl-[80px] rounded-br-[20px] rounded-tr-[20px] rounded-bl-[20px] border border-frost/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)]">
                 <img
-                  src="/assets/therapy-banana.png"
+                  src="/assets/therapy-banana.webp"
                   alt="Therapy session setup"
                   className="object-cover w-full h-full brightness-90 contrast-[1.05]"
                 />

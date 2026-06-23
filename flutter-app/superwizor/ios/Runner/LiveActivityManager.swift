@@ -20,7 +20,9 @@ class LiveActivityManager {
     static let shared = LiveActivityManager()
 
     /// The currently active Live Activity, if any.
-    private var currentActivity: Activity<LiveActivityAttributes>?
+    private var currentActivity: Activity<LiveActivityAttributes>? {
+        return Activity<LiveActivityAttributes>.activities.first
+    }
 
     // MARK: - MethodChannel handler
 
@@ -49,7 +51,8 @@ class LiveActivityManager {
             }
             let isPaused = status == "paused"
             let statusText = localizedStatus(status)
-            update(statusText: statusText, isPaused: isPaused, elapsedSeconds: elapsed)
+            let phase = processingPhase(status)
+            update(statusText: statusText, isPaused: isPaused, elapsedSeconds: elapsed, processingPhase: phase)
             result(true)
 
         case "reportReady":
@@ -60,11 +63,24 @@ class LiveActivityManager {
                                     details: nil))
                 return
             }
-            showReportReady(sessionId: sessionId)
+            let count = args["reportCount"] as? Int ?? 1
+            showReportReady(sessionId: sessionId, reportCount: count)
             result(true)
 
         case "stop":
             stop()
+            result(true)
+
+        case "checkPermission":
+            let info = ActivityAuthorizationInfo()
+            result(info.areActivitiesEnabled)
+
+        case "openSettings":
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                DispatchQueue.main.async {
+                    UIApplication.shared.open(url)
+                }
+            }
             result(true)
 
         default:
@@ -75,12 +91,11 @@ class LiveActivityManager {
     // MARK: - ActivityKit operations
 
     private func start(patientAlias: String, elapsedSeconds: Int) {
-        // End any previous activity first.
-        if let existing = currentActivity {
+        // End any previous activities first.
+        for activity in Activity<LiveActivityAttributes>.activities {
             Task {
-                await existing.end(nil, dismissalPolicy: .immediate)
+                await activity.end(nil, dismissalPolicy: .immediate)
             }
-            currentActivity = nil
         }
 
         let attributes = LiveActivityAttributes(patientAlias: patientAlias)
@@ -88,30 +103,33 @@ class LiveActivityManager {
             statusText: localizedStatus("recording"),
             isPaused: false,
             elapsedSeconds: elapsedSeconds,
-            reportSessionId: nil
+            reportSessionId: nil,
+            processingPhase: nil,
+            readyReportCount: nil
         )
 
         do {
             let content = ActivityContent(state: state, staleDate: nil)
-            let activity = try Activity.request(
+            _ = try Activity.request(
                 attributes: attributes,
                 content: content,
                 pushType: nil  // No push updates; we update locally.
             )
-            currentActivity = activity
-            debugPrint("[LiveActivity] started id=\(activity.id)")
+            debugPrint("[LiveActivity] started successfully")
         } catch {
             debugPrint("[LiveActivity] start failed: \(error)")
         }
     }
 
-    private func update(statusText: String, isPaused: Bool, elapsedSeconds: Int) {
+    private func update(statusText: String, isPaused: Bool, elapsedSeconds: Int, processingPhase: String?) {
         guard let activity = currentActivity else { return }
         let state = LiveActivityAttributes.ContentState(
             statusText: statusText,
             isPaused: isPaused,
             elapsedSeconds: elapsedSeconds,
-            reportSessionId: nil
+            reportSessionId: nil,
+            processingPhase: processingPhase,
+            readyReportCount: nil
         )
         Task {
             let content = ActivityContent(state: state, staleDate: nil)
@@ -119,13 +137,18 @@ class LiveActivityManager {
         }
     }
 
-    private func showReportReady(sessionId: String) {
+    private func showReportReady(sessionId: String, reportCount: Int) {
         guard let activity = currentActivity else { return }
+        let statusText = reportCount > 1
+            ? "Nowe raporty czekają w kartotece"
+            : "Nowy raport czeka w kartotece"
         let state = LiveActivityAttributes.ContentState(
-            statusText: NSLocalizedString("Nowy raport czeka w kartotece", comment: ""),
+            statusText: statusText,
             isPaused: false,
             elapsedSeconds: 0,
-            reportSessionId: sessionId
+            reportSessionId: sessionId,
+            processingPhase: nil,
+            readyReportCount: reportCount > 1 ? reportCount : nil
         )
         Task {
             let content = ActivityContent(state: state, staleDate: nil)
@@ -134,11 +157,11 @@ class LiveActivityManager {
     }
 
     private func stop() {
-        guard let activity = currentActivity else { return }
-        Task {
-            await activity.end(nil, dismissalPolicy: .immediate)
+        for activity in Activity<LiveActivityAttributes>.activities {
+            Task {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
         }
-        currentActivity = nil
     }
 
     // MARK: - Localisation helpers
@@ -150,10 +173,19 @@ class LiveActivityManager {
         switch status {
         case "recording": return "Sesja w toku"
         case "paused":    return "Pauza"
-        case "uploading": return "Wgrywanie nagrania..."
-        case "analyzing": return "Analizowanie sesji..."
+        case "uploading": return "Przesyłamy nagranie…"
+        case "analyzing": return "Pracujemy nad raportem"
         case "reportReady": return "Nowy raport czeka w kartotece"
         default: return status
+        }
+    }
+
+    /// Returns the processing phase identifier for widget styling.
+    private func processingPhase(_ status: String) -> String? {
+        switch status {
+        case "uploading": return "uploading"
+        case "analyzing": return "analyzing"
+        default: return nil
         }
     }
 }
@@ -165,8 +197,14 @@ class LiveActivityManagerFallback {
     static let shared = LiveActivityManagerFallback()
 
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        // Silently succeed — the Flutter side handles the feature being
-        // unavailable gracefully.
-        result(true)
+        switch call.method {
+        case "checkPermission":
+            // Live Activities not available on this iOS version.
+            result(false)
+        default:
+            // Silently succeed — the Flutter side handles the feature being
+            // unavailable gracefully.
+            result(true)
+        }
     }
 }

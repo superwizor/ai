@@ -72,7 +72,7 @@
   "addPatient_first_name_label": "First name (required)",
   "addPatient_last_name_label": "Initial or alias",
   "addPatient_email_label": "Client email",
-  "addPatient_email_hint": "Optional — for the action plan",
+  "addPatient_email_hint": "Optional (for the action plan)",
   "addPatient_modality_label": "Therapy modality",
   "addPatient_language_label": "Report language",
   "addPatient_consent_label": "The client consented to recording and data processing according to the Privacy Policy and DPA of Superwizor AI.",
@@ -172,12 +172,12 @@
   "recording_interrupted_banner_body": "A phone call or another app interrupted the recording. Everything captured so far is safe.",
   "recording_interrupted_resume": "Resume recording",
   "recording_resume_failed_header": "Could not resume",
-  "recording_resume_failed_body": "Recording could not be resumed. Everything captured so far is safe — you can end the session and send it for analysis.",
+  "recording_resume_failed_body": "Recording could not be resumed. Everything captured so far is safe, you can end the session and send it for analysis.",
   "recording_resume_failed_retry": "Try again",
   "recording_resume_failed_finish": "Finish and send",
 
   "recovery_sheet_header": "Interrupted recording found",
-  "recovery_sheet_body": "The session recording for {patientAlias} from {date} (~{minutes} min) was never sent — the app was interrupted while recording. What would you like to do?",
+  "recovery_sheet_body": "The session recording for {patientAlias} from {date} (~{minutes} min) was never sent, as the app was interrupted while recording. What would you like to do?",
   "@recovery_sheet_body": {
     "placeholders": {
       "patientAlias": { "type": "String" },
@@ -311,11 +311,11 @@
   "settings_language_app": "App language",
   "settings_delete_confirm_title": "Are you sure you want\nto delete your account?",
   "settings_delete_confirm_body": "This action is IRREVERSIBLE.\nYou will lose all clinical documentation and patient data.",
-  "settings_delete_confirm_proceed": "I understand — proceed.",
-  "settings_delete_confirm_cancel": "Cancel — keep my account.",
+  "settings_delete_confirm_proceed": "I understand, proceed.",
+  "settings_delete_confirm_cancel": "Cancel, keep my account.",
   "settings_choose_language": "Choose language",
   "delete_account_title": "Delete account",
-  "delete_account_consequence_1": "All clinical documentation — all patients, records, sessions, and AI reports — will be permanently deleted.",
+  "delete_account_consequence_1": "All clinical documentation (all patients, records, sessions, and AI reports) will be permanently deleted.",
   "delete_account_consequence_2": "Your subscription (if you have one) will not be automatically canceled. You must cancel it separately in the App Store or Google Play.",
   "delete_account_consequence_3": "You will not be able to recover your data after completing this process. The operation is irreversible.",
   "delete_account_toggle_text": "I understand the consequences\nand want to delete my account",
@@ -332,7 +332,7 @@
   "report_rating_thumbs_up_tooltip": "Good report",
   "report_rating_thumbs_down_tooltip": "Something is off",
   "report_rating_saved_positive": "Thanks for the positive rating.",
-  "report_rating_saved_negative": "Thanks — we'll factor this into future reports.",
+  "report_rating_saved_negative": "Thanks, we'll factor this into future reports.",
   "report_rating_save_error": "Could not save rating. Please try again.",
   "report_rating_modal_title": "What went wrong?",
   "report_rating_modal_subtitle": "Pick one or more categories. This helps us tune future reports.",
@@ -417,7 +417,7 @@
   "suggestion_banner_apply": "Apply",
   "suggestion_banner_open_settings": "Open settings",
   "suggestion_banner_dismiss": "Not now",
-  "suggestion_banner_applied_toast": "Changed — future reports will reflect this.",
+  "suggestion_banner_applied_toast": "Changed, future reports will reflect this.",
   "suggestion_banner_apply_error": "Could not change the setting.",
 
   "billing_quota_warning_short": "{n, plural, =1{1 token left.} other{{n} tokens left.}}",
@@ -435,7 +435,7 @@
   "billing_dismiss_cta": "OK, continue",
 
   "billing_exhausted_dialog_title": "Token pool exhausted",
-  "billing_exhausted_dialog_body": "You've used all available sessions. You can still record — audio will be securely encrypted and saved locally. Check your email to learn more.",
+  "billing_exhausted_dialog_body": "You've used all available sessions. You can still record, audio will be securely encrypted and saved locally. Check your email to learn more.",
   "billing_exhausted_dialog_record_locally": "Record locally",
 
   "billing_pending_sessions_title": "{n, plural, =1{1 session waiting to be processed} other{{n} sessions waiting to be processed}}",
@@ -538,7 +538,7 @@
   "action_plan_save_only": "Save",
   "action_plan_save_and_send": "Save and send",
   "action_plan_no_email_title": "No e-mail address",
-  "action_plan_no_email_body": "The plan can't be sent — the patient has no e-mail address on file. Add an e-mail in the client record.",
+  "action_plan_no_email_body": "The plan can't be sent, because the patient has no e-mail address on file. Add an e-mail in the client record.",
   "action_plan_send_confirm_title": "Send the action plan?",
   "action_plan_send_confirm_body": "The plan will be sent to: {email}",
   "@action_plan_send_confirm_body": {
@@ -587,11 +587,11 @@
   "active_session_card_paused_subtitle": "Resume or end the session",
 
   "settings_live_activities": "Lock screen activity",
-  "settings_live_activities_on": "Session time and status are visible on the lock screen and Dynamic Island — no need to unlock your phone.",
-  "settings_live_activities_off": "Ongoing session status is only visible inside the app.",
+  "settings_live_activities_on": "Session time and status visible without unlocking your phone.",
+  "settings_live_activities_off": "Session status visible only inside the app.",
 
   "live_activity_info_title": "Keep your session in sight",
-  "live_activity_info_body": "Enable lock screen preview to see your session timer without opening the app — also in Dynamic Island.",
+  "live_activity_info_body": "Enable lock screen preview to see your session timer without opening the app.",
   "live_activity_info_enable": "Enable preview",
   "live_activity_info_dismiss": "Not now",
 
@@ -602,5 +602,10 @@
   "live_activity_status_uploading": "Uploading recording...",
   "live_activity_status_analyzing": "Analyzing session...",
   "live_activity_status_report_ready": "New report is ready",
-  "live_activity_show_report": "Show report"
+  "live_activity_show_report": "Show report",
+
+  "live_activity_permission_title": "System permission required",
+  "live_activity_permission_body": "Lock screen session preview requires Live Activities to be enabled in system settings.",
+  "live_activity_permission_open_settings": "Open settings",
+  "live_activity_permission_cancel": "Cancel"
 }

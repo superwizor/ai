@@ -23,13 +23,16 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import '../utils/haptics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/services_provider.dart';
+import '../providers/settings_provider.dart';
+import '../services/live_activity_service.dart';
+import '../services/recording_foreground_service.dart';
 import '../services/session_state_listener.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/cancel_upload_action.dart';
@@ -38,7 +41,7 @@ import '../uploads/upload_queue_provider.dart';
 import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_session_status_stepper.dart';
-import 'home_screen_v2.dart';
+import 'home_screen.dart';
 import 'transcript_screen.dart';
 
 class SessionStatusScreen extends ConsumerStatefulWidget {
@@ -84,6 +87,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   /// localId). Used to render a small diagnostic label so the user
   /// — and us — can see exactly which phase the worker is in.
   PendingUpload? _lastRow;
+  AudioPlayer? _successPlayer;
 
   // ── Success Cascade controllers ──
   late final AnimationController _checkScaleAnim;
@@ -120,7 +124,33 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     _failureDelayTimer?.cancel();
     _checkScaleAnim.dispose();
     _checkGlowAnim.dispose();
+    _successPlayer?.dispose();
     super.dispose();
+  }
+
+  void _playSuccessSound() async {
+    try {
+      if (_successPlayer != null) {
+        await _successPlayer!.stop();
+        await _successPlayer!.dispose();
+      }
+      final newPlayer = AudioPlayer();
+      _successPlayer = newPlayer;
+      await newPlayer.play(AssetSource('sounds/SFX_succes.mp3'));
+      newPlayer.onPlayerComplete.first.then((_) {
+        if (mounted && _successPlayer == newPlayer) {
+          newPlayer.dispose();
+          _successPlayer = null;
+        }
+      }).catchError((_) {
+        if (mounted && _successPlayer == newPlayer) {
+          newPlayer.dispose();
+          _successPlayer = null;
+        }
+      });
+    } catch (e) {
+      debugPrint('Error playing success sound: $e');
+    }
   }
 
   void _startListeners() {
@@ -168,6 +198,23 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       return;
     }
 
+    // Push Live Activity to uploading while the queue worker is active.
+    // UploadPhase.created = signed URL obtained, PUT in progress.
+    if (row.phase == UploadPhase.created &&
+        ref.read(appSettingsProvider).liveActivitiesEnabled) {
+      ref.read(liveActivityServiceProvider).update(
+        status: LiveActivityStatus.uploading,
+        elapsedSeconds: 0,
+      );
+    }
+    // Android foreground notification: update to uploading status.
+    if (row.phase == UploadPhase.created) {
+      RecordingForegroundService.updateStatus(
+        title: 'Wgrywanie nagrania...',
+        body: 'Superwizor przesyła nagranie sesji na serwer.',
+      );
+    }
+
     // SessionId materialised — CompleteAudioUpload just succeeded.
     // Hand off to the server-side processing listeners. The
     // queue runner now subscribes to Firestore session_states for
@@ -187,6 +234,23 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     final phase = s.status.toStepperPhase();
     if (mounted) setState(() => _phase = phase);
     _resetFallbackTimer();
+
+    // Push Live Activity updates for analyzing phase.
+    if (ref.read(appSettingsProvider).liveActivitiesEnabled) {
+      if (phase == SessionStepperPhase.analyzing) {
+        ref.read(liveActivityServiceProvider).update(
+          status: LiveActivityStatus.analyzing,
+          elapsedSeconds: 0,
+        );
+      }
+    }
+    // Android foreground notification: update to analyzing status.
+    if (phase == SessionStepperPhase.analyzing) {
+      RecordingForegroundService.updateStatus(
+        title: 'Analizowanie sesji...',
+        body: 'AI przygotowuje raport kliniczny.',
+      );
+    }
 
     if (phase == SessionStepperPhase.done && !_routedAway) {
       _routedAway = true;
@@ -243,16 +307,23 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     await Future<void>.delayed(const Duration(milliseconds: 600));
 
     // Phase 2: Show the big success icon
-    HapticFeedback.heavyImpact();
+    AppHapticFeedback.heavyImpact();
     if (mounted) setState(() => _showCheck = true);
     _checkScaleAnim.forward();
     _checkGlowAnim.repeat(reverse: true);
 
-    // Play success sound (best-effort)
-    final player = AudioPlayer();
-    try {
-      await player.play(AssetSource('sounds/SFX_succes.mp3'));
-    } catch (_) {/* asset may be missing in dev — best-effort */}
+    // Play success sound (respects user preference)
+    if (ref.read(appSettingsProvider).soundEnabled) {
+      _playSuccessSound();
+    }
+
+    // Push Live Activity to reportReady.
+    if (ref.read(appSettingsProvider).liveActivitiesEnabled &&
+        _resolvedSessionId != null) {
+      ref.read(liveActivityServiceProvider).showReportReady(
+        sessionId: _resolvedSessionId!,
+      );
+    }
 
     // Phase 3: Wait and navigate
     await Future<void>.delayed(const Duration(seconds: 3));
@@ -272,15 +343,20 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     }
 
     if (!mounted) return;
+
+    // Stop the Live Activity — the user is about to see the report.
+    if (ref.read(appSettingsProvider).liveActivitiesEnabled) {
+      ref.read(liveActivityServiceProvider).stop();
+    }
+    // Stop the Android foreground service — analysis is done.
+    RecordingForegroundService.stop();
+
     final sid = _resolvedSessionId;
     if (sid != null) {
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (_) => TranscriptScreen(sessionId: sid),
       ));
     }
-    try {
-      await player.dispose();
-    } catch (_) {}
   }
 
   /// Wait 5 seconds before showing a failure sheet — gives time for
@@ -629,7 +705,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                 // directly answers the "what do I do to not lose it / no
                 // info" confusion on the long processing/upload wait.
                 Text(
-                  'Możesz bezpiecznie opuścić ten ekran — '
+                  'Możesz bezpiecznie opuścić ten ekran, '
                   'sesja przetworzy się w tle.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -713,15 +789,25 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   String _queuePhaseLabel(PendingUpload u) {
     final t = AppLocalizations.of(context);
     final attempt = u.attemptCount > 0 ? ' • próba ${u.attemptCount + 1}' : '';
+
+    // Upload interrupted — worker will auto-retry
+    final isRetrying = u.lastError != null &&
+        u.attemptCount > 0 &&
+        !u.isTerminal &&
+        !u.isParked;
+    if (isRetrying) {
+      return 'Wznawianie przesyłania...$attempt';
+    }
+
     switch (u.phase) {
       case UploadPhase.encrypting:
-        return 'Przetwarzanie nagrania...$attempt';
+        return 'Szyfrowanie nagrania...$attempt';
       case UploadPhase.converting:
-        return 'Konwertuję plik audio...$attempt';
+        return 'Konwersja pliku audio...$attempt';
       case UploadPhase.pending:
         return 'W kolejce$attempt';
       case UploadPhase.created:
-        return 'Przesyłam plik na serwer...$attempt';
+        return 'Przesyłam na serwer...$attempt';
       case UploadPhase.uploaded:
         return 'Plik na serwerze, finalizuję...$attempt';
       case UploadPhase.converted:
@@ -729,7 +815,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       case UploadPhase.completed:
         return 'Wgrane';
       case UploadPhase.failed:
-        return 'Błąd';
+        return 'Nie udało się wgrać';
       case UploadPhase.quotaBlocked:
         return t.quota_blocked_queue_label;
     }

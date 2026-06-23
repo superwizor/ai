@@ -53,7 +53,7 @@ func (q *Queries) GetPatientNotesForExport(ctx context.Context, patientFileID uu
 }
 
 const getSessionsForExport = `-- name: GetSessionsForExport :many
-SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name FROM sessions
+SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name, report_viewed_at FROM sessions
 WHERE patient_file_id = $1 AND deleted_at IS NULL
 ORDER BY session_number ASC
 `
@@ -88,6 +88,7 @@ func (q *Queries) GetSessionsForExport(ctx context.Context, patientFileID uuid.U
 			&i.DeletedAt,
 			&i.ReportLanguage,
 			&i.Name,
+			&i.ReportViewedAt,
 		); err != nil {
 			return nil, err
 		}

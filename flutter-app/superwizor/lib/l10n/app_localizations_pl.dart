@@ -198,7 +198,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addPatient_email_label => 'E-mail klienta';
 
   @override
-  String get addPatient_email_hint => 'Opcjonalnie — do planu działania';
+  String get addPatient_email_hint => 'Opcjonalnie (do planu działania)';
 
   @override
   String get addPatient_modality_label => 'Nurt terapeutyczny';
@@ -477,7 +477,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get recording_resume_failed_body =>
-      'Nie udało się wznowić nagrywania. Dotychczasowe nagranie jest bezpieczne — możesz zakończyć sesję i wysłać je do analizy.';
+      'Nie udało się wznowić nagrywania. Dotychczasowe nagranie jest bezpieczne, możesz zakończyć sesję i wysłać je do analizy.';
 
   @override
   String get recording_resume_failed_retry => 'Spróbuj ponownie';
@@ -490,7 +490,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String recovery_sheet_body(String patientAlias, String date, int minutes) {
-    return 'Nagranie sesji z $patientAlias z $date (ok. $minutes min) nie zostało wysłane — aplikacja została przerwana w trakcie nagrywania. Co chcesz zrobić?';
+    return 'Nagranie sesji z $patientAlias z $date (ok. $minutes min) nie zostało wysłane, ponieważ aplikacja została przerwana w trakcie nagrywania. Co chcesz zrobić?';
   }
 
   @override
@@ -844,10 +844,10 @@ class AppLocalizationsPl extends AppLocalizations {
       'Ta operacja jest NIEODWRACALNA.\nUstracisz całą dokumentację kliniczną i dane klientów.';
 
   @override
-  String get settings_delete_confirm_proceed => 'Rozumiem — przejdź dalej.';
+  String get settings_delete_confirm_proceed => 'Rozumiem, przejdź dalej.';
 
   @override
-  String get settings_delete_confirm_cancel => 'Anuluj — zachowaj konto.';
+  String get settings_delete_confirm_cancel => 'Anuluj, zachowaj konto.';
 
   @override
   String get settings_choose_language => 'Wybierz język';
@@ -857,7 +857,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get delete_account_consequence_1 =>
-      'Cała dokumentacja kliniczna — wszystkich klientów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.';
+      'Cała dokumentacja kliniczna (wszystkich klientów, kartoteki, sesje i raporty AI) zostanie trwale usunięta.';
 
   @override
   String get delete_account_consequence_2 =>
@@ -911,7 +911,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get report_rating_saved_negative =>
-      'Dzięki — uwzględnimy to przy kolejnych raportach.';
+      'Dzięki, uwzględnimy to przy kolejnych raportach.';
 
   @override
   String get report_rating_save_error =>
@@ -1146,7 +1146,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get suggestion_banner_applied_toast =>
-      'Zmieniono — kolejne raporty uwzględnią to ustawienie.';
+      'Zmieniono, kolejne raporty uwzględnią to ustawienie.';
 
   @override
   String get suggestion_banner_apply_error =>
@@ -1191,7 +1191,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get billing_exhausted_dialog_body =>
-      'Wykorzystałeś dostępne sesje. Możesz nadal nagrywać — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie. Sprawdź swoją skrzynkę e-mail, aby dowiedzieć się więcej.';
+      'Wykorzystałeś dostępne sesje. Możesz nadal nagrywać, audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie. Sprawdź swoją skrzynkę e-mail, aby dowiedzieć się więcej.';
 
   @override
   String get billing_exhausted_dialog_record_locally => 'Nagrywaj lokalnie';
@@ -1436,7 +1436,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get action_plan_no_email_body =>
-      'Nie można wysłać planu — klient nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.';
+      'Nie można wysłać planu, ponieważ klient nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.';
 
   @override
   String get action_plan_send_confirm_title => 'Wyślij plan działania?';
@@ -1554,18 +1554,18 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get settings_live_activities_on =>
-      'Czas i status sesji są widoczne na zablokowanym ekranie i w Dynamic Island — nie musisz odblokowywać telefonu.';
+      'Czas i status sesji widoczne bez odblokowywania telefonu.';
 
   @override
   String get settings_live_activities_off =>
-      'Status trwającej sesji widoczny tylko w aplikacji.';
+      'Status sesji widoczny tylko w aplikacji.';
 
   @override
   String get live_activity_info_title => 'Miej sesję zawsze na oku';
 
   @override
   String get live_activity_info_body =>
-      'Włącz podgląd na ekranie blokady, aby widzieć czas sesji bez otwierania aplikacji — również w Dynamic Island.';
+      'Włącz podgląd na ekranie blokady, aby widzieć czas sesji bez otwierania aplikacji.';
 
   @override
   String get live_activity_info_enable => 'Włącz podgląd';
@@ -1595,4 +1595,17 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get live_activity_show_report => 'Pokaż raport';
+
+  @override
+  String get live_activity_permission_title => 'Wymagana zgoda systemowa';
+
+  @override
+  String get live_activity_permission_body =>
+      'Podgląd sesji na ekranie blokady wymaga włączenia Aktywności na żywo w ustawieniach systemu.';
+
+  @override
+  String get live_activity_permission_open_settings => 'Otwórz ustawienia';
+
+  @override
+  String get live_activity_permission_cancel => 'Anuluj';
 }

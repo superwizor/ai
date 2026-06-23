@@ -125,9 +125,80 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
             labelText: 'Nazwisko (opcjonalne)',
           ),
           const SizedBox(height: 12),
-          EuphireTextField(
-            controller: _titleController,
-            labelText: 'Tytuł zawodowy (np. mgr, dr)',
+          // ── Tytuł zawodowy z podpowiedziami ──
+          Autocomplete<String>(
+            optionsBuilder: (textEditingValue) {
+              const titles = [
+                'mgr',
+                'dr',
+                'dr hab.',
+                'prof.',
+                'Psycholog',
+                'Psychoterapeuta',
+                'Terapeuta',
+                'Psychiatra',
+                'Coach',
+              ];
+              if (textEditingValue.text.isEmpty) return titles;
+              final query = textEditingValue.text.toLowerCase();
+              return titles.where(
+                (t) => t.toLowerCase().contains(query),
+              );
+            },
+            onSelected: (selection) {
+              _titleController.text = selection;
+            },
+            fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+              // Sync initial value from _titleController
+              if (controller.text.isEmpty && _titleController.text.isNotEmpty) {
+                controller.text = _titleController.text;
+              }
+              // Keep _titleController in sync with autocomplete controller
+              controller.addListener(() {
+                if (_titleController.text != controller.text) {
+                  _titleController.text = controller.text;
+                }
+              });
+              return EuphireTextField(
+                controller: controller,
+                focusNode: focusNode,
+                labelText: 'Tytuł zawodowy (np. mgr, Psycholog)',
+              );
+            },
+            optionsViewBuilder: (context, onSelected, options) {
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 8,
+                  color: const Color(0xFF0A2326),
+                  borderRadius: BorderRadius.circular(12),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 200, maxWidth: 300),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      itemBuilder: (ctx, index) {
+                        final option = options.elementAt(index);
+                        return ListTile(
+                          dense: true,
+                          title: Text(
+                            option,
+                            style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 14,
+                              color: EuphireColors.frostWhite,
+                            ),
+                          ),
+                          onTap: () => onSelected(option),
+                          hoverColor: EuphireColors.ember.withValues(alpha: 0.1),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 24),
           SizedBox(

@@ -19,7 +19,7 @@
 // id is available — it's hidden behind `therapistIdProvider`.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import '../utils/haptics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart' as grpc;
 import 'package:uuid/uuid.dart';
@@ -386,7 +386,7 @@ class _NegativeRatingSheetState extends State<_NegativeRatingSheet> {
                     label: Text(_chipLabel(t, id)),
                     selected: selected,
                     onSelected: (v) {
-                      HapticFeedback.selectionClick();
+                      AppHapticFeedback.selectionClick();
                       setState(() {
                         if (v) {
                           _selected.add(id);

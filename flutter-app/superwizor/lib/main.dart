@@ -1,6 +1,7 @@
 import 'analytics/analytics_collector.dart';
 import 'providers/current_user_provider.dart';
 import 'providers/locale_provider.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart' as cf;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -14,7 +15,7 @@ import 'auth/sso_handler.dart'
     if (dart.library.html) 'auth/sso_handler_web.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
-import 'screens/home_screen_v2.dart';
+import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'theme/euphire_theme.dart';
 import 'uploads/upload_queue_provider.dart';
@@ -35,6 +36,8 @@ final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 

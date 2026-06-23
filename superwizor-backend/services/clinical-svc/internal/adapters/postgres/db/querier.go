@@ -293,11 +293,20 @@ type Querier interface {
 	// confirms delivery. Returns the refreshed row so the handler can
 	// re-emit the proto with sent_to_patient_at populated.
 	MarkPatientNoteSent(ctx context.Context, arg MarkPatientNoteSentParams) (PatientNote, error)
+	// Sets report_viewed_at to now() if not already set (idempotent).
+	// Only marks COMPLETED sessions — viewing a non-complete session is a
+	// no-op (the status filter prevents accidental marking). The therapist_id
+	// predicate is the authz guard at the SQL layer.
+	MarkReportViewed(ctx context.Context, arg MarkReportViewedParams) error
 	PurgeOldAnalyticsEvents(ctx context.Context) (int64, error)
 	PurgePatientFile(ctx context.Context, id uuid.UUID) (int64, error)
 	PurgePatientNote(ctx context.Context, id uuid.UUID) (int64, error)
 	PurgePatientUser(ctx context.Context, id uuid.UUID) (int64, error)
 	PurgeSession(ctx context.Context, id uuid.UUID) (int64, error)
+	// Sets or clears the avatar customization on a kartoteka.
+	// Empty string or '{}' from the caller clears it (back to defaults).
+	// The therapist_id predicate is the authz guard at the SQL layer.
+	SetAvatarConfig(ctx context.Context, arg SetAvatarConfigParams) error
 	// Sets (or clears) the patient's contact e-mail on the kartoteka
 	// (migration 000040). Plaintext contact PII, consistent with
 	// working_alias. An empty string from the caller is normalized to NULL
@@ -323,6 +332,11 @@ type Querier interface {
 	// clinical.proto. process_type follows the same logic.
 	// Patient-user fields (first_name/last_name/language_code) live in
 	// patient_users.sql::UpdatePatientUser.
+	//
+	// lifecycle_status ($6): when non-empty, sets the lifecycle and derives
+	// is_process_closed (COMPLETED → true, otherwise → false). When empty,
+	// both fields keep their current values (is_process_closed still
+	// honors $5 for backward compat with older clients).
 	UpdatePatientFile(ctx context.Context, arg UpdatePatientFileParams) (PatientFile, error)
 	// Replaces the encrypted title+text blobs wholesale (the handler
 	// re-encrypts the full plaintext on every edit). bumps updated_at.

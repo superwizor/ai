@@ -54,14 +54,40 @@ void main() {
         sessionNumber: 3,
         audioUploadId: 'au-1',
         speakerLabelMapping: const {'1': 'Therapist', '2': 'Client'},
+        reportViewedAt: DateTime.utc(2026, 5, 21, 10, 0, 0),
       );
-      final decoded = SessionDto.fromJson(
-          jsonDecode(jsonEncode(original.toJson())) as Map<String, dynamic>);
+      final json = jsonDecode(jsonEncode(original.toJson())) as Map<String, dynamic>;
+      final decoded = SessionDto.fromJson(json);
       expect(decoded.id, original.id);
       expect(decoded.patientFileId, original.patientFileId);
       expect(decoded.createdAt.toUtc(), original.createdAt.toUtc());
       expect(decoded.status, 'COMPLETED');
       expect(decoded.speakerLabelMapping, original.speakerLabelMapping);
+      expect(decoded.reportViewedAt?.toUtc(), original.reportViewedAt?.toUtc());
+      // field-count guard — bump this when adding a new DTO field so
+      // toJson/fromJson are updated in lockstep.
+      expect(json.length, 11,
+          reason: 'field-count guard — add toJson/fromJson coverage for new fields');
+    });
+
+    test('JSON round-trip with null reportViewedAt omits key', () {
+      final original = SessionDto(
+        id: 's-2',
+        patientFileId: 'pf-2',
+        name: 'Sesja 4',
+        contactForm: '',
+        durationSeconds: 0,
+        createdAt: DateTime.utc(2026, 1, 1),
+        status: 'COMPLETED',
+        sessionNumber: 4,
+        audioUploadId: '',
+        speakerLabelMapping: const {},
+        // reportViewedAt intentionally null (unviewed)
+      );
+      final json = jsonDecode(jsonEncode(original.toJson())) as Map<String, dynamic>;
+      expect(json.containsKey('reportViewedAt'), isFalse);
+      final decoded = SessionDto.fromJson(json);
+      expect(decoded.reportViewedAt, isNull);
     });
 
     test('toModel maps status COMPLETED/ERROR/other correctly', () {
@@ -82,6 +108,42 @@ void main() {
       expect(withStatus('FAILED').toModel().status.name, 'error');
       expect(withStatus('PROCESSING').toModel().status.name, 'inProgress');
       expect(withStatus('').toModel().status.name, 'inProgress');
+    });
+
+    test('toModel carries reportViewedAt into Session model', () {
+      final viewedAt = DateTime.utc(2026, 6, 15, 12, 0, 0);
+      final dto = SessionDto(
+        id: 's-v',
+        patientFileId: 'pf-v',
+        name: 'Sesja Viewed',
+        contactForm: '',
+        durationSeconds: 1800,
+        createdAt: DateTime.utc(2026, 6, 15),
+        status: 'COMPLETED',
+        sessionNumber: 5,
+        audioUploadId: '',
+        speakerLabelMapping: const {},
+        reportViewedAt: viewedAt,
+      );
+      final model = dto.toModel();
+      // toModel converts UTC → local, so compare in UTC.
+      expect(model.reportViewedAt?.toUtc(), viewedAt);
+    });
+
+    test('toModel maps null reportViewedAt → null', () {
+      final dto = SessionDto(
+        id: 's-nv',
+        patientFileId: 'pf-nv',
+        name: 'Sesja Unviewed',
+        contactForm: '',
+        durationSeconds: 0,
+        createdAt: DateTime.utc(2026, 1, 1),
+        status: 'COMPLETED',
+        sessionNumber: 1,
+        audioUploadId: '',
+        speakerLabelMapping: const {},
+      );
+      expect(dto.toModel().reportViewedAt, isNull);
     });
   });
 

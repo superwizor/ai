@@ -81,12 +81,26 @@ void main() {
     expect(log.first.arguments['status'], 'analyzing');
   });
 
-  test('showReportReady sends sessionId', () async {
+  test('showReportReady sends sessionId and default reportCount', () async {
     await service.showReportReady(sessionId: 'abc-123');
 
     expect(log, hasLength(1));
     expect(log.first.method, 'reportReady');
-    expect(log.first.arguments, {'sessionId': 'abc-123'});
+    expect(log.first.arguments, {
+      'sessionId': 'abc-123',
+      'reportCount': 1,
+    });
+  });
+
+  test('showReportReady sends sessionId and custom reportCount', () async {
+    await service.showReportReady(sessionId: 'abc-123', reportCount: 3);
+
+    expect(log, hasLength(1));
+    expect(log.first.method, 'reportReady');
+    expect(log.first.arguments, {
+      'sessionId': 'abc-123',
+      'reportCount': 3,
+    });
   });
 
   test('stop sends no arguments', () async {

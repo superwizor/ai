@@ -41,6 +41,15 @@ class MainActivity : FlutterActivity() {
                     startService(intent)
                     result.success(true)
                 }
+                "update" -> {
+                    val intent = Intent(this, RecordingForegroundService::class.java).apply {
+                        action = RecordingForegroundService.ACTION_UPDATE
+                        putExtra(RecordingForegroundService.EXTRA_TITLE, call.argument<String>("title"))
+                        putExtra(RecordingForegroundService.EXTRA_BODY, call.argument<String>("body"))
+                    }
+                    startService(intent)
+                    result.success(true)
+                }
                 else -> result.notImplemented()
             }
         }

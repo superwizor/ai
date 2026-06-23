@@ -22,6 +22,8 @@ class SessionDto {
   final int sessionNumber;
   final String audioUploadId;
   final Map<String, String> speakerLabelMapping;
+  /// When the therapist first opened the report. null = unviewed.
+  final DateTime? reportViewedAt;
 
   const SessionDto({
     required this.id,
@@ -34,6 +36,7 @@ class SessionDto {
     required this.sessionNumber,
     required this.audioUploadId,
     required this.speakerLabelMapping,
+    this.reportViewedAt,
   });
 
   Map<String, dynamic> toJson() => {
@@ -47,6 +50,8 @@ class SessionDto {
         'sessionNumber': sessionNumber,
         'audioUploadId': audioUploadId,
         'speakerLabelMapping': speakerLabelMapping,
+        if (reportViewedAt != null)
+          'reportViewedAt': reportViewedAt!.toUtc().toIso8601String(),
       };
 
   factory SessionDto.fromJson(Map<String, dynamic> j) => SessionDto(
@@ -62,6 +67,9 @@ class SessionDto {
         speakerLabelMapping: (j['speakerLabelMapping'] as Map?)
                 ?.map((k, v) => MapEntry(k as String, v as String)) ??
             const {},
+        reportViewedAt: j['reportViewedAt'] != null
+            ? DateTime.parse(j['reportViewedAt'] as String).toUtc()
+            : null,
       );
 
   factory SessionDto.fromProto(clinical_pb.Session s) => SessionDto(
@@ -75,6 +83,9 @@ class SessionDto {
         sessionNumber: s.sessionNumber,
         audioUploadId: s.audioUploadId,
         speakerLabelMapping: Map<String, String>.from(s.speakerLabelMapping),
+        reportViewedAt: s.hasReportViewedAt()
+            ? s.reportViewedAt.toDateTime().toUtc()
+            : null,
       );
 
   // UI-facing Session model. Mirrors the mapping in
@@ -100,5 +111,6 @@ class SessionDto {
                 : status == 'ERROR' || status == 'FAILED'
                     ? SessionStatus.error
                     : SessionStatus.inProgress,
+        reportViewedAt: reportViewedAt?.toLocal(),
       );
 }

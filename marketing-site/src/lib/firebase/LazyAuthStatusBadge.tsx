@@ -28,6 +28,10 @@ export function LazyAuthStatusBadge() {
   const isPublicRoute = 
     cleanPath === "/" ||
     cleanPath === "/pricing" ||
+    cleanPath === "/o-nas" ||
+    cleanPath === "/kontakt" ||
+    cleanPath === "/pacjent" ||
+    cleanPath === "/beta" ||
     cleanPath.startsWith("/legal") ||
     cleanPath === "/legal";
 

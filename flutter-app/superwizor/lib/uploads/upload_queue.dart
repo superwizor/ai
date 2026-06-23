@@ -23,6 +23,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
+import '../utils/debug_flags.dart';
+
 import '../cache/cache_cipher.dart';
 import 'pending_upload.dart';
 
@@ -50,6 +52,11 @@ class UploadQueue {
   Duration get maxAge => _maxAge;
 
   Future<void> _serialised = Future.value();
+
+  /// In-memory-only rows injected by the debug panel. Never persisted
+  /// to Hive, never processed by the worker, automatically cleared on
+  /// hot restart. Keyed by localId.
+  final Map<String, PendingUpload> _debugRows = {};
 
   // ── Open / scope ───────────────────────────────────────────────
 
@@ -117,10 +124,15 @@ class UploadQueue {
         debugPrint('[upload-queue] dropping unreadable row $k: $e');
       }
     }
+    // Append debug-only in-memory rows (never persisted to Hive).
+    out.addAll(_debugRows.values);
     return out;
   }
 
   PendingUpload? getById(String localId) {
+    // Check debug overlay first.
+    final debugRow = _debugRows[localId];
+    if (debugRow != null) return debugRow;
     final raw = _box.get(localId);
     if (raw == null) return null;
     try {
@@ -134,9 +146,13 @@ class UploadQueue {
   /// these are the ones the worker should pick up this tick.
   List<PendingUpload> dueNow() {
     final now = _clock();
+    // Exclude debug rows — they should never be processed by the worker.
     return all()
         .where((u) =>
-            !u.isTerminal && !u.isParked && !u.nextAttemptAt.isAfter(now))
+            !u.isTerminal &&
+            !u.isParked &&
+            !u.nextAttemptAt.isAfter(now) &&
+            !_debugRows.containsKey(u.localId))
         .toList()
       // Oldest queued first — fair-queue ordering so a recent retry
       // doesn't starve an older row.
@@ -155,6 +171,8 @@ class UploadQueue {
         // silently failing it after 7 days would lose the recording
         // with no trace. Only the user (resend / cancel) clears it.
         .where((u) => !u.isTerminal && !u.isParked && u.isOlderThan(_maxAge, now))
+        // Exclude debug rows from pruning.
+        .where((u) => !_debugRows.containsKey(u.localId))
         .toList();
     if (victims.isEmpty) return 0;
     await _enqueue(() async {
@@ -175,6 +193,22 @@ class UploadQueue {
   Future<void> clearAll() => _enqueue(() async {
         await _box.clear();
       });
+
+  // ── Debug-only surface (tree-shaken in release) ──────────────
+
+  /// Inject a row into the in-memory overlay. The row is visible in
+  /// [all] and [getById] but is never written to Hive and is excluded
+  /// from [dueNow] so the worker ignores it.
+  void debugInject(PendingUpload row) {
+    if (!kDebugMode && !DebugFlags.simulationsEnabled) return;
+    _debugRows[row.localId] = row;
+  }
+
+  /// Remove a debug-only row from the in-memory overlay.
+  void debugRemove(String localId) {
+    if (!kDebugMode && !DebugFlags.simulationsEnabled) return;
+    _debugRows.remove(localId);
+  }
 
   // ── Internals ─────────────────────────────────────────────────
 

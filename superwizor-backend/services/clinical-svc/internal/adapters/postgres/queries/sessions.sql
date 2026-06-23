@@ -213,3 +213,13 @@ FROM sessions s
 LEFT JOIN transcripts t ON t.session_id = s.id
 LEFT JOIN reports r ON r.session_id = s.id
 WHERE s.id = $1 AND s.deleted_at IS NULL;
+
+-- name: MarkReportViewed :exec
+-- Sets report_viewed_at to now() if not already set (idempotent).
+-- Only marks COMPLETED sessions — viewing a non-complete session is a
+-- no-op (the status filter prevents accidental marking). The therapist_id
+-- predicate is the authz guard at the SQL layer.
+UPDATE sessions SET
+  report_viewed_at = COALESCE(report_viewed_at, now())
+WHERE id = $1 AND therapist_id = $2
+  AND status = 'COMPLETED' AND deleted_at IS NULL;

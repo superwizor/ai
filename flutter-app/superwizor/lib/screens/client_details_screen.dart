@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../theme/euphire_theme.dart';
+import '../utils/haptics.dart';
 import '../widgets/euphire_toast.dart';
 import '../providers/services_provider.dart';
 import '../services/recording_service.dart';
@@ -729,7 +730,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                     );
                                   },
                                   onDismissed: (_) {
-                                    HapticFeedback.heavyImpact();
+                                    AppHapticFeedback.heavyImpact();
                                     ref
                                         .read(patientNotesMapProvider.notifier)
                                         .deleteNote(widget.patientId,
@@ -882,6 +883,14 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
               ),
 
               // ── Speed Dial action cards + FAB ──
+              // Guard: hide the entire FAB when a recording is active
+              // (any patient). The therapist can browse kartoteki via
+              // the back button, but must NOT be able to start a second
+              // recording or upload. The minimized recording bar
+              // provides the return path to the active session.
+              if (!(_activeRecState == RecordingState.recording ||
+                    _activeRecState == RecordingState.paused ||
+                    _activeRecState == RecordingState.interrupted))
               Positioned(
                 right: 16,
                 bottom: 16,
@@ -1463,24 +1472,29 @@ class _SessionCard extends ConsumerWidget {
     }
 
     final isCompleted = session.status == SessionStatus.completed;
-    final viewedReports = ref.watch(viewedReportsProvider);
+    final viewedReports = ref.watch(viewedReportsProvider).value ?? <String>{};
     final isViewed = viewedReports.contains(session.id);
 
     // Contextual status — Euphire palette only
+    final isInProgress = session.status == SessionStatus.inProgress;
+    final isPendingUpload = session.status == SessionStatus.pendingUpload;
+    final isError = session.status == SessionStatus.error;
+
     final (statusText, dotColor) = switch (session.status) {
       SessionStatus.completed => (
         isViewed ? 'Gotowy' : 'Nowy raport',
         isViewed ? EuphireColors.mist : const Color(0xFF4ADE80),
       ),
       SessionStatus.inProgress => ('AI analizuje\u2026', EuphireColors.ember),
-      SessionStatus.pendingUpload => ('Przetwarzanie', EuphireColors.mist),
-      SessionStatus.error => ('B\u0142\u0105d', EuphireColors.magma),
+      SessionStatus.pendingUpload => ('Wgrywanie\u2026', Colors.orangeAccent),
+      SessionStatus.error => ('B\u0142\u0105d analizy', EuphireColors.magma),
     };
 
-    // Only show the badge pill for actionable states
+    // Show the badge pill for all actionable states including pendingUpload
     final showBadge = (isCompleted && !isViewed) ||
-        session.status == SessionStatus.inProgress ||
-        session.status == SessionStatus.error;
+        isInProgress ||
+        isPendingUpload ||
+        isError;
 
     final title = session.name ?? (sessionNumber > 0 ? 'Sesja $sessionNumber' : 'Sesja');
 
@@ -1507,7 +1521,17 @@ class _SessionCard extends ConsumerWidget {
           color: Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-              color: Colors.white.withValues(alpha: 0.08)),
+              color: isError
+                  ? EuphireColors.magma.withValues(alpha: 0.3)
+                  : Colors.white.withValues(alpha: 0.08)),
+          boxShadow: isError
+              ? [
+                  BoxShadow(
+                    color: EuphireColors.magma.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [
@@ -1520,15 +1544,31 @@ class _SessionCard extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,
-              child: Text(
-                sessionNumber > 0 ? '#$sessionNumber' : '#',
-                style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: dotColor,
-                ),
-              ),
+              child: isInProgress || isPendingUpload
+                  // Spinner inside the number badge for active states
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: dotColor,
+                      ),
+                    )
+                  : isError
+                      ? Icon(
+                          Icons.error_outline_rounded,
+                          size: 18,
+                          color: dotColor,
+                        )
+                      : Text(
+                          sessionNumber > 0 ? '#$sessionNumber' : '#',
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: dotColor,
+                          ),
+                        ),
             ),
             const SizedBox(width: 14),
             // ── Title + meta ──
@@ -1564,18 +1604,40 @@ class _SessionCard extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: dotColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
+                  border: isError
+                      ? Border.all(
+                          color: dotColor.withValues(alpha: 0.3),
+                        )
+                      : null,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                    // Spinner for uploading/analyzing, icon for error, dot for others
+                    if (isInProgress || isPendingUpload)
+                      SizedBox(
+                        width: 10,
+                        height: 10,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: dotColor,
+                        ),
+                      )
+                    else if (isError)
+                      Icon(
+                        Icons.error_outline_rounded,
+                        size: 12,
                         color: dotColor,
+                      )
+                    else
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: dotColor,
+                        ),
                       ),
-                    ),
                     const SizedBox(width: 5),
                     Text(
                       statusText,
@@ -2439,7 +2501,7 @@ class _NoteCard extends ConsumerWidget {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        HapticFeedback.heavyImpact();
+                        AppHapticFeedback.heavyImpact();
                         ref.read(patientNotesMapProvider.notifier)
                             .deleteNote(patientId, note.id);
                         EuphireToast.success(context, message: l.note_deleted);
@@ -2548,7 +2610,7 @@ class _NoteCard extends ConsumerWidget {
             Expanded(
               child: ElevatedButton(
                 onPressed: () async {
-                  HapticFeedback.mediumImpact();
+                  AppHapticFeedback.mediumImpact();
                   Navigator.pop(ctx);
                   await _doSendNote(context, ref, l, patientId, note);
                 },
@@ -2825,7 +2887,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     } else {
       await notifier.addNote(widget.patientId, title, body);
     }
-    HapticFeedback.mediumImpact();
+    AppHapticFeedback.mediumImpact();
     _saved = true;
     return true;
   }
@@ -2893,7 +2955,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
       }
       if (!mounted) return;
       if (resp.sent) {
-        HapticFeedback.mediumImpact();
+        AppHapticFeedback.mediumImpact();
         EuphireToast.success(context, message: l.action_plan_sent_toast);
         Navigator.pop(context);
       } else if (resp.sendError == 'PATIENT_EMAIL_MISSING') {

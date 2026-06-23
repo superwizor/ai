@@ -70,7 +70,7 @@ export default async function ContactPage({
                 {/* Elegant Image Container */}
                 <div className="relative aspect-[1.1] w-full overflow-hidden rounded-[16px] border border-frost/10 shadow-inner mb-5">
                   <img
-                    src="/assets/therapy-contact.png"
+                    src="/assets/therapy-contact.webp"
                     alt={locale === "en" ? "Cozy therapy space" : "Gabinet terapeutyczny"}
                     className="object-cover w-full h-full brightness-[0.98] contrast-[1.02]"
                   />

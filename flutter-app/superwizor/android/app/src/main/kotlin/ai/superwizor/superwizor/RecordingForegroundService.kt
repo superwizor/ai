@@ -34,6 +34,7 @@ class RecordingForegroundService : Service() {
     companion object {
         const val ACTION_START = "ai.superwizor.superwizor.action.START_RECORDING"
         const val ACTION_STOP = "ai.superwizor.superwizor.action.STOP_RECORDING"
+        const val ACTION_UPDATE = "ai.superwizor.superwizor.action.UPDATE_STATUS"
         const val EXTRA_TITLE = "title"
         const val EXTRA_BODY = "body"
 
@@ -55,6 +56,11 @@ class RecordingForegroundService : Service() {
                 stopForegroundCompat()
                 stopSelf()
                 return START_NOT_STICKY
+            }
+            ACTION_UPDATE -> {
+                val title = intent.getStringExtra(EXTRA_TITLE) ?: DEFAULT_TITLE
+                val body = intent.getStringExtra(EXTRA_BODY) ?: DEFAULT_BODY
+                updateNotification(title, body)
             }
             else -> {
                 val title = intent?.getStringExtra(EXTRA_TITLE) ?: DEFAULT_TITLE
@@ -99,6 +105,32 @@ class RecordingForegroundService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
+    }
+
+    /** Update the existing foreground notification text without restarting the service. */
+    private fun updateNotification(title: String, body: String) {
+        createChannel()
+
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+        val contentIntent = launchIntent?.let {
+            PendingIntent.getActivity(
+                this,
+                0,
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
+        val notification: Notification = Notification.Builder(this, CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setOngoing(true)
+            .setContentIntent(contentIntent)
+            .build()
+
+        val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        mgr.notify(NOTIFICATION_ID, notification)
     }
 
     private fun createChannel() {

@@ -220,6 +220,26 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$cancelSession, request, options: options);
   }
 
+  /// ─── Cross-device preference sync (migration 000059) ───
+  /// Marks a completed session's report as viewed by the therapist.
+  /// Idempotent — re-calling on an already-viewed session is a no-op.
+  /// Replaces the Flutter-local SharedPreferences viewed_reports tracking.
+  $grpc.ResponseFuture<$1.Empty> markReportViewed(
+    $0.MarkReportViewedRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$markReportViewed, request, options: options);
+  }
+
+  /// Sets or clears the avatar customization (label + color) on a
+  /// patient file. Empty avatar_config clears to defaults.
+  $grpc.ResponseFuture<$1.Empty> setAvatarConfig(
+    $0.SetAvatarConfigRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$setAvatarConfig, request, options: options);
+  }
+
   /// ─── Report ratings (docs/10_REPORT_CUSTOMIZATION.md §5) ───
   /// 👍/👎 rating on a generated report. Idempotent on
   /// (report_id, therapist_id) — re-rating UPSERTs in place.
@@ -457,6 +477,16 @@ class ClinicalServiceClient extends $grpc.Client {
       $grpc.ClientMethod<$0.CancelSessionRequest, $1.Empty>(
           '/clinical.v1.ClinicalService/CancelSession',
           ($0.CancelSessionRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$markReportViewed =
+      $grpc.ClientMethod<$0.MarkReportViewedRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/MarkReportViewed',
+          ($0.MarkReportViewedRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$setAvatarConfig =
+      $grpc.ClientMethod<$0.SetAvatarConfigRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/SetAvatarConfig',
+          ($0.SetAvatarConfigRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
   static final _$rateReport =
       $grpc.ClientMethod<$0.RateReportRequest, $0.RateReportResponse>(
@@ -706,6 +736,22 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) =>
             $0.CancelSessionRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.MarkReportViewedRequest, $1.Empty>(
+        'MarkReportViewed',
+        markReportViewed_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.MarkReportViewedRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SetAvatarConfigRequest, $1.Empty>(
+        'SetAvatarConfig',
+        setAvatarConfig_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SetAvatarConfigRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.RateReportRequest, $0.RateReportResponse>(
         'RateReport',
@@ -995,6 +1041,22 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$1.Empty> cancelSession(
       $grpc.ServiceCall call, $0.CancelSessionRequest request);
+
+  $async.Future<$1.Empty> markReportViewed_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.MarkReportViewedRequest> $request) async {
+    return markReportViewed($call, await $request);
+  }
+
+  $async.Future<$1.Empty> markReportViewed(
+      $grpc.ServiceCall call, $0.MarkReportViewedRequest request);
+
+  $async.Future<$1.Empty> setAvatarConfig_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.SetAvatarConfigRequest> $request) async {
+    return setAvatarConfig($call, await $request);
+  }
+
+  $async.Future<$1.Empty> setAvatarConfig(
+      $grpc.ServiceCall call, $0.SetAvatarConfigRequest request);
 
   $async.Future<$0.RateReportResponse> rateReport_Pre($grpc.ServiceCall $call,
       $async.Future<$0.RateReportRequest> $request) async {

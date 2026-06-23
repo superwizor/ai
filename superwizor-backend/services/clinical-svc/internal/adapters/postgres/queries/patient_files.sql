@@ -154,3 +154,16 @@ UPDATE patient_files SET
   patient_email = NULLIF(sqlc.arg(patient_email)::text, ''),
   updated_at = now()
 WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
+
+-- name: SetAvatarConfig :exec
+-- Sets or clears the avatar customization on a kartoteka.
+-- Empty string or '{}' from the caller clears it (back to defaults).
+-- The therapist_id predicate is the authz guard at the SQL layer.
+UPDATE patient_files SET
+  avatar_config = CASE
+    WHEN sqlc.arg(avatar_config)::text IN ('', '{}', 'null') THEN NULL
+    ELSE sqlc.arg(avatar_config)::jsonb
+  END,
+  updated_at = now()
+WHERE id = sqlc.arg(id) AND therapist_id = sqlc.arg(therapist_id)
+  AND deleted_at IS NULL;

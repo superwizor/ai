@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/haptics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -138,7 +139,7 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Nadaj swoim klientom unikalne oznaczenia - szybko znajdziesz ich w kartotece.',
+                          'Nadaj swoim klientom unikalne oznaczenia, aby szybko znaleźć ich w kartotece.',
                           style: TextStyle(
                             fontFamily: 'Montserrat',
                             fontSize: 13,
@@ -279,7 +280,7 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
                   final isSelected = i == _selectedColorIndex;
                   return GestureDetector(
                     onTap: () {
-                      HapticFeedback.selectionClick();
+                      AppHapticFeedback.selectionClick();
                       _selectColor(i);
                     },
                     child: AnimatedContainer(

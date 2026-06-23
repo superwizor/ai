@@ -128,6 +128,7 @@ const PatientFile$json = {
     },
     {'1': 'patient_email', '3': 19, '4': 1, '5': 9, '10': 'patientEmail'},
     {'1': 'lifecycle_status', '3': 20, '4': 1, '5': 9, '10': 'lifecycleStatus'},
+    {'1': 'avatar_config', '3': 21, '4': 1, '5': 9, '10': 'avatarConfig'},
   ],
 };
 
@@ -150,7 +151,7 @@ final $typed_data.Uint8List patientFileDescriptor = $convert.base64Decode(
     'EXBhdGllbnRfbGFzdF9uYW1lGBEgASgJUg9wYXRpZW50TGFzdE5hbWUSMgoVcGF0aWVudF9sYW'
     '5ndWFnZV9jb2RlGBIgASgJUhNwYXRpZW50TGFuZ3VhZ2VDb2RlEiMKDXBhdGllbnRfZW1haWwY'
     'EyABKAlSDHBhdGllbnRFbWFpbBIpChBsaWZlY3ljbGVfc3RhdHVzGBQgASgJUg9saWZlY3ljbG'
-    'VTdGF0dXM=');
+    'VTdGF0dXMSIwoNYXZhdGFyX2NvbmZpZxgVIAEoCVIMYXZhdGFyQ29uZmln');
 
 @$core.Deprecated('Use modalityDescriptor instead')
 const Modality$json = {
@@ -697,6 +698,14 @@ const Session$json = {
       '10': 'createdAt'
     },
     {'1': 'name', '3': 12, '4': 1, '5': 9, '10': 'name'},
+    {
+      '1': 'report_viewed_at',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'reportViewedAt'
+    },
   ],
   '3': [Session_SpeakerLabelMappingEntry$json],
 };
@@ -721,9 +730,10 @@ final $typed_data.Uint8List sessionDescriptor = $convert.base64Decode(
     'gJUgtjb250YWN0Rm9ybRJhChVzcGVha2VyX2xhYmVsX21hcHBpbmcYCSADKAsyLS5jbGluaWNh'
     'bC52MS5TZXNzaW9uLlNwZWFrZXJMYWJlbE1hcHBpbmdFbnRyeVITc3BlYWtlckxhYmVsTWFwcG'
     'luZxIWCgZzdGF0dXMYCiABKAlSBnN0YXR1cxI5CgpjcmVhdGVkX2F0GAsgASgLMhouZ29vZ2xl'
-    'LnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYXRlZEF0EhIKBG5hbWUYDCABKAlSBG5hbWUaRgoYU3'
-    'BlYWtlckxhYmVsTWFwcGluZ0VudHJ5EhAKA2tleRgBIAEoCVIDa2V5EhQKBXZhbHVlGAIgASgJ'
-    'UgV2YWx1ZToCOAE=');
+    'LnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYXRlZEF0EhIKBG5hbWUYDCABKAlSBG5hbWUSRAoQcm'
+    'Vwb3J0X3ZpZXdlZF9hdBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSDnJlcG9y'
+    'dFZpZXdlZEF0GkYKGFNwZWFrZXJMYWJlbE1hcHBpbmdFbnRyeRIQCgNrZXkYASABKAlSA2tleR'
+    'IUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgB');
 
 @$core.Deprecated('Use listSessionsRequestDescriptor instead')
 const ListSessionsRequest$json = {
@@ -775,6 +785,35 @@ const CancelSessionRequest$json = {
 /// Descriptor for `CancelSessionRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List cancelSessionRequestDescriptor = $convert.base64Decode(
     'ChRDYW5jZWxTZXNzaW9uUmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSWQ=');
+
+@$core.Deprecated('Use markReportViewedRequestDescriptor instead')
+const MarkReportViewedRequest$json = {
+  '1': 'MarkReportViewedRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+  ],
+};
+
+/// Descriptor for `MarkReportViewedRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List markReportViewedRequestDescriptor =
+    $convert.base64Decode(
+        'ChdNYXJrUmVwb3J0Vmlld2VkUmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSW'
+        'Q=');
+
+@$core.Deprecated('Use setAvatarConfigRequestDescriptor instead')
+const SetAvatarConfigRequest$json = {
+  '1': 'SetAvatarConfigRequest',
+  '2': [
+    {'1': 'patient_file_id', '3': 1, '4': 1, '5': 9, '10': 'patientFileId'},
+    {'1': 'avatar_config', '3': 2, '4': 1, '5': 9, '10': 'avatarConfig'},
+  ],
+};
+
+/// Descriptor for `SetAvatarConfigRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setAvatarConfigRequestDescriptor =
+    $convert.base64Decode(
+        'ChZTZXRBdmF0YXJDb25maWdSZXF1ZXN0EiYKD3BhdGllbnRfZmlsZV9pZBgBIAEoCVINcGF0aW'
+        'VudEZpbGVJZBIjCg1hdmF0YXJfY29uZmlnGAIgASgJUgxhdmF0YXJDb25maWc=');
 
 @$core.Deprecated('Use listSessionsResponseDescriptor instead')
 const ListSessionsResponse$json = {

@@ -46,6 +46,7 @@ class PatientFile extends $pb.GeneratedMessage {
     $core.String? patientLanguageCode,
     $core.String? patientEmail,
     $core.String? lifecycleStatus,
+    $core.String? avatarConfig,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -72,6 +73,7 @@ class PatientFile extends $pb.GeneratedMessage {
       result.patientLanguageCode = patientLanguageCode;
     if (patientEmail != null) result.patientEmail = patientEmail;
     if (lifecycleStatus != null) result.lifecycleStatus = lifecycleStatus;
+    if (avatarConfig != null) result.avatarConfig = avatarConfig;
     return result;
   }
 
@@ -113,6 +115,7 @@ class PatientFile extends $pb.GeneratedMessage {
     ..aOS(18, _omitFieldNames ? '' : 'patientLanguageCode')
     ..aOS(19, _omitFieldNames ? '' : 'patientEmail')
     ..aOS(20, _omitFieldNames ? '' : 'lifecycleStatus')
+    ..aOS(21, _omitFieldNames ? '' : 'avatarConfig')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -336,6 +339,18 @@ class PatientFile extends $pb.GeneratedMessage {
   $core.bool hasLifecycleStatus() => $_has(19);
   @$pb.TagNumber(20)
   void clearLifecycleStatus() => $_clearField(20);
+
+  /// Avatar customization JSON: {"label": "AK", "color": 3}.
+  /// Empty string when no customization (use auto-initials + default
+  /// color). Persisted in patient_files.avatar_config (migration 000059).
+  @$pb.TagNumber(21)
+  $core.String get avatarConfig => $_getSZ(20);
+  @$pb.TagNumber(21)
+  set avatarConfig($core.String value) => $_setString(20, value);
+  @$pb.TagNumber(21)
+  $core.bool hasAvatarConfig() => $_has(20);
+  @$pb.TagNumber(21)
+  void clearAvatarConfig() => $_clearField(21);
 }
 
 class Modality extends $pb.GeneratedMessage {
@@ -2355,6 +2370,7 @@ class Session extends $pb.GeneratedMessage {
     $core.String? status,
     $3.Timestamp? createdAt,
     $core.String? name,
+    $3.Timestamp? reportViewedAt,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -2370,6 +2386,7 @@ class Session extends $pb.GeneratedMessage {
     if (status != null) result.status = status;
     if (createdAt != null) result.createdAt = createdAt;
     if (name != null) result.name = name;
+    if (reportViewedAt != null) result.reportViewedAt = reportViewedAt;
     return result;
   }
 
@@ -2404,6 +2421,8 @@ class Session extends $pb.GeneratedMessage {
     ..aOM<$3.Timestamp>(11, _omitFieldNames ? '' : 'createdAt',
         subBuilder: $3.Timestamp.create)
     ..aOS(12, _omitFieldNames ? '' : 'name')
+    ..aOM<$3.Timestamp>(13, _omitFieldNames ? '' : 'reportViewedAt',
+        subBuilder: $3.Timestamp.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2531,6 +2550,20 @@ class Session extends $pb.GeneratedMessage {
   $core.bool hasName() => $_has(11);
   @$pb.TagNumber(12)
   void clearName() => $_clearField(12);
+
+  /// Timestamp when the therapist first opened the report for this
+  /// session. Zero/empty when unviewed — Flutter shows "nowy raport"
+  /// badge. Set via MarkReportViewed RPC. Migration 000059.
+  @$pb.TagNumber(13)
+  $3.Timestamp get reportViewedAt => $_getN(12);
+  @$pb.TagNumber(13)
+  set reportViewedAt($3.Timestamp value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasReportViewedAt() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearReportViewedAt() => $_clearField(13);
+  @$pb.TagNumber(13)
+  $3.Timestamp ensureReportViewedAt() => $_ensure(12);
 }
 
 class ListSessionsRequest extends $pb.GeneratedMessage {
@@ -2766,6 +2799,132 @@ class CancelSessionRequest extends $pb.GeneratedMessage {
   $core.bool hasSessionId() => $_has(0);
   @$pb.TagNumber(1)
   void clearSessionId() => $_clearField(1);
+}
+
+/// MarkReportViewed — sets report_viewed_at on a COMPLETED session.
+/// Idempotent (COALESCE preserves first-view timestamp).
+class MarkReportViewedRequest extends $pb.GeneratedMessage {
+  factory MarkReportViewedRequest({
+    $core.String? sessionId,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    return result;
+  }
+
+  MarkReportViewedRequest._();
+
+  factory MarkReportViewedRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory MarkReportViewedRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'MarkReportViewedRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  MarkReportViewedRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  MarkReportViewedRequest copyWith(
+          void Function(MarkReportViewedRequest) updates) =>
+      super.copyWith((message) => updates(message as MarkReportViewedRequest))
+          as MarkReportViewedRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static MarkReportViewedRequest create() => MarkReportViewedRequest._();
+  @$core.override
+  MarkReportViewedRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static MarkReportViewedRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<MarkReportViewedRequest>(create);
+  static MarkReportViewedRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+}
+
+/// SetAvatarConfig — sets or clears avatar customization on a patient file.
+class SetAvatarConfigRequest extends $pb.GeneratedMessage {
+  factory SetAvatarConfigRequest({
+    $core.String? patientFileId,
+    $core.String? avatarConfig,
+  }) {
+    final result = create();
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    if (avatarConfig != null) result.avatarConfig = avatarConfig;
+    return result;
+  }
+
+  SetAvatarConfigRequest._();
+
+  factory SetAvatarConfigRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SetAvatarConfigRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetAvatarConfigRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
+    ..aOS(2, _omitFieldNames ? '' : 'avatarConfig')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetAvatarConfigRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetAvatarConfigRequest copyWith(
+          void Function(SetAvatarConfigRequest) updates) =>
+      super.copyWith((message) => updates(message as SetAvatarConfigRequest))
+          as SetAvatarConfigRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SetAvatarConfigRequest create() => SetAvatarConfigRequest._();
+  @$core.override
+  SetAvatarConfigRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SetAvatarConfigRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SetAvatarConfigRequest>(create);
+  static SetAvatarConfigRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get patientFileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set patientFileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFileId() => $_clearField(1);
+
+  /// JSON string: {"label": "AK", "color": 3}. Empty = clear.
+  @$pb.TagNumber(2)
+  $core.String get avatarConfig => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set avatarConfig($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAvatarConfig() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAvatarConfig() => $_clearField(2);
 }
 
 class ListSessionsResponse extends $pb.GeneratedMessage {

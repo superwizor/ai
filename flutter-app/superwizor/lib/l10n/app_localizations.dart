@@ -449,7 +449,7 @@ abstract class AppLocalizations {
   /// No description provided for @addPatient_email_hint.
   ///
   /// In pl, this message translates to:
-  /// **'Opcjonalnie — do planu działania'**
+  /// **'Opcjonalnie (do planu działania)'**
   String get addPatient_email_hint;
 
   /// No description provided for @addPatient_modality_label.
@@ -929,7 +929,7 @@ abstract class AppLocalizations {
   /// No description provided for @recording_resume_failed_body.
   ///
   /// In pl, this message translates to:
-  /// **'Nie udało się wznowić nagrywania. Dotychczasowe nagranie jest bezpieczne — możesz zakończyć sesję i wysłać je do analizy.'**
+  /// **'Nie udało się wznowić nagrywania. Dotychczasowe nagranie jest bezpieczne, możesz zakończyć sesję i wysłać je do analizy.'**
   String get recording_resume_failed_body;
 
   /// No description provided for @recording_resume_failed_retry.
@@ -953,7 +953,7 @@ abstract class AppLocalizations {
   /// No description provided for @recovery_sheet_body.
   ///
   /// In pl, this message translates to:
-  /// **'Nagranie sesji z {patientAlias} z {date} (ok. {minutes} min) nie zostało wysłane — aplikacja została przerwana w trakcie nagrywania. Co chcesz zrobić?'**
+  /// **'Nagranie sesji z {patientAlias} z {date} (ok. {minutes} min) nie zostało wysłane, ponieważ aplikacja została przerwana w trakcie nagrywania. Co chcesz zrobić?'**
   String recovery_sheet_body(String patientAlias, String date, int minutes);
 
   /// No description provided for @recovery_sheet_send.
@@ -1613,13 +1613,13 @@ abstract class AppLocalizations {
   /// No description provided for @settings_delete_confirm_proceed.
   ///
   /// In pl, this message translates to:
-  /// **'Rozumiem — przejdź dalej.'**
+  /// **'Rozumiem, przejdź dalej.'**
   String get settings_delete_confirm_proceed;
 
   /// No description provided for @settings_delete_confirm_cancel.
   ///
   /// In pl, this message translates to:
-  /// **'Anuluj — zachowaj konto.'**
+  /// **'Anuluj, zachowaj konto.'**
   String get settings_delete_confirm_cancel;
 
   /// No description provided for @settings_choose_language.
@@ -1637,7 +1637,7 @@ abstract class AppLocalizations {
   /// No description provided for @delete_account_consequence_1.
   ///
   /// In pl, this message translates to:
-  /// **'Cała dokumentacja kliniczna — wszystkich klientów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.'**
+  /// **'Cała dokumentacja kliniczna (wszystkich klientów, kartoteki, sesje i raporty AI) zostanie trwale usunięta.'**
   String get delete_account_consequence_1;
 
   /// No description provided for @delete_account_consequence_2.
@@ -1733,7 +1733,7 @@ abstract class AppLocalizations {
   /// No description provided for @report_rating_saved_negative.
   ///
   /// In pl, this message translates to:
-  /// **'Dzięki — uwzględnimy to przy kolejnych raportach.'**
+  /// **'Dzięki, uwzględnimy to przy kolejnych raportach.'**
   String get report_rating_saved_negative;
 
   /// No description provided for @report_rating_save_error.
@@ -2152,7 +2152,7 @@ abstract class AppLocalizations {
   /// No description provided for @suggestion_banner_applied_toast.
   ///
   /// In pl, this message translates to:
-  /// **'Zmieniono — kolejne raporty uwzględnią to ustawienie.'**
+  /// **'Zmieniono, kolejne raporty uwzględnią to ustawienie.'**
   String get suggestion_banner_applied_toast;
 
   /// No description provided for @suggestion_banner_apply_error.
@@ -2161,7 +2161,7 @@ abstract class AppLocalizations {
   /// **'Nie udało się zmienić ustawienia.'**
   String get suggestion_banner_apply_error;
 
-  /// Krótka warning banner — pozostałe tokeny w bieżącym okresie
+  /// Krótka warning banner, pozostałe tokeny w bieżącym okresie
   ///
   /// In pl, this message translates to:
   /// **'{n, plural, =1{Został Ci 1 token.} few{Zostały Ci {n} tokeny.} many{Zostało Ci {n} tokenów.} other{Zostało Ci {n} tokenów.}}'**
@@ -2212,7 +2212,7 @@ abstract class AppLocalizations {
   /// No description provided for @billing_exhausted_dialog_body.
   ///
   /// In pl, this message translates to:
-  /// **'Wykorzystałeś dostępne sesje. Możesz nadal nagrywać — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie. Sprawdź swoją skrzynkę e-mail, aby dowiedzieć się więcej.'**
+  /// **'Wykorzystałeś dostępne sesje. Możesz nadal nagrywać, audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie. Sprawdź swoją skrzynkę e-mail, aby dowiedzieć się więcej.'**
   String get billing_exhausted_dialog_body;
 
   /// No description provided for @billing_exhausted_dialog_record_locally.
@@ -2600,7 +2600,7 @@ abstract class AppLocalizations {
   /// No description provided for @action_plan_no_email_body.
   ///
   /// In pl, this message translates to:
-  /// **'Nie można wysłać planu — klient nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.'**
+  /// **'Nie można wysłać planu, ponieważ klient nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.'**
   String get action_plan_no_email_body;
 
   /// No description provided for @action_plan_send_confirm_title.
@@ -2810,13 +2810,13 @@ abstract class AppLocalizations {
   /// No description provided for @settings_live_activities_on.
   ///
   /// In pl, this message translates to:
-  /// **'Czas i status sesji są widoczne na zablokowanym ekranie i w Dynamic Island — nie musisz odblokowywać telefonu.'**
+  /// **'Czas i status sesji widoczne bez odblokowywania telefonu.'**
   String get settings_live_activities_on;
 
   /// No description provided for @settings_live_activities_off.
   ///
   /// In pl, this message translates to:
-  /// **'Status trwającej sesji widoczny tylko w aplikacji.'**
+  /// **'Status sesji widoczny tylko w aplikacji.'**
   String get settings_live_activities_off;
 
   /// No description provided for @live_activity_info_title.
@@ -2828,7 +2828,7 @@ abstract class AppLocalizations {
   /// No description provided for @live_activity_info_body.
   ///
   /// In pl, this message translates to:
-  /// **'Włącz podgląd na ekranie blokady, aby widzieć czas sesji bez otwierania aplikacji — również w Dynamic Island.'**
+  /// **'Włącz podgląd na ekranie blokady, aby widzieć czas sesji bez otwierania aplikacji.'**
   String get live_activity_info_body;
 
   /// No description provided for @live_activity_info_enable.
@@ -2884,6 +2884,30 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Pokaż raport'**
   String get live_activity_show_report;
+
+  /// No description provided for @live_activity_permission_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wymagana zgoda systemowa'**
+  String get live_activity_permission_title;
+
+  /// No description provided for @live_activity_permission_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Podgląd sesji na ekranie blokady wymaga włączenia Aktywności na żywo w ustawieniach systemu.'**
+  String get live_activity_permission_body;
+
+  /// No description provided for @live_activity_permission_open_settings.
+  ///
+  /// In pl, this message translates to:
+  /// **'Otwórz ustawienia'**
+  String get live_activity_permission_open_settings;
+
+  /// No description provided for @live_activity_permission_cancel.
+  ///
+  /// In pl, this message translates to:
+  /// **'Anuluj'**
+  String get live_activity_permission_cancel;
 }
 
 class _AppLocalizationsDelegate
