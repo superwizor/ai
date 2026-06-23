@@ -35,7 +35,7 @@ INSERT INTO patient_files (
   CASE WHEN $7::boolean THEN now() ELSE NULL END,
   $8
 )
-RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email
+RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email, lifecycle_status, avatar_config
 `
 
 type CreatePatientFileParams struct {
@@ -97,12 +97,14 @@ func (q *Queries) CreatePatientFile(ctx context.Context, arg CreatePatientFilePa
 		&i.DeletedAt,
 		&i.IdempotencyKey,
 		&i.PatientEmail,
+		&i.LifecycleStatus,
+		&i.AvatarConfig,
 	)
 	return i, err
 }
 
 const getPatientFile = `-- name: GetPatientFile :one
-SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email FROM patient_files
+SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email, lifecycle_status, avatar_config FROM patient_files
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -130,12 +132,14 @@ func (q *Queries) GetPatientFile(ctx context.Context, id uuid.UUID) (PatientFile
 		&i.DeletedAt,
 		&i.IdempotencyKey,
 		&i.PatientEmail,
+		&i.LifecycleStatus,
+		&i.AvatarConfig,
 	)
 	return i, err
 }
 
 const getPatientFileByIdempotency = `-- name: GetPatientFileByIdempotency :one
-SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email FROM patient_files
+SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email, lifecycle_status, avatar_config FROM patient_files
 WHERE therapist_id = $1
   AND idempotency_key = $2
   AND deleted_at IS NULL
@@ -174,13 +178,15 @@ func (q *Queries) GetPatientFileByIdempotency(ctx context.Context, arg GetPatien
 		&i.DeletedAt,
 		&i.IdempotencyKey,
 		&i.PatientEmail,
+		&i.LifecycleStatus,
+		&i.AvatarConfig,
 	)
 	return i, err
 }
 
 const getPatientFileWithUser = `-- name: GetPatientFileWithUser :one
 SELECT
-  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at, pf.idempotency_key, pf.patient_email,
+  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at, pf.idempotency_key, pf.patient_email, pf.lifecycle_status, pf.avatar_config,
   u.first_name  AS patient_first_name,
   u.last_name   AS patient_last_name,
   u.ui_language AS patient_language_code,
@@ -210,6 +216,8 @@ type GetPatientFileWithUserRow struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	IdempotencyKey        *string            `json:"idempotency_key"`
 	PatientEmail          *string            `json:"patient_email"`
+	LifecycleStatus       string             `json:"lifecycle_status"`
+	AvatarConfig          []byte             `json:"avatar_config"`
 	PatientFirstName      *string            `json:"patient_first_name"`
 	PatientLastName       *string            `json:"patient_last_name"`
 	PatientLanguageCode   *string            `json:"patient_language_code"`
@@ -250,6 +258,8 @@ func (q *Queries) GetPatientFileWithUser(ctx context.Context, id uuid.UUID) (Get
 		&i.DeletedAt,
 		&i.IdempotencyKey,
 		&i.PatientEmail,
+		&i.LifecycleStatus,
+		&i.AvatarConfig,
 		&i.PatientFirstName,
 		&i.PatientLastName,
 		&i.PatientLanguageCode,
@@ -282,7 +292,7 @@ func (q *Queries) HardDeletePatientFile(ctx context.Context, arg HardDeletePatie
 }
 
 const listPatientFilesByTherapist = `-- name: ListPatientFilesByTherapist :many
-SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email FROM patient_files
+SELECT id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email, lifecycle_status, avatar_config FROM patient_files
 WHERE therapist_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -322,6 +332,8 @@ func (q *Queries) ListPatientFilesByTherapist(ctx context.Context, arg ListPatie
 			&i.DeletedAt,
 			&i.IdempotencyKey,
 			&i.PatientEmail,
+			&i.LifecycleStatus,
+			&i.AvatarConfig,
 		); err != nil {
 			return nil, err
 		}
@@ -335,7 +347,7 @@ func (q *Queries) ListPatientFilesByTherapist(ctx context.Context, arg ListPatie
 
 const listPatientFilesByTherapistWithUser = `-- name: ListPatientFilesByTherapistWithUser :many
 SELECT
-  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at, pf.idempotency_key, pf.patient_email,
+  pf.id, pf.therapist_id, pf.patient_id, pf.relation_id, pf.modality_id, pf.working_alias, pf.process_type, pf.initial_complaint, pf.is_process_closed, pf.has_recording_consent, pf.consent_given_at, pf.first_consultation_at, pf.private_therapist_notes, pf.created_at, pf.updated_at, pf.deleted_at, pf.idempotency_key, pf.patient_email, pf.lifecycle_status, pf.avatar_config,
   u.first_name  AS patient_first_name,
   u.last_name   AS patient_last_name,
   u.ui_language AS patient_language_code,
@@ -373,6 +385,8 @@ type ListPatientFilesByTherapistWithUserRow struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	IdempotencyKey        *string            `json:"idempotency_key"`
 	PatientEmail          *string            `json:"patient_email"`
+	LifecycleStatus       string             `json:"lifecycle_status"`
+	AvatarConfig          []byte             `json:"avatar_config"`
 	PatientFirstName      *string            `json:"patient_first_name"`
 	PatientLastName       *string            `json:"patient_last_name"`
 	PatientLanguageCode   *string            `json:"patient_language_code"`
@@ -409,6 +423,8 @@ func (q *Queries) ListPatientFilesByTherapistWithUser(ctx context.Context, arg L
 			&i.DeletedAt,
 			&i.IdempotencyKey,
 			&i.PatientEmail,
+			&i.LifecycleStatus,
+			&i.AvatarConfig,
 			&i.PatientFirstName,
 			&i.PatientLastName,
 			&i.PatientLanguageCode,
@@ -450,6 +466,31 @@ func (q *Queries) ListSessionIDsForPatientFile(ctx context.Context, patientFileI
 		return nil, err
 	}
 	return items, nil
+}
+
+const setAvatarConfig = `-- name: SetAvatarConfig :exec
+UPDATE patient_files SET
+  avatar_config = CASE
+    WHEN $1::text IN ('', '{}', 'null') THEN NULL
+    ELSE $1::jsonb
+  END,
+  updated_at = now()
+WHERE id = $2 AND therapist_id = $3
+  AND deleted_at IS NULL
+`
+
+type SetAvatarConfigParams struct {
+	AvatarConfig string    `json:"avatar_config"`
+	ID           uuid.UUID `json:"id"`
+	TherapistID  uuid.UUID `json:"therapist_id"`
+}
+
+// Sets or clears the avatar customization on a kartoteka.
+// Empty string or '{}' from the caller clears it (back to defaults).
+// The therapist_id predicate is the authz guard at the SQL layer.
+func (q *Queries) SetAvatarConfig(ctx context.Context, arg SetAvatarConfigParams) error {
+	_, err := q.db.Exec(ctx, setAvatarConfig, arg.AvatarConfig, arg.ID, arg.TherapistID)
+	return err
 }
 
 const setPatientEmail = `-- name: SetPatientEmail :exec
@@ -497,10 +538,14 @@ UPDATE patient_files SET
   working_alias = COALESCE(NULLIF($2, ''), working_alias),
   initial_complaint = NULLIF($3, ''),
   private_therapist_notes = NULLIF($4, ''),
-  is_process_closed = $5,
+  is_process_closed = CASE
+    WHEN $6::text <> '' THEN ($6::text = 'COMPLETED')
+    ELSE $5
+  END,
+  lifecycle_status = COALESCE(NULLIF($6::text, ''), lifecycle_status),
   updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email
+RETURNING id, therapist_id, patient_id, relation_id, modality_id, working_alias, process_type, initial_complaint, is_process_closed, has_recording_consent, consent_given_at, first_consultation_at, private_therapist_notes, created_at, updated_at, deleted_at, idempotency_key, patient_email, lifecycle_status, avatar_config
 `
 
 type UpdatePatientFileParams struct {
@@ -509,6 +554,7 @@ type UpdatePatientFileParams struct {
 	Column3         interface{} `json:"column_3"`
 	Column4         interface{} `json:"column_4"`
 	IsProcessClosed bool        `json:"is_process_closed"`
+	Column6         string      `json:"column_6"`
 }
 
 // Mutates only the therapist-editable kartoteka fields. modality_id is
@@ -518,6 +564,11 @@ type UpdatePatientFileParams struct {
 // clinical.proto. process_type follows the same logic.
 // Patient-user fields (first_name/last_name/language_code) live in
 // patient_users.sql::UpdatePatientUser.
+//
+// lifecycle_status ($6): when non-empty, sets the lifecycle and derives
+// is_process_closed (COMPLETED → true, otherwise → false). When empty,
+// both fields keep their current values (is_process_closed still
+// honors $5 for backward compat with older clients).
 func (q *Queries) UpdatePatientFile(ctx context.Context, arg UpdatePatientFileParams) (PatientFile, error) {
 	row := q.db.QueryRow(ctx, updatePatientFile,
 		arg.ID,
@@ -525,6 +576,7 @@ func (q *Queries) UpdatePatientFile(ctx context.Context, arg UpdatePatientFilePa
 		arg.Column3,
 		arg.Column4,
 		arg.IsProcessClosed,
+		arg.Column6,
 	)
 	var i PatientFile
 	err := row.Scan(
@@ -546,6 +598,8 @@ func (q *Queries) UpdatePatientFile(ctx context.Context, arg UpdatePatientFilePa
 		&i.DeletedAt,
 		&i.IdempotencyKey,
 		&i.PatientEmail,
+		&i.LifecycleStatus,
+		&i.AvatarConfig,
 	)
 	return i, err
 }

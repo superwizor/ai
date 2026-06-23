@@ -19,8 +19,8 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../theme/euphire_theme.dart';
+import '../utils/haptics.dart';
 
 // ---------------------------------------------------------------------------
 // Public API — call-site unchanged, all 50+ usages keep working.
@@ -70,8 +70,8 @@ class _ToastManager {
     _dismiss();
 
     (accentColor == EuphireColors.magma)
-        ? HapticFeedback.mediumImpact()
-        : HapticFeedback.lightImpact();
+        ? AppHapticFeedback.mediumImpact()
+        : AppHapticFeedback.lightImpact();
 
     final overlay = Overlay.of(context, rootOverlay: true);
 

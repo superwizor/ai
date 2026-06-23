@@ -781,6 +781,16 @@ type ConsentRecord struct {
 	RecordedAt     time.Time `json:"recorded_at"`
 }
 
+type CrmEmailLog struct {
+	ID             uuid.UUID `json:"id"`
+	AdminUserID    string    `json:"admin_user_id"`
+	TargetUserID   uuid.UUID `json:"target_user_id"`
+	TemplateID     string    `json:"template_id"`
+	Subject        string    `json:"subject"`
+	RecipientEmail string    `json:"recipient_email"`
+	SentAt         time.Time `json:"sent_at"`
+}
+
 type CrmExcludedUser struct {
 	UserID     uuid.UUID `json:"user_id"`
 	ExcludedAt time.Time `json:"excluded_at"`
@@ -811,6 +821,7 @@ type CrmTag struct {
 	TargetUserID uuid.UUID `json:"target_user_id"`
 	Tag          string    `json:"tag"`
 	CreatedAt    time.Time `json:"created_at"`
+	Color        string    `json:"color"`
 }
 
 type EmailDripLog struct {
@@ -874,6 +885,20 @@ type Invitation struct {
 	AcceptedAt     pgtype.Timestamptz `json:"accepted_at"`
 	AcceptedUserID pgtype.UUID        `json:"accepted_user_id"`
 	CreatedAt      time.Time          `json:"created_at"`
+}
+
+type Invoice struct {
+	ID               uuid.UUID      `json:"id"`
+	OrganizationID   uuid.UUID      `json:"organization_id"`
+	SubscriptionID   pgtype.UUID    `json:"subscription_id"`
+	StripeInvoiceID  string         `json:"stripe_invoice_id"`
+	AmountPaid       pgtype.Numeric `json:"amount_paid"`
+	Currency         string         `json:"currency"`
+	InvoicePdf       string         `json:"invoice_pdf"`
+	HostedInvoiceUrl string         `json:"hosted_invoice_url"`
+	PeriodStart      time.Time      `json:"period_start"`
+	PeriodEnd        time.Time      `json:"period_end"`
+	CreatedAt        time.Time      `json:"created_at"`
 }
 
 type Modality struct {
@@ -947,6 +972,9 @@ type PatientFile struct {
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out (legacy clients).
 	IdempotencyKey *string `json:"idempotency_key"`
 	PatientEmail   *string `json:"patient_email"`
+	// Therapist-managed patient file lifecycle: ACTIVE | COMPLETED | PAUSED. COMPLETED replaces is_process_closed=true. Default ACTIVE.
+	LifecycleStatus string `json:"lifecycle_status"`
+	AvatarConfig    []byte `json:"avatar_config"`
 }
 
 type PatientNote struct {
@@ -1088,6 +1116,7 @@ type Session struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	ReportLanguage        string             `json:"report_language"`
 	Name                  *string            `json:"name"`
+	ReportViewedAt        pgtype.Timestamptz `json:"report_viewed_at"`
 }
 
 type SttOperation struct {

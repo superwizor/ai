@@ -1,14 +1,19 @@
-// PatientAvatarProvider — local SharedPreferences-backed provider
-// for managing custom patient avatar labels and colors.
+// PatientAvatarProvider — per-kartoteka avatar customization (label + color).
 //
-// This is a frontend-only feature. The avatar customization is stored
-// locally per therapist and does not sync to the backend.
+// ──────────────────────────────────────────────────────────────────────
+// MIGRATION (000059): Source of truth moved from SharedPreferences to
+// patient_files.avatar_config (JSONB), synced via ClinicalService.SetAvatarConfig
+// gRPC RPC. The avatar config now persists across devices. On first run
+// after this change, we migrate locally-stored configs to the backend.
+// ──────────────────────────────────────────────────────────────────────
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../generated/clinical/v1/clinical.pb.dart' as grpc_clinical;
 import 'current_user_provider.dart';
+import 'grpc_provider.dart';
 
 /// Euphire-harmonious avatar colors — tested for WCAG contrast
 /// on dark background (#0A2326) with white text.
@@ -56,40 +61,115 @@ class PatientAvatarNotifier extends Notifier<Map<String, PatientAvatarConfig>> {
 
   @override
   Map<String, PatientAvatarConfig> build() {
-    _load();
+    _loadFromBackend();
     return {};
   }
 
-  Future<void> _load() async {
-    final user = ref.read(currentUserProvider).value;
-    if (user == null) return;
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('$_keyPrefix${user.id}');
-    if (raw == null) return;
+  /// Load avatar configs from the backend patient files data.
+  /// Each PatientFile now carries avatar_config as a JSON string.
+  Future<void> _loadFromBackend() async {
     try {
-      final map = (jsonDecode(raw) as Map<String, dynamic>).map(
-        (k, v) => MapEntry(
-            k, PatientAvatarConfig.fromJson(v as Map<String, dynamic>)),
-      );
-      state = map;
-    } catch (_) {}
-  }
+      final user = ref.read(currentUserProvider).value;
+      if (user == null) return;
 
-  Future<void> _save() async {
-    final user = ref.read(currentUserProvider).value;
-    if (user == null) return;
-    final prefs = await SharedPreferences.getInstance();
-    final map = state.map((k, v) => MapEntry(k, v.toJson()));
-    await prefs.setString('$_keyPrefix${user.id}', jsonEncode(map));
+      // Migrate local SharedPreferences configs to backend first.
+      await _migrateLocalToBackend(user.id);
+
+      // Avatar configs are now embedded in PatientFile responses —
+      // they come back automatically from ListPatientFiles. The patient
+      // provider parses them. We just need to populate our local map
+      // from what the patient provider already fetched.
+      final client = ref.read(grpcClientsProvider).clinical;
+      final res = await client.listPatientFiles(
+        grpc_clinical.ListPatientFilesRequest(
+          therapistId: user.id,
+          pageSize: 500,
+        ),
+      );
+
+      final map = <String, PatientAvatarConfig>{};
+      for (final pf in res.patientFiles) {
+        if (pf.avatarConfig.isNotEmpty) {
+          try {
+            final json = jsonDecode(pf.avatarConfig) as Map<String, dynamic>;
+            map[pf.id] = PatientAvatarConfig.fromJson(json);
+          } catch (_) {
+            // Malformed JSON — skip.
+          }
+        }
+      }
+      if (map.isNotEmpty) {
+        state = map;
+      }
+    } catch (_) {
+      // Network error — use empty defaults.
+    }
   }
 
   PatientAvatarConfig getConfig(String patientId) {
     return state[patientId] ?? const PatientAvatarConfig();
   }
 
-  Future<void> setConfig(String patientId, PatientAvatarConfig config) async {
-    state = {...state, patientId: config};
-    await _save();
+  Future<void> setConfig(String patientFileId, PatientAvatarConfig config) async {
+    // Optimistic local update.
+    state = {...state, patientFileId: config};
+
+    try {
+      final client = ref.read(grpcClientsProvider).clinical;
+      await client.setAvatarConfig(
+        grpc_clinical.SetAvatarConfigRequest(
+          patientFileId: patientFileId,
+          avatarConfig: jsonEncode(config.toJson()),
+        ),
+      );
+    } catch (e) {
+      // Best-effort: if the RPC fails, the local state is still
+      // updated. Next ListPatientFiles will overwrite.
+    }
+  }
+
+  /// One-time migration from SharedPreferences to backend.
+  Future<void> _migrateLocalToBackend(String therapistId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = '$_keyPrefix$therapistId';
+      final raw = prefs.getString(key);
+      if (raw == null) return;
+
+      final Map<String, dynamic> localMap;
+      try {
+        localMap = jsonDecode(raw) as Map<String, dynamic>;
+      } catch (_) {
+        // Corrupt local data — delete and move on.
+        await prefs.remove(key);
+        return;
+      }
+
+      if (localMap.isEmpty) {
+        await prefs.remove(key);
+        return;
+      }
+
+      final client = ref.read(grpcClientsProvider).clinical;
+      for (final entry in localMap.entries) {
+        try {
+          final configJson = jsonEncode(entry.value);
+          await client.setAvatarConfig(
+            grpc_clinical.SetAvatarConfigRequest(
+              patientFileId: entry.key,
+              avatarConfig: configJson,
+            ),
+          );
+        } catch (_) {
+          // Skip individual failures — patient file may have been deleted.
+        }
+      }
+
+      // All migrated — delete the local key.
+      await prefs.remove(key);
+    } catch (_) {
+      // SharedPreferences error — skip migration.
+    }
   }
 }
 

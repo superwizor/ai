@@ -183,6 +183,7 @@ Future<List<PatientDto>> _grpcFetch(
       languageCode: pf.patientLanguageCode,
       sessionCount: counts[i],
       email: pf.patientEmail,
+      lifecycleStatus: pf.lifecycleStatus.isNotEmpty ? pf.lifecycleStatus : 'ACTIVE',
     );
   });
 }

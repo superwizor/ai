@@ -19,6 +19,10 @@ class Session {
   final DateTime date;
   final Duration duration;
   final SessionStatus status;
+  /// When the therapist first opened the report. null = unviewed
+  /// ("nowy raport" badge). Populated from sessions.report_viewed_at
+  /// via ClinicalService.MarkReportViewed (migration 000059).
+  final DateTime? reportViewedAt;
 
   Session({
     required this.id,
@@ -28,6 +32,7 @@ class Session {
     required this.date,
     required this.duration,
     this.status = SessionStatus.inProgress,
+    this.reportViewedAt,
   });
 
   Session copyWith({
@@ -38,6 +43,7 @@ class Session {
     DateTime? date,
     Duration? duration,
     SessionStatus? status,
+    DateTime? reportViewedAt,
   }) {
     return Session(
       id: id ?? this.id,
@@ -47,6 +53,7 @@ class Session {
       date: date ?? this.date,
       duration: duration ?? this.duration,
       status: status ?? this.status,
+      reportViewedAt: reportViewedAt ?? this.reportViewedAt,
     );
   }
 }

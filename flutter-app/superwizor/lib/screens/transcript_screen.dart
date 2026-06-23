@@ -28,6 +28,7 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/haptics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
@@ -38,6 +39,7 @@ import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
 import '../providers/services_provider.dart';
+import '../providers/viewed_reports_provider.dart';
 import '../repositories/session_details_repository.dart';
 import '../services/transcript_pdf_exporter.dart';
 import '../theme/euphire_theme.dart';
@@ -161,6 +163,10 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
       _loading = false;
       _error = null;
     });
+    // Mark the report as viewed — covers auto-navigation from
+    // SessionStatusScreen (success cascade) and push notification
+    // deep links, which previously skipped markViewed.
+    ref.read(viewedReportsProvider.notifier).markViewed(widget.sessionId);
   }
 
   SpeakerTurnDto? get _currentlyPlayingSegment {
@@ -338,7 +344,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
                 final selected = _filter == f.value;
                 return GestureDetector(
                   onTap: () {
-                    HapticFeedback.selectionClick();
+                    AppHapticFeedback.selectionClick();
                     setState(() => _filter = f.value);
                   },
                   child: AnimatedContainer(
@@ -509,7 +515,7 @@ class _SegmentTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       onLongPress: () {
-        HapticFeedback.selectionClick();
+        AppHapticFeedback.selectionClick();
         _showLongPressMenu(context);
       },
       borderRadius: BorderRadius.circular(12),

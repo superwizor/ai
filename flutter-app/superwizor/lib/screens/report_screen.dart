@@ -21,6 +21,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/haptics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../cache/dto/report_dto.dart';
@@ -194,8 +195,13 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       _error = null;
     });
 
+    // Mark the report as viewed — covers auto-navigation from
+    // SessionStatusScreen (success cascade) and push notification
+    // deep links, which previously skipped markViewed.
+    final isRevisit = ref.read(viewedReportsProvider).value?.contains(widget.sessionId) ?? false;
+    ref.read(viewedReportsProvider.notifier).markViewed(widget.sessionId);
+
     if (_screenTracker == null && fresh.reports.isNotEmpty) {
-      final isRevisit = ref.read(viewedReportsProvider).contains(widget.sessionId);
       _screenTracker = ref.read(analyticsCollectorProvider).trackScreen(
         fresh.reports.first.id,
         widget.sessionId,
@@ -366,7 +372,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   return GestureDetector(
                     key: s.key,
                     onLongPress: () {
-                      HapticFeedback.selectionClick();
+                      AppHapticFeedback.selectionClick();
                       _showSectionOptions(context, s, idx);
                     },
                     child: Padding(
@@ -492,7 +498,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
     return GestureDetector(
       onLongPress: () {
-        HapticFeedback.selectionClick();
+        AppHapticFeedback.selectionClick();
         _showSummaryOptions(context, payload, report);
       },
       child: Container(

@@ -7,6 +7,7 @@ class EuphireTextField extends StatelessWidget {
   final TextInputType keyboardType;
   final ValueChanged<String>? onChanged;
   final String? errorText;
+  final FocusNode? focusNode;
 
   const EuphireTextField({
     super.key,
@@ -16,6 +17,7 @@ class EuphireTextField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.onChanged,
     this.errorText,
+    this.focusNode,
   });
 
   @override
@@ -25,6 +27,7 @@ class EuphireTextField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       onChanged: onChanged,
+      focusNode: focusNode,
       decoration: InputDecoration(
         labelText: labelText,
         errorText: errorText,

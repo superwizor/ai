@@ -28,6 +28,8 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
+import '../utils/debug_flags.dart';
+
 import 'pending_upload.dart';
 import 'upload_queue.dart';
 import 'upload_worker.dart';
@@ -551,6 +553,35 @@ class UploadQueueRunner {
       },
     );
     _analysisSubs[row.localId] = sub;
+  }
+
+  // ── Debug-only surface (tree-shaken in release) ─────────────
+
+  /// Inject a [PendingUpload] into the queue WITHOUT running a tick
+  /// or writing to Hive. The row appears in snapshots for the
+  /// duration of this session only. Useful for exercising the upload
+  /// progress bar, quota-blocked UI, and failed-upload UX.
+  void debugInjectRow(PendingUpload row) {
+    if (!kDebugMode && !DebugFlags.simulationsEnabled) return;
+    _queue.debugInject(row);
+    _emitSnapshot();
+  }
+
+  /// Set a fake upload progress fraction (0..1) for a localId so
+  /// the UI renders a progress bar. Only works for rows in
+  /// phase=created (the live-upload phase).
+  void debugSetProgress(String localId, double fraction) {
+    if (!kDebugMode && !DebugFlags.simulationsEnabled) return;
+    _uploadProgress[localId] = fraction.clamp(0.0, 1.0);
+    _emitSnapshot();
+  }
+
+  /// Remove a debug-injected row and its progress entry.
+  void debugDismissRow(String localId) {
+    if (!kDebugMode && !DebugFlags.simulationsEnabled) return;
+    _queue.debugRemove(localId);
+    _uploadProgress.remove(localId);
+    _emitSnapshot();
   }
 }
 

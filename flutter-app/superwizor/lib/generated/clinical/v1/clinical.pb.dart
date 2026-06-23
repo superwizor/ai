@@ -45,6 +45,8 @@ class PatientFile extends $pb.GeneratedMessage {
     $core.String? patientLastName,
     $core.String? patientLanguageCode,
     $core.String? patientEmail,
+    $core.String? lifecycleStatus,
+    $core.String? avatarConfig,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -70,6 +72,8 @@ class PatientFile extends $pb.GeneratedMessage {
     if (patientLanguageCode != null)
       result.patientLanguageCode = patientLanguageCode;
     if (patientEmail != null) result.patientEmail = patientEmail;
+    if (lifecycleStatus != null) result.lifecycleStatus = lifecycleStatus;
+    if (avatarConfig != null) result.avatarConfig = avatarConfig;
     return result;
   }
 
@@ -110,6 +114,8 @@ class PatientFile extends $pb.GeneratedMessage {
     ..aOS(17, _omitFieldNames ? '' : 'patientLastName')
     ..aOS(18, _omitFieldNames ? '' : 'patientLanguageCode')
     ..aOS(19, _omitFieldNames ? '' : 'patientEmail')
+    ..aOS(20, _omitFieldNames ? '' : 'lifecycleStatus')
+    ..aOS(21, _omitFieldNames ? '' : 'avatarConfig')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -320,6 +326,31 @@ class PatientFile extends $pb.GeneratedMessage {
   $core.bool hasPatientEmail() => $_has(18);
   @$pb.TagNumber(19)
   void clearPatientEmail() => $_clearField(19);
+
+  /// Therapist-managed lifecycle: "ACTIVE" | "COMPLETED" | "PAUSED".
+  /// Persisted in patient_files.lifecycle_status (migration 000058).
+  /// Replaces the Flutter-only SharedPreferences-backed lifecycle.
+  /// COMPLETED also sets is_process_closed=true for backward compat.
+  @$pb.TagNumber(20)
+  $core.String get lifecycleStatus => $_getSZ(19);
+  @$pb.TagNumber(20)
+  set lifecycleStatus($core.String value) => $_setString(19, value);
+  @$pb.TagNumber(20)
+  $core.bool hasLifecycleStatus() => $_has(19);
+  @$pb.TagNumber(20)
+  void clearLifecycleStatus() => $_clearField(20);
+
+  /// Avatar customization JSON: {"label": "AK", "color": 3}.
+  /// Empty string when no customization (use auto-initials + default
+  /// color). Persisted in patient_files.avatar_config (migration 000059).
+  @$pb.TagNumber(21)
+  $core.String get avatarConfig => $_getSZ(20);
+  @$pb.TagNumber(21)
+  set avatarConfig($core.String value) => $_setString(20, value);
+  @$pb.TagNumber(21)
+  $core.bool hasAvatarConfig() => $_has(20);
+  @$pb.TagNumber(21)
+  void clearAvatarConfig() => $_clearField(21);
 }
 
 class Modality extends $pb.GeneratedMessage {
@@ -822,6 +853,7 @@ class UpdatePatientFileRequest extends $pb.GeneratedMessage {
     $core.String? initialComplaint,
     $core.String? privateTherapistNotes,
     $core.bool? isProcessClosed,
+    $core.String? lifecycleStatus,
   }) {
     final result = create();
     if (patientFileId != null) result.patientFileId = patientFileId;
@@ -830,6 +862,7 @@ class UpdatePatientFileRequest extends $pb.GeneratedMessage {
     if (privateTherapistNotes != null)
       result.privateTherapistNotes = privateTherapistNotes;
     if (isProcessClosed != null) result.isProcessClosed = isProcessClosed;
+    if (lifecycleStatus != null) result.lifecycleStatus = lifecycleStatus;
     return result;
   }
 
@@ -851,6 +884,7 @@ class UpdatePatientFileRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'initialComplaint')
     ..aOS(4, _omitFieldNames ? '' : 'privateTherapistNotes')
     ..aOB(5, _omitFieldNames ? '' : 'isProcessClosed')
+    ..aOS(6, _omitFieldNames ? '' : 'lifecycleStatus')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -917,6 +951,19 @@ class UpdatePatientFileRequest extends $pb.GeneratedMessage {
   $core.bool hasIsProcessClosed() => $_has(4);
   @$pb.TagNumber(5)
   void clearIsProcessClosed() => $_clearField(5);
+
+  /// Lifecycle status: "ACTIVE" | "COMPLETED" | "PAUSED".
+  /// When set to "COMPLETED", also flips is_process_closed=true.
+  /// When set to "ACTIVE" or "PAUSED", flips is_process_closed=false.
+  /// Empty string means "leave unchanged".
+  @$pb.TagNumber(6)
+  $core.String get lifecycleStatus => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set lifecycleStatus($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasLifecycleStatus() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearLifecycleStatus() => $_clearField(6);
 }
 
 class DeletePatientFileRequest extends $pb.GeneratedMessage {
@@ -2323,6 +2370,7 @@ class Session extends $pb.GeneratedMessage {
     $core.String? status,
     $3.Timestamp? createdAt,
     $core.String? name,
+    $3.Timestamp? reportViewedAt,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -2338,6 +2386,7 @@ class Session extends $pb.GeneratedMessage {
     if (status != null) result.status = status;
     if (createdAt != null) result.createdAt = createdAt;
     if (name != null) result.name = name;
+    if (reportViewedAt != null) result.reportViewedAt = reportViewedAt;
     return result;
   }
 
@@ -2372,6 +2421,8 @@ class Session extends $pb.GeneratedMessage {
     ..aOM<$3.Timestamp>(11, _omitFieldNames ? '' : 'createdAt',
         subBuilder: $3.Timestamp.create)
     ..aOS(12, _omitFieldNames ? '' : 'name')
+    ..aOM<$3.Timestamp>(13, _omitFieldNames ? '' : 'reportViewedAt',
+        subBuilder: $3.Timestamp.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2499,6 +2550,20 @@ class Session extends $pb.GeneratedMessage {
   $core.bool hasName() => $_has(11);
   @$pb.TagNumber(12)
   void clearName() => $_clearField(12);
+
+  /// Timestamp when the therapist first opened the report for this
+  /// session. Zero/empty when unviewed — Flutter shows "nowy raport"
+  /// badge. Set via MarkReportViewed RPC. Migration 000059.
+  @$pb.TagNumber(13)
+  $3.Timestamp get reportViewedAt => $_getN(12);
+  @$pb.TagNumber(13)
+  set reportViewedAt($3.Timestamp value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasReportViewedAt() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearReportViewedAt() => $_clearField(13);
+  @$pb.TagNumber(13)
+  $3.Timestamp ensureReportViewedAt() => $_ensure(12);
 }
 
 class ListSessionsRequest extends $pb.GeneratedMessage {
@@ -2734,6 +2799,132 @@ class CancelSessionRequest extends $pb.GeneratedMessage {
   $core.bool hasSessionId() => $_has(0);
   @$pb.TagNumber(1)
   void clearSessionId() => $_clearField(1);
+}
+
+/// MarkReportViewed — sets report_viewed_at on a COMPLETED session.
+/// Idempotent (COALESCE preserves first-view timestamp).
+class MarkReportViewedRequest extends $pb.GeneratedMessage {
+  factory MarkReportViewedRequest({
+    $core.String? sessionId,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    return result;
+  }
+
+  MarkReportViewedRequest._();
+
+  factory MarkReportViewedRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory MarkReportViewedRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'MarkReportViewedRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  MarkReportViewedRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  MarkReportViewedRequest copyWith(
+          void Function(MarkReportViewedRequest) updates) =>
+      super.copyWith((message) => updates(message as MarkReportViewedRequest))
+          as MarkReportViewedRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static MarkReportViewedRequest create() => MarkReportViewedRequest._();
+  @$core.override
+  MarkReportViewedRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static MarkReportViewedRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<MarkReportViewedRequest>(create);
+  static MarkReportViewedRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+}
+
+/// SetAvatarConfig — sets or clears avatar customization on a patient file.
+class SetAvatarConfigRequest extends $pb.GeneratedMessage {
+  factory SetAvatarConfigRequest({
+    $core.String? patientFileId,
+    $core.String? avatarConfig,
+  }) {
+    final result = create();
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    if (avatarConfig != null) result.avatarConfig = avatarConfig;
+    return result;
+  }
+
+  SetAvatarConfigRequest._();
+
+  factory SetAvatarConfigRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SetAvatarConfigRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetAvatarConfigRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
+    ..aOS(2, _omitFieldNames ? '' : 'avatarConfig')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetAvatarConfigRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetAvatarConfigRequest copyWith(
+          void Function(SetAvatarConfigRequest) updates) =>
+      super.copyWith((message) => updates(message as SetAvatarConfigRequest))
+          as SetAvatarConfigRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SetAvatarConfigRequest create() => SetAvatarConfigRequest._();
+  @$core.override
+  SetAvatarConfigRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SetAvatarConfigRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SetAvatarConfigRequest>(create);
+  static SetAvatarConfigRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get patientFileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set patientFileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFileId() => $_clearField(1);
+
+  /// JSON string: {"label": "AK", "color": 3}. Empty = clear.
+  @$pb.TagNumber(2)
+  $core.String get avatarConfig => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set avatarConfig($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAvatarConfig() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAvatarConfig() => $_clearField(2);
 }
 
 class ListSessionsResponse extends $pb.GeneratedMessage {
@@ -4668,6 +4859,653 @@ class AdminSessionRow extends $pb.GeneratedMessage {
   void clearSubscriptionTokensUsed() => $_clearField(14);
 }
 
+class AdminModalityPrompt extends $pb.GeneratedMessage {
+  factory AdminModalityPrompt({
+    $core.String? modalityId,
+    $core.String? systemCode,
+    $core.String? displayName,
+    $core.String? modalityType,
+    $core.bool? isSupported,
+    $core.String? systemPrompt,
+    $core.int? version,
+    $core.String? updatedByEmail,
+    $3.Timestamp? updatedAt,
+  }) {
+    final result = create();
+    if (modalityId != null) result.modalityId = modalityId;
+    if (systemCode != null) result.systemCode = systemCode;
+    if (displayName != null) result.displayName = displayName;
+    if (modalityType != null) result.modalityType = modalityType;
+    if (isSupported != null) result.isSupported = isSupported;
+    if (systemPrompt != null) result.systemPrompt = systemPrompt;
+    if (version != null) result.version = version;
+    if (updatedByEmail != null) result.updatedByEmail = updatedByEmail;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  AdminModalityPrompt._();
+
+  factory AdminModalityPrompt.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminModalityPrompt.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminModalityPrompt',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'modalityId')
+    ..aOS(2, _omitFieldNames ? '' : 'systemCode')
+    ..aOS(3, _omitFieldNames ? '' : 'displayName')
+    ..aOS(4, _omitFieldNames ? '' : 'modalityType')
+    ..aOB(5, _omitFieldNames ? '' : 'isSupported')
+    ..aOS(6, _omitFieldNames ? '' : 'systemPrompt')
+    ..aI(7, _omitFieldNames ? '' : 'version')
+    ..aOS(8, _omitFieldNames ? '' : 'updatedByEmail')
+    ..aOM<$3.Timestamp>(9, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $3.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminModalityPrompt clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminModalityPrompt copyWith(void Function(AdminModalityPrompt) updates) =>
+      super.copyWith((message) => updates(message as AdminModalityPrompt))
+          as AdminModalityPrompt;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminModalityPrompt create() => AdminModalityPrompt._();
+  @$core.override
+  AdminModalityPrompt createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminModalityPrompt getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminModalityPrompt>(create);
+  static AdminModalityPrompt? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get modalityId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set modalityId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasModalityId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearModalityId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get systemCode => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set systemCode($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSystemCode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSystemCode() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get displayName => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set displayName($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDisplayName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDisplayName() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get modalityType => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set modalityType($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasModalityType() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearModalityType() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get isSupported => $_getBF(4);
+  @$pb.TagNumber(5)
+  set isSupported($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasIsSupported() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearIsSupported() => $_clearField(5);
+
+  /// Current live prompt text — therapist_ai_general_prompt["system"].
+  @$pb.TagNumber(6)
+  $core.String get systemPrompt => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set systemPrompt($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSystemPrompt() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSystemPrompt() => $_clearField(6);
+
+  /// Latest version number in modality_prompt_versions (the live text
+  /// always equals this snapshot).
+  @$pb.TagNumber(7)
+  $core.int get version => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set version($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasVersion() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearVersion() => $_clearField(7);
+
+  /// Author of the latest version, for display. Empty for the
+  /// migration-seeded v1 when no admin edit happened yet.
+  @$pb.TagNumber(8)
+  $core.String get updatedByEmail => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set updatedByEmail($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasUpdatedByEmail() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearUpdatedByEmail() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $3.Timestamp get updatedAt => $_getN(8);
+  @$pb.TagNumber(9)
+  set updatedAt($3.Timestamp value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasUpdatedAt() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearUpdatedAt() => $_clearField(9);
+  @$pb.TagNumber(9)
+  $3.Timestamp ensureUpdatedAt() => $_ensure(8);
+}
+
+class AdminListModalityPromptsResponse extends $pb.GeneratedMessage {
+  factory AdminListModalityPromptsResponse({
+    $core.Iterable<AdminModalityPrompt>? prompts,
+  }) {
+    final result = create();
+    if (prompts != null) result.prompts.addAll(prompts);
+    return result;
+  }
+
+  AdminListModalityPromptsResponse._();
+
+  factory AdminListModalityPromptsResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminListModalityPromptsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminListModalityPromptsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..pPM<AdminModalityPrompt>(1, _omitFieldNames ? '' : 'prompts',
+        subBuilder: AdminModalityPrompt.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminListModalityPromptsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminListModalityPromptsResponse copyWith(
+          void Function(AdminListModalityPromptsResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as AdminListModalityPromptsResponse))
+          as AdminListModalityPromptsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminListModalityPromptsResponse create() =>
+      AdminListModalityPromptsResponse._();
+  @$core.override
+  AdminListModalityPromptsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminListModalityPromptsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminListModalityPromptsResponse>(
+          create);
+  static AdminListModalityPromptsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<AdminModalityPrompt> get prompts => $_getList(0);
+}
+
+class AdminGetModalityPromptHistoryRequest extends $pb.GeneratedMessage {
+  factory AdminGetModalityPromptHistoryRequest({
+    $core.String? modalityId,
+    $core.int? pageSize,
+    $core.int? pageOffset,
+  }) {
+    final result = create();
+    if (modalityId != null) result.modalityId = modalityId;
+    if (pageSize != null) result.pageSize = pageSize;
+    if (pageOffset != null) result.pageOffset = pageOffset;
+    return result;
+  }
+
+  AdminGetModalityPromptHistoryRequest._();
+
+  factory AdminGetModalityPromptHistoryRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminGetModalityPromptHistoryRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminGetModalityPromptHistoryRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'modalityId')
+    ..aI(2, _omitFieldNames ? '' : 'pageSize')
+    ..aI(3, _omitFieldNames ? '' : 'pageOffset')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminGetModalityPromptHistoryRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminGetModalityPromptHistoryRequest copyWith(
+          void Function(AdminGetModalityPromptHistoryRequest) updates) =>
+      super.copyWith((message) =>
+              updates(message as AdminGetModalityPromptHistoryRequest))
+          as AdminGetModalityPromptHistoryRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminGetModalityPromptHistoryRequest create() =>
+      AdminGetModalityPromptHistoryRequest._();
+  @$core.override
+  AdminGetModalityPromptHistoryRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminGetModalityPromptHistoryRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+          AdminGetModalityPromptHistoryRequest>(create);
+  static AdminGetModalityPromptHistoryRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get modalityId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set modalityId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasModalityId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearModalityId() => $_clearField(1);
+
+  /// Pagination: 0 → server default (20), capped at 50.
+  @$pb.TagNumber(2)
+  $core.int get pageSize => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set pageSize($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPageSize() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPageSize() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get pageOffset => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set pageOffset($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPageOffset() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPageOffset() => $_clearField(3);
+}
+
+class AdminModalityPromptVersion extends $pb.GeneratedMessage {
+  factory AdminModalityPromptVersion({
+    $core.String? id,
+    $core.int? version,
+    $core.String? systemPrompt,
+    $core.String? changeNote,
+    $core.String? createdByEmail,
+    $3.Timestamp? createdAt,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (version != null) result.version = version;
+    if (systemPrompt != null) result.systemPrompt = systemPrompt;
+    if (changeNote != null) result.changeNote = changeNote;
+    if (createdByEmail != null) result.createdByEmail = createdByEmail;
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  AdminModalityPromptVersion._();
+
+  factory AdminModalityPromptVersion.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminModalityPromptVersion.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminModalityPromptVersion',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aI(2, _omitFieldNames ? '' : 'version')
+    ..aOS(3, _omitFieldNames ? '' : 'systemPrompt')
+    ..aOS(4, _omitFieldNames ? '' : 'changeNote')
+    ..aOS(5, _omitFieldNames ? '' : 'createdByEmail')
+    ..aOM<$3.Timestamp>(6, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $3.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminModalityPromptVersion clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminModalityPromptVersion copyWith(
+          void Function(AdminModalityPromptVersion) updates) =>
+      super.copyWith(
+              (message) => updates(message as AdminModalityPromptVersion))
+          as AdminModalityPromptVersion;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminModalityPromptVersion create() => AdminModalityPromptVersion._();
+  @$core.override
+  AdminModalityPromptVersion createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminModalityPromptVersion getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminModalityPromptVersion>(create);
+  static AdminModalityPromptVersion? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get version => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set version($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasVersion() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearVersion() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get systemPrompt => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set systemPrompt($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSystemPrompt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSystemPrompt() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get changeNote => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set changeNote($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasChangeNote() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearChangeNote() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get createdByEmail => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set createdByEmail($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCreatedByEmail() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearCreatedByEmail() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $3.Timestamp get createdAt => $_getN(5);
+  @$pb.TagNumber(6)
+  set createdAt($3.Timestamp value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasCreatedAt() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCreatedAt() => $_clearField(6);
+  @$pb.TagNumber(6)
+  $3.Timestamp ensureCreatedAt() => $_ensure(5);
+}
+
+class AdminGetModalityPromptHistoryResponse extends $pb.GeneratedMessage {
+  factory AdminGetModalityPromptHistoryResponse({
+    $core.Iterable<AdminModalityPromptVersion>? versions,
+    $core.bool? hasMore,
+  }) {
+    final result = create();
+    if (versions != null) result.versions.addAll(versions);
+    if (hasMore != null) result.hasMore = hasMore;
+    return result;
+  }
+
+  AdminGetModalityPromptHistoryResponse._();
+
+  factory AdminGetModalityPromptHistoryResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminGetModalityPromptHistoryResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminGetModalityPromptHistoryResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..pPM<AdminModalityPromptVersion>(1, _omitFieldNames ? '' : 'versions',
+        subBuilder: AdminModalityPromptVersion.create)
+    ..aOB(2, _omitFieldNames ? '' : 'hasMore')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminGetModalityPromptHistoryResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminGetModalityPromptHistoryResponse copyWith(
+          void Function(AdminGetModalityPromptHistoryResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as AdminGetModalityPromptHistoryResponse))
+          as AdminGetModalityPromptHistoryResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminGetModalityPromptHistoryResponse create() =>
+      AdminGetModalityPromptHistoryResponse._();
+  @$core.override
+  AdminGetModalityPromptHistoryResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminGetModalityPromptHistoryResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<
+          AdminGetModalityPromptHistoryResponse>(create);
+  static AdminGetModalityPromptHistoryResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<AdminModalityPromptVersion> get versions => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get hasMore => $_getBF(1);
+  @$pb.TagNumber(2)
+  set hasMore($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasHasMore() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearHasMore() => $_clearField(2);
+}
+
+class AdminUpdateModalityPromptRequest extends $pb.GeneratedMessage {
+  factory AdminUpdateModalityPromptRequest({
+    $core.String? modalityId,
+    $core.String? systemPrompt,
+    $core.String? changeNote,
+    $core.int? expectedVersion,
+  }) {
+    final result = create();
+    if (modalityId != null) result.modalityId = modalityId;
+    if (systemPrompt != null) result.systemPrompt = systemPrompt;
+    if (changeNote != null) result.changeNote = changeNote;
+    if (expectedVersion != null) result.expectedVersion = expectedVersion;
+    return result;
+  }
+
+  AdminUpdateModalityPromptRequest._();
+
+  factory AdminUpdateModalityPromptRequest.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminUpdateModalityPromptRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminUpdateModalityPromptRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'modalityId')
+    ..aOS(2, _omitFieldNames ? '' : 'systemPrompt')
+    ..aOS(3, _omitFieldNames ? '' : 'changeNote')
+    ..aI(4, _omitFieldNames ? '' : 'expectedVersion')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminUpdateModalityPromptRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminUpdateModalityPromptRequest copyWith(
+          void Function(AdminUpdateModalityPromptRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as AdminUpdateModalityPromptRequest))
+          as AdminUpdateModalityPromptRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminUpdateModalityPromptRequest create() =>
+      AdminUpdateModalityPromptRequest._();
+  @$core.override
+  AdminUpdateModalityPromptRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminUpdateModalityPromptRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminUpdateModalityPromptRequest>(
+          create);
+  static AdminUpdateModalityPromptRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get modalityId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set modalityId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasModalityId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearModalityId() => $_clearField(1);
+
+  /// Full replacement text for therapist_ai_general_prompt["system"].
+  /// Trimmed non-empty, ≤ 20000 chars.
+  @$pb.TagNumber(2)
+  $core.String get systemPrompt => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set systemPrompt($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSystemPrompt() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSystemPrompt() => $_clearField(2);
+
+  /// Mandatory reason (≥ 10 chars) — stored on the version row and the
+  /// audit_log entry.
+  @$pb.TagNumber(3)
+  $core.String get changeNote => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set changeNote($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasChangeNote() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearChangeNote() => $_clearField(3);
+
+  /// Optimistic lock: must equal the current latest version for this
+  /// modality or the call fails FailedPrecondition (someone else saved
+  /// in between — reload before retrying).
+  @$pb.TagNumber(4)
+  $core.int get expectedVersion => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set expectedVersion($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasExpectedVersion() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearExpectedVersion() => $_clearField(4);
+}
+
+class AdminUpdateModalityPromptResponse extends $pb.GeneratedMessage {
+  factory AdminUpdateModalityPromptResponse({
+    AdminModalityPrompt? prompt,
+  }) {
+    final result = create();
+    if (prompt != null) result.prompt = prompt;
+    return result;
+  }
+
+  AdminUpdateModalityPromptResponse._();
+
+  factory AdminUpdateModalityPromptResponse.fromBuffer(
+          $core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminUpdateModalityPromptResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminUpdateModalityPromptResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOM<AdminModalityPrompt>(1, _omitFieldNames ? '' : 'prompt',
+        subBuilder: AdminModalityPrompt.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminUpdateModalityPromptResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminUpdateModalityPromptResponse copyWith(
+          void Function(AdminUpdateModalityPromptResponse) updates) =>
+      super.copyWith((message) =>
+              updates(message as AdminUpdateModalityPromptResponse))
+          as AdminUpdateModalityPromptResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminUpdateModalityPromptResponse create() =>
+      AdminUpdateModalityPromptResponse._();
+  @$core.override
+  AdminUpdateModalityPromptResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminUpdateModalityPromptResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminUpdateModalityPromptResponse>(
+          create);
+  static AdminUpdateModalityPromptResponse? _defaultInstance;
+
+  /// The state after the save, for immediate UI refresh without a
+  /// second round-trip.
+  @$pb.TagNumber(1)
+  AdminModalityPrompt get prompt => $_getN(0);
+  @$pb.TagNumber(1)
+  set prompt(AdminModalityPrompt value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPrompt() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPrompt() => $_clearField(1);
+  @$pb.TagNumber(1)
+  AdminModalityPrompt ensurePrompt() => $_ensure(0);
+}
+
 class TrackEventsRequest extends $pb.GeneratedMessage {
   factory TrackEventsRequest({
     $core.Iterable<ClientEvent>? events,
@@ -4949,6 +5787,10 @@ class GetAdminAnalyticsResponse extends $pb.GeneratedMessage {
     $core.Iterable<HistogramBucket>? activationTimeHistogram,
     $core.Iterable<HourlyHeatmapPoint>? hourlyHeatmap,
     $core.Iterable<FailureRatePoint>? uploadFailuresTrend,
+    $core.Iterable<ModalityDistribution>? modalityDistribution,
+    $core.double? kpiAvgSessionDuration,
+    $core.Iterable<TrendPoint>? sessionDurationTrend,
+    $core.Iterable<PlatformFixedCost>? platformFixedCosts,
   }) {
     final result = create();
     if (kpiWau != null) result.kpiWau = kpiWau;
@@ -4992,6 +5834,14 @@ class GetAdminAnalyticsResponse extends $pb.GeneratedMessage {
     if (hourlyHeatmap != null) result.hourlyHeatmap.addAll(hourlyHeatmap);
     if (uploadFailuresTrend != null)
       result.uploadFailuresTrend.addAll(uploadFailuresTrend);
+    if (modalityDistribution != null)
+      result.modalityDistribution.addAll(modalityDistribution);
+    if (kpiAvgSessionDuration != null)
+      result.kpiAvgSessionDuration = kpiAvgSessionDuration;
+    if (sessionDurationTrend != null)
+      result.sessionDurationTrend.addAll(sessionDurationTrend);
+    if (platformFixedCosts != null)
+      result.platformFixedCosts.addAll(platformFixedCosts);
     return result;
   }
 
@@ -5058,6 +5908,14 @@ class GetAdminAnalyticsResponse extends $pb.GeneratedMessage {
         subBuilder: HourlyHeatmapPoint.create)
     ..pPM<FailureRatePoint>(29, _omitFieldNames ? '' : 'uploadFailuresTrend',
         subBuilder: FailureRatePoint.create)
+    ..pPM<ModalityDistribution>(
+        30, _omitFieldNames ? '' : 'modalityDistribution',
+        subBuilder: ModalityDistribution.create)
+    ..aD(31, _omitFieldNames ? '' : 'kpiAvgSessionDuration')
+    ..pPM<TrendPoint>(32, _omitFieldNames ? '' : 'sessionDurationTrend',
+        subBuilder: TrendPoint.create)
+    ..pPM<PlatformFixedCost>(33, _omitFieldNames ? '' : 'platformFixedCosts',
+        subBuilder: PlatformFixedCost.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5244,6 +6102,25 @@ class GetAdminAnalyticsResponse extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(29)
   $pb.PbList<FailureRatePoint> get uploadFailuresTrend => $_getList(28);
+
+  /// Custom Analytics
+  @$pb.TagNumber(30)
+  $pb.PbList<ModalityDistribution> get modalityDistribution => $_getList(29);
+
+  @$pb.TagNumber(31)
+  $core.double get kpiAvgSessionDuration => $_getN(30);
+  @$pb.TagNumber(31)
+  set kpiAvgSessionDuration($core.double value) => $_setDouble(30, value);
+  @$pb.TagNumber(31)
+  $core.bool hasKpiAvgSessionDuration() => $_has(30);
+  @$pb.TagNumber(31)
+  void clearKpiAvgSessionDuration() => $_clearField(31);
+
+  @$pb.TagNumber(32)
+  $pb.PbList<TrendPoint> get sessionDurationTrend => $_getList(31);
+
+  @$pb.TagNumber(33)
+  $pb.PbList<PlatformFixedCost> get platformFixedCosts => $_getList(32);
 }
 
 class TrendPoint extends $pb.GeneratedMessage {
@@ -5366,6 +6243,72 @@ class PlanDistribution extends $pb.GeneratedMessage {
   $core.bool hasPlanName() => $_has(0);
   @$pb.TagNumber(1)
   void clearPlanName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get count => $_getI64(1);
+  @$pb.TagNumber(2)
+  set count($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCount() => $_clearField(2);
+}
+
+class ModalityDistribution extends $pb.GeneratedMessage {
+  factory ModalityDistribution({
+    $core.String? modalityName,
+    $fixnum.Int64? count,
+  }) {
+    final result = create();
+    if (modalityName != null) result.modalityName = modalityName;
+    if (count != null) result.count = count;
+    return result;
+  }
+
+  ModalityDistribution._();
+
+  factory ModalityDistribution.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ModalityDistribution.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ModalityDistribution',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'modalityName')
+    ..aInt64(2, _omitFieldNames ? '' : 'count')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ModalityDistribution clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ModalityDistribution copyWith(void Function(ModalityDistribution) updates) =>
+      super.copyWith((message) => updates(message as ModalityDistribution))
+          as ModalityDistribution;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ModalityDistribution create() => ModalityDistribution._();
+  @$core.override
+  ModalityDistribution createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ModalityDistribution getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ModalityDistribution>(create);
+  static ModalityDistribution? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get modalityName => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set modalityName($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasModalityName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearModalityName() => $_clearField(1);
 
   @$pb.TagNumber(2)
   $fixnum.Int64 get count => $_getI64(1);
@@ -6314,6 +7257,1014 @@ class HourlyHeatmapPoint extends $pb.GeneratedMessage {
   $core.bool hasCount() => $_has(2);
   @$pb.TagNumber(3)
   void clearCount() => $_clearField(3);
+}
+
+class ExportPatientDataRequest extends $pb.GeneratedMessage {
+  factory ExportPatientDataRequest({
+    $core.String? patientFileId,
+  }) {
+    final result = create();
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    return result;
+  }
+
+  ExportPatientDataRequest._();
+
+  factory ExportPatientDataRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ExportPatientDataRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ExportPatientDataRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ExportPatientDataRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ExportPatientDataRequest copyWith(
+          void Function(ExportPatientDataRequest) updates) =>
+      super.copyWith((message) => updates(message as ExportPatientDataRequest))
+          as ExportPatientDataRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ExportPatientDataRequest create() => ExportPatientDataRequest._();
+  @$core.override
+  ExportPatientDataRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ExportPatientDataRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ExportPatientDataRequest>(create);
+  static ExportPatientDataRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get patientFileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set patientFileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFileId() => $_clearField(1);
+}
+
+class DecryptedReport extends $pb.GeneratedMessage {
+  factory DecryptedReport({
+    $core.String? id,
+    $core.String? title,
+    $core.String? summaryShort,
+    $core.String? content,
+    $core.String? sentimentLabel,
+    $core.String? riskLevel,
+    $3.Timestamp? createdAt,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (title != null) result.title = title;
+    if (summaryShort != null) result.summaryShort = summaryShort;
+    if (content != null) result.content = content;
+    if (sentimentLabel != null) result.sentimentLabel = sentimentLabel;
+    if (riskLevel != null) result.riskLevel = riskLevel;
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  DecryptedReport._();
+
+  factory DecryptedReport.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DecryptedReport.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DecryptedReport',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'title')
+    ..aOS(3, _omitFieldNames ? '' : 'summaryShort')
+    ..aOS(4, _omitFieldNames ? '' : 'content')
+    ..aOS(5, _omitFieldNames ? '' : 'sentimentLabel')
+    ..aOS(6, _omitFieldNames ? '' : 'riskLevel')
+    ..aOM<$3.Timestamp>(7, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $3.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DecryptedReport clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DecryptedReport copyWith(void Function(DecryptedReport) updates) =>
+      super.copyWith((message) => updates(message as DecryptedReport))
+          as DecryptedReport;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DecryptedReport create() => DecryptedReport._();
+  @$core.override
+  DecryptedReport createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DecryptedReport getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DecryptedReport>(create);
+  static DecryptedReport? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get title => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set title($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTitle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTitle() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get summaryShort => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set summaryShort($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSummaryShort() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSummaryShort() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get content => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set content($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasContent() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearContent() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get sentimentLabel => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set sentimentLabel($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSentimentLabel() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSentimentLabel() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get riskLevel => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set riskLevel($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasRiskLevel() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearRiskLevel() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $3.Timestamp get createdAt => $_getN(6);
+  @$pb.TagNumber(7)
+  set createdAt($3.Timestamp value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCreatedAt() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCreatedAt() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $3.Timestamp ensureCreatedAt() => $_ensure(6);
+}
+
+class DecryptedSessionSegment extends $pb.GeneratedMessage {
+  factory DecryptedSessionSegment({
+    $core.int? speakerTag,
+    $core.String? speakerLabel,
+    $core.int? startOffsetMs,
+    $core.int? endOffsetMs,
+    $core.String? text,
+    $core.double? confidence,
+  }) {
+    final result = create();
+    if (speakerTag != null) result.speakerTag = speakerTag;
+    if (speakerLabel != null) result.speakerLabel = speakerLabel;
+    if (startOffsetMs != null) result.startOffsetMs = startOffsetMs;
+    if (endOffsetMs != null) result.endOffsetMs = endOffsetMs;
+    if (text != null) result.text = text;
+    if (confidence != null) result.confidence = confidence;
+    return result;
+  }
+
+  DecryptedSessionSegment._();
+
+  factory DecryptedSessionSegment.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DecryptedSessionSegment.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DecryptedSessionSegment',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'speakerTag')
+    ..aOS(2, _omitFieldNames ? '' : 'speakerLabel')
+    ..aI(3, _omitFieldNames ? '' : 'startOffsetMs')
+    ..aI(4, _omitFieldNames ? '' : 'endOffsetMs')
+    ..aOS(5, _omitFieldNames ? '' : 'text')
+    ..aD(6, _omitFieldNames ? '' : 'confidence', fieldType: $pb.PbFieldType.OF)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DecryptedSessionSegment clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DecryptedSessionSegment copyWith(
+          void Function(DecryptedSessionSegment) updates) =>
+      super.copyWith((message) => updates(message as DecryptedSessionSegment))
+          as DecryptedSessionSegment;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DecryptedSessionSegment create() => DecryptedSessionSegment._();
+  @$core.override
+  DecryptedSessionSegment createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DecryptedSessionSegment getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DecryptedSessionSegment>(create);
+  static DecryptedSessionSegment? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get speakerTag => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set speakerTag($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSpeakerTag() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSpeakerTag() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get speakerLabel => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set speakerLabel($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSpeakerLabel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSpeakerLabel() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get startOffsetMs => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set startOffsetMs($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStartOffsetMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStartOffsetMs() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get endOffsetMs => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set endOffsetMs($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasEndOffsetMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearEndOffsetMs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get text => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set text($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasText() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearText() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.double get confidence => $_getN(5);
+  @$pb.TagNumber(6)
+  set confidence($core.double value) => $_setFloat(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasConfidence() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearConfidence() => $_clearField(6);
+}
+
+class DecryptedSessionTurn extends $pb.GeneratedMessage {
+  factory DecryptedSessionTurn({
+    $core.int? speakerTag,
+    $core.String? speakerLabel,
+    $core.int? startOffsetMs,
+    $core.int? endOffsetMs,
+    $core.String? text,
+    $core.int? segmentCount,
+    $core.double? confidenceAvg,
+  }) {
+    final result = create();
+    if (speakerTag != null) result.speakerTag = speakerTag;
+    if (speakerLabel != null) result.speakerLabel = speakerLabel;
+    if (startOffsetMs != null) result.startOffsetMs = startOffsetMs;
+    if (endOffsetMs != null) result.endOffsetMs = endOffsetMs;
+    if (text != null) result.text = text;
+    if (segmentCount != null) result.segmentCount = segmentCount;
+    if (confidenceAvg != null) result.confidenceAvg = confidenceAvg;
+    return result;
+  }
+
+  DecryptedSessionTurn._();
+
+  factory DecryptedSessionTurn.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DecryptedSessionTurn.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DecryptedSessionTurn',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'speakerTag')
+    ..aOS(2, _omitFieldNames ? '' : 'speakerLabel')
+    ..aI(3, _omitFieldNames ? '' : 'startOffsetMs')
+    ..aI(4, _omitFieldNames ? '' : 'endOffsetMs')
+    ..aOS(5, _omitFieldNames ? '' : 'text')
+    ..aI(6, _omitFieldNames ? '' : 'segmentCount')
+    ..aD(7, _omitFieldNames ? '' : 'confidenceAvg',
+        fieldType: $pb.PbFieldType.OF)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DecryptedSessionTurn clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DecryptedSessionTurn copyWith(void Function(DecryptedSessionTurn) updates) =>
+      super.copyWith((message) => updates(message as DecryptedSessionTurn))
+          as DecryptedSessionTurn;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DecryptedSessionTurn create() => DecryptedSessionTurn._();
+  @$core.override
+  DecryptedSessionTurn createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DecryptedSessionTurn getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DecryptedSessionTurn>(create);
+  static DecryptedSessionTurn? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get speakerTag => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set speakerTag($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSpeakerTag() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSpeakerTag() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get speakerLabel => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set speakerLabel($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSpeakerLabel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSpeakerLabel() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get startOffsetMs => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set startOffsetMs($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStartOffsetMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStartOffsetMs() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get endOffsetMs => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set endOffsetMs($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasEndOffsetMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearEndOffsetMs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get text => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set text($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasText() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearText() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get segmentCount => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set segmentCount($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSegmentCount() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSegmentCount() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.double get confidenceAvg => $_getN(6);
+  @$pb.TagNumber(7)
+  set confidenceAvg($core.double value) => $_setFloat(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasConfidenceAvg() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearConfidenceAvg() => $_clearField(7);
+}
+
+class DecryptedSessionTranscript extends $pb.GeneratedMessage {
+  factory DecryptedSessionTranscript({
+    $core.String? id,
+    $core.Iterable<DecryptedSessionSegment>? segments,
+    $core.Iterable<DecryptedSessionTurn>? turns,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (segments != null) result.segments.addAll(segments);
+    if (turns != null) result.turns.addAll(turns);
+    return result;
+  }
+
+  DecryptedSessionTranscript._();
+
+  factory DecryptedSessionTranscript.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DecryptedSessionTranscript.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DecryptedSessionTranscript',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..pPM<DecryptedSessionSegment>(2, _omitFieldNames ? '' : 'segments',
+        subBuilder: DecryptedSessionSegment.create)
+    ..pPM<DecryptedSessionTurn>(3, _omitFieldNames ? '' : 'turns',
+        subBuilder: DecryptedSessionTurn.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DecryptedSessionTranscript clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DecryptedSessionTranscript copyWith(
+          void Function(DecryptedSessionTranscript) updates) =>
+      super.copyWith(
+              (message) => updates(message as DecryptedSessionTranscript))
+          as DecryptedSessionTranscript;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DecryptedSessionTranscript create() => DecryptedSessionTranscript._();
+  @$core.override
+  DecryptedSessionTranscript createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DecryptedSessionTranscript getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DecryptedSessionTranscript>(create);
+  static DecryptedSessionTranscript? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<DecryptedSessionSegment> get segments => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<DecryptedSessionTurn> get turns => $_getList(2);
+}
+
+class DecryptedSession extends $pb.GeneratedMessage {
+  factory DecryptedSession({
+    $core.String? id,
+    $core.String? name,
+    $core.String? sessionDate,
+    $core.int? sessionNumber,
+    $core.int? durationSeconds,
+    $core.String? status,
+    $3.Timestamp? createdAt,
+    DecryptedSessionTranscript? transcript,
+    $core.Iterable<DecryptedReport>? reports,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (name != null) result.name = name;
+    if (sessionDate != null) result.sessionDate = sessionDate;
+    if (sessionNumber != null) result.sessionNumber = sessionNumber;
+    if (durationSeconds != null) result.durationSeconds = durationSeconds;
+    if (status != null) result.status = status;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (transcript != null) result.transcript = transcript;
+    if (reports != null) result.reports.addAll(reports);
+    return result;
+  }
+
+  DecryptedSession._();
+
+  factory DecryptedSession.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DecryptedSession.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DecryptedSession',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'sessionDate')
+    ..aI(4, _omitFieldNames ? '' : 'sessionNumber')
+    ..aI(5, _omitFieldNames ? '' : 'durationSeconds')
+    ..aOS(6, _omitFieldNames ? '' : 'status')
+    ..aOM<$3.Timestamp>(7, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOM<DecryptedSessionTranscript>(8, _omitFieldNames ? '' : 'transcript',
+        subBuilder: DecryptedSessionTranscript.create)
+    ..pPM<DecryptedReport>(9, _omitFieldNames ? '' : 'reports',
+        subBuilder: DecryptedReport.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DecryptedSession clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DecryptedSession copyWith(void Function(DecryptedSession) updates) =>
+      super.copyWith((message) => updates(message as DecryptedSession))
+          as DecryptedSession;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DecryptedSession create() => DecryptedSession._();
+  @$core.override
+  DecryptedSession createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DecryptedSession getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DecryptedSession>(create);
+  static DecryptedSession? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get sessionDate => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set sessionDate($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSessionDate() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSessionDate() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get sessionNumber => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set sessionNumber($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSessionNumber() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSessionNumber() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get durationSeconds => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set durationSeconds($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasDurationSeconds() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDurationSeconds() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get status => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set status($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasStatus() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearStatus() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $3.Timestamp get createdAt => $_getN(6);
+  @$pb.TagNumber(7)
+  set createdAt($3.Timestamp value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCreatedAt() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCreatedAt() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $3.Timestamp ensureCreatedAt() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  DecryptedSessionTranscript get transcript => $_getN(7);
+  @$pb.TagNumber(8)
+  set transcript(DecryptedSessionTranscript value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasTranscript() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearTranscript() => $_clearField(8);
+  @$pb.TagNumber(8)
+  DecryptedSessionTranscript ensureTranscript() => $_ensure(7);
+
+  @$pb.TagNumber(9)
+  $pb.PbList<DecryptedReport> get reports => $_getList(8);
+}
+
+class DecryptedPatientNote extends $pb.GeneratedMessage {
+  factory DecryptedPatientNote({
+    $core.String? id,
+    $core.String? kind,
+    $core.String? title,
+    $core.String? text,
+    $3.Timestamp? sentToPatientAt,
+    $core.String? sentToEmail,
+    $3.Timestamp? createdAt,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (kind != null) result.kind = kind;
+    if (title != null) result.title = title;
+    if (text != null) result.text = text;
+    if (sentToPatientAt != null) result.sentToPatientAt = sentToPatientAt;
+    if (sentToEmail != null) result.sentToEmail = sentToEmail;
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  DecryptedPatientNote._();
+
+  factory DecryptedPatientNote.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DecryptedPatientNote.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DecryptedPatientNote',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'kind')
+    ..aOS(3, _omitFieldNames ? '' : 'title')
+    ..aOS(4, _omitFieldNames ? '' : 'text')
+    ..aOM<$3.Timestamp>(5, _omitFieldNames ? '' : 'sentToPatientAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOS(6, _omitFieldNames ? '' : 'sentToEmail')
+    ..aOM<$3.Timestamp>(7, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $3.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DecryptedPatientNote clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DecryptedPatientNote copyWith(void Function(DecryptedPatientNote) updates) =>
+      super.copyWith((message) => updates(message as DecryptedPatientNote))
+          as DecryptedPatientNote;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DecryptedPatientNote create() => DecryptedPatientNote._();
+  @$core.override
+  DecryptedPatientNote createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DecryptedPatientNote getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DecryptedPatientNote>(create);
+  static DecryptedPatientNote? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get kind => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set kind($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasKind() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearKind() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get title => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set title($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTitle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTitle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get text => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set text($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasText() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearText() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $3.Timestamp get sentToPatientAt => $_getN(4);
+  @$pb.TagNumber(5)
+  set sentToPatientAt($3.Timestamp value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSentToPatientAt() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSentToPatientAt() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $3.Timestamp ensureSentToPatientAt() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $core.String get sentToEmail => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set sentToEmail($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSentToEmail() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSentToEmail() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $3.Timestamp get createdAt => $_getN(6);
+  @$pb.TagNumber(7)
+  set createdAt($3.Timestamp value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCreatedAt() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCreatedAt() => $_clearField(7);
+  @$pb.TagNumber(7)
+  $3.Timestamp ensureCreatedAt() => $_ensure(6);
+}
+
+class ExportPatientDataResponse extends $pb.GeneratedMessage {
+  factory ExportPatientDataResponse({
+    PatientFile? patientFile,
+    $core.Iterable<DecryptedPatientNote>? notes,
+    $core.Iterable<DecryptedSession>? sessions,
+  }) {
+    final result = create();
+    if (patientFile != null) result.patientFile = patientFile;
+    if (notes != null) result.notes.addAll(notes);
+    if (sessions != null) result.sessions.addAll(sessions);
+    return result;
+  }
+
+  ExportPatientDataResponse._();
+
+  factory ExportPatientDataResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ExportPatientDataResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ExportPatientDataResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOM<PatientFile>(1, _omitFieldNames ? '' : 'patientFile',
+        subBuilder: PatientFile.create)
+    ..pPM<DecryptedPatientNote>(2, _omitFieldNames ? '' : 'notes',
+        subBuilder: DecryptedPatientNote.create)
+    ..pPM<DecryptedSession>(3, _omitFieldNames ? '' : 'sessions',
+        subBuilder: DecryptedSession.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ExportPatientDataResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ExportPatientDataResponse copyWith(
+          void Function(ExportPatientDataResponse) updates) =>
+      super.copyWith((message) => updates(message as ExportPatientDataResponse))
+          as ExportPatientDataResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ExportPatientDataResponse create() => ExportPatientDataResponse._();
+  @$core.override
+  ExportPatientDataResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ExportPatientDataResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ExportPatientDataResponse>(create);
+  static ExportPatientDataResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  PatientFile get patientFile => $_getN(0);
+  @$pb.TagNumber(1)
+  set patientFile(PatientFile value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFile() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFile() => $_clearField(1);
+  @$pb.TagNumber(1)
+  PatientFile ensurePatientFile() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<DecryptedPatientNote> get notes => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<DecryptedSession> get sessions => $_getList(2);
+}
+
+class DeletePatientDataRequest extends $pb.GeneratedMessage {
+  factory DeletePatientDataRequest({
+    $core.String? patientFileId,
+  }) {
+    final result = create();
+    if (patientFileId != null) result.patientFileId = patientFileId;
+    return result;
+  }
+
+  DeletePatientDataRequest._();
+
+  factory DeletePatientDataRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DeletePatientDataRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeletePatientDataRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeletePatientDataRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeletePatientDataRequest copyWith(
+          void Function(DeletePatientDataRequest) updates) =>
+      super.copyWith((message) => updates(message as DeletePatientDataRequest))
+          as DeletePatientDataRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeletePatientDataRequest create() => DeletePatientDataRequest._();
+  @$core.override
+  DeletePatientDataRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DeletePatientDataRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeletePatientDataRequest>(create);
+  static DeletePatientDataRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get patientFileId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set patientFileId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPatientFileId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPatientFileId() => $_clearField(1);
+}
+
+class PlatformFixedCost extends $pb.GeneratedMessage {
+  factory PlatformFixedCost({
+    $core.String? id,
+    $core.String? name,
+    $core.String? provider,
+    $core.double? amountUsd,
+    $core.String? billingPeriod,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (name != null) result.name = name;
+    if (provider != null) result.provider = provider;
+    if (amountUsd != null) result.amountUsd = amountUsd;
+    if (billingPeriod != null) result.billingPeriod = billingPeriod;
+    return result;
+  }
+
+  PlatformFixedCost._();
+
+  factory PlatformFixedCost.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory PlatformFixedCost.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PlatformFixedCost',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'provider')
+    ..aD(4, _omitFieldNames ? '' : 'amountUsd')
+    ..aOS(5, _omitFieldNames ? '' : 'billingPeriod')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PlatformFixedCost clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PlatformFixedCost copyWith(void Function(PlatformFixedCost) updates) =>
+      super.copyWith((message) => updates(message as PlatformFixedCost))
+          as PlatformFixedCost;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static PlatformFixedCost create() => PlatformFixedCost._();
+  @$core.override
+  PlatformFixedCost createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static PlatformFixedCost getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<PlatformFixedCost>(create);
+  static PlatformFixedCost? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get provider => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set provider($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasProvider() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearProvider() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.double get amountUsd => $_getN(3);
+  @$pb.TagNumber(4)
+  set amountUsd($core.double value) => $_setDouble(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAmountUsd() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAmountUsd() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get billingPeriod => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set billingPeriod($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasBillingPeriod() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearBillingPeriod() => $_clearField(5);
 }
 
 const $core.bool _omitFieldNames =

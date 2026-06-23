@@ -194,7 +194,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPatient_email_label => 'Client email';
 
   @override
-  String get addPatient_email_hint => 'Optional — for the action plan';
+  String get addPatient_email_hint => 'Optional (for the action plan)';
 
   @override
   String get addPatient_modality_label => 'Therapy modality';
@@ -362,11 +362,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recording_mic_denied_cancel => 'Back.';
 
   @override
-  String get recording_discard_confirm_header => 'Exit recording?';
+  String get recording_discard_confirm_header =>
+      'Are you sure you want to delete this recording?';
 
   @override
   String get recording_discard_confirm_body =>
-      'Recording is in progress. If you exit, the session will be permanently deleted.';
+      'This recording cannot be recovered. It will be permanently deleted from this device and will not be sent for analysis.';
 
   @override
   String get recording_discard_confirm_destructive =>
@@ -470,7 +471,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recording_resume_failed_body =>
-      'Recording could not be resumed. Everything captured so far is safe — you can end the session and send it for analysis.';
+      'Recording could not be resumed. Everything captured so far is safe, you can end the session and send it for analysis.';
 
   @override
   String get recording_resume_failed_retry => 'Try again';
@@ -483,7 +484,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String recovery_sheet_body(String patientAlias, String date, int minutes) {
-    return 'The session recording for $patientAlias from $date (~$minutes min) was never sent — the app was interrupted while recording. What would you like to do?';
+    return 'The session recording for $patientAlias from $date (~$minutes min) was never sent, as the app was interrupted while recording. What would you like to do?';
   }
 
   @override
@@ -840,10 +841,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This action is IRREVERSIBLE.\nYou will lose all clinical documentation and patient data.';
 
   @override
-  String get settings_delete_confirm_proceed => 'I understand — proceed.';
+  String get settings_delete_confirm_proceed => 'I understand, proceed.';
 
   @override
-  String get settings_delete_confirm_cancel => 'Cancel — keep my account.';
+  String get settings_delete_confirm_cancel => 'Cancel, keep my account.';
 
   @override
   String get settings_choose_language => 'Choose language';
@@ -853,7 +854,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get delete_account_consequence_1 =>
-      'All clinical documentation — all patients, records, sessions, and AI reports — will be permanently deleted.';
+      'All clinical documentation (all patients, records, sessions, and AI reports) will be permanently deleted.';
 
   @override
   String get delete_account_consequence_2 =>
@@ -907,7 +908,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get report_rating_saved_negative =>
-      'Thanks — we\'ll factor this into future reports.';
+      'Thanks, we\'ll factor this into future reports.';
 
   @override
   String get report_rating_save_error =>
@@ -1140,7 +1141,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get suggestion_banner_applied_toast =>
-      'Changed — future reports will reflect this.';
+      'Changed, future reports will reflect this.';
 
   @override
   String get suggestion_banner_apply_error => 'Could not change the setting.';
@@ -1182,7 +1183,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get billing_exhausted_dialog_body =>
-      'You\'ve used all available sessions. You can still record — audio will be securely encrypted and saved locally. Check your email to learn more.';
+      'You\'ve used all available sessions. You can still record, audio will be securely encrypted and saved locally. Check your email to learn more.';
 
   @override
   String get billing_exhausted_dialog_record_locally => 'Record locally';
@@ -1420,7 +1421,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get action_plan_no_email_body =>
-      'The plan can\'t be sent — the patient has no e-mail address on file. Add an e-mail in the client record.';
+      'The plan can\'t be sent, because the patient has no e-mail address on file. Add an e-mail in the client record.';
 
   @override
   String get action_plan_send_confirm_title => 'Send the action plan?';
@@ -1498,4 +1499,97 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recording_saving => 'Saving recording...';
+
+  @override
+  String get recording_minimize_confirm_header => 'Exit recording screen';
+
+  @override
+  String get recording_minimize_confirm_body =>
+      'Recording is in progress. You can minimize this screen to access notes (recording will continue in the background).';
+
+  @override
+  String get recording_minimize_action => 'Minimize (keep in background)';
+
+  @override
+  String get recording_minimize_discard => 'Stop and delete recording';
+
+  @override
+  String get recording_minimize_resume => 'Return to recording';
+
+  @override
+  String get recording_discard_confirm_action => 'Yes, delete permanently';
+
+  @override
+  String get recording_discard_confirm_cancel => 'No, go back';
+
+  @override
+  String get active_session_card_title => 'Session in progress...';
+
+  @override
+  String get active_session_card_subtitle => 'Return to the ongoing session';
+
+  @override
+  String get active_session_card_paused_title => 'Session paused';
+
+  @override
+  String get active_session_card_paused_subtitle => 'Resume or end the session';
+
+  @override
+  String get settings_live_activities => 'Lock screen activity';
+
+  @override
+  String get settings_live_activities_on =>
+      'Session time and status visible without unlocking your phone.';
+
+  @override
+  String get settings_live_activities_off =>
+      'Session status visible only inside the app.';
+
+  @override
+  String get live_activity_info_title => 'Keep your session in sight';
+
+  @override
+  String get live_activity_info_body =>
+      'Enable lock screen preview to see your session timer without opening the app.';
+
+  @override
+  String get live_activity_info_enable => 'Enable preview';
+
+  @override
+  String get live_activity_info_dismiss => 'Not now';
+
+  @override
+  String get live_activity_minimize_toast =>
+      'Session is running in the background. To see its timer on the lock screen, enable the preview in Settings.';
+
+  @override
+  String get live_activity_status_recording => 'Session in progress';
+
+  @override
+  String get live_activity_status_paused => 'Paused';
+
+  @override
+  String get live_activity_status_uploading => 'Uploading recording...';
+
+  @override
+  String get live_activity_status_analyzing => 'Analyzing session...';
+
+  @override
+  String get live_activity_status_report_ready => 'New report is ready';
+
+  @override
+  String get live_activity_show_report => 'Show report';
+
+  @override
+  String get live_activity_permission_title => 'System permission required';
+
+  @override
+  String get live_activity_permission_body =>
+      'Lock screen session preview requires Live Activities to be enabled in system settings.';
+
+  @override
+  String get live_activity_permission_open_settings => 'Open settings';
+
+  @override
+  String get live_activity_permission_cancel => 'Cancel';
 }

@@ -71,6 +71,15 @@ service ClinicalService {
     // feat/tokens-exhausted.
     rpc CancelSession(CancelSessionRequest) returns (google.protobuf.Empty);
 
+    // ─── Cross-device preference sync (migration 000059) ───
+    // Marks a completed session's report as viewed by the therapist.
+    // Idempotent — re-calling on an already-viewed session is a no-op.
+    // Replaces the Flutter-local SharedPreferences viewed_reports tracking.
+    rpc MarkReportViewed(MarkReportViewedRequest) returns (google.protobuf.Empty);
+    // Sets or clears the avatar customization (label + color) on a
+    // patient file. Empty avatar_config clears to defaults.
+    rpc SetAvatarConfig(SetAvatarConfigRequest) returns (google.protobuf.Empty);
+
     // ─── Report ratings (docs/10_REPORT_CUSTOMIZATION.md §5) ───
     // 👍/👎 rating on a generated report. Idempotent on
     // (report_id, therapist_id) — re-rating UPSERTs in place.
@@ -163,6 +172,15 @@ message PatientFile {
     // Patient contact e-mail (patient_files.patient_email, docs/22). Empty
     // when none is on file. Drives the "send action plan" e-mail flow.
     string patient_email         = 19;
+    // Therapist-managed lifecycle: "ACTIVE" | "COMPLETED" | "PAUSED".
+    // Persisted in patient_files.lifecycle_status (migration 000058).
+    // Replaces the Flutter-only SharedPreferences-backed lifecycle.
+    // COMPLETED also sets is_process_closed=true for backward compat.
+    string lifecycle_status       = 20;
+    // Avatar customization JSON: {"label": "AK", "color": 3}.
+    // Empty string when no customization (use auto-initials + default
+    // color). Persisted in patient_files.avatar_config (migration 000059).
+    string avatar_config          = 21;
 }
 
 message Modality {
@@ -226,6 +244,11 @@ message UpdatePatientFileRequest {
     string initial_complaint = 3;
     string private_therapist_notes = 4;
     bool is_process_closed = 5;
+    // Lifecycle status: "ACTIVE" | "COMPLETED" | "PAUSED".
+    // When set to "COMPLETED", also flips is_process_closed=true.
+    // When set to "ACTIVE" or "PAUSED", flips is_process_closed=false.
+    // Empty string means "leave unchanged".
+    string lifecycle_status = 6;
 }
 
 message DeletePatientFileRequest {
@@ -370,6 +393,10 @@ message Session {
   // ClinicalService.UpdateSession. Migration 000011 added the column;
   // ingestion-svc.CompleteAudioUpload populates it on new sessions.
   string name = 12;
+  // Timestamp when the therapist first opened the report for this
+  // session. Zero/empty when unviewed — Flutter shows "nowy raport"
+  // badge. Set via MarkReportViewed RPC. Migration 000059.
+  google.protobuf.Timestamp report_viewed_at = 13;
 }
 
 message ListSessionsRequest {
@@ -394,6 +421,19 @@ message DeleteSessionRequest {
 
 message CancelSessionRequest {
   string session_id = 1;
+}
+
+// MarkReportViewed — sets report_viewed_at on a COMPLETED session.
+// Idempotent (COALESCE preserves first-view timestamp).
+message MarkReportViewedRequest {
+  string session_id = 1;
+}
+
+// SetAvatarConfig — sets or clears avatar customization on a patient file.
+message SetAvatarConfigRequest {
+  string patient_file_id = 1;
+  // JSON string: {"label": "AK", "color": 3}. Empty = clear.
+  string avatar_config = 2;
 }
 
 message ListSessionsResponse {

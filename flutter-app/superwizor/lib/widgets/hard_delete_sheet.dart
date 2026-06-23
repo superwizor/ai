@@ -96,7 +96,7 @@ class _HardDeleteSheetState extends ConsumerState<HardDeleteSheet> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Skasujemy Twój profil terapeuty, wszystkie sesje, transkrypcje i raporty. Tej akcji nie można cofnąć. Jeśli jesteś pewna/pewien — wpisz słowo usuwam.',
+            'Skasujemy Twój profil terapeuty, wszystkie sesje, transkrypcje i raporty. Tej akcji nie można cofnąć. Jeśli jesteś pewna/pewien, wpisz słowo usuwam.',
           ),
           const SizedBox(height: 24),
           EuphireTextField(

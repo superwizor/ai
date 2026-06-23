@@ -72,7 +72,7 @@
   "addPatient_first_name_label": "Imię (wymagane)",
   "addPatient_last_name_label": "Inicjał lub pseudonim",
   "addPatient_email_label": "E-mail klienta",
-  "addPatient_email_hint": "Opcjonalnie — do planu działania",
+  "addPatient_email_hint": "Opcjonalnie (do planu działania)",
   "addPatient_modality_label": "Nurt terapeutyczny",
   "addPatient_language_label": "Język raportu",
   "addPatient_consent_label": "Klient wyraził zgodę na nagrywanie i przetwarzanie danych zgodnie z Polityką Prywatności i DPA Superwizor AI.",
@@ -172,12 +172,12 @@
   "recording_interrupted_banner_body": "Połączenie lub inna aplikacja przerwała nagrywanie. Dotychczasowe nagranie jest bezpieczne.",
   "recording_interrupted_resume": "Wznów nagrywanie",
   "recording_resume_failed_header": "Nie udało się wznowić",
-  "recording_resume_failed_body": "Nie udało się wznowić nagrywania. Dotychczasowe nagranie jest bezpieczne — możesz zakończyć sesję i wysłać je do analizy.",
+  "recording_resume_failed_body": "Nie udało się wznowić nagrywania. Dotychczasowe nagranie jest bezpieczne, możesz zakończyć sesję i wysłać je do analizy.",
   "recording_resume_failed_retry": "Spróbuj ponownie",
   "recording_resume_failed_finish": "Zakończ i wyślij",
 
   "recovery_sheet_header": "Znaleziono przerwane nagranie",
-  "recovery_sheet_body": "Nagranie sesji z {patientAlias} z {date} (ok. {minutes} min) nie zostało wysłane — aplikacja została przerwana w trakcie nagrywania. Co chcesz zrobić?",
+  "recovery_sheet_body": "Nagranie sesji z {patientAlias} z {date} (ok. {minutes} min) nie zostało wysłane, ponieważ aplikacja została przerwana w trakcie nagrywania. Co chcesz zrobić?",
   "@recovery_sheet_body": {
     "placeholders": {
       "patientAlias": { "type": "String" },
@@ -311,11 +311,11 @@
   "settings_language_app": "Język aplikacji",
   "settings_delete_confirm_title": "Czy na pewno chcesz\nusunąć konto?",
   "settings_delete_confirm_body": "Ta operacja jest NIEODWRACALNA.\nUstracisz całą dokumentację kliniczną i dane klientów.",
-  "settings_delete_confirm_proceed": "Rozumiem — przejdź dalej.",
-  "settings_delete_confirm_cancel": "Anuluj — zachowaj konto.",
+  "settings_delete_confirm_proceed": "Rozumiem, przejdź dalej.",
+  "settings_delete_confirm_cancel": "Anuluj, zachowaj konto.",
   "settings_choose_language": "Wybierz język",
   "delete_account_title": "Usuń konto",
-  "delete_account_consequence_1": "Cała dokumentacja kliniczna — wszystkich klientów, kartoteki, sesje i raporty AI — zostanie trwale usunięta.",
+  "delete_account_consequence_1": "Cała dokumentacja kliniczna (wszystkich klientów, kartoteki, sesje i raporty AI) zostanie trwale usunięta.",
   "delete_account_consequence_2": "Twoja subskrypcja (jeśli ją posiadasz) nie zostanie automatycznie anulowana. Musisz ją anulować osobno w App Store lub Google Play.",
   "delete_account_consequence_3": "Nie będziesz mógł odzyskać danych po zakończeniu tego procesu. Operacja jest nieodwracalna.",
   "delete_account_toggle_text": "Rozumiem konsekwencje\ni chcę usunąć konto",
@@ -332,7 +332,7 @@
   "report_rating_thumbs_up_tooltip": "Dobry raport",
   "report_rating_thumbs_down_tooltip": "Coś jest nie tak",
   "report_rating_saved_positive": "Dzięki za pozytywną ocenę.",
-  "report_rating_saved_negative": "Dzięki — uwzględnimy to przy kolejnych raportach.",
+  "report_rating_saved_negative": "Dzięki, uwzględnimy to przy kolejnych raportach.",
   "report_rating_save_error": "Nie udało się zapisać oceny. Spróbuj ponownie.",
   "report_rating_modal_title": "Co poszło nie tak?",
   "report_rating_modal_subtitle": "Wybierz jedną lub więcej kategorii. Pomoże nam to dostroić kolejne raporty.",
@@ -417,12 +417,12 @@
   "suggestion_banner_apply": "Zmień",
   "suggestion_banner_open_settings": "Otwórz ustawienia",
   "suggestion_banner_dismiss": "Nie teraz",
-  "suggestion_banner_applied_toast": "Zmieniono — kolejne raporty uwzględnią to ustawienie.",
+  "suggestion_banner_applied_toast": "Zmieniono, kolejne raporty uwzględnią to ustawienie.",
   "suggestion_banner_apply_error": "Nie udało się zmienić ustawienia.",
 
   "billing_quota_warning_short": "{n, plural, =1{Został Ci 1 token.} few{Zostały Ci {n} tokeny.} many{Zostało Ci {n} tokenów.} other{Zostało Ci {n} tokenów.}}",
   "@billing_quota_warning_short": {
-    "description": "Krótka warning banner — pozostałe tokeny w bieżącym okresie",
+    "description": "Krótka warning banner, pozostałe tokeny w bieżącym okresie",
     "placeholders": { "n": { "type": "int" } }
   },
   "billing_quota_critical_short": "Został Ci ostatni token.",
@@ -436,7 +436,7 @@
   "billing_dismiss_cta": "Rozumiem, kontynuuj",
 
   "billing_exhausted_dialog_title": "Pula tokenów wyczerpana",
-  "billing_exhausted_dialog_body": "Wykorzystałeś dostępne sesje. Możesz nadal nagrywać — audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie. Sprawdź swoją skrzynkę e-mail, aby dowiedzieć się więcej.",
+  "billing_exhausted_dialog_body": "Wykorzystałeś dostępne sesje. Możesz nadal nagrywać, audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie. Sprawdź swoją skrzynkę e-mail, aby dowiedzieć się więcej.",
   "billing_exhausted_dialog_record_locally": "Nagrywaj lokalnie",
 
   "billing_pending_sessions_title": "{n, plural, =1{Sesja oczekująca na przetworzenie} few{Sesje oczekujące na przetworzenie ({n})} many{Sesji oczekujących na przetworzenie ({n})} other{Sesji oczekujących na przetworzenie ({n})}}",
@@ -539,7 +539,7 @@
   "action_plan_save_only": "Zapisz",
   "action_plan_save_and_send": "Zapisz i wyślij",
   "action_plan_no_email_title": "Brak adresu e-mail",
-  "action_plan_no_email_body": "Nie można wysłać planu — klient nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.",
+  "action_plan_no_email_body": "Nie można wysłać planu, ponieważ klient nie ma zdefiniowanego adresu e-mail. Uzupełnij e-mail w kartotece.",
   "action_plan_send_confirm_title": "Wyślij plan działania?",
   "action_plan_send_confirm_body": "Plan zostanie wysłany na adres: {email}",
   "@action_plan_send_confirm_body": {
@@ -572,5 +572,41 @@
   "@recording_too_short_abort_body": {
     "placeholders": { "duration": { "type": "String" } }
   },
-  "recording_saving": "Zapisuję nagranie..."
+  "recording_saving": "Zapisuję nagranie...",
+  "recording_minimize_confirm_header": "Wyjście z ekranu nagrywania",
+  "recording_minimize_confirm_body": "Sesja jest w toku. Możesz zminimalizować ten ekran, aby np. przejść do notatek (nagrywanie będzie kontynuowane w tle).",
+  "recording_minimize_action": "Zminimalizuj (zostaw w tle)",
+  "recording_minimize_discard": "Zatrzymaj i skasuj nagranie",
+  "recording_minimize_resume": "Wróć do nagrywania",
+  "recording_discard_confirm_header": "Czy na pewno chcesz skasować nagranie?",
+  "recording_discard_confirm_body": "Tego nagrania nie będzie się dało odzyskać. Zostanie ono bezpowrotnie usunięte z urządzenia i nie zostanie wysłane do analizy.",
+  "recording_discard_confirm_action": "Tak, skasuj bezpowrotnie",
+  "recording_discard_confirm_cancel": "Nie, wróć",
+  "active_session_card_title": "Sesja w toku...",
+  "active_session_card_subtitle": "Wróć do trwającej sesji",
+  "active_session_card_paused_title": "Sesja wstrzymana",
+  "active_session_card_paused_subtitle": "Wznów lub zakończ sesję",
+
+  "settings_live_activities": "Aktywność na ekranie blokady",
+  "settings_live_activities_on": "Czas i status sesji widoczne bez odblokowywania telefonu.",
+  "settings_live_activities_off": "Status sesji widoczny tylko w aplikacji.",
+
+  "live_activity_info_title": "Miej sesję zawsze na oku",
+  "live_activity_info_body": "Włącz podgląd na ekranie blokady, aby widzieć czas sesji bez otwierania aplikacji.",
+  "live_activity_info_enable": "Włącz podgląd",
+  "live_activity_info_dismiss": "Nie teraz",
+
+  "live_activity_minimize_toast": "Sesja działa w tle. Aby widzieć jej czas na ekranie blokady, włącz podgląd w Ustawieniach.",
+
+  "live_activity_status_recording": "Sesja w toku",
+  "live_activity_status_paused": "Pauza",
+  "live_activity_status_uploading": "Wgrywanie nagrania...",
+  "live_activity_status_analyzing": "Analizowanie sesji...",
+  "live_activity_status_report_ready": "Nowy raport czeka w kartotece",
+  "live_activity_show_report": "Pokaż raport",
+
+  "live_activity_permission_title": "Wymagana zgoda systemowa",
+  "live_activity_permission_body": "Podgląd sesji na ekranie blokady wymaga włączenia Aktywności na żywo w ustawieniach systemu.",
+  "live_activity_permission_open_settings": "Otwórz ustawienia",
+  "live_activity_permission_cancel": "Anuluj"
 }

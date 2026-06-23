@@ -31,6 +31,11 @@ class PendingUploadsPill extends ConsumerWidget {
     final hasFailure = list.any((u) => u.phase == UploadPhase.failed);
     final allCompleted =
         list.every((u) => u.phase == UploadPhase.completed);
+    final hasRetrying = list.any((u) =>
+        u.lastError != null &&
+        u.attemptCount > 0 &&
+        !u.isTerminal &&
+        !u.isParked);
 
     final Color color;
     final IconData icon;
@@ -38,7 +43,11 @@ class PendingUploadsPill extends ConsumerWidget {
     if (hasFailure) {
       color = Colors.redAccent.shade200;
       icon = Icons.error_outline;
-      label = '${list.length} błąd';
+      label = '${list.length} wymaga uwagi';
+    } else if (hasRetrying) {
+      color = EuphireColors.ember;
+      icon = Icons.refresh_rounded;
+      label = '${list.length} wznawianie';
     } else if (allCompleted) {
       // Upload finished; backend analysis is still running.
       color = EuphireColors.ember;

@@ -23,6 +23,9 @@ class PatientDto {
   // Patient contact e-mail (PatientFile.patientEmail, docs/22). Empty
   // when none on file.
   final String email;
+  // 3-state lifecycle (ACTIVE/COMPLETED/PAUSED). Stored in
+  // patient_files.lifecycle_status (migration 000058).
+  final String lifecycleStatus;
 
   const PatientDto({
     required this.id,
@@ -32,6 +35,7 @@ class PatientDto {
     required this.languageCode,
     required this.sessionCount,
     this.email = '',
+    this.lifecycleStatus = 'ACTIVE',
   });
 
   Map<String, dynamic> toJson() => {
@@ -42,6 +46,7 @@ class PatientDto {
         'languageCode': languageCode,
         'sessionCount': sessionCount,
         'email': email,
+        'lifecycleStatus': lifecycleStatus,
       };
 
   factory PatientDto.fromJson(Map<String, dynamic> j) => PatientDto(
@@ -52,6 +57,7 @@ class PatientDto {
         languageCode: j['languageCode'] as String? ?? '',
         sessionCount: (j['sessionCount'] as num?)?.toInt() ?? 0,
         email: j['email'] as String? ?? '',
+        lifecycleStatus: j['lifecycleStatus'] as String? ?? 'ACTIVE',
       );
 
   // sessionCount is not on the proto today; if/when ListPatientFiles
@@ -69,6 +75,7 @@ class PatientDto {
         languageCode: p.patientLanguageCode,
         sessionCount: sessionCount,
         email: p.patientEmail,
+        lifecycleStatus: p.lifecycleStatus.isNotEmpty ? p.lifecycleStatus : 'ACTIVE',
       );
 
   Patient toModel() => Patient(
@@ -79,6 +86,7 @@ class PatientDto {
         languageCode: languageCode,
         sessionCount: sessionCount,
         email: email,
+        lifecycleStatus: lifecycleStatus,
       );
 
   factory PatientDto.fromModel(Patient p) => PatientDto(
@@ -89,5 +97,6 @@ class PatientDto {
         languageCode: p.languageCode,
         sessionCount: p.sessionCount,
         email: p.email,
+        lifecycleStatus: p.lifecycleStatus,
       );
 }

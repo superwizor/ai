@@ -190,6 +190,13 @@ func toProtoSession(s db.Session) *clinicalv1.Session {
 		resp.Name = *s.Name
 	}
 
+	// report_viewed_at (migration 000059): nullable timestamp. When the
+	// therapist first opened the report. Drives the "nowy raport" badge
+	// in Flutter — empty = unviewed.
+	if s.ReportViewedAt.Valid {
+		resp.ReportViewedAt = timestamppb.New(s.ReportViewedAt.Time)
+	}
+
 	return resp
 }
 
@@ -548,5 +555,66 @@ func loadSegmentsViaPerSegmentLoop(ctx context.Context, queries db.Querier, cryp
 			"transcript present but no segments could be decrypted; check clinical-svc KMS config")
 	}
 	return out, nil
+}
+
+// MarkReportViewed sets report_viewed_at on a COMPLETED session.
+// Idempotent — re-calling on an already-viewed session is a no-op
+// (COALESCE in the SQL preserves the first-view timestamp). The status
+// filter means calling on a non-completed session silently does nothing.
+//
+// Authz: therapist_id from JWT context must own the session (SQL filter).
+func (s *Server) MarkReportViewed(ctx context.Context, req *clinicalv1.MarkReportViewedRequest) (*emptypb.Empty, error) {
+	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
+	if !ok || therapistIDStr == "" {
+		return nil, status.Error(codes.Unauthenticated, "missing user ID in context")
+	}
+	therapistID, err := uuid.Parse(therapistIDStr)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id in context")
+	}
+
+	sessionID, err := uuid.Parse(req.SessionId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid session_id")
+	}
+
+	if err := s.queries.MarkReportViewed(ctx, db.MarkReportViewedParams{
+		ID:          sessionID,
+		TherapistID: therapistID,
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "mark report viewed: %v", err)
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+// SetAvatarConfig sets or clears the avatar customization (label + color)
+// on a patient file. Empty avatar_config clears to defaults.
+//
+// Authz: therapist_id from JWT context must own the patient file (SQL filter).
+func (s *Server) SetAvatarConfig(ctx context.Context, req *clinicalv1.SetAvatarConfigRequest) (*emptypb.Empty, error) {
+	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
+	if !ok || therapistIDStr == "" {
+		return nil, status.Error(codes.Unauthenticated, "missing user ID in context")
+	}
+	therapistID, err := uuid.Parse(therapistIDStr)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id in context")
+	}
+
+	patientFileID, err := uuid.Parse(req.PatientFileId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid patient_file_id")
+	}
+
+	if err := s.queries.SetAvatarConfig(ctx, db.SetAvatarConfigParams{
+		AvatarConfig: req.AvatarConfig,
+		ID:           patientFileID,
+		TherapistID:  therapistID,
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "set avatar config: %v", err)
+	}
+
+	return &emptypb.Empty{}, nil
 }
 

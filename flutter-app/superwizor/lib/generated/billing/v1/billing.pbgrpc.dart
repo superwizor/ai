@@ -95,6 +95,14 @@ class BillingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getSubscription, request, options: options);
   }
 
+  /// Pobiera historię faktur dla organizacji.
+  $grpc.ResponseFuture<$0.ListInvoicesResponse> listInvoices(
+    $0.ListInvoicesRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$listInvoices, request, options: options);
+  }
+
   /// Sets usage_counters.tokens_used (and optionally tokens_limit)
   /// on the org's current active counter. Used for support escapes
   /// — refunds, manual top-ups, period rolls. Returns the fresh
@@ -148,6 +156,11 @@ class BillingServiceClient extends $grpc.Client {
           '/billing.v1.BillingService/GetSubscription',
           ($0.GetSubscriptionRequest value) => value.writeToBuffer(),
           $0.Subscription.fromBuffer);
+  static final _$listInvoices =
+      $grpc.ClientMethod<$0.ListInvoicesRequest, $0.ListInvoicesResponse>(
+          '/billing.v1.BillingService/ListInvoices',
+          ($0.ListInvoicesRequest value) => value.writeToBuffer(),
+          $0.ListInvoicesResponse.fromBuffer);
   static final _$adminResetTokens =
       $grpc.ClientMethod<$0.AdminResetTokensRequest, $0.Subscription>(
           '/billing.v1.BillingService/AdminResetTokens',
@@ -212,6 +225,15 @@ abstract class BillingServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.GetSubscriptionRequest.fromBuffer(value),
         ($0.Subscription value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.ListInvoicesRequest, $0.ListInvoicesResponse>(
+            'ListInvoices',
+            listInvoices_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.ListInvoicesRequest.fromBuffer(value),
+            ($0.ListInvoicesResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.AdminResetTokensRequest, $0.Subscription>(
         'AdminResetTokens',
         adminResetTokens_Pre,
@@ -277,6 +299,15 @@ abstract class BillingServiceBase extends $grpc.Service {
 
   $async.Future<$0.Subscription> getSubscription(
       $grpc.ServiceCall call, $0.GetSubscriptionRequest request);
+
+  $async.Future<$0.ListInvoicesResponse> listInvoices_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ListInvoicesRequest> $request) async {
+    return listInvoices($call, await $request);
+  }
+
+  $async.Future<$0.ListInvoicesResponse> listInvoices(
+      $grpc.ServiceCall call, $0.ListInvoicesRequest request);
 
   $async.Future<$0.Subscription> adminResetTokens_Pre($grpc.ServiceCall $call,
       $async.Future<$0.AdminResetTokensRequest> $request) async {

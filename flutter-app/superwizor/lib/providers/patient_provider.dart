@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../utils/debug_flags.dart';
 import '../models/patient.dart';
 import '../models/session.dart';
 import '../repositories/patient_repository.dart';
@@ -94,6 +95,7 @@ class PatientsNotifier extends AsyncNotifier<List<Patient>> {
           languageCode: pf.patientLanguageCode,
           sessionCount: 0, // skip the fan-out in the fallback path
           email: pf.patientEmail,
+          lifecycleStatus: pf.lifecycleStatus.isNotEmpty ? pf.lifecycleStatus : 'ACTIVE',
         );
       }).toList();
     } catch (e) {
@@ -324,7 +326,15 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
               ? SessionStatus.pendingUpload
               : s.status == 'COMPLETED'
               ? SessionStatus.completed
+              : (s.status == 'FAILED' || s.status == 'ERROR')
+              ? SessionStatus.error
               : SessionStatus.inProgress,
+          // report_viewed_at (migration 000059): carry the backend-synced
+          // timestamp so home_screen can determine badge state without
+          // relying on local SharedPreferences.
+          reportViewedAt: s.hasReportViewedAt()
+              ? s.reportViewedAt.toDateTime().toLocal()
+              : null,
         );
       }).toList();
       _publish(patientId, fetched);
@@ -335,7 +345,21 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
 
   void _publish(String patientId, List<Session> sessions) {
     final current = state.whenOrNull(data: (d) => d) ?? {};
-    state = AsyncValue.data({...current, patientId: sessions});
+
+    // In debug mode, preserve any injected debug sessions so that
+    // background SWR refreshes don't clobber the simulation.
+    List<Session> merged = sessions;
+    if (kDebugMode || DebugFlags.simulationsEnabled) {
+      final oldSessions = current[patientId] ?? [];
+      final debugSessions =
+          oldSessions.where((s) => s.id.startsWith('debug-')).toList();
+      if (debugSessions.isNotEmpty) {
+        // Prepend debug sessions (they appear at the top)
+        merged = [...debugSessions, ...sessions];
+      }
+    }
+
+    state = AsyncValue.data({...current, patientId: merged});
   }
 
   Future<void> addSession(Session session) async {
@@ -350,6 +374,11 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
   }
 
   Future<void> deleteSession(String patientId, String sessionId) async {
+    // Debug sessions exist only in local state — skip server call.
+    if ((kDebugMode || DebugFlags.simulationsEnabled) && sessionId.startsWith('debug-')) {
+      debugRemoveSession(patientId, sessionId);
+      return;
+    }
     final client = ref.read(grpcClientsProvider).clinical;
 
     // Only the server delete can legitimately fail (auth, not-found,
@@ -402,6 +431,11 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
   /// mirroring deleteSession. Unlike delete this is NOT a RODO erase:
   /// the row survives server-side for audit.
   Future<void> cancelSession(String patientId, String sessionId) async {
+    // Debug sessions exist only in local state — skip server call.
+    if ((kDebugMode || DebugFlags.simulationsEnabled) && sessionId.startsWith('debug-')) {
+      debugRemoveSession(patientId, sessionId);
+      return;
+    }
     final client = ref.read(grpcClientsProvider).clinical;
     try {
       await client.cancelSession(
@@ -467,5 +501,65 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
       debugPrint('[rename] Server sync failed (local rename persisted): $e');
       rethrow;
     }
+  }
+
+  // ─── Debug-only state manipulation (tree-shaken in release) ──────
+
+  /// Injects a fake session into the local state (no network call).
+  /// Used by the debug panel to test badge rendering and status
+  /// transitions without a real recording flow.
+  void debugInjectSession({
+    required String patientId,
+    required String sessionId,
+    required SessionStatus status,
+    DateTime? date,
+  }) {
+    if (!kDebugMode && !DebugFlags.simulationsEnabled) return;
+    final fake = Session(
+      id: sessionId,
+      patientId: patientId,
+      modality: 'DEBUG',
+      name: 'Debug session',
+      date: date ?? DateTime.now(),
+      duration: const Duration(minutes: 45),
+      status: status,
+    );
+    final current = state.whenOrNull(data: (d) => d) ?? {};
+    final sessions = current[patientId] ?? [];
+    // Don't duplicate if same ID exists
+    final filtered = sessions.where((s) => s.id != sessionId).toList();
+    state = AsyncValue.data({
+      ...current,
+      patientId: [fake, ...filtered],
+    });
+    debugPrint('[debug] injected session $sessionId '
+        'status=${status.name} for patient $patientId '
+        '(total sessions now: ${filtered.length + 1})');
+  }
+
+  /// Transitions a debug session's status (e.g. inProgress → completed).
+  void debugTransitionSession(String patientId, String sessionId,
+      SessionStatus newStatus) {
+    if (!kDebugMode && !DebugFlags.simulationsEnabled) return;
+    final current = state.whenOrNull(data: (d) => d) ?? {};
+    final sessions = current[patientId] ?? [];
+    final updated = sessions.map((s) {
+      if (s.id == sessionId) return s.copyWith(status: newStatus);
+      return s;
+    }).toList();
+    state = AsyncValue.data({...current, patientId: updated});
+    debugPrint('[debug] transitioned session $sessionId → ${newStatus.name}');
+  }
+
+  /// Removes a debug session from local state.
+  void debugRemoveSession(String patientId, String sessionId) {
+    if (!kDebugMode && !DebugFlags.simulationsEnabled) return;
+    final current = state.whenOrNull(data: (d) => d) ?? {};
+    final sessions = current[patientId] ?? [];
+    state = AsyncValue.data({
+      ...current,
+      patientId: sessions.where((s) => s.id != sessionId).toList(),
+    });
+    debugPrint('[debug] removed session $sessionId');
   }
 }

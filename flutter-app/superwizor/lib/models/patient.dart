@@ -18,6 +18,11 @@ class Patient {
   // when none is on file. Drives the "send action plan / note" e-mail
   // gate. Persisted server-side via UpdatePatientUser(patient_email).
   final String email;
+  // 3-state lifecycle (ACTIVE/COMPLETED/PAUSED). Persisted server-side
+  // in patient_files.lifecycle_status (migration 000058). The Flutter
+  // PatientLifecycleNotifier reads this on load and syncs changes back
+  // via UpdatePatientFile.
+  final String lifecycleStatus;
 
   Patient({
     required this.id,
@@ -27,6 +32,7 @@ class Patient {
     this.languageCode = '',
     this.sessionCount = 0,
     this.email = '',
+    this.lifecycleStatus = 'ACTIVE',
   });
 
   Patient copyWith({
@@ -37,6 +43,7 @@ class Patient {
     String? languageCode,
     int? sessionCount,
     String? email,
+    String? lifecycleStatus,
   }) {
     return Patient(
       id: id ?? this.id,
@@ -46,6 +53,7 @@ class Patient {
       languageCode: languageCode ?? this.languageCode,
       sessionCount: sessionCount ?? this.sessionCount,
       email: email ?? this.email,
+      lifecycleStatus: lifecycleStatus ?? this.lifecycleStatus,
     );
   }
 }

@@ -25,7 +25,7 @@ import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_button.dart';
 import '../widgets/euphire_header.dart';
 import '../widgets/modality_sheet.dart';
-import 'home_screen_v2.dart';
+import 'home_screen.dart';
 
 class TherapistSetupScreen extends ConsumerStatefulWidget {
   const TherapistSetupScreen({super.key});

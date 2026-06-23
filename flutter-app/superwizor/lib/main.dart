@@ -1,6 +1,7 @@
 import 'analytics/analytics_collector.dart';
 import 'providers/current_user_provider.dart';
 import 'providers/locale_provider.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart' as cf;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -14,10 +15,11 @@ import 'auth/sso_handler.dart'
     if (dart.library.html) 'auth/sso_handler_web.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
-import 'screens/home_screen_v2.dart';
+import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'theme/euphire_theme.dart';
 import 'uploads/upload_queue_provider.dart';
+import 'widgets/minimized_recording_bar.dart';
 
 /// Top-level handler for FCM messages while the app is in the
 /// background or terminated. Must be a top-level function (or static)
@@ -34,6 +36,8 @@ final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
@@ -84,8 +88,6 @@ void main() async {
 
   runApp(const ProviderScope(child: SuperWizorApp()));
 }
-
-
 class SuperWizorApp extends ConsumerWidget {
   const SuperWizorApp({super.key});
 
@@ -102,6 +104,9 @@ class SuperWizorApp extends ConsumerWidget {
       supportedLocales: const [Locale('pl'), Locale('en')],
       locale: locale,
       home: const _AuthGate(),
+      builder: (context, child) {
+        return ActiveRecordingOverlay(child: child!);
+      },
     );
   }
 }

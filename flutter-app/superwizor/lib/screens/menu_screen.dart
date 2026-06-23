@@ -23,6 +23,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/locale_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/services_provider.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_toast.dart';
 import '../widgets/euphire_action_sheet.dart';
@@ -33,6 +34,7 @@ import '../widgets/report_preferences_section.dart';
 import '../l10n/app_localizations.dart';
 import 'delete_account_screen.dart';
 import 'legal_markdown_screen.dart';
+
 import 'subscription_plan_screen.dart';
 
 class MenuScreen extends ConsumerStatefulWidget {
@@ -402,6 +404,54 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                             subtitle: settings.hapticsEnabled ? t.settings_haptics_on : t.settings_haptics_off,
                             value: settings.hapticsEnabled,
                             onChanged: settingsNotifier.toggleHaptics,
+                          ),
+                          _Divider(),
+                          // Live Activities / Lock Screen
+                          _ToggleRow(
+                            icon: Icons.stay_current_portrait_outlined,
+                            iconColor: EuphireColors.ember,
+                            title: t.settings_live_activities,
+                            subtitle: settings.liveActivitiesEnabled
+                                ? t.settings_live_activities_on
+                                : t.settings_live_activities_off,
+                            value: settings.liveActivitiesEnabled,
+                            onChanged: (v) async {
+                              if (v) {
+                                // Check iOS system-level permission before enabling.
+                                final la = ref.read(liveActivityServiceProvider);
+                                final systemEnabled = await la.isSystemEnabled();
+                                if (!systemEnabled && context.mounted) {
+                                  final openSettings = await showEuphireBottomSheet<bool>(
+                                    context: context,
+                                    builder: (ctx) => EuphireActionSheet(
+                                      header: t.live_activity_permission_title,
+                                      body: t.live_activity_permission_body,
+                                      primary: EuphireSheetAction(
+                                        label: t.live_activity_permission_open_settings,
+                                        onPressed: () => Navigator.of(ctx).pop(true),
+                                      ),
+                                      secondary: EuphireSheetAction(
+                                        label: t.live_activity_permission_cancel,
+                                        onPressed: () => Navigator.of(ctx).pop(false),
+                                      ),
+                                    ),
+                                  );
+                                  if (openSettings == true) {
+                                    await la.openSystemSettings();
+                                  }
+                                  return; // Don't toggle the app-level setting.
+                                }
+                              }
+                              settingsNotifier.toggleLiveActivities(v);
+                              // Directly stop/start the native LA so
+                              // the change takes effect immediately,
+                              // even if RecordingScreen is not mounted.
+                              final la = ref.read(liveActivityServiceProvider);
+                              if (!v) {
+                                la.stop();
+                                debugPrint('[settings] LA stopped (toggle off)');
+                              }
+                            },
                           ),
                           _Divider(),
                           // Język aplikacji — inline selector

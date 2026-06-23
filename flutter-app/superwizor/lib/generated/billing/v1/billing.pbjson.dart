@@ -266,6 +266,21 @@ const Subscription$json = {
     },
     {'1': 'plan_cycle', '3': 11, '4': 1, '5': 9, '10': 'planCycle'},
     {'1': 'tokens_remaining', '3': 12, '4': 1, '5': 5, '10': 'tokensRemaining'},
+    {
+      '1': 'cancel_at_period_end',
+      '3': 13,
+      '4': 1,
+      '5': 8,
+      '10': 'cancelAtPeriodEnd'
+    },
+    {
+      '1': 'canceled_at',
+      '3': 14,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'canceledAt'
+    },
   ],
 };
 
@@ -281,7 +296,9 @@ final $typed_data.Uint8List subscriptionDescriptor = $convert.base64Decode(
     'EoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSEmN1cnJlbnRQZXJpb2RTdGFydBJIChJj'
     'dXJyZW50X3BlcmlvZF9lbmQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUhBjdX'
     'JyZW50UGVyaW9kRW5kEh0KCnBsYW5fY3ljbGUYCyABKAlSCXBsYW5DeWNsZRIpChB0b2tlbnNf'
-    'cmVtYWluaW5nGAwgASgFUg90b2tlbnNSZW1haW5pbmc=');
+    'cmVtYWluaW5nGAwgASgFUg90b2tlbnNSZW1haW5pbmcSLwoUY2FuY2VsX2F0X3BlcmlvZF9lbm'
+    'QYDSABKAhSEWNhbmNlbEF0UGVyaW9kRW5kEjsKC2NhbmNlbGVkX2F0GA4gASgLMhouZ29vZ2xl'
+    'LnByb3RvYnVmLlRpbWVzdGFtcFIKY2FuY2VsZWRBdA==');
 
 @$core.Deprecated('Use adminResetTokensRequestDescriptor instead')
 const AdminResetTokensRequest$json = {
@@ -320,3 +337,90 @@ final $typed_data.Uint8List adminChangePlanRequestDescriptor = $convert.base64De
     '5pemF0aW9uSWQSGwoJcGxhbl90aWVyGAIgASgJUghwbGFuVGllchIdCgpwbGFuX2N5Y2xlGAMg'
     'ASgJUglwbGFuQ3ljbGUSFgoGcmVhc29uGAQgASgJUgZyZWFzb24SJwoPaWRlbXBvdGVuY3lfa2'
     'V5GAUgASgJUg5pZGVtcG90ZW5jeUtleQ==');
+
+@$core.Deprecated('Use listInvoicesRequestDescriptor instead')
+const ListInvoicesRequest$json = {
+  '1': 'ListInvoicesRequest',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+  ],
+};
+
+/// Descriptor for `ListInvoicesRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listInvoicesRequestDescriptor = $convert.base64Decode(
+    'ChNMaXN0SW52b2ljZXNSZXF1ZXN0EicKD29yZ2FuaXphdGlvbl9pZBgBIAEoCVIOb3JnYW5pem'
+    'F0aW9uSWQ=');
+
+@$core.Deprecated('Use listInvoicesResponseDescriptor instead')
+const ListInvoicesResponse$json = {
+  '1': 'ListInvoicesResponse',
+  '2': [
+    {
+      '1': 'invoices',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.billing.v1.Invoice',
+      '10': 'invoices'
+    },
+  ],
+};
+
+/// Descriptor for `ListInvoicesResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listInvoicesResponseDescriptor = $convert.base64Decode(
+    'ChRMaXN0SW52b2ljZXNSZXNwb25zZRIvCghpbnZvaWNlcxgBIAMoCzITLmJpbGxpbmcudjEuSW'
+    '52b2ljZVIIaW52b2ljZXM=');
+
+@$core.Deprecated('Use invoiceDescriptor instead')
+const Invoice$json = {
+  '1': 'Invoice',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'stripe_invoice_id', '3': 2, '4': 1, '5': 9, '10': 'stripeInvoiceId'},
+    {'1': 'amount_paid', '3': 3, '4': 1, '5': 1, '10': 'amountPaid'},
+    {'1': 'currency', '3': 4, '4': 1, '5': 9, '10': 'currency'},
+    {'1': 'invoice_pdf', '3': 5, '4': 1, '5': 9, '10': 'invoicePdf'},
+    {
+      '1': 'hosted_invoice_url',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'hostedInvoiceUrl'
+    },
+    {
+      '1': 'period_start',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'periodStart'
+    },
+    {
+      '1': 'period_end',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'periodEnd'
+    },
+    {
+      '1': 'created_at',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'createdAt'
+    },
+  ],
+};
+
+/// Descriptor for `Invoice`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List invoiceDescriptor = $convert.base64Decode(
+    'CgdJbnZvaWNlEg4KAmlkGAEgASgJUgJpZBIqChFzdHJpcGVfaW52b2ljZV9pZBgCIAEoCVIPc3'
+    'RyaXBlSW52b2ljZUlkEh8KC2Ftb3VudF9wYWlkGAMgASgBUgphbW91bnRQYWlkEhoKCGN1cnJl'
+    'bmN5GAQgASgJUghjdXJyZW5jeRIfCgtpbnZvaWNlX3BkZhgFIAEoCVIKaW52b2ljZVBkZhIsCh'
+    'Job3N0ZWRfaW52b2ljZV91cmwYBiABKAlSEGhvc3RlZEludm9pY2VVcmwSPQoMcGVyaW9kX3N0'
+    'YXJ0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFILcGVyaW9kU3RhcnQSOQoKcG'
+    'VyaW9kX2VuZBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSCXBlcmlvZEVuZBI5'
+    'CgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYXRlZE'
+    'F0');

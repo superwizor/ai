@@ -1,7 +1,7 @@
 // Once-per-launch orphaned-recording scan (docs/28 WS1).
 //
 // Resolves to the list of recoverable recordings for the signed-in
-// therapist, after running the retention sweep. HomeScreenV2 reads this
+// therapist, after running the retention sweep. HomeScreen reads this
 // post-frame and walks the user through a recovery sheet per orphan.
 //
 // The module-level `_ranThisLaunch` guard (same singleton-holder idiom

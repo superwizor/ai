@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../theme/euphire_theme.dart';
+import '../utils/haptics.dart';
 
 class EuphireSegmentedControl extends StatelessWidget {
   final String selected;
@@ -66,7 +66,7 @@ class EuphireSegmentedControl extends StatelessWidget {
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                          HapticFeedback.selectionClick();
+                          AppHapticFeedback.selectionClick();
                           onSelect(leftValue);
                         },
                         behavior: HitTestBehavior.opaque,
@@ -87,7 +87,7 @@ class EuphireSegmentedControl extends StatelessWidget {
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                          HapticFeedback.selectionClick();
+                          AppHapticFeedback.selectionClick();
                           onSelect(rightValue);
                         },
                         behavior: HitTestBehavior.opaque,

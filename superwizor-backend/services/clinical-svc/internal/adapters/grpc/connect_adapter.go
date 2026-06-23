@@ -275,6 +275,24 @@ func (a *ConnectAdapter) DeletePatientData(ctx context.Context, req *connect.Req
 
 
 
+// ─── Cross-device preference sync (migration 000059) ────────────────
+
+func (a *ConnectAdapter) MarkReportViewed(ctx context.Context, req *connect.Request[clinicalv1.MarkReportViewedRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.MarkReportViewed(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) SetAvatarConfig(ctx context.Context, req *connect.Request[clinicalv1.SetAvatarConfigRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.SetAvatarConfig(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 // ─── Admin Prompt Studio (docs/31) ──────────────────────────────────
 
 func (a *ConnectAdapter) AdminListModalityPrompts(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[clinicalv1.AdminListModalityPromptsResponse], error) {

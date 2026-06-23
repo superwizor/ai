@@ -37,6 +37,8 @@ import '../providers/patient_provider.dart';
 import '../providers/services_provider.dart';
 import '../services/recording_manifest_store.dart';
 import '../services/recording_service.dart';
+import '../services/live_activity_service.dart';
+import '../providers/settings_provider.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
@@ -46,6 +48,9 @@ import '../widgets/euphire_button.dart';
 import '../widgets/euphire_recording_indicator.dart';
 import 'session_status_screen.dart';
 import '../analytics/analytics_collector.dart';
+
+
+import '../widgets/minimized_recording_bar.dart';
 
 // TODO(pre-prod): restore to Duration(minutes: 5) before TestFlight.
 // Lowered to 30s for end-to-end smoke testing on real device — saves us
@@ -73,7 +78,7 @@ class RecordingScreen extends ConsumerStatefulWidget {
 }
 
 class _RecordingScreenState extends ConsumerState<RecordingScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   String? _sessionId;
   Duration _displayDuration = Duration.zero;
   RecordingState _recState = RecordingState.idle;
@@ -88,24 +93,131 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   // the upload worker (not inline on finish), so this stays 0 — the
   // indicator just doesn't show a chunk tally. Kept for the widget API.
   final int _chunkCount = 0;
+  ProviderSubscription<AppSettings>? _settingsSub;
+  // True from screen entry until the recorder actually starts capturing.
+  // During this phase the control panel (yellow mic button) is hidden
+  // and the waveform area shows "Rozpoczynam nagrywanie…" — the user
+  // never sees a fleeting idle state.
+  bool _initializing = true;
+
+  // ── Entrance animations ──
+  // Staggered fade+slide for a premium, fluid screen entry.
+  late final AnimationController _entranceController;
+  late final Animation<Offset> _headerSlide;
+  late final Animation<double> _headerFade;
+  late final Animation<double> _waveformScale;
+  late final Animation<double> _waveformFade;
 
   RecordingService get _service => ref.read(recordingServiceProvider);
+  late final RecordingScreenVisibleNotifier _visibleNotifier;
 
   @override
   void initState() {
     super.initState();
+    _visibleNotifier = ref.read(recordingScreenVisibleProvider.notifier);
     WidgetsBinding.instance.addObserver(this);
+
+    // ── Entrance animation setup ──
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    // Header: fade in + slide down from -20% (0–60% of total)
+    _headerFade = CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+    );
+    _headerSlide = Tween<Offset>(
+      begin: const Offset(0, -0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
+    ));
+    // Waveform: scale up from 0.85 + fade in (20–80% of total)
+    _waveformFade = CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.2, 0.8, curve: Curves.easeOut),
+    );
+    _waveformScale = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.2, 0.8, curve: Curves.easeOutCubic),
+      ),
+    );
+    // Start the entrance animation immediately.
+    _entranceController.forward();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _visibleNotifier.setVisible(true);
       ref.read(analyticsCollectorProvider).track("screen.viewed", properties: {"screen_name": "RecordingScreen"});
-      _verifyConsentAndStart();
+
+      // React to Live Activity toggle changes mid-session: if the user
+      // enables LA while a recording is active, start it immediately;
+      // if they disable it, stop it.
+      // NOTE: ref.listenManual (not ref.listen) because this runs in
+      // postFrameCallback, outside the build() method. ref.listen throws
+      // in Riverpod 3.x when called outside build().
+      _settingsSub = ref.listenManual<AppSettings>(appSettingsProvider, (prev, next) {
+        final wasOn = prev?.liveActivitiesEnabled ?? false;
+        final isOn = next.liveActivitiesEnabled;
+        if (wasOn == isOn) return;
+
+        final la = ref.read(liveActivityServiceProvider);
+        final svc = _service;
+        final isActive = svc.state == RecordingState.recording ||
+            svc.state == RecordingState.paused ||
+            svc.state == RecordingState.interrupted;
+
+        if (isOn && isActive) {
+          // Start LA for the in-progress session
+          la.start(
+            patientAlias: widget.patientAlias,
+            elapsedSeconds: svc.currentDuration.inSeconds,
+          );
+          debugPrint('[recording] LA started mid-session (toggle on)');
+        } else if (!isOn) {
+          la.stop();
+          debugPrint('[recording] LA stopped mid-session (toggle off)');
+        }
+      });
+
+      // Defer heavy work (consent check, permission, recorder start)
+      // until the page transition finishes. This prevents all
+      // platform-channel calls from competing with the route
+      // slide-in animation for main-thread time.
+      final route = ModalRoute.of(context);
+      if (route != null && route.animation != null) {
+        void onTransitionEnd(AnimationStatus status) {
+          if (status == AnimationStatus.completed) {
+            route.animation!.removeStatusListener(onTransitionEnd);
+            if (!mounted) return;
+            _verifyConsentAndStart();
+          }
+        }
+        if (route.animation!.isCompleted) {
+          // Already completed (e.g. pushReplacement with no animation)
+          _verifyConsentAndStart();
+        } else {
+          route.animation!.addStatusListener(onTransitionEnd);
+        }
+      } else {
+        // No route animation (shouldn't happen, but safety net)
+        _verifyConsentAndStart();
+      }
     });
   }
 
   @override
   void dispose() {
+    _entranceController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _durSub?.cancel();
     _stateSub?.cancel();
+    _settingsSub?.close();
+    Future.microtask(() {
+      _visibleNotifier.setVisible(false);
+    });
     super.dispose();
   }
 
@@ -118,75 +230,126 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     // OS holds the recorder paused. docs/28 WS2.
     if (state == AppLifecycleState.resumed) {
       _service.reconcileWithNative();
+
+      // Check if this RecordingScreen is still the top route.
+      // When the user returns via the Live Activity widget tap, the
+      // Navigator may have reset to root (HomeScreen) — in that case
+      // recordingScreenVisible must be false so the minimized bar
+      // appears as a return path.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final isTop = ModalRoute.of(context)?.isCurrent ?? false;
+        _visibleNotifier.setVisible(isTop);
+      });
     }
   }
 
   Future<void> _verifyConsentAndStart() async {
-    // SOURCE OF TRUTH: the backend's patient_files.has_recording_consent
-    // (set at CreatePatientFile time, never cleared in the current
-    // schema). The local Hive cache below (ConsentService.hasConsent)
-    // is wiped on every app reinstall — trusting it alone re-prompted
-    // therapists for consent on every reinstall, even when the
-    // patient's consent was already captured server-side. Fixed
-    // 2026-05-19: GetPatientFile first, fall through to local cache
-    // only when offline / RPC fails (the local-only path remains as
-    // a graceful offline safety net for the rare case the user opens
-    // a recently-created patient with no network).
-    bool backendSaysConsent = false;
-    try {
-      final patient = await ref.read(grpcClientsProvider).clinical.getPatientFile(
-            clinical_pb.GetPatientFileRequest(patientFileId: widget.patientFileId),
-          );
-      backendSaysConsent = patient.hasRecordingConsent;
-    } catch (_) {
-      // Backend unreachable — fall through to local-only check.
-      // Conservative: an offline therapist who already captured
-      // consent shouldn't be blocked from recording.
+    debugPrint('[recording] _verifyConsentAndStart() CALLED');
+    // If the service is already recording/paused/interrupted, just attach to it!
+    if (_service.state == RecordingState.recording ||
+        _service.state == RecordingState.paused ||
+        _service.state == RecordingState.interrupted) {
+      debugPrint('[recording] already active (${_service.state}), attaching');
+      _sessionId = _service.activeSessionId;
+      setState(() {
+        _displayDuration = _service.currentDuration;
+        _recState = _service.state;
+      });
+
+      _durSub = _service.durationStream.listen((d) {
+        if (!mounted) return;
+        setState(() => _displayDuration = d);
+        if (!_maxLimitTriggered &&
+            d >= kMaxSessionDuration &&
+            d < const Duration(hours: 4)) {
+          _maxLimitTriggered = true;
+          debugPrint('[recording] max duration reached at $d');
+          _onMaxDurationReached();
+        } else if (d >= const Duration(hours: 4)) {
+          debugPrint(
+              '[recording] WARNING insane duration $d ignored — clock jump?');
+        }
+      });
+      _stateSub = _service.stateStream.listen((s) {
+        if (!mounted) return;
+        setState(() => _recState = s);
+      });
+      return;
     }
-    if (backendSaysConsent) {
+
+    // ── Consent gate ──
+    // LOCAL FIRST (instant, <5ms). Consent can only be granted, never
+    // revoked, so a cached “true” is always valid. This skips the
+    // gRPC round-trip (200–3000ms) for every repeat recording.
+    // Backend is only consulted when local cache is empty — which
+    // happens after a fresh install or reinstall (Hive is wiped).
+    debugPrint('[recording] checking local consent first...');
+    final localConsent =
+        await ref.read(consentServiceProvider).hasConsent(patientFileId: widget.patientFileId);
+    debugPrint('[recording] localConsent=$localConsent');
+    if (localConsent) {
+      debugPrint('[recording] local consent=true → calling _start()');
       await _start();
       return;
     }
 
-    final consent =
-        await ref.read(consentServiceProvider).hasConsent(patientFileId: widget.patientFileId);
-    if (!consent) {
-      if (!mounted) return;
-      final t = AppLocalizations.of(context);
-      final granted = await showEuphireBottomSheet<bool>(
-        context: context,
-        builder: (ctx) => EuphireActionSheet(
-          header: t.recording_consent_missing_header,
-          body: t.recording_consent_missing_body,
-          primary: EuphireSheetAction(
-            label: t.recording_consent_grant,
-            onPressed: () async {
-              try {
-                await ref.read(consentServiceProvider).recordConsent(
-                  patientFileId: widget.patientFileId,
-                  documentVersion: 'v1.0',
-                );
-                if (ctx.mounted) Navigator.of(ctx).pop(true);
-              } catch (e) {
-                if (ctx.mounted) Navigator.of(ctx).pop(false);
-              }
-            },
-          ),
-          secondary: EuphireSheetAction(
-            label: t.common_cancel,
-            onPressed: () => Navigator.of(ctx).pop(false),
-          ),
-        ),
-      );
-      if (granted != true && mounted) {
-        Navigator.of(context).pop();
-      } else if (granted == true && mounted) {
-        await _start();
-      }
+    // No local consent — backend check (handles reinstall case where
+    // Hive cache was wiped but backend already has consent).
+    bool backendSaysConsent = false;
+    try {
+      debugPrint('[recording] no local consent, calling getPatientFile gRPC...');
+      final patient = await ref.read(grpcClientsProvider).clinical.getPatientFile(
+            clinical_pb.GetPatientFileRequest(patientFileId: widget.patientFileId),
+          ).timeout(const Duration(seconds: 3));
+      backendSaysConsent = patient.hasRecordingConsent;
+      debugPrint('[recording] gRPC ok, backendSaysConsent=$backendSaysConsent');
+    } catch (e) {
+      // Backend unreachable or timed out — fall through to consent sheet.
+      // Conservative: an offline therapist who already captured
+      // consent shouldn’t be blocked from recording.
+      debugPrint('[recording] gRPC getPatientFile FAILED: $e');
+    }
+    if (backendSaysConsent) {
+      debugPrint('[recording] backend consent=true → calling _start()');
+      await _start();
       return;
     }
-    // Auto-start recording
-    await _start();
+
+    if (!mounted) return;
+    final t = AppLocalizations.of(context);
+    debugPrint('[recording] NO consent → showing consent sheet');
+    final granted = await showEuphireBottomSheet<bool>(
+      context: context,
+      builder: (ctx) => EuphireActionSheet(
+        header: t.recording_consent_missing_header,
+        body: t.recording_consent_missing_body,
+        primary: EuphireSheetAction(
+          label: t.recording_consent_grant,
+          onPressed: () async {
+            try {
+              await ref.read(consentServiceProvider).recordConsent(
+                patientFileId: widget.patientFileId,
+                documentVersion: 'v1.0',
+              );
+              if (ctx.mounted) Navigator.of(ctx).pop(true);
+            } catch (e) {
+              if (ctx.mounted) Navigator.of(ctx).pop(false);
+            }
+          },
+        ),
+        secondary: EuphireSheetAction(
+          label: t.common_cancel,
+          onPressed: () => Navigator.of(ctx).pop(false),
+        ),
+      ),
+    );
+    if (granted != true && mounted) {
+      Navigator.of(context).pop();
+    } else if (granted == true && mounted) {
+      await _start();
+    }
+    return;
   }
 
   /// Pre-flight permission check before kicking off the recorder.
@@ -250,40 +413,38 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   }
 
   Future<void> _start() async {
-    // Captured before the first await so we don't reach across an async
+    // Captured before the first await so we don’t reach across an async
     // gap for context; feeds the Android FGS notification (docs/28 WS5).
     final t = AppLocalizations.of(context);
     final ok = await _ensureMicPermission();
     if (!ok) return;
+
+    // Yield one frame after the permission check so the UI can
+    // render smoothly before the heavy AVAudioSession + encoder
+    // setup inside _service.start() blocks the main thread.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+
     try {
       _sessionId = const Uuid().v4();
       await _service.start(
         _sessionId!,
+        patientFileId: widget.patientFileId,
+        therapistId: widget.therapistId,
+        patientAlias: widget.patientAlias,
+        reportLanguage: widget.reportLanguage,
         fgsTitle: t.recording_fgs_notification_title,
         fgsBody: t.recording_fgs_notification_body,
       );
-      ref.read(analyticsCollectorProvider).track("recording.started");
 
-      // Durable manifest next to raw.flac (docs/28 WS1): from this moment
-      // an app-kill at ANY point leaves enough on disk for the orphan-
-      // recovery scan to offer the partial recording on next launch.
-      // Deleted when ownership transfers to the upload queue (enqueue)
-      // or the user discards.
-      await ref.read(recordingManifestStoreProvider).write(RecordingManifest(
-            sessionId: _sessionId!,
-            therapistId: widget.therapistId,
-            patientFileId: widget.patientFileId,
-            patientAlias: widget.patientAlias,
-            patientLanguageCode: widget.reportLanguage,
-            startedAtUtc: DateTime.now().toUtc(),
-          ));
-
+      // ── Recorder is live — update UI IMMEDIATELY ──
+      // Stream listeners first so the very first duration/state tick
+      // is not lost, then setState to flip _initializing off and
+      // show recording controls. Everything below this setState is
+      // non-critical and must NOT block the UI update.
       _durSub = _service.durationStream.listen((d) {
         if (!mounted) return;
         setState(() => _displayDuration = d);
-        // Sanity: if we ever see an unrealistic value (clock jump,
-        // stale state), log and bail BEFORE auto-firing the max-duration
-        // sheet. The cap is 130 min — anything north of that is broken.
         if (!_maxLimitTriggered &&
             d >= kMaxSessionDuration &&
             d < const Duration(hours: 4)) {
@@ -307,10 +468,60 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           );
         }
         setState(() => _recState = s);
+        // Mirror state to native widget.
+        final laOn = ref.read(appSettingsProvider).liveActivitiesEnabled;
+        if (laOn) {
+          final la = ref.read(liveActivityServiceProvider);
+          final elapsed = _service.currentDuration.inSeconds;
+          switch (s) {
+            case RecordingState.recording:
+              la.update(status: LiveActivityStatus.recording, elapsedSeconds: elapsed);
+            case RecordingState.paused:
+              la.update(status: LiveActivityStatus.paused, elapsedSeconds: elapsed);
+            case RecordingState.interrupted:
+              la.update(status: LiveActivityStatus.paused, elapsedSeconds: elapsed);
+            default:
+              break;
+          }
+        }
       });
-      setState(() => _recState = _service.state);
+      // Initialization complete — recorder is live, show controls.
+      setState(() {
+        _initializing = false;
+        _recState = _service.state;
+      });
+
+      // ── Non-critical work below: fire-and-forget ──
+      // None of this blocks the recording UI update.
+      ref.read(analyticsCollectorProvider).track("recording.started");
+
+      final laEnabled = ref.read(appSettingsProvider).liveActivitiesEnabled;
+      if (laEnabled) {
+        ref.read(liveActivityServiceProvider).start(
+          patientAlias: widget.patientAlias,
+          elapsedSeconds: 0,
+        );
+      }
+
+      // Durable manifest next to raw.flac (docs/28 WS1): from this moment
+      // an app-kill at ANY point leaves enough on disk for the orphan-
+      // recovery scan to offer the partial recording on next launch.
+      // Best-effort, never blocks the recording UI.
+      unawaited(
+        ref.read(recordingManifestStoreProvider).write(RecordingManifest(
+              sessionId: _sessionId!,
+              therapistId: widget.therapistId,
+              patientFileId: widget.patientFileId,
+              patientAlias: widget.patientAlias,
+              patientLanguageCode: widget.reportLanguage,
+              startedAtUtc: DateTime.now().toUtc(),
+            )).catchError((e) {
+          debugPrint('[recording] manifest write failed (non-fatal): $e');
+        }),
+      );
     } catch (e) {
       if (!mounted) return;
+      setState(() => _initializing = false);
       final t = AppLocalizations.of(context);
       await showEuphireBottomSheet<void>(
         context: context,
@@ -327,9 +538,28 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     }
   }
 
-  /// Back-button gate: if we're actively recording or paused, ask
-  /// the user before throwing away the session. Returns whether the
-  /// pop should proceed.
+  Future<bool> _showDiscardConfirmationSheet() async {
+    if (!mounted) return false;
+    final t = AppLocalizations.of(context);
+    final doubleConfirm = await showEuphireBottomSheet<bool>(
+      context: context,
+      builder: (ctx) => EuphireActionSheet(
+        header: t.recording_discard_confirm_header,
+        body: t.recording_discard_confirm_body,
+        topIcon: Icons.warning_rounded,
+        primary: EuphireSheetAction(
+          label: t.recording_discard_confirm_cancel,
+          onPressed: () => Navigator.of(ctx).pop(false),
+        ),
+        destructive: EuphireSheetAction(
+          label: t.recording_discard_confirm_action,
+          onPressed: () => Navigator.of(ctx).pop(true),
+        ),
+      ),
+    );
+    return doubleConfirm == true;
+  }
+
   Future<bool> _confirmDiscardOnBack() async {
     if (_recState == RecordingState.idle ||
         _recState == RecordingState.stopped ||
@@ -337,29 +567,59 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       return true; // nothing to discard
     }
     final t = AppLocalizations.of(context);
-    final result = await showEuphireBottomSheet<bool>(
+    final result = await showEuphireBottomSheet<String>(
       context: context,
       builder: (ctx) => EuphireActionSheet(
-        header: t.recording_discard_confirm_header,
-        body: t.recording_discard_confirm_body,
-        secondary: EuphireSheetAction(
-          label: t.recording_discard_confirm_secondary,
-          onPressed: () => Navigator.of(ctx).pop(false),
-        ),
+        header: t.recording_minimize_confirm_header,
+        body: t.recording_minimize_confirm_body,
         primary: EuphireSheetAction(
-          label: t.recording_discard_confirm_destructive,
-          onPressed: () => Navigator.of(ctx).pop(true),
+          label: t.recording_minimize_action,
+          onPressed: () => Navigator.of(ctx).pop('minimize'),
+        ),
+        secondary: EuphireSheetAction(
+          label: t.recording_minimize_resume,
+          onPressed: () => Navigator.of(ctx).pop('stay'),
+        ),
+        destructive: EuphireSheetAction(
+          label: t.recording_minimize_discard,
+          onPressed: () => Navigator.of(ctx).pop('discard'),
         ),
       ),
     );
-    if (result == true) {
-      final dur = _service.currentDuration.inSeconds;
-      await _service.cancel();
-      await _deleteManifest();
-      ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
-        "duration_seconds": dur,
-      });
+    if (result == 'minimize') {
+      // Show first-time Live Activities toast if the feature is off
+      // and the user hasn't seen the prompt yet.
+      final settings = ref.read(appSettingsProvider);
+      if (!settings.liveActivitiesEnabled && !settings.hasSeenLiveActivitiesPrompt) {
+        ref.read(appSettingsProvider.notifier).markLiveActivitiesPromptSeen();
+        if (mounted) {
+          final t = AppLocalizations.of(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                t.live_activity_minimize_toast,
+                style: const TextStyle(fontFamily: 'Montserrat', fontSize: 13),
+              ),
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: const Color(0xFF0A2326),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
       return true;
+    } else if (result == 'discard') {
+      final confirmed = await _showDiscardConfirmationSheet();
+      if (confirmed) {
+        final dur = _service.currentDuration.inSeconds;
+        await _service.cancel();
+        await _deleteManifest();
+        ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
+          "duration_seconds": dur,
+        });
+        return true;
+      }
     }
     return false;
   }
@@ -523,9 +783,16 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   }
 
   Future<void> _discardAndPop() async {
+    final confirmed = await _showDiscardConfirmationSheet();
+    if (!confirmed) return;
+
     final dur = _service.currentDuration.inSeconds;
     await _service.cancel();
     await _deleteManifest();
+    // Dismiss native widget.
+    if (ref.read(appSettingsProvider).liveActivitiesEnabled) {
+      ref.read(liveActivityServiceProvider).stop();
+    }
     ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
       "duration_seconds": dur,
     });
@@ -582,6 +849,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       ref.read(analyticsCollectorProvider).track("recording.stopped", properties: {
         "duration_seconds": capturedDuration.inSeconds,
       });
+      // Transition native widget to uploading state.
+      if (ref.read(appSettingsProvider).liveActivitiesEnabled) {
+        ref.read(liveActivityServiceProvider).update(
+          status: LiveActivityStatus.uploading,
+          elapsedSeconds: capturedDuration.inSeconds,
+        );
+      }
       debugPrint('[recording] stopped, raw=$rawPath size=${rawSize}B');
       if (rawSize == 0) {
         throw StateError(
@@ -787,50 +1061,57 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    dateLabel.toUpperCase(),
-                    style: TextStyle(
-                      fontFamily: 'RobotoMono',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: EuphireColors.frostWhite.withValues(alpha: 0.5),
-                      letterSpacing: 2.0,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.patientAlias,
-                    style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      color: EuphireColors.frostWhite,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Consumer(
-                    builder: (context, ref, child) {
-                      final patients = ref.watch(patientsProvider).whenOrNull(data: (d) => d) ?? [];
-                      final patient = patients.where((p) => p.id == widget.patientFileId).firstOrNull;
-                      final sessionNumber = (patient?.sessionCount ?? 0) + 1;
-                      return Text(
-                        'Sesja #$sessionNumber',
-                        style: const TextStyle(
-                          fontFamily: 'Merriweather',
-                          fontSize: 18,
-                          fontStyle: FontStyle.italic,
-                          fontWeight: FontWeight.w600,
-                          color: EuphireColors.ember,
+              // ── Header: staggered fade + slide ──
+              SlideTransition(
+                position: _headerSlide,
+                child: FadeTransition(
+                  opacity: _headerFade,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        dateLabel.toUpperCase(),
+                        style: TextStyle(
+                          fontFamily: 'RobotoMono',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: EuphireColors.frostWhite.withValues(alpha: 0.5),
+                          letterSpacing: 2.0,
                         ),
-                      );
-                    },
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.patientAlias,
+                        style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 32,
+                          fontWeight: FontWeight.w700,
+                          color: EuphireColors.frostWhite,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final patients = ref.watch(patientsProvider).whenOrNull(data: (d) => d) ?? [];
+                          final patient = patients.where((p) => p.id == widget.patientFileId).firstOrNull;
+                          final sessionNumber = (patient?.sessionCount ?? 0) + 1;
+                          return Text(
+                            'Sesja #$sessionNumber',
+                            style: const TextStyle(
+                              fontFamily: 'Merriweather',
+                              fontSize: 18,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.w600,
+                              color: EuphireColors.ember,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
               const Spacer(),
               if (_recState == RecordingState.interrupted) ...[
@@ -840,38 +1121,59 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                 ),
                 const SizedBox(height: 16),
               ],
-              EuphireRecordingIndicator(
-                isRecording: _recState == RecordingState.recording,
-                formattedDuration: _formatDuration(_displayDuration),
-                chunkCount: _chunkCount,
-                amplitudeStream: _service.amplitudeStream,
+              // ── Waveform: staggered scale + fade ──
+              ScaleTransition(
+                scale: _waveformScale,
+                child: FadeTransition(
+                  opacity: _waveformFade,
+                  child: RepaintBoundary(
+                    child: EuphireRecordingIndicator(
+                      isRecording: _recState == RecordingState.recording,
+                      isInitializing: _initializing,
+                      formattedDuration: _formatDuration(_displayDuration),
+                      chunkCount: _chunkCount,
+                      amplitudeStream: _service.amplitudeStream,
+                    ),
+                  ),
+                ),
               ),
               const Spacer(flex: 2),
-              _ControlPanel(
-                state: _recState,
-                onStart: _start,
-                onPause: _service.pause,
-                onResume: _onResumeTap,
-                onStop: _onStopPressed,
-              ),
-              const SizedBox(height: 16),
-              if (_uploading) ...[
-                const SizedBox(height: 16),
-                Column(
+              // ── Control panel: smooth fade-in when recording starts ──
+              AnimatedOpacity(
+                opacity: _initializing ? 0.0 : 1.0,
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeOut,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Center(child: CircularProgressIndicator()),
-                    const SizedBox(height: 12),
-                    Text(
-                      t.recording_saving,
-                      style: TextStyle(
-                        fontFamily: 'Merriweather',
-                        fontSize: 13,
-                        color: EuphireColors.frostWhite.withValues(alpha: 0.7),
-                      ),
+                    _ControlPanel(
+                      state: _recState,
+                      onStart: _start,
+                      onPause: _service.pause,
+                      onResume: _onResumeTap,
+                      onStop: _onStopPressed,
                     ),
+                    const SizedBox(height: 16),
+                    if (_uploading) ...[
+                      const SizedBox(height: 16),
+                      Column(
+                        children: [
+                          const Center(child: CircularProgressIndicator()),
+                          const SizedBox(height: 12),
+                          Text(
+                            t.recording_saving,
+                            style: TextStyle(
+                              fontFamily: 'Merriweather',
+                              fontSize: 13,
+                              color: EuphireColors.frostWhite.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
-              ],
+              ),
             ],
           ),
         ),
@@ -1071,11 +1373,12 @@ class _CircleButton extends StatelessWidget {
   }
 }
 
-class _InstructionsBlock extends StatelessWidget {
+class _InstructionsBlock extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
+    final settings = ref.watch(appSettingsProvider);
     final items = [
       t.recording_instruction_1,
       t.recording_instruction_2,
@@ -1092,7 +1395,8 @@ class _InstructionsBlock extends StatelessWidget {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
-          child: Column(
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // Handle
@@ -1178,6 +1482,111 @@ class _InstructionsBlock extends StatelessWidget {
                 ),
               ],
 
+              // ── Live Activities info card ───────────────────────
+              // Only show when the feature is disabled — once enabled
+              // from here or from Settings, this card disappears.
+              if (!settings.liveActivitiesEnabled) ...[
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: EuphireColors.ember.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: EuphireColors.ember.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.stay_current_portrait_outlined,
+                            color: EuphireColors.ember,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              t.live_activity_info_title,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: EuphireColors.frostWhite,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        t.live_activity_info_body,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: EuphireColors.mist,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final la = ref.read(liveActivityServiceProvider);
+                            final systemEnabled = await la.isSystemEnabled();
+                            if (!systemEnabled && context.mounted) {
+                              final openSettings = await showEuphireBottomSheet<bool>(
+                                context: context,
+                                builder: (ctx) => EuphireActionSheet(
+                                  header: t.live_activity_permission_title,
+                                  body: t.live_activity_permission_body,
+                                  primary: EuphireSheetAction(
+                                    label: t.live_activity_permission_open_settings,
+                                    onPressed: () => Navigator.of(ctx).pop(true),
+                                  ),
+                                  secondary: EuphireSheetAction(
+                                    label: t.live_activity_permission_cancel,
+                                    onPressed: () => Navigator.of(ctx).pop(false),
+                                  ),
+                                ),
+                              );
+                              if (openSettings == true) {
+                                await la.openSystemSettings();
+                              }
+                              return;
+                            }
+                            ref.read(appSettingsProvider.notifier)
+                                .toggleLiveActivities(true);
+                            if (context.mounted) Navigator.of(context).pop();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: EuphireColors.ember,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              t.live_activity_info_enable,
+                              style: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 24),
 
               // Dismiss button
@@ -1206,6 +1615,7 @@ class _InstructionsBlock extends StatelessWidget {
               ),
               const SizedBox(height: 8),
             ],
+          ),
           ),
         ),
       ),

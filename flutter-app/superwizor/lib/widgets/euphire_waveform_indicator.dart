@@ -6,12 +6,14 @@ import '../theme/euphire_theme.dart';
 
 class EuphireWaveformIndicator extends StatefulWidget {
   final bool isRecording;
+  final bool isInitializing;
   final Stream<double>? amplitudeStream;
   final String formattedDuration;
 
   const EuphireWaveformIndicator({
     super.key,
     required this.isRecording,
+    this.isInitializing = false,
     this.amplitudeStream,
     required this.formattedDuration,
   });
@@ -30,9 +32,17 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
   double _smoothedAmplitude = 0.0;
   late AnimationController _tickController;
 
+  /// Notifier that tells the CustomPainter to repaint without triggering
+  /// a full widget rebuild. Fires from _onTick whenever samples change.
+  final _waveformRepaint = _SamplesNotifier();
+
   /// Controls smooth fade-in/out on resume/pause.
   /// 1.0 = fully recording, 0.0 = fully paused.
   late AnimationController _fadeController;
+
+  /// Subtle breathing pulse for the idle ring so the screen
+  /// feels alive before recording starts.
+  late AnimationController _breatheController;
 
   @override
   void initState() {
@@ -44,10 +54,15 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
       duration: const Duration(milliseconds: 1200),
       reverseDuration: const Duration(milliseconds: 1200),
       value: widget.isRecording ? 1.0 : 0.0,
-    )..addListener(() {
-        // Needed so ring opacity updates every frame during fade.
-        if (mounted) setState(() {});
-      });
+    );
+    // NOTE: No addListener(setState) — rings use AnimatedBuilder on both
+    // _tickController and _fadeController via Listenable.merge, so the
+    // fade value reaches the build without a full-widget setState.
+
+    _breatheController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..repeat(reverse: true);
 
     _tickController = AnimationController(
       vsync: this,
@@ -70,16 +85,17 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
 
     if (!mounted) return;
 
-    setState(() {
-      _samples.removeAt(0);
-      // Add micro-variation (±12%) per sample to break the "rectangle"
-      // effect.  Without this, groups of 4 bars (50 ms tick vs 200 ms
-      // amplitude poll) share the exact same height → flat block.
-      // The variation is proportional to the amplitude so silence stays
-      // flat and speech looks organically wavy.
-      final jitter = 1.0 + (_rng.nextDouble() - 0.5) * 0.24;
-      _samples.add((_smoothedAmplitude * jitter).clamp(0.0, 1.0));
-    });
+    // Mutate the samples list and notify only the CustomPainter —
+    // no setState, so the entire widget tree is NOT rebuilt.
+    _samples.removeAt(0);
+    // Add micro-variation (±12%) per sample to break the "rectangle"
+    // effect.  Without this, groups of 4 bars (50 ms tick vs 200 ms
+    // amplitude poll) share the exact same height → flat block.
+    // The variation is proportional to the amplitude so silence stays
+    // flat and speech looks organically wavy.
+    final jitter = 1.0 + (_rng.nextDouble() - 0.5) * 0.24;
+    _samples.add((_smoothedAmplitude * jitter).clamp(0.0, 1.0));
+    _waveformRepaint.notify();
   }
 
   @override
@@ -101,7 +117,8 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
       _fadeController.reverse().then((_) {
         if (mounted && !widget.isRecording) {
           _tickController.stop();
-          setState(() => _samples.fillRange(0, _barCount, 0.0));
+          _samples.fillRange(0, _barCount, 0.0);
+          _waveformRepaint.notify();
         }
       });
     }
@@ -136,16 +153,13 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
     _amplitudeSub?.cancel();
     _tickController.dispose();
     _fadeController.dispose();
+    _breatheController.dispose();
+    _waveformRepaint.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // fade: 1.0 during recording, animates to 0.0 on pause.
-    final fade = _fadeController.value;
-    // Show rings when recording OR during fade-out (fade > 0).
-    final showRings = widget.isRecording || fade > 0.01;
-
     return Center(
       child: SizedBox(
         width: double.infinity,
@@ -154,81 +168,110 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
           alignment: Alignment.center,
           clipBehavior: Clip.none,
           children: [
-            // Ambient Radar Rings — visible during recording AND
-            // during fade-out so existing rings gracefully complete.
-            if (showRings)
-              AnimatedBuilder(
-                animation: _tickController,
-                builder: (context, child) {
+            // Ambient Radar Rings — driven by AnimatedBuilder on BOTH
+            // _tickController (ring position) and _fadeController (opacity).
+            // _breatheController adds a subtle pulse when idle.
+            // No setState needed anywhere in this widget for the rings.
+            AnimatedBuilder(
+              animation: Listenable.merge([_tickController, _fadeController, _breatheController]),
+              builder: (context, child) {
+                final fade = _fadeController.value;
+                final showRings = widget.isRecording || fade > 0.01;
+
+                if (!showRings) {
+                  // Idle: subtle breathing pulse — scale 1.0—1.08, opacity 0.06—0.15
+                  final breathe = Curves.easeInOut.transform(_breatheController.value);
+                  final idleScale = 1.0 + breathe * 0.08;
+                  final idleOpacity = 0.06 + breathe * 0.09;
                   return Stack(
                     alignment: Alignment.center,
                     clipBehavior: Clip.none,
                     children: [
-                      _buildRing(1.0 + (_tickController.value * 3.0), 0.3 * (1 - _tickController.value) * fade),
-                      _buildRing(1.0 + (((_tickController.value + 0.33) % 1.0) * 3.0), 0.3 * (1 - ((_tickController.value + 0.33) % 1.0)) * fade),
-                      _buildRing(1.0 + (((_tickController.value + 0.66) % 1.0) * 3.0), 0.3 * (1 - ((_tickController.value + 0.66) % 1.0)) * fade),
+                      _buildRing(idleScale, idleOpacity),
                     ],
                   );
-                },
-              )
-            else
-              Stack(
-                alignment: Alignment.center,
-                clipBehavior: Clip.none,
-                children: [
-                  _buildRing(1.0, 0.1),
-                ],
-              ),
+                }
 
-            // Core Button Gradient and Shadow
-            Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF00383D), Color(0xFF001D20)],
-                ),
-                border: Border.all(
-                  color: EuphireColors.ember.withValues(alpha: widget.isRecording ? 0.4 : 0.2),
-                  width: 2,
-                ),
-                boxShadow: [
-                  // Outer Glow
-                  if (widget.isRecording)
-                    BoxShadow(
-                      color: EuphireColors.ember.withValues(alpha: 0.15),
-                      blurRadius: 30,
+                return Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: [
+                    _buildRing(1.0 + (_tickController.value * 3.0), 0.3 * (1 - _tickController.value) * fade),
+                    _buildRing(1.0 + (((_tickController.value + 0.33) % 1.0) * 3.0), 0.3 * (1 - ((_tickController.value + 0.33) % 1.0)) * fade),
+                    _buildRing(1.0 + (((_tickController.value + 0.66) % 1.0) * 3.0), 0.3 * (1 - ((_tickController.value + 0.66) % 1.0)) * fade),
+                  ],
+                );
+              },
+            ),
+
+            // Core Button Gradient and Shadow — glow eases in/out
+            // via _fadeController so the yellow halo doesn't pop.
+            AnimatedBuilder(
+              animation: _fadeController,
+              builder: (context, child) {
+                final f = _fadeController.value; // 0.0 idle → 1.0 recording
+                final borderAlpha = 0.2 + 0.2 * f;  // 0.2 → 0.4
+                final glowAlpha = 0.15 * f;          // 0 → 0.15
+                return Container(
+                  width: 280,
+                  height: 280,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF00383D), Color(0xFF001D20)],
                     ),
-                  // Inner Shadow (simulated)
-                  BoxShadow(
-                    color: EuphireColors.evergreen.withValues(alpha: 0.5),
-                    blurRadius: 20,
-                    spreadRadius: -4,
-                    offset: const Offset(0, 0),
+                    border: Border.all(
+                      color: EuphireColors.ember.withValues(alpha: borderAlpha),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      // Outer Glow — smoothly interpolated
+                      if (glowAlpha > 0.001)
+                        BoxShadow(
+                          color: EuphireColors.ember.withValues(alpha: glowAlpha),
+                          blurRadius: 30,
+                        ),
+                      // Inner Shadow (simulated)
+                      BoxShadow(
+                        color: EuphireColors.evergreen.withValues(alpha: 0.5),
+                        blurRadius: 20,
+                        spreadRadius: -4,
+                        offset: const Offset(0, 0),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                  child: child,
+                );
+              },
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Horizontal Waveform
-                  SizedBox(
-                    height: 60,
-                    width: 120,
-                    child: CustomPaint(
-                      painter: _HorizontalWaveformPainter(
-                        samples: _samples,
-                        color: Colors.white, // Białt waveform
-                        isRecording: widget.isRecording,
+                  // Horizontal Waveform — isolated in RepaintBoundary
+                  // so repaints don't dirty the parent Container or
+                  // the entire recording screen's render tree.
+                  RepaintBoundary(
+                    child: SizedBox(
+                      height: 60,
+                      width: 120,
+                      child: CustomPaint(
+                        painter: _HorizontalWaveformPainter(
+                          samples: _samples,
+                          color: Colors.white, // Białt waveform
+                          isRecording: widget.isRecording,
+                          repaint: _waveformRepaint,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    widget.isRecording ? "Nagrywanie trwa" : "Nagrywanie wstrzymane",
+                    widget.isInitializing
+                        ? 'Rozpoczynam nagrywanie…'
+                        : widget.isRecording
+                            ? 'Nagrywanie trwa'
+                            : 'Nagrywanie wstrzymane',
                     style: const TextStyle(
                       fontFamily: 'Montserrat',
                       color: EuphireColors.mist,
@@ -274,6 +317,13 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
   }
 }
 
+/// Lightweight ChangeNotifier used as the CustomPainter's `repaint`
+/// listenable. Calling [notify] marks the painter dirty without
+/// triggering any widget-level setState.
+class _SamplesNotifier extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
+
 class _HorizontalWaveformPainter extends CustomPainter {
   final List<double> samples;
   final Color color;
@@ -283,6 +333,7 @@ class _HorizontalWaveformPainter extends CustomPainter {
     required this.samples,
     required this.color,
     required this.isRecording,
+    super.repaint,
   });
 
   @override

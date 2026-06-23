@@ -274,7 +274,7 @@ final pendingUploadsForPatientProvider =
 /// Also pushes the refreshed session data into [sessionsProvider] so
 /// the home screen's _PatientListSection rebuilds immediately —
 /// without this, the repo cache updates but the provider's in-memory
-/// Map<patientId, sessions> stays stale until the next manual
+/// `Map<patientId, sessions>` stays stale until the next manual
 /// fetchSessions() call.
 Future<void> _refreshKartoteka(Ref ref, String patientFileId) async {
   try {

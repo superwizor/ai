@@ -20,7 +20,10 @@ class RecordingForegroundService {
   static const MethodChannel _channel =
       MethodChannel('superwizor/recording_fgs');
 
-  static bool get _supported => !kIsWeb && Platform.isAndroid;
+  @visibleForTesting
+  static bool debugOverrideSupported = false;
+
+  static bool get _supported => debugOverrideSupported || (!kIsWeb && Platform.isAndroid);
 
   /// Brings up the foreground service with a localized persistent
   /// notification. [title]/[body] come from the l10n pipeline so the
@@ -41,6 +44,18 @@ class RecordingForegroundService {
       await _channel.invokeMethod('stop');
     } catch (e) {
       debugPrint('[recording-fgs] stop failed: $e');
+    }
+  }
+
+  /// Update the notification text without restarting the service.
+  /// Used when the session transitions from recording → uploading →
+  /// analyzing → done.
+  static Future<void> updateStatus({String? title, String? body}) async {
+    if (!_supported) return;
+    try {
+      await _channel.invokeMethod('update', {'title': title, 'body': body});
+    } catch (e) {
+      debugPrint('[recording-fgs] update failed: $e');
     }
   }
 }
