@@ -92,9 +92,9 @@ func TestUpdatePatientFile_LifecycleStatusPropagates(t *testing.T) {
 			}
 
 			// Verify the params forwarded to SQL.
-			if receivedParams.LifecycleStatus != tt.wantInParams {
-				t.Errorf("UpdatePatientFileParams.LifecycleStatus: want %q, got %q",
-					tt.wantInParams, receivedParams.LifecycleStatus)
+			if receivedParams.Column6 != tt.wantInParams {
+				t.Errorf("UpdatePatientFileParams.Column6 (lifecycle_status): want %q, got %q",
+					tt.wantInParams, receivedParams.Column6)
 			}
 
 			// Verify the response proto carries the value.
@@ -232,8 +232,8 @@ func TestUpdatePatientFile_LegacyWithoutLifecycle(t *testing.T) {
 	}
 
 	// lifecycle_status must be "" in params (SQL no-op).
-	if received.LifecycleStatus != "" {
-		t.Errorf("legacy update must not set lifecycle_status; got %q", received.LifecycleStatus)
+	if received.Column6 != "" {
+		t.Errorf("legacy update must not set lifecycle_status; got %q", received.Column6)
 	}
 
 	// Response still carries the DB value.
