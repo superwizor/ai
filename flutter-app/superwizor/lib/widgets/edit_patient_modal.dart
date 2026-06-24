@@ -280,7 +280,8 @@ class _EditPatientModalState extends ConsumerState<EditPatientModal> {
       }
     } catch (e) {
       if (mounted) {
-        EuphireToast.error(context, message: 'Błąd: $e');
+        final t = AppLocalizations.of(context);
+        EuphireToast.error(context, message: t.editPatient_error(e.toString()));
       }
     } finally {
       if (mounted) setState(() => _saving = false);

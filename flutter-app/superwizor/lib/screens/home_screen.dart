@@ -36,6 +36,8 @@ import '../widgets/quota_warning_banner.dart';
 import '../widgets/recording_recovery_prompt.dart';
 import 'client_details_screen.dart';
 import 'menu_screen.dart';
+import 'package:intl/intl.dart';
+import '../l10n/app_localizations.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -48,6 +50,7 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(analyticsCollectorProvider).track("screen.viewed", properties: {"screen_name": "HomeScreen"});
     });
@@ -111,7 +114,7 @@ class HomeScreen extends ConsumerWidget {
                                   );
                                   return Text.rich(
                                     TextSpan(
-                                      text: 'Witaj, ',
+                                      text: t.home_greeting_prefix,
                                       style: const TextStyle(
                                         fontFamily: 'Montserrat',
                                         fontSize: 28,
@@ -143,7 +146,7 @@ class HomeScreen extends ConsumerWidget {
                                 horizontal: 24,
                               ),
                               child: Text(
-                                'Z kim dzisiaj pracujemy?',
+                                t.home_greeting_subtitle,
                                 style: TextStyle(
                                   fontFamily: 'Montserrat',
                                   fontSize: 14,
@@ -176,7 +179,7 @@ class HomeScreen extends ConsumerWidget {
                                 padding: const EdgeInsets.all(32),
                                 child: Center(
                                   child: Text(
-                                    'Błąd: $err',
+                                    t.home_error_loading(err.toString()),
                                     style: const TextStyle(
                                       color: EuphireColors.ember,
                                     ),
@@ -328,7 +331,8 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
         }
         // Celebratory toast with patient name
         final name = '${p.firstName} ${p.lastName}'.trim();
-        EuphireToast.success(context, message: 'Raport gotowy, $name 🎉');
+        final l = AppLocalizations.of(context);
+        EuphireToast.success(context, message: l.home_report_ready_toast(name));
       }
     }
   }
@@ -454,6 +458,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final sessionsMap = ref.watch(sessionsProvider).value ?? {};
     final lifecycleMap = ref.watch(patientLifecycleProvider);
     final viewedReports = ref.watch(viewedReportsProvider).value ?? <String>{};
@@ -602,7 +607,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
                       color: EuphireColors.frostWhite,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Szukaj klienta\u2026',
+                      hintText: t.home_search_hint,
                       hintStyle: TextStyle(
                         fontFamily: 'Montserrat',
                         fontSize: 14,
@@ -682,8 +687,8 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
             child: Center(
               child: Text(
                 widget.patients.isEmpty
-                    ? 'Dodaj pierwszego klienta, aby rozpocz\u0105\u0107.'
-                    : 'Brak wynik\u00f3w dla \u201e$_query\u201d',
+                    ? t.home_empty_list
+                    : t.home_no_search_results(_query),
                 style: TextStyle(
                   fontFamily: 'Montserrat',
                   fontSize: 14,
@@ -698,8 +703,8 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
           // ── "TWOJE KARTOTEKI" section header ──
           _SectionLabel(
             label: sortFilter.isDefault
-                ? 'TWOJE KARTOTEKI'
-                : 'TWOJE KARTOTEKI \u2022 FILTR',
+                ? t.home_section_active
+                : t.home_section_active_filtered,
             count: activeFiltered.length,
           ),
           const SizedBox(height: 8),
@@ -760,7 +765,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'WSTRZYMANE (${pausedFiltered.length})',
+                        t.home_section_paused(pausedFiltered.length),
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 11,
@@ -815,7 +820,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'ZAKO\u0143CZONE (${completedFiltered.length})',
+                        t.home_section_completed(completedFiltered.length),
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 11,
@@ -956,30 +961,15 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
   String get _name =>
       '${widget.patient.firstName} ${widget.patient.lastName}'.trim();
 
-  static const _months = [
-    'Sty',
-    'Lut',
-    'Mar',
-    'Kwi',
-    'Maj',
-    'Cze',
-    'Lip',
-    'Sie',
-    'Wrz',
-    'Pa\u017a',
-    'Lis',
-    'Gru',
-  ];
-
   // Returns a list of InlineSpans for the subtitle with the date part
   // rendered in a slightly bolder weight for visual emphasis.
-  List<InlineSpan> _subtitleSpans({required bool full}) {
+  List<InlineSpan> _subtitleSpans(AppLocalizations t, {required bool full}) {
     if (widget.lastSessionDate != null) {
       final d = widget.lastSessionDate!;
-      final dateStr = '${d.day} ${_months[d.month - 1]}';
+      final dateStr = DateFormat('d MMM', Localizations.localeOf(context).languageCode).format(d);
       if (full) {
         return [
-          TextSpan(text: 'Sesje: ${widget.sessionCount} \u2022 Ostatnio: '),
+          TextSpan(text: '${t.home_card_sessions_prefix}${widget.sessionCount}${t.home_card_last_session_prefix}'),
           TextSpan(
             text: dateStr,
             style: const TextStyle(fontWeight: FontWeight.w600),
@@ -987,7 +977,7 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
         ];
       } else {
         return [
-          const TextSpan(text: 'Ostatnio: '),
+          TextSpan(text: t.home_card_last_prefix_only),
           TextSpan(
             text: dateStr,
             style: const TextStyle(fontWeight: FontWeight.w600),
@@ -996,44 +986,44 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
       }
     }
     if (widget.sessionCount > 0) {
-      return [TextSpan(text: 'Sesje: ${widget.sessionCount}')];
+      return [TextSpan(text: '${t.home_card_sessions_prefix}${widget.sessionCount}')];
     }
     return [
       TextSpan(
-        text: full ? 'Oczekuje na pierwsz\u0105 sesj\u0119' : 'Nowy klient',
+        text: full ? t.home_status_awaiting_first_session : t.home_status_new_client,
       ),
     ];
   }
 
   // Status pill config
-  (String label, Color color, bool show) get _statusConfig =>
+  (String label, Color color, bool show) _statusConfig(AppLocalizations t) =>
       switch (widget.status) {
         _PatientStatus.recording => (
-          'Nagrywanie',
+          t.home_status_recording,
           const Color(0xFF60A5FA),
           true,
         ),
         _PatientStatus.hasNewReport => (
-          'Nowy raport',
+          t.home_status_has_new_report,
           const Color(0xFF4ADE80),
           true,
         ),
-        _PatientStatus.analyzing => ('AI analizuje', EuphireColors.ember, true),
-        _PatientStatus.uploading => ('Wgrywanie...', Colors.orangeAccent, true),
+        _PatientStatus.analyzing => (t.home_status_analyzing, EuphireColors.ember, true),
+        _PatientStatus.uploading => (t.home_status_uploading, Colors.orangeAccent, true),
         _PatientStatus.uploadFailed => (
-          'Przesyłanie\nprzerwane',
+          t.home_status_upload_failed,
           EuphireColors.ember,
           true,
         ),
-        _PatientStatus.error => ('Błąd analizy', Colors.redAccent, true),
-        _PatientStatus.active => ('Aktywny', EuphireColors.ember, false),
+        _PatientStatus.error => (t.home_status_error, Colors.redAccent, true),
+        _PatientStatus.active => (t.home_status_active, EuphireColors.ember, false),
         _PatientStatus.completed => (
-          'Zako\u0144czony',
+          t.home_status_completed,
           EuphireColors.mist,
           false,
         ),
-        _PatientStatus.paused => ('Wstrzymany', EuphireColors.mist, false),
-        _PatientStatus.awaiting => ('Nowy', EuphireColors.mist, false),
+        _PatientStatus.paused => (t.home_status_paused, EuphireColors.mist, false),
+        _PatientStatus.awaiting => (t.home_status_new, EuphireColors.mist, false),
       };
 
   void _showOptions(BuildContext context) {
@@ -1095,6 +1085,7 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     // Read custom avatar config (label + color)
     final avatarConfigs = ref.watch(patientAvatarProvider);
     final avatarConfig =
@@ -1103,7 +1094,7 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
     final avatarLabel = avatarConfig.customLabel ?? _initials;
 
     final opacity = widget.dimmed ? 0.55 : 1.0;
-    final (statusLabel, statusColor, showPill) = _statusConfig;
+    final (statusLabel, statusColor, showPill) = _statusConfig(t);
 
     return Opacity(
       opacity: opacity,
@@ -1178,7 +1169,7 @@ class _PatientCompactCardState extends ConsumerState<_PatientCompactCard>
                           final w = constraints.maxWidth;
                           final useFull = w > 160;
                           return Text.rich(
-                            TextSpan(children: _subtitleSpans(full: useFull)),
+                            TextSpan(children: _subtitleSpans(t, full: useFull)),
                             style: TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 12,
@@ -1400,7 +1391,8 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
       }
     } catch (e) {
       if (mounted) {
-        EuphireToast.error(context, message: 'Błąd: $e');
+        final t = AppLocalizations.of(context);
+        EuphireToast.error(context, message: t.home_error_toast(e.toString()));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -1409,6 +1401,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final currentLifecycle =
         ref.watch(patientLifecycleProvider)[widget.patientId] ??
         PatientLifecycle.active;
@@ -1554,7 +1547,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _editing ? 'Edytuj kartotekę' : 'Zarządzaj kartoteką klienta',
+                  _editing ? t.home_manage_edit_card : t.home_manage_card,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     color: EuphireColors.mist.withValues(alpha: 0.8),
@@ -1571,8 +1564,8 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                   crossFadeState: _editing
                       ? CrossFadeState.showSecond
                       : CrossFadeState.showFirst,
-                  firstChild: _buildActionsView(currentLifecycle),
-                  secondChild: _buildEditView(),
+                  firstChild: _buildActionsView(t, currentLifecycle),
+                  secondChild: _buildEditView(t),
                 ),
               ],
             ),
@@ -1582,7 +1575,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
     );
   }
 
-  Widget _buildActionsView(PatientLifecycle currentLifecycle) {
+  Widget _buildActionsView(AppLocalizations t, PatientLifecycle currentLifecycle) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1598,7 +1591,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
           child: Row(
             children: [
               _LifecycleSegment(
-                label: 'Aktywna',
+                label: t.home_menu_lifecycle_active,
                 icon: Icons.person_rounded,
                 selected: currentLifecycle == PatientLifecycle.active,
                 onTap: () => ref
@@ -1607,7 +1600,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
               ),
               const SizedBox(width: 4),
               _LifecycleSegment(
-                label: 'Zakończona',
+                label: t.home_menu_lifecycle_completed,
                 icon: Icons.check_circle_outline_rounded,
                 selected: currentLifecycle == PatientLifecycle.completed,
                 accentColor: const Color(0xFF4ADE80),
@@ -1617,7 +1610,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
               ),
               const SizedBox(width: 4),
               _LifecycleSegment(
-                label: 'Wstrzymana',
+                label: t.home_menu_lifecycle_paused,
                 icon: Icons.pause_circle_outline_rounded,
                 selected: currentLifecycle == PatientLifecycle.paused,
                 accentColor: const Color(0xFF60A5FA),
@@ -1659,9 +1652,9 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Edytuj dane',
-                        style: TextStyle(
+                      Text(
+                        t.home_menu_edit_data,
+                        style: const TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -1670,7 +1663,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Zmień imię, nazwisko, email',
+                        t.home_menu_edit_data_desc,
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 12,
@@ -1722,9 +1715,9 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Usuń kartotekę',
-                        style: TextStyle(
+                      Text(
+                        t.home_menu_delete_patient,
+                        style: const TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -1733,7 +1726,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Skasuj historię, sesje i notatki',
+                        t.home_menu_delete_patient_desc,
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 12,
@@ -1757,7 +1750,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
     );
   }
 
-  Widget _buildEditView() {
+  Widget _buildEditView(AppLocalizations t) {
     final canSave = !_saving && _firstNameCtrl.text.trim().isNotEmpty;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1766,17 +1759,17 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
         // ── First Name ──
         _GlassField(
           controller: _firstNameCtrl,
-          label: 'Imię (wymagane)',
+          label: t.home_menu_field_first_name,
           onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: 12),
         // ── Last Name / Alias ──
-        _GlassField(controller: _lastNameCtrl, label: 'Inicjał lub pseudonim'),
+        _GlassField(controller: _lastNameCtrl, label: t.home_menu_field_last_name),
         const SizedBox(height: 12),
         // ── Email ──
         _GlassField(
           controller: _emailCtrl,
-          label: 'E-mail klienta',
+          label: t.home_menu_field_email,
           keyboardType: TextInputType.emailAddress,
         ),
         const SizedBox(height: 24),
@@ -1796,7 +1789,7 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                   ),
                 ),
                 child: Text(
-                  'Wróć',
+                  t.home_menu_btn_back,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 15,
@@ -1831,14 +1824,14 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                           color: EuphireColors.obsidianBlack,
                         ),
                       )
-                    : const Row(
+                    : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.check_rounded, size: 18),
-                          SizedBox(width: 6),
+                          const Icon(Icons.check_rounded, size: 18),
+                          const SizedBox(width: 6),
                           Text(
-                            'Zapisz',
-                            style: TextStyle(
+                            t.home_menu_btn_save,
+                            style: const TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -2022,6 +2015,7 @@ class _DeletePatientWarningSheetState
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF0A2326),
@@ -2058,7 +2052,7 @@ class _DeletePatientWarningSheetState
               ),
               const SizedBox(height: 20),
               Text(
-                'Usunięcie klienta: ${widget.patientName}',
+                t.home_delete_title(widget.patientName),
                 style: const TextStyle(
                   fontFamily: 'Merriweather',
                   fontStyle: FontStyle.italic,
@@ -2069,7 +2063,7 @@ class _DeletePatientWarningSheetState
               ),
               const SizedBox(height: 12),
               Text(
-                'Cała dokumentacja kliniczna — sesje, notatki AI oraz nagrania audio — zostanie trwale i bezpowrotnie usunięta z baz medycznych.\nZgodnie z RODO (prawo do zapomnienia).',
+                t.home_delete_warning_body,
                 style: TextStyle(
                   fontFamily: 'Montserrat',
                   fontSize: 13,
@@ -2083,7 +2077,7 @@ class _DeletePatientWarningSheetState
                 children: [
                   Expanded(
                     child: Text(
-                      'Rozumiem, to nieodwracalne.',
+                      t.home_delete_warning_understand,
                       style: TextStyle(
                         fontFamily: 'Montserrat',
                         fontSize: 14,
@@ -2116,9 +2110,9 @@ class _DeletePatientWarningSheetState
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: const Text(
-                      'Kontynuuj kasowanie',
-                      style: TextStyle(
+                    child: Text(
+                      t.home_delete_btn_continue,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontFamily: 'Montserrat',
                         fontWeight: FontWeight.w700,
@@ -2160,7 +2154,8 @@ class _DeletePatientConfirmSheetState
   void initState() {
     super.initState();
     _ctrl.addListener(() {
-      final ok = _ctrl.text.trim().toLowerCase() == 'usuwam';
+      final t = AppLocalizations.of(context);
+      final ok = _ctrl.text.trim().toLowerCase() == t.home_delete_confirm_word.toLowerCase();
       if (ok != _confirmed) setState(() => _confirmed = ok);
     });
   }
@@ -2179,13 +2174,15 @@ class _DeletePatientConfirmSheetState
     } catch (e) {
       if (mounted) {
         setState(() => _deleting = false);
-        EuphireToast.error(context, message: 'Błąd usunięcia: $e');
+        final t = AppLocalizations.of(context);
+        EuphireToast.error(context, message: t.home_delete_error_toast(e.toString()));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -2211,16 +2208,16 @@ class _DeletePatientConfirmSheetState
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Aby potwierdzić, wpisz:',
-                  style: TextStyle(
+                Text(
+                  t.home_delete_confirm_instruction,
+                  style: const TextStyle(
                     fontFamily: 'Montserrat',
                     color: EuphireColors.mist,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'usuwam',
+                Text(
+                  t.home_delete_confirm_word,
                   style: TextStyle(
                     fontFamily: 'RobotoMono',
                     color: EuphireColors.magma,
@@ -2242,7 +2239,7 @@ class _DeletePatientConfirmSheetState
                     letterSpacing: 3,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'wpisz tutaj…',
+                    hintText: t.home_delete_confirm_hint,
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
                     border: OutlineInputBorder(
@@ -2285,9 +2282,9 @@ class _DeletePatientConfirmSheetState
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text(
-                              'Usuń klienta',
-                              style: TextStyle(
+                          : Text(
+                              t.home_delete_btn_confirm,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontFamily: 'Montserrat',
                                 fontWeight: FontWeight.w800,
@@ -2301,7 +2298,7 @@ class _DeletePatientConfirmSheetState
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(
-                    'Anuluj.',
+                    t.home_delete_btn_cancel,
                     style: TextStyle(
                       fontFamily: 'Montserrat',
                       color: EuphireColors.mist.withValues(alpha: 0.7),

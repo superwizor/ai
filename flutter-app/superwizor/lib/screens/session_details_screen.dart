@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:ui' as ui;
 
 import '../widgets/euphire_toast.dart';
+import '../l10n/app_localizations.dart';
 
 import '../cache/dto/report_dto.dart';
 import '../cache/dto/transcript_dto.dart';
@@ -38,7 +39,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
       buffer.writeln('');
     }
     Clipboard.setData(ClipboardData(text: buffer.toString()));
-    EuphireToast.success(context, message: 'Wszystkie raporty skopiowane do schowka');
+    EuphireToast.success(context, message: AppLocalizations.of(context).sessionDetails_toast_reports_copied);
   }
   
   void _copyTranscript(BuildContext context, TranscriptDto transcript) {
@@ -48,12 +49,13 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
       buffer.writeln('');
     }
     Clipboard.setData(ClipboardData(text: buffer.toString()));
-    EuphireToast.success(context, message: 'Transkrypcja skopiowana do schowka');
+    EuphireToast.success(context, message: AppLocalizations.of(context).sessionDetails_toast_transcript_copied);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
     final sessionDetailsAsync = ref.watch(sessionDetailsProvider(widget.sessionId));
     
     return DefaultTabController(
@@ -75,7 +77,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
             child: Column(
               children: [
                 Text(
-                  'Sesja ${widget.date}',
+                  '${t.clientDetails_session_title} ${widget.date}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.secondary.withValues(alpha: 0.6),
                     fontWeight: FontWeight.bold,
@@ -94,16 +96,16 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   data: (data) {
                     final wordsCount = data.transcript.segments.fold<int>(0, (prev, element) => prev + element.text.split(' ').length);
                     // Bierzemy sentyment z pierwszego raportu, jeśli istnieje.
-                    final sentiment = data.reports.isNotEmpty ? data.reports.first.sentimentLabel : 'Nieznany';
+                    final sentiment = data.reports.isNotEmpty ? data.reports.first.sentimentLabel : t.sessionDetails_stat_sentiment_unknown;
                     
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildStatItem('MODALNOŚĆ', widget.modality),
+                        _buildStatItem(t.sessionDetails_stat_modality, widget.modality == 'Rozmowa' ? t.session_name_fallback : widget.modality),
                         _buildDivider(),
-                        _buildStatItem('SENTYMENT', sentiment.isNotEmpty ? sentiment : 'Neutralny'),
+                        _buildStatItem(t.sessionDetails_stat_sentiment, sentiment.isNotEmpty ? sentiment : t.sessionDetails_stat_sentiment_neutral),
                         _buildDivider(),
-                        _buildStatItem('SŁOWA', wordsCount.toString()),
+                        _buildStatItem(t.sessionDetails_stat_words, wordsCount.toString()),
                       ],
                     );
                   },
@@ -111,9 +113,9 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   error: (err, stack) => Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildStatItem('MODALNOŚĆ', widget.modality),
+                      _buildStatItem(t.sessionDetails_stat_modality, widget.modality == 'Rozmowa' ? t.session_name_fallback : widget.modality),
                       _buildDivider(),
-                      _buildStatItem('STATUS', 'Nowa'),
+                      _buildStatItem(t.sessionDetails_stat_status, t.sessionDetails_stat_status_new),
                     ],
                   ),
                 ),
@@ -122,9 +124,9 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   indicatorColor: theme.colorScheme.primary,
                   labelColor: theme.colorScheme.secondary,
                   unselectedLabelColor: Colors.grey,
-                  tabs: const [
-                    Tab(text: 'Analizy'),
-                    Tab(text: 'Transkrypcje'),
+                  tabs: [
+                    Tab(text: t.sessionDetails_tab_analyses),
+                    Tab(text: t.sessionDetails_tab_transcriptions),
                   ],
                 ),
               ],
@@ -162,14 +164,14 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
               _buildComingSoonPlaceholder(
                 theme,
                 icon: Icons.analytics_outlined,
-                title: 'Raporty AI — wkrótce',
-                subtitle: 'Analiza sesji i automatyczne raporty będą dostępne\nw kolejnej aktualizacji.',
+                title: t.sessionDetails_ai_reports_soon,
+                subtitle: t.sessionDetails_ai_reports_soon_desc,
               ),
               _buildComingSoonPlaceholder(
                 theme,
                 icon: Icons.subtitles_outlined,
-                title: 'Transkrypcja — wkrótce',
-                subtitle: 'Automatyczna transkrypcja z rozpoznawaniem mówców\nbędzie dostępna w kolejnej aktualizacji.',
+                title: t.sessionDetails_transcript_soon,
+                subtitle: t.sessionDetails_transcript_soon_desc,
               ),
             ],
           ),
@@ -184,8 +186,8 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   _buildComingSoonPlaceholder(
                     theme,
                     icon: Icons.analytics_outlined,
-                    title: 'Raporty AI — wkrótce',
-                    subtitle: 'Analiza sesji i automatyczne raporty będą dostępne\nw kolejnej aktualizacji.',
+                    title: t.sessionDetails_ai_reports_soon,
+                    subtitle: t.sessionDetails_ai_reports_soon_desc,
                   )
                 else
                   Column(
@@ -288,8 +290,8 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   _buildComingSoonPlaceholder(
                     theme,
                     icon: Icons.subtitles_outlined,
-                    title: 'Transkrypcja — wkrótce',
-                    subtitle: 'Automatyczna transkrypcja z rozpoznawaniem mówców\nbędzie dostępna w kolejnej aktualizacji.',
+                    title: t.sessionDetails_transcript_soon,
+                    subtitle: t.sessionDetails_transcript_soon_desc,
                   )
                 else
                   Padding(
@@ -318,7 +320,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                         ElevatedButton.icon(
                           onPressed: () => _copyTranscript(context, data.transcript),
                           icon: const Icon(Icons.copy),
-                          label: const Text('Skopiuj transkrypcję'),
+                          label: Text(t.sessionDetails_copy_transcript),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: theme.colorScheme.surface,
                             foregroundColor: theme.colorScheme.secondary,

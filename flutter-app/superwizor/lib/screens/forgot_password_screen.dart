@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Forgot Password screen — Apple/Google-quality UX.
@@ -54,10 +55,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  Future<void> _sendReset() async {
+  Future<void> _sendReset(BuildContext context) async {
+    final t = AppLocalizations.of(context);
     final email = _emailCtrl.text.trim().toLowerCase();
     if (email.isEmpty || !email.contains('@')) {
-      setState(() => _error = 'Podaj poprawny adres e-mail.');
+      setState(() => _error = t.forgot_err_invalid_email);
       return;
     }
 
@@ -69,15 +71,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (mounted) {
         setState(() {
           _error = switch (e.code) {
-            'user-not-found' => 'Nie znaleźliśmy konta z tym adresem.',
-            'invalid-email' => 'Ten adres e-mail wygląda nieprawidłowo.',
-            'too-many-requests' => 'Za dużo prób. Odczekaj chwilę.',
-            _ => 'Coś poszło nie tak. Spróbuj ponownie.',
+            'user-not-found' => t.forgot_err_user_not_found,
+            'invalid-email' => t.forgot_err_invalid_email,
+            'too-many-requests' => t.forgot_err_too_many_requests,
+            _ => t.forgot_err_generic,
           };
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _error = 'Coś poszło nie tak. Spróbuj ponownie.');
+      if (mounted) setState(() => _error = t.forgot_err_generic);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -140,7 +142,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 emailCtrl: _emailCtrl,
                                 loading: _loading,
                                 error: _error,
-                                onSend: _sendReset,
+                                onSend: () => _sendReset(context),
                               ),
                       ),
                     ),
@@ -174,6 +176,7 @@ class _RequestForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -190,10 +193,10 @@ class _RequestForm extends StatelessWidget {
         const SizedBox(height: 28),
 
         // Title
-        const Text(
-          'Resetowanie hasła',
+        Text(
+          t.forgot_title,
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: _kFont,
             fontSize: 26,
             fontWeight: FontWeight.w700,
@@ -205,11 +208,10 @@ class _RequestForm extends StatelessWidget {
         const SizedBox(height: 12),
 
         // Explanation
-        const Text(
-          'Podaj adres e-mail powiązany z Twoim kontem. '
-          'Wyślemy Ci link do ustawienia nowego hasła.',
+        Text(
+          '${t.forgot_desc_part1}${t.forgot_desc_part2}',
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: _kFont,
             fontSize: 15,
             fontWeight: FontWeight.w400,
@@ -233,7 +235,7 @@ class _RequestForm extends StatelessWidget {
           ),
           cursorColor: _kAccent,
           decoration: InputDecoration(
-            hintText: 'Twój adres e-mail',
+            hintText: t.forgot_email_hint,
             hintStyle: const TextStyle(
               fontFamily: _kFont, fontSize: 15,
               fontWeight: FontWeight.w400, color: _kWhite40,
@@ -306,9 +308,9 @@ class _RequestForm extends StatelessWidget {
                           Color(0xFF002A25)),
                     ),
                   )
-                : const Text(
-                    'Wyślij link',
-                    style: TextStyle(
+                : Text(
+                    t.forgot_btn_send_link,
+                    style: const TextStyle(
                       fontFamily: _kFont,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -320,14 +322,14 @@ class _RequestForm extends StatelessWidget {
         const SizedBox(height: 20),
 
         // Security note
-        const Row(
+        Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.shield_outlined, color: _kWhite40, size: 16),
-            SizedBox(width: 6),
+            const Icon(Icons.shield_outlined, color: _kWhite40, size: 16),
+            const SizedBox(width: 6),
             Text(
-              'Link wygasa po 1 godzinie',
-              style: TextStyle(
+              t.forgot_password_link_expiry,
+              style: const TextStyle(
                 fontFamily: _kFont,
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -358,6 +360,7 @@ class _SentConfirmation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -375,10 +378,10 @@ class _SentConfirmation extends StatelessWidget {
         const SizedBox(height: 28),
 
         // Title
-        const Text(
-          'Sprawdź skrzynkę',
+        Text(
+          t.forgot_check_mailbox_title,
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: _kFont,
             fontSize: 26,
             fontWeight: FontWeight.w700,
@@ -401,7 +404,7 @@ class _SentConfirmation extends StatelessWidget {
               height: 1.5,
             ),
             children: [
-              const TextSpan(text: 'Wysłaliśmy wiadomość na adres\n'),
+              TextSpan(text: t.forgot_sent_msg_prefix),
               TextSpan(
                 text: email,
                 style: const TextStyle(
@@ -417,17 +420,17 @@ class _SentConfirmation extends StatelessWidget {
         // Steps
         _StepItem(
           number: '1',
-          text: 'Otwórz swoją skrzynkę e-mail',
+          text: t.forgot_step_open_email,
         ),
         const SizedBox(height: 12),
         _StepItem(
           number: '2',
-          text: 'Kliknij w link „Zresetuj hasło"',
+          text: t.forgot_step_click_link,
         ),
         const SizedBox(height: 12),
         _StepItem(
           number: '3',
-          text: 'Ustaw nowe hasło i zaloguj się',
+          text: t.forgot_step_login,
         ),
         const SizedBox(height: 28),
 
@@ -440,16 +443,15 @@ class _SentConfirmation extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _kWhite15),
           ),
-          child: const Row(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.info_outline_rounded, color: _kWhite40, size: 18),
-              SizedBox(width: 10),
+              const Icon(Icons.info_outline_rounded, color: _kWhite40, size: 18),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Nie widzisz wiadomości? Sprawdź folder spam. '
-                  'Wysyłka może potrwać do 2 minut.',
-                  style: TextStyle(
+                  '${t.forgot_spam_check_part1}${t.forgot_spam_check_part2}',
+                  style: const TextStyle(
                     fontFamily: _kFont,
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
@@ -477,9 +479,9 @@ class _SentConfirmation extends StatelessWidget {
               ),
               elevation: 0,
             ),
-            child: const Text(
-              'Wróć do logowania',
-              style: TextStyle(
+            child: Text(
+              t.forgot_btn_back_to_login,
+              style: const TextStyle(
                 fontFamily: _kFont,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -493,9 +495,9 @@ class _SentConfirmation extends StatelessWidget {
         // Resend link
         TextButton(
           onPressed: onResend,
-          child: const Text(
-            'Wyślij ponownie',
-            style: TextStyle(
+          child: Text(
+            t.forgot_btn_send_again,
+            style: const TextStyle(
               fontFamily: _kFont,
               fontSize: 14,
               fontWeight: FontWeight.w500,

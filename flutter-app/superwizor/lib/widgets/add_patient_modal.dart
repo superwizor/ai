@@ -204,14 +204,14 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
             const SizedBox(height: 8),
             _GlassDropdown<String>(
               value: _languageCode,
-              items: const [
+              items: [
                 DropdownMenuItem(
                   value: 'pl-PL',
                   child: Row(
                     children: [
-                      Text('🇵🇱', style: TextStyle(fontSize: 18)),
-                      SizedBox(width: 10),
-                      Text('Polski'),
+                      const Text('🇵🇱', style: TextStyle(fontSize: 18)),
+                      const SizedBox(width: 10),
+                      Text(t.language_pl_name),
                     ],
                   ),
                 ),
@@ -219,9 +219,9 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
                   value: 'en-US',
                   child: Row(
                     children: [
-                      Text('🇬🇧', style: TextStyle(fontSize: 18)),
-                      SizedBox(width: 10),
-                      Text('English'),
+                      const Text('🇬🇧', style: TextStyle(fontSize: 18)),
+                      const SizedBox(width: 10),
+                      Text(t.language_en_name),
                     ],
                   ),
                 ),
@@ -324,7 +324,7 @@ class _AddPatientModalState extends ConsumerState<AddPatientModal> {
         if (e.code == grpc.StatusCode.alreadyExists) {
           _showDuplicateSheet(t);
         } else {
-          EuphireToast.error(context, message: e.message ?? 'Wystąpił błąd.');
+          EuphireToast.error(context, message: e.message ?? t.common_error);
         }
       }
     } catch (e) {

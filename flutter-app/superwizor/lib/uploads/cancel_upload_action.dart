@@ -169,7 +169,7 @@ class _CancelConfirmSheetState extends State<_CancelConfirmSheet> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Ta sesja jest w trakcie analizy. Usunięcie jej oznacza bezpowrotną utratę nagrania i transkrypcji. Nie będzie można tego cofnąć.',
+          widget.l.cancelUpload_warning_text,
           style: TextStyle(
             fontFamily: 'Montserrat',
             fontSize: 14,
@@ -218,9 +218,9 @@ class _CancelConfirmSheetState extends State<_CancelConfirmSheet> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Usuń z analizy',
-                    style: TextStyle(
+                  child: Text(
+                    widget.l.cancelUpload_delete_btn,
+                    style: const TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -265,9 +265,9 @@ class _CancelConfirmSheetState extends State<_CancelConfirmSheet> {
           ),
         ),
         const SizedBox(height: 20),
-        const Text(
-          'Na pewno?',
-          style: TextStyle(
+        Text(
+          widget.l.cancelUpload_confirm_title,
+          style: const TextStyle(
             fontFamily: 'Montserrat',
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -277,7 +277,7 @@ class _CancelConfirmSheetState extends State<_CancelConfirmSheet> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Tej operacji nie można cofnąć. Nagranie i transkrypcja zostaną trwale usunięte.',
+          widget.l.cancelUpload_confirm_body,
           style: TextStyle(
             fontFamily: 'Montserrat',
             fontSize: 14,
@@ -301,9 +301,9 @@ class _CancelConfirmSheetState extends State<_CancelConfirmSheet> {
                       borderRadius: BorderRadius.circular(5),
                     ),
                   ),
-                  child: const Text(
-                    'Wróć',
-                    style: TextStyle(
+                  child: Text(
+                    widget.l.cancelUpload_back_btn,
+                    style: const TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 15,
                       fontWeight: FontWeight.w600,

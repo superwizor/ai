@@ -84,13 +84,14 @@ class AddSessionModal extends ConsumerWidget {
                   title: Text(label, style: const TextStyle(color: EuphireColors.frostWhite)),
                   trailing: const Icon(Icons.chevron_right, color: EuphireColors.mist),
                   onTap: () async {
+                    final t = AppLocalizations.of(context);
                     final patientsState =
                         ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? [];
                     final patient = patientsState.firstWhere(
                       (p) => p.id == patientId,
                       orElse: () => Patient(
                           id: patientId,
-                          firstName: 'Nie znaleziono',
+                          firstName: t.common_not_found,
                           lastName: ''),
                     );
 

@@ -152,6 +152,42 @@ abstract class AppLocalizations {
   /// **'Wystąpił błąd.'**
   String get common_error;
 
+  /// No description provided for @common_not_found.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie znaleziono'**
+  String get common_not_found;
+
+  /// No description provided for @language_pl_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'Polski'**
+  String get language_pl_name;
+
+  /// No description provided for @language_pl_sub.
+  ///
+  /// In pl, this message translates to:
+  /// **'polski'**
+  String get language_pl_sub;
+
+  /// No description provided for @language_en_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'English'**
+  String get language_en_name;
+
+  /// No description provided for @language_en_sub.
+  ///
+  /// In pl, this message translates to:
+  /// **'angielski (Wlk. Brytania)'**
+  String get language_en_sub;
+
+  /// No description provided for @session_name_fallback.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozmowa'**
+  String get session_name_fallback;
+
   /// No description provided for @connectivity_offline_banner.
   ///
   /// In pl, this message translates to:
@@ -704,6 +740,12 @@ abstract class AppLocalizations {
   /// **'Do wideokonferencji (np. Google Meet, Zoom) używaj zawsze dodatkowego urządzenia do nagrywania.'**
   String get recording_instruction_4;
 
+  /// No description provided for @recording_status_initializing.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozpoczynam nagrywanie…'**
+  String get recording_status_initializing;
+
   /// No description provided for @recording_status_recording.
   ///
   /// In pl, this message translates to:
@@ -715,6 +757,18 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Nagrywanie wstrzymane.'**
   String get recording_status_paused;
+
+  /// No description provided for @minimized_recording_paused.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pauza nagrywania'**
+  String get minimized_recording_paused;
+
+  /// No description provided for @minimized_recording_active.
+  ///
+  /// In pl, this message translates to:
+  /// **'Trwa nagrywanie sesji'**
+  String get minimized_recording_active;
 
   /// No description provided for @recording_mic_denied_header.
   ///
@@ -1345,6 +1399,24 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Usuń konto.'**
   String get drawer_delete_account;
+
+  /// No description provided for @drawer_fallback_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'Terapeuta'**
+  String get drawer_fallback_name;
+
+  /// No description provided for @drawer_settings_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'USTAWIENIA'**
+  String get drawer_settings_header;
+
+  /// No description provided for @drawer_legal_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'DOKUMENTY PRAWNE'**
+  String get drawer_legal_header;
 
   /// No description provided for @settings_title.
   ///
@@ -2908,6 +2980,2010 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Anuluj'**
   String get live_activity_permission_cancel;
+
+  /// No description provided for @home_greeting_prefix.
+  ///
+  /// In pl, this message translates to:
+  /// **'Witaj, '**
+  String get home_greeting_prefix;
+
+  /// No description provided for @home_greeting_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Z kim dzisiaj pracujemy?'**
+  String get home_greeting_subtitle;
+
+  /// No description provided for @home_search_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Szukaj klienta…'**
+  String get home_search_hint;
+
+  /// No description provided for @home_empty_list.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dodaj pierwszego klienta, aby rozpocząć.'**
+  String get home_empty_list;
+
+  /// No description provided for @home_no_search_results.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak wyników dla „{query}”'**
+  String home_no_search_results(String query);
+
+  /// No description provided for @home_section_active.
+  ///
+  /// In pl, this message translates to:
+  /// **'TWOJE KARTOTEKI'**
+  String get home_section_active;
+
+  /// No description provided for @home_section_active_filtered.
+  ///
+  /// In pl, this message translates to:
+  /// **'TWOJE KARTOTEKI • FILTR'**
+  String get home_section_active_filtered;
+
+  /// No description provided for @home_section_paused.
+  ///
+  /// In pl, this message translates to:
+  /// **'WSTRZYMANE ({count})'**
+  String home_section_paused(int count);
+
+  /// No description provided for @home_section_completed.
+  ///
+  /// In pl, this message translates to:
+  /// **'ZAKOŃCZONE ({count})'**
+  String home_section_completed(int count);
+
+  /// No description provided for @home_status_awaiting_first_session.
+  ///
+  /// In pl, this message translates to:
+  /// **'Oczekuje na pierwszą sesję'**
+  String get home_status_awaiting_first_session;
+
+  /// No description provided for @home_status_new_client.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowy klient'**
+  String get home_status_new_client;
+
+  /// No description provided for @home_card_sessions_prefix.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesje: '**
+  String get home_card_sessions_prefix;
+
+  /// No description provided for @home_card_last_session_prefix.
+  ///
+  /// In pl, this message translates to:
+  /// **' • Ostatnio: '**
+  String get home_card_last_session_prefix;
+
+  /// No description provided for @home_card_last_prefix_only.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ostatnio: '**
+  String get home_card_last_prefix_only;
+
+  /// No description provided for @home_status_recording.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagrywanie'**
+  String get home_status_recording;
+
+  /// No description provided for @home_status_has_new_report.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowy raport'**
+  String get home_status_has_new_report;
+
+  /// No description provided for @home_status_analyzing.
+  ///
+  /// In pl, this message translates to:
+  /// **'AI analizuje'**
+  String get home_status_analyzing;
+
+  /// No description provided for @home_status_uploading.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wgrywanie…'**
+  String get home_status_uploading;
+
+  /// No description provided for @home_status_upload_failed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłanie\nprzerwane'**
+  String get home_status_upload_failed;
+
+  /// No description provided for @home_status_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd analizy'**
+  String get home_status_error;
+
+  /// No description provided for @home_status_active.
+  ///
+  /// In pl, this message translates to:
+  /// **'Aktywny'**
+  String get home_status_active;
+
+  /// No description provided for @home_status_completed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zakończony'**
+  String get home_status_completed;
+
+  /// No description provided for @home_status_paused.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wstrzymany'**
+  String get home_status_paused;
+
+  /// No description provided for @home_status_new.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowy'**
+  String get home_status_new;
+
+  /// No description provided for @home_menu_lifecycle_active.
+  ///
+  /// In pl, this message translates to:
+  /// **'Aktywna'**
+  String get home_menu_lifecycle_active;
+
+  /// No description provided for @home_menu_lifecycle_completed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zakończona'**
+  String get home_menu_lifecycle_completed;
+
+  /// No description provided for @home_menu_lifecycle_paused.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wstrzymana'**
+  String get home_menu_lifecycle_paused;
+
+  /// No description provided for @home_menu_edit_data.
+  ///
+  /// In pl, this message translates to:
+  /// **'Edytuj dane'**
+  String get home_menu_edit_data;
+
+  /// No description provided for @home_menu_edit_data_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zmień imię, nazwisko, email'**
+  String get home_menu_edit_data_desc;
+
+  /// No description provided for @home_menu_delete_patient.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń kartotekę'**
+  String get home_menu_delete_patient;
+
+  /// No description provided for @home_menu_delete_patient_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Skasuj historię, sesje i notatki'**
+  String get home_menu_delete_patient_desc;
+
+  /// No description provided for @home_menu_field_first_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'Imię (wymagane)'**
+  String get home_menu_field_first_name;
+
+  /// No description provided for @home_menu_field_last_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'Inicjał lub pseudonim'**
+  String get home_menu_field_last_name;
+
+  /// No description provided for @home_menu_field_email.
+  ///
+  /// In pl, this message translates to:
+  /// **'E-mail klienta'**
+  String get home_menu_field_email;
+
+  /// No description provided for @home_menu_btn_back.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wróć'**
+  String get home_menu_btn_back;
+
+  /// No description provided for @home_menu_btn_save.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisz'**
+  String get home_menu_btn_save;
+
+  /// No description provided for @home_menu_manage_client.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zarządzaj kartoteką klienta'**
+  String get home_menu_manage_client;
+
+  /// No description provided for @home_menu_edit_client.
+  ///
+  /// In pl, this message translates to:
+  /// **'Edytuj kartotekę'**
+  String get home_menu_edit_client;
+
+  /// No description provided for @home_delete_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usunęcie klienta: {name}'**
+  String home_delete_title(String name);
+
+  /// No description provided for @home_delete_warning_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Cała dokumentacja kliniczna — sesje, notatki AI oraz nagrania audio — zostanie trwale i bezpowrotnie usunięta z baz medycznych.\nZgodnie z RODO (prawo do zapomnienia).'**
+  String get home_delete_warning_body;
+
+  /// No description provided for @home_delete_warning_understand.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozumiem, to nieodwracalne.'**
+  String get home_delete_warning_understand;
+
+  /// No description provided for @home_delete_btn_continue.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kontynuuj kasowanie'**
+  String get home_delete_btn_continue;
+
+  /// No description provided for @home_delete_confirm_instruction.
+  ///
+  /// In pl, this message translates to:
+  /// **'Aby potwierdzić, wpisz:'**
+  String get home_delete_confirm_instruction;
+
+  /// No description provided for @home_delete_confirm_word.
+  ///
+  /// In pl, this message translates to:
+  /// **'usuwam'**
+  String get home_delete_confirm_word;
+
+  /// No description provided for @home_delete_confirm_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'wpisz tutaj…'**
+  String get home_delete_confirm_hint;
+
+  /// No description provided for @home_delete_btn_confirm.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń klienta'**
+  String get home_delete_btn_confirm;
+
+  /// No description provided for @home_delete_btn_cancel.
+  ///
+  /// In pl, this message translates to:
+  /// **'Anuluj.'**
+  String get home_delete_btn_cancel;
+
+  /// No description provided for @home_error_loading.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd: {error}'**
+  String home_error_loading(String error);
+
+  /// No description provided for @common_close.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zamknij'**
+  String get common_close;
+
+  /// No description provided for @common_copied_to_clipboard.
+  ///
+  /// In pl, this message translates to:
+  /// **'Skopiowano do schowka'**
+  String get common_copied_to_clipboard;
+
+  /// No description provided for @common_delete.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń'**
+  String get common_delete;
+
+  /// No description provided for @common_got_it.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zrozumiałem'**
+  String get common_got_it;
+
+  /// No description provided for @pendingUploads_pill_attention.
+  ///
+  /// In pl, this message translates to:
+  /// **'{count} wymaga uwagi'**
+  String pendingUploads_pill_attention(int count);
+
+  /// No description provided for @pendingUploads_pill_retrying.
+  ///
+  /// In pl, this message translates to:
+  /// **'{count} wznawianie'**
+  String pendingUploads_pill_retrying(int count);
+
+  /// No description provided for @pendingUploads_pill_analyzing.
+  ///
+  /// In pl, this message translates to:
+  /// **'{count} analiza'**
+  String pendingUploads_pill_analyzing(int count);
+
+  /// No description provided for @pendingUploads_pill_in_progress.
+  ///
+  /// In pl, this message translates to:
+  /// **'{count} w toku'**
+  String pendingUploads_pill_in_progress(int count);
+
+  /// No description provided for @pending_uploads_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kolejka sesji'**
+  String get pending_uploads_title;
+
+  /// No description provided for @pending_uploads_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Status przesyłania i przetwarzania nagrań.'**
+  String get pending_uploads_subtitle;
+
+  /// No description provided for @pending_uploads_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd: {error}'**
+  String pending_uploads_error(String error);
+
+  /// No description provided for @pending_uploads_empty_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak plików w kolejce'**
+  String get pending_uploads_empty_title;
+
+  /// No description provided for @pending_uploads_empty_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wszystkie sesje zostały wgrane.'**
+  String get pending_uploads_empty_body;
+
+  /// No description provided for @pending_uploads_no_internet_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak połączenia z internetem'**
+  String get pending_uploads_no_internet_title;
+
+  /// No description provided for @pending_uploads_error_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd przesyłania'**
+  String get pending_uploads_error_title;
+
+  /// No description provided for @pending_uploads_no_internet_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłanie zostało przerwane, ale Twoje nagranie jest bezpiecznie zapisane na tym urządzeniu. Spróbuj przesłać je ponownie, gdy odzyskasz zasięg.'**
+  String get pending_uploads_no_internet_desc;
+
+  /// No description provided for @pending_uploads_error_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłanie zostało przerwane z powodu błędu, ale Twoje nagranie jest bezpiecznie zapisane na tym urządzeniu. Spróbuj przesłać je ponownie.'**
+  String get pending_uploads_error_desc;
+
+  /// No description provided for @pending_uploads_btn_resend.
+  ///
+  /// In pl, this message translates to:
+  /// **'Prześlij ponownie'**
+  String get pending_uploads_btn_resend;
+
+  /// No description provided for @pending_uploads_default_patient_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pacjent'**
+  String get pending_uploads_default_patient_name;
+
+  /// No description provided for @pending_uploads_resending_auto_prefix.
+  ///
+  /// In pl, this message translates to:
+  /// **'WZNAWIAM AUTOMATYCZNIE: '**
+  String get pending_uploads_resending_auto_prefix;
+
+  /// No description provided for @pending_uploads_quota_dialog_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak dostępnych sesji'**
+  String get pending_uploads_quota_dialog_title;
+
+  /// No description provided for @pending_uploads_quota_dialog_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twoja pula sesji w tym miesiącu została wyczerpana. Aby przetworzyć to nagranie, odwiedź platformę Superwizor w przeglądarce internetowej, aby zarządzać swoim planem.'**
+  String get pending_uploads_quota_dialog_body;
+
+  /// No description provided for @pending_uploads_err_reason_no_internet.
+  ///
+  /// In pl, this message translates to:
+  /// **'brak połączenia z internetem'**
+  String get pending_uploads_err_reason_no_internet;
+
+  /// No description provided for @pending_uploads_err_reason_timeout.
+  ///
+  /// In pl, this message translates to:
+  /// **'serwer nie odpowiedział w terminie'**
+  String get pending_uploads_err_reason_timeout;
+
+  /// No description provided for @pending_uploads_err_reason_link_expired.
+  ///
+  /// In pl, this message translates to:
+  /// **'link do przesyłania wygasł'**
+  String get pending_uploads_err_reason_link_expired;
+
+  /// No description provided for @pending_uploads_err_reason_unavailable.
+  ///
+  /// In pl, this message translates to:
+  /// **'serwer chwilowo niedostępny'**
+  String get pending_uploads_err_reason_unavailable;
+
+  /// No description provided for @pending_uploads_err_reason_prefix.
+  ///
+  /// In pl, this message translates to:
+  /// **'Powód błędu: {reason}'**
+  String pending_uploads_err_reason_prefix(String reason);
+
+  /// No description provided for @pending_uploads_phase_resuming.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wznawianie przesyłania...'**
+  String get pending_uploads_phase_resuming;
+
+  /// No description provided for @pending_uploads_phase_encrypting.
+  ///
+  /// In pl, this message translates to:
+  /// **'Szyfrowanie nagrania...'**
+  String get pending_uploads_phase_encrypting;
+
+  /// No description provided for @pending_uploads_phase_converting.
+  ///
+  /// In pl, this message translates to:
+  /// **'Konwersja pliku audio...'**
+  String get pending_uploads_phase_converting;
+
+  /// No description provided for @pending_uploads_phase_pending.
+  ///
+  /// In pl, this message translates to:
+  /// **'W kolejce'**
+  String get pending_uploads_phase_pending;
+
+  /// No description provided for @pending_uploads_phase_uploading.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłam na serwer...'**
+  String get pending_uploads_phase_uploading;
+
+  /// No description provided for @pending_uploads_phase_uploaded.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesłano — finalizuję...'**
+  String get pending_uploads_phase_uploaded;
+
+  /// No description provided for @pending_uploads_phase_converted.
+  ///
+  /// In pl, this message translates to:
+  /// **'Konwersja gotowa — finalizuję...'**
+  String get pending_uploads_phase_converted;
+
+  /// No description provided for @pending_uploads_phase_completed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wgrane'**
+  String get pending_uploads_phase_completed;
+
+  /// No description provided for @pending_uploads_phase_failed.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłanie przerwane'**
+  String get pending_uploads_phase_failed;
+
+  /// No description provided for @pending_uploads_detail_attempt.
+  ///
+  /// In pl, this message translates to:
+  /// **' • próba {attempt}'**
+  String pending_uploads_detail_attempt(int attempt);
+
+  /// No description provided for @pending_uploads_quota_card_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagranie czeka na wznowienie.'**
+  String get pending_uploads_quota_card_title;
+
+  /// No description provided for @pending_uploads_quota_card_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pula sesji została wyczerpana. Sesja jest bezpiecznie zapisana i zostanie przetworzona po odnowieniu planu.'**
+  String get pending_uploads_quota_card_desc;
+
+  /// No description provided for @pending_uploads_btn_checking.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sprawdzam...'**
+  String get pending_uploads_btn_checking;
+
+  /// No description provided for @pending_uploads_btn_send_again.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij ponownie'**
+  String get pending_uploads_btn_send_again;
+
+  /// No description provided for @addPatient_email_required_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Podaj e-mail lub zmień język klienta.'**
+  String get addPatient_email_required_error;
+
+  /// No description provided for @addPatient_alias_instruction.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nadaj klientowi unikalne oznaczenie — ułatwi nawigację.'**
+  String get addPatient_alias_instruction;
+
+  /// No description provided for @addPatient_background_color.
+  ///
+  /// In pl, this message translates to:
+  /// **'KOLOR TŁA'**
+  String get addPatient_background_color;
+
+  /// No description provided for @addPatient_skip_for_now.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pomiń na razie'**
+  String get addPatient_skip_for_now;
+
+  /// No description provided for @clientDetails_profile_not_loaded.
+  ///
+  /// In pl, this message translates to:
+  /// **'Profil nie został jeszcze załadowany. Spróbuj za chwilę.'**
+  String get clientDetails_profile_not_loaded;
+
+  /// No description provided for @clientDetails_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd: {error}'**
+  String clientDetails_error(String error);
+
+  /// No description provided for @clientDetails_session_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd sesji: {error}'**
+  String clientDetails_session_error(String error);
+
+  /// No description provided for @clientDetails_start_work.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozpocznij pracę'**
+  String get clientDetails_start_work;
+
+  /// No description provided for @clientDetails_start_work_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozpocznij nagrywanie, a system zadba o bezpieczną transkrypcję i przygotuje raport kliniczny.'**
+  String get clientDetails_start_work_desc;
+
+  /// No description provided for @clientDetails_encryption_notice_part1.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twoje dane są szyfrowane end-to-end. '**
+  String get clientDetails_encryption_notice_part1;
+
+  /// No description provided for @clientDetails_encryption_notice_part2.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nikt poza Tobą nie ma do nich dostępu.'**
+  String get clientDetails_encryption_notice_part2;
+
+  /// No description provided for @clientDetails_upload_recording.
+  ///
+  /// In pl, this message translates to:
+  /// **'Prześlij nagranie z dyktafonu'**
+  String get clientDetails_upload_recording;
+
+  /// No description provided for @clientDetails_record_new_session.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagraj nową sesję terapeutyczną'**
+  String get clientDetails_record_new_session;
+
+  /// No description provided for @clientDetails_start_first_analysis.
+  ///
+  /// In pl, this message translates to:
+  /// **'Rozpocznij pierwszą analizę'**
+  String get clientDetails_start_first_analysis;
+
+  /// No description provided for @clientDetails_status_converting.
+  ///
+  /// In pl, this message translates to:
+  /// **'Konwertuję audio…'**
+  String get clientDetails_status_converting;
+
+  /// No description provided for @clientDetails_status_uploading.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wysyłanie audio…'**
+  String get clientDetails_status_uploading;
+
+  /// No description provided for @clientDetails_status_interrupted.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłanie przerwane'**
+  String get clientDetails_status_interrupted;
+
+  /// No description provided for @clientDetails_delete_session_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Bezpowrotne usunięcie sesji'**
+  String get clientDetails_delete_session_title;
+
+  /// No description provided for @clientDetails_delete_session_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja, nagranie i transkrypcja zostaną trwale usunięte. Tej operacji nie można cofnąć.'**
+  String get clientDetails_delete_session_desc;
+
+  /// No description provided for @clientDetails_btn_yes_delete.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tak, usuń'**
+  String get clientDetails_btn_yes_delete;
+
+  /// No description provided for @clientDetails_manage_session.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zarządzaj sesją'**
+  String get clientDetails_manage_session;
+
+  /// No description provided for @clientDetails_manage_session_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zmień tytuł lub usuń sesję'**
+  String get clientDetails_manage_session_desc;
+
+  /// No description provided for @clientDetails_session_title_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tytuł sesji'**
+  String get clientDetails_session_title_label;
+
+  /// No description provided for @clientDetails_btn_save_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisz tytuł'**
+  String get clientDetails_btn_save_title;
+
+  /// No description provided for @clientDetails_btn_delete_session.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń sesję'**
+  String get clientDetails_btn_delete_session;
+
+  /// No description provided for @clientDetails_btn_delete_session_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Trwale usuń nagranie i analizę'**
+  String get clientDetails_btn_delete_session_desc;
+
+  /// No description provided for @clientDetails_edit_note_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zmień tytuł lub treść notatki'**
+  String get clientDetails_edit_note_subtitle;
+
+  /// No description provided for @clientDetails_copy_content.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kopiuj treść'**
+  String get clientDetails_copy_content;
+
+  /// No description provided for @clientDetails_copy_content_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Skopiuj notatkę do schowka'**
+  String get clientDetails_copy_content_desc;
+
+  /// No description provided for @clientDetails_note_sent_at.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wysłano {date}'**
+  String clientDetails_note_sent_at(String date);
+
+  /// No description provided for @clientDetails_send_note_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij notatkę mailem do klienta'**
+  String get clientDetails_send_note_desc;
+
+  /// No description provided for @clientDetails_note_sent_badge.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wysłano'**
+  String get clientDetails_note_sent_badge;
+
+  /// No description provided for @clientDetails_delete_note_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Trwale usuń tę notatkę'**
+  String get clientDetails_delete_note_desc;
+
+  /// No description provided for @clientDetails_no_content.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak treści'**
+  String get clientDetails_no_content;
+
+  /// No description provided for @sessionDetails_stat_modality.
+  ///
+  /// In pl, this message translates to:
+  /// **'MODALNOŚĆ'**
+  String get sessionDetails_stat_modality;
+
+  /// No description provided for @sessionDetails_stat_words.
+  ///
+  /// In pl, this message translates to:
+  /// **'SŁOWA'**
+  String get sessionDetails_stat_words;
+
+  /// No description provided for @sessionDetails_stat_sentiment.
+  ///
+  /// In pl, this message translates to:
+  /// **'SENTYMENT'**
+  String get sessionDetails_stat_sentiment;
+
+  /// No description provided for @sessionDetails_stat_sentiment_neutral.
+  ///
+  /// In pl, this message translates to:
+  /// **'Neutralny'**
+  String get sessionDetails_stat_sentiment_neutral;
+
+  /// No description provided for @sessionDetails_stat_sentiment_unknown.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nieznany'**
+  String get sessionDetails_stat_sentiment_unknown;
+
+  /// No description provided for @sessionDetails_stat_status.
+  ///
+  /// In pl, this message translates to:
+  /// **'STATUS'**
+  String get sessionDetails_stat_status;
+
+  /// No description provided for @sessionDetails_stat_status_new.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowa'**
+  String get sessionDetails_stat_status_new;
+
+  /// No description provided for @sessionDetails_tab_analyses.
+  ///
+  /// In pl, this message translates to:
+  /// **'Analizy'**
+  String get sessionDetails_tab_analyses;
+
+  /// No description provided for @sessionDetails_tab_transcriptions.
+  ///
+  /// In pl, this message translates to:
+  /// **'Transkrypcje'**
+  String get sessionDetails_tab_transcriptions;
+
+  /// No description provided for @sessionDetails_toast_reports_copied.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wszystkie raporty skopiowane do schowka'**
+  String get sessionDetails_toast_reports_copied;
+
+  /// No description provided for @sessionDetails_toast_transcript_copied.
+  ///
+  /// In pl, this message translates to:
+  /// **'Transkrypcja skopiowana do schowka'**
+  String get sessionDetails_toast_transcript_copied;
+
+  /// No description provided for @sessionDetails_ai_reports_soon.
+  ///
+  /// In pl, this message translates to:
+  /// **'Raporty AI — wkrótce'**
+  String get sessionDetails_ai_reports_soon;
+
+  /// No description provided for @sessionDetails_ai_reports_soon_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Analiza sesji i automatyczne raporty będą dostępne\nw kolejnej aktualizacji.'**
+  String get sessionDetails_ai_reports_soon_desc;
+
+  /// No description provided for @sessionDetails_transcript_soon.
+  ///
+  /// In pl, this message translates to:
+  /// **'Transkrypcja — wkrótce'**
+  String get sessionDetails_transcript_soon;
+
+  /// No description provided for @sessionDetails_transcript_soon_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Automatyczna transkrypcja z rozpoznawaniem mówców\nbędzie dostępna w kolejnej aktualizacji.'**
+  String get sessionDetails_transcript_soon_desc;
+
+  /// No description provided for @sessionDetails_copy_transcript.
+  ///
+  /// In pl, this message translates to:
+  /// **'Skopiuj transkrypcję'**
+  String get sessionDetails_copy_transcript;
+
+  /// No description provided for @report_copy_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Skopiuj treść do schowka'**
+  String get report_copy_desc;
+
+  /// No description provided for @report_edit_summary_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Popraw lub uzupełnij podsumowanie AI'**
+  String get report_edit_summary_desc;
+
+  /// No description provided for @report_btn_copy_section.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kopiuj sekcję'**
+  String get report_btn_copy_section;
+
+  /// No description provided for @report_btn_edit_section.
+  ///
+  /// In pl, this message translates to:
+  /// **'Edytuj treść'**
+  String get report_btn_edit_section;
+
+  /// No description provided for @report_edit_section_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Popraw lub uzupełnij raport AI'**
+  String get report_edit_section_desc;
+
+  /// No description provided for @report_edit_section_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Edytuj treść sekcji...'**
+  String get report_edit_section_hint;
+
+  /// No description provided for @report_intro_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wstęp'**
+  String get report_intro_title;
+
+  /// No description provided for @menu_avatar_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zdjęcie profilowe'**
+  String get menu_avatar_title;
+
+  /// No description provided for @menu_avatar_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz skąd chcesz dodać zdjęcie.'**
+  String get menu_avatar_desc;
+
+  /// No description provided for @menu_avatar_updated.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zdjęcie profilowe zaktualizowane'**
+  String get menu_avatar_updated;
+
+  /// No description provided for @menu_save_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wystąpił błąd podczas zapisu: {error}'**
+  String menu_save_error(String error);
+
+  /// No description provided for @menu_invalid_email.
+  ///
+  /// In pl, this message translates to:
+  /// **'Podaj prawidłowy adres e-mail.'**
+  String get menu_invalid_email;
+
+  /// No description provided for @menu_verification_sent.
+  ///
+  /// In pl, this message translates to:
+  /// **'Link weryfikacyjny wysłany na {email}'**
+  String menu_verification_sent(String email);
+
+  /// No description provided for @menu_reauth_required.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaloguj się ponownie, aby zmienić e-mail.'**
+  String get menu_reauth_required;
+
+  /// No description provided for @menu_email_in_use.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ten adres jest już używany.'**
+  String get menu_email_in_use;
+
+  /// No description provided for @menu_error_message.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wystąpił błąd: {error}'**
+  String menu_error_message(String error);
+
+  /// No description provided for @menu_change_email_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zmień adres e-mail'**
+  String get menu_change_email_title;
+
+  /// No description provided for @menu_change_email_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślemy link weryfikacyjny na nowy adres.'**
+  String get menu_change_email_desc;
+
+  /// No description provided for @menu_btn_send_verification.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij weryfikację'**
+  String get menu_btn_send_verification;
+
+  /// No description provided for @menu_delete_account_confirm_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Trwałe i nieodwracalne usunięcie'**
+  String get menu_delete_account_confirm_title;
+
+  /// No description provided for @sessionStatus_uploading_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Superwizor przesyła nagranie sesji na serwer.'**
+  String get sessionStatus_uploading_desc;
+
+  /// No description provided for @sessionStatus_btn_delete_session.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń sesję'**
+  String get sessionStatus_btn_delete_session;
+
+  /// No description provided for @sessionStatus_upload_stopped_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłanie zatrzymane'**
+  String get sessionStatus_upload_stopped_title;
+
+  /// No description provided for @sessionStatus_upload_stopped_net_err.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wystąpił problem z połączeniem sieciowym.\n\n'**
+  String get sessionStatus_upload_stopped_net_err;
+
+  /// No description provided for @sessionStatus_upload_stopped_safe.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagranie jest bezpieczne na Twoim urządzeniu. '**
+  String get sessionStatus_upload_stopped_safe;
+
+  /// No description provided for @sessionStatus_upload_stopped_resume.
+  ///
+  /// In pl, this message translates to:
+  /// **'System wznowi przesyłanie, gdy odzyskasz zasięg.'**
+  String get sessionStatus_upload_stopped_resume;
+
+  /// No description provided for @sessionStatus_report_failed_temp.
+  ///
+  /// In pl, this message translates to:
+  /// **'Proces tworzenia raportu napotkał trudność.\n\n'**
+  String get sessionStatus_report_failed_temp;
+
+  /// No description provided for @sessionStatus_report_failed_retry.
+  ///
+  /// In pl, this message translates to:
+  /// **'Spróbuj ponowić analizę za jakiś czas.'**
+  String get sessionStatus_report_failed_retry;
+
+  /// No description provided for @sessionStatus_report_failed_perm.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się wygenerować raportu dla tej sesji.\n\n'**
+  String get sessionStatus_report_failed_perm;
+
+  /// No description provided for @sessionStatus_report_failed_contact.
+  ///
+  /// In pl, this message translates to:
+  /// **'Jeśli sytuacja się powtarza, daj nam znać.'**
+  String get sessionStatus_report_failed_contact;
+
+  /// No description provided for @sessionStatus_status_uploading.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłanie na serwer'**
+  String get sessionStatus_status_uploading;
+
+  /// No description provided for @sessionStatus_status_queued.
+  ///
+  /// In pl, this message translates to:
+  /// **'W kolejce do przesłania'**
+  String get sessionStatus_status_queued;
+
+  /// No description provided for @sessionStatus_bg_processing_notice.
+  ///
+  /// In pl, this message translates to:
+  /// **'Możesz bezpiecznie opuścić ten ekran,\nsesja przetworzy się w tle.'**
+  String get sessionStatus_bg_processing_notice;
+
+  /// No description provided for @recording_ios_only_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagrywanie dostępne w aplikacji iOS'**
+  String get recording_ios_only_title;
+
+  /// No description provided for @recording_ios_only_body_part1.
+  ///
+  /// In pl, this message translates to:
+  /// **'Aby nagrać sesję z {alias}, użyj aplikacji '**
+  String recording_ios_only_body_part1(String alias);
+
+  /// No description provided for @recording_ios_only_body_part2.
+  ///
+  /// In pl, this message translates to:
+  /// **'Superwizor na iPhone. Po przesłaniu nagrania '**
+  String get recording_ios_only_body_part2;
+
+  /// No description provided for @recording_ios_only_body_part3.
+  ///
+  /// In pl, this message translates to:
+  /// **'transkrypcja i raport pojawią się tutaj.'**
+  String get recording_ios_only_body_part3;
+
+  /// No description provided for @recording_btn_back.
+  ///
+  /// In pl, this message translates to:
+  /// **'Powrót'**
+  String get recording_btn_back;
+
+  /// No description provided for @newSession_error_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd'**
+  String get newSession_error_header;
+
+  /// No description provided for @newSession_upload_file_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'PRZESYŁANIE PLIKU'**
+  String get newSession_upload_file_header;
+
+  /// No description provided for @newSession_new_session_header.
+  ///
+  /// In pl, this message translates to:
+  /// **'NOWA SESJA'**
+  String get newSession_new_session_header;
+
+  /// No description provided for @newSession_pick_file_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wybierz plik audio z dysku. Po przesłaniu plik zostanie automatycznie przeanalizowany.'**
+  String get newSession_pick_file_desc;
+
+  /// No description provided for @newSession_record_or_upload_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagraj tę sesję, lub prześlij plik audio z dyktafonu.'**
+  String get newSession_record_or_upload_desc;
+
+  /// No description provided for @newSession_secure_upload_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Bezpieczne przesyłanie.'**
+  String get newSession_secure_upload_title;
+
+  /// No description provided for @newSession_secure_upload_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twój plik jest szyfrowany i bezpiecznie przesyłany na nasze serwery w Europie. Nikt poza Tobą nie ma dostępu do tych danych.'**
+  String get newSession_secure_upload_desc;
+
+  /// No description provided for @newSession_recording_in_progress_err.
+  ///
+  /// In pl, this message translates to:
+  /// **'Trwa nagrywanie innej sesji. Wróć do niej, aby kontynuować.'**
+  String get newSession_recording_in_progress_err;
+
+  /// No description provided for @newSession_format_not_supported.
+  ///
+  /// In pl, this message translates to:
+  /// **'Format \"{ext}\" nie jest obsługiwany.\n\n'**
+  String newSession_format_not_supported(String ext);
+
+  /// No description provided for @newSession_supported_formats.
+  ///
+  /// In pl, this message translates to:
+  /// **'Obsługiwane formaty: FLAC, WAV, MP3, OGG, OPUS, M4A, AAC, WEBM, AMR.'**
+  String get newSession_supported_formats;
+
+  /// No description provided for @newSession_file_too_large.
+  ///
+  /// In pl, this message translates to:
+  /// **'Plik jest zbyt duży ({size} MB). '**
+  String newSession_file_too_large(String size);
+
+  /// No description provided for @newSession_uploading_file.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłam plik...'**
+  String get newSession_uploading_file;
+
+  /// No description provided for @newSession_recording_active_err.
+  ///
+  /// In pl, this message translates to:
+  /// **'Trwa nagrywanie sesji. Wróć do niej, aby kontynuować.'**
+  String get newSession_recording_active_err;
+
+  /// No description provided for @newSession_preparing_file.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przygotowuję plik...'**
+  String get newSession_preparing_file;
+
+  /// No description provided for @newSession_queuing.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kolejkuję...'**
+  String get newSession_queuing;
+
+  /// No description provided for @newSession_encryption_notice_part1.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twoje nagrania są chronione szyfrowaniem end-to-end i służą wyłącznie '**
+  String get newSession_encryption_notice_part1;
+
+  /// No description provided for @newSession_encryption_notice_part2.
+  ///
+  /// In pl, this message translates to:
+  /// **'do analizy AI. Nikt poza Tobą nie ma dostępu do danych.'**
+  String get newSession_encryption_notice_part2;
+
+  /// No description provided for @newSession_upload_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd podczas przesyłania pliku:\n{error}'**
+  String newSession_upload_error(String error);
+
+  /// No description provided for @login_auth_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd uwierzytelniania [{code}]: {message}'**
+  String login_auth_error(String code, String message);
+
+  /// No description provided for @login_accept_terms_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaakceptuj Regulamin i Politykę Prywatności, aby kontynuować.'**
+  String get login_accept_terms_error;
+
+  /// No description provided for @login_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaloguj się do Superwizor AI'**
+  String get login_subtitle;
+
+  /// No description provided for @login_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Witaj ponownie'**
+  String get login_title;
+
+  /// No description provided for @login_forgot_password.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie pamiętam hasła'**
+  String get login_forgot_password;
+
+  /// No description provided for @login_btn_sign_in.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaloguj się'**
+  String get login_btn_sign_in;
+
+  /// No description provided for @login_btn_sign_up.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zarejestruj się'**
+  String get login_btn_sign_up;
+
+  /// No description provided for @login_register_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Utwórz konto'**
+  String get login_register_title;
+
+  /// No description provided for @login_register_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dołącz do społeczności terapeutów'**
+  String get login_register_subtitle;
+
+  /// No description provided for @login_name_field.
+  ///
+  /// In pl, this message translates to:
+  /// **'Imię i nazwisko'**
+  String get login_name_field;
+
+  /// No description provided for @login_password_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Utwórz hasło (min. 8 znaków)'**
+  String get login_password_hint;
+
+  /// No description provided for @login_already_have_account.
+  ///
+  /// In pl, this message translates to:
+  /// **'Masz już konto? '**
+  String get login_already_have_account;
+
+  /// No description provided for @login_accept_prefix.
+  ///
+  /// In pl, this message translates to:
+  /// **'Akceptuję '**
+  String get login_accept_prefix;
+
+  /// No description provided for @login_accept_privacy.
+  ///
+  /// In pl, this message translates to:
+  /// **'Politykę Prywatności'**
+  String get login_accept_privacy;
+
+  /// No description provided for @login_privacy_policy_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Polityka Prywatności'**
+  String get login_privacy_policy_title;
+
+  /// No description provided for @forgot_err_user_not_found.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie znaleźliśmy konta z tym adresem.'**
+  String get forgot_err_user_not_found;
+
+  /// No description provided for @forgot_err_invalid_email.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ten adres e-mail wygląda nieprawidłowo.'**
+  String get forgot_err_invalid_email;
+
+  /// No description provided for @forgot_err_too_many_requests.
+  ///
+  /// In pl, this message translates to:
+  /// **'Za dużo prób. Odczekaj chwilę.'**
+  String get forgot_err_too_many_requests;
+
+  /// No description provided for @forgot_err_generic.
+  ///
+  /// In pl, this message translates to:
+  /// **'Coś poszło nie tak. Spróbuj ponownie.'**
+  String get forgot_err_generic;
+
+  /// No description provided for @forgot_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Resetowanie hasła'**
+  String get forgot_title;
+
+  /// No description provided for @forgot_desc_part1.
+  ///
+  /// In pl, this message translates to:
+  /// **'Podaj adres e-mail powiązany z Twoim kontem. '**
+  String get forgot_desc_part1;
+
+  /// No description provided for @forgot_desc_part2.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślemy Ci link do ustawienia nowego hasła.'**
+  String get forgot_desc_part2;
+
+  /// No description provided for @forgot_email_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twój adres e-mail'**
+  String get forgot_email_hint;
+
+  /// No description provided for @forgot_btn_send_link.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij link'**
+  String get forgot_btn_send_link;
+
+  /// No description provided for @forgot_check_mailbox_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sprawdź skrzynkę'**
+  String get forgot_check_mailbox_title;
+
+  /// No description provided for @forgot_sent_msg_prefix.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wysłaliśmy wiadomość na adres\n'**
+  String get forgot_sent_msg_prefix;
+
+  /// No description provided for @forgot_step_open_email.
+  ///
+  /// In pl, this message translates to:
+  /// **'Otwórz swoją skrzynkę e-mail'**
+  String get forgot_step_open_email;
+
+  /// No description provided for @forgot_step_click_link.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kliknij w link „Zresetuj hasło\"'**
+  String get forgot_step_click_link;
+
+  /// No description provided for @forgot_step_login.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ustaw nowe hasło i zaloguj się'**
+  String get forgot_step_login;
+
+  /// No description provided for @forgot_spam_check_part1.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie widzisz wiadomości? Sprawdź folder spam. '**
+  String get forgot_spam_check_part1;
+
+  /// No description provided for @forgot_spam_check_part2.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wysyłka może potrwać do 2 minut.'**
+  String get forgot_spam_check_part2;
+
+  /// No description provided for @forgot_btn_back_to_login.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wróć do logowania'**
+  String get forgot_btn_back_to_login;
+
+  /// No description provided for @forgot_btn_send_again.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij ponownie'**
+  String get forgot_btn_send_again;
+
+  /// No description provided for @transcript_default_speaker_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Głos'**
+  String get transcript_default_speaker_label;
+
+  /// No description provided for @home_error_toast.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd: {error}'**
+  String home_error_toast(String error);
+
+  /// No description provided for @home_manage_edit_card.
+  ///
+  /// In pl, this message translates to:
+  /// **'Edytuj kartotekę'**
+  String get home_manage_edit_card;
+
+  /// No description provided for @home_manage_card.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zarządzaj kartoteką klienta'**
+  String get home_manage_card;
+
+  /// No description provided for @sort_filter_header_sorting.
+  ///
+  /// In pl, this message translates to:
+  /// **'SORTOWANIE'**
+  String get sort_filter_header_sorting;
+
+  /// No description provided for @sort_filter_last_activity.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ostatnia aktywność'**
+  String get sort_filter_last_activity;
+
+  /// No description provided for @sort_filter_last_activity_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Klienci, z którymi ostatnio pracowałeś'**
+  String get sort_filter_last_activity_desc;
+
+  /// No description provided for @sort_filter_long_unseen.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dawno niewidziani'**
+  String get sort_filter_long_unseen;
+
+  /// No description provided for @sort_filter_no_sessions_longest_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Klienci bez sesji od najdłuższego czasu'**
+  String get sort_filter_no_sessions_longest_desc;
+
+  /// No description provided for @sort_filter_alphabetical.
+  ///
+  /// In pl, this message translates to:
+  /// **'Alfabetycznie'**
+  String get sort_filter_alphabetical;
+
+  /// No description provided for @sort_filter_alphabetical_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nazwy kartotek od A do Z'**
+  String get sort_filter_alphabetical_desc;
+
+  /// No description provided for @sort_filter_longest_processes.
+  ///
+  /// In pl, this message translates to:
+  /// **'Najdłuższe procesy'**
+  String get sort_filter_longest_processes;
+
+  /// No description provided for @sort_filter_longest_processes_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Klienci z największą liczbą sesji'**
+  String get sort_filter_longest_processes_desc;
+
+  /// No description provided for @sort_filter_show_only.
+  ///
+  /// In pl, this message translates to:
+  /// **'POKAŻ TYLKO'**
+  String get sort_filter_show_only;
+
+  /// No description provided for @sort_filter_new_reports.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowe raporty i analizy'**
+  String get sort_filter_new_reports;
+
+  /// No description provided for @sort_filter_ready_reports_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Gotowe raporty AI lub trwające analizy'**
+  String get sort_filter_ready_reports_desc;
+
+  /// No description provided for @sort_filter_modality.
+  ///
+  /// In pl, this message translates to:
+  /// **'MODALNOŚĆ'**
+  String get sort_filter_modality;
+
+  /// No description provided for @sort_filter_clear_filters.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyczyść filtry'**
+  String get sort_filter_clear_filters;
+
+  /// No description provided for @editPatient_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd: {error}'**
+  String editPatient_error(String error);
+
+  /// No description provided for @activeAnalysis_uploading_status.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wgrywanie: {errors} {errors, plural, =1{błąd} few{błędy} many{błędów} other{błędów}}, {progress} w toku.'**
+  String activeAnalysis_uploading_status(int errors, int progress);
+
+  /// No description provided for @activeAnalysis_uploading_status_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Część plików wymaga uwagi, ale przesyłanie reszty trwa bez zakłóceń.'**
+  String get activeAnalysis_uploading_status_desc;
+
+  /// No description provided for @activeAnalysis_check_details.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sprawdź szczegóły'**
+  String get activeAnalysis_check_details;
+
+  /// No description provided for @activeAnalysis_upload_attention.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłanie wymaga uwagi.'**
+  String get activeAnalysis_upload_attention;
+
+  /// No description provided for @activeAnalysis_upload_attention_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja nie mogła zostać wgrana. Sprawdź szczegóły.'**
+  String get activeAnalysis_upload_attention_desc;
+
+  /// No description provided for @activeAnalysis_quota_blocked_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pula sesji została wyczerpana. Sesja jest bezpiecznie zapisana i zostanie przetworzona po odnowieniu planu.'**
+  String get activeAnalysis_quota_blocked_desc;
+
+  /// No description provided for @activeAnalysis_view_details.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zobacz szczegóły'**
+  String get activeAnalysis_view_details;
+
+  /// No description provided for @activeAnalysis_upload_interrupted.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przesyłanie zostało przerwane.'**
+  String get activeAnalysis_upload_interrupted;
+
+  /// No description provided for @activeAnalysis_upload_interrupted_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Próba wznowienia nastąpi automatycznie. Nagranie jest bezpieczne.'**
+  String get activeAnalysis_upload_interrupted_desc;
+
+  /// No description provided for @activeAnalysis_preparing.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przygotowuję nagranie.'**
+  String get activeAnalysis_preparing;
+
+  /// No description provided for @activeAnalysis_preparing_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja jest szyfrowana przed przesłaniem na serwer.'**
+  String get activeAnalysis_preparing_desc;
+
+  /// No description provided for @activeAnalysis_view_progress.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zobacz postęp'**
+  String get activeAnalysis_view_progress;
+
+  /// No description provided for @activeAnalysis_converting.
+  ///
+  /// In pl, this message translates to:
+  /// **'Konwertuję plik audio.'**
+  String get activeAnalysis_converting;
+
+  /// No description provided for @activeAnalysis_converting_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Format pliku wymaga konwersji. Potrwa to chwilę.'**
+  String get activeAnalysis_converting_desc;
+
+  /// No description provided for @activeAnalysis_uploading.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja jest przesyłana na serwer.'**
+  String get activeAnalysis_uploading;
+
+  /// No description provided for @activeAnalysis_uploading_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Plik trafia bezpiecznie na serwer. Możesz kontynuować pracę.'**
+  String get activeAnalysis_uploading_desc;
+
+  /// No description provided for @activeAnalysis_analyzing_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja jest już na serwerze. Raport pojawi się za kilka minut.'**
+  String get activeAnalysis_analyzing_desc;
+
+  /// No description provided for @recording_countdown_preparing.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przygotuj się…'**
+  String get recording_countdown_preparing;
+
+  /// No description provided for @drawer_btn_logout.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyloguj się'**
+  String get drawer_btn_logout;
+
+  /// No description provided for @drawer_btn_delete_account.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń konto'**
+  String get drawer_btn_delete_account;
+
+  /// No description provided for @avatar_customize_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nadaj swoim klientom unikalne oznaczenia, aby szybko znaleźć ich w kartotece.'**
+  String get avatar_customize_desc;
+
+  /// No description provided for @avatar_customize_background_color.
+  ///
+  /// In pl, this message translates to:
+  /// **'KOLOR TŁA'**
+  String get avatar_customize_background_color;
+
+  /// No description provided for @profile_edit_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Podaj swoje imię, nazwisko i tytuł zawodowy.'**
+  String get profile_edit_desc;
+
+  /// No description provided for @profile_edit_first_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'Imię'**
+  String get profile_edit_first_name;
+
+  /// No description provided for @profile_edit_professional_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tytuł zawodowy (np. mgr, Psycholog)'**
+  String get profile_edit_professional_title;
+
+  /// No description provided for @report_detail_copy_content.
+  ///
+  /// In pl, this message translates to:
+  /// **'Skopiuj treść'**
+  String get report_detail_copy_content;
+
+  /// No description provided for @hard_delete_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd usuwania'**
+  String get hard_delete_error;
+
+  /// No description provided for @hard_delete_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usunięcie konta jest bezpowrotne.'**
+  String get hard_delete_title;
+
+  /// No description provided for @hard_delete_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Skasujemy Twój profil terapeuty, wszystkie sesje, transkrypcje i raporty. Tej akcji nie można cofnąć. Jeśli jesteś pewna/pewien, wpisz słowo {word}.'**
+  String hard_delete_body(String word);
+
+  /// No description provided for @hard_delete_btn_confirm.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń bezpowrotnie'**
+  String get hard_delete_btn_confirm;
+
+  /// No description provided for @common_done.
+  ///
+  /// In pl, this message translates to:
+  /// **'Gotowe'**
+  String get common_done;
+
+  /// No description provided for @addPatient_additional_data_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dodatkowe dane'**
+  String get addPatient_additional_data_title;
+
+  /// No description provided for @addPatient_customize_label_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Spersonalizuj oznaczenie'**
+  String get addPatient_customize_label_title;
+
+  /// No description provided for @addPatient_avatar_format_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Litery, cyfry lub emoji (max 2)'**
+  String get addPatient_avatar_format_hint;
+
+  /// No description provided for @clientDetails_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nad czym dzisiaj pracujemy?'**
+  String get clientDetails_subtitle;
+
+  /// No description provided for @clientDetails_upload_file_btn.
+  ///
+  /// In pl, this message translates to:
+  /// **'WGRAJ PLIK Z DYSKU'**
+  String get clientDetails_upload_file_btn;
+
+  /// No description provided for @clientDetails_record_btn.
+  ///
+  /// In pl, this message translates to:
+  /// **'ROZPOCZNIJ NAGRYWANIE'**
+  String get clientDetails_record_btn;
+
+  /// No description provided for @clientDetails_status_processing.
+  ///
+  /// In pl, this message translates to:
+  /// **'W trakcie przetwarzania…'**
+  String get clientDetails_status_processing;
+
+  /// No description provided for @clientDetails_status_queued.
+  ///
+  /// In pl, this message translates to:
+  /// **'W kolejce…'**
+  String get clientDetails_status_queued;
+
+  /// No description provided for @clientDetails_status_processing_audio.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przetwarzanie audio…'**
+  String get clientDetails_status_processing_audio;
+
+  /// No description provided for @clientDetails_status_finalizing.
+  ///
+  /// In pl, this message translates to:
+  /// **'Finalizowanie sesji…'**
+  String get clientDetails_status_finalizing;
+
+  /// No description provided for @home_delete_error_toast.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd usunięcia: {error}'**
+  String home_delete_error_toast(String error);
+
+  /// No description provided for @report_btn_copy_summary.
+  ///
+  /// In pl, this message translates to:
+  /// **'Kopiuj podsumowanie'**
+  String get report_btn_copy_summary;
+
+  /// No description provided for @report_btn_edit_summary.
+  ///
+  /// In pl, this message translates to:
+  /// **'Edytuj podsumowanie'**
+  String get report_btn_edit_summary;
+
+  /// No description provided for @report_toast_summary_copied.
+  ///
+  /// In pl, this message translates to:
+  /// **'Podsumowanie skopiowane'**
+  String get report_toast_summary_copied;
+
+  /// No description provided for @report_toast_summary_updated.
+  ///
+  /// In pl, this message translates to:
+  /// **'Podsumowanie zaktualizowane'**
+  String get report_toast_summary_updated;
+
+  /// No description provided for @report_edit_summary_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Edycja podsumowania'**
+  String get report_edit_summary_title;
+
+  /// No description provided for @report_edit_summary_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Edytuj podsumowanie sesji...'**
+  String get report_edit_summary_hint;
+
+  /// No description provided for @report_toast_reports_copied.
+  ///
+  /// In pl, this message translates to:
+  /// **'Raporty skopiowane do schowka'**
+  String get report_toast_reports_copied;
+
+  /// No description provided for @report_tooltip_copy_reports.
+  ///
+  /// In pl, this message translates to:
+  /// **'Skopiuj raporty'**
+  String get report_tooltip_copy_reports;
+
+  /// No description provided for @report_toast_section_copied.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sekcja skopiowana do schowka'**
+  String get report_toast_section_copied;
+
+  /// No description provided for @report_edit_section_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Edycja sekcji'**
+  String get report_edit_section_title;
+
+  /// No description provided for @report_toast_section_updated.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sekcja zaktualizowana'**
+  String get report_toast_section_updated;
+
+  /// No description provided for @menu_avatar_camera.
+  ///
+  /// In pl, this message translates to:
+  /// **'Aparat'**
+  String get menu_avatar_camera;
+
+  /// No description provided for @menu_avatar_gallery.
+  ///
+  /// In pl, this message translates to:
+  /// **'Galeria'**
+  String get menu_avatar_gallery;
+
+  /// No description provided for @common_or.
+  ///
+  /// In pl, this message translates to:
+  /// **'lub'**
+  String get common_or;
+
+  /// No description provided for @activeAnalysis_analyzing.
+  ///
+  /// In pl, this message translates to:
+  /// **'Analiza w toku.'**
+  String get activeAnalysis_analyzing;
+
+  /// No description provided for @activeAnalysis_processing.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przetwarzanie sesji.'**
+  String get activeAnalysis_processing;
+
+  /// No description provided for @activeAnalysis_processing_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twoja sesja przechodzi kolejne etapy analizy.'**
+  String get activeAnalysis_processing_desc;
+
+  /// No description provided for @profile_edit_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Edytuj profil.'**
+  String get profile_edit_title;
+
+  /// No description provided for @profile_edit_last_name.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nazwisko (opcjonalne)'**
+  String get profile_edit_last_name;
+
+  /// No description provided for @profile_title_suggestion_1.
+  ///
+  /// In pl, this message translates to:
+  /// **'mgr'**
+  String get profile_title_suggestion_1;
+
+  /// No description provided for @profile_title_suggestion_2.
+  ///
+  /// In pl, this message translates to:
+  /// **'dr'**
+  String get profile_title_suggestion_2;
+
+  /// No description provided for @profile_title_suggestion_3.
+  ///
+  /// In pl, this message translates to:
+  /// **'dr hab.'**
+  String get profile_title_suggestion_3;
+
+  /// No description provided for @profile_title_suggestion_4.
+  ///
+  /// In pl, this message translates to:
+  /// **'prof.'**
+  String get profile_title_suggestion_4;
+
+  /// No description provided for @profile_title_suggestion_5.
+  ///
+  /// In pl, this message translates to:
+  /// **'Psycholog'**
+  String get profile_title_suggestion_5;
+
+  /// No description provided for @profile_title_suggestion_6.
+  ///
+  /// In pl, this message translates to:
+  /// **'Psychoterapeuta'**
+  String get profile_title_suggestion_6;
+
+  /// No description provided for @profile_title_suggestion_7.
+  ///
+  /// In pl, this message translates to:
+  /// **'Terapeuta'**
+  String get profile_title_suggestion_7;
+
+  /// No description provided for @profile_title_suggestion_8.
+  ///
+  /// In pl, this message translates to:
+  /// **'Psychiatra'**
+  String get profile_title_suggestion_8;
+
+  /// No description provided for @profile_title_suggestion_9.
+  ///
+  /// In pl, this message translates to:
+  /// **'Coach'**
+  String get profile_title_suggestion_9;
+
+  /// No description provided for @clientDetails_status_requires_attention.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wymaga uwagi'**
+  String get clientDetails_status_requires_attention;
+
+  /// No description provided for @clientDetails_status_processing_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przetwarzanie'**
+  String get clientDetails_status_processing_label;
+
+  /// No description provided for @clientDetails_status_new_session.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowa sesja'**
+  String get clientDetails_status_new_session;
+
+  /// No description provided for @clientDetails_status_waiting_audio.
+  ///
+  /// In pl, this message translates to:
+  /// **'Oczekiwanie na audio…'**
+  String get clientDetails_status_waiting_audio;
+
+  /// No description provided for @clientDetails_status_ready.
+  ///
+  /// In pl, this message translates to:
+  /// **'Gotowy'**
+  String get clientDetails_status_ready;
+
+  /// No description provided for @clientDetails_status_new_report.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowy raport'**
+  String get clientDetails_status_new_report;
+
+  /// No description provided for @clientDetails_status_analyzing.
+  ///
+  /// In pl, this message translates to:
+  /// **'AI analizuje…'**
+  String get clientDetails_status_analyzing;
+
+  /// No description provided for @clientDetails_status_uploading_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wgrywanie…'**
+  String get clientDetails_status_uploading_label;
+
+  /// No description provided for @clientDetails_status_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Błąd analizy'**
+  String get clientDetails_status_error;
+
+  /// No description provided for @clientDetails_session_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja'**
+  String get clientDetails_session_title;
+
+  /// No description provided for @cancelUpload_warning_text.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ta sesja jest w trakcie analizy. Usunięcie jej oznacza bezpowrotną utratę nagrania i transkrypcji. Nie będzie można tego cofnąć.'**
+  String get cancelUpload_warning_text;
+
+  /// No description provided for @cancelUpload_delete_btn.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń z analizy'**
+  String get cancelUpload_delete_btn;
+
+  /// No description provided for @cancelUpload_confirm_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Na pewno?'**
+  String get cancelUpload_confirm_title;
+
+  /// No description provided for @cancelUpload_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tej operacji nie można cofnąć. Nagranie i transkrypcja zostaną trwale usunięte.'**
+  String get cancelUpload_confirm_body;
+
+  /// No description provided for @cancelUpload_back_btn.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wróć'**
+  String get cancelUpload_back_btn;
+
+  /// No description provided for @forgot_password_link_expiry.
+  ///
+  /// In pl, this message translates to:
+  /// **'Link wygasa po 1 godzinie'**
+  String get forgot_password_link_expiry;
+
+  /// No description provided for @home_report_ready_toast.
+  ///
+  /// In pl, this message translates to:
+  /// **'Raport gotowy, {name} 🎉'**
+  String home_report_ready_toast(String name);
 }
 
 class _AppLocalizationsDelegate

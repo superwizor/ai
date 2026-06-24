@@ -1113,11 +1113,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                       const SizedBox(height: 8),
                       Consumer(
                         builder: (context, ref, child) {
+                          final t = AppLocalizations.of(context);
                           final patients = ref.watch(patientsProvider).whenOrNull(data: (d) => d) ?? [];
                           final patient = patients.where((p) => p.id == widget.patientFileId).firstOrNull;
                           final sessionNumber = (patient?.sessionCount ?? 0) + 1;
                           return Text(
-                            'Sesja #$sessionNumber',
+                            '${t.clientDetails_session_title} #$sessionNumber',
                             style: const TextStyle(
                               fontFamily: 'Merriweather',
                               fontSize: 18,
@@ -1662,6 +1663,7 @@ class _WebRecordingFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: const BoxDecoration(
         gradient: EuphireColors.backgroundGradient,
@@ -1682,7 +1684,7 @@ class _WebRecordingFallback extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Nagrywanie dostępne w aplikacji iOS',
+                    t.recording_ios_only_title,
                     textAlign: TextAlign.center,
                     style: Theme.of(context)
                         .textTheme
@@ -1691,9 +1693,9 @@ class _WebRecordingFallback extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Aby nagrać sesję z $patientAlias, użyj aplikacji '
-                    'Superwizor na iPhone. Po przesłaniu nagrania '
-                    'transkrypcja i raport pojawią się tutaj.',
+                    '${t.recording_ios_only_body_part1(patientAlias)}'
+                    '${t.recording_ios_only_body_part2}'
+                    '${t.recording_ios_only_body_part3}',
                     textAlign: TextAlign.center,
                     style: Theme.of(context)
                         .textTheme
@@ -1703,7 +1705,7 @@ class _WebRecordingFallback extends StatelessWidget {
                   const SizedBox(height: 32),
                   ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Powrót'),
+                    child: Text(t.recording_btn_back),
                   ),
                 ],
               ),

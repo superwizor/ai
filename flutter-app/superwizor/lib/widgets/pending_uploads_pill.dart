@@ -7,6 +7,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../l10n/app_localizations.dart';
 
 import '../screens/pending_uploads_screen.dart';
 import '../theme/euphire_theme.dart';
@@ -19,6 +20,7 @@ class PendingUploadsPill extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context);
     final async = ref.watch(pendingUploadsStreamProvider);
     final list =
         async.maybeWhen(data: (l) => l, orElse: () => <PendingUpload>[]);
@@ -43,20 +45,20 @@ class PendingUploadsPill extends ConsumerWidget {
     if (hasFailure) {
       color = Colors.redAccent.shade200;
       icon = Icons.error_outline;
-      label = '${list.length} wymaga uwagi';
+      label = t.pendingUploads_pill_attention(list.length);
     } else if (hasRetrying) {
       color = EuphireColors.ember;
       icon = Icons.refresh_rounded;
-      label = '${list.length} wznawianie';
+      label = t.pendingUploads_pill_retrying(list.length);
     } else if (allCompleted) {
       // Upload finished; backend analysis is still running.
       color = EuphireColors.ember;
       icon = Icons.auto_awesome;
-      label = '${list.length} analiza';
+      label = t.pendingUploads_pill_analyzing(list.length);
     } else {
       color = EuphireColors.ember;
       icon = Icons.cloud_upload_outlined;
-      label = '${list.length} w toku';
+      label = t.pendingUploads_pill_in_progress(list.length);
     }
 
     return InkWell(

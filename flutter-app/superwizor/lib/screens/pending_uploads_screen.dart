@@ -26,6 +26,7 @@ class PendingUploadsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
     final async = ref.watch(pendingUploadsStreamProvider);
 
     return Scaffold(
@@ -47,9 +48,9 @@ class PendingUploadsScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Kolejka sesji',
-                          style: TextStyle(
+                        Text(
+                          l.pending_uploads_title,
+                          style: const TextStyle(
                             fontFamily: 'Montserrat',
                             fontSize: 26,
                             fontWeight: FontWeight.w700,
@@ -59,7 +60,7 @@ class PendingUploadsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Status przesyłania i przetwarzania nagrań.',
+                          l.pending_uploads_subtitle,
                           style: TextStyle(
                             fontFamily: 'Montserrat',
                             fontSize: 14,
@@ -76,7 +77,7 @@ class PendingUploadsScreen extends ConsumerWidget {
               child: async.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
-                  child: Text('Błąd: $e',
+                  child: Text(l.pending_uploads_error(e.toString()),
                       style: const TextStyle(color: EuphireColors.frostWhite)),
                 ),
                 data: (rows) {
@@ -136,6 +137,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -145,9 +147,9 @@ class _EmptyState extends StatelessWidget {
             Icon(Icons.cloud_done_outlined,
                 size: 48, color: Colors.white.withValues(alpha: 0.4)),
             const SizedBox(height: 16),
-            const Text(
-              'Brak plików w kolejce',
-              style: TextStyle(
+            Text(
+              l.pending_uploads_empty_title,
+              style: const TextStyle(
                   fontFamily: 'Montserrat',
                   fontSize: 16,
                   color: EuphireColors.frostWhite,
@@ -155,7 +157,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Wszystkie sesje zostały wgrane.',
+              l.pending_uploads_empty_body,
               style: TextStyle(
                   fontFamily: 'Merriweather',
                   color: Colors.white.withValues(alpha: 0.6)),
@@ -287,16 +289,17 @@ class _BottomSheetNetworkError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final rawError = upload.lastError ?? '';
     final lower = rawError.toLowerCase();
     final isNetworkErr = lower.contains('socket') ||
         lower.contains('network') ||
         lower.contains('clientexception');
 
-    final title = isNetworkErr ? 'Brak połączenia z internetem' : 'Błąd przesyłania';
+    final title = isNetworkErr ? l.pending_uploads_no_internet_title : l.pending_uploads_error_title;
     final desc = isNetworkErr
-        ? 'Przesyłanie zostało przerwane, ale Twoje nagranie jest bezpiecznie zapisane na tym urządzeniu. Spróbuj przesłać je ponownie, gdy odzyskasz zasięg.'
-        : 'Przesyłanie zostało przerwane z powodu błędu, ale Twoje nagranie jest bezpiecznie zapisane na tym urządzeniu. Spróbuj przesłać je ponownie.';
+        ? l.pending_uploads_no_internet_desc
+        : l.pending_uploads_error_desc;
     final icon = isNetworkErr ? Icons.wifi_off_rounded : Icons.cloud_off_rounded;
 
     return Container(
@@ -378,7 +381,7 @@ class _BottomSheetNetworkError extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        _UploadRowState._friendlyError(rawError),
+                        _UploadRowState._friendlyError(rawError, l),
                         style: const TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 13,
@@ -415,12 +418,12 @@ class _BottomSheetNetworkError extends StatelessWidget {
                           strokeWidth: 2.5,
                         ),
                       )
-                    : const Text(
-                        'Prześlij ponownie',
-                        style: TextStyle(
+                    : Text(
+                        l.pending_uploads_btn_resend,
+                        style: const TextStyle(
                           fontFamily: 'Montserrat',
-                          fontSize: 16,
                           fontWeight: FontWeight.w700,
+                          fontSize: 16,
                         ),
                       ),
               ),
@@ -440,9 +443,9 @@ class _BottomSheetNetworkError extends StatelessWidget {
                     borderRadius: BorderRadius.circular(5),
                   ),
                 ),
-                child: const Text(
-                  'Zamknij',
-                  style: TextStyle(
+                child: Text(
+                  l.common_close,
+                  style: const TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -521,7 +524,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
     // Fetch patient name and session count reactively.
     final patients = ref.watch(patientsProvider).value;
     final patient = patients?.where((p) => p.id == upload.patientFileId).firstOrNull;
-    final patientName = patient != null ? '${patient.firstName} ${patient.lastName}' : 'Pacjent';
+    final patientName = patient != null ? '${patient.firstName} ${patient.lastName}' : l.pending_uploads_default_patient_name;
     final sessionNumber = (patient?.sessionCount ?? 0) + 1;
 
     // Quota-blocked rows get a special premium card
@@ -668,7 +671,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      _detailLine(upload),
+                      _detailLine(upload, l),
                       style: TextStyle(
                         fontFamily: 'RobotoMono',
                         fontSize: 12,
@@ -720,8 +723,8 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                 const SizedBox(height: 10),
                 Text(
                   isFailed
-                      ? _friendlyError(upload.lastError!).toUpperCase()
-                      : 'WZNAWIAM AUTOMATYCZNIE: ${_friendlyError(upload.lastError!)}'.toUpperCase(),
+                      ? _friendlyError(upload.lastError!, l).toUpperCase()
+                      : '${l.pending_uploads_resending_auto_prefix}${_friendlyError(upload.lastError!, l)}'.toUpperCase(),
                   style: TextStyle(
                     fontFamily: 'RobotoMono',
                     fontSize: 11,
@@ -745,9 +748,9 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                         await runner?.dismiss(upload.localId);
                       },
                       icon: const Icon(Icons.close, size: 18, color: EuphireColors.frostWhite),
-                      label: const Text(
-                        'Zamknij',
-                        style: TextStyle(
+                      label: Text(
+                        l.common_close,
+                        style: const TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -775,7 +778,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                         color: EuphireColors.magma,
                       ),
                       label: Text(
-                        isFailed ? 'Usuń' : 'Anuluj',
+                        isFailed ? l.common_delete : l.common_cancel,
                         style: const TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 14,
@@ -812,9 +815,9 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                                 color: EuphireColors.nocturne,
                               ),
                             )
-                          : const Text(
-                              'Prześlij ponownie',
-                              style: TextStyle(
+                          : Text(
+                              l.pending_uploads_btn_resend,
+                              style: const TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14,
@@ -858,7 +861,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
           currentRow.phase == UploadPhase.quotaBlocked) {
         // Still quota-blocked — show feedback
         if (context.mounted) {
-          _showQuotaStillBlockedBottomSheet(context);
+          _showQuotaStillBlockedBottomSheet(context, l);
         }
       }
     } finally {
@@ -866,7 +869,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
     }
   }
 
-  void _showQuotaStillBlockedBottomSheet(BuildContext context) {
+  void _showQuotaStillBlockedBottomSheet(BuildContext context, AppLocalizations l) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -891,10 +894,10 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                   size: 28,
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Brak dostępnych sesji',
-                    style: TextStyle(
+                    l.pending_uploads_quota_dialog_title,
+                    style: const TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -906,7 +909,7 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
             ),
             const SizedBox(height: 16),
             Text(
-              'Twoja pula sesji w tym miesiącu została wyczerpana. Aby przetworzyć to nagranie, odwiedź platformę Superwizor w przeglądarce internetowej, aby zarządzać swoim planem.',
+              l.pending_uploads_quota_dialog_body,
               style: TextStyle(
                 fontFamily: 'Merriweather',
                 fontSize: 14,
@@ -925,9 +928,9 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
                   borderRadius: BorderRadius.circular(5),
                 ),
               ),
-              child: const Text(
-                'Zrozumiałem',
-                style: TextStyle(
+              child: Text(
+                l.common_got_it,
+                style: const TextStyle(
                   fontFamily: 'Montserrat',
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -941,22 +944,22 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
   }
 
   /// Map a user-hostile error string to a friendlier one-liner.
-  static String _friendlyError(String raw) {
+  static String _friendlyError(String raw, AppLocalizations l) {
     final lower = raw.toLowerCase();
     String reason = raw;
     if (lower.contains('socket') || lower.contains('network') ||
         lower.contains('clientexception')) {
-      reason = 'brak połączenia z internetem';
+      reason = l.pending_uploads_err_reason_no_internet;
     } else if (lower.contains('timeout') || lower.contains('deadline')) {
-      reason = 'serwer nie odpowiedział w terminie';
+      reason = l.pending_uploads_err_reason_timeout;
     } else if (lower.contains('expiredtoken') || lower.contains('signedurl')) {
-      reason = 'link do przesyłania wygasł';
+      reason = l.pending_uploads_err_reason_link_expired;
     } else if (lower.contains('unavailable')) {
-      reason = 'serwer chwilowo niedostępny';
+      reason = l.pending_uploads_err_reason_unavailable;
     } else if (raw.length > 60) {
       reason = '${raw.substring(0, 57)}...';
     }
-    return 'Powód błędu: $reason';
+    return l.pending_uploads_err_reason_prefix(reason);
   }
 
   static IconData _phaseIcon(UploadPhase p, {bool isRetrying = false}) {
@@ -983,33 +986,33 @@ class _UploadRowState extends ConsumerState<_UploadRow> with SingleTickerProvide
 
   static String _phaseLabel(UploadPhase p, AppLocalizations l,
       {bool isRetrying = false}) {
-    if (isRetrying) return 'Wznawianie przesyłania...';
+    if (isRetrying) return l.pending_uploads_phase_resuming;
     switch (p) {
       case UploadPhase.encrypting:
-        return 'Szyfrowanie nagrania...';
+        return l.pending_uploads_phase_encrypting;
       case UploadPhase.converting:
-        return 'Konwersja pliku audio...';
+        return l.pending_uploads_phase_converting;
       case UploadPhase.pending:
-        return 'W kolejce';
+        return l.pending_uploads_phase_pending;
       case UploadPhase.created:
-        return 'Przesyłam na serwer...';
+        return l.pending_uploads_phase_uploading;
       case UploadPhase.uploaded:
-        return 'Przesłano — finalizuję...';
+        return l.pending_uploads_phase_uploaded;
       case UploadPhase.converted:
-        return 'Konwersja gotowa — finalizuję...';
+        return l.pending_uploads_phase_converted;
       case UploadPhase.completed:
-        return 'Wgrane';
+        return l.pending_uploads_phase_completed;
       case UploadPhase.failed:
-        return 'Przesyłanie przerwane';
+        return l.pending_uploads_phase_failed;
       case UploadPhase.quotaBlocked:
         return l.quota_blocked_queue_label;
     }
   }
 
-  static String _detailLine(PendingUpload u) {
+  static String _detailLine(PendingUpload u, AppLocalizations l) {
     final mb = (u.sizeBytes / 1024 / 1024).toStringAsFixed(1);
     final mins = (u.actualDurationSeconds / 60).toStringAsFixed(0);
-    final retry = u.attemptCount > 0 ? ' • próba ${u.attemptCount + 1}' : '';
+    final retry = u.attemptCount > 0 ? l.pending_uploads_detail_attempt(u.attemptCount + 1) : '';
     return '$mb MB${u.actualDurationSeconds > 0 ? " • $mins min" : ""}$retry';
   }
 }
@@ -1035,6 +1038,7 @@ class _QuotaBlockedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final mb = (upload.sizeBytes / 1024 / 1024).toStringAsFixed(1);
     final mins = (upload.actualDurationSeconds / 60).toStringAsFixed(0);
 
@@ -1077,9 +1081,9 @@ class _QuotaBlockedCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Nagranie czeka na wznowienie.',
-                        style: TextStyle(
+                      Text(
+                        l.pending_uploads_quota_card_title,
+                        style: const TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -1099,9 +1103,7 @@ class _QuotaBlockedCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Pula sesji została wyczerpana. '
-                        'Sesja jest bezpiecznie zapisana i zostanie '
-                        'przetworzona po odnowieniu planu.',
+                        l.pending_uploads_quota_card_desc,
                         style: TextStyle(
                           fontFamily: 'Merriweather',
                           fontSize: 12,
@@ -1158,7 +1160,7 @@ class _QuotaBlockedCard extends StatelessWidget {
                   ],
                   const Spacer(),
                   Text(
-                    DateFormat('HH:mm, d MMM', 'pl')
+                    DateFormat('HH:mm, d MMM', Localizations.localeOf(context).languageCode)
                         .format(upload.queuedAt.toLocal()),
                     style: TextStyle(
                       fontFamily: 'RobotoMono',
@@ -1217,8 +1219,8 @@ class _QuotaBlockedCard extends StatelessWidget {
                             const SizedBox(width: 8),
                             Text(
                               isResending
-                                  ? 'Sprawdzam...'
-                                  : 'Wyślij ponownie',
+                                  ? l.pending_uploads_btn_checking
+                                  : l.pending_uploads_btn_send_again,
                               style: TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontSize: 13,
@@ -1262,7 +1264,7 @@ class _QuotaBlockedCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Usuń',
+                            l.common_delete,
                             style: TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 13,

@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/app_localizations.dart';
 import '../utils/haptics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -98,6 +99,7 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final t = AppLocalizations.of(context);
 
     return Container(
       decoration: const BoxDecoration(
@@ -139,7 +141,7 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Nadaj swoim klientom unikalne oznaczenia, aby szybko znaleźć ich w kartotece.',
+                          t.avatar_customize_desc,
                           style: TextStyle(
                             fontFamily: 'Montserrat',
                             fontSize: 13,
@@ -187,9 +189,9 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
               const SizedBox(height: 20),
 
               // Title
-              const Text(
-                'Spersonalizuj oznaczenie',
-                style: TextStyle(
+              Text(
+                t.addPatient_customize_label_title,
+                style: const TextStyle(
                   fontFamily: 'Merriweather',
                   fontStyle: FontStyle.italic,
                   fontSize: 20,
@@ -251,7 +253,7 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
               ),
               const SizedBox(height: 6),
               Text(
-                'Litery, cyfry lub emoji (max 2)',
+                t.addPatient_avatar_format_hint,
                 style: TextStyle(
                   fontFamily: 'RobotoMono',
                   fontSize: 11,
@@ -262,7 +264,7 @@ class _AvatarCustomizeSheetState extends ConsumerState<AvatarCustomizeSheet>
 
               // Color grid
               Text(
-                'KOLOR TŁA',
+                t.avatar_customize_background_color,
                 style: TextStyle(
                   fontFamily: 'RobotoMono',
                   fontSize: 11,

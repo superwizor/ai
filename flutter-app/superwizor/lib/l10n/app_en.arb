@@ -14,6 +14,12 @@
   "common_retry": "Retry.",
   "common_loading": "Loading…",
   "common_error": "An error occurred.",
+  "common_not_found": "Not found",
+  "language_pl_name": "Polski",
+  "language_pl_sub": "Polish",
+  "language_en_name": "English",
+  "language_en_sub": "English (UK)",
+  "session_name_fallback": "Conversation",
 
   "connectivity_offline_banner": "No connection. Some features are limited.",
 
@@ -124,8 +130,11 @@
   "recording_instruction_2": "Point the microphone towards the conversation, do not cover it.",
   "recording_instruction_3": "Quiet environment – close windows/doors, turn off noise sources.",
   "recording_instruction_4": "For video conferences (e.g. Google Meet, Zoom), always use a secondary device to record.",
+  "recording_status_initializing": "Starting recording…",
   "recording_status_recording": "Recording in progress.",
   "recording_status_paused": "Recording paused.",
+  "minimized_recording_paused": "Recording paused",
+  "minimized_recording_active": "Recording session...",
 
   "recording_mic_denied_header": "No microphone access.",
   "recording_mic_denied_body": "To record a session, enable microphone access in system settings. Go to Settings → Superwizor → Microphone.",
@@ -263,6 +272,9 @@
   "drawer_about": "About App",
   "drawer_logout": "Sign Out.",
   "drawer_delete_account": "Delete Account.",
+  "drawer_fallback_name": "Therapist",
+  "drawer_settings_header": "SETTINGS",
+  "drawer_legal_header": "LEGAL DOCUMENTS",
 
   "settings_title": "Settings",
   "settings_subtitle": "CUSTOMIZE YOUR EXPERIENCE",
@@ -607,5 +619,549 @@
   "live_activity_permission_title": "System permission required",
   "live_activity_permission_body": "Lock screen session preview requires Live Activities to be enabled in system settings.",
   "live_activity_permission_open_settings": "Open settings",
-  "live_activity_permission_cancel": "Cancel"
+  "live_activity_permission_cancel": "Cancel",
+
+  "home_greeting_prefix": "Welcome, ",
+  "home_greeting_subtitle": "Who are we working with today?",
+  "home_search_hint": "Search client…",
+  "home_empty_list": "Add your first client to get started.",
+  "home_no_search_results": "No results for “{query}”",
+  "@home_no_search_results": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "home_section_active": "YOUR CLIENT RECORDS",
+  "home_section_active_filtered": "YOUR CLIENT RECORDS • FILTER",
+  "home_section_paused": "PAUSED ({count})",
+  "@home_section_paused": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "home_section_completed": "COMPLETED ({count})",
+  "@home_section_completed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "home_status_awaiting_first_session": "Awaiting first session",
+  "home_status_new_client": "New client",
+  "home_card_sessions_prefix": "Sessions: ",
+  "home_card_last_session_prefix": " • Last: ",
+  "home_card_last_prefix_only": "Last: ",
+  "home_status_recording": "Recording",
+  "home_status_has_new_report": "New report",
+  "home_status_analyzing": "AI analyzing",
+  "home_status_uploading": "Uploading…",
+  "home_status_upload_failed": "Upload\nfailed",
+  "home_status_error": "Analysis error",
+  "home_status_active": "Active",
+  "home_status_completed": "Completed",
+  "home_status_paused": "Paused",
+  "home_status_new": "New",
+  "home_menu_lifecycle_active": "Active",
+  "home_menu_lifecycle_completed": "Completed",
+  "home_menu_lifecycle_paused": "Paused",
+  "home_menu_edit_data": "Edit details",
+  "home_menu_edit_data_desc": "Change name, alias, or email",
+  "home_menu_delete_patient": "Delete record",
+  "home_menu_delete_patient_desc": "Erase history, sessions, and notes",
+  "home_menu_field_first_name": "First name (required)",
+  "home_menu_field_last_name": "Initial or alias",
+  "home_menu_field_email": "Client email",
+  "home_menu_btn_back": "Back",
+  "home_menu_btn_save": "Save",
+  "home_menu_manage_client": "Manage client record",
+  "home_menu_edit_client": "Edit client file",
+  "home_delete_title": "Delete client: {name}",
+  "@home_delete_title": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "home_delete_warning_body": "All clinical documentation — sessions, AI notes, and audio recordings — will be permanently and irreversibly deleted from medical databases.\nIn accordance with GDPR (right to be forgotten).",
+  "home_delete_warning_understand": "I understand, this is irreversible.",
+  "home_delete_btn_continue": "Continue deletion",
+  "home_delete_confirm_instruction": "To confirm, type:",
+  "home_delete_confirm_word": "delete",
+  "home_delete_confirm_hint": "type here…",
+  "home_delete_btn_confirm": "Delete client",
+  "home_delete_btn_cancel": "Cancel.",
+  "home_error_loading": "Error: {error}",
+  "@home_error_loading": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "common_close": "Close",
+  "common_copied_to_clipboard": "Copied to clipboard",
+  "common_delete": "Delete",
+  "common_got_it": "Got it",
+  "pendingUploads_pill_attention": "{count} requires attention",
+  "@pendingUploads_pill_attention": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingUploads_pill_retrying": "{count} retrying",
+  "@pendingUploads_pill_retrying": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingUploads_pill_analyzing": "{count} analyzing",
+  "@pendingUploads_pill_analyzing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingUploads_pill_in_progress": "{count} in progress",
+  "@pendingUploads_pill_in_progress": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pending_uploads_title": "Session Queue",
+  "pending_uploads_subtitle": "Upload and processing status of recordings.",
+  "pending_uploads_error": "Error: {error}",
+  "@pending_uploads_error": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "pending_uploads_empty_title": "No files in queue",
+  "pending_uploads_empty_body": "All sessions have been uploaded.",
+  "pending_uploads_no_internet_title": "No internet connection",
+  "pending_uploads_error_title": "Upload error",
+  "pending_uploads_no_internet_desc": "Upload was interrupted, but your recording is safely saved on this device. Try uploading again when you regain connection.",
+  "pending_uploads_error_desc": "Upload was interrupted due to an error, but your recording is safely saved on this device. Try uploading again.",
+  "pending_uploads_btn_resend": "Resend",
+  "pending_uploads_default_patient_name": "Patient",
+  "pending_uploads_resending_auto_prefix": "RETRYING AUTOMATICALLY: ",
+  "pending_uploads_quota_dialog_title": "No sessions available",
+  "pending_uploads_quota_dialog_body": "Your session pool for this month has been exhausted. To process this recording, visit the Superwizor platform in a web browser to manage your plan.",
+  "pending_uploads_err_reason_no_internet": "no internet connection",
+  "pending_uploads_err_reason_timeout": "server did not respond in time",
+  "pending_uploads_err_reason_link_expired": "upload link expired",
+  "pending_uploads_err_reason_unavailable": "server temporarily unavailable",
+  "pending_uploads_err_reason_prefix": "Error reason: {reason}",
+  "@pending_uploads_err_reason_prefix": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "pending_uploads_phase_resuming": "Resuming upload...",
+  "pending_uploads_phase_encrypting": "Encrypting recording...",
+  "pending_uploads_phase_converting": "Converting audio file...",
+  "pending_uploads_phase_pending": "In queue",
+  "pending_uploads_phase_uploading": "Uploading to server...",
+  "pending_uploads_phase_uploaded": "Uploaded — finalizing...",
+  "pending_uploads_phase_converted": "Conversion ready — finalizing...",
+  "pending_uploads_phase_completed": "Uploaded",
+  "pending_uploads_phase_failed": "Upload interrupted",
+  "pending_uploads_detail_attempt": " • attempt {attempt}",
+  "@pending_uploads_detail_attempt": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      }
+    }
+  },
+  "pending_uploads_quota_card_title": "Recording is waiting to resume.",
+  "pending_uploads_quota_card_desc": "Token pool has been exhausted. The session is safely saved and will be processed after the plan renews.",
+  "pending_uploads_btn_checking": "Checking...",
+  "pending_uploads_btn_send_again": "Send again",
+  "addPatient_email_required_error": "Please provide email or change client language.",
+  "addPatient_alias_instruction": "Give the client a unique label — it will make navigation easier.",
+  "addPatient_background_color": "BACKGROUND COLOR",
+  "addPatient_skip_for_now": "Skip for now",
+  "clientDetails_profile_not_loaded": "Profile has not been loaded yet. Try again in a moment.",
+  "clientDetails_error": "Error: {error}",
+  "@clientDetails_error": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "clientDetails_session_error": "Session error: {error}",
+  "@clientDetails_session_error": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "clientDetails_start_work": "Start work",
+  "clientDetails_start_work_desc": "Start recording and the system will take care of secure transcription and prepare a clinical report.",
+  "clientDetails_encryption_notice_part1": "Your data is encrypted end-to-end. ",
+  "clientDetails_encryption_notice_part2": "No one but you has access to it.",
+  "clientDetails_upload_recording": "Upload voice recorder recording",
+  "clientDetails_record_new_session": "Record new therapy session",
+  "clientDetails_start_first_analysis": "Start first analysis",
+  "clientDetails_status_converting": "Converting audio…",
+  "clientDetails_status_uploading": "Uploading audio…",
+  "clientDetails_status_interrupted": "Upload interrupted",
+  "clientDetails_delete_session_title": "Permanent session deletion",
+  "clientDetails_delete_session_desc": "The session, recording, and transcription will be permanently deleted. This action cannot be undone.",
+  "clientDetails_btn_yes_delete": "Yes, delete",
+  "clientDetails_manage_session": "Manage session",
+  "clientDetails_manage_session_desc": "Change title or delete session",
+  "clientDetails_session_title_label": "Session title",
+  "clientDetails_btn_save_title": "Save title",
+  "clientDetails_btn_delete_session": "Delete session",
+  "clientDetails_btn_delete_session_desc": "Permanently delete recording and analysis",
+  "clientDetails_edit_note_subtitle": "Change title or content of note",
+  "clientDetails_copy_content": "Copy content",
+  "clientDetails_copy_content_desc": "Copy note to clipboard",
+  "clientDetails_note_sent_at": "Sent {date}",
+  "@clientDetails_note_sent_at": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "clientDetails_send_note_desc": "Send note via email to client",
+  "clientDetails_note_sent_badge": "Sent",
+  "clientDetails_delete_note_desc": "Permanently delete this note",
+  "clientDetails_no_content": "No content",
+  "sessionDetails_stat_modality": "MODALITY",
+  "sessionDetails_stat_words": "WORDS",
+  "sessionDetails_stat_sentiment": "SENTIMENT",
+  "sessionDetails_stat_sentiment_neutral": "Neutral",
+  "sessionDetails_stat_sentiment_unknown": "Unknown",
+  "sessionDetails_stat_status": "STATUS",
+  "sessionDetails_stat_status_new": "New",
+  "sessionDetails_tab_analyses": "Analysis",
+  "sessionDetails_tab_transcriptions": "Transcripts",
+  "sessionDetails_toast_reports_copied": "All reports copied to clipboard",
+  "sessionDetails_toast_transcript_copied": "Transcript copied to clipboard",
+  "sessionDetails_ai_reports_soon": "AI Reports — coming soon",
+  "sessionDetails_ai_reports_soon_desc": "Session analysis and automatic reports will be available\nin the next update.",
+  "sessionDetails_transcript_soon": "Transcription — coming soon",
+  "sessionDetails_transcript_soon_desc": "Automatic transcription with speaker recognition\nwill be available in the next update.",
+  "sessionDetails_copy_transcript": "Copy transcription",
+  "report_copy_desc": "Copy content to clipboard",
+  "report_edit_summary_desc": "Correct or complete the AI summary",
+  "report_btn_copy_section": "Copy section",
+  "report_btn_edit_section": "Edit content",
+  "report_edit_section_desc": "Correct or complete the AI report",
+  "report_edit_section_hint": "Edit section content...",
+  "report_intro_title": "Introduction",
+  "menu_avatar_title": "Profile picture",
+  "menu_avatar_desc": "Choose where you want to add the photo from.",
+  "menu_avatar_updated": "Profile picture updated",
+  "menu_save_error": "An error occurred while saving: {error}",
+  "@menu_save_error": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "menu_invalid_email": "Provide a valid email address.",
+  "menu_verification_sent": "Verification link sent to {email}",
+  "@menu_verification_sent": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "menu_reauth_required": "Log in again to change email.",
+  "menu_email_in_use": "This email address is already in use.",
+  "menu_error_message": "An error occurred: {error}",
+  "@menu_error_message": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "menu_change_email_title": "Change email address",
+  "menu_change_email_desc": "We will send a verification link to the new address.",
+  "menu_btn_send_verification": "Send verification",
+  "menu_delete_account_confirm_title": "Permanent and irreversible deletion",
+  "sessionStatus_uploading_desc": "Superwizor is uploading the session recording to the server.",
+  "sessionStatus_btn_delete_session": "Delete session",
+  "sessionStatus_upload_stopped_title": "Upload stopped",
+  "sessionStatus_upload_stopped_net_err": "A network connection problem occurred.\n\n",
+  "sessionStatus_upload_stopped_safe": "The recording is safe on your device. ",
+  "sessionStatus_upload_stopped_resume": "The system will resume uploading when you regain coverage.",
+  "sessionStatus_report_failed_temp": "The report creation process encountered a difficulty.\n\n",
+  "sessionStatus_report_failed_retry": "Please try analyzing again in a while.",
+  "sessionStatus_report_failed_perm": "Could not generate report for this session.\n\n",
+  "sessionStatus_report_failed_contact": "If the situation persists, please let us know.",
+  "sessionStatus_status_uploading": "Uploading to server",
+  "sessionStatus_status_queued": "In queue to upload",
+  "sessionStatus_bg_processing_notice": "You can safely leave this screen,\nthe session will process in the background.",
+  "recording_ios_only_title": "Recording available in iOS app",
+  "recording_ios_only_body_part1": "To record a session with {alias}, use the ",
+  "@recording_ios_only_body_part1": {
+    "placeholders": {
+      "alias": {
+        "type": "String"
+      }
+    }
+  },
+  "recording_ios_only_body_part2": "Superwizor app on iPhone. After uploading the recording, ",
+  "recording_ios_only_body_part3": "the transcript and report will appear here.",
+  "recording_btn_back": "Go Back",
+  "newSession_error_header": "Error",
+  "newSession_upload_file_header": "FILE UPLOAD",
+  "newSession_new_session_header": "NEW SESSION",
+  "newSession_pick_file_desc": "Select an audio file from disk. After upload, the file will be automatically analyzed.",
+  "newSession_record_or_upload_desc": "Record this session, or upload an audio file from a voice recorder.",
+  "newSession_secure_upload_title": "Secure upload.",
+  "newSession_secure_upload_desc": "Your file is encrypted and securely sent to our servers in Europe. No one but you has access to this data.",
+  "newSession_recording_in_progress_err": "Another session recording is in progress. Return to it to continue.",
+  "newSession_format_not_supported": "Format \"{ext}\" is not supported.\n\n",
+  "@newSession_format_not_supported": {
+    "placeholders": {
+      "ext": {
+        "type": "String"
+      }
+    }
+  },
+  "newSession_supported_formats": "Supported formats: FLAC, WAV, MP3, OGG, OPUS, M4A, AAC, WEBM, AMR.",
+  "newSession_file_too_large": "File is too large ({size} MB). ",
+  "@newSession_file_too_large": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "newSession_uploading_file": "Uploading file...",
+  "newSession_recording_active_err": "Session recording is active. Return to it to continue.",
+  "newSession_preparing_file": "Preparing file...",
+  "newSession_queuing": "Queuing...",
+  "newSession_encryption_notice_part1": "Your recordings are protected by end-to-end encryption and are used solely ",
+  "newSession_encryption_notice_part2": "for AI analysis. No one but you has access to the data.",
+  "newSession_upload_error": "Error uploading file:\n{error}",
+  "@newSession_upload_error": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "login_auth_error": "Auth error [{code}]: {message}",
+  "@login_auth_error": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "login_accept_terms_error": "Accept the Terms and Privacy Policy to continue.",
+  "login_subtitle": "Sign in to Superwizor AI",
+  "login_title": "Welcome back",
+  "login_forgot_password": "Forgot password",
+  "login_btn_sign_in": "Sign in",
+  "login_btn_sign_up": "Sign up",
+  "login_register_title": "Create account",
+  "login_register_subtitle": "Join the therapist community",
+  "login_name_field": "Full name",
+  "login_password_hint": "Create password (min. 8 characters)",
+  "login_already_have_account": "Already have an account? ",
+  "login_accept_prefix": "I accept the ",
+  "login_accept_privacy": "Privacy Policy",
+  "login_privacy_policy_title": "Privacy Policy",
+  "forgot_err_user_not_found": "We did not find an account with this address.",
+  "forgot_err_invalid_email": "This email address looks invalid.",
+  "forgot_err_too_many_requests": "Too many attempts. Wait a moment.",
+  "forgot_err_generic": "Something went wrong. Please try again.",
+  "forgot_title": "Reset password",
+  "forgot_desc_part1": "Enter the email address associated with your account. ",
+  "forgot_desc_part2": "We will send you a link to set a new password.",
+  "forgot_email_hint": "Your email address",
+  "forgot_btn_send_link": "Send link",
+  "forgot_check_mailbox_title": "Check your mailbox",
+  "forgot_sent_msg_prefix": "We sent a message to the address\n",
+  "forgot_step_open_email": "Open your email inbox",
+  "forgot_step_click_link": "Click the \"Reset password\" link",
+  "forgot_step_login": "Set new password and log in",
+  "forgot_spam_check_part1": "Don't see the message? Check your spam folder. ",
+  "forgot_spam_check_part2": "Delivery may take up to 2 minutes.",
+  "forgot_btn_back_to_login": "Return to login",
+  "forgot_btn_send_again": "Resend",
+  "transcript_default_speaker_label": "Voice",
+  "home_error_toast": "Error: {error}",
+  "@home_error_toast": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "home_manage_edit_card": "Edit details",
+  "home_manage_card": "Manage client record",
+  "sort_filter_header_sorting": "SORTING",
+  "sort_filter_last_activity": "Last activity",
+  "sort_filter_last_activity_desc": "Clients you recently worked with",
+  "sort_filter_long_unseen": "Long unseen",
+  "sort_filter_no_sessions_longest_desc": "Clients without sessions for the longest time",
+  "sort_filter_alphabetical": "Alphabetically",
+  "sort_filter_alphabetical_desc": "File names from A to Z",
+  "sort_filter_longest_processes": "Longest processes",
+  "sort_filter_longest_processes_desc": "Clients with the most sessions",
+  "sort_filter_show_only": "SHOW ONLY",
+  "sort_filter_new_reports": "New reports and analyses",
+  "sort_filter_ready_reports_desc": "Ready AI reports or ongoing analysis",
+  "sort_filter_modality": "MODALITY",
+  "sort_filter_clear_filters": "Clear filters",
+  "editPatient_error": "Error: {error}",
+  "@editPatient_error": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "activeAnalysis_uploading_status": "Uploading: {errors} {errors, plural, =1{error} other{errors}}, {progress} in progress.",
+  "@activeAnalysis_uploading_status": {
+    "placeholders": {
+      "errors": {
+        "type": "int"
+      },
+      "progress": {
+        "type": "int"
+      }
+    }
+  },
+  "activeAnalysis_uploading_status_desc": "Some files require attention, but the rest are uploading without interruption.",
+  "activeAnalysis_check_details": "Check details",
+  "activeAnalysis_upload_attention": "Upload requires attention.",
+  "activeAnalysis_upload_attention_desc": "Session could not be uploaded. Check details.",
+  "activeAnalysis_quota_blocked_desc": "Token pool has been exhausted. The session is safely saved and will be processed after the plan renews.",
+  "activeAnalysis_view_details": "View details",
+  "activeAnalysis_upload_interrupted": "Upload has been interrupted.",
+  "activeAnalysis_upload_interrupted_desc": "Automatic resume will be attempted. Recording is safe.",
+  "activeAnalysis_preparing": "Preparing recording.",
+  "activeAnalysis_preparing_desc": "Session is encrypted before uploading to the server.",
+  "activeAnalysis_view_progress": "View progress",
+  "activeAnalysis_converting": "Converting audio file.",
+  "activeAnalysis_converting_desc": "File format requires conversion. This will take a moment.",
+  "activeAnalysis_uploading": "Session is being uploaded to the server.",
+  "activeAnalysis_uploading_desc": "File is safely reaching the server. You can continue working.",
+  "activeAnalysis_analyzing_desc": "Session is already on the server. Report will appear in a few minutes.",
+  "recording_countdown_preparing": "Get ready…",
+  "drawer_btn_logout": "Sign out",
+  "drawer_btn_delete_account": "Delete account",
+  "avatar_customize_desc": "Give your clients unique labels to quickly find them in records.",
+  "avatar_customize_background_color": "BACKGROUND COLOR",
+  "profile_edit_desc": "Provide your first name, last name, and professional title.",
+  "profile_edit_first_name": "First name",
+  "profile_edit_professional_title": "Professional title (e.g. MA, Psychologist)",
+  "report_detail_copy_content": "Copy content",
+  "hard_delete_error": "Deletion error",
+  "hard_delete_title": "Account deletion is irreversible.",
+  "hard_delete_body": "We will delete your therapist profile, all sessions, transcriptions, and reports. This action cannot be undone. If you are sure, type the word {word}.",
+  "@hard_delete_body": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "hard_delete_btn_confirm": "Delete permanently",
+  "common_done": "Done",
+  "addPatient_additional_data_title": "Additional data",
+  "addPatient_customize_label_title": "Customize label",
+  "addPatient_avatar_format_hint": "Letters, numbers or emoji (max 2)",
+  "clientDetails_subtitle": "What are we working on today?",
+  "clientDetails_upload_file_btn": "UPLOAD FILE FROM DISK",
+  "clientDetails_record_btn": "START RECORDING",
+  "clientDetails_status_processing": "Processing…",
+  "clientDetails_status_queued": "In queue…",
+  "clientDetails_status_processing_audio": "Processing audio…",
+  "clientDetails_status_finalizing": "Finalizing session…",
+  "home_delete_error_toast": "Deletion error: {error}",
+  "@home_delete_error_toast": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "report_btn_copy_summary": "Copy summary",
+  "report_btn_edit_summary": "Edit summary",
+  "report_toast_summary_copied": "Summary copied",
+  "report_toast_summary_updated": "Summary updated",
+  "report_edit_summary_title": "Edit summary",
+  "report_edit_summary_hint": "Edit session summary...",
+  "report_toast_reports_copied": "Reports copied to clipboard",
+  "report_tooltip_copy_reports": "Copy reports",
+  "report_toast_section_copied": "Section copied to clipboard",
+  "report_edit_section_title": "Edit section",
+  "report_toast_section_updated": "Section updated",
+  "menu_avatar_camera": "Camera",
+  "menu_avatar_gallery": "Gallery",
+  "common_or": "or",
+  "activeAnalysis_analyzing": "Analysis in progress.",
+  "activeAnalysis_processing": "Processing session.",
+  "activeAnalysis_processing_desc": "Your session is going through the next stages of analysis.",
+  "profile_edit_title": "Edit profile.",
+  "profile_edit_last_name": "Last name (optional)",
+  "profile_title_suggestion_1": "MA/MS",
+  "profile_title_suggestion_2": "PhD",
+  "profile_title_suggestion_3": "PhD, ScD",
+  "profile_title_suggestion_4": "Prof.",
+  "profile_title_suggestion_5": "Psychologist",
+  "profile_title_suggestion_6": "Psychotherapist",
+  "profile_title_suggestion_7": "Therapist",
+  "profile_title_suggestion_8": "Psychiatrist",
+  "profile_title_suggestion_9": "Coach",
+  "clientDetails_status_requires_attention": "Requires attention",
+  "clientDetails_status_processing_label": "Processing",
+  "clientDetails_status_new_session": "New session",
+  "clientDetails_status_waiting_audio": "Waiting for audio…",
+  "clientDetails_status_ready": "Ready",
+  "clientDetails_status_new_report": "New report",
+  "clientDetails_status_analyzing": "AI analyzing…",
+  "clientDetails_status_uploading_label": "Uploading…",
+  "clientDetails_status_error": "Analysis error",
+  "clientDetails_session_title": "Session",
+  "cancelUpload_warning_text": "This session is currently being analyzed. Deleting it means permanent loss of the recording and transcription. This cannot be undone.",
+  "cancelUpload_delete_btn": "Remove from analysis",
+  "cancelUpload_confirm_title": "Are you sure?",
+  "cancelUpload_confirm_body": "This operation cannot be undone. The recording and transcription will be permanently deleted.",
+  "cancelUpload_back_btn": "Go back",
+  "forgot_password_link_expiry": "Link expires after 1 hour",
+  "home_report_ready_toast": "Report ready, {name} 🎉",
+  "@home_report_ready_toast": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -1,11 +1,6 @@
-// Bottom sheet for sort & filter options on the home screen.
-//
-// Opened via the tune icon next to the search bar.
-// Follows Euphire design language: dark glassmorphism, rounded corners,
-// drag handle, ember accents.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../l10n/app_localizations.dart';
 
 import '../constants/modalities.dart';
 import '../providers/sort_filter_provider.dart';
@@ -13,7 +8,7 @@ import '../theme/euphire_theme.dart';
 import '../utils/haptics.dart';
 
 class SortFilterSheet extends ConsumerWidget {
-  /// Set of modality codes present in the therapist's active caseload.
+  /// Set of modality codes present in the therapist's caseload.
   /// Used to decide whether the modality filter section appears.
   final Set<String> availableModalities;
 
@@ -31,6 +26,7 @@ class SortFilterSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(sortFilterProvider).value ?? const SortFilterState();
     final notifier = ref.read(sortFilterProvider.notifier);
+    final t = AppLocalizations.of(context);
 
     return Container(
       decoration: const BoxDecoration(
@@ -60,7 +56,7 @@ class SortFilterSheet extends ConsumerWidget {
 
               // ── SORTOWANIE header ──
               Text(
-                'SORTOWANIE',
+                t.sort_filter_header_sorting,
                 style: TextStyle(
                   fontFamily: 'Montserrat',
                   fontSize: 11,
@@ -74,8 +70,8 @@ class SortFilterSheet extends ConsumerWidget {
               // ── Sort options ──
               _SortOption(
                 icon: Icons.history_rounded,
-                label: 'Ostatnia aktywność',
-                subtitle: 'Klienci, z którymi ostatnio pracowałeś',
+                label: t.sort_filter_last_activity,
+                subtitle: t.sort_filter_last_activity_desc,
                 selected: state.sortMode == SortMode.lastActivity,
                 onTap: () {
                   AppHapticFeedback.selectionClick();
@@ -85,8 +81,8 @@ class SortFilterSheet extends ConsumerWidget {
               const SizedBox(height: 4),
               _SortOption(
                 icon: Icons.hourglass_empty_rounded,
-                label: 'Dawno niewidziani',
-                subtitle: 'Klienci bez sesji od najdłuższego czasu',
+                label: t.sort_filter_long_unseen,
+                subtitle: t.sort_filter_no_sessions_longest_desc,
                 selected: state.sortMode == SortMode.leastRecent,
                 onTap: () {
                   AppHapticFeedback.selectionClick();
@@ -96,8 +92,8 @@ class SortFilterSheet extends ConsumerWidget {
               const SizedBox(height: 4),
               _SortOption(
                 icon: Icons.sort_by_alpha_rounded,
-                label: 'Alfabetycznie',
-                subtitle: 'Nazwy kartotek od A do Z',
+                label: t.sort_filter_alphabetical,
+                subtitle: t.sort_filter_alphabetical_desc,
                 selected: state.sortMode == SortMode.alphabetical,
                 onTap: () {
                   AppHapticFeedback.selectionClick();
@@ -107,8 +103,8 @@ class SortFilterSheet extends ConsumerWidget {
               const SizedBox(height: 4),
               _SortOption(
                 icon: Icons.trending_up_rounded,
-                label: 'Najdłuższe procesy',
-                subtitle: 'Klienci z największą liczbą sesji',
+                label: t.sort_filter_longest_processes,
+                subtitle: t.sort_filter_longest_processes_desc,
                 selected: state.sortMode == SortMode.mostSessions,
                 onTap: () {
                   AppHapticFeedback.selectionClick();
@@ -125,7 +121,7 @@ class SortFilterSheet extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'POKAŻ TYLKO',
+                  t.sort_filter_show_only,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 11,
@@ -136,8 +132,8 @@ class SortFilterSheet extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 _FilterToggle(
-                  label: 'Nowe raporty i analizy',
-                  subtitle: 'Gotowe raporty AI lub trwające analizy',
+                  label: t.sort_filter_new_reports,
+                  subtitle: t.sort_filter_ready_reports_desc,
                   badge: needsAttentionCount,
                   active: state.needsAttentionOnly,
                   onTap: () {
@@ -156,7 +152,7 @@ class SortFilterSheet extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'MODALNOŚĆ',
+                  t.sort_filter_modality,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 11,
@@ -171,7 +167,7 @@ class SortFilterSheet extends ConsumerWidget {
                   runSpacing: 8,
                   children: availableModalities.map((code) {
                     final selected = state.modalityFilter.contains(code);
-                    final label = modalityShortLabelFor(code);
+                    final label = modalityShortLabelFor(context, code);
                     return GestureDetector(
                       onTap: () {
                         AppHapticFeedback.selectionClick();
@@ -190,8 +186,8 @@ class SortFilterSheet extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: selected
-                                ? EuphireColors.ember.withValues(alpha: 0.4)
-                                : Colors.white.withValues(alpha: 0.08),
+                              ? EuphireColors.ember.withValues(alpha: 0.4)
+                              : Colors.white.withValues(alpha: 0.08),
                           ),
                         ),
                         child: Text(
@@ -239,7 +235,7 @@ class SortFilterSheet extends ConsumerWidget {
                       ),
                     ),
                     child: Text(
-                      'Wyczyść filtry',
+                      t.sort_filter_clear_filters,
                       style: TextStyle(
                         fontFamily: 'Montserrat',
                         fontSize: 14,

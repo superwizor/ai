@@ -120,6 +120,7 @@ class NewSessionScreen extends ConsumerStatefulWidget {
 
 class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     with TickerProviderStateMixin {
+  AppLocalizations get t => AppLocalizations.of(context);
   bool _uploading = false;
   // True only during the brief pick → stage → enqueue window, before
   // the row is durable in Hive. While true we block back-navigation
@@ -189,8 +190,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final dateLabel = DateFormat('d MMMM y', 'pl_PL').format(DateTime.now());
+    final dateLabel = DateFormat('d MMMM y', Localizations.localeOf(context).toString()).format(DateTime.now());
 
     return PopScope(
       // Block back ONLY during the brief, indivisible stage+enqueue
@@ -227,7 +227,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          widget.autoPickFile ? 'PRZESYŁANIE PLIKU' : 'NOWA SESJA',
+                          widget.autoPickFile ? t.newSession_upload_file_header : t.newSession_new_session_header,
                           style: TextStyle(
                             fontFamily: 'RobotoMono',
                             fontSize: 10,
@@ -327,8 +327,8 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
         // Description — context-aware
         Text(
           widget.autoPickFile
-              ? 'Wybierz plik audio z dysku. Po przesłaniu plik zostanie automatycznie przeanalizowany.'
-              : 'Nagraj tę sesję, lub prześlij plik audio z dyktafonu.',
+              ? t.newSession_pick_file_desc
+              : t.newSession_record_or_upload_desc,
           style: TextStyle(
             fontFamily: 'Merriweather',
             fontSize: 15,
@@ -356,19 +356,19 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
           if (kIsWeb) ...[
             _PrimaryButton(
               icon: Icons.upload_file_rounded,
-              label: 'WGRAJ PLIK AUDIO',
+              label: t.clientDetails_upload_file_btn,
               onPressed: _pickAndUploadFile,
             ),
           ] else ...[
             _PrimaryButton(
               icon: Icons.mic_rounded,
-              label: 'ROZPOCZNIJ NAGRYWANIE',
+              label: t.clientDetails_record_btn,
               onPressed: _goToRecording,
             ),
             const SizedBox(height: 12),
             _SecondaryButton(
               icon: Icons.upload_file_rounded,
-              label: 'Wgraj plik audio',
+              label: t.clientDetails_upload_file_btn,
               onPressed: _pickAndUploadFile,
             ),
           ],
@@ -390,9 +390,9 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
         const SizedBox(height: 32),
 
         // ── Title ──
-        const Text(
-          'Bezpieczne przesyłanie.',
-          style: TextStyle(
+        Text(
+          t.newSession_secure_upload_title,
+          style: const TextStyle(
             fontFamily: 'Montserrat',
             fontSize: 24,
             fontWeight: FontWeight.w700,
@@ -407,7 +407,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
 
         // ── Security description ──
         Text(
-          'Twój plik jest szyfrowany i bezpiecznie przesyłany na nasze serwery w Europie. Nikt poza Tobą nie ma dostępu do tych danych.',
+          t.newSession_secure_upload_desc,
           style: TextStyle(
             fontFamily: 'Montserrat',
             fontSize: 14,
@@ -457,13 +457,14 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
   }
 
   void _goToRecording() {
+    final t = AppLocalizations.of(context);
     // Guard: block if another recording is already active.
     final svc = ref.read(recordingServiceProvider);
     if (svc.state == RecordingState.recording ||
         svc.state == RecordingState.paused ||
         svc.state == RecordingState.interrupted) {
       EuphireToast.info(context,
-          message: 'Trwa nagrywanie innej sesji. Wróć do niej, aby kontynuować.');
+          message: t.newSession_recording_in_progress_err);
       return;
     }
     Navigator.of(context).pushReplacement(MaterialPageRoute(
@@ -484,6 +485,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
   /// navigate to the server-driven status screen by sessionId. No durable
   /// queue (acceptable on web — no app-kill recovery needed).
   Future<void> _pickAndUploadFileWeb() async {
+    final t = AppLocalizations.of(context);
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: _kSupportedAudioTypes.keys
@@ -500,7 +502,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     final bytes = picked.bytes;
     if (bytes == null || bytes.isEmpty) {
       if (!mounted) return;
-      _showErrorSheet('Nie udało się odczytać pliku.');
+      _showErrorSheet(t.common_error);
       return;
     }
     final ext = '.${(picked.extension ?? '').toLowerCase()}';
@@ -508,16 +510,14 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     if (contentType == null) {
       if (!mounted) return;
       _showErrorSheet(
-        'Format "$ext" nie jest obsługiwany.\n\n'
-        'Obsługiwane formaty: FLAC, WAV, MP3, OGG, OPUS, M4A, AAC, WEBM, AMR.',
+        t.newSession_format_not_supported(ext) + t.newSession_supported_formats,
       );
       return;
     }
     if (bytes.length > 500 * 1024 * 1024) {
       if (!mounted) return;
       _showErrorSheet(
-        'Plik jest zbyt duży (${(bytes.length / 1024 / 1024).toStringAsFixed(0)} MB). '
-        'Maksymalny rozmiar to 500 MB.',
+        t.newSession_file_too_large((bytes.length / 1024 / 1024).toStringAsFixed(0)),
       );
       return;
     }
@@ -533,7 +533,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
       _uploadFileName = picked.name;
       _displayedProgress = 0.0;
       _targetProgress = 0.0;
-      _uploadStatusLabel = 'Przesyłam plik...';
+      _uploadStatusLabel = t.newSession_uploading_file;
     });
     _setUploadProgress(0.1);
 
@@ -580,15 +580,17 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     } catch (e) {
       debugPrint('[web-upload] FAILED: $e');
       if (!mounted) return;
+      final t = AppLocalizations.of(context);
       setState(() {
         _uploading = false;
         _busy = false;
       });
-      _showErrorSheet('Błąd podczas przesyłania pliku:\n$e');
+      _showErrorSheet('${t.common_error}\n$e');
     }
   }
 
   Future<void> _pickAndUploadFile() async {
+    final t = AppLocalizations.of(context);
     // Guard: block if a recording is active — uploading a file would
     // create a second session while the first is still being captured.
     final svc = ref.read(recordingServiceProvider);
@@ -597,7 +599,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
         svc.state == RecordingState.interrupted) {
       if (mounted) {
         EuphireToast.info(context,
-            message: 'Trwa nagrywanie sesji. Wróć do niej, aby kontynuować.');
+            message: t.newSession_recording_active_err);
       }
       return;
     }
@@ -623,14 +625,14 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
 
     if (picked.path == null) {
       if (!mounted) return;
-      _showErrorSheet('Nie udało się pobrać pliku.');
+      _showErrorSheet(t.common_error);
       return;
     }
 
     final file = File(picked.path!);
     if (!await file.exists()) {
       if (!mounted) return;
-      _showErrorSheet('Plik nie istnieje lub został usunięty.');
+      _showErrorSheet(t.common_error);
       return;
     }
 
@@ -639,8 +641,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     if (contentType == null) {
       if (!mounted) return;
       _showErrorSheet(
-        'Format "$ext" nie jest obsługiwany.\n\n'
-        'Obsługiwane formaty: FLAC, WAV, MP3, OGG, OPUS, M4A, AAC, WEBM, AMR.',
+        t.newSession_format_not_supported(ext) + t.newSession_supported_formats,
       );
       return;
     }
@@ -648,7 +649,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     final sizeBytes = await file.length();
     if (sizeBytes == 0) {
       if (!mounted) return;
-      _showErrorSheet('Plik jest pusty (0 bajtów).');
+      _showErrorSheet(t.common_error);
       return;
     }
 
@@ -656,8 +657,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     if (sizeBytes > 500 * 1024 * 1024) {
       if (!mounted) return;
       _showErrorSheet(
-        'Plik jest zbyt duży (${(sizeBytes / 1024 / 1024).toStringAsFixed(0)} MB). '
-        'Maksymalny rozmiar to 500 MB.',
+        t.newSession_file_too_large((sizeBytes / 1024 / 1024).toStringAsFixed(0)),
       );
       return;
     }
@@ -673,7 +673,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
       _uploadFileName = picked.name;
       _displayedProgress = 0.0;
       _targetProgress = 0.0;
-      _uploadStatusLabel = 'Przygotowuję plik...';
+      _uploadStatusLabel = t.newSession_preparing_file;
     });
     _setUploadProgress(0.05);
 
@@ -686,7 +686,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
         _uploading = false;
         _busy = false;
       });
-      _showErrorSheet('Błąd podczas przesyłania pliku:\n$e');
+      _showErrorSheet(t.newSession_upload_error(e.toString()));
     }
   }
 
@@ -750,7 +750,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
     }
 
     if (!mounted) return;
-    setState(() => _uploadStatusLabel = 'Kolejkuję...');
+    setState(() => _uploadStatusLabel = t.newSession_queuing);
     _setUploadProgress(0.85);
 
     var pending = PendingUpload.initial(
@@ -827,10 +827,11 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
   }
 
   Future<void> _showErrorSheet(String message) async {
+    final t = AppLocalizations.of(context);
     await showEuphireBottomSheet<void>(
       context: context,
       builder: (ctx) => EuphireActionSheet(
-        header: 'Błąd',
+        header: t.newSession_error_header,
         body: message,
         primary: EuphireSheetAction(
           label: 'OK',
@@ -846,6 +847,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen>
 class _SecurityBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -875,11 +877,10 @@ class _SecurityBadge extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Twoje nagrania są chronione szyfrowaniem end-to-end i służą wyłącznie '
-              'do analizy AI. Nikt poza Tobą nie ma dostępu do danych.',
-              style: TextStyle(
+              '${t.newSession_encryption_notice_part1}${t.newSession_encryption_notice_part2}',
+              style: const TextStyle(
                 fontFamily: 'Montserrat',
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -1066,7 +1067,7 @@ class _UploadProgressCardState extends State<_UploadProgressCard>
           Row(
             children: [
               Text(
-                'PRZETWARZANIE',
+                AppLocalizations.of(context).clientDetails_status_processing.toUpperCase(),
                 style: TextStyle(
                   fontFamily: 'RobotoMono',
                   fontSize: 10,

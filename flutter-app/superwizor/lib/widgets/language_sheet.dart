@@ -45,13 +45,13 @@ class _LanguageSheetState extends ConsumerState<LanguageSheet> {
           Text(AppLocalizations.of(context).drawer_language, style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 24),
           _LanguageOption(
-            title: 'Polski',
+            title: AppLocalizations.of(context).language_pl_name,
             isSelected: _selectedLanguage == 'pl',
             onTap: () => _onLanguageChanged('pl'),
           ),
           const SizedBox(height: 12),
           _LanguageOption(
-            title: 'English',
+            title: AppLocalizations.of(context).language_en_name,
             isSelected: _selectedLanguage == 'en',
             onTap: () => _onLanguageChanged('en'),
           ),

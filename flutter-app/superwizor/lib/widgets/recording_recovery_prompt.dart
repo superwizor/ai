@@ -66,7 +66,7 @@ class _RecordingRecoveryGuardState
           .inHours,
     });
 
-    final dateLabel = DateFormat('d MMMM y', 'pl_PL')
+    final dateLabel = DateFormat('d MMMM y', Localizations.localeOf(context).toString())
         .format(r.manifest.startedAtUtc.toLocal());
     final minutes = r.estimatedDuration.inMinutes.clamp(1, 130);
 

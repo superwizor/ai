@@ -239,7 +239,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               _currentPage == 0
                   ? t.common_cancel
                   : _currentPage == 3
-                      ? 'Gotowe'
+                      ? t.common_done
                       : t.common_back,
               style: TextStyle(
                 fontFamily: 'Montserrat',
@@ -446,7 +446,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Dodatkowe dane",
+                              t.addPatient_additional_data_title,
                               style: const TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontSize: 20,
@@ -456,7 +456,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              "Podaj e-mail lub zmień język klienta.",
+                              t.addPatient_email_required_error,
                               style: TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontSize: 13,
@@ -490,14 +490,14 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                   const SizedBox(height: 8),
                   GlassDropdown<String>(
                     value: _languageCode,
-                    items: const [
+                    items: [
                       DropdownMenuItem(
                         value: 'pl-PL',
                         child: Row(
                           children: [
-                            Text('🇵🇱', style: TextStyle(fontSize: 18)),
-                            SizedBox(width: 10),
-                            Text('Polski'),
+                            const Text('🇵🇱', style: TextStyle(fontSize: 18)),
+                            const SizedBox(width: 10),
+                            Text(t.language_pl_name),
                           ],
                         ),
                       ),
@@ -505,9 +505,9 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                         value: 'en-US',
                         child: Row(
                           children: [
-                            Text('🇬🇧', style: TextStyle(fontSize: 18)),
-                            SizedBox(width: 10),
-                            Text('English'),
+                            const Text('🇬🇧', style: TextStyle(fontSize: 18)),
+                            const SizedBox(width: 10),
+                            Text(t.language_en_name),
                           ],
                         ),
                       ),
@@ -755,9 +755,9 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                 const SizedBox(height: 20),
 
                 // ── Title ──
-                const Text(
-                  'Spersonalizuj oznaczenie',
-                  style: TextStyle(
+                Text(
+                  t.addPatient_customize_label_title,
+                  style: const TextStyle(
                     fontFamily: 'Merriweather',
                     fontStyle: FontStyle.italic,
                     fontSize: 20,
@@ -767,7 +767,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Nadaj klientowi unikalne oznaczenie — ułatwi nawigację.',
+                  t.addPatient_alias_instruction,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 13,
@@ -828,7 +828,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Litery, cyfry lub emoji (max 2)',
+                  t.addPatient_avatar_format_hint,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 11,
@@ -839,7 +839,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
 
                 // ── Color grid ──
                 Text(
-                  'KOLOR TŁA',
+                  t.addPatient_background_color,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 11,
@@ -910,7 +910,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                 width: double.infinity,
                 height: 52,
                 child: EuphireButton(
-                  text: 'Gotowe',
+                  text: t.common_done,
                   icon: Icons.check_rounded,
                   onPressed: () {
                     _saveAvatarConfig();
@@ -922,7 +922,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(
-                  'Pomiń na razie',
+                  t.addPatient_skip_for_now,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 14,
@@ -1047,7 +1047,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
           _goToPage(0);
           _showDuplicateSheet(t);
         } else {
-          EuphireToast.error(context, message: e.message ?? 'Wystąpił błąd.');
+          EuphireToast.error(context, message: e.message ?? t.common_error);
         }
       }
     } catch (e) {

@@ -59,19 +59,20 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
   Future<void> _pickImage() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
+    final t = AppLocalizations.of(context);
     
     // Zrób zdjęcie czy wybierz z galerii?
     final source = await showEuphireBottomSheet<ImageSource>(
       context: context,
       builder: (ctx) => EuphireActionSheet(
-        header: 'Zdjęcie profilowe',
-        body: 'Wybierz skąd chcesz dodać zdjęcie.',
+        header: t.menu_avatar_title,
+        body: t.menu_avatar_desc,
         primary: EuphireSheetAction(
-          label: 'Aparat',
+          label: t.menu_avatar_camera,
           onPressed: () => Navigator.of(ctx).pop(ImageSource.camera),
         ),
         secondary: EuphireSheetAction(
-          label: 'Galeria',
+          label: t.menu_avatar_gallery,
           onPressed: () => Navigator.of(ctx).pop(ImageSource.gallery),
         ),
       ),
@@ -105,12 +106,12 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
       await user.reload();
       if (mounted) {
         setState(() {});
-        EuphireToast.success(context, message: 'Zdjęcie profilowe zaktualizowane');
+        EuphireToast.success(context, message: t.menu_avatar_updated);
       }
     } catch (e) {
       debugPrint('Avatar upload failed: $e');
       if (mounted) {
-        EuphireToast.error(context, message: 'Wystąpił błąd podczas zapisu: $e');
+        EuphireToast.error(context, message: t.menu_save_error(e.toString()));
       }
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
@@ -862,14 +863,14 @@ class _LanguagePickerSheet extends ConsumerWidget {
                       color: EuphireColors.frostWhite)),
             ),
             const Divider(color: Colors.white10, height: 1),
-            _LangTile(flag: '🇵🇱', name: 'Polski', sub: 'Polish',
+            _LangTile(flag: '🇵🇱', name: AppLocalizations.of(context).language_pl_name, sub: AppLocalizations.of(context).language_pl_sub,
                 selected: activeCode == 'pl',
                 onTap: () async {
                   await ref.read(localeProvider.notifier).setLocale(const Locale('pl'));
                   await Future.delayed(const Duration(milliseconds: 200));
                   if (context.mounted) Navigator.of(context).pop();
                 }),
-            _LangTile(flag: '🇬🇧', name: 'English', sub: 'English (UK)',
+            _LangTile(flag: '🇬🇧', name: AppLocalizations.of(context).language_en_name, sub: AppLocalizations.of(context).language_en_sub,
                 selected: activeCode == 'en',
                 onTap: () async {
                   await ref.read(localeProvider.notifier).setLocale(const Locale('en'));
@@ -1068,9 +1069,10 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
       Navigator.pop(context);
       return;
     }
+    final t = AppLocalizations.of(context);
     // Basic email validation
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(newEmail)) {
-      setState(() => _error = 'Podaj prawidłowy adres e-mail.');
+      setState(() => _error = t.menu_invalid_email);
       return;
     }
 
@@ -1081,17 +1083,17 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
       await user.verifyBeforeUpdateEmail(newEmail);
       if (!mounted) return;
       Navigator.pop(context);
-      EuphireToast.success(context, message: 'Link weryfikacyjny wysłany na $newEmail');
+      EuphireToast.success(context, message: t.menu_verification_sent(newEmail));
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
-        setState(() => _error = 'Zaloguj się ponownie, aby zmienić e-mail.');
+        setState(() => _error = t.menu_reauth_required);
       } else if (e.code == 'email-already-in-use') {
-        setState(() => _error = 'Ten adres jest już używany.');
+        setState(() => _error = t.menu_email_in_use);
       } else {
-        setState(() => _error = 'Wystąpił błąd: ${e.message}');
+        setState(() => _error = t.menu_error_message(e.message ?? ''));
       }
     } catch (e) {
-      setState(() => _error = 'Wystąpił błąd: $e');
+      setState(() => _error = t.menu_error_message(e.toString()));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -1100,6 +1102,7 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF0A2326),
@@ -1137,9 +1140,9 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
                 child: const Icon(Icons.email_outlined, color: EuphireColors.ember, size: 28),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Zmień adres e-mail',
-                style: TextStyle(
+              Text(
+                t.menu_change_email_title,
+                style: const TextStyle(
                   fontFamily: 'Merriweather',
                   fontStyle: FontStyle.italic,
                   fontSize: 20,
@@ -1149,7 +1152,7 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Wyślemy link weryfikacyjny na nowy adres.',
+                t.menu_change_email_desc,
                 style: TextStyle(
                   fontFamily: 'Montserrat',
                   fontSize: 14,
@@ -1226,9 +1229,9 @@ class _EmailEditSheetState extends State<_EmailEditSheet> {
                           width: 22, height: 22,
                           child: CircularProgressIndicator(strokeWidth: 2, color: EuphireColors.obsidianBlack),
                         )
-                      : const Text(
-                          'Wyślij weryfikację',
-                          style: TextStyle(
+                      : Text(
+                          t.menu_btn_send_verification,
+                          style: const TextStyle(
                             fontFamily: 'Montserrat',
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -1286,6 +1289,7 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
@@ -1298,7 +1302,7 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  AppLocalizations.of(context).settings_delete_account,
+                  t.settings_delete_account,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: EuphireColors.magma,
                     fontWeight: FontWeight.w500,
@@ -1306,7 +1310,7 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
                   ),
                 ),
                 Text(
-                  'Trwałe i nieodwracalne usunięcie',
+                  t.menu_delete_account_confirm_title,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 12,
@@ -1481,7 +1485,7 @@ class _LicensesScreenState extends State<_LicensesScreen> {
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     Expanded(
-                      child: Text('Licencje',
+                      child: Text(AppLocalizations.of(context).settings_licenses,
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontFamily: 'Merriweather',
                             fontStyle: FontStyle.italic,

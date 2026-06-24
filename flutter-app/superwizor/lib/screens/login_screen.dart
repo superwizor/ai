@@ -171,7 +171,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   String _socialErrorMessage(FirebaseAuthException e) {
     // DEV: always show the raw code so we can diagnose platform issues.
-    return 'Auth error [${e.code}]: ${e.message ?? "brak szczegółów"}';
+    final t = AppLocalizations.of(context);
+    return t.login_auth_error(e.code, e.message ?? '');
   }
 
 
@@ -197,7 +198,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submitRegister() async {
     if (!_tosAccepted) {
-      setState(() => _error = 'Zaakceptuj Regulamin i Politykę Prywatności, aby kontynuować.');
+      final t = AppLocalizations.of(context);
+      setState(() => _error = t.login_accept_terms_error);
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -348,12 +350,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // ── Login page ──────────────────────────────────────────────────────────
 
   Widget _buildLoginContent() {
+    final t = AppLocalizations.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildLogo(),
         const SizedBox(height: 28),
-        _buildTitle('Witaj ponownie', 'Zaloguj się do Superwizor AI'),
+        _buildTitle(t.login_title, t.login_subtitle),
         const SizedBox(height: 36),
         _buildSocialButtons(),
         const SizedBox(height: 24),
@@ -361,7 +364,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: 24),
         _buildFloatingField(
           controller: _emailCtrl,
-          label: 'Adres e-mail',
+          label: t.auth_email_label,
           keyboardType: TextInputType.emailAddress,
           autofillHints: const [AutofillHints.email],
           prefixIcon: Icons.mail_outline_rounded,
@@ -369,7 +372,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: 16),
         _buildFloatingField(
           controller: _passwordCtrl,
-          label: 'Hasło',
+          label: t.auth_password_label,
           obscureText: _obscurePassword,
           autofillHints: const [AutofillHints.password],
           prefixIcon: Icons.lock_outline_rounded,
@@ -385,7 +388,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: const Text('Nie pamiętam hasła', style: TextStyle(
+            child: Text(t.login_forgot_password, style: const TextStyle(
               fontFamily: _kFont, fontSize: 13,
               fontWeight: FontWeight.w500, color: _kMint,
             )),
@@ -393,11 +396,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         const SizedBox(height: 20),
         if (_error != null) ...[_buildError(), const SizedBox(height: 16)],
-        _buildCta('Zaloguj się', _loading ? null : _submitLogin),
+        _buildCta(t.login_btn_sign_in, _loading ? null : _submitLogin),
         const SizedBox(height: 28),
         _buildModeSwitch(
-          'Nie masz konta? ',
-          'Zarejestruj się',
+          t.auth_toggle_to_register.split('?').first + '? ',
+          t.login_btn_sign_up,
           _goToRegister,
         ),
       ],
@@ -407,12 +410,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // ── Register page ───────────────────────────────────────────────────────
 
   Widget _buildRegisterContent() {
+    final t = AppLocalizations.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildLogo(),
         const SizedBox(height: 28),
-        _buildTitle('Utwórz konto', 'Dołącz do społeczności terapeutów'),
+        _buildTitle(t.login_register_title, t.login_register_subtitle),
         const SizedBox(height: 36),
         _buildSocialButtons(),
         const SizedBox(height: 24),
@@ -420,7 +424,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: 24),
         _buildFloatingField(
           controller: _nameCtrl,
-          label: 'Imię i nazwisko',
+          label: t.login_name_field,
           keyboardType: TextInputType.name,
           autofillHints: const [AutofillHints.name],
           prefixIcon: Icons.person_outline_rounded,
@@ -428,7 +432,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: 16),
         _buildFloatingField(
           controller: _emailCtrl,
-          label: 'Adres e-mail',
+          label: t.auth_email_label,
           keyboardType: TextInputType.emailAddress,
           autofillHints: const [AutofillHints.email],
           prefixIcon: Icons.mail_outline_rounded,
@@ -436,7 +440,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: 16),
         _buildFloatingField(
           controller: _passwordCtrl,
-          label: 'Utwórz hasło (min. 8 znaków)',
+          label: t.login_password_hint,
           obscureText: _obscurePassword,
           autofillHints: const [AutofillHints.newPassword],
           prefixIcon: Icons.lock_outline_rounded,
@@ -446,11 +450,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _buildTosCheckbox(),
         const SizedBox(height: 20),
         if (_error != null) ...[_buildError(), const SizedBox(height: 16)],
-        _buildCta('Zarejestruj się', _loading ? null : _submitRegister),
+        _buildCta(t.login_btn_sign_up, _loading ? null : _submitRegister),
         const SizedBox(height: 28),
         _buildModeSwitch(
-          'Masz już konto? ',
-          'Zaloguj się',
+          t.auth_toggle_to_login.split('?').first + '? ',
+          t.login_btn_sign_in,
           _goToLogin,
         ),
       ],
@@ -493,11 +497,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildSocialButtons() {
+    final t = AppLocalizations.of(context);
     return Column(children: [
       _SocialButton(
         onPressed: _loading ? null : _signInWithGoogle,
         icon: const _GoogleIcon(),
-        label: 'Kontynuuj z Google',
+        label: t.auth_sign_in_with_google,
         backgroundColor: _kWhite,
         textColor: _kObsidian,
       ),
@@ -506,7 +511,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _SocialButton(
           onPressed: _loading ? null : _signInWithApple,
           icon: const _AppleIcon(),
-          label: 'Kontynuuj z Apple',
+          label: t.auth_sign_in_with_apple,
           backgroundColor: _kObsidian,
           textColor: _kWhite,
         ),
@@ -517,9 +522,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildDivider() {
     return Row(children: [
       Expanded(child: Container(height: 1, color: _kWhite15)),
-      const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        child: Text('lub', style: TextStyle(
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Text(AppLocalizations.of(context).common_or, style: const TextStyle(
           fontFamily: _kFont, fontSize: 13,
           fontWeight: FontWeight.w500, color: _kWhite40,
         )),
@@ -591,6 +596,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildTosCheckbox() {
+    final t = AppLocalizations.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -615,25 +621,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 height: 1.5,
               ),
               children: [
-                const TextSpan(text: 'Akceptuję '),
+                TextSpan(text: t.login_accept_prefix),
                 TextSpan(
-                  text: 'Regulamin',
+                  text: t.settings_terms,
                   style: const TextStyle(
                     color: _kMint, fontWeight: FontWeight.w500,
                     decoration: TextDecoration.underline,
                     decorationColor: _kMint,
                   ),
-                  recognizer: TapGestureRecognizer()..onTap = () => _openLegal('terms', 'Regulamin'),
+                  recognizer: TapGestureRecognizer()..onTap = () => _openLegal('terms', t.settings_terms),
                 ),
-                const TextSpan(text: ' oraz '),
+                TextSpan(text: ' ${t.common_or} '),
                 TextSpan(
-                  text: 'Politykę Prywatności',
+                  text: t.login_accept_privacy,
                   style: const TextStyle(
                     color: _kMint, fontWeight: FontWeight.w500,
                     decoration: TextDecoration.underline,
                     decorationColor: _kMint,
                   ),
-                  recognizer: TapGestureRecognizer()..onTap = () => _openLegal('privacy_policy', 'Polityka Prywatności'),
+                  recognizer: TapGestureRecognizer()..onTap = () => _openLegal('privacy_policy', t.login_privacy_policy_title),
                 ),
                 const TextSpan(text: ' Superwizor AI.'),
               ],

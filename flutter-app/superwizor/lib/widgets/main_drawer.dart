@@ -16,6 +16,7 @@ class MainDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
 
     return Drawer(
       child: Container(
@@ -55,7 +56,7 @@ class MainDrawer extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              user?.displayName ?? 'Terapeuta',
+                              user?.displayName ?? t.drawer_fallback_name,
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: EuphireColors.frostWhite,
@@ -78,7 +79,7 @@ class MainDrawer extends StatelessWidget {
               // Section: USTAWIENIA (RobotoMono Label)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text('USTAWIENIA', style: theme.textTheme.labelMedium),
+                child: Text(t.drawer_settings_header, style: theme.textTheme.labelMedium),
               ),
               _DrawerTile(
                 icon: Icons.person_outline,
@@ -118,7 +119,7 @@ class MainDrawer extends StatelessWidget {
               // Section: DOKUMENTY PRAWNE
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text('DOKUMENTY PRAWNE', style: theme.textTheme.labelMedium),
+                child: Text(t.drawer_legal_header, style: theme.textTheme.labelMedium),
               ),
               _DrawerTile(
                 icon: Icons.description_outlined,
@@ -142,7 +143,7 @@ class MainDrawer extends StatelessWidget {
               ),
               _DrawerTile(
                 icon: Icons.info_outline,
-                title: 'O aplikacji',
+                title: t.drawer_about,
                 onTap: () {
                   // TODO: Nawigacja do informacji o aplikacji
                 },
@@ -162,12 +163,12 @@ class MainDrawer extends StatelessWidget {
                   children: [
                     _DrawerTile(
                       icon: Icons.logout,
-                      title: 'Wyloguj się',
+                      title: t.drawer_logout,
                       onTap: () => FirebaseAuth.instance.signOut(),
                     ),
                     _DrawerTile(
                       icon: Icons.warning_amber_rounded,
-                      title: 'Usuń konto',
+                      title: t.drawer_delete_account,
                       color: EuphireColors.magma,
                       onTap: () {
                         Navigator.of(context).pop();

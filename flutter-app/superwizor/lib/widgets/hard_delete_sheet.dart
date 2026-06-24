@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/euphire_theme.dart';
 import 'euphire_button.dart';
 import 'euphire_text_field.dart';
@@ -22,12 +23,14 @@ class _HardDeleteSheetState extends ConsumerState<HardDeleteSheet> {
   bool _isDeleting = false;
 
   void _onTextChanged(String val) {
+    final t = AppLocalizations.of(context);
     setState(() {
-      _isValid = val.trim().toLowerCase() == 'usuwam';
+      _isValid = val.trim().toLowerCase() == t.delete_account_confirm_word.toLowerCase();
     });
   }
 
   Future<void> _executeHardDelete() async {
+    final t = AppLocalizations.of(context);
     setState(() => _isDeleting = true);
     try {
       // 1. Backend: soft delete user + cascade soft delete patient_files + sessions
@@ -56,10 +59,10 @@ class _HardDeleteSheetState extends ConsumerState<HardDeleteSheet> {
         await showEuphireBottomSheet<void>(
           context: context,
           builder: (ctx) => EuphireActionSheet(
-            header: 'Błąd usuwania',
+            header: t.hard_delete_error,
             body: e.toString(),
             primary: EuphireSheetAction(
-              label: 'Rozumiem',
+              label: t.common_understand,
               onPressed: () => Navigator.of(ctx).pop(),
             ),
           ),
@@ -78,6 +81,7 @@ class _HardDeleteSheetState extends ConsumerState<HardDeleteSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
       padding: EdgeInsets.only(
@@ -91,17 +95,17 @@ class _HardDeleteSheetState extends ConsumerState<HardDeleteSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Usunięcie konta jest bezpowrotne.',
+            t.hard_delete_title,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: EuphireColors.magma),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Skasujemy Twój profil terapeuty, wszystkie sesje, transkrypcje i raporty. Tej akcji nie można cofnąć. Jeśli jesteś pewna/pewien, wpisz słowo usuwam.',
+          Text(
+            t.hard_delete_body(t.delete_account_confirm_word),
           ),
           const SizedBox(height: 24),
           EuphireTextField(
             controller: _controller,
-            labelText: 'Wpisz usuwam',
+            labelText: '${t.delete_account_sheet_subtitle} ${t.delete_account_confirm_word}',
             onChanged: _onTextChanged,
           ),
           const SizedBox(height: 24),
@@ -109,7 +113,7 @@ class _HardDeleteSheetState extends ConsumerState<HardDeleteSheet> {
             width: double.infinity,
             height: 56,
             child: EuphireButton(
-              text: 'Usuń bezpowrotnie',
+              text: t.hard_delete_btn_confirm,
               isLoading: _isDeleting,
               onPressed: _isValid ? _executeHardDelete : null,
               backgroundColor: EuphireColors.magma,

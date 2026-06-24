@@ -91,6 +91,8 @@ dev_dependencies:
   mockito: ^5.4.6
   build_runner: ^2.5.4
   flutter_launcher_icons: ^0.14.4
+  custom_lint: ^0.8.1
+  hardcoded_strings_lint: ^1.0.4
 
 flutter_launcher_icons:
   android: "launcher_icon"

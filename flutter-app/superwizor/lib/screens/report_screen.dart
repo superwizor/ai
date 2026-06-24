@@ -235,7 +235,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             onPressed: _data == null ? null : _onSendActionPlan,
           ),
           IconButton(
-            tooltip: 'Skopiuj raporty',
+            tooltip: t.report_tooltip_copy_reports,
             icon: const Icon(Icons.copy),
             onPressed: _data == null ? null : _onCopyPressed,
           ),
@@ -307,7 +307,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     final report = _data!.reports.first;
     final payload = _ReportPayload.parse(report);
     
-    _sections ??= _parseSections(payload.reportMarkdown);
+    _sections ??= _parseSections(payload.reportMarkdown, t);
 
     return Column(
       children: [
@@ -458,26 +458,27 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   Future<void> _onCopyPressed() async {
     final data = _data;
     if (data == null || data.reports.isEmpty) return;
+    final t = AppLocalizations.of(context);
     
     final StringBuffer buffer = StringBuffer();
     for (final report in data.reports) {
-      buffer.writeln('=== ${report.title.isNotEmpty ? report.title : "Raport"} ===');
+      buffer.writeln('=== ${report.title.isNotEmpty ? report.title : t.report_tab} ===');
       
       final payload = _ReportPayload.parse(report);
       final summaryText = _editedSummary ?? payload.summary;
       if (summaryText != null && summaryText.isNotEmpty) {
-        buffer.writeln('\nPODSUMOWANIE:\n$summaryText');
+        buffer.writeln('\n${t.report_section_summary.toUpperCase()}:\n$summaryText');
       }
       
       if (payload.reportMarkdown.isNotEmpty) {
         // Include edited sections if available
         if (_sections != null && _sections!.isNotEmpty) {
-          buffer.writeln('\nRAPORT KLINICZNY:');
+          buffer.writeln('\n${t.report_tab.toUpperCase()}:');
           for (final section in _sections!) {
             buffer.writeln('\n${section.content}');
           }
         } else {
-          buffer.writeln('\nRAPORT KLINICZNY:\n${payload.reportMarkdown}');
+          buffer.writeln('\n${t.report_tab.toUpperCase()}:\n${payload.reportMarkdown}');
         }
       }
       
@@ -486,7 +487,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     
     await Clipboard.setData(ClipboardData(text: buffer.toString().trim()));
     if (mounted) {
-      EuphireToast.success(context, message: 'Raporty skopiowane do schowka');
+      EuphireToast.success(context, message: t.report_toast_reports_copied);
     }
   }
 
@@ -580,6 +581,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   void _showSummaryOptions(
       BuildContext context, _ReportPayload payload, ReportDto report) {
     final summaryText = _editedSummary ?? payload.summary ?? report.summaryShort;
+    final t = AppLocalizations.of(context);
 
     showModalBottomSheet(
       context: context,
@@ -604,9 +606,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                       borderRadius: BorderRadius.circular(2)),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  'Podsumowanie sesji',
-                  style: TextStyle(
+                Text(
+                  t.report_section_summary,
+                  style: const TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -617,21 +619,21 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                 const SizedBox(height: 20),
                 _OptionTile(
                   icon: Icons.copy_rounded,
-                  label: 'Kopiuj podsumowanie',
-                  subtitle: 'Skopiuj treść do schowka',
+                  label: t.report_btn_copy_summary,
+                  subtitle: t.report_copy_desc,
                   color: EuphireColors.ember,
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: summaryText));
                     Navigator.pop(ctx);
                     EuphireToast.success(context,
-                        message: 'Podsumowanie skopiowane');
+                        message: t.report_toast_summary_copied);
                   },
                 ),
                 const SizedBox(height: 10),
                 _OptionTile(
                   icon: Icons.edit_note_rounded,
-                  label: 'Edytuj podsumowanie',
-                  subtitle: 'Popraw lub uzupełnij podsumowanie AI',
+                  label: t.report_btn_edit_summary,
+                  subtitle: t.report_edit_summary_desc,
                   color: const Color(0xFF5EEDCC),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -649,6 +651,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
   void _showEditSummarySheet(BuildContext context, String currentText) {
     final controller = TextEditingController(text: currentText);
+    final t = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -696,9 +699,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Edycja podsumowania',
-                                  style: TextStyle(
+                                Text(
+                                  t.report_edit_summary_title,
+                                  style: const TextStyle(
                                     fontFamily: 'Montserrat',
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
@@ -707,7 +710,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Podsumowanie sesji',
+                                  t.report_section_summary,
                                   style: TextStyle(
                                     fontFamily: 'Montserrat',
                                     fontSize: 13,
@@ -744,7 +747,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                       ),
                       decoration: InputDecoration(
                         border: InputBorder.none,
-                        hintText: 'Edytuj podsumowanie sesji...',
+                        hintText: t.report_edit_summary_hint,
                         hintStyle: TextStyle(
                           fontFamily: 'Montserrat',
                           color: EuphireColors.mist.withValues(alpha: 0.4),
@@ -770,9 +773,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                                   color: Colors.white.withValues(alpha: 0.1)),
                             ),
                           ),
-                          child: const Text(
-                            'Anuluj',
-                            style: TextStyle(
+                          child: Text(
+                            t.common_cancel,
+                            style: const TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
@@ -791,7 +794,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                             });
                             Navigator.pop(ctx);
                             EuphireToast.success(context,
-                                message: 'Podsumowanie zaktualizowane');
+                                message: t.report_toast_summary_updated);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF5EEDCC),
@@ -801,9 +804,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                                 borderRadius: BorderRadius.circular(5)),
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'Zapisz zmiany',
-                            style: TextStyle(
+                          child: Text(
+                            t.editPatient_save_primary,
+                            style: const TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700),
@@ -897,6 +900,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   // ── Long-press options for a report section ──
 
   void _showSectionOptions(BuildContext context, _ReportSection section, int index) {
+    final t = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -934,23 +938,23 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                 // Copy
                 _OptionTile(
                   icon: Icons.copy_rounded,
-                  label: 'Kopiuj sekcję',
-                  subtitle: 'Skopiuj treść do schowka',
+                  label: t.report_btn_copy_section,
+                  subtitle: t.report_copy_desc,
                   color: EuphireColors.ember,
                   onTap: () {
                     // Strip markdown headers for cleaner clipboard
                     final clean = section.content.replaceAll(RegExp(r'^#+\s+', multiLine: true), '');
                     Clipboard.setData(ClipboardData(text: clean));
                     Navigator.pop(ctx);
-                    EuphireToast.success(context, message: 'Sekcja skopiowana do schowka');
+                    EuphireToast.success(context, message: t.report_toast_section_copied);
                   },
                 ),
                 const SizedBox(height: 10),
                 // Edit
                 _OptionTile(
                   icon: Icons.edit_note_rounded,
-                  label: 'Edytuj treść',
-                  subtitle: 'Popraw lub uzupełnij raport AI',
+                  label: t.report_btn_edit_section,
+                  subtitle: t.report_edit_section_desc,
                   color: const Color(0xFF5EEDCC),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -970,6 +974,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
   void _showEditSheet(BuildContext context, _ReportSection section, int index) {
     final controller = TextEditingController(text: section.content);
+    final t = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1013,9 +1018,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Edycja sekcji',
-                                  style: TextStyle(
+                                Text(
+                                  t.report_edit_section_title,
+                                  style: const TextStyle(
                                     fontFamily: 'Montserrat',
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
@@ -1058,7 +1063,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                       ),
                       decoration: InputDecoration(
                         border: InputBorder.none,
-                        hintText: 'Edytuj treść sekcji...',
+                        hintText: t.report_edit_section_hint,
                         hintStyle: TextStyle(
                           fontFamily: 'Montserrat',
                           color: EuphireColors.mist.withValues(alpha: 0.4),
@@ -1082,9 +1087,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                               side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                             ),
                           ),
-                          child: const Text(
-                            'Anuluj',
-                            style: TextStyle(
+                          child: Text(
+                            t.common_cancel,
+                            style: const TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
@@ -1104,7 +1109,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                               });
                             }
                             Navigator.pop(ctx);
-                            EuphireToast.success(context, message: 'Sekcja raportu zaktualizowana');
+                            EuphireToast.success(context, message: t.report_toast_section_updated);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF5EEDCC),
@@ -1113,9 +1118,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'Zapisz zmiany',
-                            style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w700),
+                          child: Text(
+                            t.editPatient_save_primary,
+                            style: const TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w700),
                           ),
                         ),
                       ),
@@ -1331,7 +1336,7 @@ class _ReportSection {
   });
 }
 
-List<_ReportSection> _parseSections(String md) {
+List<_ReportSection> _parseSections(String md, AppLocalizations t) {
   final lines = md.split('\n');
   
   // Ograniczamy parsowanie do nagłówków poziomu 1 i 2, o ile takie występują.
@@ -1342,11 +1347,11 @@ List<_ReportSection> _parseSections(String md) {
       : RegExp(r'^#+\s+(.*)');
 
   if (!lines.any((l) => headerRegex.hasMatch(l))) {
-    return [_ReportSection(title: 'Raport', content: md, key: GlobalKey(), tabKey: GlobalKey())];
+    return [_ReportSection(title: t.report_tab, content: md, key: GlobalKey(), tabKey: GlobalKey())];
   }
   
   final sections = <_ReportSection>[];
-  String currentTitle = 'Wstęp';
+  String currentTitle = t.report_intro_title;
   StringBuffer currentContent = StringBuffer();
   
   for (final line in lines) {

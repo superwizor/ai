@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/app_localizations.dart';
 import 'euphire_toast.dart';
 
 class ReportDetailSheet extends StatelessWidget {
@@ -15,6 +16,7 @@ class ReportDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
@@ -40,11 +42,11 @@ class ReportDetailSheet extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: content));
-              EuphireToast.success(context, message: 'Raport skopiowany do schowka');
+              EuphireToast.success(context, message: t.common_copied_to_clipboard);
               Navigator.pop(context);
             },
             icon: const Icon(Icons.copy),
-            label: const Text('Skopiuj treść'),
+            label: Text(t.report_detail_copy_content),
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.scaffoldBackgroundColor, // Obsidian Black equivalent
               foregroundColor: theme.colorScheme.primary, // Ember

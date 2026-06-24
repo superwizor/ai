@@ -14,6 +14,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../l10n/app_localizations.dart';
 
 import '../screens/pending_uploads_screen.dart';
 import '../screens/session_status_screen.dart';
@@ -32,6 +33,8 @@ class ActiveAnalysisBanner extends ConsumerWidget {
         async.maybeWhen(data: (l) => l, orElse: () => <PendingUpload>[]);
 
     if (list.isEmpty) return const SizedBox.shrink();
+
+    final t = AppLocalizations.of(context);
 
     // ── Classify rows by state ──────────────────────────────────
     final failures = list.where((u) => u.phase == UploadPhase.failed).toList();
@@ -80,7 +83,7 @@ class ActiveAnalysisBanner extends ConsumerWidget {
       final mins = (singleUpload.actualDurationSeconds / 60).toStringAsFixed(0);
       detailsBadge = '$totalMb MB${singleUpload.actualDurationSeconds > 0 ? ' • $mins min' : ''}';
     } else {
-      detailsBadge = '${list.length} sesje • $totalMb MB';
+      detailsBadge = '${t.patient_session_count(list.length)} • $totalMb MB';
     }
 
     // ── Determine copy — priority order: failure > quota > retry >
@@ -90,9 +93,9 @@ class ActiveAnalysisBanner extends ConsumerWidget {
       content = _BannerContent(
         icon: Icons.error_outline_rounded,
         iconColor: EuphireColors.ember,
-        headline: 'Wgrywanie: ${failures.length} błąd, $inProgressCount w toku.',
-        body: 'Część plików wymaga uwagi, ale przesyłanie reszty trwa bez zakłóceń.',
-        ctaLabel: 'Sprawdź szczegóły',
+        headline: t.activeAnalysis_uploading_status(failures.length, inProgressCount),
+        body: t.activeAnalysis_uploading_status_desc,
+        ctaLabel: t.activeAnalysis_check_details,
         accentColor: EuphireColors.ember,
         borderColor: EuphireColors.ember,
         showProgress: true,
@@ -103,10 +106,9 @@ class ActiveAnalysisBanner extends ConsumerWidget {
       content = _BannerContent(
         icon: Icons.error_outline_rounded,
         iconColor: EuphireColors.ember,
-        headline: 'Przesyłanie wymaga uwagi.',
-        body:
-            'Sesja nie mogła zostać wgrana. Sprawdź szczegóły.',
-        ctaLabel: 'Sprawdź szczegóły',
+        headline: t.activeAnalysis_upload_attention,
+        body: t.activeAnalysis_upload_attention_desc,
+        ctaLabel: t.activeAnalysis_check_details,
         accentColor: EuphireColors.ember,
         borderColor: EuphireColors.ember,
         isError: true,
@@ -115,10 +117,9 @@ class ActiveAnalysisBanner extends ConsumerWidget {
       content = _BannerContent(
         icon: Icons.account_balance_wallet_outlined,
         iconColor: EuphireColors.ember,
-        headline: 'Nagranie czeka na wznowienie.',
-        body:
-            'Pula sesji została wyczerpana. Sesja jest bezpiecznie zapisana i zostanie przetworzona po odnowieniu planu.',
-        ctaLabel: 'Zobacz szczegóły',
+        headline: t.pending_uploads_quota_card_title,
+        body: t.activeAnalysis_quota_blocked_desc,
+        ctaLabel: t.activeAnalysis_view_details,
         accentColor: EuphireColors.ember,
         borderColor: EuphireColors.ember,
       );
@@ -127,10 +128,9 @@ class ActiveAnalysisBanner extends ConsumerWidget {
       content = _BannerContent(
         icon: Icons.refresh_rounded,
         iconColor: EuphireColors.ember,
-        headline: 'Przesyłanie zostało przerwane.',
-        body:
-            'Próba wznowienia nastąpi automatycznie. Nagranie jest bezpieczne.',
-        ctaLabel: 'Zobacz szczegóły',
+        headline: t.activeAnalysis_upload_interrupted,
+        body: t.activeAnalysis_upload_interrupted_desc,
+        ctaLabel: t.activeAnalysis_view_details,
         accentColor: EuphireColors.ember,
         borderColor: EuphireColors.ember,
         showProgress: true,
@@ -140,10 +140,9 @@ class ActiveAnalysisBanner extends ConsumerWidget {
       content = _BannerContent(
         icon: Icons.lock_outline_rounded,
         iconColor: EuphireColors.ember,
-        headline: 'Przygotowuję nagranie.',
-        body:
-            'Sesja jest szyfrowana przed przesłaniem na serwer.',
-        ctaLabel: 'Zobacz postęp',
+        headline: t.activeAnalysis_preparing,
+        body: t.activeAnalysis_preparing_desc,
+        ctaLabel: t.activeAnalysis_view_progress,
         accentColor: EuphireColors.ember,
         borderColor: EuphireColors.ember,
       );
@@ -151,10 +150,9 @@ class ActiveAnalysisBanner extends ConsumerWidget {
       content = _BannerContent(
         icon: Icons.transform_rounded,
         iconColor: EuphireColors.ember,
-        headline: 'Konwertuję plik audio.',
-        body:
-            'Format pliku wymaga konwersji. Potrwa to chwilę.',
-        ctaLabel: 'Zobacz postęp',
+        headline: t.activeAnalysis_converting,
+        body: t.activeAnalysis_converting_desc,
+        ctaLabel: t.activeAnalysis_view_progress,
         accentColor: EuphireColors.ember,
         borderColor: EuphireColors.ember,
       );
@@ -162,9 +160,9 @@ class ActiveAnalysisBanner extends ConsumerWidget {
       content = _BannerContent(
         icon: Icons.cloud_upload_rounded,
         iconColor: EuphireColors.ember,
-        headline: 'Sesja jest przesyłana na serwer.',
-        body: 'Plik trafia bezpiecznie na serwer. Możesz kontynuować pracę.',
-        ctaLabel: 'Zobacz postęp',
+        headline: t.activeAnalysis_uploading,
+        body: t.activeAnalysis_uploading_desc,
+        ctaLabel: t.activeAnalysis_view_progress,
         accentColor: EuphireColors.ember,
         borderColor: EuphireColors.ember,
         showProgress: true,
@@ -174,10 +172,9 @@ class ActiveAnalysisBanner extends ConsumerWidget {
       content = _BannerContent(
         icon: Icons.auto_awesome_rounded,
         iconColor: EuphireColors.ember,
-        headline: 'Analiza w toku.',
-        body:
-            'Sesja jest już na serwerze. Raport pojawi się za kilka minut.',
-        ctaLabel: 'Zobacz postęp',
+        headline: t.activeAnalysis_analyzing,
+        body: t.activeAnalysis_analyzing_desc,
+        ctaLabel: t.activeAnalysis_view_progress,
         accentColor: EuphireColors.ember,
         borderColor: EuphireColors.ember,
       );
@@ -186,9 +183,9 @@ class ActiveAnalysisBanner extends ConsumerWidget {
       content = _BannerContent(
         icon: Icons.auto_awesome_rounded,
         iconColor: EuphireColors.ember,
-        headline: 'Przetwarzanie sesji.',
-        body: 'Twoja sesja przechodzi kolejne etapy analizy.',
-        ctaLabel: 'Zobacz postęp',
+        headline: t.activeAnalysis_processing,
+        body: t.activeAnalysis_processing_desc,
+        ctaLabel: t.activeAnalysis_view_progress,
         accentColor: EuphireColors.ember,
         borderColor: EuphireColors.ember,
       );

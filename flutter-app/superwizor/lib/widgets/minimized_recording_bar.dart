@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../l10n/app_localizations.dart';
 import '../services/recording_service.dart';
 import '../providers/services_provider.dart';
 import '../theme/euphire_theme.dart';
@@ -118,6 +119,7 @@ class _MinimizedRecordingBarWrapperState
   }
 
   Widget _buildBar(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final svc = ref.read(recordingServiceProvider);
     final patientAlias = svc.patientAlias ?? '';
     final formattedDuration = _formatDuration(_duration);
@@ -175,8 +177,8 @@ class _MinimizedRecordingBarWrapperState
                         children: [
                           Text(
                             _state == RecordingState.paused
-                                ? 'Pauza nagrywania'
-                                : 'Trwa nagrywanie sesji',
+                                ? t.minimized_recording_paused
+                                : t.minimized_recording_active,
                             style: TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 11,

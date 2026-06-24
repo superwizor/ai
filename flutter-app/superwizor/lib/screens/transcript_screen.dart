@@ -202,7 +202,7 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
         title: Text(t.transcript_tab, style: theme.textTheme.titleLarge),
         actions: [
           IconButton(
-            tooltip: 'Skopiuj transkrypcję',
+            tooltip: t.sessionDetails_copy_transcript,
             icon: const Icon(Icons.copy),
             onPressed: _data == null ? null : _onCopyPressed,
           ),
@@ -473,15 +473,16 @@ class _TranscriptScreenState extends ConsumerState<TranscriptScreen> {
     final data = _data;
     if (data == null) return;
     
+    final t = AppLocalizations.of(context);
     final StringBuffer buffer = StringBuffer();
     for (final s in data.transcript.turns) {
-      final speaker = s.speakerLabel.isNotEmpty ? s.speakerLabel : "Głos";
+      final speaker = s.speakerLabel.isNotEmpty ? s.speakerLabel : t.transcript_default_speaker_label;
       buffer.writeln('$speaker: ${s.text}');
     }
     
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
     if (mounted) {
-      EuphireToast.success(context, message: 'Transkrypcja skopiowana do schowka');
+      EuphireToast.success(context, message: t.sessionDetails_toast_transcript_copied);
     }
   }
 }

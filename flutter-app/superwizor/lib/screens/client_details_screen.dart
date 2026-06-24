@@ -22,6 +22,7 @@ import '../providers/patient_contact_provider.dart';
 import '../providers/viewed_reports_provider.dart';
 import '../repositories/clinical_notes_repository.dart';
 import '../l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
 import '../uploads/cancel_upload_action.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
@@ -196,7 +197,8 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     }
     if (!mounted) return null;
     if (therapistId == null) {
-      EuphireToast.info(context, message: 'Profil nie został jeszcze załadowany. Spróbuj za chwilę.');
+      final l = AppLocalizations.of(context);
+      EuphireToast.info(context, message: l.clientDetails_profile_not_loaded);
       return null;
     }
     final patientsState =
@@ -271,6 +273,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final patientAsync = ref.watch(patientsProvider);
     final sessionsAsync = ref.watch(sessionsProvider);
     final pendingUploads =
@@ -360,14 +363,14 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
             child:
                 CircularProgressIndicator(color: EuphireColors.ember)),
         error: (e, st) => Center(
-            child: Text('Błąd: $e',
+            child: Text(l.clientDetails_error(e.toString()),
                 style: const TextStyle(color: EuphireColors.ember))),
         data: (patients) {
           final patient = patients.firstWhere(
             (p) => p.id == widget.patientId,
             orElse: () => Patient(
                 id: widget.patientId,
-                firstName: 'Nie znaleziono',
+                firstName: l.common_not_found,
                 lastName: ''),
           );
 
@@ -397,7 +400,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Nad czym dzisiaj pracujemy?',
+                        l.clientDetails_subtitle,
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 14,
@@ -418,7 +421,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                             child: CircularProgressIndicator(
                                 color: EuphireColors.ember)),
                         error: (e, st) => Center(
-                            child: Text('Błąd sesji: $e',
+                            child: Text(l.clientDetails_session_error(e.toString()),
                                 style: const TextStyle(
                                     color: EuphireColors.ember))),
                         data: (sessionsMap) {
@@ -488,7 +491,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                     ),
                                     const SizedBox(height: 24),
                                     Text(
-                                      'Rozpocznij pracę',
+                                      l.clientDetails_start_work,
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontFamily: 'Merriweather',
@@ -498,10 +501,10 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 12),
-                                    const Text(
-                                      'Rozpocznij nagrywanie, a system zadba o bezpieczną transkrypcję i przygotuje raport kliniczny.',
+                                    Text(
+                                      l.clientDetails_start_work_desc,
                                       textAlign: TextAlign.center,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontFamily: 'Montserrat',
                                         fontSize: 14,
                                         color: EuphireColors.mist,
@@ -860,8 +863,8 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Text(
-                                    'Twoje dane są szyfrowane end-to-end. '
-                                    'Nikt poza Tobą nie ma do nich dostępu.',
+                                    '${AppLocalizations.of(context).clientDetails_encryption_notice_part1}'
+                                    '${AppLocalizations.of(context).clientDetails_encryption_notice_part2}',
                                     style: TextStyle(
                                       fontFamily: 'Montserrat',
                                       fontSize: 13,
@@ -898,6 +901,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                 // Action cards get explicit width from the builder
                 child: Builder(
                   builder: (ctx) {
+                    final l = AppLocalizations.of(ctx);
                     // Detect first session
                     final currentSessions = sessionsAsync.whenOrNull(
                       data: (map) => map[widget.patientId],
@@ -928,8 +932,8 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                 child: _buildActionCard(
                                   animation: _uploadAnim,
                                   icon: Icons.upload_file_rounded,
-                                  label: 'WGRAJ PLIK Z DYSKU',
-                                  subtitle: 'Prześlij nagranie z dyktafonu',
+                                  label: l.clientDetails_upload_file_btn,
+                                  subtitle: l.clientDetails_upload_recording,
                                   onTap: _onUploadTapped,
                                   isPrimary: false,
                                   cardColor: const Color(0xFF142D2B),
@@ -970,8 +974,8 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                 child: _buildActionCard(
                                   animation: _recordAnim,
                                   icon: Icons.mic_rounded,
-                                  label: 'ROZPOCZNIJ NAGRYWANIE',
-                                  subtitle: 'Nagraj nową sesję terapeutyczną',
+                                  label: l.clientDetails_record_btn,
+                                  subtitle: l.clientDetails_record_new_session,
                                   onTap: _onRecordTapped,
                                   isPrimary: true,
                                 ),
@@ -1026,7 +1030,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                             const SizedBox(width: 16),
                                             Expanded(
                                               child: Text(
-                                                'Rozpocznij pierwszą analizę',
+                                                l.clientDetails_start_first_analysis,
                                                 style: TextStyle(
                                                   fontFamily: 'Montserrat',
                                                   fontSize: 14,
@@ -1232,34 +1236,32 @@ class _PendingUploadCard extends StatelessWidget {
 
   const _PendingUploadCard({required this.upload});
 
-  String get _statusLabel {
+  String _statusLabel(BuildContext context) {
+    final l = AppLocalizations.of(context);
     switch (upload.phase) {
       case UploadPhase.encrypting:
-        return 'W trakcie przetwarzania…';
+        return l.clientDetails_status_processing;
       case UploadPhase.converting:
-        return 'Konwertuję audio…';
+        return l.clientDetails_status_converting;
       case UploadPhase.pending:
-        return 'W kolejce…';
+        return l.clientDetails_status_queued;
       case UploadPhase.created:
-        return 'Wysyłanie audio…';
+        return l.clientDetails_status_uploading;
       case UploadPhase.uploaded:
-        return 'Przetwarzanie audio…';
+        return l.clientDetails_status_processing_audio;
       case UploadPhase.converted:
-        return 'Finalizowanie sesji…';
+        return l.clientDetails_status_finalizing;
       case UploadPhase.failed:
-        return 'Przesyłanie przerwane';
+        return l.clientDetails_status_interrupted;
       case UploadPhase.completed:
       case UploadPhase.quotaBlocked:
-        // Shouldn't reach this widget — pendingUploadsForPatientProvider
-        // filters terminal + quota-hold states out (quota holds render
-        // in PendingQuotaSessionsWidget instead). Kept exhaustive so
-        // future enum additions trigger a compile warning.
         return '';
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final sessionId = upload.sessionId;
     final hasSessionId = sessionId != null && sessionId.isNotEmpty;
     final isFailed = upload.phase == UploadPhase.failed;
@@ -1309,7 +1311,7 @@ class _PendingUploadCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isFailed ? 'Wymaga uwagi' : 'Przetwarzanie',
+                    isFailed ? l.clientDetails_status_requires_attention : l.clientDetails_status_processing_label,
                     style: TextStyle(
                       fontFamily: 'Merriweather',
                       fontSize: 16,
@@ -1319,7 +1321,7 @@ class _PendingUploadCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _statusLabel,
+                    _statusLabel(context),
                     style: TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 13,
@@ -1401,8 +1403,8 @@ class _PendingUploadServerCard extends ConsumerWidget {
                 children: [
                   Text(
                     session.modality.isNotEmpty
-                        ? session.modality
-                        : 'Nowa sesja',
+                        ? (session.modality == 'Rozmowa' ? l.session_name_fallback : session.modality)
+                        : l.clientDetails_status_new_session,
                     style: const TextStyle(
                       fontFamily: 'Merriweather',
                       fontSize: 16,
@@ -1411,9 +1413,9 @@ class _PendingUploadServerCard extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Oczekiwanie na audio…',
-                    style: TextStyle(
+                  Text(
+                    l.clientDetails_status_waiting_audio,
+                    style: const TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 13,
                       color: EuphireColors.mist,
@@ -1455,12 +1457,10 @@ class _SessionCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final months = [
-      'Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze',
-      'Lip', 'Sie', 'Wrz', 'Pa\u017a', 'Lis', 'Gru',
-    ];
+    final l = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
     final d = session.date;
-    final dateStr = '${d.day} ${months[d.month - 1]}';
+    final dateStr = DateFormat('d MMM', locale).format(d);
     final timeStr =
         '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
     final durationMin = session.duration.inMinutes;
@@ -1486,12 +1486,12 @@ class _SessionCard extends ConsumerWidget {
 
     final (statusText, dotColor) = switch (session.status) {
       SessionStatus.completed => (
-        isViewed ? 'Gotowy' : 'Nowy raport',
+        isViewed ? l.clientDetails_status_ready : l.clientDetails_status_new_report,
         isViewed ? EuphireColors.mist : const Color(0xFF4ADE80),
       ),
-      SessionStatus.inProgress => ('AI analizuje\u2026', EuphireColors.ember),
-      SessionStatus.pendingUpload => ('Wgrywanie\u2026', Colors.orangeAccent),
-      SessionStatus.error => ('B\u0142\u0105d analizy', EuphireColors.magma),
+      SessionStatus.inProgress => (l.clientDetails_status_analyzing, EuphireColors.ember),
+      SessionStatus.pendingUpload => (l.clientDetails_status_uploading_label, Colors.orangeAccent),
+      SessionStatus.error => (l.clientDetails_status_error, EuphireColors.magma),
     };
 
     // Show the badge pill for all actionable states including pendingUpload
@@ -1500,7 +1500,7 @@ class _SessionCard extends ConsumerWidget {
         isPendingUpload ||
         isError;
 
-    final title = session.name ?? (sessionNumber > 0 ? 'Sesja $sessionNumber' : 'Sesja');
+    final title = session.name ?? (sessionNumber > 0 ? '${l.clientDetails_session_title} $sessionNumber' : l.clientDetails_session_title);
 
     return InkWell(
       borderRadius: BorderRadius.circular(10),
@@ -1810,9 +1810,9 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  'Bezpowrotne usunięcie sesji',
-                  style: TextStyle(
+                Text(
+                  l.clientDetails_delete_session_title,
+                  style: const TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -1822,7 +1822,7 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Sesja, nagranie i transkrypcja zostaną trwale usunięte. Tej operacji nie można cofnąć.',
+                  l.clientDetails_delete_session_desc,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 14,
@@ -1844,8 +1844,8 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                             side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                           ),
                         ),
-                        child: const Text(
-                          'Anuluj',
+                        child: Text(
+                          l.common_cancel,
                           style: TextStyle(
                             fontFamily: 'Montserrat',
                             fontSize: 15,
@@ -1879,9 +1879,9 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                             borderRadius: BorderRadius.circular(5),
                           ),
                         ),
-                        child: const Text(
-                          'Tak, usuń',
-                          style: TextStyle(
+                        child: Text(
+                          l.clientDetails_btn_yes_delete,
+                          style: const TextStyle(
                             fontFamily: 'Montserrat',
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -1901,6 +1901,7 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final hasChanges = _titleCtrl.text.trim().isNotEmpty &&
         _titleCtrl.text.trim() != widget.currentTitle;
@@ -1952,9 +1953,9 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                 const SizedBox(height: 20),
 
                 // ── Title ──
-                const Text(
-                  'Zarządzaj sesją',
-                  style: TextStyle(
+                Text(
+                  l.clientDetails_manage_session,
+                  style: const TextStyle(
                     fontFamily: 'Merriweather',
                     fontStyle: FontStyle.italic,
                     fontSize: 22,
@@ -1964,7 +1965,7 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Zmień tytuł lub usuń sesję',
+                  l.clientDetails_manage_session_desc,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     color: EuphireColors.mist.withValues(alpha: 0.8),
@@ -1986,7 +1987,7 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                     color: EuphireColors.frostWhite,
                   ),
                   decoration: InputDecoration(
-                    labelText: 'Tytuł sesji',
+                    labelText: l.clientDetails_session_title_label,
                     labelStyle: TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 14,
@@ -2036,14 +2037,14 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                             width: 20, height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: EuphireColors.obsidianBlack),
                           )
-                        : const Row(
+                        : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.check_rounded, size: 18),
-                              SizedBox(width: 6),
+                              const Icon(Icons.check_rounded, size: 18),
+                              const SizedBox(width: 6),
                               Text(
-                                'Zapisz tytuł',
-                                style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w700),
+                                l.clientDetails_btn_save_title,
+                                style: const TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w700),
                               ),
                             ],
                           ),
@@ -2077,13 +2078,13 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Usuń sesję',
-                                style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w600, color: EuphireColors.magma),
+                              Text(
+                                l.clientDetails_btn_delete_session,
+                                style: const TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w600, color: EuphireColors.magma),
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Trwale usuń nagranie i analizę',
+                                l.clientDetails_btn_delete_session_desc,
                                 style: TextStyle(fontFamily: 'Montserrat', fontSize: 12, color: EuphireColors.magma.withValues(alpha: 0.7)),
                               ),
                             ],
@@ -2135,12 +2136,8 @@ class _NoteCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final months = [
-      'Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze',
-      'Lip', 'Sie', 'Wrz', 'Pa\u017a', 'Lis', 'Gru',
-    ];
     final d = note.createdAt;
-    final dateStr = '${d.day} ${months[d.month - 1]}';
+    final dateStr = DateFormat('d MMM', Localizations.localeOf(context).languageCode).format(d);
     final timeStr =
         '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
     final metaStr = '$dateStr  \u2022  $timeStr';
@@ -2246,12 +2243,8 @@ class _NoteCard extends ConsumerWidget {
   void _showNoteOptionsSheet(
       BuildContext context, WidgetRef ref, String patientId, PatientNote note) {
     final l = AppLocalizations.of(context);
-    final months = [
-      'Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze',
-      'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru',
-    ];
     final d = note.createdAt;
-    final dateStr = '${d.day} ${months[d.month - 1]} ${d.year}';
+    final dateStr = DateFormat('d MMM yyyy', Localizations.localeOf(context).languageCode).format(d);
     final timeStr =
         '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
     final displayTitle =
@@ -2339,7 +2332,7 @@ class _NoteCard extends ConsumerWidget {
                   icon: Icons.edit_rounded,
                   iconColor: EuphireColors.ember,
                   title: l.note_edit_label,
-                  subtitle: 'Zmień tytuł lub treść notatki',
+                  subtitle: l.clientDetails_edit_note_subtitle,
                   onTap: () {
                     Navigator.pop(ctx);
                     Navigator.push(
@@ -2358,17 +2351,17 @@ class _NoteCard extends ConsumerWidget {
                 _NoteOptionTile(
                   icon: Icons.copy_rounded,
                   iconColor: EuphireColors.mist,
-                  title: 'Kopiuj treść',
-                  subtitle: 'Skopiuj notatkę do schowka',
+                  title: l.clientDetails_copy_content,
+                  subtitle: l.clientDetails_copy_content_desc,
                   onTap: () {
                     Navigator.pop(ctx);
                     final content = [
                       if (note.title.isNotEmpty) note.title,
-                      if (note.text.isNotEmpty) note.text,
+                      note.text.isNotEmpty ? note.text : l.clientDetails_no_content,
                     ].join('\n\n');
                     Clipboard.setData(ClipboardData(text: content));
                     EuphireToast.success(context,
-                        message: 'Skopiowano do schowka');
+                        message: l.common_copied_to_clipboard);
                   },
                 ),
 
@@ -2380,8 +2373,8 @@ class _NoteCard extends ConsumerWidget {
                   iconColor: EuphireColors.ember,
                   title: l.note_send_to_client,
                   subtitle: note.sentToPatient
-                      ? 'Wysłano ${_formatSentDate(note.sentToPatientAt!)}'
-                      : 'Wyślij notatkę mailem do klienta',
+                      ? l.clientDetails_note_sent_at(_formatSentDate(note.sentToPatientAt!, context))
+                      : l.clientDetails_send_note_desc,
                   trailing: note.sentToPatient
                       ? Container(
                           padding: const EdgeInsets.symmetric(
@@ -2390,8 +2383,8 @@ class _NoteCard extends ConsumerWidget {
                             color: const Color(0xFF2E7D32).withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text('Wysłano',
-                              style: TextStyle(
+                          child: Text(l.clientDetails_note_sent_badge,
+                              style: const TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
@@ -2415,7 +2408,7 @@ class _NoteCard extends ConsumerWidget {
                   icon: Icons.delete_outline_rounded,
                   iconColor: EuphireColors.magma,
                   title: l.note_delete_action,
-                  subtitle: 'Trwale usuń tę notatkę',
+                  subtitle: l.clientDetails_delete_note_desc,
                   titleColor: EuphireColors.magma,
                   onTap: () {
                     Navigator.pop(ctx);
@@ -2432,12 +2425,8 @@ class _NoteCard extends ConsumerWidget {
     );
   }
 
-  String _formatSentDate(DateTime dt) {
-    final months = [
-      'sty', 'lut', 'mar', 'kwi', 'maj', 'cze',
-      'lip', 'sie', 'wrz', 'paź', 'lis', 'gru',
-    ];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+  String _formatSentDate(DateTime dt, BuildContext context) {
+    return DateFormat('d MMM yyyy', Localizations.localeOf(context).languageCode).format(dt);
   }
 
   void _showDeleteConfirmation(
@@ -3498,12 +3487,8 @@ class _NoteViewScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
-    final months = [
-      'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
-      'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień',
-    ];
     final d = note.createdAt;
-    final dateStr = '${d.day} ${months[d.month - 1]} ${d.year}';
+    final dateStr = DateFormat('d MMMM yyyy', Localizations.localeOf(context).languageCode).format(d);
     final timeStr =
         '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
     final displayTitle =
@@ -3595,7 +3580,7 @@ class _NoteViewScreen extends ConsumerWidget {
                 )
               else
                 Text(
-                  'Brak treści',
+                  l.clientDetails_no_content,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 15,

@@ -36,6 +36,24 @@ class AppLocalizationsPl extends AppLocalizations {
   String get common_error => 'Wystąpił błąd.';
 
   @override
+  String get common_not_found => 'Nie znaleziono';
+
+  @override
+  String get language_pl_name => 'Polski';
+
+  @override
+  String get language_pl_sub => 'polski';
+
+  @override
+  String get language_en_name => 'English';
+
+  @override
+  String get language_en_sub => 'angielski (Wlk. Brytania)';
+
+  @override
+  String get session_name_fallback => 'Rozmowa';
+
+  @override
   String get connectivity_offline_banner =>
       'Brak połączenia. Niektóre funkcje są ograniczone.';
 
@@ -350,10 +368,19 @@ class AppLocalizationsPl extends AppLocalizations {
       'Do wideokonferencji (np. Google Meet, Zoom) używaj zawsze dodatkowego urządzenia do nagrywania.';
 
   @override
+  String get recording_status_initializing => 'Rozpoczynam nagrywanie…';
+
+  @override
   String get recording_status_recording => 'Nagrywanie w toku.';
 
   @override
   String get recording_status_paused => 'Nagrywanie wstrzymane.';
+
+  @override
+  String get minimized_recording_paused => 'Pauza nagrywania';
+
+  @override
+  String get minimized_recording_active => 'Trwa nagrywanie sesji';
 
   @override
   String get recording_mic_denied_header => 'Brak dostępu do mikrofonu.';
@@ -705,6 +732,15 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get drawer_delete_account => 'Usuń konto.';
+
+  @override
+  String get drawer_fallback_name => 'Terapeuta';
+
+  @override
+  String get drawer_settings_header => 'USTAWIENIA';
+
+  @override
+  String get drawer_legal_header => 'DOKUMENTY PRAWNE';
 
   @override
   String get settings_title => 'Ustawienia';
@@ -1608,4 +1644,1149 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get live_activity_permission_cancel => 'Anuluj';
+
+  @override
+  String get home_greeting_prefix => 'Witaj, ';
+
+  @override
+  String get home_greeting_subtitle => 'Z kim dzisiaj pracujemy?';
+
+  @override
+  String get home_search_hint => 'Szukaj klienta…';
+
+  @override
+  String get home_empty_list => 'Dodaj pierwszego klienta, aby rozpocząć.';
+
+  @override
+  String home_no_search_results(String query) {
+    return 'Brak wyników dla „$query”';
+  }
+
+  @override
+  String get home_section_active => 'TWOJE KARTOTEKI';
+
+  @override
+  String get home_section_active_filtered => 'TWOJE KARTOTEKI • FILTR';
+
+  @override
+  String home_section_paused(int count) {
+    return 'WSTRZYMANE ($count)';
+  }
+
+  @override
+  String home_section_completed(int count) {
+    return 'ZAKOŃCZONE ($count)';
+  }
+
+  @override
+  String get home_status_awaiting_first_session => 'Oczekuje na pierwszą sesję';
+
+  @override
+  String get home_status_new_client => 'Nowy klient';
+
+  @override
+  String get home_card_sessions_prefix => 'Sesje: ';
+
+  @override
+  String get home_card_last_session_prefix => ' • Ostatnio: ';
+
+  @override
+  String get home_card_last_prefix_only => 'Ostatnio: ';
+
+  @override
+  String get home_status_recording => 'Nagrywanie';
+
+  @override
+  String get home_status_has_new_report => 'Nowy raport';
+
+  @override
+  String get home_status_analyzing => 'AI analizuje';
+
+  @override
+  String get home_status_uploading => 'Wgrywanie…';
+
+  @override
+  String get home_status_upload_failed => 'Przesyłanie\nprzerwane';
+
+  @override
+  String get home_status_error => 'Błąd analizy';
+
+  @override
+  String get home_status_active => 'Aktywny';
+
+  @override
+  String get home_status_completed => 'Zakończony';
+
+  @override
+  String get home_status_paused => 'Wstrzymany';
+
+  @override
+  String get home_status_new => 'Nowy';
+
+  @override
+  String get home_menu_lifecycle_active => 'Aktywna';
+
+  @override
+  String get home_menu_lifecycle_completed => 'Zakończona';
+
+  @override
+  String get home_menu_lifecycle_paused => 'Wstrzymana';
+
+  @override
+  String get home_menu_edit_data => 'Edytuj dane';
+
+  @override
+  String get home_menu_edit_data_desc => 'Zmień imię, nazwisko, email';
+
+  @override
+  String get home_menu_delete_patient => 'Usuń kartotekę';
+
+  @override
+  String get home_menu_delete_patient_desc =>
+      'Skasuj historię, sesje i notatki';
+
+  @override
+  String get home_menu_field_first_name => 'Imię (wymagane)';
+
+  @override
+  String get home_menu_field_last_name => 'Inicjał lub pseudonim';
+
+  @override
+  String get home_menu_field_email => 'E-mail klienta';
+
+  @override
+  String get home_menu_btn_back => 'Wróć';
+
+  @override
+  String get home_menu_btn_save => 'Zapisz';
+
+  @override
+  String get home_menu_manage_client => 'Zarządzaj kartoteką klienta';
+
+  @override
+  String get home_menu_edit_client => 'Edytuj kartotekę';
+
+  @override
+  String home_delete_title(String name) {
+    return 'Usunęcie klienta: $name';
+  }
+
+  @override
+  String get home_delete_warning_body =>
+      'Cała dokumentacja kliniczna — sesje, notatki AI oraz nagrania audio — zostanie trwale i bezpowrotnie usunięta z baz medycznych.\nZgodnie z RODO (prawo do zapomnienia).';
+
+  @override
+  String get home_delete_warning_understand => 'Rozumiem, to nieodwracalne.';
+
+  @override
+  String get home_delete_btn_continue => 'Kontynuuj kasowanie';
+
+  @override
+  String get home_delete_confirm_instruction => 'Aby potwierdzić, wpisz:';
+
+  @override
+  String get home_delete_confirm_word => 'usuwam';
+
+  @override
+  String get home_delete_confirm_hint => 'wpisz tutaj…';
+
+  @override
+  String get home_delete_btn_confirm => 'Usuń klienta';
+
+  @override
+  String get home_delete_btn_cancel => 'Anuluj.';
+
+  @override
+  String home_error_loading(String error) {
+    return 'Błąd: $error';
+  }
+
+  @override
+  String get common_close => 'Zamknij';
+
+  @override
+  String get common_copied_to_clipboard => 'Skopiowano do schowka';
+
+  @override
+  String get common_delete => 'Usuń';
+
+  @override
+  String get common_got_it => 'Zrozumiałem';
+
+  @override
+  String pendingUploads_pill_attention(int count) {
+    return '$count wymaga uwagi';
+  }
+
+  @override
+  String pendingUploads_pill_retrying(int count) {
+    return '$count wznawianie';
+  }
+
+  @override
+  String pendingUploads_pill_analyzing(int count) {
+    return '$count analiza';
+  }
+
+  @override
+  String pendingUploads_pill_in_progress(int count) {
+    return '$count w toku';
+  }
+
+  @override
+  String get pending_uploads_title => 'Kolejka sesji';
+
+  @override
+  String get pending_uploads_subtitle =>
+      'Status przesyłania i przetwarzania nagrań.';
+
+  @override
+  String pending_uploads_error(String error) {
+    return 'Błąd: $error';
+  }
+
+  @override
+  String get pending_uploads_empty_title => 'Brak plików w kolejce';
+
+  @override
+  String get pending_uploads_empty_body => 'Wszystkie sesje zostały wgrane.';
+
+  @override
+  String get pending_uploads_no_internet_title =>
+      'Brak połączenia z internetem';
+
+  @override
+  String get pending_uploads_error_title => 'Błąd przesyłania';
+
+  @override
+  String get pending_uploads_no_internet_desc =>
+      'Przesyłanie zostało przerwane, ale Twoje nagranie jest bezpiecznie zapisane na tym urządzeniu. Spróbuj przesłać je ponownie, gdy odzyskasz zasięg.';
+
+  @override
+  String get pending_uploads_error_desc =>
+      'Przesyłanie zostało przerwane z powodu błędu, ale Twoje nagranie jest bezpiecznie zapisane na tym urządzeniu. Spróbuj przesłać je ponownie.';
+
+  @override
+  String get pending_uploads_btn_resend => 'Prześlij ponownie';
+
+  @override
+  String get pending_uploads_default_patient_name => 'Pacjent';
+
+  @override
+  String get pending_uploads_resending_auto_prefix =>
+      'WZNAWIAM AUTOMATYCZNIE: ';
+
+  @override
+  String get pending_uploads_quota_dialog_title => 'Brak dostępnych sesji';
+
+  @override
+  String get pending_uploads_quota_dialog_body =>
+      'Twoja pula sesji w tym miesiącu została wyczerpana. Aby przetworzyć to nagranie, odwiedź platformę Superwizor w przeglądarce internetowej, aby zarządzać swoim planem.';
+
+  @override
+  String get pending_uploads_err_reason_no_internet =>
+      'brak połączenia z internetem';
+
+  @override
+  String get pending_uploads_err_reason_timeout =>
+      'serwer nie odpowiedział w terminie';
+
+  @override
+  String get pending_uploads_err_reason_link_expired =>
+      'link do przesyłania wygasł';
+
+  @override
+  String get pending_uploads_err_reason_unavailable =>
+      'serwer chwilowo niedostępny';
+
+  @override
+  String pending_uploads_err_reason_prefix(String reason) {
+    return 'Powód błędu: $reason';
+  }
+
+  @override
+  String get pending_uploads_phase_resuming => 'Wznawianie przesyłania...';
+
+  @override
+  String get pending_uploads_phase_encrypting => 'Szyfrowanie nagrania...';
+
+  @override
+  String get pending_uploads_phase_converting => 'Konwersja pliku audio...';
+
+  @override
+  String get pending_uploads_phase_pending => 'W kolejce';
+
+  @override
+  String get pending_uploads_phase_uploading => 'Przesyłam na serwer...';
+
+  @override
+  String get pending_uploads_phase_uploaded => 'Przesłano — finalizuję...';
+
+  @override
+  String get pending_uploads_phase_converted =>
+      'Konwersja gotowa — finalizuję...';
+
+  @override
+  String get pending_uploads_phase_completed => 'Wgrane';
+
+  @override
+  String get pending_uploads_phase_failed => 'Przesyłanie przerwane';
+
+  @override
+  String pending_uploads_detail_attempt(int attempt) {
+    return ' • próba $attempt';
+  }
+
+  @override
+  String get pending_uploads_quota_card_title =>
+      'Nagranie czeka na wznowienie.';
+
+  @override
+  String get pending_uploads_quota_card_desc =>
+      'Pula sesji została wyczerpana. Sesja jest bezpiecznie zapisana i zostanie przetworzona po odnowieniu planu.';
+
+  @override
+  String get pending_uploads_btn_checking => 'Sprawdzam...';
+
+  @override
+  String get pending_uploads_btn_send_again => 'Wyślij ponownie';
+
+  @override
+  String get addPatient_email_required_error =>
+      'Podaj e-mail lub zmień język klienta.';
+
+  @override
+  String get addPatient_alias_instruction =>
+      'Nadaj klientowi unikalne oznaczenie — ułatwi nawigację.';
+
+  @override
+  String get addPatient_background_color => 'KOLOR TŁA';
+
+  @override
+  String get addPatient_skip_for_now => 'Pomiń na razie';
+
+  @override
+  String get clientDetails_profile_not_loaded =>
+      'Profil nie został jeszcze załadowany. Spróbuj za chwilę.';
+
+  @override
+  String clientDetails_error(String error) {
+    return 'Błąd: $error';
+  }
+
+  @override
+  String clientDetails_session_error(String error) {
+    return 'Błąd sesji: $error';
+  }
+
+  @override
+  String get clientDetails_start_work => 'Rozpocznij pracę';
+
+  @override
+  String get clientDetails_start_work_desc =>
+      'Rozpocznij nagrywanie, a system zadba o bezpieczną transkrypcję i przygotuje raport kliniczny.';
+
+  @override
+  String get clientDetails_encryption_notice_part1 =>
+      'Twoje dane są szyfrowane end-to-end. ';
+
+  @override
+  String get clientDetails_encryption_notice_part2 =>
+      'Nikt poza Tobą nie ma do nich dostępu.';
+
+  @override
+  String get clientDetails_upload_recording => 'Prześlij nagranie z dyktafonu';
+
+  @override
+  String get clientDetails_record_new_session =>
+      'Nagraj nową sesję terapeutyczną';
+
+  @override
+  String get clientDetails_start_first_analysis =>
+      'Rozpocznij pierwszą analizę';
+
+  @override
+  String get clientDetails_status_converting => 'Konwertuję audio…';
+
+  @override
+  String get clientDetails_status_uploading => 'Wysyłanie audio…';
+
+  @override
+  String get clientDetails_status_interrupted => 'Przesyłanie przerwane';
+
+  @override
+  String get clientDetails_delete_session_title =>
+      'Bezpowrotne usunięcie sesji';
+
+  @override
+  String get clientDetails_delete_session_desc =>
+      'Sesja, nagranie i transkrypcja zostaną trwale usunięte. Tej operacji nie można cofnąć.';
+
+  @override
+  String get clientDetails_btn_yes_delete => 'Tak, usuń';
+
+  @override
+  String get clientDetails_manage_session => 'Zarządzaj sesją';
+
+  @override
+  String get clientDetails_manage_session_desc => 'Zmień tytuł lub usuń sesję';
+
+  @override
+  String get clientDetails_session_title_label => 'Tytuł sesji';
+
+  @override
+  String get clientDetails_btn_save_title => 'Zapisz tytuł';
+
+  @override
+  String get clientDetails_btn_delete_session => 'Usuń sesję';
+
+  @override
+  String get clientDetails_btn_delete_session_desc =>
+      'Trwale usuń nagranie i analizę';
+
+  @override
+  String get clientDetails_edit_note_subtitle =>
+      'Zmień tytuł lub treść notatki';
+
+  @override
+  String get clientDetails_copy_content => 'Kopiuj treść';
+
+  @override
+  String get clientDetails_copy_content_desc => 'Skopiuj notatkę do schowka';
+
+  @override
+  String clientDetails_note_sent_at(String date) {
+    return 'Wysłano $date';
+  }
+
+  @override
+  String get clientDetails_send_note_desc => 'Wyślij notatkę mailem do klienta';
+
+  @override
+  String get clientDetails_note_sent_badge => 'Wysłano';
+
+  @override
+  String get clientDetails_delete_note_desc => 'Trwale usuń tę notatkę';
+
+  @override
+  String get clientDetails_no_content => 'Brak treści';
+
+  @override
+  String get sessionDetails_stat_modality => 'MODALNOŚĆ';
+
+  @override
+  String get sessionDetails_stat_words => 'SŁOWA';
+
+  @override
+  String get sessionDetails_stat_sentiment => 'SENTYMENT';
+
+  @override
+  String get sessionDetails_stat_sentiment_neutral => 'Neutralny';
+
+  @override
+  String get sessionDetails_stat_sentiment_unknown => 'Nieznany';
+
+  @override
+  String get sessionDetails_stat_status => 'STATUS';
+
+  @override
+  String get sessionDetails_stat_status_new => 'Nowa';
+
+  @override
+  String get sessionDetails_tab_analyses => 'Analizy';
+
+  @override
+  String get sessionDetails_tab_transcriptions => 'Transkrypcje';
+
+  @override
+  String get sessionDetails_toast_reports_copied =>
+      'Wszystkie raporty skopiowane do schowka';
+
+  @override
+  String get sessionDetails_toast_transcript_copied =>
+      'Transkrypcja skopiowana do schowka';
+
+  @override
+  String get sessionDetails_ai_reports_soon => 'Raporty AI — wkrótce';
+
+  @override
+  String get sessionDetails_ai_reports_soon_desc =>
+      'Analiza sesji i automatyczne raporty będą dostępne\nw kolejnej aktualizacji.';
+
+  @override
+  String get sessionDetails_transcript_soon => 'Transkrypcja — wkrótce';
+
+  @override
+  String get sessionDetails_transcript_soon_desc =>
+      'Automatyczna transkrypcja z rozpoznawaniem mówców\nbędzie dostępna w kolejnej aktualizacji.';
+
+  @override
+  String get sessionDetails_copy_transcript => 'Skopiuj transkrypcję';
+
+  @override
+  String get report_copy_desc => 'Skopiuj treść do schowka';
+
+  @override
+  String get report_edit_summary_desc => 'Popraw lub uzupełnij podsumowanie AI';
+
+  @override
+  String get report_btn_copy_section => 'Kopiuj sekcję';
+
+  @override
+  String get report_btn_edit_section => 'Edytuj treść';
+
+  @override
+  String get report_edit_section_desc => 'Popraw lub uzupełnij raport AI';
+
+  @override
+  String get report_edit_section_hint => 'Edytuj treść sekcji...';
+
+  @override
+  String get report_intro_title => 'Wstęp';
+
+  @override
+  String get menu_avatar_title => 'Zdjęcie profilowe';
+
+  @override
+  String get menu_avatar_desc => 'Wybierz skąd chcesz dodać zdjęcie.';
+
+  @override
+  String get menu_avatar_updated => 'Zdjęcie profilowe zaktualizowane';
+
+  @override
+  String menu_save_error(String error) {
+    return 'Wystąpił błąd podczas zapisu: $error';
+  }
+
+  @override
+  String get menu_invalid_email => 'Podaj prawidłowy adres e-mail.';
+
+  @override
+  String menu_verification_sent(String email) {
+    return 'Link weryfikacyjny wysłany na $email';
+  }
+
+  @override
+  String get menu_reauth_required =>
+      'Zaloguj się ponownie, aby zmienić e-mail.';
+
+  @override
+  String get menu_email_in_use => 'Ten adres jest już używany.';
+
+  @override
+  String menu_error_message(String error) {
+    return 'Wystąpił błąd: $error';
+  }
+
+  @override
+  String get menu_change_email_title => 'Zmień adres e-mail';
+
+  @override
+  String get menu_change_email_desc =>
+      'Wyślemy link weryfikacyjny na nowy adres.';
+
+  @override
+  String get menu_btn_send_verification => 'Wyślij weryfikację';
+
+  @override
+  String get menu_delete_account_confirm_title =>
+      'Trwałe i nieodwracalne usunięcie';
+
+  @override
+  String get sessionStatus_uploading_desc =>
+      'Superwizor przesyła nagranie sesji na serwer.';
+
+  @override
+  String get sessionStatus_btn_delete_session => 'Usuń sesję';
+
+  @override
+  String get sessionStatus_upload_stopped_title => 'Przesyłanie zatrzymane';
+
+  @override
+  String get sessionStatus_upload_stopped_net_err =>
+      'Wystąpił problem z połączeniem sieciowym.\n\n';
+
+  @override
+  String get sessionStatus_upload_stopped_safe =>
+      'Nagranie jest bezpieczne na Twoim urządzeniu. ';
+
+  @override
+  String get sessionStatus_upload_stopped_resume =>
+      'System wznowi przesyłanie, gdy odzyskasz zasięg.';
+
+  @override
+  String get sessionStatus_report_failed_temp =>
+      'Proces tworzenia raportu napotkał trudność.\n\n';
+
+  @override
+  String get sessionStatus_report_failed_retry =>
+      'Spróbuj ponowić analizę za jakiś czas.';
+
+  @override
+  String get sessionStatus_report_failed_perm =>
+      'Nie udało się wygenerować raportu dla tej sesji.\n\n';
+
+  @override
+  String get sessionStatus_report_failed_contact =>
+      'Jeśli sytuacja się powtarza, daj nam znać.';
+
+  @override
+  String get sessionStatus_status_uploading => 'Przesyłanie na serwer';
+
+  @override
+  String get sessionStatus_status_queued => 'W kolejce do przesłania';
+
+  @override
+  String get sessionStatus_bg_processing_notice =>
+      'Możesz bezpiecznie opuścić ten ekran,\nsesja przetworzy się w tle.';
+
+  @override
+  String get recording_ios_only_title => 'Nagrywanie dostępne w aplikacji iOS';
+
+  @override
+  String recording_ios_only_body_part1(String alias) {
+    return 'Aby nagrać sesję z $alias, użyj aplikacji ';
+  }
+
+  @override
+  String get recording_ios_only_body_part2 =>
+      'Superwizor na iPhone. Po przesłaniu nagrania ';
+
+  @override
+  String get recording_ios_only_body_part3 =>
+      'transkrypcja i raport pojawią się tutaj.';
+
+  @override
+  String get recording_btn_back => 'Powrót';
+
+  @override
+  String get newSession_error_header => 'Błąd';
+
+  @override
+  String get newSession_upload_file_header => 'PRZESYŁANIE PLIKU';
+
+  @override
+  String get newSession_new_session_header => 'NOWA SESJA';
+
+  @override
+  String get newSession_pick_file_desc =>
+      'Wybierz plik audio z dysku. Po przesłaniu plik zostanie automatycznie przeanalizowany.';
+
+  @override
+  String get newSession_record_or_upload_desc =>
+      'Nagraj tę sesję, lub prześlij plik audio z dyktafonu.';
+
+  @override
+  String get newSession_secure_upload_title => 'Bezpieczne przesyłanie.';
+
+  @override
+  String get newSession_secure_upload_desc =>
+      'Twój plik jest szyfrowany i bezpiecznie przesyłany na nasze serwery w Europie. Nikt poza Tobą nie ma dostępu do tych danych.';
+
+  @override
+  String get newSession_recording_in_progress_err =>
+      'Trwa nagrywanie innej sesji. Wróć do niej, aby kontynuować.';
+
+  @override
+  String newSession_format_not_supported(String ext) {
+    return 'Format \"$ext\" nie jest obsługiwany.\n\n';
+  }
+
+  @override
+  String get newSession_supported_formats =>
+      'Obsługiwane formaty: FLAC, WAV, MP3, OGG, OPUS, M4A, AAC, WEBM, AMR.';
+
+  @override
+  String newSession_file_too_large(String size) {
+    return 'Plik jest zbyt duży ($size MB). ';
+  }
+
+  @override
+  String get newSession_uploading_file => 'Przesyłam plik...';
+
+  @override
+  String get newSession_recording_active_err =>
+      'Trwa nagrywanie sesji. Wróć do niej, aby kontynuować.';
+
+  @override
+  String get newSession_preparing_file => 'Przygotowuję plik...';
+
+  @override
+  String get newSession_queuing => 'Kolejkuję...';
+
+  @override
+  String get newSession_encryption_notice_part1 =>
+      'Twoje nagrania są chronione szyfrowaniem end-to-end i służą wyłącznie ';
+
+  @override
+  String get newSession_encryption_notice_part2 =>
+      'do analizy AI. Nikt poza Tobą nie ma dostępu do danych.';
+
+  @override
+  String newSession_upload_error(String error) {
+    return 'Błąd podczas przesyłania pliku:\n$error';
+  }
+
+  @override
+  String login_auth_error(String code, String message) {
+    return 'Błąd uwierzytelniania [$code]: $message';
+  }
+
+  @override
+  String get login_accept_terms_error =>
+      'Zaakceptuj Regulamin i Politykę Prywatności, aby kontynuować.';
+
+  @override
+  String get login_subtitle => 'Zaloguj się do Superwizor AI';
+
+  @override
+  String get login_title => 'Witaj ponownie';
+
+  @override
+  String get login_forgot_password => 'Nie pamiętam hasła';
+
+  @override
+  String get login_btn_sign_in => 'Zaloguj się';
+
+  @override
+  String get login_btn_sign_up => 'Zarejestruj się';
+
+  @override
+  String get login_register_title => 'Utwórz konto';
+
+  @override
+  String get login_register_subtitle => 'Dołącz do społeczności terapeutów';
+
+  @override
+  String get login_name_field => 'Imię i nazwisko';
+
+  @override
+  String get login_password_hint => 'Utwórz hasło (min. 8 znaków)';
+
+  @override
+  String get login_already_have_account => 'Masz już konto? ';
+
+  @override
+  String get login_accept_prefix => 'Akceptuję ';
+
+  @override
+  String get login_accept_privacy => 'Politykę Prywatności';
+
+  @override
+  String get login_privacy_policy_title => 'Polityka Prywatności';
+
+  @override
+  String get forgot_err_user_not_found =>
+      'Nie znaleźliśmy konta z tym adresem.';
+
+  @override
+  String get forgot_err_invalid_email =>
+      'Ten adres e-mail wygląda nieprawidłowo.';
+
+  @override
+  String get forgot_err_too_many_requests => 'Za dużo prób. Odczekaj chwilę.';
+
+  @override
+  String get forgot_err_generic => 'Coś poszło nie tak. Spróbuj ponownie.';
+
+  @override
+  String get forgot_title => 'Resetowanie hasła';
+
+  @override
+  String get forgot_desc_part1 =>
+      'Podaj adres e-mail powiązany z Twoim kontem. ';
+
+  @override
+  String get forgot_desc_part2 => 'Wyślemy Ci link do ustawienia nowego hasła.';
+
+  @override
+  String get forgot_email_hint => 'Twój adres e-mail';
+
+  @override
+  String get forgot_btn_send_link => 'Wyślij link';
+
+  @override
+  String get forgot_check_mailbox_title => 'Sprawdź skrzynkę';
+
+  @override
+  String get forgot_sent_msg_prefix => 'Wysłaliśmy wiadomość na adres\n';
+
+  @override
+  String get forgot_step_open_email => 'Otwórz swoją skrzynkę e-mail';
+
+  @override
+  String get forgot_step_click_link => 'Kliknij w link „Zresetuj hasło\"';
+
+  @override
+  String get forgot_step_login => 'Ustaw nowe hasło i zaloguj się';
+
+  @override
+  String get forgot_spam_check_part1 =>
+      'Nie widzisz wiadomości? Sprawdź folder spam. ';
+
+  @override
+  String get forgot_spam_check_part2 => 'Wysyłka może potrwać do 2 minut.';
+
+  @override
+  String get forgot_btn_back_to_login => 'Wróć do logowania';
+
+  @override
+  String get forgot_btn_send_again => 'Wyślij ponownie';
+
+  @override
+  String get transcript_default_speaker_label => 'Głos';
+
+  @override
+  String home_error_toast(String error) {
+    return 'Błąd: $error';
+  }
+
+  @override
+  String get home_manage_edit_card => 'Edytuj kartotekę';
+
+  @override
+  String get home_manage_card => 'Zarządzaj kartoteką klienta';
+
+  @override
+  String get sort_filter_header_sorting => 'SORTOWANIE';
+
+  @override
+  String get sort_filter_last_activity => 'Ostatnia aktywność';
+
+  @override
+  String get sort_filter_last_activity_desc =>
+      'Klienci, z którymi ostatnio pracowałeś';
+
+  @override
+  String get sort_filter_long_unseen => 'Dawno niewidziani';
+
+  @override
+  String get sort_filter_no_sessions_longest_desc =>
+      'Klienci bez sesji od najdłuższego czasu';
+
+  @override
+  String get sort_filter_alphabetical => 'Alfabetycznie';
+
+  @override
+  String get sort_filter_alphabetical_desc => 'Nazwy kartotek od A do Z';
+
+  @override
+  String get sort_filter_longest_processes => 'Najdłuższe procesy';
+
+  @override
+  String get sort_filter_longest_processes_desc =>
+      'Klienci z największą liczbą sesji';
+
+  @override
+  String get sort_filter_show_only => 'POKAŻ TYLKO';
+
+  @override
+  String get sort_filter_new_reports => 'Nowe raporty i analizy';
+
+  @override
+  String get sort_filter_ready_reports_desc =>
+      'Gotowe raporty AI lub trwające analizy';
+
+  @override
+  String get sort_filter_modality => 'MODALNOŚĆ';
+
+  @override
+  String get sort_filter_clear_filters => 'Wyczyść filtry';
+
+  @override
+  String editPatient_error(String error) {
+    return 'Błąd: $error';
+  }
+
+  @override
+  String activeAnalysis_uploading_status(int errors, int progress) {
+    String _temp0 = intl.Intl.pluralLogic(
+      errors,
+      locale: localeName,
+      other: 'błędów',
+      many: 'błędów',
+      few: 'błędy',
+      one: 'błąd',
+    );
+    return 'Wgrywanie: $errors $_temp0, $progress w toku.';
+  }
+
+  @override
+  String get activeAnalysis_uploading_status_desc =>
+      'Część plików wymaga uwagi, ale przesyłanie reszty trwa bez zakłóceń.';
+
+  @override
+  String get activeAnalysis_check_details => 'Sprawdź szczegóły';
+
+  @override
+  String get activeAnalysis_upload_attention => 'Przesyłanie wymaga uwagi.';
+
+  @override
+  String get activeAnalysis_upload_attention_desc =>
+      'Sesja nie mogła zostać wgrana. Sprawdź szczegóły.';
+
+  @override
+  String get activeAnalysis_quota_blocked_desc =>
+      'Pula sesji została wyczerpana. Sesja jest bezpiecznie zapisana i zostanie przetworzona po odnowieniu planu.';
+
+  @override
+  String get activeAnalysis_view_details => 'Zobacz szczegóły';
+
+  @override
+  String get activeAnalysis_upload_interrupted =>
+      'Przesyłanie zostało przerwane.';
+
+  @override
+  String get activeAnalysis_upload_interrupted_desc =>
+      'Próba wznowienia nastąpi automatycznie. Nagranie jest bezpieczne.';
+
+  @override
+  String get activeAnalysis_preparing => 'Przygotowuję nagranie.';
+
+  @override
+  String get activeAnalysis_preparing_desc =>
+      'Sesja jest szyfrowana przed przesłaniem na serwer.';
+
+  @override
+  String get activeAnalysis_view_progress => 'Zobacz postęp';
+
+  @override
+  String get activeAnalysis_converting => 'Konwertuję plik audio.';
+
+  @override
+  String get activeAnalysis_converting_desc =>
+      'Format pliku wymaga konwersji. Potrwa to chwilę.';
+
+  @override
+  String get activeAnalysis_uploading => 'Sesja jest przesyłana na serwer.';
+
+  @override
+  String get activeAnalysis_uploading_desc =>
+      'Plik trafia bezpiecznie na serwer. Możesz kontynuować pracę.';
+
+  @override
+  String get activeAnalysis_analyzing_desc =>
+      'Sesja jest już na serwerze. Raport pojawi się za kilka minut.';
+
+  @override
+  String get recording_countdown_preparing => 'Przygotuj się…';
+
+  @override
+  String get drawer_btn_logout => 'Wyloguj się';
+
+  @override
+  String get drawer_btn_delete_account => 'Usuń konto';
+
+  @override
+  String get avatar_customize_desc =>
+      'Nadaj swoim klientom unikalne oznaczenia, aby szybko znaleźć ich w kartotece.';
+
+  @override
+  String get avatar_customize_background_color => 'KOLOR TŁA';
+
+  @override
+  String get profile_edit_desc =>
+      'Podaj swoje imię, nazwisko i tytuł zawodowy.';
+
+  @override
+  String get profile_edit_first_name => 'Imię';
+
+  @override
+  String get profile_edit_professional_title =>
+      'Tytuł zawodowy (np. mgr, Psycholog)';
+
+  @override
+  String get report_detail_copy_content => 'Skopiuj treść';
+
+  @override
+  String get hard_delete_error => 'Błąd usuwania';
+
+  @override
+  String get hard_delete_title => 'Usunięcie konta jest bezpowrotne.';
+
+  @override
+  String hard_delete_body(String word) {
+    return 'Skasujemy Twój profil terapeuty, wszystkie sesje, transkrypcje i raporty. Tej akcji nie można cofnąć. Jeśli jesteś pewna/pewien, wpisz słowo $word.';
+  }
+
+  @override
+  String get hard_delete_btn_confirm => 'Usuń bezpowrotnie';
+
+  @override
+  String get common_done => 'Gotowe';
+
+  @override
+  String get addPatient_additional_data_title => 'Dodatkowe dane';
+
+  @override
+  String get addPatient_customize_label_title => 'Spersonalizuj oznaczenie';
+
+  @override
+  String get addPatient_avatar_format_hint => 'Litery, cyfry lub emoji (max 2)';
+
+  @override
+  String get clientDetails_subtitle => 'Nad czym dzisiaj pracujemy?';
+
+  @override
+  String get clientDetails_upload_file_btn => 'WGRAJ PLIK Z DYSKU';
+
+  @override
+  String get clientDetails_record_btn => 'ROZPOCZNIJ NAGRYWANIE';
+
+  @override
+  String get clientDetails_status_processing => 'W trakcie przetwarzania…';
+
+  @override
+  String get clientDetails_status_queued => 'W kolejce…';
+
+  @override
+  String get clientDetails_status_processing_audio => 'Przetwarzanie audio…';
+
+  @override
+  String get clientDetails_status_finalizing => 'Finalizowanie sesji…';
+
+  @override
+  String home_delete_error_toast(String error) {
+    return 'Błąd usunięcia: $error';
+  }
+
+  @override
+  String get report_btn_copy_summary => 'Kopiuj podsumowanie';
+
+  @override
+  String get report_btn_edit_summary => 'Edytuj podsumowanie';
+
+  @override
+  String get report_toast_summary_copied => 'Podsumowanie skopiowane';
+
+  @override
+  String get report_toast_summary_updated => 'Podsumowanie zaktualizowane';
+
+  @override
+  String get report_edit_summary_title => 'Edycja podsumowania';
+
+  @override
+  String get report_edit_summary_hint => 'Edytuj podsumowanie sesji...';
+
+  @override
+  String get report_toast_reports_copied => 'Raporty skopiowane do schowka';
+
+  @override
+  String get report_tooltip_copy_reports => 'Skopiuj raporty';
+
+  @override
+  String get report_toast_section_copied => 'Sekcja skopiowana do schowka';
+
+  @override
+  String get report_edit_section_title => 'Edycja sekcji';
+
+  @override
+  String get report_toast_section_updated => 'Sekcja zaktualizowana';
+
+  @override
+  String get menu_avatar_camera => 'Aparat';
+
+  @override
+  String get menu_avatar_gallery => 'Galeria';
+
+  @override
+  String get common_or => 'lub';
+
+  @override
+  String get activeAnalysis_analyzing => 'Analiza w toku.';
+
+  @override
+  String get activeAnalysis_processing => 'Przetwarzanie sesji.';
+
+  @override
+  String get activeAnalysis_processing_desc =>
+      'Twoja sesja przechodzi kolejne etapy analizy.';
+
+  @override
+  String get profile_edit_title => 'Edytuj profil.';
+
+  @override
+  String get profile_edit_last_name => 'Nazwisko (opcjonalne)';
+
+  @override
+  String get profile_title_suggestion_1 => 'mgr';
+
+  @override
+  String get profile_title_suggestion_2 => 'dr';
+
+  @override
+  String get profile_title_suggestion_3 => 'dr hab.';
+
+  @override
+  String get profile_title_suggestion_4 => 'prof.';
+
+  @override
+  String get profile_title_suggestion_5 => 'Psycholog';
+
+  @override
+  String get profile_title_suggestion_6 => 'Psychoterapeuta';
+
+  @override
+  String get profile_title_suggestion_7 => 'Terapeuta';
+
+  @override
+  String get profile_title_suggestion_8 => 'Psychiatra';
+
+  @override
+  String get profile_title_suggestion_9 => 'Coach';
+
+  @override
+  String get clientDetails_status_requires_attention => 'Wymaga uwagi';
+
+  @override
+  String get clientDetails_status_processing_label => 'Przetwarzanie';
+
+  @override
+  String get clientDetails_status_new_session => 'Nowa sesja';
+
+  @override
+  String get clientDetails_status_waiting_audio => 'Oczekiwanie na audio…';
+
+  @override
+  String get clientDetails_status_ready => 'Gotowy';
+
+  @override
+  String get clientDetails_status_new_report => 'Nowy raport';
+
+  @override
+  String get clientDetails_status_analyzing => 'AI analizuje…';
+
+  @override
+  String get clientDetails_status_uploading_label => 'Wgrywanie…';
+
+  @override
+  String get clientDetails_status_error => 'Błąd analizy';
+
+  @override
+  String get clientDetails_session_title => 'Sesja';
+
+  @override
+  String get cancelUpload_warning_text =>
+      'Ta sesja jest w trakcie analizy. Usunięcie jej oznacza bezpowrotną utratę nagrania i transkrypcji. Nie będzie można tego cofnąć.';
+
+  @override
+  String get cancelUpload_delete_btn => 'Usuń z analizy';
+
+  @override
+  String get cancelUpload_confirm_title => 'Na pewno?';
+
+  @override
+  String get cancelUpload_confirm_body =>
+      'Tej operacji nie można cofnąć. Nagranie i transkrypcja zostaną trwale usunięte.';
+
+  @override
+  String get cancelUpload_back_btn => 'Wróć';
+
+  @override
+  String get forgot_password_link_expiry => 'Link wygasa po 1 godzinie';
+
+  @override
+  String home_report_ready_toast(String name) {
+    return 'Raport gotowy, $name 🎉';
+  }
 }

@@ -5,6 +5,7 @@
 // Display names live in AppLocalizations, never hardcoded here.
 
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 class Modality {
   final String code;
@@ -49,25 +50,21 @@ String? modalityDisplayKeyFor(String code) {
   return null;
 }
 
-/// Short Polish display label used in patient cards (home screen,
-/// kartoteka header) where ARB localisation isn't wired through.
-/// Returns `code` unchanged for unknown modalities so a missing
-/// mapping degrades gracefully rather than silently renaming.
-///
-/// Kept as a single source of truth so adding a 10th/11th modality
-/// only requires updating this map + `kModalities` — not the
-/// hardcoded switches that used to live in screen files.
-const Map<String, String> _kModalityShortLabel = {
-  'UNIV': 'Uniwersalna',
-  'CBT': 'Beh-Pozn',
-  'PSYCHO': 'Psychodynamiczna',
-  'GESTALT': 'Gestalt',
-  'PPT': 'Pozytywna',
-  'ST': 'Schematów',
-  'SYS': 'Systemowa',
-  'EFT': 'Skon. na emocjach',
-  'COACH': 'Coaching',
-};
+/// Short localized display label used in patient cards and list headers.
+/// Returns `code` unchanged for unknown modalities.
+String modalityShortLabelFor(BuildContext context, String code) {
+  final t = AppLocalizations.of(context);
+  switch (code) {
+    case 'UNIV': return t.modality_abbr_univ;
+    case 'CBT': return t.modality_abbr_cbt;
+    case 'PSYCHO': return t.modality_abbr_psycho;
+    case 'GESTALT': return t.modality_abbr_gestalt;
+    case 'PPT': return t.modality_abbr_ppt;
+    case 'ST': return t.modality_abbr_st;
+    case 'SYS': return t.modality_abbr_sys;
+    case 'EFT': return t.modality_abbr_eft;
+    case 'COACH': return t.modality_abbr_coach;
+    default: return code;
+  }
+}
 
-String modalityShortLabelFor(String code) =>
-    _kModalityShortLabel[code] ?? code;

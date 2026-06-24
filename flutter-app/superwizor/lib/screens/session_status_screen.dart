@@ -253,9 +253,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     }
     // Android foreground notification: update to uploading status.
     if (row.phase == UploadPhase.created) {
+      final t = AppLocalizations.of(context);
       RecordingForegroundService.updateStatus(
-        title: 'Wgrywanie nagrania...',
-        body: 'Superwizor przesyła nagranie sesji na serwer.',
+        title: t.sessionStatus_status_uploading,
+        body: t.sessionStatus_uploading_desc,
       );
     }
 
@@ -291,9 +292,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     }
     // Android foreground notification: update to analyzing status.
     if (phase == SessionStepperPhase.analyzing) {
+      final t = AppLocalizations.of(context);
       RecordingForegroundService.updateStatus(
-        title: 'Analizowanie sesji...',
-        body: 'AI przygotowuje raport kliniczny.',
+        title: t.session_status_title,
+        body: t.stepper_step3_analyzing,
       );
     }
 
@@ -461,11 +463,13 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     final patients = ref.watch(patientsProvider).value;
     final patientId = _lastRow?.patientFileId ?? session?.patientId;
     final patient = patients?.where((p) => p.id == patientId).firstOrNull;
-    final patientName = patient != null ? '${patient.firstName} ${patient.lastName}' : 'Pacjent';
+    final patientName = patient != null
+        ? '${patient.firstName} ${patient.lastName}'
+        : (AppLocalizations.of(context)?.pending_uploads_default_patient_name ?? 'Pacjent');
 
     final date = session?.date ?? _lastRow?.queuedAt.toLocal() ?? DateTime.now();
     final formattedTime = DateFormat('HH:mm').format(date);
-    final formattedDate = DateFormat('d MMMM yyyy', 'pl').format(date);
+    final formattedDate = DateFormat('d MMMM yyyy', Localizations.localeOf(context).languageCode).format(date);
 
     final duration = session?.duration ?? Duration(seconds: _lastRow?.actualDurationSeconds ?? 0);
     final minutes = (duration.inSeconds / 60).toStringAsFixed(0);
@@ -560,7 +564,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                           child: FilledButton.icon(
                             onPressed: _onResendPressed,
                             icon: const Icon(Icons.refresh_rounded, size: 20),
-                            label: Text(_isQuotaBlocked ? t.upload_resend : 'Spróbuj ponownie'),
+                            label: Text(_isQuotaBlocked ? t.upload_resend : t.common_retry),
                             style: FilledButton.styleFrom(
                               backgroundColor: EuphireColors.ember,
                               foregroundColor: EuphireColors.obsidianBlack,
@@ -585,7 +589,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                           child: OutlinedButton.icon(
                             onPressed: _onCancelPressed,
                             icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                            label: const Text('Usuń sesję'),
+                            label: Text(t.sessionStatus_btn_delete_session),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: EuphireColors.magma,
                               side: BorderSide(
@@ -833,24 +837,22 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     final (IconData icon, String title, String body) = switch (bucket) {
       _ErrorBucket.upload => (
           Icons.wifi_off_rounded,
-          'Przesyłanie zatrzymane',
-          'Wystąpił problem z połączeniem sieciowym.\n\n'
-              'Nagranie jest bezpieczne na Twoim urządzeniu. '
-              'System wznowi przesyłanie, gdy odzyskasz zasięg.',
+          t.sessionStatus_upload_stopped_title,
+          '${t.sessionStatus_upload_stopped_net_err}'
+              '${t.sessionStatus_upload_stopped_safe}'
+              '${t.sessionStatus_upload_stopped_resume}',
         ),
       _ErrorBucket.processing => (
           Icons.sync_problem_rounded,
-          'Przetwarzanie zatrzymane',
-          'Proces tworzenia raportu napotkał trudność.\n\n'
-              'Nagranie z sesji jest bezpieczne. Znajdziesz je w kartotece klienta. '
-              'Spróbuj ponowić analizę za jakiś czas.',
+          t.session_failed_header,
+          '${t.sessionStatus_report_failed_temp}'
+              '${t.sessionStatus_report_failed_retry}',
         ),
       _ErrorBucket.unknown => (
           Icons.help_outline_rounded,
-          'Przetwarzanie przerwane',
-          'Nie udało się wygenerować raportu dla tej sesji.\n\n'
-              'Twoje nagranie jest bezpieczne w kartotece klienta. '
-              'Jeśli sytuacja się powtarza, daj nam znać.',
+          t.pending_uploads_phase_failed,
+          '${t.sessionStatus_report_failed_perm}'
+              '${t.sessionStatus_report_failed_contact}',
         ),
     };
 
@@ -1146,6 +1148,7 @@ class _UploadProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final isUploading = upload.phase == UploadPhase.created;
     final mb = (upload.sizeBytes / 1024 / 1024).toStringAsFixed(1);
     final mins = (upload.actualDurationSeconds / 60).toStringAsFixed(0);
@@ -1172,7 +1175,7 @@ class _UploadProgressCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  isUploading ? 'Przesyłanie na serwer' : 'W kolejce do przesłania',
+                  isUploading ? t.sessionStatus_status_uploading : t.sessionStatus_status_queued,
                   style: const TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 15,
@@ -1274,7 +1277,7 @@ class _UploadProgressCard extends StatelessWidget {
           
           // Reassurance Text
           Text(
-            'Możesz bezpiecznie opuścić ten ekran,\nsesja przetworzy się w tle.',
+            t.sessionStatus_bg_processing_notice,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'Merriweather',

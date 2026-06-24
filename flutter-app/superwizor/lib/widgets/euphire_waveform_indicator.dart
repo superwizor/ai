@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 import '../theme/euphire_theme.dart';
 
@@ -160,6 +161,7 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Center(
       child: SizedBox(
         width: double.infinity,
@@ -268,10 +270,10 @@ class _EuphireWaveformIndicatorState extends State<EuphireWaveformIndicator>
                   const SizedBox(height: 24),
                   Text(
                     widget.isInitializing
-                        ? 'Rozpoczynam nagrywanie…'
+                        ? t.recording_status_initializing
                         : widget.isRecording
-                            ? 'Nagrywanie trwa'
-                            : 'Nagrywanie wstrzymane',
+                            ? t.recording_status_recording
+                            : t.recording_status_paused,
                     style: const TextStyle(
                       fontFamily: 'Montserrat',
                       color: EuphireColors.mist,

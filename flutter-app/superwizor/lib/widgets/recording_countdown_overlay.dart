@@ -15,6 +15,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 import '../theme/euphire_theme.dart';
 
@@ -137,6 +138,7 @@ class _RecordingCountdownOverlayState extends State<RecordingCountdownOverlay>
   @override
   Widget build(BuildContext context) {
     if (_finished) return const SizedBox.shrink();
+    final t = AppLocalizations.of(context);
 
     return AbsorbPointer(
       child: Center(
@@ -210,7 +212,7 @@ class _RecordingCountdownOverlayState extends State<RecordingCountdownOverlay>
             ),
             const SizedBox(height: 32),
             Text(
-              'Przygotuj się…',
+              t.recording_countdown_preparing,
               style: TextStyle(
                 fontFamily: 'Merriweather',
                 fontSize: 16,

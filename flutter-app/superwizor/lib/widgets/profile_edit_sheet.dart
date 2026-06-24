@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../l10n/app_localizations.dart';
 
 import '../generated/identity/v1/identity.pb.dart';
 import '../providers/current_user_provider.dart';
@@ -96,6 +97,7 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final t = AppLocalizations.of(context);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -108,36 +110,36 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Edytuj profil.', style: theme.textTheme.headlineMedium),
+          Text(t.profile_edit_title, style: theme.textTheme.headlineMedium),
           const SizedBox(height: 6),
           Text(
-            'Podaj swoje imię, nazwisko i tytuł zawodowy.',
+            t.profile_edit_desc,
             style: theme.textTheme.bodyMedium?.copyWith(color: EuphireColors.mist),
           ),
           const SizedBox(height: 24),
           EuphireTextField(
             controller: _firstController,
-            labelText: 'Imię',
+            labelText: t.profile_edit_first_name,
           ),
           const SizedBox(height: 12),
           EuphireTextField(
             controller: _lastController,
-            labelText: 'Nazwisko (opcjonalne)',
+            labelText: t.profile_edit_last_name,
           ),
           const SizedBox(height: 12),
           // ── Tytuł zawodowy z podpowiedziami ──
           Autocomplete<String>(
             optionsBuilder: (textEditingValue) {
-              const titles = [
-                'mgr',
-                'dr',
-                'dr hab.',
-                'prof.',
-                'Psycholog',
-                'Psychoterapeuta',
-                'Terapeuta',
-                'Psychiatra',
-                'Coach',
+              final titles = [
+                t.profile_title_suggestion_1,
+                t.profile_title_suggestion_2,
+                t.profile_title_suggestion_3,
+                t.profile_title_suggestion_4,
+                t.profile_title_suggestion_5,
+                t.profile_title_suggestion_6,
+                t.profile_title_suggestion_7,
+                t.profile_title_suggestion_8,
+                t.profile_title_suggestion_9,
               ];
               if (textEditingValue.text.isEmpty) return titles;
               final query = textEditingValue.text.toLowerCase();
@@ -162,7 +164,7 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
               return EuphireTextField(
                 controller: controller,
                 focusNode: focusNode,
-                labelText: 'Tytuł zawodowy (np. mgr, Psycholog)',
+                labelText: t.profile_edit_professional_title,
               );
             },
             optionsViewBuilder: (context, onSelected, options) {
@@ -205,7 +207,7 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
             width: double.infinity,
             height: 54,
             child: EuphireButton(
-              text: 'Zapisz.',
+              text: t.common_save,
               isLoading: _isSaving,
               onPressed: _saveProfile,
             ),
