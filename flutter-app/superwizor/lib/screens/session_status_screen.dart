@@ -519,13 +519,25 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
 
               // ── Main content ──
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
-                  child: _showCheck
-                      ? _buildSuccessView(t)
-                      : _phase == SessionStepperPhase.failed
-                          ? _buildFailureView(t)
-                          : _buildProcessingView(t),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 28),
+                          child: _showCheck
+                              ? _buildSuccessView(t)
+                              : _phase == SessionStepperPhase.failed
+                                  ? _buildFailureView(t)
+                                  : _buildProcessingView(t),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
 
@@ -695,7 +707,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         // overlaps "Wróć do kartotek". The raw gRPC last-error text used
         // to render here (dev-style) — removed; the stepper label + the
         // bottom resend button carry the meaning now.
-        const Spacer(),
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -842,10 +854,13 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         ),
     };
 
-    return Column(
-      children: [
-        const Spacer(flex: 2),
-        // ── Icon ──
+    return Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── Icon ──
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.0, end: 1.0),
           duration: const Duration(milliseconds: 600),
@@ -920,8 +935,8 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
             ),
           ),
         ),
-        const Spacer(flex: 3),
-      ],
+        ],
+      ),
     );
   }
 

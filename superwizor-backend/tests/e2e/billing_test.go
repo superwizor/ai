@@ -274,8 +274,21 @@ func TestBilling_CheckQuota_HappyPath(t *testing.T) {
 func TestBilling_CheckQuota_Exhausted(t *testing.T) {
 	env := loadBillingEnv(t)
 	env.resetCounter(t)
+	
+	// Fetch actual limit dynamically to simulate exact exhaustion
+	var limit int32
+	ctxDB := context.Background()
+	errDB := env.dbPool.QueryRow(ctxDB, `
+		SELECT tokens_limit FROM usage_counters
+		WHERE subscription_id IN (
+			SELECT id FROM subscriptions
+			WHERE organization_id = $1 AND status IN ('ACTIVE', 'TRIALING')
+		)
+		AND period_start <= now() AND period_end > now()`, env.orgID).Scan(&limit)
+	require.NoError(t, errDB)
+
 	// Ustaw counter na exact limit — symuluje wyczerpanie.
-	env.setCounterUsage(t, 40, 0) // PRO MONTHLY = 40 tokens
+	env.setCounterUsage(t, limit, 0)
 	defer env.resetCounter(t)
 
 	conn, c := env.dialBilling(t)

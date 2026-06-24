@@ -44,6 +44,11 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
   final _pageController = PageController();
   int _currentPage = 0;
 
+  final _scrollController1 = ScrollController();
+  final _scrollController2 = ScrollController();
+  final _scrollController3 = ScrollController();
+  final _scrollController4 = ScrollController();
+
   // ── Step 1 fields ──
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -91,6 +96,10 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
 
   @override
   void dispose() {
+    _scrollController1.dispose();
+    _scrollController2.dispose();
+    _scrollController3.dispose();
+    _scrollController4.dispose();
     _firstNameController.removeListener(_onNameChanged);
     _lastNameController.removeListener(_onNameChanged);
     _firstNameController.dispose();
@@ -163,8 +172,8 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
       canPop: _currentPage == 0,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        if (_currentPage == 2) {
-          // On step 3, just go back means "skip"
+        if (_currentPage == 3) {
+          // On step 4, just go back means "skip"
           Navigator.of(context).pop();
         } else if (_firstNameController.text.trim().isNotEmpty) {
           _showDiscardDialog(t);
@@ -191,6 +200,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                       _buildStep1(t),
                       _buildStep2(t),
                       _buildStep3(t),
+                      _buildStep4(t),
                     ],
                   ),
                 ),
@@ -211,11 +221,11 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
         children: [
           TextButton.icon(
             onPressed: () {
-              if (_currentPage == 2) {
-                // Step 3 is post-creation; back = done
+              if (_currentPage == 3) {
+                // Step 4 is post-creation; back = done
                 Navigator.of(context).pop();
-              } else if (_currentPage == 1) {
-                _goToPage(0);
+              } else if (_currentPage > 0) {
+                _goToPage(_currentPage - 1);
               } else {
                 Navigator.of(context).pop();
               }
@@ -228,7 +238,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
             label: Text(
               _currentPage == 0
                   ? t.common_cancel
-                  : _currentPage == 2
+                  : _currentPage == 3
                       ? 'Gotowe'
                       : t.common_back,
               style: TextStyle(
@@ -251,7 +261,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(3, (i) {
+        children: List.generate(4, (i) {
           final isActive = i == _currentPage;
           final isCompleted = i < _currentPage;
           return AnimatedContainer(
@@ -282,128 +292,93 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     return Column(
       children: [
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-                // ── Header ──
-                Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: EuphireColors.ember.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
+          child: RawScrollbar(
+            controller: _scrollController1,
+            thumbVisibility: true,
+            thickness: 6,
+            radius: const Radius.circular(10),
+            thumbColor: EuphireColors.mist.withValues(alpha: 0.3),
+            child: SingleChildScrollView(
+              controller: _scrollController1,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  // ── Header ──
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: EuphireColors.ember.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.person_add_rounded,
+                          color: EuphireColors.ember,
+                          size: 24,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.person_add_rounded,
-                        color: EuphireColors.ember,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            t.addPatient_title,
-                            style: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: EuphireColors.frostWhite,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t.addPatient_title,
+                              style: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: EuphireColors.frostWhite,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            t.addPatient_step1_subtitle,
-                            style: TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 13,
-                              color: EuphireColors.mist.withValues(alpha: 0.7),
+                            const SizedBox(height: 2),
+                            Text(
+                              t.addPatient_step1_subtitle,
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 13,
+                                color: EuphireColors.mist.withValues(alpha: 0.7),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 28),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
 
-                // ── First Name ──
-                GlassTextField(
-                  controller: _firstNameController,
-                  label: t.addPatient_first_name_label,
-                  errorText: _duplicateError ? t.addPatient_duplicate_header : null,
-                  autofocus: true,
-                  focusNode: _firstNameFocus,
-                  textInputAction: TextInputAction.next,
-                  onSubmitted: (_) => _lastNameFocus.requestFocus(),
-                ),
-                const SizedBox(height: 12),
+                  // ── First Name ──
+                  GlassTextField(
+                    controller: _firstNameController,
+                    label: t.addPatient_first_name_label,
+                    errorText: _duplicateError ? t.addPatient_duplicate_header : null,
+                    autofocus: true,
+                    focusNode: _firstNameFocus,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _lastNameFocus.requestFocus(),
+                  ),
+                  const SizedBox(height: 12),
 
-                // ── Last Name ──
-                GlassTextField(
-                  controller: _lastNameController,
-                  label: t.addPatient_last_name_label,
-                  errorText: _duplicateError ? '' : null,
-                  focusNode: _lastNameFocus,
-                  textInputAction: TextInputAction.next,
-                  onSubmitted: (_) => _emailFocus.requestFocus(),
-                ),
-                const SizedBox(height: 12),
-
-                // ── Email (optional) ──
-                GlassTextField(
-                  controller: _emailController,
-                  label: t.addPatient_email_label,
-                  hint: t.addPatient_email_hint,
-                  keyboardType: TextInputType.emailAddress,
-                  focusNode: _emailFocus,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) {
-                    if (_firstNameController.text.trim().isNotEmpty) {
-                      _goToPage(1);
-                    }
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                // ── Language Dropdown ──
-                FormSectionLabel(text: t.addPatient_language_label),
-                const SizedBox(height: 8),
-                GlassDropdown<String>(
-                  value: _languageCode,
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'pl-PL',
-                      child: Row(
-                        children: [
-                          Text('🇵🇱', style: TextStyle(fontSize: 18)),
-                          SizedBox(width: 10),
-                          Text('Polski'),
-                        ],
-                      ),
-                    ),
-                    DropdownMenuItem(
-                      value: 'en-US',
-                      child: Row(
-                        children: [
-                          Text('🇬🇧', style: TextStyle(fontSize: 18)),
-                          SizedBox(width: 10),
-                          Text('English'),
-                        ],
-                      ),
-                    ),
-                  ],
-                  onChanged: (v) => setState(() => _languageCode = v!),
-                ),
-                const SizedBox(height: 24),
-              ],
+                  // ── Last Name ──
+                  GlassTextField(
+                    controller: _lastNameController,
+                    label: t.addPatient_last_name_label,
+                    errorText: _duplicateError ? '' : null,
+                    focusNode: _lastNameFocus,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      if (_firstNameController.text.trim().isNotEmpty) {
+                        _goToPage(1);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
           ),
         ),
@@ -430,17 +405,158 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     );
   }
 
-  // ── Step 2: "Dopasuj do Twojej pracy" — Modality + Consent ──
+  // ── Step 2: "Dodatkowe dane" ──
 
   Widget _buildStep2(AppLocalizations t) {
+    return Column(
+      children: [
+        Expanded(
+          child: RawScrollbar(
+            controller: _scrollController2,
+            thumbVisibility: true,
+            thickness: 6,
+            radius: const Radius.circular(10),
+            thumbColor: EuphireColors.mist.withValues(alpha: 0.3),
+            child: SingleChildScrollView(
+              controller: _scrollController2,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  // ── Header ──
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: EuphireColors.ember.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.contact_mail_rounded,
+                          color: EuphireColors.ember,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Dodatkowe dane",
+                              style: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: EuphireColors.frostWhite,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              "Podaj e-mail lub zmień język klienta.",
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 13,
+                                color: EuphireColors.mist.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+
+                  // ── Email (optional) ──
+                  GlassTextField(
+                    controller: _emailController,
+                    label: t.addPatient_email_label,
+                    hint: t.addPatient_email_hint,
+                    keyboardType: TextInputType.emailAddress,
+                    focusNode: _emailFocus,
+                    autofocus: true,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      _goToPage(2);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Language Dropdown ──
+                  FormSectionLabel(text: t.addPatient_language_label),
+                  const SizedBox(height: 8),
+                  GlassDropdown<String>(
+                    value: _languageCode,
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'pl-PL',
+                        child: Row(
+                          children: [
+                            Text('🇵🇱', style: TextStyle(fontSize: 18)),
+                            SizedBox(width: 10),
+                            Text('Polski'),
+                          ],
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 'en-US',
+                        child: Row(
+                          children: [
+                            Text('🇬🇧', style: TextStyle(fontSize: 18)),
+                            SizedBox(width: 10),
+                            Text('English'),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onChanged: (v) => setState(() => _languageCode = v!),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+        ),
+        
+        // ── Sticky Bottom CTA: Dalej ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+          child: SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: EuphireButton(
+              text: t.addPatient_step1_next,
+              icon: Icons.arrow_forward_rounded,
+              iconOnRight: true,
+              onPressed: () => _goToPage(2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+// ── Step 3: "Dopasuj do Twojej pracy" — Modality + Consent ──
+
+  Widget _buildStep3(AppLocalizations t) {
     final canSave = !_saving && _consentGiven;
 
     return Column(
       children: [
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
+          child: RawScrollbar(
+            controller: _scrollController3,
+            thumbVisibility: true,
+            thickness: 6,
+            radius: const Radius.circular(10),
+            thumbColor: EuphireColors.mist.withValues(alpha: 0.3),
+            child: SingleChildScrollView(
+              controller: _scrollController3,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 16),
@@ -565,6 +681,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               ],
             ),
           ),
+          ),
         ),
 
         // ── Sticky Bottom CTA: Utwórz kartotekę ──
@@ -589,15 +706,22 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     );
   }
 
-  // ── Step 3: "Spersonalizuj oznaczenie" — Optional avatar customization ──
+  // ── Step 4: "Spersonalizuj oznaczenie" — Optional avatar customization ──
 
-  Widget _buildStep3(AppLocalizations t) {
+  Widget _buildStep4(AppLocalizations t) {
     return Column(
       children: [
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
+          child: RawScrollbar(
+            controller: _scrollController3,
+            thumbVisibility: true,
+            thickness: 6,
+            radius: const Radius.circular(10),
+            thumbColor: EuphireColors.mist.withValues(alpha: 0.3),
+            child: SingleChildScrollView(
+              controller: _scrollController3,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
               children: [
                 const SizedBox(height: 24),
 
@@ -773,6 +897,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               ],
             ),
           ),
+          ),
         ),
 
         // ── Sticky Bottom Buttons (Gotowe + Pomiń) ──
@@ -913,8 +1038,8 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
 
       if (mounted) {
         AppHapticFeedback.mediumImpact();
-        // Navigate to Step 3 (avatar customization)
-        _goToPage(2);
+        // Navigate to Step 4 (avatar customization)
+        _goToPage(3);
       }
     } on grpc.GrpcError catch (e) {
       if (mounted) {

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper do budowania i wysylania aplikacji do TestFlight
+exec "$(dirname "$0")/8_wyslij_testflight.sh" "$@"

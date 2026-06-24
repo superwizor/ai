@@ -248,14 +248,20 @@ func mintFirebaseSession(ctx context.Context, projectID, apiKey, uid, email stri
 		return nil, fmt.Errorf("mint custom token: %w", err)
 	}
 
-	// Exchange the custom token for an ID token via the public REST endpoint.
+	// Exchange the custom token for an ID token via the public REST endpoint (or emulator).
 	exchangeBody, _ := json.Marshal(map[string]any{
 		"token":             customToken,
 		"returnSecureToken": true,
 	})
-	url := fmt.Sprintf(
-		"https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=%s",
-		apiKey)
+	
+	emulatorHost := os.Getenv("FIREBASE_AUTH_EMULATOR_HOST")
+	var url string
+	if emulatorHost != "" {
+		url = fmt.Sprintf("http://%s/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=%s", emulatorHost, apiKey)
+	} else {
+		url = fmt.Sprintf("https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=%s", apiKey)
+	}
+	
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(exchangeBody))
 	if err != nil {
 		return nil, fmt.Errorf("build exchange request: %w", err)
