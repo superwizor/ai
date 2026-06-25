@@ -181,10 +181,13 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	defaults, lookupErr := txq.GetSessionDefaultsForPatientFile(ctx, patientFileIDPg)
+	// Default name intentionally left empty → NULLIF($9, '') stores NULL.
+	// Flutter computes the localized title ("Sesja N" / "Session N") from
+	// session_number, which is the correct UX. The old "<modality> <N>"
+	// format (e.g. "Poznawczo-Behawioralny (CBT) 4") confused users.
+	// User renames via UpdateSession still write a non-NULL value that
+	// Flutter will display verbatim.
 	var defaultName string
-	if lookupErr == nil && defaults.DisplayName != "" {
-		defaultName = fmt.Sprintf("%s %d", defaults.DisplayName, nextNumber)
-	}
 	audioLang := ""
 	if lookupErr == nil {
 		audioLang = lang.BCP47ize(defaults.PatientLanguage)

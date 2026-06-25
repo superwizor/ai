@@ -163,7 +163,7 @@ struct SessionActivityWidget: Widget {
                                 .foregroundColor(WidgetTheme.successGreen)
                         }
                     } else if isProcessing(context) {
-                        Text(context.state.processingPhase == "uploading" ? "↑" : "✦")
+                        Image(systemName: context.state.processingPhase == "uploading" ? "arrow.up" : "sparkles")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(processingColor(context))
                     } else {
@@ -322,17 +322,26 @@ private struct LockScreenView: View {
                     .foregroundColor(WidgetTheme.gold)
             }
         } else if isProcessingState {
-            // Uploading/Analyzing — spinner
-            let color = context.state.processingPhase == "uploading"
+            // Uploading/Analyzing — dedicated icons instead of generic spinner
+            let isUpload = context.state.processingPhase == "uploading"
+            let color = isUpload
                 ? WidgetTheme.processingBlue
                 : WidgetTheme.processingPurple
+            let iconName = isUpload ? "arrow.up.circle.fill" : "sparkles"
             ZStack {
                 Circle()
-                    .stroke(color.opacity(0.15), lineWidth: 2.5)
-                    .frame(width: 32, height: 32)
-                ProgressView()
-                    .tint(color)
-                    .scaleEffect(0.9)
+                    .fill(color.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                if #available(iOSApplicationExtension 17.0, *) {
+                    Image(systemName: iconName)
+                        .font(.system(size: 22))
+                        .foregroundColor(color)
+                        .symbolEffect(.pulse, options: .repeating, isActive: true)
+                } else {
+                    Image(systemName: iconName)
+                        .font(.system(size: 22))
+                        .foregroundColor(color)
+                }
             }
         } else {
             // Recording — animated radiating rings from ember dot.
@@ -399,12 +408,29 @@ private struct LockScreenView: View {
                 }
             }
         } else if isProcessingState {
-            ProgressView()
-                .tint(context.state.processingPhase == "uploading"
-                      ? WidgetTheme.processingBlue
-                      : WidgetTheme.processingPurple)
-                .scaleEffect(0.8)
-                .frame(width: 22, height: 22)
+            // Animated three dots — cycles through ·, ··, ··· to convey
+            // active work. Uses TimelineView for smooth iOS 17+ animation.
+            let color = context.state.processingPhase == "uploading"
+                ? WidgetTheme.processingBlue
+                : WidgetTheme.processingPurple
+            if #available(iOSApplicationExtension 17.0, *) {
+                TimelineView(.periodic(from: .now, by: 0.6)) { timeline in
+                    let t = timeline.date.timeIntervalSinceReferenceDate
+                    let step = Int(t / 0.6) % 3
+                    HStack(spacing: 4) {
+                        ForEach(0..<3, id: \.self) { i in
+                            Circle()
+                                .fill(color.opacity(i <= step ? 1.0 : 0.25))
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+                }
+            } else {
+                // iOS 16 fallback — static ellipsis
+                Text("···")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(color)
+            }
         } else {
             if context.state.isPaused {
                 Text(timerString(context.state.elapsedSeconds))

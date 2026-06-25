@@ -204,6 +204,7 @@
 
   "stepper_step1_uploaded": "Audio bezpieczne na naszych serwerach.",
   "stepper_step1_queued": "Audio czeka w kolejce do uploadu.",
+  "stepper_step1_uploading": "Ładujemy audio na serwer.",
   "stepper_step2_transcribing": "Tworzymy transkrypcję.",
   "stepper_step3_analyzing": "Sztuczna Inteligencja przygotowuje wnioski.",
   "stepper_step4_finalizing": "Składamy informacje w czytelny raport.",

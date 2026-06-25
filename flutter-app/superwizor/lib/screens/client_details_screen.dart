@@ -1402,8 +1402,8 @@ class _PendingUploadServerCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    session.modality.isNotEmpty
-                        ? (session.modality == 'Rozmowa' ? l.session_name_fallback : session.modality)
+                    session.sessionNumber > 0
+                        ? '${l.clientDetails_session_title} ${session.sessionNumber}'
                         : l.clientDetails_status_new_session,
                     style: const TextStyle(
                       fontFamily: 'Merriweather',
@@ -1500,7 +1500,11 @@ class _SessionCard extends ConsumerWidget {
         isPendingUpload ||
         isError;
 
-    final title = session.name ?? (sessionNumber > 0 ? '${l.clientDetails_session_title} $sessionNumber' : l.clientDetails_session_title);
+    // session.name is non-null ONLY when the user explicitly renamed the
+    // session. For new sessions the backend stores NULL → Flutter computes
+    // the localized title from the DB-authoritative session_number.
+    final sn = session.sessionNumber;
+    final title = session.name ?? (sn > 0 ? '${l.clientDetails_session_title} $sn' : l.clientDetails_session_title);
 
     return InkWell(
       borderRadius: BorderRadius.circular(10),
@@ -1565,7 +1569,7 @@ class _SessionCard extends ConsumerWidget {
                           color: dotColor,
                         )
                       : Text(
-                          sessionNumber > 0 ? '#$sessionNumber' : '#',
+                          sn > 0 ? '#$sn' : '#',
                           style: TextStyle(
                             fontFamily: 'Montserrat',
                             fontSize: 13,

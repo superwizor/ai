@@ -98,17 +98,17 @@ class SessionDto {
   Session toModel() => Session(
         id: id,
         patientId: patientFileId,
-        modality: name.isNotEmpty ? name : 'Rozmowa',
+        // modality is a patient_file attribute — don't derive from
+        // session.name (which is either NULL or a user-set rename).
+        modality: 'Rozmowa',
         // Map the server `sessions.name` to Session.name so a custom title set
         // via UpdateSession (rename) is read back on EVERY refresh — not just
-        // shown optimistically. The server defaults this to
-        // "<modality_display> <N>" on create, so non-renamed sessions still get
-        // a sensible title; the card's own 'Sesja $n' fallback only fires if
-        // the server name is ever empty. (Without this, a rename persisted
-        // server-side but reverted to the default on re-entry.)
+        // shown optimistically. When sessions.name is NULL (the new default),
+        // Flutter renders "Sesja N" from sessionNumber.
         name: name.isNotEmpty ? name : null,
         date: createdAt.toLocal(),
         duration: Duration(seconds: durationSeconds),
+        sessionNumber: sessionNumber,
         status: status == 'PENDING_UPLOAD'
             ? SessionStatus.pendingUpload
             : status == 'COMPLETED'

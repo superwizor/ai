@@ -19,6 +19,9 @@ class Session {
   final DateTime date;
   final Duration duration;
   final SessionStatus status;
+  /// Server-authoritative sequential number (sessions.session_number).
+  /// Used for display ("Sesja N") instead of fragile list-position math.
+  final int sessionNumber;
   /// When the therapist first opened the report. null = unviewed
   /// ("nowy raport" badge). Populated from sessions.report_viewed_at
   /// via ClinicalService.MarkReportViewed (migration 000059).
@@ -33,6 +36,7 @@ class Session {
     required this.date,
     required this.duration,
     this.status = SessionStatus.inProgress,
+    this.sessionNumber = 0,
     this.reportViewedAt,
     this.fileSizeBytes = 0,
   });
@@ -45,6 +49,7 @@ class Session {
     DateTime? date,
     Duration? duration,
     SessionStatus? status,
+    int? sessionNumber,
     DateTime? reportViewedAt,
     int? fileSizeBytes,
   }) {
@@ -56,6 +61,7 @@ class Session {
       date: date ?? this.date,
       duration: duration ?? this.duration,
       status: status ?? this.status,
+      sessionNumber: sessionNumber ?? this.sessionNumber,
       reportViewedAt: reportViewedAt ?? this.reportViewedAt,
       fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
     );

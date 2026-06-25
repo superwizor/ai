@@ -398,6 +398,19 @@ class RecordingService {
     }
   }
 
+  /// Manually forces a state update for debugging/simulation.
+  void debugForceState(RecordingState s) {
+    if (kDebugMode) {
+      if (s == RecordingState.interrupted) {
+        _foldSegment();
+        _hadInterruption = true;
+      } else if (s == RecordingState.recording) {
+        _segmentStart = DateTime.now();
+      }
+      _setState(s);
+    }
+  }
+
   Future<void> dispose() async {
     await _nativeSub?.cancel();
     _ticker?.cancel();

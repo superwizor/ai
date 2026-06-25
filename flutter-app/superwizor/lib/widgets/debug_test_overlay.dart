@@ -21,8 +21,12 @@ import '../models/session.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
 import '../screens/debug_pipeline_simulator_screen.dart';
+import '../screens/debug_state_gallery_screen.dart';
 import '../utils/debug_flags.dart';
 import '../utils/haptics.dart';
+import '../providers/services_provider.dart';
+import '../services/recording_service.dart';
+import '../main.dart';
 
 final showDebugButtonProvider = NotifierProvider<ShowDebugButtonNotifier, bool>(() {
   return ShowDebugButtonNotifier();
@@ -70,7 +74,7 @@ class DebugTestOverlay extends ConsumerWidget {
   /// gesture handler on the "Superwizor AI" logo in home_screen.dart.
   static void openDebugSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
-      context: context,
+      context: navigatorKey.currentContext ?? context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => _DebugSheet(ref: ref),
@@ -368,6 +372,81 @@ class _DebugSheet extends StatelessWidget {
             ),
 
             const Divider(color: Colors.white12, height: 1),
+
+            // ── Recording simulation buttons (debug-only) ──
+            if (kDebugMode || DebugFlags.simulationsEnabled) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SYMULACJE — NAGRYWANIE',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                        color: Colors.orange.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Testuje ekran nagrywania i wstrzymania (np. połączenie)',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 10,
+                        color: Colors.white.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final service = ref.watch(recordingServiceProvider);
+                        final active = service.state == RecordingState.recording ||
+                            service.state == RecordingState.paused ||
+                            service.state == RecordingState.interrupted;
+                        return Column(
+                          children: [
+                            _ActionButton(
+                              icon: Icons.phone_paused_rounded,
+                              label: service.state == RecordingState.interrupted
+                                  ? 'Wyłącz symulację wstrzymania'
+                                  : 'Symuluj wstrzymanie nagrywania',
+                              subtitle: active
+                                  ? 'Przełącza stan aktywnego nagrywania (połączenie)'
+                                  : '⚠️ Uruchom najpierw nagrywanie z ekranu pacjenta',
+                              color: active ? Colors.orangeAccent : Colors.grey,
+                              onTap: () {
+                                if (active) {
+                                  Navigator.pop(context);
+                                  if (service.state == RecordingState.interrupted) {
+                                    service.debugForceState(RecordingState.recording);
+                                  } else {
+                                    service.debugForceState(RecordingState.interrupted);
+                                  }
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        '⚠️ Uruchom najpierw nagrywanie z ekranu pacjenta',
+                                        style: TextStyle(fontFamily: 'Montserrat'),
+                                      ),
+                                      backgroundColor: Colors.deepOrange,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white12, height: 1),
+            ],
 
             // ── Session simulation buttons (debug-only) ──
             if (kDebugMode || DebugFlags.simulationsEnabled) ...[
@@ -1046,6 +1125,19 @@ class _DebugSheet extends StatelessWidget {
                           autoAdvance: false,
                           simulateFailure: false,
                         ),
+                      ));
+                    },
+                  ),
+                  const SizedBox(height: 6),
+                  _ActionButton(
+                    icon: Icons.grid_view_rounded,
+                    label: 'State Gallery: Wszystkie stany',
+                    subtitle: '11 kafelków — podgląd każdego stanu bez nagrywania',
+                    color: Colors.amberAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => const DebugStateGalleryScreen(),
                       ));
                     },
                   ),

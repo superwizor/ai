@@ -204,6 +204,7 @@
 
   "stepper_step1_uploaded": "Audio safely on our servers.",
   "stepper_step1_queued": "Audio waiting in upload queue.",
+  "stepper_step1_uploading": "Uploading audio to server.",
   "stepper_step2_transcribing": "Creating transcription.",
   "stepper_step3_analyzing": "AI is preparing clinical insights.",
   "stepper_step4_finalizing": "Compiling insights into a readable report.",

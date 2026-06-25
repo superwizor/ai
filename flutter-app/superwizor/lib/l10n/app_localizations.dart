@@ -1064,6 +1064,12 @@ abstract class AppLocalizations {
   /// **'Audio czeka w kolejce do uploadu.'**
   String get stepper_step1_queued;
 
+  /// No description provided for @stepper_step1_uploading.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ładujemy audio na serwer.'**
+  String get stepper_step1_uploading;
+
   /// No description provided for @stepper_step2_transcribing.
   ///
   /// In pl, this message translates to:

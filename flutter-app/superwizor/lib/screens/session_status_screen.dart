@@ -42,7 +42,12 @@ import '../uploads/upload_queue_provider.dart';
 import '../models/session.dart';
 import '../providers/patient_provider.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/services.dart';
 import '../widgets/euphire_session_status_stepper.dart';
+import '../widgets/euphire_bottom_sheet.dart';
+import '../widgets/euphire_action_sheet.dart';
 import 'home_screen.dart';
 import 'transcript_screen.dart';
 
@@ -260,6 +265,15 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       );
     }
 
+    // Uploading phase: signed URL obtained, PUT in progress.
+    // Drive the stepper to 'uploading' so the label switches from
+    // "Audio czeka w kolejce" to "Ładujemy audio na serwer".
+    if (row.phase == UploadPhase.created && _resolvedSessionId == null) {
+      if (mounted && _phase != SessionStepperPhase.uploading) {
+        setState(() => _phase = SessionStepperPhase.uploading);
+      }
+    }
+
     // SessionId materialised — CompleteAudioUpload just succeeded.
     // Hand off to the server-side processing listeners. The
     // queue runner now subscribes to Firestore session_states for
@@ -427,6 +441,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    final isFailed = _phase == SessionStepperPhase.failed;
+    final errorBucket = isFailed ? _classifyError() : null;
+    final isProcessingFailed = isFailed && (errorBucket == _ErrorBucket.processing || errorBucket == _ErrorBucket.unknown);
+    final isUploadFailed = isFailed && errorBucket == _ErrorBucket.upload;
 
     // When launched in queue-mode, react to every queue snapshot so
     // we can advance the stepper phase and pick up sessionId the
@@ -460,21 +478,40 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       }
     }
 
+    // Cross-lookup: when entered via sessionId (from kartoteka), the
+    // _lastRow is null because we never had a localId. Try to find
+    // the matching queue row by sessionId so we can read proper
+    // actualDurationSeconds and patientFileId from it.
+    PendingUpload? effectiveRow = _lastRow;
+    if (effectiveRow == null && _resolvedSessionId != null) {
+      final uploads = ref.watch(pendingUploadsStreamProvider).value ?? [];
+      effectiveRow = uploads.cast<PendingUpload?>().firstWhere(
+        (u) => u?.sessionId == _resolvedSessionId,
+        orElse: () => null,
+      );
+    }
+
     final patients = ref.watch(patientsProvider).value;
-    final patientId = _lastRow?.patientFileId ?? session?.patientId;
+    final patientId = effectiveRow?.patientFileId ?? session?.patientId;
     final patient = patients?.where((p) => p.id == patientId).firstOrNull;
     final patientName = patient != null
         ? '${patient.firstName} ${patient.lastName}'
-        : (AppLocalizations.of(context)?.pending_uploads_default_patient_name ?? 'Pacjent');
+        : (AppLocalizations.of(context).pending_uploads_default_patient_name);
 
-    final date = session?.date ?? _lastRow?.queuedAt.toLocal() ?? DateTime.now();
+    final date = session?.date ?? effectiveRow?.queuedAt.toLocal() ?? DateTime.now();
     final formattedTime = DateFormat('HH:mm').format(date);
     final formattedDate = DateFormat('d MMMM yyyy', Localizations.localeOf(context).languageCode).format(date);
 
-    final duration = session?.duration ?? Duration(seconds: _lastRow?.actualDurationSeconds ?? 0);
+    // Duration: prefer session (server-canonical) > queue row > 0.
+    // When both sources report 0 the server hasn't processed duration
+    // yet — we'll hide the "0 min" to avoid misleading the user.
+    final durationSeconds = (session?.duration.inSeconds ?? 0) > 0
+        ? session!.duration.inSeconds
+        : (effectiveRow?.actualDurationSeconds ?? 0);
+    final duration = Duration(seconds: durationSeconds);
     final minutes = (duration.inSeconds / 60).toStringAsFixed(0);
 
-    final sizeBytes = _lastRow?.sizeBytes ?? ((session?.fileSizeBytes != null && session!.fileSizeBytes > 0) ? session.fileSizeBytes : null);
+    final sizeBytes = effectiveRow?.sizeBytes ?? ((session?.fileSizeBytes != null && session!.fileSizeBytes > 0) ? session.fileSizeBytes : null);
     final formattedSize = sizeBytes != null ? '${(sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB' : null;
 
     return Scaffold(
@@ -517,6 +554,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                   formattedDate,
                   minutes,
                   formattedSize,
+                  durationSeconds,
                 ),
                 const SizedBox(height: 8),
               ],
@@ -558,13 +596,80 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                       // is off; this is the only way to re-attempt once the
                       // plan tops up. Filled style so it reads as the
                       // primary action, above the secondary "back" link.
-                      if (_isQuotaBlocked || _phase == SessionStepperPhase.failed) ...[
+                      if (_isQuotaBlocked || isUploadFailed) ...[
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton.icon(
                             onPressed: _onResendPressed,
                             icon: const Icon(Icons.refresh_rounded, size: 20),
                             label: Text(_isQuotaBlocked ? t.upload_resend : t.common_retry),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: EuphireColors.ember,
+                              foregroundColor: EuphireColors.obsidianBlack,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              textStyle: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (isProcessingFailed) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () async {
+                              final mailId = _resolvedSessionId ?? 'Brak ID';
+                              final dateStr = formattedDate;
+                              final timeStr = formattedTime;
+                              final durationText = '$minutes min';
+                              final lastErrorStr = _lastRow?.lastError ?? _failureReason ?? 'Brak szczegółów błędu';
+                              
+                              final bodyText = 'Cześć,\n\n'
+                                  'Napotkałem problem podczas analizy sesji w aplikacji. Oto szczegóły diagnostyczne:\n\n'
+                                  '• Pacjent/Kartoteka: $patientName\n'
+                                  '• Data i godzina: $dateStr, $timeStr\n'
+                                  '• Długość nagrania: $durationText\n'
+                                  '• Identyfikator sesji (Session ID): $mailId\n'
+                                  '• Kod błędu: $lastErrorStr\n\n'
+                                  'Proszę o pomoc w rozwiązaniu problemu.';
+
+                              // Copy to clipboard as backup
+                              try {
+                                await Clipboard.setData(ClipboardData(text: bodyText));
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Skopiowano dane diagnostyczne do schowka!'),
+                                      duration: Duration(seconds: 3),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                debugPrint('Clipboard error: $e');
+                              }
+
+                              final mailUrl = Uri.parse(
+                                'mailto:kontakt@superwizor.ai'
+                                '?subject=${Uri.encodeComponent('Problem z analizą sesji ($mailId)')}'
+                                '&body=${Uri.encodeComponent(bodyText)}',
+                              );
+
+                              try {
+                                await launchUrl(mailUrl, mode: LaunchMode.externalApplication);
+                              } catch (e) {
+                                debugPrint('Error launching mail: $e');
+                              }
+                            },
+                            icon: const Icon(Icons.mail_outline_rounded, size: 20),
+                            label: const Text('Napisz do nas (kontakt@superwizor.ai)'),
                             style: FilledButton.styleFrom(
                               backgroundColor: EuphireColors.ember,
                               foregroundColor: EuphireColors.obsidianBlack,
@@ -696,23 +801,136 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
           phase: _phase,
           collapsed: _collapsed,
           quotaBlocked: _lastRow?.phase == UploadPhase.quotaBlocked,
+          activeStepContent: _buildActiveStepContent(),
         ),
-        const SizedBox(height: 16),
-        if (_lastRow != null && !_isQuotaBlocked && 
-            (_lastRow!.phase == UploadPhase.created || 
-             _lastRow!.phase == UploadPhase.pending ||
-             _lastRow!.phase == UploadPhase.encrypting ||
-             _lastRow!.phase == UploadPhase.converting))
-          Padding(
+        const SizedBox(height: 32),
+        // Reassurance Text
+        Center(
+          child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: _UploadProgressCard(upload: _lastRow!),
+            child: Text(
+              _phase == SessionStepperPhase.pending || _phase == SessionStepperPhase.uploading
+                  ? 'Możesz zamknąć aplikację. Przesyłanie trwa w tle.'
+                  : 'Możesz zamknąć aplikację. Analiza trwa w tle.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Merriweather',
+                fontSize: 12,
+                height: 1.5,
+                color: Colors.white.withValues(alpha: 0.4),
+              ),
+            ),
           ),
-        // Resend lives in the bottom button area (below) so it never
-        // overlaps "Wróć do kartotek". The raw gRPC last-error text used
-        // to render here (dev-style) — removed; the stepper label + the
-        // bottom resend button carry the meaning now.
+        ),
         const SizedBox(height: 24),
       ],
+    );
+  }
+
+  Widget? _buildActiveStepContent() {
+    final upload = _lastRow;
+    if (upload == null || _isQuotaBlocked) return null;
+    
+    if (!(upload.phase == UploadPhase.created || 
+          upload.phase == UploadPhase.pending ||
+          upload.phase == UploadPhase.encrypting ||
+          upload.phase == UploadPhase.converting)) {
+      return null;
+    }
+
+    final isUploading = upload.phase == UploadPhase.created;
+    final mb = (upload.sizeBytes / 1024 / 1024).toStringAsFixed(1);
+    final mins = (upload.actualDurationSeconds / 60).toStringAsFixed(0);
+    final cType = upload.contentType.isNotEmpty ? upload.contentType : 'audio';
+    final time = DateFormat('HH:mm').format(upload.queuedAt.toLocal());
+    final progress = upload.uploadProgress;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Details sub-card (compact single line) first
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: EuphireColors.obsidianBlack.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.03)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.audiotrack_rounded,
+                  size: 13,
+                  color: EuphireColors.mist.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '$mb MB  •  $mins min  •  $cType  •  $time',
+                    style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      fontSize: 10,
+                      color: EuphireColors.mist.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 10),
+          
+          if (isUploading) ...[
+            // Progress Bar Row (lower)
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: progress > 0 ? progress.clamp(0.0, 1.0) : null,
+                      minHeight: 4,
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      valueColor: const AlwaysStoppedAnimation<Color>(EuphireColors.ember),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 36,
+                  child: Text(
+                    '${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: EuphireColors.mist.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            // Spinner for pending (lower, text removed)
+            Row(
+              children: [
+                const SizedBox(
+                  width: 10,
+                  height: 10,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    valueColor: AlwaysStoppedAnimation(EuphireColors.ember),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -734,21 +952,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   /// (pending, created) or parked on a quota hold. Once the bytes are in
   /// the bucket (phase >= uploaded) the server owns the analysis and there
   /// is nothing local to cancel from here, so the button is hidden.
-  bool get _canCancel {
-    final row = _lastRow;
-    if (row == null) return false;
-    switch (row.phase) {
-      case UploadPhase.encrypting:
-      case UploadPhase.converting:
-      case UploadPhase.pending:
-      case UploadPhase.created:
-      case UploadPhase.failed:
-      case UploadPhase.quotaBlocked:
-        return true;
-      default:
-        return false;
-    }
-  }
+
 
   bool get _isQuotaBlocked => _lastRow?.phase == UploadPhase.quotaBlocked;
 
@@ -770,6 +974,26 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   /// Un-park a quota-blocked upload (explicit resend). No-op if the
   /// row isn't parked.
   Future<void> _onResendPressed() async {
+    final conn = await Connectivity().checkConnectivity();
+    final online = conn.any((r) => r != ConnectivityResult.none);
+    if (!online) {
+      if (mounted) {
+        await showEuphireBottomSheet<void>(
+          context: context,
+          builder: (context) => EuphireActionSheet(
+            header: 'Brak internetu',
+            body: 'Połączenie sieciowe jest obecnie niedostępne. Plik zostanie wysłany automatycznie, gdy tylko odzyskasz połączenie z internetem.',
+            primary: EuphireSheetAction(
+              label: 'Rozumiem',
+              onPressed: () => Navigator.pop(context),
+            ),
+            topIcon: Icons.wifi_off_rounded,
+          ),
+        );
+      }
+      return;
+    }
+
     final localId = widget.localId ?? _lastRow?.localId;
     if (localId == null) return;
     final runner = await ref.read(uploadQueueRunnerProvider.future);
@@ -786,6 +1010,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
 
 
   _ErrorBucket _classifyError() {
+    // Server-side failure (Firestore-driven or poll-driven) → processing.
+    if (_resolvedSessionId != null) {
+      return _ErrorBucket.processing;
+    }
     final row = _lastRow;
     // Queue-based: classify from the phase the failure occurred in.
     if (row != null) {
@@ -823,10 +1051,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
         reason.contains('socket')) {
       return _ErrorBucket.upload;
     }
-    // Server-side failure (Firestore-driven or poll-driven) → processing.
-    if (_resolvedSessionId != null) {
-      return _ErrorBucket.processing;
-    }
     return _ErrorBucket.unknown;
   }
 
@@ -845,14 +1069,14 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
       _ErrorBucket.processing => (
           Icons.sync_problem_rounded,
           t.session_failed_header,
-          '${t.sessionStatus_report_failed_temp}'
-              '${t.sessionStatus_report_failed_retry}',
+          'Wystąpił problem po stronie serwera podczas analizy Twojego nagrania. '
+              'Kliknij przycisk poniżej, aby napisać do nas na kontakt@superwizor.ai i automatycznie dołączyć dane diagnostyczne.',
         ),
       _ErrorBucket.unknown => (
           Icons.help_outline_rounded,
           t.pending_uploads_phase_failed,
-          '${t.sessionStatus_report_failed_perm}'
-              '${t.sessionStatus_report_failed_contact}',
+          'Wystąpił nieoczekiwany problem podczas przetwarzania sesji. '
+              'Kliknij przycisk poniżej, aby napisać do nas na kontakt@superwizor.ai i automatycznie dołączyć dane diagnostyczne.',
         ),
     };
 
@@ -1026,6 +1250,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     String formattedDate,
     String minutes,
     String? formattedSize,
+    int durationSeconds,
   ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 28, vertical: 8),
@@ -1090,27 +1315,28 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
                   ),
                 ],
               ),
-              // Duration
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.timer_outlined,
-                    size: 14,
-                    color: EuphireColors.mist.withValues(alpha: 0.5),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '$minutes min',
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: EuphireColors.mist.withValues(alpha: 0.8),
+              // Duration — hidden when 0 (server hasn't processed yet)
+              if (durationSeconds > 0)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.timer_outlined,
+                      size: 14,
+                      color: EuphireColors.mist.withValues(alpha: 0.5),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$minutes min',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: EuphireColors.mist.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
+                ),
               if (formattedSize != null)
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1140,154 +1366,4 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
   }
 }
 
-// ─── Upload Progress Card ─────────────────────────────────────────
 
-class _UploadProgressCard extends StatelessWidget {
-  const _UploadProgressCard({required this.upload});
-  final PendingUpload upload;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final isUploading = upload.phase == UploadPhase.created;
-    final mb = (upload.sizeBytes / 1024 / 1024).toStringAsFixed(1);
-    final mins = (upload.actualDurationSeconds / 60).toStringAsFixed(0);
-    // e.g. "audio/flac" -> "flac", or keep full "audio/flac" if preferred. The plan says "audio/flac".
-    final cType = upload.contentType.isNotEmpty ? upload.contentType : 'audio';
-    final time = DateFormat('HH:mm').format(upload.queuedAt.toLocal());
-
-    return Container(
-      decoration: EuphireColors.glassDecoration(
-        surfaceOpacity: 0.05,
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header Row
-          Row(
-            children: [
-              Icon(
-                isUploading ? Icons.cloud_upload_rounded : Icons.schedule_rounded,
-                color: EuphireColors.ember,
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  isUploading ? t.sessionStatus_status_uploading : t.sessionStatus_status_queued,
-                  style: const TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: EuphireColors.frostWhite,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          if (isUploading) ...[
-            const SizedBox(height: 20),
-            // Progress Bar Row
-            Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: upload.uploadProgress > 0
-                          ? upload.uploadProgress.clamp(0.0, 1.0)
-                          : null,
-                      minHeight: 6,
-                      backgroundColor: Colors.white.withValues(alpha: 0.1),
-                      valueColor: const AlwaysStoppedAnimation<Color>(EuphireColors.ember),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 36,
-                  child: Text(
-                    '${(upload.uploadProgress * 100).clamp(0, 100).toStringAsFixed(0)}%',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontFamily: 'RobotoMono',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: EuphireColors.mist.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          
-          const SizedBox(height: 20),
-          
-          // Details Sub-card
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: EuphireColors.obsidianBlack.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Icon(
-                    Icons.audiotrack_rounded,
-                    size: 14,
-                    color: EuphireColors.mist.withValues(alpha: 0.7),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$mb MB  •  $mins min',
-                        style: TextStyle(
-                          fontFamily: 'RobotoMono',
-                          fontSize: 11,
-                          color: EuphireColors.mist.withValues(alpha: 0.8),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$cType  •  $time',
-                        style: TextStyle(
-                          fontFamily: 'RobotoMono',
-                          fontSize: 11,
-                          color: EuphireColors.mist.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 20),
-          
-          // Reassurance Text
-          Text(
-            t.sessionStatus_bg_processing_notice,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Merriweather',
-              fontSize: 12,
-              height: 1.5,
-              color: Colors.white.withValues(alpha: 0.5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

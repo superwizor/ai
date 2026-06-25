@@ -20,7 +20,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/euphire_theme.dart';
 
-enum SessionStepperPhase { pending, uploaded, analyzing, done, failed }
+enum SessionStepperPhase { pending, uploading, uploaded, analyzing, done, failed }
 
 extension SessionStepperPhaseFromStatus on String {
   SessionStepperPhase toStepperPhase() {
@@ -53,11 +53,16 @@ class EuphireSessionStatusStepper extends StatelessWidget {
   /// (feat/tokens-exhausted). Only meaningful while [phase] is pending.
   final bool quotaBlocked;
 
+  /// Optional widget to display inside the active step (e.g. upload progress
+  /// or details).
+  final Widget? activeStepContent;
+
   const EuphireSessionStatusStepper({
     super.key,
     required this.phase,
     this.collapsed = false,
     this.quotaBlocked = false,
+    this.activeStepContent,
   });
 
   @override
@@ -71,13 +76,15 @@ class EuphireSessionStatusStepper extends StatelessWidget {
     // first label was always shown, which was misleading: a quota-
     // blocked upload sat under "Audio bezpieczne na naszych serwerach"
     // even though the file never reached us.
-    final step1Text = phase == SessionStepperPhase.pending
-        ? (quotaBlocked
+    final step1Text = switch (phase) {
+        SessionStepperPhase.pending => quotaBlocked
             ? t.stepper_step1_quota_blocked
-            : t.stepper_step1_queued)
-        : t.stepper_step1_uploaded;
+            : t.stepper_step1_queued,
+        SessionStepperPhase.uploading => t.stepper_step1_uploading,
+        _ => t.stepper_step1_uploaded,
+    };
     final steps = [
-      _Step(step1Text, _stateForStep(0)),
+      _Step(step1Text, _stateForStep(0), activeStepContent),
       _Step(t.stepper_step2_transcribing, _stateForStep(1)),
       // "Składamy informacje w czytelny raport" (finalizing) was merged
       // into the analysis step — step 3 now represents the whole
@@ -105,6 +112,7 @@ class EuphireSessionStatusStepper extends StatelessWidget {
                 state: steps[i].state,
                 isLast: i == steps.length - 1,
                 nextState: i < steps.length - 1 ? steps[i + 1].state : null,
+                content: steps[i].content,
               ),
           ],
         ),
@@ -127,6 +135,8 @@ class EuphireSessionStatusStepper extends StatelessWidget {
     }
     final reached = switch (phase) {
       SessionStepperPhase.pending => -1,
+      // uploading: step 1 is active (PUT in progress), nothing done yet.
+      SessionStepperPhase.uploading => -1,
       SessionStepperPhase.uploaded => 0,
       // analyzing: audio + transcription marked done; the AI analysis step
       // (idx 2) is the ACTIVE processing step — there's no separate
@@ -147,7 +157,8 @@ enum _StepState { pending, active, done, failed, blocked }
 class _Step {
   final String text;
   final _StepState state;
-  const _Step(this.text, this.state);
+  final Widget? content;
+  const _Step(this.text, this.state, [this.content]);
 }
 
 class _StepRow extends StatelessWidget {
@@ -156,6 +167,7 @@ class _StepRow extends StatelessWidget {
   final _StepState state;
   final bool isLast;
   final _StepState? nextState;
+  final Widget? content;
 
   const _StepRow({
     required this.number,
@@ -163,6 +175,7 @@ class _StepRow extends StatelessWidget {
     required this.state,
     required this.isLast,
     this.nextState,
+    this.content,
   });
 
   @override
@@ -283,15 +296,16 @@ class _StepRow extends StatelessWidget {
                   if (isActive)
                     Padding(
                       padding: const EdgeInsets.only(top: 10.0),
-                      child: SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 1.5,
-                          valueColor:
-                              const AlwaysStoppedAnimation(EuphireColors.ember),
-                        ),
-                      ),
+                      child: content ??
+                          SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              valueColor: const AlwaysStoppedAnimation(
+                                  EuphireColors.ember),
+                            ),
+                          ),
                     ),
                 ],
               ),

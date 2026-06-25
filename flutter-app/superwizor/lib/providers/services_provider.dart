@@ -44,6 +44,16 @@ final recordingServiceProvider = Provider<RecordingService>((ref) {
   return svc;
 });
 
+/// Reactive stream of recording state changes — watch this in any widget
+/// that needs to rebuild when a recording starts, stops, or is cancelled.
+/// Replaces the anti-pattern of reading `recSvc.state` inside build()
+/// which never triggers rebuilds because `Provider<RecordingService>`
+/// holds a stable singleton.
+final recordingStateStreamProvider = StreamProvider<RecordingState>((ref) {
+  final svc = ref.watch(recordingServiceProvider);
+  return svc.stateStream;
+});
+
 final recordingManifestStoreProvider = Provider<RecordingManifestStore>(
   (ref) => RecordingManifestStore(),
 );

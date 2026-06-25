@@ -61,8 +61,7 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: EuphireColors.nocturne,
       // Usunięty appBar, zrobimy customowy header dla lepszego UI
-      body: DebugTestOverlay(
-        child: Stack(
+      body: Stack(
         children: [
           Container(
             color: const Color(0xFF173E43), // Tło: #173e43
@@ -201,7 +200,6 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddPatientModal(context, ref),
         backgroundColor: EuphireColors.ember,
@@ -304,18 +302,13 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     Map<String, List<Session>> sessionsMap,
     Set<String> viewedReports,
     BuildContext context,
-    List<PendingUpload> pendingUploads,
-  ) {
+    List<PendingUpload> pendingUploads, {
+    required String? recordingPatientId,
+  }) {
     for (final p in patients) {
       final sessions = sessionsMap[p.id] ?? [];
-      final svc = ref.read(recordingServiceProvider);
-      final recId = (svc.state == RecordingState.recording ||
-              svc.state == RecordingState.paused ||
-              svc.state == RecordingState.interrupted)
-          ? svc.patientFileId
-          : null;
       final newStatus = _statusFor(p, sessions, viewedReports,
-          recordingPatientId: recId, pendingUploads: pendingUploads);
+          recordingPatientId: recordingPatientId, pendingUploads: pendingUploads);
       final prev = _prevStatuses[p.id];
       _prevStatuses[p.id] = newStatus;
 
@@ -465,6 +458,18 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
     final sortFilter = ref.watch(sortFilterProvider).value ?? const SortFilterState();
     final pendingUploads = ref.watch(pendingUploadsStreamProvider).value ?? [];
 
+    final recSvc = ref.watch(recordingServiceProvider);
+    // Watch the recording state stream so this widget rebuilds whenever
+    // the recording starts, pauses, resumes, or stops. Without this,
+    // the badge was stale because Provider<RecordingService> never
+    // notifies listeners on internal state changes.
+    final recState = ref.watch(recordingStateStreamProvider).value ?? recSvc.state;
+    final recordingPatientId = (recState == RecordingState.recording ||
+            recState == RecordingState.paused ||
+            recState == RecordingState.interrupted)
+        ? recSvc.patientFileId
+        : null;
+
     // Detect status transitions (analyzing → hasNewReport) and celebrate.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -474,6 +479,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
           viewedReports,
           context,
           pendingUploads,
+          recordingPatientId: recordingPatientId,
         );
       }
     });
@@ -722,12 +728,6 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
                 final lastDate = sessions.isNotEmpty
                     ? sessions.first.date
                     : null;
-                final svc = ref.read(recordingServiceProvider);
-                final recId = (svc.state == RecordingState.recording ||
-                        svc.state == RecordingState.paused ||
-                        svc.state == RecordingState.interrupted)
-                    ? svc.patientFileId
-                    : null;
                 return _PatientCompactCard(
                   patient: patient,
                   sessionCount: patient.sessionCount,
@@ -736,7 +736,7 @@ class _PatientListSectionState extends ConsumerState<_PatientListSection> {
                     patient,
                     sessions,
                     viewedReports,
-                    recordingPatientId: recId,
+                    recordingPatientId: recordingPatientId,
                     pendingUploads: pendingUploads,
                   ),
                   justCompleted: _justCompletedIds.remove(patient.id),

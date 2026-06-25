@@ -1075,130 +1075,144 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
             ],
           ),
           body: SafeArea(
-          child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Header: staggered fade + slide ──
-              SlideTransition(
-                position: _headerSlide,
-                child: FadeTransition(
-                  opacity: _headerFade,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        dateLabel.toUpperCase(),
-                        style: TextStyle(
-                          fontFamily: 'RobotoMono',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: EuphireColors.frostWhite.withValues(alpha: 0.5),
-                          letterSpacing: 2.0,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: IntrinsicHeight(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // ── Header: staggered fade + slide ──
+                            SlideTransition(
+                              position: _headerSlide,
+                              child: FadeTransition(
+                                opacity: _headerFade,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      dateLabel.toUpperCase(),
+                                      style: TextStyle(
+                                        fontFamily: 'RobotoMono',
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: EuphireColors.frostWhite.withValues(alpha: 0.5),
+                                        letterSpacing: 2.0,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      widget.patientAlias,
+                                      style: const TextStyle(
+                                        fontFamily: 'Montserrat',
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.w700,
+                                        color: EuphireColors.frostWhite,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Consumer(
+                                      builder: (context, ref, child) {
+                                        final t = AppLocalizations.of(context);
+                                        final patients = ref.watch(patientsProvider).whenOrNull(data: (d) => d) ?? [];
+                                        final patient = patients.where((p) => p.id == widget.patientFileId).firstOrNull;
+                                        final sessionNumber = (patient?.sessionCount ?? 0) + 1;
+                                        return Text(
+                                          '${t.clientDetails_session_title} #$sessionNumber',
+                                          style: const TextStyle(
+                                            fontFamily: 'Merriweather',
+                                            fontSize: 18,
+                                            fontStyle: FontStyle.italic,
+                                            fontWeight: FontWeight.w600,
+                                            color: EuphireColors.ember,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24), // Breathing room under header when spacers shrink
+                            const Spacer(),
+                            if (_recState == RecordingState.interrupted) ...[
+                              _InterruptionBanner(
+                                resuming: _resuming,
+                                onResume: _onResumeTap,
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                            // ── Waveform: staggered scale + fade ──
+                            ScaleTransition(
+                              scale: _waveformScale,
+                              child: FadeTransition(
+                                opacity: _waveformFade,
+                                child: RepaintBoundary(
+                                  child: EuphireRecordingIndicator(
+                                    isRecording: _recState == RecordingState.recording,
+                                    isInitializing: _initializing,
+                                    formattedDuration: _formatDuration(_displayDuration),
+                                    chunkCount: _chunkCount,
+                                    amplitudeStream: _service.amplitudeStream,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const Spacer(flex: 2),
+                            // ── Control panel: smooth fade-in when recording starts ──
+                            AnimatedOpacity(
+                              opacity: _initializing ? 0.0 : 1.0,
+                              duration: const Duration(milliseconds: 400),
+                              curve: Curves.easeOut,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _ControlPanel(
+                                    state: _recState,
+                                    onStart: _start,
+                                    onPause: _service.pause,
+                                    onResume: _onResumeTap,
+                                    onStop: _onStopPressed,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  if (_uploading) ...[
+                                    const SizedBox(height: 16),
+                                    Column(
+                                      children: [
+                                        const Center(child: CircularProgressIndicator()),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          t.recording_saving,
+                                          style: TextStyle(
+                                            fontFamily: 'Merriweather',
+                                            fontSize: 13,
+                                            color: EuphireColors.frostWhite.withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.patientAlias,
-                        style: const TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 32,
-                          fontWeight: FontWeight.w700,
-                          color: EuphireColors.frostWhite,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Consumer(
-                        builder: (context, ref, child) {
-                          final t = AppLocalizations.of(context);
-                          final patients = ref.watch(patientsProvider).whenOrNull(data: (d) => d) ?? [];
-                          final patient = patients.where((p) => p.id == widget.patientFileId).firstOrNull;
-                          final sessionNumber = (patient?.sessionCount ?? 0) + 1;
-                          return Text(
-                            '${t.clientDetails_session_title} #$sessionNumber',
-                            style: const TextStyle(
-                              fontFamily: 'Merriweather',
-                              fontSize: 18,
-                              fontStyle: FontStyle.italic,
-                              fontWeight: FontWeight.w600,
-                              color: EuphireColors.ember,
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const Spacer(),
-              if (_recState == RecordingState.interrupted) ...[
-                _InterruptionBanner(
-                  resuming: _resuming,
-                  onResume: _onResumeTap,
-                ),
-                const SizedBox(height: 16),
-              ],
-              // ── Waveform: staggered scale + fade ──
-              ScaleTransition(
-                scale: _waveformScale,
-                child: FadeTransition(
-                  opacity: _waveformFade,
-                  child: RepaintBoundary(
-                    child: EuphireRecordingIndicator(
-                      isRecording: _recState == RecordingState.recording,
-                      isInitializing: _initializing,
-                      formattedDuration: _formatDuration(_displayDuration),
-                      chunkCount: _chunkCount,
-                      amplitudeStream: _service.amplitudeStream,
                     ),
                   ),
-                ),
-              ),
-              const Spacer(flex: 2),
-              // ── Control panel: smooth fade-in when recording starts ──
-              AnimatedOpacity(
-                opacity: _initializing ? 0.0 : 1.0,
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeOut,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _ControlPanel(
-                      state: _recState,
-                      onStart: _start,
-                      onPause: _service.pause,
-                      onResume: _onResumeTap,
-                      onStop: _onStopPressed,
-                    ),
-                    const SizedBox(height: 16),
-                    if (_uploading) ...[
-                      const SizedBox(height: 16),
-                      Column(
-                        children: [
-                          const Center(child: CircularProgressIndicator()),
-                          const SizedBox(height: 12),
-                          Text(
-                            t.recording_saving,
-                            style: TextStyle(
-                              fontFamily: 'Merriweather',
-                              fontSize: 13,
-                              color: EuphireColors.frostWhite.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
+                );
+              },
+            ),
           ),
         ),
-      ),
-      ),
       ),
     );
   }
@@ -1277,6 +1291,7 @@ class _InterruptionBanner extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: EuphireColors.ember,
                 foregroundColor: EuphireColors.frostWhite,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -1292,12 +1307,15 @@ class _InterruptionBanner extends StatelessWidget {
                       ),
                     )
                   : const Icon(Icons.play_arrow_rounded),
-              label: Text(
-                t.recording_interrupted_resume,
-                style: const TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  t.recording_interrupted_resume,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ),

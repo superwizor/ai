@@ -133,6 +133,7 @@ class _DebugPipelineSimulatorScreenState
   String _descriptionFor(SessionStepperPhase phase) {
     return switch (phase) {
       SessionStepperPhase.pending => 'Oczekiwanie na upload...',
+      SessionStepperPhase.uploading => 'Przesyłanie audio na serwer...',
       SessionStepperPhase.uploaded => 'Audio przesłane na serwer (GCS)',
       SessionStepperPhase.analyzing =>
         'STT worker → transkrypcja → LLM worker analizuje',
@@ -385,6 +386,7 @@ class _DebugPipelineSimulatorScreenState
   Color _colorForPhase(SessionStepperPhase phase) {
     return switch (phase) {
       SessionStepperPhase.pending => Colors.white54,
+      SessionStepperPhase.uploading => Colors.blueAccent,
       SessionStepperPhase.uploaded => Colors.cyanAccent,
       SessionStepperPhase.analyzing => Colors.purpleAccent,
       SessionStepperPhase.done => Colors.greenAccent,
@@ -395,6 +397,7 @@ class _DebugPipelineSimulatorScreenState
   IconData _iconForPhase(SessionStepperPhase phase) {
     return switch (phase) {
       SessionStepperPhase.pending => Icons.hourglass_top,
+      SessionStepperPhase.uploading => Icons.cloud_upload,
       SessionStepperPhase.uploaded => Icons.cloud_done,
       SessionStepperPhase.analyzing => Icons.auto_awesome,
       SessionStepperPhase.done => Icons.check_circle,
