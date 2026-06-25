@@ -26,11 +26,11 @@ class EuphireSegmentedControl extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Container(
-        height: 36,
-        padding: const EdgeInsets.all(2), // Padding around the sliding thumb
+        height: 44,
+        padding: const EdgeInsets.all(4), // Padding around the sliding thumb
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
+          color: EuphireColors.nocturne,
+          borderRadius: BorderRadius.circular(12),
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -48,12 +48,12 @@ class EuphireSegmentedControl extends StatelessWidget {
                   child: Container(
                     decoration: BoxDecoration(
                       color: EuphireColors.ember,
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
@@ -75,8 +75,8 @@ class EuphireSegmentedControl extends StatelessWidget {
                             duration: const Duration(milliseconds: 200),
                             style: TextStyle(
                               fontFamily: 'Montserrat',
-                              color: isLeft ? EuphireColors.obsidianBlack : EuphireColors.frostWhite,
-                              fontWeight: isLeft ? FontWeight.w600 : FontWeight.w500,
+                              color: isLeft ? EuphireColors.obsidianBlack : EuphireColors.frostWhite.withValues(alpha: 0.8),
+                              fontWeight: isLeft ? FontWeight.bold : FontWeight.w500,
                               fontSize: 14,
                             ),
                             child: Text(leftLabel),
@@ -96,8 +96,8 @@ class EuphireSegmentedControl extends StatelessWidget {
                             duration: const Duration(milliseconds: 200),
                             style: TextStyle(
                               fontFamily: 'Montserrat',
-                              color: !isLeft ? EuphireColors.obsidianBlack : EuphireColors.frostWhite,
-                              fontWeight: !isLeft ? FontWeight.w600 : FontWeight.w500,
+                              color: !isLeft ? EuphireColors.obsidianBlack : EuphireColors.frostWhite.withValues(alpha: 0.8),
+                              fontWeight: !isLeft ? FontWeight.bold : FontWeight.w500,
                               fontSize: 14,
                             ),
                             child: Text(rightLabel),
