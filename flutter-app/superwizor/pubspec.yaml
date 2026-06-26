@@ -105,6 +105,8 @@ flutter_launcher_icons:
   macos:
     generate: true
     image_path: "assets/Ico/Logo_Superwizor_MVP.png"
+  adaptive_icon_background: "#B1C9CB"
+  adaptive_icon_foreground: "assets/Ico/Logo_Superwizor_MVP.png"
   remove_alpha_ios: true
   image_path: "assets/Ico/Logo_Superwizor_MVP.png"
   min_sdk_android: 23

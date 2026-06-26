@@ -2,8 +2,6 @@
 // used by patient_avatar_provider.dart (migration 000059).
 
 import 'dart:convert';
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:superwizor/providers/patient_avatar_provider.dart';
 

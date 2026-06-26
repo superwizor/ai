@@ -115,30 +115,193 @@ python3 make_iphone_marketing.py
 
 ## 🤖 Część 2: Google Play Store (Android)
 
-*Wydanie na Androida będzie realizowane w kolejnym kroku. Poniżej znajduje się szablon przygotowawczy.*
+### 2.1 Status pierwszej publikacji
+*   **Wydanie:** `1.0.0+9`
+*   **Application ID:** `ai.superwizor.superwizor`
+*   **Target SDK:** `35` (Android 15)
+*   **Min SDK:** Zarządzany przez Flutter (`flutter.minSdkVersion`)
+*   **Plik produkcyjny:** `build/app/outputs/bundle/release/app-release.aab` (58.5 MB)
+*   **Komenda budowania:**
+    ```bash
+    cd flutter-app/superwizor
+    flutter build appbundle
+    ```
 
-### 2.1 Wymagane grafiki w Google Play Console
-W przeciwieństwie do Apple, Google ma bardziej elastyczne wymogi rozdzielczości, ale wymaga plansz na różne typy urządzeń:
+---
 
-1.  **Ikona aplikacji:** `512 x 512 px` (format PNG 32-bit z przezroczystością, maks. 1 MB).
-2.  **Grafika informacyjna (Feature Graphic):** `1024 x 500 px` (format JPG lub 24-bit PNG, na samej górze karty katalogowej).
-3.  **Zrzuty ekranu telefonu (Phone Screenshots):**
-    *   Minimum 2 zrzuty ekranu, maksymalnie 8.
-    *   Proporcje 16:9 lub 9:16.
-    *   Rozmiar: od `320 px` do `3840 px` (np. format `1080 x 2400 px` lub Twoje `1284 x 2778 px` z iPhone'a również zostaną bez problemu zaakceptowane przez Google!).
-4.  **Zrzuty ekranu tabletu 7" i 10":**
-    *   Google wymaga wgrania zrzutów dla tabletów, jeśli aplikacja ma być promowana na te urządzenia (można użyć plansz wygenerowanych dla iPada).
+### 2.2 Dane do weryfikacji aplikacji (App Access / Sign in details)
+Google Play Console wymaga podania danych testowych w zakładce **Polityka i treść** → **Dostęp do aplikacji**:
+*   **📧 Nazwa użytkownika:** `demo@superwizor.ai`
+*   **🔐 Hasło:** `SuperwizorDemo123!`
+*   **📝 Instrukcja (Parameters):** Dokładnie ta sama, co dla Apple (Krok 1.2).
 
-### 2.2 Dane do weryfikacji aplikacji (App Access)
-Jeśli aplikacja wymaga logowania, Google Play Console wymaga podania danych testowych w zakładce **Polityka i treść** -> **Dostęp do aplikacji**:
-*   **Nazwa użytkownika:** `apple-test2@superwizor.ai` *(można stworzyć osobne konto google-test@superwizor.ai w Firebase, jeśli chcesz oddzielić ruch)*
-*   **Hasło:** `SuperwizorApple2026!`
-*   **Instrukcja (Parameters):** Dokładnie ta sama, co dla Apple (Krok 1.2).
+---
 
-### 2.3 Teksty marketingowe Google Play
+### 2.3 Ikona aplikacji (Adaptive Icon)
+Android korzysta z systemu **Adaptive Icons** (API 26+), który dzieli ikonę na dwie warstwy: tło i pierwszy plan (foreground).
+
+**Źródło ikony:** `assets/Ico/Logo_Superwizor_MVP.png`
+
+**Konfiguracja w projekcie:**
+*   **Plik XML adaptive icon:** `android/app/src/main/res/mipmap-anydpi-v26/launcher_icon.xml`
+    ```xml
+    <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+      <background android:drawable="@color/ic_launcher_background"/>
+      <foreground>
+          <inset
+              android:drawable="@drawable/ic_launcher_foreground"
+              android:inset="16%" />
+      </foreground>
+    </adaptive-icon>
+    ```
+*   **Foreground drawable:** `ic_launcher_foreground` — wygenerowany z `Logo_Superwizor_MVP.png` i umieszczony w folderach `drawable-*dpi`.
+*   **Background color:** Zdefiniowany w `values/ic_launcher_background.xml` (kolor jednorodny, aby ikona była spójna na każdym launcherze).
+*   **Inset 16%** — logo jest lekko zmniejszone, aby system Android miał miejsce na maskę (okrągłą, squircle, kwadratową itp.) bez obcinania grafiki.
+
+**Pliki rastrowe (mipmap):** Ikona `launcher_icon.png` jest wygenerowana w rozdzielczościach:
+| Folder | Rozmiar |
+| :--- | :--- |
+| `mipmap-mdpi` | 48×48 px |
+| `mipmap-hdpi` | 72×72 px |
+| `mipmap-xhdpi` | 96×96 px |
+| `mipmap-xxhdpi` | 144×144 px |
+| `mipmap-xxxhdpi` | 192×192 px |
+
+**Manifest:** `android:icon="@mipmap/launcher_icon"` w tagu `<application>`.
+
+> ⚠️ **Uwaga:** Plik `Logo_Superwizor_MVP_foreground.png` (osobny foreground) **NIE jest używany**. Jedynym źródłem ikony jest `Logo_Superwizor_MVP.png`.
+
+---
+
+### 2.4 Ikona powiadomień (Notification Icon)
+Android wymaga specjalnej, jednokolorowej (białej z przezroczystym tłem) ikony do powiadomień na pasku statusu.
+
+*   **Plik:** `android/app/src/main/res/drawable/ic_stat_notification.xml` — wektorowy drawable (VectorDrawable) wygenerowany jako biała sylwetka logo Superwizora.
+*   **Użycie:** W `RecordingForegroundService.kt` ustawiony jako `.setSmallIcon(R.drawable.ic_stat_notification)`.
+*   Dzięki temu na pasku statusu Android wyświetla się czytelna, biała ikonka Superwizora zamiast domyślnej ikony systemowej.
+
+---
+
+### 2.5 Widget ekranu głównego (Home Screen Widget)
+Aplikacja posiada natywny widget Android, który wyświetla aktywną sesję nagrywania na ekranie głównym telefonu.
+
+**Pliki implementacji:**
+| Plik | Opis |
+| :--- | :--- |
+| `ActiveSessionWidgetProvider.kt` | Kotlin AppWidgetProvider obsługujący logikę widgetu (start/update/stop/click intent) |
+| `res/layout/active_session_widget.xml` | Układ XML widgetu (logo, nazwa sesji, stoper, dioda nagrywania) |
+| `res/drawable/widget_background.xml` | Ciemne tło z gradientem Evergreen→Nocturne (#004D54→#002E32) i zaokrąglonymi rogami 16dp |
+| `res/drawable/widget_dot.xml` | Okrągła, czerwona dioda nagrywania |
+| `res/xml/active_session_widget_info.xml` | Metadane widgetu (rozmiar, preview, update period) |
+
+**Stany widgetu:**
+1.  **Bezczynność (Idle):** Wyświetla nagłówek „Superwizor AI" i status „Brak aktywnej sesji". Kliknięcie otwiera aplikację.
+2.  **Aktywna sesja:** Wyświetla nazwę klienta, stoper czasu, tętniącą czerwoną diodę nagrywania. Kliknięcie otwiera ekran nagrywania.
+
+**Deklaracja w AndroidManifest.xml:**
+```xml
+<receiver android:name=".ActiveSessionWidgetProvider" android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data android:name="android.appwidget.provider"
+               android:resource="@xml/active_session_widget_info" />
+</receiver>
+```
+
+---
+
+### 2.6 Uprawnienia i Foreground Service
+Pełna lista uprawnień zadeklarowanych w `AndroidManifest.xml`:
+
+| Uprawnienie | Cel |
+| :--- | :--- |
+| `INTERNET` | Komunikacja sieciowa (Firebase, GCS, gRPC) — dodane do manifestu głównego, nie tylko debug |
+| `RECORD_AUDIO` | Nagrywanie sesji terapeutycznych |
+| `WAKE_LOCK` | Utrzymanie procesora aktywnego podczas nagrywania w tle |
+| `FOREGROUND_SERVICE` | Uruchomienie usługi na pierwszym planie |
+| `FOREGROUND_SERVICE_MICROPHONE` | Android 14+: deklaracja typu FGS microphone |
+| `POST_NOTIFICATIONS` | Android 13+: wymagane, aby powiadomienie FGS było widoczne |
+
+**Foreground Service:**
+```xml
+<service android:name=".RecordingForegroundService"
+         android:exported="false"
+         android:foregroundServiceType="microphone" />
+```
+Usługa `RecordingForegroundService.kt` wyświetla trwałe powiadomienie informujące użytkownika o aktywnym nagrywaniu sesji. Kontrolowana z Darta przez MethodChannel `superwizor/recording_fgs`.
+
+---
+
+### 2.7 Deklaracja FOREGROUND_SERVICE_MICROPHONE w Google Play Console
+
+W zakładce **Foreground service permissions** w Google Play Console:
+
+#### Zaznaczone zadania:
+*   ☑️ **Background audio input**
+*   ☑️ **Other**
+
+#### Tekst uzasadnienia (do wklejenia):
+```text
+Superwizor AI is a clinical session co-pilot designed for psychotherapists. The application allows therapists to securely record their clinical sessions, which typically last between 45 and 60 minutes.
+
+During these long sessions, the therapist must be able to lock their device, turn off the screen, or temporarily background the app (for example, to consult client files or treatment notes) without interrupting the audio capture. The FOREGROUND_SERVICE_MICROPHONE permission is crucial to prevent the Android operating system from suspending or killing the recording process when the app is not in the foreground. Preventing data loss is of critical medical importance as these recordings contain essential therapy process details.
+
+The foreground service displays a persistent, non-dismissible notification to the user, ensuring they are fully aware at all times that the microphone is actively recording and the service is running in the background.
+```
+
+---
+
+### 2.8 Film weryfikacyjny (Video Link) — instrukcja nagrania
+
+Google wymaga krótkiego filmu demonstrującego działanie mikrofonu w tle. Film wgrywamy na YouTube (jako niepubliczny) lub Dysk Google (dostęp: „Każdy mający link") i wklejamy link w polu **Video link**.
+
+**Scenariusz krok po kroku:**
+
+| # | Co zrobić | Co pokazać na ekranie |
+| :---: | :--- | :--- |
+| 1 | Otwórz aplikację Superwizor AI | Ekran główny / lista klientów (jesteś zalogowany) |
+| 2 | Wybierz dowolnego klienta (np. „Demo") i kliknij **Rozpocznij nagrywanie** | Ekran nagrywania: widoczny timer 00:00, czerwona kropka |
+| 3 | Poczekaj 5–10 sek. aż timer zacznie naliczać | Timer: 00:05, 00:10... |
+| 4 | Wyjdź na pulpit (HOME) | Ekran główny telefonu |
+| 5 | ⭐ Rozwiń szufladę powiadomień z góry | **Trwałe powiadomienie Superwizora** o aktywnym nagrywaniu + **zielona ikonka mikrofonu** w pasku statusu |
+| 6 | *(Opcjonalnie)* Zablokuj ekran na 3 sek. i odblokuj | Powiadomienie nadal widoczne, timer działa |
+| 7 | Kliknij powiadomienie lub otwórz aplikację | Ekran nagrywania: timer nieprzerwanie nalicza (np. 00:45) |
+| 8 | Kliknij **Zatrzymaj nagrywanie** | Sesja zatrzymana, upload się rozpoczyna |
+
+> 💡 **Wskazówka:** Na emulatorze Android powiadomienia mogą być domyślnie zablokowane. Przytrzymaj ikonę aplikacji → App Info → Notifications → **Allow notifications**.
+
+---
+
+### 2.9 Wymagane grafiki w Google Play Console
+
+| Typ | Wymiary | Uwagi |
+| :--- | :--- | :--- |
+| **Ikona aplikacji** | 512 × 512 px | PNG 32-bit, maks. 1 MB |
+| **Feature Graphic** | 1024 × 500 px | JPG lub 24-bit PNG, góra karty katalogowej |
+| **Zrzuty ekranu telefonu** | min. 2, maks. 8 | 16:9 lub 9:16; np. `1080×2400` lub `1284×2778` z iPhone'a |
+| **Zrzuty ekranu tabletu** | 7" i 10" | Opcjonalne; można użyć plansz wygenerowanych dla iPada |
+
+---
+
+### 2.10 Teksty marketingowe Google Play
 *   **Nazwa aplikacji:** `SuperWizor AI` (maks. 30 znaków)
 *   **Krótki opis:** `Poznawczy partner w gabinecie psychoterapeuty.` (maks. 80 znaków)
 *   **Pełny opis:** *(Ten sam opis co w sekcji 1.3, maksymalnie 4000 znaków).*
+
+---
+
+### 2.11 Audyt techniczny Android (wykonany 2026-06-26)
+
+Przeprowadzono pełny audyt zgodności z wymaganiami Google Play:
+
+| Krok | Status | Opis |
+| :--- | :---: | :--- |
+| Uprawnienie `INTERNET` w manifestie głównym | ✅ | Dodane (wcześniej tylko w debug/profile) |
+| Uprawnienia mikrofonu i FGS | ✅ | `RECORD_AUDIO`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE`, `POST_NOTIFICATIONS` |
+| Target SDK | ✅ | `targetSdk = 35` w `build.gradle.kts` |
+| App Check / Play Integrity | ⏳ | Nie aktywowane — czeka na rejestrację platformy (ADR w AGENTS.md) |
+| ProGuard / R8 | ✅ | Brak `minifyEnabled`, brak konfliktów refleksji |
 
 ---
 

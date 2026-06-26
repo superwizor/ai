@@ -27,7 +27,7 @@ func TestStripeSubscriptionUnmarshal(t *testing.T) {
 			t.Fatalf("connect error: %v", err)
 		}
 	}
-	defer conn.Close(ctx)
+	defer func() { _ = conn.Close(ctx) }()
 
 	var rawPayload []byte
 	err = conn.QueryRow(ctx, "SELECT raw_payload FROM payment_events WHERE provider_event_id = 'evt_1TibseE5jzWcAIgefIIwMLdw'").Scan(&rawPayload)

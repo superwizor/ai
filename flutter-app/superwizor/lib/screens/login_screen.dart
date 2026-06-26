@@ -399,7 +399,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _buildCta(t.login_btn_sign_in, _loading ? null : _submitLogin),
         const SizedBox(height: 28),
         _buildModeSwitch(
-          t.auth_toggle_to_register.split('?').first + '? ',
+          '${t.auth_toggle_to_register.split('?').first}? ',
           t.login_btn_sign_up,
           _goToRegister,
         ),
@@ -453,7 +453,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _buildCta(t.login_btn_sign_up, _loading ? null : _submitRegister),
         const SizedBox(height: 28),
         _buildModeSwitch(
-          t.auth_toggle_to_login.split('?').first + '? ',
+          '${t.auth_toggle_to_login.split('?').first}? ',
           t.login_btn_sign_in,
           _goToLogin,
         ),

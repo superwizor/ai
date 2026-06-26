@@ -123,7 +123,7 @@ func (h *NIPHandler) handleNIPLookup(w http.ResponseWriter, r *http.Request) {
 		writeNIPJSON(w, http.StatusBadGateway, map[string]string{"error": "Błąd podczas łączenia z rejestrem MF"})
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1 MiB max
 	if err != nil {

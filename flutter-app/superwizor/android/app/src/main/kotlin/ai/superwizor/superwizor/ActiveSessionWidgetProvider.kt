@@ -4,6 +4,8 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
+import android.app.PendingIntent
+import android.os.Build
 import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
@@ -50,11 +52,25 @@ class ActiveSessionWidgetProvider : AppWidgetProvider() {
         private fun buildRemoteViews(context: Context): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.active_session_widget)
 
+            // Make the entire widget clickable to launch the app
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            val pendingIntent = launchIntent?.let {
+                val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                } else {
+                    PendingIntent.FLAG_UPDATE_CURRENT
+                }
+                PendingIntent.getActivity(context, 0, it, flags)
+            }
+            if (pendingIntent != null) {
+                views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
+            }
+
             if (!isActive) {
-                // Hide everything — widget is in idle state.
+                // Render a clean idle/ready state instead of an empty box
                 views.setViewVisibility(R.id.recording_dot, View.GONE)
-                views.setTextViewText(R.id.patient_alias, "")
-                views.setTextViewText(R.id.status_text, "")
+                views.setTextViewText(R.id.patient_alias, "Superwizor AI")
+                views.setTextViewText(R.id.status_text, "Brak aktywnej sesji")
                 views.setViewVisibility(R.id.timer, View.GONE)
                 return views
             }

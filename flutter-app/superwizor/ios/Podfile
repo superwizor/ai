@@ -45,6 +45,7 @@ post_install do |installer|
     # own deployment targets (9.0, 11.0) which triggers Xcode warnings.
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
     end
   end
 end

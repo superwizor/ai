@@ -480,7 +480,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         setState(() => _recState = s);
         // Mirror state to native widget.
         final laOn = ref.read(appSettingsProvider).liveActivitiesEnabled;
-        if (laOn) {
+        if (laOn || Platform.isAndroid) {
           final la = ref.read(liveActivityServiceProvider);
           final elapsed = _service.currentDuration.inSeconds;
           switch (s) {
@@ -514,7 +514,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       ref.read(analyticsCollectorProvider).track("recording.started");
 
       final laEnabled = ref.read(appSettingsProvider).liveActivitiesEnabled;
-      if (laEnabled) {
+      if (laEnabled || Platform.isAndroid) {
         ref.read(liveActivityServiceProvider).start(
           patientAlias: widget.patientAlias,
           elapsedSeconds: 0,
@@ -809,7 +809,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     await _service.cancel();
     await _deleteManifest();
     // Dismiss native widget.
-    if (ref.read(appSettingsProvider).liveActivitiesEnabled) {
+    if (ref.read(appSettingsProvider).liveActivitiesEnabled || Platform.isAndroid) {
       ref.read(liveActivityServiceProvider).stop();
     }
     ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
@@ -869,7 +869,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         "duration_seconds": capturedDuration.inSeconds,
       });
       // Transition native widget to uploading state.
-      if (ref.read(appSettingsProvider).liveActivitiesEnabled) {
+      if (ref.read(appSettingsProvider).liveActivitiesEnabled || Platform.isAndroid) {
         ref.read(liveActivityServiceProvider).update(
           status: LiveActivityStatus.uploading,
           elapsedSeconds: capturedDuration.inSeconds,

@@ -10,7 +10,7 @@ to all features. No credit card required.
 
 **Download the app:**
 
-- iOS (TestFlight): https://testflight.apple.com/join/WkjaAX9r
+- iOS (App Store): https://apps.apple.com/app/superwizor-ai/id6774975751
 - On computer: https://superwizor.ai/en/dashboard
 
 **What's next?**

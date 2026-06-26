@@ -23,7 +23,7 @@ import { GetSubscriptionRequestSchema } from "@superwizor/proto-ts/billing/v1/bi
 import type { Subscription } from "@superwizor/proto-ts/billing/v1/billing_pb";
 
 const APP_URL = "https://superwizor-app.web.app/";
-const TESTFLIGHT_URL = "https://testflight.apple.com/join/WkjaAX9r";
+const APP_STORE_URL = "https://apps.apple.com/app/superwizor-ai/id6774975751";
 
 export function DashboardHub({ locale }: { locale: string }) {
   const { user: fbUser, status: authStatus } = useAuth();
@@ -666,7 +666,7 @@ export function DashboardHub({ locale }: { locale: string }) {
                   </div>
                   <div className="flex-1">
                     <span className="block font-sans text-sm font-bold text-[#F2F0EA]">iPhone</span>
-                    <span className="block font-sans text-[11px] text-[#8FA5A0]">TestFlight</span>
+                    <span className="block font-sans text-[11px] text-[#8FA5A0]">App Store</span>
                   </div>
                   <svg className="w-4 h-4 text-[#8FA5A0] group-hover/pick:text-[#FCAE2F] group-hover/pick:translate-x-0.5 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="9 18 15 12 9 6" />
@@ -737,32 +737,32 @@ export function DashboardHub({ locale }: { locale: string }) {
                   </div>
 
                   <h3 className="font-serif text-xl font-bold text-[#F2F0EA] mb-2">
-                    {t("Aplikacja iOS (TestFlight)", "iOS App (TestFlight)")}
+                    {t("Aplikacja iOS", "iOS App")}
                   </h3>
 
                   <p className="font-sans text-xs text-[#8FA5A0] leading-relaxed mb-4">
                     {t(
-                      "TestFlight to oficjalna platforma firmy Apple do testowania wersji przedprodukcyjnych aplikacji przed ich debiutem w App Store. Pozwala ona bezpiecznie nagrywać sesje terapeutyczne na Twoim iPhonie.",
-                      "TestFlight is Apple's official platform for pre-release app testing before they launch in the App Store. It allows you to securely record therapy sessions on your iPhone."
+                      "Pobierz oficjalną aplikację Superwizor AI bezpośrednio z App Store, aby bezpiecznie nagrywać sesje terapeutyczne na swoim iPhonie.",
+                      "Download the official Superwizor AI app directly from the App Store to securely record therapy sessions on your iPhone."
                     )}
                   </p>
 
                   {/* QR Code */}
                   <div className="p-3 bg-white rounded-2xl w-[150px] h-[150px] flex items-center justify-center mx-auto mb-1.5 shadow-lg border border-white/10">
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=126x126&data=${encodeURIComponent(TESTFLIGHT_URL)}`}
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=126x126&data=${encodeURIComponent(APP_STORE_URL)}`}
                       alt="QR Code iOS"
                       className="w-[126px] h-[126px]"
                     />
                   </div>
                   <p className="text-[10px] text-[#8FA5A0] font-mono mb-6">
-                    {t("Zeskanuj telefonem, aby dołączyć", "Scan with phone to join")}
+                    {t("Zeskanuj telefonem, aby pobrać", "Scan with phone to download")}
                   </p>
 
                   <div className="flex flex-col gap-2.5">
                     {/* CTA button */}
                     <a
-                      href={TESTFLIGHT_URL}
+                      href={APP_STORE_URL}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-3 px-5 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-white transition-all text-xs font-semibold cursor-pointer w-full hover:border-[#FCAE2F]/40 hover:shadow-[0_2px_12px_rgba(252,174,47,0.15)] text-center"
@@ -775,86 +775,10 @@ export function DashboardHub({ locale }: { locale: string }) {
                           Download on the
                         </span>
                         <span className="text-xs font-bold leading-none">
-                          App Store (TestFlight)
+                          App Store
                         </span>
                       </div>
                     </a>
-
-                    <a
-                      href="https://apps.apple.com/us/app/testflight/id899247664"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-[11px] text-[#8FA5A0] hover:text-white transition-colors underline mb-2"
-                    >
-                      {t("Pobierz samą aplikację TestFlight z App Store ➔", "Get TestFlight App standalone from App Store ➔")}
-                    </a>
-
-                    {/* Instruction Toggle */}
-                    <button
-                      type="button"
-                      onClick={() => setShowInstructions(!showInstructions)}
-                      className="mt-2 font-sans text-xs text-[#FCAE2F] hover:text-[#FCAE2F]/80 transition-colors inline-flex items-center gap-2 cursor-pointer font-bold border border-[#FCAE2F]/30 bg-[#FCAE2F]/5 hover:bg-[#FCAE2F]/10 px-4 py-2.5 rounded-xl w-full justify-center"
-                    >
-                      <span>{t("Instrukcja jak to zainstalować", "How to install instructions")}</span>
-                      <svg
-                        className={`w-4 h-4 transform transition-transform duration-200 ${showInstructions ? "rotate-180" : ""}`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2.5}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-
-                    {/* Collapsible Steps */}
-                    <AnimatePresence>
-                      {showInstructions && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="overflow-hidden mt-2 text-left border-t border-[#1A3A3E] pt-4"
-                        >
-                          <div className="space-y-4">
-                            <div className="flex gap-3">
-                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FCAE2F]/10 border border-[#FCAE2F]/30 text-[#FCAE2F] text-xs font-mono font-bold flex items-center justify-center mt-0.5">
-                                1
-                              </span>
-                              <div className="flex flex-col">
-                                <span className="font-sans text-xs font-bold text-[#F2F0EA]">
-                                  {t("Zainstaluj TestFlight", "Install TestFlight")}
-                                </span>
-                                <span className="font-sans text-[11px] text-[#8FA5A0] leading-normal mt-0.5">
-                                  {t(
-                                    "Pobierz i zainstaluj bezpłatną aplikację TestFlight od Apple ze sklepu App Store na swoim telefonie.",
-                                    "Download and install the free Apple TestFlight app from the App Store on your phone."
-                                  )}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex gap-3">
-                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FCAE2F]/10 border border-[#FCAE2F]/30 text-[#FCAE2F] text-xs font-mono font-bold flex items-center justify-center mt-0.5">
-                                2
-                              </span>
-                              <div className="flex flex-col">
-                                <span className="font-sans text-xs font-bold text-[#F2F0EA]">
-                                  {t("Dołącz do testów i zainstaluj", "Join beta & install")}
-                                </span>
-                                <span className="font-sans text-[11px] text-[#8FA5A0] leading-normal mt-0.5">
-                                  {t(
-                                    "Otwórz ten sam link (przycisk powyżej) na iPhonie lub zeskanuj kod QR aparatem, aby pobrać aplikację Superwizor AI.",
-                                    "Open the link (button above) on your iPhone or scan the QR code with your camera to download the Superwizor AI app."
-                                  )}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </div>
                 </>
               ) : (

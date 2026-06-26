@@ -20,6 +20,7 @@
 //   - Bottom button: "Wróć do kartotek" with folder icon
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -250,7 +251,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     // Push Live Activity to uploading while the queue worker is active.
     // UploadPhase.created = signed URL obtained, PUT in progress.
     if (row.phase == UploadPhase.created &&
-        ref.read(appSettingsProvider).liveActivitiesEnabled) {
+        (ref.read(appSettingsProvider).liveActivitiesEnabled || Platform.isAndroid)) {
       ref.read(liveActivityServiceProvider).update(
         status: LiveActivityStatus.uploading,
         elapsedSeconds: 0,
@@ -296,7 +297,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     _resetFallbackTimer();
 
     // Push Live Activity updates for analyzing phase.
-    if (ref.read(appSettingsProvider).liveActivitiesEnabled) {
+    if (ref.read(appSettingsProvider).liveActivitiesEnabled || Platform.isAndroid) {
       if (phase == SessionStepperPhase.analyzing) {
         ref.read(liveActivityServiceProvider).update(
           status: LiveActivityStatus.analyzing,
@@ -377,7 +378,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     }
 
     // Push Live Activity to reportReady.
-    if (ref.read(appSettingsProvider).liveActivitiesEnabled &&
+    if ((ref.read(appSettingsProvider).liveActivitiesEnabled || Platform.isAndroid) &&
         _resolvedSessionId != null) {
       ref.read(liveActivityServiceProvider).showReportReady(
         sessionId: _resolvedSessionId!,
@@ -404,7 +405,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen>
     if (!mounted) return;
 
     // Stop the Live Activity — the user is about to see the report.
-    if (ref.read(appSettingsProvider).liveActivitiesEnabled) {
+    if (ref.read(appSettingsProvider).liveActivitiesEnabled || Platform.isAndroid) {
       ref.read(liveActivityServiceProvider).stop();
     }
     // Stop the Android foreground service — analysis is done.

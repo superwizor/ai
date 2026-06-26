@@ -6,23 +6,24 @@
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:padding="12dp"
-    android:background="@android:color/background_dark">
+    android:background="@drawable/widget_background">
 
-    <!-- Recording indicator dot -->
-    <View
-        android:id="@+id/recording_dot"
-        android:layout_width="10dp"
-        android:layout_height="10dp"
-        android:background="@android:color/holo_red_dark" />
+    <!-- App Icon -->
+    <ImageView
+        android:id="@+id/widget_icon"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:src="@mipmap/launcher_icon"
+        android:layout_marginEnd="10dp"
+        android:contentDescription="Superwizor AI" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:orientation="vertical"
-        android:layout_marginStart="10dp">
+        android:orientation="vertical">
 
-        <!-- Patient alias -->
+        <!-- Patient alias / App Title -->
         <TextView
             android:id="@+id/patient_alias"
             android:layout_width="wrap_content"
@@ -37,19 +38,33 @@
             android:id="@+id/status_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#B0B0B0"
+            android:textColor="#B2CACC"
             android:textSize="12sp"
             android:text="" />
     </LinearLayout>
 
-    <!-- Timer using system Chronometer for real-time ticking
-         without waking Flutter in the background -->
-    <Chronometer
-        android:id="@+id/timer"
+    <!-- Right-aligned section with Recording indicator dot and Chronometer -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@android:color/white"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="10dp">
+
+        <TextView
+            android:id="@+id/recording_dot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/widget_dot"
+            android:layout_marginEnd="6dp" />
+
+        <Chronometer
+            android:id="@+id/timer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
 </LinearLayout>

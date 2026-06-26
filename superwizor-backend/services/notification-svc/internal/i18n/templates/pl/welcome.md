@@ -10,7 +10,7 @@ do wszystkich funkcji. Bez karty kredytowej.
 
 **Pobierz aplikację:**
 
-- iOS (TestFlight): https://testflight.apple.com/join/WkjaAX9r
+- iOS (App Store): https://apps.apple.com/app/superwizor-ai/id6774975751
 - Na komputerze: https://superwizor.ai/dashboard
 
 **Co dalej?**
