@@ -18,19 +18,84 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
+	"time"
 
+	longrunningpb "cloud.google.com/go/longrunning/autogen/longrunningpb"
+	speech "cloud.google.com/go/speech/apiv2"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"google.golang.org/grpc/codes"
 )
 
 // maxChunkRetries bounds how many times the watchdog re-submits a
-// single chunk after a transient per-file Chirp error before giving up
-// and marking the session FAILED. Each retry is a fresh (billed)
-// BatchRecognize, so the cap keeps a permanently-flaky chunk from
-// re-billing forever. 3 covers the observed transient-INTERNAL pattern
-// (a single retry has cleared every case to date) with margin.
+// single chunk after a transient Chirp failure (per-file error OR a
+// hung-pending op) before giving up and marking the session FAILED.
+// Each retry is a fresh (billed) BatchRecognize, so the cap keeps a
+// permanently-flaky chunk from re-billing forever. Both re-submit
+// triggers share this one budget. 3 covers the observed transient
+// patterns with margin.
 const maxChunkRetries = 3
+
+// Stuck-PENDING give-up (docs follow-up to the 12c76823 incident).
+//
+// A Chirp op can hang PENDING indefinitely (done=false, no error code
+// to classify) — a distinct transient mode from the DONE-with-error
+// case the per-file path handles. reapStuckSessions only FAILs such a
+// session at 26h; instead we cancel + re-submit a hung op, bounded by
+// maxChunkRetries.
+//
+// The trigger requires TWO signals, not just wall-clock age:
+//  1. age (now - submitted_at) past the give-up window, AND
+//  2. the op's server-side metadata.update_time is stale.
+//
+// Why both: dynamic-batching has no latency SLA, so a legitimately
+// queued op can be old. But a *progressing* op keeps advancing
+// update_time, while a genuinely hung one freezes it (exactly what we
+// saw on 12c76823: update_time frozen 1.5h while sibling ops kept
+// finishing in ~2min). Gating on staleness distinguishes "one op hung"
+// from "whole queue slow" and prevents a cancel-and-resubmit storm
+// during a Chirp-wide slowdown.
+const (
+	defaultPendingGiveUpHours  = 3
+	defaultPendingStaleMinutes = 45
+)
+
+func pendingGiveUpHours() int {
+	if v := os.Getenv("STT_PENDING_GIVEUP_HOURS"); v != "" {
+		if h, err := strconv.Atoi(v); err == nil && h > 0 {
+			return h
+		}
+	}
+	return defaultPendingGiveUpHours
+}
+
+func pendingStaleMinutes() int {
+	if v := os.Getenv("STT_PENDING_STALE_MINUTES"); v != "" {
+		if m, err := strconv.Atoi(v); err == nil && m > 0 {
+			return m
+		}
+	}
+	return defaultPendingStaleMinutes
+}
+
+// shouldGiveUpOnPendingOp is the pure decision behind the hung-op
+// re-submit. Extracted so it can be unit-tested without a live Chirp
+// operation. Returns true only when the op is BOTH past the give-up
+// window AND its server-side progress timestamp is stale. When the op
+// carries no update_time signal at all (hasUpdateTime=false) we refuse
+// to cancel — better to wait (the 26h reaper backstops) than to kill an
+// op we can't prove is hung.
+func shouldGiveUpOnPendingOp(age time.Duration, hasUpdateTime bool, updateStaleness, giveUp, staleLimit time.Duration) bool {
+	if age < giveUp {
+		return false
+	}
+	if !hasUpdateTime {
+		return false
+	}
+	return updateStaleness >= staleLimit
+}
 
 // watchdogStuckThresholdSeconds is the lower bound on
 // (now - submitted_at) before a row is considered "stuck". Set high
@@ -179,6 +244,34 @@ func rescueOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) erro
 	}
 
 	if !chirpOp.Done() {
+		// Most pending ops are just slow — wait. But an op that has been
+		// pending past the give-up window AND whose server-side progress
+		// has gone stale is hung (12c76823 follow-up): cancel it and
+		// re-submit a fresh one, sharing the maxChunkRetries budget.
+		if hung, age, staleness := isHungPendingOp(op, chirpOp); hung {
+			logger.Warn("Chirp op hung PENDING (past give-up window, progress stale); cancelling + re-submitting",
+				"pending_seconds", int(age.Seconds()),
+				"update_stale_seconds", int(staleness.Seconds()))
+			if cerr := cancelChirpOp(ctx, op.OperationID); cerr != nil {
+				// Best-effort: a failed cancel just risks the dead op
+				// writing a late duplicate to the (reused) prefix, which
+				// findTranscriptObject tolerates. Re-submit regardless.
+				logger.Warn("cancel hung op failed; re-submitting anyway", "error", cerr)
+			}
+			resubmitted, rerr := resubmitChunk(ctx, logger, op, "pending-giveup",
+				fmt.Sprintf("op pending %ds, update_time stale %ds",
+					int(age.Seconds()), int(staleness.Seconds())))
+			if rerr != nil {
+				logger.Warn("hung-op re-submit failed; will retry next tick", "error", rerr)
+				return nil
+			}
+			if !resubmitted {
+				// Budget exhausted / no source URI: leave the row for the
+				// 26h reapStuckSessions backstop rather than spinning.
+				logger.Warn("hung op but re-submit unavailable (budget/source); leaving for give-up reaper")
+			}
+			return nil
+		}
 		logger.Info("Chirp operation still PENDING; will check next tick")
 		return nil
 	}
@@ -220,7 +313,8 @@ func rescueOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) erro
 			}
 			code := codes.Code(fr.Error.Code)
 			if !isTerminalStatusCode(code) {
-				resubmitted, rerr := resubmitChunk(ctx, logger, op, code, fr.Error.Message)
+				resubmitted, rerr := resubmitChunk(ctx, logger, op, "per-file-transient",
+					fmt.Sprintf("code=%d %s", int(code), fr.Error.Message))
 				if rerr != nil {
 					// Transient *re-submit* failure (Operations API blip,
 					// DB blip). Leave the row pending; next tick retries.
@@ -274,13 +368,13 @@ func rescueOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) erro
 // at the new operation. Returns (resubmitted, error):
 //
 //   - (true, nil)   — a new operation was submitted and the row updated;
-//                     the next watchdog tick polls the new operation.
+//     the next watchdog tick polls the new operation.
 //   - (false, nil)  — re-submit is impossible (retry budget exhausted,
-//                     no source_audio_uri, or the source audio is gone):
-//                     the caller treats this chunk as terminal → FAILED.
+//     no source_audio_uri, or the source audio is gone):
+//     the caller treats this chunk as terminal → FAILED.
 //   - (false, err)  — a transient failure during re-submit (Operations
-//                     API / DB blip): the caller leaves the row pending
-//                     and retries on the next tick.
+//     API / DB blip): the caller leaves the row pending
+//     and retries on the next tick.
 //
 // The original errored operation wrote NO transcript object (a per-file
 // error suppresses output), so we reuse the original output prefix:
@@ -288,17 +382,22 @@ func rescueOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) erro
 // cleanly through ParseOutputObjectPath (which demands the exact
 // {uuid}/chunk_{n}/{leaf} 3-segment shape — an extra retry_N segment
 // would break finalize's session/chunk mapping).
-func resubmitChunk(ctx context.Context, logger *slog.Logger, op sttOpRow, code codes.Code, chirpMsg string) (bool, error) {
+//
+// reason is a short stable tag for the trigger ("per-file-transient" or
+// "pending-giveup"); detail is a human-readable elaboration. Both feed
+// logging/analytics so the two re-submit triggers stay distinguishable.
+func resubmitChunk(ctx context.Context, logger *slog.Logger, op sttOpRow, reason, detail string) (bool, error) {
 	if op.SourceAudioURI == "" {
 		// Row predates the 000060 migration (or was never backfilled):
 		// we have no input URI to re-submit. Can't auto-recover.
-		logger.Warn("transient per-file error but row has no source_audio_uri; cannot re-submit",
-			"error_code", int(code))
+		logger.Warn("re-submit needed but row has no source_audio_uri; cannot re-submit",
+			"reason", reason, "detail", detail)
 		return false, nil
 	}
 	if op.RetryCount >= maxChunkRetries {
-		logger.Warn("transient per-file error but retry budget exhausted; giving up",
-			"error_code", int(code),
+		logger.Warn("re-submit needed but retry budget exhausted; giving up",
+			"reason", reason,
+			"detail", detail,
 			"retry_count", op.RetryCount,
 			"max_retries", maxChunkRetries)
 		return false, nil
@@ -332,15 +431,42 @@ func resubmitChunk(ctx context.Context, logger *slog.Logger, op sttOpRow, code c
 		"session_id", op.SessionID.String(),
 		"chunk_index", op.ChunkIndex,
 		"retry_count", newRetry,
-		"transient_code", int(code),
+		"reason", reason,
 	)
-	logger.Warn("Chirp per-file transient error; re-submitted chunk with fresh operation",
-		"error_code", int(code),
-		"error_message", chirpMsg,
+	logger.Warn("re-submitted chunk with fresh operation",
+		"reason", reason,
+		"detail", detail,
 		"new_operation_id", newOp,
 		"retry_count", newRetry,
 		"max_retries", maxChunkRetries)
 	return true, nil
+}
+
+// isHungPendingOp reports whether a still-PENDING op should be given up
+// on (cancelled + re-submitted). It wires the live op's timing into the
+// pure shouldGiveUpOnPendingOp decision: age from our submitted_at
+// (per-attempt clock) and staleness from Chirp's metadata.update_time.
+func isHungPendingOp(op sttOpRow, chirpOp *speech.BatchRecognizeOperation) (hung bool, age, staleness time.Duration) {
+	age = time.Since(op.SubmittedAt)
+	giveUp := time.Duration(pendingGiveUpHours()) * time.Hour
+	staleLimit := time.Duration(pendingStaleMinutes()) * time.Minute
+
+	hasUpdate := false
+	if meta, err := chirpOp.Metadata(); err == nil && meta != nil && meta.GetUpdateTime() != nil {
+		hasUpdate = true
+		staleness = time.Since(meta.GetUpdateTime().AsTime())
+	}
+	return shouldGiveUpOnPendingOp(age, hasUpdate, staleness, giveUp, staleLimit), age, staleness
+}
+
+// cancelChirpOp asks the Speech API to cancel a long-running operation.
+// Best-effort: Chirp cancellation isn't guaranteed instant, so the
+// caller treats failure as non-fatal and re-submits regardless.
+func cancelChirpOp(ctx context.Context, opName string) error {
+	if speechClient == nil {
+		return fmt.Errorf("speechClient not initialized")
+	}
+	return speechClient.CancelOperation(ctx, &longrunningpb.CancelOperationRequest{Name: opName})
 }
 
 // bucketFromGCSURI strips the "gs://" scheme and returns just the

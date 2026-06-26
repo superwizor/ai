@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
@@ -34,6 +35,10 @@ type sttOpRow struct {
 	// RetryCount is how many times this chunk was re-submitted after a
 	// transient per-file Chirp error. Bounds the watchdog re-submit loop.
 	RetryCount int
+	// SubmittedAt is when the CURRENT operation was submitted (reset on
+	// each re-submit). The watchdog uses now()-SubmittedAt as the
+	// per-attempt "how long has this op been pending" clock.
+	SubmittedAt time.Time
 	// FinalizedAt is nil when the row is still pending.
 	FinalizedAt   any // *time.Time on the wire; finalize only reads NULL/NOT-NULL state
 	FinalizeError *string
@@ -240,7 +245,7 @@ func loadPendingOperations(ctx context.Context, thresholdSeconds int) ([]sttOpRo
 		SELECT id, session_id, chunk_index, chunk_count, start_offset_ms,
 		       operation_id, gcs_output_uri,
 		       language_code, used_native_diarization, finalize_error,
-		       source_audio_uri, retry_count
+		       source_audio_uri, retry_count, submitted_at
 		FROM stt_operations
 		WHERE finalized_at IS NULL
 		  AND submitted_at < now() - make_interval(secs => $1)`,
@@ -256,7 +261,7 @@ func loadPendingOperations(ctx context.Context, thresholdSeconds int) ([]sttOpRo
 			&r.ID, &r.SessionID, &r.ChunkIndex, &r.ChunkCount, &r.StartOffsetMS,
 			&r.OperationID, &r.GCSOutputURI,
 			&r.LanguageCode, &r.UsedNativeDiarization, &r.FinalizeError,
-			&r.SourceAudioURI, &r.RetryCount,
+			&r.SourceAudioURI, &r.RetryCount, &r.SubmittedAt,
 		); err != nil {
 			return nil, err
 		}

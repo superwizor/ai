@@ -400,6 +400,42 @@ func TestIsTerminalStatusCode(t *testing.T) {
 	}
 }
 
+// TestShouldGiveUpOnPendingOp pins the hung-PENDING trigger. The
+// 12c76823 follow-up: an op pending past the give-up window whose
+// server-side update_time has frozen is "hung" and must be cancelled +
+// re-submitted; a merely-slow-but-progressing op (fresh update_time)
+// must NOT be, to avoid a cancel-and-resubmit storm during a Chirp-wide
+// slowdown.
+func TestShouldGiveUpOnPendingOp(t *testing.T) {
+	const giveUp = 3 * time.Hour
+	const staleLimit = 45 * time.Minute
+
+	tests := []struct {
+		name            string
+		age             time.Duration
+		hasUpdateTime   bool
+		updateStaleness time.Duration
+		want            bool
+	}{
+		{"young op, no signal yet", 10 * time.Minute, false, 0, false},
+		{"young op even if stale", 30 * time.Minute, true, 2 * time.Hour, false},
+		{"old but no update_time signal → refuse to cancel", 4 * time.Hour, false, 0, false},
+		{"old but progressing (fresh update_time) → wait", 4 * time.Hour, true, 5 * time.Minute, false},
+		{"old AND stale → hung (the 12c76823 case)", 4 * time.Hour, true, 90 * time.Minute, true},
+		{"exactly at give-up + exactly at stale limit → hung", giveUp, true, staleLimit, true},
+		{"past give-up, staleness 1s under limit → wait", giveUp + time.Second, true, staleLimit - time.Second, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := shouldGiveUpOnPendingOp(tt.age, tt.hasUpdateTime, tt.updateStaleness, giveUp, staleLimit)
+			if got != tt.want {
+				t.Errorf("shouldGiveUpOnPendingOp(age=%v, has=%v, stale=%v) = %v, want %v",
+					tt.age, tt.hasUpdateTime, tt.updateStaleness, got, tt.want)
+			}
+		})
+	}
+}
+
 // TestPerFileClassificationParity guards the invariant that the
 // watchdog's per-file branch and isTerminalSTTError agree on the gRPC
 // code set — they must, since both gate the same FAILED decision. If a
