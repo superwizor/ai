@@ -307,6 +307,7 @@ func ProcessAudio(ctx context.Context, e event.Event) error {
 			GCSOutputURI:          outputPrefix,
 			LanguageCode:          bcp47Lang,
 			UsedNativeDiarization: useNativeDiarization,
+			SourceAudioURI:        ch.GCSUri,
 		})
 		if insertErr != nil {
 			if isUniqueViolation(insertErr) {
@@ -793,6 +794,36 @@ func fillSpeakerLabels(words []chunker.Word, maxGapMS int64) {
 // FAILED status had to land before retries started, which doesn't help
 // when the first attempt itself crashes before updateSessionStatus.
 // The terminal-ack path closes that gap.
+// isTerminalStatusCode classifies a bare gRPC status code as
+// "no point retrying" (terminal) vs "should retry" (transient). It is
+// the single source of truth shared by two call sites that observe a
+// status code without a wrapped error object:
+//
+//   - isTerminalSTTError's gRPC branch (an error returned by the Chirp
+//     client / Operations API).
+//   - the watchdog's per-file inspection, where Chirp completes the
+//     operation but attaches a google.rpc.Status to a single file in
+//     resp.Results[uri].Error (its .Code is a bare gRPC code).
+//
+// Terminal = the input itself is bad and every retry gets the same
+// answer (InvalidArgument: codec/header; OutOfRange: too long/short;
+// NotFound: source GCS object gone; PermissionDenied/Unauthenticated:
+// IAM). Everything else — Internal, Unavailable, DeadlineExceeded,
+// ResourceExhausted, Unknown — is a Google-side / transport transient
+// and defaults to retry. We'd rather over-retry a transient than
+// permanently kill a recoverable clinical session.
+func isTerminalStatusCode(code codes.Code) bool {
+	switch code {
+	case codes.InvalidArgument,
+		codes.OutOfRange,
+		codes.NotFound,
+		codes.PermissionDenied,
+		codes.Unauthenticated:
+		return true
+	}
+	return false
+}
+
 func isTerminalSTTError(err error) bool {
 	if err == nil {
 		return false
@@ -801,12 +832,7 @@ func isTerminalSTTError(err error) bool {
 	// any %w-wrapped grpc error and surfaces the code; direct grpc
 	// errors are matched too.
 	if s, ok := grpcstatus.FromError(err); ok {
-		switch s.Code() {
-		case codes.InvalidArgument,
-			codes.OutOfRange,
-			codes.NotFound,
-			codes.PermissionDenied,
-			codes.Unauthenticated:
+		if isTerminalStatusCode(s.Code()) {
 			return true
 		}
 	}

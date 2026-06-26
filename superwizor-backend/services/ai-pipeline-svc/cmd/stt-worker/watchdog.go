@@ -21,7 +21,16 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+	"google.golang.org/grpc/codes"
 )
+
+// maxChunkRetries bounds how many times the watchdog re-submits a
+// single chunk after a transient per-file Chirp error before giving up
+// and marking the session FAILED. Each retry is a fresh (billed)
+// BatchRecognize, so the cap keeps a permanently-flaky chunk from
+// re-billing forever. 3 covers the observed transient-INTERNAL pattern
+// (a single retry has cleared every case to date) with margin.
+const maxChunkRetries = 3
 
 // watchdogStuckThresholdSeconds is the lower bound on
 // (now - submitted_at) before a row is considered "stuck". Set high
@@ -186,13 +195,44 @@ func rescueOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) erro
 	// manually, findTranscriptObject will loop forever on
 	// "no transcript file at prefix" because Chirp never wrote one.
 	//
-	// Match: any per-file Error with non-zero code → mark FAILED.
-	// Same classification as isTerminalSTTError (file-level Chirp
-	// rejections are always terminal).
+	// Per-file error classification (fixed 2026-06-26 after the
+	// 12c76823 incident — chunk_2 lost to a transient code=13 INTERNAL).
+	//
+	// Chirp attaches a google.rpc.Status to the failing file in
+	// resp.Results[uri].Error; its .Code is a bare gRPC status code.
+	// We must split it the same way isTerminalSTTError splits operation-
+	// level errors:
+	//
+	//   - Terminal (InvalidArgument/OutOfRange/NotFound/...): the input
+	//     is bad and every retry returns the same answer → FAILED.
+	//   - Transient (INTERNAL/UNAVAILABLE/DEADLINE_EXCEEDED/...): a
+	//     Google-side fault. The operation is DONE-with-error and wrote
+	//     NO transcript object, so re-polling THIS operation returns the
+	//     same error forever — recovery requires a brand-new
+	//     BatchRecognize. resubmitChunk does that, bounded by
+	//     maxChunkRetries. Only when re-submit is impossible (budget
+	//     exhausted, source audio GC'd, or a pre-000060 row with no
+	//     source_audio_uri) do we fall through to FAILED.
 	if resp != nil {
 		for fileURI, fr := range resp.Results {
 			if fr == nil || fr.Error == nil || fr.Error.Code == 0 {
 				continue
+			}
+			code := codes.Code(fr.Error.Code)
+			if !isTerminalStatusCode(code) {
+				resubmitted, rerr := resubmitChunk(ctx, logger, op, code, fr.Error.Message)
+				if rerr != nil {
+					// Transient *re-submit* failure (Operations API blip,
+					// DB blip). Leave the row pending; next tick retries.
+					logger.Warn("chunk re-submit failed transiently; will retry next tick",
+						"error", rerr)
+					return nil
+				}
+				if resubmitted {
+					return nil
+				}
+				// resubmitted == false → unrecoverable (retries exhausted
+				// or source audio gone): fall through to terminal FAILED.
 			}
 			msg := fmt.Sprintf(
 				"chirp 3 returned per-file error: code=%d %s (file=%s)",
@@ -227,6 +267,80 @@ func rescueOperation(ctx context.Context, logger *slog.Logger, op sttOpRow) erro
 		return nil
 	}
 	return finalizeIfReady(ctx, logger, op.SessionID, bucket)
+}
+
+// resubmitChunk fires a fresh BatchRecognize for a single chunk after
+// a transient per-file Chirp error and repoints the stt_operations row
+// at the new operation. Returns (resubmitted, error):
+//
+//   - (true, nil)   — a new operation was submitted and the row updated;
+//                     the next watchdog tick polls the new operation.
+//   - (false, nil)  — re-submit is impossible (retry budget exhausted,
+//                     no source_audio_uri, or the source audio is gone):
+//                     the caller treats this chunk as terminal → FAILED.
+//   - (false, err)  — a transient failure during re-submit (Operations
+//                     API / DB blip): the caller leaves the row pending
+//                     and retries on the next tick.
+//
+// The original errored operation wrote NO transcript object (a per-file
+// error suppresses output), so we reuse the original output prefix:
+// it's empty, and the new operation's OBJECT_FINALIZE round-trips
+// cleanly through ParseOutputObjectPath (which demands the exact
+// {uuid}/chunk_{n}/{leaf} 3-segment shape — an extra retry_N segment
+// would break finalize's session/chunk mapping).
+func resubmitChunk(ctx context.Context, logger *slog.Logger, op sttOpRow, code codes.Code, chirpMsg string) (bool, error) {
+	if op.SourceAudioURI == "" {
+		// Row predates the 000060 migration (or was never backfilled):
+		// we have no input URI to re-submit. Can't auto-recover.
+		logger.Warn("transient per-file error but row has no source_audio_uri; cannot re-submit",
+			"error_code", int(code))
+		return false, nil
+	}
+	if op.RetryCount >= maxChunkRetries {
+		logger.Warn("transient per-file error but retry budget exhausted; giving up",
+			"error_code", int(code),
+			"retry_count", op.RetryCount,
+			"max_retries", maxChunkRetries)
+		return false, nil
+	}
+	if speechClient == nil {
+		return false, fmt.Errorf("speechClient not initialized")
+	}
+
+	outputPrefix := op.GCSOutputURI
+	newOp, err := submitBatchRecognize(
+		ctx, op.SourceAudioURI, outputPrefix, op.LanguageCode, op.UsedNativeDiarization)
+	if err != nil {
+		// Submit-call error. A terminal one (e.g. NotFound: source audio
+		// GC'd by OLM 48h) means recovery is genuinely impossible → let
+		// the caller FAIL. Transient → retry next tick.
+		if isTerminalSTTError(err) {
+			logger.Error("chunk re-submit hit terminal error (source audio gone?); session will FAIL",
+				"error_truncated", truncateOpError(err.Error()))
+			return false, nil
+		}
+		return false, fmt.Errorf("re-submit BatchRecognize: %w", err)
+	}
+
+	newRetry := op.RetryCount + 1
+	if err := markChunkResubmitted(ctx, op.ID, newOp, outputPrefix, newRetry); err != nil {
+		return false, fmt.Errorf("markChunkResubmitted: %w", err)
+	}
+
+	slog.InfoContext(ctx, "analytics",
+		"ae", "stt.chunk_resubmitted",
+		"session_id", op.SessionID.String(),
+		"chunk_index", op.ChunkIndex,
+		"retry_count", newRetry,
+		"transient_code", int(code),
+	)
+	logger.Warn("Chirp per-file transient error; re-submitted chunk with fresh operation",
+		"error_code", int(code),
+		"error_message", chirpMsg,
+		"new_operation_id", newOp,
+		"retry_count", newRetry,
+		"max_retries", maxChunkRetries)
+	return true, nil
 }
 
 // bucketFromGCSURI strips the "gs://" scheme and returns just the

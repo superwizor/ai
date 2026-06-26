@@ -364,3 +364,64 @@ func TestIsTerminalSTTError(t *testing.T) {
 		})
 	}
 }
+
+// TestIsTerminalStatusCode pins the numeric classifier the watchdog's
+// per-file path uses. The regression that motivated it (incident
+// 12c76823): a Chirp per-file code=13 INTERNAL was treated as terminal
+// and killed a 49-min clinical session. It MUST classify as transient
+// so the chunk gets re-submitted instead.
+func TestIsTerminalStatusCode(t *testing.T) {
+	tests := []struct {
+		name string
+		code codes.Code
+		want bool
+	}{
+		// Terminal — the input is bad; every retry returns the same.
+		{"InvalidArgument (codec)", codes.InvalidArgument, true},
+		{"OutOfRange (too long)", codes.OutOfRange, true},
+		{"NotFound (source GC'd)", codes.NotFound, true},
+		{"PermissionDenied (IAM)", codes.PermissionDenied, true},
+		{"Unauthenticated", codes.Unauthenticated, true},
+
+		// Transient — Google-side / transport fault; re-submit recovers.
+		{"INTERNAL (the 12c76823 regression)", codes.Internal, false},
+		{"Unavailable", codes.Unavailable, false},
+		{"DeadlineExceeded", codes.DeadlineExceeded, false},
+		{"ResourceExhausted (rate limit)", codes.ResourceExhausted, false},
+		{"Unknown", codes.Unknown, false},
+		{"OK / zero code", codes.OK, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isTerminalStatusCode(tt.code); got != tt.want {
+				t.Errorf("isTerminalStatusCode(%v) = %v, want %v", tt.code, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestPerFileClassificationParity guards the invariant that the
+// watchdog's per-file branch and isTerminalSTTError agree on the gRPC
+// code set — they must, since both gate the same FAILED decision. If a
+// future edit adds a terminal code to one classifier but not the other,
+// this catches the drift.
+func TestPerFileClassificationParity(t *testing.T) {
+	allCodes := []codes.Code{
+		codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument,
+		codes.DeadlineExceeded, codes.NotFound, codes.AlreadyExists,
+		codes.PermissionDenied, codes.ResourceExhausted, codes.FailedPrecondition,
+		codes.Aborted, codes.OutOfRange, codes.Unimplemented, codes.Internal,
+		codes.Unavailable, codes.DataLoss, codes.Unauthenticated,
+	}
+	for _, c := range allCodes {
+		viaCode := isTerminalStatusCode(c)
+		viaErr := isTerminalSTTError(grpcstatuspkg.Error(c, "x"))
+		// isTerminalSTTError has a non-grpc string fallback, but for a
+		// pure grpc error with a non-terminal code it returns the same
+		// as isTerminalStatusCode.
+		if viaCode != viaErr {
+			t.Errorf("classification drift for %v: isTerminalStatusCode=%v isTerminalSTTError=%v",
+				c, viaCode, viaErr)
+		}
+	}
+}

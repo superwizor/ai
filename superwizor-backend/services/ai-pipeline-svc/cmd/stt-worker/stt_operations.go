@@ -27,6 +27,13 @@ type sttOpRow struct {
 	GCSOutputURI          string
 	LanguageCode          string
 	UsedNativeDiarization bool
+	// SourceAudioURI is the gs:// URI of THIS chunk's input audio,
+	// captured at submit time. Empty for rows written before the
+	// 000060 migration; the watchdog can't auto-recover those.
+	SourceAudioURI string
+	// RetryCount is how many times this chunk was re-submitted after a
+	// transient per-file Chirp error. Bounds the watchdog re-submit loop.
+	RetryCount int
 	// FinalizedAt is nil when the row is still pending.
 	FinalizedAt   any // *time.Time on the wire; finalize only reads NULL/NOT-NULL state
 	FinalizeError *string
@@ -42,6 +49,7 @@ type insertSTTOpParams struct {
 	GCSOutputURI          string
 	LanguageCode          string
 	UsedNativeDiarization bool
+	SourceAudioURI        string
 }
 
 // insertSTTOperation persists the submit record. Returns a unique-
@@ -56,11 +64,11 @@ func insertSTTOperation(ctx context.Context, p insertSTTOpParams) error {
 		INSERT INTO stt_operations (
 			session_id, chunk_index, chunk_count, start_offset_ms,
 			operation_id, gcs_output_uri,
-			language_code, used_native_diarization
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+			language_code, used_native_diarization, source_audio_uri
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		p.SessionID, p.ChunkIndex, p.ChunkCount, p.StartOffsetMS,
 		p.OperationID, p.GCSOutputURI,
-		p.LanguageCode, p.UsedNativeDiarization,
+		p.LanguageCode, p.UsedNativeDiarization, p.SourceAudioURI,
 	)
 	return err
 }
@@ -187,6 +195,32 @@ func recordFinalizeError(ctx context.Context, sessionID uuid.UUID, chunkIndex in
 		sessionID, chunkIndex, msg)
 }
 
+// markChunkResubmitted repoints a stuck chunk row at a freshly-
+// submitted Chirp operation after a transient per-file error. It swaps
+// in the new operation_id + output prefix, bumps retry_count, and
+// clears finalize_error so the next watchdog tick polls the new
+// operation cleanly. finalized_at is already NULL for a pending row;
+// the retry_count guard in the caller bounds how often this runs.
+//
+// The retry_count = $5 (not retry_count + 1) is intentional: the
+// caller computes the new count so it can enforce the cap before
+// submitting a paid BatchRecognize.
+func markChunkResubmitted(ctx context.Context, id uuid.UUID, newOperationID, newOutputURI string, newRetryCount int) error {
+	if dbPool == nil {
+		return nil
+	}
+	_, err := dbPool.Exec(ctx, `
+		UPDATE stt_operations
+		SET operation_id   = $2,
+		    gcs_output_uri = $3,
+		    retry_count    = $4,
+		    finalize_error = NULL,
+		    submitted_at   = now()
+		WHERE id = $1`,
+		id, newOperationID, newOutputURI, newRetryCount)
+	return err
+}
+
 // isUniqueViolation reports whether err is a Postgres unique-
 // constraint violation (SQLSTATE 23505). Used to distinguish the
 // concurrent-submit race (drop and continue) from other DB errors.
@@ -205,7 +239,8 @@ func loadPendingOperations(ctx context.Context, thresholdSeconds int) ([]sttOpRo
 	rows, err := dbPool.Query(ctx, `
 		SELECT id, session_id, chunk_index, chunk_count, start_offset_ms,
 		       operation_id, gcs_output_uri,
-		       language_code, used_native_diarization, finalize_error
+		       language_code, used_native_diarization, finalize_error,
+		       source_audio_uri, retry_count
 		FROM stt_operations
 		WHERE finalized_at IS NULL
 		  AND submitted_at < now() - make_interval(secs => $1)`,
@@ -221,6 +256,7 @@ func loadPendingOperations(ctx context.Context, thresholdSeconds int) ([]sttOpRo
 			&r.ID, &r.SessionID, &r.ChunkIndex, &r.ChunkCount, &r.StartOffsetMS,
 			&r.OperationID, &r.GCSOutputURI,
 			&r.LanguageCode, &r.UsedNativeDiarization, &r.FinalizeError,
+			&r.SourceAudioURI, &r.RetryCount,
 		); err != nil {
 			return nil, err
 		}
