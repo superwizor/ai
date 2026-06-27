@@ -34,10 +34,13 @@ package connectmd
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"connectrpc.com/connect"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 // HeadersToGRPCMetadata returns a Connect interceptor that copies all
@@ -57,6 +60,51 @@ func HeadersToGRPCMetadata() connect.UnaryInterceptorFunc {
 	return func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			return next(injectMetadata(ctx, req.Header()), req)
+		}
+	}
+}
+
+// TranslateGRPCError returns a Connect interceptor that maps a raw
+// google.golang.org/grpc/status error returned by the wrapped gRPC handler
+// into a connect.Error with the EQUIVALENT code.
+//
+// Why this exists: services here implement the gRPC server interface and
+// expose it through a thin ConnectAdapter. The adapter returns the handler's
+// `status.Error(codes.X, …)` straight through — but Connect does NOT recognise
+// google.golang.org/grpc/status errors. A returned *status.Error reaches the
+// browser as **CodeUnknown** with the gRPC status string as the message
+// (e.g. `[unknown] rpc error: code = NotFound desc = …`). Browser code that
+// branches on the Connect code (e.g. LoginForm treating NotFound as
+// "new social user → finish registration") therefore never matches, and the
+// user sees a catch-all error instead.
+//
+// connect.Code and grpc/codes.Code share the canonical gRPC code numbering
+// (Canceled=1 … NotFound=5 … Unauthenticated=16), so the remap is a direct
+// cast. Errors that are already connect.Error, plain (non-status) errors, and
+// nil are left untouched.
+//
+// Discovered 2026-06-27: Google/email login on the marketing LP failed with a
+// generic error for users without an identity-svc profile — the handler's
+// NotFound arrived as CodeUnknown, so LoginForm's NotFound→register branch was
+// skipped.
+func TranslateGRPCError() connect.UnaryInterceptorFunc {
+	return func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			resp, err := next(ctx, req)
+			if err == nil {
+				return resp, nil
+			}
+			// Already a connect.Error (handler returned one directly) — keep it.
+			var ce *connect.Error
+			if errors.As(err, &ce) {
+				return resp, err
+			}
+			// Only remap genuine gRPC status errors; status.FromError reports
+			// ok=false for plain errors, which Connect already maps to Unknown.
+			if st, ok := status.FromError(err); ok && st.Code() != codes.OK {
+				return resp, connect.NewError(connect.Code(st.Code()), errors.New(st.Message()))
+			}
+			return resp, err
 		}
 	}
 }
