@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { usePathname } from "next/navigation";
 import { LocaleSwitcher } from "./LocaleSwitcher";
+import { openAppWithSso, APP_URL } from "@/lib/auth/open-app-sso";
 
 export type NavbarVariant = "marketing" | "auth" | "tunnel" | "app";
 
@@ -199,7 +200,11 @@ export function Navbar({ variant = "marketing" }: { variant?: NavbarVariant }) {
           {variant === "app" && (
             <>
               <a
-                href="https://app.superwizor.ai"
+                href={APP_URL}
+                onClick={(e) => {
+                  e.preventDefault();
+                  void openAppWithSso();
+                }}
                 className="inline-flex items-center rounded-[5px] bg-ember text-obsidian hover:brightness-110 font-sans uppercase tracking-[var(--tracking-label)] text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 transition active:scale-[0.98] font-bold whitespace-nowrap"
               >
                 {t("openApp")}
