@@ -361,6 +361,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'For video conferences (e.g. Google Meet, Zoom), always use a secondary device to record.';
 
   @override
+  String get recording_instruction_5 =>
+      'Recording stops automatically after a set time, and you\'ll get a periodic reminder (with an optional sound) — both adjustable in Settings → Recording.';
+
+  @override
   String get recording_status_initializing => 'Starting recording…';
 
   @override
@@ -2773,4 +2777,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String home_report_ready_toast(String name) {
     return 'Report ready, $name 🎉';
   }
+
+  @override
+  String get appLock_title => 'App locked';
+
+  @override
+  String get appLock_subtitle => 'Unlock to access your records';
+
+  @override
+  String get appLock_unlock => 'Unlock';
+
+  @override
+  String get appLock_reason => 'Authenticate to access Superwizor';
+
+  @override
+  String recording_reminder_toast(String duration) {
+    return 'Still recording — $duration';
+  }
+
+  @override
+  String recording_autopause_remaining(String time) {
+    return 'Auto-pause in $time';
+  }
+
+  @override
+  String get settings_recording_section => 'Recording';
+
+  @override
+  String get settings_recording_autopause => 'Auto-pause';
+
+  @override
+  String settings_recording_autopause_value(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get settings_recording_reminder => 'Recording reminder';
+
+  @override
+  String get settings_recording_reminder_off => 'Off';
+
+  @override
+  String get settings_recording_reminder_sound => 'Reminder sound';
+
+  @override
+  String get settings_recording_reminder_sound_warning =>
+      'The sound will be captured in the session';
 }

@@ -740,6 +740,12 @@ abstract class AppLocalizations {
   /// **'Do wideokonferencji (np. Google Meet, Zoom) używaj zawsze dodatkowego urządzenia do nagrywania.'**
   String get recording_instruction_4;
 
+  /// No description provided for @recording_instruction_5.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagrywanie zatrzyma się automatycznie po ustawionym czasie, a co jakiś czas dostaniesz przypomnienie (z opcjonalnym dźwiękiem) – oba dostosujesz w Ustawieniach → Nagrywanie.'**
+  String get recording_instruction_5;
+
   /// No description provided for @recording_status_initializing.
   ///
   /// In pl, this message translates to:
@@ -4990,6 +4996,84 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Raport gotowy, {name} 🎉'**
   String home_report_ready_toast(String name);
+
+  /// No description provided for @appLock_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Aplikacja zablokowana'**
+  String get appLock_title;
+
+  /// No description provided for @appLock_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Odblokuj, aby uzyskać dostęp do kartotek'**
+  String get appLock_subtitle;
+
+  /// No description provided for @appLock_unlock.
+  ///
+  /// In pl, this message translates to:
+  /// **'Odblokuj'**
+  String get appLock_unlock;
+
+  /// No description provided for @appLock_reason.
+  ///
+  /// In pl, this message translates to:
+  /// **'Uwierzytelnij się, aby uzyskać dostęp do Superwizora'**
+  String get appLock_reason;
+
+  /// No description provided for @recording_reminder_toast.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagrywanie wciąż trwa — {duration}'**
+  String recording_reminder_toast(String duration);
+
+  /// No description provided for @recording_autopause_remaining.
+  ///
+  /// In pl, this message translates to:
+  /// **'Auto-pauza za {time}'**
+  String recording_autopause_remaining(String time);
+
+  /// No description provided for @settings_recording_section.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagrywanie'**
+  String get settings_recording_section;
+
+  /// No description provided for @settings_recording_autopause.
+  ///
+  /// In pl, this message translates to:
+  /// **'Automatyczna pauza'**
+  String get settings_recording_autopause;
+
+  /// No description provided for @settings_recording_autopause_value.
+  ///
+  /// In pl, this message translates to:
+  /// **'{minutes} min'**
+  String settings_recording_autopause_value(int minutes);
+
+  /// No description provided for @settings_recording_reminder.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przypomnienie o nagrywaniu'**
+  String get settings_recording_reminder;
+
+  /// No description provided for @settings_recording_reminder_off.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyłączone'**
+  String get settings_recording_reminder_off;
+
+  /// No description provided for @settings_recording_reminder_sound.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dźwięk przypomnienia'**
+  String get settings_recording_reminder_sound;
+
+  /// No description provided for @settings_recording_reminder_sound_warning.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dźwięk zostanie nagrany w sesji'**
+  String get settings_recording_reminder_sound_warning;
 }
 
 class _AppLocalizationsDelegate

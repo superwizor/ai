@@ -13,9 +13,11 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'auth/sso_handler.dart'
     if (dart.library.html) 'auth/sso_handler_web.dart';
+import 'auth/app_lock_controller.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
+import 'screens/lock_screen.dart';
 import 'screens/login_screen.dart';
 import 'theme/euphire_theme.dart';
 import 'uploads/upload_queue_provider.dart';
@@ -37,8 +39,6 @@ final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
@@ -89,6 +89,7 @@ void main() async {
 
   runApp(const ProviderScope(child: SuperWizorApp()));
 }
+
 class SuperWizorApp extends ConsumerWidget {
   const SuperWizorApp({super.key});
 
@@ -106,9 +107,7 @@ class SuperWizorApp extends ConsumerWidget {
       locale: locale,
       home: const _AuthGate(),
       builder: (context, child) {
-        return DebugTestOverlay(
-          child: ActiveRecordingOverlay(child: child!),
-        );
+        return DebugTestOverlay(child: ActiveRecordingOverlay(child: child!));
       },
     );
   }
@@ -133,8 +132,21 @@ class _AuthGate extends ConsumerWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        return snapshot.hasData ? const HomeScreen() : const LoginScreen();
+        return snapshot.hasData ? const _LockGate() : const LoginScreen();
       },
     );
+  }
+}
+
+/// Sits between a signed-in session and the app: while [appLockProvider] is
+/// locked (cold launch / inactivity), the biometric LockScreen is shown
+/// instead of HomeScreen. No-op on web/desktop (the provider stays unlocked).
+class _LockGate extends ConsumerWidget {
+  const _LockGate();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locked = ref.watch(appLockProvider);
+    return locked ? const LockScreen() : const HomeScreen();
   }
 }

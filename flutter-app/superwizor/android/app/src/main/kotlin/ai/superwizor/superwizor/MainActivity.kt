@@ -2,11 +2,13 @@ package ai.superwizor.superwizor
 
 import android.content.Intent
 import android.os.Build
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+// FlutterFragmentActivity (not FlutterActivity) is required by local_auth's
+// biometric prompt (app-lock). Engine wiring below is unchanged.
+class MainActivity : FlutterFragmentActivity() {
     private val fgsChannel = "superwizor/recording_fgs"
     private val liveActivityChannel = "ai.superwizor/live_activity"
 

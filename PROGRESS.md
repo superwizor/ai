@@ -447,6 +447,41 @@ DNS cutover. Unblocks production launch.
 
 ## Notes / gotchas
 
+- **Branch `fix/stt-stuck-pending-resubmit` (unmerged, off `main`, 2026-06-26):**
+  Follow-up to the per-file fix below. Handles the *other* transient Chirp
+  mode — an op that hangs `PENDING` forever (`done=false`, no error code),
+  which the per-file path can't catch and `reapStuckSessions` only FAILs at
+  26h. The watchdog's still-PENDING branch now cancels + re-submits a hung op
+  (shared `maxChunkRetries` budget). Trigger needs BOTH age past a give-up
+  window AND `metadata.update_time` stale — the staleness gate tells "one op
+  hung" apart from "whole queue slow" and avoids a resubmit storm. Pure
+  decision `shouldGiveUpOnPendingOp` is unit-tested (`TestShouldGiveUpOnPendingOp`);
+  env knobs `STT_PENDING_GIVEUP_HOURS` (3), `STT_PENDING_STALE_MINUTES` (45).
+  No new migration. **MERGED to `main` + pushed (commit `dac274b`) and
+  deployed to staging** (stt-worker/finalize/watchdog redeployed ACTIVE
+  2026-06-26 ~20:37 UTC; post-deploy watchdog smoke returned "0 stuck
+  operations", confirming the new `submitted_at` projection runs clean). A
+  live hung-op re-test isn't reproducible (can't make Chirp hang on demand),
+  so the branch logic is verified by unit test + build/vet/test green rather
+  than a staging replay.
+- **Branch `fix/stt-per-file-transient-retry` (MERGED to `main` + pushed
+  2026-06-26, commit `dd58b76`; migration 000060 applied to staging):**
+  stt-worker watchdog used to mark a session FAILED on ANY non-zero Chirp
+  per-file error code, so a transient `code=13 INTERNAL` on one chunk killed a
+  49-min clinical session (incident `12c76823`). Fix: `isTerminalStatusCode`
+  (single classifier; `isTerminalSTTError`'s gRPC branch delegates to it),
+  watchdog now re-submits a fresh BatchRecognize on transient per-file codes
+  (`resubmitChunk`, bounded by `maxChunkRetries=3`); migration **000060** adds
+  `stt_operations.retry_count` + `source_audio_uri`. **Deployed to staging**
+  (migration applied — staging DB at version 60; stt-worker/finalize/watchdog
+  redeployed) and verified end-to-end: the watchdog auto-reclassified the real
+  `code=13` and re-submitted instead of failing; session `12c76823` recovered
+  to a 5759-word `pl-PL` transcript (`ANALYZING`). Gotcha observed: a
+  re-submitted Chirp dynamic-batch op can hang *individually* for hours while
+  the rest of the queue is healthy — the watchdog correctly leaves a stuck
+  *pending* op alone (only done-with-transient-error triggers re-submit).
+  NOT merged to main — confirm with user. Evidence under
+  `superwizor-backend/evidence/fix-stt-per-file-transient-retry/`.
 - **Toolchain ready:** Node 20.20.2 + pnpm 9.15.9 installed. Node 20 is
   keg-only at `/usr/local/opt/node@20/bin/node`; PATH is persisted in
   `~/.bash_profile` so every new login shell sees it. Corepack's pnpm

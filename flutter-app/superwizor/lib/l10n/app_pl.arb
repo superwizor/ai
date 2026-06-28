@@ -130,6 +130,7 @@
   "recording_instruction_2": "Mikrofon skieruj w stronę rozmowy, niczym go nie zasłaniaj.",
   "recording_instruction_3": "Ciche otoczenie – zamknij okna/drzwi, wyłącz źródła hałasu.",
   "recording_instruction_4": "Do wideokonferencji (np. Google Meet, Zoom) używaj zawsze dodatkowego urządzenia do nagrywania.",
+  "recording_instruction_5": "Nagrywanie zatrzyma się automatycznie po ustawionym czasie, a co jakiś czas dostaniesz przypomnienie (z opcjonalnym dźwiękiem) – oba dostosujesz w Ustawieniach → Nagrywanie.",
   "recording_status_initializing": "Rozpoczynam nagrywanie…",
   "recording_status_recording": "Nagrywanie w toku.",
   "recording_status_paused": "Nagrywanie wstrzymane.",
@@ -1165,5 +1166,39 @@
         "type": "String"
       }
     }
-  }
+  },
+  "appLock_title": "Aplikacja zablokowana",
+  "appLock_subtitle": "Odblokuj, aby uzyskać dostęp do kartotek",
+  "appLock_unlock": "Odblokuj",
+  "appLock_reason": "Uwierzytelnij się, aby uzyskać dostęp do Superwizora",
+  "recording_reminder_toast": "Nagrywanie wciąż trwa — {duration}",
+  "@recording_reminder_toast": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "recording_autopause_remaining": "Auto-pauza za {time}",
+  "@recording_autopause_remaining": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "settings_recording_section": "Nagrywanie",
+  "settings_recording_autopause": "Automatyczna pauza",
+  "settings_recording_autopause_value": "{minutes} min",
+  "@settings_recording_autopause_value": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "settings_recording_reminder": "Przypomnienie o nagrywaniu",
+  "settings_recording_reminder_off": "Wyłączone",
+  "settings_recording_reminder_sound": "Dźwięk przypomnienia",
+  "settings_recording_reminder_sound_warning": "Dźwięk zostanie nagrany w sesji"
 }

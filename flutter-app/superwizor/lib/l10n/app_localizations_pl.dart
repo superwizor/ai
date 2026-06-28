@@ -368,6 +368,10 @@ class AppLocalizationsPl extends AppLocalizations {
       'Do wideokonferencji (np. Google Meet, Zoom) używaj zawsze dodatkowego urządzenia do nagrywania.';
 
   @override
+  String get recording_instruction_5 =>
+      'Nagrywanie zatrzyma się automatycznie po ustawionym czasie, a co jakiś czas dostaniesz przypomnienie (z opcjonalnym dźwiękiem) – oba dostosujesz w Ustawieniach → Nagrywanie.';
+
+  @override
   String get recording_status_initializing => 'Rozpoczynam nagrywanie…';
 
   @override
@@ -2792,4 +2796,51 @@ class AppLocalizationsPl extends AppLocalizations {
   String home_report_ready_toast(String name) {
     return 'Raport gotowy, $name 🎉';
   }
+
+  @override
+  String get appLock_title => 'Aplikacja zablokowana';
+
+  @override
+  String get appLock_subtitle => 'Odblokuj, aby uzyskać dostęp do kartotek';
+
+  @override
+  String get appLock_unlock => 'Odblokuj';
+
+  @override
+  String get appLock_reason =>
+      'Uwierzytelnij się, aby uzyskać dostęp do Superwizora';
+
+  @override
+  String recording_reminder_toast(String duration) {
+    return 'Nagrywanie wciąż trwa — $duration';
+  }
+
+  @override
+  String recording_autopause_remaining(String time) {
+    return 'Auto-pauza za $time';
+  }
+
+  @override
+  String get settings_recording_section => 'Nagrywanie';
+
+  @override
+  String get settings_recording_autopause => 'Automatyczna pauza';
+
+  @override
+  String settings_recording_autopause_value(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get settings_recording_reminder => 'Przypomnienie o nagrywaniu';
+
+  @override
+  String get settings_recording_reminder_off => 'Wyłączone';
+
+  @override
+  String get settings_recording_reminder_sound => 'Dźwięk przypomnienia';
+
+  @override
+  String get settings_recording_reminder_sound_warning =>
+      'Dźwięk zostanie nagrany w sesji';
 }
