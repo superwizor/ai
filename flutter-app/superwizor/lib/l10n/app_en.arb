@@ -1164,5 +1164,9 @@
         "type": "String"
       }
     }
-  }
+  },
+  "appLock_title": "App locked",
+  "appLock_subtitle": "Unlock to access your records",
+  "appLock_unlock": "Unlock",
+  "appLock_reason": "Authenticate to access Superwizor"
 }

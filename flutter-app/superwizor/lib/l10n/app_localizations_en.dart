@@ -2773,4 +2773,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String home_report_ready_toast(String name) {
     return 'Report ready, $name 🎉';
   }
+
+  @override
+  String get appLock_title => 'App locked';
+
+  @override
+  String get appLock_subtitle => 'Unlock to access your records';
+
+  @override
+  String get appLock_unlock => 'Unlock';
+
+  @override
+  String get appLock_reason => 'Authenticate to access Superwizor';
 }

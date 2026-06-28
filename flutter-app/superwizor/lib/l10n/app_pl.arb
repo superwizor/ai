@@ -1165,5 +1165,9 @@
         "type": "String"
       }
     }
-  }
+  },
+  "appLock_title": "Aplikacja zablokowana",
+  "appLock_subtitle": "Odblokuj, aby uzyskać dostęp do kartotek",
+  "appLock_unlock": "Odblokuj",
+  "appLock_reason": "Uwierzytelnij się, aby uzyskać dostęp do Superwizora"
 }

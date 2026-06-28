@@ -4990,6 +4990,30 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Raport gotowy, {name} 🎉'**
   String home_report_ready_toast(String name);
+
+  /// No description provided for @appLock_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Aplikacja zablokowana'**
+  String get appLock_title;
+
+  /// No description provided for @appLock_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Odblokuj, aby uzyskać dostęp do kartotek'**
+  String get appLock_subtitle;
+
+  /// No description provided for @appLock_unlock.
+  ///
+  /// In pl, this message translates to:
+  /// **'Odblokuj'**
+  String get appLock_unlock;
+
+  /// No description provided for @appLock_reason.
+  ///
+  /// In pl, this message translates to:
+  /// **'Uwierzytelnij się, aby uzyskać dostęp do Superwizora'**
+  String get appLock_reason;
 }
 
 class _AppLocalizationsDelegate

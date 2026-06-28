@@ -2792,4 +2792,17 @@ class AppLocalizationsPl extends AppLocalizations {
   String home_report_ready_toast(String name) {
     return 'Raport gotowy, $name 🎉';
   }
+
+  @override
+  String get appLock_title => 'Aplikacja zablokowana';
+
+  @override
+  String get appLock_subtitle => 'Odblokuj, aby uzyskać dostęp do kartotek';
+
+  @override
+  String get appLock_unlock => 'Odblokuj';
+
+  @override
+  String get appLock_reason =>
+      'Uwierzytelnij się, aby uzyskać dostęp do Superwizora';
 }

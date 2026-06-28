@@ -2,7 +2,7 @@ name: superwizor
 description: "Superwizor AI — clinical session co-pilot for psychotherapists."
 publish_to: 'none'
 
-version: 1.0.0+9
+version: 1.0.0+10
 
 environment:
   sdk: ^3.10.4
@@ -83,6 +83,7 @@ dependencies:
   firebase_storage: ^13.3.0
   flutter_svg: ^2.3.0
   google_sign_in: ^7.2.0
+  local_auth: ^3.0.1
 
 dev_dependencies:
   flutter_test:

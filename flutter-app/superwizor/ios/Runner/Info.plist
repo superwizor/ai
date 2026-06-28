@@ -18,6 +18,8 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>superwizor</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Superwizor używa Face ID, aby chronić dostęp do kartotek i danych sesji.</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
