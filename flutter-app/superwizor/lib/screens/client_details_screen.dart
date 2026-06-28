@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,7 +53,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     with TickerProviderStateMixin {
   late AnimationController _fabController;
   late Animation<double> _recordAnim; // mini-FAB #1 (closer to main FAB)
-  late Animation<double> _noteAnim;   // action card #2 (middle)
+  late Animation<double> _noteAnim; // action card #2 (middle)
   late Animation<double> _uploadAnim; // action card #3 (higher up)
   late Animation<double> _bannerAnim; // security banner from top
   late AnimationController _pulseController; // mic icon pulse
@@ -84,7 +85,12 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     // refreshes when an upload completes).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        ref.read(analyticsCollectorProvider).track("screen.viewed", properties: {"screen_name": "ClientDetailsScreen"});
+        ref
+            .read(analyticsCollectorProvider)
+            .track(
+              "screen.viewed",
+              properties: {"screen_name": "ClientDetailsScreen"},
+            );
         unawaited(
           ref.read(sessionsProvider.notifier).forceRefresh(widget.patientId),
         );
@@ -185,7 +191,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
   /// Resolves therapistId, patient alias, and patient languageCode.
   /// Returns null if therapistId is unavailable.
   Future<({String therapistId, String alias, String languageCode})?>
-      _resolveSessionContext() async {
+  _resolveSessionContext() async {
     var therapistId = ref.read(therapistIdProvider);
     if (therapistId == null) {
       try {
@@ -230,8 +236,9 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
           patientFileId: widget.patientId,
           therapistId: ctx.therapistId,
           patientAlias: ctx.alias,
-          reportLanguage:
-              ctx.languageCode.isNotEmpty ? ctx.languageCode : 'pl-PL',
+          reportLanguage: ctx.languageCode.isNotEmpty
+              ? ctx.languageCode
+              : 'pl-PL',
         ),
       ),
     );
@@ -252,8 +259,9 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
           // BCP47 from PatientFile.patientLanguageCode →
           // CreateAudioUploadRequest.reportLanguage so EN-patient
           // reports don't silently default to Polish. Empty → 'pl-PL'.
-          patientLanguageCode:
-              ctx.languageCode.isNotEmpty ? ctx.languageCode : 'pl-PL',
+          patientLanguageCode: ctx.languageCode.isNotEmpty
+              ? ctx.languageCode
+              : 'pl-PL',
         ),
       ),
     );
@@ -264,9 +272,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => NoteEditorScreen(
-          patientId: widget.patientId,
-        ),
+        builder: (_) => NoteEditorScreen(patientId: widget.patientId),
       ),
     );
   }
@@ -276,8 +282,9 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     final l = AppLocalizations.of(context);
     final patientAsync = ref.watch(patientsProvider);
     final sessionsAsync = ref.watch(sessionsProvider);
-    final pendingUploads =
-        ref.watch(pendingUploadsForPatientProvider(widget.patientId));
+    final pendingUploads = ref.watch(
+      pendingUploadsForPatientProvider(widget.patientId),
+    );
 
     // Quota-blocked local uploads for this patient → the dedicated
     // "Sesje oczekujące na przetworzenie" banner is the single
@@ -286,13 +293,16 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
     // are NO local quota rows (e.g. after a reinstall that lost the
     // cached audio), the server cards still render so the therapist can
     // cancel the stranded sessions explicitly (feat/tokens-exhausted).
-    final hasLocalQuotaBlocked =
-        ref.watch(pendingUploadsStreamProvider).maybeWhen(
-              data: (list) => list.any((u) =>
-                  u.patientFileId == widget.patientId &&
-                  u.phase == UploadPhase.quotaBlocked),
-              orElse: () => false,
-            );
+    final hasLocalQuotaBlocked = ref
+        .watch(pendingUploadsStreamProvider)
+        .maybeWhen(
+          data: (list) => list.any(
+            (u) =>
+                u.patientFileId == widget.patientId &&
+                u.phase == UploadPhase.quotaBlocked,
+          ),
+          orElse: () => false,
+        );
 
     // (forceRefresh on entry moved to initState — it must run once, not on
     // every rebuild, or it races/overwrites optimistic edits like rename.)
@@ -318,9 +328,7 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
           // (good, refresh) or failed (also refresh so any partial
           // status the server may have stamped surfaces). Use the
           // force variant so we don't trust the cache here either.
-          ref
-              .read(sessionsProvider.notifier)
-              .forceRefresh(widget.patientId);
+          ref.read(sessionsProvider.notifier).forceRefresh(widget.patientId);
         }
       },
     );
@@ -336,8 +344,8 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
             data: (patients) {
               final patient = patients.firstWhere(
                 (p) => p.id == widget.patientId,
-                orElse: () => Patient(
-                    id: widget.patientId, firstName: '', lastName: ''),
+                orElse: () =>
+                    Patient(id: widget.patientId, firstName: '', lastName: ''),
               );
               if (patient.firstName.isEmpty) return const SizedBox.shrink();
               return Padding(
@@ -360,717 +368,577 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
       ),
       body: patientAsync.when(
         loading: () => const Center(
-            child:
-                CircularProgressIndicator(color: EuphireColors.ember)),
+          child: CircularProgressIndicator(color: EuphireColors.ember),
+        ),
         error: (e, st) => Center(
-            child: Text(l.clientDetails_error(e.toString()),
-                style: const TextStyle(color: EuphireColors.ember))),
+          child: Text(
+            l.clientDetails_error(e.toString()),
+            style: const TextStyle(color: EuphireColors.ember),
+          ),
+        ),
         data: (patients) {
           final patient = patients.firstWhere(
             (p) => p.id == widget.patientId,
             orElse: () => Patient(
-                id: widget.patientId,
-                firstName: l.common_not_found,
-                lastName: ''),
+              id: widget.patientId,
+              firstName: l.common_not_found,
+              lastName: '',
+            ),
           );
 
           return SizedBox.expand(
             child: Stack(
               children: [
-              // ── Main content ──
-              SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // ── Patient name header (matches home screen style) ──
-                      Text.rich(
-                        TextSpan(
-                          text: '${patient.firstName} ${patient.lastName}'.trim(),
-                          style: const TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 28,
-                            fontWeight: FontWeight.w700,
-                            fontStyle: FontStyle.italic,
-                            color: EuphireColors.ember,
-                            height: 1.2,
+                // ── Main content ──
+                SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // ── Patient name header (matches home screen style) ──
+                        Text.rich(
+                          TextSpan(
+                            text: '${patient.firstName} ${patient.lastName}'
+                                .trim(),
+                            style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
+                              fontStyle: FontStyle.italic,
+                              color: EuphireColors.ember,
+                              height: 1.2,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        l.clientDetails_subtitle,
-                        style: TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: EuphireColors.mist.withValues(alpha: 0.7),
+                        const SizedBox(height: 6),
+                        Text(
+                          l.clientDetails_subtitle,
+                          style: TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: EuphireColors.mist.withValues(alpha: 0.7),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Billing quota signals (Phase 3 §16):
-                      //   Pending sessions stuck on quota — patient-scoped,
-                      //   stays here. The cross-patient QuotaWarningBanner
-                      //   lives one level up in home_screen so it is visible
-                      //   before drilling into a specific kartoteka.
-                      PendingQuotaSessionsWidget(patientFileId: widget.patientId),
-                      const SizedBox(height: 16),
-                      sessionsAsync.when(
-                        loading: () => const Center(
+                        const SizedBox(height: 16),
+                        // Billing quota signals (Phase 3 §16):
+                        //   Pending sessions stuck on quota — patient-scoped,
+                        //   stays here. The cross-patient QuotaWarningBanner
+                        //   lives one level up in home_screen so it is visible
+                        //   before drilling into a specific kartoteka.
+                        PendingQuotaSessionsWidget(
+                          patientFileId: widget.patientId,
+                        ),
+                        const SizedBox(height: 16),
+                        sessionsAsync.when(
+                          loading: () => const Center(
                             child: CircularProgressIndicator(
-                                color: EuphireColors.ember)),
-                        error: (e, st) => Center(
-                            child: Text(l.clientDetails_session_error(e.toString()),
-                                style: const TextStyle(
-                                    color: EuphireColors.ember))),
-                        data: (sessionsMap) {
-                          final sessions =
-                              sessionsMap[widget.patientId] ?? [];
-                          // When a quota banner is showing for this
-                          // patient, hide the duplicate PENDING_UPLOAD
-                          // "Oczekiwanie na audio" cards — the banner is
-                          // the single representation of the quota-blocked
-                          // uploads. (Reinstall case: no local rows →
-                          // hasLocalQuotaBlocked false → cards stay, so
-                          // they remain cancellable.)
-                          // Sort by date descending (most recent first)
-                          final filteredSessions = sessions
-                              .where((s) => !(hasLocalQuotaBlocked &&
-                                  s.status == SessionStatus.pendingUpload))
-                              .toList()
-                            ..sort((a, b) => b.date.compareTo(a.date));
-                          // Dedup: if a pending upload already has a
-                          // sessionId AND that session is in the server
-                          // list, drop the placeholder. The Hive-queue
-                          // placeholder is for the gap BEFORE the
-                          // session row exists in ListSessions; once
-                          // it does (Option E: from CreateAudioUpload
-                          // onward, in PENDING_UPLOAD status), the
-                          // server-side card supersedes.
-                          //
-                          // Option E note: under Option E the server
-                          // returns a PENDING_UPLOAD card for every
-                          // active upload, so this dedup turns the
-                          // Hive placeholder into a "fallback for
-                          // legacy / offline" affordance — Hive shows
-                          // it only when ListSessions hasn't been
-                          // refreshed yet.
-                          final knownSessionIds = sessions
-                              .map((s) => s.id)
-                              .toSet();
-                          final visiblePending = pendingUploads
-                              .where((u) => u.sessionId == null
-                                  ? true
-                                  : !knownSessionIds.contains(u.sessionId))
-                              .toList(growable: false);
-
-                          final hasActiveRecording = (_activeRecState == RecordingState.recording ||
-                                                      _activeRecState == RecordingState.paused ||
-                                                      _activeRecState == RecordingState.interrupted) &&
-                                                     _activeRecPatientId == widget.patientId;
-
-                          if (filteredSessions.isEmpty && visiblePending.isEmpty && !hasActiveRecording) {
-                            return Center(
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 120.0, left: 32.0, right: 32.0),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: EuphireColors.frostWhite.withValues(alpha: 0.05),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.auto_awesome_rounded,
-                                        size: 32,
-                                        color: EuphireColors.mist,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 24),
-                                    Text(
-                                      l.clientDetails_start_work,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontFamily: 'Merriweather',
-                                        fontSize: 20,
-                                        fontStyle: FontStyle.italic,
-                                        color: EuphireColors.frostWhite.withValues(alpha: 0.9),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      l.clientDetails_start_work_desc,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontFamily: 'Montserrat',
-                                        fontSize: 14,
-                                        color: EuphireColors.mist,
-                                        height: 1.5,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              color: EuphireColors.ember,
+                            ),
+                          ),
+                          error: (e, st) => Center(
+                            child: Text(
+                              l.clientDetails_session_error(e.toString()),
+                              style: const TextStyle(
+                                color: EuphireColors.ember,
                               ),
+                            ),
+                          ),
+                          data: (sessionsMap) {
+                            final sessions =
+                                sessionsMap[widget.patientId] ?? [];
+                            // When a quota banner is showing for this
+                            // patient, hide the duplicate PENDING_UPLOAD
+                            // "Oczekiwanie na audio" cards — the banner is
+                            // the single representation of the quota-blocked
+                            // uploads. (Reinstall case: no local rows →
+                            // hasLocalQuotaBlocked false → cards stay, so
+                            // they remain cancellable.)
+                            // Sort by date descending (most recent first)
+                            final filteredSessions =
+                                sessions
+                                    .where(
+                                      (s) =>
+                                          !(hasLocalQuotaBlocked &&
+                                              s.status ==
+                                                  SessionStatus.pendingUpload),
+                                    )
+                                    .toList()
+                                  ..sort((a, b) => b.date.compareTo(a.date));
+                            // Dedup: if a pending upload already has a
+                            // sessionId AND that session is in the server
+                            // list, drop the placeholder. The Hive-queue
+                            // placeholder is for the gap BEFORE the
+                            // session row exists in ListSessions; once
+                            // it does (Option E: from CreateAudioUpload
+                            // onward, in PENDING_UPLOAD status), the
+                            // server-side card supersedes.
+                            //
+                            // Option E note: under Option E the server
+                            // returns a PENDING_UPLOAD card for every
+                            // active upload, so this dedup turns the
+                            // Hive placeholder into a "fallback for
+                            // legacy / offline" affordance — Hive shows
+                            // it only when ListSessions hasn't been
+                            // refreshed yet.
+                            final knownSessionIds = sessions
+                                .map((s) => s.id)
+                                .toSet();
+                            final visiblePending = pendingUploads
+                                .where(
+                                  (u) => u.sessionId == null
+                                      ? true
+                                      : !knownSessionIds.contains(u.sessionId),
+                                )
+                                .toList(growable: false);
+
+                            final hasActiveRecording =
+                                (_activeRecState == RecordingState.recording ||
+                                    _activeRecState == RecordingState.paused ||
+                                    _activeRecState ==
+                                        RecordingState.interrupted) &&
+                                _activeRecPatientId == widget.patientId;
+
+                            if (filteredSessions.isEmpty &&
+                                visiblePending.isEmpty &&
+                                !hasActiveRecording) {
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 120.0,
+                                    left: 32.0,
+                                    right: 32.0,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: EuphireColors.frostWhite
+                                              .withValues(alpha: 0.05),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.auto_awesome_rounded,
+                                          size: 32,
+                                          color: EuphireColors.mist,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Text(
+                                        l.clientDetails_start_work,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontFamily: 'Merriweather',
+                                          fontSize: 20,
+                                          fontStyle: FontStyle.italic,
+                                          color: EuphireColors.frostWhite
+                                              .withValues(alpha: 0.9),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        l.clientDetails_start_work_desc,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontFamily: 'Montserrat',
+                                          fontSize: 14,
+                                          color: EuphireColors.mist,
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            // Placeholders sit at the TOP of the list:
+                            // newest activity first, matching the
+                            // reversed real-sessions ordering below.
+                            //
+                            // Notes are interleaved chronologically:
+                            // build a merged list of sessions + notes
+                            // sorted by date/createdAt descending.
+                            final notes = ref.watch(
+                              patientNotesProvider(widget.patientId),
                             );
-                          }
-                          // Placeholders sit at the TOP of the list:
-                          // newest activity first, matching the
-                          // reversed real-sessions ordering below.
-                          //
-                          // Notes are interleaved chronologically:
-                          // build a merged list of sessions + notes
-                          // sorted by date/createdAt descending.
-                          final notes = ref.watch(
-                              patientNotesProvider(widget.patientId));
 
-                          // Build a unified timeline of sessions and
-                          // notes, sorted newest-first.
-                          final List<_TimelineItem> timeline = [];
-                          for (final s in filteredSessions) {
-                            timeline.add(_TimelineItem.session(
-                              s, filteredSessions.length - filteredSessions.indexOf(s),
-                            ));
-                          }
-                          for (final n in notes) {
-                            timeline.add(_TimelineItem.note(n));
-                          }
-                          timeline.sort((a, b) =>
-                              b.sortDate.compareTo(a.sortDate));
+                            // Build a unified timeline of sessions and
+                            // notes, sorted newest-first.
+                            final List<_TimelineItem> timeline = [];
+                            for (final s in filteredSessions) {
+                              timeline.add(
+                                _TimelineItem.session(
+                                  s,
+                                  filteredSessions.length -
+                                      filteredSessions.indexOf(s),
+                                ),
+                              );
+                            }
+                            for (final n in notes) {
+                              timeline.add(_TimelineItem.note(n));
+                            }
+                            timeline.sort(
+                              (a, b) => b.sortDate.compareTo(a.sortDate),
+                            );
 
-                          final totalCount =
-                              (hasActiveRecording ? 1 : 0) + visiblePending.length + timeline.length;
-                          return ListView.builder(
-                            shrinkWrap: true,
-                            physics:
-                                const NeverScrollableScrollPhysics(),
-                            itemCount: totalCount,
-                            itemBuilder: (context, index) {
-                              int offset = 0;
-                              if (hasActiveRecording) {
-                                if (index == 0) {
-                                  return _ActiveRecordingCard(
-                                    patientId: widget.patientId,
-                                    duration: _activeRecDuration,
-                                    state: _activeRecState,
-                                    onTap: () {
-                                      final svc = ref.read(recordingServiceProvider);
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => RecordingScreen(
-                                            patientFileId: svc.patientFileId ?? '',
-                                            therapistId: svc.therapistId ?? '',
-                                            patientAlias: svc.patientAlias ?? '',
-                                            reportLanguage: svc.reportLanguage ?? 'pl-PL',
+                            final totalCount =
+                                (hasActiveRecording ? 1 : 0) +
+                                visiblePending.length +
+                                timeline.length;
+                            return ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: totalCount,
+                              itemBuilder: (context, index) {
+                                int offset = 0;
+                                if (hasActiveRecording) {
+                                  if (index == 0) {
+                                    return _ActiveRecordingCard(
+                                      patientId: widget.patientId,
+                                      duration: _activeRecDuration,
+                                      state: _activeRecState,
+                                      onTap: () {
+                                        final svc = ref.read(
+                                          recordingServiceProvider,
+                                        );
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => RecordingScreen(
+                                              patientFileId:
+                                                  svc.patientFileId ?? '',
+                                              therapistId:
+                                                  svc.therapistId ?? '',
+                                              patientAlias:
+                                                  svc.patientAlias ?? '',
+                                              reportLanguage:
+                                                  svc.reportLanguage ?? 'pl-PL',
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  }
+                                  offset = 1;
+                                }
+                                final adjustedIdx = index - offset;
+                                if (adjustedIdx < visiblePending.length) {
+                                  return _PendingUploadCard(
+                                    upload: visiblePending[adjustedIdx],
+                                  );
+                                }
+                                final timelineIdx =
+                                    adjustedIdx - visiblePending.length;
+                                final item = timeline[timelineIdx];
+
+                                if (item.isNote) {
+                                  return Dismissible(
+                                    key: ValueKey('note_${item.note!.id}'),
+                                    direction: DismissDirection.endToStart,
+                                    confirmDismiss: (_) async {
+                                      final l = AppLocalizations.of(context);
+                                      return await showModalBottomSheet<bool>(
+                                        context: context,
+                                        backgroundColor: Colors.transparent,
+                                        builder: (ctx) => Container(
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF0A2326),
+                                            borderRadius: BorderRadius.vertical(
+                                              top: Radius.circular(32),
+                                            ),
+                                            border: Border(
+                                              top: BorderSide(
+                                                color: Colors.white10,
+                                              ),
+                                            ),
+                                          ),
+                                          child: SafeArea(
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                    24,
+                                                    20,
+                                                    24,
+                                                    16,
+                                                  ),
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Center(
+                                                    child: Container(
+                                                      width: 40,
+                                                      height: 4,
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.white24,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              2,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 20),
+                                                  Text(
+                                                    l.note_delete_confirm,
+                                                    style: const TextStyle(
+                                                      fontFamily: 'Montserrat',
+                                                      fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: EuphireColors
+                                                          .frostWhite,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                  const SizedBox(height: 20),
+                                                  Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                ctx,
+                                                                false,
+                                                              ),
+                                                          style: TextButton.styleFrom(
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  vertical: 14,
+                                                                ),
+                                                            shape: RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    12,
+                                                                  ),
+                                                              side: BorderSide(
+                                                                color: Colors
+                                                                    .white
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.1,
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          child: Text(
+                                                            l.note_sheet_cancel,
+                                                            style: const TextStyle(
+                                                              fontFamily:
+                                                                  'Montserrat',
+                                                              fontSize: 15,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                              color:
+                                                                  EuphireColors
+                                                                      .mist,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 12),
+                                                      Expanded(
+                                                        child: ElevatedButton(
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                ctx,
+                                                                true,
+                                                              ),
+                                                          style: ElevatedButton.styleFrom(
+                                                            backgroundColor:
+                                                                EuphireColors
+                                                                    .magma,
+                                                            foregroundColor:
+                                                                EuphireColors
+                                                                    .frostWhite,
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  vertical: 14,
+                                                                ),
+                                                            shape: RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    12,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                          child: Text(
+                                                            l.note_delete_action,
+                                                            style: const TextStyle(
+                                                              fontFamily:
+                                                                  'Montserrat',
+                                                              fontSize: 15,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       );
                                     },
+                                    onDismissed: (_) {
+                                      AppHapticFeedback.heavyImpact();
+                                      ref
+                                          .read(
+                                            patientNotesMapProvider.notifier,
+                                          )
+                                          .deleteNote(
+                                            widget.patientId,
+                                            item.note!.id,
+                                          );
+                                      final l = AppLocalizations.of(context);
+                                      EuphireToast.success(
+                                        context,
+                                        message: l.note_deleted,
+                                      );
+                                    },
+                                    background: Container(
+                                      alignment: Alignment.centerRight,
+                                      padding: const EdgeInsets.only(right: 24),
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      decoration: BoxDecoration(
+                                        color: EuphireColors.magma.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        Icons.delete_outline_rounded,
+                                        color: EuphireColors.magma.withValues(
+                                          alpha: 0.8,
+                                        ),
+                                        size: 24,
+                                      ),
+                                    ),
+                                    child: _NoteCard(
+                                      note: item.note!,
+                                      patientId: widget.patientId,
+                                    ),
                                   );
                                 }
-                                offset = 1;
-                              }
-                              final adjustedIdx = index - offset;
-                              if (adjustedIdx < visiblePending.length) {
-                                return _PendingUploadCard(
-                                  upload: visiblePending[adjustedIdx],
-                                );
-                              }
-                              final timelineIdx = adjustedIdx - visiblePending.length;
-                              final item = timeline[timelineIdx];
 
-                              if (item.isNote) {
-                                return Dismissible(
-                                  key: ValueKey('note_${item.note!.id}'),
-                                  direction: DismissDirection.endToStart,
-                                  confirmDismiss: (_) async {
-                                    final l = AppLocalizations.of(context);
-                                    return await showModalBottomSheet<bool>(
-                                      context: context,
-                                      backgroundColor: Colors.transparent,
-                                      builder: (ctx) => Container(
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFF0A2326),
-                                          borderRadius: BorderRadius.vertical(
-                                              top: Radius.circular(32)),
-                                          border: Border(
-                                              top: BorderSide(
-                                                  color: Colors.white10)),
-                                        ),
-                                        child: SafeArea(
-                                          child: Padding(
-                                            padding:
-                                                const EdgeInsets.fromLTRB(
-                                                    24, 20, 24, 16),
-                                            child: Column(
-                                              mainAxisSize:
-                                                  MainAxisSize.min,
-                                              children: [
-                                                Center(
-                                                  child: Container(
-                                                    width: 40,
-                                                    height: 4,
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.white24,
-                                                      borderRadius:
-                                                          BorderRadius
-                                                              .circular(2),
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 20),
-                                                Text(
-                                                  l.note_delete_confirm,
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Montserrat',
-                                                    fontSize: 18,
-                                                    fontWeight:
-                                                        FontWeight.w700,
-                                                    color: EuphireColors
-                                                        .frostWhite,
-                                                  ),
-                                                  textAlign:
-                                                      TextAlign.center,
-                                                ),
-                                                const SizedBox(height: 20),
-                                                Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: TextButton(
-                                                        onPressed: () =>
-                                                            Navigator.pop(
-                                                                ctx,
-                                                                false),
-                                                        style: TextButton
-                                                            .styleFrom(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .symmetric(
-                                                                  vertical:
-                                                                      14),
-                                                          shape:
-                                                              RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        12),
-                                                            side: BorderSide(
-                                                                color: Colors
-                                                                    .white
-                                                                    .withValues(
-                                                                        alpha:
-                                                                            0.1)),
-                                                          ),
-                                                        ),
-                                                        child: Text(
-                                                          l.note_sheet_cancel,
-                                                          style:
-                                                              const TextStyle(
-                                                            fontFamily:
-                                                                'Montserrat',
-                                                            fontSize: 15,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w500,
-                                                            color:
-                                                                EuphireColors
-                                                                    .mist,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(
-                                                        width: 12),
-                                                    Expanded(
-                                                      child:
-                                                          ElevatedButton(
-                                                        onPressed: () =>
-                                                            Navigator.pop(
-                                                                ctx, true),
-                                                        style: ElevatedButton
-                                                            .styleFrom(
-                                                          backgroundColor:
-                                                              EuphireColors
-                                                                  .magma,
-                                                          foregroundColor:
-                                                              EuphireColors
-                                                                  .frostWhite,
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .symmetric(
-                                                                  vertical:
-                                                                      14),
-                                                          shape: RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          12)),
-                                                        ),
-                                                        child: Text(
-                                                          l.note_delete_action,
-                                                          style:
-                                                              const TextStyle(
-                                                            fontFamily:
-                                                                'Montserrat',
-                                                            fontSize: 15,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w600,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  onDismissed: (_) {
-                                    AppHapticFeedback.heavyImpact();
-                                    ref
-                                        .read(patientNotesMapProvider.notifier)
-                                        .deleteNote(widget.patientId,
-                                            item.note!.id);
-                                    final l = AppLocalizations.of(context);
-                                    EuphireToast.success(context, message: l.note_deleted);
-                                  },
-                                  background: Container(
-                                    alignment: Alignment.centerRight,
-                                    padding:
-                                        const EdgeInsets.only(right: 24),
-                                    margin:
-                                        const EdgeInsets.only(bottom: 8),
-                                    decoration: BoxDecoration(
-                                      color: EuphireColors.magma
-                                          .withValues(alpha: 0.15),
-                                      borderRadius:
-                                          BorderRadius.circular(10),
-                                    ),
-                                    child: Icon(
-                                      Icons.delete_outline_rounded,
-                                      color: EuphireColors.magma
-                                          .withValues(alpha: 0.8),
-                                      size: 24,
-                                    ),
-                                  ),
-                                  child: _NoteCard(
-                                    note: item.note!,
+                                final session = item.session!;
+                                // Option E (2026-05-25): server-side
+                                // PENDING_UPLOAD sessions render with
+                                // the same placeholder style as the
+                                // Hive-queue-driven _PendingUploadCard.
+                                if (session.status ==
+                                    SessionStatus.pendingUpload) {
+                                  return _PendingUploadServerCard(
+                                    session: session,
                                     patientId: widget.patientId,
-                                  ),
-                                );
-                              }
-
-                              final session = item.session!;
-                              // Option E (2026-05-25): server-side
-                              // PENDING_UPLOAD sessions render with
-                              // the same placeholder style as the
-                              // Hive-queue-driven _PendingUploadCard.
-                              if (session.status ==
-                                  SessionStatus.pendingUpload) {
-                                return _PendingUploadServerCard(
+                                  );
+                                }
+                                return _SessionCard(
                                   session: session,
                                   patientId: widget.patientId,
+                                  sessionNumber: item.sessionNumber,
                                 );
-                              }
-                              return _SessionCard(
-                                session: session,
-                                patientId: widget.patientId,
-                                sessionNumber: item.sessionNumber,
-                              );
-                            },
-                          );
-                        },
-                      ),
-                      // Bottom padding so FAB doesn't cover last card
-                      const SizedBox(height: 80),
-                    ],
+                              },
+                            );
+                          },
+                        ),
+                        // Bottom padding so FAB doesn't cover last card
+                        const SizedBox(height: 80),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-              // ── Scrim (dark overlay when FAB expanded) ──
-              AnimatedBuilder(
-                animation: _fabController,
-                builder: (_, _) {
-                  if (_fabController.value == 0) {
-                    return const SizedBox.shrink();
-                  }
-                  return GestureDetector(
-                    onTap: _closeFab,
-                    child: Container(
-                      color: Colors.black
-                          .withValues(alpha: 0.5 * _fabController.value),
-                    ),
-                  );
-                },
-              ),
-
-              // ── Security banner (slides from top, organic gradient) ──
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: FadeTransition(
-                  opacity: _bannerAnim,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, -1.0),
-                      end: Offset.zero,
-                    ).animate(_bannerAnim),
-                    child: ClipPath(
-                      clipper: const _ArcBottomClipper(arcDip: 18),
+                // ── Scrim (dark overlay when FAB expanded) ──
+                AnimatedBuilder(
+                  animation: _fabController,
+                  builder: (_, _) {
+                    if (_fabController.value == 0) {
+                      return const SizedBox.shrink();
+                    }
+                    return GestureDetector(
+                      onTap: _closeFab,
                       child: Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Color(0xFF0D3B34),
-                              Color(0xFF0A302A),
-                              Color(0x000A302A),
-                            ],
-                            stops: [0.0, 0.6, 1.0],
-                          ),
-                        ),
-                        child: SafeArea(
-                          bottom: false,
-                          child: Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(24, 18, 24, 44),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        Colors.white.withValues(alpha: 0.08),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.shield_rounded,
-                                    color: EuphireColors.frostWhite,
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Text(
-                                    '${AppLocalizations.of(context).clientDetails_encryption_notice_part1}'
-                                    '${AppLocalizations.of(context).clientDetails_encryption_notice_part2}',
-                                    style: TextStyle(
-                                      fontFamily: 'Montserrat',
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: EuphireColors.frostWhite
-                                          .withValues(alpha: 0.85),
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        color: Colors.black.withValues(
+                          alpha: 0.5 * _fabController.value,
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
-              ),
 
-              // ── Speed Dial action cards + FAB ──
-              // Guard: hide the entire FAB when a recording is active
-              // (any patient). The therapist can browse kartoteki via
-              // the back button, but must NOT be able to start a second
-              // recording or upload. The minimized recording bar
-              // provides the return path to the active session.
-              if (!(_activeRecState == RecordingState.recording ||
-                    _activeRecState == RecordingState.paused ||
-                    _activeRecState == RecordingState.interrupted))
-              Positioned(
-                right: 16,
-                bottom: 16,
-                // No left constraint — FAB extends freely to the left
-                // Action cards get explicit width from the builder
-                child: Builder(
-                  builder: (ctx) {
-                    final l = AppLocalizations.of(ctx);
-                    // Detect first session
-                    final currentSessions = sessionsAsync.whenOrNull(
-                      data: (map) => map[widget.patientId],
-                    ) ?? [];
-                    final isFirstSession = currentSessions.isEmpty &&
-                        !_hasCollapsedExtendedFab &&
-                        !_isExpanded;
-
-                    // Fixed extended width so it wraps the text perfectly without 
-                    // unnecessary negative space, clamped to avoid overflow.
-                    final screenWidth = MediaQuery.of(ctx).size.width;
-                    final extendedWidth = 285.0.clamp(200.0, screenWidth - 32.0);
-
-                    return AnimatedBuilder(
-                      animation: _fabController,
-                      builder: (_, _) => Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          // ── Action Card #3: Upload file (highest) ──
-                          SizeTransition(
-                            sizeFactor: _uploadAnim,
-                            axisAlignment: 1.0,
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: SizedBox(
-                                width: screenWidth - 48,
-                                child: _buildActionCard(
-                                  animation: _uploadAnim,
-                                  icon: Icons.upload_file_rounded,
-                                  label: l.clientDetails_upload_file_btn,
-                                  subtitle: l.clientDetails_upload_recording,
-                                  onTap: _onUploadTapped,
-                                  isPrimary: false,
-                                  cardColor: const Color(0xFF142D2B),
-                                ),
-                              ),
+                // ── Security banner (slides from top, organic gradient) ──
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: FadeTransition(
+                    opacity: _bannerAnim,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, -1.0),
+                        end: Offset.zero,
+                      ).animate(_bannerAnim),
+                      child: ClipPath(
+                        clipper: const _ArcBottomClipper(arcDip: 18),
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Color(0xFF0D3B34),
+                                Color(0xFF0A302A),
+                                Color(0x000A302A),
+                              ],
+                              stops: [0.0, 0.6, 1.0],
                             ),
                           ),
-
-                          // ── Action Card #2: Add note (middle) ──
-                          SizeTransition(
-                            sizeFactor: _noteAnim,
-                            axisAlignment: 1.0,
+                          child: SafeArea(
+                            bottom: false,
                             child: Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: SizedBox(
-                                width: screenWidth - 48,
-                                child: _buildActionCard(
-                                  animation: _noteAnim,
-                                  icon: Icons.edit_note_rounded,
-                                  label: AppLocalizations.of(context).note_add_label,
-                                  subtitle: AppLocalizations.of(context).note_add_subtitle,
-                                  onTap: _onNoteTapped,
-                                  isPrimary: false,
-                                  cardColor: const Color(0xFF0B1E20),
-                                ),
+                              padding: const EdgeInsets.fromLTRB(
+                                24,
+                                18,
+                                24,
+                                44,
                               ),
-                            ),
-                          ),
-
-                          // ── Action Card #1: Record (closer to main) ──
-                          SizeTransition(
-                            sizeFactor: _recordAnim,
-                            axisAlignment: 1.0,
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: SizedBox(
-                                width: screenWidth - 48,
-                                child: _buildActionCard(
-                                  animation: _recordAnim,
-                                  icon: Icons.mic_rounded,
-                                  label: l.clientDetails_record_btn,
-                                  subtitle: l.clientDetails_record_new_session,
-                                  onTap: _onRecordTapped,
-                                  isPrimary: true,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // ── Main FAB (extended pill or circle) ──
-                          GestureDetector(
-                            onTap: () {
-                              if (isFirstSession) {
-                                setState(
-                                    () => _hasCollapsedExtendedFab = true);
-                                Future.delayed(
-                                  const Duration(milliseconds: 380),
-                                  _toggleFab,
-                                );
-                              } else {
-                                _toggleFab();
-                              }
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 350),
-                              curve: Curves.easeInOutCubic,
-                              height: 56,
-                              width: isFirstSession ? extendedWidth : 56,
-                              clipBehavior: Clip.antiAlias,
-                              decoration: BoxDecoration(
-                                color: EuphireColors.ember,
-                                borderRadius: BorderRadius.circular(28),
-                                boxShadow: EuphireColors.emberGlow,
-                              ),
-                              child: Stack(
-                                alignment: Alignment.center,
+                              child: Row(
                                 children: [
-                                  // Extended label (slides right & fades)
-                                  AnimatedOpacity(
-                                    opacity: isFirstSession ? 1.0 : 0.0,
-                                    duration:
-                                        const Duration(milliseconds: 250),
-                                    child: AnimatedSlide(
-                                      offset: isFirstSession
-                                          ? Offset.zero
-                                          : const Offset(0.3, 0),
-                                      duration:
-                                          const Duration(milliseconds: 300),
-                                      curve: Curves.easeInCubic,
-                                      child: SizedBox(
-                                        width: extendedWidth,
-                                        child: Row(
-                                          children: [
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: Text(
-                                                l.clientDetails_start_first_analysis,
-                                                style: TextStyle(
-                                                  fontFamily: 'Montserrat',
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: EuphireColors
-                                                      .obsidianBlack,
-                                                  letterSpacing: 0.2,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Icon(
-                                              Icons.add_rounded,
-                                              size: 22,
-                                              color: EuphireColors
-                                                  .obsidianBlack
-                                                  .withValues(alpha: 0.6),
-                                            ),
-                                            const SizedBox(width: 16),
-                                          ],
-                                        ),
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.08,
                                       ),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.shield_rounded,
+                                      color: EuphireColors.frostWhite,
+                                      size: 18,
                                     ),
                                   ),
-                                  // Circle icon (appears when collapsed)
-                                  AnimatedOpacity(
-                                    opacity: isFirstSession ? 0.0 : 1.0,
-                                    duration:
-                                        const Duration(milliseconds: 200),
-                                    child: AnimatedRotation(
-                                      turns:
-                                          _fabController.value * 0.125,
-                                      duration: Duration.zero,
-                                      child: Icon(
-                                        Icons.add,
-                                        size: 28,
-                                        color:
-                                            EuphireColors.obsidianBlack,
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Text(
+                                      '${AppLocalizations.of(context).clientDetails_encryption_notice_part1}'
+                                      '${AppLocalizations.of(context).clientDetails_encryption_notice_part2}',
+                                      style: TextStyle(
+                                        fontFamily: 'Montserrat',
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: EuphireColors.frostWhite
+                                            .withValues(alpha: 0.85),
+                                        height: 1.35,
                                       ),
                                     ),
                                   ),
@@ -1078,14 +946,234 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                               ),
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
+
+                // ── Speed Dial action cards + FAB ──
+                // Guard: hide the entire FAB when a recording is active
+                // (any patient). The therapist can browse kartoteki via
+                // the back button, but must NOT be able to start a second
+                // recording or upload. The minimized recording bar
+                // provides the return path to the active session.
+                if (!(_activeRecState == RecordingState.recording ||
+                    _activeRecState == RecordingState.paused ||
+                    _activeRecState == RecordingState.interrupted))
+                  Positioned(
+                    right: 16,
+                    bottom: 16,
+                    // No left constraint — FAB extends freely to the left
+                    // Action cards get explicit width from the builder
+                    child: Builder(
+                      builder: (ctx) {
+                        final l = AppLocalizations.of(ctx);
+                        // Detect first session
+                        final currentSessions =
+                            sessionsAsync.whenOrNull(
+                              data: (map) => map[widget.patientId],
+                            ) ??
+                            [];
+                        final isFirstSession =
+                            currentSessions.isEmpty &&
+                            !_hasCollapsedExtendedFab &&
+                            !_isExpanded;
+
+                        // Fixed extended width so it wraps the text perfectly without
+                        // unnecessary negative space, clamped to avoid overflow.
+                        final screenWidth = MediaQuery.of(ctx).size.width;
+                        final extendedWidth = 285.0.clamp(
+                          200.0,
+                          screenWidth - 32.0,
+                        );
+
+                        return AnimatedBuilder(
+                          animation: _fabController,
+                          builder: (_, _) => Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              // ── Action Card #3: Upload file (highest) ──
+                              // Web: hidden — recording/file upload are native-only
+                              // for now (see new_session web-upload deferral).
+                              if (!kIsWeb)
+                                SizeTransition(
+                                  sizeFactor: _uploadAnim,
+                                  axisAlignment: 1.0,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: SizedBox(
+                                      width: screenWidth - 48,
+                                      child: _buildActionCard(
+                                        animation: _uploadAnim,
+                                        icon: Icons.upload_file_rounded,
+                                        label: l.clientDetails_upload_file_btn,
+                                        subtitle:
+                                            l.clientDetails_upload_recording,
+                                        onTap: _onUploadTapped,
+                                        isPrimary: false,
+                                        cardColor: const Color(0xFF142D2B),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                              // ── Action Card #2: Add note (middle) ──
+                              SizeTransition(
+                                sizeFactor: _noteAnim,
+                                axisAlignment: 1.0,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: SizedBox(
+                                    width: screenWidth - 48,
+                                    child: _buildActionCard(
+                                      animation: _noteAnim,
+                                      icon: Icons.edit_note_rounded,
+                                      label: AppLocalizations.of(
+                                        context,
+                                      ).note_add_label,
+                                      subtitle: AppLocalizations.of(
+                                        context,
+                                      ).note_add_subtitle,
+                                      onTap: _onNoteTapped,
+                                      isPrimary: false,
+                                      cardColor: const Color(0xFF0B1E20),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              // ── Action Card #1: Record (closer to main) ──
+                              // Web: hidden — session recording is native-only.
+                              if (!kIsWeb)
+                                SizeTransition(
+                                  sizeFactor: _recordAnim,
+                                  axisAlignment: 1.0,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: SizedBox(
+                                      width: screenWidth - 48,
+                                      child: _buildActionCard(
+                                        animation: _recordAnim,
+                                        icon: Icons.mic_rounded,
+                                        label: l.clientDetails_record_btn,
+                                        subtitle:
+                                            l.clientDetails_record_new_session,
+                                        onTap: _onRecordTapped,
+                                        isPrimary: true,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                              // ── Main FAB (extended pill or circle) ──
+                              GestureDetector(
+                                onTap: () {
+                                  if (isFirstSession) {
+                                    setState(
+                                      () => _hasCollapsedExtendedFab = true,
+                                    );
+                                    Future.delayed(
+                                      const Duration(milliseconds: 380),
+                                      _toggleFab,
+                                    );
+                                  } else {
+                                    _toggleFab();
+                                  }
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 350),
+                                  curve: Curves.easeInOutCubic,
+                                  height: 56,
+                                  width: isFirstSession ? extendedWidth : 56,
+                                  clipBehavior: Clip.antiAlias,
+                                  decoration: BoxDecoration(
+                                    color: EuphireColors.ember,
+                                    borderRadius: BorderRadius.circular(28),
+                                    boxShadow: EuphireColors.emberGlow,
+                                  ),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      // Extended label (slides right & fades)
+                                      AnimatedOpacity(
+                                        opacity: isFirstSession ? 1.0 : 0.0,
+                                        duration: const Duration(
+                                          milliseconds: 250,
+                                        ),
+                                        child: AnimatedSlide(
+                                          offset: isFirstSession
+                                              ? Offset.zero
+                                              : const Offset(0.3, 0),
+                                          duration: const Duration(
+                                            milliseconds: 300,
+                                          ),
+                                          curve: Curves.easeInCubic,
+                                          child: SizedBox(
+                                            width: extendedWidth,
+                                            child: Row(
+                                              children: [
+                                                const SizedBox(width: 16),
+                                                Expanded(
+                                                  child: Text(
+                                                    l.clientDetails_start_first_analysis,
+                                                    style: TextStyle(
+                                                      fontFamily: 'Montserrat',
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: EuphireColors
+                                                          .obsidianBlack,
+                                                      letterSpacing: 0.2,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Icon(
+                                                  Icons.add_rounded,
+                                                  size: 22,
+                                                  color: EuphireColors
+                                                      .obsidianBlack
+                                                      .withValues(alpha: 0.6),
+                                                ),
+                                                const SizedBox(width: 16),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      // Circle icon (appears when collapsed)
+                                      AnimatedOpacity(
+                                        opacity: isFirstSession ? 0.0 : 1.0,
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        child: AnimatedRotation(
+                                          turns: _fabController.value * 0.125,
+                                          duration: Duration.zero,
+                                          child: Icon(
+                                            Icons.add,
+                                            size: 28,
+                                            color: EuphireColors.obsidianBlack,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
           );
         },
       ),
@@ -1115,20 +1203,18 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: cardColor ?? (isPrimary
-                  ? EuphireColors.ember
-                  : const Color(0xFF0F1F21)),
+              color:
+                  cardColor ??
+                  (isPrimary ? EuphireColors.ember : const Color(0xFF0F1F21)),
               borderRadius: BorderRadius.circular(14),
               border: isPrimary
                   ? null
-                  : Border.all(
-                      color: Colors.white.withValues(alpha: 0.1)),
+                  : Border.all(color: Colors.white.withValues(alpha: 0.1)),
               boxShadow: isPrimary
                   ? [
                       ...EuphireColors.emberGlow,
                       BoxShadow(
-                        color: EuphireColors.ember
-                            .withValues(alpha: 0.15),
+                        color: EuphireColors.ember.withValues(alpha: 0.15),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),
@@ -1145,7 +1231,9 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
               children: [
                 // Icon circle — with pulse on primary
                 ScaleTransition(
-                  scale: isPrimary ? _pulseScale : const AlwaysStoppedAnimation(1.0),
+                  scale: isPrimary
+                      ? _pulseScale
+                      : const AlwaysStoppedAnimation(1.0),
                   child: Container(
                     width: 44,
                     height: 44,
@@ -1190,10 +1278,10 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
                           color: isPrimary
-                              ? EuphireColors.obsidianBlack
-                                  .withValues(alpha: 0.6)
-                              : EuphireColors.mist
-                                  .withValues(alpha: 0.6),
+                              ? EuphireColors.obsidianBlack.withValues(
+                                  alpha: 0.6,
+                                )
+                              : EuphireColors.mist.withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -1265,10 +1353,10 @@ class _PendingUploadCard extends StatelessWidget {
     final sessionId = upload.sessionId;
     final hasSessionId = sessionId != null && sessionId.isNotEmpty;
     final isFailed = upload.phase == UploadPhase.failed;
-    
+
     final color = EuphireColors.ember;
-    final bgColor = isFailed 
-        ? EuphireColors.ember.withValues(alpha: 0.06) 
+    final bgColor = isFailed
+        ? EuphireColors.ember.withValues(alpha: 0.06)
         : EuphireColors.frostWhite.withValues(alpha: 0.05);
 
     return InkWell(
@@ -1288,22 +1376,16 @@ class _PendingUploadCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: color.withValues(alpha: 0.3),
-            width: 1,
-          ),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
         ),
         child: Row(
           children: [
             SizedBox(
               width: 18,
               height: 18,
-              child: isFailed 
+              child: isFailed
                   ? Icon(Icons.error_outline_rounded, color: color, size: 18)
-                  : CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: color,
-                    ),
+                  : CircularProgressIndicator(strokeWidth: 2, color: color),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1311,7 +1393,9 @@ class _PendingUploadCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isFailed ? l.clientDetails_status_requires_attention : l.clientDetails_status_processing_label,
+                    isFailed
+                        ? l.clientDetails_status_requires_attention
+                        : l.clientDetails_status_processing_label,
                     style: TextStyle(
                       fontFamily: 'Merriweather',
                       fontSize: 16,
@@ -1325,7 +1409,9 @@ class _PendingUploadCard extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: 'Montserrat',
                       fontSize: 13,
-                      color: isFailed ? color.withValues(alpha: 0.8) : EuphireColors.mist,
+                      color: isFailed
+                          ? color.withValues(alpha: 0.8)
+                          : EuphireColors.mist,
                     ),
                   ),
                 ],
@@ -1334,8 +1420,8 @@ class _PendingUploadCard extends StatelessWidget {
             Icon(
               Icons.chevron_right,
               color: isFailed ? color : EuphireColors.mist,
-                size: 20,
-              ),
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -1469,8 +1555,10 @@ class _SessionCard extends ConsumerWidget {
     String metaStr;
     if (durationMin > 0) {
       final endTime = d.add(session.duration);
-      final endStr = '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}';
-      metaStr = '$dateStr  \u2022  $timeStr \u2013 $endStr  \u2022  $durationMin min';
+      final endStr =
+          '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}';
+      metaStr =
+          '$dateStr  \u2022  $timeStr \u2013 $endStr  \u2022  $durationMin min';
     } else {
       metaStr = '$dateStr  \u2022  $timeStr';
     }
@@ -1486,16 +1574,28 @@ class _SessionCard extends ConsumerWidget {
 
     final (statusText, dotColor) = switch (session.status) {
       SessionStatus.completed => (
-        isViewed ? l.clientDetails_status_ready : l.clientDetails_status_new_report,
+        isViewed
+            ? l.clientDetails_status_ready
+            : l.clientDetails_status_new_report,
         isViewed ? EuphireColors.mist : const Color(0xFF4ADE80),
       ),
-      SessionStatus.inProgress => (l.clientDetails_status_analyzing, EuphireColors.ember),
-      SessionStatus.pendingUpload => (l.clientDetails_status_uploading_label, Colors.orangeAccent),
-      SessionStatus.error => (l.clientDetails_status_error, EuphireColors.magma),
+      SessionStatus.inProgress => (
+        l.clientDetails_status_analyzing,
+        EuphireColors.ember,
+      ),
+      SessionStatus.pendingUpload => (
+        l.clientDetails_status_uploading_label,
+        Colors.orangeAccent,
+      ),
+      SessionStatus.error => (
+        l.clientDetails_status_error,
+        EuphireColors.magma,
+      ),
     };
 
     // Show the badge pill for all actionable states including pendingUpload
-    final showBadge = (isCompleted && !isViewed) ||
+    final showBadge =
+        (isCompleted && !isViewed) ||
         isInProgress ||
         isPendingUpload ||
         isError;
@@ -1504,7 +1604,11 @@ class _SessionCard extends ConsumerWidget {
     // session. For new sessions the backend stores NULL → Flutter computes
     // the localized title from the DB-authoritative session_number.
     final sn = session.sessionNumber;
-    final title = session.name ?? (sn > 0 ? '${l.clientDetails_session_title} $sn' : l.clientDetails_session_title);
+    final title =
+        session.name ??
+        (sn > 0
+            ? '${l.clientDetails_session_title} $sn'
+            : l.clientDetails_session_title);
 
     return InkWell(
       borderRadius: BorderRadius.circular(10),
@@ -1515,11 +1619,11 @@ class _SessionCard extends ConsumerWidget {
         }
         final destination = isCompleted
             ? MaterialPageRoute(
-                builder: (_) =>
-                    TranscriptScreen(sessionId: session.id))
+                builder: (_) => TranscriptScreen(sessionId: session.id),
+              )
             : MaterialPageRoute(
-                builder: (_) =>
-                    SessionStatusScreen(sessionId: session.id));
+                builder: (_) => SessionStatusScreen(sessionId: session.id),
+              );
         Navigator.push(context, destination);
       },
       child: Container(
@@ -1529,9 +1633,10 @@ class _SessionCard extends ConsumerWidget {
           color: Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-              color: isError
-                  ? EuphireColors.magma.withValues(alpha: 0.3)
-                  : Colors.white.withValues(alpha: 0.08)),
+            color: isError
+                ? EuphireColors.magma.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.08),
+          ),
           boxShadow: isError
               ? [
                   BoxShadow(
@@ -1563,20 +1668,16 @@ class _SessionCard extends ConsumerWidget {
                       ),
                     )
                   : isError
-                      ? Icon(
-                          Icons.error_outline_rounded,
-                          size: 18,
-                          color: dotColor,
-                        )
-                      : Text(
-                          sn > 0 ? '#$sn' : '#',
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: dotColor,
-                          ),
-                        ),
+                  ? Icon(Icons.error_outline_rounded, size: 18, color: dotColor)
+                  : Text(
+                      sn > 0 ? '#$sn' : '#',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: dotColor,
+                      ),
+                    ),
             ),
             const SizedBox(width: 14),
             // ── Title + meta ──
@@ -1613,9 +1714,7 @@ class _SessionCard extends ConsumerWidget {
                   color: dotColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                   border: isError
-                      ? Border.all(
-                          color: dotColor.withValues(alpha: 0.3),
-                        )
+                      ? Border.all(color: dotColor.withValues(alpha: 0.3))
                       : null,
                 ),
                 child: Row(
@@ -1663,10 +1762,18 @@ class _SessionCard extends ConsumerWidget {
             // ── Context menu ──
             GestureDetector(
               onTap: () => _showSessionOptionsSheet(
-                context, ref, session, patientId, title),
+                context,
+                ref,
+                session,
+                patientId,
+                title,
+              ),
               behavior: HitTestBehavior.opaque,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 12,
+                ),
                 child: Icon(
                   Icons.more_vert,
                   color: EuphireColors.mist.withValues(alpha: 0.5),
@@ -1698,9 +1805,7 @@ class _SessionCard extends ConsumerWidget {
       ),
     );
   }
-
 }
-
 
 // ─── Session Options Bottom Sheet (unified, no nesting) ──────────────
 
@@ -1716,7 +1821,8 @@ class _SessionOptionsSheet extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_SessionOptionsSheet> createState() => _SessionOptionsSheetState();
+  ConsumerState<_SessionOptionsSheet> createState() =>
+      _SessionOptionsSheetState();
 }
 
 class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
@@ -1744,11 +1850,9 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
     setState(() => _saving = true);
     final l = AppLocalizations.of(context);
     try {
-      await ref.read(sessionsProvider.notifier).renameSession(
-        widget.patientId,
-        widget.session.id,
-        newTitle,
-      );
+      await ref
+          .read(sessionsProvider.notifier)
+          .renameSession(widget.patientId, widget.session.id, newTitle);
       if (mounted) Navigator.pop(context);
     } catch (e) {
       // Server didn't accept the rename — surface it (was silently
@@ -1793,15 +1897,19 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
               children: [
                 Center(
                   child: Container(
-                    width: 40, height: 4,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
                 Center(
                   child: Container(
-                    width: 56, height: 56,
+                    width: 56,
+                    height: 56,
                     decoration: BoxDecoration(
                       color: EuphireColors.magma.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
@@ -1845,7 +1953,9 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(5),
-                            side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            ),
                           ),
                         ),
                         child: Text(
@@ -1870,8 +1980,10 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                             await notifier.deleteSession(patientId, sessionId);
                           } catch (e) {
                             if (rootContext.mounted) {
-                              EuphireToast.error(rootContext,
-                                  message: l.session_delete_error);
+                              EuphireToast.error(
+                                rootContext,
+                                message: l.session_delete_error,
+                              );
                             }
                           }
                         },
@@ -1907,7 +2019,8 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final hasChanges = _titleCtrl.text.trim().isNotEmpty &&
+    final hasChanges =
+        _titleCtrl.text.trim().isNotEmpty &&
         _titleCtrl.text.trim() != widget.currentTitle;
 
     return Container(
@@ -1926,9 +2039,12 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
               children: [
                 Center(
                   child: Container(
-                    width: 40, height: 4,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -1936,14 +2052,16 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                 // ── Icon ──
                 Center(
                   child: Container(
-                    width: 72, height: 72,
+                    width: 72,
+                    height: 72,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: EuphireColors.ember.withValues(alpha: 0.12),
                       boxShadow: [
                         BoxShadow(
                           color: EuphireColors.ember.withValues(alpha: 0.2),
-                          blurRadius: 28, spreadRadius: 2,
+                          blurRadius: 28,
+                          spreadRadius: 2,
                         ),
                       ],
                     ),
@@ -2008,17 +2126,27 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                     fillColor: Colors.white.withValues(alpha: 0.08),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.12),
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.12),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: EuphireColors.ember, width: 1.5),
+                      borderSide: const BorderSide(
+                        color: EuphireColors.ember,
+                        width: 1.5,
+                      ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -2031,15 +2159,23 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: EuphireColors.ember,
                       foregroundColor: EuphireColors.obsidianBlack,
-                      disabledBackgroundColor: EuphireColors.ember.withValues(alpha: 0.3),
+                      disabledBackgroundColor: EuphireColors.ember.withValues(
+                        alpha: 0.3,
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(5),
+                      ),
                       elevation: 0,
                     ),
                     child: _saving
                         ? const SizedBox(
-                            width: 20, height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: EuphireColors.obsidianBlack),
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: EuphireColors.obsidianBlack,
+                            ),
                           )
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -2048,7 +2184,11 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                               const SizedBox(width: 6),
                               Text(
                                 l.clientDetails_btn_save_title,
-                                style: const TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w700),
+                                style: const TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ],
                           ),
@@ -2061,11 +2201,16 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                   onTap: _deleteWarning,
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: EuphireColors.magma.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: EuphireColors.magma.withValues(alpha: 0.15)),
+                      border: Border.all(
+                        color: EuphireColors.magma.withValues(alpha: 0.15),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -2075,7 +2220,11 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                             color: EuphireColors.magma.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.delete_outline_rounded, color: EuphireColors.magma, size: 22),
+                          child: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: EuphireColors.magma,
+                            size: 22,
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -2084,17 +2233,32 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                             children: [
                               Text(
                                 l.clientDetails_btn_delete_session,
-                                style: const TextStyle(fontFamily: 'Montserrat', fontSize: 15, fontWeight: FontWeight.w600, color: EuphireColors.magma),
+                                style: const TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: EuphireColors.magma,
+                                ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 l.clientDetails_btn_delete_session_desc,
-                                style: TextStyle(fontFamily: 'Montserrat', fontSize: 12, color: EuphireColors.magma.withValues(alpha: 0.7)),
+                                style: TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontSize: 12,
+                                  color: EuphireColors.magma.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        Icon(Icons.chevron_right_rounded, color: EuphireColors.magma.withValues(alpha: 0.5), size: 20),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: EuphireColors.magma.withValues(alpha: 0.5),
+                          size: 20,
+                        ),
                       ],
                     ),
                   ),
@@ -2109,7 +2273,6 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
   }
 }
 
-
 // ─── Timeline item (union of Session | PatientNote) ──────────────────
 
 class _TimelineItem {
@@ -2122,8 +2285,7 @@ class _TimelineItem {
   factory _TimelineItem.session(Session s, int number) =>
       _TimelineItem._(session: s, sessionNumber: number);
 
-  factory _TimelineItem.note(PatientNote n) =>
-      _TimelineItem._(note: n);
+  factory _TimelineItem.note(PatientNote n) => _TimelineItem._(note: n);
 
   bool get isNote => note != null;
 
@@ -2141,7 +2303,10 @@ class _NoteCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = note.createdAt;
-    final dateStr = DateFormat('d MMM', Localizations.localeOf(context).languageCode).format(d);
+    final dateStr = DateFormat(
+      'd MMM',
+      Localizations.localeOf(context).languageCode,
+    ).format(d);
     final timeStr =
         '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
     final metaStr = '$dateStr  \u2022  $timeStr';
@@ -2153,10 +2318,7 @@ class _NoteCard extends ConsumerWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => _NoteViewScreen(
-              note: note,
-              patientId: patientId,
-            ),
+            builder: (_) => _NoteViewScreen(note: note, patientId: patientId),
           ),
         );
       },
@@ -2166,9 +2328,7 @@ class _NoteCard extends ConsumerWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF0D2A2E),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: EuphireColors.mist.withValues(alpha: 0.12),
-          ),
+          border: Border.all(color: EuphireColors.mist.withValues(alpha: 0.12)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2230,8 +2390,8 @@ class _NoteCard extends ConsumerWidget {
             ),
             // ── Options menu (bottom sheet) ──
             IconButton(
-              onPressed: () => _showNoteOptionsSheet(
-                context, ref, patientId, note),
+              onPressed: () =>
+                  _showNoteOptionsSheet(context, ref, patientId, note),
               icon: Icon(
                 Icons.more_vert,
                 color: EuphireColors.mist.withValues(alpha: 0.4),
@@ -2245,14 +2405,20 @@ class _NoteCard extends ConsumerWidget {
   }
 
   void _showNoteOptionsSheet(
-      BuildContext context, WidgetRef ref, String patientId, PatientNote note) {
+    BuildContext context,
+    WidgetRef ref,
+    String patientId,
+    PatientNote note,
+  ) {
     final l = AppLocalizations.of(context);
     final d = note.createdAt;
-    final dateStr = DateFormat('d MMM yyyy', Localizations.localeOf(context).languageCode).format(d);
+    final dateStr = DateFormat(
+      'd MMM yyyy',
+      Localizations.localeOf(context).languageCode,
+    ).format(d);
     final timeStr =
         '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-    final displayTitle =
-        note.title.isNotEmpty ? note.title : l.note_untitled;
+    final displayTitle = note.title.isNotEmpty ? note.title : l.note_untitled;
 
     showModalBottomSheet(
       context: context,
@@ -2273,7 +2439,8 @@ class _NoteCard extends ConsumerWidget {
                 // ── Drag handle ──
                 Center(
                   child: Container(
-                    width: 40, height: 4,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
                       color: Colors.white24,
                       borderRadius: BorderRadius.circular(2),
@@ -2327,8 +2494,7 @@ class _NoteCard extends ConsumerWidget {
                 ),
 
                 const SizedBox(height: 20),
-                Divider(
-                  color: Colors.white.withValues(alpha: 0.08), height: 1),
+                Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
                 const SizedBox(height: 8),
 
                 // ── Action: Edit ──
@@ -2361,11 +2527,15 @@ class _NoteCard extends ConsumerWidget {
                     Navigator.pop(ctx);
                     final content = [
                       if (note.title.isNotEmpty) note.title,
-                      note.text.isNotEmpty ? note.text : l.clientDetails_no_content,
+                      note.text.isNotEmpty
+                          ? note.text
+                          : l.clientDetails_no_content,
                     ].join('\n\n');
                     Clipboard.setData(ClipboardData(text: content));
-                    EuphireToast.success(context,
-                        message: l.common_copied_to_clipboard);
+                    EuphireToast.success(
+                      context,
+                      message: l.common_copied_to_clipboard,
+                    );
                   },
                 ),
 
@@ -2377,23 +2547,31 @@ class _NoteCard extends ConsumerWidget {
                   iconColor: EuphireColors.ember,
                   title: l.note_send_to_client,
                   subtitle: note.sentToPatient
-                      ? l.clientDetails_note_sent_at(_formatSentDate(note.sentToPatientAt!, context))
+                      ? l.clientDetails_note_sent_at(
+                          _formatSentDate(note.sentToPatientAt!, context),
+                        )
                       : l.clientDetails_send_note_desc,
                   trailing: note.sentToPatient
                       ? Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2E7D32).withValues(alpha: 0.2),
+                            color: const Color(
+                              0xFF2E7D32,
+                            ).withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Text(l.clientDetails_note_sent_badge,
-                              style: const TextStyle(
-                                fontFamily: 'Montserrat',
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF81C784),
-                              )),
+                          child: Text(
+                            l.clientDetails_note_sent_badge,
+                            style: const TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF81C784),
+                            ),
+                          ),
                         )
                       : null,
                   onTap: () {
@@ -2403,8 +2581,7 @@ class _NoteCard extends ConsumerWidget {
                 ),
 
                 const SizedBox(height: 4),
-                Divider(
-                  color: Colors.white.withValues(alpha: 0.08), height: 1),
+                Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
                 const SizedBox(height: 4),
 
                 // ── Action: Delete (destructive) ──
@@ -2430,11 +2607,17 @@ class _NoteCard extends ConsumerWidget {
   }
 
   String _formatSentDate(DateTime dt, BuildContext context) {
-    return DateFormat('d MMM yyyy', Localizations.localeOf(context).languageCode).format(dt);
+    return DateFormat(
+      'd MMM yyyy',
+      Localizations.localeOf(context).languageCode,
+    ).format(dt);
   }
 
   void _showDeleteConfirmation(
-      BuildContext context, WidgetRef ref, AppLocalizations l) {
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -2452,7 +2635,8 @@ class _NoteCard extends ConsumerWidget {
               children: [
                 Center(
                   child: Container(
-                    width: 40, height: 4,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
                       color: Colors.white24,
                       borderRadius: BorderRadius.circular(2),
@@ -2460,64 +2644,89 @@ class _NoteCard extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text(l.note_delete_confirm,
-                    style: const TextStyle(
-                        fontFamily: 'Montserrat', fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: EuphireColors.frostWhite),
-                    textAlign: TextAlign.center),
+                Text(
+                  l.note_delete_confirm,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: EuphireColors.frostWhite,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 8),
-                Text(note.title.isNotEmpty ? note.title : note.text,
-                    maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontFamily: 'Montserrat', fontSize: 13,
-                        fontStyle: FontStyle.italic,
-                        color: EuphireColors.mist.withValues(alpha: 0.7)),
-                    textAlign: TextAlign.center),
+                Text(
+                  note.title.isNotEmpty ? note.title : note.text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                    color: EuphireColors.mist.withValues(alpha: 0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 20),
-                Row(children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.1)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          l.note_sheet_cancel,
+                          style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: EuphireColors.mist,
+                          ),
                         ),
                       ),
-                      child: Text(l.note_sheet_cancel,
-                          style: const TextStyle(
-                              fontFamily: 'Montserrat', fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: EuphireColors.mist)),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        AppHapticFeedback.heavyImpact();
-                        ref.read(patientNotesMapProvider.notifier)
-                            .deleteNote(patientId, note.id);
-                        EuphireToast.success(context, message: l.note_deleted);
-                        Navigator.pop(ctx);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: EuphireColors.magma,
-                        foregroundColor: EuphireColors.frostWhite,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          AppHapticFeedback.heavyImpact();
+                          ref
+                              .read(patientNotesMapProvider.notifier)
+                              .deleteNote(patientId, note.id);
+                          EuphireToast.success(
+                            context,
+                            message: l.note_deleted,
+                          );
+                          Navigator.pop(ctx);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: EuphireColors.magma,
+                          foregroundColor: EuphireColors.frostWhite,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          l.note_delete_action,
+                          style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                      child: Text(l.note_delete_action,
-                          style: const TextStyle(
-                              fontFamily: 'Montserrat', fontSize: 15,
-                              fontWeight: FontWeight.w600)),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
               ],
             ),
           ),
@@ -2533,8 +2742,13 @@ class _NoteCard extends ConsumerWidget {
   ///   3. Else → confirmation sheet (masked e-mail). On confirm we call
   ///      SavePatientNote(noteId, sendToPatient:true); PATIENT_EMAIL_MISSING
   ///      falls back to the no-email warning, success shows a real toast.
-  void _sendNoteToClient(BuildContext context, WidgetRef ref,
-      AppLocalizations l, String patientId, PatientNote note) {
+  void _sendNoteToClient(
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l,
+    String patientId,
+    PatientNote note,
+  ) {
     final email = ref.read(patientEmailProvider(patientId));
 
     // ── Step 2: no e-mail on file → block with a hint sheet ──
@@ -2555,13 +2769,17 @@ class _NoteCard extends ConsumerWidget {
                   foregroundColor: EuphireColors.nocturne,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: Text(l.common_understand,
-                    style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600)),
+                child: Text(
+                  l.common_understand,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ],
@@ -2573,8 +2791,7 @@ class _NoteCard extends ConsumerWidget {
     // ── Step 3: confirmation sheet with the masked e-mail ──
     // Mask: first char of local part + "***" + "@domain".
     final at = email.indexOf('@');
-    final maskedEmail =
-        at > 0 ? '${email[0]}***${email.substring(at)}' : email;
+    final maskedEmail = at > 0 ? '${email[0]}***${email.substring(at)}' : email;
 
     showModalBottomSheet(
       context: context,
@@ -2583,49 +2800,59 @@ class _NoteCard extends ConsumerWidget {
         title: l.note_send_confirm_title,
         body: l.note_send_confirm_body(maskedEmail),
         children: [
-          Row(children: [
-            Expanded(
-              child: TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.1)),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    l.action_plan_send_cancel,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: EuphireColors.mist,
+                    ),
                   ),
                 ),
-                child: Text(l.action_plan_send_cancel,
-                    style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: EuphireColors.mist)),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () async {
-                  AppHapticFeedback.mediumImpact();
-                  Navigator.pop(ctx);
-                  await _doSendNote(context, ref, l, patientId, note);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: EuphireColors.ember,
-                  foregroundColor: EuphireColors.nocturne,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    AppHapticFeedback.mediumImpact();
+                    Navigator.pop(ctx);
+                    await _doSendNote(context, ref, l, patientId, note);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: EuphireColors.ember,
+                    foregroundColor: EuphireColors.nocturne,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    l.action_plan_send_confirm_action,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-                child: Text(l.action_plan_send_confirm_action,
-                    style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600)),
               ),
-            ),
-          ]),
+            ],
+          ),
         ],
       ),
     );
@@ -2634,11 +2861,17 @@ class _NoteCard extends ConsumerWidget {
   /// Performs the real SavePatientNote(send_to_patient=true) call for an
   /// existing note. On PATIENT_EMAIL_MISSING shows the no-email hint; on
   /// success a real "sent" toast. Refreshes the list so sent-state sticks.
-  Future<void> _doSendNote(BuildContext context, WidgetRef ref,
-      AppLocalizations l, String patientId, PatientNote note) async {
+  Future<void> _doSendNote(
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l,
+    String patientId,
+    PatientNote note,
+  ) async {
     try {
-      final repo =
-          ClinicalNotesRepository(ref.read(grpcClientsProvider).clinical);
+      final repo = ClinicalNotesRepository(
+        ref.read(grpcClientsProvider).clinical,
+      );
       await repo.savePatientNote(
         patientId,
         noteId: note.id,
@@ -2648,9 +2881,7 @@ class _NoteCard extends ConsumerWidget {
         sourceSessionId: '',
         sendToPatient: true,
       );
-      await ref
-          .read(patientNotesMapProvider.notifier)
-          .refreshNotes(patientId);
+      await ref.read(patientNotesMapProvider.notifier).refreshNotes(patientId);
       if (context.mounted) {
         EuphireToast.success(context, message: l.note_sent_toast);
       }
@@ -2672,13 +2903,17 @@ class _NoteCard extends ConsumerWidget {
                     foregroundColor: EuphireColors.nocturne,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: Text(l.common_understand,
-                      style: const TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600)),
+                  child: Text(
+                    l.common_understand,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -2767,10 +3002,7 @@ class _NoteOptionTile extends StatelessWidget {
                 ),
               ),
               // ── Trailing ──
-              if (trailing != null) ...[
-                const SizedBox(width: 8),
-                trailing!,
-              ],
+              if (trailing != null) ...[const SizedBox(width: 8), trailing!],
               Icon(
                 Icons.chevron_right_rounded,
                 size: 20,
@@ -2853,9 +3085,11 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     // When creating a new note we may be seeded from an extracted draft
     // (e.g. an action plan pulled from a report); fall back to empty.
     _titleCtrl = TextEditingController(
-        text: widget.existingNote?.title ?? widget.initialTitle ?? '');
+      text: widget.existingNote?.title ?? widget.initialTitle ?? '',
+    );
     _bodyCtrl = TextEditingController(
-        text: widget.existingNote?.text ?? widget.initialText ?? '');
+      text: widget.existingNote?.text ?? widget.initialText ?? '',
+    );
     _bodyFocus = FocusNode();
     _noteId = widget.existingNote?.id ?? '';
   }
@@ -2880,7 +3114,11 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     final notifier = ref.read(patientNotesMapProvider.notifier);
     if (_isEditing) {
       await notifier.updateNote(
-          widget.patientId, widget.existingNote!.id, title, body);
+        widget.patientId,
+        widget.existingNote!.id,
+        title,
+        body,
+      );
     } else {
       await notifier.addNote(widget.patientId, title, body);
     }
@@ -2929,8 +3167,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
 
     setState(() => _saving = true);
     try {
-      final repo =
-          ClinicalNotesRepository(ref.read(grpcClientsProvider).clinical);
+      final repo = ClinicalNotesRepository(
+        ref.read(grpcClientsProvider).clinical,
+      );
       final resp = await repo.savePatientNote(
         widget.patientId,
         noteId: _noteId,
@@ -2999,13 +3238,17 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                 foregroundColor: EuphireColors.nocturne,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: Text(l.common_understand,
-                  style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600)),
+              child: Text(
+                l.common_understand,
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],
@@ -3022,8 +3265,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     return '${email[0]}***$domain';
   }
 
-  Future<bool?> _showSendConfirmSheet(
-      AppLocalizations l, String email) {
+  Future<bool?> _showSendConfirmSheet(AppLocalizations l, String email) {
     return showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -3031,45 +3273,55 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
         title: l.action_plan_send_confirm_title,
         body: l.action_plan_send_confirm_body(_maskEmail(email)),
         children: [
-          Row(children: [
-            Expanded(
-              child: TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.1)),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    l.action_plan_send_cancel,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: EuphireColors.mist,
+                    ),
                   ),
                 ),
-                child: Text(l.action_plan_send_cancel,
-                    style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: EuphireColors.mist)),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: EuphireColors.ember,
-                  foregroundColor: EuphireColors.nocturne,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: EuphireColors.ember,
+                    foregroundColor: EuphireColors.nocturne,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    l.action_plan_send_confirm_action,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-                child: Text(l.action_plan_send_confirm_action,
-                    style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600)),
               ),
-            ),
-          ]),
+            ],
+          ),
         ],
       ),
     );
@@ -3095,66 +3347,88 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
               children: [
                 Center(
                   child: Container(
-                    width: 40, height: 4,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(2)),
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text(l.note_discard_title,
-                    style: const TextStyle(
-                        fontFamily: 'Montserrat', fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: EuphireColors.frostWhite),
-                    textAlign: TextAlign.center),
+                Text(
+                  l.note_discard_title,
+                  style: const TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: EuphireColors.frostWhite,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 8),
-                Text(l.note_discard_body,
-                    style: TextStyle(
-                        fontFamily: 'Montserrat', fontSize: 14,
-                        color: EuphireColors.mist.withValues(alpha: 0.7),
-                        height: 1.5),
-                    textAlign: TextAlign.center),
+                Text(
+                  l.note_discard_body,
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 14,
+                    color: EuphireColors.mist.withValues(alpha: 0.7),
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 20),
-                Row(children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(ctx, 'discard'),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.1)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx, 'discard'),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          l.note_discard_action,
+                          style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: EuphireColors.mist,
+                          ),
                         ),
                       ),
-                      child: Text(l.note_discard_action,
-                          style: const TextStyle(
-                              fontFamily: 'Montserrat', fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: EuphireColors.mist)),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(ctx, 'save');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: EuphireColors.ember,
-                        foregroundColor: EuphireColors.nocturne,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(ctx, 'save');
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: EuphireColors.ember,
+                          foregroundColor: EuphireColors.nocturne,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          l.note_discard_save,
+                          style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                      child: Text(l.note_discard_save,
-                          style: const TextStyle(
-                              fontFamily: 'Montserrat', fontSize: 15,
-                              fontWeight: FontWeight.w600)),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
               ],
             ),
           ),
@@ -3184,8 +3458,10 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded,
-                color: EuphireColors.frostWhite),
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: EuphireColors.frostWhite,
+            ),
             onPressed: () async {
               final shouldPop = await _onWillPop();
               if (shouldPop && context.mounted) Navigator.pop(context);
@@ -3239,7 +3515,8 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                     // Don't autofocus when the title is prefilled (action-plan
                     // mode): a focused single-line field scrolls the cursor to
                     // the end, clipping the first char of a long title.
-                    autofocus: !_isEditing &&
+                    autofocus:
+                        !_isEditing &&
                         (widget.initialTitle == null ||
                             widget.initialTitle!.isEmpty),
                     textCapitalization: TextCapitalization.sentences,
@@ -3247,7 +3524,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                     onSubmitted: (_) => _bodyFocus.requestFocus(),
                     style: TextStyle(
                       fontFamily: 'Montserrat',
-                      fontSize: MediaQuery.of(context).size.width < 375 ? 20 : 22,
+                      fontSize: MediaQuery.of(context).size.width < 375
+                          ? 20
+                          : 22,
                       fontWeight: FontWeight.w700,
                       color: EuphireColors.frostWhite,
                     ),
@@ -3255,7 +3534,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                       hintText: l.note_title_hint,
                       hintStyle: TextStyle(
                         fontFamily: 'Montserrat',
-                        fontSize: MediaQuery.of(context).size.width < 375 ? 20 : 22,
+                        fontSize: MediaQuery.of(context).size.width < 375
+                            ? 20
+                            : 22,
                         fontWeight: FontWeight.w700,
                         color: EuphireColors.mist.withValues(alpha: 0.3),
                       ),
@@ -3263,7 +3544,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                     ),
                   ),
                   Divider(
-                      color: Colors.white.withValues(alpha: 0.08), height: 1),
+                    color: Colors.white.withValues(alpha: 0.08),
+                    height: 1,
+                  ),
                   const SizedBox(height: 12),
                   // ── Body field ──
                   Expanded(
@@ -3301,22 +3584,25 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                           color: EuphireColors.mist.withValues(alpha: 0.3),
                         ),
                       ),
-                      buildCounter: (context,
-                          {required currentLength,
-                          required isFocused,
-                          required maxLength}) {
-                        if (currentLength < 4500) return null;
-                        return Text(
-                          '$currentLength/$maxLength',
-                          style: TextStyle(
-                            fontFamily: 'Montserrat',
-                            fontSize: 11,
-                            color: currentLength > 4800
-                                ? EuphireColors.magma.withValues(alpha: 0.8)
-                                : EuphireColors.mist.withValues(alpha: 0.4),
-                          ),
-                        );
-                      },
+                      buildCounter:
+                          (
+                            context, {
+                            required currentLength,
+                            required isFocused,
+                            required maxLength,
+                          }) {
+                            if (currentLength < 4500) return null;
+                            return Text(
+                              '$currentLength/$maxLength',
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 11,
+                                color: currentLength > 4800
+                                    ? EuphireColors.magma.withValues(alpha: 0.8)
+                                    : EuphireColors.mist.withValues(alpha: 0.4),
+                              ),
+                            );
+                          },
                     ),
                   ),
                 ],
@@ -3324,8 +3610,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
             ),
           ),
         ),
-        bottomNavigationBar:
-            widget.actionPlanMode ? _buildActionPlanBar(l) : null,
+        bottomNavigationBar: widget.actionPlanMode
+            ? _buildActionPlanBar(l)
+            : null,
       ),
     );
   }
@@ -3346,8 +3633,11 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
             if (!canSend) ...[
               Row(
                 children: [
-                  const Icon(Icons.info_outline_rounded,
-                      size: 16, color: EuphireColors.ember),
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    size: 16,
+                    color: EuphireColors.ember,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -3364,49 +3654,60 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
               ),
               const SizedBox(height: 10),
             ],
-            Row(children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: _saving ? null : _save,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.1)),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: _saving ? null : _save,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.1),
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      l.action_plan_save_only,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: EuphireColors.mist,
+                      ),
                     ),
                   ),
-                  child: Text(l.action_plan_save_only,
-                      style: const TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: EuphireColors.mist)),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: canSend ? _saveAndSend : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: EuphireColors.ember,
-                    foregroundColor: EuphireColors.nocturne,
-                    disabledBackgroundColor:
-                        EuphireColors.ember.withValues(alpha: 0.25),
-                    disabledForegroundColor:
-                        EuphireColors.nocturne.withValues(alpha: 0.5),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: canSend ? _saveAndSend : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: EuphireColors.ember,
+                      foregroundColor: EuphireColors.nocturne,
+                      disabledBackgroundColor: EuphireColors.ember.withValues(
+                        alpha: 0.25,
+                      ),
+                      disabledForegroundColor: EuphireColors.nocturne
+                          .withValues(alpha: 0.5),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      l.action_plan_save_and_send,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                  child: Text(l.action_plan_save_and_send,
-                      style: const TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600)),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ],
         ),
       ),
@@ -3447,26 +3748,33 @@ class _EuphireSheet extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2)),
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
-              Text(title,
-                  style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: EuphireColors.frostWhite),
-                  textAlign: TextAlign.center),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: EuphireColors.frostWhite,
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 8),
-              Text(body,
-                  style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 14,
-                      color: EuphireColors.mist.withValues(alpha: 0.7),
-                      height: 1.5),
-                  textAlign: TextAlign.center),
+              Text(
+                body,
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontSize: 14,
+                  color: EuphireColors.mist.withValues(alpha: 0.7),
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 20),
               ...children,
             ],
@@ -3483,20 +3791,19 @@ class _NoteViewScreen extends ConsumerWidget {
   final PatientNote note;
   final String patientId;
 
-  const _NoteViewScreen({
-    required this.note,
-    required this.patientId,
-  });
+  const _NoteViewScreen({required this.note, required this.patientId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
     final d = note.createdAt;
-    final dateStr = DateFormat('d MMMM yyyy', Localizations.localeOf(context).languageCode).format(d);
+    final dateStr = DateFormat(
+      'd MMMM yyyy',
+      Localizations.localeOf(context).languageCode,
+    ).format(d);
     final timeStr =
         '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-    final displayTitle =
-        note.title.isNotEmpty ? note.title : l.note_untitled;
+    final displayTitle = note.title.isNotEmpty ? note.title : l.note_untitled;
 
     return Scaffold(
       backgroundColor: const Color(0xFF071A1D),
@@ -3504,14 +3811,19 @@ class _NoteViewScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded,
-              color: EuphireColors.frostWhite),
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: EuphireColors.frostWhite,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit_rounded,
-                color: EuphireColors.ember, size: 22),
+            icon: const Icon(
+              Icons.edit_rounded,
+              color: EuphireColors.ember,
+              size: 22,
+            ),
             onPressed: () {
               Navigator.pushReplacement(
                 context,
@@ -3550,7 +3862,9 @@ class _NoteViewScreen extends ConsumerWidget {
               // ── Date pill ──
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: EuphireColors.ember.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -3567,8 +3881,7 @@ class _NoteViewScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 28),
               // ── Divider ──
-              Divider(
-                  color: Colors.white.withValues(alpha: 0.08), height: 1),
+              Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
               const SizedBox(height: 28),
               // ── Body ──
               if (note.text.isNotEmpty)
@@ -3577,8 +3890,7 @@ class _NoteViewScreen extends ConsumerWidget {
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 15,
-                    color:
-                        EuphireColors.frostWhite.withValues(alpha: 0.85),
+                    color: EuphireColors.frostWhite.withValues(alpha: 0.85),
                     height: 1.7,
                   ),
                 )
@@ -3600,7 +3912,6 @@ class _NoteViewScreen extends ConsumerWidget {
     );
   }
 }
-
 
 // ─── Custom clipper: shallow arc at the bottom edge ─────────────────────
 
@@ -3701,7 +4012,9 @@ class _ActiveRecordingCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isPaused ? l.active_session_card_paused_title : l.active_session_card_title,
+                        isPaused
+                            ? l.active_session_card_paused_title
+                            : l.active_session_card_title,
                         style: const TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 15,
@@ -3711,7 +4024,9 @@ class _ActiveRecordingCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        isPaused ? l.active_session_card_paused_subtitle : l.active_session_card_subtitle,
+                        isPaused
+                            ? l.active_session_card_paused_subtitle
+                            : l.active_session_card_subtitle,
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 12,
@@ -3796,22 +4111,30 @@ class _CardPulsingDotState extends State<_CardPulsingDot>
           alignment: Alignment.center,
           children: [
             if (widget.isRecording) ...[
-              _buildRipple(1.0 + (_controller.value * 2.0), 1.0 - _controller.value),
-              _buildRipple(1.0 + (((_controller.value + 0.5) % 1.0) * 2.0), 1.0 - ((_controller.value + 0.5) % 1.0)),
+              _buildRipple(
+                1.0 + (_controller.value * 2.0),
+                1.0 - _controller.value,
+              ),
+              _buildRipple(
+                1.0 + (((_controller.value + 0.5) % 1.0) * 2.0),
+                1.0 - ((_controller.value + 0.5) % 1.0),
+              ),
             ],
             Container(
               width: 14,
               height: 14,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: widget.isRecording ? EuphireColors.magma : EuphireColors.mist,
+                color: widget.isRecording
+                    ? EuphireColors.magma
+                    : EuphireColors.mist,
                 boxShadow: widget.isRecording
                     ? [
                         BoxShadow(
                           color: EuphireColors.magma.withValues(alpha: 0.4),
                           blurRadius: 4,
                           spreadRadius: 1,
-                        )
+                        ),
                       ]
                     : null,
               ),
