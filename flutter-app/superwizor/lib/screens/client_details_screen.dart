@@ -500,9 +500,19 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                                         RecordingState.interrupted) &&
                                 _activeRecPatientId == widget.patientId;
 
+                            // Notes are part of the timeline AND the
+                            // empty-state decision — a kartoteka with notes
+                            // but no sessions must still render the timeline
+                            // (else notes added as the first action vanish
+                            // until a session exists).
+                            final notes = ref.watch(
+                              patientNotesProvider(widget.patientId),
+                            );
+
                             if (filteredSessions.isEmpty &&
                                 visiblePending.isEmpty &&
-                                !hasActiveRecording) {
+                                !hasActiveRecording &&
+                                notes.isEmpty) {
                               return Center(
                                 child: Padding(
                                   padding: const EdgeInsets.only(
@@ -561,9 +571,9 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
                             // Notes are interleaved chronologically:
                             // build a merged list of sessions + notes
                             // sorted by date/createdAt descending.
-                            final notes = ref.watch(
-                              patientNotesProvider(widget.patientId),
-                            );
+                            // (`notes` is fetched above, before the
+                            // empty-state guard, so notes-only kartoteki
+                            // still render.)
 
                             // Build a unified timeline of sessions and
                             // notes, sorted newest-first.
