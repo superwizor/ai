@@ -183,7 +183,14 @@ func main() {
 	httpMux := nethttp.NewServeMux()
 	connectPath, connectHandler := identityv1connect.NewIdentityServiceHandler(
 		grpcadapter.NewConnectAdapter(identityServer),
-		connect.WithInterceptors(connectmd.HeadersToGRPCMetadata()),
+		connect.WithInterceptors(
+			connectmd.HeadersToGRPCMetadata(),
+			// Map the wrapped gRPC handler's status codes (NotFound,
+			// Unauthenticated, …) to the equivalent Connect codes; without
+			// this they all reach the browser as CodeUnknown and clients
+			// can't branch on them (e.g. NotFound → finish registration).
+			connectmd.TranslateGRPCError(),
+		),
 	)
 	httpMux.Handle(connectPath, connectHandler)
 	httpadapter.NewNIPHandler(logger).RegisterRoutes(httpMux)

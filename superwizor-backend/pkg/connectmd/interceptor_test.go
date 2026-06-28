@@ -2,9 +2,13 @@ package connectmd
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"connectrpc.com/connect"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func TestInjectMetadata_CopiesHeadersLowerCased(t *testing.T) {
@@ -85,5 +89,48 @@ func TestInjectMetadata_MergesExistingMetadata(t *testing.T) {
 	}
 	if got := md.Get("authorization"); len(got) != 1 || got[0] != "Bearer t" {
 		t.Errorf("authorization missing: %v", got)
+	}
+}
+
+func TestTranslateGRPCError(t *testing.T) {
+	mk := func(err error) connect.UnaryFunc {
+		return func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+			return nil, err
+		}
+	}
+	run := func(next connect.UnaryFunc) error {
+		_, err := TranslateGRPCError().WrapUnary(next)(context.Background(), nil)
+		return err
+	}
+
+	// gRPC status codes map to the equivalent Connect codes.
+	for _, tc := range []struct {
+		name string
+		in   codes.Code
+		want connect.Code
+	}{
+		{"NotFound", codes.NotFound, connect.CodeNotFound},
+		{"Unauthenticated", codes.Unauthenticated, connect.CodeUnauthenticated},
+		{"InvalidArgument", codes.InvalidArgument, connect.CodeInvalidArgument},
+		{"PermissionDenied", codes.PermissionDenied, connect.CodePermissionDenied},
+		{"Internal", codes.Internal, connect.CodeInternal},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := run(mk(status.Error(tc.in, "boom")))
+			if connect.CodeOf(err) != tc.want {
+				t.Fatalf("got %v, want %v (err=%v)", connect.CodeOf(err), tc.want, err)
+			}
+		})
+	}
+
+	// nil passes through.
+	if err := run(mk(nil)); err != nil {
+		t.Fatalf("nil should stay nil, got %v", err)
+	}
+
+	// An existing connect.Error is left untouched.
+	orig := connect.NewError(connect.CodeResourceExhausted, errors.New("quota"))
+	if got := connect.CodeOf(run(mk(orig))); got != connect.CodeResourceExhausted {
+		t.Fatalf("connect.Error should pass through, got %v", got)
 	}
 }

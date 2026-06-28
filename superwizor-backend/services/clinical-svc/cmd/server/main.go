@@ -284,6 +284,9 @@ func main() {
 		connect.WithInterceptors(
 			connectmd.HeadersToGRPCMetadata(),
 			grpcadapter.ConnectAuthInterceptor(identityClient),
+			// Map wrapped gRPC status codes → Connect codes (else they all
+			// surface to the browser as CodeUnknown). See connectmd docs.
+			connectmd.TranslateGRPCError(),
 		),
 	)
 	httpMux.Handle(connectPath, connectHandler)

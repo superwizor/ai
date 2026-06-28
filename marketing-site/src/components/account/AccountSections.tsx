@@ -26,6 +26,7 @@ import { playSuccessSound } from "../register/SuccessContent";
 
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { identityClient, billingClient } from "@/lib/connect/clients";
+import { openAppWithSso } from "@/lib/auth/open-app-sso";
 import {
   GetSubscriptionRequestSchema,
   ListInvoicesRequestSchema,
@@ -380,9 +381,13 @@ export function AccountSections() {
                   {locale === "pl" ? "Przejdź do panelu" : "Go to Dashboard"}
                 </Link>
                 <a
-                  href="https://app.superwizor.ai"
+                  href={APP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void openAppWithSso(fbUser.email ?? undefined);
+                  }}
                   className="w-full sm:w-auto min-w-[180px] rounded-2xl bg-white/5 hover:bg-white/10 border border-white/15 text-white font-sans font-bold text-xs uppercase tracking-wider px-6 py-4 hover:border-white/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 text-center"
                 >
                   {locale === "pl" ? "Przejdź do aplikacji" : "Go to App"}
@@ -627,23 +632,8 @@ function OpenKartotekiButton({ email }: { email: string }) {
   const onClick = async () => {
     if (busy) return;
     setBusy(true);
-    const popup = window.open("about:blank", "_blank");
     try {
-      const res = await identityClient.mintAppLoginToken(create(EmptySchema, {}));
-      const token = res?.token ?? "";
-      const url = token
-        ? `${APP_URL}#auth_token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`
-        : `${APP_URL}?email=${encodeURIComponent(email)}`;
-      if (popup) {
-        popup.location.href = url;
-      } else {
-        window.location.href = url;
-      }
-    } catch (e) {
-      console.error("[account] mintAppLoginToken failed", e);
-      const fallback = `${APP_URL}?email=${encodeURIComponent(email)}`;
-      if (popup) popup.location.href = fallback;
-      else window.location.href = fallback;
+      await openAppWithSso(email);
     } finally {
       setBusy(false);
     }

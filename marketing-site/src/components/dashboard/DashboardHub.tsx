@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
 import { identityClient, billingClient } from "@/lib/connect/clients";
+import { openAppWithSso } from "@/lib/auth/open-app-sso";
 import { UserRole } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { GetSubscriptionRequestSchema } from "@superwizor/proto-ts/billing/v1/billing_pb";
 import type { Subscription } from "@superwizor/proto-ts/billing/v1/billing_pb";
@@ -303,6 +304,10 @@ export function DashboardHub({ locale }: { locale: string }) {
             href={APP_URL}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => {
+              e.preventDefault();
+              void openAppWithSso(fbUser?.email ?? undefined);
+            }}
             className="group relative rounded-2xl p-6 sm:p-8 bg-gradient-to-br from-[#004D54]/75 to-[#003A40]/75 border border-[#2F6B62]/35 shadow-xl hover:shadow-2xl hover:shadow-[#004D54]/25 transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between backdrop-blur-md"
           >
             <div>
