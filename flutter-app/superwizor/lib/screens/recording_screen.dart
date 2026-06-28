@@ -1240,6 +1240,38 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                         );
                                       },
                                     ),
+                                    // Auto-pause countdown — centered, under "Sesja #".
+                                    if (_recState == RecordingState.recording)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 10),
+                                        child: Consumer(
+                                          builder: (context, ref, _) {
+                                            final mins = ref
+                                                .watch(appSettingsProvider)
+                                                .autoPauseMinutes;
+                                            final remaining =
+                                                Duration(minutes: mins) -
+                                                _displayDuration;
+                                            if (remaining <= Duration.zero) {
+                                              return const SizedBox.shrink();
+                                            }
+                                            return Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              ).recording_autopause_remaining(
+                                                _formatDuration(remaining),
+                                              ),
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontFamily: 'RobotoMono',
+                                                fontSize: 13,
+                                                color: EuphireColors.frostWhite
+                                                    .withValues(alpha: 0.6),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
@@ -1274,37 +1306,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                 ),
                               ),
                             ),
-                            // Auto-pause countdown — subtle, only while recording.
-                            if (_recState == RecordingState.recording)
-                              Builder(
-                                builder: (context) {
-                                  final autoPauseMin = ref
-                                      .watch(appSettingsProvider)
-                                      .autoPauseMinutes;
-                                  final remaining =
-                                      Duration(minutes: autoPauseMin) -
-                                      _displayDuration;
-                                  if (remaining <= Duration.zero) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 8),
-                                    child: Text(
-                                      AppLocalizations.of(
-                                        context,
-                                      ).recording_autopause_remaining(
-                                        _formatDuration(remaining),
-                                      ),
-                                      style: TextStyle(
-                                        fontFamily: 'RobotoMono',
-                                        fontSize: 12,
-                                        color: EuphireColors.frostWhite
-                                            .withValues(alpha: 0.5),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
                             const Spacer(flex: 2),
                             // ── Control panel: smooth fade-in when recording starts ──
                             AnimatedOpacity(
@@ -1317,8 +1318,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                   _ControlPanel(
                                     state: _recState,
                                     onStart: _start,
-                                    onPause: _service.pause,
-                                    onResume: _onResumeTap,
                                     onStop: _onStopPressed,
                                   ),
                                   const SizedBox(height: 16),
@@ -1474,15 +1473,11 @@ class _InterruptionBanner extends StatelessWidget {
 class _ControlPanel extends StatelessWidget {
   final RecordingState state;
   final Future<void> Function() onStart;
-  final Future<void> Function() onPause;
-  final Future<void> Function() onResume;
   final Future<void> Function() onStop;
 
   const _ControlPanel({
     required this.state,
     required this.onStart,
-    required this.onPause,
-    required this.onResume,
     required this.onStop,
   });
 
@@ -1501,16 +1496,10 @@ class _ControlPanel extends StatelessWidget {
         ],
       );
     }
+    // Pause removed per UX: recording runs until auto-pause or explicit stop.
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _CircleButton(
-          icon: state == RecordingState.recording
-              ? Icons.pause_rounded
-              : Icons.play_arrow_rounded,
-          color: EuphireColors.ember,
-          onPressed: state == RecordingState.recording ? onPause : onResume,
-        ),
         _CircleButton(
           icon: Icons.stop_rounded,
           color: EuphireColors.magma,
