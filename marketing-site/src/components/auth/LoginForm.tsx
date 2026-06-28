@@ -84,8 +84,21 @@ export function LoginForm() {
       me = await identityClient.getMyProfile(create(EmptySchema, {}));
     } catch (err) {
       if (err instanceof ConnectError && err.code === Code.NotFound) {
-        setError(t("errorNoProfile"));
-        setPhase("idle");
+        // The Firebase account exists but has no Superwizor profile — a
+        // half-finished registration (signup abandoned after the email
+        // step) or an old social account. Route to finish-registration to
+        // create the profile, exactly like the social-login path, instead
+        // of dead-ending. The user just authenticated, so it's their email.
+        const u = getFirebaseAuth().currentUser;
+        const dn = u?.displayName ?? "";
+        const [firstName = "", ...rest] = dn.split(" ");
+        const params = new URLSearchParams({
+          firstName,
+          lastName: rest.join(" "),
+          email: u?.email ?? "",
+        });
+        setPhase("redirect_app");
+        router.push(`${adminPrefix}/register/therapist/finish?${params.toString()}`);
         return false;
       }
       throw err;
