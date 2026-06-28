@@ -5014,6 +5014,60 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Uwierzytelnij się, aby uzyskać dostęp do Superwizora'**
   String get appLock_reason;
+
+  /// No description provided for @recording_reminder_toast.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagrywanie wciąż trwa — {duration}'**
+  String recording_reminder_toast(String duration);
+
+  /// No description provided for @recording_autopause_remaining.
+  ///
+  /// In pl, this message translates to:
+  /// **'Auto-pauza za {time}'**
+  String recording_autopause_remaining(String time);
+
+  /// No description provided for @settings_recording_section.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagrywanie'**
+  String get settings_recording_section;
+
+  /// No description provided for @settings_recording_autopause.
+  ///
+  /// In pl, this message translates to:
+  /// **'Automatyczna pauza'**
+  String get settings_recording_autopause;
+
+  /// No description provided for @settings_recording_autopause_value.
+  ///
+  /// In pl, this message translates to:
+  /// **'{minutes} min'**
+  String settings_recording_autopause_value(int minutes);
+
+  /// No description provided for @settings_recording_reminder.
+  ///
+  /// In pl, this message translates to:
+  /// **'Przypomnienie o nagrywaniu'**
+  String get settings_recording_reminder;
+
+  /// No description provided for @settings_recording_reminder_off.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyłączone'**
+  String get settings_recording_reminder_off;
+
+  /// No description provided for @settings_recording_reminder_sound.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dźwięk przypomnienia'**
+  String get settings_recording_reminder_sound;
+
+  /// No description provided for @settings_recording_reminder_sound_warning.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dźwięk zostanie nagrany w sesji'**
+  String get settings_recording_reminder_sound_warning;
 }
 
 class _AppLocalizationsDelegate

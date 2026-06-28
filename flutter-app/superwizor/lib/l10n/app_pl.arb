@@ -1169,5 +1169,35 @@
   "appLock_title": "Aplikacja zablokowana",
   "appLock_subtitle": "Odblokuj, aby uzyskać dostęp do kartotek",
   "appLock_unlock": "Odblokuj",
-  "appLock_reason": "Uwierzytelnij się, aby uzyskać dostęp do Superwizora"
+  "appLock_reason": "Uwierzytelnij się, aby uzyskać dostęp do Superwizora",
+  "recording_reminder_toast": "Nagrywanie wciąż trwa — {duration}",
+  "@recording_reminder_toast": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "recording_autopause_remaining": "Auto-pauza za {time}",
+  "@recording_autopause_remaining": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "settings_recording_section": "Nagrywanie",
+  "settings_recording_autopause": "Automatyczna pauza",
+  "settings_recording_autopause_value": "{minutes} min",
+  "@settings_recording_autopause_value": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "settings_recording_reminder": "Przypomnienie o nagrywaniu",
+  "settings_recording_reminder_off": "Wyłączone",
+  "settings_recording_reminder_sound": "Dźwięk przypomnienia",
+  "settings_recording_reminder_sound_warning": "Dźwięk zostanie nagrany w sesji"
 }

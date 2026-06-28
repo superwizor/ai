@@ -40,6 +40,7 @@ import '../services/recording_manifest_store.dart';
 import '../services/recording_service.dart';
 import '../services/live_activity_service.dart';
 import '../providers/settings_provider.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
@@ -49,7 +50,6 @@ import '../widgets/euphire_button.dart';
 import '../widgets/euphire_recording_indicator.dart';
 import 'session_status_screen.dart';
 import '../analytics/analytics_collector.dart';
-
 
 import '../widgets/minimized_recording_bar.dart';
 
@@ -87,6 +87,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   StreamSubscription<RecordingState>? _stateSub;
   bool _uploading = false;
   bool _maxLimitTriggered = false;
+  // Number of "still recording" reminder intervals already fired this session,
+  // so each interval boundary triggers exactly once.
+  int _remindersFired = 0;
   // Guards double-taps on the post-interruption resume button while the
   // capture-verification probe (~1.2 s) runs.
   bool _resuming = false;
@@ -134,13 +137,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       parent: _headerController,
       curve: Curves.easeOut,
     );
-    _headerSlide = Tween<Offset>(
-      begin: const Offset(0, -0.15),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _headerController,
-      curve: Curves.easeOutCubic,
-    ));
+    _headerSlide =
+        Tween<Offset>(begin: const Offset(0, -0.15), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _headerController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
     // Waveform: scale up from 0.85 + fade in
     _waveformFade = CurvedAnimation(
       parent: _entranceController,
@@ -157,7 +160,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _visibleNotifier.setVisible(true);
-      ref.read(analyticsCollectorProvider).track("screen.viewed", properties: {"screen_name": "RecordingScreen"});
+      ref
+          .read(analyticsCollectorProvider)
+          .track(
+            "screen.viewed",
+            properties: {"screen_name": "RecordingScreen"},
+          );
 
       // React to Live Activity toggle changes mid-session: if the user
       // enables LA while a recording is active, start it immediately;
@@ -165,14 +173,18 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       // NOTE: ref.listenManual (not ref.listen) because this runs in
       // postFrameCallback, outside the build() method. ref.listen throws
       // in Riverpod 3.x when called outside build().
-      _settingsSub = ref.listenManual<AppSettings>(appSettingsProvider, (prev, next) {
+      _settingsSub = ref.listenManual<AppSettings>(appSettingsProvider, (
+        prev,
+        next,
+      ) {
         final wasOn = prev?.liveActivitiesEnabled ?? false;
         final isOn = next.liveActivitiesEnabled;
         if (wasOn == isOn) return;
 
         final la = ref.read(liveActivityServiceProvider);
         final svc = _service;
-        final isActive = svc.state == RecordingState.recording ||
+        final isActive =
+            svc.state == RecordingState.recording ||
             svc.state == RecordingState.paused ||
             svc.state == RecordingState.interrupted;
 
@@ -202,6 +214,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
             _verifyConsentAndStart();
           }
         }
+
         if (route.animation!.isCompleted) {
           // Already completed (e.g. pushReplacement with no animation)
           _verifyConsentAndStart();
@@ -267,20 +280,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       });
       _headerController.value = 1.0;
 
-      _durSub = _service.durationStream.listen((d) {
-        if (!mounted) return;
-        setState(() => _displayDuration = d);
-        if (!_maxLimitTriggered &&
-            d >= kMaxSessionDuration &&
-            d < const Duration(hours: 4)) {
-          _maxLimitTriggered = true;
-          debugPrint('[recording] max duration reached at $d');
-          _onMaxDurationReached();
-        } else if (d >= const Duration(hours: 4)) {
-          debugPrint(
-              '[recording] WARNING insane duration $d ignored — clock jump?');
-        }
-      });
+      _durSub = _service.durationStream.listen(_onDurationTick);
       _stateSub = _service.stateStream.listen((s) {
         if (!mounted) return;
         setState(() => _recState = s);
@@ -295,8 +295,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     // Backend is only consulted when local cache is empty — which
     // happens after a fresh install or reinstall (Hive is wiped).
     debugPrint('[recording] checking local consent first...');
-    final localConsent =
-        await ref.read(consentServiceProvider).hasConsent(patientFileId: widget.patientFileId);
+    final localConsent = await ref
+        .read(consentServiceProvider)
+        .hasConsent(patientFileId: widget.patientFileId);
     debugPrint('[recording] localConsent=$localConsent');
     if (localConsent) {
       debugPrint('[recording] local consent=true → calling _start()');
@@ -308,10 +309,18 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     // Hive cache was wiped but backend already has consent).
     bool backendSaysConsent = false;
     try {
-      debugPrint('[recording] no local consent, calling getPatientFile gRPC...');
-      final patient = await ref.read(grpcClientsProvider).clinical.getPatientFile(
-            clinical_pb.GetPatientFileRequest(patientFileId: widget.patientFileId),
-          ).timeout(const Duration(seconds: 3));
+      debugPrint(
+        '[recording] no local consent, calling getPatientFile gRPC...',
+      );
+      final patient = await ref
+          .read(grpcClientsProvider)
+          .clinical
+          .getPatientFile(
+            clinical_pb.GetPatientFileRequest(
+              patientFileId: widget.patientFileId,
+            ),
+          )
+          .timeout(const Duration(seconds: 3));
       backendSaysConsent = patient.hasRecordingConsent;
       debugPrint('[recording] gRPC ok, backendSaysConsent=$backendSaysConsent');
     } catch (e) {
@@ -338,10 +347,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           label: t.recording_consent_grant,
           onPressed: () async {
             try {
-              await ref.read(consentServiceProvider).recordConsent(
-                patientFileId: widget.patientFileId,
-                documentVersion: 'v1.0',
-              );
+              await ref
+                  .read(consentServiceProvider)
+                  .recordConsent(
+                    patientFileId: widget.patientFileId,
+                    documentVersion: 'v1.0',
+                  );
               if (ctx.mounted) Navigator.of(ctx).pop(true);
             } catch (e) {
               if (ctx.mounted) Navigator.of(ctx).pop(false);
@@ -452,30 +463,17 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       // is not lost, then setState to flip _initializing off and
       // show recording controls. Everything below this setState is
       // non-critical and must NOT block the UI update.
-      _durSub = _service.durationStream.listen((d) {
-        if (!mounted) return;
-        setState(() => _displayDuration = d);
-        if (!_maxLimitTriggered &&
-            d >= kMaxSessionDuration &&
-            d < const Duration(hours: 4)) {
-          _maxLimitTriggered = true;
-          debugPrint('[recording] max duration reached at $d');
-          _onMaxDurationReached();
-        } else if (d >= const Duration(hours: 4)) {
-          debugPrint(
-              '[recording] WARNING insane duration $d ignored — clock jump?');
-        }
-      });
+      _durSub = _service.durationStream.listen(_onDurationTick);
       _stateSub = _service.stateStream.listen((s) {
         if (!mounted) return;
         if (s == RecordingState.interrupted &&
             _recState != RecordingState.interrupted) {
-          ref.read(analyticsCollectorProvider).track(
-            "recording.interrupted",
-            properties: {
-              "at_seconds": _service.currentDuration.inSeconds,
-            },
-          );
+          ref
+              .read(analyticsCollectorProvider)
+              .track(
+                "recording.interrupted",
+                properties: {"at_seconds": _service.currentDuration.inSeconds},
+              );
         }
         setState(() => _recState = s);
         // Mirror state to native widget.
@@ -485,11 +483,20 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           final elapsed = _service.currentDuration.inSeconds;
           switch (s) {
             case RecordingState.recording:
-              la.update(status: LiveActivityStatus.recording, elapsedSeconds: elapsed);
+              la.update(
+                status: LiveActivityStatus.recording,
+                elapsedSeconds: elapsed,
+              );
             case RecordingState.paused:
-              la.update(status: LiveActivityStatus.paused, elapsedSeconds: elapsed);
+              la.update(
+                status: LiveActivityStatus.paused,
+                elapsedSeconds: elapsed,
+              );
             case RecordingState.interrupted:
-              la.update(status: LiveActivityStatus.paused, elapsedSeconds: elapsed);
+              la.update(
+                status: LiveActivityStatus.paused,
+                elapsedSeconds: elapsed,
+              );
             default:
               break;
           }
@@ -500,7 +507,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         _initializing = false;
         _recState = _service.state;
       });
-      
+
       // Haptic feedback when the recording actually begins.
       HapticFeedback.lightImpact();
 
@@ -515,10 +522,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
 
       final laEnabled = ref.read(appSettingsProvider).liveActivitiesEnabled;
       if (laEnabled || Platform.isAndroid) {
-        ref.read(liveActivityServiceProvider).start(
-          patientAlias: widget.patientAlias,
-          elapsedSeconds: 0,
-        );
+        ref
+            .read(liveActivityServiceProvider)
+            .start(patientAlias: widget.patientAlias, elapsedSeconds: 0);
       }
 
       // Durable manifest next to raw.flac (docs/28 WS1): from this moment
@@ -526,16 +532,21 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       // recovery scan to offer the partial recording on next launch.
       // Best-effort, never blocks the recording UI.
       unawaited(
-        ref.read(recordingManifestStoreProvider).write(RecordingManifest(
-              sessionId: _sessionId!,
-              therapistId: widget.therapistId,
-              patientFileId: widget.patientFileId,
-              patientAlias: widget.patientAlias,
-              patientLanguageCode: widget.reportLanguage,
-              startedAtUtc: DateTime.now().toUtc(),
-            )).catchError((e) {
-          debugPrint('[recording] manifest write failed (non-fatal): $e');
-        }),
+        ref
+            .read(recordingManifestStoreProvider)
+            .write(
+              RecordingManifest(
+                sessionId: _sessionId!,
+                therapistId: widget.therapistId,
+                patientFileId: widget.patientFileId,
+                patientAlias: widget.patientAlias,
+                patientLanguageCode: widget.reportLanguage,
+                startedAtUtc: DateTime.now().toUtc(),
+              ),
+            )
+            .catchError((e) {
+              debugPrint('[recording] manifest write failed (non-fatal): $e');
+            }),
       );
     } catch (e) {
       if (!mounted) return;
@@ -609,7 +620,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       // Show first-time Live Activities toast if the feature is off
       // and the user hasn't seen the prompt yet.
       final settings = ref.read(appSettingsProvider);
-      if (!settings.liveActivitiesEnabled && !settings.hasSeenLiveActivitiesPrompt) {
+      if (!settings.liveActivitiesEnabled &&
+          !settings.hasSeenLiveActivitiesPrompt) {
         ref.read(appSettingsProvider.notifier).markLiveActivitiesPromptSeen();
         if (mounted) {
           final t = AppLocalizations.of(context);
@@ -622,7 +634,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
               duration: const Duration(seconds: 5),
               behavior: SnackBarBehavior.floating,
               backgroundColor: const Color(0xFF0A2326),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
         }
@@ -634,9 +648,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
         final dur = _service.currentDuration.inSeconds;
         await _service.cancel();
         await _deleteManifest();
-        ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
-          "duration_seconds": dur,
-        });
+        ref
+            .read(analyticsCollectorProvider)
+            .track(
+              "recording.cancelled",
+              properties: {"duration_seconds": dur},
+            );
         return true;
       }
     }
@@ -667,10 +684,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     }
     if (ok) {
       if (wasInterrupted) {
-        ref.read(analyticsCollectorProvider).track(
-          "recording.interruption_resumed",
-          properties: {"at_seconds": gapSeconds},
-        );
+        ref
+            .read(analyticsCollectorProvider)
+            .track(
+              "recording.interruption_resumed",
+              properties: {"at_seconds": gapSeconds},
+            );
       }
       return;
     }
@@ -770,9 +789,69 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     );
   }
 
+  /// Single handler for every duration tick (start + resume paths share it):
+  /// updates the clock, fires the periodic "still recording" reminder, and
+  /// auto-pauses at the configurable limit. The 4 h guard ignores clock jumps.
+  void _onDurationTick(Duration d) {
+    if (!mounted) return;
+    setState(() => _displayDuration = d);
+
+    final s = ref.read(appSettingsProvider);
+
+    // ── Periodic "still recording" reminder ──
+    final interval = s.reminderIntervalMinutes;
+    if (interval > 0 && d.inMinutes > 0) {
+      final fired = d.inMinutes ~/ interval;
+      if (fired > _remindersFired) {
+        _remindersFired = fired;
+        _fireReminder(s, d);
+      }
+    }
+
+    // ── Configurable auto-pause ──
+    final autoPause = Duration(minutes: s.autoPauseMinutes);
+    if (!_maxLimitTriggered && d >= autoPause && d < const Duration(hours: 4)) {
+      _maxLimitTriggered = true;
+      debugPrint('[recording] auto-pause at $d (limit ${s.autoPauseMinutes}m)');
+      _onMaxDurationReached();
+    } else if (d >= const Duration(hours: 4)) {
+      debugPrint(
+        '[recording] WARNING insane duration $d ignored — clock jump?',
+      );
+    }
+  }
+
+  /// Reminds the therapist the session is still recording. Default = haptic +
+  /// a brief visual toast (won't pollute the audio). An audible bell is opt-in
+  /// (it IS captured by the mic) and disabled by default.
+  void _fireReminder(AppSettings s, Duration d) {
+    if (s.hapticsEnabled) {
+      HapticFeedback.heavyImpact();
+    }
+    if (s.reminderSound) {
+      // Opt-in: plays through the speaker, so it lands in the recording.
+      try {
+        AudioPlayer().play(AssetSource('sounds/Dźwięk zakończenia sesji.mp3'));
+      } catch (_) {
+        /* best-effort */
+      }
+    }
+    if (mounted) {
+      final t = AppLocalizations.of(context);
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(t.recording_reminder_toast(_formatDuration(d))),
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _onMaxDurationReached() async {
     debugPrint(
-        '[recording] _onMaxDurationReached dur=${_service.currentDuration}');
+      '[recording] _onMaxDurationReached dur=${_service.currentDuration}',
+    );
     await _service.pause();
     if (!mounted) return;
     final t = AppLocalizations.of(context);
@@ -809,12 +888,13 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     await _service.cancel();
     await _deleteManifest();
     // Dismiss native widget.
-    if (ref.read(appSettingsProvider).liveActivitiesEnabled || Platform.isAndroid) {
+    if (ref.read(appSettingsProvider).liveActivitiesEnabled ||
+        Platform.isAndroid) {
       ref.read(liveActivityServiceProvider).stop();
     }
-    ref.read(analyticsCollectorProvider).track("recording.cancelled", properties: {
-      "duration_seconds": dur,
-    });
+    ref
+        .read(analyticsCollectorProvider)
+        .track("recording.cancelled", properties: {"duration_seconds": dur});
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -822,9 +902,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
 
   Future<void> _finishAndUpload() async {
     debugPrint(
-        '[recording] _finishAndUpload entered; '
-        'currentDuration=${_service.currentDuration} '
-        'displayDuration=$_displayDuration recState=$_recState');
+      '[recording] _finishAndUpload entered; '
+      'currentDuration=${_service.currentDuration} '
+      'displayDuration=$_displayDuration recState=$_recState',
+    );
 
     // Defensive: refuse to upload absurdly short recordings. The legitimate
     // flow takes you through "Zakończenie i analiza sesji" sheet which
@@ -835,7 +916,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     final realDuration = _service.currentDuration;
     if (realDuration < const Duration(seconds: 5)) {
       debugPrint(
-          '[recording] _finishAndUpload aborted: duration too short ($realDuration)');
+        '[recording] _finishAndUpload aborted: duration too short ($realDuration)',
+      );
       if (mounted) {
         final t = AppLocalizations.of(context);
         setState(() => _uploading = false);
@@ -865,20 +947,27 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       final rawPath = await _service.stop();
       if (rawPath == null) throw StateError('no recording produced');
       final rawSize = await File(rawPath).length();
-      ref.read(analyticsCollectorProvider).track("recording.stopped", properties: {
-        "duration_seconds": capturedDuration.inSeconds,
-      });
+      ref
+          .read(analyticsCollectorProvider)
+          .track(
+            "recording.stopped",
+            properties: {"duration_seconds": capturedDuration.inSeconds},
+          );
       // Transition native widget to uploading state.
-      if (ref.read(appSettingsProvider).liveActivitiesEnabled || Platform.isAndroid) {
-        ref.read(liveActivityServiceProvider).update(
-          status: LiveActivityStatus.uploading,
-          elapsedSeconds: capturedDuration.inSeconds,
-        );
+      if (ref.read(appSettingsProvider).liveActivitiesEnabled ||
+          Platform.isAndroid) {
+        ref
+            .read(liveActivityServiceProvider)
+            .update(
+              status: LiveActivityStatus.uploading,
+              elapsedSeconds: capturedDuration.inSeconds,
+            );
       }
       debugPrint('[recording] stopped, raw=$rawPath size=${rawSize}B');
       if (rawSize == 0) {
         throw StateError(
-            'recording file is empty (0 bytes) — iOS encoder failed to flush');
+          'recording file is empty (0 bytes) — iOS encoder failed to flush',
+        );
       }
 
       // The raw FLAC is already on durable disk at
@@ -985,9 +1074,11 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       // watches the queue row by localId until CreateAudioUpload returns
       // a sessionId, then hands off to the Firestore / clinical-svc
       // listeners.
-      await Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (_) => SessionStatusScreen(localId: sessionId),
-      ));
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => SessionStatusScreen(localId: sessionId),
+        ),
+      );
     } catch (e, st) {
       debugPrint('[recording] _finishAndUpload FAILED: $e\n$st');
       if (mounted) {
@@ -1030,7 +1121,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       // Block automatic back-gesture/system-back when actively recording —
       // we always want the discard-confirmation sheet between the user
       // and a thrown-away session.
-      canPop: _recState == RecordingState.idle ||
+      canPop:
+          _recState == RecordingState.idle ||
           _recState == RecordingState.stopped ||
           _recState == RecordingState.error,
       onPopInvokedWithResult: (didPop, _) async {
@@ -1103,7 +1195,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                         fontFamily: 'RobotoMono',
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
-                                        color: EuphireColors.frostWhite.withValues(alpha: 0.5),
+                                        color: EuphireColors.frostWhite
+                                            .withValues(alpha: 0.5),
                                         letterSpacing: 2.0,
                                       ),
                                     ),
@@ -1122,9 +1215,19 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                     Consumer(
                                       builder: (context, ref, child) {
                                         final t = AppLocalizations.of(context);
-                                        final patients = ref.watch(patientsProvider).whenOrNull(data: (d) => d) ?? [];
-                                        final patient = patients.where((p) => p.id == widget.patientFileId).firstOrNull;
-                                        final sessionNumber = (patient?.sessionCount ?? 0) + 1;
+                                        final patients =
+                                            ref
+                                                .watch(patientsProvider)
+                                                .whenOrNull(data: (d) => d) ??
+                                            [];
+                                        final patient = patients
+                                            .where(
+                                              (p) =>
+                                                  p.id == widget.patientFileId,
+                                            )
+                                            .firstOrNull;
+                                        final sessionNumber =
+                                            (patient?.sessionCount ?? 0) + 1;
                                         return Text(
                                           '${t.clientDetails_session_title} #$sessionNumber',
                                           style: const TextStyle(
@@ -1141,7 +1244,9 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 24), // Breathing room under header when spacers shrink
+                            const SizedBox(
+                              height: 24,
+                            ), // Breathing room under header when spacers shrink
                             const Spacer(),
                             if (_recState == RecordingState.interrupted) ...[
                               _InterruptionBanner(
@@ -1157,15 +1262,49 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                 opacity: _waveformFade,
                                 child: RepaintBoundary(
                                   child: EuphireRecordingIndicator(
-                                    isRecording: _recState == RecordingState.recording,
+                                    isRecording:
+                                        _recState == RecordingState.recording,
                                     isInitializing: _initializing,
-                                    formattedDuration: _formatDuration(_displayDuration),
+                                    formattedDuration: _formatDuration(
+                                      _displayDuration,
+                                    ),
                                     chunkCount: _chunkCount,
                                     amplitudeStream: _service.amplitudeStream,
                                   ),
                                 ),
                               ),
                             ),
+                            // Auto-pause countdown — subtle, only while recording.
+                            if (_recState == RecordingState.recording)
+                              Builder(
+                                builder: (context) {
+                                  final autoPauseMin = ref
+                                      .watch(appSettingsProvider)
+                                      .autoPauseMinutes;
+                                  final remaining =
+                                      Duration(minutes: autoPauseMin) -
+                                      _displayDuration;
+                                  if (remaining <= Duration.zero) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Text(
+                                      AppLocalizations.of(
+                                        context,
+                                      ).recording_autopause_remaining(
+                                        _formatDuration(remaining),
+                                      ),
+                                      style: TextStyle(
+                                        fontFamily: 'RobotoMono',
+                                        fontSize: 12,
+                                        color: EuphireColors.frostWhite
+                                            .withValues(alpha: 0.5),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                             const Spacer(flex: 2),
                             // ── Control panel: smooth fade-in when recording starts ──
                             AnimatedOpacity(
@@ -1187,14 +1326,17 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                     const SizedBox(height: 16),
                                     Column(
                                       children: [
-                                        const Center(child: CircularProgressIndicator()),
+                                        const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
                                         const SizedBox(height: 12),
                                         Text(
                                           t.recording_saving,
                                           style: TextStyle(
                                             fontFamily: 'Merriweather',
                                             fontSize: 13,
-                                            color: EuphireColors.frostWhite.withValues(alpha: 0.7),
+                                            color: EuphireColors.frostWhite
+                                                .withValues(alpha: 0.7),
                                           ),
                                         ),
                                       ],
@@ -1232,10 +1374,7 @@ class _InterruptionBanner extends StatelessWidget {
   final bool resuming;
   final Future<void> Function() onResume;
 
-  const _InterruptionBanner({
-    required this.resuming,
-    required this.onResume,
-  });
+  const _InterruptionBanner({required this.resuming, required this.onResume});
 
   @override
   Widget build(BuildContext context) {
@@ -1252,8 +1391,11 @@ class _InterruptionBanner extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.phone_paused_rounded,
-                  color: EuphireColors.ember, size: 28),
+              const Icon(
+                Icons.phone_paused_rounded,
+                color: EuphireColors.ember,
+                size: 28,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -1291,7 +1433,10 @@ class _InterruptionBanner extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: EuphireColors.ember,
                 foregroundColor: EuphireColors.frostWhite,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -1403,9 +1548,11 @@ class _CircleButton extends StatelessWidget {
           shape: BoxShape.circle,
           border: isPrimary ? null : Border.all(color: color, width: 2),
         ),
-        child: Icon(icon,
-            color: isPrimary ? EuphireColors.frostWhite : color,
-            size: isPrimary ? 40 : 32),
+        child: Icon(
+          icon,
+          color: isPrimary ? EuphireColors.frostWhite : color,
+          size: isPrimary ? 40 : 32,
+        ),
       ),
     );
   }
@@ -1435,225 +1582,242 @@ class _InstructionsBlock extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
           child: SingleChildScrollView(
             child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle
-              Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 28),
-
-              // Info icon — subtle white, not attention-grabbing
-              Container(
-                width: 64, height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: EuphireColors.frostWhite.withValues(alpha: 0.08),
-                  border: Border.all(
-                    color: EuphireColors.frostWhite.withValues(alpha: 0.1),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.info_outline_rounded,
-                  color: EuphireColors.frostWhite,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Title — Merriweather italic, like logout sheet
-              Text(
-                t.recording_instructions_title,
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontFamily: 'Merriweather',
-                  fontStyle: FontStyle.italic,
-                  color: EuphireColors.frostWhite,
-                  fontSize: 20,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-
-              // Subtitle — explains why these tips matter
-              Text(
-                t.recording_instructions_subtitle,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: EuphireColors.mist,
-                  height: 1.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-
-              // Tips list
-              for (int i = 0; i < items.length; i++) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 7, right: 12),
-                        child: Container(
-                          width: 6, height: 6,
-                          decoration: const BoxDecoration(
-                            color: EuphireColors.ember,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          items[i],
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: EuphireColors.frostWhite.withValues(alpha: 0.85),
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              // ── Live Activities info card ───────────────────────
-              // Only show when the feature is disabled — once enabled
-              // from here or from Settings, this card disappears.
-              if (!settings.liveActivitiesEnabled) ...[
-                const SizedBox(height: 20),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: EuphireColors.ember.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // Info icon — subtle white, not attention-grabbing
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: EuphireColors.frostWhite.withValues(alpha: 0.08),
                     border: Border.all(
-                      color: EuphireColors.ember.withValues(alpha: 0.2),
+                      color: EuphireColors.frostWhite.withValues(alpha: 0.1),
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.stay_current_portrait_outlined,
-                            color: EuphireColors.ember,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              t.live_activity_info_title,
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                color: EuphireColors.frostWhite,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        t.live_activity_info_body,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: EuphireColors.mist,
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            final la = ref.read(liveActivityServiceProvider);
-                            final systemEnabled = await la.isSystemEnabled();
-                            if (!systemEnabled && context.mounted) {
-                              final openSettings = await showEuphireBottomSheet<bool>(
-                                context: context,
-                                builder: (ctx) => EuphireActionSheet(
-                                  header: t.live_activity_permission_title,
-                                  body: t.live_activity_permission_body,
-                                  primary: EuphireSheetAction(
-                                    label: t.live_activity_permission_open_settings,
-                                    onPressed: () => Navigator.of(ctx).pop(true),
-                                  ),
-                                  secondary: EuphireSheetAction(
-                                    label: t.live_activity_permission_cancel,
-                                    onPressed: () => Navigator.of(ctx).pop(false),
-                                  ),
-                                ),
-                              );
-                              if (openSettings == true) {
-                                await la.openSystemSettings();
-                              }
-                              return;
-                            }
-                            ref.read(appSettingsProvider.notifier)
-                                .toggleLiveActivities(true);
-                            if (context.mounted) Navigator.of(context).pop();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: EuphireColors.ember,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          ),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              t.live_activity_info_enable,
-                              style: const TextStyle(
-                                fontFamily: 'Montserrat',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: const Icon(
+                    Icons.info_outline_rounded,
+                    color: EuphireColors.frostWhite,
+                    size: 30,
                   ),
                 ),
-              ],
+                const SizedBox(height: 20),
 
-              const SizedBox(height: 24),
+                // Title — Merriweather italic, like logout sheet
+                Text(
+                  t.recording_instructions_title,
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontFamily: 'Merriweather',
+                    fontStyle: FontStyle.italic,
+                    color: EuphireColors.frostWhite,
+                    fontSize: 20,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
 
-              // Dismiss button
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: EuphireColors.frostWhite.withValues(alpha: 0.1),
-                    foregroundColor: EuphireColors.frostWhite,
-                    shape: RoundedRectangleBorder(
+                // Subtitle — explains why these tips matter
+                Text(
+                  t.recording_instructions_subtitle,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: EuphireColors.mist,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+
+                // Tips list
+                for (int i = 0; i < items.length; i++) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 7, right: 12),
+                          child: Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: EuphireColors.ember,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            items[i],
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: EuphireColors.frostWhite.withValues(
+                                alpha: 0.85,
+                              ),
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // ── Live Activities info card ───────────────────────
+                // Only show when the feature is disabled — once enabled
+                // from here or from Settings, this card disappears.
+                if (!settings.liveActivitiesEnabled) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: EuphireColors.ember.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: EuphireColors.ember.withValues(alpha: 0.2),
+                      ),
                     ),
-                    elevation: 0,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.stay_current_portrait_outlined,
+                              color: EuphireColors.ember,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                t.live_activity_info_title,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  color: EuphireColors.frostWhite,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          t.live_activity_info_body,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: EuphireColors.mist,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final la = ref.read(liveActivityServiceProvider);
+                              final systemEnabled = await la.isSystemEnabled();
+                              if (!systemEnabled && context.mounted) {
+                                final openSettings =
+                                    await showEuphireBottomSheet<bool>(
+                                      context: context,
+                                      builder: (ctx) => EuphireActionSheet(
+                                        header:
+                                            t.live_activity_permission_title,
+                                        body: t.live_activity_permission_body,
+                                        primary: EuphireSheetAction(
+                                          label: t
+                                              .live_activity_permission_open_settings,
+                                          onPressed: () =>
+                                              Navigator.of(ctx).pop(true),
+                                        ),
+                                        secondary: EuphireSheetAction(
+                                          label:
+                                              t.live_activity_permission_cancel,
+                                          onPressed: () =>
+                                              Navigator.of(ctx).pop(false),
+                                        ),
+                                      ),
+                                    );
+                                if (openSettings == true) {
+                                  await la.openSystemSettings();
+                                }
+                                return;
+                              }
+                              ref
+                                  .read(appSettingsProvider.notifier)
+                                  .toggleLiveActivities(true);
+                              if (context.mounted) Navigator.of(context).pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: EuphireColors.ember,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                            ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                t.live_activity_info_enable,
+                                style: const TextStyle(
+                                  fontFamily: 'Montserrat',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Text(
-                    t.common_understand,
-                    style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
+                ],
+
+                const SizedBox(height: 24),
+
+                // Dismiss button
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: EuphireColors.frostWhite.withValues(
+                        alpha: 0.1,
+                      ),
+                      foregroundColor: EuphireColors.frostWhite,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      t.common_understand,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
         ),
       ),
@@ -1704,10 +1868,9 @@ class _WebRecordingFallback extends StatelessWidget {
                   Text(
                     t.recording_ios_only_title,
                     textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineMedium
-                        ?.copyWith(color: EuphireColors.frostWhite),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: EuphireColors.frostWhite,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -1715,10 +1878,9 @@ class _WebRecordingFallback extends StatelessWidget {
                     '${t.recording_ios_only_body_part2}'
                     '${t.recording_ios_only_body_part3}',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.copyWith(color: EuphireColors.frostWhite.withValues(alpha: 0.85)),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: EuphireColors.frostWhite.withValues(alpha: 0.85),
+                    ),
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(

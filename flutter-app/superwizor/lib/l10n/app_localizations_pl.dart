@@ -2805,4 +2805,38 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get appLock_reason =>
       'Uwierzytelnij się, aby uzyskać dostęp do Superwizora';
+
+  @override
+  String recording_reminder_toast(String duration) {
+    return 'Nagrywanie wciąż trwa — $duration';
+  }
+
+  @override
+  String recording_autopause_remaining(String time) {
+    return 'Auto-pauza za $time';
+  }
+
+  @override
+  String get settings_recording_section => 'Nagrywanie';
+
+  @override
+  String get settings_recording_autopause => 'Automatyczna pauza';
+
+  @override
+  String settings_recording_autopause_value(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get settings_recording_reminder => 'Przypomnienie o nagrywaniu';
+
+  @override
+  String get settings_recording_reminder_off => 'Wyłączone';
+
+  @override
+  String get settings_recording_reminder_sound => 'Dźwięk przypomnienia';
+
+  @override
+  String get settings_recording_reminder_sound_warning =>
+      'Dźwięk zostanie nagrany w sesji';
 }

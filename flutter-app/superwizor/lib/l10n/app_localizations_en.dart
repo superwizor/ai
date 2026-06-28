@@ -2785,4 +2785,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appLock_reason => 'Authenticate to access Superwizor';
+
+  @override
+  String recording_reminder_toast(String duration) {
+    return 'Still recording — $duration';
+  }
+
+  @override
+  String recording_autopause_remaining(String time) {
+    return 'Auto-pause in $time';
+  }
+
+  @override
+  String get settings_recording_section => 'Recording';
+
+  @override
+  String get settings_recording_autopause => 'Auto-pause';
+
+  @override
+  String settings_recording_autopause_value(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get settings_recording_reminder => 'Recording reminder';
+
+  @override
+  String get settings_recording_reminder_off => 'Off';
+
+  @override
+  String get settings_recording_reminder_sound => 'Reminder sound';
+
+  @override
+  String get settings_recording_reminder_sound_warning =>
+      'The sound will be captured in the session';
 }

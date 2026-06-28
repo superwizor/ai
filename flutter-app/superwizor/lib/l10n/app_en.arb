@@ -1168,5 +1168,35 @@
   "appLock_title": "App locked",
   "appLock_subtitle": "Unlock to access your records",
   "appLock_unlock": "Unlock",
-  "appLock_reason": "Authenticate to access Superwizor"
+  "appLock_reason": "Authenticate to access Superwizor",
+  "recording_reminder_toast": "Still recording — {duration}",
+  "@recording_reminder_toast": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "recording_autopause_remaining": "Auto-pause in {time}",
+  "@recording_autopause_remaining": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "settings_recording_section": "Recording",
+  "settings_recording_autopause": "Auto-pause",
+  "settings_recording_autopause_value": "{minutes} min",
+  "@settings_recording_autopause_value": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "settings_recording_reminder": "Recording reminder",
+  "settings_recording_reminder_off": "Off",
+  "settings_recording_reminder_sound": "Reminder sound",
+  "settings_recording_reminder_sound_warning": "The sound will be captured in the session"
 }
