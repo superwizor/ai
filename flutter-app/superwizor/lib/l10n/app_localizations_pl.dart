@@ -368,6 +368,10 @@ class AppLocalizationsPl extends AppLocalizations {
       'Do wideokonferencji (np. Google Meet, Zoom) używaj zawsze dodatkowego urządzenia do nagrywania.';
 
   @override
+  String get recording_instruction_5 =>
+      'Nagrywanie zatrzyma się automatycznie po ustawionym czasie, a co jakiś czas dostaniesz przypomnienie (z opcjonalnym dźwiękiem) – oba dostosujesz w Ustawieniach → Nagrywanie.';
+
+  @override
   String get recording_status_initializing => 'Rozpoczynam nagrywanie…';
 
   @override

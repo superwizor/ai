@@ -740,6 +740,12 @@ abstract class AppLocalizations {
   /// **'Do wideokonferencji (np. Google Meet, Zoom) używaj zawsze dodatkowego urządzenia do nagrywania.'**
   String get recording_instruction_4;
 
+  /// No description provided for @recording_instruction_5.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nagrywanie zatrzyma się automatycznie po ustawionym czasie, a co jakiś czas dostaniesz przypomnienie (z opcjonalnym dźwiękiem) – oba dostosujesz w Ustawieniach → Nagrywanie.'**
+  String get recording_instruction_5;
+
   /// No description provided for @recording_status_initializing.
   ///
   /// In pl, this message translates to:

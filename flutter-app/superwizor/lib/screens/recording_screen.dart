@@ -1240,38 +1240,6 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                                         );
                                       },
                                     ),
-                                    // Auto-pause countdown — centered, under "Sesja #".
-                                    if (_recState == RecordingState.recording)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 10),
-                                        child: Consumer(
-                                          builder: (context, ref, _) {
-                                            final mins = ref
-                                                .watch(appSettingsProvider)
-                                                .autoPauseMinutes;
-                                            final remaining =
-                                                Duration(minutes: mins) -
-                                                _displayDuration;
-                                            if (remaining <= Duration.zero) {
-                                              return const SizedBox.shrink();
-                                            }
-                                            return Text(
-                                              AppLocalizations.of(
-                                                context,
-                                              ).recording_autopause_remaining(
-                                                _formatDuration(remaining),
-                                              ),
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                fontFamily: 'RobotoMono',
-                                                fontSize: 13,
-                                                color: EuphireColors.frostWhite
-                                                    .withValues(alpha: 0.6),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
                                   ],
                                 ),
                               ),
@@ -1315,6 +1283,41 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  // Auto-pause countdown — centered, just above
+                                  // the "Zakończenie nagrywania sesji" button.
+                                  if (_recState == RecordingState.recording)
+                                    Consumer(
+                                      builder: (context, ref, _) {
+                                        final mins = ref
+                                            .watch(appSettingsProvider)
+                                            .autoPauseMinutes;
+                                        final remaining =
+                                            Duration(minutes: mins) -
+                                            _displayDuration;
+                                        if (remaining <= Duration.zero) {
+                                          return const SizedBox.shrink();
+                                        }
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 16,
+                                          ),
+                                          child: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            ).recording_autopause_remaining(
+                                              _formatDuration(remaining),
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontFamily: 'RobotoMono',
+                                              fontSize: 13,
+                                              color: EuphireColors.frostWhite
+                                                  .withValues(alpha: 0.6),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   _ControlPanel(
                                     state: _recState,
                                     onStart: _start,
@@ -1558,6 +1561,7 @@ class _InstructionsBlock extends ConsumerWidget {
       t.recording_instruction_2,
       t.recording_instruction_3,
       t.recording_instruction_4,
+      t.recording_instruction_5,
     ];
 
     return Container(

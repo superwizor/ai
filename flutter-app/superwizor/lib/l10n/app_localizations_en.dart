@@ -361,6 +361,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'For video conferences (e.g. Google Meet, Zoom), always use a secondary device to record.';
 
   @override
+  String get recording_instruction_5 =>
+      'Recording stops automatically after a set time, and you\'ll get a periodic reminder (with an optional sound) — both adjustable in Settings → Recording.';
+
+  @override
   String get recording_status_initializing => 'Starting recording…';
 
   @override
