@@ -154,7 +154,6 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     }
   }
 
-
   void _goToPage(int page) {
     _pageController.animateToPage(
       page,
@@ -187,24 +186,33 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
             gradient: EuphireColors.backgroundGradient,
           ),
           child: SafeArea(
-            child: Column(
-              children: [
-                _buildAppBar(t),
-                _buildDotIndicator(),
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    physics: const NeverScrollableScrollPhysics(),
-                    onPageChanged: (i) => setState(() => _currentPage = i),
-                    children: [
-                      _buildStep1(t),
-                      _buildStep2(t),
-                      _buildStep3(t),
-                      _buildStep4(t),
-                    ],
-                  ),
+            // Web/desktop: cap the wizard to the same centered column width as
+            // the "Twoje kartoteki" list (home_screen, 760). Self-gating — on
+            // phones (width < 760) the ConstrainedBox is a no-op, so the native
+            // app is unchanged.
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Column(
+                  children: [
+                    _buildAppBar(t),
+                    _buildDotIndicator(),
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        physics: const NeverScrollableScrollPhysics(),
+                        onPageChanged: (i) => setState(() => _currentPage = i),
+                        children: [
+                          _buildStep1(t),
+                          _buildStep2(t),
+                          _buildStep3(t),
+                          _buildStep4(t),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -239,8 +247,8 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               _currentPage == 0
                   ? t.common_cancel
                   : _currentPage == 3
-                      ? t.common_done
-                      : t.common_back,
+                  ? t.common_done
+                  : t.common_back,
               style: TextStyle(
                 fontFamily: 'Montserrat',
                 fontSize: 15,
@@ -274,8 +282,8 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               color: isActive
                   ? EuphireColors.ember
                   : isCompleted
-                      ? EuphireColors.ember.withValues(alpha: 0.5)
-                      : EuphireColors.mist.withValues(alpha: 0.3),
+                  ? EuphireColors.ember.withValues(alpha: 0.5)
+                  : EuphireColors.mist.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(4),
             ),
           );
@@ -341,7 +349,9 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                               style: TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontSize: 13,
-                                color: EuphireColors.mist.withValues(alpha: 0.7),
+                                color: EuphireColors.mist.withValues(
+                                  alpha: 0.7,
+                                ),
                               ),
                             ),
                           ],
@@ -355,7 +365,9 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                   GlassTextField(
                     controller: _firstNameController,
                     label: t.addPatient_first_name_label,
-                    errorText: _duplicateError ? t.addPatient_duplicate_header : null,
+                    errorText: _duplicateError
+                        ? t.addPatient_duplicate_header
+                        : null,
                     autofocus: true,
                     focusNode: _firstNameFocus,
                     textInputAction: TextInputAction.next,
@@ -382,7 +394,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
             ),
           ),
         ),
-        
+
         // ── Sticky Bottom CTA: Dalej ──
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
@@ -460,7 +472,9 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
                               style: TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontSize: 13,
-                                color: EuphireColors.mist.withValues(alpha: 0.7),
+                                color: EuphireColors.mist.withValues(
+                                  alpha: 0.7,
+                                ),
                               ),
                             ),
                           ],
@@ -520,7 +534,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
             ),
           ),
         ),
-        
+
         // ── Sticky Bottom CTA: Dalej ──
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
@@ -539,7 +553,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     );
   }
 
-// ── Step 3: "Dopasuj do Twojej pracy" — Modality + Consent ──
+  // ── Step 3: "Dopasuj do Twojej pracy" — Modality + Consent ──
 
   Widget _buildStep3(AppLocalizations t) {
     final canSave = !_saving && _consentGiven;
@@ -557,130 +571,138 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               controller: _scrollController3,
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-                // ── Header ──
-                Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: EuphireColors.ember.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.tune_rounded,
-                        color: EuphireColors.ember,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            t.addPatient_step2_title,
-                            style: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: EuphireColors.frostWhite,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            t.addPatient_step2_subtitle,
-                            style: TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 13,
-                              color: EuphireColors.mist.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // ── Modality Selection (expanded list) ──
-                FormSectionLabel(text: t.addPatient_modality_label),
-                const SizedBox(height: 12),
-                ...kModalities.map((m) {
-                  final isSelected = m.code == _modalityCode;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: GestureDetector(
-                      onTap: () {
-                        AppHapticFeedback.selectionClick();
-                        setState(() => _modalityCode = m.code);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  // ── Header ──
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? EuphireColors.ember.withValues(alpha: 0.12)
-                              : Colors.white.withValues(alpha: 0.04),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: isSelected
-                                ? EuphireColors.ember.withValues(alpha: 0.6)
-                                : Colors.white.withValues(alpha: 0.08),
-                            width: isSelected ? 1.5 : 1,
-                          ),
+                          color: EuphireColors.ember.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Row(
+                        child: const Icon(
+                          Icons.tune_rounded,
+                          color: EuphireColors.ember,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              m.icon,
-                              size: 20,
-                              color: isSelected
-                                  ? EuphireColors.ember
-                                  : EuphireColors.mist.withValues(alpha: 0.6),
+                            Text(
+                              t.addPatient_step2_title,
+                              style: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: EuphireColors.frostWhite,
+                              ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _modalityDisplayName(context, m.code),
-                                style: TextStyle(
-                                  fontFamily: 'Montserrat',
-                                  fontSize: 15,
-                                  fontWeight:
-                                      isSelected ? FontWeight.w600 : FontWeight.w400,
-                                  color: isSelected
-                                      ? EuphireColors.frostWhite
-                                      : EuphireColors.mist,
+                            const SizedBox(height: 2),
+                            Text(
+                              t.addPatient_step2_subtitle,
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 13,
+                                color: EuphireColors.mist.withValues(
+                                  alpha: 0.7,
                                 ),
                               ),
                             ),
-                            if (isSelected)
-                              const Icon(Icons.check_circle_rounded,
-                                  size: 20, color: EuphireColors.ember),
                           ],
                         ),
                       ),
-                    ),
-                  );
-                }),
-                const SizedBox(height: 20),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
 
-                // ── Consent Checkbox ──
-                ConsentCheckbox(
-                  value: _consentGiven,
-                  onChanged: (v) => setState(() => _consentGiven = v),
-                  labelText: t.addPatient_consent_label,
-                  linkLabel: t.addPatient_consent_link_label,
-                  onLinkTap: _openDpa,
-                ),
-                const SizedBox(height: 24),
-              ],
+                  // ── Modality Selection (expanded list) ──
+                  FormSectionLabel(text: t.addPatient_modality_label),
+                  const SizedBox(height: 12),
+                  ...kModalities.map((m) {
+                    final isSelected = m.code == _modalityCode;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: GestureDetector(
+                        onTap: () {
+                          AppHapticFeedback.selectionClick();
+                          setState(() => _modalityCode = m.code);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? EuphireColors.ember.withValues(alpha: 0.12)
+                                : Colors.white.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isSelected
+                                  ? EuphireColors.ember.withValues(alpha: 0.6)
+                                  : Colors.white.withValues(alpha: 0.08),
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                m.icon,
+                                size: 20,
+                                color: isSelected
+                                    ? EuphireColors.ember
+                                    : EuphireColors.mist.withValues(alpha: 0.6),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _modalityDisplayName(context, m.code),
+                                  style: TextStyle(
+                                    fontFamily: 'Montserrat',
+                                    fontSize: 15,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                    color: isSelected
+                                        ? EuphireColors.frostWhite
+                                        : EuphireColors.mist,
+                                  ),
+                                ),
+                              ),
+                              if (isSelected)
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 20,
+                                  color: EuphireColors.ember,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 20),
+
+                  // ── Consent Checkbox ──
+                  ConsentCheckbox(
+                    value: _consentGiven,
+                    onChanged: (v) => setState(() => _consentGiven = v),
+                    labelText: t.addPatient_consent_label,
+                    linkLabel: t.addPatient_consent_link_label,
+                    onLinkTap: _openDpa,
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
-          ),
           ),
         ),
 
@@ -722,181 +744,196 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
               controller: _scrollController3,
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
-              children: [
-                const SizedBox(height: 24),
+                children: [
+                  const SizedBox(height: 24),
 
-                // ── Live preview avatar ──
-                Container(
-                  width: 88,
-                  height: 88,
-                  decoration: BoxDecoration(
-                    color: AvatarColors.fromIndex(_selectedColorIndex),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AvatarColors.fromIndex(_selectedColorIndex)
-                            .withValues(alpha: 0.4),
-                        blurRadius: 24,
-                        spreadRadius: 2,
+                  // ── Live preview avatar ──
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      color: AvatarColors.fromIndex(_selectedColorIndex),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AvatarColors.fromIndex(
+                            _selectedColorIndex,
+                          ).withValues(alpha: 0.4),
+                          blurRadius: 24,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      _avatarPreviewLabel,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: EuphireColors.frostWhite,
                       ),
-                    ],
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    _avatarPreviewLabel,
-                    style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: EuphireColors.frostWhite,
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                // ── Title ──
-                Text(
-                  t.addPatient_customize_label_title,
-                  style: const TextStyle(
-                    fontFamily: 'Merriweather',
-                    fontStyle: FontStyle.italic,
-                    fontSize: 20,
-                    color: EuphireColors.frostWhite,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  t.addPatient_alias_instruction,
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 13,
-                    color: EuphireColors.mist.withValues(alpha: 0.6),
-                    height: 1.4,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 28),
-
-                // ── Label input ──
-                SizedBox(
-                  width: 160,
-                  child: TextField(
-                    controller: _avatarLabelController,
+                  // ── Title ──
+                  Text(
+                    t.addPatient_customize_label_title,
+                    style: const TextStyle(
+                      fontFamily: 'Merriweather',
+                      fontStyle: FontStyle.italic,
+                      fontSize: 20,
+                      color: EuphireColors.frostWhite,
+                    ),
                     textAlign: TextAlign.center,
-                    maxLength: null,
-                    inputFormatters: [_GraphemeClusterLengthFormatter(2)],
-                    onChanged: (_) => setState(() {}),
-                    style: const TextStyle(
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    t.addPatient_alias_instruction,
+                    style: TextStyle(
                       fontFamily: 'Montserrat',
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: EuphireColors.frostWhite,
-                      letterSpacing: 3,
+                      fontSize: 13,
+                      color: EuphireColors.mist.withValues(alpha: 0.6),
+                      height: 1.4,
                     ),
-                    decoration: InputDecoration(
-                      hintText: _defaultInitials,
-                      hintStyle: TextStyle(
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 28),
+
+                  // ── Label input ──
+                  SizedBox(
+                    width: 160,
+                    child: TextField(
+                      controller: _avatarLabelController,
+                      textAlign: TextAlign.center,
+                      maxLength: null,
+                      inputFormatters: [_GraphemeClusterLengthFormatter(2)],
+                      onChanged: (_) => setState(() {}),
+                      style: const TextStyle(
                         fontFamily: 'Montserrat',
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
+                        color: EuphireColors.frostWhite,
                         letterSpacing: 3,
-                        color: EuphireColors.mist.withValues(alpha: 0.25),
                       ),
-                      counterText: '',
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.06),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide:
-                            BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                      decoration: InputDecoration(
+                        hintText: _defaultInitials,
+                        hintStyle: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 3,
+                          color: EuphireColors.mist.withValues(alpha: 0.25),
+                        ),
+                        counterText: '',
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.06),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: EuphireColors.ember,
+                            width: 1.5,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide:
-                            BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide:
-                            const BorderSide(color: EuphireColors.ember, width: 1.5),
-                      ),
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  t.addPatient_avatar_format_hint,
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 11,
-                    color: EuphireColors.mist.withValues(alpha: 0.4),
+                  const SizedBox(height: 6),
+                  Text(
+                    t.addPatient_avatar_format_hint,
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 11,
+                      color: EuphireColors.mist.withValues(alpha: 0.4),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 28),
+                  const SizedBox(height: 28),
 
-                // ── Color grid ──
-                Text(
-                  t.addPatient_background_color,
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1.5,
-                    color: EuphireColors.mist.withValues(alpha: 0.5),
+                  // ── Color grid ──
+                  Text(
+                    t.addPatient_background_color,
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 1.5,
+                      color: EuphireColors.mist.withValues(alpha: 0.5),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 10,
-                  runSpacing: 12,
-                  children: List.generate(AvatarColors.palette.length, (i) {
-                    final isSelected = i == _selectedColorIndex;
-                    return GestureDetector(
-                      onTap: () {
-                        AppHapticFeedback.selectionClick();
-                        setState(() => _selectedColorIndex = i);
-                        _saveAvatarConfig();
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
-                        width: isSelected ? 44 : 38,
-                        height: isSelected ? 44 : 38,
-                        decoration: BoxDecoration(
-                          color: AvatarColors.palette[i],
-                          shape: BoxShape.circle,
-                          border: isSelected
-                              ? Border.all(color: EuphireColors.ember, width: 2.5)
-                              : Border.all(
-                                  color: Colors.white.withValues(alpha: 0.1),
-                                  width: 1),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color:
-                                        EuphireColors.ember.withValues(alpha: 0.3),
-                                    blurRadius: 12,
-                                    spreadRadius: 1,
+                  const SizedBox(height: 14),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 10,
+                    runSpacing: 12,
+                    children: List.generate(AvatarColors.palette.length, (i) {
+                      final isSelected = i == _selectedColorIndex;
+                      return GestureDetector(
+                        onTap: () {
+                          AppHapticFeedback.selectionClick();
+                          setState(() => _selectedColorIndex = i);
+                          _saveAvatarConfig();
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          width: isSelected ? 44 : 38,
+                          height: isSelected ? 44 : 38,
+                          decoration: BoxDecoration(
+                            color: AvatarColors.palette[i],
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? Border.all(
+                                    color: EuphireColors.ember,
+                                    width: 2.5,
                                   )
-                                ]
+                                : Border.all(
+                                    color: Colors.white.withValues(alpha: 0.1),
+                                    width: 1,
+                                  ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: EuphireColors.ember.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      blurRadius: 12,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check,
+                                  size: 18,
+                                  color: EuphireColors.frostWhite,
+                                )
                               : null,
                         ),
-                        child: isSelected
-                            ? const Icon(Icons.check,
-                                size: 18, color: EuphireColors.frostWhite)
-                            : null,
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 24),
-              ],
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
-          ),
           ),
         ),
 
@@ -942,10 +979,12 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
 
   void _openDpa() {
     final title = AppLocalizations.of(context).settings_dpa;
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) =>
-          LegalMarkdownScreen(assetPath: _kDpaAssetPath, title: title),
-    ));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            LegalMarkdownScreen(assetPath: _kDpaAssetPath, title: title),
+      ),
+    );
   }
 
   void _showDiscardDialog(AppLocalizations t) {
@@ -996,8 +1035,7 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
     final existingPatients =
         ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? const [];
     final isDuplicate = existingPatients.any((p) {
-      final existingName =
-          '${p.firstName} ${p.lastName}'.trim().toLowerCase();
+      final existingName = '${p.firstName} ${p.lastName}'.trim().toLowerCase();
       return existingName == '$firstName $lastName'.trim().toLowerCase();
     });
     if (isDuplicate) {
@@ -1018,18 +1056,22 @@ class _AddPatientScreenState extends ConsumerState<AddPatientScreen> {
         email: _emailController.text.trim(),
       );
 
-      final list = ref.read(patientsProvider).whenOrNull(data: (d) => d) ??
-          const [];
-      final created = list
+      final list =
+          ref.read(patientsProvider).whenOrNull(data: (d) => d) ?? const [];
+      final created =
+          list
               .where(
-                (p) => '${p.firstName} ${p.lastName}'.trim() ==
+                (p) =>
+                    '${p.firstName} ${p.lastName}'.trim() ==
                     '$firstName $lastName'.trim(),
               )
               .firstOrNull ??
           (list.isNotEmpty ? list.first : null);
 
       if (created != null) {
-        await ref.read(consentServiceProvider).recordConsent(
+        await ref
+            .read(consentServiceProvider)
+            .recordConsent(
               patientFileId: created.id,
               documentVersion: _kCurrentDpaVersion,
             );
