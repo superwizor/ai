@@ -12,6 +12,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -143,6 +144,29 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
 
   Future<void> _openUrl(String url) async {
     await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
+  /// iOS-Timer-style wheel picker (10-min steps) in a bottom sheet. Persists
+  /// the chosen value via [onPicked] when it differs from [current].
+  Future<void> _openWheelPicker({
+    required String title,
+    required List<int> values,
+    required int current,
+    required String Function(int) labelFor,
+    required void Function(int) onPicked,
+  }) async {
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _WheelPickerSheet(
+        title: title,
+        values: values,
+        current: current,
+        labelFor: labelFor,
+      ),
+    );
+    if (picked != null && picked != current) onPicked(picked);
   }
 
   @override
@@ -571,24 +595,30 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         _SectionLabel(t.settings_recording_section),
                         _SettingsCard(
                           children: [
-                            _CycleRow(
+                            _PickerRow(
                               icon: Icons.timer_outlined,
                               title: t.settings_recording_autopause,
                               subtitle: t.settings_recording_autopause_value(
                                 settings.autoPauseMinutes,
                               ),
-                              onTap: () {
-                                const opts = [60, 90, 120, 130];
-                                final i = opts.indexOf(
-                                  settings.autoPauseMinutes,
-                                );
-                                settingsNotifier.setAutoPauseMinutes(
-                                  opts[(i + 1) % opts.length],
-                                );
-                              },
+                              onTap: () => _openWheelPicker(
+                                title: t.settings_recording_autopause,
+                                values: [
+                                  for (
+                                    int m = kAutoPauseMinMinutes;
+                                    m <= kAutoPauseMaxMinutes;
+                                    m += 10
+                                  )
+                                    m,
+                                ],
+                                current: settings.autoPauseMinutes,
+                                labelFor: (m) =>
+                                    t.settings_recording_autopause_value(m),
+                                onPicked: settingsNotifier.setAutoPauseMinutes,
+                              ),
                             ),
                             _Divider(),
-                            _CycleRow(
+                            _PickerRow(
                               icon: Icons.notifications_active_outlined,
                               title: t.settings_recording_reminder,
                               subtitle: settings.reminderIntervalMinutes == 0
@@ -596,15 +626,16 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                   : t.settings_recording_autopause_value(
                                       settings.reminderIntervalMinutes,
                                     ),
-                              onTap: () {
-                                const opts = [0, 15, 30, 60];
-                                final i = opts.indexOf(
-                                  settings.reminderIntervalMinutes,
-                                );
-                                settingsNotifier.setReminderIntervalMinutes(
-                                  opts[(i + 1) % opts.length],
-                                );
-                              },
+                              onTap: () => _openWheelPicker(
+                                title: t.settings_recording_reminder,
+                                values: [for (int m = 0; m <= 120; m += 10) m],
+                                current: settings.reminderIntervalMinutes,
+                                labelFor: (m) => m == 0
+                                    ? t.settings_recording_reminder_off
+                                    : t.settings_recording_autopause_value(m),
+                                onPicked:
+                                    settingsNotifier.setReminderIntervalMinutes,
+                              ),
                             ),
                             _Divider(),
                             _ToggleRow(
@@ -950,15 +981,15 @@ class _SettingsRow extends StatelessWidget {
   }
 }
 
-/// Tappable settings row that shows a value (in [subtitle]) and cycles it via
-/// [onTap]. Used for the integer recording controls (auto-pause, reminder).
-class _CycleRow extends StatelessWidget {
+/// Tappable settings row that shows the current value in [subtitle] and opens
+/// a picker via [onTap]. Used for the recording controls (auto-pause, reminder).
+class _PickerRow extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
 
-  const _CycleRow({
+  const _PickerRow({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -1004,6 +1035,123 @@ class _CycleRow extends StatelessWidget {
               Icons.chevron_right_rounded,
               color: EuphireColors.mist,
               size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// iOS-Timer-style wheel picker over a list of integer [values]. Returns the
+/// selected value via Navigator.pop on "Zapisz". Visual styling matches the
+/// report-preferences picker sheets (drag handle + evergreen panel).
+class _WheelPickerSheet extends StatefulWidget {
+  final String title;
+  final List<int> values;
+  final int current;
+  final String Function(int) labelFor;
+
+  const _WheelPickerSheet({
+    required this.title,
+    required this.values,
+    required this.current,
+    required this.labelFor,
+  });
+
+  @override
+  State<_WheelPickerSheet> createState() => _WheelPickerSheetState();
+}
+
+class _WheelPickerSheetState extends State<_WheelPickerSheet> {
+  late int _index;
+
+  @override
+  void initState() {
+    super.initState();
+    final i = widget.values.indexOf(widget.current);
+    _index = i < 0 ? 0 : i;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+    return Container(
+      decoration: const BoxDecoration(
+        color: EuphireColors.evergreen,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(widget.title, style: theme.textTheme.headlineMedium),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 180,
+              child: CupertinoPicker(
+                scrollController: FixedExtentScrollController(
+                  initialItem: _index,
+                ),
+                itemExtent: 38,
+                magnification: 1.1,
+                squeeze: 1.1,
+                useMagnifier: true,
+                selectionOverlay: CupertinoPickerDefaultSelectionOverlay(
+                  background: EuphireColors.ember.withValues(alpha: 0.12),
+                ),
+                onSelectedItemChanged: (i) => _index = i,
+                children: widget.values
+                    .map(
+                      (v) => Center(
+                        child: Text(
+                          widget.labelFor(v),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: EuphireColors.frostWhite,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: EuphireColors.ember,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () =>
+                    Navigator.of(context).pop(widget.values[_index]),
+                child: Text(
+                  t.report_prefs_save,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
             ),
           ],
         ),

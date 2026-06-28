@@ -44,9 +44,9 @@ class RecordingRecoveryService {
     required RecordingManifestStore store,
     required UploadQueueRunner runner,
     RecordingService? recordingService,
-  })  : _store = store,
-        _runner = runner,
-        _recordingService = recordingService;
+  }) : _store = store,
+       _runner = runner,
+       _recordingService = recordingService;
 
   final RecordingManifestStore _store;
   final UploadQueueRunner _runner;
@@ -66,7 +66,7 @@ class RecordingRecoveryService {
   static const int flacMinBytesPerSecond = 9000;
 
   /// Matches kMaxSessionDuration (recording_screen.dart D5 cap).
-  static const Duration maxEstimatedDuration = Duration(minutes: 130);
+  static const Duration maxEstimatedDuration = Duration(minutes: 180);
 
   /// Returns recoverable orphans for [therapistId], oldest first.
   ///
@@ -80,8 +80,7 @@ class RecordingRecoveryService {
     final manifests = await _store.scanAll();
     if (manifests.isEmpty) return const [];
 
-    final queuedIds =
-        _runner.snapshotNow().map((u) => u.localId).toSet();
+    final queuedIds = _runner.snapshotNow().map((u) => u.localId).toSet();
     final activeId = _recordingService?.activeSessionId;
     final root = await _store.sessionsRoot();
 
@@ -96,7 +95,9 @@ class RecordingRecoveryService {
         continue;
       }
       if (m.therapistId != therapistId) {
-        debugPrint('[recovery] ${m.sessionId}: other therapist — left for sweep');
+        debugPrint(
+          '[recovery] ${m.sessionId}: other therapist — left for sweep',
+        );
         continue;
       }
 
@@ -118,19 +119,22 @@ class RecordingRecoveryService {
         continue;
       }
 
-      out.add(RecoverableRecording(
-        manifest: m,
-        flacPath: flacPath,
-        sizeBytes: size,
-        estimatedDuration: _estimateDuration(
+      out.add(
+        RecoverableRecording(
+          manifest: m,
+          flacPath: flacPath,
           sizeBytes: size,
-          startedAtUtc: m.startedAtUtc,
-          lastWriteUtc: mtime,
+          estimatedDuration: _estimateDuration(
+            sizeBytes: size,
+            startedAtUtc: m.startedAtUtc,
+            lastWriteUtc: mtime,
+          ),
         ),
-      ));
+      );
     }
-    out.sort((a, b) =>
-        a.manifest.startedAtUtc.compareTo(b.manifest.startedAtUtc));
+    out.sort(
+      (a, b) => a.manifest.startedAtUtc.compareTo(b.manifest.startedAtUtc),
+    );
     return out;
   }
 
@@ -149,7 +153,8 @@ class RecordingRecoveryService {
     if (lastWriteUtc != null && lastWriteUtc.isAfter(startedAtUtc)) {
       final wallClock = lastWriteUtc.difference(startedAtUtc);
       est = Duration(
-          seconds: math.min(wallClock.inSeconds, sizeBound.inSeconds));
+        seconds: math.min(wallClock.inSeconds, sizeBound.inSeconds),
+      );
     }
     if (est > maxEstimatedDuration) est = maxEstimatedDuration;
     return est;
@@ -211,16 +216,17 @@ class RecordingRecoveryService {
   Future<void> sweep() async {
     final manifests = await _store.scanAll();
     if (manifests.isEmpty) return;
-    final queuedIds =
-        _runner.snapshotNow().map((u) => u.localId).toSet();
+    final queuedIds = _runner.snapshotNow().map((u) => u.localId).toSet();
     final activeId = _recordingService?.activeSessionId;
     final cutoff = DateTime.now().toUtc().subtract(maxOrphanAge);
     for (final m in manifests) {
       if (queuedIds.contains(m.sessionId)) continue;
       if (m.sessionId == activeId) continue;
       if (m.startedAtUtc.isBefore(cutoff)) {
-        debugPrint('[recovery] sweeping expired orphan ${m.sessionId} '
-            '(started ${m.startedAtUtc})');
+        debugPrint(
+          '[recovery] sweeping expired orphan ${m.sessionId} '
+          '(started ${m.startedAtUtc})',
+        );
         await _store.deleteSessionDir(m.sessionId);
       }
     }

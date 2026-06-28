@@ -58,7 +58,7 @@ import '../widgets/minimized_recording_bar.dart';
 // ~5 min per pipeline test cycle. The < 5 min "Nagranie zbyt krótkie"
 // sheet behavior is exercised separately in widget tests.
 const Duration kMinSessionDuration = Duration(seconds: 30);
-const Duration kMaxSessionDuration = Duration(minutes: 130); // D5
+const Duration kMaxSessionDuration = Duration(minutes: 180); // D5 hard ceiling
 
 class RecordingScreen extends ConsumerStatefulWidget {
   final String patientFileId;

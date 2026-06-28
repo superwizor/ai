@@ -5,7 +5,7 @@ import '../utils/haptics.dart';
 /// Hard ceiling for auto-pause (= the D5 session cap). The configurable value
 /// is clamped to [kAutoPauseMinMinutes, kAutoPauseMaxMinutes].
 const int kAutoPauseMinMinutes = 30;
-const int kAutoPauseMaxMinutes = 130;
+const int kAutoPauseMaxMinutes = 180;
 
 class AppSettings {
   final bool soundEnabled;
