@@ -124,10 +124,15 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
       isScrollControlled: true,
       builder: (_) => _LogoutBottomSheet(),
     );
-    if (ok != true) return;
+    if (ok != true || !mounted) return;
+    // Capture the root navigator BEFORE the async gap, then pop the WHOLE
+    // pushed stack back to the auth gate (which now renders LoginScreen). A
+    // single pop() only removed this menu, leaving any deeper authenticated
+    // screens (e.g. opened from the preference banner) on top of LoginScreen
+    // with a null user → blank screen. Same fix as delete_account_screen.
+    final nav = Navigator.of(context, rootNavigator: true);
     await FirebaseAuth.instance.signOut();
-    // ignore: use_build_context_synchronously
-    if (context.mounted) Navigator.of(context).pop();
+    nav.popUntil((r) => r.isFirst);
   }
 
   void _openLegal(String baseName, String title) {
