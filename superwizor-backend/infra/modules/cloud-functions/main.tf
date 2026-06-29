@@ -476,6 +476,14 @@ resource "google_cloudfunctions2_function" "stt_watchdog" {
       # stuck merge (rescueStuckMerges → finalizeIfReady). Without this,
       # watchdog-rescued sessions never bill. Matches stt_finalize.
       BILLING_SVC_URL = var.billing_svc_url
+      # Hung-PENDING give-up window: a Chirp op pending this long AND with
+      # a stale metadata.update_time is cancelled + re-submitted (bounded
+      # by maxChunkRetries). Lowered from the 3h code default to 1h after
+      # session 4d18caee sat hung ~1h while update_time was frozen ~56min
+      # — the staleness gate already discriminates a hang from queue-wide
+      # slowness, so 1h recovers far sooner with little false-positive
+      # risk. Pairs with STT_PENDING_STALE_MINUTES (code default 45).
+      STT_PENDING_GIVEUP_HOURS = "1"
     }
 
     secret_environment_variables {
