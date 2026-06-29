@@ -405,9 +405,23 @@ class _DebugSheet extends StatelessWidget {
                                 svc,
                               );
                               messenger.hideCurrentSnackBar();
-                              if (!context.mounted) return;
+                              // The debug sheet's `context` was popped above, so
+                              // it's unmounted — show the result on the root
+                              // navigator instead (otherwise the dialog silently
+                              // never appears).
+                              final rootCtx = navigatorKey.currentContext;
+                              if (rootCtx == null || !rootCtx.mounted) {
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(result),
+                                    backgroundColor: Colors.deepOrange,
+                                    duration: const Duration(seconds: 12),
+                                  ),
+                                );
+                                return;
+                              }
                               await showDialog<void>(
-                                context: context,
+                                context: rootCtx,
                                 builder: (ctx) => AlertDialog(
                                   backgroundColor: const Color(0xFF1A1A2E),
                                   title: const Text(
