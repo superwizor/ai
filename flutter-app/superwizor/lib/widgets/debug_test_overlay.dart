@@ -24,6 +24,8 @@ import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
 import '../screens/debug_pipeline_simulator_screen.dart';
 import '../screens/debug_state_gallery_screen.dart';
+import '../screens/recording_screen.dart';
+import '../models/patient.dart';
 import '../utils/debug_flags.dart';
 import '../utils/haptics.dart';
 import '../providers/services_provider.dart';
@@ -1394,6 +1396,54 @@ class _DebugSheet extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 8),
+                            // REAL recording with the alarm bell injected,
+                            // routed through the live STT pipeline — the
+                            // end-to-end "does the alarm damage transcription?"
+                            // test the in-memory probe can't prove.
+                            _ActionButton(
+                              icon: Icons.mic_external_on,
+                              label: 'Nagrywanie + alarm → transkrypcja',
+                              subtitle:
+                                  'Realne nagranie; dzwonek co 20s; wysyła do PRAWDZIWEJ transkrypcji',
+                              color: Colors.deepOrangeAccent,
+                              onTap: () {
+                                final messenger = ScaffoldMessenger.of(context);
+                                final patients =
+                                    ref.read(patientsProvider).value ??
+                                    const <Patient>[];
+                                final therapistId = ref.read(
+                                  therapistIdProvider,
+                                );
+                                Navigator.pop(context);
+                                if (patients.isEmpty || therapistId == null) {
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Brak pacjenta / nie zalogowano — otwórz najpierw kartotekę z pacjentem',
+                                      ),
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                final p = patients.first;
+                                navigatorKey.currentState?.push(
+                                  MaterialPageRoute(
+                                    builder: (_) => RecordingScreen(
+                                      patientFileId: p.id,
+                                      therapistId: therapistId,
+                                      patientAlias:
+                                          '${p.firstName} ${p.lastName}'.trim(),
+                                      reportLanguage: p.languageCode.isNotEmpty
+                                          ? p.languageCode
+                                          : 'pl-PL',
+                                      debugAlarmStress: true,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 6),
                             _ActionButton(
                               icon: Icons.check_circle_outline,
                               label: 'Pipeline: Happy Path (auto)',

@@ -66,12 +66,21 @@ class RecordingScreen extends ConsumerStatefulWidget {
   final String patientAlias;
   final String reportLanguage;
 
+  /// DEBUG ONLY: when true, the reminder "alarm" (with sound forced on) fires
+  /// every [debugAlarmIntervalSeconds] so a short real recording can be stress-
+  /// tested against the live STT pipeline ("does the alarm damage transcription?").
+  /// Wired from the Symulacje debug menu; default false in all real flows.
+  final bool debugAlarmStress;
+  final int debugAlarmIntervalSeconds;
+
   const RecordingScreen({
     super.key,
     required this.patientFileId,
     required this.therapistId,
     required this.patientAlias,
     required this.reportLanguage,
+    this.debugAlarmStress = false,
+    this.debugAlarmIntervalSeconds = 20,
   });
 
   @override
@@ -90,6 +99,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
   // Number of "still recording" reminder intervals already fired this session,
   // so each interval boundary triggers exactly once.
   int _remindersFired = 0;
+  // DEBUG: alarm-stress fire count (seconds-based), see widget.debugAlarmStress.
+  int _stressAlarmsFired = 0;
   // Guards double-taps on the post-interruption resume button while the
   // capture-verification probe (~1.2 s) runs.
   bool _resuming = false;
@@ -797,6 +808,16 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     setState(() => _displayDuration = d);
 
     final s = ref.read(appSettingsProvider);
+
+    // ── DEBUG alarm-stress: fire the bell (sound forced) every N seconds ──
+    if (widget.debugAlarmStress && d.inSeconds > 0) {
+      final fired = d.inSeconds ~/ widget.debugAlarmIntervalSeconds;
+      if (fired > _stressAlarmsFired) {
+        _stressAlarmsFired = fired;
+        debugPrint('[recording] DEBUG alarm-stress fire #$fired at $d');
+        _fireReminder(s.copyWith(reminderSound: true), d);
+      }
+    }
 
     // ── Periodic "still recording" reminder ──
     final interval = s.reminderIntervalMinutes;
