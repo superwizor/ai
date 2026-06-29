@@ -470,6 +470,24 @@ type TranscriptResult struct {
 //
 // outputPrefix is a `gs://bucket/{sid}/chunk_{i}/` URI; Chirp picks
 // the filename inside it.
+// processingStrategy selects the Chirp BatchRecognize pricing/latency
+// tier from STT_PROCESSING_STRATEGY:
+//
+//   - unset / "dynamic" → DYNAMIC_BATCHING (default): ~$0.003/min, ~5×
+//     cheaper, but NO latency SLA — Chirp runs the job when capacity
+//     frees up, which can mean multi-hour queue hangs during degradation.
+//   - "standard"        → PROCESSING_STRATEGY_UNSPECIFIED: ~$0.016/min,
+//     processed promptly. The escape hatch when Chirp's dynamic queue is
+//     flaky; flip via env without a redeploy.
+//
+// Any unrecognized value falls back to the dynamic default.
+func processingStrategy() speechpb.BatchRecognizeRequest_ProcessingStrategy {
+	if strings.EqualFold(os.Getenv("STT_PROCESSING_STRATEGY"), "standard") {
+		return speechpb.BatchRecognizeRequest_PROCESSING_STRATEGY_UNSPECIFIED
+	}
+	return speechpb.BatchRecognizeRequest_DYNAMIC_BATCHING
+}
+
 func submitBatchRecognize(
 	ctx context.Context,
 	gcsURI string,
@@ -514,7 +532,10 @@ func submitBatchRecognize(
 		// a slower job is just re-checked each tick with no double-charge.
 		// Without this field the request defaults to
 		// PROCESSING_STRATEGY_UNSPECIFIED = the pricier standard-batch rate.
-		ProcessingStrategy: speechpb.BatchRecognizeRequest_DYNAMIC_BATCHING,
+		// Env-tunable via STT_PROCESSING_STRATEGY (default dynamic) so we
+		// can flip to the SLA tier during a Chirp degradation window —
+		// dynamic batching has no latency SLA and can sit hung for hours.
+		ProcessingStrategy: processingStrategy(),
 		Config: &speechpb.RecognitionConfig{
 			DecodingConfig: &speechpb.RecognitionConfig_AutoDecodingConfig{
 				AutoDecodingConfig: &speechpb.AutoDetectDecodingConfig{},

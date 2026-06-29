@@ -400,6 +400,32 @@ func TestIsTerminalStatusCode(t *testing.T) {
 	}
 }
 
+// TestProcessingStrategy pins the env-driven Chirp tier selection:
+// default + unrecognized → dynamic (cheap, no SLA); only "standard"
+// (case-insensitive) flips to the prompt SLA tier.
+func TestProcessingStrategy(t *testing.T) {
+	cases := []struct {
+		env  string
+		want speechpb.BatchRecognizeRequest_ProcessingStrategy
+	}{
+		{"", speechpb.BatchRecognizeRequest_DYNAMIC_BATCHING},
+		{"dynamic", speechpb.BatchRecognizeRequest_DYNAMIC_BATCHING},
+		{"DYNAMIC", speechpb.BatchRecognizeRequest_DYNAMIC_BATCHING},
+		{"garbage", speechpb.BatchRecognizeRequest_DYNAMIC_BATCHING},
+		{"standard", speechpb.BatchRecognizeRequest_PROCESSING_STRATEGY_UNSPECIFIED},
+		{"Standard", speechpb.BatchRecognizeRequest_PROCESSING_STRATEGY_UNSPECIFIED},
+		{"STANDARD", speechpb.BatchRecognizeRequest_PROCESSING_STRATEGY_UNSPECIFIED},
+	}
+	for _, c := range cases {
+		t.Run("env="+c.env, func(t *testing.T) {
+			t.Setenv("STT_PROCESSING_STRATEGY", c.env)
+			if got := processingStrategy(); got != c.want {
+				t.Errorf("processingStrategy() with %q = %v, want %v", c.env, got, c.want)
+			}
+		})
+	}
+}
+
 // TestShouldGiveUpOnPendingOp pins the hung-PENDING trigger. The
 // 12c76823 follow-up: an op pending past the give-up window whose
 // server-side update_time has frozen is "hung" and must be cancelled +
