@@ -57,12 +57,14 @@ class _DebugPipelineSimulatorScreenState
         ? [
             SessionStepperPhase.pending,
             SessionStepperPhase.uploaded,
+            SessionStepperPhase.transcribing,
             SessionStepperPhase.analyzing,
             SessionStepperPhase.failed,
           ]
         : [
             SessionStepperPhase.pending,
             SessionStepperPhase.uploaded,
+            SessionStepperPhase.transcribing,
             SessionStepperPhase.analyzing,
             SessionStepperPhase.done,
           ];
@@ -79,9 +81,10 @@ class _DebugPipelineSimulatorScreenState
   void _startAutoAdvance() {
     // Staggered delays per step to feel realistic:
     //   pending→uploaded: 3s (upload to GCS)
-    //   uploaded→analyzing: 5s (STT worker picks up)
+    //   uploaded→transcribing: 4s (STT worker submits)
+    //   transcribing→analyzing: 5s (Chirp returns, finalize)
     //   analyzing→done/failed: 8s (LLM processing)
-    const delays = [3, 5, 8];
+    const delays = [3, 4, 5, 8];
     _advanceWithDelay(delays, 0);
   }
 
@@ -122,11 +125,9 @@ class _DebugPipelineSimulatorScreenState
 
   void _addLog(String message, String status) {
     setState(() {
-      _log.add(_LogEntry(
-        time: DateTime.now(),
-        message: message,
-        status: status,
-      ));
+      _log.add(
+        _LogEntry(time: DateTime.now(), message: message, status: status),
+      );
     });
   }
 
@@ -135,8 +136,10 @@ class _DebugPipelineSimulatorScreenState
       SessionStepperPhase.pending => 'Oczekiwanie na upload...',
       SessionStepperPhase.uploading => 'Przesyłanie audio na serwer...',
       SessionStepperPhase.uploaded => 'Audio przesłane na serwer (GCS)',
+      SessionStepperPhase.transcribing =>
+        'STT worker → Chirp transkrypcja (batch)',
       SessionStepperPhase.analyzing =>
-        'STT worker → transkrypcja → LLM worker analizuje',
+        'Transkrypcja gotowa → LLM worker analizuje',
       SessionStepperPhase.done => '✅ Raport gotowy — success cascade',
       SessionStepperPhase.failed =>
         '❌ Pipeline error — failure sheet triggered',
@@ -164,8 +167,11 @@ class _DebugPipelineSimulatorScreenState
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios,
-                          color: EuphireColors.frostWhite, size: 20),
+                      icon: const Icon(
+                        Icons.arrow_back_ios,
+                        color: EuphireColors.frostWhite,
+                        size: 20,
+                      ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     const SizedBox(width: 4),
@@ -200,8 +206,11 @@ class _DebugPipelineSimulatorScreenState
                     ),
                     // Reset button
                     IconButton(
-                      icon: const Icon(Icons.replay,
-                          color: Colors.deepOrange, size: 22),
+                      icon: const Icon(
+                        Icons.replay,
+                        color: Colors.deepOrange,
+                        size: 22,
+                      ),
                       onPressed: _reset,
                       tooltip: 'Reset symulacji',
                     ),
@@ -214,18 +223,24 @@ class _DebugPipelineSimulatorScreenState
               // ── Current phase indicator ──
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: _colorForPhase(_phase).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: _colorForPhase(_phase).withValues(alpha: 0.3)),
+                    color: _colorForPhase(_phase).withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(_iconForPhase(_phase),
-                        color: _colorForPhase(_phase), size: 20),
+                    Icon(
+                      _iconForPhase(_phase),
+                      color: _colorForPhase(_phase),
+                      size: 20,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -285,8 +300,9 @@ class _DebugPipelineSimulatorScreenState
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            Colors.deepOrange.withValues(alpha: 0.15),
+                        backgroundColor: Colors.deepOrange.withValues(
+                          alpha: 0.15,
+                        ),
                         foregroundColor: Colors.deepOrange,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -301,16 +317,23 @@ class _DebugPipelineSimulatorScreenState
                 ),
 
               const SizedBox(height: 16),
-              const Divider(color: Colors.white12, height: 1, indent: 16, endIndent: 16),
+              const Divider(
+                color: Colors.white12,
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+              ),
 
               // ── Pipeline log ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: Row(
                   children: [
-                    Icon(Icons.terminal,
-                        size: 14,
-                        color: Colors.deepOrange.withValues(alpha: 0.6)),
+                    Icon(
+                      Icons.terminal,
+                      size: 14,
+                      color: Colors.deepOrange.withValues(alpha: 0.6),
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'PIPELINE LOG',
@@ -388,6 +411,7 @@ class _DebugPipelineSimulatorScreenState
       SessionStepperPhase.pending => Colors.white54,
       SessionStepperPhase.uploading => Colors.blueAccent,
       SessionStepperPhase.uploaded => Colors.cyanAccent,
+      SessionStepperPhase.transcribing => Colors.lightBlueAccent,
       SessionStepperPhase.analyzing => Colors.purpleAccent,
       SessionStepperPhase.done => Colors.greenAccent,
       SessionStepperPhase.failed => Colors.redAccent,
@@ -399,6 +423,7 @@ class _DebugPipelineSimulatorScreenState
       SessionStepperPhase.pending => Icons.hourglass_top,
       SessionStepperPhase.uploading => Icons.cloud_upload,
       SessionStepperPhase.uploaded => Icons.cloud_done,
+      SessionStepperPhase.transcribing => Icons.record_voice_over,
       SessionStepperPhase.analyzing => Icons.auto_awesome,
       SessionStepperPhase.done => Icons.check_circle,
       SessionStepperPhase.failed => Icons.error,

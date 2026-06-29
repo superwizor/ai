@@ -1,12 +1,13 @@
 // EuphireSessionStatusStepper — Etap 4 / Task 4.1
 //
-// Maps Firestore session_states.status → 5-step UI per ADR-IMPL-012:
-//   uploaded   → step 1 done
-//   analyzing  → steps 1+2+3 done (backend SKIPS 'transcribing' in
-//                  Phase 3 — we mark it complete on transition to
-//                  analyzing)
-//   done       → all 5 done
-//   failed     → last step turns destructive (red); no Cascade.
+// Maps Firestore session_states.status → step UI per ADR-IMPL-012:
+//   uploaded     → step 1 done; transcription (step 2) active
+//   transcribing → step 1 done; transcription (step 2) ACTIVE. STT can sit
+//                  here for a while on a slow Chirp batch, so we must NOT
+//                  jump to the AI-analysis step. MERGING maps here too.
+//   analyzing    → steps 1+2 done; AI analysis (step 3) active
+//   done         → all done
+//   failed       → last step turns destructive (red); no Cascade.
 //
 // Listener gating (60s — D4) is handled by the parent view-model
 // (SessionStatusViewModel) — this widget just renders state.
@@ -20,14 +21,27 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/euphire_theme.dart';
 
-enum SessionStepperPhase { pending, uploading, uploaded, analyzing, done, failed }
+enum SessionStepperPhase {
+  pending,
+  uploading,
+  uploaded,
+  transcribing,
+  analyzing,
+  done,
+  failed,
+}
 
 extension SessionStepperPhaseFromStatus on String {
   SessionStepperPhase toStepperPhase() {
     switch (this) {
       case 'uploaded':
         return SessionStepperPhase.uploaded;
+      // TRANSCRIBING + MERGING are the "creating transcript" phase. Keep them
+      // distinct from analyzing so a slow STT batch shows step 2 (transcription)
+      // as ACTIVE — not a misleading "AI is analysing" on step 3.
       case 'transcribing':
+      case 'merging':
+        return SessionStepperPhase.transcribing;
       case 'analyzing':
         return SessionStepperPhase.analyzing;
       case 'done':
@@ -77,11 +91,10 @@ class EuphireSessionStatusStepper extends StatelessWidget {
     // blocked upload sat under "Audio bezpieczne na naszych serwerach"
     // even though the file never reached us.
     final step1Text = switch (phase) {
-        SessionStepperPhase.pending => quotaBlocked
-            ? t.stepper_step1_quota_blocked
-            : t.stepper_step1_queued,
-        SessionStepperPhase.uploading => t.stepper_step1_uploading,
-        _ => t.stepper_step1_uploaded,
+      SessionStepperPhase.pending =>
+        quotaBlocked ? t.stepper_step1_quota_blocked : t.stepper_step1_queued,
+      SessionStepperPhase.uploading => t.stepper_step1_uploading,
+      _ => t.stepper_step1_uploaded,
     };
     final steps = [
       _Step(step1Text, _stateForStep(0), activeStepContent),
@@ -138,6 +151,10 @@ class EuphireSessionStatusStepper extends StatelessWidget {
       // uploading: step 1 is active (PUT in progress), nothing done yet.
       SessionStepperPhase.uploading => -1,
       SessionStepperPhase.uploaded => 0,
+      // transcribing/merging: audio done (idx 0); transcription (idx 1) is the
+      // ACTIVE step. STT can sit here a while on a slow batch — we must NOT
+      // jump ahead to the AI-analysis step.
+      SessionStepperPhase.transcribing => 0,
       // analyzing: audio + transcription marked done; the AI analysis step
       // (idx 2) is the ACTIVE processing step — there's no separate
       // finalizing step after it anymore.
@@ -189,34 +206,46 @@ class _StepRow extends StatelessWidget {
     final circleColor = isFailed
         ? EuphireColors.magma
         : isDone || isActive || isBlocked
-            ? EuphireColors.ember
-            : Colors.white.withValues(alpha: 0.08);
+        ? EuphireColors.ember
+        : Colors.white.withValues(alpha: 0.08);
 
     // Connector line: active if both current and next step are done/active
-    final lineActive = isDone &&
+    final lineActive =
+        isDone &&
         (nextState == _StepState.done || nextState == _StepState.active);
 
     // BUG FIX: Numbers must use obsidianBlack on ember background.
     // Previously used mist (light grey) which was invisible on yellow.
     final icon = isFailed
-        ? const Icon(Icons.close_rounded, size: 16, color: EuphireColors.frostWhite)
+        ? const Icon(
+            Icons.close_rounded,
+            size: 16,
+            color: EuphireColors.frostWhite,
+          )
         : isBlocked
-            ? const Icon(Icons.account_balance_wallet_outlined,
-                size: 15, color: EuphireColors.obsidianBlack)
-            : isDone
-                ? const Icon(Icons.check_rounded, size: 16, color: EuphireColors.obsidianBlack)
-                : Text(
-                '$number',
-                style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  // Active step (ember bg) → dark text. Pending (dark bg) → mist.
-                  color: isActive
-                      ? EuphireColors.obsidianBlack
-                      : EuphireColors.mist,
-                ),
-              );
+        ? const Icon(
+            Icons.account_balance_wallet_outlined,
+            size: 15,
+            color: EuphireColors.obsidianBlack,
+          )
+        : isDone
+        ? const Icon(
+            Icons.check_rounded,
+            size: 16,
+            color: EuphireColors.obsidianBlack,
+          )
+        : Text(
+            '$number',
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              // Active step (ember bg) → dark text. Pending (dark bg) → mist.
+              color: isActive
+                  ? EuphireColors.obsidianBlack
+                  : EuphireColors.mist,
+            ),
+          );
 
     return IntrinsicHeight(
       child: Row(
@@ -268,10 +297,7 @@ class _StepRow extends StatelessWidget {
           // ── Right column: text + spinner ──
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(
-                bottom: isLast ? 0.0 : 28.0,
-                top: 5.0,
-              ),
+              padding: EdgeInsets.only(bottom: isLast ? 0.0 : 28.0, top: 5.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -283,27 +309,29 @@ class _StepRow extends StatelessWidget {
                       color: isFailed
                           ? EuphireColors.magma
                           : isDone || isActive || isBlocked
-                              ? EuphireColors.frostWhite
-                              : EuphireColors.mist.withValues(alpha: 0.5),
+                          ? EuphireColors.frostWhite
+                          : EuphireColors.mist.withValues(alpha: 0.5),
                       fontWeight: isActive || isBlocked
                           ? FontWeight.w600
                           : isDone
-                              ? FontWeight.w400
-                              : FontWeight.w300,
+                          ? FontWeight.w400
+                          : FontWeight.w300,
                       height: 1.4,
                     ),
                   ),
                   if (isActive)
                     Padding(
                       padding: const EdgeInsets.only(top: 10.0),
-                      child: content ??
+                      child:
+                          content ??
                           SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 1.5,
                               valueColor: const AlwaysStoppedAnimation(
-                                  EuphireColors.ember),
+                                EuphireColors.ember,
+                              ),
                             ),
                           ),
                     ),
