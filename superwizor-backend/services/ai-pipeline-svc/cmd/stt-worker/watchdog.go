@@ -34,9 +34,25 @@ import (
 // hung-pending op) before giving up and marking the session FAILED.
 // Each retry is a fresh (billed) BatchRecognize, so the cap keeps a
 // permanently-flaky chunk from re-billing forever. Both re-submit
-// triggers share this one budget. 3 covers the observed transient
-// patterns with margin.
-const maxChunkRetries = 3
+// triggers share this one budget.
+//
+// Default 24 (raised from 3 on 2026-06-29). Rationale: Chirp degradation
+// windows can run for hours — session 4d18caee only recovered on its 3rd
+// retry, i.e. right at the old cap. Terminal inputs (bad codec, etc.)
+// still FAIL immediately via isTerminalStatusCode and are never retried,
+// so this budget only ever burns on genuine transients. Paired with the
+// 1h hung-pending give-up, 24 spans ~24h of retrying — aligned with the
+// 26h reapStuckSessions backstop. Env-tunable without redeploy.
+const defaultMaxChunkRetries = 24
+
+func maxChunkRetries() int {
+	if v := os.Getenv("STT_MAX_CHUNK_RETRIES"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return defaultMaxChunkRetries
+}
 
 // Stuck-PENDING give-up (docs follow-up to the 12c76823 incident).
 //
@@ -394,12 +410,12 @@ func resubmitChunk(ctx context.Context, logger *slog.Logger, op sttOpRow, reason
 			"reason", reason, "detail", detail)
 		return false, nil
 	}
-	if op.RetryCount >= maxChunkRetries {
+	if op.RetryCount >= maxChunkRetries() {
 		logger.Warn("re-submit needed but retry budget exhausted; giving up",
 			"reason", reason,
 			"detail", detail,
 			"retry_count", op.RetryCount,
-			"max_retries", maxChunkRetries)
+			"max_retries", maxChunkRetries())
 		return false, nil
 	}
 	if speechClient == nil {
@@ -438,7 +454,7 @@ func resubmitChunk(ctx context.Context, logger *slog.Logger, op sttOpRow, reason
 		"detail", detail,
 		"new_operation_id", newOp,
 		"retry_count", newRetry,
-		"max_retries", maxChunkRetries)
+		"max_retries", maxChunkRetries())
 	return true, nil
 }
 
