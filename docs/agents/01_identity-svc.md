@@ -329,7 +329,7 @@ new environment:
    `notification-svc@<project>.iam.gserviceaccount.com` (add to
    `infra/environments/<env>/service-accounts.tf`).
 4. Set `RESEND_FROM` env on notification-svc Cloud Run — e.g.
-   `Superwizor <noreply@superwizor.ai>`. Defaults to that value in
+   `Superwizor <noreply@client.superwizor.ai>`. Defaults to that value in
    the CI workflow if unset.
 
 Without the secret the notification-svc binary boots happily and uses
