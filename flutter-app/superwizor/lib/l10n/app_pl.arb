@@ -1201,5 +1201,5 @@
   "settings_recording_reminder_off": "Wyłączone",
   "settings_recording_reminder_sound": "Dźwięk przypomnienia",
   "settings_recording_reminder_sound_warning": "Dźwięk zostanie nagrany w sesji",
-  "settings_recording_reminder_sound_hint": "Gdy przypomnienie jest włączone, odtworzy się też dźwięk (nagrywany również w sesji)."
+  "settings_recording_reminder_sound_hint": "Przypomnienie to wibracja + komunikat na ekranie (bez dźwięku — dźwięk przerywałby nagrywanie na iOS)."
 }
