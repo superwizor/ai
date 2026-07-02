@@ -173,11 +173,17 @@ func (h *AdminHandler) handleManualPeriodRenewal(w http.ResponseWriter, r *http.
 	}
 
 	renewedCount := 0
-	expiredBeta := 0
+	expiredCount := 0
 	for _, s := range subs {
-		// BETA plan guard: max 2 periods (2 × 30 days). Count existing
-		// usage_counters for this subscription — if ≥2, cancel instead
-		// of renewing. The counter count == number of completed periods.
+		// RENEWAL POLICY (2026-07 incident): free periods NEVER auto-renew.
+		// Paid renewal happens exclusively via Stripe `invoice.paid` (card
+		// actually charged → new usage_counter, stripe_handler.go). The only
+		// MANUAL renewal is the BETA entitlement: 2 promised periods, so a
+		// beta sub that has used <2 gets its second (and last) free month.
+		// Everything else MANUAL (bootstrap SOLO, test PRO, expired beta)
+		// is CANCELED at period end — the app then surfaces the
+		// subscription-expired UX instead of silently coasting on free
+		// tokens forever.
 		periodCount, err := h.countPeriods(ctx, s.ID)
 		if err != nil {
 			h.logger.ErrorContext(ctx, "manual renewal: count periods failed",
@@ -185,39 +191,38 @@ func (h *AdminHandler) handleManualPeriodRenewal(w http.ResponseWriter, r *http.
 			continue
 		}
 
-		// Check if this is a BETA plan by looking at the provider_subscription_id
-		// prefix (set during provisionPlanOrgAndSub as "beta-<orgID>").
 		isBeta := h.isBetaSubscription(ctx, s.ID)
-		if isBeta && periodCount >= 2 {
-			// Beta expired — downgrade to CANCELED
-			if err := h.cancelSubscription(ctx, s.ID); err != nil {
-				h.logger.ErrorContext(ctx, "manual renewal: beta cancel failed",
+		if isBeta && periodCount < 2 {
+			newStart := s.CurrentPeriodEnd
+			newEnd := newStart.Add(30 * 24 * time.Hour)
+			if err := h.renewOneSubscription(ctx, s.ID, newStart, newEnd, s.TokensPerPeriod); err != nil {
+				// Loguj per sub ale nie przerywaj — jeden zepsuty sub nie
+				// powinien zablokować renewal pozostałych.
+				h.logger.ErrorContext(ctx, "manual renewal: beta renew failed",
 					"sub_id", s.ID, "error", err)
-			} else {
-				expiredBeta++
-				h.logger.InfoContext(ctx, "cron: beta subscription expired after 2 periods",
-					"sub_id", s.ID, "org_id", s.OrganizationID, "periods_used", periodCount)
+				continue
 			}
+			renewedCount++
 			continue
 		}
 
-		newStart := s.CurrentPeriodEnd
-		newEnd := newStart.Add(30 * 24 * time.Hour)
-
-		if err := h.renewOneSubscription(ctx, s.ID, newStart, newEnd, s.TokensPerPeriod); err != nil {
-			// Loguj per sub ale nie przerywaj — jeden zepsuty sub nie powinien
-			// zablokować renewal pozostałych.
-			h.logger.ErrorContext(ctx, "manual renewal: per-sub failed",
-				"sub_id", s.ID,
-				"error", err)
+		// No card on file → no auto-renewal. Cancel so ReserveCredit
+		// returns SUBSCRIPTION_INACTIVE (a real, actionable state) instead
+		// of QUOTA_COUNTER_MISSING (a broken one).
+		if err := h.cancelSubscription(ctx, s.ID); err != nil {
+			h.logger.ErrorContext(ctx, "manual renewal: cancel failed",
+				"sub_id", s.ID, "error", err)
 			continue
 		}
-		renewedCount++
+		expiredCount++
+		h.logger.InfoContext(ctx, "cron: manual subscription expired (no auto-renewal without Stripe)",
+			"sub_id", s.ID, "org_id", s.OrganizationID,
+			"is_beta", isBeta, "periods_used", periodCount)
 	}
 
 	h.logger.InfoContext(ctx, "cron: manual-period-renewal done",
 		"renewed_count", renewedCount,
-		"expired_beta", expiredBeta,
+		"expired_count", expiredCount,
 		"candidates", len(subs))
 
 	writeJSON(w, http.StatusOK, manualRenewalResponse{
