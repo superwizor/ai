@@ -18,13 +18,10 @@ class AppSettings {
   /// Clamped to [kAutoPauseMinMinutes, kAutoPauseMaxMinutes]; default 120.
   final int autoPauseMinutes;
 
-  /// "Still recording" reminder cadence in minutes; 0 = off. Default 60.
+  /// "Still recording" reminder cadence in minutes; 0 = off. Default 60. When
+  /// non-zero, each reminder fires haptic + a visual toast + an audible bell
+  /// (the bell is intentional now — it also lands in the recording).
   final int reminderIntervalMinutes;
-
-  /// Play an audible bell at each reminder. Default false — an audible bell is
-  /// captured by the open mic (it lands in the recording/transcript), so the
-  /// default reminder is haptic + visual only.
-  final bool reminderSound;
 
   const AppSettings({
     this.soundEnabled = true,
@@ -33,7 +30,6 @@ class AppSettings {
     this.hasSeenLiveActivitiesPrompt = false,
     this.autoPauseMinutes = 120,
     this.reminderIntervalMinutes = 60,
-    this.reminderSound = false,
   });
 
   AppSettings copyWith({
@@ -43,7 +39,6 @@ class AppSettings {
     bool? hasSeenLiveActivitiesPrompt,
     int? autoPauseMinutes,
     int? reminderIntervalMinutes,
-    bool? reminderSound,
   }) {
     return AppSettings(
       soundEnabled: soundEnabled ?? this.soundEnabled,
@@ -55,7 +50,6 @@ class AppSettings {
       autoPauseMinutes: autoPauseMinutes ?? this.autoPauseMinutes,
       reminderIntervalMinutes:
           reminderIntervalMinutes ?? this.reminderIntervalMinutes,
-      reminderSound: reminderSound ?? this.reminderSound,
     );
   }
 }
@@ -67,7 +61,6 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   static const _keyHaptics = 'haptics_enabled';
   static const _keyAutoPause = 'rec_auto_pause_minutes';
   static const _keyReminder = 'rec_reminder_minutes';
-  static const _keyReminderSound = 'rec_reminder_sound';
 
   @override
   AppSettings build() {
@@ -91,7 +84,6 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
         kAutoPauseMaxMinutes,
       ),
       reminderIntervalMinutes: prefs.getInt(_keyReminder) ?? 60,
-      reminderSound: prefs.getBool(_keyReminderSound) ?? false,
     );
   }
 
@@ -131,12 +123,6 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     state = state.copyWith(reminderIntervalMinutes: value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyReminder, value);
-  }
-
-  Future<void> setReminderSound(bool value) async {
-    state = state.copyWith(reminderSound: value);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyReminderSound, value);
   }
 }
 
