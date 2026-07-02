@@ -2826,5 +2826,5 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settings_recording_reminder_sound_hint =>
-      'The reminder is a vibration + on-screen message (no sound — a sound would interrupt recording on iOS).';
+      'When a reminder is on, it also plays a sound (which is captured in the session too).';
 }

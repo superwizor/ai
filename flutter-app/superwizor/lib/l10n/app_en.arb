@@ -1200,5 +1200,5 @@
   "settings_recording_reminder_off": "Off",
   "settings_recording_reminder_sound": "Reminder sound",
   "settings_recording_reminder_sound_warning": "The sound will be captured in the session",
-  "settings_recording_reminder_sound_hint": "The reminder is a vibration + on-screen message (no sound — a sound would interrupt recording on iOS)."
+  "settings_recording_reminder_sound_hint": "When a reminder is on, it also plays a sound (which is captured in the session too)."
 }
