@@ -65,6 +65,18 @@ ClassifiedError classifyUploadError(Object error) {
   if (error is grpc.GrpcError) {
     final msg = 'gRPC ${error.codeName}: ${error.message ?? ''}';
     switch (error.code) {
+      // Billing preconditions (SUBSCRIPTION_INACTIVE / _PAST_DUE /
+      // QUOTA_COUNTER_MISSING from ReserveCredit via CreateAudioUpload)
+      // are the same UX as quota exhausted: park, don't fail. Before
+      // this branch they fell into `terminal` and the user saw the
+      // generic "Przesyłanie przerwane" (2026-07 incident) instead of
+      // the subscription/quota sheet. Other FAILED_PRECONDITIONs (e.g.
+      // the MP3 content-type mismatch) stay terminal below.
+      case grpc.StatusCode.failedPrecondition
+          when (error.message ?? '').contains('SUBSCRIPTION_') ||
+              (error.message ?? '').contains('QUOTA_COUNTER_MISSING'):
+        return ClassifiedError(UploadErrorClass.quotaBlocked, msg);
+
       // Programmer error / server-state mismatch — retrying won't
       // help. The MP3 / FAILED_PRECONDITION bug we shipped a fix
       // for last week is the canonical example.
@@ -139,7 +151,9 @@ ClassifiedError classifyUploadError(Object error) {
       error is TimeoutException ||
       error is HandshakeException) {
     return ClassifiedError(
-        UploadErrorClass.retryable, 'network: ${error.runtimeType} $error');
+      UploadErrorClass.retryable,
+      'network: ${error.runtimeType} $error',
+    );
   }
 
   // ── Default: be conservative, retry ─────────────────────────

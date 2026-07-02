@@ -381,6 +381,14 @@ jobs:
           # Firebase token. (Was --no-allow-unauthenticated, which silently
           # reverted the IAM fix on every deploy — see
           # docs/agents/11_web_deploy_invoker_drift.md.)
+          # SCHEDULER_OIDC_AUDIENCE + SCHEDULER_SA_EMAIL gate the /admin/*
+          # cron endpoints (SchedulerAuthMiddleware). When unset the
+          # middleware 503s EVERY cron request — this silently broke
+          # manual-period-renewal for 8+ days (2026-07 incident: 13 orgs
+          # lost their usage counter on July 1 and every upload failed
+          # with QUOTA_COUNTER_MISSING). --set-env-vars REPLACES the whole
+          # env block, so they MUST be listed here on every deploy.
+          BILLING_URL=$(gcloud run services describe billing-svc --region ${{ env.REGION }} --format 'value(status.url)' || echo "https://billing-svc-e3f32b232q-lm.a.run.app")
           gcloud run deploy billing-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
@@ -389,7 +397,7 @@ jobs:
             --vpc-connector swvpc-connector \
             --use-http2 \
             --set-secrets="DATABASE_URL=postgres-database-url:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest" \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }},IDENTITY_SVC_URL=${IDENTITY_URL}"
+            --set-env-vars="^|^GCP_PROJECT_ID=${{ env.PROJECT_ID }}|VERSION=${{ github.sha }}|IDENTITY_SVC_URL=${IDENTITY_URL}|SCHEDULER_OIDC_AUDIENCE=${BILLING_URL}|SCHEDULER_SA_EMAIL=cloud-scheduler-billing@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
           # Belt-and-braces parity with identity/clinical: pin allUsers
           # explicitly so the public invoker can't drift even if a future
           # deploy flag changes.
