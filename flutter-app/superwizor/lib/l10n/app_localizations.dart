@@ -5078,7 +5078,7 @@ abstract class AppLocalizations {
   /// No description provided for @settings_recording_reminder_sound_hint.
   ///
   /// In pl, this message translates to:
-  /// **'Gdy przypomnienie jest włączone, odtworzy się też dźwięk (nagrywany również w sesji).'**
+  /// **'Przypomnienie to wibracja + komunikat na ekranie (bez dźwięku — dźwięk przerywałby nagrywanie na iOS).'**
   String get settings_recording_reminder_sound_hint;
 }
 

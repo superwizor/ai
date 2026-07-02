@@ -40,7 +40,6 @@ import '../services/recording_manifest_store.dart';
 import '../services/recording_service.dart';
 import '../services/live_activity_service.dart';
 import '../providers/settings_provider.dart';
-import 'package:audioplayers/audioplayers.dart';
 import '../theme/euphire_theme.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
@@ -843,19 +842,15 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     }
   }
 
-  /// Reminds the therapist the session is still recording. Default = haptic +
-  /// a brief visual toast (won't pollute the audio). An audible bell is opt-in
-  /// (it IS captured by the mic) and disabled by default.
+  /// Reminds the therapist the session is still recording: haptic + a brief
+  /// visual toast. NO audible bell — on iOS, playing ANY sound through
+  /// audioplayers during capture interrupts the `record` plugin's AVAudioSession
+  /// and corrupts the FLAC (2026-07-02: reminder bells aborted recordings; even
+  /// playAndRecord + mixWithOthers in +21 didn't help). A safe audible cue would
+  /// need a native AudioServicesPlaySystemSound path.
   void _fireReminder(AppSettings s, Duration d) {
     if (s.hapticsEnabled) {
       HapticFeedback.heavyImpact();
-    }
-    // A set reminder (interval > 0) now always plays an audible bell — it plays
-    // through the speaker so it also lands in the recording. Best-effort.
-    try {
-      AudioPlayer().play(AssetSource('sounds/Dźwięk zakończenia sesji.mp3'));
-    } catch (_) {
-      /* best-effort */
     }
     if (mounted) {
       final t = AppLocalizations.of(context);
