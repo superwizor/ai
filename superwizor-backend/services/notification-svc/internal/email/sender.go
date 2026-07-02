@@ -43,7 +43,7 @@ type ResendSender struct {
 
 // NewResendSender builds a Sender backed by Resend. defaultFrom is
 // the "From:" address used when Message.From is empty — typically
-// something like "Superwizor <noreply@superwizor.ai>". apiKey is
+// something like "Superwizor <noreply@client.superwizor.ai>". apiKey is
 // the Resend API key (validate before calling this).
 func NewResendSender(apiKey, defaultFrom string) *ResendSender {
 	return &ResendSender{

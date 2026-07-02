@@ -340,7 +340,7 @@ jobs:
             --service-account=notification-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest,RESEND_API_KEY=resend-api-key:latest" \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }},RESEND_FROM=Superwizor <noreply@superwizor.ai>"
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }},RESEND_FROM=Superwizor <noreply@client.superwizor.ai>"
           gcloud run services add-iam-policy-binding notification-svc \
             --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
             --member=allUsers --role=roles/run.invoker

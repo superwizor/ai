@@ -95,7 +95,7 @@ func main() {
 	// safe for local dev and contract tests, so the binary still
 	// boots without the secret.
 	if apiKey := os.Getenv("RESEND_API_KEY"); apiKey != "" {
-		from := getenv("RESEND_FROM", "Superwizor <noreply@superwizor.ai>")
+		from := getenv("RESEND_FROM", "Superwizor <noreply@client.superwizor.ai>")
 		srv = srv.WithEmailer(emailpkg.NewResendSender(apiKey, from))
 		slog.Info("notification-svc: Resend sender enabled", "from", from)
 	} else {
