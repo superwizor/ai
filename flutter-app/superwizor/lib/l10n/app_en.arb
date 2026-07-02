@@ -1199,5 +1199,6 @@
   "settings_recording_reminder": "Recording reminder",
   "settings_recording_reminder_off": "Off",
   "settings_recording_reminder_sound": "Reminder sound",
-  "settings_recording_reminder_sound_warning": "The sound will be captured in the session"
+  "settings_recording_reminder_sound_warning": "The sound will be captured in the session",
+  "settings_recording_reminder_sound_hint": "When a reminder is on, it also plays a sound (which is captured in the session too)."
 }

@@ -5074,6 +5074,12 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Dźwięk zostanie nagrany w sesji'**
   String get settings_recording_reminder_sound_warning;
+
+  /// No description provided for @settings_recording_reminder_sound_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Gdy przypomnienie jest włączone, odtworzy się też dźwięk (nagrywany również w sesji).'**
+  String get settings_recording_reminder_sound_hint;
 }
 
 class _AppLocalizationsDelegate

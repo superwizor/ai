@@ -2823,4 +2823,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settings_recording_reminder_sound_warning =>
       'The sound will be captured in the session';
+
+  @override
+  String get settings_recording_reminder_sound_hint =>
+      'When a reminder is on, it also plays a sound (which is captured in the session too).';
 }

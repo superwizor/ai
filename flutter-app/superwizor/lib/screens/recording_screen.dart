@@ -48,6 +48,7 @@ import '../widgets/euphire_action_sheet.dart';
 import '../widgets/euphire_bottom_sheet.dart';
 import '../widgets/euphire_button.dart';
 import '../widgets/euphire_recording_indicator.dart';
+import '../widgets/recording_settings_sheet.dart';
 import 'session_status_screen.dart';
 import '../analytics/analytics_collector.dart';
 
@@ -815,7 +816,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
       if (fired > _stressAlarmsFired) {
         _stressAlarmsFired = fired;
         debugPrint('[recording] DEBUG alarm-stress fire #$fired at $d');
-        _fireReminder(s.copyWith(reminderSound: true), d);
+        _fireReminder(s, d);
       }
     }
 
@@ -849,13 +850,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     if (s.hapticsEnabled) {
       HapticFeedback.heavyImpact();
     }
-    if (s.reminderSound) {
-      // Opt-in: plays through the speaker, so it lands in the recording.
-      try {
-        AudioPlayer().play(AssetSource('sounds/Dźwięk zakończenia sesji.mp3'));
-      } catch (_) {
-        /* best-effort */
-      }
+    // A set reminder (interval > 0) now always plays an audible bell — it plays
+    // through the speaker so it also lands in the recording. Best-effort.
+    try {
+      AudioPlayer().play(AssetSource('sounds/Dźwięk zakończenia sesji.mp3'));
+    } catch (_) {
+      /* best-effort */
     }
     if (mounted) {
       final t = AppLocalizations.of(context);
@@ -1174,6 +1174,24 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
             ),
 
             actions: [
+              // Live quick-controls for auto-pause + reminder (same pickers as
+              // Settings → Nagrywanie). Only while actually recording.
+              if (_recState == RecordingState.recording)
+                IconButton(
+                  icon: const Icon(
+                    Icons.timer_outlined,
+                    color: EuphireColors.mist,
+                  ),
+                  tooltip: t.settings_recording_section,
+                  onPressed: () {
+                    showModalBottomSheet<void>(
+                      context: context,
+                      backgroundColor: Colors.transparent,
+                      isScrollControlled: true,
+                      builder: (_) => const RecordingSettingsSheet(),
+                    );
+                  },
+                ),
               IconButton(
                 icon: const Icon(Icons.info_outline, color: EuphireColors.mist),
                 onPressed: () {

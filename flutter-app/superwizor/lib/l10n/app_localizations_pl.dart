@@ -2843,4 +2843,8 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get settings_recording_reminder_sound_warning =>
       'Dźwięk zostanie nagrany w sesji';
+
+  @override
+  String get settings_recording_reminder_sound_hint =>
+      'Gdy przypomnienie jest włączone, odtworzy się też dźwięk (nagrywany również w sesji).';
 }
