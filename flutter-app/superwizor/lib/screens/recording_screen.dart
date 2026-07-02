@@ -843,20 +843,15 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
     }
   }
 
-  /// Reminds the therapist the session is still recording. Default = haptic +
-  /// a brief visual toast (won't pollute the audio). An audible bell is opt-in
-  /// (it IS captured by the mic) and disabled by default.
+  /// Reminds the therapist the session is still recording: haptic + a brief
+  /// visual toast + (when a reminder is set) an audible bell.
   void _fireReminder(AppSettings s, Duration d) {
     if (s.hapticsEnabled) {
       HapticFeedback.heavyImpact();
     }
-    // A set reminder (interval > 0) now always plays an audible bell — it plays
-    // through the speaker so it also lands in the recording. Best-effort.
-    try {
-      AudioPlayer().play(AssetSource('sounds/Dźwięk zakończenia sesji.mp3'));
-    } catch (_) {
-      /* best-effort */
-    }
+    // A set reminder (interval > 0) plays an audible bell — but it MUST NOT
+    // hijack the recording audio session. See _playReminderBell.
+    unawaited(_playReminderBell());
     if (mounted) {
       final t = AppLocalizations.of(context);
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -866,6 +861,38 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen>
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  /// Plays the reminder bell on an audio session that MIXES with the live
+  /// recording (`playAndRecord` + `mixWithOthers`) instead of the audioplayers
+  /// default (`.playback`), which on iOS DEACTIVATES the capture session and
+  /// corrupts the FLAC — observed 2026-07-02: a reminder bell aborted an 11-min
+  /// session with "Przesyłanie przerwane". Best-effort; never throws.
+  Future<void> _playReminderBell() async {
+    try {
+      final player = AudioPlayer();
+      await player.setAudioContext(
+        AudioContext(
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.playAndRecord,
+            options: const {
+              AVAudioSessionOptions.mixWithOthers,
+              AVAudioSessionOptions.defaultToSpeaker,
+            },
+          ),
+          android: AudioContextAndroid(
+            isSpeakerphoneOn: false,
+            stayAwake: false,
+            contentType: AndroidContentType.sonification,
+            usageType: AndroidUsageType.assistanceSonification,
+            audioFocus: AndroidAudioFocus.none,
+          ),
+        ),
+      );
+      await player.play(AssetSource('sounds/Dźwięk zakończenia sesji.mp3'));
+    } catch (_) {
+      /* best-effort — never disrupt the recording */
     }
   }
 
