@@ -1198,7 +1198,9 @@ func assertCompletedSessionShape(t *testing.T, d *clinicalv1.GetSessionDetailsRe
 		if strings.HasPrefix(v, "Terapeuta") {
 			hasTherapist = true
 		}
-		if strings.HasPrefix(v, "Pacjent") {
+		// "Klient" since the 2026-07 product-wide Pacjent→Klient rename;
+		// accept the legacy label too so the test survives either copy.
+		if strings.HasPrefix(v, "Klient") || strings.HasPrefix(v, "Pacjent") {
 			hasPatient = true
 		}
 	}
@@ -1206,7 +1208,7 @@ func assertCompletedSessionShape(t *testing.T, d *clinicalv1.GetSessionDetailsRe
 		"expected at least one 'Terapeuta…' label in %v (migration 000026 role-aware labels)",
 		s.SpeakerLabelMapping)
 	assert.Truef(t, hasPatient,
-		"expected at least one 'Pacjent…' label in %v (migration 000026 role-aware labels)",
+		"expected at least one 'Klient…' label in %v (migration 000026 role-aware labels)",
 		s.SpeakerLabelMapping)
 
 	// Confirm it's at least round-trippable as JSON to catch any oddities.
