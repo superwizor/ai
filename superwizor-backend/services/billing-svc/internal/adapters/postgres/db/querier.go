@@ -52,6 +52,10 @@ type Querier interface {
 	// don't have it populated).
 	CreateBillingAuditEvent(ctx context.Context, arg CreateBillingAuditEventParams) (AuditEvent, error)
 	CreateInvoice(ctx context.Context, arg CreateInvoiceParams) (Invoice, error)
+	// Admin-provisioned B2B subscription (docs/38 §4). provider_subscription_id
+	// is deterministic ("b2b-<org>") so a wizard retry collides on the
+	// UNIQUE(provider, provider_subscription_id) instead of double-creating.
+	CreateManualSubscription(ctx context.Context, arg CreateManualSubscriptionParams) (CreateManualSubscriptionRow, error)
 	// Idempotent insert zdarzenia płatności (ADR-BL-002).
 	// UNIQUE(provider, provider_event_id) zapewnia że to samo zdarzenie
 	// Stripe nie zostanie przetworzone dwukrotnie — zwraca pusty RETURNING
@@ -65,6 +69,10 @@ type Querier interface {
 	// równoczesny ReserveCredit z różnymi idempotency_keys da tylko jedną
 	// rezerwację — drugi dostanie unique-violation i handler przechwyci.
 	CreateReservation(ctx context.Context, arg CreateReservationParams) (PendingReservation, error)
+	// Per-seat counter, minted by AdminSetSeatAllocations for already-seated
+	// therapists and lazily by the debit path for later joiners. UNIQUE
+	// (subscription_id, therapist_id, period_start) absorbs races.
+	CreateTherapistUsageCounter(ctx context.Context, arg CreateTherapistUsageCounterParams) (UsageCounter, error)
 	// Tworzy nowy bucket licznika dla rozpoczętego okresu. UNIQUE (subscription_id,
 	// period_start) chroni przed double-create przy concurrent renewal.
 	CreateUsageCounter(ctx context.Context, arg CreateUsageCounterParams) (UsageCounter, error)
@@ -85,6 +93,9 @@ type Querier interface {
 	// W przypadku braku row (race przy renewal) zwraca pgx.ErrNoRows i handler
 	// musi tworzyć fallback counter (lub fail z odpowiednim błędem).
 	GetActiveCounter(ctx context.Context, subscriptionID uuid.UUID) (UsageCounter, error)
+	// Per-therapist counter (docs/38 billing model). NULL-therapist rows
+	// (org-level) are matched by GetActiveCounter, not here.
+	GetActiveCounterForTherapist(ctx context.Context, arg GetActiveCounterForTherapistParams) (UsageCounter, error)
 	// Zwraca pojedynczą subskrypcję uznawaną za "billing-relevant".
 	// Constraint idx_subscriptions_one_active_per_org gwarantuje, że
 	// jest co najwyżej jedna w stanie ACTIVE/TRIALING/PAST_DUE.
@@ -102,23 +113,36 @@ type Querier interface {
 	// Dzięki temu reserve/quota zawsze patrzy na plan, za który klient
 	// faktycznie płaci, nawet jeśli inwariant zostanie kiedyś naruszony.
 	GetActiveSubscriptionByOrg(ctx context.Context, organizationID uuid.UUID) (GetActiveSubscriptionByOrgRow, error)
+	GetPlanByID(ctx context.Context, id uuid.UUID) (GetPlanByIDRow, error)
 	// Lookup planu po stripe_price_id — używane przy checkout.session.completed
 	// żeby wiedzieć ile tokenów przypisać i jaki tier.
 	GetPlanByStripePriceID(ctx context.Context, stripePriceID *string) (GetPlanByStripePriceIDRow, error)
 	// Idempotency lookup PRZED próbą INSERT-u. Zwraca aktywną lub już sfinalizowaną
 	// rezerwację (status determinuje co handler robi).
 	GetReservationBySession(ctx context.Context, sessionID uuid.UUID) (PendingReservation, error)
+	// Lazy counter creation on the debit path: which plan does the caller's
+	// open seat sit in? ErrNoRows = therapist has no seat (org-level
+	// fallback applies).
+	GetSeatPlanForTherapist(ctx context.Context, userID uuid.UUID) (GetSeatPlanForTherapistRow, error)
 	// Lookup subskrypcji po stripe subscription ID.
 	GetSubscriptionByStripeID(ctx context.Context, providerSubscriptionID string) (GetSubscriptionByStripeIDRow, error)
 	// Idempotency lookup. Zwraca już zaistniały event jeśli był (no-op path
 	// w CommitUsage).
 	GetUsageEventBySession(ctx context.Context, sessionID uuid.UUID) (UsageEvent, error)
+	// Per-therapist usage for the current period (GetMyOrgSeatUsage).
+	ListActiveTherapistCounters(ctx context.Context, subscriptionID uuid.UUID) ([]ListActiveTherapistCountersRow, error)
 	// Cron daily o 00:05 UTC — znajduje MANUAL subskrypcje (ACTIVE + TRIALING),
 	// których bieżący okres rozliczeniowy się skończył (period_end < now).
 	// TRIALING status covers BETA plan subscriptions (120 tokens × 2 months).
 	// Per row musimy: shift current_period_*, utworzyć nowy usage_counters.
 	ListExpiredManualSubscriptions(ctx context.Context) ([]ListExpiredManualSubscriptionsRow, error)
 	ListInvoicesByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invoice, error)
+	// Allocation + catalog plan join + both occupancy halves (docs/38 §3:
+	// active assignments + pending unexpired invitations).
+	ListSeatAllocationsByOrg(ctx context.Context, organizationID uuid.UUID) ([]ListSeatAllocationsByOrgRow, error)
+	// Active (seated) therapists + their seat's plan — counter provisioning
+	// in AdminSetSeatAllocations and the GetMyOrgSeatUsage dashboard.
+	ListSeatedTherapistsByOrg(ctx context.Context, organizationID uuid.UUID) ([]ListSeatedTherapistsByOrgRow, error)
 	// Weekly safety-check — znajdź ACTIVE/TRIALING subskrypcje, które nie mają
 	// aktywnego usage_counters dla bieżącego momentu. Jeśli się pojawi
 	// którakolwiek — alert (cron triggeruje monitoring).
@@ -128,6 +152,9 @@ type Querier interface {
 	// modyfikowaniem TEGO konkretnego row (advisory lock chroni przed równoległą
 	// pracą per-subscription jeszcze przed dotknięciem row).
 	LockActiveCounter(ctx context.Context, subscriptionID uuid.UUID) (UsageCounter, error)
+	// FOR UPDATE wariant per-therapist — ReserveCredit/CommitUsage debit
+	// path. Advisory lock per subscription is still taken first.
+	LockActiveCounterForTherapist(ctx context.Context, arg LockActiveCounterForTherapistParams) (UsageCounter, error)
 	// Cron job (release-expired-reservations) — zwraca subscription_id +
 	// tokens_reserved per row, żeby handler mógł zaktualizować odpowiednie
 	// usage_counters w tej samej transakcji.
@@ -138,12 +165,20 @@ type Querier interface {
 	MarkReservationCommitted(ctx context.Context, sessionID uuid.UUID) error
 	// Wywoływane przez ReleaseCredit (jawne anulowanie sesji).
 	MarkReservationReleased(ctx context.Context, sessionID uuid.UUID) error
+	// Renewal-policy switch (docs/38): admin-provisioned B2B orgs (invoiced
+	// offline) auto-renew their MANUAL subscription; other MANUAL subs are
+	// canceled at period end (2026-07 incident policy).
+	OrgHasSeatAllocations(ctx context.Context, organizationID uuid.UUID) (bool, error)
 	// Dekrementuje tokens_reserved (clamp do 0). Wywoływane przy ReleaseCredit
 	// i przy CommitUsage (transfer rezerwacja → used).
 	ReleaseReservedTokens(ctx context.Context, arg ReleaseReservedTokensParams) error
 	// Atomic shift okresu rozliczeniowego — używane przez manual renewal cron
 	// ORAZ (w slice 2) przez Stripe invoice.paid handler.
 	ShiftSubscriptionPeriod(ctx context.Context, arg ShiftSubscriptionPeriodParams) error
+	// Org-wide aggregate across org-level + per-therapist counters for the
+	// current period. GetSubscription fallback for allocation-managed orgs
+	// (which may have no org-level row).
+	SumActiveCounters(ctx context.Context, subscriptionID uuid.UUID) (SumActiveCountersRow, error)
 	// Aktualizuje status subskrypcji i opcjonalnie cancel_at_period_end.
 	// Używane przy invoice.payment_failed, customer.subscription.deleted,
 	// customer.subscription.updated.
@@ -151,6 +186,13 @@ type Querier interface {
 	// Aktualizuje tokens_limit i period_end dla istniejącego usage_counter
 	// przy zmianie planu (upgrade/downgrade). Nie resetuje tokens_used/reserved.
 	UpdateUsageCounterOnPlanChange(ctx context.Context, arg UpdateUsageCounterOnPlanChangeParams) error
+	// Seat allocations — billing-svc side (docs/38 §3-4).
+	//
+	// billing-svc OWNS org_seat_allocations writes (AdminSetSeatAllocations);
+	// identity-svc reads them for invite-time seat checks. seat_assignments
+	// is written by identity-svc (AcceptInvitation / SetTherapistStatus);
+	// billing reads it for occupancy + counter provisioning.
+	UpsertSeatAllocation(ctx context.Context, arg UpsertSeatAllocationParams) (OrgSeatAllocation, error)
 	// Tworzy lub aktualizuje subskrypcję po zdarzeniu Stripe.
 	// ON CONFLICT (provider, provider_subscription_id) aktualizuje pola.
 	// Używane przy checkout.session.completed i customer.subscription.created.

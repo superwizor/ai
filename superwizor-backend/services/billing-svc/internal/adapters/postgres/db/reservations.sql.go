@@ -10,25 +10,27 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createReservation = `-- name: CreateReservation :one
 INSERT INTO pending_reservations (
-    session_id, subscription_id, organization_id,
+    session_id, subscription_id, organization_id, therapist_id,
     tokens_reserved, expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, $5, $6
 )
 RETURNING id, session_id, subscription_id, organization_id,
-          tokens_reserved, status, created_at, expires_at, finalized_at
+          tokens_reserved, status, created_at, expires_at, finalized_at, therapist_id
 `
 
 type CreateReservationParams struct {
-	SessionID      uuid.UUID `json:"session_id"`
-	SubscriptionID uuid.UUID `json:"subscription_id"`
-	OrganizationID uuid.UUID `json:"organization_id"`
-	TokensReserved int32     `json:"tokens_reserved"`
-	ExpiresAt      time.Time `json:"expires_at"`
+	SessionID      uuid.UUID   `json:"session_id"`
+	SubscriptionID uuid.UUID   `json:"subscription_id"`
+	OrganizationID uuid.UUID   `json:"organization_id"`
+	TherapistID    pgtype.UUID `json:"therapist_id"`
+	TokensReserved int32       `json:"tokens_reserved"`
+	ExpiresAt      time.Time   `json:"expires_at"`
 }
 
 // Tworzy rezerwację. UNIQUE constraint na session_id zapewnia że nawet
@@ -39,6 +41,7 @@ func (q *Queries) CreateReservation(ctx context.Context, arg CreateReservationPa
 		arg.SessionID,
 		arg.SubscriptionID,
 		arg.OrganizationID,
+		arg.TherapistID,
 		arg.TokensReserved,
 		arg.ExpiresAt,
 	)
@@ -53,13 +56,14 @@ func (q *Queries) CreateReservation(ctx context.Context, arg CreateReservationPa
 		&i.CreatedAt,
 		&i.ExpiresAt,
 		&i.FinalizedAt,
+		&i.TherapistID,
 	)
 	return i, err
 }
 
 const getReservationBySession = `-- name: GetReservationBySession :one
 SELECT id, session_id, subscription_id, organization_id,
-       tokens_reserved, status, created_at, expires_at, finalized_at
+       tokens_reserved, status, created_at, expires_at, finalized_at, therapist_id
 FROM pending_reservations
 WHERE session_id = $1
 `
@@ -79,6 +83,7 @@ func (q *Queries) GetReservationBySession(ctx context.Context, sessionID uuid.UU
 		&i.CreatedAt,
 		&i.ExpiresAt,
 		&i.FinalizedAt,
+		&i.TherapistID,
 	)
 	return i, err
 }
@@ -87,14 +92,15 @@ const markExpiredReservations = `-- name: MarkExpiredReservations :many
 UPDATE pending_reservations
 SET status = 'EXPIRED', finalized_at = now()
 WHERE status = 'ACTIVE' AND expires_at < now()
-RETURNING id, session_id, subscription_id, tokens_reserved
+RETURNING id, session_id, subscription_id, therapist_id, tokens_reserved
 `
 
 type MarkExpiredReservationsRow struct {
-	ID             uuid.UUID `json:"id"`
-	SessionID      uuid.UUID `json:"session_id"`
-	SubscriptionID uuid.UUID `json:"subscription_id"`
-	TokensReserved int32     `json:"tokens_reserved"`
+	ID             uuid.UUID   `json:"id"`
+	SessionID      uuid.UUID   `json:"session_id"`
+	SubscriptionID uuid.UUID   `json:"subscription_id"`
+	TherapistID    pgtype.UUID `json:"therapist_id"`
+	TokensReserved int32       `json:"tokens_reserved"`
 }
 
 // Cron job (release-expired-reservations) — zwraca subscription_id +
@@ -113,6 +119,7 @@ func (q *Queries) MarkExpiredReservations(ctx context.Context) ([]MarkExpiredRes
 			&i.ID,
 			&i.SessionID,
 			&i.SubscriptionID,
+			&i.TherapistID,
 			&i.TokensReserved,
 		); err != nil {
 			return nil, err

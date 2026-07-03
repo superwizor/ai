@@ -32,7 +32,7 @@ INSERT INTO usage_counters (
     $1, $2, $3, 0, 0, $4
 )
 RETURNING id, subscription_id, period_start, period_end,
-          tokens_used, tokens_reserved, tokens_limit, updated_at;
+          tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id;
 
 -- name: ListSubscriptionsMissingCounter :many
 -- Weekly safety-check — znajdź ACTIVE/TRIALING subskrypcje, które nie mają

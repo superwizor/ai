@@ -195,22 +195,63 @@ func (s *Server) CheckQuota(ctx context.Context, req *billingv1.CheckQuotaReques
 		}, nil
 	}
 
-	counter, err := s.queries.GetActiveCounter(ctx, sub.ID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			// Brak counter to znaczy że webhook handler (lub cron) nie zdążył
-			// utworzyć nowego okresu. Zwracamy "denied" defensywnie — alert
-			// na missing_counter w monitoring (§9.4) złapie to.
-			slog.WarnContext(ctx, "CheckQuota: missing usage_counter for active subscription",
-				"subscription_id", sub.ID, "org_id", orgID)
-			s.trackQuotaDenied(ctx, orgID, 0, 0)
-			return &billingv1.QuotaDecision{
-				Allowed: false,
-				Reason:  "QUOTA_COUNTER_MISSING",
-			}, nil
+	// Scope resolution (docs/38): a seated therapist is checked against
+	// THEIR counter. A missing per-therapist row is not an error — the
+	// debit path mints it lazily — so a seated therapist with no counter
+	// yet has their seat plan's full allowance.
+	therapistID, terr := parseOptionalTherapistID(req.GetTherapistId())
+	if terr != nil {
+		return nil, terr
+	}
+	var counter db.UsageCounter
+	var err2 error
+	counterFound := false
+	if therapistID.Valid {
+		counter, err2 = s.queries.GetActiveCounterForTherapist(ctx, db.GetActiveCounterForTherapistParams{
+			SubscriptionID: sub.ID,
+			TherapistID:    therapistID,
+		})
+		switch {
+		case err2 == nil:
+			counterFound = true
+		case errors.Is(err2, pgx.ErrNoRows):
+			if seat, serr := s.queries.GetSeatPlanForTherapist(ctx, uuid.UUID(therapistID.Bytes)); serr == nil && seat.OrganizationID == orgID {
+				// Seated, counter not minted yet this period → full allowance.
+				remaining := seat.TokensPerPeriod
+				return &billingv1.QuotaDecision{
+					Allowed:         remaining >= amount,
+					Reason:          "OK",
+					Remaining:       remaining,
+					Limit:           seat.TokensPerPeriod,
+					RemainingTokens: remaining,
+					LimitTokens:     seat.TokensPerPeriod,
+					PeriodEnd:       timestamppb.New(sub.CurrentPeriodEnd),
+				}, nil
+			}
+			// Seatless → org-level fallback below.
+		default:
+			slog.ErrorContext(ctx, "CheckQuota: GetActiveCounterForTherapist", "error", err2, "sub_id", sub.ID)
+			return nil, status.Errorf(codes.Internal, "counter lookup failed")
 		}
-		slog.ErrorContext(ctx, "CheckQuota: GetActiveCounter", "error", err, "sub_id", sub.ID)
-		return nil, status.Errorf(codes.Internal, "counter lookup failed")
+	}
+	if !counterFound {
+		counter, err2 = s.queries.GetActiveCounter(ctx, sub.ID)
+		if err2 != nil {
+			if errors.Is(err2, pgx.ErrNoRows) {
+				// Brak counter to znaczy że webhook handler (lub cron) nie zdążył
+				// utworzyć nowego okresu. Zwracamy "denied" defensywnie — alert
+				// na missing_counter w monitoring (§9.4) złapie to.
+				slog.WarnContext(ctx, "CheckQuota: missing usage_counter for active subscription",
+					"subscription_id", sub.ID, "org_id", orgID)
+				s.trackQuotaDenied(ctx, orgID, 0, 0)
+				return &billingv1.QuotaDecision{
+					Allowed: false,
+					Reason:  "QUOTA_COUNTER_MISSING",
+				}, nil
+			}
+			slog.ErrorContext(ctx, "CheckQuota: GetActiveCounter", "error", err2, "sub_id", sub.ID)
+			return nil, status.Errorf(codes.Internal, "counter lookup failed")
+		}
 	}
 
 	remaining := remainingTokens(counter)
@@ -240,6 +281,10 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 		return nil, err
 	}
 	orgID, err := parseUUID("organization_id", req.GetOrganizationId())
+	if err != nil {
+		return nil, err
+	}
+	therapistID, err := parseOptionalTherapistID(req.GetTherapistId())
 	if err != nil {
 		return nil, err
 	}
@@ -294,11 +339,14 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 		return nil, status.Errorf(codes.Internal, "lock failed")
 	}
 
-	counter, err := q.LockActiveCounter(ctx, sub.ID)
+	// Scope resolution (docs/38): seated therapist → their own counter
+	// (lazily minted this period if needed); otherwise org-level.
+	counter, counterScope, err := lockDebitCounter(ctx, q, sub, therapistID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, status.Error(codes.FailedPrecondition, "QUOTA_COUNTER_MISSING")
 		}
+		slog.ErrorContext(ctx, "ReserveCredit: counter resolve", "error", err)
 		return nil, status.Errorf(codes.Internal, "counter lock failed")
 	}
 
@@ -311,6 +359,7 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 		SessionID:      sessionID,
 		SubscriptionID: sub.ID,
 		OrganizationID: orgID,
+		TherapistID:    counterScope, // which counter was debited (NULL = org-level)
 		TokensReserved: estTokens,
 		ExpiresAt:      expiresAt,
 	})
@@ -384,14 +433,9 @@ func (s *Server) ReserveCredit(ctx context.Context, req *billingv1.ReserveCredit
 // is unexpectedly missing (defensive — shouldn't happen for an active
 // subscription).
 func (s *Server) subscriptionStateNow(ctx context.Context, sub db.GetActiveSubscriptionByOrgRow) *billingv1.Subscription {
-	counter, err := s.queries.GetActiveCounter(ctx, sub.ID)
-	tokensUsed := int32(0)
-	tokensReserved := int32(0)
-	tokensLimit := sub.PlanTokensPerPeriod
-	if err == nil {
-		tokensUsed = counter.TokensUsed
-		tokensReserved = counter.TokensReserved
-		tokensLimit = counter.TokensLimit
+	tokensUsed, tokensReserved, tokensLimit, ok := s.orgCounterOrAggregate(ctx, sub.ID)
+	if !ok {
+		tokensLimit = sub.PlanTokensPerPeriod
 	}
 	var canceledAt *time.Time
 	if sub.CanceledAt.Valid {
@@ -410,6 +454,21 @@ func (s *Server) subscriptionStateNow(ctx context.Context, sub db.GetActiveSubsc
 	}, tokensUsed, tokensReserved, tokensLimit)
 }
 
+// orgCounterOrAggregate reads the current-period billing state for the
+// org-wide view: the org-level counter when it exists (solo / legacy
+// orgs), else the SUM over all per-therapist counters (docs/38
+// allocation-managed orgs, which may have no org-level row). ok=false
+// when no counter of any scope exists this period.
+func (s *Server) orgCounterOrAggregate(ctx context.Context, subID uuid.UUID) (used, reserved, limit int32, ok bool) {
+	if counter, err := s.queries.GetActiveCounter(ctx, subID); err == nil {
+		return counter.TokensUsed, counter.TokensReserved, counter.TokensLimit, true
+	}
+	if agg, err := s.queries.SumActiveCounters(ctx, subID); err == nil && agg.Counters > 0 {
+		return agg.TokensUsed, agg.TokensReserved, agg.TokensLimit, true
+	}
+	return 0, 0, 0, false
+}
+
 func reservationToProto(r db.PendingReservation, stateAfter *billingv1.Subscription) *billingv1.Reservation {
 	return &billingv1.Reservation{
 		ReservationId:  r.ID.String(),
@@ -426,6 +485,7 @@ func (s *Server) CommitUsage(ctx context.Context, req *billingv1.CommitUsageRequ
 	return s.commitInternal(ctx, commitInput{
 		sessionIDRaw:    req.GetSessionId(),
 		orgIDRaw:        req.GetOrganizationId(),
+		therapistIDRaw:  req.GetTherapistId(),
 		durationSeconds: req.GetDurationSeconds(),
 		usageType:       req.GetUsageType(),
 		legacyAmount:    0,
@@ -435,13 +495,15 @@ func (s *Server) CommitUsage(ctx context.Context, req *billingv1.CommitUsageRequ
 // IncrementUsage — legacy alias. amount → tokens 1:1, brak duration ⇒
 // brak weryfikacji formuły token-duration.
 //
-//nolint:staticcheck // SA1019: IncrementUsageRequest jest jawnie deprecated, ale
 // musimy zachować implementację dla Phase 2 callerów (proto marked deprecated
 // jako sygnał migracyjny, nie jako "do not use server-side").
+//
+//nolint:staticcheck // SA1019: IncrementUsageRequest jest jawnie deprecated, ale
 func (s *Server) IncrementUsage(ctx context.Context, req *billingv1.IncrementUsageRequest) (*emptypb.Empty, error) {
 	_, err := s.commitInternal(ctx, commitInput{
 		sessionIDRaw:    req.GetSessionId(),
 		orgIDRaw:        req.GetOrganizationId(),
+		therapistIDRaw:  req.GetTherapistId(),
 		durationSeconds: 0,
 		usageType:       req.GetUsageType(),
 		legacyAmount:    req.GetAmount(),
@@ -455,6 +517,7 @@ func (s *Server) IncrementUsage(ctx context.Context, req *billingv1.IncrementUsa
 type commitInput struct {
 	sessionIDRaw    string
 	orgIDRaw        string
+	therapistIDRaw  string
 	durationSeconds int32
 	usageType       string
 	legacyAmount    int32
@@ -513,7 +576,28 @@ func (s *Server) commitInternal(ctx context.Context, in commitInput) (*billingv1
 		return nil, status.Errorf(codes.Internal, "lock failed")
 	}
 
-	counter, err := q.LockActiveCounter(ctx, sub.ID)
+	// Scope resolution (docs/38): if a reservation exists, its recorded
+	// scope WINS — the commit must hit the same counter the reserve
+	// debited. Only reservation-less commits resolve from the request's
+	// therapist_id. Reservation lookup therefore happens BEFORE the
+	// counter lock (both under the subscription advisory lock).
+	therapistID, err := parseOptionalTherapistID(in.therapistIDRaw)
+	if err != nil {
+		return nil, err
+	}
+	reservedToRelease := int32(0)
+	hadActiveReservation := false
+	if existingRes, err := q.GetReservationBySession(ctx, sessionID); err == nil {
+		therapistID = existingRes.TherapistID
+		if existingRes.Status == db.ReservationStatusACTIVE {
+			reservedToRelease = existingRes.TokensReserved
+			hadActiveReservation = true
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, status.Errorf(codes.Internal, "reservation lookup failed")
+	}
+
+	counter, counterScope, err := lockDebitCounter(ctx, q, sub, therapistID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, status.Error(codes.FailedPrecondition, "QUOTA_COUNTER_MISSING")
@@ -544,24 +628,18 @@ func (s *Server) commitInternal(ctx context.Context, in commitInput) (*billingv1
 		return nil, status.Errorf(codes.Internal, "usage_event create failed")
 	}
 
-	// Sprawdź czy była rezerwacja — jeśli tak, transfer tokens_reserved → tokens_used.
-	reservedToRelease := int32(0)
-	if existingRes, err := q.GetReservationBySession(ctx, sessionID); err == nil {
-		if existingRes.Status == db.ReservationStatusACTIVE {
-			reservedToRelease = existingRes.TokensReserved
-			if err := q.MarkReservationCommitted(ctx, sessionID); err != nil {
-				slog.ErrorContext(ctx, "CommitUsage: MarkReservationCommitted", "error", err)
-				return nil, status.Errorf(codes.Internal, "reservation finalize failed")
-			}
+	// Transfer tokens_reserved → tokens_used dla aktywnej rezerwacji.
+	if hadActiveReservation {
+		if err := q.MarkReservationCommitted(ctx, sessionID); err != nil {
+			slog.ErrorContext(ctx, "CommitUsage: MarkReservationCommitted", "error", err)
+			return nil, status.Errorf(codes.Internal, "reservation finalize failed")
 		}
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, status.Errorf(codes.Internal, "reservation lookup failed")
 	}
 
 	if err := q.CommitTokens(ctx, db.CommitTokensParams{
-		ID:              counter.ID,
-		TokensUsed:      tokensToCharge,
-		TokensReserved:  reservedToRelease,
+		ID:             counter.ID,
+		TokensUsed:     tokensToCharge,
+		TokensReserved: reservedToRelease,
 	}); err != nil {
 		slog.ErrorContext(ctx, "CommitUsage: CommitTokens", "error", err)
 		return nil, status.Errorf(codes.Internal, "counter commit failed")
@@ -587,8 +665,16 @@ func (s *Server) commitInternal(ctx context.Context, in commitInput) (*billingv1
 		return nil, status.Errorf(codes.Internal, "commit failed")
 	}
 
-	// Post-commit snapshot (re-read counter).
-	freshCounter, err := s.queries.GetActiveCounter(ctx, sub.ID)
+	// Post-commit snapshot (re-read counter, same scope as the debit).
+	var freshCounter db.UsageCounter
+	if counterScope.Valid {
+		freshCounter, err = s.queries.GetActiveCounterForTherapist(ctx, db.GetActiveCounterForTherapistParams{
+			SubscriptionID: sub.ID,
+			TherapistID:    counterScope,
+		})
+	} else {
+		freshCounter, err = s.queries.GetActiveCounter(ctx, sub.ID)
+	}
 	if err != nil {
 		// Commit się udał, więc zwracamy success z best-effort snapshotem
 		// (klient retry tak czy inaczej dostanie no-op path).
@@ -625,8 +711,8 @@ func (s *Server) snapshotAfterCommit(ctx context.Context, orgID uuid.UUID, alrea
 	if err != nil {
 		return &billingv1.UsageCommit{TokensConsumed: alreadyCharged}, nil
 	}
-	counter, err := s.queries.GetActiveCounter(ctx, sub.ID)
-	if err != nil {
+	used, reserved, limit, ok := s.orgCounterOrAggregate(ctx, sub.ID)
+	if !ok {
 		return &billingv1.UsageCommit{TokensConsumed: alreadyCharged}, nil
 	}
 
@@ -635,10 +721,14 @@ func (s *Server) snapshotAfterCommit(ctx context.Context, orgID uuid.UUID, alrea
 		canceledAt = &sub.CanceledAt.Time
 	}
 
+	remaining := limit - used - reserved
+	if remaining < 0 {
+		remaining = 0
+	}
 	return &billingv1.UsageCommit{
 		TokensConsumed:  alreadyCharged,
-		RemainingTokens: remainingTokens(counter),
-		LimitTokens:     counter.TokensLimit,
+		RemainingTokens: remaining,
+		LimitTokens:     limit,
 		StateAfter: buildSubscriptionProto(subFields{
 			ID:                 sub.ID,
 			PlanTier:           string(sub.PlanTier),
@@ -648,7 +738,7 @@ func (s *Server) snapshotAfterCommit(ctx context.Context, orgID uuid.UUID, alrea
 			CurrentPeriodEnd:   sub.CurrentPeriodEnd,
 			CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
 			CanceledAt:         canceledAt,
-		}, counter.TokensUsed, counter.TokensReserved, counter.TokensLimit),
+		}, used, reserved, limit),
 	}, nil
 }
 
@@ -684,7 +774,9 @@ func (s *Server) ReleaseCredit(ctx context.Context, req *billingv1.ReleaseCredit
 		return nil, status.Errorf(codes.Internal, "lock failed")
 	}
 
-	counter, err := q.LockActiveCounter(ctx, existing.SubscriptionID)
+	// Credit back the SAME counter the reserve debited (docs/38):
+	// pending_reservations.therapist_id records the scope.
+	counter, err := lockScopedCounter(ctx, q, existing.SubscriptionID, existing.TherapistID)
 	if err != nil {
 		// Brak counter — rezerwacja zostaje "zawieszona", ale to nie
 		// powinno się zdarzyć (counter musi istnieć żeby kiedyś
@@ -756,14 +848,9 @@ func (s *Server) GetSubscription(ctx context.Context, req *billingv1.GetSubscrip
 		return nil, status.Errorf(codes.Internal, "subscription lookup failed")
 	}
 
-	counter, cerr := s.queries.GetActiveCounter(ctx, sub.ID)
-	tokensUsed := int32(0)
-	tokensReserved := int32(0)
-	tokensLimit := sub.PlanTokensPerPeriod
-	if cerr == nil {
-		tokensUsed = counter.TokensUsed
-		tokensReserved = counter.TokensReserved
-		tokensLimit = counter.TokensLimit
+	tokensUsed, tokensReserved, tokensLimit, ok := s.orgCounterOrAggregate(ctx, sub.ID)
+	if !ok {
+		tokensLimit = sub.PlanTokensPerPeriod
 	}
 
 	var canceledAt *time.Time

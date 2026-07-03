@@ -37,11 +37,11 @@ import (
 	"google.golang.org/grpc/reflection"
 	"net/url"
 
+	"connectrpc.com/connect"
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
 	billingv1connect "github.com/superwizor-ai/backend/gen/go/billing/v1/billingv1connect"
 	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
-	"connectrpc.com/connect"
 
 	"github.com/superwizor-ai/backend/pkg/analytics"
 	"github.com/superwizor-ai/backend/pkg/connectmd"

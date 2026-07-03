@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file billing/v1/billing.proto.
  */
 export const file_billing_v1_billing: GenFile = /*@__PURE__*/
-  fileDesc("ChhiaWxsaW5nL3YxL2JpbGxpbmcucHJvdG8SCmJpbGxpbmcudjEiZgoRQ2hlY2tRdW90YVJlcXVlc3QSFwoPb3JnYW5pemF0aW9uX2lkGAEgASgJEhQKDHRoZXJhcGlzdF9pZBgCIAEoCRISCgp1c2FnZV90eXBlGAMgASgJEg4KBmFtb3VudBgEIAEoBSKyAQoNUXVvdGFEZWNpc2lvbhIPCgdhbGxvd2VkGAEgASgIEg4KBnJlYXNvbhgCIAEoCRIRCglyZW1haW5pbmcYAyABKAUSDQoFbGltaXQYBCABKAUSGAoQcmVtYWluaW5nX3Rva2VucxgFIAEoBRIUCgxsaW1pdF90b2tlbnMYBiABKAUSLgoKcGVyaW9kX2VuZBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAijAEKFFJlc2VydmVDcmVkaXRSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSFwoPb3JnYW5pemF0aW9uX2lkGAIgASgJEhQKDHRoZXJhcGlzdF9pZBgDIAEoCRIYChBlc3RpbWF0ZWRfdG9rZW5zGAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSKxAQoLUmVzZXJ2YXRpb24SFgoOcmVzZXJ2YXRpb25faWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRIXCg90b2tlbnNfcmVzZXJ2ZWQYAyABKAUSLgoKZXhwaXJlc19hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLQoLc3RhdGVfYWZ0ZXIYBSABKAsyGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbiKeAQoSQ29tbWl0VXNhZ2VSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSFwoPb3JnYW5pemF0aW9uX2lkGAIgASgJEhQKDHRoZXJhcGlzdF9pZBgDIAEoCRIYChBkdXJhdGlvbl9zZWNvbmRzGAQgASgFEhIKCnVzYWdlX3R5cGUYBSABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAYgASgJIoUBCgtVc2FnZUNvbW1pdBIXCg90b2tlbnNfY29uc3VtZWQYASABKAUSGAoQcmVtYWluaW5nX3Rva2VucxgCIAEoBRIUCgxsaW1pdF90b2tlbnMYAyABKAUSLQoLc3RhdGVfYWZ0ZXIYBCABKAsyGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbiJTChRSZWxlYXNlQ3JlZGl0UmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEhcKD29yZ2FuaXphdGlvbl9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkimwEKFUluY3JlbWVudFVzYWdlUmVxdWVzdBIXCg9vcmdhbml6YXRpb25faWQYASABKAkSFAoMdGhlcmFwaXN0X2lkGAIgASgJEhIKCnVzYWdlX3R5cGUYAyABKAkSDgoGYW1vdW50GAQgASgFEhIKCnNlc3Npb25faWQYBSABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAYgASgJOgIYASIxChZHZXRTdWJzY3JpcHRpb25SZXF1ZXN0EhcKD29yZ2FuaXphdGlvbl9pZBgBIAEoCSLSAwoMU3Vic2NyaXB0aW9uEgoKAmlkGAEgASgJEhEKCXBsYW5fdGllchgCIAEoCRIOCgZzdGF0dXMYAyABKAkSIAoYc2Vzc2lvbnNfcGVyX21vbnRoX2xpbWl0GAQgASgFEiEKGXNlc3Npb25zX3VzZWRfdGhpc19wZXJpb2QYBSABKAUSGQoRdG9rZW5zX3Blcl9wZXJpb2QYBiABKAUSHwoXdG9rZW5zX3VzZWRfdGhpc19wZXJpb2QYByABKAUSIwobdG9rZW5zX3Jlc2VydmVkX3RoaXNfcGVyaW9kGAggASgFEjgKFGN1cnJlbnRfcGVyaW9kX3N0YXJ0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI2ChJjdXJyZW50X3BlcmlvZF9lbmQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCnBsYW5fY3ljbGUYCyABKAkSGAoQdG9rZW5zX3JlbWFpbmluZxgMIAEoBRIcChRjYW5jZWxfYXRfcGVyaW9kX2VuZBgNIAEoCBIvCgtjYW5jZWxlZF9hdBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAihgEKF0FkbWluUmVzZXRUb2tlbnNSZXF1ZXN0EhcKD29yZ2FuaXphdGlvbl9pZBgBIAEoCRITCgt0b2tlbnNfdXNlZBgCIAEoBRIUCgx0b2tlbnNfbGltaXQYAyABKAUSDgoGcmVhc29uGAQgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSKBAQoWQWRtaW5DaGFuZ2VQbGFuUmVxdWVzdBIXCg9vcmdhbml6YXRpb25faWQYASABKAkSEQoJcGxhbl90aWVyGAIgASgJEhIKCnBsYW5fY3ljbGUYAyABKAkSDgoGcmVhc29uGAQgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSIuChNMaXN0SW52b2ljZXNSZXF1ZXN0EhcKD29yZ2FuaXphdGlvbl9pZBgBIAEoCSI9ChRMaXN0SW52b2ljZXNSZXNwb25zZRIlCghpbnZvaWNlcxgBIAMoCzITLmJpbGxpbmcudjEuSW52b2ljZSKaAgoHSW52b2ljZRIKCgJpZBgBIAEoCRIZChFzdHJpcGVfaW52b2ljZV9pZBgCIAEoCRITCgthbW91bnRfcGFpZBgDIAEoARIQCghjdXJyZW5jeRgEIAEoCRITCgtpbnZvaWNlX3BkZhgFIAEoCRIaChJob3N0ZWRfaW52b2ljZV91cmwYBiABKAkSMAoMcGVyaW9kX3N0YXJ0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpwZXJpb2RfZW5kGAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcDLRBQoOQmlsbGluZ1NlcnZpY2USRgoKQ2hlY2tRdW90YRIdLmJpbGxpbmcudjEuQ2hlY2tRdW90YVJlcXVlc3QaGS5iaWxsaW5nLnYxLlF1b3RhRGVjaXNpb24SSgoNUmVzZXJ2ZUNyZWRpdBIgLmJpbGxpbmcudjEuUmVzZXJ2ZUNyZWRpdFJlcXVlc3QaFy5iaWxsaW5nLnYxLlJlc2VydmF0aW9uEkYKC0NvbW1pdFVzYWdlEh4uYmlsbGluZy52MS5Db21taXRVc2FnZVJlcXVlc3QaFy5iaWxsaW5nLnYxLlVzYWdlQ29tbWl0EkkKDVJlbGVhc2VDcmVkaXQSIC5iaWxsaW5nLnYxLlJlbGVhc2VDcmVkaXRSZXF1ZXN0GhYuZ29vZ2xlLnByb3RvYnVmLkVtcHR5ElAKDkluY3JlbWVudFVzYWdlEiEuYmlsbGluZy52MS5JbmNyZW1lbnRVc2FnZVJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkiA4gCARJPCg9HZXRTdWJzY3JpcHRpb24SIi5iaWxsaW5nLnYxLkdldFN1YnNjcmlwdGlvblJlcXVlc3QaGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbhJRCgxMaXN0SW52b2ljZXMSHy5iaWxsaW5nLnYxLkxpc3RJbnZvaWNlc1JlcXVlc3QaIC5iaWxsaW5nLnYxLkxpc3RJbnZvaWNlc1Jlc3BvbnNlElEKEEFkbWluUmVzZXRUb2tlbnMSIy5iaWxsaW5nLnYxLkFkbWluUmVzZXRUb2tlbnNSZXF1ZXN0GhguYmlsbGluZy52MS5TdWJzY3JpcHRpb24STwoPQWRtaW5DaGFuZ2VQbGFuEiIuYmlsbGluZy52MS5BZG1pbkNoYW5nZVBsYW5SZXF1ZXN0GhguYmlsbGluZy52MS5TdWJzY3JpcHRpb25CpQEKDmNvbS5iaWxsaW5nLnYxQgxCaWxsaW5nUHJvdG9QAVo8Z2l0aHViLmNvbS9zdXBlcndpem9yLWFpL2JhY2tlbmQvZ2VuL2dvL2JpbGxpbmcvdjE7YmlsbGluZ3YxogIDQlhYqgIKQmlsbGluZy5WMcoCCkJpbGxpbmdcVjHiAhZCaWxsaW5nXFYxXEdQQk1ldGFkYXRh6gILQmlsbGluZzo6VjFiBnByb3RvMw", [file_google_protobuf_empty, file_google_protobuf_timestamp]);
+  fileDesc("ChhiaWxsaW5nL3YxL2JpbGxpbmcucHJvdG8SCmJpbGxpbmcudjEiZgoRQ2hlY2tRdW90YVJlcXVlc3QSFwoPb3JnYW5pemF0aW9uX2lkGAEgASgJEhQKDHRoZXJhcGlzdF9pZBgCIAEoCRISCgp1c2FnZV90eXBlGAMgASgJEg4KBmFtb3VudBgEIAEoBSKyAQoNUXVvdGFEZWNpc2lvbhIPCgdhbGxvd2VkGAEgASgIEg4KBnJlYXNvbhgCIAEoCRIRCglyZW1haW5pbmcYAyABKAUSDQoFbGltaXQYBCABKAUSGAoQcmVtYWluaW5nX3Rva2VucxgFIAEoBRIUCgxsaW1pdF90b2tlbnMYBiABKAUSLgoKcGVyaW9kX2VuZBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAijAEKFFJlc2VydmVDcmVkaXRSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSFwoPb3JnYW5pemF0aW9uX2lkGAIgASgJEhQKDHRoZXJhcGlzdF9pZBgDIAEoCRIYChBlc3RpbWF0ZWRfdG9rZW5zGAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSKxAQoLUmVzZXJ2YXRpb24SFgoOcmVzZXJ2YXRpb25faWQYASABKAkSEgoKc2Vzc2lvbl9pZBgCIAEoCRIXCg90b2tlbnNfcmVzZXJ2ZWQYAyABKAUSLgoKZXhwaXJlc19hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLQoLc3RhdGVfYWZ0ZXIYBSABKAsyGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbiKeAQoSQ29tbWl0VXNhZ2VSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSFwoPb3JnYW5pemF0aW9uX2lkGAIgASgJEhQKDHRoZXJhcGlzdF9pZBgDIAEoCRIYChBkdXJhdGlvbl9zZWNvbmRzGAQgASgFEhIKCnVzYWdlX3R5cGUYBSABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAYgASgJIoUBCgtVc2FnZUNvbW1pdBIXCg90b2tlbnNfY29uc3VtZWQYASABKAUSGAoQcmVtYWluaW5nX3Rva2VucxgCIAEoBRIUCgxsaW1pdF90b2tlbnMYAyABKAUSLQoLc3RhdGVfYWZ0ZXIYBCABKAsyGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbiJTChRSZWxlYXNlQ3JlZGl0UmVxdWVzdBISCgpzZXNzaW9uX2lkGAEgASgJEhcKD29yZ2FuaXphdGlvbl9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkimwEKFUluY3JlbWVudFVzYWdlUmVxdWVzdBIXCg9vcmdhbml6YXRpb25faWQYASABKAkSFAoMdGhlcmFwaXN0X2lkGAIgASgJEhIKCnVzYWdlX3R5cGUYAyABKAkSDgoGYW1vdW50GAQgASgFEhIKCnNlc3Npb25faWQYBSABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAYgASgJOgIYASIxChZHZXRTdWJzY3JpcHRpb25SZXF1ZXN0EhcKD29yZ2FuaXphdGlvbl9pZBgBIAEoCSLSAwoMU3Vic2NyaXB0aW9uEgoKAmlkGAEgASgJEhEKCXBsYW5fdGllchgCIAEoCRIOCgZzdGF0dXMYAyABKAkSIAoYc2Vzc2lvbnNfcGVyX21vbnRoX2xpbWl0GAQgASgFEiEKGXNlc3Npb25zX3VzZWRfdGhpc19wZXJpb2QYBSABKAUSGQoRdG9rZW5zX3Blcl9wZXJpb2QYBiABKAUSHwoXdG9rZW5zX3VzZWRfdGhpc19wZXJpb2QYByABKAUSIwobdG9rZW5zX3Jlc2VydmVkX3RoaXNfcGVyaW9kGAggASgFEjgKFGN1cnJlbnRfcGVyaW9kX3N0YXJ0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI2ChJjdXJyZW50X3BlcmlvZF9lbmQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCnBsYW5fY3ljbGUYCyABKAkSGAoQdG9rZW5zX3JlbWFpbmluZxgMIAEoBRIcChRjYW5jZWxfYXRfcGVyaW9kX2VuZBgNIAEoCBIvCgtjYW5jZWxlZF9hdBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAihgEKF0FkbWluUmVzZXRUb2tlbnNSZXF1ZXN0EhcKD29yZ2FuaXphdGlvbl9pZBgBIAEoCRITCgt0b2tlbnNfdXNlZBgCIAEoBRIUCgx0b2tlbnNfbGltaXQYAyABKAUSDgoGcmVhc29uGAQgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSJSChJTZWF0QWxsb2NhdGlvblNwZWMSDwoHcGxhbl9pZBgBIAEoCRINCgVzZWF0cxgCIAEoBRIcChRwcmljZV9ncm9zc19wZXJfc2VhdBgDIAEoCSLPAQoeQWRtaW5TZXRTZWF0QWxsb2NhdGlvbnNSZXF1ZXN0EhcKD29yZ2FuaXphdGlvbl9pZBgBIAEoCRIzCgthbGxvY2F0aW9ucxgCIAMoCzIeLmJpbGxpbmcudjEuU2VhdEFsbG9jYXRpb25TcGVjEjYKEnN1YnNjcmlwdGlvbl9zdGFydBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDgoGcmVhc29uGA8gASgJEhcKD2lkZW1wb3RlbmN5X2tleRgQIAEoCSLvAQoSU2VhdEFsbG9jYXRpb25JbmZvEhUKDWFsbG9jYXRpb25faWQYASABKAkSDwoHcGxhbl9pZBgCIAEoCRIRCglwbGFuX3RpZXIYAyABKAkSEgoKcGxhbl9jeWNsZRgEIAEoCRINCgVzZWF0cxgFIAEoBRIWCg5zZWF0c19hc3NpZ25lZBgGIAEoBRIVCg1zZWF0c19wZW5kaW5nGAcgASgFEhwKFHByaWNlX2dyb3NzX3Blcl9zZWF0GAggASgJEhUKDWN1cnJlbmN5X2NvZGUYCSABKAkSFwoPdG9rZW5zX3Blcl9zZWF0GAogASgFIrsBChJUaGVyYXBpc3RTZWF0VXNhZ2USFAoMdGhlcmFwaXN0X2lkGAEgASgJEhIKCmZpcnN0X25hbWUYAiABKAkSEQoJbGFzdF9uYW1lGAMgASgJEhEKCXBsYW5fdGllchgEIAEoCRITCgt0b2tlbnNfdXNlZBgFIAEoBRIXCg90b2tlbnNfcmVzZXJ2ZWQYBiABKAUSFAoMdG9rZW5zX2xpbWl0GAcgASgFEhEKCWlzX2FjdGl2ZRgIIAEoCCKWAgoOT3JnU2VhdFN1bW1hcnkSFwoPb3JnYW5pemF0aW9uX2lkGAEgASgJEjMKC2FsbG9jYXRpb25zGAIgAygLMh4uYmlsbGluZy52MS5TZWF0QWxsb2NhdGlvbkluZm8SNwoPdGhlcmFwaXN0X3VzYWdlGAMgAygLMh4uYmlsbGluZy52MS5UaGVyYXBpc3RTZWF0VXNhZ2USMAoMcGVyaW9kX3N0YXJ0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpwZXJpb2RfZW5kGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIbChNzdWJzY3JpcHRpb25fc3RhdHVzGAYgASgJIoEBChZBZG1pbkNoYW5nZVBsYW5SZXF1ZXN0EhcKD29yZ2FuaXphdGlvbl9pZBgBIAEoCRIRCglwbGFuX3RpZXIYAiABKAkSEgoKcGxhbl9jeWNsZRgDIAEoCRIOCgZyZWFzb24YBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJIi4KE0xpc3RJbnZvaWNlc1JlcXVlc3QSFwoPb3JnYW5pemF0aW9uX2lkGAEgASgJIj0KFExpc3RJbnZvaWNlc1Jlc3BvbnNlEiUKCGludm9pY2VzGAEgAygLMhMuYmlsbGluZy52MS5JbnZvaWNlIpoCCgdJbnZvaWNlEgoKAmlkGAEgASgJEhkKEXN0cmlwZV9pbnZvaWNlX2lkGAIgASgJEhMKC2Ftb3VudF9wYWlkGAMgASgBEhAKCGN1cnJlbmN5GAQgASgJEhMKC2ludm9pY2VfcGRmGAUgASgJEhoKEmhvc3RlZF9pbnZvaWNlX3VybBgGIAEoCRIwCgxwZXJpb2Rfc3RhcnQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnBlcmlvZF9lbmQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmNyZWF0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wMv0GCg5CaWxsaW5nU2VydmljZRJGCgpDaGVja1F1b3RhEh0uYmlsbGluZy52MS5DaGVja1F1b3RhUmVxdWVzdBoZLmJpbGxpbmcudjEuUXVvdGFEZWNpc2lvbhJKCg1SZXNlcnZlQ3JlZGl0EiAuYmlsbGluZy52MS5SZXNlcnZlQ3JlZGl0UmVxdWVzdBoXLmJpbGxpbmcudjEuUmVzZXJ2YXRpb24SRgoLQ29tbWl0VXNhZ2USHi5iaWxsaW5nLnYxLkNvbW1pdFVzYWdlUmVxdWVzdBoXLmJpbGxpbmcudjEuVXNhZ2VDb21taXQSSQoNUmVsZWFzZUNyZWRpdBIgLmJpbGxpbmcudjEuUmVsZWFzZUNyZWRpdFJlcXVlc3QaFi5nb29nbGUucHJvdG9idWYuRW1wdHkSUAoOSW5jcmVtZW50VXNhZ2USIS5iaWxsaW5nLnYxLkluY3JlbWVudFVzYWdlUmVxdWVzdBoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eSIDiAIBEk8KD0dldFN1YnNjcmlwdGlvbhIiLmJpbGxpbmcudjEuR2V0U3Vic2NyaXB0aW9uUmVxdWVzdBoYLmJpbGxpbmcudjEuU3Vic2NyaXB0aW9uElEKDExpc3RJbnZvaWNlcxIfLmJpbGxpbmcudjEuTGlzdEludm9pY2VzUmVxdWVzdBogLmJpbGxpbmcudjEuTGlzdEludm9pY2VzUmVzcG9uc2USUQoQQWRtaW5SZXNldFRva2VucxIjLmJpbGxpbmcudjEuQWRtaW5SZXNldFRva2Vuc1JlcXVlc3QaGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbhJPCg9BZG1pbkNoYW5nZVBsYW4SIi5iaWxsaW5nLnYxLkFkbWluQ2hhbmdlUGxhblJlcXVlc3QaGC5iaWxsaW5nLnYxLlN1YnNjcmlwdGlvbhJhChdBZG1pblNldFNlYXRBbGxvY2F0aW9ucxIqLmJpbGxpbmcudjEuQWRtaW5TZXRTZWF0QWxsb2NhdGlvbnNSZXF1ZXN0GhouYmlsbGluZy52MS5PcmdTZWF0U3VtbWFyeRJHChFHZXRNeU9yZ1NlYXRVc2FnZRIWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRoaLmJpbGxpbmcudjEuT3JnU2VhdFN1bW1hcnlCpQEKDmNvbS5iaWxsaW5nLnYxQgxCaWxsaW5nUHJvdG9QAVo8Z2l0aHViLmNvbS9zdXBlcndpem9yLWFpL2JhY2tlbmQvZ2VuL2dvL2JpbGxpbmcvdjE7YmlsbGluZ3YxogIDQlhYqgIKQmlsbGluZy5WMcoCCkJpbGxpbmdcVjHiAhZCaWxsaW5nXFYxXEdQQk1ldGFkYXRh6gILQmlsbGluZzo6VjFiBnByb3RvMw", [file_google_protobuf_empty, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message billing.v1.CheckQuotaRequest
@@ -503,6 +503,246 @@ export const AdminResetTokensRequestSchema: GenMessage<AdminResetTokensRequest> 
   messageDesc(file_billing_v1_billing, 10);
 
 /**
+ * @generated from message billing.v1.SeatAllocationSpec
+ */
+export type SeatAllocationSpec = Message<"billing.v1.SeatAllocationSpec"> & {
+  /**
+   * @generated from field: string plan_id = 1;
+   */
+  planId: string;
+
+  /**
+   * @generated from field: int32 seats = 2;
+   */
+  seats: number;
+
+  /**
+   * Negotiated gross price per seat as a decimal string ("79.99").
+   * Empty = catalog plan.price_gross.
+   *
+   * @generated from field: string price_gross_per_seat = 3;
+   */
+  priceGrossPerSeat: string;
+};
+
+/**
+ * Describes the message billing.v1.SeatAllocationSpec.
+ * Use `create(SeatAllocationSpecSchema)` to create a new message.
+ */
+export const SeatAllocationSpecSchema: GenMessage<SeatAllocationSpec> = /*@__PURE__*/
+  messageDesc(file_billing_v1_billing, 11);
+
+/**
+ * @generated from message billing.v1.AdminSetSeatAllocationsRequest
+ */
+export type AdminSetSeatAllocationsRequest = Message<"billing.v1.AdminSetSeatAllocationsRequest"> & {
+  /**
+   * @generated from field: string organization_id = 1;
+   */
+  organizationId: string;
+
+  /**
+   * @generated from field: repeated billing.v1.SeatAllocationSpec allocations = 2;
+   */
+  allocations: SeatAllocationSpec[];
+
+  /**
+   * Start of the (first) subscription period. Ignored when the org
+   * already has an active subscription — the running period wins.
+   *
+   * @generated from field: google.protobuf.Timestamp subscription_start = 3;
+   */
+  subscriptionStart?: Timestamp | undefined;
+
+  /**
+   * required, >= 10 chars
+   *
+   * @generated from field: string reason = 15;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: string idempotency_key = 16;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message billing.v1.AdminSetSeatAllocationsRequest.
+ * Use `create(AdminSetSeatAllocationsRequestSchema)` to create a new message.
+ */
+export const AdminSetSeatAllocationsRequestSchema: GenMessage<AdminSetSeatAllocationsRequest> = /*@__PURE__*/
+  messageDesc(file_billing_v1_billing, 12);
+
+/**
+ * @generated from message billing.v1.SeatAllocationInfo
+ */
+export type SeatAllocationInfo = Message<"billing.v1.SeatAllocationInfo"> & {
+  /**
+   * @generated from field: string allocation_id = 1;
+   */
+  allocationId: string;
+
+  /**
+   * @generated from field: string plan_id = 2;
+   */
+  planId: string;
+
+  /**
+   * @generated from field: string plan_tier = 3;
+   */
+  planTier: string;
+
+  /**
+   * @generated from field: string plan_cycle = 4;
+   */
+  planCycle: string;
+
+  /**
+   * @generated from field: int32 seats = 5;
+   */
+  seats: number;
+
+  /**
+   * Occupancy halves (docs/38 §3): active assignments + pending
+   * unexpired invitations.
+   *
+   * @generated from field: int32 seats_assigned = 6;
+   */
+  seatsAssigned: number;
+
+  /**
+   * @generated from field: int32 seats_pending = 7;
+   */
+  seatsPending: number;
+
+  /**
+   * effective (negotiated or catalog)
+   *
+   * @generated from field: string price_gross_per_seat = 8;
+   */
+  priceGrossPerSeat: string;
+
+  /**
+   * @generated from field: string currency_code = 9;
+   */
+  currencyCode: string;
+
+  /**
+   * plan.tokens_per_period
+   *
+   * @generated from field: int32 tokens_per_seat = 10;
+   */
+  tokensPerSeat: number;
+};
+
+/**
+ * Describes the message billing.v1.SeatAllocationInfo.
+ * Use `create(SeatAllocationInfoSchema)` to create a new message.
+ */
+export const SeatAllocationInfoSchema: GenMessage<SeatAllocationInfo> = /*@__PURE__*/
+  messageDesc(file_billing_v1_billing, 13);
+
+/**
+ * @generated from message billing.v1.TherapistSeatUsage
+ */
+export type TherapistSeatUsage = Message<"billing.v1.TherapistSeatUsage"> & {
+  /**
+   * @generated from field: string therapist_id = 1;
+   */
+  therapistId: string;
+
+  /**
+   * @generated from field: string first_name = 2;
+   */
+  firstName: string;
+
+  /**
+   * @generated from field: string last_name = 3;
+   */
+  lastName: string;
+
+  /**
+   * @generated from field: string plan_tier = 4;
+   */
+  planTier: string;
+
+  /**
+   * @generated from field: int32 tokens_used = 5;
+   */
+  tokensUsed: number;
+
+  /**
+   * @generated from field: int32 tokens_reserved = 6;
+   */
+  tokensReserved: number;
+
+  /**
+   * @generated from field: int32 tokens_limit = 7;
+   */
+  tokensLimit: number;
+
+  /**
+   * users.is_active (deactivation state)
+   *
+   * @generated from field: bool is_active = 8;
+   */
+  isActive: boolean;
+};
+
+/**
+ * Describes the message billing.v1.TherapistSeatUsage.
+ * Use `create(TherapistSeatUsageSchema)` to create a new message.
+ */
+export const TherapistSeatUsageSchema: GenMessage<TherapistSeatUsage> = /*@__PURE__*/
+  messageDesc(file_billing_v1_billing, 14);
+
+/**
+ * @generated from message billing.v1.OrgSeatSummary
+ */
+export type OrgSeatSummary = Message<"billing.v1.OrgSeatSummary"> & {
+  /**
+   * @generated from field: string organization_id = 1;
+   */
+  organizationId: string;
+
+  /**
+   * @generated from field: repeated billing.v1.SeatAllocationInfo allocations = 2;
+   */
+  allocations: SeatAllocationInfo[];
+
+  /**
+   * Per-therapist counters for the current period (docs/38 billing
+   * model: enforcement per seat). Empty for orgs without allocations.
+   *
+   * @generated from field: repeated billing.v1.TherapistSeatUsage therapist_usage = 3;
+   */
+  therapistUsage: TherapistSeatUsage[];
+
+  /**
+   * @generated from field: google.protobuf.Timestamp period_start = 4;
+   */
+  periodStart?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp period_end = 5;
+   */
+  periodEnd?: Timestamp | undefined;
+
+  /**
+   * @generated from field: string subscription_status = 6;
+   */
+  subscriptionStatus: string;
+};
+
+/**
+ * Describes the message billing.v1.OrgSeatSummary.
+ * Use `create(OrgSeatSummarySchema)` to create a new message.
+ */
+export const OrgSeatSummarySchema: GenMessage<OrgSeatSummary> = /*@__PURE__*/
+  messageDesc(file_billing_v1_billing, 15);
+
+/**
  * @generated from message billing.v1.AdminChangePlanRequest
  */
 export type AdminChangePlanRequest = Message<"billing.v1.AdminChangePlanRequest"> & {
@@ -543,7 +783,7 @@ export type AdminChangePlanRequest = Message<"billing.v1.AdminChangePlanRequest"
  * Use `create(AdminChangePlanRequestSchema)` to create a new message.
  */
 export const AdminChangePlanRequestSchema: GenMessage<AdminChangePlanRequest> = /*@__PURE__*/
-  messageDesc(file_billing_v1_billing, 11);
+  messageDesc(file_billing_v1_billing, 16);
 
 /**
  * @generated from message billing.v1.ListInvoicesRequest
@@ -560,7 +800,7 @@ export type ListInvoicesRequest = Message<"billing.v1.ListInvoicesRequest"> & {
  * Use `create(ListInvoicesRequestSchema)` to create a new message.
  */
 export const ListInvoicesRequestSchema: GenMessage<ListInvoicesRequest> = /*@__PURE__*/
-  messageDesc(file_billing_v1_billing, 12);
+  messageDesc(file_billing_v1_billing, 17);
 
 /**
  * @generated from message billing.v1.ListInvoicesResponse
@@ -577,7 +817,7 @@ export type ListInvoicesResponse = Message<"billing.v1.ListInvoicesResponse"> & 
  * Use `create(ListInvoicesResponseSchema)` to create a new message.
  */
 export const ListInvoicesResponseSchema: GenMessage<ListInvoicesResponse> = /*@__PURE__*/
-  messageDesc(file_billing_v1_billing, 13);
+  messageDesc(file_billing_v1_billing, 18);
 
 /**
  * @generated from message billing.v1.Invoice
@@ -634,7 +874,7 @@ export type Invoice = Message<"billing.v1.Invoice"> & {
  * Use `create(InvoiceSchema)` to create a new message.
  */
 export const InvoiceSchema: GenMessage<Invoice> = /*@__PURE__*/
-  messageDesc(file_billing_v1_billing, 14);
+  messageDesc(file_billing_v1_billing, 19);
 
 /**
  * BillingService — quota i lifecycle subskrypcji (Phase 3).
@@ -749,6 +989,32 @@ export const BillingService: GenService<{
     methodKind: "unary";
     input: typeof AdminChangePlanRequestSchema;
     output: typeof SubscriptionSchema;
+  },
+  /**
+   * SUPERWIZOR_ADMIN. Sets/updates the org's seat allocations
+   * (plan × seats × negotiated price) and ensures a MANUAL
+   * subscription exists starting at subscription_start. Creates
+   * per-therapist usage counters for already-seated therapists;
+   * later joiners get theirs lazily on first ReserveCredit.
+   * reason >= 10 chars → audit_events.
+   *
+   * @generated from rpc billing.v1.BillingService.AdminSetSeatAllocations
+   */
+  adminSetSeatAllocations: {
+    methodKind: "unary";
+    input: typeof AdminSetSeatAllocationsRequestSchema;
+    output: typeof OrgSeatSummarySchema;
+  },
+  /**
+   * ORG_ADMIN. Seat occupancy + per-therapist token usage for the
+   * /org panel. Org resolved from the caller's auth context.
+   *
+   * @generated from rpc billing.v1.BillingService.GetMyOrgSeatUsage
+   */
+  getMyOrgSeatUsage: {
+    methodKind: "unary";
+    input: typeof EmptySchema;
+    output: typeof OrgSeatSummarySchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_billing_v1_billing, 0);

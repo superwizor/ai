@@ -103,7 +103,7 @@ SET tokens_used  = COALESCE($1::int,  tokens_used),
     tokens_limit = COALESCE($2::int, tokens_limit),
     updated_at   = now()
 WHERE id = $3
-RETURNING id, subscription_id, period_start, period_end, tokens_used, tokens_reserved, tokens_limit, updated_at
+RETURNING id, subscription_id, period_start, period_end, tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id
 `
 
 type AdminUpdateCounterParams struct {
@@ -127,6 +127,7 @@ func (q *Queries) AdminUpdateCounter(ctx context.Context, arg AdminUpdateCounter
 		&i.TokensReserved,
 		&i.TokensLimit,
 		&i.UpdatedAt,
+		&i.TherapistID,
 	)
 	return i, err
 }
@@ -196,7 +197,7 @@ INSERT INTO usage_counters (
     $1, $2, $3, 0, 0, $4
 )
 RETURNING id, subscription_id, period_start, period_end,
-          tokens_used, tokens_reserved, tokens_limit, updated_at
+          tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id
 `
 
 type CreateUsageCounterParams struct {
@@ -225,6 +226,7 @@ func (q *Queries) CreateUsageCounter(ctx context.Context, arg CreateUsageCounter
 		&i.TokensReserved,
 		&i.TokensLimit,
 		&i.UpdatedAt,
+		&i.TherapistID,
 	)
 	return i, err
 }

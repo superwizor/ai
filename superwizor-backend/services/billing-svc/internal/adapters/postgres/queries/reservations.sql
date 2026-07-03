@@ -2,7 +2,7 @@
 -- Idempotency lookup PRZED próbą INSERT-u. Zwraca aktywną lub już sfinalizowaną
 -- rezerwację (status determinuje co handler robi).
 SELECT id, session_id, subscription_id, organization_id,
-       tokens_reserved, status, created_at, expires_at, finalized_at
+       tokens_reserved, status, created_at, expires_at, finalized_at, therapist_id
 FROM pending_reservations
 WHERE session_id = $1;
 
@@ -11,13 +11,13 @@ WHERE session_id = $1;
 -- równoczesny ReserveCredit z różnymi idempotency_keys da tylko jedną
 -- rezerwację — drugi dostanie unique-violation i handler przechwyci.
 INSERT INTO pending_reservations (
-    session_id, subscription_id, organization_id,
+    session_id, subscription_id, organization_id, therapist_id,
     tokens_reserved, expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, $5, $6
 )
 RETURNING id, session_id, subscription_id, organization_id,
-          tokens_reserved, status, created_at, expires_at, finalized_at;
+          tokens_reserved, status, created_at, expires_at, finalized_at, therapist_id;
 
 -- name: MarkReservationCommitted :exec
 -- Wywoływane wewnątrz transakcji CommitUsage, po insert do usage_events.
@@ -38,4 +38,4 @@ WHERE session_id = $1 AND status = 'ACTIVE';
 UPDATE pending_reservations
 SET status = 'EXPIRED', finalized_at = now()
 WHERE status = 'ACTIVE' AND expires_at < now()
-RETURNING id, session_id, subscription_id, tokens_reserved;
+RETURNING id, session_id, subscription_id, therapist_id, tokens_reserved;
