@@ -25,12 +25,14 @@ import {
   type PlanInfo,
 } from "@superwizor/proto-ts/billing/v1/billing_pb";
 import { translateError } from "@/lib/errors/translate";
+import { usePlanName } from "@/lib/plans";
 import { AddressFields, EMPTY_ADDRESS, type AddressDraft } from "./AddressFields";
 
 type SeatRow = { planId: string; seats: string; price: string };
 
 export function OrgCreateWizard() {
   const t = useTranslations("admin.orgCreate");
+  const planName = usePlanName();
   const tErrors = useTranslations("errors");
   const locale = useLocale();
   const prefix = locale === "en" ? "/en" : "";
@@ -275,7 +277,7 @@ export function OrgCreateWizard() {
                           <option value="">{t("pickPlan")}</option>
                           {plans.map((p) => (
                             <option key={p.planId} value={p.planId}>
-                              {p.displayName} ({p.tier}/{p.cycle}) — {p.priceGross} {p.currencyCode},{" "}
+                              {planName(p.tier)} ({p.cycle}) — {p.priceGross} {p.currencyCode},{" "}
                               {p.tokensPerPeriod} tok.
                             </option>
                           ))}
