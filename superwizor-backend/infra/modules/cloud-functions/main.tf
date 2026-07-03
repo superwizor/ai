@@ -65,7 +65,12 @@ resource "google_project_iam_member" "stt_worker_speech" {
 
 resource "google_storage_bucket_iam_member" "stt_worker_audio_bucket" {
   bucket = var.audio_bucket_name
-  role   = "roles/storage.objectViewer"
+  # objectUser (get + list + create + delete), NOT objectViewer: stt-finalize
+  # deletes the source audio right after the transcript is persisted
+  # (finalize.go::deleteSessionAudio, shrinks PHI exposure from the 48 h
+  # lifecycle to seconds). Least-privilege — objectUser omits the object
+  # IAM-admin verbs that objectAdmin carries.
+  role   = "roles/storage.objectUser"
   member = "serviceAccount:${var.stt_worker_sa_email}"
 }
 
