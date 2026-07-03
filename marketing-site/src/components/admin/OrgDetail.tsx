@@ -20,6 +20,7 @@ import { identityClient, billingClient } from "@/lib/connect/clients";
 import {
   AddressSchema,
   AdminGetOrganizationRequestSchema,
+  AdminInviteOrgManagerRequestSchema,
   AdminSetOrganizationStatusRequestSchema,
   AdminUpdateOrganizationRequestSchema,
   OrganizationType,
@@ -52,6 +53,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
   const tA = useTranslations("admin.actions");
   const tEdit = useTranslations("admin.orgEdit");
   const tSeats = useTranslations("admin.orgSeats");
+  const tMgr = useTranslations("admin.orgManagerInvite");
   const planName = usePlanName();
   const tErrors = useTranslations("errors");
   const locale = useLocale();
@@ -60,7 +62,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
   const [state, setState] = useState<LoadState>("loading");
   const [details, setDetails] = useState<OrganizationDetails | null>(null);
   const [openDialog, setOpenDialog] = useState<
-    null | "block" | "unblock" | "resetTokens" | "changePlan" | "edit" | "seats"
+    null | "block" | "unblock" | "resetTokens" | "changePlan" | "edit" | "seats" | "inviteManager"
   >(null);
 
   // Form state for action-specific fields. Lives at this level so
@@ -278,6 +280,28 @@ export function OrgDetail({ orgId }: { orgId: string }) {
     }
   };
 
+  const [managerEmail, setManagerEmail] = useState("");
+
+  const onInviteManager = async (reason: string): Promise<ActionResult> => {
+    if (!managerEmail.includes("@")) {
+      return { error: tMgr("emailInvalid") };
+    }
+    try {
+      await identityClient.adminInviteOrgManager(
+        create(AdminInviteOrgManagerRequestSchema, {
+          organizationId: org.id,
+          email: managerEmail.trim(),
+          reason,
+        }),
+      );
+      setManagerEmail("");
+      await reload();
+      return "success";
+    } catch (e) {
+      return { error: translateError(e, tErrors) };
+    }
+  };
+
   const openEdit = () => {
     // Seed the draft from the loaded org. proto-es types
     // organization.type as the numeric enum but Connect-Web JSON ships
@@ -401,6 +425,9 @@ export function OrgDetail({ orgId }: { orgId: string }) {
         {!isSolo && (
           <ActionBtn onClick={openSeats}>{tSeats("manageCta")}</ActionBtn>
         )}
+        <ActionBtn onClick={() => setOpenDialog("inviteManager")}>
+          {tMgr("cta")}
+        </ActionBtn>
       </div>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -422,6 +449,21 @@ export function OrgDetail({ orgId }: { orgId: string }) {
         </Card>
 
         <Card title={t("sectionTherapists")}>
+          {details.managers.length > 0 && (
+            <div className="mb-3 grid gap-1.5">
+              {details.managers.map((u) => (
+                <div key={u.id} className="flex justify-between gap-3 font-serif text-sm">
+                  <span className="text-frost">
+                    {u.firstName} {u.lastName}
+                    <span className="ml-2 font-mono text-[9px] uppercase tracking-[var(--tracking-label)] text-ember">
+                      {tMgr("badge")}
+                    </span>
+                  </span>
+                  <span className="text-mist truncate">{u.email}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {details.therapists.length === 0 ? (
             <p className="font-serif text-mist text-sm">
               {t("noTherapists")}
@@ -646,7 +688,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
               className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition appearance-none cursor-pointer"
             >
               <option value="">{tEdit("primaryAdminUnchanged")}</option>
-              {details.therapists.map((u) => (
+              {details.managers.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.firstName} {u.lastName} — {u.email}
                 </option>
@@ -667,6 +709,31 @@ export function OrgDetail({ orgId }: { orgId: string }) {
             onChange={(next) => setEditDraft((d) => ({ ...d, address: next }))}
             title={tEdit("addressTitle")}
           />
+        </div>
+      </ActionDialog>
+      <ActionDialog
+        open={openDialog === "inviteManager"}
+        title={tMgr("dialogTitle")}
+        body={tMgr("dialogBody")}
+        onClose={() => setOpenDialog(null)}
+        onConfirm={onInviteManager}
+      >
+        <div className="flex flex-col">
+          <label
+            htmlFor="invite-manager-email"
+            className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist mb-2"
+          >
+            {tMgr("emailLabel")}
+          </label>
+          <input
+            id="invite-manager-email"
+            type="email"
+            value={managerEmail}
+            onChange={(e) => setManagerEmail(e.target.value)}
+            placeholder="manager@klinika.pl"
+            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition"
+          />
+          <p className="font-mono text-[10px] text-mist/60 mt-1.5">{tMgr("hint")}</p>
         </div>
       </ActionDialog>
       <ActionDialog

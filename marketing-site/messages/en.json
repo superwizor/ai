@@ -542,6 +542,15 @@
       "hint": "Empty price = the plan's catalog price. Counters for seated therapists are created automatically.",
       "perSeatSuffix": "/seat",
       "pendingNote": "{count} pending invite(s) reserve seats"
+    },
+    "orgManagerInvite": {
+      "cta": "Invite manager",
+      "badge": "MANAGER",
+      "dialogTitle": "Invite organization manager",
+      "dialogBody": "The address receives an ORG_ADMIN invitation (magic link, valid 7 days). Once accepted, the person appears on the list and can become the primary administrator.",
+      "emailLabel": "Manager e-mail",
+      "emailInvalid": "Enter a valid e-mail address.",
+      "hint": "Re-inviting the same address refreshes the link and re-sends the e-mail."
     }
   },
   "errors": {
