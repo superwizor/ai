@@ -354,3 +354,21 @@ func (s *Server) AdminListPlans(ctx context.Context, _ *emptypb.Empty) (*billing
 	}
 	return out, nil
 }
+
+// AdminGetOrgSeatUsage — the SUPERWIZOR_ADMIN read of any org's seat
+// state (/admin/orgs/[id] edit surface). Same summary builder as
+// GetMyOrgSeatUsage; org comes from the request, role-gated.
+func (s *Server) AdminGetOrgSeatUsage(ctx context.Context, req *billingv1.AdminGetOrgSeatUsageRequest) (*billingv1.OrgSeatSummary, error) {
+	caller, err := resolveAdminCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := caller.requireSuperwizorAdmin(); err != nil {
+		return nil, err
+	}
+	orgID, err := parseUUID("organization_id", req.GetOrganizationId())
+	if err != nil {
+		return nil, err
+	}
+	return s.buildOrgSeatSummary(ctx, orgID)
+}

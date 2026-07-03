@@ -28,6 +28,10 @@ import {
 import {
   AdminResetTokensRequestSchema,
   AdminChangePlanRequestSchema,
+  AdminGetOrgSeatUsageRequestSchema,
+  AdminSetSeatAllocationsRequestSchema,
+  type OrgSeatSummary,
+  type PlanInfo,
 } from "@superwizor/proto-ts/billing/v1/billing_pb";
 import { ActionDialog, type ActionResult } from "./ActionDialog";
 import {
@@ -46,6 +50,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
   const tOrgs = useTranslations("admin.orgs");
   const tA = useTranslations("admin.actions");
   const tEdit = useTranslations("admin.orgEdit");
+  const tSeats = useTranslations("admin.orgSeats");
   const tErrors = useTranslations("errors");
   const locale = useLocale();
   const prefix = locale === "en" ? "/en" : "";
@@ -53,7 +58,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
   const [state, setState] = useState<LoadState>("loading");
   const [details, setDetails] = useState<OrganizationDetails | null>(null);
   const [openDialog, setOpenDialog] = useState<
-    null | "block" | "unblock" | "resetTokens" | "changePlan" | "edit"
+    null | "block" | "unblock" | "resetTokens" | "changePlan" | "edit" | "seats"
   >(null);
 
   // Form state for action-specific fields. Lives at this level so
@@ -99,6 +104,25 @@ export function OrgDetail({ orgId }: { orgId: string }) {
     }
   }, [orgId]);
 
+  // Seat allocations (docs/38): the CLINIC edit surface mirrors the
+  // creation wizard's plan × seats × price table. SOLO orgs skip it.
+  const [seatUsage, setSeatUsage] = useState<OrgSeatSummary | null>(null);
+  const [plans, setPlans] = useState<PlanInfo[]>([]);
+  const [seatRows, setSeatRows] = useState<
+    { planId: string; seats: string; price: string }[]
+  >([]);
+
+  const reloadSeats = useCallback(async () => {
+    try {
+      const usage = await billingClient.adminGetOrgSeatUsage(
+        create(AdminGetOrgSeatUsageRequestSchema, { organizationId: orgId }),
+      );
+      setSeatUsage(usage);
+    } catch {
+      setSeatUsage(null); // org without allocations / older billing — hide the card
+    }
+  }, [orgId]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -114,10 +138,15 @@ export function OrgDetail({ orgId }: { orgId: string }) {
         if (!cancelled) setState("not-found");
       }
     })();
+    void reloadSeats();
+    billingClient
+      .adminListPlans({})
+      .then((resp) => setPlans(resp.plans))
+      .catch(() => setPlans([]));
     return () => {
       cancelled = true;
     };
-  }, [orgId]);
+  }, [orgId, reloadSeats]);
 
   const fmtDate = (ts: Parameters<typeof timestampDate>[0] | undefined) => {
     if (!ts) return "—";
@@ -200,6 +229,47 @@ export function OrgDetail({ orgId }: { orgId: string }) {
         }),
       );
       await reload();
+      return "success";
+    } catch (e) {
+      return { error: translateError(e, tErrors) };
+    }
+  };
+
+  const isSolo =
+    (org.type as unknown) === OrganizationType.SOLO ||
+    org.type === ("ORGANIZATION_TYPE_SOLO" as unknown as OrganizationType);
+
+  const openSeats = () => {
+    // Seed the editor from the live allocations; empty row when none.
+    const rows = (seatUsage?.allocations ?? []).map((a) => ({
+      planId: a.planId,
+      seats: String(a.seats),
+      price: a.priceGrossPerSeat,
+    }));
+    setSeatRows(rows.length > 0 ? rows : [{ planId: "", seats: "1", price: "" }]);
+    setOpenDialog("seats");
+  };
+
+  const onSubmitSeats = async (reason: string): Promise<ActionResult> => {
+    const allocations = seatRows
+      .filter((r) => r.planId && Number.parseInt(r.seats, 10) >= 0)
+      .map((r) => ({
+        planId: r.planId,
+        seats: Number.parseInt(r.seats, 10),
+        priceGrossPerSeat: r.price.trim(),
+      }));
+    if (allocations.length === 0) {
+      return { error: tSeats("noRows") };
+    }
+    try {
+      await billingClient.adminSetSeatAllocations(
+        create(AdminSetSeatAllocationsRequestSchema, {
+          organizationId: org.id,
+          allocations,
+          reason,
+        }),
+      );
+      await reloadSeats();
       return "success";
     } catch (e) {
       return { error: translateError(e, tErrors) };
@@ -326,6 +396,9 @@ export function OrgDetail({ orgId }: { orgId: string }) {
         <ActionBtn onClick={() => setOpenDialog("changePlan")}>
           {tA("changePlan")}
         </ActionBtn>
+        {!isSolo && (
+          <ActionBtn onClick={openSeats}>{tSeats("manageCta")}</ActionBtn>
+        )}
       </div>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -396,6 +469,45 @@ export function OrgDetail({ orgId }: { orgId: string }) {
           )}
         </Card>
       </section>
+
+      {/* Seat allocations — CLINIC orgs mirror the creation wizard
+          (docs/38 §5); SOLO orgs have no seat surface. */}
+      {!isSolo && seatUsage && seatUsage.allocations.length > 0 && (
+        <section>
+          <Card title={tSeats("sectionTitle")}>
+            <ul className="grid gap-3">
+              {seatUsage.allocations.map((a) => {
+                const used = a.seatsAssigned + a.seatsPending;
+                const pct = a.seats > 0 ? Math.min(100, (used / a.seats) * 100) : 0;
+                return (
+                  <li key={a.allocationId} className="grid gap-1.5">
+                    <div className="flex items-baseline justify-between font-serif text-sm">
+                      <span className="text-frost">
+                        {a.planTier} / {a.planCycle}
+                      </span>
+                      <span className="font-mono text-xs text-mist">
+                        {used}/{a.seats} · {a.priceGrossPerSeat} {a.currencyCode}
+                        {tSeats("perSeatSuffix")}
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-frost/10 overflow-hidden">
+                      <div
+                        className={`h-full ${pct >= 100 ? "bg-magma" : "bg-ember"}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    {a.seatsPending > 0 && (
+                      <p className="font-serif text-mist text-xs">
+                        {tSeats("pendingNote", { count: a.seatsPending })}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        </section>
+      )}
 
       {/* Action dialogs ----------------------------------------- */}
       <ActionDialog
@@ -553,6 +665,81 @@ export function OrgDetail({ orgId }: { orgId: string }) {
             onChange={(next) => setEditDraft((d) => ({ ...d, address: next }))}
             title={tEdit("addressTitle")}
           />
+        </div>
+      </ActionDialog>
+      <ActionDialog
+        open={openDialog === "seats"}
+        title={tSeats("dialogTitle")}
+        body={tSeats("dialogBody")}
+        onClose={() => setOpenDialog(null)}
+        onConfirm={onSubmitSeats}
+      >
+        <div className="grid gap-2.5">
+          {seatRows.map((r, i) => (
+            <div key={i} className="grid grid-cols-[1fr_5rem_6rem_auto] gap-2 items-center">
+              <select
+                value={r.planId}
+                onChange={(e) =>
+                  setSeatRows((rs) =>
+                    rs.map((row, idx) => (idx === i ? { ...row, planId: e.target.value } : row)),
+                  )
+                }
+                className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3 py-2 font-display text-sm focus:outline-none focus:border-ember transition appearance-none cursor-pointer"
+              >
+                <option value="">{tSeats("pickPlan")}</option>
+                {plans.map((p) => (
+                  <option key={p.planId} value={p.planId}>
+                    {p.displayName} ({p.tier}/{p.cycle})
+                  </option>
+                ))}
+              </select>
+              <input
+                inputMode="numeric"
+                aria-label={tSeats("seatsLabel")}
+                value={r.seats}
+                onChange={(e) =>
+                  setSeatRows((rs) =>
+                    rs.map((row, idx) =>
+                      idx === i ? { ...row, seats: e.target.value.replace(/\D/g, "") } : row,
+                    ),
+                  )
+                }
+                className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3 py-2 font-mono text-sm focus:outline-none focus:border-ember transition"
+              />
+              <input
+                aria-label={tSeats("priceLabel")}
+                placeholder={tSeats("catalogPrice")}
+                value={r.price}
+                onChange={(e) =>
+                  setSeatRows((rs) =>
+                    rs.map((row, idx) =>
+                      idx === i ? { ...row, price: e.target.value.replace(/[^\d.]/g, "") } : row,
+                    ),
+                  )
+                }
+                className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3 py-2 font-mono text-sm focus:outline-none focus:border-ember transition"
+              />
+              {seatRows.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setSeatRows((rs) => rs.filter((_, idx) => idx !== i))}
+                  className="font-mono text-[10px] uppercase text-magma hover:underline"
+                >
+                  {tSeats("removeRow")}
+                </button>
+              ) : (
+                <span />
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setSeatRows((rs) => [...rs, { planId: "", seats: "1", price: "" }])}
+            className="justify-self-start font-mono text-xs uppercase tracking-[var(--tracking-label)] text-ember hover:underline"
+          >
+            {tSeats("addRow")}
+          </button>
+          <p className="font-mono text-[10px] text-mist/60">{tSeats("hint")}</p>
         </div>
       </ActionDialog>
       <ActionDialog

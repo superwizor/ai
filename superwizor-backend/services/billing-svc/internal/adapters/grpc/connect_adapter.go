@@ -86,6 +86,14 @@ func (a *ConnectAdapter) AdminListPlans(ctx context.Context, req *connect.Reques
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) AdminGetOrgSeatUsage(ctx context.Context, req *connect.Request[billingv1.AdminGetOrgSeatUsageRequest]) (*connect.Response[billingv1.OrgSeatSummary], error) {
+	resp, err := a.s.AdminGetOrgSeatUsage(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) AdminSetSeatAllocations(ctx context.Context, req *connect.Request[billingv1.AdminSetSeatAllocationsRequest]) (*connect.Response[billingv1.OrgSeatSummary], error) {
 	resp, err := a.s.AdminSetSeatAllocations(ctx, req.Msg)
 	if err != nil {

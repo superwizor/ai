@@ -78,6 +78,12 @@ service BillingService {
   // SUPERWIZOR_ADMIN. Active plan catalog — feeds the /admin/orgs/new
   // seat-allocation table (plan_id × seats × price).
   rpc AdminListPlans(google.protobuf.Empty) returns (AdminListPlansResponse);
+
+  // SUPERWIZOR_ADMIN. Seat occupancy + per-therapist usage for ANY
+  // organization — the /admin/orgs/[id] edit surface. Same payload as
+  // GetMyOrgSeatUsage but org comes from the request, gated on the
+  // platform-admin role.
+  rpc AdminGetOrgSeatUsage(AdminGetOrgSeatUsageRequest) returns (OrgSeatSummary);
 }
 
 message CheckQuotaRequest {
@@ -217,6 +223,10 @@ message PlanInfo {
 
 message AdminListPlansResponse {
   repeated PlanInfo plans = 1;
+}
+
+message AdminGetOrgSeatUsageRequest {
+  string organization_id = 1;
 }
 
 message SeatAllocationSpec {

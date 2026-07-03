@@ -504,8 +504,7 @@
       "taxId": "NIP",
       "vatIdEu": "VAT UE",
       "orgType": "Typ organizacji",
-      "typeClinic": "Klinika",
-      "typeEnterprise": "Enterprise",
+      "typeClinic": "Klinika (wielu terapeutów)",
       "hqAddress": "Adres siedziby",
       "colPlan": "Plan",
       "colSeats": "Miejsca",
@@ -525,7 +524,24 @@
       "back": "Wstecz",
       "next": "Dalej",
       "submit": "Utwórz organizację",
-      "submitting": "Tworzenie…"
+      "submitting": "Tworzenie…",
+      "typeSolo": "Solo (jeden terapeuta)"
+    },
+    "orgSeats": {
+      "sectionTitle": "Miejsca i plany",
+      "manageCta": "Zarządzaj miejscami",
+      "dialogTitle": "Miejsca w planach",
+      "dialogBody": "Ustaw liczbę miejsc i cenę za miejsce per plan — jak w kreatorze organizacji. Zmiana wymaga powodu (audyt).",
+      "pickPlan": "— plan —",
+      "seatsLabel": "Miejsca",
+      "priceLabel": "Cena/miejsce",
+      "catalogPrice": "cennik",
+      "addRow": "+ Dodaj plan",
+      "removeRow": "Usuń",
+      "noRows": "Dodaj co najmniej jedną alokację z planem i liczbą miejsc.",
+      "hint": "Pusta cena = cena katalogowa planu. Liczniki terapeutów zajmujących miejsca zostaną utworzone automatycznie.",
+      "perSeatSuffix": "/miejsce",
+      "pendingNote": "{count} zapr. oczekujące rezerwują miejsca"
     }
   },
   "errors": {
