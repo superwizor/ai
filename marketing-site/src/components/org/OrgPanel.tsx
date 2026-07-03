@@ -29,6 +29,7 @@ import {
 } from "@superwizor/proto-ts/clinical/v1/clinical_pb";
 import { translateError } from "@/lib/errors/translate";
 import { usePlanName } from "@/lib/plans";
+import { OrgAnalyticsWidgets } from "./OrgAnalyticsWidgets";
 
 type Tab = "team" | "analytics" | "organization" | "billing";
 
@@ -334,7 +335,8 @@ export function OrgPanel() {
       )}
 
       {!loading && tab === "analytics" && (
-        <section className="mt-6 grid gap-4">
+        <section className="mt-6 grid gap-6">
+          <OrgAnalyticsWidgets />
           <div className="flex items-center gap-2">
             {[7, 30, 90].map((d) => (
               <button

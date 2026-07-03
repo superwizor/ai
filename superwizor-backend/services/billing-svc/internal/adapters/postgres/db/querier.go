@@ -35,6 +35,12 @@ type Querier interface {
 	// Resolves a (plan_tier, billing_cycle) pair to the live subscription_plans
 	// row — used by AdminChangePlan to look up the new tier's tokens_per_period.
 	AdminGetPlanByTierCycle(ctx context.Context, arg AdminGetPlanByTierCycleParams) (SubscriptionPlan, error)
+	// AdminResetTokens, per-therapist half (docs/38): applies the
+	// tokens_used override to EVERY active per-seat counter of the
+	// subscription. tokens_limit is intentionally NOT applied here — per
+	// -therapist limits come from each seat's plan; an org-wide limit
+	// override only makes sense on the org-level counter.
+	AdminResetTherapistCounters(ctx context.Context, arg AdminResetTherapistCountersParams) (int64, error)
 	// AdminResetTokens core. Selective COALESCE — pass NULL on tokens_used or
 	// tokens_limit to leave that column unchanged. The handler maps proto
 	// value -1 (sentinel) to NULL before calling.

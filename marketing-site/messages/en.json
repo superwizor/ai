@@ -1508,6 +1508,28 @@
       "mTotals": "Total",
       "analyticsEmpty": "No data in the selected period.",
       "analyticsPrivacyNote": "Metadata aggregates only — no session content, reports, or patient identity."
+    },
+    "analytics": {
+      "loading": "Loading analytics…",
+      "empty": "No data in this range.",
+      "kpiWau": "Active therapists (WAU)",
+      "kpiWauInfo": "Org therapists with at least one session in the last 7 days.",
+      "kpiSessionsWeek": "Sessions this week",
+      "kpiSessionsWeekInfo": "Sessions started since Monday of the current week.",
+      "kpiAvgDuration": "Avg session time",
+      "kpiAvgDurationInfo": "Average duration of completed sessions over the last 90 days.",
+      "kpiTimeSaved": "Time saved (month)",
+      "kpiTimeSavedYear": "This year: {hours} h ({sessions} sessions × 20 min)",
+      "kpiTimeSavedInfo": "Estimate: 20 minutes of report work saved per session across the organization's therapists.",
+      "chartSessionsTrend": "Session frequency (trend)",
+      "chartSessionsTrendDesc": "Total sessions per week",
+      "chartDurationTrend": "Session length (trend)",
+      "chartDurationTrendDesc": "Average session duration per week (minutes)",
+      "chartUtilization": "Token limit utilization",
+      "chartUtilizationDesc": "Token usage as % of limit, per therapist",
+      "chartUtilizationInfo": "Percentage of the token limit used in each billing period, per organization therapist.",
+      "chartHourly": "Session distribution — day & hour",
+      "chartHourlyDesc": "When therapists record most often"
     }
   }
 }

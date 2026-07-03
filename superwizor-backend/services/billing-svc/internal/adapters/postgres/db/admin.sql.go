@@ -97,6 +97,34 @@ func (q *Queries) AdminGetPlanByTierCycle(ctx context.Context, arg AdminGetPlanB
 	return i, err
 }
 
+const adminResetTherapistCounters = `-- name: AdminResetTherapistCounters :execrows
+UPDATE usage_counters
+SET tokens_used = COALESCE($1::int, tokens_used),
+    updated_at  = now()
+WHERE subscription_id = $2
+  AND therapist_id IS NOT NULL
+  AND period_start <= now()
+  AND period_end > now()
+`
+
+type AdminResetTherapistCountersParams struct {
+	TokensUsed     *int32    `json:"tokens_used"`
+	SubscriptionID uuid.UUID `json:"subscription_id"`
+}
+
+// AdminResetTokens, per-therapist half (docs/38): applies the
+// tokens_used override to EVERY active per-seat counter of the
+// subscription. tokens_limit is intentionally NOT applied here — per
+// -therapist limits come from each seat's plan; an org-wide limit
+// override only makes sense on the org-level counter.
+func (q *Queries) AdminResetTherapistCounters(ctx context.Context, arg AdminResetTherapistCountersParams) (int64, error) {
+	result, err := q.db.Exec(ctx, adminResetTherapistCounters, arg.TokensUsed, arg.SubscriptionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const adminUpdateCounter = `-- name: AdminUpdateCounter :one
 UPDATE usage_counters
 SET tokens_used  = COALESCE($1::int,  tokens_used),

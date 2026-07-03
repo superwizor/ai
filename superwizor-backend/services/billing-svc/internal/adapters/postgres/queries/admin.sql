@@ -104,3 +104,17 @@ INSERT INTO audit_events (
     sqlc.narg(reason)
 )
 RETURNING *;
+
+-- name: AdminResetTherapistCounters :execrows
+-- AdminResetTokens, per-therapist half (docs/38): applies the
+-- tokens_used override to EVERY active per-seat counter of the
+-- subscription. tokens_limit is intentionally NOT applied here — per
+-- -therapist limits come from each seat's plan; an org-wide limit
+-- override only makes sense on the org-level counter.
+UPDATE usage_counters
+SET tokens_used = COALESCE(sqlc.narg(tokens_used)::int, tokens_used),
+    updated_at  = now()
+WHERE subscription_id = sqlc.arg(subscription_id)
+  AND therapist_id IS NOT NULL
+  AND period_start <= now()
+  AND period_end > now();
