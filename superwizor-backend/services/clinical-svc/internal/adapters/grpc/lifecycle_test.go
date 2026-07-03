@@ -66,6 +66,9 @@ func TestUpdatePatientFile_LifecycleStatusPropagates(t *testing.T) {
 
 			var receivedParams db.UpdatePatientFileParams
 			q := &fakeQuerier{
+				getPatientFileFn: func(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
+					return patientFileFixture(id, therapistID, &patientID), nil
+				},
 				updatePatientFileFn: func(ctx context.Context, arg db.UpdatePatientFileParams) (db.PatientFile, error) {
 					receivedParams = arg
 					return db.PatientFile{ID: arg.ID}, nil
@@ -83,7 +86,7 @@ func TestUpdatePatientFile_LifecycleStatusPropagates(t *testing.T) {
 			}
 			srv := newTestServer(q, nil, nil)
 
-			resp, err := srv.UpdatePatientFile(context.Background(), &clinicalv1.UpdatePatientFileRequest{
+			resp, err := srv.UpdatePatientFile(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientFileRequest{
 				PatientFileId:   pfID.String(),
 				LifecycleStatus: tt.lifecycleStatus,
 			})
@@ -140,19 +143,23 @@ func TestUpdatePatientFile_IsProcessClosedDerivation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			therapistID := uuid.New()
 			var receivedParams db.UpdatePatientFileParams
 			q := &fakeQuerier{
+				getPatientFileFn: func(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
+					return patientFileFixture(id, therapistID, nil), nil
+				},
 				updatePatientFileFn: func(ctx context.Context, arg db.UpdatePatientFileParams) (db.PatientFile, error) {
 					receivedParams = arg
 					return db.PatientFile{ID: arg.ID}, nil
 				},
 				getPatientFileWithUserFn: func(ctx context.Context, id uuid.UUID) (db.GetPatientFileWithUserRow, error) {
-					return withUserRowFixture(id, uuid.New(), nil), nil
+					return withUserRowFixture(id, therapistID, nil), nil
 				},
 			}
 			srv := newTestServer(q, nil, nil)
 
-			_, err := srv.UpdatePatientFile(context.Background(), &clinicalv1.UpdatePatientFileRequest{
+			_, err := srv.UpdatePatientFile(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientFileRequest{
 				PatientFileId:   uuid.New().String(),
 				LifecycleStatus: tt.lifecycleStatus,
 				IsProcessClosed: tt.isProcessClosed,
@@ -177,6 +184,9 @@ func TestUpdatePatientFile_LifecycleInRefetchResponse(t *testing.T) {
 	patientID := uuid.New()
 
 	q := &fakeQuerier{
+		getPatientFileFn: func(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
+			return patientFileFixture(id, therapistID, &patientID), nil
+		},
 		updatePatientFileFn: func(ctx context.Context, arg db.UpdatePatientFileParams) (db.PatientFile, error) {
 			return db.PatientFile{ID: arg.ID}, nil
 		},
@@ -188,7 +198,7 @@ func TestUpdatePatientFile_LifecycleInRefetchResponse(t *testing.T) {
 	}
 	srv := newTestServer(q, nil, nil)
 
-	resp, err := srv.UpdatePatientFile(context.Background(), &clinicalv1.UpdatePatientFileRequest{
+	resp, err := srv.UpdatePatientFile(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientFileRequest{
 		PatientFileId:   pfID.String(),
 		LifecycleStatus: "PAUSED",
 	})
@@ -210,6 +220,9 @@ func TestUpdatePatientFile_LegacyWithoutLifecycle(t *testing.T) {
 
 	var received db.UpdatePatientFileParams
 	q := &fakeQuerier{
+		getPatientFileFn: func(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
+			return patientFileFixture(id, therapistID, nil), nil
+		},
 		updatePatientFileFn: func(ctx context.Context, arg db.UpdatePatientFileParams) (db.PatientFile, error) {
 			received = arg
 			return db.PatientFile{ID: arg.ID}, nil
@@ -222,7 +235,7 @@ func TestUpdatePatientFile_LegacyWithoutLifecycle(t *testing.T) {
 	}
 	srv := newTestServer(q, nil, nil)
 
-	resp, err := srv.UpdatePatientFile(context.Background(), &clinicalv1.UpdatePatientFileRequest{
+	resp, err := srv.UpdatePatientFile(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientFileRequest{
 		PatientFileId: pfID.String(),
 		WorkingAlias:  "Legacy Update",
 		// No lifecycle_status set — old client behavior.

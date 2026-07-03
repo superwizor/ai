@@ -434,6 +434,11 @@ func (s *Server) GetPatientFile(ctx context.Context, req *clinicalv1.GetPatientF
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "patient file not found")
 	}
+	// Object-level authz (IDOR fix): only the owning therapist (or an
+	// ORG_ADMIN of their org / SUPERWIZOR_ADMIN) may read this kartoteka.
+	if err := s.requireTherapistDataAccess(ctx, row.TherapistID); err != nil {
+		return nil, err
+	}
 	return toProtoPatientFileFromJoinRow(row, ""), nil
 }
 
@@ -481,6 +486,15 @@ func (s *Server) UpdatePatientFile(ctx context.Context, req *clinicalv1.UpdatePa
 	id, err := uuid.Parse(req.PatientFileId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid patient_file_id")
+	}
+	// Object-level authz (IDOR fix): confirm ownership BEFORE mutating the
+	// kartoteka — otherwise any caller could edit any therapist's record.
+	pf, err := s.queries.GetPatientFile(ctx, id)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "patient file not found")
+	}
+	if err := s.requireTherapistDataAccess(ctx, pf.TherapistID); err != nil {
+		return nil, err
 	}
 
 	if _, err := s.queries.UpdatePatientFile(ctx, db.UpdatePatientFileParams{
@@ -596,12 +610,12 @@ func (s *Server) UpdatePatientUser(ctx context.Context, req *clinicalv1.UpdatePa
 //     therapist's kartoteka holds it
 //
 // Cleanup steps:
-//   1. Pre-fetch every session_id that will be cascade-deleted, so
-//      we can fan out session.deleted Pub/Sub events afterwards.
-//      The cascade itself emits no application signal.
-//   2. DELETE FROM users — cascade does the rest server-side.
-//   3. Publish session.deleted events (best-effort; failures don't
-//      block — PG is authoritative).
+//  1. Pre-fetch every session_id that will be cascade-deleted, so
+//     we can fan out session.deleted Pub/Sub events afterwards.
+//     The cascade itself emits no application signal.
+//  2. DELETE FROM users — cascade does the rest server-side.
+//  3. Publish session.deleted events (best-effort; failures don't
+//     block — PG is authoritative).
 func (s *Server) DeletePatientUser(ctx context.Context, req *clinicalv1.DeletePatientUserRequest) (*emptypb.Empty, error) {
 	therapistIDStr, ok := ctx.Value(UserIDKey).(string)
 	if !ok || therapistIDStr == "" {
@@ -950,4 +964,3 @@ func (s *Server) trackEvent(ctx context.Context, event analytics.Event) {
 		}
 	}
 }
-
