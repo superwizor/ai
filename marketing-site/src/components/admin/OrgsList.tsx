@@ -36,6 +36,9 @@ export function OrgsList() {
 
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
+  // Type filter — defaults to CLINIC: B2B clinics are the admin's
+  // day-to-day; solo bootstrap orgs are noise in this table.
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "SOLO" | "CLINIC" | "ENTERPRISE">("CLINIC");
   const [orgs, setOrgs] = useState<OrganizationSummary[]>([]);
   const [state, setState] = useState<LoadState>("idle");
   const [nextPageToken, setNextPageToken] = useState<string>("");
@@ -47,10 +50,10 @@ export function OrgsList() {
     return () => clearTimeout(handle);
   }, [search]);
 
-  // Reset pagination when the search query changes.
+  // Reset pagination when the search query or type filter changes.
   useEffect(() => {
     setPageStack([""]);
-  }, [searchDebounced]);
+  }, [searchDebounced, typeFilter]);
 
   const fetchPage = useCallback(
     async (pageToken: string) => {
@@ -61,6 +64,14 @@ export function OrgsList() {
             pageSize: PAGE_SIZE,
             pageToken,
             search: searchDebounced,
+            type:
+              typeFilter === "SOLO"
+                ? OrganizationType.SOLO
+                : typeFilter === "CLINIC"
+                  ? OrganizationType.CLINIC
+                  : typeFilter === "ENTERPRISE"
+                    ? OrganizationType.ENTERPRISE
+                    : OrganizationType.UNSPECIFIED,
           }),
         );
         setOrgs(resp.organizations);
@@ -70,7 +81,7 @@ export function OrgsList() {
         setState("error");
       }
     },
-    [searchDebounced],
+    [searchDebounced, typeFilter],
   );
 
   // Load whenever the (search, page) pair changes.
@@ -119,6 +130,17 @@ export function OrgsList() {
           <p className="font-serif text-mist mt-1 text-sm">{t("subhead")}</p>
         </div>
         <div className="flex items-center gap-3">
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
+            aria-label={tCol("type")}
+            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3 py-2 font-display text-sm focus:outline-none focus:border-ember transition appearance-none cursor-pointer"
+          >
+            <option value="CLINIC">{tType("CLINIC")}</option>
+            <option value="SOLO">{tType("SOLO")}</option>
+            <option value="ENTERPRISE">{tType("ENTERPRISE")}</option>
+            <option value="ALL">{t("typeAll")}</option>
+          </select>
           <input
             type="search"
             value={search}

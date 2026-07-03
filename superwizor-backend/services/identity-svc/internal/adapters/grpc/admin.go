@@ -82,6 +82,12 @@ func (s *Server) AdminListOrganizations(ctx context.Context, req *identityv1.Adm
 		s := req.Search
 		params.SearchTerm = &s
 	}
+	// Optional type filter (docs/38): the admin table defaults to CLINIC
+	// client-side; UNSPECIFIED means all.
+	if req.Type != identityv1.OrganizationType_ORGANIZATION_TYPE_UNSPECIFIED {
+		t := fromProtoOrgType(req.Type)
+		params.TypeFilter = &t
+	}
 	if req.PageToken != "" {
 		ts, id, err := parsePageToken(req.PageToken)
 		if err != nil {

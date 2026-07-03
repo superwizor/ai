@@ -131,7 +131,8 @@
       },
       "noLastActivity": "—",
       "view": "Open",
-      "createCta": "New organization"
+      "createCta": "New organization",
+      "typeAll": "All types"
     },
     "orgDetail": {
       "metaTitle": "Organisation",

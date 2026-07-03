@@ -43,6 +43,10 @@ WHERE deleted_at IS NULL
       OR legal_name ILIKE '%' || sqlc.narg(search_term)::text || '%'
   )
   AND (
+      sqlc.narg(type_filter)::organization_type IS NULL
+      OR type = sqlc.narg(type_filter)::organization_type
+  )
+  AND (
       sqlc.narg(after_created_at)::timestamptz IS NULL
       OR (created_at, id) < (sqlc.narg(after_created_at)::timestamptz, sqlc.narg(after_id)::uuid)
   )
