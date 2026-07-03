@@ -41,6 +41,7 @@ import {
   addressFromProto,
 } from "./AddressFields";
 import { translateError } from "@/lib/errors/translate";
+import { usePlanName } from "@/lib/plans";
 import { CardSkeleton } from "./TableSkeleton";
 
 type LoadState = "loading" | "ready" | "not-found" | "error";
@@ -51,6 +52,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
   const tA = useTranslations("admin.actions");
   const tEdit = useTranslations("admin.orgEdit");
   const tSeats = useTranslations("admin.orgSeats");
+  const planName = usePlanName();
   const tErrors = useTranslations("errors");
   const locale = useLocale();
   const prefix = locale === "en" ? "/en" : "";
@@ -483,7 +485,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
                   <li key={a.allocationId} className="grid gap-1.5">
                     <div className="flex items-baseline justify-between font-serif text-sm">
                       <span className="text-frost">
-                        {a.planTier} / {a.planCycle}
+                        {planName(a.planTier)} · {a.planCycle}
                       </span>
                       <span className="font-mono text-xs text-mist">
                         {used}/{a.seats} · {a.priceGrossPerSeat} {a.currencyCode}
@@ -689,7 +691,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
                 <option value="">{tSeats("pickPlan")}</option>
                 {plans.map((p) => (
                   <option key={p.planId} value={p.planId}>
-                    {p.displayName} ({p.tier}/{p.cycle})
+                    {planName(p.tier)} ({p.cycle})
                   </option>
                 ))}
               </select>

@@ -178,6 +178,11 @@ message User {
   // FALSE = reversibly deactivated by ORG_ADMIN (SetTherapistStatus).
   // Sign-in blocked; data untouched. Independent of soft-delete.
   bool is_active = 21;
+  // Type of the user's organization (docs/38): CLINIC/ENTERPRISE means
+  // a managed B2B org — clients hide self-serve billing surfaces.
+  // Populated by GetMyProfile (needs an org lookup); other RPCs may
+  // leave it UNSPECIFIED.
+  OrganizationType organization_type = 22;
 }
 
 message UserContext {

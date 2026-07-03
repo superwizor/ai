@@ -19,7 +19,8 @@ import { create } from "@bufbuild/protobuf";
 import { EmptySchema } from "@bufbuild/protobuf/wkt";
 import { identityClient, billingClient } from "@/lib/connect/clients";
 import { openAppWithSso } from "@/lib/auth/open-app-sso";
-import { UserRole } from "@superwizor/proto-ts/identity/v1/identity_pb";
+import { UserRole, OrganizationType } from "@superwizor/proto-ts/identity/v1/identity_pb";
+import { usePlanName } from "@/lib/plans";
 import { GetSubscriptionRequestSchema } from "@superwizor/proto-ts/billing/v1/billing_pb";
 import type { Subscription } from "@superwizor/proto-ts/billing/v1/billing_pb";
 
@@ -36,7 +37,12 @@ export function DashboardHub({ locale }: { locale: string }) {
   const [showInstructions, setShowInstructions] = useState(false);
   const [showPlatformPicker, setShowPlatformPicker] = useState(false);
   const [profileFirstName, setProfileFirstName] = useState<string>("");
+  const planName = usePlanName();
   const [sub, setSub] = useState<Subscription | null>(null);
+  // docs/38: therapists of a managed B2B org (CLINIC/ENTERPRISE) don't
+  // self-manage billing — the org manager does. Hides the upgrade CTA
+  // and the account/subscription card.
+  const [isClinicMember, setIsClinicMember] = useState<boolean>(false);
   const [loadingSub, setLoadingSub] = useState<boolean>(true);
 
   const handleOpenModal = (platform: "ios" | "android") => {
@@ -78,6 +84,14 @@ export function DashboardHub({ locale }: { locale: string }) {
         } else {
           setCheckingOnboarding(false);
         }
+
+        const orgType = me.organizationType as unknown;
+        setIsClinicMember(
+          orgType === OrganizationType.CLINIC ||
+            orgType === "ORGANIZATION_TYPE_CLINIC" ||
+            orgType === OrganizationType.ENTERPRISE ||
+            orgType === "ORGANIZATION_TYPE_ENTERPRISE",
+        );
         // Store the profile first name for greeting
         if (me.firstName) {
           setProfileFirstName(me.firstName);
@@ -209,12 +223,14 @@ export function DashboardHub({ locale }: { locale: string }) {
                     {locale === "en" ? "Free Account" : "Darmowe konto"}
                   </span>
                 </div>
-                <Link
-                  href={`${prefix}/upgrade`}
-                  className="text-xs font-bold text-[#FCAE2F] hover:text-[#E09500] transition-colors underline underline-offset-2 hover:no-underline"
-                >
-                  {locale === "en" ? "Activate premium plan ➔" : "Aktywuj plan premium ➔"}
-                </Link>
+                {!isClinicMember && (
+                  <Link
+                    href={`${prefix}/upgrade`}
+                    className="text-xs font-bold text-[#FCAE2F] hover:text-[#E09500] transition-colors underline underline-offset-2 hover:no-underline"
+                  >
+                    {locale === "en" ? "Activate premium plan ➔" : "Aktywuj plan premium ➔"}
+                  </Link>
+                )}
               </div>
             ) : (() => {
               const total = sub.tokensPerPeriod;
@@ -222,18 +238,9 @@ export function DashboardHub({ locale }: { locale: string }) {
               const left = Math.max(0, total - used);
               const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
 
-              let planName = "";
-              if (sub.planTier === "TRIAL") {
-                planName = locale === "en" ? "Trial period" : "Okres próbny";
-              } else if (sub.planTier === "SOLO") {
-                planName = locale === "en" ? "Balance" : "Równowaga";
-              } else if (sub.planTier === "PRO") {
-                planName = locale === "en" ? "Flourishing" : "Rozkwit";
-              } else if (sub.planTier === "CLINIC") {
-                planName = locale === "en" ? "Practice / Clinic" : "Gabinet / Klinika";
-              } else {
-                planName = sub.planTier;
-              }
+              // Canonical cennik names (pricing.tiers.*.name) — kept in
+              // lockstep with /pl/#cennik via usePlanName.
+              const displayPlanName = planName(sub.planTier) || sub.planTier;
 
               let statusText = "";
               let badgeClass = "";
@@ -267,7 +274,7 @@ export function DashboardHub({ locale }: { locale: string }) {
                       {locale === "en" ? "Your plan:" : "Twój plan:"}
                     </span>
                     <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
-                    <span className="font-sans text-xs font-bold text-[#F2F0EA]">{planName}</span>
+                    <span className="font-sans text-xs font-bold text-[#F2F0EA]">{displayPlanName}</span>
                   </div>
 
                   <div className="flex flex-1 sm:max-w-xs items-center gap-3">
@@ -397,7 +404,9 @@ export function DashboardHub({ locale }: { locale: string }) {
             </div>
           </button>
 
-          {/* Card 3: Manage Account */}
+          {/* Card 3: Manage Account — hidden for managed-org (clinic)
+              therapists; their org manager owns billing/org data. */}
+          {!isClinicMember && (
           <Link
             href={`${prefix}/account`}
             className="group relative rounded-2xl p-6 sm:p-8 bg-gradient-to-br from-[#0F2E32]/75 to-[#0A2326]/75 border border-[#2F6B62]/20 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between backdrop-blur-md"
@@ -443,6 +452,7 @@ export function DashboardHub({ locale }: { locale: string }) {
               </svg>
             </div>
           </Link>
+          )}
         </div>
 
         {/* --- Not logged in state --- */}
@@ -462,7 +472,10 @@ export function DashboardHub({ locale }: { locale: string }) {
           </div>
         )}
 
-        {/* --- Premium Upgrade CTA Section --- */}
+        {/* --- Premium Upgrade CTA Section — hidden for managed-org
+            (clinic) therapists: their seats/plan are provisioned by the
+            organization, not self-upgraded. --- */}
+        {!isClinicMember && (
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -590,6 +603,7 @@ export function DashboardHub({ locale }: { locale: string }) {
             </div>
           </div>
         </motion.div>
+        )}
 
         {/* --- Contact links --- */}
         <div className="mt-8 flex flex-wrap justify-center gap-6">

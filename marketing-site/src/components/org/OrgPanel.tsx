@@ -28,6 +28,7 @@ import {
   type OrgTherapistMetricsResponse,
 } from "@superwizor/proto-ts/clinical/v1/clinical_pb";
 import { translateError } from "@/lib/errors/translate";
+import { usePlanName } from "@/lib/plans";
 
 type Tab = "team" | "analytics" | "organization" | "billing";
 
@@ -42,6 +43,7 @@ const thCls =
 
 export function OrgPanel() {
   const t = useTranslations("org.panel");
+  const planName = usePlanName();
   const tErrors = useTranslations("errors");
   const locale = useLocale();
 
@@ -228,7 +230,7 @@ export function OrgPanel() {
                     className="rounded-card border border-frost/10 bg-frost/[0.03] p-4"
                   >
                     <div className="flex items-baseline justify-between">
-                      <span className="font-display text-frost text-sm">{a.planTier}</span>
+                      <span className="font-display text-frost text-sm">{planName(a.planTier)}</span>
                       <span className="font-mono text-xs text-mist">
                         {used}/{a.seats} {t("seatsUnit")}
                       </span>
@@ -489,7 +491,7 @@ export function OrgPanel() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 font-mono text-mist text-xs">{u.planTier || "—"}</td>
+                      <td className="px-4 py-3 font-mono text-mist text-xs">{planName(u.planTier) || "—"}</td>
                       <td className="px-4 py-3 font-mono text-mist text-right">
                         {consumed}/{u.tokensLimit}
                       </td>
@@ -553,7 +555,7 @@ export function OrgPanel() {
                   const free = a.seats - a.seatsAssigned - a.seatsPending;
                   return (
                     <option key={a.allocationId} value={a.allocationId} disabled={free <= 0}>
-                      {a.planTier} — {t("freeSeats", { count: Math.max(0, free) })}
+                      {planName(a.planTier)} — {t("freeSeats", { count: Math.max(0, free) })}
                     </option>
                   );
                 })}

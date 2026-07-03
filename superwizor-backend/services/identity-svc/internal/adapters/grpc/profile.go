@@ -32,7 +32,17 @@ func (s *Server) GetMyProfile(ctx context.Context, _ *emptypb.Empty) (*identityv
 		}
 		return nil, status.Errorf(codes.Internal, "load profile: %v", err)
 	}
-	return toProtoUser(user), nil
+	resp := toProtoUser(user)
+	// organization_type (docs/38): the web dashboard hides self-serve
+	// billing surfaces for members of managed B2B orgs. Best-effort —
+	// a failed org lookup leaves it UNSPECIFIED rather than failing
+	// the whole profile read.
+	if user.OrganizationID.Valid {
+		if org, oerr := s.queries.GetOrganizationByID(ctx, uuid.UUID(user.OrganizationID.Bytes)); oerr == nil {
+			resp.OrganizationType = toProtoOrgType(org.Type)
+		}
+	}
+	return resp, nil
 }
 
 // UpdateProfile rewrites the existing handler to honour the docs/18 D2
