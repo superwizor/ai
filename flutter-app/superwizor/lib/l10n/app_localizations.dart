@@ -5098,6 +5098,138 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Wyloguj się'**
   String get deactivated_logout;
+
+  /// No description provided for @client_home_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twoja terapia'**
+  String get client_home_title;
+
+  /// No description provided for @client_home_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Materiały udostępnione przez terapeutę i Twoje notatki.'**
+  String get client_home_subtitle;
+
+  /// No description provided for @client_home_empty.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twój terapeuta nie udostępnił jeszcze żadnych materiałów.'**
+  String get client_home_empty;
+
+  /// No description provided for @client_home_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się załadować danych: {error}'**
+  String client_home_error(String error);
+
+  /// No description provided for @client_kartoteka_therapist.
+  ///
+  /// In pl, this message translates to:
+  /// **'Terapeuta: {name}'**
+  String client_kartoteka_therapist(String name);
+
+  /// No description provided for @client_kartoteka_counts.
+  ///
+  /// In pl, this message translates to:
+  /// **'{sessions} sesji · {notes} notatek'**
+  String client_kartoteka_counts(int sessions, int notes);
+
+  /// No description provided for @client_unread_badge.
+  ///
+  /// In pl, this message translates to:
+  /// **'{count} nowe'**
+  String client_unread_badge(int count);
+
+  /// No description provided for @client_tab_sessions.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesje'**
+  String get client_tab_sessions;
+
+  /// No description provided for @client_tab_notes.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatki'**
+  String get client_tab_notes;
+
+  /// No description provided for @client_sessions_empty.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak udostępnionych sesji.'**
+  String get client_sessions_empty;
+
+  /// No description provided for @client_session_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja {number}'**
+  String client_session_title(int number);
+
+  /// No description provided for @client_session_no_transcript.
+  ///
+  /// In pl, this message translates to:
+  /// **'Transkrypcja nie jest jeszcze dostępna.'**
+  String get client_session_no_transcript;
+
+  /// No description provided for @client_notes_empty.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak notatek. Utwórz pierwszą i wyślij ją terapeucie.'**
+  String get client_notes_empty;
+
+  /// No description provided for @client_note_from_therapist.
+  ///
+  /// In pl, this message translates to:
+  /// **'Od terapeuty'**
+  String get client_note_from_therapist;
+
+  /// No description provided for @client_note_mine.
+  ///
+  /// In pl, this message translates to:
+  /// **'Moja notatka'**
+  String get client_note_mine;
+
+  /// No description provided for @client_note_new.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowa notatka'**
+  String get client_note_new;
+
+  /// No description provided for @client_note_title_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tytuł'**
+  String get client_note_title_hint;
+
+  /// No description provided for @client_note_text_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twoje przemyślenia…'**
+  String get client_note_text_hint;
+
+  /// No description provided for @client_note_send.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij do terapeuty'**
+  String get client_note_send;
+
+  /// No description provided for @client_note_sent.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka wysłana do terapeuty.'**
+  String get client_note_sent;
+
+  /// No description provided for @client_note_empty_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka nie może być pusta.'**
+  String get client_note_empty_error;
+
+  /// No description provided for @client_logout.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyloguj się'**
+  String get client_logout;
 }
 
 class _AppLocalizationsDelegate

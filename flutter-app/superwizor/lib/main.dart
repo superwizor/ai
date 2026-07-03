@@ -16,6 +16,8 @@ import 'auth/sso_handler.dart'
 import 'auth/app_lock_controller.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
+import 'client/client_home_screen.dart';
+import 'generated/identity/v1/identity.pbenum.dart' as identity_enum;
 import 'screens/deactivated_account_screen.dart';
 import 'utils/account_status.dart';
 import 'screens/home_screen.dart';
@@ -140,6 +142,15 @@ class _AuthGate extends ConsumerWidget {
           orElse: () => false,
         );
 
+    // Client panel routing (docs/39): PATIENT accounts get the
+    // client-only surface — no recording, kartoteki, or billing.
+    final isClient = ref.watch(currentUserProvider).whenOrNull(
+              data: (u) =>
+                  u != null &&
+                  u.role == identity_enum.UserRole.USER_ROLE_PATIENT,
+            ) ??
+        false;
+
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
@@ -150,6 +161,7 @@ class _AuthGate extends ConsumerWidget {
         }
         if (!snapshot.hasData) return const LoginScreen();
         if (deactivated) return const DeactivatedAccountScreen();
+        if (isClient) return const ClientHomeScreen();
         return const _LockGate();
       },
     );

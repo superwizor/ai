@@ -2837,4 +2837,84 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deactivated_logout => 'Sign out';
+
+  @override
+  String get client_home_title => 'Your therapy';
+
+  @override
+  String get client_home_subtitle =>
+      'Materials shared by your therapist and your notes.';
+
+  @override
+  String get client_home_empty =>
+      'Your therapist hasn\'t shared any materials yet.';
+
+  @override
+  String client_home_error(String error) {
+    return 'Failed to load: $error';
+  }
+
+  @override
+  String client_kartoteka_therapist(String name) {
+    return 'Therapist: $name';
+  }
+
+  @override
+  String client_kartoteka_counts(int sessions, int notes) {
+    return '$sessions sessions · $notes notes';
+  }
+
+  @override
+  String client_unread_badge(int count) {
+    return '$count new';
+  }
+
+  @override
+  String get client_tab_sessions => 'Sessions';
+
+  @override
+  String get client_tab_notes => 'Notes';
+
+  @override
+  String get client_sessions_empty => 'No shared sessions yet.';
+
+  @override
+  String client_session_title(int number) {
+    return 'Session $number';
+  }
+
+  @override
+  String get client_session_no_transcript =>
+      'The transcript is not available yet.';
+
+  @override
+  String get client_notes_empty =>
+      'No notes yet. Create one and send it to your therapist.';
+
+  @override
+  String get client_note_from_therapist => 'From your therapist';
+
+  @override
+  String get client_note_mine => 'My note';
+
+  @override
+  String get client_note_new => 'New note';
+
+  @override
+  String get client_note_title_hint => 'Title';
+
+  @override
+  String get client_note_text_hint => 'Your thoughts…';
+
+  @override
+  String get client_note_send => 'Send to therapist';
+
+  @override
+  String get client_note_sent => 'Note sent to your therapist.';
+
+  @override
+  String get client_note_empty_error => 'The note cannot be empty.';
+
+  @override
+  String get client_logout => 'Sign out';
 }

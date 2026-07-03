@@ -362,6 +362,20 @@ final $typed_data.Uint8List adminListPlansResponseDescriptor =
         'ChZBZG1pbkxpc3RQbGFuc1Jlc3BvbnNlEioKBXBsYW5zGAEgAygLMhQuYmlsbGluZy52MS5QbG'
         'FuSW5mb1IFcGxhbnM=');
 
+@$core.Deprecated('Use adminGetOrgSeatUsageRequestDescriptor instead')
+const AdminGetOrgSeatUsageRequest$json = {
+  '1': 'AdminGetOrgSeatUsageRequest',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+  ],
+};
+
+/// Descriptor for `AdminGetOrgSeatUsageRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminGetOrgSeatUsageRequestDescriptor =
+    $convert.base64Decode(
+        'ChtBZG1pbkdldE9yZ1NlYXRVc2FnZVJlcXVlc3QSJwoPb3JnYW5pemF0aW9uX2lkGAEgASgJUg'
+        '5vcmdhbml6YXRpb25JZA==');
+
 @$core.Deprecated('Use seatAllocationSpecDescriptor instead')
 const SeatAllocationSpec$json = {
   '1': 'SeatAllocationSpec',

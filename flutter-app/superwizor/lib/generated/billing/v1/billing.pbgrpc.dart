@@ -156,6 +156,17 @@ class BillingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$adminListPlans, request, options: options);
   }
 
+  /// SUPERWIZOR_ADMIN. Seat occupancy + per-therapist usage for ANY
+  /// organization — the /admin/orgs/[id] edit surface. Same payload as
+  /// GetMyOrgSeatUsage but org comes from the request, gated on the
+  /// platform-admin role.
+  $grpc.ResponseFuture<$0.OrgSeatSummary> adminGetOrgSeatUsage(
+    $0.AdminGetOrgSeatUsageRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminGetOrgSeatUsage, request, options: options);
+  }
+
   // method descriptors
 
   static final _$checkQuota =
@@ -218,6 +229,11 @@ class BillingServiceClient extends $grpc.Client {
           '/billing.v1.BillingService/AdminListPlans',
           ($1.Empty value) => value.writeToBuffer(),
           $0.AdminListPlansResponse.fromBuffer);
+  static final _$adminGetOrgSeatUsage =
+      $grpc.ClientMethod<$0.AdminGetOrgSeatUsageRequest, $0.OrgSeatSummary>(
+          '/billing.v1.BillingService/AdminGetOrgSeatUsage',
+          ($0.AdminGetOrgSeatUsageRequest value) => value.writeToBuffer(),
+          $0.OrgSeatSummary.fromBuffer);
 }
 
 @$pb.GrpcServiceName('billing.v1.BillingService')
@@ -320,6 +336,15 @@ abstract class BillingServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
         ($0.AdminListPlansResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.AdminGetOrgSeatUsageRequest, $0.OrgSeatSummary>(
+            'AdminGetOrgSeatUsage',
+            adminGetOrgSeatUsage_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.AdminGetOrgSeatUsageRequest.fromBuffer(value),
+            ($0.OrgSeatSummary value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.QuotaDecision> checkQuota_Pre($grpc.ServiceCall $call,
@@ -419,4 +444,13 @@ abstract class BillingServiceBase extends $grpc.Service {
 
   $async.Future<$0.AdminListPlansResponse> adminListPlans(
       $grpc.ServiceCall call, $1.Empty request);
+
+  $async.Future<$0.OrgSeatSummary> adminGetOrgSeatUsage_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminGetOrgSeatUsageRequest> $request) async {
+    return adminGetOrgSeatUsage($call, await $request);
+  }
+
+  $async.Future<$0.OrgSeatSummary> adminGetOrgSeatUsage(
+      $grpc.ServiceCall call, $0.AdminGetOrgSeatUsageRequest request);
 }

@@ -1429,6 +1429,63 @@ class AdminListPlansResponse extends $pb.GeneratedMessage {
   $pb.PbList<PlanInfo> get plans => $_getList(0);
 }
 
+class AdminGetOrgSeatUsageRequest extends $pb.GeneratedMessage {
+  factory AdminGetOrgSeatUsageRequest({
+    $core.String? organizationId,
+  }) {
+    final result = create();
+    if (organizationId != null) result.organizationId = organizationId;
+    return result;
+  }
+
+  AdminGetOrgSeatUsageRequest._();
+
+  factory AdminGetOrgSeatUsageRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminGetOrgSeatUsageRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminGetOrgSeatUsageRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'organizationId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminGetOrgSeatUsageRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminGetOrgSeatUsageRequest copyWith(
+          void Function(AdminGetOrgSeatUsageRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as AdminGetOrgSeatUsageRequest))
+          as AdminGetOrgSeatUsageRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminGetOrgSeatUsageRequest create() =>
+      AdminGetOrgSeatUsageRequest._();
+  @$core.override
+  AdminGetOrgSeatUsageRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminGetOrgSeatUsageRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminGetOrgSeatUsageRequest>(create);
+  static AdminGetOrgSeatUsageRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get organizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set organizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganizationId() => $_clearField(1);
+}
+
 class SeatAllocationSpec extends $pb.GeneratedMessage {
   factory SeatAllocationSpec({
     $core.String? planId,

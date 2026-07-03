@@ -2857,4 +2857,84 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get deactivated_logout => 'Wyloguj się';
+
+  @override
+  String get client_home_title => 'Twoja terapia';
+
+  @override
+  String get client_home_subtitle =>
+      'Materiały udostępnione przez terapeutę i Twoje notatki.';
+
+  @override
+  String get client_home_empty =>
+      'Twój terapeuta nie udostępnił jeszcze żadnych materiałów.';
+
+  @override
+  String client_home_error(String error) {
+    return 'Nie udało się załadować danych: $error';
+  }
+
+  @override
+  String client_kartoteka_therapist(String name) {
+    return 'Terapeuta: $name';
+  }
+
+  @override
+  String client_kartoteka_counts(int sessions, int notes) {
+    return '$sessions sesji · $notes notatek';
+  }
+
+  @override
+  String client_unread_badge(int count) {
+    return '$count nowe';
+  }
+
+  @override
+  String get client_tab_sessions => 'Sesje';
+
+  @override
+  String get client_tab_notes => 'Notatki';
+
+  @override
+  String get client_sessions_empty => 'Brak udostępnionych sesji.';
+
+  @override
+  String client_session_title(int number) {
+    return 'Sesja $number';
+  }
+
+  @override
+  String get client_session_no_transcript =>
+      'Transkrypcja nie jest jeszcze dostępna.';
+
+  @override
+  String get client_notes_empty =>
+      'Brak notatek. Utwórz pierwszą i wyślij ją terapeucie.';
+
+  @override
+  String get client_note_from_therapist => 'Od terapeuty';
+
+  @override
+  String get client_note_mine => 'Moja notatka';
+
+  @override
+  String get client_note_new => 'Nowa notatka';
+
+  @override
+  String get client_note_title_hint => 'Tytuł';
+
+  @override
+  String get client_note_text_hint => 'Twoje przemyślenia…';
+
+  @override
+  String get client_note_send => 'Wyślij do terapeuty';
+
+  @override
+  String get client_note_sent => 'Notatka wysłana do terapeuty.';
+
+  @override
+  String get client_note_empty_error => 'Notatka nie może być pusta.';
+
+  @override
+  String get client_logout => 'Wyloguj się';
 }

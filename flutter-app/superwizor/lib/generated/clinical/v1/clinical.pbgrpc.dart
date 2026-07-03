@@ -360,6 +360,82 @@ class ClinicalServiceClient extends $grpc.Client {
         options: options);
   }
 
+  /// Org-scoped analytics widgets (docs/38 §7.2) — the /org Analityka
+  /// tab's charts: WAU, weekly session/duration trends, day×hour
+  /// heatmap, per-therapist token utilization, and the session counts
+  /// behind the "time saved on reporting" KPI. Same §7.3 privacy
+  /// boundary: aggregates only.
+  $grpc.ResponseFuture<$0.GetOrgAnalyticsResponse> getOrgAnalytics(
+    $0.GetOrgAnalyticsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getOrgAnalytics, request, options: options);
+  }
+
+  /// ─── Client panel (docs/39) — role PATIENT, self-access ───
+  /// Separate read-only family gated by requireClientFileAccess
+  /// (caller is the kartoteka's patient). Default-deny: only rows the
+  /// therapist explicitly shared are visible (D2). No reports, no
+  /// therapist-private notes — ever.
+  $grpc.ResponseFuture<$0.ClientOverview> clientGetMyOverview(
+    $1.Empty request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$clientGetMyOverview, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ClientListSessionsResponse> clientListSessions(
+    $0.ClientListSessionsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$clientListSessions, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ClientGetTranscriptResponse> clientGetTranscript(
+    $0.ClientGetTranscriptRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$clientGetTranscript, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ClientListNotesResponse> clientListNotes(
+    $0.ClientListNotesRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$clientListNotes, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ClientNote> clientCreateNote(
+    $0.ClientCreateNoteRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$clientCreateNote, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$1.Empty> clientMarkNoteRead(
+    $0.ClientMarkNoteReadRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$clientMarkNoteRead, request, options: options);
+  }
+
+  /// Therapist-side sharing toggles (docs/39 D2/D6) — gated by
+  /// requireTherapistDataAccess like every kartoteka mutation.
+  $grpc.ResponseFuture<$1.Empty> shareSessionWithClient(
+    $0.ShareSessionWithClientRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$shareSessionWithClient, request,
+        options: options);
+  }
+
+  $grpc.ResponseFuture<$1.Empty> shareNoteWithClient(
+    $0.ShareNoteWithClientRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$shareNoteWithClient, request, options: options);
+  }
+
   /// ─── RODO/GDPR DSAR endpoints ───
   /// Export all clinical and personal data related to a patient file,
   /// decrypting all PHI columns using KMS before returning.
@@ -558,6 +634,51 @@ class ClinicalServiceClient extends $grpc.Client {
       '/clinical.v1.ClinicalService/GetOrgTherapistMetrics',
       ($0.GetOrgTherapistMetricsRequest value) => value.writeToBuffer(),
       $0.OrgTherapistMetricsResponse.fromBuffer);
+  static final _$getOrgAnalytics =
+      $grpc.ClientMethod<$0.GetOrgAnalyticsRequest, $0.GetOrgAnalyticsResponse>(
+          '/clinical.v1.ClinicalService/GetOrgAnalytics',
+          ($0.GetOrgAnalyticsRequest value) => value.writeToBuffer(),
+          $0.GetOrgAnalyticsResponse.fromBuffer);
+  static final _$clientGetMyOverview =
+      $grpc.ClientMethod<$1.Empty, $0.ClientOverview>(
+          '/clinical.v1.ClinicalService/ClientGetMyOverview',
+          ($1.Empty value) => value.writeToBuffer(),
+          $0.ClientOverview.fromBuffer);
+  static final _$clientListSessions = $grpc.ClientMethod<
+          $0.ClientListSessionsRequest, $0.ClientListSessionsResponse>(
+      '/clinical.v1.ClinicalService/ClientListSessions',
+      ($0.ClientListSessionsRequest value) => value.writeToBuffer(),
+      $0.ClientListSessionsResponse.fromBuffer);
+  static final _$clientGetTranscript = $grpc.ClientMethod<
+          $0.ClientGetTranscriptRequest, $0.ClientGetTranscriptResponse>(
+      '/clinical.v1.ClinicalService/ClientGetTranscript',
+      ($0.ClientGetTranscriptRequest value) => value.writeToBuffer(),
+      $0.ClientGetTranscriptResponse.fromBuffer);
+  static final _$clientListNotes =
+      $grpc.ClientMethod<$0.ClientListNotesRequest, $0.ClientListNotesResponse>(
+          '/clinical.v1.ClinicalService/ClientListNotes',
+          ($0.ClientListNotesRequest value) => value.writeToBuffer(),
+          $0.ClientListNotesResponse.fromBuffer);
+  static final _$clientCreateNote =
+      $grpc.ClientMethod<$0.ClientCreateNoteRequest, $0.ClientNote>(
+          '/clinical.v1.ClinicalService/ClientCreateNote',
+          ($0.ClientCreateNoteRequest value) => value.writeToBuffer(),
+          $0.ClientNote.fromBuffer);
+  static final _$clientMarkNoteRead =
+      $grpc.ClientMethod<$0.ClientMarkNoteReadRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/ClientMarkNoteRead',
+          ($0.ClientMarkNoteReadRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$shareSessionWithClient =
+      $grpc.ClientMethod<$0.ShareSessionWithClientRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/ShareSessionWithClient',
+          ($0.ShareSessionWithClientRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$shareNoteWithClient =
+      $grpc.ClientMethod<$0.ShareNoteWithClientRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/ShareNoteWithClient',
+          ($0.ShareNoteWithClientRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
   static final _$exportPatientData = $grpc.ClientMethod<
           $0.ExportPatientDataRequest, $0.ExportPatientDataResponse>(
       '/clinical.v1.ClinicalService/ExportPatientData',
@@ -867,6 +988,81 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.GetOrgTherapistMetricsRequest.fromBuffer(value),
         ($0.OrgTherapistMetricsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetOrgAnalyticsRequest,
+            $0.GetOrgAnalyticsResponse>(
+        'GetOrgAnalytics',
+        getOrgAnalytics_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetOrgAnalyticsRequest.fromBuffer(value),
+        ($0.GetOrgAnalyticsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$1.Empty, $0.ClientOverview>(
+        'ClientGetMyOverview',
+        clientGetMyOverview_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
+        ($0.ClientOverview value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClientListSessionsRequest,
+            $0.ClientListSessionsResponse>(
+        'ClientListSessions',
+        clientListSessions_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ClientListSessionsRequest.fromBuffer(value),
+        ($0.ClientListSessionsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClientGetTranscriptRequest,
+            $0.ClientGetTranscriptResponse>(
+        'ClientGetTranscript',
+        clientGetTranscript_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ClientGetTranscriptRequest.fromBuffer(value),
+        ($0.ClientGetTranscriptResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClientListNotesRequest,
+            $0.ClientListNotesResponse>(
+        'ClientListNotes',
+        clientListNotes_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ClientListNotesRequest.fromBuffer(value),
+        ($0.ClientListNotesResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClientCreateNoteRequest, $0.ClientNote>(
+        'ClientCreateNote',
+        clientCreateNote_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ClientCreateNoteRequest.fromBuffer(value),
+        ($0.ClientNote value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClientMarkNoteReadRequest, $1.Empty>(
+        'ClientMarkNoteRead',
+        clientMarkNoteRead_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ClientMarkNoteReadRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ShareSessionWithClientRequest, $1.Empty>(
+        'ShareSessionWithClient',
+        shareSessionWithClient_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ShareSessionWithClientRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ShareNoteWithClientRequest, $1.Empty>(
+        'ShareNoteWithClient',
+        shareNoteWithClient_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ShareNoteWithClientRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.ExportPatientDataRequest,
             $0.ExportPatientDataResponse>(
         'ExportPatientData',
@@ -1182,6 +1378,82 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$0.OrgTherapistMetricsResponse> getOrgTherapistMetrics(
       $grpc.ServiceCall call, $0.GetOrgTherapistMetricsRequest request);
+
+  $async.Future<$0.GetOrgAnalyticsResponse> getOrgAnalytics_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetOrgAnalyticsRequest> $request) async {
+    return getOrgAnalytics($call, await $request);
+  }
+
+  $async.Future<$0.GetOrgAnalyticsResponse> getOrgAnalytics(
+      $grpc.ServiceCall call, $0.GetOrgAnalyticsRequest request);
+
+  $async.Future<$0.ClientOverview> clientGetMyOverview_Pre(
+      $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {
+    return clientGetMyOverview($call, await $request);
+  }
+
+  $async.Future<$0.ClientOverview> clientGetMyOverview(
+      $grpc.ServiceCall call, $1.Empty request);
+
+  $async.Future<$0.ClientListSessionsResponse> clientListSessions_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ClientListSessionsRequest> $request) async {
+    return clientListSessions($call, await $request);
+  }
+
+  $async.Future<$0.ClientListSessionsResponse> clientListSessions(
+      $grpc.ServiceCall call, $0.ClientListSessionsRequest request);
+
+  $async.Future<$0.ClientGetTranscriptResponse> clientGetTranscript_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ClientGetTranscriptRequest> $request) async {
+    return clientGetTranscript($call, await $request);
+  }
+
+  $async.Future<$0.ClientGetTranscriptResponse> clientGetTranscript(
+      $grpc.ServiceCall call, $0.ClientGetTranscriptRequest request);
+
+  $async.Future<$0.ClientListNotesResponse> clientListNotes_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ClientListNotesRequest> $request) async {
+    return clientListNotes($call, await $request);
+  }
+
+  $async.Future<$0.ClientListNotesResponse> clientListNotes(
+      $grpc.ServiceCall call, $0.ClientListNotesRequest request);
+
+  $async.Future<$0.ClientNote> clientCreateNote_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ClientCreateNoteRequest> $request) async {
+    return clientCreateNote($call, await $request);
+  }
+
+  $async.Future<$0.ClientNote> clientCreateNote(
+      $grpc.ServiceCall call, $0.ClientCreateNoteRequest request);
+
+  $async.Future<$1.Empty> clientMarkNoteRead_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ClientMarkNoteReadRequest> $request) async {
+    return clientMarkNoteRead($call, await $request);
+  }
+
+  $async.Future<$1.Empty> clientMarkNoteRead(
+      $grpc.ServiceCall call, $0.ClientMarkNoteReadRequest request);
+
+  $async.Future<$1.Empty> shareSessionWithClient_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ShareSessionWithClientRequest> $request) async {
+    return shareSessionWithClient($call, await $request);
+  }
+
+  $async.Future<$1.Empty> shareSessionWithClient(
+      $grpc.ServiceCall call, $0.ShareSessionWithClientRequest request);
+
+  $async.Future<$1.Empty> shareNoteWithClient_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ShareNoteWithClientRequest> $request) async {
+    return shareNoteWithClient($call, await $request);
+  }
+
+  $async.Future<$1.Empty> shareNoteWithClient(
+      $grpc.ServiceCall call, $0.ShareNoteWithClientRequest request);
 
   $async.Future<$0.ExportPatientDataResponse> exportPatientData_Pre(
       $grpc.ServiceCall $call,
