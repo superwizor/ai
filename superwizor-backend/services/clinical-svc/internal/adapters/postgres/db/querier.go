@@ -307,6 +307,18 @@ type Querier interface {
 	// no-op (the status filter prevents accidental marking). The therapist_id
 	// predicate is the authz guard at the SQL layer.
 	MarkReportViewed(ctx context.Context, arg MarkReportViewedParams) error
+	// KPI strip + time-saved session counts, one round trip. All scoped to
+	// the org's therapists; sessions soft-delete-aware.
+	OrgAnalyticsKPIs(ctx context.Context, organizationID pgtype.UUID) (OrgAnalyticsKPIsRow, error)
+	// Day-of-week × hour recording histogram, last 90 days.
+	OrgHourlyHeatmap(ctx context.Context, organizationID pgtype.UUID) ([]OrgHourlyHeatmapRow, error)
+	// Token utilization % per THERAPIST per counter period (docs/38 §7.2)
+	// — the per-seat mirror of the admin per-org heatmap. Week label =
+	// ISO week of period_start.
+	OrgTherapistUtilization(ctx context.Context, organizationID uuid.UUID) ([]OrgTherapistUtilizationRow, error)
+	// Sessions per ISO week (last 9 weeks incl. current) + distinct
+	// therapists + avg completed duration — one scan feeds three charts.
+	OrgWeeklySessionTrend(ctx context.Context, organizationID pgtype.UUID) ([]OrgWeeklySessionTrendRow, error)
 	PurgeOldAnalyticsEvents(ctx context.Context) (int64, error)
 	PurgePatientFile(ctx context.Context, id uuid.UUID) (int64, error)
 	PurgePatientNote(ctx context.Context, id uuid.UUID) (int64, error)

@@ -1517,6 +1517,28 @@
       "mTotals": "Razem",
       "analyticsEmpty": "Brak danych w wybranym okresie.",
       "analyticsPrivacyNote": "Wyłącznie agregaty metadanych — bez treści sesji, raportów i tożsamości pacjentów."
+    },
+    "analytics": {
+      "loading": "Ładowanie analityki…",
+      "empty": "Brak danych w tym zakresie.",
+      "kpiWau": "Aktywni terapeuci (WAU)",
+      "kpiWauInfo": "Terapeuci organizacji z co najmniej jedną sesją w ostatnich 7 dniach.",
+      "kpiSessionsWeek": "Sesje w tym tygodniu",
+      "kpiSessionsWeekInfo": "Sesje rozpoczęte od poniedziałku bieżącego tygodnia.",
+      "kpiAvgDuration": "Średni czas sesji",
+      "kpiAvgDurationInfo": "Średnia długość ukończonych sesji z ostatnich 90 dni.",
+      "kpiTimeSaved": "Czas zaoszczędzony (miesiąc)",
+      "kpiTimeSavedYear": "W tym roku: {hours} h ({sessions} sesji × 20 min)",
+      "kpiTimeSavedInfo": "Szacunek: 20 minut pracy nad raportem zaoszczędzone na każdej sesji terapeutów organizacji.",
+      "chartSessionsTrend": "Częstotliwość sesji (trend)",
+      "chartSessionsTrendDesc": "Łączna liczba sesji na tydzień",
+      "chartDurationTrend": "Długość sesji (trend)",
+      "chartDurationTrendDesc": "Średni czas trwania sesji na tydzień (minuty)",
+      "chartUtilization": "Utylizacja limitów tokenów",
+      "chartUtilizationDesc": "Zużycie tokenów w % limitu, per terapeuta",
+      "chartUtilizationInfo": "Procent wykorzystania limitu tokenów w danym okresie rozliczeniowym, osobno dla każdego terapeuty organizacji.",
+      "chartHourly": "Rozkład sesji — dzień i godzina",
+      "chartHourlyDesc": "Kiedy terapeuci najczęściej nagrywają"
     }
   }
 }

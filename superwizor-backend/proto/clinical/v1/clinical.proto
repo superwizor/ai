@@ -129,6 +129,12 @@ service ClinicalService {
     // transcripts, reports, notes, or patient identity. Org resolved
     // from the auth context, never from the request.
     rpc GetOrgTherapistMetrics(GetOrgTherapistMetricsRequest) returns (OrgTherapistMetricsResponse);
+    // Org-scoped analytics widgets (docs/38 §7.2) — the /org Analityka
+    // tab's charts: WAU, weekly session/duration trends, day×hour
+    // heatmap, per-therapist token utilization, and the session counts
+    // behind the "time saved on reporting" KPI. Same §7.3 privacy
+    // boundary: aggregates only.
+    rpc GetOrgAnalytics(GetOrgAnalyticsRequest) returns (GetOrgAnalyticsResponse);
 
     // ─── RODO/GDPR DSAR endpoints ───
     // Export all clinical and personal data related to a patient file,
@@ -920,6 +926,34 @@ message HourlyHeatmapPoint {
   int32 day_of_week = 1; // 0-6
   int32 hour = 2; // 0-23
   int64 count = 3;
+}
+
+// ─── Org analytics widgets (docs/38 §7.2) ─────────────────────────
+
+message GetOrgAnalyticsRequest {}
+
+message GetOrgAnalyticsResponse {
+  // KPI strip
+  int64 kpi_wau = 1;                 // org therapists with a session in last 7d
+  int64 kpi_sessions_this_week = 2;
+  double kpi_avg_session_duration = 3;  // minutes, last 90d, COMPLETED only
+
+  // Weekly trends (last ~9 ISO weeks, label "IYYY-IW")
+  repeated TrendPoint sessions_trend = 4;
+  repeated TrendPoint wau_trend = 5;
+  repeated TrendPoint session_duration_trend = 6;  // avg minutes
+
+  // Day × hour recording heatmap (last 90d)
+  repeated HourlyHeatmapPoint hourly_heatmap = 7;
+
+  // Token utilization per THERAPIST per counter period — same shape as
+  // the admin org-level heatmap (org_name carries the therapist name).
+  repeated TokenUtilizationHeatmapPoint therapist_utilization = 8;
+
+  // "Czas zaoszczędzony na raportowaniu": sessions × 20 min, computed
+  // client-side from these calendar-window counts.
+  int64 sessions_this_month = 9;
+  int64 sessions_this_year = 10;
 }
 
 // ─── RODO/GDPR DSAR messages ───

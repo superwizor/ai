@@ -265,6 +265,14 @@ func (a *ConnectAdapter) GetOrgTherapistMetrics(ctx context.Context, req *connec
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) GetOrgAnalytics(ctx context.Context, req *connect.Request[clinicalv1.GetOrgAnalyticsRequest]) (*connect.Response[clinicalv1.GetOrgAnalyticsResponse], error) {
+	resp, err := a.s.GetOrgAnalytics(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) ExportPatientData(ctx context.Context, req *connect.Request[clinicalv1.ExportPatientDataRequest]) (*connect.Response[clinicalv1.ExportPatientDataResponse], error) {
 	resp, err := a.s.ExportPatientData(ctx, req.Msg)
 	if err != nil {

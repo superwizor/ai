@@ -112,36 +112,62 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 	if err := q.AcquireSubscriptionLock(ctx, sub.ID.String()); err != nil {
 		return nil, status.Errorf(codes.Internal, "advisory lock: %v", err)
 	}
-	counter, err := q.LockActiveCounter(ctx, sub.ID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, status.Error(codes.FailedPrecondition, "QUOTA_COUNTER_MISSING")
-		}
-		return nil, status.Errorf(codes.Internal, "counter lock: %v", err)
-	}
-
-	params := db.AdminUpdateCounterParams{ID: counter.ID}
+	// docs/38: the reset covers BOTH counter scopes. The org-level
+	// counter (solo/legacy) takes tokens_used and tokens_limit; every
+	// active per-therapist counter takes tokens_used only (their limits
+	// come from each seat's plan). B2B orgs may have no org-level row —
+	// that's fine as long as at least one counter was touched.
+	var therapistUsed *int32
 	if req.TokensUsed != -1 {
 		v := req.TokensUsed
-		params.TokensUsed = &v
+		therapistUsed = &v
 	}
-	if req.TokensLimit != -1 {
-		v := req.TokensLimit
-		params.TokensLimit = &v
-	}
-	updated, err := q.AdminUpdateCounter(ctx, params)
+	therapistRows, err := q.AdminResetTherapistCounters(ctx, db.AdminResetTherapistCountersParams{
+		SubscriptionID: sub.ID,
+		TokensUsed:     therapistUsed,
+	})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "update counter: %v", err)
+		return nil, status.Errorf(codes.Internal, "reset therapist counters: %v", err)
 	}
 
+	var updated db.UsageCounter
+	orgCounterFound := true
+	counter, err := q.LockActiveCounter(ctx, sub.ID)
+	switch {
+	case err == nil:
+		params := db.AdminUpdateCounterParams{ID: counter.ID}
+		if req.TokensUsed != -1 {
+			v := req.TokensUsed
+			params.TokensUsed = &v
+		}
+		if req.TokensLimit != -1 {
+			v := req.TokensLimit
+			params.TokensLimit = &v
+		}
+		updated, err = q.AdminUpdateCounter(ctx, params)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "update counter: %v", err)
+		}
+	case errors.Is(err, pgx.ErrNoRows):
+		orgCounterFound = false
+		if therapistRows == 0 {
+			return nil, status.Error(codes.FailedPrecondition, "QUOTA_COUNTER_MISSING")
+		}
+	default:
+		return nil, status.Errorf(codes.Internal, "counter lock: %v", err)
+	}
+	meta := map[string]any{
+		"therapist_counters_reset": therapistRows,
+		"idempotency_key":          req.IdempotencyKey,
+	}
+	if orgCounterFound {
+		meta["tokens_used_before"] = counter.TokensUsed
+		meta["tokens_limit_before"] = counter.TokensLimit
+		meta["tokens_used_after"] = updated.TokensUsed
+		meta["tokens_limit_after"] = updated.TokensLimit
+	}
 	if _, err := writeBillingAudit(ctx, q, caller, orgID, sub.ID,
-		"billing.reset_tokens", req.Reason, map[string]any{
-			"tokens_used_before":  counter.TokensUsed,
-			"tokens_limit_before": counter.TokensLimit,
-			"tokens_used_after":   updated.TokensUsed,
-			"tokens_limit_after":  updated.TokensLimit,
-			"idempotency_key":     req.IdempotencyKey,
-		}); err != nil {
+		"billing.reset_tokens", req.Reason, meta); err != nil {
 		return nil, status.Errorf(codes.Internal, "audit: %v", err)
 	}
 
@@ -154,6 +180,13 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 		canceledAt = &sub.CanceledAt.Time
 	}
 
+	usedAfter, reservedAfter, limitAfter := updated.TokensUsed, updated.TokensReserved, updated.TokensLimit
+	if !orgCounterFound {
+		// B2B org without an org-level counter: snapshot = aggregate over
+		// the freshly-reset per-therapist counters.
+		usedAfter, reservedAfter, limitAfter, _ = s.orgCounterOrAggregate(ctx, sub.ID)
+	}
+
 	return buildSubscriptionProto(subFields{
 		ID:                 sub.ID,
 		PlanTier:           string(sub.PlanTier),
@@ -163,7 +196,7 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
 		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
 		CanceledAt:         canceledAt,
-	}, updated.TokensUsed, updated.TokensReserved, updated.TokensLimit), nil
+	}, usedAfter, reservedAfter, limitAfter), nil
 }
 
 // AdminChangePlan switches the org's subscription to a different plan

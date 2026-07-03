@@ -419,9 +419,14 @@ export function OrgDetail({ orgId }: { orgId: string }) {
         <ActionBtn onClick={() => setOpenDialog("resetTokens")}>
           {tA("resetTokens")}
         </ActionBtn>
-        <ActionBtn onClick={() => setOpenDialog("changePlan")}>
-          {tA("changePlan")}
-        </ActionBtn>
+        {/* Plan change is a SOLO-org action — clinics run per-seat
+            allocations ("Zarządzaj miejscami"), an org-level plan flip
+            would fight the seat model (docs/38). */}
+        {isSolo && (
+          <ActionBtn onClick={() => setOpenDialog("changePlan")}>
+            {tA("changePlan")}
+          </ActionBtn>
+        )}
         {!isSolo && (
           <ActionBtn onClick={openSeats}>{tSeats("manageCta")}</ActionBtn>
         )}
