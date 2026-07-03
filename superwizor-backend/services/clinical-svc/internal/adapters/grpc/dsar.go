@@ -65,11 +65,11 @@ func (s *Server) ExportPatientData(ctx context.Context, req *clinicalv1.ExportPa
 		}
 
 		decryptedNote := &clinicalv1.DecryptedPatientNote{
-			Id:              n.ID.String(),
-			Kind:            n.Kind,
-			Title:           string(titleBytes),
-			Text:            string(textBytes),
-			CreatedAt:       timestamppb.New(n.CreatedAt),
+			Id:        n.ID.String(),
+			Kind:      n.Kind,
+			Title:     string(titleBytes),
+			Text:      string(textBytes),
+			CreatedAt: timestamppb.New(n.CreatedAt),
 		}
 		if n.SentToPatientAt.Valid {
 			decryptedNote.SentToPatientAt = timestamppb.New(n.SentToPatientAt.Time)

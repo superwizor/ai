@@ -31,9 +31,9 @@ import (
 //
 // Returns:
 //   - Unauthenticated   — auth interceptor didn't set user_id (should
-//                         never happen in production).
+//     never happen in production).
 //   - NotFound          — caller has no organization yet (e.g. a
-//                         partial trial-signup that rolled back; rare).
+//     partial trial-signup that rolled back; rare).
 //   - Unavailable       — billing-svc client not wired (local dev).
 //   - billing-svc errors (NotFound for no-active-subscription, etc.)
 //     are forwarded as-is so Flutter can render the same dialogs.

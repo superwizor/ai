@@ -121,6 +121,54 @@ func (q *Queries) GetSeatPlanForTherapist(ctx context.Context, userID uuid.UUID)
 	return i, err
 }
 
+const listActivePlans = `-- name: ListActivePlans :many
+SELECT id, tier, cycle, display_name, price_gross, currency_code,
+       tokens_per_period, licenses_limit
+FROM subscription_plans
+WHERE is_active = TRUE
+ORDER BY tier, cycle
+`
+
+type ListActivePlansRow struct {
+	ID              uuid.UUID      `json:"id"`
+	Tier            PlanTier       `json:"tier"`
+	Cycle           BillingCycle   `json:"cycle"`
+	DisplayName     string         `json:"display_name"`
+	PriceGross      pgtype.Numeric `json:"price_gross"`
+	CurrencyCode    string         `json:"currency_code"`
+	TokensPerPeriod int32          `json:"tokens_per_period"`
+	LicensesLimit   int32          `json:"licenses_limit"`
+}
+
+func (q *Queries) ListActivePlans(ctx context.Context) ([]ListActivePlansRow, error) {
+	rows, err := q.db.Query(ctx, listActivePlans)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActivePlansRow
+	for rows.Next() {
+		var i ListActivePlansRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Tier,
+			&i.Cycle,
+			&i.DisplayName,
+			&i.PriceGross,
+			&i.CurrencyCode,
+			&i.TokensPerPeriod,
+			&i.LicensesLimit,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActiveTherapistCounters = `-- name: ListActiveTherapistCounters :many
 SELECT c.therapist_id, c.tokens_used, c.tokens_reserved, c.tokens_limit,
        u.first_name, u.last_name, u.is_active

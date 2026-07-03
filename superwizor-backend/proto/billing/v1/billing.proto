@@ -74,6 +74,10 @@ service BillingService {
   // ORG_ADMIN. Seat occupancy + per-therapist token usage for the
   // /org panel. Org resolved from the caller's auth context.
   rpc GetMyOrgSeatUsage(google.protobuf.Empty) returns (OrgSeatSummary);
+
+  // SUPERWIZOR_ADMIN. Active plan catalog — feeds the /admin/orgs/new
+  // seat-allocation table (plan_id × seats × price).
+  rpc AdminListPlans(google.protobuf.Empty) returns (AdminListPlansResponse);
 }
 
 message CheckQuotaRequest {
@@ -200,6 +204,20 @@ message AdminResetTokensRequest {
 }
 
 // ─── Org management messages (docs/38) ────────────────────────────
+
+message PlanInfo {
+  string plan_id      = 1;
+  string tier         = 2;
+  string cycle        = 3;
+  string display_name = 4;
+  string price_gross  = 5;  // catalog gross price, decimal string
+  string currency_code = 6;
+  int32  tokens_per_period = 7;
+}
+
+message AdminListPlansResponse {
+  repeated PlanInfo plans = 1;
+}
 
 message SeatAllocationSpec {
   string plan_id = 1;

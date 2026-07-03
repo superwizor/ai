@@ -96,3 +96,10 @@ INSERT INTO subscriptions (
     $1, $2, 'MANUAL', $3, 'ACTIVE', $4, $5
 )
 RETURNING id, organization_id, plan_id, current_period_start, current_period_end;
+
+-- name: ListActivePlans :many
+SELECT id, tier, cycle, display_name, price_gross, currency_code,
+       tokens_per_period, licenses_limit
+FROM subscription_plans
+WHERE is_active = TRUE
+ORDER BY tier, cycle;

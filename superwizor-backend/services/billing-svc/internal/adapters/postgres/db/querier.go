@@ -129,6 +129,7 @@ type Querier interface {
 	// Idempotency lookup. Zwraca już zaistniały event jeśli był (no-op path
 	// w CommitUsage).
 	GetUsageEventBySession(ctx context.Context, sessionID uuid.UUID) (UsageEvent, error)
+	ListActivePlans(ctx context.Context) ([]ListActivePlansRow, error)
 	// Per-therapist usage for the current period (GetMyOrgSeatUsage).
 	ListActiveTherapistCounters(ctx context.Context, subscriptionID uuid.UUID) ([]ListActiveTherapistCountersRow, error)
 	// Cron daily o 00:05 UTC — znajduje MANUAL subskrypcje (ACTIVE + TRIALING),

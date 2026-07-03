@@ -257,6 +257,14 @@ func (a *ConnectAdapter) GetAdminAnalytics(ctx context.Context, req *connect.Req
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) GetOrgTherapistMetrics(ctx context.Context, req *connect.Request[clinicalv1.GetOrgTherapistMetricsRequest]) (*connect.Response[clinicalv1.OrgTherapistMetricsResponse], error) {
+	resp, err := a.s.GetOrgTherapistMetrics(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) ExportPatientData(ctx context.Context, req *connect.Request[clinicalv1.ExportPatientDataRequest]) (*connect.Response[clinicalv1.ExportPatientDataResponse], error) {
 	resp, err := a.s.ExportPatientData(ctx, req.Msg)
 	if err != nil {
@@ -272,8 +280,6 @@ func (a *ConnectAdapter) DeletePatientData(ctx context.Context, req *connect.Req
 	}
 	return connect.NewResponse(resp), nil
 }
-
-
 
 // ─── Cross-device preference sync (migration 000059) ────────────────
 

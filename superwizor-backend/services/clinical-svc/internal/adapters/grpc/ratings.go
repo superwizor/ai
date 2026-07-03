@@ -37,15 +37,15 @@ var allowedRating = map[string]bool{
 // the same as the Flutter widget renders. Each maps (potentially) to
 // a preferences dimension that the suggestion engine can nudge.
 var allowedIssues = map[string]bool{
-	"za_dlugi":                   true, // length
-	"za_krotki":                  true, // length
-	"zly_ton":                    true, // tone
-	"za_duzo_cytatow":            true, // quote_density
-	"za_malo_cytatow":            true, // quote_density
-	"niedokladna_interpretacja":  true, // hedging + diagnostic_language
-	"brakuje_mocnych_stron":      true, // strengths_framing
-	"brakuje_kontekstu":          true, // section_emphasis
-	"inne":                       true, // free-text only
+	"za_dlugi":                  true, // length
+	"za_krotki":                 true, // length
+	"zly_ton":                   true, // tone
+	"za_duzo_cytatow":           true, // quote_density
+	"za_malo_cytatow":           true, // quote_density
+	"niedokladna_interpretacja": true, // hedging + diagnostic_language
+	"brakuje_mocnych_stron":     true, // strengths_framing
+	"brakuje_kontekstu":         true, // section_emphasis
+	"inne":                      true, // free-text only
 }
 
 var allowedAction = map[string]bool{
@@ -75,9 +75,9 @@ var ratingInjectionPatterns = []*regexp.Regexp{
 // doc §6: ≥3 negatives of same chip in the last 5 ratings (or 14
 // days), 14-day cooldown on dismissed.
 const (
-	suggestionTriggerCount      = 3
-	suggestionLookbackRatings   = 5
-	suggestionDismissCooldown   = 14 * 24 * time.Hour
+	suggestionTriggerCount    = 3
+	suggestionLookbackRatings = 5
+	suggestionDismissCooldown = 14 * 24 * time.Hour
 )
 
 // dimensionForChip maps a chip category to the preference dimension

@@ -325,3 +325,32 @@ func numericToDecimalString(n pgtype.Numeric) string {
 	}
 	return ""
 }
+
+// AdminListPlans returns the active plan catalog for the seat-allocation
+// wizard. SUPERWIZOR_ADMIN only.
+func (s *Server) AdminListPlans(ctx context.Context, _ *emptypb.Empty) (*billingv1.AdminListPlansResponse, error) {
+	caller, err := resolveAdminCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := caller.requireSuperwizorAdmin(); err != nil {
+		return nil, err
+	}
+	plans, err := s.queries.ListActivePlans(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list plans: %v", err)
+	}
+	out := &billingv1.AdminListPlansResponse{}
+	for _, p := range plans {
+		out.Plans = append(out.Plans, &billingv1.PlanInfo{
+			PlanId:          p.ID.String(),
+			Tier:            string(p.Tier),
+			Cycle:           string(p.Cycle),
+			DisplayName:     p.DisplayName,
+			PriceGross:      numericToDecimalString(p.PriceGross),
+			CurrencyCode:    strings.TrimSpace(p.CurrencyCode),
+			TokensPerPeriod: p.TokensPerPeriod,
+		})
+	}
+	return out, nil
+}

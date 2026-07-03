@@ -78,6 +78,14 @@ func (a *ConnectAdapter) AdminResetTokens(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) AdminListPlans(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[billingv1.AdminListPlansResponse], error) {
+	resp, err := a.s.AdminListPlans(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) AdminSetSeatAllocations(ctx context.Context, req *connect.Request[billingv1.AdminSetSeatAllocationsRequest]) (*connect.Response[billingv1.OrgSeatSummary], error) {
 	resp, err := a.s.AdminSetSeatAllocations(ctx, req.Msg)
 	if err != nil {
