@@ -85,14 +85,19 @@ AND unassigned_at IS NULL) + COUNT(pending invitations dla X)` ≤ `seats`.
 Deaktywacja terapeuty ⇒ `unassigned_at = now()` ⇒ miejsce wolne. Zaproszenie
 rezerwuje miejsce do czasu wygaśnięcia (7 dni) albo akceptacji.
 
-**Model rozliczeń (MVP, świadoma decyzja):** zostaje **jedna subskrypcja
-MANUAL per organizacja** i **licznik tokenów per seat (terapeuta)**:
- wartość faktury =
-`Σ(seats × COALESCE(price_gross_per_seat, plan.price_gross))`. Zmiana alokacji
-przez admina przelicza `tokens_limit` bieżącego okresu (jak `AdminChangePlan`).
-Atrybucja zużycia per terapeuta do analityki pochodzi z
-`pending_reservations`/`sessions.therapist_id` — egzekwowanie pozostaje
-org-level (prostota; bez zmian w ReserveCredit).
+**Model rozliczeń (decyzja 2026-07-03):** zostaje **jedna subskrypcja
+MANUAL per organizacja**, ale **licznik tokenów jest per seat (terapeuta)**:
+każdy terapeuta ma własny `usage_counter` (`therapist_id` w 000064) z
+`tokens_limit = tokens_per_period` planu jego miejsca, odnawiany zgodnie z
+cyklem tego planu. **Egzekwowanie jest per-terapeuta** — terapeuta po
+wyczerpaniu SWOJEGO limitu jest blokowany, nawet gdy inni mają zapas.
+`ReserveCredit`/`LockActiveCounter` lockuje licznik terapeuty wołającego,
+z fallbackiem na licznik org-level (`therapist_id IS NULL`) dla organizacji
+bez alokacji / kont solo — pełna kompatybilność wstecz. Wartość faktury =
+`Σ(seats × COALESCE(price_gross_per_seat, plan.price_gross))`. Zmiana
+alokacji przez admina tworzy/aktualizuje liczniki bieżącego okresu (jak
+`AdminChangePlan`). `pending_reservations.therapist_id` gwarantuje, że
+release/expiry/commit trafia w ten sam licznik, który został obciążony.
 
 ## 4. API (nowe/rozszerzone RPC)
 
