@@ -36,8 +36,11 @@ func (s *Server) SendInvitationEmail(ctx context.Context, req *notificationv1.Se
 	// org_manager_invite onboarding copy; therapists keep the classic
 	// invitation. Empty role = old callers = therapist.
 	templateKey := "invitation"
-	if req.GetInvitedRole() == "ORG_ADMIN" {
+	switch req.GetInvitedRole() {
+	case "ORG_ADMIN":
 		templateKey = "org_manager_invite"
+	case "PATIENT":
+		templateKey = "patient_invite" // docs/39 — client panel onboarding
 	}
 	tpl, err := i18n.Load(req.GetLocale(), templateKey)
 	if err != nil {

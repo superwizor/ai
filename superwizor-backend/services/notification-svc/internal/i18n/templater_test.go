@@ -27,6 +27,15 @@ func TestLoad_AllTemplates_BothLocales(t *testing.T) {
 			},
 		},
 		{
+			// docs/39: client-panel onboarding (InviteClient).
+			name: "patient_invite",
+			vars: map[string]string{
+				"inviter_first_name": "Tomasz",
+				"accept_url":         "https://example.com/accept/abc",
+				"expires_at":         "2026-07-10",
+			},
+		},
+		{
 			// docs/38: org-manager onboarding (AdminCreateOrganization).
 			name: "org_manager_invite",
 			vars: map[string]string{
