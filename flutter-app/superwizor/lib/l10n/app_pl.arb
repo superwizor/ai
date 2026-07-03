@@ -1304,5 +1304,45 @@
   "client_note_send": "Wyślij do terapeuty",
   "client_note_sent": "Notatka wysłana do terapeuty.",
   "client_note_empty_error": "Notatka nie może być pusta.",
-  "client_logout": "Wyloguj się"
+  "client_logout": "Wyloguj się",
+  "invite_client_title": "Zaproś klienta",
+  "invite_client_desc": "Klient otrzyma e-mail z linkiem do bezpiecznego panelu, w którym zobaczy udostępnione sesje i notatki oraz będzie mógł pisać do Ciebie notatki.",
+  "invite_client_email_label": "E-mail klienta",
+  "invite_client_send": "Wyślij zaproszenie",
+  "invite_client_resend": "Wyślij ponownie",
+  "invite_client_sent": "Zaproszenie wysłane.",
+  "invite_client_status_pending": "Zaproszenie oczekuje — wysłane na {email}, ważne do {date}.",
+  "@invite_client_status_pending": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "invite_client_status_active": "Panel klienta jest aktywny.",
+  "invite_client_status_inactive": "Konto klienta jest dezaktywowane.",
+  "invite_client_email_taken": "Ten e-mail jest już powiązany z innym kontem.",
+  "invite_client_email_missing": "Podaj poprawny e-mail klienta.",
+  "invite_client_error": "Nie udało się wysłać zaproszenia. Spróbuj ponownie.",
+  "share_with_client": "Udostępnij w panelu klienta",
+  "unshare_with_client": "Cofnij udostępnienie",
+  "share_with_client_desc": "Klient zobaczy tę pozycję w swoim panelu",
+  "share_note_shared_at": "Udostępniono {date}",
+  "@share_note_shared_at": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "share_shared_badge": "Udostępniono",
+  "share_session_label": "Udostępnij klientowi",
+  "share_toggled_on": "Udostępniono w panelu klienta.",
+  "share_toggled_off": "Cofnięto udostępnienie.",
+  "share_toggle_error": "Nie udało się zmienić udostępniania.",
+  "note_from_client": "Od klienta",
+  "note_from_client_new": "NOWA"
 }

@@ -338,6 +338,9 @@ class SessionsNotifier extends AsyncNotifier<Map<String, List<Session>>> {
           reportViewedAt: s.hasReportViewedAt()
               ? s.reportViewedAt.toDateTime().toLocal()
               : null,
+          sharedWithClientAt: s.hasSharedWithClientAt()
+              ? s.sharedWithClientAt.toDateTime().toLocal()
+              : null,
         );
       }).toList();
       _publish(patientId, fetched);

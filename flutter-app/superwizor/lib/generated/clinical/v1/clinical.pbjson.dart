@@ -387,6 +387,31 @@ const PatientNote$json = {
       '6': '.google.protobuf.Timestamp',
       '10': 'updatedAt'
     },
+    {'1': 'author_role', '3': 11, '4': 1, '5': 9, '10': 'authorRole'},
+    {
+      '1': 'shared_with_client_at',
+      '3': 12,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'sharedWithClientAt'
+    },
+    {
+      '1': 'read_by_client_at',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'readByClientAt'
+    },
+    {
+      '1': 'read_by_therapist_at',
+      '3': 14,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'readByTherapistAt'
+    },
   ],
 };
 
@@ -399,7 +424,11 @@ final $typed_data.Uint8List patientNoteDescriptor = $convert.base64Decode(
     'VGltZXN0YW1wUg9zZW50VG9QYXRpZW50QXQSIgoNc2VudF90b19lbWFpbBgIIAEoCVILc2VudF'
     'RvRW1haWwSOQoKY3JlYXRlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBS'
     'CWNyZWF0ZWRBdBI5Cgp1cGRhdGVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdG'
-    'FtcFIJdXBkYXRlZEF0');
+    'FtcFIJdXBkYXRlZEF0Eh8KC2F1dGhvcl9yb2xlGAsgASgJUgphdXRob3JSb2xlEk0KFXNoYXJl'
+    'ZF93aXRoX2NsaWVudF9hdBgMIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSEnNoYX'
+    'JlZFdpdGhDbGllbnRBdBJFChFyZWFkX2J5X2NsaWVudF9hdBgNIAEoCzIaLmdvb2dsZS5wcm90'
+    'b2J1Zi5UaW1lc3RhbXBSDnJlYWRCeUNsaWVudEF0EksKFHJlYWRfYnlfdGhlcmFwaXN0X2F0GA'
+    '4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIRcmVhZEJ5VGhlcmFwaXN0QXQ=');
 
 @$core.Deprecated('Use createPatientNoteRequestDescriptor instead')
 const CreatePatientNoteRequest$json = {
@@ -707,6 +736,14 @@ const Session$json = {
       '10': 'reportViewedAt'
     },
     {'1': 'file_size_bytes', '3': 14, '4': 1, '5': 3, '10': 'fileSizeBytes'},
+    {
+      '1': 'shared_with_client_at',
+      '3': 15,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'sharedWithClientAt'
+    },
   ],
   '3': [Session_SpeakerLabelMappingEntry$json],
 };
@@ -733,9 +770,10 @@ final $typed_data.Uint8List sessionDescriptor = $convert.base64Decode(
     'luZxIWCgZzdGF0dXMYCiABKAlSBnN0YXR1cxI5CgpjcmVhdGVkX2F0GAsgASgLMhouZ29vZ2xl'
     'LnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYXRlZEF0EhIKBG5hbWUYDCABKAlSBG5hbWUSRAoQcm'
     'Vwb3J0X3ZpZXdlZF9hdBgNIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSDnJlcG9y'
-    'dFZpZXdlZEF0EiYKD2ZpbGVfc2l6ZV9ieXRlcxgOIAEoA1INZmlsZVNpemVCeXRlcxpGChhTcG'
-    'Vha2VyTGFiZWxNYXBwaW5nRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAiABKAlS'
-    'BXZhbHVlOgI4AQ==');
+    'dFZpZXdlZEF0EiYKD2ZpbGVfc2l6ZV9ieXRlcxgOIAEoA1INZmlsZVNpemVCeXRlcxJNChVzaG'
+    'FyZWRfd2l0aF9jbGllbnRfYXQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUhJz'
+    'aGFyZWRXaXRoQ2xpZW50QXQaRgoYU3BlYWtlckxhYmVsTWFwcGluZ0VudHJ5EhAKA2tleRgBIA'
+    'EoCVIDa2V5EhQKBXZhbHVlGAIgASgJUgV2YWx1ZToCOAE=');
 
 @$core.Deprecated('Use listSessionsRequestDescriptor instead')
 const ListSessionsRequest$json = {

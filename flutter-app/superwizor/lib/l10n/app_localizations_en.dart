@@ -2917,4 +2917,82 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get client_logout => 'Sign out';
+
+  @override
+  String get invite_client_title => 'Invite client';
+
+  @override
+  String get invite_client_desc =>
+      'The client will receive an e-mail with a link to a secure panel where they can see shared sessions and notes and write notes back to you.';
+
+  @override
+  String get invite_client_email_label => 'Client e-mail';
+
+  @override
+  String get invite_client_send => 'Send invitation';
+
+  @override
+  String get invite_client_resend => 'Send again';
+
+  @override
+  String get invite_client_sent => 'Invitation sent.';
+
+  @override
+  String invite_client_status_pending(String email, String date) {
+    return 'Invitation pending — sent to $email, valid until $date.';
+  }
+
+  @override
+  String get invite_client_status_active => 'Client panel is active.';
+
+  @override
+  String get invite_client_status_inactive =>
+      'The client account is deactivated.';
+
+  @override
+  String get invite_client_email_taken =>
+      'This e-mail is already linked to another account.';
+
+  @override
+  String get invite_client_email_missing => 'Enter a valid client e-mail.';
+
+  @override
+  String get invite_client_error =>
+      'Failed to send the invitation. Please try again.';
+
+  @override
+  String get share_with_client => 'Share in the client panel';
+
+  @override
+  String get unshare_with_client => 'Unshare';
+
+  @override
+  String get share_with_client_desc =>
+      'The client will see this item in their panel';
+
+  @override
+  String share_note_shared_at(String date) {
+    return 'Shared $date';
+  }
+
+  @override
+  String get share_shared_badge => 'Shared';
+
+  @override
+  String get share_session_label => 'Share with client';
+
+  @override
+  String get share_toggled_on => 'Shared in the client panel.';
+
+  @override
+  String get share_toggled_off => 'Sharing removed.';
+
+  @override
+  String get share_toggle_error => 'Could not change sharing.';
+
+  @override
+  String get note_from_client => 'From client';
+
+  @override
+  String get note_from_client_new => 'NEW';
 }

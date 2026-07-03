@@ -320,6 +320,11 @@ message PatientNote {
     google.protobuf.Timestamp shared_with_client_at = 12;
     // When the client opened a shared therapist note. Unset = unread.
     google.protobuf.Timestamp read_by_client_at = 13;
+    // When the therapist first listed this CLIENT_NOTE. ListPatientNotes
+    // returns the pre-mark state, so a fresh client note arrives with
+    // this unset exactly once — the UI renders its "new" badge off that
+    // edge. Unset for therapist-authored notes too (never marked).
+    google.protobuf.Timestamp read_by_therapist_at = 14;
 }
 
 message CreatePatientNoteRequest {

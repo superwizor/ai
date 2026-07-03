@@ -2937,4 +2937,82 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get client_logout => 'Wyloguj się';
+
+  @override
+  String get invite_client_title => 'Zaproś klienta';
+
+  @override
+  String get invite_client_desc =>
+      'Klient otrzyma e-mail z linkiem do bezpiecznego panelu, w którym zobaczy udostępnione sesje i notatki oraz będzie mógł pisać do Ciebie notatki.';
+
+  @override
+  String get invite_client_email_label => 'E-mail klienta';
+
+  @override
+  String get invite_client_send => 'Wyślij zaproszenie';
+
+  @override
+  String get invite_client_resend => 'Wyślij ponownie';
+
+  @override
+  String get invite_client_sent => 'Zaproszenie wysłane.';
+
+  @override
+  String invite_client_status_pending(String email, String date) {
+    return 'Zaproszenie oczekuje — wysłane na $email, ważne do $date.';
+  }
+
+  @override
+  String get invite_client_status_active => 'Panel klienta jest aktywny.';
+
+  @override
+  String get invite_client_status_inactive =>
+      'Konto klienta jest dezaktywowane.';
+
+  @override
+  String get invite_client_email_taken =>
+      'Ten e-mail jest już powiązany z innym kontem.';
+
+  @override
+  String get invite_client_email_missing => 'Podaj poprawny e-mail klienta.';
+
+  @override
+  String get invite_client_error =>
+      'Nie udało się wysłać zaproszenia. Spróbuj ponownie.';
+
+  @override
+  String get share_with_client => 'Udostępnij w panelu klienta';
+
+  @override
+  String get unshare_with_client => 'Cofnij udostępnienie';
+
+  @override
+  String get share_with_client_desc =>
+      'Klient zobaczy tę pozycję w swoim panelu';
+
+  @override
+  String share_note_shared_at(String date) {
+    return 'Udostępniono $date';
+  }
+
+  @override
+  String get share_shared_badge => 'Udostępniono';
+
+  @override
+  String get share_session_label => 'Udostępnij klientowi';
+
+  @override
+  String get share_toggled_on => 'Udostępniono w panelu klienta.';
+
+  @override
+  String get share_toggled_off => 'Cofnięto udostępnienie.';
+
+  @override
+  String get share_toggle_error => 'Nie udało się zmienić udostępniania.';
+
+  @override
+  String get note_from_client => 'Od klienta';
+
+  @override
+  String get note_from_client_new => 'NOWA';
 }

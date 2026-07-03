@@ -1143,6 +1143,10 @@ class PatientNote extends $pb.GeneratedMessage {
     $core.String? sentToEmail,
     $3.Timestamp? createdAt,
     $3.Timestamp? updatedAt,
+    $core.String? authorRole,
+    $3.Timestamp? sharedWithClientAt,
+    $3.Timestamp? readByClientAt,
+    $3.Timestamp? readByTherapistAt,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -1155,6 +1159,11 @@ class PatientNote extends $pb.GeneratedMessage {
     if (sentToEmail != null) result.sentToEmail = sentToEmail;
     if (createdAt != null) result.createdAt = createdAt;
     if (updatedAt != null) result.updatedAt = updatedAt;
+    if (authorRole != null) result.authorRole = authorRole;
+    if (sharedWithClientAt != null)
+      result.sharedWithClientAt = sharedWithClientAt;
+    if (readByClientAt != null) result.readByClientAt = readByClientAt;
+    if (readByTherapistAt != null) result.readByTherapistAt = readByTherapistAt;
     return result;
   }
 
@@ -1183,6 +1192,13 @@ class PatientNote extends $pb.GeneratedMessage {
     ..aOM<$3.Timestamp>(9, _omitFieldNames ? '' : 'createdAt',
         subBuilder: $3.Timestamp.create)
     ..aOM<$3.Timestamp>(10, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOS(11, _omitFieldNames ? '' : 'authorRole')
+    ..aOM<$3.Timestamp>(12, _omitFieldNames ? '' : 'sharedWithClientAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOM<$3.Timestamp>(13, _omitFieldNames ? '' : 'readByClientAt',
+        subBuilder: $3.Timestamp.create)
+    ..aOM<$3.Timestamp>(14, _omitFieldNames ? '' : 'readByTherapistAt',
         subBuilder: $3.Timestamp.create)
     ..hasRequiredFields = false;
 
@@ -1300,6 +1316,58 @@ class PatientNote extends $pb.GeneratedMessage {
   void clearUpdatedAt() => $_clearField(10);
   @$pb.TagNumber(10)
   $3.Timestamp ensureUpdatedAt() => $_ensure(9);
+
+  /// docs/39 client panel. THERAPIST (default) or PATIENT (CLIENT_NOTE
+  /// written by the client — read-only for the therapist).
+  @$pb.TagNumber(11)
+  $core.String get authorRole => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set authorRole($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasAuthorRole() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearAuthorRole() => $_clearField(11);
+
+  /// When the therapist shared this note with the client panel
+  /// (ShareNoteWithClient). Unset = not shared. Always unset for
+  /// CLIENT_NOTE (those are visible to the client by construction).
+  @$pb.TagNumber(12)
+  $3.Timestamp get sharedWithClientAt => $_getN(11);
+  @$pb.TagNumber(12)
+  set sharedWithClientAt($3.Timestamp value) => $_setField(12, value);
+  @$pb.TagNumber(12)
+  $core.bool hasSharedWithClientAt() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearSharedWithClientAt() => $_clearField(12);
+  @$pb.TagNumber(12)
+  $3.Timestamp ensureSharedWithClientAt() => $_ensure(11);
+
+  /// When the client opened a shared therapist note. Unset = unread.
+  @$pb.TagNumber(13)
+  $3.Timestamp get readByClientAt => $_getN(12);
+  @$pb.TagNumber(13)
+  set readByClientAt($3.Timestamp value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasReadByClientAt() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearReadByClientAt() => $_clearField(13);
+  @$pb.TagNumber(13)
+  $3.Timestamp ensureReadByClientAt() => $_ensure(12);
+
+  /// When the therapist first listed this CLIENT_NOTE. ListPatientNotes
+  /// returns the pre-mark state, so a fresh client note arrives with
+  /// this unset exactly once — the UI renders its "new" badge off that
+  /// edge. Unset for therapist-authored notes too (never marked).
+  @$pb.TagNumber(14)
+  $3.Timestamp get readByTherapistAt => $_getN(13);
+  @$pb.TagNumber(14)
+  set readByTherapistAt($3.Timestamp value) => $_setField(14, value);
+  @$pb.TagNumber(14)
+  $core.bool hasReadByTherapistAt() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearReadByTherapistAt() => $_clearField(14);
+  @$pb.TagNumber(14)
+  $3.Timestamp ensureReadByTherapistAt() => $_ensure(13);
 }
 
 class CreatePatientNoteRequest extends $pb.GeneratedMessage {
@@ -2372,6 +2440,7 @@ class Session extends $pb.GeneratedMessage {
     $core.String? name,
     $3.Timestamp? reportViewedAt,
     $fixnum.Int64? fileSizeBytes,
+    $3.Timestamp? sharedWithClientAt,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -2389,6 +2458,8 @@ class Session extends $pb.GeneratedMessage {
     if (name != null) result.name = name;
     if (reportViewedAt != null) result.reportViewedAt = reportViewedAt;
     if (fileSizeBytes != null) result.fileSizeBytes = fileSizeBytes;
+    if (sharedWithClientAt != null)
+      result.sharedWithClientAt = sharedWithClientAt;
     return result;
   }
 
@@ -2426,6 +2497,8 @@ class Session extends $pb.GeneratedMessage {
     ..aOM<$3.Timestamp>(13, _omitFieldNames ? '' : 'reportViewedAt',
         subBuilder: $3.Timestamp.create)
     ..aInt64(14, _omitFieldNames ? '' : 'fileSizeBytes')
+    ..aOM<$3.Timestamp>(15, _omitFieldNames ? '' : 'sharedWithClientAt',
+        subBuilder: $3.Timestamp.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2576,6 +2649,19 @@ class Session extends $pb.GeneratedMessage {
   $core.bool hasFileSizeBytes() => $_has(13);
   @$pb.TagNumber(14)
   void clearFileSizeBytes() => $_clearField(14);
+
+  /// docs/39: when the therapist shared this session with the client
+  /// panel (ShareSessionWithClient). Unset = not shared.
+  @$pb.TagNumber(15)
+  $3.Timestamp get sharedWithClientAt => $_getN(14);
+  @$pb.TagNumber(15)
+  set sharedWithClientAt($3.Timestamp value) => $_setField(15, value);
+  @$pb.TagNumber(15)
+  $core.bool hasSharedWithClientAt() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearSharedWithClientAt() => $_clearField(15);
+  @$pb.TagNumber(15)
+  $3.Timestamp ensureSharedWithClientAt() => $_ensure(14);
 }
 
 class ListSessionsRequest extends $pb.GeneratedMessage {

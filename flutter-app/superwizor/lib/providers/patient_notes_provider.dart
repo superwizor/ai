@@ -38,6 +38,21 @@ class PatientNote {
   /// When the note was last e-mailed to the patient, or null if never.
   final DateTime? sentToPatientAt;
 
+  /// docs/39 client panel. THERAPIST (default/legacy '') or PATIENT —
+  /// a CLIENT_NOTE the client wrote (read-only for the therapist).
+  final String authorRole;
+
+  /// When the note was shared to the client panel, or null if not.
+  final DateTime? sharedWithClientAt;
+
+  /// When the client opened a shared note, or null if unread.
+  final DateTime? readByClientAt;
+
+  /// When the therapist first listed this CLIENT_NOTE. The server marks
+  /// it on ListPatientNotes but returns the pre-mark state, so a fresh
+  /// client note arrives with null exactly once → "new" badge.
+  final DateTime? readByTherapistAt;
+
   const PatientNote({
     required this.id,
     required this.patientFileId,
@@ -46,9 +61,16 @@ class PatientNote {
     required this.createdAt,
     this.kind = '',
     this.sentToPatientAt,
+    this.authorRole = '',
+    this.sharedWithClientAt,
+    this.readByClientAt,
+    this.readByTherapistAt,
   });
 
   bool get sentToPatient => sentToPatientAt != null;
+  bool get isClientNote => authorRole == 'PATIENT';
+  bool get sharedWithClient => sharedWithClientAt != null;
+  bool get isNewClientNote => isClientNote && readByTherapistAt == null;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -59,6 +81,13 @@ class PatientNote {
         'kind': kind,
         if (sentToPatientAt != null)
           'sentToPatientAt': sentToPatientAt!.toUtc().toIso8601String(),
+        if (authorRole.isNotEmpty) 'authorRole': authorRole,
+        if (sharedWithClientAt != null)
+          'sharedWithClientAt': sharedWithClientAt!.toUtc().toIso8601String(),
+        if (readByClientAt != null)
+          'readByClientAt': readByClientAt!.toUtc().toIso8601String(),
+        if (readByTherapistAt != null)
+          'readByTherapistAt': readByTherapistAt!.toUtc().toIso8601String(),
       };
 
   factory PatientNote.fromJson(Map<String, dynamic> json) => PatientNote(
@@ -72,6 +101,16 @@ class PatientNote {
         kind: json['kind'] as String? ?? '',
         sentToPatientAt:
             DateTime.tryParse(json['sentToPatientAt'] as String? ?? '')
+                ?.toLocal(),
+        authorRole: json['authorRole'] as String? ?? '',
+        sharedWithClientAt:
+            DateTime.tryParse(json['sharedWithClientAt'] as String? ?? '')
+                ?.toLocal(),
+        readByClientAt:
+            DateTime.tryParse(json['readByClientAt'] as String? ?? '')
+                ?.toLocal(),
+        readByTherapistAt:
+            DateTime.tryParse(json['readByTherapistAt'] as String? ?? '')
                 ?.toLocal(),
       );
 
@@ -94,6 +133,16 @@ class PatientNote {
       createdAt: created,
       kind: p.kind,
       sentToPatientAt: sentAt,
+      authorRole: p.authorRole,
+      sharedWithClientAt: p.hasSharedWithClientAt()
+          ? p.sharedWithClientAt.toDateTime().toLocal()
+          : null,
+      readByClientAt: p.hasReadByClientAt()
+          ? p.readByClientAt.toDateTime().toLocal()
+          : null,
+      readByTherapistAt: p.hasReadByTherapistAt()
+          ? p.readByTherapistAt.toDateTime().toLocal()
+          : null,
     );
   }
 
@@ -101,6 +150,7 @@ class PatientNote {
     String? title,
     String? text,
     DateTime? sentToPatientAt,
+    DateTime? sharedWithClientAt,
   }) =>
       PatientNote(
         id: id,
@@ -110,6 +160,10 @@ class PatientNote {
         createdAt: createdAt,
         kind: kind,
         sentToPatientAt: sentToPatientAt ?? this.sentToPatientAt,
+        authorRole: authorRole,
+        sharedWithClientAt: sharedWithClientAt ?? this.sharedWithClientAt,
+        readByClientAt: readByClientAt,
+        readByTherapistAt: readByTherapistAt,
       );
 }
 

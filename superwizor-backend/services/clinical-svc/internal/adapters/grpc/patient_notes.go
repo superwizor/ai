@@ -115,6 +115,9 @@ func (s *Server) toProtoPatientNote(ctx context.Context, n db.PatientNote) (*cli
 	if n.ReadByClientAt.Valid {
 		out.ReadByClientAt = timestamppb.New(n.ReadByClientAt.Time)
 	}
+	if n.ReadByTherapistAt.Valid {
+		out.ReadByTherapistAt = timestamppb.New(n.ReadByTherapistAt.Time)
+	}
 	if n.SourceSessionID.Valid {
 		out.SourceSessionId = uuid.UUID(n.SourceSessionID.Bytes).String()
 	}
