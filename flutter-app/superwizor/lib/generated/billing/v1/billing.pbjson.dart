@@ -319,6 +319,220 @@ final $typed_data.Uint8List adminResetTokensRequestDescriptor = $convert.base64D
     'aW1pdBgDIAEoBVILdG9rZW5zTGltaXQSFgoGcmVhc29uGAQgASgJUgZyZWFzb24SJwoPaWRlbX'
     'BvdGVuY3lfa2V5GAUgASgJUg5pZGVtcG90ZW5jeUtleQ==');
 
+@$core.Deprecated('Use planInfoDescriptor instead')
+const PlanInfo$json = {
+  '1': 'PlanInfo',
+  '2': [
+    {'1': 'plan_id', '3': 1, '4': 1, '5': 9, '10': 'planId'},
+    {'1': 'tier', '3': 2, '4': 1, '5': 9, '10': 'tier'},
+    {'1': 'cycle', '3': 3, '4': 1, '5': 9, '10': 'cycle'},
+    {'1': 'display_name', '3': 4, '4': 1, '5': 9, '10': 'displayName'},
+    {'1': 'price_gross', '3': 5, '4': 1, '5': 9, '10': 'priceGross'},
+    {'1': 'currency_code', '3': 6, '4': 1, '5': 9, '10': 'currencyCode'},
+    {'1': 'tokens_per_period', '3': 7, '4': 1, '5': 5, '10': 'tokensPerPeriod'},
+  ],
+};
+
+/// Descriptor for `PlanInfo`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List planInfoDescriptor = $convert.base64Decode(
+    'CghQbGFuSW5mbxIXCgdwbGFuX2lkGAEgASgJUgZwbGFuSWQSEgoEdGllchgCIAEoCVIEdGllch'
+    'IUCgVjeWNsZRgDIAEoCVIFY3ljbGUSIQoMZGlzcGxheV9uYW1lGAQgASgJUgtkaXNwbGF5TmFt'
+    'ZRIfCgtwcmljZV9ncm9zcxgFIAEoCVIKcHJpY2VHcm9zcxIjCg1jdXJyZW5jeV9jb2RlGAYgAS'
+    'gJUgxjdXJyZW5jeUNvZGUSKgoRdG9rZW5zX3Blcl9wZXJpb2QYByABKAVSD3Rva2Vuc1BlclBl'
+    'cmlvZA==');
+
+@$core.Deprecated('Use adminListPlansResponseDescriptor instead')
+const AdminListPlansResponse$json = {
+  '1': 'AdminListPlansResponse',
+  '2': [
+    {
+      '1': 'plans',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.billing.v1.PlanInfo',
+      '10': 'plans'
+    },
+  ],
+};
+
+/// Descriptor for `AdminListPlansResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminListPlansResponseDescriptor =
+    $convert.base64Decode(
+        'ChZBZG1pbkxpc3RQbGFuc1Jlc3BvbnNlEioKBXBsYW5zGAEgAygLMhQuYmlsbGluZy52MS5QbG'
+        'FuSW5mb1IFcGxhbnM=');
+
+@$core.Deprecated('Use seatAllocationSpecDescriptor instead')
+const SeatAllocationSpec$json = {
+  '1': 'SeatAllocationSpec',
+  '2': [
+    {'1': 'plan_id', '3': 1, '4': 1, '5': 9, '10': 'planId'},
+    {'1': 'seats', '3': 2, '4': 1, '5': 5, '10': 'seats'},
+    {
+      '1': 'price_gross_per_seat',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'priceGrossPerSeat'
+    },
+  ],
+};
+
+/// Descriptor for `SeatAllocationSpec`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List seatAllocationSpecDescriptor = $convert.base64Decode(
+    'ChJTZWF0QWxsb2NhdGlvblNwZWMSFwoHcGxhbl9pZBgBIAEoCVIGcGxhbklkEhQKBXNlYXRzGA'
+    'IgASgFUgVzZWF0cxIvChRwcmljZV9ncm9zc19wZXJfc2VhdBgDIAEoCVIRcHJpY2VHcm9zc1Bl'
+    'clNlYXQ=');
+
+@$core.Deprecated('Use adminSetSeatAllocationsRequestDescriptor instead')
+const AdminSetSeatAllocationsRequest$json = {
+  '1': 'AdminSetSeatAllocationsRequest',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+    {
+      '1': 'allocations',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.billing.v1.SeatAllocationSpec',
+      '10': 'allocations'
+    },
+    {
+      '1': 'subscription_start',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'subscriptionStart'
+    },
+    {'1': 'reason', '3': 15, '4': 1, '5': 9, '10': 'reason'},
+    {'1': 'idempotency_key', '3': 16, '4': 1, '5': 9, '10': 'idempotencyKey'},
+  ],
+};
+
+/// Descriptor for `AdminSetSeatAllocationsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminSetSeatAllocationsRequestDescriptor = $convert.base64Decode(
+    'Ch5BZG1pblNldFNlYXRBbGxvY2F0aW9uc1JlcXVlc3QSJwoPb3JnYW5pemF0aW9uX2lkGAEgAS'
+    'gJUg5vcmdhbml6YXRpb25JZBJACgthbGxvY2F0aW9ucxgCIAMoCzIeLmJpbGxpbmcudjEuU2Vh'
+    'dEFsbG9jYXRpb25TcGVjUgthbGxvY2F0aW9ucxJJChJzdWJzY3JpcHRpb25fc3RhcnQYAyABKA'
+    'syGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUhFzdWJzY3JpcHRpb25TdGFydBIWCgZyZWFz'
+    'b24YDyABKAlSBnJlYXNvbhInCg9pZGVtcG90ZW5jeV9rZXkYECABKAlSDmlkZW1wb3RlbmN5S2'
+    'V5');
+
+@$core.Deprecated('Use seatAllocationInfoDescriptor instead')
+const SeatAllocationInfo$json = {
+  '1': 'SeatAllocationInfo',
+  '2': [
+    {'1': 'allocation_id', '3': 1, '4': 1, '5': 9, '10': 'allocationId'},
+    {'1': 'plan_id', '3': 2, '4': 1, '5': 9, '10': 'planId'},
+    {'1': 'plan_tier', '3': 3, '4': 1, '5': 9, '10': 'planTier'},
+    {'1': 'plan_cycle', '3': 4, '4': 1, '5': 9, '10': 'planCycle'},
+    {'1': 'seats', '3': 5, '4': 1, '5': 5, '10': 'seats'},
+    {'1': 'seats_assigned', '3': 6, '4': 1, '5': 5, '10': 'seatsAssigned'},
+    {'1': 'seats_pending', '3': 7, '4': 1, '5': 5, '10': 'seatsPending'},
+    {
+      '1': 'price_gross_per_seat',
+      '3': 8,
+      '4': 1,
+      '5': 9,
+      '10': 'priceGrossPerSeat'
+    },
+    {'1': 'currency_code', '3': 9, '4': 1, '5': 9, '10': 'currencyCode'},
+    {'1': 'tokens_per_seat', '3': 10, '4': 1, '5': 5, '10': 'tokensPerSeat'},
+  ],
+};
+
+/// Descriptor for `SeatAllocationInfo`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List seatAllocationInfoDescriptor = $convert.base64Decode(
+    'ChJTZWF0QWxsb2NhdGlvbkluZm8SIwoNYWxsb2NhdGlvbl9pZBgBIAEoCVIMYWxsb2NhdGlvbk'
+    'lkEhcKB3BsYW5faWQYAiABKAlSBnBsYW5JZBIbCglwbGFuX3RpZXIYAyABKAlSCHBsYW5UaWVy'
+    'Eh0KCnBsYW5fY3ljbGUYBCABKAlSCXBsYW5DeWNsZRIUCgVzZWF0cxgFIAEoBVIFc2VhdHMSJQ'
+    'oOc2VhdHNfYXNzaWduZWQYBiABKAVSDXNlYXRzQXNzaWduZWQSIwoNc2VhdHNfcGVuZGluZxgH'
+    'IAEoBVIMc2VhdHNQZW5kaW5nEi8KFHByaWNlX2dyb3NzX3Blcl9zZWF0GAggASgJUhFwcmljZU'
+    'dyb3NzUGVyU2VhdBIjCg1jdXJyZW5jeV9jb2RlGAkgASgJUgxjdXJyZW5jeUNvZGUSJgoPdG9r'
+    'ZW5zX3Blcl9zZWF0GAogASgFUg10b2tlbnNQZXJTZWF0');
+
+@$core.Deprecated('Use therapistSeatUsageDescriptor instead')
+const TherapistSeatUsage$json = {
+  '1': 'TherapistSeatUsage',
+  '2': [
+    {'1': 'therapist_id', '3': 1, '4': 1, '5': 9, '10': 'therapistId'},
+    {'1': 'first_name', '3': 2, '4': 1, '5': 9, '10': 'firstName'},
+    {'1': 'last_name', '3': 3, '4': 1, '5': 9, '10': 'lastName'},
+    {'1': 'plan_tier', '3': 4, '4': 1, '5': 9, '10': 'planTier'},
+    {'1': 'tokens_used', '3': 5, '4': 1, '5': 5, '10': 'tokensUsed'},
+    {'1': 'tokens_reserved', '3': 6, '4': 1, '5': 5, '10': 'tokensReserved'},
+    {'1': 'tokens_limit', '3': 7, '4': 1, '5': 5, '10': 'tokensLimit'},
+    {'1': 'is_active', '3': 8, '4': 1, '5': 8, '10': 'isActive'},
+  ],
+};
+
+/// Descriptor for `TherapistSeatUsage`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List therapistSeatUsageDescriptor = $convert.base64Decode(
+    'ChJUaGVyYXBpc3RTZWF0VXNhZ2USIQoMdGhlcmFwaXN0X2lkGAEgASgJUgt0aGVyYXBpc3RJZB'
+    'IdCgpmaXJzdF9uYW1lGAIgASgJUglmaXJzdE5hbWUSGwoJbGFzdF9uYW1lGAMgASgJUghsYXN0'
+    'TmFtZRIbCglwbGFuX3RpZXIYBCABKAlSCHBsYW5UaWVyEh8KC3Rva2Vuc191c2VkGAUgASgFUg'
+    'p0b2tlbnNVc2VkEicKD3Rva2Vuc19yZXNlcnZlZBgGIAEoBVIOdG9rZW5zUmVzZXJ2ZWQSIQoM'
+    'dG9rZW5zX2xpbWl0GAcgASgFUgt0b2tlbnNMaW1pdBIbCglpc19hY3RpdmUYCCABKAhSCGlzQW'
+    'N0aXZl');
+
+@$core.Deprecated('Use orgSeatSummaryDescriptor instead')
+const OrgSeatSummary$json = {
+  '1': 'OrgSeatSummary',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+    {
+      '1': 'allocations',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.billing.v1.SeatAllocationInfo',
+      '10': 'allocations'
+    },
+    {
+      '1': 'therapist_usage',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.billing.v1.TherapistSeatUsage',
+      '10': 'therapistUsage'
+    },
+    {
+      '1': 'period_start',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'periodStart'
+    },
+    {
+      '1': 'period_end',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'periodEnd'
+    },
+    {
+      '1': 'subscription_status',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'subscriptionStatus'
+    },
+  ],
+};
+
+/// Descriptor for `OrgSeatSummary`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List orgSeatSummaryDescriptor = $convert.base64Decode(
+    'Cg5PcmdTZWF0U3VtbWFyeRInCg9vcmdhbml6YXRpb25faWQYASABKAlSDm9yZ2FuaXphdGlvbk'
+    'lkEkAKC2FsbG9jYXRpb25zGAIgAygLMh4uYmlsbGluZy52MS5TZWF0QWxsb2NhdGlvbkluZm9S'
+    'C2FsbG9jYXRpb25zEkcKD3RoZXJhcGlzdF91c2FnZRgDIAMoCzIeLmJpbGxpbmcudjEuVGhlcm'
+    'FwaXN0U2VhdFVzYWdlUg50aGVyYXBpc3RVc2FnZRI9CgxwZXJpb2Rfc3RhcnQYBCABKAsyGi5n'
+    'b29nbGUucHJvdG9idWYuVGltZXN0YW1wUgtwZXJpb2RTdGFydBI5CgpwZXJpb2RfZW5kGAUgAS'
+    'gLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIJcGVyaW9kRW5kEi8KE3N1YnNjcmlwdGlv'
+    'bl9zdGF0dXMYBiABKAlSEnN1YnNjcmlwdGlvblN0YXR1cw==');
+
 @$core.Deprecated('Use adminChangePlanRequestDescriptor instead')
 const AdminChangePlanRequest$json = {
   '1': 'AdminChangePlanRequest',

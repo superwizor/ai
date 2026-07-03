@@ -2827,4 +2827,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settings_recording_reminder_sound_hint =>
       'When a reminder is on, it also plays a sound (which is captured in the session too).';
+
+  @override
+  String get deactivated_title => 'Account inactive';
+
+  @override
+  String get deactivated_body =>
+      'Your account has been deactivated by your organization\'s administrator. Contact them to restore access.';
+
+  @override
+  String get deactivated_logout => 'Sign out';
 }

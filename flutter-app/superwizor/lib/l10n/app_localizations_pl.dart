@@ -2847,4 +2847,14 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get settings_recording_reminder_sound_hint =>
       'Gdy przypomnienie jest włączone, odtworzy się też dźwięk (nagrywany również w sesji).';
+
+  @override
+  String get deactivated_title => 'Konto nieaktywne';
+
+  @override
+  String get deactivated_body =>
+      'Twoje konto zostało dezaktywowane przez administratora organizacji. Skontaktuj się z nim, aby przywrócić dostęp.';
+
+  @override
+  String get deactivated_logout => 'Wyloguj się';
 }

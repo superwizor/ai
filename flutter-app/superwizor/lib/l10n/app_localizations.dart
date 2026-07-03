@@ -5080,6 +5080,24 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Gdy przypomnienie jest włączone, odtworzy się też dźwięk (nagrywany również w sesji).'**
   String get settings_recording_reminder_sound_hint;
+
+  /// No description provided for @deactivated_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Konto nieaktywne'**
+  String get deactivated_title;
+
+  /// No description provided for @deactivated_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twoje konto zostało dezaktywowane przez administratora organizacji. Skontaktuj się z nim, aby przywrócić dostęp.'**
+  String get deactivated_body;
+
+  /// No description provided for @deactivated_logout.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyloguj się'**
+  String get deactivated_logout;
 }
 
 class _AppLocalizationsDelegate
