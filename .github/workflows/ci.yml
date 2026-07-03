@@ -219,7 +219,10 @@ jobs:
           # this env the handler falls back to the NoopEmailSender —
           # invites still create DB rows but no email is sent.
           NOTIFICATION_URL=$(gcloud run services describe notification-svc --region ${{ env.REGION }} --format 'value(status.url)' || echo "")
-          ACCEPT_BASE="${ACCEPT_URL_BASE:-https://app.superwizor.ai}"
+          # The accept-invite page lives on the MARKETING site (superwizor.ai),
+          # not the Flutter app origin — app.superwizor.ai has no such route
+          # and 404s the magic link (caught during docs/38 org-manager onboarding).
+          ACCEPT_BASE="${ACCEPT_URL_BASE:-https://superwizor.ai}"
           gcloud run deploy identity-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \

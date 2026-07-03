@@ -28,7 +28,7 @@ import { FirebaseError } from "firebase/app";
 import { acceptInviteSchema, type AcceptInviteForm } from "@/lib/register/schema";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { identityClient } from "@/lib/connect/clients";
-import { AcceptInvitationRequestSchema } from "@superwizor/proto-ts/identity/v1/identity_pb";
+import { AcceptInvitationRequestSchema, UserRole } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { Checkbox, FieldShell, RadioGroup, Select, TextInput } from "@/components/forms/Field";
 import {
   getModalityCatalog,
@@ -95,7 +95,17 @@ export function AcceptInviteForm({ token }: { token: string }) {
         hasAcceptedTos: true,
         hasMarketingConsent: data.hasMarketingConsent ?? false,
       });
-      await identityClient.acceptInvitation(req);
+      const accepted = await identityClient.acceptInvitation(req);
+
+      // Org managers (docs/38: invitations.invited_role=ORG_ADMIN,
+      // minted by AdminCreateOrganization) land straight in their
+      // panel — they're already signed in to Firebase on this origin
+      // and /org gates on the resolved role, not e-mail verification.
+      const role = accepted.user?.role as unknown;
+      if (role === UserRole.ORG_ADMIN || role === "USER_ROLE_ORG_ADMIN") {
+        window.location.href = `${prefix}/org`;
+        return;
+      }
 
       // Email already verified at the inviting org's side (the
       // user just clicked an email link), but Firebase doesn't
