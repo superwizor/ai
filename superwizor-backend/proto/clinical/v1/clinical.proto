@@ -1039,6 +1039,86 @@ message PlatformFixedCost {
 
 
 
+// ─── Client panel messages (docs/39) ──────────────────────────────
+
+message ClientKartoteka {
+  string patient_file_id = 1;
+  string therapist_name  = 2;
+  string organization_name = 3;
+  int32 shared_sessions  = 4;
+  int32 shared_notes     = 5;   // therapist notes visible to the client
+  int32 unread_notes     = 6;   // shared notes without read_by_client_at
+}
+
+message ClientOverview {
+  repeated ClientKartoteka kartoteki = 1;
+}
+
+message ClientListSessionsRequest {
+  string patient_file_id = 1;
+}
+
+message ClientSessionInfo {
+  string session_id = 1;
+  string session_date = 2;      // ISO date
+  int32 session_number = 3;
+  int32 duration_seconds = 4;
+  google.protobuf.Timestamp shared_at = 5;
+  bool has_transcript = 6;
+}
+
+message ClientListSessionsResponse {
+  repeated ClientSessionInfo sessions = 1;
+}
+
+message ClientGetTranscriptRequest {
+  string session_id = 1;
+}
+
+message ClientGetTranscriptResponse {
+  ClientSessionInfo session = 1;
+  Transcript transcript = 2;    // same segments/turns shape as the therapist app
+}
+
+message ClientListNotesRequest {
+  string patient_file_id = 1;
+}
+
+message ClientNote {
+  string id = 1;
+  string kind = 2;              // FREE_NOTE | ACTION_PLAN | CLIENT_NOTE
+  string title = 3;
+  string text = 4;
+  string author_role = 5;       // THERAPIST | PATIENT
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp shared_at = 7;
+  bool read = 8;                // read_by_client_at set (client view)
+}
+
+message ClientListNotesResponse {
+  repeated ClientNote notes = 1;
+}
+
+message ClientCreateNoteRequest {
+  string patient_file_id = 1;
+  string title = 2;
+  string text = 3;
+}
+
+message ClientMarkNoteReadRequest {
+  string note_id = 1;
+}
+
+message ShareSessionWithClientRequest {
+  string session_id = 1;
+  bool shared = 2;              // false = unshare
+}
+
+message ShareNoteWithClientRequest {
+  string note_id = 1;
+  bool shared = 2;
+}
+
 // ─── Org analytics messages (docs/38 §7) ──────────────────────────
 
 message GetOrgTherapistMetricsRequest {

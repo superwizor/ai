@@ -273,6 +273,70 @@ func (a *ConnectAdapter) GetOrgAnalytics(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) ClientGetMyOverview(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[clinicalv1.ClientOverview], error) {
+	resp, err := a.s.ClientGetMyOverview(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) ClientListSessions(ctx context.Context, req *connect.Request[clinicalv1.ClientListSessionsRequest]) (*connect.Response[clinicalv1.ClientListSessionsResponse], error) {
+	resp, err := a.s.ClientListSessions(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) ClientGetTranscript(ctx context.Context, req *connect.Request[clinicalv1.ClientGetTranscriptRequest]) (*connect.Response[clinicalv1.ClientGetTranscriptResponse], error) {
+	resp, err := a.s.ClientGetTranscript(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) ClientListNotes(ctx context.Context, req *connect.Request[clinicalv1.ClientListNotesRequest]) (*connect.Response[clinicalv1.ClientListNotesResponse], error) {
+	resp, err := a.s.ClientListNotes(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) ClientCreateNote(ctx context.Context, req *connect.Request[clinicalv1.ClientCreateNoteRequest]) (*connect.Response[clinicalv1.ClientNote], error) {
+	resp, err := a.s.ClientCreateNote(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) ClientMarkNoteRead(ctx context.Context, req *connect.Request[clinicalv1.ClientMarkNoteReadRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.ClientMarkNoteRead(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) ShareSessionWithClient(ctx context.Context, req *connect.Request[clinicalv1.ShareSessionWithClientRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.ShareSessionWithClient(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) ShareNoteWithClient(ctx context.Context, req *connect.Request[clinicalv1.ShareNoteWithClientRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.ShareNoteWithClient(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) ExportPatientData(ctx context.Context, req *connect.Request[clinicalv1.ExportPatientDataRequest]) (*connect.Response[clinicalv1.ExportPatientDataResponse], error) {
 	resp, err := a.s.ExportPatientData(ctx, req.Msg)
 	if err != nil {

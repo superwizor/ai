@@ -50,8 +50,26 @@ type Querier interface {
 	// The handler requests LIMIT+1 so it can compute has_more without a
 	// separate COUNT(*) over the (possibly huge) sessions table.
 	AdminListRecentSessions(ctx context.Context, arg AdminListRecentSessionsParams) ([]AdminListRecentSessionsRow, error)
+	// Session + owning kartoteka's patient for the transcript authz:
+	// the handler checks patient_id == caller AND shared marker.
+	ClientGetSharedSession(ctx context.Context, id uuid.UUID) (ClientGetSharedSessionRow, error)
+	// Client (patient) panel — docs/39. Every read is scoped by the
+	// caller's patient_id (requireClientFileAccess) and, for therapist
+	// content, by the explicit sharing markers (D2). No reports, no
+	// therapist-private notes.
+	// The client's kartoteki with per-file counters for the overview.
+	ClientListKartoteki(ctx context.Context, patientID pgtype.UUID) ([]ClientListKartotekiRow, error)
+	ClientListSharedSessions(ctx context.Context, patientFileID uuid.UUID) ([]ClientListSharedSessionsRow, error)
+	// Therapist notes shared with the client + the client's own notes.
+	ClientListVisibleNotes(ctx context.Context, patientFileID uuid.UUID) ([]PatientNote, error)
 	CountPatientFilesByTherapist(ctx context.Context, therapistID uuid.UUID) (int64, error)
+	// Therapist-side badge.
+	CountUnreadClientNotesForKartoteka(ctx context.Context, patientFileID uuid.UUID) (int32, error)
 	CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) error
+	// kind=CLIENT_NOTE, author_role=PATIENT (chk_patient_notes_author).
+	// therapist_id is the counterparty (kartoteka owner). Creation ==
+	// delivery: client notes are therapist-visible from the start.
+	CreateClientNote(ctx context.Context, arg CreateClientNoteParams) (PatientNote, error)
 	// patient_id is the FK to the paired users row (role='PATIENT'),
 	// created by clinical-svc.CreatePatientFile handler immediately
 	// before this insert. The handler runs both in one transaction so
@@ -298,6 +316,10 @@ type Querier interface {
 	ListSessionsByPatient(ctx context.Context, patientFileID uuid.UUID) ([]Session, error)
 	ListSupportedModalities(ctx context.Context) ([]ListSupportedModalitiesRow, error)
 	ListTranscriptSegments(ctx context.Context, transcriptID uuid.UUID) ([]TranscriptSegment, error)
+	// Auto-mark when the therapist opens the kartoteka notes list — the
+	// badge is edge-triggered, not an inbox.
+	MarkKartotekaClientNotesReadByTherapist(ctx context.Context, patientFileID uuid.UUID) error
+	MarkNoteReadByClient(ctx context.Context, id uuid.UUID) error
 	// Stamps the action-plan e-mail send. Called after notification-svc
 	// confirms delivery. Returns the refreshed row so the handler can
 	// re-emit the proto with sent_to_patient_at populated.
@@ -328,12 +350,15 @@ type Querier interface {
 	// Empty string or '{}' from the caller clears it (back to defaults).
 	// The therapist_id predicate is the authz guard at the SQL layer.
 	SetAvatarConfig(ctx context.Context, arg SetAvatarConfigParams) error
+	SetNoteSharedWithClient(ctx context.Context, arg SetNoteSharedWithClientParams) (SetNoteSharedWithClientRow, error)
 	// Sets (or clears) the patient's contact e-mail on the kartoteka
 	// (migration 000040). Plaintext contact PII, consistent with
 	// working_alias. An empty string from the caller is normalized to NULL
 	// so "no e-mail" is a single canonical representation. Authz
 	// (therapist ownership) is enforced in the handler before this runs.
 	SetPatientEmail(ctx context.Context, arg SetPatientEmailParams) error
+	// shared=true stamps now() once (idempotent); false clears.
+	SetSessionSharedWithClient(ctx context.Context, arg SetSessionSharedWithClientParams) (SetSessionSharedWithClientRow, error)
 	// Kept for backwards compatibility — old gRPC handlers may still call
 	// it. New code (post-000012) uses HardDeletePatientFile to satisfy
 	// RODO right-to-erasure.
