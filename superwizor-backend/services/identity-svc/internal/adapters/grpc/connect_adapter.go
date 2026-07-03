@@ -195,6 +195,14 @@ func (a *ConnectAdapter) AdminInviteOrgManager(ctx context.Context, req *connect
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) GetInvitationPreview(ctx context.Context, req *connect.Request[identityv1.GetInvitationPreviewRequest]) (*connect.Response[identityv1.InvitationPreview], error) {
+	resp, err := a.s.GetInvitationPreview(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) AdminListOrganizations(ctx context.Context, req *connect.Request[identityv1.AdminListOrganizationsRequest]) (*connect.Response[identityv1.AdminListOrganizationsResponse], error) {
 	resp, err := a.s.AdminListOrganizations(ctx, req.Msg)
 	if err != nil {

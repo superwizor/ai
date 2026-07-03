@@ -152,7 +152,14 @@ export const acceptInviteSchema = z.object({
   password,
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  modalityId: z.string().uuid({ message: "modality-required" }),
+  // Required for THERAPIST invites, hidden+absent for PATIENT invites
+  // (docs/39) — the form enforces per invited_role from
+  // GetInvitationPreview; the schema stays permissive.
+  modalityId: z
+    .string()
+    .uuid({ message: "modality-required" })
+    .optional()
+    .or(z.literal("")),
   uiLanguage: z.enum(["pl", "en"]),
   hasAcceptedTos: z.literal(true),
   hasMarketingConsent: z.boolean().optional(),

@@ -78,6 +78,11 @@ service IdentityService {
   // createUserWithEmailAndPassword succeeds. Creates the THERAPIST
   // User row and attaches it to the inviting org.
   rpc AcceptInvitation(AcceptInvitationRequest) returns (AcceptInvitationResponse);
+  // Public (token = capability): lets the accept-invite page adapt its
+  // form to the invitation BEFORE signup — PATIENT invites skip the
+  // therapist-only fields (modality) and route to the client panel
+  // (docs/39). Returns NotFound for unknown/expired/consumed tokens.
+  rpc GetInvitationPreview(GetInvitationPreviewRequest) returns (InvitationPreview);
 
   // SUPERWIZOR_ADMIN scope ─ internal team. Every mutation writes
   // audit_events with actor_type=SUPERWIZOR_ADMIN + required reason
@@ -485,6 +490,19 @@ message AcceptInvitationRequest {
   string timezone = 7;
   bool has_accepted_tos = 8;
   bool has_marketing_consent = 9;
+}
+
+message GetInvitationPreviewRequest {
+  string token = 1;
+}
+
+message InvitationPreview {
+  UserRole invited_role = 1;
+  string email = 2;               // prefill
+  string first_name = 3;          // prefill (therapist-typed)
+  string last_name = 4;
+  string organization_name = 5;   // welcome copy
+  string inviter_first_name = 6;  // therapist name for PATIENT invites
 }
 
 message AcceptInvitationResponse {

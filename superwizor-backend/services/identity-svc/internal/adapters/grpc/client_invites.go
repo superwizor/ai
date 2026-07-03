@@ -354,3 +354,35 @@ func isUniqueViolationErr(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation
 }
+
+// GetInvitationPreview — public, token-as-capability read used by the
+// accept-invite page to adapt its form BEFORE signup (docs/39): a
+// PATIENT invite hides the therapist-only fields and routes to the
+// client panel afterwards. Reveals only what the e-mail already told
+// the recipient.
+func (s *Server) GetInvitationPreview(ctx context.Context, req *identityv1.GetInvitationPreviewRequest) (*identityv1.InvitationPreview, error) {
+	if req.Token == "" {
+		return nil, status.Error(codes.InvalidArgument, "token required")
+	}
+	inv, err := s.queries.GetUnacceptedInvitationByTokenHash(ctx, hashToken(req.Token))
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "invitation not found, expired, or already accepted")
+	}
+	out := &identityv1.InvitationPreview{
+		InvitedRole: toProtoRole(inv.InvitedRole),
+		Email:       inv.Email,
+	}
+	if inv.InvitedFirstName != nil {
+		out.FirstName = *inv.InvitedFirstName
+	}
+	if inv.InvitedLastName != nil {
+		out.LastName = *inv.InvitedLastName
+	}
+	if org, err := s.queries.GetOrganizationByID(ctx, inv.OrganizationID); err == nil {
+		out.OrganizationName = org.LegalName
+	}
+	if u, err := s.queries.GetUserByID(ctx, inv.InvitedByUser); err == nil {
+		out.InviterFirstName = u.FirstName
+	}
+	return out, nil
+}
