@@ -1,0 +1,22 @@
+C-PR1 migrations 000065-000066 — verification (2026-07-03)
+Environment: ephemeral pgvector/pgvector:pg15 (pg-migtest2, port 55433)
+
+1. FULL CHAIN UP (1 → 66): OK
+2. DOWN ×2 (66 → 64) + RE-UP (→ 66): OK — reversible.
+3. CONSTRAINT SMOKE:
+   [PASS] PATIENT invite without patient_file_id → rejected
+          (chk_invitations_patient_binding / allocation_by_role)
+   [PASS] THERAPIST invite WITH patient_file_id → rejected
+   [PASS] valid PATIENT invite (kartoteka-bound, no allocation) → OK
+          — found+fixed during smoke: 000063's
+          chk_invitations_allocation_by_role enumerated only
+          THERAPIST/ORG_ADMIN and rejected every PATIENT row;
+          000065 re-states it with the PATIENT (allocation NULL) case
+   [PASS] duplicate pending PATIENT invite per kartoteka → rejected
+          (uq_invitations_patient_file_pending)
+   [PASS] PATIENT invite with allocation_id → rejected
+   [PASS] CLIENT_NOTE with author_role=THERAPIST → rejected
+          (chk_patient_notes_author); PATIENT → OK
+   [PASS] backfill one-time: pre-existing sent_to_patient_at →
+          shared_with_client_at; NEW rows unaffected
+   [PASS] sessions.shared_with_client_at present
