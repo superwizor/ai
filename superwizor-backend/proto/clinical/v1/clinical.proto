@@ -136,6 +136,23 @@ service ClinicalService {
     // boundary: aggregates only.
     rpc GetOrgAnalytics(GetOrgAnalyticsRequest) returns (GetOrgAnalyticsResponse);
 
+    // ─── Client panel (docs/39) — role PATIENT, self-access ───
+    // Separate read-only family gated by requireClientFileAccess
+    // (caller is the kartoteka's patient). Default-deny: only rows the
+    // therapist explicitly shared are visible (D2). No reports, no
+    // therapist-private notes — ever.
+    rpc ClientGetMyOverview(google.protobuf.Empty) returns (ClientOverview);
+    rpc ClientListSessions(ClientListSessionsRequest) returns (ClientListSessionsResponse);
+    rpc ClientGetTranscript(ClientGetTranscriptRequest) returns (ClientGetTranscriptResponse);
+    rpc ClientListNotes(ClientListNotesRequest) returns (ClientListNotesResponse);
+    rpc ClientCreateNote(ClientCreateNoteRequest) returns (ClientNote);
+    rpc ClientMarkNoteRead(ClientMarkNoteReadRequest) returns (google.protobuf.Empty);
+
+    // Therapist-side sharing toggles (docs/39 D2/D6) — gated by
+    // requireTherapistDataAccess like every kartoteka mutation.
+    rpc ShareSessionWithClient(ShareSessionWithClientRequest) returns (google.protobuf.Empty);
+    rpc ShareNoteWithClient(ShareNoteWithClientRequest) returns (google.protobuf.Empty);
+
     // ─── RODO/GDPR DSAR endpoints ───
     // Export all clinical and personal data related to a patient file,
     // decrypting all PHI columns using KMS before returning.
