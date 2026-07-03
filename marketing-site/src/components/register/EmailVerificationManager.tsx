@@ -5,6 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { sendEmailVerification, updateEmail } from "firebase/auth";
 import { useTranslations, useLocale } from "next-intl";
 import { useAuth } from "@/lib/firebase/auth-provider";
+import { create } from "@bufbuild/protobuf";
+import { EmptySchema } from "@bufbuild/protobuf/wkt";
+import { identityClient } from "@/lib/connect/clients";
 
 const POLL_INTERVAL_MS = 5_000;
 
@@ -26,6 +29,22 @@ function Inner() {
 
   const prefix = locale === "en" ? "/en" : "";
   const onboardingUrl = `/${locale}/onboarding/`;
+  const dashboardUrl = `/${locale}/dashboard/`;
+
+  // Post-verification target (docs/38): therapists invited to an org
+  // already picked their nurt (default modality) on the accept-invite
+  // password screen — sending them through /onboarding again would ask
+  // twice. If the profile has a modality, go straight to the dashboard;
+  // otherwise (self-serve signup) onboarding proceeds as before. On any
+  // lookup error fall back to onboarding — its own guard is harmless.
+  const redirectAfterVerification = async () => {
+    try {
+      const me = await identityClient.getMyProfile(create(EmptySchema, {}));
+      window.location.replace(me.defaultModalityId ? dashboardUrl : onboardingUrl);
+    } catch {
+      window.location.replace(onboardingUrl);
+    }
+  };
 
   // Base email display falls back to query param if user hasn't hydrated/loaded yet
   const displayEmail = user?.email || params?.get("email") || "";
@@ -41,7 +60,7 @@ function Inner() {
           setStatus("verified");
           // Small delay so user sees the "verified" state before redirecting
           setTimeout(() => {
-            window.location.replace(onboardingUrl);
+            void redirectAfterVerification();
           }, 1500);
         }
       } catch {
@@ -66,9 +85,10 @@ function Inner() {
   // Immediate redirect if already verified on mount/hydration
   useEffect(() => {
     if (user && user.emailVerified) {
-      window.location.replace(onboardingUrl);
+      void redirectAfterVerification();
     }
-  }, [user, onboardingUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const onResend = async () => {
     if (!user) return;
@@ -176,7 +196,7 @@ function Inner() {
           href={onboardingUrl}
           onClick={(e) => {
             e.preventDefault();
-            window.location.replace(onboardingUrl);
+            void redirectAfterVerification();
           }}
           className="inline-flex items-center justify-center rounded-xl bg-ember text-obsidian font-sans font-bold uppercase tracking-wider text-xs px-6 py-3.5 mt-2 shadow-[0_4px_14px_rgba(252,174,47,0.25)] hover:brightness-115 active:scale-95 transition-all"
         >
