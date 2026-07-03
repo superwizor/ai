@@ -337,6 +337,14 @@ func mergeAndPersist(ctx context.Context, logger *slog.Logger, sessionID uuid.UU
 		return fmt.Errorf("publishTranscriptCompleted: %w", err)
 	}
 
+	// Point of no return reached: the transcript is durably persisted AND
+	// transcript.completed is published, so STT will never need the source
+	// audio again (nor can the deferred handler revert to TRANSCRIBING from
+	// here — rerr is nil on this path). Delete the audio now to shrink PHI
+	// exposure from the 48 h GCS lifecycle down to seconds after
+	// transcription. Fail-soft: the lifecycle rule remains the backstop.
+	deleteSessionAudio(ctx, logger, sessionID)
+
 	logger.Info("merge done",
 		"transcript_id", transcriptID,
 		"duration_ms", time.Since(startTime).Milliseconds(),
@@ -447,6 +455,61 @@ func findTranscriptObject(ctx context.Context, bucket string, op sttOpRow) (stri
 			return attrs.Name, nil
 		}
 	}
+}
+
+// deleteSessionAudio removes the session's audio from the
+// audio-uploads bucket once the transcript is durably persisted and
+// published (see the call site for why that ordering is safe). It
+// deletes every object under the session's directory prefix
+// `<therapist_id>/<session_id>/` — the original upload plus any
+// `<ts>_chunk_N.flac` the chunker wrote (chunker.go:167, same dir).
+//
+// Best-effort by design: the 48 h GCS Object-Lifecycle rule
+// (infra/modules/storage/main.tf) is the backstop, so every failure
+// here is logged and swallowed — audio cleanup must never fail the
+// pipeline or block ANALYZING. Idempotent (NotFound tolerated) so a
+// Pub/Sub redelivery re-run is harmless.
+func deleteSessionAudio(ctx context.Context, logger *slog.Logger, sessionID uuid.UUID) {
+	if dbPool == nil || gcsClient == nil {
+		return
+	}
+	var bucket, objectPath string
+	err := dbPool.QueryRow(ctx,
+		"SELECT bucket_name, object_path FROM audio_uploads WHERE session_id = $1",
+		sessionID).Scan(&bucket, &objectPath)
+	if err != nil {
+		logger.Warn("audio cleanup: lookup failed; 48h lifecycle will reclaim",
+			"session_id", sessionID.String(), "error", err)
+		return
+	}
+	slash := strings.LastIndex(objectPath, "/")
+	if bucket == "" || slash < 0 {
+		logger.Warn("audio cleanup: missing bucket or non-nested object_path; skipping",
+			"bucket", bucket, "object_path", objectPath)
+		return
+	}
+	prefix := objectPath[:slash+1] // include the trailing '/'
+
+	it := gcsClient.Bucket(bucket).Objects(ctx, &gcs.Query{Prefix: prefix})
+	deleted := 0
+	for {
+		attrs, iterErr := it.Next()
+		if errors.Is(iterErr, iterator.Done) {
+			break
+		}
+		if iterErr != nil {
+			logger.Warn("audio cleanup: list failed", "prefix", prefix, "error", iterErr)
+			break
+		}
+		if delErr := gcsClient.Bucket(bucket).Object(attrs.Name).Delete(ctx); delErr != nil &&
+			!errors.Is(delErr, gcs.ErrObjectNotExist) {
+			logger.Warn("audio cleanup: delete failed", "object", attrs.Name, "error", delErr)
+			continue
+		}
+		deleted++
+	}
+	logger.Info("audio cleanup: source audio deleted post-transcript",
+		"bucket", bucket, "prefix", prefix, "objects_deleted", deleted)
 }
 
 // downloadGCSObject reads a GCS object into memory. Chirp's JSON
