@@ -106,10 +106,14 @@ type Server struct {
 	// NOTIFICATION_SVC_URL unset (local dev) → the send leg returns
 	// Unavailable("EMAIL_NOT_CONFIGURED"); the note is still saved.
 	notification notificationv1.NotificationServiceClient
-	crypto       cryptobox.CryptoBox
-	pubsub       SessionEventPublisher
-	version      string
-	collector    *analytics.Collector
+	// panelURL is the login link embedded in PHI-free client-panel
+	// notifications (docs/39 PR9). Empty = default set by WithPanelURL /
+	// main.go's PANEL_URL_BASE.
+	panelURL  string
+	crypto    cryptobox.CryptoBox
+	pubsub    SessionEventPublisher
+	version   string
+	collector *analytics.Collector
 }
 
 // WithNotification injects the notification-svc client. Kept as a
@@ -118,6 +122,16 @@ type Server struct {
 // it from cmd/server/main.go via NewServer.
 func (s *Server) WithNotification(n notificationv1.NotificationServiceClient) *Server {
 	s.notification = n
+	return s
+}
+
+// WithPanelURL sets the app login link used by the PHI-free client-panel
+// notifications (docs/39 PR9). Same post-construction-option pattern as
+// WithNotification. Empty input keeps the previous value.
+func (s *Server) WithPanelURL(u string) *Server {
+	if u != "" {
+		s.panelURL = u
+	}
 	return s
 }
 
@@ -137,12 +151,17 @@ func NewServer(dbPool *pgxpool.Pool, queries *db.Queries, identity identityv1.Id
 		identity:     identity,
 		billing:      billing,
 		notification: notification,
+		panelURL:     defaultPanelURL,
 		crypto:       crypto,
 		pubsub:       pubsub,
 		version:      version,
 		collector:    collector,
 	}
 }
+
+// defaultPanelURL is where the Flutter web app (and therefore the client
+// panel) lives; overridable per environment via PANEL_URL_BASE.
+const defaultPanelURL = "https://superwizor-app.web.app/"
 
 // NewServerWithDeps is the test-friendly constructor — every interface
 // dependency is explicit so tests can inject fakes. Production code

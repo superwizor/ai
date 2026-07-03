@@ -50,6 +50,15 @@ type clientPanelFake struct {
 	setSessionSharedCalls []db.SetSessionSharedWithClientParams
 }
 
+// PR9 notification lookups — default to "no recipient" so the
+// best-effort notify path is a silent no-op in unit tests.
+func (f *clientPanelFake) GetPatientUserEmailForFile(ctx context.Context, id uuid.UUID) (db.GetPatientUserEmailForFileRow, error) {
+	return db.GetPatientUserEmailForFileRow{}, pgx.ErrNoRows
+}
+func (f *clientPanelFake) GetUserEmailForNotify(ctx context.Context, id uuid.UUID) (db.GetUserEmailForNotifyRow, error) {
+	return db.GetUserEmailForNotifyRow{}, pgx.ErrNoRows
+}
+
 func (f *clientPanelFake) ClientListKartoteki(ctx context.Context, pid pgtype.UUID) ([]db.ClientListKartotekiRow, error) {
 	return f.clientKartotekiFn(ctx, pid)
 }

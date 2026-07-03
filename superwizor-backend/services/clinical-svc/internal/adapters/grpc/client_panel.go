@@ -2,16 +2,20 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	clinicalv1 "github.com/superwizor-ai/backend/gen/go/clinical/v1"
+	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/adapters/postgres/db"
 	"github.com/superwizor-ai/backend/services/clinical-svc/internal/grouping"
 )
@@ -222,6 +226,11 @@ func (s *Server) ClientCreateNote(ctx context.Context, req *clinicalv1.ClientCre
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "create note: %v", err)
 	}
+	// PR9: tell the therapist a client note arrived — PHI-free (no
+	// client identity, no content; the badge in the app carries context).
+	if row, terr := s.queries.GetUserEmailForNotify(ctx, pf.TherapistID); terr == nil && row.Email != nil {
+		s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "CLIENT_NOTE_RECEIVED", "")
+	}
 	return s.toClientNote(ctx, note)
 }
 
@@ -268,6 +277,50 @@ func (s *Server) toClientNote(ctx context.Context, n db.PatientNote) (*clinicalv
 	return out, nil
 }
 
+// notifyClientPanelEvent fires the PHI-free e-mail signal (docs/39
+// PR9) in the background. Strictly best-effort: the share/create RPC
+// has already succeeded, so any failure here is logged and dropped —
+// never surfaced to the caller. nil notification client (local dev)
+// short-circuits.
+//
+// event: ITEM_SHARED | CLIENT_NOTE_RECEIVED; itemKind: SESSION | NOTE.
+func (s *Server) notifyClientPanelEvent(ctx context.Context, email, locale, event, itemKind string) {
+	if s.notification == nil || email == "" {
+		return
+	}
+	// Detach from the request lifecycle but keep tracing metadata and
+	// bound the send so a slow notification-svc can't leak goroutines.
+	base := context.WithoutCancel(ctx)
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		base = metadata.NewOutgoingContext(base, md)
+	}
+	go func() {
+		sendCtx, cancel := context.WithTimeout(base, 15*time.Second)
+		defer cancel()
+		if _, err := s.notification.SendClientPanelEvent(sendCtx, &notificationv1.SendClientPanelEventRequest{
+			RecipientEmail: email,
+			Event:          event,
+			ItemKind:       itemKind,
+			Locale:         locale,
+			PanelUrl:       s.panelURL,
+		}); err != nil {
+			slog.Warn("client panel event notification failed",
+				"event", event, "item_kind", itemKind, "error", err)
+		}
+	}()
+}
+
+// notifyKartotekaClient resolves the kartoteka's client account and, if
+// one is attached and active, signals a newly shared item.
+func (s *Server) notifyKartotekaClient(ctx context.Context, patientFileID uuid.UUID, itemKind string) {
+	row, err := s.queries.GetPatientUserEmailForFile(ctx, patientFileID)
+	if err != nil || row.Email == nil {
+		// No attached/active panel account — nothing to signal.
+		return
+	}
+	s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "ITEM_SHARED", itemKind)
+}
+
 // ── Therapist-side sharing toggles ──────────────────────────────────
 
 func (s *Server) ShareSessionWithClient(ctx context.Context, req *clinicalv1.ShareSessionWithClientRequest) (*emptypb.Empty, error) {
@@ -287,6 +340,11 @@ func (s *Server) ShareSessionWithClient(ctx context.Context, req *clinicalv1.Sha
 		Column2: req.Shared,
 	}); err != nil {
 		return nil, status.Errorf(codes.Internal, "share session: %v", err)
+	}
+	// PR9: signal only the unshared→shared edge — re-sharing an already
+	// shared session (idempotent toggle) must not re-notify.
+	if req.Shared && !session.SharedWithClientAt.Valid {
+		s.notifyKartotekaClient(ctx, session.PatientFileID, "SESSION")
 	}
 	return &emptypb.Empty{}, nil
 }
@@ -311,6 +369,10 @@ func (s *Server) ShareNoteWithClient(ctx context.Context, req *clinicalv1.ShareN
 		Column2: req.Shared,
 	}); err != nil {
 		return nil, status.Errorf(codes.Internal, "share note: %v", err)
+	}
+	// PR9: unshared→shared edge only (see ShareSessionWithClient).
+	if req.Shared && !note.SharedWithClientAt.Valid {
+		s.notifyKartotekaClient(ctx, note.PatientFileID, "NOTE")
 	}
 	return &emptypb.Empty{}, nil
 }

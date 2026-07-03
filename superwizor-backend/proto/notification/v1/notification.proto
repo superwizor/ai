@@ -52,7 +52,26 @@ service NotificationService {
   // Send a contact form submission to the administrator.
   rpc SendContactEmail(SendContactEmailRequest) returns (google.protobuf.Empty);
 
+  // docs/39 PR9: PHI-free client-panel notifications. Internal RPC —
+  // clinical-svc fires it best-effort from the share toggles and
+  // ClientCreateNote. The rendered e-mail deliberately carries NO PHI:
+  // no names, no titles, no content — only "something new in the panel"
+  // plus a login link (D6: the panel is the content channel, e-mail is
+  // just the signal).
+  rpc SendClientPanelEvent(SendClientPanelEventRequest) returns (google.protobuf.Empty);
+
   rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
+}
+
+message SendClientPanelEventRequest {
+  string recipient_email = 1;
+  // ITEM_SHARED           → to the client ("new item in your panel")
+  // CLIENT_NOTE_RECEIVED  → to the therapist ("a client wrote a note")
+  string event = 2;
+  // For ITEM_SHARED: SESSION | NOTE. Ignored otherwise.
+  string item_kind = 3;
+  string locale = 4;     // 'pl' | 'en'; falls back to 'pl'
+  string panel_url = 5;  // login deep link into the app
 }
 
 message SendContactEmailRequest {

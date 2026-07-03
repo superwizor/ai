@@ -100,3 +100,17 @@ RETURNING id, shared_with_client_at;
 SELECT COUNT(*)::int FROM patient_notes
 WHERE patient_file_id = $1 AND kind = 'CLIENT_NOTE'
   AND read_by_therapist_at IS NULL AND deleted_at IS NULL;
+
+-- name: GetPatientUserEmailForFile :one
+-- docs/39 PR9: the client-panel account e-mail for a kartoteka. Only an
+-- attached, ACTIVE patient user with an e-mail can receive the PHI-free
+-- "new item in your panel" signal — pseudonymous kartoteki skip it.
+SELECT u.email, u.ui_language
+FROM patient_files pf
+JOIN users u ON u.id = pf.patient_id
+WHERE pf.id = $1 AND u.is_active AND u.email IS NOT NULL;
+
+-- name: GetUserEmailForNotify :one
+-- docs/39 PR9: therapist recipient for client_note_received.
+SELECT email, ui_language FROM users
+WHERE id = $1 AND is_active AND email IS NOT NULL;

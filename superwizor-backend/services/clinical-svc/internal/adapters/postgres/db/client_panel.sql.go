@@ -278,6 +278,46 @@ func (q *Queries) CreateClientNote(ctx context.Context, arg CreateClientNotePara
 	return i, err
 }
 
+const getPatientUserEmailForFile = `-- name: GetPatientUserEmailForFile :one
+SELECT u.email, u.ui_language
+FROM patient_files pf
+JOIN users u ON u.id = pf.patient_id
+WHERE pf.id = $1 AND u.is_active AND u.email IS NOT NULL
+`
+
+type GetPatientUserEmailForFileRow struct {
+	Email      *string `json:"email"`
+	UiLanguage string  `json:"ui_language"`
+}
+
+// docs/39 PR9: the client-panel account e-mail for a kartoteka. Only an
+// attached, ACTIVE patient user with an e-mail can receive the PHI-free
+// "new item in your panel" signal — pseudonymous kartoteki skip it.
+func (q *Queries) GetPatientUserEmailForFile(ctx context.Context, id uuid.UUID) (GetPatientUserEmailForFileRow, error) {
+	row := q.db.QueryRow(ctx, getPatientUserEmailForFile, id)
+	var i GetPatientUserEmailForFileRow
+	err := row.Scan(&i.Email, &i.UiLanguage)
+	return i, err
+}
+
+const getUserEmailForNotify = `-- name: GetUserEmailForNotify :one
+SELECT email, ui_language FROM users
+WHERE id = $1 AND is_active AND email IS NOT NULL
+`
+
+type GetUserEmailForNotifyRow struct {
+	Email      *string `json:"email"`
+	UiLanguage string  `json:"ui_language"`
+}
+
+// docs/39 PR9: therapist recipient for client_note_received.
+func (q *Queries) GetUserEmailForNotify(ctx context.Context, id uuid.UUID) (GetUserEmailForNotifyRow, error) {
+	row := q.db.QueryRow(ctx, getUserEmailForNotify, id)
+	var i GetUserEmailForNotifyRow
+	err := row.Scan(&i.Email, &i.UiLanguage)
+	return i, err
+}
+
 const markKartotekaClientNotesReadByTherapist = `-- name: MarkKartotekaClientNotesReadByTherapist :exec
 UPDATE patient_notes SET read_by_therapist_at = now()
 WHERE patient_file_id = $1 AND kind = 'CLIENT_NOTE'

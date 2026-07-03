@@ -197,6 +197,10 @@ type Querier interface {
 	GetPatientNote(ctx context.Context, id uuid.UUID) (PatientNote, error)
 	GetPatientNotesForExport(ctx context.Context, patientFileID uuid.UUID) ([]PatientNote, error)
 	GetPatientUser(ctx context.Context, id uuid.UUID) (GetPatientUserRow, error)
+	// docs/39 PR9: the client-panel account e-mail for a kartoteka. Only an
+	// attached, ACTIVE patient user with an e-mail can receive the PHI-free
+	// "new item in your panel" signal — pseudonymous kartoteki skip it.
+	GetPatientUserEmailForFile(ctx context.Context, id uuid.UUID) (GetPatientUserEmailForFileRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetPlanDistribution(ctx context.Context) ([]GetPlanDistributionRow, error)
 	// CROSS-SERVICE READ: analytics-only
@@ -245,6 +249,8 @@ type Querier interface {
 	// therapist_display_name. Both columns are NOT NULL on the users table
 	// (migration 000003) so no null handling is needed here.
 	GetUserDisplayName(ctx context.Context, id uuid.UUID) (GetUserDisplayNameRow, error)
+	// docs/39 PR9: therapist recipient for client_note_received.
+	GetUserEmailForNotify(ctx context.Context, id uuid.UUID) (GetUserEmailForNotifyRow, error)
 	// Resolves users.organization_id for a therapist — used by
 	// clinical-svc.GetMyBillingState (proxy to billing-svc.GetSubscription)
 	// to derive the org from the auth-context user_id.
