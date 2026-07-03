@@ -41,7 +41,7 @@ export function OrgCreateWizard() {
   const [legalName, setLegalName] = useState("");
   const [taxId, setTaxId] = useState("");
   const [vatIdEu, setVatIdEu] = useState("");
-  const [orgType, setOrgType] = useState<"CLINIC" | "ENTERPRISE">("CLINIC");
+  const [orgType, setOrgType] = useState<"SOLO" | "CLINIC">("CLINIC");
   const [address, setAddress] = useState<AddressDraft>({
     ...EMPTY_ADDRESS,
     countryCode: "PL",
@@ -119,7 +119,7 @@ export function OrgCreateWizard() {
           type:
             orgType === "CLINIC"
               ? OrganizationType.CLINIC
-              : OrganizationType.ENTERPRISE,
+              : OrganizationType.SOLO,
           headquarters: create(AddressSchema, {
             countryCode: address.countryCode,
             region: address.region,
@@ -227,10 +227,10 @@ export function OrgCreateWizard() {
             <select
               className={inputCls}
               value={orgType}
-              onChange={(e) => setOrgType(e.target.value as "CLINIC" | "ENTERPRISE")}
+              onChange={(e) => setOrgType(e.target.value as "SOLO" | "CLINIC")}
             >
+              <option value="SOLO">{t("typeSolo")}</option>
               <option value="CLINIC">{t("typeClinic")}</option>
-              <option value="ENTERPRISE">{t("typeEnterprise")}</option>
             </select>
           </label>
           <AddressFields idPrefix="neworg" value={address} onChange={setAddress} title={t("hqAddress")} />

@@ -504,8 +504,7 @@
       "taxId": "Tax ID (NIP)",
       "vatIdEu": "EU VAT ID",
       "orgType": "Organization type",
-      "typeClinic": "Clinic",
-      "typeEnterprise": "Enterprise",
+      "typeClinic": "Clinic (multiple therapists)",
       "hqAddress": "Headquarters address",
       "colPlan": "Plan",
       "colSeats": "Seats",
@@ -525,7 +524,24 @@
       "back": "Back",
       "next": "Next",
       "submit": "Create organization",
-      "submitting": "Creating…"
+      "submitting": "Creating…",
+      "typeSolo": "Solo (single therapist)"
+    },
+    "orgSeats": {
+      "sectionTitle": "Seats & plans",
+      "manageCta": "Manage seats",
+      "dialogTitle": "Plan seats",
+      "dialogBody": "Set seat counts and per-seat price per plan — same as the creation wizard. Changes require a reason (audit).",
+      "pickPlan": "— plan —",
+      "seatsLabel": "Seats",
+      "priceLabel": "Price/seat",
+      "catalogPrice": "catalog",
+      "addRow": "+ Add plan",
+      "removeRow": "Remove",
+      "noRows": "Add at least one allocation with a plan and seat count.",
+      "hint": "Empty price = the plan's catalog price. Counters for seated therapists are created automatically.",
+      "perSeatSuffix": "/seat",
+      "pendingNote": "{count} pending invite(s) reserve seats"
     }
   },
   "errors": {
