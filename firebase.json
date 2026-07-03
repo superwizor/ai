@@ -58,6 +58,22 @@
           "type": 307
         },
         {
+          "//": "Org-manager panel (docs/38). Same PL-default bounce as every other no-prefix path — the magic-link flow and docs reference bare /org.",
+          "source": "/org",
+          "destination": "/pl/org/",
+          "type": 307
+        },
+        {
+          "source": "/org/",
+          "destination": "/pl/org/",
+          "type": 307
+        },
+        {
+          "source": "/org/:rest*",
+          "destination": "/pl/org/:rest*",
+          "type": 307
+        },
+        {
           "//": "Bare /admin needs its own exact-match peer because Firebase Hosting's :rest* requires at least one segment after the slash — `/admin` alone doesn't match `/admin/:rest*`. Same for /register, but most users land on a deeper register path.",
           "source": "/admin",
           "destination": "/pl/admin/",
