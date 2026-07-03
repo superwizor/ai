@@ -162,12 +162,9 @@ export function AddressFields({
           onChange={(v) => update({ city: v })}
         />
       </div>
-      <Field
-        id={`${idPrefix}-directions`}
-        label={t("directions")}
-        value={value.directions}
-        onChange={(v) => update({ directions: v })}
-      />
+      {/* "Wskazówki dojazdu" (directions) intentionally not rendered —
+          removed from the admin surface 2026-07-03; the column and
+          existing values round-trip untouched via the draft. */}
     </fieldset>
   );
 }

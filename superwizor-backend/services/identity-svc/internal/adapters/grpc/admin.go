@@ -145,6 +145,8 @@ func (s *Server) AdminGetOrganization(ctx context.Context, req *identityv1.Admin
 	}
 	therapists, _ := s.queries.ListTherapistsByOrganization(ctx,
 		pgtype.UUID{Bytes: orgID, Valid: true})
+	managers, _ := s.queries.ListManagersByOrganization(ctx,
+		pgtype.UUID{Bytes: orgID, Valid: true})
 	auditRows, _ := s.queries.ListAuditEventsByOrg(ctx, db.ListAuditEventsByOrgParams{
 		OrganizationID: pgtype.UUID{Bytes: orgID, Valid: true},
 		Limit:          20,
@@ -157,6 +159,9 @@ func (s *Server) AdminGetOrganization(ctx context.Context, req *identityv1.Admin
 	}
 	for _, t := range therapists {
 		out.Therapists = append(out.Therapists, toProtoUser(t))
+	}
+	for _, m := range managers {
+		out.Managers = append(out.Managers, toProtoUser(m))
 	}
 	for _, a := range auditRows {
 		entry := &identityv1.AuditEntry{

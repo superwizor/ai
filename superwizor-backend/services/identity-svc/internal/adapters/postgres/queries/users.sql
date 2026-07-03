@@ -111,3 +111,10 @@ UPDATE users
 SET report_preferences = $2
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING report_preferences;
+
+-- name: ListManagersByOrganization :many
+-- ORG_ADMIN members of an org — the primary-admin transfer candidate
+-- pool on /admin/orgs/[id] (docs/38).
+SELECT * FROM users
+WHERE organization_id = $1 AND role = 'ORG_ADMIN' AND deleted_at IS NULL
+ORDER BY created_at ASC;

@@ -385,6 +385,59 @@ func (q *Queries) LinkUserToOrganization(ctx context.Context, arg LinkUserToOrga
 	return err
 }
 
+const listManagersByOrganization = `-- name: ListManagersByOrganization :many
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at FROM users
+WHERE organization_id = $1 AND role = 'ORG_ADMIN' AND deleted_at IS NULL
+ORDER BY created_at ASC
+`
+
+// ORG_ADMIN members of an org — the primary-admin transfer candidate
+// pool on /admin/orgs/[id] (docs/38).
+func (q *Queries) ListManagersByOrganization(ctx context.Context, organizationID pgtype.UUID) ([]User, error) {
+	rows, err := q.db.Query(ctx, listManagersByOrganization, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Role,
+			&i.OrganizationID,
+			&i.DefaultModalityID,
+			&i.BillingAddressID,
+			&i.FirebaseUid,
+			&i.Email,
+			&i.PhoneNumber,
+			&i.IsEmailVerified,
+			&i.FirstName,
+			&i.LastName,
+			&i.ProfessionalTitle,
+			&i.CredentialsNumber,
+			&i.Biography,
+			&i.AvatarUrl,
+			&i.UiLanguage,
+			&i.Timezone,
+			&i.HasAcceptedTos,
+			&i.HasMarketingConsent,
+			&i.CreatedAt,
+			&i.DeletedAt,
+			&i.ReportPreferences,
+			&i.IsActive,
+			&i.DeactivatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTherapistsByOrganization = `-- name: ListTherapistsByOrganization :many
 SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at FROM users
 WHERE organization_id = $1

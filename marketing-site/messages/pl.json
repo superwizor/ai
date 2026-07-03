@@ -542,6 +542,15 @@
       "hint": "Pusta cena = cena katalogowa planu. Liczniki terapeutów zajmujących miejsca zostaną utworzone automatycznie.",
       "perSeatSuffix": "/miejsce",
       "pendingNote": "{count} zapr. oczekujące rezerwują miejsca"
+    },
+    "orgManagerInvite": {
+      "cta": "Zaproś managera",
+      "badge": "MANAGER",
+      "dialogTitle": "Zaproś managera organizacji",
+      "dialogBody": "Na podany adres trafi zaproszenie ORG_ADMIN (magic link, ważny 7 dni). Po akceptacji osoba pojawi się na liście i będzie mogła zostać głównym administratorem.",
+      "emailLabel": "E-mail managera",
+      "emailInvalid": "Podaj poprawny adres e-mail.",
+      "hint": "Ponowne zaproszenie tego samego adresu odświeża link i wysyła e-mail jeszcze raz."
     }
   },
   "errors": {
