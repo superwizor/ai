@@ -1,6 +1,6 @@
 # 39 — Panel Klienta (pacjenta): design & plan implementacji
 
-Status: DESIGN (2026-07-03). Buduje na fundamentach docs/38 — mechanizm
+Status: DESIGN — decyzje D2/D6/PR9 ZATWIERDZONE (2026-07-03). Buduje na fundamentach docs/38 — mechanizm
 zaproszeń jest **tą samą maszynerią co zaproszenie managera organizacji**
 (magic link + `invitations.invited_role`), a panel to **wariant webowy
 aplikacji Flutter** (ta sama binarka, routing po roli). Zakres MVP: tylko web.
@@ -43,7 +43,7 @@ na pacjencie wskazanym przez `patient_files.patient_id` (backfill 000013
 gwarantuje, że każda kartoteka może go mieć). Dzięki temu wszystkie
 istniejące FK (sesje, notatki, kaskady RODO) działają bez zmian.
 
-**D2 — Default-deny + jawne udostępnianie.**
+**D2 — Default-deny + jawne udostępnianie (ZATWIERDZONE).**
 Klient NIE widzi automatycznie wszystkiego. Terapeuta udostępnia:
 - sesję (wraz z transkrypcją) — `sessions.shared_with_client_at`,
 - notatkę/plan działania — `patient_notes.shared_with_client_at`
@@ -51,7 +51,17 @@ Klient NIE widzi automatycznie wszystkiego. Terapeuta udostępnia:
   `sent_to_patient_at`).
 Uzasadnienie: kontrola terapeutyczna (surowa transkrypcja bywa
 nieodpowiednia bez omówienia) + minimalizacja ryzyka RODO. „Udostępniaj
-automatycznie" jako opcja per kartoteka — poza MVP.
+automatycznie" jako opcja per kartoteka — świadomie PO MVP (zatwierdzone).
+
+**D6 — Panel zastępuje e-mail jako kanał TREŚCI (ZATWIERDZONE).**
+Dotychczasowe „wyślij plan działania e-mailem" (treść planu w mailu)
+ewoluuje w „udostępnij w panelu klienta": treść żyje wyłącznie w panelu
+(szyfrowana w bazie), a e-mail — jeśli w ogóle — jest tylko
+POWIADOMIENIEM bez PHI („Masz nową pozycję w panelu" + link). Efekt
+uboczny: dane szczególnej kategorii przestają krążyć po skrzynkach
+pocztowych klientów — istotne wzmocnienie RODO vs stan obecny.
+Dla klientów BEZ aktywowanego panelu stary flow e-mail z treścią
+pozostaje jako fallback (do wygaszenia po adopcji).
 
 **D3 — Osobne, read-only RPC dla klienta zamiast rozszerzania istniejących.**
 Nowa rodzina `Client*` w clinical-svc z własną bramką
@@ -228,7 +238,7 @@ rpc ShareNoteWithClient(ShareNoteRequest) returns (google.protobuf.Empty);      
 | PR6 | Flutter (terapeuta): „Zaproś klienta" w kartotece, przełączniki udostępniania, badge CLIENT_NOTE | PR2+PR3 |
 | PR7 | Flutter web (klient): `_AuthGate` routing po roli + `lib/client/*` (3 ekrany) | PR3 |
 | PR8 | E2E staging: invite → accept (fresh Firebase user) → share sesji → ClientGetTranscript → ClientCreateNote → widoczność u terapeuty → deactivate → ACCOUNT_DEACTIVATED; negatywne: nieudostępniona sesja → NotFound, cudza kartoteka → NotFound | wszystkie |
-| PR9 | (opcjonalnie) powiadomienie `client_note_received`; aktualizacja wzoru zgody (prawne) | PR3 |
+| PR9 | Powiadomienia (ZATWIERDZONE): e-mail bez PHI „nowa pozycja w panelu" do klienta przy udostępnieniu sesji/notatki + `client_note_received` do terapeuty; aktualizacja wzoru zgody (prawne) | PR3+PR4 |
 
 Szacunek: PR1–PR5 to niemal kalka mechaniki docs/38 (mały/średni rozmiar);
 ciężar leży w PR3 (nowa powierzchnia authz — pisać testy najpierw) i PR7
@@ -242,8 +252,9 @@ ciężar leży w PR3 (nowa powierzchnia authz — pisać testy najpierw) i PR7
   utrzymany.
 - (b) **iOS/Android klienta** — poza MVP; architektura (wariant po roli
   w tej samej binarce) czyni to naturalnym krokiem.
-- (c) **Powiadomienia push/e-mail o nowej udostępnionej pozycji** — poza
-  MVP (klient widzi po zalogowaniu); PR9 opcjonalny.
+- (c) **Powiadomienia o nowej pozycji** — ZATWIERDZONE jako PR9
+  (e-mail bez PHI, tylko sygnał + link); push mobilny — po MVP razem
+  z aplikacjami natywnymi.
 - (d) **Automatyczne udostępnianie** (per kartoteka „udostępniaj każdą
   ukończoną sesję") — świadomie po MVP, po feedbacku terapeutów.
 - (e) **Współdzielona kartoteka w organizacji** — ORG_ADMIN nie widzi
