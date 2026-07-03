@@ -10,7 +10,7 @@ Status: DESIGN (2026-07-03). Buduje na istniejących fundamentach — to jest
 
 1. **SUPERWIZOR_ADMIN** (panel `/admin`): zakłada konto organizacji — dane
    firmowe, e-maile org managerów, liczba miejsc (seats) per plan, ceny per
-   plan, data startu subskrypcji.
+   plan, możliwość zmiany planu, data startu subskrypcji.
 2. System wysyła e-mail zapraszający do **org managera**. Onboarding: ustawia
    hasło (Firebase, jak dotąd) **lub** social login → `AcceptInvitation`.
 3. **Org manager** (rola `ORG_ADMIN`, panel `/org` w web-app):
@@ -86,8 +86,8 @@ Deaktywacja terapeuty ⇒ `unassigned_at = now()` ⇒ miejsce wolne. Zaproszenie
 rezerwuje miejsce do czasu wygaśnięcia (7 dni) albo akceptacji.
 
 **Model rozliczeń (MVP, świadoma decyzja):** zostaje **jedna subskrypcja
-MANUAL per organizacja** i **jeden wspólny licznik tokenów**:
-`tokens_limit = Σ(seats × plan.tokens_per_period)`; wartość faktury =
+MANUAL per organizacja** i **licznik tokenów per seat (terapeuta)**:
+ wartość faktury =
 `Σ(seats × COALESCE(price_gross_per_seat, plan.price_gross))`. Zmiana alokacji
 przez admina przelicza `tokens_limit` bieżącego okresu (jak `AdminChangePlan`).
 Atrybucja zużycia per terapeuta do analityki pochodzi z
@@ -126,7 +126,7 @@ message SetTherapistStatusRequest { string user_id = 1; bool is_active = 2; }
 ```protobuf
 // SUPERWIZOR_ADMIN. Ustawia alokacje miejsc + start subskrypcji.
 // Tworzy/aktualizuje subskrypcję MANUAL (current_period_start = start) i
-// usage_counter z tokens_limit = Σ(seats × tokens_per_period).
+// usage_counter per plan dla kazdego terapeuty, odnawialne zgodnie z wybranym planem
 rpc AdminSetSeatAllocations(AdminSetSeatAllocationsRequest) returns (OrgSeatSummary);
 message AdminSetSeatAllocationsRequest {
   string organization_id = 1;
@@ -135,7 +135,7 @@ message AdminSetSeatAllocationsRequest {
   string reason = 15; string idempotency_key = 16;
 }
 
-// ORG_ADMIN. Zajętość miejsc + zużycie tokenów per plan (na dashboard).
+// ORG_ADMIN. Zajętość miejsc + zużycie tokenów per terapeuta i plan (na dashboard).
 rpc GetMyOrgSeatUsage(google.protobuf.Empty) returns (OrgSeatSummary);
 ```
 
@@ -200,16 +200,16 @@ report_ratings, pending_reservations/usage, analytics_events):
 
 | Metryka | Źródło |
 |---|---|
-| Liczba sesji (ukończonych / nieudanych / anulowanych) | `sessions.status`, `session_date` |
-| Łączny i średni czas sesji | `sessions.duration_seconds` |
-| Aktywni pacjenci (kartoteki otwarte) | `patient_files` (`is_process_closed=false`, `deleted_at IS NULL`) |
-| Nowi pacjenci w okresie / zamknięte procesy | `patient_files.created_at`, `is_process_closed` |
-| Średnia liczba sesji na pacjenta i średni odstęp między sesjami pacjenta | `sessions` per `patient_file_id` |
-| Forma kontaktu (gabinet/online) | `sessions.contact_form` |
-| Zużyte tokeny + % limitu organizacji | `pending_reservations`/`usage_counters` per `therapist_id` |
-| Ostatnia aktywność (ostatnia sesja / logowanie) | `sessions.session_date`, `analytics_events` |
-| Ocena raportów (👍/👎 ratio) — proxy jakości pracy z narzędziem | `report_ratings` |
-| Odsetek sesji z obejrzanym raportem | `sessions.report_viewed_at` |
+| Liczba sesji (ukończonych / nieudanych / anulowanych) - globalnie oraz per terapeuta | `sessions.status`, `session_date` |
+| Łączny i średni czas sesji - globalnie oraz per terapeuta | `sessions.duration_seconds` |
+| Aktywni pacjenci (kartoteki otwarte) - globalnie oraz per terapeuta | `patient_files` (`is_process_closed=false`, `deleted_at IS NULL`) |
+| Nowi pacjenci w okresie / zamknięte procesy - globalnie oraz per terapeuta | `patient_files.created_at`, `is_process_closed` |
+| Średnia liczba sesji na pacjenta i średni odstęp między sesjami pacjenta - globalnie oraz per terapeuta | `sessions` per `patient_file_id` |
+| Forma kontaktu (gabinet/online) - globalnie oraz per terapeuta | `sessions.contact_form` |
+| Zużyte tokeny + % limitu organizacji - globalnie oraz per terapeuta | `pending_reservations`/`usage_counters` per `therapist_id` |
+| Ostatnia aktywność (ostatnia sesja / logowanie) - globalnie oraz per terapeuta | `sessions.session_date`, `analytics_events` |
+| Ocena raportów (👍/👎 ratio) — proxy jakości pracy z narzędziem - globalnie oraz per terapeuta | `report_ratings` |
+| Odsetek sesji z obejrzanym raportem - globalnie oraz per terapeuta | `sessions.report_viewed_at` |
 
 ### 7.2 Raporty dla właściciela kliniki (dashboard + eksport CSV)
 
