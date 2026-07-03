@@ -17,6 +17,7 @@ import 'auth/app_lock_controller.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/deactivated_account_screen.dart';
+import 'utils/account_status.dart';
 import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
 import 'screens/login_screen.dart';
@@ -130,10 +131,14 @@ class _AuthGate extends ConsumerWidget {
     // full-screen block instead of the app. Detected from the resolved
     // User row; every backend RPC would fail with PermissionDenied
     // "ACCOUNT_DEACTIVATED" anyway — this makes the state legible.
-    final deactivated = ref.watch(currentUserProvider).whenOrNull(
-              data: (u) => u != null && !u.isActive,
-            ) ??
-        false;
+    final deactivated = ref.watch(currentUserProvider).maybeWhen(
+          data: (u) => u != null && !u.isActive,
+          // Mid-session deactivation: the cached profile predates the
+          // toggle, but any refetch (or any gated RPC) now fails with
+          // the ACCOUNT_DEACTIVATED marker — treat that the same.
+          error: (e, _) => isAccountDeactivatedError(e),
+          orElse: () => false,
+        );
 
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
