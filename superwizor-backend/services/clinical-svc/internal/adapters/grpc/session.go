@@ -25,6 +25,15 @@ func (s *Server) ListSessions(ctx context.Context, req *clinicalv1.ListSessionsR
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid patient_file_id")
 	}
+	// Object-level authz (IDOR fix): verify the caller owns (or org-admins)
+	// this kartoteka before listing its sessions.
+	pf, err := s.queries.GetPatientFile(ctx, patientFileID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "patient file not found")
+	}
+	if err := s.requireTherapistDataAccess(ctx, pf.TherapistID); err != nil {
+		return nil, err
+	}
 
 	sessions, err := s.queries.ListSessionsByPatient(ctx, patientFileID)
 	if err != nil {
@@ -53,6 +62,12 @@ func (s *Server) GetSessionDetails(ctx context.Context, req *clinicalv1.GetSessi
 	session, err := s.queries.GetSession(ctx, sessionID)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "session not found")
+	}
+	// Object-level authz (IDOR fix): only the owning therapist (or an
+	// ORG_ADMIN of their org / SUPERWIZOR_ADMIN) may read the decrypted
+	// transcript + reports for this session.
+	if err := s.requireTherapistDataAccess(ctx, session.TherapistID); err != nil {
+		return nil, err
 	}
 
 	protoSess := toProtoSession(session)
@@ -637,4 +652,3 @@ func (s *Server) SetAvatarConfig(ctx context.Context, req *clinicalv1.SetAvatarC
 
 	return &emptypb.Empty{}, nil
 }
-

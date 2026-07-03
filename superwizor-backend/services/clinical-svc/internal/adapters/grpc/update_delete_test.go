@@ -131,13 +131,17 @@ func TestUpdatePatientFile_InvalidPatientFileID(t *testing.T) {
 
 func TestUpdatePatientFile_UniqueViolationMapsToAlreadyExists(t *testing.T) {
 	id := uuid.New()
+	therapistID := uuid.New()
 	q := &fakeQuerier{
+		getPatientFileFn: func(ctx context.Context, pid uuid.UUID) (db.PatientFile, error) {
+			return patientFileFixture(pid, therapistID, nil), nil
+		},
 		updatePatientFileFn: func(ctx context.Context, arg db.UpdatePatientFileParams) (db.PatientFile, error) {
 			return db.PatientFile{}, uniqueViolation()
 		},
 	}
 	srv := newTestServer(q, nil, nil)
-	_, err := srv.UpdatePatientFile(context.Background(), &clinicalv1.UpdatePatientFileRequest{
+	_, err := srv.UpdatePatientFile(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientFileRequest{
 		PatientFileId: id.String(),
 		WorkingAlias:  "alias-taken",
 	})
@@ -150,13 +154,17 @@ func TestUpdatePatientFile_UniqueViolationMapsToAlreadyExists(t *testing.T) {
 }
 
 func TestUpdatePatientFile_GenericDBErrorMapsToInternal(t *testing.T) {
+	therapistID := uuid.New()
 	q := &fakeQuerier{
+		getPatientFileFn: func(ctx context.Context, pid uuid.UUID) (db.PatientFile, error) {
+			return patientFileFixture(pid, therapistID, nil), nil
+		},
 		updatePatientFileFn: func(ctx context.Context, arg db.UpdatePatientFileParams) (db.PatientFile, error) {
 			return db.PatientFile{}, errSentinel
 		},
 	}
 	srv := newTestServer(q, nil, nil)
-	_, err := srv.UpdatePatientFile(context.Background(), &clinicalv1.UpdatePatientFileRequest{
+	_, err := srv.UpdatePatientFile(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientFileRequest{
 		PatientFileId: uuid.New().String(),
 	})
 	if got := codeOf(err); got != codes.Internal {
@@ -166,7 +174,11 @@ func TestUpdatePatientFile_GenericDBErrorMapsToInternal(t *testing.T) {
 
 func TestUpdatePatientFile_RefetchFailureIsInternal(t *testing.T) {
 	id := uuid.New()
+	therapistID := uuid.New()
 	q := &fakeQuerier{
+		getPatientFileFn: func(ctx context.Context, pid uuid.UUID) (db.PatientFile, error) {
+			return patientFileFixture(pid, therapistID, nil), nil
+		},
 		updatePatientFileFn: func(ctx context.Context, arg db.UpdatePatientFileParams) (db.PatientFile, error) {
 			return db.PatientFile{ID: arg.ID}, nil
 		},
@@ -175,7 +187,7 @@ func TestUpdatePatientFile_RefetchFailureIsInternal(t *testing.T) {
 		},
 	}
 	srv := newTestServer(q, nil, nil)
-	_, err := srv.UpdatePatientFile(context.Background(), &clinicalv1.UpdatePatientFileRequest{
+	_, err := srv.UpdatePatientFile(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientFileRequest{
 		PatientFileId: id.String(),
 	})
 	if got := codeOf(err); got != codes.Internal {
@@ -190,6 +202,9 @@ func TestUpdatePatientFile_HappyPath(t *testing.T) {
 
 	var receivedParams db.UpdatePatientFileParams
 	q := &fakeQuerier{
+		getPatientFileFn: func(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
+			return patientFileFixture(id, therapistID, &patientID), nil
+		},
 		updatePatientFileFn: func(ctx context.Context, arg db.UpdatePatientFileParams) (db.PatientFile, error) {
 			receivedParams = arg
 			return db.PatientFile{ID: arg.ID}, nil
@@ -200,7 +215,7 @@ func TestUpdatePatientFile_HappyPath(t *testing.T) {
 	}
 	srv := newTestServer(q, nil, nil)
 
-	resp, err := srv.UpdatePatientFile(context.Background(), &clinicalv1.UpdatePatientFileRequest{
+	resp, err := srv.UpdatePatientFile(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientFileRequest{
 		PatientFileId:         pfID.String(),
 		WorkingAlias:          "Marcus",
 		InitialComplaint:      "anxiety",
@@ -244,6 +259,9 @@ func TestUpdatePatientFile_NoConsentLeavesTimestampNil(t *testing.T) {
 	therapistID := uuid.New()
 
 	q := &fakeQuerier{
+		getPatientFileFn: func(ctx context.Context, id uuid.UUID) (db.PatientFile, error) {
+			return patientFileFixture(id, therapistID, nil), nil
+		},
 		updatePatientFileFn: func(ctx context.Context, arg db.UpdatePatientFileParams) (db.PatientFile, error) {
 			return db.PatientFile{ID: arg.ID}, nil
 		},
@@ -256,7 +274,7 @@ func TestUpdatePatientFile_NoConsentLeavesTimestampNil(t *testing.T) {
 		},
 	}
 	srv := newTestServer(q, nil, nil)
-	resp, err := srv.UpdatePatientFile(context.Background(), &clinicalv1.UpdatePatientFileRequest{
+	resp, err := srv.UpdatePatientFile(ctxWithUser(t, therapistID), &clinicalv1.UpdatePatientFileRequest{
 		PatientFileId: pfID.String(),
 	})
 	if err != nil {
