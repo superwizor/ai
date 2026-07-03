@@ -89,6 +89,9 @@ type Querier interface {
 	LinkUserToOrganization(ctx context.Context, arg LinkUserToOrganizationParams) error
 	// The "recent_audit" panel in the admin org-detail view (docs/18 §13.7).
 	ListAuditEventsByOrg(ctx context.Context, arg ListAuditEventsByOrgParams) ([]AuditEvent, error)
+	// ORG_ADMIN members of an org — the primary-admin transfer candidate
+	// pool on /admin/orgs/[id] (docs/38).
+	ListManagersByOrganization(ctx context.Context, organizationID pgtype.UUID) ([]User, error)
 	// Cursor pagination keyed on (created_at, id). Pass an empty cursor for the
 	// first page; for subsequent pages pass the last row's (created_at, id).
 	ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]Organization, error)

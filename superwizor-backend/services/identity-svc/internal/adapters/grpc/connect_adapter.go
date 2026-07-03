@@ -171,6 +171,14 @@ func (a *ConnectAdapter) AcceptInvitation(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) AdminInviteOrgManager(ctx context.Context, req *connect.Request[identityv1.AdminInviteOrgManagerRequest]) (*connect.Response[identityv1.Invitation], error) {
+	resp, err := a.s.AdminInviteOrgManager(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) AdminListOrganizations(ctx context.Context, req *connect.Request[identityv1.AdminListOrganizationsRequest]) (*connect.Response[identityv1.AdminListOrganizationsResponse], error) {
 	resp, err := a.s.AdminListOrganizations(ctx, req.Msg)
 	if err != nil {

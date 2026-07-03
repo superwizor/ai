@@ -100,3 +100,74 @@ func (s *Server) GetOrgTherapistMetrics(ctx context.Context, req *clinicalv1.Get
 	}
 	return resp, nil
 }
+
+// GetOrgAnalytics — chart data for the /org Analityka tab (docs/38
+// §7.2): KPI strip, weekly trends, day×hour heatmap, per-therapist
+// token utilization, and the session counts behind the "time saved on
+// reporting" KPI (client multiplies by 20 min/session). Same gate and
+// §7.3 privacy boundary as GetOrgTherapistMetrics.
+func (s *Server) GetOrgAnalytics(ctx context.Context, _ *clinicalv1.GetOrgAnalyticsRequest) (*clinicalv1.GetOrgAnalyticsResponse, error) {
+	role, _ := ctx.Value(UserRoleKey).(string)
+	if role != "ORG_ADMIN" && role != "SUPERWIZOR_ADMIN" {
+		return nil, status.Error(codes.PermissionDenied,
+			"org analytics is available to organization managers only")
+	}
+	orgIDStr, _ := ctx.Value(OrganizationIDKey).(string)
+	if orgIDStr == "" {
+		return nil, status.Error(codes.FailedPrecondition, "caller has no organization")
+	}
+	orgID, err := uuid.Parse(orgIDStr)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid organization id in context")
+	}
+	pgOrg := pgtype.UUID{Bytes: orgID, Valid: true}
+
+	kpis, err := s.queries.OrgAnalyticsKPIs(ctx, pgOrg)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "org kpis: %v", err)
+	}
+	weekly, err := s.queries.OrgWeeklySessionTrend(ctx, pgOrg)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "weekly trend: %v", err)
+	}
+	heat, err := s.queries.OrgHourlyHeatmap(ctx, pgOrg)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "hourly heatmap: %v", err)
+	}
+	util, err := s.queries.OrgTherapistUtilization(ctx, orgID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "therapist utilization: %v", err)
+	}
+
+	resp := &clinicalv1.GetOrgAnalyticsResponse{
+		KpiWau:                int64(kpis.KpiWau),
+		KpiSessionsThisWeek:   int64(kpis.KpiSessionsThisWeek),
+		KpiAvgSessionDuration: kpis.KpiAvgSessionDuration,
+		SessionsThisMonth:     int64(kpis.SessionsThisMonth),
+		SessionsThisYear:      int64(kpis.SessionsThisYear),
+	}
+	for _, w := range weekly {
+		resp.SessionsTrend = append(resp.SessionsTrend,
+			&clinicalv1.TrendPoint{Label: w.Week, Value: float64(w.Sessions)})
+		resp.WauTrend = append(resp.WauTrend,
+			&clinicalv1.TrendPoint{Label: w.Week, Value: float64(w.ActiveTherapists)})
+		resp.SessionDurationTrend = append(resp.SessionDurationTrend,
+			&clinicalv1.TrendPoint{Label: w.Week, Value: w.AvgDurationMin})
+	}
+	for _, h := range heat {
+		resp.HourlyHeatmap = append(resp.HourlyHeatmap, &clinicalv1.HourlyHeatmapPoint{
+			DayOfWeek: h.DayOfWeek,
+			Hour:      h.Hour,
+			Count:     h.Count,
+		})
+	}
+	for _, u := range util {
+		resp.TherapistUtilization = append(resp.TherapistUtilization,
+			&clinicalv1.TokenUtilizationHeatmapPoint{
+				OrgName: u.TherapistName,
+				Week:    u.Week,
+				Value:   u.Value,
+			})
+	}
+	return resp, nil
+}

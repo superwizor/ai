@@ -79,6 +79,11 @@ service IdentityService {
   // via AcceptInvitation. Seat allocations + subscription start are set
   // separately via billing.AdminSetSeatAllocations.
   rpc AdminCreateOrganization(AdminCreateOrganizationRequest) returns (AdminCreateOrganizationResponse);
+  // Adds an ORG_ADMIN magic-link invitation to an EXISTING organization
+  // (docs/38) — the post-creation counterpart of the manager e-mails in
+  // AdminCreateOrganization. Same 7-day token + org_manager_invite
+  // e-mail; reason >= 10 chars → audit_events.
+  rpc AdminInviteOrgManager(AdminInviteOrgManagerRequest) returns (Invitation);
   rpc AdminListOrganizations(AdminListOrganizationsRequest) returns (AdminListOrganizationsResponse);
   rpc AdminGetOrganization(AdminGetOrganizationRequest) returns (OrganizationDetails);
   rpc AdminSetOrganizationStatus(AdminSetOrganizationStatusRequest) returns (google.protobuf.Empty);
@@ -490,6 +495,12 @@ message AdminCreateOrganizationRequest {
   string idempotency_key = 16;
 }
 
+message AdminInviteOrgManagerRequest {
+  string organization_id = 1;
+  string email = 2;
+  string reason = 15;             // required, >= 10 chars
+}
+
 message AdminCreateOrganizationResponse {
   Organization organization = 1;
   // The ORG_ADMIN invitations created (one per manager e-mail),
@@ -529,6 +540,9 @@ message OrganizationDetails {
   repeated User therapists = 2;
   // Recent audit history scoped to this org (last 20 entries).
   repeated AuditEntry recent_audit = 3;
+  // Org managers (role=ORG_ADMIN) — the candidate pool for the
+  // primary-admin transfer select on /admin/orgs/[id] (docs/38).
+  repeated User managers = 4;
 }
 
 message AuditEntry {

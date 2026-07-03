@@ -113,3 +113,183 @@ func (q *Queries) GetOrgTherapistMetrics(ctx context.Context, arg GetOrgTherapis
 	}
 	return items, nil
 }
+
+const orgAnalyticsKPIs = `-- name: OrgAnalyticsKPIs :one
+SELECT
+    (SELECT COUNT(DISTINCT s.therapist_id) FROM sessions s
+      JOIN users u ON u.id = s.therapist_id
+      WHERE u.organization_id = $1 AND s.deleted_at IS NULL
+        AND s.created_at >= now() - interval '7 days')::int AS kpi_wau,
+    (SELECT COUNT(*) FROM sessions s
+      JOIN users u ON u.id = s.therapist_id
+      WHERE u.organization_id = $1 AND s.deleted_at IS NULL
+        AND s.created_at >= date_trunc('week', now()))::int AS kpi_sessions_this_week,
+    (SELECT COALESCE(AVG(s.duration_seconds) / 60.0, 0) FROM sessions s
+      JOIN users u ON u.id = s.therapist_id
+      WHERE u.organization_id = $1 AND s.deleted_at IS NULL
+        AND s.status = 'COMPLETED' AND s.duration_seconds IS NOT NULL
+        AND s.created_at >= now() - interval '90 days')::float8 AS kpi_avg_session_duration,
+    (SELECT COUNT(*) FROM sessions s
+      JOIN users u ON u.id = s.therapist_id
+      WHERE u.organization_id = $1 AND s.deleted_at IS NULL
+        AND s.created_at >= date_trunc('month', now()))::int AS sessions_this_month,
+    (SELECT COUNT(*) FROM sessions s
+      JOIN users u ON u.id = s.therapist_id
+      WHERE u.organization_id = $1 AND s.deleted_at IS NULL
+        AND s.created_at >= date_trunc('year', now()))::int AS sessions_this_year
+`
+
+type OrgAnalyticsKPIsRow struct {
+	KpiWau                int32   `json:"kpi_wau"`
+	KpiSessionsThisWeek   int32   `json:"kpi_sessions_this_week"`
+	KpiAvgSessionDuration float64 `json:"kpi_avg_session_duration"`
+	SessionsThisMonth     int32   `json:"sessions_this_month"`
+	SessionsThisYear      int32   `json:"sessions_this_year"`
+}
+
+// KPI strip + time-saved session counts, one round trip. All scoped to
+// the org's therapists; sessions soft-delete-aware.
+func (q *Queries) OrgAnalyticsKPIs(ctx context.Context, organizationID pgtype.UUID) (OrgAnalyticsKPIsRow, error) {
+	row := q.db.QueryRow(ctx, orgAnalyticsKPIs, organizationID)
+	var i OrgAnalyticsKPIsRow
+	err := row.Scan(
+		&i.KpiWau,
+		&i.KpiSessionsThisWeek,
+		&i.KpiAvgSessionDuration,
+		&i.SessionsThisMonth,
+		&i.SessionsThisYear,
+	)
+	return i, err
+}
+
+const orgHourlyHeatmap = `-- name: OrgHourlyHeatmap :many
+SELECT
+    EXTRACT(dow FROM s.created_at)::int AS day_of_week,
+    EXTRACT(hour FROM s.created_at)::int AS hour,
+    COUNT(*)::bigint AS count
+FROM sessions s
+JOIN users u ON u.id = s.therapist_id
+WHERE u.organization_id = $1 AND s.deleted_at IS NULL
+  AND s.created_at >= now() - interval '90 days'
+GROUP BY 1, 2
+`
+
+type OrgHourlyHeatmapRow struct {
+	DayOfWeek int32 `json:"day_of_week"`
+	Hour      int32 `json:"hour"`
+	Count     int64 `json:"count"`
+}
+
+// Day-of-week × hour recording histogram, last 90 days.
+func (q *Queries) OrgHourlyHeatmap(ctx context.Context, organizationID pgtype.UUID) ([]OrgHourlyHeatmapRow, error) {
+	rows, err := q.db.Query(ctx, orgHourlyHeatmap, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OrgHourlyHeatmapRow
+	for rows.Next() {
+		var i OrgHourlyHeatmapRow
+		if err := rows.Scan(&i.DayOfWeek, &i.Hour, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const orgTherapistUtilization = `-- name: OrgTherapistUtilization :many
+SELECT
+    (u.first_name || ' ' || u.last_name)::text AS therapist_name,
+    to_char(date_trunc('week', c.period_start), 'IYYY-IW') AS week,
+    CASE WHEN c.tokens_limit > 0
+         THEN ROUND((c.tokens_used::numeric / c.tokens_limit) * 100)
+         ELSE 0 END::float8 AS value
+FROM usage_counters c
+JOIN users u ON u.id = c.therapist_id
+JOIN subscriptions sub ON sub.id = c.subscription_id
+WHERE sub.organization_id = $1
+  AND c.therapist_id IS NOT NULL
+  AND c.period_start >= now() - interval '180 days'
+ORDER BY therapist_name, week
+`
+
+type OrgTherapistUtilizationRow struct {
+	TherapistName string  `json:"therapist_name"`
+	Week          string  `json:"week"`
+	Value         float64 `json:"value"`
+}
+
+// Token utilization % per THERAPIST per counter period (docs/38 §7.2)
+// — the per-seat mirror of the admin per-org heatmap. Week label =
+// ISO week of period_start.
+func (q *Queries) OrgTherapistUtilization(ctx context.Context, organizationID uuid.UUID) ([]OrgTherapistUtilizationRow, error) {
+	rows, err := q.db.Query(ctx, orgTherapistUtilization, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OrgTherapistUtilizationRow
+	for rows.Next() {
+		var i OrgTherapistUtilizationRow
+		if err := rows.Scan(&i.TherapistName, &i.Week, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const orgWeeklySessionTrend = `-- name: OrgWeeklySessionTrend :many
+SELECT
+    to_char(date_trunc('week', s.created_at), 'IYYY-IW') AS week,
+    COUNT(*)::int AS sessions,
+    COUNT(DISTINCT s.therapist_id)::int AS active_therapists,
+    COALESCE(AVG(s.duration_seconds) FILTER (WHERE s.status = 'COMPLETED') / 60.0, 0)::float8 AS avg_duration_min
+FROM sessions s
+JOIN users u ON u.id = s.therapist_id
+WHERE u.organization_id = $1 AND s.deleted_at IS NULL
+  AND s.created_at >= date_trunc('week', now()) - interval '8 weeks'
+GROUP BY 1
+ORDER BY 1
+`
+
+type OrgWeeklySessionTrendRow struct {
+	Week             string  `json:"week"`
+	Sessions         int32   `json:"sessions"`
+	ActiveTherapists int32   `json:"active_therapists"`
+	AvgDurationMin   float64 `json:"avg_duration_min"`
+}
+
+// Sessions per ISO week (last 9 weeks incl. current) + distinct
+// therapists + avg completed duration — one scan feeds three charts.
+func (q *Queries) OrgWeeklySessionTrend(ctx context.Context, organizationID pgtype.UUID) ([]OrgWeeklySessionTrendRow, error) {
+	rows, err := q.db.Query(ctx, orgWeeklySessionTrend, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OrgWeeklySessionTrendRow
+	for rows.Next() {
+		var i OrgWeeklySessionTrendRow
+		if err := rows.Scan(
+			&i.Week,
+			&i.Sessions,
+			&i.ActiveTherapists,
+			&i.AvgDurationMin,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

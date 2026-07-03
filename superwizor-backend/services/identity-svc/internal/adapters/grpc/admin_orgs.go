@@ -223,3 +223,92 @@ func (s *Server) assembleAdminCreateReplay(ctx context.Context, org db.Organizat
 	}
 	return resp, nil
 }
+
+// AdminInviteOrgManager mints an ORG_ADMIN magic-link invitation for an
+// EXISTING organization (docs/38) — the post-creation counterpart of
+// AdminCreateOrganization's manager e-mails. Same idempotent refresh
+// behaviour as InviteTherapist: re-inviting the same address refreshes
+// the token + expiry and re-sends the e-mail.
+func (s *Server) AdminInviteOrgManager(ctx context.Context, req *identityv1.AdminInviteOrgManagerRequest) (*identityv1.Invitation, error) {
+	caller, err := s.requireSuperwizorAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(req.Reason) < minAuditReasonChars {
+		return nil, status.Errorf(codes.InvalidArgument,
+			"reason must be >= %d characters", minAuditReasonChars)
+	}
+	orgID, err := uuid.Parse(req.OrganizationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid organization_id")
+	}
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if !strings.Contains(email, "@") {
+		return nil, status.Error(codes.InvalidArgument, "valid email required")
+	}
+	org, err := s.queries.GetOrganizationByID(ctx, orgID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "organization not found")
+	}
+
+	token, tokenHash, err := generateInvitationToken()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "generate token: %v", err)
+	}
+	expiresAt := time.Now().Add(invitationTTL)
+
+	inv, err := s.queries.CreateInvitation(ctx, db.CreateInvitationParams{
+		OrganizationID: orgID,
+		InvitedByUser:  caller.userID,
+		Email:          email,
+		TokenHash:      tokenHash,
+		ExpiresAt:      expiresAt,
+		InvitedRole:    db.UserRoleORGADMIN,
+	})
+	if err != nil {
+		// Refresh path — same (org, email) re-invited. Keep the stored
+		// role as ORG_ADMIN so a stale THERAPIST invite for the same
+		// address is upgraded rather than silently reused.
+		existing, lookupErr := s.queries.GetInvitationByOrgEmail(ctx, db.GetInvitationByOrgEmailParams{
+			OrganizationID: orgID,
+			Email:          email,
+		})
+		if lookupErr != nil {
+			return nil, status.Errorf(codes.Internal, "create invitation: %v", err)
+		}
+		if _, err := s.pool.Exec(ctx,
+			`UPDATE invitations
+			    SET token_hash = $2, expires_at = $3, invited_by_user = $4,
+			        invited_role = 'ORG_ADMIN', allocation_id = NULL, created_at = now()
+			  WHERE id = $1`,
+			existing.ID, tokenHash, expiresAt, caller.userID,
+		); err != nil {
+			return nil, status.Errorf(codes.Internal, "refresh invitation: %v", err)
+		}
+		inv = existing
+		inv.TokenHash = tokenHash
+		inv.ExpiresAt = expiresAt
+		inv.InvitedRole = db.UserRoleORGADMIN
+	}
+
+	if err := s.writeAuditEvent(ctx, caller,
+		"ADMIN_INVITE_ORG_MANAGER", "organization", &orgID, &orgID,
+		req.Reason, map[string]any{"email": email}); err != nil {
+		return nil, status.Errorf(codes.Internal, "audit: %v", err)
+	}
+
+	acceptURL := fmt.Sprintf("%s/accept-invite?token=%s",
+		strings.TrimRight(s.acceptURLBase, "/"),
+		url.QueryEscape(token),
+	)
+	_ = s.emailer.SendInvitation(ctx, InvitationEmailParams{
+		Recipient:   email,
+		OrgName:     org.LegalName,
+		AcceptURL:   acceptURL,
+		ExpiresAt:   expiresAt.Format(time.RFC3339),
+		Locale:      "pl",
+		InvitedRole: "ORG_ADMIN",
+	})
+
+	return toProtoInvitation(inv), nil
+}
