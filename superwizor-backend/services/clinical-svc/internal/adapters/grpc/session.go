@@ -225,6 +225,12 @@ func toProtoSession(s db.Session) *clinicalv1.Session {
 		resp.ReportViewedAt = timestamppb.New(s.ReportViewedAt.Time)
 	}
 
+	// shared_with_client_at (migration 000066, docs/39): drives the
+	// "udostępniono klientowi" toggle state in the therapist UI.
+	if s.SharedWithClientAt.Valid {
+		resp.SharedWithClientAt = timestamppb.New(s.SharedWithClientAt.Time)
+	}
+
 	return resp
 }
 

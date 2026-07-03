@@ -311,6 +311,15 @@ message PatientNote {
     string sent_to_email = 8;
     google.protobuf.Timestamp created_at = 9;
     google.protobuf.Timestamp updated_at = 10;
+    // docs/39 client panel. THERAPIST (default) or PATIENT (CLIENT_NOTE
+    // written by the client — read-only for the therapist).
+    string author_role = 11;
+    // When the therapist shared this note with the client panel
+    // (ShareNoteWithClient). Unset = not shared. Always unset for
+    // CLIENT_NOTE (those are visible to the client by construction).
+    google.protobuf.Timestamp shared_with_client_at = 12;
+    // When the client opened a shared therapist note. Unset = unread.
+    google.protobuf.Timestamp read_by_client_at = 13;
 }
 
 message CreatePatientNoteRequest {
@@ -428,6 +437,9 @@ message Session {
   // badge. Set via MarkReportViewed RPC. Migration 000059.
   google.protobuf.Timestamp report_viewed_at = 13;
   int64 file_size_bytes = 14;
+  // docs/39: when the therapist shared this session with the client
+  // panel (ShareSessionWithClient). Unset = not shared.
+  google.protobuf.Timestamp shared_with_client_at = 15;
 }
 
 message ListSessionsRequest {

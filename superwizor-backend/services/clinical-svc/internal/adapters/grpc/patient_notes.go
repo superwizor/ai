@@ -106,6 +106,14 @@ func (s *Server) toProtoPatientNote(ctx context.Context, n db.PatientNote) (*cli
 		Text:          string(textBytes),
 		CreatedAt:     timestamppb.New(n.CreatedAt),
 		UpdatedAt:     timestamppb.New(n.UpdatedAt),
+		AuthorRole:    string(n.AuthorRole),
+	}
+	// docs/39 client-panel sharing state (migration 000066).
+	if n.SharedWithClientAt.Valid {
+		out.SharedWithClientAt = timestamppb.New(n.SharedWithClientAt.Time)
+	}
+	if n.ReadByClientAt.Valid {
+		out.ReadByClientAt = timestamppb.New(n.ReadByClientAt.Time)
 	}
 	if n.SourceSessionID.Valid {
 		out.SourceSessionId = uuid.UUID(n.SourceSessionID.Bytes).String()
@@ -187,6 +195,15 @@ func (s *Server) ListPatientNotes(ctx context.Context, req *clinicalv1.ListPatie
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list patient notes: %v", err)
 	}
+
+	// docs/39: opening the notes list counts as reading the client's
+	// notes — the unread badge is edge-triggered, not an inbox. Best
+	// effort: a failed mark must not break the listing.
+	if err := s.queries.MarkKartotekaClientNotesReadByTherapist(ctx, pfID); err != nil {
+		slog.WarnContext(ctx, "ListPatientNotes: mark client notes read failed",
+			"patient_file_id", pfID, "error", err)
+	}
+
 	resp := &clinicalv1.ListPatientNotesResponse{Notes: make([]*clinicalv1.PatientNote, 0, len(notes))}
 	for _, n := range notes {
 		p, err := s.toProtoPatientNote(ctx, n)
@@ -229,6 +246,11 @@ func (s *Server) UpdatePatientNote(ctx context.Context, req *clinicalv1.UpdatePa
 	note, _, err := s.noteWithOwnership(ctx, therapistID, req.NoteId)
 	if err != nil {
 		return nil, err
+	}
+	// docs/39: the client's own notes are read-only for the therapist —
+	// editing them would silently rewrite what the client wrote.
+	if note.Kind == "CLIENT_NOTE" {
+		return nil, status.Error(codes.FailedPrecondition, "CLIENT_NOTE_READ_ONLY: client notes cannot be edited by the therapist")
 	}
 
 	titleCT, titleDEK, textCT, textDEK, err := s.encryptNote(ctx, req.Title, req.Text)
@@ -398,6 +420,10 @@ func (s *Server) SavePatientNote(ctx context.Context, req *clinicalv1.SavePatien
 		existing, pf, err = s.noteWithOwnership(ctx, therapistID, req.NoteId)
 		if err != nil {
 			return nil, err
+		}
+		// docs/39: same read-only guard as UpdatePatientNote.
+		if existing.Kind == "CLIENT_NOTE" {
+			return nil, status.Error(codes.FailedPrecondition, "CLIENT_NOTE_READ_ONLY: client notes cannot be edited by the therapist")
 		}
 		note, err = s.queries.UpdatePatientNote(ctx, db.UpdatePatientNoteParams{
 			ID:                existing.ID,
