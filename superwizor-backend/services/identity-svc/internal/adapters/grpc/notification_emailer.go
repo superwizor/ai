@@ -23,12 +23,13 @@ func NewNotificationServiceEmailer(client notificationv1.NotificationServiceClie
 
 func (e NotificationServiceEmailer) SendInvitation(ctx context.Context, p InvitationEmailParams) error {
 	_, err := e.client.SendInvitationEmail(ctx, &notificationv1.SendInvitationEmailRequest{
-		RecipientEmail:    p.Recipient,
-		OrganizationName:  p.OrgName,
-		InviterFirstName:  p.InviterFirstName,
-		AcceptUrl:         p.AcceptURL,
-		ExpiresAtIso:      p.ExpiresAt,
-		Locale:            p.Locale,
+		RecipientEmail:   p.Recipient,
+		OrganizationName: p.OrgName,
+		InviterFirstName: p.InviterFirstName,
+		AcceptUrl:        p.AcceptURL,
+		ExpiresAtIso:     p.ExpiresAt,
+		Locale:           p.Locale,
+		InvitedRole:      p.InvitedRole,
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "notification-svc.SendInvitationEmail failed",

@@ -19,8 +19,8 @@ import (
 
 type consentFakeQuerier struct {
 	db.Querier
-	getUserByIDFn    func(ctx context.Context, id uuid.UUID) (db.User, error)
-	recordConsentFn  func(ctx context.Context, arg db.RecordConsentParams) (db.ConsentRecord, error)
+	getUserByIDFn     func(ctx context.Context, id uuid.UUID) (db.User, error)
+	recordConsentFn   func(ctx context.Context, arg db.RecordConsentParams) (db.ConsentRecord, error)
 	userByFirebaseUID db.User
 }
 

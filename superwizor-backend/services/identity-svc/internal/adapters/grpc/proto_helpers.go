@@ -96,7 +96,6 @@ func fromProtoRole(r identityv1.UserRole) (db.UserRole, bool) {
 	return "", false
 }
 
-
 func toProtoInvitation(inv db.Invitation) *identityv1.Invitation {
 	out := &identityv1.Invitation{
 		Id:             inv.ID.String(),

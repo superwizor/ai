@@ -27,6 +27,15 @@ func TestLoad_AllTemplates_BothLocales(t *testing.T) {
 			},
 		},
 		{
+			// docs/38: org-manager onboarding (AdminCreateOrganization).
+			name: "org_manager_invite",
+			vars: map[string]string{
+				"organization_name": "Klinika Sosna",
+				"accept_url":        "https://example.com/accept/abc",
+				"expires_at":        "2026-06-01",
+			},
+		},
+		{
 			name: "email_verification",
 			vars: map[string]string{
 				"recipient_email": "x@example.com",

@@ -46,24 +46,24 @@ type preferencesPayload struct {
 // Any value not in the allow-list is rejected with InvalidArgument.
 var (
 	allowedLength = map[string]bool{
-		"": true, // empty = use default
+		"":      true, // empty = use default
 		"brief": true, "standard": true, "detailed": true,
 	}
 	allowedTone = map[string]bool{
-		"": true,
+		"":                true,
 		"clinical_formal": true, "empathic_warm": true,
 		"pragmatic_direct": true, "academic_rigorous": true,
 	}
 	allowedQuoteDensity = map[string]bool{
-		"": true,
+		"":    true,
 		"few": true, "selective": true, "many": true,
 	}
 	allowedDiagnosticLanguage = map[string]bool{
-		"": true,
+		"":            true,
 		"descriptive": true, "clinical_labels": true, "dsm_icd": true,
 	}
 	allowedHypothesisHedging = map[string]bool{
-		"": true,
+		"":          true,
 		"tentative": true, "balanced": true, "assertive": true,
 	}
 	allowedSectionEmphasis = map[string]bool{
@@ -76,7 +76,7 @@ var (
 		"safety_and_risk":             true,
 	}
 	allowedStrengthsFraming = map[string]bool{
-		"": true,
+		"":                true,
 		"problem_focused": true, "balanced": true, "strengths_first": true,
 	}
 )

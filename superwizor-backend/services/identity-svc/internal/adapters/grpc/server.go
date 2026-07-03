@@ -33,11 +33,11 @@ type TokenVerifier interface {
 
 type Server struct {
 	identityv1.UnimplementedIdentityServiceServer
-	queries  db.Querier
-	pool     *pgxpool.Pool
-	auth     TokenVerifier
-	version  string
-	emailer  InvitationEmailer
+	queries   db.Querier
+	pool      *pgxpool.Pool
+	auth      TokenVerifier
+	version   string
+	emailer   InvitationEmailer
 	collector *analytics.Collector
 	// acceptURLBase is the public origin that hosts the accept-invite
 	// page (e.g. https://app.superwizor.ai). Combined with the token
@@ -194,7 +194,6 @@ func (s *Server) CheckEmailExists(ctx context.Context, req *identityv1.CheckEmai
 		IsPendingDeletion: !existsInAuth,
 	}, nil
 }
-
 
 func (s *Server) GetUser(ctx context.Context, req *identityv1.GetUserRequest) (*identityv1.User, error) {
 	id, err := uuid.Parse(req.UserId)

@@ -32,16 +32,23 @@ func (s *Server) SendInvitationEmail(ctx context.Context, req *notificationv1.Se
 		return nil, status.Error(codes.InvalidArgument, "organization_name required")
 	}
 
-	tpl, err := i18n.Load(req.GetLocale(), "invitation")
+	// Template by invited role (docs/38): org managers get the
+	// org_manager_invite onboarding copy; therapists keep the classic
+	// invitation. Empty role = old callers = therapist.
+	templateKey := "invitation"
+	if req.GetInvitedRole() == "ORG_ADMIN" {
+		templateKey = "org_manager_invite"
+	}
+	tpl, err := i18n.Load(req.GetLocale(), templateKey)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "load template: %v", err)
 	}
 	subject, body := tpl.Render(map[string]string{
-		"recipient_email":     req.GetRecipientEmail(),
-		"organization_name":   req.GetOrganizationName(),
-		"inviter_first_name":  inviterOrDefault(req.GetInviterFirstName()),
-		"accept_url":          req.GetAcceptUrl(),
-		"expires_at":          req.GetExpiresAtIso(),
+		"recipient_email":    req.GetRecipientEmail(),
+		"organization_name":  req.GetOrganizationName(),
+		"inviter_first_name": inviterOrDefault(req.GetInviterFirstName()),
+		"accept_url":         req.GetAcceptUrl(),
+		"expires_at":         req.GetExpiresAtIso(),
 	})
 
 	if err := s.emailer.Send(ctx, email.Message{

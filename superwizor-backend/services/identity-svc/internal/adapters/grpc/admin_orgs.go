@@ -147,11 +147,12 @@ func (s *Server) AdminCreateOrganization(ctx context.Context, req *identityv1.Ad
 			url.QueryEscape(m.token),
 		)
 		_ = s.emailer.SendInvitation(ctx, InvitationEmailParams{
-			Recipient: m.inv.Email,
-			OrgName:   org.LegalName,
-			AcceptURL: acceptURL,
-			ExpiresAt: expiresAt.Format(time.RFC3339),
-			Locale:    "pl",
+			Recipient:   m.inv.Email,
+			OrgName:     org.LegalName,
+			AcceptURL:   acceptURL,
+			ExpiresAt:   expiresAt.Format(time.RFC3339),
+			Locale:      "pl",
+			InvitedRole: "ORG_ADMIN",
 		})
 		resp.ManagerInvitations = append(resp.ManagerInvitations, toProtoInvitation(m.inv))
 	}

@@ -290,5 +290,3 @@ func (a *ConnectAdapter) CheckEmailExists(ctx context.Context, req *connect.Requ
 	}
 	return connect.NewResponse(resp), nil
 }
-
-
