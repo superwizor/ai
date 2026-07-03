@@ -328,6 +328,7 @@ const (
 	PlanTierCLINIC  PlanTier = "CLINIC"
 	PlanTierPATIENT PlanTier = "PATIENT"
 	PlanTierTRIAL   PlanTier = "TRIAL"
+	PlanTierBETA    PlanTier = "BETA"
 )
 
 func (e *PlanTier) Scan(src interface{}) error {
@@ -744,11 +745,14 @@ type AudioUpload struct {
 	UploadCompletedAt pgtype.Timestamptz `json:"upload_completed_at"`
 	ExpiresAt         time.Time          `json:"expires_at"`
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out.
-	IdempotencyKey   *string   `json:"idempotency_key"`
-	ClientAppVersion *string   `json:"client_app_version"`
-	ClientPlatform   *string   `json:"client_platform"`
-	ErrorMessage     *string   `json:"error_message"`
-	CreatedAt        time.Time `json:"created_at"`
+	IdempotencyKey            *string            `json:"idempotency_key"`
+	ClientAppVersion          *string            `json:"client_app_version"`
+	ClientPlatform            *string            `json:"client_platform"`
+	ErrorMessage              *string            `json:"error_message"`
+	CreatedAt                 time.Time          `json:"created_at"`
+	ResumableSessionUri       *string            `json:"resumable_session_uri"`
+	ResumableSessionExpiresAt pgtype.Timestamptz `json:"resumable_session_expires_at"`
+	ProcessedGeneration       *int64             `json:"processed_generation"`
 }
 
 type AuditEvent struct {
@@ -775,6 +779,57 @@ type ConsentRecord struct {
 	IpAddress      *string   `json:"ip_address"`
 	UserAgent      *string   `json:"user_agent"`
 	RecordedAt     time.Time `json:"recorded_at"`
+}
+
+type CrmEmailLog struct {
+	ID             uuid.UUID `json:"id"`
+	AdminUserID    string    `json:"admin_user_id"`
+	TargetUserID   uuid.UUID `json:"target_user_id"`
+	TemplateID     string    `json:"template_id"`
+	Subject        string    `json:"subject"`
+	RecipientEmail string    `json:"recipient_email"`
+	SentAt         time.Time `json:"sent_at"`
+}
+
+type CrmExcludedUser struct {
+	UserID     uuid.UUID `json:"user_id"`
+	ExcludedAt time.Time `json:"excluded_at"`
+	Reason     *string   `json:"reason"`
+}
+
+type CrmFollowUp struct {
+	ID           uuid.UUID          `json:"id"`
+	AdminUserID  string             `json:"admin_user_id"`
+	TargetUserID uuid.UUID          `json:"target_user_id"`
+	DueDate      pgtype.Date        `json:"due_date"`
+	Note         *string            `json:"note"`
+	Completed    bool               `json:"completed"`
+	CompletedAt  pgtype.Timestamptz `json:"completed_at"`
+	CreatedAt    time.Time          `json:"created_at"`
+}
+
+type CrmNote struct {
+	ID           uuid.UUID `json:"id"`
+	AdminUserID  string    `json:"admin_user_id"`
+	TargetUserID uuid.UUID `json:"target_user_id"`
+	Body         string    `json:"body"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type CrmTag struct {
+	ID           uuid.UUID `json:"id"`
+	TargetUserID uuid.UUID `json:"target_user_id"`
+	Tag          string    `json:"tag"`
+	CreatedAt    time.Time `json:"created_at"`
+	Color        string    `json:"color"`
+}
+
+type EmailDripLog struct {
+	ID             uuid.UUID `json:"id"`
+	UserID         string    `json:"user_id"`
+	TemplateName   string    `json:"template_name"`
+	SubscriptionID uuid.UUID `json:"subscription_id"`
+	SentAt         time.Time `json:"sent_at"`
 }
 
 type EmailTemplate struct {
@@ -821,15 +876,33 @@ type HitopMeasurement struct {
 }
 
 type Invitation struct {
-	ID             uuid.UUID          `json:"id"`
-	OrganizationID uuid.UUID          `json:"organization_id"`
-	InvitedByUser  uuid.UUID          `json:"invited_by_user"`
-	Email          string             `json:"email"`
-	TokenHash      []byte             `json:"token_hash"`
-	ExpiresAt      time.Time          `json:"expires_at"`
-	AcceptedAt     pgtype.Timestamptz `json:"accepted_at"`
-	AcceptedUserID pgtype.UUID        `json:"accepted_user_id"`
-	CreatedAt      time.Time          `json:"created_at"`
+	ID               uuid.UUID          `json:"id"`
+	OrganizationID   uuid.UUID          `json:"organization_id"`
+	InvitedByUser    uuid.UUID          `json:"invited_by_user"`
+	Email            string             `json:"email"`
+	TokenHash        []byte             `json:"token_hash"`
+	ExpiresAt        time.Time          `json:"expires_at"`
+	AcceptedAt       pgtype.Timestamptz `json:"accepted_at"`
+	AcceptedUserID   pgtype.UUID        `json:"accepted_user_id"`
+	CreatedAt        time.Time          `json:"created_at"`
+	InvitedRole      UserRole           `json:"invited_role"`
+	AllocationID     pgtype.UUID        `json:"allocation_id"`
+	InvitedFirstName *string            `json:"invited_first_name"`
+	InvitedLastName  *string            `json:"invited_last_name"`
+}
+
+type Invoice struct {
+	ID               uuid.UUID      `json:"id"`
+	OrganizationID   uuid.UUID      `json:"organization_id"`
+	SubscriptionID   pgtype.UUID    `json:"subscription_id"`
+	StripeInvoiceID  string         `json:"stripe_invoice_id"`
+	AmountPaid       pgtype.Numeric `json:"amount_paid"`
+	Currency         string         `json:"currency"`
+	InvoicePdf       string         `json:"invoice_pdf"`
+	HostedInvoiceUrl string         `json:"hosted_invoice_url"`
+	PeriodStart      time.Time      `json:"period_start"`
+	PeriodEnd        time.Time      `json:"period_end"`
+	CreatedAt        time.Time      `json:"created_at"`
 }
 
 type Modality struct {
@@ -846,6 +919,16 @@ type Modality struct {
 	ModalityType              ModalityType `json:"modality_type"`
 }
 
+type ModalityPromptVersion struct {
+	ID         uuid.UUID `json:"id"`
+	ModalityID uuid.UUID `json:"modality_id"`
+	Version    int32     `json:"version"`
+	Prompt     []byte    `json:"prompt"`
+	ChangeNote string    `json:"change_note"`
+	CreatedBy  uuid.UUID `json:"created_by"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 type NotificationDelivery struct {
 	ID               uuid.UUID          `json:"id"`
 	UserID           uuid.UUID          `json:"user_id"`
@@ -859,6 +942,18 @@ type NotificationDelivery struct {
 	ErrorMessage     *string            `json:"error_message"`
 	CreatedAt        time.Time          `json:"created_at"`
 	SentAt           pgtype.Timestamptz `json:"sent_at"`
+}
+
+// Per-organization seat purchase: how many therapist seats in which plan, at what negotiated price. Occupancy = active seat_assignments + pending invitations for the allocation (docs/38 §3).
+type OrgSeatAllocation struct {
+	ID                uuid.UUID      `json:"id"`
+	OrganizationID    uuid.UUID      `json:"organization_id"`
+	PlanID            uuid.UUID      `json:"plan_id"`
+	Seats             int32          `json:"seats"`
+	PriceGrossPerSeat pgtype.Numeric `json:"price_gross_per_seat"`
+	CurrencyCode      string         `json:"currency_code"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
 }
 
 type Organization struct {
@@ -893,6 +988,9 @@ type PatientFile struct {
 	// Client-supplied retry key. Same (therapist_id, idempotency_key) returns the first row created with that key — payload differences are ignored (lenient mode). NULL = opt-out (legacy clients).
 	IdempotencyKey *string `json:"idempotency_key"`
 	PatientEmail   *string `json:"patient_email"`
+	// Therapist-managed patient file lifecycle: ACTIVE | COMPLETED | PAUSED. COMPLETED replaces is_process_closed=true. Default ACTIVE.
+	LifecycleStatus string `json:"lifecycle_status"`
+	AvatarConfig    []byte `json:"avatar_config"`
 }
 
 type PatientNote struct {
@@ -939,6 +1037,17 @@ type PendingReservation struct {
 	CreatedAt      time.Time          `json:"created_at"`
 	ExpiresAt      time.Time          `json:"expires_at"`
 	FinalizedAt    pgtype.Timestamptz `json:"finalized_at"`
+	// Therapist whose counter was debited at ReserveCredit (NULL = the org-level counter). Release/expiry/commit must credit the same scope. Also the per-therapist usage attribution source for org analytics.
+	TherapistID pgtype.UUID `json:"therapist_id"`
+}
+
+type PlatformFixedCost struct {
+	ID            uuid.UUID          `json:"id"`
+	Name          string             `json:"name"`
+	Provider      string             `json:"provider"`
+	AmountUsd     pgtype.Numeric     `json:"amount_usd"`
+	BillingPeriod string             `json:"billing_period"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 // Suggestion engine telemetry. Pure analytics; safe to TRUNCATE. See docs/10_REPORT_CUSTOMIZATION.md §6.
@@ -1004,6 +1113,14 @@ type ReportRating struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+type SeatAssignment struct {
+	ID           uuid.UUID          `json:"id"`
+	UserID       uuid.UUID          `json:"user_id"`
+	AllocationID uuid.UUID          `json:"allocation_id"`
+	AssignedAt   time.Time          `json:"assigned_at"`
+	UnassignedAt pgtype.Timestamptz `json:"unassigned_at"`
+}
+
 type Session struct {
 	ID                    uuid.UUID          `json:"id"`
 	TherapistID           uuid.UUID          `json:"therapist_id"`
@@ -1025,6 +1142,7 @@ type Session struct {
 	DeletedAt             pgtype.Timestamptz `json:"deleted_at"`
 	ReportLanguage        string             `json:"report_language"`
 	Name                  *string            `json:"name"`
+	ReportViewedAt        pgtype.Timestamptz `json:"report_viewed_at"`
 }
 
 type SttOperation struct {
@@ -1040,6 +1158,8 @@ type SttOperation struct {
 	SubmittedAt           time.Time          `json:"submitted_at"`
 	FinalizedAt           pgtype.Timestamptz `json:"finalized_at"`
 	FinalizeError         *string            `json:"finalize_error"`
+	RetryCount            int32              `json:"retry_count"`
+	SourceAudioUri        string             `json:"source_audio_uri"`
 }
 
 type Subscription struct {
@@ -1129,6 +1249,8 @@ type UsageCounter struct {
 	TokensReserved int32     `json:"tokens_reserved"`
 	TokensLimit    int32     `json:"tokens_limit"`
 	UpdatedAt      time.Time `json:"updated_at"`
+	// NULL = org-level counter (legacy / solo). Non-NULL = per-seat counter for this therapist; tokens_limit comes from the seat's plan (docs/38 §3, per-therapist enforcement).
+	TherapistID pgtype.UUID `json:"therapist_id"`
 }
 
 type UsageEvent struct {
@@ -1166,6 +1288,9 @@ type User struct {
 	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
 	// Per-therapist style preferences for llm-worker call 2 report generation. Empty object {} = all defaults (current behavior). Shape documented in docs/10_REPORT_CUSTOMIZATION.md §7.
 	ReportPreferences []byte `json:"report_preferences"`
+	// FALSE = reversibly deactivated by ORG_ADMIN (SetTherapistStatus). Blocked at ValidateToken with ACCOUNT_DEACTIVATED; data untouched. Independent of deleted_at (soft-delete = RODO path).
+	IsActive      bool               `json:"is_active"`
+	DeactivatedAt pgtype.Timestamptz `json:"deactivated_at"`
 }
 
 type VAnalyticsActivation struct {

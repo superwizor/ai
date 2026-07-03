@@ -53,6 +53,7 @@ func TestRecordConsent_Self(t *testing.T) {
 			Role:        "THERAPIST",
 			FirebaseUid: &fbUID,
 			Email:       &email,
+			IsActive:    true,
 		},
 	}
 
@@ -106,6 +107,7 @@ func TestRecordConsent_TherapistOnBehalfOfPatient(t *testing.T) {
 			Role:        "THERAPIST",
 			FirebaseUid: &fbUID,
 			Email:       &email,
+			IsActive:    true,
 		},
 	}
 
@@ -162,6 +164,7 @@ func TestRecordConsent_PermissionDenied(t *testing.T) {
 			Role:        "THERAPIST",
 			FirebaseUid: &fbUID,
 			Email:       &email,
+			IsActive:    true,
 		},
 	}
 

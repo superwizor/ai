@@ -54,6 +54,15 @@ service IdentityService {
   rpc ListTherapistsInMyOrg(google.protobuf.Empty) returns (ListTherapistsResponse);
   rpc RemoveTherapist(RemoveTherapistRequest) returns (google.protobuf.Empty);
 
+  // Reversible activation toggle (docs/38 §4). Deactivation frees the
+  // therapist's seat and blocks their sign-in (ValidateToken returns
+  // PermissionDenied "ACCOUNT_DEACTIVATED"); clinical data stays
+  // untouched. Reactivation re-occupies a seat in the therapist's
+  // original allocation — FailedPrecondition "SEATS_EXHAUSTED" when
+  // the allocation is full. Distinct from RemoveTherapist
+  // (soft-delete), which remains the RODO path.
+  rpc SetTherapistStatus(SetTherapistStatusRequest) returns (User);
+
   // Invitee scope — public endpoint, validates the magic-link token.
   // Called from the /accept-invite page after Firebase
   // createUserWithEmailAndPassword succeeds. Creates the THERAPIST
@@ -63,6 +72,13 @@ service IdentityService {
   // SUPERWIZOR_ADMIN scope ─ internal team. Every mutation writes
   // audit_events with actor_type=SUPERWIZOR_ADMIN + required reason
   // (>=10 chars enforced at handler level).
+  // Admin-side org provisioning (docs/38 §4): creates the organization
+  // + headquarters address + ORG_ADMIN magic-link invitations for the
+  // listed manager e-mails in one PG tx. Unlike the self-serve
+  // RegisterOrganization there is no founder user yet — managers join
+  // via AcceptInvitation. Seat allocations + subscription start are set
+  // separately via billing.AdminSetSeatAllocations.
+  rpc AdminCreateOrganization(AdminCreateOrganizationRequest) returns (AdminCreateOrganizationResponse);
   rpc AdminListOrganizations(AdminListOrganizationsRequest) returns (AdminListOrganizationsResponse);
   rpc AdminGetOrganization(AdminGetOrganizationRequest) returns (OrganizationDetails);
   rpc AdminSetOrganizationStatus(AdminSetOrganizationStatusRequest) returns (google.protobuf.Empty);
@@ -159,6 +175,9 @@ message User {
   string default_modality_id = 18;
   string billing_address_id = 19;
   bool has_marketing_consent = 20;
+  // FALSE = reversibly deactivated by ORG_ADMIN (SetTherapistStatus).
+  // Sign-in blocked; data untouched. Independent of soft-delete.
+  bool is_active = 21;
 }
 
 message UserContext {
@@ -375,6 +394,17 @@ message Invitation {
   google.protobuf.Timestamp expires_at = 5;
   google.protobuf.Timestamp accepted_at = 6;  // empty if pending
   google.protobuf.Timestamp created_at = 7;
+  // Role the acceptor will be created with (docs/38): THERAPIST for
+  // team invites, ORG_ADMIN for manager invites minted by
+  // AdminCreateOrganization. Never SUPERWIZOR_ADMIN.
+  UserRole invited_role = 8;
+  // Seat allocation the invite is pinned to (THERAPIST only). A
+  // pending invitation reserves one seat until accepted or expired.
+  string allocation_id = 9;
+  // Name the inviter typed — shown in the pending-invitations list
+  // and prefilled on the accept page (acceptor's input wins).
+  string first_name = 10;
+  string last_name = 11;
 }
 
 message InviteTherapistRequest {
@@ -385,6 +415,17 @@ message InviteTherapistRequest {
   string last_name = 3;
   string default_modality_id = 4;
   string idempotency_key = 5;
+  // Seat allocation (org × plan) this therapist occupies (docs/38).
+  // Optional for orgs without allocations (legacy/self-serve). When
+  // set, free-seat validation applies: FAILED_PRECONDITION
+  // "SEATS_EXHAUSTED" when active seats + pending invites >= seats.
+  string allocation_id = 6;
+}
+
+message SetTherapistStatusRequest {
+  string user_id = 1;    // must be a THERAPIST in the caller's org
+  bool is_active = 2;
+  string reason = 3;     // optional; audit only
 }
 
 message AcceptInvitationRequest {
@@ -430,6 +471,26 @@ message RemoveTherapistRequest {
 // ──────────────────────────────────────────────────────────────────
 // SUPERWIZOR_ADMIN messages
 // ──────────────────────────────────────────────────────────────────
+
+message AdminCreateOrganizationRequest {
+  string legal_name = 1;
+  string tax_id = 2;                    // optional
+  string vat_id_eu = 3;                 // optional
+  Address headquarters = 4;
+  OrganizationType type = 5;            // CLINIC | ENTERPRISE
+  // Org manager e-mails — each gets an ORG_ADMIN magic-link
+  // invitation (7-day expiry). At least one required.
+  repeated string manager_emails = 6;
+  string reason = 15;                   // required, >=10 chars; audit
+  string idempotency_key = 16;
+}
+
+message AdminCreateOrganizationResponse {
+  Organization organization = 1;
+  // The ORG_ADMIN invitations created (one per manager e-mail),
+  // so the admin UI can show pending state immediately.
+  repeated Invitation manager_invitations = 2;
+}
 
 message AdminListOrganizationsRequest {
   // Pagination — for now we just slice on (created_at, id) ordering.

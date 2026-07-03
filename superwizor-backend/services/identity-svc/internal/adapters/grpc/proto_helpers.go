@@ -105,9 +105,15 @@ func toProtoInvitation(inv db.Invitation) *identityv1.Invitation {
 		Email:          inv.Email,
 		ExpiresAt:      timestamppb.New(inv.ExpiresAt),
 		CreatedAt:      timestamppb.New(inv.CreatedAt),
+		InvitedRole:    toProtoRole(inv.InvitedRole),
+		FirstName:      derefString(inv.InvitedFirstName),
+		LastName:       derefString(inv.InvitedLastName),
 	}
 	if inv.AcceptedAt.Valid {
 		out.AcceptedAt = timestamppb.New(inv.AcceptedAt.Time)
+	}
+	if inv.AllocationID.Valid {
+		out.AllocationId = uuid.UUID(inv.AllocationID.Bytes).String()
 	}
 	return out
 }

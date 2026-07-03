@@ -48,6 +48,19 @@ func (s *Server) InviteTherapist(ctx context.Context, req *identityv1.InviteTher
 		return nil, status.Error(codes.InvalidArgument, "email required")
 	}
 
+	// Optional seat pinning (docs/38 §3): when the org uses seat
+	// allocations the invite names one, and the pending invitation
+	// reserves a seat there. Orgs without allocations (self-serve,
+	// legacy) keep the allocation-less flow.
+	var allocationID pgtype.UUID
+	if req.AllocationId != "" {
+		aid, err := uuid.Parse(req.AllocationId)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid allocation_id")
+		}
+		allocationID = pgtype.UUID{Bytes: aid, Valid: true}
+	}
+
 	// Generate the cleartext token + SHA-256 hash. Per docs/18 R5,
 	// NOT Argon2 — high-entropy random tokens don't need slow KDFs
 	// and Argon2 on the AcceptInvitation hot path would be a CPU
@@ -58,37 +71,80 @@ func (s *Server) InviteTherapist(ctx context.Context, req *identityv1.InviteTher
 	}
 	expiresAt := time.Now().Add(invitationTTL)
 
-	// Try CREATE first; on (org_id, email) unique violation, fall
-	// back to refreshing the existing pending row.
-	inv, err := s.queries.CreateInvitation(ctx, db.CreateInvitationParams{
-		OrganizationID:  *caller.organizationID,
-		InvitedByUser:   caller.userID,
-		Email:           email,
-		TokenHash:       tokenHash,
-		ExpiresAt:       expiresAt,
-	})
-	if err != nil {
-		// Refresh path: same email re-invited. Look up the existing
-		// row and update its token+expiry inline.
-		existing, lookupErr := s.queries.GetInvitationByOrgEmail(ctx, db.GetInvitationByOrgEmailParams{
-			OrganizationID: *caller.organizationID,
-			Email:          email,
-		})
-		if lookupErr != nil {
+	createParams := db.CreateInvitationParams{
+		OrganizationID: *caller.organizationID,
+		InvitedByUser:  caller.userID,
+		Email:          email,
+		TokenHash:      tokenHash,
+		ExpiresAt:      expiresAt,
+		InvitedRole:    "THERAPIST",
+		AllocationID:   allocationID,
+	}
+	if fn := strings.TrimSpace(req.FirstName); fn != "" {
+		createParams.InvitedFirstName = &fn
+	}
+	if ln := strings.TrimSpace(req.LastName); ln != "" {
+		createParams.InvitedLastName = &ln
+	}
+
+	var inv db.Invitation
+	if allocationID.Valid {
+		// Seat-pinned invite: the free-seat check and the INSERT must be
+		// one atomic unit, or two concurrent invites could both grab the
+		// last seat. FOR UPDATE on the allocation row serializes them.
+		tx, err := s.pool.Begin(ctx)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "tx begin: %v", err)
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		qtx := db.New(tx)
+
+		alloc, err := qtx.GetSeatAllocationForUpdate(ctx, uuid.UUID(allocationID.Bytes))
+		if err != nil {
+			return nil, status.Error(codes.NotFound, "seat allocation not found")
+		}
+		if alloc.OrganizationID != *caller.organizationID {
+			return nil, status.Error(codes.NotFound, "seat allocation not found")
+		}
+		if err := checkSeatAvailable(ctx, qtx, alloc); err != nil {
+			return nil, err
+		}
+		inv, err = qtx.CreateInvitation(ctx, createParams)
+		if err != nil {
 			return nil, status.Errorf(codes.Internal, "create invitation: %v", err)
 		}
-		// Direct UPDATE (no sqlc method for this niche path).
-		if _, err := s.pool.Exec(ctx,
-			`UPDATE invitations
-			    SET token_hash = $2, expires_at = $3, invited_by_user = $4, created_at = now()
-			  WHERE id = $1`,
-			existing.ID, tokenHash, expiresAt, caller.userID,
-		); err != nil {
-			return nil, status.Errorf(codes.Internal, "refresh invitation: %v", err)
+		if err := tx.Commit(ctx); err != nil {
+			return nil, status.Errorf(codes.Internal, "commit: %v", err)
 		}
-		inv = existing
-		inv.TokenHash = tokenHash
-		inv.ExpiresAt = expiresAt
+	} else {
+		// Try CREATE first; on (org_id, email) unique violation, fall
+		// back to refreshing the existing pending row.
+		inv, err = s.queries.CreateInvitation(ctx, createParams)
+		if err != nil {
+			// Refresh path: same email re-invited. Look up the existing
+			// row and update its token+expiry inline. The original
+			// allocation (if any) is kept — a refresh must not change
+			// the seat math.
+			existing, lookupErr := s.queries.GetInvitationByOrgEmail(ctx, db.GetInvitationByOrgEmailParams{
+				OrganizationID: *caller.organizationID,
+				Email:          email,
+			})
+			if lookupErr != nil {
+				return nil, status.Errorf(codes.Internal, "create invitation: %v", err)
+			}
+			// Direct UPDATE (no sqlc method for this niche path).
+			if _, err := s.pool.Exec(ctx,
+				`UPDATE invitations
+				    SET token_hash = $2, expires_at = $3, invited_by_user = $4, created_at = now()
+				  WHERE id = $1`,
+				existing.ID, tokenHash, expiresAt, caller.userID,
+			); err != nil {
+				return nil, status.Errorf(codes.Internal, "refresh invitation: %v", err)
+			}
+			inv = existing
+			inv.TokenHash = tokenHash
+			inv.ExpiresAt = expiresAt
+		}
 	}
 
 	// Look up the inviter's org name + first_name for the email template.
@@ -184,9 +240,19 @@ func (s *Server) AcceptInvitation(ctx context.Context, req *identityv1.AcceptInv
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := db.New(tx)
 
+	// Role comes from the invitation (docs/38): THERAPIST for team
+	// invites, ORG_ADMIN for manager invites minted by
+	// AdminCreateOrganization. The DB CHECK constraint guarantees no
+	// other value can be stored; still, never trust it for
+	// SUPERWIZOR_ADMIN (defence in depth).
+	role := inv.InvitedRole
+	if role != "THERAPIST" && role != db.UserRoleORGADMIN {
+		return nil, status.Errorf(codes.Internal, "invitation carries non-invitable role %q", role)
+	}
+
 	emailLC := strings.ToLower(strings.TrimSpace(inv.Email))
 	user, err := qtx.CreateUser(ctx, db.CreateUserParams{
-		Role:           "THERAPIST", // single-role MVP
+		Role:           role,
 		FirebaseUid:    &verifiedUID,
 		Email:          &emailLC,
 		FirstName:      req.FirstName,
@@ -205,6 +271,18 @@ func (s *Server) AcceptInvitation(ctx context.Context, req *identityv1.AcceptInv
 		return nil, status.Errorf(codes.Internal, "link user→org: %v", err)
 	}
 	user.OrganizationID = pgtype.UUID{Bytes: inv.OrganizationID, Valid: true}
+
+	// Seat-pinned therapist invite → occupy the reserved seat (docs/38
+	// §3: the pending invitation held the reservation; the assignment
+	// makes it permanent). Same tx — a failure rolls back the user too.
+	if role == "THERAPIST" && inv.AllocationID.Valid {
+		if _, err := qtx.CreateSeatAssignment(ctx, db.CreateSeatAssignmentParams{
+			UserID:       user.ID,
+			AllocationID: uuid.UUID(inv.AllocationID.Bytes),
+		}); err != nil {
+			return nil, status.Errorf(codes.Internal, "create seat assignment: %v", err)
+		}
+	}
 
 	// Marketing consent + optional default modality.
 	if req.HasMarketingConsent || req.DefaultModalityId != "" {

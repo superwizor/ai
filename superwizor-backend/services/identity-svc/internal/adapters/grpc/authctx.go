@@ -72,6 +72,14 @@ func (s *Server) resolveCaller(ctx context.Context) (callerContext, error) {
 		return callerContext{}, status.Errorf(codes.Internal, "load caller: %v", err)
 	}
 
+	// Deactivation gate (docs/38 §4) — mirrors ValidateToken so a
+	// deactivated account can't reach identity-svc's own gated RPCs
+	// either. Same "ACCOUNT_DEACTIVATED" contract as ValidateToken.
+	if !user.IsActive {
+		return callerContext{}, status.Error(codes.PermissionDenied,
+			"ACCOUNT_DEACTIVATED: konto nieaktywne — skontaktuj się z administratorem organizacji")
+	}
+
 	c := callerContext{
 		userID:      user.ID,
 		firebaseUID: derefString(user.FirebaseUid),

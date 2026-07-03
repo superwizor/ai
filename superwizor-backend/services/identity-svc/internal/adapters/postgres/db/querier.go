@@ -24,6 +24,16 @@ type Querier interface {
 	// Every column is selective via COALESCE. The handler enforces the role
 	// gate + writes audit_events before calling this.
 	AdminUpdateUser(ctx context.Context, arg AdminUpdateUserParams) (User, error)
+	// Deactivation frees the seat. Idempotent — no open row is a no-op.
+	CloseActiveSeatAssignmentForUser(ctx context.Context, userID uuid.UUID) error
+	// The occupied half of the occupancy formula. FOR the seat-limit
+	// check callers should run this inside a tx AFTER
+	// pg_advisory_xact_lock on the allocation id to avoid double-booking
+	// the last seat under concurrency.
+	CountActiveSeatAssignments(ctx context.Context, allocationID uuid.UUID) (int64, error)
+	// Seat-reservation half of the occupancy formula (docs/38 §3):
+	// occupancy = active seat_assignments + pending unexpired invitations.
+	CountPendingInvitationsForAllocation(ctx context.Context, allocationID pgtype.UUID) (int64, error)
 	CountTherapistsInOrg(ctx context.Context, organizationID pgtype.UUID) (int32, error)
 	CreateAddress(ctx context.Context, arg CreateAddressParams) (Address, error)
 	// Used by every SUPERWIZOR_ADMIN mutation. reason is REQUIRED here at the
@@ -34,17 +44,39 @@ type Querier interface {
 	// collides for a second invite to the same email — handler reads the
 	// unique-violation, decides whether to refresh the token (current
 	// design: just return the existing row; client retries the same link).
+	//
+	// invited_role: THERAPIST (team invite) or ORG_ADMIN (manager invite
+	// from AdminCreateOrganization). allocation_id pins a THERAPIST invite
+	// to a seat allocation; the pending invite reserves that seat.
 	CreateInvitation(ctx context.Context, arg CreateInvitationParams) (Invitation, error)
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
+	CreateSeatAssignment(ctx context.Context, arg CreateSeatAssignmentParams) (SeatAssignment, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	GetAddressByID(ctx context.Context, id uuid.UUID) (Address, error)
 	GetConsentHistory(ctx context.Context, userID uuid.UUID) ([]ConsentRecord, error)
 	GetInvitationByOrgEmail(ctx context.Context, arg GetInvitationByOrgEmailParams) (Invitation, error)
 	GetLatestConsent(ctx context.Context, arg GetLatestConsentParams) (ConsentRecord, error)
+	// Reactivation re-occupies a seat in the therapist's most recent
+	// allocation (open or closed row — the newest wins).
+	GetLatestSeatAssignmentForUser(ctx context.Context, userID uuid.UUID) (SeatAssignment, error)
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
 	// Returns the raw JSONB. Empty object {} when the user has never
 	// customized; Go layer turns that into the default ReportPreferences.
 	GetReportPreferences(ctx context.Context, id uuid.UUID) ([]byte, error)
+	// Seat allocations + assignments (docs/38 §3).
+	//
+	// org_seat_allocations rows are written by billing-svc
+	// (AdminSetSeatAllocations); identity-svc only READS them for the
+	// seat-limit checks in InviteTherapist / SetTherapistStatus, and
+	// writes seat_assignments (the occupancy ledger) when a therapist
+	// joins, is deactivated, or is reactivated. Same-PG-instance
+	// precedent: RegisterOrganization already seeds subscriptions.
+	GetSeatAllocationByID(ctx context.Context, id uuid.UUID) (OrgSeatAllocation, error)
+	// Row-locked read for the seat-limit check: locking the allocation row
+	// serializes concurrent InviteTherapist / SetTherapistStatus(reactivate)
+	// calls on the same allocation so the last free seat can't be
+	// double-booked. Callers MUST run this inside a tx.
+	GetSeatAllocationForUpdate(ctx context.Context, id uuid.UUID) (OrgSeatAllocation, error)
 	// The hot path on AcceptInvitation. Uses idx_invitations_token_hash
 	// partial index (WHERE accepted_at IS NULL).
 	GetUnacceptedInvitationByTokenHash(ctx context.Context, tokenHash []byte) (Invitation, error)
@@ -70,6 +102,9 @@ type Querier interface {
 	MarkInvitationAccepted(ctx context.Context, arg MarkInvitationAcceptedParams) error
 	RecordConsent(ctx context.Context, arg RecordConsentParams) (ConsentRecord, error)
 	SetOrganizationPrimaryAdmin(ctx context.Context, arg SetOrganizationPrimaryAdminParams) error
+	// Reversible activation toggle. deactivated_at doubles as the audit
+	// timestamp of the LAST deactivation (cleared on reactivate).
+	SetUserActiveStatus(ctx context.Context, arg SetUserActiveStatusParams) (User, error)
 	SoftDeleteUser(ctx context.Context, id uuid.UUID) error
 	// Selective update — pass NULL on any narg to keep the existing value.
 	UpdateAddress(ctx context.Context, arg UpdateAddressParams) (Address, error)

@@ -139,6 +139,16 @@ func (s *Server) ValidateToken(ctx context.Context, req *identityv1.ValidateToke
 		}
 	}
 
+	// Deactivation gate (docs/38 §4): a therapist switched off by their
+	// ORG_ADMIN must not obtain a session anywhere — mobile, web, or a
+	// downstream service validating on their behalf. PermissionDenied
+	// (not Unauthenticated) — the token IS valid, the account isn't.
+	// Clients match on the "ACCOUNT_DEACTIVATED" message prefix.
+	if !user.IsActive {
+		return nil, status.Error(codes.PermissionDenied,
+			"ACCOUNT_DEACTIVATED: konto nieaktywne — skontaktuj się z administratorem organizacji")
+	}
+
 	// Per migration 000013, users.firebase_uid and users.email are
 	// nullable for patient rows (which don't authenticate). Therapist
 	// rows still have both populated — the partial CHECK constraint
@@ -563,6 +573,7 @@ func toProtoUser(u db.User) *identityv1.User {
 		Timezone:        u.Timezone,
 		HasAcceptedTos:  u.HasAcceptedTos,
 		CreatedAt:       timestamppb.New(u.CreatedAt),
+		IsActive:        u.IsActive,
 	}
 	if u.OrganizationID.Valid {
 		resp.OrganizationId = uuid.UUID(u.OrganizationID.Bytes).String()
