@@ -100,15 +100,20 @@ WHERE deleted_at IS NULL
       OR legal_name ILIKE '%' || $1::text || '%'
   )
   AND (
-      $2::timestamptz IS NULL
-      OR (created_at, id) < ($2::timestamptz, $3::uuid)
+      $2::organization_type IS NULL
+      OR type = $2::organization_type
+  )
+  AND (
+      $3::timestamptz IS NULL
+      OR (created_at, id) < ($3::timestamptz, $4::uuid)
   )
 ORDER BY created_at DESC, id DESC
-LIMIT $4
+LIMIT $5
 `
 
 type ListOrganizationsParams struct {
 	SearchTerm     *string            `json:"search_term"`
+	TypeFilter     *OrganizationType  `json:"type_filter"`
 	AfterCreatedAt pgtype.Timestamptz `json:"after_created_at"`
 	AfterID        pgtype.UUID        `json:"after_id"`
 	PageSize       int32              `json:"page_size"`
@@ -119,6 +124,7 @@ type ListOrganizationsParams struct {
 func (q *Queries) ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]Organization, error) {
 	rows, err := q.db.Query(ctx, listOrganizations,
 		arg.SearchTerm,
+		arg.TypeFilter,
 		arg.AfterCreatedAt,
 		arg.AfterID,
 		arg.PageSize,

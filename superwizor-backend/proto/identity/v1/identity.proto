@@ -502,6 +502,10 @@ message AdminListOrganizationsRequest {
   int32 page_size = 1;            // default 50, cap 200
   string page_token = 2;          // opaque
   string search = 3;              // matches legal_name (ILIKE) — optional
+  // Optional type filter (UNSPECIFIED = all). The /admin/orgs table
+  // defaults to CLINIC — B2B clinics are the admin's day-to-day; solo
+  // bootstrap orgs are noise there.
+  OrganizationType type = 4;
 }
 
 message OrganizationSummary {
