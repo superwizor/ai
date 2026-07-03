@@ -9,8 +9,9 @@
 -- to a seat allocation; the pending invite reserves that seat.
 INSERT INTO invitations (
     organization_id, invited_by_user, email, token_hash, expires_at,
-    invited_role, allocation_id, invited_first_name, invited_last_name
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    invited_role, allocation_id, invited_first_name, invited_last_name,
+    patient_file_id
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING *;
 
 -- name: CountPendingInvitationsForAllocation :one

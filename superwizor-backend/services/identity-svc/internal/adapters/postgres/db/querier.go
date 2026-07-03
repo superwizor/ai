@@ -12,6 +12,10 @@ import (
 )
 
 type Querier interface {
+	// Attach-not-create (docs/39 D1): the accept flow fills in the auth
+	// identity on the EXISTING patient row. Names update only when the
+	// acceptor typed them.
+	ActivatePatientUser(ctx context.Context, arg ActivatePatientUserParams) (User, error)
 	// Global cross-org audit log for the /admin/audit page. LEFT JOINs to
 	// users so we can both ILIKE-filter on actor_email AND emit the email
 	// in the result row without a separate roundtrip per entry. All
@@ -60,6 +64,10 @@ type Querier interface {
 	// allocation (open or closed row — the newest wins).
 	GetLatestSeatAssignmentForUser(ctx context.Context, userID uuid.UUID) (SeatAssignment, error)
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
+	// Client (patient) panel invitations — docs/39. Same-DB reads of
+	// patient_files mirror the seats.sql precedent.
+	GetPatientFileForInvite(ctx context.Context, id uuid.UUID) (GetPatientFileForInviteRow, error)
+	GetPendingPatientInvitationByFile(ctx context.Context, patientFileID pgtype.UUID) (Invitation, error)
 	// Returns the raw JSONB. Empty object {} when the user has never
 	// customized; Go layer turns that into the default ReportPreferences.
 	GetReportPreferences(ctx context.Context, id uuid.UUID) ([]byte, error)
@@ -105,6 +113,8 @@ type Querier interface {
 	MarkInvitationAccepted(ctx context.Context, arg MarkInvitationAcceptedParams) error
 	RecordConsent(ctx context.Context, arg RecordConsentParams) (ConsentRecord, error)
 	SetOrganizationPrimaryAdmin(ctx context.Context, arg SetOrganizationPrimaryAdminParams) error
+	SetPatientFileEmail(ctx context.Context, arg SetPatientFileEmailParams) error
+	SetPatientFilePatientID(ctx context.Context, arg SetPatientFilePatientIDParams) error
 	// Reversible activation toggle. deactivated_at doubles as the audit
 	// timestamp of the LAST deactivation (cleared on reactivate).
 	SetUserActiveStatus(ctx context.Context, arg SetUserActiveStatusParams) (User, error)

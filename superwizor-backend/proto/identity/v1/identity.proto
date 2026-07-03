@@ -54,6 +54,16 @@ service IdentityService {
   rpc ListTherapistsInMyOrg(google.protobuf.Empty) returns (ListTherapistsResponse);
   rpc RemoveTherapist(RemoveTherapistRequest) returns (google.protobuf.Empty);
 
+  // ─── Client (patient) panel — docs/39 ──────────────────────
+  //
+  // InviteClient: the kartoteka's "Zaproś klienta". Same magic-link
+  // machinery as manager/therapist invites (7-day token, refresh on
+  // re-invite) with invited_role=PATIENT bound to the kartoteka.
+  // Caller must own the kartoteka (or be a same-org ORG_ADMIN).
+  rpc InviteClient(InviteClientRequest) returns (Invitation);
+  // Invite/activation state for the kartoteka header (docs/39 PR6).
+  rpc GetClientInviteStatus(GetClientInviteStatusRequest) returns (ClientInviteStatus);
+
   // Reversible activation toggle (docs/38 §4). Deactivation frees the
   // therapist's seat and blocks their sign-in (ValidateToken returns
   // PermissionDenied "ACCOUNT_DEACTIVATED"); clinical data stays
@@ -430,6 +440,27 @@ message InviteTherapistRequest {
   // set, free-seat validation applies: FAILED_PRECONDITION
   // "SEATS_EXHAUSTED" when active seats + pending invites >= seats.
   string allocation_id = 6;
+}
+
+message InviteClientRequest {
+  string patient_file_id = 1;
+  // Optional override; when empty the kartoteka's patient_email is
+  // used (FailedPrecondition if neither exists). A provided value is
+  // persisted back onto patient_files.patient_email.
+  string email = 2;
+}
+
+message GetClientInviteStatusRequest {
+  string patient_file_id = 1;
+}
+
+message ClientInviteStatus {
+  // NONE — never invited; PENDING — invitation outstanding;
+  // ACTIVE — client activated (firebase_uid attached, is_active);
+  // INACTIVE — activated but deactivated (users.is_active=false).
+  string status = 1;
+  string email = 2;                          // masked not needed — therapist already knows it
+  google.protobuf.Timestamp expires_at = 3;  // PENDING only
 }
 
 message SetTherapistStatusRequest {

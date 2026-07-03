@@ -240,6 +240,13 @@ func (s *Server) AcceptInvitation(ctx context.Context, req *identityv1.AcceptInv
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := db.New(tx)
 
+	// Client-panel invites (docs/39) take a dedicated path: acceptance
+	// ATTACHES the auth identity to the kartoteka's existing
+	// users(role=PATIENT) row — no user/org/seat creation.
+	if inv.InvitedRole == "PATIENT" {
+		return s.acceptClientInvitation(ctx, inv, req, verifiedUID)
+	}
+
 	// Role comes from the invitation (docs/38): THERAPIST for team
 	// invites, ORG_ADMIN for manager invites minted by
 	// AdminCreateOrganization. The DB CHECK constraint guarantees no

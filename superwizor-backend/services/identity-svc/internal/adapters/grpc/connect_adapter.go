@@ -147,6 +147,22 @@ func (a *ConnectAdapter) RemoveTherapist(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) InviteClient(ctx context.Context, req *connect.Request[identityv1.InviteClientRequest]) (*connect.Response[identityv1.Invitation], error) {
+	resp, err := a.s.InviteClient(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) GetClientInviteStatus(ctx context.Context, req *connect.Request[identityv1.GetClientInviteStatusRequest]) (*connect.Response[identityv1.ClientInviteStatus], error) {
+	resp, err := a.s.GetClientInviteStatus(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) SetTherapistStatus(ctx context.Context, req *connect.Request[identityv1.SetTherapistStatusRequest]) (*connect.Response[identityv1.User], error) {
 	resp, err := a.s.SetTherapistStatus(ctx, req.Msg)
 	if err != nil {
