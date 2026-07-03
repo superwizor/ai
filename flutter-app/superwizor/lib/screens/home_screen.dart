@@ -19,6 +19,7 @@ import '../services/recording_service.dart';
 import '../theme/euphire_theme.dart';
 import '../widgets/euphire_toast.dart';
 import '../providers/current_user_provider.dart';
+import '../utils/account_status.dart';
 import '../providers/patient_provider.dart';
 import '../providers/patient_avatar_provider.dart';
 import '../providers/patient_lifecycle_provider.dart';
@@ -174,17 +175,42 @@ class HomeScreen extends ConsumerWidget {
                                   ),
                                 ),
                               ),
-                              error: (err, stack) => Padding(
-                                padding: const EdgeInsets.all(32),
-                                child: Center(
-                                  child: Text(
-                                    t.home_error_loading(err.toString()),
-                                    style: const TextStyle(
-                                      color: EuphireColors.ember,
+                              error: (err, stack) {
+                                if (isAccountDeactivatedError(err)) {
+                                  // Deactivated mid-session: refresh the
+                                  // cached profile so _AuthGate swaps to
+                                  // DeactivatedAccountScreen; meanwhile
+                                  // show the human message, never the
+                                  // raw gRPC dump.
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) {
+                                    ref.invalidate(currentUserProvider);
+                                  });
+                                  return Padding(
+                                    padding: const EdgeInsets.all(32),
+                                    child: Center(
+                                      child: Text(
+                                        t.deactivated_body,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: EuphireColors.mist,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.all(32),
+                                  child: Center(
+                                    child: Text(
+                                      t.home_error_loading(err.toString()),
+                                      style: const TextStyle(
+                                        color: EuphireColors.ember,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
+                                );
+                              },
                               data: (patients) {
                                 return _PatientListSection(patients: patients);
                               },
