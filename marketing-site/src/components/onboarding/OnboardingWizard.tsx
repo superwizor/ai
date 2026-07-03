@@ -119,6 +119,29 @@ export function OnboardingWizard({ locale }: { locale: string }) {
     };
   }, []);
 
+  // Entry guard (docs/38): a therapist whose nurt is already set —
+  // e.g. chosen on the accept-invite (password) screen — must never be
+  // asked again. Whatever path led here (stale redirect, bookmark),
+  // bounce straight to the dashboard. Errors fall through: the wizard
+  // is a safe place for a user whose profile we can't read.
+  useEffect(() => {
+    let cancelled = false;
+    identityClient
+      .getMyProfile(create(EmptySchema, {}))
+      .then((me) => {
+        if (!cancelled && me.defaultModalityId) {
+          router.replace(locale === "en" ? "/en/dashboard/" : "/pl/dashboard/");
+        }
+      })
+      .catch(() => {
+        // Signed-out / no profile yet — the wizard handles both.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Persist step
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, String(step));
