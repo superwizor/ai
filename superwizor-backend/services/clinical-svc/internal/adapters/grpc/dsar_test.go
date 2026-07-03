@@ -141,16 +141,16 @@ func TestExportPatientData_HappyPath(t *testing.T) {
 		getPatientNotesForExportFn: func(ctx context.Context, patientFileID uuid.UUID) ([]db.PatientNote, error) {
 			return []db.PatientNote{
 				{
-					ID:                 noteID,
-					PatientFileID:      pfID,
-					Kind:               "FREE_NOTE",
-					TitleCiphertext:    noteTitleCt,
-					TitleEncryptedDek:  noteTitleDek,
-					TextCiphertext:     noteTextCt,
-					TextEncryptedDek:   noteTextDek,
-					CreatedAt:          time.Now(),
-					SentToPatientAt:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
-					SentToEmail:        derefStringPtr("jan@example.com"),
+					ID:                noteID,
+					PatientFileID:     pfID,
+					Kind:              "FREE_NOTE",
+					TitleCiphertext:   noteTitleCt,
+					TitleEncryptedDek: noteTitleDek,
+					TextCiphertext:    noteTextCt,
+					TextEncryptedDek:  noteTextDek,
+					CreatedAt:         time.Now(),
+					SentToPatientAt:   pgtype.Timestamptz{Time: time.Now(), Valid: true},
+					SentToEmail:       derefStringPtr("jan@example.com"),
 				},
 			}, nil
 		},
@@ -173,11 +173,11 @@ func TestExportPatientData_HappyPath(t *testing.T) {
 		},
 		getTranscriptBySessionFn: func(ctx context.Context, sessionID uuid.UUID) (db.Transcript, error) {
 			return db.Transcript{
-				ID:                    transcriptID,
-				SessionID:             sessID,
-				TranscriptCiphertext:  transcriptCt,
+				ID:                     transcriptID,
+				SessionID:              sessID,
+				TranscriptCiphertext:   transcriptCt,
 				TranscriptEncryptedDek: transcriptDek,
-				CreatedAt:             time.Now(),
+				CreatedAt:              time.Now(),
 			}, nil
 		},
 		listReportsBySessionFn: func(ctx context.Context, sessionID uuid.UUID) ([]db.Report, error) {

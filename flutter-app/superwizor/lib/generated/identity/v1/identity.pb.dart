@@ -100,6 +100,7 @@ class User extends $pb.GeneratedMessage {
     $core.String? defaultModalityId,
     $core.String? billingAddressId,
     $core.bool? hasMarketingConsent,
+    $core.bool? isActive,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -123,6 +124,7 @@ class User extends $pb.GeneratedMessage {
     if (billingAddressId != null) result.billingAddressId = billingAddressId;
     if (hasMarketingConsent != null)
       result.hasMarketingConsent = hasMarketingConsent;
+    if (isActive != null) result.isActive = isActive;
     return result;
   }
 
@@ -161,6 +163,7 @@ class User extends $pb.GeneratedMessage {
     ..aOS(18, _omitFieldNames ? '' : 'defaultModalityId')
     ..aOS(19, _omitFieldNames ? '' : 'billingAddressId')
     ..aOB(20, _omitFieldNames ? '' : 'hasMarketingConsent')
+    ..aOB(21, _omitFieldNames ? '' : 'isActive')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -362,6 +365,17 @@ class User extends $pb.GeneratedMessage {
   $core.bool hasHasMarketingConsent() => $_has(19);
   @$pb.TagNumber(20)
   void clearHasMarketingConsent() => $_clearField(20);
+
+  /// FALSE = reversibly deactivated by ORG_ADMIN (SetTherapistStatus).
+  /// Sign-in blocked; data untouched. Independent of soft-delete.
+  @$pb.TagNumber(21)
+  $core.bool get isActive => $_getBF(20);
+  @$pb.TagNumber(21)
+  set isActive($core.bool value) => $_setBool(20, value);
+  @$pb.TagNumber(21)
+  $core.bool hasIsActive() => $_has(20);
+  @$pb.TagNumber(21)
+  void clearIsActive() => $_clearField(21);
 }
 
 class UserContext extends $pb.GeneratedMessage {
@@ -2305,6 +2319,10 @@ class Invitation extends $pb.GeneratedMessage {
     $2.Timestamp? expiresAt,
     $2.Timestamp? acceptedAt,
     $2.Timestamp? createdAt,
+    UserRole? invitedRole,
+    $core.String? allocationId,
+    $core.String? firstName,
+    $core.String? lastName,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -2314,6 +2332,10 @@ class Invitation extends $pb.GeneratedMessage {
     if (expiresAt != null) result.expiresAt = expiresAt;
     if (acceptedAt != null) result.acceptedAt = acceptedAt;
     if (createdAt != null) result.createdAt = createdAt;
+    if (invitedRole != null) result.invitedRole = invitedRole;
+    if (allocationId != null) result.allocationId = allocationId;
+    if (firstName != null) result.firstName = firstName;
+    if (lastName != null) result.lastName = lastName;
     return result;
   }
 
@@ -2340,6 +2362,11 @@ class Invitation extends $pb.GeneratedMessage {
         subBuilder: $2.Timestamp.create)
     ..aOM<$2.Timestamp>(7, _omitFieldNames ? '' : 'createdAt',
         subBuilder: $2.Timestamp.create)
+    ..aE<UserRole>(8, _omitFieldNames ? '' : 'invitedRole',
+        enumValues: UserRole.values)
+    ..aOS(9, _omitFieldNames ? '' : 'allocationId')
+    ..aOS(10, _omitFieldNames ? '' : 'firstName')
+    ..aOS(11, _omitFieldNames ? '' : 'lastName')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2428,6 +2455,49 @@ class Invitation extends $pb.GeneratedMessage {
   void clearCreatedAt() => $_clearField(7);
   @$pb.TagNumber(7)
   $2.Timestamp ensureCreatedAt() => $_ensure(6);
+
+  /// Role the acceptor will be created with (docs/38): THERAPIST for
+  /// team invites, ORG_ADMIN for manager invites minted by
+  /// AdminCreateOrganization. Never SUPERWIZOR_ADMIN.
+  @$pb.TagNumber(8)
+  UserRole get invitedRole => $_getN(7);
+  @$pb.TagNumber(8)
+  set invitedRole(UserRole value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasInvitedRole() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearInvitedRole() => $_clearField(8);
+
+  /// Seat allocation the invite is pinned to (THERAPIST only). A
+  /// pending invitation reserves one seat until accepted or expired.
+  @$pb.TagNumber(9)
+  $core.String get allocationId => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set allocationId($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasAllocationId() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearAllocationId() => $_clearField(9);
+
+  /// Name the inviter typed — shown in the pending-invitations list
+  /// and prefilled on the accept page (acceptor's input wins).
+  @$pb.TagNumber(10)
+  $core.String get firstName => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set firstName($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasFirstName() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearFirstName() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get lastName => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set lastName($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasLastName() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearLastName() => $_clearField(11);
 }
 
 class InviteTherapistRequest extends $pb.GeneratedMessage {
@@ -2437,6 +2507,7 @@ class InviteTherapistRequest extends $pb.GeneratedMessage {
     $core.String? lastName,
     $core.String? defaultModalityId,
     $core.String? idempotencyKey,
+    $core.String? allocationId,
   }) {
     final result = create();
     if (email != null) result.email = email;
@@ -2444,6 +2515,7 @@ class InviteTherapistRequest extends $pb.GeneratedMessage {
     if (lastName != null) result.lastName = lastName;
     if (defaultModalityId != null) result.defaultModalityId = defaultModalityId;
     if (idempotencyKey != null) result.idempotencyKey = idempotencyKey;
+    if (allocationId != null) result.allocationId = allocationId;
     return result;
   }
 
@@ -2465,6 +2537,7 @@ class InviteTherapistRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'lastName')
     ..aOS(4, _omitFieldNames ? '' : 'defaultModalityId')
     ..aOS(5, _omitFieldNames ? '' : 'idempotencyKey')
+    ..aOS(6, _omitFieldNames ? '' : 'allocationId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2533,6 +2606,98 @@ class InviteTherapistRequest extends $pb.GeneratedMessage {
   $core.bool hasIdempotencyKey() => $_has(4);
   @$pb.TagNumber(5)
   void clearIdempotencyKey() => $_clearField(5);
+
+  /// Seat allocation (org × plan) this therapist occupies (docs/38).
+  /// Optional for orgs without allocations (legacy/self-serve). When
+  /// set, free-seat validation applies: FAILED_PRECONDITION
+  /// "SEATS_EXHAUSTED" when active seats + pending invites >= seats.
+  @$pb.TagNumber(6)
+  $core.String get allocationId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set allocationId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAllocationId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAllocationId() => $_clearField(6);
+}
+
+class SetTherapistStatusRequest extends $pb.GeneratedMessage {
+  factory SetTherapistStatusRequest({
+    $core.String? userId,
+    $core.bool? isActive,
+    $core.String? reason,
+  }) {
+    final result = create();
+    if (userId != null) result.userId = userId;
+    if (isActive != null) result.isActive = isActive;
+    if (reason != null) result.reason = reason;
+    return result;
+  }
+
+  SetTherapistStatusRequest._();
+
+  factory SetTherapistStatusRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SetTherapistStatusRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetTherapistStatusRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'userId')
+    ..aOB(2, _omitFieldNames ? '' : 'isActive')
+    ..aOS(3, _omitFieldNames ? '' : 'reason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetTherapistStatusRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetTherapistStatusRequest copyWith(
+          void Function(SetTherapistStatusRequest) updates) =>
+      super.copyWith((message) => updates(message as SetTherapistStatusRequest))
+          as SetTherapistStatusRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SetTherapistStatusRequest create() => SetTherapistStatusRequest._();
+  @$core.override
+  SetTherapistStatusRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SetTherapistStatusRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SetTherapistStatusRequest>(create);
+  static SetTherapistStatusRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get userId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set userId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUserId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUserId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.bool get isActive => $_getBF(1);
+  @$pb.TagNumber(2)
+  set isActive($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasIsActive() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearIsActive() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get reason => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set reason($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReason() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReason() => $_clearField(3);
 }
 
 class AcceptInvitationRequest extends $pb.GeneratedMessage {
@@ -2954,6 +3119,218 @@ class RemoveTherapistRequest extends $pb.GeneratedMessage {
   $core.bool hasReason() => $_has(1);
   @$pb.TagNumber(2)
   void clearReason() => $_clearField(2);
+}
+
+class AdminCreateOrganizationRequest extends $pb.GeneratedMessage {
+  factory AdminCreateOrganizationRequest({
+    $core.String? legalName,
+    $core.String? taxId,
+    $core.String? vatIdEu,
+    Address? headquarters,
+    OrganizationType? type,
+    $core.Iterable<$core.String>? managerEmails,
+    $core.String? reason,
+    $core.String? idempotencyKey,
+  }) {
+    final result = create();
+    if (legalName != null) result.legalName = legalName;
+    if (taxId != null) result.taxId = taxId;
+    if (vatIdEu != null) result.vatIdEu = vatIdEu;
+    if (headquarters != null) result.headquarters = headquarters;
+    if (type != null) result.type = type;
+    if (managerEmails != null) result.managerEmails.addAll(managerEmails);
+    if (reason != null) result.reason = reason;
+    if (idempotencyKey != null) result.idempotencyKey = idempotencyKey;
+    return result;
+  }
+
+  AdminCreateOrganizationRequest._();
+
+  factory AdminCreateOrganizationRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminCreateOrganizationRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminCreateOrganizationRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'legalName')
+    ..aOS(2, _omitFieldNames ? '' : 'taxId')
+    ..aOS(3, _omitFieldNames ? '' : 'vatIdEu')
+    ..aOM<Address>(4, _omitFieldNames ? '' : 'headquarters',
+        subBuilder: Address.create)
+    ..aE<OrganizationType>(5, _omitFieldNames ? '' : 'type',
+        enumValues: OrganizationType.values)
+    ..pPS(6, _omitFieldNames ? '' : 'managerEmails')
+    ..aOS(15, _omitFieldNames ? '' : 'reason')
+    ..aOS(16, _omitFieldNames ? '' : 'idempotencyKey')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminCreateOrganizationRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminCreateOrganizationRequest copyWith(
+          void Function(AdminCreateOrganizationRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as AdminCreateOrganizationRequest))
+          as AdminCreateOrganizationRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminCreateOrganizationRequest create() =>
+      AdminCreateOrganizationRequest._();
+  @$core.override
+  AdminCreateOrganizationRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminCreateOrganizationRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminCreateOrganizationRequest>(create);
+  static AdminCreateOrganizationRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get legalName => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set legalName($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLegalName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLegalName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get taxId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set taxId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTaxId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTaxId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get vatIdEu => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set vatIdEu($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasVatIdEu() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearVatIdEu() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  Address get headquarters => $_getN(3);
+  @$pb.TagNumber(4)
+  set headquarters(Address value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasHeadquarters() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearHeadquarters() => $_clearField(4);
+  @$pb.TagNumber(4)
+  Address ensureHeadquarters() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  OrganizationType get type => $_getN(4);
+  @$pb.TagNumber(5)
+  set type(OrganizationType value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasType() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearType() => $_clearField(5);
+
+  /// Org manager e-mails — each gets an ORG_ADMIN magic-link
+  /// invitation (7-day expiry). At least one required.
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get managerEmails => $_getList(5);
+
+  @$pb.TagNumber(15)
+  $core.String get reason => $_getSZ(6);
+  @$pb.TagNumber(15)
+  set reason($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(15)
+  $core.bool hasReason() => $_has(6);
+  @$pb.TagNumber(15)
+  void clearReason() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $core.String get idempotencyKey => $_getSZ(7);
+  @$pb.TagNumber(16)
+  set idempotencyKey($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(16)
+  $core.bool hasIdempotencyKey() => $_has(7);
+  @$pb.TagNumber(16)
+  void clearIdempotencyKey() => $_clearField(16);
+}
+
+class AdminCreateOrganizationResponse extends $pb.GeneratedMessage {
+  factory AdminCreateOrganizationResponse({
+    Organization? organization,
+    $core.Iterable<Invitation>? managerInvitations,
+  }) {
+    final result = create();
+    if (organization != null) result.organization = organization;
+    if (managerInvitations != null)
+      result.managerInvitations.addAll(managerInvitations);
+    return result;
+  }
+
+  AdminCreateOrganizationResponse._();
+
+  factory AdminCreateOrganizationResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminCreateOrganizationResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminCreateOrganizationResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'identity.v1'),
+      createEmptyInstance: create)
+    ..aOM<Organization>(1, _omitFieldNames ? '' : 'organization',
+        subBuilder: Organization.create)
+    ..pPM<Invitation>(2, _omitFieldNames ? '' : 'managerInvitations',
+        subBuilder: Invitation.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminCreateOrganizationResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminCreateOrganizationResponse copyWith(
+          void Function(AdminCreateOrganizationResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as AdminCreateOrganizationResponse))
+          as AdminCreateOrganizationResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminCreateOrganizationResponse create() =>
+      AdminCreateOrganizationResponse._();
+  @$core.override
+  AdminCreateOrganizationResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminCreateOrganizationResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminCreateOrganizationResponse>(
+          create);
+  static AdminCreateOrganizationResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  Organization get organization => $_getN(0);
+  @$pb.TagNumber(1)
+  set organization(Organization value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganization() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganization() => $_clearField(1);
+  @$pb.TagNumber(1)
+  Organization ensureOrganization() => $_ensure(0);
+
+  /// The ORG_ADMIN invitations created (one per manager e-mail),
+  /// so the admin UI can show pending state immediately.
+  @$pb.TagNumber(2)
+  $pb.PbList<Invitation> get managerInvitations => $_getList(1);
 }
 
 class AdminListOrganizationsRequest extends $pb.GeneratedMessage {

@@ -1,0 +1,18 @@
+PR5-PR7 web-app — verification log (2026-07-03)
+
+Build: worktree marketing-site
+- tsc --noEmit → exit 0 (full app incl. new pages; deps mirrored from
+  main-tree pnpm-locked node_modules with regenerated @superwizor/proto-ts)
+- next build (static export) → success; routes emitted:
+  out/pl/org, out/en/org, out/pl/admin/orgs/new (+ en)
+
+Runtime (python http.server on out/, Chrome preview):
+- http://localhost:4173/pl/org/ → OrgGuard signed-out state renders:
+  "Musisz się zalogować, aby uzyskać dostęp do panelu organizacji." + CTA.
+- http://localhost:4173/pl/admin/orgs/new/ → AdminGuard sign-in panel
+  (EMAIL/HASŁO/ZALOGUJ SIĘ) renders; screenshot captured.
+- Console: zero errors on both routes.
+
+Authenticated flows (wizard submit, invite modal, deactivate, analytics
+tab) require staging Firebase credentials — covered by the staging e2e
+run (PR9).

@@ -1,10 +1,10 @@
 {
   "@@locale": "pl",
   "@@last_modified": "2026-05-09T00:00:00Z",
-
   "appTitle": "Superwizor AI",
-  "@appTitle": { "description": "App display name" },
-
+  "@appTitle": {
+    "description": "App display name"
+  },
   "common_understand": "Rozumiem.",
   "@common_understand": {},
   "common_back": "Wróć.",
@@ -20,9 +20,7 @@
   "language_en_name": "English",
   "language_en_sub": "angielski (Wlk. Brytania)",
   "session_name_fallback": "Rozmowa",
-
   "connectivity_offline_banner": "Brak połączenia. Niektóre funkcje są ograniczone.",
-
   "auth_login_title": "Zaloguj się.",
   "auth_email_label": "Adres e-mail",
   "auth_password_label": "Hasło",
@@ -35,7 +33,6 @@
   "auth_password_reset_sent_body": "Wysłaliśmy link do zmiany hasła na Twój e-mail.",
   "auth_shared_machine_warning_title": "Korzystasz ze współdzielonego komputera?",
   "auth_shared_machine_warning_body": "Po zakończeniu pracy wyloguj się, aby Twoje dane sesji nie zostały dostępne dla kolejnego użytkownika tego komputera.",
-
   "auth_error_invalid_credential": "Niepoprawny adres e-mail lub hasło.",
   "auth_error_email_already_in_use": "Konto z tym adresem e-mail już istnieje. Zaloguj się.",
   "auth_error_weak_password": "Hasło jest zbyt krótkie. Użyj minimum 6 znaków.",
@@ -44,22 +41,18 @@
   "auth_error_too_many_requests": "Zbyt wiele prób logowania. Poczekaj chwilę i spróbuj ponownie.",
   "auth_error_user_disabled": "To konto zostało wyłączone. Skontaktuj się z pomocą.",
   "auth_error_generic": "Wystąpił błąd logowania. Spróbuj ponownie.",
-
   "auth_sign_in_with_google": "Kontynuuj z Google",
   "auth_sign_in_with_apple": "Zaloguj się z Apple",
   "auth_or_use_email": "Albo użyj adresu e-mail",
   "auth_social_error": "Logowanie przez konto zewnętrzne nie powiodło się. Spróbuj ponownie.",
   "auth_social_cancelled": "Logowanie anulowane.",
-
   "setup_title": "Konfiguracja Twojego profilu.",
   "setup_subtitle": "Powiedz nam jak pracujesz, dostosujemy do tego analizę.",
   "setup_modality_label": "Główny nurt terapii",
   "setup_language_label": "Język sesji",
   "setup_continue": "Kontynuuj.",
-
   "language_popup_title": "Język aplikacji.",
   "language_popup_body": "Obecnie wspieramy w pełni język polski. Przełączyliśmy Twój język docelowy na polski.",
-
   "modality_integrative": "Uniwersalny / Integracyjny",
   "modality_cbt": "Poznawczo-Behawioralny (CBT)",
   "modality_psychodynamic": "Psychodynamiczny",
@@ -69,10 +62,8 @@
   "modality_systemic": "Systemowa (dla par i rodzin)",
   "modality_eft": "Skoncentrowana na Emocjach (EFT)",
   "modality_coaching": "Coaching (ICF/GROW)",
-
   "modality_sheet_title": "Wybierz swój nurt",
   "modality_sheet_subtitle": "To ustawienie wpływa na generowane raporty. Możesz je zmienić w każdej chwili.",
-
   "addPatient_title": "Nowa kartoteka",
   "addPatient_subtitle": "Uzupełnij dane klienta, aby utworzyć kartotekę.",
   "addPatient_first_name_label": "Imię (wymagane)",
@@ -90,7 +81,6 @@
   "addPatient_duplicate_header": "Taki klient już istnieje.",
   "addPatient_duplicate_body": "Masz już kartotekę z tą kombinacją imienia i pseudonimu. Dodaj inicjał lub przydomek, aby uniknąć pomyłek.",
   "addPatient_duplicate_primary": "Poprawię nazwę.",
-
   "addPatient_step1_subtitle": "Uzupełnij podstawowe dane klienta.",
   "addPatient_step1_next": "Dalej",
   "addPatient_step2_title": "Dopasuj do Twojej pracy",
@@ -101,28 +91,27 @@
   "addPatient_discard_body": "Nic nie zostanie zapisane.",
   "addPatient_discard_action": "Porzuć",
   "addPatient_discard_stay": "Kontynuuj edycję",
-
   "editPatient_title": "Edytuj kartotekę",
   "editPatient_save_primary": "Zapisz zmiany",
   "editPatient_erase_destructive": "Usuń kartotekę bezpowrotnie",
   "editPatient_erase_confirm_header": "Całkowite usunięcie kartoteki",
   "editPatient_erase_confirm_body": "To działanie trwale usunie kartotekę klienta oraz WSZYSTKIE sesje i transkrypcje (wymóg RODO). Nie można tego cofnąć.",
-
   "addSession_title": "Nowa sesja.",
   "addSession_subtitle": "Wybierz nurt dla tej sesji:",
-
   "home_title": "Twoi klienci.",
   "home_empty_title": "Nie masz jeszcze żadnych klientów.",
   "home_empty_body": "Dodaj klienta, aby rozpocząć pierwszą sesję.",
   "home_add_patient_fab": "Dodaj klienta",
-
   "patient_no_sessions": "Brak sesji.",
   "patient_start_session": "Rozpocznij nagrywanie sesji.",
   "patient_session_count": "{count, plural, =0{Brak sesji} =1{1 sesja} few{{count} sesje} many{{count} sesji} other{{count} sesji}}",
   "@patient_session_count": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
-
   "recording_screen_title": "Sesja w toku.",
   "recording_instructions_title": "Kilka wskazówek dla lepszego nagrania",
   "recording_instructions_subtitle": "Dobre warunki nagrywania to lepsza jakość transkrypcji i trafniejsze wnioski AI.",
@@ -136,48 +125,44 @@
   "recording_status_paused": "Nagrywanie wstrzymane.",
   "minimized_recording_paused": "Pauza nagrywania",
   "minimized_recording_active": "Trwa nagrywanie sesji",
-
   "recording_mic_denied_header": "Brak dostępu do mikrofonu.",
   "recording_mic_denied_body": "Aby nagrywać sesję, włącz dostęp do mikrofonu w ustawieniach systemu. Przejdź do Ustawienia → Superwizor → Mikrofon.",
   "recording_mic_denied_open_settings": "Otwórz ustawienia.",
   "recording_mic_denied_cancel": "Wróć.",
-
-  "recording_discard_confirm_header": "Wyjść z nagrywania?",
-  "recording_discard_confirm_body": "Trwa nagrywanie sesji. Jeśli wyjdziesz, sesja zostanie usunięta bezpowrotnie.",
+  "recording_discard_confirm_header": "Czy na pewno chcesz skasować nagranie?",
+  "recording_discard_confirm_body": "Tego nagrania nie będzie się dało odzyskać. Zostanie ono bezpowrotnie usunięte z urządzenia i nie zostanie wysłane do analizy.",
   "recording_discard_confirm_destructive": "Wyjdź i usuń nagranie.",
   "recording_discard_confirm_secondary": "Wróć do nagrywania.",
   "recording_button_start": "Rozpocznij nagrywanie.",
   "recording_button_pause": "Pauza.",
   "recording_button_resume": "Wznów.",
   "recording_button_stop": "Zakończ.",
-
   "recording_too_short_header": "Nagranie jest zbyt krótkie.",
   "recording_too_short_body": "Sesja nie może być krótsza niż 5 minut, aby sztuczna inteligencja mogła wyciągnąć wiarygodne wnioski. Nagrywanie trwa nadal.",
   "recording_too_short_primary": "Kontynuuj nagrywanie.",
   "recording_too_short_destructive": "Zakończ bez zapisu.",
-
   "recording_confirm_end_header": "Zakończenie i analiza sesji.",
   "recording_confirm_end_body": "Plik audio jest zabezpieczony. Czy chcesz teraz zamknąć nagranie i przekazać je do bezpiecznej analizy?",
   "recording_confirm_end_primary": "Rozpocznij analizę sesji.",
   "recording_confirm_end_secondary": "Wróć do nagrywania.",
   "recording_confirm_end_destructive": "Usuń to nagranie bezpowrotnie.",
-
   "recording_max_duration_header": "Osiągnięto limit czasu nagrywania.",
   "recording_max_duration_body": "Sesja osiągnęła maksymalny dozwolony czas 130 minut i została bezpiecznie zatrzymana. Przekaż ją teraz do analizy lub usuń, jeśli było to nagrywanie testowe.",
   "recording_max_duration_primary": "Rozpocznij analizę sesji.",
   "recording_max_duration_destructive": "Usuń to nagranie bezpowrotnie.",
-
   "recording_pending_upload_header": "Mamy Twoje niedokończone nagranie.",
   "recording_pending_upload_body": "Sesja z dnia {date} dobiła do limitu 130 minut. Nagranie jest bezpieczne na Twoim urządzeniu i czeka na przekazanie do analizy.",
   "@recording_pending_upload_body": {
-    "placeholders": { "date": { "type": "String" } }
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
   },
   "recording_pending_upload_primary": "Przekaż do analizy.",
   "recording_pending_upload_destructive": "Usuń to nagranie bezpowrotnie.",
-
   "recording_fgs_notification_title": "Trwa nagrywanie sesji",
   "recording_fgs_notification_body": "Superwizor nagrywa sesję. Nie zamykaj aplikacji.",
-
   "recording_interrupted_banner_title": "Nagrywanie wstrzymane",
   "recording_interrupted_banner_body": "Połączenie lub inna aplikacja przerwała nagrywanie. Dotychczasowe nagranie jest bezpieczne.",
   "recording_interrupted_resume": "Wznów nagrywanie",
@@ -185,14 +170,19 @@
   "recording_resume_failed_body": "Nie udało się wznowić nagrywania. Dotychczasowe nagranie jest bezpieczne, możesz zakończyć sesję i wysłać je do analizy.",
   "recording_resume_failed_retry": "Spróbuj ponownie",
   "recording_resume_failed_finish": "Zakończ i wyślij",
-
   "recovery_sheet_header": "Znaleziono przerwane nagranie",
   "recovery_sheet_body": "Nagranie sesji z {patientAlias} z {date} (ok. {minutes} min) nie zostało wysłane, ponieważ aplikacja została przerwana w trakcie nagrywania. Co chcesz zrobić?",
   "@recovery_sheet_body": {
     "placeholders": {
-      "patientAlias": { "type": "String" },
-      "date": { "type": "String" },
-      "minutes": { "type": "int" }
+      "patientAlias": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "recovery_sheet_send": "Wyślij do analizy",
@@ -202,7 +192,6 @@
   "recovery_delete_confirm_body": "Tego nagrania nie da się odzyskać.",
   "recovery_delete_confirm_destructive": "Usuń",
   "recovery_enqueued_snackbar": "Nagranie dodane do kolejki wysyłki",
-
   "stepper_step1_uploaded": "Audio bezpieczne na naszych serwerach.",
   "stepper_step1_queued": "Audio czeka w kolejce do uploadu.",
   "stepper_step1_uploading": "Ładujemy audio na serwer.",
@@ -210,11 +199,9 @@
   "stepper_step3_analyzing": "Sztuczna Inteligencja przygotowuje wnioski.",
   "stepper_step4_finalizing": "Składamy informacje w czytelny raport.",
   "stepper_step5_done": "Gotowe! Wysyłamy wnioski do Ciebie.",
-
   "session_failed_header": "Nie udało się przygotować raportu.",
   "session_failed_body": "Coś poszło nie tak po stronie analizy. Spróbujemy ponownie automatycznie. Jeśli problem się utrzymuje, skontaktuj się z pomocą techniczną.",
   "session_failed_primary": "Skontaktuj się z pomocą.",
-
   "session_status_title": "Bezpieczna analiza w toku.",
   "session_status_subtitle": "Opracowujemy dla Ciebie raporty i transkrypcje. Może to potrwać 15 minut. Możesz tutaj wrócić za chwilę.",
   "session_status_success": "Gotowe!",
@@ -222,7 +209,6 @@
   "session_loading": "Opracowujemy dla Ciebie raporty i transkrypcje. Możesz tutaj wrócić za chwilę.",
   "session_load_error_header": "Nie udało się pobrać sesji.",
   "session_load_error_body": "Coś nie zadziałało po naszej stronie. Spróbuj ponownie za chwilę.",
-
   "transcript_tab": "Transkrypcja",
   "report_tab": "Raport",
   "transcript_filter_all": "Wszyscy",
@@ -233,21 +219,36 @@
   "transcript_actions_copy_with_timestamp": "Kopiuj cytat z czasem.",
   "transcript_actions_play_from_here": "Odtwórz od tego miejsca.",
   "transcript_actions_export": "Eksportuj transkrypt do PDF.",
-
   "transcript_export_phi_header": "Eksportujesz dane wrażliwe.",
   "transcript_export_phi_body": "Dokument zawiera transkrypcję sesji terapeutycznej. Nie udostępniaj go niezaszyfrowaną pocztą ani komunikatorami bez warstwy E2E.",
   "transcript_export_phi_primary": "Rozumiem, eksportuj.",
   "transcript_export_phi_secondary": "Anuluj.",
-
   "transcript_pdf_title": "Transkrypcja sesji",
   "transcript_pdf_meta_patient": "Klient: {name}",
-  "@transcript_pdf_meta_patient": { "placeholders": { "name": { "type": "String" } } },
+  "@transcript_pdf_meta_patient": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "transcript_pdf_meta_date": "Data sesji: {date}",
-  "@transcript_pdf_meta_date": { "placeholders": { "date": { "type": "String" } } },
+  "@transcript_pdf_meta_date": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "transcript_pdf_meta_duration": "Czas trwania: {duration}",
-  "@transcript_pdf_meta_duration": { "placeholders": { "duration": { "type": "String" } } },
+  "@transcript_pdf_meta_duration": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
   "transcript_pdf_footer": "Wygenerowane przez Superwizor AI · Dokument zawiera dane wrażliwe klienta.",
-
   "report_section_summary": "Podsumowanie sesji",
   "report_section_themes": "Główne wątki sesji",
   "report_section_alliance": "Sojusz terapeutyczny",
@@ -255,17 +256,14 @@
   "report_section_hitop": "Wymiary HiTOP",
   "report_section_risk": "Ocena ryzyka",
   "report_section_recommendations": "Rekomendacje na kolejną sesję",
-
   "report_empty_themes": "Nie zidentyfikowano głównych wątków w tej sesji.",
   "report_empty_interventions": "Nie zidentyfikowano interwencji terapeutycznych.",
   "report_empty_recommendations": "Brak rekomendacji.",
   "report_empty_hitop": "Brak pomiarów HiTOP w tej sesji.",
-
   "risk_level_high": "Wysokie ryzyko",
   "risk_level_moderate": "Umiarkowane ryzyko",
   "risk_level_low": "Niskie ryzyko",
   "risk_level_none": "Brak sygnałów ryzyka",
-
   "drawer_profile": "Mój profil",
   "drawer_language": "Język aplikacji",
   "drawer_modalities": "Nurty terapii",
@@ -277,13 +275,16 @@
   "drawer_fallback_name": "Terapeuta",
   "drawer_settings_header": "USTAWIENIA",
   "drawer_legal_header": "DOKUMENTY PRAWNE",
-
   "settings_title": "Ustawienia",
   "settings_subtitle": "DOSTOSUJ SWOJE DOŚWIADCZENIE",
   "settings_section_account": "TWOJE KONTO",
   "settings_logged_in_as": "Zalogowano jako: {email}",
   "@settings_logged_in_as": {
-    "placeholders": { "email": { "type": "String" } }
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
   },
   "settings_name": "Nazwa",
   "settings_professional_title": "Tytuł zawodowy",
@@ -342,7 +343,6 @@
   "delete_account_relogin_error": "Zaloguj się ponownie, by usunąć konto.",
   "delete_account_confirm_word": "usuwam",
   "settings_licenses_desc": "Ta aplikacja została zbudowana dzięki pracy tysięcy programistów z całego świata. Poniżej znajdziesz informacje o oprogramowaniu open-source, z którego korzystamy, by dostarczyć Ci najwyższą jakość działania.",
-
   "report_rating_thumbs_up_tooltip": "Dobry raport",
   "report_rating_thumbs_down_tooltip": "Coś jest nie tak",
   "report_rating_saved_positive": "Dzięki za pozytywną ocenę.",
@@ -362,7 +362,6 @@
   "report_rating_chip_missing_strengths": "Brakuje mocnych stron klienta",
   "report_rating_chip_missing_context": "Brakuje kontekstu / złe akcenty",
   "report_rating_chip_other": "Inne",
-
   "settings_section_report_preferences": "PREFERENCJE RAPORTÓW",
   "report_prefs_intro_title": "Styl raportów",
   "report_prefs_intro_subtitle": "Dostosuj, jak AI pisze raporty z Twoich sesji.",
@@ -410,22 +409,33 @@
   "report_prefs_picker_title": "Wybierz opcję",
   "report_prefs_save": "Zapisz",
   "report_prefs_too_long": "Tekst za długi (max. 500 znaków).",
-
   "suggestion_banner_header": "Sugestia od AI",
   "suggestion_banner_body": "Ostatnie raporty oznaczyłeś jako „{reason}\" ({count}×). Czy zmienić {dimension} na „{toValue}\"?",
   "@suggestion_banner_body": {
     "placeholders": {
-      "reason": { "type": "String" },
-      "count": { "type": "int" },
-      "dimension": { "type": "String" },
-      "toValue": { "type": "String" }
+      "reason": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "dimension": {
+        "type": "String"
+      },
+      "toValue": {
+        "type": "String"
+      }
     }
   },
   "suggestion_banner_body_section_emphasis": "Ostatnie raporty oznaczyłeś jako „{reason}\" ({count}×). Otwórz ustawienia, aby dostosować akcenty sekcji.",
   "@suggestion_banner_body_section_emphasis": {
     "placeholders": {
-      "reason": { "type": "String" },
-      "count": { "type": "int" }
+      "reason": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
     }
   },
   "suggestion_banner_apply": "Zmień",
@@ -433,37 +443,52 @@
   "suggestion_banner_dismiss": "Nie teraz",
   "suggestion_banner_applied_toast": "Zmieniono, kolejne raporty uwzględnią to ustawienie.",
   "suggestion_banner_apply_error": "Nie udało się zmienić ustawienia.",
-
   "billing_quota_warning_short": "{n, plural, =1{Został Ci 1 token.} few{Zostały Ci {n} tokeny.} many{Zostało Ci {n} tokenów.} other{Zostało Ci {n} tokenów.}}",
   "@billing_quota_warning_short": {
     "description": "Krótka warning banner, pozostałe tokeny w bieżącym okresie",
-    "placeholders": { "n": { "type": "int" } }
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   },
   "billing_quota_critical_short": "Został Ci ostatni token.",
   "billing_quota_exhausted_short": "Pula tokenów wyczerpana.",
   "billing_quota_exhausted_subtitle": "Nowe sesje zapiszą się lokalnie do dnia odnowienia.",
   "billing_period_end_label": "Pula odnawia się {date}.",
   "@billing_period_end_label": {
-    "placeholders": { "date": { "type": "String" } }
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
   },
   "billing_expand_plan_cta": "Rozszerz plan",
   "billing_dismiss_cta": "Rozumiem, kontynuuj",
-
   "billing_exhausted_dialog_title": "Pula tokenów wyczerpana",
   "billing_exhausted_dialog_body": "Wykorzystałeś dostępne sesje. Możesz nadal nagrywać, audio zostanie bezpiecznie zaszyfrowane i zapisane lokalnie. Sprawdź swoją skrzynkę e-mail, aby dowiedzieć się więcej.",
   "billing_exhausted_dialog_record_locally": "Nagrywaj lokalnie",
-
   "billing_pending_sessions_title": "{n, plural, =1{Sesja oczekująca na przetworzenie} few{Sesje oczekujące na przetworzenie ({n})} many{Sesji oczekujących na przetworzenie ({n})} other{Sesji oczekujących na przetworzenie ({n})}}",
   "@billing_pending_sessions_title": {
-    "placeholders": { "n": { "type": "int" } }
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   },
   "billing_pending_session_subtitle": "Audio zapisane lokalnie · Czeka na tokeny",
   "billing_pending_session_card_meta": "Sesja z {date}, {time} ({duration} min)",
   "@billing_pending_session_card_meta": {
     "placeholders": {
-      "date": { "type": "String" },
-      "time": { "type": "String" },
-      "duration": { "type": "int" }
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "int"
+      }
     }
   },
   "billing_resume_processing": "Wznów przetwarzanie",
@@ -471,22 +496,22 @@
   "billing_tokens_available_required": "Tokeny dostępne: {available} / Wymagane: {required}",
   "@billing_tokens_available_required": {
     "placeholders": {
-      "available": { "type": "int" },
-      "required": { "type": "int" }
+      "available": {
+        "type": "int"
+      },
+      "required": {
+        "type": "int"
+      }
     }
   },
-
   "billing_delete_confirm_title": "Usunąć nagranie sesji?",
   "billing_delete_confirm_body": "Audio zostanie trwale usunięte z tego urządzenia. Tej operacji nie można cofnąć.",
   "billing_delete_confirm_action": "Usuń trwale",
-
   "billing_reservation_expired_title": "Przetwarzanie nie powiodło się",
   "billing_reservation_expired_body": "Rezerwacja tokena wygasła po 4 godzinach. Audio jest nadal zapisane lokalnie.",
   "billing_retry_cta": "Spróbuj ponownie",
-
   "billing_past_due_title": "Problem z płatnością",
   "billing_past_due_body": "Nie udało się pobrać opłaty za subskrypcję. Do czasu rozwiązania problemu nie będziemy przetwarzać nowych sesji.",
-
   "subscription_screen_title": "Subskrypcja",
   "subscription_plan_section_header": "Twój plan",
   "subscription_tier_solo": "Poznanie",
@@ -498,27 +523,42 @@
   "subscription_cycle_annual": "roczny",
   "subscription_sessions_per_period": "{n, plural, =1{1 sesja w okresie} few{{n} sesje w okresie} many{{n} sesji w okresie} other{{n} sesji w okresie}}",
   "@subscription_sessions_per_period": {
-    "placeholders": { "n": { "type": "int" } }
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   },
   "subscription_sessions_left": "{n, plural, =0{Brak sesji do końca okresu} =1{1 sesja do końca okresu} few{{n} sesje do końca okresu} many{{n} sesji do końca okresu} other{{n} sesji do końca okresu}}",
   "@subscription_sessions_left": {
-    "placeholders": { "n": { "type": "int" } }
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   },
   "subscription_sessions_used": "Wykorzystano: {used} z {limit}",
   "@subscription_sessions_used": {
     "placeholders": {
-      "used": { "type": "int" },
-      "limit": { "type": "int" }
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
     }
   },
   "subscription_period_ends": "Okres kończy się {date}",
   "@subscription_period_ends": {
-    "placeholders": { "date": { "type": "String" } }
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
   },
   "subscription_no_data_title": "Brak danych o subskrypcji",
   "subscription_no_data_body": "Nie udało się pobrać informacji o Twoim planie. Sprawdź połączenie internetowe i spróbuj ponownie.",
   "subscription_refresh_cta": "Odśwież",
-
   "stepper_step1_quota_blocked": "Pula tokenów wyczerpana. Odnów plan, aby wznowić.",
   "quota_blocked_queue_label": "Pula tokenów wyczerpana",
   "upload_resend": "Wyślij ponownie",
@@ -528,7 +568,6 @@
   "cancel_session_confirm_action": "Tak, usuń",
   "cancel_session_keep": "Nie, zostaw",
   "cancel_session_success": "Sesja anulowana",
-
   "note_add_label": "DODAJ NOTATKĘ",
   "note_add_subtitle": "Szybka notatka o kliencie",
   "note_sheet_title": "Nowa notatka",
@@ -548,7 +587,6 @@
   "note_untitled": "Bez tytułu",
   "note_saved": "Notatka zapisana ✓",
   "note_deleted": "Notatka usunięta",
-
   "action_plan_send_button": "Wyślij plan działania do klienta",
   "action_plan_save_only": "Zapisz",
   "action_plan_save_and_send": "Zapisz i wyślij",
@@ -557,7 +595,11 @@
   "action_plan_send_confirm_title": "Wyślij plan działania?",
   "action_plan_send_confirm_body": "Plan zostanie wysłany na adres: {email}",
   "@action_plan_send_confirm_body": {
-    "placeholders": { "email": { "type": "String" } }
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
   },
   "action_plan_send_cancel": "Anuluj",
   "action_plan_send_confirm_action": "Wyślij",
@@ -568,15 +610,17 @@
   "action_plan_default_title": "Plan działania",
   "action_plan_fill_email_hint": "Wypełnij adres e-mail klienta i ponów wysyłkę.",
   "note_save_error": "Nie udało się zapisać notatki",
-
   "note_send_to_client": "Wyślij do klienta",
   "note_send_confirm_title": "Wysłać notatkę do klienta?",
   "note_send_confirm_body": "Notatka zostanie wysłana na adres: {email}",
   "@note_send_confirm_body": {
-    "placeholders": { "email": { "type": "String" } }
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
   },
   "note_sent_toast": "Notatka wysłana do klienta",
-
   "recording_consent_missing_header": "Brak zgody",
   "recording_consent_missing_body": "Nie odnotowano zgody klienta w systemie. Czy klient wyraził zgodę na nagrywanie i przetwarzanie danych?",
   "recording_consent_grant": "Tak, wyraził zgodę",
@@ -584,7 +628,11 @@
   "recording_upload_error_header": "Błąd przesyłania",
   "recording_too_short_abort_body": "Nagranie trwało {duration}. Anulowano wysyłkę.",
   "@recording_too_short_abort_body": {
-    "placeholders": { "duration": { "type": "String" } }
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
   },
   "recording_saving": "Zapisuję nagranie...",
   "recording_minimize_confirm_header": "Wyjście z ekranu nagrywania",
@@ -592,38 +640,30 @@
   "recording_minimize_action": "Zminimalizuj (zostaw w tle)",
   "recording_minimize_discard": "Zatrzymaj i skasuj nagranie",
   "recording_minimize_resume": "Wróć do nagrywania",
-  "recording_discard_confirm_header": "Czy na pewno chcesz skasować nagranie?",
-  "recording_discard_confirm_body": "Tego nagrania nie będzie się dało odzyskać. Zostanie ono bezpowrotnie usunięte z urządzenia i nie zostanie wysłane do analizy.",
   "recording_discard_confirm_action": "Tak, skasuj bezpowrotnie",
   "recording_discard_confirm_cancel": "Nie, wróć",
   "active_session_card_title": "Sesja w toku...",
   "active_session_card_subtitle": "Wróć do trwającej sesji",
   "active_session_card_paused_title": "Sesja wstrzymana",
   "active_session_card_paused_subtitle": "Wznów lub zakończ sesję",
-
   "settings_live_activities": "Aktywność na ekranie blokady",
   "settings_live_activities_on": "Czas i status sesji widoczne bez odblokowywania telefonu.",
   "settings_live_activities_off": "Status sesji widoczny tylko w aplikacji.",
-
   "live_activity_info_title": "Miej sesję zawsze na oku",
   "live_activity_info_body": "Włącz podgląd na ekranie blokady, aby widzieć czas sesji bez otwierania aplikacji.",
   "live_activity_info_enable": "Włącz podgląd",
   "live_activity_info_dismiss": "Nie teraz",
-
   "live_activity_minimize_toast": "Sesja działa w tle. Aby widzieć jej czas na ekranie blokady, włącz podgląd w Ustawieniach.",
-
   "live_activity_status_recording": "Sesja w toku",
   "live_activity_status_paused": "Pauza",
   "live_activity_status_uploading": "Wgrywanie nagrania...",
   "live_activity_status_analyzing": "Analizowanie sesji...",
   "live_activity_status_report_ready": "Nowy raport czeka w kartotece",
   "live_activity_show_report": "Pokaż raport",
-
   "live_activity_permission_title": "Wymagana zgoda systemowa",
   "live_activity_permission_body": "Podgląd sesji na ekranie blokady wymaga włączenia Aktywności na żywo w ustawieniach systemu.",
   "live_activity_permission_open_settings": "Otwórz ustawienia",
   "live_activity_permission_cancel": "Anuluj",
-
   "home_greeting_prefix": "Witaj, ",
   "home_greeting_subtitle": "Z kim dzisiaj pracujemy?",
   "home_search_hint": "Szukaj klienta…",
@@ -1201,5 +1241,8 @@
   "settings_recording_reminder_off": "Wyłączone",
   "settings_recording_reminder_sound": "Dźwięk przypomnienia",
   "settings_recording_reminder_sound_warning": "Dźwięk zostanie nagrany w sesji",
-  "settings_recording_reminder_sound_hint": "Gdy przypomnienie jest włączone, odtworzy się też dźwięk (nagrywany również w sesji)."
+  "settings_recording_reminder_sound_hint": "Gdy przypomnienie jest włączone, odtworzy się też dźwięk (nagrywany również w sesji).",
+  "deactivated_title": "Konto nieaktywne",
+  "deactivated_body": "Twoje konto zostało dezaktywowane przez administratora organizacji. Skontaktuj się z nim, aby przywrócić dostęp.",
+  "deactivated_logout": "Wyloguj się"
 }

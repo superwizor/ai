@@ -86,7 +86,7 @@ func TestGetAdminAnalytics_RoleGate(t *testing.T) {
 	{
 		s := &Server{}
 		ctx := context.WithValue(context.Background(), UserRoleKey, "SUPERWIZOR_ADMIN")
-		
+
 		var panicked bool
 		func() {
 			defer func() {
@@ -108,9 +108,15 @@ type fakeAnalyticsQuerier struct {
 }
 
 func (q *fakeAnalyticsQuerier) GetWAU(ctx context.Context) (int64, error) { return 10, nil }
-func (q *fakeAnalyticsQuerier) GetSessionsThisWeek(ctx context.Context) (int64, error) { return 42, nil }
-func (q *fakeAnalyticsQuerier) GetActivationRate(ctx context.Context) (float64, error) { return 12.5, nil }
-func (q *fakeAnalyticsQuerier) GetOverallSatisfactionRate(ctx context.Context) (float64, error) { return 95.0, nil }
+func (q *fakeAnalyticsQuerier) GetSessionsThisWeek(ctx context.Context) (int64, error) {
+	return 42, nil
+}
+func (q *fakeAnalyticsQuerier) GetActivationRate(ctx context.Context) (float64, error) {
+	return 12.5, nil
+}
+func (q *fakeAnalyticsQuerier) GetOverallSatisfactionRate(ctx context.Context) (float64, error) {
+	return 95.0, nil
+}
 func (q *fakeAnalyticsQuerier) GetWauTrend(ctx context.Context, since time.Time) ([]db.GetWauTrendRow, error) {
 	return []db.GetWauTrendRow{{Label: "2026-01", Value: 10.0}}, nil
 }
@@ -126,7 +132,9 @@ func (q *fakeAnalyticsQuerier) GetPlanDistribution(ctx context.Context) ([]db.Ge
 func (q *fakeAnalyticsQuerier) GetUnitEconomicsKPIs(ctx context.Context) (db.GetUnitEconomicsKPIsRow, error) {
 	return db.GetUnitEconomicsKPIsRow{AvgCostPerSession: 0.05, MonthlySttCost: 1.2, MonthlyLlmCost: 3.4}, nil
 }
-func (q *fakeAnalyticsQuerier) GetAvgTokenUtilization(ctx context.Context) (float64, error) { return 75.5, nil }
+func (q *fakeAnalyticsQuerier) GetAvgTokenUtilization(ctx context.Context) (float64, error) {
+	return 75.5, nil
+}
 func (q *fakeAnalyticsQuerier) GetCostTrend(ctx context.Context, since time.Time) ([]db.GetCostTrendRow, error) {
 	return []db.GetCostTrendRow{{Label: "2026-01", SttCost: 0.01, LlmCost: 0.04, TotalCost: 0.05}}, nil
 }
@@ -174,7 +182,9 @@ func (q *fakeAnalyticsQuerier) GetUploadFailuresTrend(ctx context.Context, since
 func (q *fakeAnalyticsQuerier) GetModalityDistribution(ctx context.Context) ([]db.GetModalityDistributionRow, error) {
 	return []db.GetModalityDistributionRow{{ModalityName: "CBT", Count: 8}}, nil
 }
-func (q *fakeAnalyticsQuerier) GetAvgSessionDuration(ctx context.Context) (float64, error) { return 2400.0, nil }
+func (q *fakeAnalyticsQuerier) GetAvgSessionDuration(ctx context.Context) (float64, error) {
+	return 2400.0, nil
+}
 func (q *fakeAnalyticsQuerier) GetSessionDurationTrend(ctx context.Context, since time.Time) ([]db.GetSessionDurationTrendRow, error) {
 	return []db.GetSessionDurationTrendRow{{Label: "2026-01", Value: 2400.0}}, nil
 }

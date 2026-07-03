@@ -123,6 +123,13 @@ service ClinicalService {
     rpc AdminGetModalityPromptHistory(AdminGetModalityPromptHistoryRequest) returns (AdminGetModalityPromptHistoryResponse);
     rpc AdminUpdateModalityPrompt(AdminUpdateModalityPromptRequest) returns (AdminUpdateModalityPromptResponse);
 
+    // ─── Org analytics (docs/38 §7) — ORG_ADMIN only ───
+    // Per-therapist metadata aggregates for the caller's organization.
+    // HARD privacy boundary (§7.3): counts and durations ONLY — never
+    // transcripts, reports, notes, or patient identity. Org resolved
+    // from the auth context, never from the request.
+    rpc GetOrgTherapistMetrics(GetOrgTherapistMetricsRequest) returns (OrgTherapistMetricsResponse);
+
     // ─── RODO/GDPR DSAR endpoints ───
     // Export all clinical and personal data related to a patient file,
     // decrypting all PHI columns using KMS before returning.
@@ -997,3 +1004,42 @@ message PlatformFixedCost {
 }
 
 
+
+// ─── Org analytics messages (docs/38 §7) ──────────────────────────
+
+message GetOrgTherapistMetricsRequest {
+    // Look-back window in days: 7 | 30 | 90 (anything else clamps to
+    // 30). Applies to sessions, new patients and report ratings;
+    // active_patients is a point-in-time count.
+    int32 period_days = 1;
+}
+
+// Metadata aggregates only — zero PHI (docs/38 §7.3).
+message TherapistMetrics {
+    string therapist_id = 1;
+    string first_name   = 2;
+    string last_name    = 3;
+    bool   is_active    = 4;
+
+    int32 sessions_completed = 5;
+    int32 sessions_failed    = 6;
+    int32 sessions_cancelled = 7;
+    int64 total_duration_seconds = 8;
+    int32 avg_duration_seconds   = 9;   // completed sessions only
+    // Sessions whose report the therapist actually opened.
+    int32 sessions_report_viewed = 10;
+    string last_session_date     = 11;  // ISO date; empty = never
+
+    int32 active_patients = 12;         // open kartoteki now
+    int32 new_patients    = 13;         // created in the window
+
+    int32 ratings_positive = 14;
+    int32 ratings_negative = 15;
+}
+
+message OrgTherapistMetricsResponse {
+    repeated TherapistMetrics therapists = 1;
+    // Column sums over `therapists` (avg fields re-averaged).
+    TherapistMetrics totals = 2;
+    int32 period_days = 3;
+}

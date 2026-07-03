@@ -26,6 +26,7 @@ type InvitationEmailParams struct {
 	AcceptURL        string // includes the cleartext token
 	ExpiresAt        string // ISO-8601 in the recipient's locale; renderer formats
 	Locale           string // pl | en
+	InvitedRole      string // "" = THERAPIST; "ORG_ADMIN" = manager onboarding copy
 }
 
 // NoopEmailSender logs but does nothing. It's the default until the

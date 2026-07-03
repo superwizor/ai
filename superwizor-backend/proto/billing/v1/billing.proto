@@ -60,6 +60,24 @@ service BillingService {
   // a new usage_counters row at the new plan's tokens_limit, marks
   // the old counter inactive. Returns the fresh Subscription.
   rpc AdminChangePlan(AdminChangePlanRequest) returns (Subscription);
+
+  // ─── Org management (docs/38) ─────────────────────────────────
+
+  // SUPERWIZOR_ADMIN. Sets/updates the org's seat allocations
+  // (plan × seats × negotiated price) and ensures a MANUAL
+  // subscription exists starting at subscription_start. Creates
+  // per-therapist usage counters for already-seated therapists;
+  // later joiners get theirs lazily on first ReserveCredit.
+  // reason >= 10 chars → audit_events.
+  rpc AdminSetSeatAllocations(AdminSetSeatAllocationsRequest) returns (OrgSeatSummary);
+
+  // ORG_ADMIN. Seat occupancy + per-therapist token usage for the
+  // /org panel. Org resolved from the caller's auth context.
+  rpc GetMyOrgSeatUsage(google.protobuf.Empty) returns (OrgSeatSummary);
+
+  // SUPERWIZOR_ADMIN. Active plan catalog — feeds the /admin/orgs/new
+  // seat-allocation table (plan_id × seats × price).
+  rpc AdminListPlans(google.protobuf.Empty) returns (AdminListPlansResponse);
 }
 
 message CheckQuotaRequest {
@@ -183,6 +201,77 @@ message AdminResetTokensRequest {
   // Required, >= 10 chars. Stored on audit_events.reason.
   string reason = 4;
   string idempotency_key = 5;
+}
+
+// ─── Org management messages (docs/38) ────────────────────────────
+
+message PlanInfo {
+  string plan_id      = 1;
+  string tier         = 2;
+  string cycle        = 3;
+  string display_name = 4;
+  string price_gross  = 5;  // catalog gross price, decimal string
+  string currency_code = 6;
+  int32  tokens_per_period = 7;
+}
+
+message AdminListPlansResponse {
+  repeated PlanInfo plans = 1;
+}
+
+message SeatAllocationSpec {
+  string plan_id = 1;
+  int32  seats   = 2;
+  // Negotiated gross price per seat as a decimal string ("79.99").
+  // Empty = catalog plan.price_gross.
+  string price_gross_per_seat = 3;
+}
+
+message AdminSetSeatAllocationsRequest {
+  string organization_id = 1;
+  repeated SeatAllocationSpec allocations = 2;
+  // Start of the (first) subscription period. Ignored when the org
+  // already has an active subscription — the running period wins.
+  google.protobuf.Timestamp subscription_start = 3;
+  string reason = 15;           // required, >= 10 chars
+  string idempotency_key = 16;
+}
+
+message SeatAllocationInfo {
+  string allocation_id = 1;
+  string plan_id       = 2;
+  string plan_tier     = 3;
+  string plan_cycle    = 4;
+  int32  seats         = 5;
+  // Occupancy halves (docs/38 §3): active assignments + pending
+  // unexpired invitations.
+  int32  seats_assigned = 6;
+  int32  seats_pending  = 7;
+  string price_gross_per_seat = 8;   // effective (negotiated or catalog)
+  string currency_code        = 9;
+  int32  tokens_per_seat      = 10;  // plan.tokens_per_period
+}
+
+message TherapistSeatUsage {
+  string therapist_id = 1;
+  string first_name   = 2;
+  string last_name    = 3;
+  string plan_tier    = 4;
+  int32  tokens_used     = 5;
+  int32  tokens_reserved = 6;
+  int32  tokens_limit    = 7;
+  bool   is_active       = 8;  // users.is_active (deactivation state)
+}
+
+message OrgSeatSummary {
+  string organization_id = 1;
+  repeated SeatAllocationInfo allocations = 2;
+  // Per-therapist counters for the current period (docs/38 billing
+  // model: enforcement per seat). Empty for orgs without allocations.
+  repeated TherapistSeatUsage therapist_usage = 3;
+  google.protobuf.Timestamp period_start = 4;
+  google.protobuf.Timestamp period_end   = 5;
+  string subscription_status = 6;
 }
 
 message AdminChangePlanRequest {

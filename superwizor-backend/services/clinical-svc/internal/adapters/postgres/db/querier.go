@@ -142,6 +142,14 @@ type Querier interface {
 	GetModalityByCode(ctx context.Context, systemCode string) (GetModalityByCodeRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetModalityDistribution(ctx context.Context) ([]GetModalityDistributionRow, error)
+	// Org analytics (docs/38 §7) — per-therapist METADATA aggregates for
+	// the ORG_ADMIN dashboard. Hard privacy boundary (§7.3): counts,
+	// durations and dates only. No transcript/report/note content, no
+	// patient identifiers ever leave this query.
+	// $1 = organization_id, $2 = window start (timestamptz).
+	// Sessions / new patients / ratings are windowed; active_patients is
+	// a point-in-time count of open kartoteki.
+	GetOrgTherapistMetrics(ctx context.Context, arg GetOrgTherapistMetricsParams) ([]GetOrgTherapistMetricsRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetOverallSatisfactionRate(ctx context.Context) (float64, error)
 	// Kept for code paths that don't need user fields (e.g. internal

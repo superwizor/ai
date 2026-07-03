@@ -1254,6 +1254,781 @@ class AdminResetTokensRequest extends $pb.GeneratedMessage {
   void clearIdempotencyKey() => $_clearField(5);
 }
 
+class PlanInfo extends $pb.GeneratedMessage {
+  factory PlanInfo({
+    $core.String? planId,
+    $core.String? tier,
+    $core.String? cycle,
+    $core.String? displayName,
+    $core.String? priceGross,
+    $core.String? currencyCode,
+    $core.int? tokensPerPeriod,
+  }) {
+    final result = create();
+    if (planId != null) result.planId = planId;
+    if (tier != null) result.tier = tier;
+    if (cycle != null) result.cycle = cycle;
+    if (displayName != null) result.displayName = displayName;
+    if (priceGross != null) result.priceGross = priceGross;
+    if (currencyCode != null) result.currencyCode = currencyCode;
+    if (tokensPerPeriod != null) result.tokensPerPeriod = tokensPerPeriod;
+    return result;
+  }
+
+  PlanInfo._();
+
+  factory PlanInfo.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory PlanInfo.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PlanInfo',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'planId')
+    ..aOS(2, _omitFieldNames ? '' : 'tier')
+    ..aOS(3, _omitFieldNames ? '' : 'cycle')
+    ..aOS(4, _omitFieldNames ? '' : 'displayName')
+    ..aOS(5, _omitFieldNames ? '' : 'priceGross')
+    ..aOS(6, _omitFieldNames ? '' : 'currencyCode')
+    ..aI(7, _omitFieldNames ? '' : 'tokensPerPeriod')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PlanInfo clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PlanInfo copyWith(void Function(PlanInfo) updates) =>
+      super.copyWith((message) => updates(message as PlanInfo)) as PlanInfo;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static PlanInfo create() => PlanInfo._();
+  @$core.override
+  PlanInfo createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static PlanInfo getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PlanInfo>(create);
+  static PlanInfo? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get planId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set planId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPlanId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPlanId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get tier => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set tier($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTier() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTier() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get cycle => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set cycle($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCycle() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCycle() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get displayName => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set displayName($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDisplayName() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDisplayName() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get priceGross => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set priceGross($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPriceGross() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPriceGross() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get currencyCode => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set currencyCode($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasCurrencyCode() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCurrencyCode() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get tokensPerPeriod => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set tokensPerPeriod($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasTokensPerPeriod() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearTokensPerPeriod() => $_clearField(7);
+}
+
+class AdminListPlansResponse extends $pb.GeneratedMessage {
+  factory AdminListPlansResponse({
+    $core.Iterable<PlanInfo>? plans,
+  }) {
+    final result = create();
+    if (plans != null) result.plans.addAll(plans);
+    return result;
+  }
+
+  AdminListPlansResponse._();
+
+  factory AdminListPlansResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminListPlansResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminListPlansResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..pPM<PlanInfo>(1, _omitFieldNames ? '' : 'plans',
+        subBuilder: PlanInfo.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminListPlansResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminListPlansResponse copyWith(
+          void Function(AdminListPlansResponse) updates) =>
+      super.copyWith((message) => updates(message as AdminListPlansResponse))
+          as AdminListPlansResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminListPlansResponse create() => AdminListPlansResponse._();
+  @$core.override
+  AdminListPlansResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminListPlansResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminListPlansResponse>(create);
+  static AdminListPlansResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<PlanInfo> get plans => $_getList(0);
+}
+
+class SeatAllocationSpec extends $pb.GeneratedMessage {
+  factory SeatAllocationSpec({
+    $core.String? planId,
+    $core.int? seats,
+    $core.String? priceGrossPerSeat,
+  }) {
+    final result = create();
+    if (planId != null) result.planId = planId;
+    if (seats != null) result.seats = seats;
+    if (priceGrossPerSeat != null) result.priceGrossPerSeat = priceGrossPerSeat;
+    return result;
+  }
+
+  SeatAllocationSpec._();
+
+  factory SeatAllocationSpec.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SeatAllocationSpec.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SeatAllocationSpec',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'planId')
+    ..aI(2, _omitFieldNames ? '' : 'seats')
+    ..aOS(3, _omitFieldNames ? '' : 'priceGrossPerSeat')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SeatAllocationSpec clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SeatAllocationSpec copyWith(void Function(SeatAllocationSpec) updates) =>
+      super.copyWith((message) => updates(message as SeatAllocationSpec))
+          as SeatAllocationSpec;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SeatAllocationSpec create() => SeatAllocationSpec._();
+  @$core.override
+  SeatAllocationSpec createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SeatAllocationSpec getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SeatAllocationSpec>(create);
+  static SeatAllocationSpec? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get planId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set planId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPlanId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPlanId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get seats => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set seats($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSeats() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSeats() => $_clearField(2);
+
+  /// Negotiated gross price per seat as a decimal string ("79.99").
+  /// Empty = catalog plan.price_gross.
+  @$pb.TagNumber(3)
+  $core.String get priceGrossPerSeat => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set priceGrossPerSeat($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPriceGrossPerSeat() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPriceGrossPerSeat() => $_clearField(3);
+}
+
+class AdminSetSeatAllocationsRequest extends $pb.GeneratedMessage {
+  factory AdminSetSeatAllocationsRequest({
+    $core.String? organizationId,
+    $core.Iterable<SeatAllocationSpec>? allocations,
+    $2.Timestamp? subscriptionStart,
+    $core.String? reason,
+    $core.String? idempotencyKey,
+  }) {
+    final result = create();
+    if (organizationId != null) result.organizationId = organizationId;
+    if (allocations != null) result.allocations.addAll(allocations);
+    if (subscriptionStart != null) result.subscriptionStart = subscriptionStart;
+    if (reason != null) result.reason = reason;
+    if (idempotencyKey != null) result.idempotencyKey = idempotencyKey;
+    return result;
+  }
+
+  AdminSetSeatAllocationsRequest._();
+
+  factory AdminSetSeatAllocationsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AdminSetSeatAllocationsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AdminSetSeatAllocationsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'organizationId')
+    ..pPM<SeatAllocationSpec>(2, _omitFieldNames ? '' : 'allocations',
+        subBuilder: SeatAllocationSpec.create)
+    ..aOM<$2.Timestamp>(3, _omitFieldNames ? '' : 'subscriptionStart',
+        subBuilder: $2.Timestamp.create)
+    ..aOS(15, _omitFieldNames ? '' : 'reason')
+    ..aOS(16, _omitFieldNames ? '' : 'idempotencyKey')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminSetSeatAllocationsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AdminSetSeatAllocationsRequest copyWith(
+          void Function(AdminSetSeatAllocationsRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as AdminSetSeatAllocationsRequest))
+          as AdminSetSeatAllocationsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AdminSetSeatAllocationsRequest create() =>
+      AdminSetSeatAllocationsRequest._();
+  @$core.override
+  AdminSetSeatAllocationsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AdminSetSeatAllocationsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AdminSetSeatAllocationsRequest>(create);
+  static AdminSetSeatAllocationsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get organizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set organizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganizationId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<SeatAllocationSpec> get allocations => $_getList(1);
+
+  /// Start of the (first) subscription period. Ignored when the org
+  /// already has an active subscription — the running period wins.
+  @$pb.TagNumber(3)
+  $2.Timestamp get subscriptionStart => $_getN(2);
+  @$pb.TagNumber(3)
+  set subscriptionStart($2.Timestamp value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSubscriptionStart() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSubscriptionStart() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $2.Timestamp ensureSubscriptionStart() => $_ensure(2);
+
+  @$pb.TagNumber(15)
+  $core.String get reason => $_getSZ(3);
+  @$pb.TagNumber(15)
+  set reason($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(15)
+  $core.bool hasReason() => $_has(3);
+  @$pb.TagNumber(15)
+  void clearReason() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $core.String get idempotencyKey => $_getSZ(4);
+  @$pb.TagNumber(16)
+  set idempotencyKey($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(16)
+  $core.bool hasIdempotencyKey() => $_has(4);
+  @$pb.TagNumber(16)
+  void clearIdempotencyKey() => $_clearField(16);
+}
+
+class SeatAllocationInfo extends $pb.GeneratedMessage {
+  factory SeatAllocationInfo({
+    $core.String? allocationId,
+    $core.String? planId,
+    $core.String? planTier,
+    $core.String? planCycle,
+    $core.int? seats,
+    $core.int? seatsAssigned,
+    $core.int? seatsPending,
+    $core.String? priceGrossPerSeat,
+    $core.String? currencyCode,
+    $core.int? tokensPerSeat,
+  }) {
+    final result = create();
+    if (allocationId != null) result.allocationId = allocationId;
+    if (planId != null) result.planId = planId;
+    if (planTier != null) result.planTier = planTier;
+    if (planCycle != null) result.planCycle = planCycle;
+    if (seats != null) result.seats = seats;
+    if (seatsAssigned != null) result.seatsAssigned = seatsAssigned;
+    if (seatsPending != null) result.seatsPending = seatsPending;
+    if (priceGrossPerSeat != null) result.priceGrossPerSeat = priceGrossPerSeat;
+    if (currencyCode != null) result.currencyCode = currencyCode;
+    if (tokensPerSeat != null) result.tokensPerSeat = tokensPerSeat;
+    return result;
+  }
+
+  SeatAllocationInfo._();
+
+  factory SeatAllocationInfo.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SeatAllocationInfo.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SeatAllocationInfo',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'allocationId')
+    ..aOS(2, _omitFieldNames ? '' : 'planId')
+    ..aOS(3, _omitFieldNames ? '' : 'planTier')
+    ..aOS(4, _omitFieldNames ? '' : 'planCycle')
+    ..aI(5, _omitFieldNames ? '' : 'seats')
+    ..aI(6, _omitFieldNames ? '' : 'seatsAssigned')
+    ..aI(7, _omitFieldNames ? '' : 'seatsPending')
+    ..aOS(8, _omitFieldNames ? '' : 'priceGrossPerSeat')
+    ..aOS(9, _omitFieldNames ? '' : 'currencyCode')
+    ..aI(10, _omitFieldNames ? '' : 'tokensPerSeat')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SeatAllocationInfo clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SeatAllocationInfo copyWith(void Function(SeatAllocationInfo) updates) =>
+      super.copyWith((message) => updates(message as SeatAllocationInfo))
+          as SeatAllocationInfo;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SeatAllocationInfo create() => SeatAllocationInfo._();
+  @$core.override
+  SeatAllocationInfo createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SeatAllocationInfo getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SeatAllocationInfo>(create);
+  static SeatAllocationInfo? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get allocationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set allocationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAllocationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAllocationId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get planId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set planId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPlanId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPlanId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get planTier => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set planTier($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPlanTier() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPlanTier() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get planCycle => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set planCycle($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPlanCycle() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPlanCycle() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get seats => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set seats($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSeats() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSeats() => $_clearField(5);
+
+  /// Occupancy halves (docs/38 §3): active assignments + pending
+  /// unexpired invitations.
+  @$pb.TagNumber(6)
+  $core.int get seatsAssigned => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set seatsAssigned($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSeatsAssigned() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSeatsAssigned() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get seatsPending => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set seatsPending($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSeatsPending() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSeatsPending() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get priceGrossPerSeat => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set priceGrossPerSeat($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasPriceGrossPerSeat() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearPriceGrossPerSeat() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get currencyCode => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set currencyCode($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasCurrencyCode() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearCurrencyCode() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.int get tokensPerSeat => $_getIZ(9);
+  @$pb.TagNumber(10)
+  set tokensPerSeat($core.int value) => $_setSignedInt32(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasTokensPerSeat() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearTokensPerSeat() => $_clearField(10);
+}
+
+class TherapistSeatUsage extends $pb.GeneratedMessage {
+  factory TherapistSeatUsage({
+    $core.String? therapistId,
+    $core.String? firstName,
+    $core.String? lastName,
+    $core.String? planTier,
+    $core.int? tokensUsed,
+    $core.int? tokensReserved,
+    $core.int? tokensLimit,
+    $core.bool? isActive,
+  }) {
+    final result = create();
+    if (therapistId != null) result.therapistId = therapistId;
+    if (firstName != null) result.firstName = firstName;
+    if (lastName != null) result.lastName = lastName;
+    if (planTier != null) result.planTier = planTier;
+    if (tokensUsed != null) result.tokensUsed = tokensUsed;
+    if (tokensReserved != null) result.tokensReserved = tokensReserved;
+    if (tokensLimit != null) result.tokensLimit = tokensLimit;
+    if (isActive != null) result.isActive = isActive;
+    return result;
+  }
+
+  TherapistSeatUsage._();
+
+  factory TherapistSeatUsage.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory TherapistSeatUsage.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TherapistSeatUsage',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'therapistId')
+    ..aOS(2, _omitFieldNames ? '' : 'firstName')
+    ..aOS(3, _omitFieldNames ? '' : 'lastName')
+    ..aOS(4, _omitFieldNames ? '' : 'planTier')
+    ..aI(5, _omitFieldNames ? '' : 'tokensUsed')
+    ..aI(6, _omitFieldNames ? '' : 'tokensReserved')
+    ..aI(7, _omitFieldNames ? '' : 'tokensLimit')
+    ..aOB(8, _omitFieldNames ? '' : 'isActive')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TherapistSeatUsage clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TherapistSeatUsage copyWith(void Function(TherapistSeatUsage) updates) =>
+      super.copyWith((message) => updates(message as TherapistSeatUsage))
+          as TherapistSeatUsage;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static TherapistSeatUsage create() => TherapistSeatUsage._();
+  @$core.override
+  TherapistSeatUsage createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static TherapistSeatUsage getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TherapistSeatUsage>(create);
+  static TherapistSeatUsage? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get therapistId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set therapistId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTherapistId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTherapistId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get firstName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set firstName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFirstName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFirstName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get lastName => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set lastName($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasLastName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearLastName() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get planTier => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set planTier($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPlanTier() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPlanTier() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get tokensUsed => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set tokensUsed($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTokensUsed() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTokensUsed() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get tokensReserved => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set tokensReserved($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTokensReserved() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTokensReserved() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get tokensLimit => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set tokensLimit($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasTokensLimit() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearTokensLimit() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get isActive => $_getBF(7);
+  @$pb.TagNumber(8)
+  set isActive($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasIsActive() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearIsActive() => $_clearField(8);
+}
+
+class OrgSeatSummary extends $pb.GeneratedMessage {
+  factory OrgSeatSummary({
+    $core.String? organizationId,
+    $core.Iterable<SeatAllocationInfo>? allocations,
+    $core.Iterable<TherapistSeatUsage>? therapistUsage,
+    $2.Timestamp? periodStart,
+    $2.Timestamp? periodEnd,
+    $core.String? subscriptionStatus,
+  }) {
+    final result = create();
+    if (organizationId != null) result.organizationId = organizationId;
+    if (allocations != null) result.allocations.addAll(allocations);
+    if (therapistUsage != null) result.therapistUsage.addAll(therapistUsage);
+    if (periodStart != null) result.periodStart = periodStart;
+    if (periodEnd != null) result.periodEnd = periodEnd;
+    if (subscriptionStatus != null)
+      result.subscriptionStatus = subscriptionStatus;
+    return result;
+  }
+
+  OrgSeatSummary._();
+
+  factory OrgSeatSummary.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OrgSeatSummary.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OrgSeatSummary',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'billing.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'organizationId')
+    ..pPM<SeatAllocationInfo>(2, _omitFieldNames ? '' : 'allocations',
+        subBuilder: SeatAllocationInfo.create)
+    ..pPM<TherapistSeatUsage>(3, _omitFieldNames ? '' : 'therapistUsage',
+        subBuilder: TherapistSeatUsage.create)
+    ..aOM<$2.Timestamp>(4, _omitFieldNames ? '' : 'periodStart',
+        subBuilder: $2.Timestamp.create)
+    ..aOM<$2.Timestamp>(5, _omitFieldNames ? '' : 'periodEnd',
+        subBuilder: $2.Timestamp.create)
+    ..aOS(6, _omitFieldNames ? '' : 'subscriptionStatus')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OrgSeatSummary clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OrgSeatSummary copyWith(void Function(OrgSeatSummary) updates) =>
+      super.copyWith((message) => updates(message as OrgSeatSummary))
+          as OrgSeatSummary;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OrgSeatSummary create() => OrgSeatSummary._();
+  @$core.override
+  OrgSeatSummary createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OrgSeatSummary getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OrgSeatSummary>(create);
+  static OrgSeatSummary? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get organizationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set organizationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasOrganizationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearOrganizationId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<SeatAllocationInfo> get allocations => $_getList(1);
+
+  /// Per-therapist counters for the current period (docs/38 billing
+  /// model: enforcement per seat). Empty for orgs without allocations.
+  @$pb.TagNumber(3)
+  $pb.PbList<TherapistSeatUsage> get therapistUsage => $_getList(2);
+
+  @$pb.TagNumber(4)
+  $2.Timestamp get periodStart => $_getN(3);
+  @$pb.TagNumber(4)
+  set periodStart($2.Timestamp value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPeriodStart() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPeriodStart() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $2.Timestamp ensurePeriodStart() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $2.Timestamp get periodEnd => $_getN(4);
+  @$pb.TagNumber(5)
+  set periodEnd($2.Timestamp value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPeriodEnd() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPeriodEnd() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $2.Timestamp ensurePeriodEnd() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $core.String get subscriptionStatus => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set subscriptionStatus($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSubscriptionStatus() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSubscriptionStatus() => $_clearField(6);
+}
+
 class AdminChangePlanRequest extends $pb.GeneratedMessage {
   factory AdminChangePlanRequest({
     $core.String? organizationId,

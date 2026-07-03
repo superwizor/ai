@@ -5,9 +5,10 @@
 -- W przypadku braku row (race przy renewal) zwraca pgx.ErrNoRows i handler
 -- musi tworzyć fallback counter (lub fail z odpowiednim błędem).
 SELECT id, subscription_id, period_start, period_end,
-       tokens_used, tokens_reserved, tokens_limit, updated_at
+       tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id
 FROM usage_counters
 WHERE subscription_id = $1
+  AND therapist_id IS NULL
   AND period_start <= now()
   AND period_end > now()
 LIMIT 1;
@@ -18,12 +19,63 @@ LIMIT 1;
 -- modyfikowaniem TEGO konkretnego row (advisory lock chroni przed równoległą
 -- pracą per-subscription jeszcze przed dotknięciem row).
 SELECT id, subscription_id, period_start, period_end,
-       tokens_used, tokens_reserved, tokens_limit, updated_at
+       tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id
 FROM usage_counters
 WHERE subscription_id = $1
+  AND therapist_id IS NULL
   AND period_start <= now()
   AND period_end > now()
 FOR UPDATE;
+
+-- name: GetActiveCounterForTherapist :one
+-- Per-therapist counter (docs/38 billing model). NULL-therapist rows
+-- (org-level) are matched by GetActiveCounter, not here.
+SELECT id, subscription_id, period_start, period_end,
+       tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id
+FROM usage_counters
+WHERE subscription_id = $1
+  AND therapist_id = $2
+  AND period_start <= now()
+  AND period_end > now()
+LIMIT 1;
+
+-- name: LockActiveCounterForTherapist :one
+-- FOR UPDATE wariant per-therapist — ReserveCredit/CommitUsage debit
+-- path. Advisory lock per subscription is still taken first.
+SELECT id, subscription_id, period_start, period_end,
+       tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id
+FROM usage_counters
+WHERE subscription_id = $1
+  AND therapist_id = $2
+  AND period_start <= now()
+  AND period_end > now()
+FOR UPDATE;
+
+-- name: SumActiveCounters :one
+-- Org-wide aggregate across org-level + per-therapist counters for the
+-- current period. GetSubscription fallback for allocation-managed orgs
+-- (which may have no org-level row).
+SELECT COALESCE(SUM(tokens_used), 0)::int AS tokens_used,
+       COALESCE(SUM(tokens_reserved), 0)::int AS tokens_reserved,
+       COALESCE(SUM(tokens_limit), 0)::int AS tokens_limit,
+       COUNT(*) AS counters
+FROM usage_counters
+WHERE subscription_id = $1
+  AND period_start <= now()
+  AND period_end > now();
+
+-- name: CreateTherapistUsageCounter :one
+-- Per-seat counter, minted by AdminSetSeatAllocations for already-seated
+-- therapists and lazily by the debit path for later joiners. UNIQUE
+-- (subscription_id, therapist_id, period_start) absorbs races.
+INSERT INTO usage_counters (
+    subscription_id, therapist_id, period_start, period_end,
+    tokens_used, tokens_reserved, tokens_limit
+) VALUES (
+    $1, $2, $3, $4, 0, 0, $5
+)
+RETURNING id, subscription_id, period_start, period_end,
+       tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id;
 
 -- name: AddReservedTokens :exec
 -- Inkrementuje tokens_reserved. Wywoływane PO sprawdzeniu dostępności
@@ -56,7 +108,7 @@ WHERE id = $1;
 -- w transakcji (które by ją unieważniły w Postgresie).
 SELECT EXISTS(
     SELECT 1 FROM usage_counters
-    WHERE subscription_id = $1 AND period_start = $2
+    WHERE subscription_id = $1 AND period_start = $2 AND therapist_id IS NULL
 ) AS exists;
 
 -- name: UpdateUsageCounterOnPlanChange :exec
@@ -66,4 +118,4 @@ UPDATE usage_counters
 SET tokens_limit = $3,
     period_end = $4,
     updated_at = now()
-WHERE subscription_id = $1 AND period_start = $2;
+WHERE subscription_id = $1 AND period_start = $2 AND therapist_id IS NULL;

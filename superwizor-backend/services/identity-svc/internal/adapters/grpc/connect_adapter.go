@@ -147,6 +147,22 @@ func (a *ConnectAdapter) RemoveTherapist(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) SetTherapistStatus(ctx context.Context, req *connect.Request[identityv1.SetTherapistStatusRequest]) (*connect.Response[identityv1.User], error) {
+	resp, err := a.s.SetTherapistStatus(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) AdminCreateOrganization(ctx context.Context, req *connect.Request[identityv1.AdminCreateOrganizationRequest]) (*connect.Response[identityv1.AdminCreateOrganizationResponse], error) {
+	resp, err := a.s.AdminCreateOrganization(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) AcceptInvitation(ctx context.Context, req *connect.Request[identityv1.AcceptInvitationRequest]) (*connect.Response[identityv1.AcceptInvitationResponse], error) {
 	resp, err := a.s.AcceptInvitation(ctx, req.Msg)
 	if err != nil {
@@ -274,5 +290,3 @@ func (a *ConnectAdapter) CheckEmailExists(ctx context.Context, req *connect.Requ
 	}
 	return connect.NewResponse(resp), nil
 }
-
-

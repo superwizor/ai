@@ -87,9 +87,9 @@ func (s *Server) RegisterOrganization(ctx context.Context, req *identityv1.Regis
 	//    which doesn't surface type-picking UI. The dedicated
 	//    /register/organization (clinic) page sends CLINIC.
 	orgParams := db.CreateOrganizationParams{
-		LegalName:               req.LegalName,
-		Type:                    fromProtoOrgType(req.Type),
-		HeadquartersAddressID:   pgtype.UUID{Bytes: addr.ID, Valid: true},
+		LegalName:             req.LegalName,
+		Type:                  fromProtoOrgType(req.Type),
+		HeadquartersAddressID: pgtype.UUID{Bytes: addr.ID, Valid: true},
 	}
 	if req.TaxId != "" {
 		orgParams.TaxID = &req.TaxId

@@ -2333,3 +2333,121 @@ final $typed_data.Uint8List platformFixedCostDescriptor = $convert.base64Decode(
     'ChFQbGF0Zm9ybUZpeGVkQ29zdBIOCgJpZBgBIAEoCVICaWQSEgoEbmFtZRgCIAEoCVIEbmFtZR'
     'IaCghwcm92aWRlchgDIAEoCVIIcHJvdmlkZXISHQoKYW1vdW50X3VzZBgEIAEoAVIJYW1vdW50'
     'VXNkEiUKDmJpbGxpbmdfcGVyaW9kGAUgASgJUg1iaWxsaW5nUGVyaW9k');
+
+@$core.Deprecated('Use getOrgTherapistMetricsRequestDescriptor instead')
+const GetOrgTherapistMetricsRequest$json = {
+  '1': 'GetOrgTherapistMetricsRequest',
+  '2': [
+    {'1': 'period_days', '3': 1, '4': 1, '5': 5, '10': 'periodDays'},
+  ],
+};
+
+/// Descriptor for `GetOrgTherapistMetricsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getOrgTherapistMetricsRequestDescriptor =
+    $convert.base64Decode(
+        'Ch1HZXRPcmdUaGVyYXBpc3RNZXRyaWNzUmVxdWVzdBIfCgtwZXJpb2RfZGF5cxgBIAEoBVIKcG'
+        'VyaW9kRGF5cw==');
+
+@$core.Deprecated('Use therapistMetricsDescriptor instead')
+const TherapistMetrics$json = {
+  '1': 'TherapistMetrics',
+  '2': [
+    {'1': 'therapist_id', '3': 1, '4': 1, '5': 9, '10': 'therapistId'},
+    {'1': 'first_name', '3': 2, '4': 1, '5': 9, '10': 'firstName'},
+    {'1': 'last_name', '3': 3, '4': 1, '5': 9, '10': 'lastName'},
+    {'1': 'is_active', '3': 4, '4': 1, '5': 8, '10': 'isActive'},
+    {
+      '1': 'sessions_completed',
+      '3': 5,
+      '4': 1,
+      '5': 5,
+      '10': 'sessionsCompleted'
+    },
+    {'1': 'sessions_failed', '3': 6, '4': 1, '5': 5, '10': 'sessionsFailed'},
+    {
+      '1': 'sessions_cancelled',
+      '3': 7,
+      '4': 1,
+      '5': 5,
+      '10': 'sessionsCancelled'
+    },
+    {
+      '1': 'total_duration_seconds',
+      '3': 8,
+      '4': 1,
+      '5': 3,
+      '10': 'totalDurationSeconds'
+    },
+    {
+      '1': 'avg_duration_seconds',
+      '3': 9,
+      '4': 1,
+      '5': 5,
+      '10': 'avgDurationSeconds'
+    },
+    {
+      '1': 'sessions_report_viewed',
+      '3': 10,
+      '4': 1,
+      '5': 5,
+      '10': 'sessionsReportViewed'
+    },
+    {
+      '1': 'last_session_date',
+      '3': 11,
+      '4': 1,
+      '5': 9,
+      '10': 'lastSessionDate'
+    },
+    {'1': 'active_patients', '3': 12, '4': 1, '5': 5, '10': 'activePatients'},
+    {'1': 'new_patients', '3': 13, '4': 1, '5': 5, '10': 'newPatients'},
+    {'1': 'ratings_positive', '3': 14, '4': 1, '5': 5, '10': 'ratingsPositive'},
+    {'1': 'ratings_negative', '3': 15, '4': 1, '5': 5, '10': 'ratingsNegative'},
+  ],
+};
+
+/// Descriptor for `TherapistMetrics`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List therapistMetricsDescriptor = $convert.base64Decode(
+    'ChBUaGVyYXBpc3RNZXRyaWNzEiEKDHRoZXJhcGlzdF9pZBgBIAEoCVILdGhlcmFwaXN0SWQSHQ'
+    'oKZmlyc3RfbmFtZRgCIAEoCVIJZmlyc3ROYW1lEhsKCWxhc3RfbmFtZRgDIAEoCVIIbGFzdE5h'
+    'bWUSGwoJaXNfYWN0aXZlGAQgASgIUghpc0FjdGl2ZRItChJzZXNzaW9uc19jb21wbGV0ZWQYBS'
+    'ABKAVSEXNlc3Npb25zQ29tcGxldGVkEicKD3Nlc3Npb25zX2ZhaWxlZBgGIAEoBVIOc2Vzc2lv'
+    'bnNGYWlsZWQSLQoSc2Vzc2lvbnNfY2FuY2VsbGVkGAcgASgFUhFzZXNzaW9uc0NhbmNlbGxlZB'
+    'I0ChZ0b3RhbF9kdXJhdGlvbl9zZWNvbmRzGAggASgDUhR0b3RhbER1cmF0aW9uU2Vjb25kcxIw'
+    'ChRhdmdfZHVyYXRpb25fc2Vjb25kcxgJIAEoBVISYXZnRHVyYXRpb25TZWNvbmRzEjQKFnNlc3'
+    'Npb25zX3JlcG9ydF92aWV3ZWQYCiABKAVSFHNlc3Npb25zUmVwb3J0Vmlld2VkEioKEWxhc3Rf'
+    'c2Vzc2lvbl9kYXRlGAsgASgJUg9sYXN0U2Vzc2lvbkRhdGUSJwoPYWN0aXZlX3BhdGllbnRzGA'
+    'wgASgFUg5hY3RpdmVQYXRpZW50cxIhCgxuZXdfcGF0aWVudHMYDSABKAVSC25ld1BhdGllbnRz'
+    'EikKEHJhdGluZ3NfcG9zaXRpdmUYDiABKAVSD3JhdGluZ3NQb3NpdGl2ZRIpChByYXRpbmdzX2'
+    '5lZ2F0aXZlGA8gASgFUg9yYXRpbmdzTmVnYXRpdmU=');
+
+@$core.Deprecated('Use orgTherapistMetricsResponseDescriptor instead')
+const OrgTherapistMetricsResponse$json = {
+  '1': 'OrgTherapistMetricsResponse',
+  '2': [
+    {
+      '1': 'therapists',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.clinical.v1.TherapistMetrics',
+      '10': 'therapists'
+    },
+    {
+      '1': 'totals',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.clinical.v1.TherapistMetrics',
+      '10': 'totals'
+    },
+    {'1': 'period_days', '3': 3, '4': 1, '5': 5, '10': 'periodDays'},
+  ],
+};
+
+/// Descriptor for `OrgTherapistMetricsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List orgTherapistMetricsResponseDescriptor = $convert.base64Decode(
+    'ChtPcmdUaGVyYXBpc3RNZXRyaWNzUmVzcG9uc2USPQoKdGhlcmFwaXN0cxgBIAMoCzIdLmNsaW'
+    '5pY2FsLnYxLlRoZXJhcGlzdE1ldHJpY3NSCnRoZXJhcGlzdHMSNQoGdG90YWxzGAIgASgLMh0u'
+    'Y2xpbmljYWwudjEuVGhlcmFwaXN0TWV0cmljc1IGdG90YWxzEh8KC3BlcmlvZF9kYXlzGAMgAS'
+    'gFUgpwZXJpb2REYXlz');

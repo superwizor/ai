@@ -124,6 +124,38 @@ class BillingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$adminChangePlan, request, options: options);
   }
 
+  /// SUPERWIZOR_ADMIN. Sets/updates the org's seat allocations
+  /// (plan × seats × negotiated price) and ensures a MANUAL
+  /// subscription exists starting at subscription_start. Creates
+  /// per-therapist usage counters for already-seated therapists;
+  /// later joiners get theirs lazily on first ReserveCredit.
+  /// reason >= 10 chars → audit_events.
+  $grpc.ResponseFuture<$0.OrgSeatSummary> adminSetSeatAllocations(
+    $0.AdminSetSeatAllocationsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminSetSeatAllocations, request,
+        options: options);
+  }
+
+  /// ORG_ADMIN. Seat occupancy + per-therapist token usage for the
+  /// /org panel. Org resolved from the caller's auth context.
+  $grpc.ResponseFuture<$0.OrgSeatSummary> getMyOrgSeatUsage(
+    $1.Empty request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getMyOrgSeatUsage, request, options: options);
+  }
+
+  /// SUPERWIZOR_ADMIN. Active plan catalog — feeds the /admin/orgs/new
+  /// seat-allocation table (plan_id × seats × price).
+  $grpc.ResponseFuture<$0.AdminListPlansResponse> adminListPlans(
+    $1.Empty request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminListPlans, request, options: options);
+  }
+
   // method descriptors
 
   static final _$checkQuota =
@@ -171,6 +203,21 @@ class BillingServiceClient extends $grpc.Client {
           '/billing.v1.BillingService/AdminChangePlan',
           ($0.AdminChangePlanRequest value) => value.writeToBuffer(),
           $0.Subscription.fromBuffer);
+  static final _$adminSetSeatAllocations =
+      $grpc.ClientMethod<$0.AdminSetSeatAllocationsRequest, $0.OrgSeatSummary>(
+          '/billing.v1.BillingService/AdminSetSeatAllocations',
+          ($0.AdminSetSeatAllocationsRequest value) => value.writeToBuffer(),
+          $0.OrgSeatSummary.fromBuffer);
+  static final _$getMyOrgSeatUsage =
+      $grpc.ClientMethod<$1.Empty, $0.OrgSeatSummary>(
+          '/billing.v1.BillingService/GetMyOrgSeatUsage',
+          ($1.Empty value) => value.writeToBuffer(),
+          $0.OrgSeatSummary.fromBuffer);
+  static final _$adminListPlans =
+      $grpc.ClientMethod<$1.Empty, $0.AdminListPlansResponse>(
+          '/billing.v1.BillingService/AdminListPlans',
+          ($1.Empty value) => value.writeToBuffer(),
+          $0.AdminListPlansResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('billing.v1.BillingService')
@@ -250,6 +297,29 @@ abstract class BillingServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.AdminChangePlanRequest.fromBuffer(value),
         ($0.Subscription value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AdminSetSeatAllocationsRequest,
+            $0.OrgSeatSummary>(
+        'AdminSetSeatAllocations',
+        adminSetSeatAllocations_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.AdminSetSeatAllocationsRequest.fromBuffer(value),
+        ($0.OrgSeatSummary value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$1.Empty, $0.OrgSeatSummary>(
+        'GetMyOrgSeatUsage',
+        getMyOrgSeatUsage_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
+        ($0.OrgSeatSummary value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$1.Empty, $0.AdminListPlansResponse>(
+        'AdminListPlans',
+        adminListPlans_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $1.Empty.fromBuffer(value),
+        ($0.AdminListPlansResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.QuotaDecision> checkQuota_Pre($grpc.ServiceCall $call,
@@ -324,4 +394,29 @@ abstract class BillingServiceBase extends $grpc.Service {
 
   $async.Future<$0.Subscription> adminChangePlan(
       $grpc.ServiceCall call, $0.AdminChangePlanRequest request);
+
+  $async.Future<$0.OrgSeatSummary> adminSetSeatAllocations_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminSetSeatAllocationsRequest> $request) async {
+    return adminSetSeatAllocations($call, await $request);
+  }
+
+  $async.Future<$0.OrgSeatSummary> adminSetSeatAllocations(
+      $grpc.ServiceCall call, $0.AdminSetSeatAllocationsRequest request);
+
+  $async.Future<$0.OrgSeatSummary> getMyOrgSeatUsage_Pre(
+      $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {
+    return getMyOrgSeatUsage($call, await $request);
+  }
+
+  $async.Future<$0.OrgSeatSummary> getMyOrgSeatUsage(
+      $grpc.ServiceCall call, $1.Empty request);
+
+  $async.Future<$0.AdminListPlansResponse> adminListPlans_Pre(
+      $grpc.ServiceCall $call, $async.Future<$1.Empty> $request) async {
+    return adminListPlans($call, await $request);
+  }
+
+  $async.Future<$0.AdminListPlansResponse> adminListPlans(
+      $grpc.ServiceCall call, $1.Empty request);
 }

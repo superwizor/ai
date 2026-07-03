@@ -8279,6 +8279,373 @@ class PlatformFixedCost extends $pb.GeneratedMessage {
   void clearBillingPeriod() => $_clearField(5);
 }
 
+class GetOrgTherapistMetricsRequest extends $pb.GeneratedMessage {
+  factory GetOrgTherapistMetricsRequest({
+    $core.int? periodDays,
+  }) {
+    final result = create();
+    if (periodDays != null) result.periodDays = periodDays;
+    return result;
+  }
+
+  GetOrgTherapistMetricsRequest._();
+
+  factory GetOrgTherapistMetricsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetOrgTherapistMetricsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetOrgTherapistMetricsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'periodDays')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetOrgTherapistMetricsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetOrgTherapistMetricsRequest copyWith(
+          void Function(GetOrgTherapistMetricsRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as GetOrgTherapistMetricsRequest))
+          as GetOrgTherapistMetricsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetOrgTherapistMetricsRequest create() =>
+      GetOrgTherapistMetricsRequest._();
+  @$core.override
+  GetOrgTherapistMetricsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetOrgTherapistMetricsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetOrgTherapistMetricsRequest>(create);
+  static GetOrgTherapistMetricsRequest? _defaultInstance;
+
+  /// Look-back window in days: 7 | 30 | 90 (anything else clamps to
+  /// 30). Applies to sessions, new patients and report ratings;
+  /// active_patients is a point-in-time count.
+  @$pb.TagNumber(1)
+  $core.int get periodDays => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set periodDays($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPeriodDays() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPeriodDays() => $_clearField(1);
+}
+
+/// Metadata aggregates only — zero PHI (docs/38 §7.3).
+class TherapistMetrics extends $pb.GeneratedMessage {
+  factory TherapistMetrics({
+    $core.String? therapistId,
+    $core.String? firstName,
+    $core.String? lastName,
+    $core.bool? isActive,
+    $core.int? sessionsCompleted,
+    $core.int? sessionsFailed,
+    $core.int? sessionsCancelled,
+    $fixnum.Int64? totalDurationSeconds,
+    $core.int? avgDurationSeconds,
+    $core.int? sessionsReportViewed,
+    $core.String? lastSessionDate,
+    $core.int? activePatients,
+    $core.int? newPatients,
+    $core.int? ratingsPositive,
+    $core.int? ratingsNegative,
+  }) {
+    final result = create();
+    if (therapistId != null) result.therapistId = therapistId;
+    if (firstName != null) result.firstName = firstName;
+    if (lastName != null) result.lastName = lastName;
+    if (isActive != null) result.isActive = isActive;
+    if (sessionsCompleted != null) result.sessionsCompleted = sessionsCompleted;
+    if (sessionsFailed != null) result.sessionsFailed = sessionsFailed;
+    if (sessionsCancelled != null) result.sessionsCancelled = sessionsCancelled;
+    if (totalDurationSeconds != null)
+      result.totalDurationSeconds = totalDurationSeconds;
+    if (avgDurationSeconds != null)
+      result.avgDurationSeconds = avgDurationSeconds;
+    if (sessionsReportViewed != null)
+      result.sessionsReportViewed = sessionsReportViewed;
+    if (lastSessionDate != null) result.lastSessionDate = lastSessionDate;
+    if (activePatients != null) result.activePatients = activePatients;
+    if (newPatients != null) result.newPatients = newPatients;
+    if (ratingsPositive != null) result.ratingsPositive = ratingsPositive;
+    if (ratingsNegative != null) result.ratingsNegative = ratingsNegative;
+    return result;
+  }
+
+  TherapistMetrics._();
+
+  factory TherapistMetrics.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory TherapistMetrics.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TherapistMetrics',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'therapistId')
+    ..aOS(2, _omitFieldNames ? '' : 'firstName')
+    ..aOS(3, _omitFieldNames ? '' : 'lastName')
+    ..aOB(4, _omitFieldNames ? '' : 'isActive')
+    ..aI(5, _omitFieldNames ? '' : 'sessionsCompleted')
+    ..aI(6, _omitFieldNames ? '' : 'sessionsFailed')
+    ..aI(7, _omitFieldNames ? '' : 'sessionsCancelled')
+    ..aInt64(8, _omitFieldNames ? '' : 'totalDurationSeconds')
+    ..aI(9, _omitFieldNames ? '' : 'avgDurationSeconds')
+    ..aI(10, _omitFieldNames ? '' : 'sessionsReportViewed')
+    ..aOS(11, _omitFieldNames ? '' : 'lastSessionDate')
+    ..aI(12, _omitFieldNames ? '' : 'activePatients')
+    ..aI(13, _omitFieldNames ? '' : 'newPatients')
+    ..aI(14, _omitFieldNames ? '' : 'ratingsPositive')
+    ..aI(15, _omitFieldNames ? '' : 'ratingsNegative')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TherapistMetrics clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TherapistMetrics copyWith(void Function(TherapistMetrics) updates) =>
+      super.copyWith((message) => updates(message as TherapistMetrics))
+          as TherapistMetrics;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static TherapistMetrics create() => TherapistMetrics._();
+  @$core.override
+  TherapistMetrics createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static TherapistMetrics getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TherapistMetrics>(create);
+  static TherapistMetrics? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get therapistId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set therapistId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasTherapistId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTherapistId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get firstName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set firstName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFirstName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFirstName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get lastName => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set lastName($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasLastName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearLastName() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get isActive => $_getBF(3);
+  @$pb.TagNumber(4)
+  set isActive($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasIsActive() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearIsActive() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get sessionsCompleted => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set sessionsCompleted($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSessionsCompleted() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSessionsCompleted() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get sessionsFailed => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set sessionsFailed($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSessionsFailed() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSessionsFailed() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get sessionsCancelled => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set sessionsCancelled($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSessionsCancelled() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSessionsCancelled() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get totalDurationSeconds => $_getI64(7);
+  @$pb.TagNumber(8)
+  set totalDurationSeconds($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasTotalDurationSeconds() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearTotalDurationSeconds() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.int get avgDurationSeconds => $_getIZ(8);
+  @$pb.TagNumber(9)
+  set avgDurationSeconds($core.int value) => $_setSignedInt32(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasAvgDurationSeconds() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearAvgDurationSeconds() => $_clearField(9);
+
+  /// Sessions whose report the therapist actually opened.
+  @$pb.TagNumber(10)
+  $core.int get sessionsReportViewed => $_getIZ(9);
+  @$pb.TagNumber(10)
+  set sessionsReportViewed($core.int value) => $_setSignedInt32(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasSessionsReportViewed() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearSessionsReportViewed() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get lastSessionDate => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set lastSessionDate($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasLastSessionDate() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearLastSessionDate() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.int get activePatients => $_getIZ(11);
+  @$pb.TagNumber(12)
+  set activePatients($core.int value) => $_setSignedInt32(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasActivePatients() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearActivePatients() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.int get newPatients => $_getIZ(12);
+  @$pb.TagNumber(13)
+  set newPatients($core.int value) => $_setSignedInt32(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasNewPatients() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearNewPatients() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $core.int get ratingsPositive => $_getIZ(13);
+  @$pb.TagNumber(14)
+  set ratingsPositive($core.int value) => $_setSignedInt32(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasRatingsPositive() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearRatingsPositive() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $core.int get ratingsNegative => $_getIZ(14);
+  @$pb.TagNumber(15)
+  set ratingsNegative($core.int value) => $_setSignedInt32(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasRatingsNegative() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearRatingsNegative() => $_clearField(15);
+}
+
+class OrgTherapistMetricsResponse extends $pb.GeneratedMessage {
+  factory OrgTherapistMetricsResponse({
+    $core.Iterable<TherapistMetrics>? therapists,
+    TherapistMetrics? totals,
+    $core.int? periodDays,
+  }) {
+    final result = create();
+    if (therapists != null) result.therapists.addAll(therapists);
+    if (totals != null) result.totals = totals;
+    if (periodDays != null) result.periodDays = periodDays;
+    return result;
+  }
+
+  OrgTherapistMetricsResponse._();
+
+  factory OrgTherapistMetricsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory OrgTherapistMetricsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'OrgTherapistMetricsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..pPM<TherapistMetrics>(1, _omitFieldNames ? '' : 'therapists',
+        subBuilder: TherapistMetrics.create)
+    ..aOM<TherapistMetrics>(2, _omitFieldNames ? '' : 'totals',
+        subBuilder: TherapistMetrics.create)
+    ..aI(3, _omitFieldNames ? '' : 'periodDays')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OrgTherapistMetricsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  OrgTherapistMetricsResponse copyWith(
+          void Function(OrgTherapistMetricsResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as OrgTherapistMetricsResponse))
+          as OrgTherapistMetricsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static OrgTherapistMetricsResponse create() =>
+      OrgTherapistMetricsResponse._();
+  @$core.override
+  OrgTherapistMetricsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static OrgTherapistMetricsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<OrgTherapistMetricsResponse>(create);
+  static OrgTherapistMetricsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<TherapistMetrics> get therapists => $_getList(0);
+
+  /// Column sums over `therapists` (avg fields re-averaged).
+  @$pb.TagNumber(2)
+  TherapistMetrics get totals => $_getN(1);
+  @$pb.TagNumber(2)
+  set totals(TherapistMetrics value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTotals() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTotals() => $_clearField(2);
+  @$pb.TagNumber(2)
+  TherapistMetrics ensureTotals() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.int get periodDays => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set periodDays($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPeriodDays() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPeriodDays() => $_clearField(3);
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

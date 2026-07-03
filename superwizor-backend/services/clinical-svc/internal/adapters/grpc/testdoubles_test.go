@@ -31,19 +31,19 @@ import (
 type fakeQuerier struct {
 	db.Querier // nil embed — calls to unset methods panic loudly
 
-	getPatientFileFn              func(ctx context.Context, id uuid.UUID) (db.PatientFile, error)
-	getPatientFileWithUserFn      func(ctx context.Context, id uuid.UUID) (db.GetPatientFileWithUserRow, error)
-	updatePatientFileFn           func(ctx context.Context, arg db.UpdatePatientFileParams) (db.PatientFile, error)
-	updatePatientUserFn           func(ctx context.Context, arg db.UpdatePatientUserParams) (db.UpdatePatientUserRow, error)
-	deletePatientUserFn           func(ctx context.Context, id uuid.UUID) (int64, error)
-	listSessionIDsForPatientFn    func(ctx context.Context, pid pgtype.UUID) ([]uuid.UUID, error)
-	listSessionIDsForPFFn         func(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error)
-	hardDeletePatientFileFn       func(ctx context.Context, arg db.HardDeletePatientFileParams) (int64, error)
-	hardDeleteSessionFn           func(ctx context.Context, arg db.HardDeleteSessionParams) (int64, error)
-	getSessionFn                  func(ctx context.Context, id uuid.UUID) (db.Session, error)
-	updateSessionNameFn           func(ctx context.Context, arg db.UpdateSessionNameParams) (db.Session, error)
-	updateSessionStatusFn         func(ctx context.Context, arg db.UpdateSessionStatusParams) error
-	getUserOrganizationIDFn       func(ctx context.Context, id uuid.UUID) (pgtype.UUID, error)
+	getPatientFileFn           func(ctx context.Context, id uuid.UUID) (db.PatientFile, error)
+	getPatientFileWithUserFn   func(ctx context.Context, id uuid.UUID) (db.GetPatientFileWithUserRow, error)
+	updatePatientFileFn        func(ctx context.Context, arg db.UpdatePatientFileParams) (db.PatientFile, error)
+	updatePatientUserFn        func(ctx context.Context, arg db.UpdatePatientUserParams) (db.UpdatePatientUserRow, error)
+	deletePatientUserFn        func(ctx context.Context, id uuid.UUID) (int64, error)
+	listSessionIDsForPatientFn func(ctx context.Context, pid pgtype.UUID) ([]uuid.UUID, error)
+	listSessionIDsForPFFn      func(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error)
+	hardDeletePatientFileFn    func(ctx context.Context, arg db.HardDeletePatientFileParams) (int64, error)
+	hardDeleteSessionFn        func(ctx context.Context, arg db.HardDeleteSessionParams) (int64, error)
+	getSessionFn               func(ctx context.Context, id uuid.UUID) (db.Session, error)
+	updateSessionNameFn        func(ctx context.Context, arg db.UpdateSessionNameParams) (db.Session, error)
+	updateSessionStatusFn      func(ctx context.Context, arg db.UpdateSessionStatusParams) error
+	getUserOrganizationIDFn    func(ctx context.Context, id uuid.UUID) (pgtype.UUID, error)
 
 	setPatientEmailFn func(ctx context.Context, arg db.SetPatientEmailParams) error
 
@@ -58,17 +58,17 @@ type fakeQuerier struct {
 	listTranscriptSegmentsFn        func(ctx context.Context, transcriptID uuid.UUID) ([]db.TranscriptSegment, error)
 	listReportsBySessionFn          func(ctx context.Context, sessionID uuid.UUID) ([]db.Report, error)
 	softDeleteSessionsForDSARFn     func(ctx context.Context, patientFileID uuid.UUID) error
-	softDeletePatientNotesForDSARFn  func(ctx context.Context, patientFileID uuid.UUID) error
+	softDeletePatientNotesForDSARFn func(ctx context.Context, patientFileID uuid.UUID) error
 	softDeletePatientFileForDSARFn  func(ctx context.Context, arg db.SoftDeletePatientFileForDSARParams) (int64, error)
 	softDeletePatientUserForDSARFn  func(ctx context.Context, id uuid.UUID) (int64, error)
 	createAuditEventFn              func(ctx context.Context, arg db.CreateAuditEventParams) error
 
 	// Admin Prompt Studio (docs/31)
-	adminListModalityPromptsFn        func(ctx context.Context) ([]db.AdminListModalityPromptsRow, error)
-	getLatestModalityPromptVersionFn  func(ctx context.Context, id uuid.UUID) (int32, error)
-	updateModalityLivePromptFn        func(ctx context.Context, arg db.UpdateModalityLivePromptParams) error
-	insertModalityPromptVersionFn     func(ctx context.Context, arg db.InsertModalityPromptVersionParams) (db.InsertModalityPromptVersionRow, error)
-	listModalityPromptVersionsFn      func(ctx context.Context, arg db.ListModalityPromptVersionsParams) ([]db.ListModalityPromptVersionsRow, error)
+	adminListModalityPromptsFn       func(ctx context.Context) ([]db.AdminListModalityPromptsRow, error)
+	getLatestModalityPromptVersionFn func(ctx context.Context, id uuid.UUID) (int32, error)
+	updateModalityLivePromptFn       func(ctx context.Context, arg db.UpdateModalityLivePromptParams) error
+	insertModalityPromptVersionFn    func(ctx context.Context, arg db.InsertModalityPromptVersionParams) (db.InsertModalityPromptVersionRow, error)
+	listModalityPromptVersionsFn     func(ctx context.Context, arg db.ListModalityPromptVersionsParams) ([]db.ListModalityPromptVersionsRow, error)
 
 	// Call recorders — set non-nil to record args for later assertion.
 	deletePatientUserCalls    []uuid.UUID
@@ -215,12 +215,12 @@ func (f *fakeQuerier) CreateAuditEvent(ctx context.Context, arg db.CreateAuditEv
 // pool-level one in most tests, but separable if a test wants to prove
 // "tx-side mutations went to the tx, not the pool").
 type fakeTxOpener struct {
-	q            *fakeQuerier // tx-scoped Querier; nil → reuse parent
-	beginErr     error
-	commitErr    error
-	rollbackErr  error
-	beginCalls   int
-	commitCalls  int
+	q             *fakeQuerier // tx-scoped Querier; nil → reuse parent
+	beginErr      error
+	commitErr     error
+	rollbackErr   error
+	beginCalls    int
+	commitCalls   int
 	rollbackCalls int
 }
 
@@ -282,7 +282,6 @@ func (p *fakePublisher) PublishAnalyticsEvent(ctx context.Context, event analyti
 	p.analyticsEvents = append(p.analyticsEvents, event)
 	return p.publishErr
 }
-
 
 // errSentinel — used in tests that just need "any non-nil error" out
 // of a stubbed DB call. Distinct value so tests can match it directly

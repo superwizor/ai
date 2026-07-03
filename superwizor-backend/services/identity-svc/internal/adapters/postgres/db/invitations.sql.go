@@ -13,25 +13,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countPendingInvitationsForAllocation = `-- name: CountPendingInvitationsForAllocation :one
+SELECT COUNT(*) FROM invitations
+WHERE allocation_id = $1 AND accepted_at IS NULL AND expires_at > now()
+`
+
+// Seat-reservation half of the occupancy formula (docs/38 §3):
+// occupancy = active seat_assignments + pending unexpired invitations.
+func (q *Queries) CountPendingInvitationsForAllocation(ctx context.Context, allocationID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingInvitationsForAllocation, allocationID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createInvitation = `-- name: CreateInvitation :one
 INSERT INTO invitations (
-    organization_id, invited_by_user, email, token_hash, expires_at
-) VALUES ($1, $2, $3, $4, $5)
-RETURNING id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at
+    organization_id, invited_by_user, email, token_hash, expires_at,
+    invited_role, allocation_id, invited_first_name, invited_last_name
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name
 `
 
 type CreateInvitationParams struct {
-	OrganizationID uuid.UUID `json:"organization_id"`
-	InvitedByUser  uuid.UUID `json:"invited_by_user"`
-	Email          string    `json:"email"`
-	TokenHash      []byte    `json:"token_hash"`
-	ExpiresAt      time.Time `json:"expires_at"`
+	OrganizationID   uuid.UUID   `json:"organization_id"`
+	InvitedByUser    uuid.UUID   `json:"invited_by_user"`
+	Email            string      `json:"email"`
+	TokenHash        []byte      `json:"token_hash"`
+	ExpiresAt        time.Time   `json:"expires_at"`
+	InvitedRole      UserRole    `json:"invited_role"`
+	AllocationID     pgtype.UUID `json:"allocation_id"`
+	InvitedFirstName *string     `json:"invited_first_name"`
+	InvitedLastName  *string     `json:"invited_last_name"`
 }
 
 // Idempotent on (organization_id, email). The unique constraint
 // collides for a second invite to the same email — handler reads the
 // unique-violation, decides whether to refresh the token (current
 // design: just return the existing row; client retries the same link).
+//
+// invited_role: THERAPIST (team invite) or ORG_ADMIN (manager invite
+// from AdminCreateOrganization). allocation_id pins a THERAPIST invite
+// to a seat allocation; the pending invite reserves that seat.
 func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationParams) (Invitation, error) {
 	row := q.db.QueryRow(ctx, createInvitation,
 		arg.OrganizationID,
@@ -39,6 +62,10 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 		arg.Email,
 		arg.TokenHash,
 		arg.ExpiresAt,
+		arg.InvitedRole,
+		arg.AllocationID,
+		arg.InvitedFirstName,
+		arg.InvitedLastName,
 	)
 	var i Invitation
 	err := row.Scan(
@@ -51,12 +78,16 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 		&i.AcceptedAt,
 		&i.AcceptedUserID,
 		&i.CreatedAt,
+		&i.InvitedRole,
+		&i.AllocationID,
+		&i.InvitedFirstName,
+		&i.InvitedLastName,
 	)
 	return i, err
 }
 
 const getInvitationByOrgEmail = `-- name: GetInvitationByOrgEmail :one
-SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at FROM invitations
+SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name FROM invitations
 WHERE organization_id = $1 AND email = $2 AND accepted_at IS NULL
 `
 
@@ -78,12 +109,16 @@ func (q *Queries) GetInvitationByOrgEmail(ctx context.Context, arg GetInvitation
 		&i.AcceptedAt,
 		&i.AcceptedUserID,
 		&i.CreatedAt,
+		&i.InvitedRole,
+		&i.AllocationID,
+		&i.InvitedFirstName,
+		&i.InvitedLastName,
 	)
 	return i, err
 }
 
 const getUnacceptedInvitationByTokenHash = `-- name: GetUnacceptedInvitationByTokenHash :one
-SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at FROM invitations
+SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name FROM invitations
 WHERE token_hash = $1 AND accepted_at IS NULL AND expires_at > now()
 `
 
@@ -102,12 +137,16 @@ func (q *Queries) GetUnacceptedInvitationByTokenHash(ctx context.Context, tokenH
 		&i.AcceptedAt,
 		&i.AcceptedUserID,
 		&i.CreatedAt,
+		&i.InvitedRole,
+		&i.AllocationID,
+		&i.InvitedFirstName,
+		&i.InvitedLastName,
 	)
 	return i, err
 }
 
 const listPendingInvitationsByOrg = `-- name: ListPendingInvitationsByOrg :many
-SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at FROM invitations
+SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name FROM invitations
 WHERE organization_id = $1 AND accepted_at IS NULL
 ORDER BY created_at DESC
 `
@@ -131,6 +170,10 @@ func (q *Queries) ListPendingInvitationsByOrg(ctx context.Context, organizationI
 			&i.AcceptedAt,
 			&i.AcceptedUserID,
 			&i.CreatedAt,
+			&i.InvitedRole,
+			&i.AllocationID,
+			&i.InvitedFirstName,
+			&i.InvitedLastName,
 		); err != nil {
 			return nil, err
 		}
@@ -143,7 +186,7 @@ func (q *Queries) ListPendingInvitationsByOrg(ctx context.Context, organizationI
 }
 
 const listTherapistsInOrgAll = `-- name: ListTherapistsInOrgAll :many
-SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences FROM users
+SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at FROM users
 WHERE organization_id = $1 AND role = 'THERAPIST' AND deleted_at IS NULL
 ORDER BY created_at ASC
 `
@@ -184,6 +227,8 @@ func (q *Queries) ListTherapistsInOrgAll(ctx context.Context, organizationID pgt
 			&i.CreatedAt,
 			&i.DeletedAt,
 			&i.ReportPreferences,
+			&i.IsActive,
+			&i.DeactivatedAt,
 		); err != nil {
 			return nil, err
 		}

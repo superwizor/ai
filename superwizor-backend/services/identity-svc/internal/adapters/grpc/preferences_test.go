@@ -21,13 +21,13 @@ func TestValidatePayload_Defaults(t *testing.T) {
 
 func TestValidatePayload_RejectsUnknownEnum(t *testing.T) {
 	cases := map[string]preferencesPayload{
-		"length":               {Length: "novelistic"},
-		"tone":                 {Tone: "passive_aggressive"},
-		"quote_density":        {QuoteDensity: "infinite"},
-		"diagnostic_language":  {DiagnosticLanguage: "vibes"},
-		"hypothesis_hedging":   {HypothesisHedging: "extremely"},
-		"strengths_framing":    {StrengthsFraming: "doom"},
-		"section_emphasis":     {SectionEmphasis: []string{"wrong_section"}},
+		"length":              {Length: "novelistic"},
+		"tone":                {Tone: "passive_aggressive"},
+		"quote_density":       {QuoteDensity: "infinite"},
+		"diagnostic_language": {DiagnosticLanguage: "vibes"},
+		"hypothesis_hedging":  {HypothesisHedging: "extremely"},
+		"strengths_framing":   {StrengthsFraming: "doom"},
+		"section_emphasis":    {SectionEmphasis: []string{"wrong_section"}},
 	}
 	for name, p := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -118,7 +118,7 @@ func TestProtoToPayload_TrimsSectionEmphasis(t *testing.T) {
 		SectionEmphasis: []string{
 			"clinical_picture",
 			"  interventions  ",
-			"", // drop empty
+			"",    // drop empty
 			"   ", // drop whitespace-only
 			"case_formulation",
 		},

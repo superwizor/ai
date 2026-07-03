@@ -16,6 +16,7 @@ import 'auth/sso_handler.dart'
 import 'auth/app_lock_controller.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
+import 'screens/deactivated_account_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
 import 'screens/login_screen.dart';
@@ -124,6 +125,16 @@ class _AuthGate extends ConsumerWidget {
       }
     });
 
+    // Deactivation gate (docs/38 §4): a reversibly-deactivated account
+    // (users.is_active = false, toggled by the org's manager) gets a
+    // full-screen block instead of the app. Detected from the resolved
+    // User row; every backend RPC would fail with PermissionDenied
+    // "ACCOUNT_DEACTIVATED" anyway — this makes the state legible.
+    final deactivated = ref.watch(currentUserProvider).whenOrNull(
+              data: (u) => u != null && !u.isActive,
+            ) ??
+        false;
+
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
@@ -132,7 +143,9 @@ class _AuthGate extends ConsumerWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        return snapshot.hasData ? const _LockGate() : const LoginScreen();
+        if (!snapshot.hasData) return const LoginScreen();
+        if (deactivated) return const DeactivatedAccountScreen();
+        return const _LockGate();
       },
     );
   }

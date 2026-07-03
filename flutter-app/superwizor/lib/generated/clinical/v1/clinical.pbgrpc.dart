@@ -347,6 +347,19 @@ class ClinicalServiceClient extends $grpc.Client {
         options: options);
   }
 
+  /// ─── Org analytics (docs/38 §7) — ORG_ADMIN only ───
+  /// Per-therapist metadata aggregates for the caller's organization.
+  /// HARD privacy boundary (§7.3): counts and durations ONLY — never
+  /// transcripts, reports, notes, or patient identity. Org resolved
+  /// from the auth context, never from the request.
+  $grpc.ResponseFuture<$0.OrgTherapistMetricsResponse> getOrgTherapistMetrics(
+    $0.GetOrgTherapistMetricsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getOrgTherapistMetrics, request,
+        options: options);
+  }
+
   /// ─── RODO/GDPR DSAR endpoints ───
   /// Export all clinical and personal data related to a patient file,
   /// decrypting all PHI columns using KMS before returning.
@@ -540,6 +553,11 @@ class ClinicalServiceClient extends $grpc.Client {
       '/clinical.v1.ClinicalService/AdminUpdateModalityPrompt',
       ($0.AdminUpdateModalityPromptRequest value) => value.writeToBuffer(),
       $0.AdminUpdateModalityPromptResponse.fromBuffer);
+  static final _$getOrgTherapistMetrics = $grpc.ClientMethod<
+          $0.GetOrgTherapistMetricsRequest, $0.OrgTherapistMetricsResponse>(
+      '/clinical.v1.ClinicalService/GetOrgTherapistMetrics',
+      ($0.GetOrgTherapistMetricsRequest value) => value.writeToBuffer(),
+      $0.OrgTherapistMetricsResponse.fromBuffer);
   static final _$exportPatientData = $grpc.ClientMethod<
           $0.ExportPatientDataRequest, $0.ExportPatientDataResponse>(
       '/clinical.v1.ClinicalService/ExportPatientData',
@@ -840,6 +858,15 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.AdminUpdateModalityPromptRequest.fromBuffer(value),
         ($0.AdminUpdateModalityPromptResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetOrgTherapistMetricsRequest,
+            $0.OrgTherapistMetricsResponse>(
+        'GetOrgTherapistMetrics',
+        getOrgTherapistMetrics_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetOrgTherapistMetricsRequest.fromBuffer(value),
+        ($0.OrgTherapistMetricsResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.ExportPatientDataRequest,
             $0.ExportPatientDataResponse>(
         'ExportPatientData',
@@ -1146,6 +1173,15 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$0.AdminUpdateModalityPromptResponse> adminUpdateModalityPrompt(
       $grpc.ServiceCall call, $0.AdminUpdateModalityPromptRequest request);
+
+  $async.Future<$0.OrgTherapistMetricsResponse> getOrgTherapistMetrics_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetOrgTherapistMetricsRequest> $request) async {
+    return getOrgTherapistMetrics($call, await $request);
+  }
+
+  $async.Future<$0.OrgTherapistMetricsResponse> getOrgTherapistMetrics(
+      $grpc.ServiceCall call, $0.GetOrgTherapistMetricsRequest request);
 
   $async.Future<$0.ExportPatientDataResponse> exportPatientData_Pre(
       $grpc.ServiceCall $call,

@@ -3,10 +3,21 @@
 -- collides for a second invite to the same email — handler reads the
 -- unique-violation, decides whether to refresh the token (current
 -- design: just return the existing row; client retries the same link).
+--
+-- invited_role: THERAPIST (team invite) or ORG_ADMIN (manager invite
+-- from AdminCreateOrganization). allocation_id pins a THERAPIST invite
+-- to a seat allocation; the pending invite reserves that seat.
 INSERT INTO invitations (
-    organization_id, invited_by_user, email, token_hash, expires_at
-) VALUES ($1, $2, $3, $4, $5)
+    organization_id, invited_by_user, email, token_hash, expires_at,
+    invited_role, allocation_id, invited_first_name, invited_last_name
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
+
+-- name: CountPendingInvitationsForAllocation :one
+-- Seat-reservation half of the occupancy formula (docs/38 §3):
+-- occupancy = active seat_assignments + pending unexpired invitations.
+SELECT COUNT(*) FROM invitations
+WHERE allocation_id = $1 AND accepted_at IS NULL AND expires_at > now();
 
 -- name: GetInvitationByOrgEmail :one
 SELECT * FROM invitations

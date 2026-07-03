@@ -56,7 +56,9 @@ func TestAdminUpdateModalityPrompt_Validation(t *testing.T) {
 	}{
 		{"bad uuid", func(r *clinicalv1.AdminUpdateModalityPromptRequest) { r.ModalityId = "not-a-uuid" }, codes.InvalidArgument},
 		{"empty prompt", func(r *clinicalv1.AdminUpdateModalityPromptRequest) { r.SystemPrompt = "   " }, codes.InvalidArgument},
-		{"oversize prompt", func(r *clinicalv1.AdminUpdateModalityPromptRequest) { r.SystemPrompt = strings.Repeat("x", maxPromptChars+1) }, codes.InvalidArgument},
+		{"oversize prompt", func(r *clinicalv1.AdminUpdateModalityPromptRequest) {
+			r.SystemPrompt = strings.Repeat("x", maxPromptChars+1)
+		}, codes.InvalidArgument},
 		{"short note", func(r *clinicalv1.AdminUpdateModalityPromptRequest) { r.ChangeNote = "short" }, codes.InvalidArgument},
 		{"invalid utf8", func(r *clinicalv1.AdminUpdateModalityPromptRequest) { r.SystemPrompt = string([]byte{0xff, 0xfe, 'a'}) }, codes.InvalidArgument},
 	}

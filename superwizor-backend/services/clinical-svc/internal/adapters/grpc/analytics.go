@@ -473,7 +473,7 @@ func (s *Server) GetAdminAnalytics(ctx context.Context, req *clinicalv1.GetAdmin
 		ActivationTimeHistogram: activationTimeHistogram,
 		HourlyHeatmap:           hourlyHeatmap,
 		UploadFailuresTrend:     uploadFailuresTrend,
-		ModalityDistribution:   modalityDistribution,
+		ModalityDistribution:    modalityDistribution,
 		KpiAvgSessionDuration:   avgDuration,
 		SessionDurationTrend:    sessionDurationTrend,
 		PlatformFixedCosts:      platformFixedCosts,

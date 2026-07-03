@@ -19,8 +19,8 @@ import (
 
 type consentFakeQuerier struct {
 	db.Querier
-	getUserByIDFn    func(ctx context.Context, id uuid.UUID) (db.User, error)
-	recordConsentFn  func(ctx context.Context, arg db.RecordConsentParams) (db.ConsentRecord, error)
+	getUserByIDFn     func(ctx context.Context, id uuid.UUID) (db.User, error)
+	recordConsentFn   func(ctx context.Context, arg db.RecordConsentParams) (db.ConsentRecord, error)
 	userByFirebaseUID db.User
 }
 
@@ -53,6 +53,7 @@ func TestRecordConsent_Self(t *testing.T) {
 			Role:        "THERAPIST",
 			FirebaseUid: &fbUID,
 			Email:       &email,
+			IsActive:    true,
 		},
 	}
 
@@ -106,6 +107,7 @@ func TestRecordConsent_TherapistOnBehalfOfPatient(t *testing.T) {
 			Role:        "THERAPIST",
 			FirebaseUid: &fbUID,
 			Email:       &email,
+			IsActive:    true,
 		},
 	}
 
@@ -162,6 +164,7 @@ func TestRecordConsent_PermissionDenied(t *testing.T) {
 			Role:        "THERAPIST",
 			FirebaseUid: &fbUID,
 			Email:       &email,
+			IsActive:    true,
 		},
 	}
 

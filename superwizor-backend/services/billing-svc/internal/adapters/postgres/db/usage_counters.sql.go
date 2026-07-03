@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addReservedTokens = `-- name: AddReservedTokens :exec
@@ -34,7 +35,7 @@ func (q *Queries) AddReservedTokens(ctx context.Context, arg AddReservedTokensPa
 const checkUsageCounterExists = `-- name: CheckUsageCounterExists :one
 SELECT EXISTS(
     SELECT 1 FROM usage_counters
-    WHERE subscription_id = $1 AND period_start = $2
+    WHERE subscription_id = $1 AND period_start = $2 AND therapist_id IS NULL
 ) AS exists
 `
 
@@ -74,11 +75,57 @@ func (q *Queries) CommitTokens(ctx context.Context, arg CommitTokensParams) erro
 	return err
 }
 
+const createTherapistUsageCounter = `-- name: CreateTherapistUsageCounter :one
+INSERT INTO usage_counters (
+    subscription_id, therapist_id, period_start, period_end,
+    tokens_used, tokens_reserved, tokens_limit
+) VALUES (
+    $1, $2, $3, $4, 0, 0, $5
+)
+RETURNING id, subscription_id, period_start, period_end,
+       tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id
+`
+
+type CreateTherapistUsageCounterParams struct {
+	SubscriptionID uuid.UUID   `json:"subscription_id"`
+	TherapistID    pgtype.UUID `json:"therapist_id"`
+	PeriodStart    time.Time   `json:"period_start"`
+	PeriodEnd      time.Time   `json:"period_end"`
+	TokensLimit    int32       `json:"tokens_limit"`
+}
+
+// Per-seat counter, minted by AdminSetSeatAllocations for already-seated
+// therapists and lazily by the debit path for later joiners. UNIQUE
+// (subscription_id, therapist_id, period_start) absorbs races.
+func (q *Queries) CreateTherapistUsageCounter(ctx context.Context, arg CreateTherapistUsageCounterParams) (UsageCounter, error) {
+	row := q.db.QueryRow(ctx, createTherapistUsageCounter,
+		arg.SubscriptionID,
+		arg.TherapistID,
+		arg.PeriodStart,
+		arg.PeriodEnd,
+		arg.TokensLimit,
+	)
+	var i UsageCounter
+	err := row.Scan(
+		&i.ID,
+		&i.SubscriptionID,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.TokensUsed,
+		&i.TokensReserved,
+		&i.TokensLimit,
+		&i.UpdatedAt,
+		&i.TherapistID,
+	)
+	return i, err
+}
+
 const getActiveCounter = `-- name: GetActiveCounter :one
 SELECT id, subscription_id, period_start, period_end,
-       tokens_used, tokens_reserved, tokens_limit, updated_at
+       tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id
 FROM usage_counters
 WHERE subscription_id = $1
+  AND therapist_id IS NULL
   AND period_start <= now()
   AND period_end > now()
 LIMIT 1
@@ -101,15 +148,52 @@ func (q *Queries) GetActiveCounter(ctx context.Context, subscriptionID uuid.UUID
 		&i.TokensReserved,
 		&i.TokensLimit,
 		&i.UpdatedAt,
+		&i.TherapistID,
+	)
+	return i, err
+}
+
+const getActiveCounterForTherapist = `-- name: GetActiveCounterForTherapist :one
+SELECT id, subscription_id, period_start, period_end,
+       tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id
+FROM usage_counters
+WHERE subscription_id = $1
+  AND therapist_id = $2
+  AND period_start <= now()
+  AND period_end > now()
+LIMIT 1
+`
+
+type GetActiveCounterForTherapistParams struct {
+	SubscriptionID uuid.UUID   `json:"subscription_id"`
+	TherapistID    pgtype.UUID `json:"therapist_id"`
+}
+
+// Per-therapist counter (docs/38 billing model). NULL-therapist rows
+// (org-level) are matched by GetActiveCounter, not here.
+func (q *Queries) GetActiveCounterForTherapist(ctx context.Context, arg GetActiveCounterForTherapistParams) (UsageCounter, error) {
+	row := q.db.QueryRow(ctx, getActiveCounterForTherapist, arg.SubscriptionID, arg.TherapistID)
+	var i UsageCounter
+	err := row.Scan(
+		&i.ID,
+		&i.SubscriptionID,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.TokensUsed,
+		&i.TokensReserved,
+		&i.TokensLimit,
+		&i.UpdatedAt,
+		&i.TherapistID,
 	)
 	return i, err
 }
 
 const lockActiveCounter = `-- name: LockActiveCounter :one
 SELECT id, subscription_id, period_start, period_end,
-       tokens_used, tokens_reserved, tokens_limit, updated_at
+       tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id
 FROM usage_counters
 WHERE subscription_id = $1
+  AND therapist_id IS NULL
   AND period_start <= now()
   AND period_end > now()
 FOR UPDATE
@@ -131,6 +215,42 @@ func (q *Queries) LockActiveCounter(ctx context.Context, subscriptionID uuid.UUI
 		&i.TokensReserved,
 		&i.TokensLimit,
 		&i.UpdatedAt,
+		&i.TherapistID,
+	)
+	return i, err
+}
+
+const lockActiveCounterForTherapist = `-- name: LockActiveCounterForTherapist :one
+SELECT id, subscription_id, period_start, period_end,
+       tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id
+FROM usage_counters
+WHERE subscription_id = $1
+  AND therapist_id = $2
+  AND period_start <= now()
+  AND period_end > now()
+FOR UPDATE
+`
+
+type LockActiveCounterForTherapistParams struct {
+	SubscriptionID uuid.UUID   `json:"subscription_id"`
+	TherapistID    pgtype.UUID `json:"therapist_id"`
+}
+
+// FOR UPDATE wariant per-therapist — ReserveCredit/CommitUsage debit
+// path. Advisory lock per subscription is still taken first.
+func (q *Queries) LockActiveCounterForTherapist(ctx context.Context, arg LockActiveCounterForTherapistParams) (UsageCounter, error) {
+	row := q.db.QueryRow(ctx, lockActiveCounterForTherapist, arg.SubscriptionID, arg.TherapistID)
+	var i UsageCounter
+	err := row.Scan(
+		&i.ID,
+		&i.SubscriptionID,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.TokensUsed,
+		&i.TokensReserved,
+		&i.TokensLimit,
+		&i.UpdatedAt,
+		&i.TherapistID,
 	)
 	return i, err
 }
@@ -154,12 +274,45 @@ func (q *Queries) ReleaseReservedTokens(ctx context.Context, arg ReleaseReserved
 	return err
 }
 
+const sumActiveCounters = `-- name: SumActiveCounters :one
+SELECT COALESCE(SUM(tokens_used), 0)::int AS tokens_used,
+       COALESCE(SUM(tokens_reserved), 0)::int AS tokens_reserved,
+       COALESCE(SUM(tokens_limit), 0)::int AS tokens_limit,
+       COUNT(*) AS counters
+FROM usage_counters
+WHERE subscription_id = $1
+  AND period_start <= now()
+  AND period_end > now()
+`
+
+type SumActiveCountersRow struct {
+	TokensUsed     int32 `json:"tokens_used"`
+	TokensReserved int32 `json:"tokens_reserved"`
+	TokensLimit    int32 `json:"tokens_limit"`
+	Counters       int64 `json:"counters"`
+}
+
+// Org-wide aggregate across org-level + per-therapist counters for the
+// current period. GetSubscription fallback for allocation-managed orgs
+// (which may have no org-level row).
+func (q *Queries) SumActiveCounters(ctx context.Context, subscriptionID uuid.UUID) (SumActiveCountersRow, error) {
+	row := q.db.QueryRow(ctx, sumActiveCounters, subscriptionID)
+	var i SumActiveCountersRow
+	err := row.Scan(
+		&i.TokensUsed,
+		&i.TokensReserved,
+		&i.TokensLimit,
+		&i.Counters,
+	)
+	return i, err
+}
+
 const updateUsageCounterOnPlanChange = `-- name: UpdateUsageCounterOnPlanChange :exec
 UPDATE usage_counters
 SET tokens_limit = $3,
     period_end = $4,
     updated_at = now()
-WHERE subscription_id = $1 AND period_start = $2
+WHERE subscription_id = $1 AND period_start = $2 AND therapist_id IS NULL
 `
 
 type UpdateUsageCounterOnPlanChangeParams struct {

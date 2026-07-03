@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/superwizor-ai/backend/services/billing-svc/internal/adapters/postgres/db"
@@ -93,24 +94,43 @@ func (h *AdminHandler) handleReservationExpiry(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Agreguj tokens_reserved per subscription_id (pojedyncze sub może mieć
-	// wiele expired reservations — chcemy 1 UPDATE counter zamiast N).
-	tokensBySub := map[uuid.UUID]int32{}
+	// Agreguj tokens_reserved per (subscription, counter scope) — po
+	// docs/38 rezerwacja mogła obciążyć licznik per-terapeuta
+	// (pending_reservations.therapist_id) albo org-level (NULL). Kredyt
+	// musi wrócić do TEGO samego licznika.
+	type counterScope struct {
+		subID       uuid.UUID
+		therapistID pgtype.UUID
+	}
+	tokensByScope := map[counterScope]int32{}
 	for _, e := range expired {
-		tokensBySub[e.SubscriptionID] += e.TokensReserved
+		tokensByScope[counterScope{subID: e.SubscriptionID, therapistID: e.TherapistID}] += e.TokensReserved
 	}
 
-	for subID, tokens := range tokensBySub {
+	lockedSubs := map[uuid.UUID]bool{}
+	for scope, tokens := range tokensByScope {
 		// Acquire advisory lock żeby nie kolidować z równoległym
-		// ReserveCredit/CommitUsage.
-		if err := q.AcquireSubscriptionLock(ctx, subID.String()); err != nil {
-			writeError(w, http.StatusInternalServerError, "acquire lock", err)
-			return
+		// ReserveCredit/CommitUsage (raz per subscription).
+		if !lockedSubs[scope.subID] {
+			if err := q.AcquireSubscriptionLock(ctx, scope.subID.String()); err != nil {
+				writeError(w, http.StatusInternalServerError, "acquire lock", err)
+				return
+			}
+			lockedSubs[scope.subID] = true
 		}
-		counter, err := q.LockActiveCounter(ctx, subID)
-		if err != nil {
-			if !errIsNoRows(err) {
-				writeError(w, http.StatusInternalServerError, "lock counter", err)
+		var counter db.UsageCounter
+		var lockErr error
+		if scope.therapistID.Valid {
+			counter, lockErr = q.LockActiveCounterForTherapist(ctx, db.LockActiveCounterForTherapistParams{
+				SubscriptionID: scope.subID,
+				TherapistID:    scope.therapistID,
+			})
+		} else {
+			counter, lockErr = q.LockActiveCounter(ctx, scope.subID)
+		}
+		if lockErr != nil {
+			if !errIsNoRows(lockErr) {
+				writeError(w, http.StatusInternalServerError, "lock counter", lockErr)
 				return
 			}
 			// Brak active counter — możliwe jeśli okres się skończył między
@@ -134,7 +154,7 @@ func (h *AdminHandler) handleReservationExpiry(w http.ResponseWriter, r *http.Re
 
 	h.logger.InfoContext(ctx, "cron: reservation-expiry done",
 		"expired_count", len(expired),
-		"subscriptions_touched", len(tokensBySub))
+		"counters_touched", len(tokensByScope))
 
 	writeJSON(w, http.StatusOK, reservationExpiryResponse{
 		ExpiredCount: len(expired),
@@ -203,6 +223,26 @@ func (h *AdminHandler) handleManualPeriodRenewal(w http.ResponseWriter, r *http.
 				continue
 			}
 			renewedCount++
+			continue
+		}
+
+		// B2B allocation orgs (docs/38): admin-provisioned clinics are
+		// invoiced offline — their MANUAL subscription DOES auto-renew.
+		// Rolling the period is enough: per-therapist counters for the
+		// new period are minted lazily on first ReserveCredit
+		// (counter_scope.go), and the org-level counter is created here
+		// for seatless fallback.
+		if hasAlloc, aerr := db.New(h.pool).OrgHasSeatAllocations(ctx, s.OrganizationID); aerr == nil && hasAlloc {
+			newStart := s.CurrentPeriodEnd
+			newEnd := newStart.AddDate(0, 1, 0)
+			if err := h.renewOneSubscription(ctx, s.ID, newStart, newEnd, s.TokensPerPeriod); err != nil {
+				h.logger.ErrorContext(ctx, "manual renewal: b2b renew failed",
+					"sub_id", s.ID, "error", err)
+				continue
+			}
+			renewedCount++
+			h.logger.InfoContext(ctx, "cron: b2b seat-allocation subscription renewed",
+				"sub_id", s.ID, "org_id", s.OrganizationID)
 			continue
 		}
 
@@ -383,21 +423,21 @@ func (h *AdminHandler) cancelSubscription(ctx context.Context, subID uuid.UUID) 
 // ---------- email-drip ----------
 
 type emailDripResponse struct {
-	TrialExhausted int `json:"trial_exhausted"`
-	FollowUp1      int `json:"followup_1"`
-	FollowUp2      int `json:"followup_2"`
-	BetaExpiry     int `json:"beta_expiry"`
+	TrialExhausted int    `json:"trial_exhausted"`
+	FollowUp1      int    `json:"followup_1"`
+	FollowUp2      int    `json:"followup_2"`
+	BetaExpiry     int    `json:"beta_expiry"`
 	Message        string `json:"message"`
 }
 
 // handleEmailDrip — daily cron (09:00 CET) for lifecycle email drip campaign.
 //
 // Queries:
-//   1. Trial exhausted: TRIALING subs where tokens_used >= tokens_per_period
-//      AND no "trial_exhausted" email sent yet (tracked via email_drip_log).
-//   2. Follow-up 1: 3 days after trial_exhausted email was sent, no followup_1 sent.
-//   3. Follow-up 2: 7 days after trial_exhausted email was sent, no followup_2 sent.
-//   4. Beta expiry: BETA subs with period_end within 3 days, no alert sent.
+//  1. Trial exhausted: TRIALING subs where tokens_used >= tokens_per_period
+//     AND no "trial_exhausted" email sent yet (tracked via email_drip_log).
+//  2. Follow-up 1: 3 days after trial_exhausted email was sent, no followup_1 sent.
+//  3. Follow-up 2: 7 days after trial_exhausted email was sent, no followup_2 sent.
+//  4. Beta expiry: BETA subs with period_end within 3 days, no alert sent.
 //
 // Each match inserts a row into email_drip_log (idempotent: UNIQUE on
 // (user_id, template_name, subscription_id)) and publishes to
@@ -630,38 +670,38 @@ func (h *AdminHandler) handleRenewalReminders(w http.ResponseWriter, r *http.Req
 
 // CRMSubscriber — enriched user + subscription view for Marcin's CRM panel.
 type CRMSubscriber struct {
-	UserID            string  `json:"user_id"`
-	FirstName         string  `json:"first_name"`
-	LastName          string  `json:"last_name"`
-	Email             string  `json:"email"`
-	Phone             string  `json:"phone"`
-	ProfessionalTitle string  `json:"professional_title"`
-	CreatedAt         string  `json:"created_at"`
+	UserID            string `json:"user_id"`
+	FirstName         string `json:"first_name"`
+	LastName          string `json:"last_name"`
+	Email             string `json:"email"`
+	Phone             string `json:"phone"`
+	ProfessionalTitle string `json:"professional_title"`
+	CreatedAt         string `json:"created_at"`
 	// Subscription
-	SubscriptionID    string  `json:"subscription_id"`
-	PlanTier          string  `json:"plan_tier"`
-	PlanDisplayName   string  `json:"plan_display_name"`
-	SubStatus         string  `json:"sub_status"`
-	Provider          string  `json:"provider"`
-	PeriodStart       string  `json:"period_start"`
-	PeriodEnd         string  `json:"period_end"`
-	DaysUntilRenewal  int     `json:"days_until_renewal"`
+	SubscriptionID   string `json:"subscription_id"`
+	PlanTier         string `json:"plan_tier"`
+	PlanDisplayName  string `json:"plan_display_name"`
+	SubStatus        string `json:"sub_status"`
+	Provider         string `json:"provider"`
+	PeriodStart      string `json:"period_start"`
+	PeriodEnd        string `json:"period_end"`
+	DaysUntilRenewal int    `json:"days_until_renewal"`
 	// Usage
-	TokensLimit       int32   `json:"tokens_limit"`
-	TokensUsed        int32   `json:"tokens_used"`
-	TokensRemaining   int32   `json:"tokens_remaining"`
-	UsagePct          float64 `json:"usage_pct"`
+	TokensLimit     int32   `json:"tokens_limit"`
+	TokensUsed      int32   `json:"tokens_used"`
+	TokensRemaining int32   `json:"tokens_remaining"`
+	UsagePct        float64 `json:"usage_pct"`
 	// Sessions (all-time from sessions table)
-	TotalSessions     int32   `json:"total_sessions"`
+	TotalSessions int32 `json:"total_sessions"`
 	// Last activity
-	LastSessionAt     string  `json:"last_session_at"`
+	LastSessionAt string `json:"last_session_at"`
 	// Urgency flags
-	CreditAlert       string  `json:"credit_alert"` // "critical" (≤1), "warning" (≤3), "low" (≤5), ""
-	ExpiryAlert       string  `json:"expiry_alert"` // "imminent" (≤3d), "soon" (≤7d), ""
-	UrgencyScore      int     `json:"urgency_score"` // higher = more urgent (for sorting)
+	CreditAlert  string `json:"credit_alert"`  // "critical" (≤1), "warning" (≤3), "low" (≤5), ""
+	ExpiryAlert  string `json:"expiry_alert"`  // "imminent" (≤3d), "soon" (≤7d), ""
+	UrgencyScore int    `json:"urgency_score"` // higher = more urgent (for sorting)
 	// Organization
-	OrgID             string  `json:"org_id"`
-	OrgName           string  `json:"org_name"`
+	OrgID   string `json:"org_id"`
+	OrgName string `json:"org_name"`
 }
 
 // CRMGlobalStats — aggregate stats across the entire subscriber base (unfiltered).
@@ -927,4 +967,3 @@ func (h *AdminHandler) handleCRMSubscribers(w http.ResponseWriter, r *http.Reque
 		Message:     "ok",
 	})
 }
-
