@@ -260,6 +260,14 @@ export function AcceptInviteForm({ token }: { token: string }) {
           setServerError(tInv("invalidToken"));
           return;
         }
+        // Single-role MVP: the invited e-mail (or the signed-in social
+        // account) already owns an account — a second role can't be
+        // minted (live-tested 2026-07-04: a THERAPIST accepting their
+        // own ORG_ADMIN invite).
+        if (e.message.includes("EMAIL_ALREADY_REGISTERED")) {
+          setServerError(tInv("emailAlreadyRegistered"));
+          return;
+        }
         if (e.code === Code.PermissionDenied) {
           // Could be expired OR already accepted — backend
           // distinguishes via message text. For copy we pick the

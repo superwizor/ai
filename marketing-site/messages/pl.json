@@ -917,7 +917,8 @@
       "missingToken": "Brakuje tokenu zaproszenia. Otwórz link z wiadomości e-mail.",
       "alreadyAccepted": "To zaproszenie zostało już użyte. Zaloguj się normalnie.",
       "expired": "Zaproszenie wygasło. Poproś administratora o ponowne wysłanie.",
-      "invalidToken": "Nieprawidłowy token. Sprawdź, czy używasz aktualnego linku."
+      "invalidToken": "Nieprawidłowy token. Sprawdź, czy używasz aktualnego linku.",
+      "emailAlreadyRegistered": "Ten adres e-mail (lub zalogowane konto Google/Apple) ma już konto w Superwizor AI — jedno konto może mieć tylko jedną rolę. Aby przyjąć to zaproszenie, poproś o wysłanie go na inny adres e-mail."
     },
     "verifyEmail": {
       "metaTitle": "Potwierdź e-mail",
