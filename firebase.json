@@ -17,7 +17,11 @@
       "public": "marketing-site/out",
       "cleanUrls": true,
       "trailingSlash": true,
-      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
       "redirects": [
         {
           "//": "/login is a real page on the marketing origin as of 2026-05-29 (src/app/[locale]/login/page.tsx). Bare /login (no locale prefix) gets the standard PL-default 307 to /pl/login/; the prefixed routes /pl/login/ and /en/login/ are served as static HTML and don't need redirects. The previous cross-origin redirect to the Flutter app is gone — the new LoginForm signs the user in on this origin, then routes by role.",
@@ -239,17 +243,107 @@
         {
           "//": "Stripe Checkout Session — browser POST from registration + upgrade flows. Served by billing-svc on Cloud Run (replaces broken Next.js API route which returned 404 on static export).",
           "source": "/api/checkout",
-          "run": { "serviceId": "billing-svc", "region": "europe-central2" }
+          "run": {
+            "serviceId": "billing-svc",
+            "region": "europe-central2"
+          }
         },
         {
           "//": "Stripe Billing Portal — browser POST from /account Subskrypcja card. Same migration rationale as /api/checkout.",
           "source": "/api/billing-portal",
-          "run": { "serviceId": "billing-svc", "region": "europe-central2" }
+          "run": {
+            "serviceId": "billing-svc",
+            "region": "europe-central2"
+          }
         },
         {
           "//": "NIP (Polish tax ID) lookup — browser GET from /account VAT form. Proxied by identity-svc (domain purity: NIP is an org data concern).",
           "source": "/api/nip-lookup",
-          "run": { "serviceId": "identity-svc", "region": "europe-central2" }
+          "run": {
+            "serviceId": "identity-svc",
+            "region": "europe-central2"
+          }
+        },
+        {
+          "source": "/pl/admin/orgs/**/__next.$d$locale.admin.orgs.$d$id.__PAGE__.txt",
+          "destination": "/pl/admin/orgs/[id]/__next.$d$locale.admin.orgs.$d$id.__PAGE__.txt",
+          "//": "Next 16 static export: client-side navigation fetches per-segment RSC payloads (__next.*.txt, index.txt) UNDER the runtime URL. Without these mappings the org-detail catch-all below answers them with index.html (HTML, not flight data) and the router dies with 'This page couldn't load'. Order matters: these MUST precede the catch-all."
+        },
+        {
+          "source": "/pl/admin/orgs/**/__next.$d$locale.admin.orgs.$d$id.txt",
+          "destination": "/pl/admin/orgs/[id]/__next.$d$locale.admin.orgs.$d$id.txt"
+        },
+        {
+          "source": "/pl/admin/orgs/**/__next.$d$locale.admin.orgs.txt",
+          "destination": "/pl/admin/orgs/[id]/__next.$d$locale.admin.orgs.txt"
+        },
+        {
+          "source": "/pl/admin/orgs/**/__next.$d$locale.admin.txt",
+          "destination": "/pl/admin/orgs/[id]/__next.$d$locale.admin.txt"
+        },
+        {
+          "source": "/pl/admin/orgs/**/__next.$d$locale.txt",
+          "destination": "/pl/admin/orgs/[id]/__next.$d$locale.txt"
+        },
+        {
+          "source": "/pl/admin/orgs/**/__next._full.txt",
+          "destination": "/pl/admin/orgs/[id]/__next._full.txt"
+        },
+        {
+          "source": "/pl/admin/orgs/**/__next._head.txt",
+          "destination": "/pl/admin/orgs/[id]/__next._head.txt"
+        },
+        {
+          "source": "/pl/admin/orgs/**/__next._index.txt",
+          "destination": "/pl/admin/orgs/[id]/__next._index.txt"
+        },
+        {
+          "source": "/pl/admin/orgs/**/__next._tree.txt",
+          "destination": "/pl/admin/orgs/[id]/__next._tree.txt"
+        },
+        {
+          "source": "/pl/admin/orgs/**/index.txt",
+          "destination": "/pl/admin/orgs/[id]/index.txt"
+        },
+        {
+          "source": "/en/admin/orgs/**/__next.$d$locale.admin.orgs.$d$id.__PAGE__.txt",
+          "destination": "/en/admin/orgs/[id]/__next.$d$locale.admin.orgs.$d$id.__PAGE__.txt"
+        },
+        {
+          "source": "/en/admin/orgs/**/__next.$d$locale.admin.orgs.$d$id.txt",
+          "destination": "/en/admin/orgs/[id]/__next.$d$locale.admin.orgs.$d$id.txt"
+        },
+        {
+          "source": "/en/admin/orgs/**/__next.$d$locale.admin.orgs.txt",
+          "destination": "/en/admin/orgs/[id]/__next.$d$locale.admin.orgs.txt"
+        },
+        {
+          "source": "/en/admin/orgs/**/__next.$d$locale.admin.txt",
+          "destination": "/en/admin/orgs/[id]/__next.$d$locale.admin.txt"
+        },
+        {
+          "source": "/en/admin/orgs/**/__next.$d$locale.txt",
+          "destination": "/en/admin/orgs/[id]/__next.$d$locale.txt"
+        },
+        {
+          "source": "/en/admin/orgs/**/__next._full.txt",
+          "destination": "/en/admin/orgs/[id]/__next._full.txt"
+        },
+        {
+          "source": "/en/admin/orgs/**/__next._head.txt",
+          "destination": "/en/admin/orgs/[id]/__next._head.txt"
+        },
+        {
+          "source": "/en/admin/orgs/**/__next._index.txt",
+          "destination": "/en/admin/orgs/[id]/__next._index.txt"
+        },
+        {
+          "source": "/en/admin/orgs/**/__next._tree.txt",
+          "destination": "/en/admin/orgs/[id]/__next._tree.txt"
+        },
+        {
+          "source": "/en/admin/orgs/**/index.txt",
+          "destination": "/en/admin/orgs/[id]/index.txt"
         },
         {
           "//": "Admin org-detail catch-all. Static export can't pre-render every /admin/orgs/<id> because the IDs aren't known at build time. We ship a single template per locale (out/{pl,en}/admin/orgs/[id]/index.html — literal bracketed directory) and rewrite all matching /admin/orgs/<id> traffic to it. The client component reads usePathname() at runtime and fetches the matching org via AdminGetOrganization.",
@@ -266,32 +360,56 @@
           "//": "Security headers — all responses",
           "source": "**",
           "headers": [
-            { "key": "X-Frame-Options", "value": "DENY" },
-            { "key": "X-Content-Type-Options", "value": "nosniff" },
-            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-            { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
-            { "key": "X-XSS-Protection", "value": "1; mode=block" }
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "Permissions-Policy",
+              "value": "camera=(), microphone=(), geolocation=()"
+            },
+            {
+              "key": "X-XSS-Protection",
+              "value": "1; mode=block"
+            }
           ]
         },
         {
           "//": "Long-lived cache for hashed Next.js bundles",
           "source": "_next/static/**",
           "headers": [
-            { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
+            }
           ]
         },
         {
           "//": "Cache images/fonts for 1 year (content-addressed or rarely changed)",
           "source": "assets/**",
           "headers": [
-            { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
+            }
           ]
         },
         {
           "//": "Short cache for HTML pages so deploys propagate quickly. 5 min is enough for CDN benefit while keeping deploy-to-live latency low.",
           "source": "**/*.html",
           "headers": [
-            { "key": "Cache-Control", "value": "public, max-age=300" }
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=300"
+            }
           ]
         }
       ]
@@ -300,20 +418,30 @@
       "//": "Flutter Web bundle (therapist + org-admin consoles). Deploy: `firebase deploy --only hosting:superwizor-app`.",
       "site": "superwizor-app",
       "public": "flutter-app/superwizor/build/web",
-      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
       "headers": [
         {
           "//": "Entry points must ALWAYS revalidate so a deploy propagates immediately. Without this the browser caches index.html + flutter_service_worker.js and the service worker keeps serving a stale main.dart.js — i.e. 'the page won't refresh'. Hashed canvaskit/wasm/assets keep Firebase's default caching.",
           "source": "**/@(index.html|flutter_service_worker.js|flutter_bootstrap.js|main.dart.js|version.json|manifest.json)",
           "headers": [
-            { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, no-store, must-revalidate"
+            }
           ]
         },
         {
           "//": "Bare root request (/) serves index.html — revalidate it too.",
           "source": "/",
           "headers": [
-            { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, no-store, must-revalidate"
+            }
           ]
         }
       ]
