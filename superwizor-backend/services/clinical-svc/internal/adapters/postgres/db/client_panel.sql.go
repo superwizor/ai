@@ -164,7 +164,7 @@ func (q *Queries) ClientListSharedSessions(ctx context.Context, patientFileID uu
 }
 
 const clientListVisibleNotes = `-- name: ClientListVisibleNotes :many
-SELECT id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at FROM patient_notes
+SELECT id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at FROM patient_notes
 WHERE patient_file_id = $1
   AND deleted_at IS NULL
   AND (shared_with_client_at IS NOT NULL OR kind = 'CLIENT_NOTE')
@@ -200,6 +200,7 @@ func (q *Queries) ClientListVisibleNotes(ctx context.Context, patientFileID uuid
 			&i.AuthorRole,
 			&i.ReadByTherapistAt,
 			&i.ReadByClientAt,
+			&i.SentToTherapistAt,
 		); err != nil {
 			return nil, err
 		}
@@ -214,6 +215,7 @@ func (q *Queries) ClientListVisibleNotes(ctx context.Context, patientFileID uuid
 const countUnreadClientNotesForKartoteka = `-- name: CountUnreadClientNotesForKartoteka :one
 SELECT COUNT(*)::int FROM patient_notes
 WHERE patient_file_id = $1 AND kind = 'CLIENT_NOTE'
+  AND sent_to_therapist_at IS NOT NULL
   AND read_by_therapist_at IS NULL AND deleted_at IS NULL
 `
 
@@ -228,9 +230,11 @@ func (q *Queries) CountUnreadClientNotesForKartoteka(ctx context.Context, patien
 const createClientNote = `-- name: CreateClientNote :one
 INSERT INTO patient_notes (
     patient_file_id, therapist_id, kind, author_role,
-    title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek
-) VALUES ($1, $2, 'CLIENT_NOTE', 'PATIENT', $3, $4, $5, $6)
-RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at
+    title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek,
+    sent_to_therapist_at
+) VALUES ($1, $2, 'CLIENT_NOTE', 'PATIENT', $3, $4, $5, $6,
+    CASE WHEN $7::bool THEN now() ELSE NULL END)
+RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at
 `
 
 type CreateClientNoteParams struct {
@@ -240,11 +244,13 @@ type CreateClientNoteParams struct {
 	TitleEncryptedDek []byte    `json:"title_encrypted_dek"`
 	TextCiphertext    []byte    `json:"text_ciphertext"`
 	TextEncryptedDek  []byte    `json:"text_encrypted_dek"`
+	Column7           bool      `json:"column_7"`
 }
 
 // kind=CLIENT_NOTE, author_role=PATIENT (chk_patient_notes_author).
-// therapist_id is the counterparty (kartoteka owner). Creation ==
-// delivery: client notes are therapist-visible from the start.
+// therapist_id is the counterparty (kartoteka owner). $7=true stamps
+// sent_to_therapist_at (deliver on create); false saves a PRIVATE
+// draft the therapist can't see (000068).
 func (q *Queries) CreateClientNote(ctx context.Context, arg CreateClientNoteParams) (PatientNote, error) {
 	row := q.db.QueryRow(ctx, createClientNote,
 		arg.PatientFileID,
@@ -253,6 +259,7 @@ func (q *Queries) CreateClientNote(ctx context.Context, arg CreateClientNotePara
 		arg.TitleEncryptedDek,
 		arg.TextCiphertext,
 		arg.TextEncryptedDek,
+		arg.Column7,
 	)
 	var i PatientNote
 	err := row.Scan(
@@ -274,6 +281,7 @@ func (q *Queries) CreateClientNote(ctx context.Context, arg CreateClientNotePara
 		&i.AuthorRole,
 		&i.ReadByTherapistAt,
 		&i.ReadByClientAt,
+		&i.SentToTherapistAt,
 	)
 	return i, err
 }
@@ -318,9 +326,47 @@ func (q *Queries) GetUserEmailForNotify(ctx context.Context, id uuid.UUID) (GetU
 	return i, err
 }
 
+const markClientNoteSentToTherapist = `-- name: MarkClientNoteSentToTherapist :one
+UPDATE patient_notes
+SET sent_to_therapist_at = COALESCE(sent_to_therapist_at, now()),
+    updated_at = now()
+WHERE id = $1 AND kind = 'CLIENT_NOTE' AND deleted_at IS NULL
+RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at
+`
+
+// Deliver a saved draft. Idempotent — a delivered note keeps its
+// first timestamp.
+func (q *Queries) MarkClientNoteSentToTherapist(ctx context.Context, id uuid.UUID) (PatientNote, error) {
+	row := q.db.QueryRow(ctx, markClientNoteSentToTherapist, id)
+	var i PatientNote
+	err := row.Scan(
+		&i.ID,
+		&i.PatientFileID,
+		&i.TherapistID,
+		&i.Kind,
+		&i.SourceSessionID,
+		&i.TitleCiphertext,
+		&i.TitleEncryptedDek,
+		&i.TextCiphertext,
+		&i.TextEncryptedDek,
+		&i.SentToPatientAt,
+		&i.SentToEmail,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.SharedWithClientAt,
+		&i.AuthorRole,
+		&i.ReadByTherapistAt,
+		&i.ReadByClientAt,
+		&i.SentToTherapistAt,
+	)
+	return i, err
+}
+
 const markKartotekaClientNotesReadByTherapist = `-- name: MarkKartotekaClientNotesReadByTherapist :exec
 UPDATE patient_notes SET read_by_therapist_at = now()
 WHERE patient_file_id = $1 AND kind = 'CLIENT_NOTE'
+  AND sent_to_therapist_at IS NOT NULL
   AND read_by_therapist_at IS NULL AND deleted_at IS NULL
 `
 

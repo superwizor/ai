@@ -57,12 +57,24 @@ ORDER BY created_at DESC;
 
 -- name: CreateClientNote :one
 -- kind=CLIENT_NOTE, author_role=PATIENT (chk_patient_notes_author).
--- therapist_id is the counterparty (kartoteka owner). Creation ==
--- delivery: client notes are therapist-visible from the start.
+-- therapist_id is the counterparty (kartoteka owner). $7=true stamps
+-- sent_to_therapist_at (deliver on create); false saves a PRIVATE
+-- draft the therapist can't see (000068).
 INSERT INTO patient_notes (
     patient_file_id, therapist_id, kind, author_role,
-    title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek
-) VALUES ($1, $2, 'CLIENT_NOTE', 'PATIENT', $3, $4, $5, $6)
+    title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek,
+    sent_to_therapist_at
+) VALUES ($1, $2, 'CLIENT_NOTE', 'PATIENT', $3, $4, $5, $6,
+    CASE WHEN $7::bool THEN now() ELSE NULL END)
+RETURNING *;
+
+-- name: MarkClientNoteSentToTherapist :one
+-- Deliver a saved draft. Idempotent — a delivered note keeps its
+-- first timestamp.
+UPDATE patient_notes
+SET sent_to_therapist_at = COALESCE(sent_to_therapist_at, now()),
+    updated_at = now()
+WHERE id = $1 AND kind = 'CLIENT_NOTE' AND deleted_at IS NULL
 RETURNING *;
 
 -- name: MarkNoteReadByClient :exec
@@ -74,6 +86,7 @@ WHERE id = $1 AND read_by_client_at IS NULL;
 -- badge is edge-triggered, not an inbox.
 UPDATE patient_notes SET read_by_therapist_at = now()
 WHERE patient_file_id = $1 AND kind = 'CLIENT_NOTE'
+  AND sent_to_therapist_at IS NOT NULL
   AND read_by_therapist_at IS NULL AND deleted_at IS NULL;
 
 -- name: SetSessionSharedWithClient :one
@@ -99,6 +112,7 @@ RETURNING id, shared_with_client_at;
 -- Therapist-side badge.
 SELECT COUNT(*)::int FROM patient_notes
 WHERE patient_file_id = $1 AND kind = 'CLIENT_NOTE'
+  AND sent_to_therapist_at IS NOT NULL
   AND read_by_therapist_at IS NULL AND deleted_at IS NULL;
 
 -- name: GetPatientUserEmailForFile :one

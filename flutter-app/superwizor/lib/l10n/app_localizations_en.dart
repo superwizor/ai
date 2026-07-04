@@ -3020,4 +3020,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String account_not_found_body(String email) {
     return 'Signed in as $email, but this account is not registered with Superwizor AI. If you received an invitation (therapist, manager or client), open the link from the e-mail. A therapist account can be created at superwizor.ai.';
   }
+
+  @override
+  String get client_note_save => 'Save';
+
+  @override
+  String get client_note_save_and_send => 'Save and send to therapist';
+
+  @override
+  String get client_note_saved_draft => 'Note saved in your panel.';
+
+  @override
+  String get client_note_mine_draft => 'Draft (only you)';
+
+  @override
+  String get client_note_mine_sent => 'Sent to therapist';
+
+  @override
+  String get client_note_draft_badge => 'DRAFT';
+
+  @override
+  String get client_note_close => 'Close';
+
+  @override
+  String get client_session_add_note => 'Add a note to this session';
 }

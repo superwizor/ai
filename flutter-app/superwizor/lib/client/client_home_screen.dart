@@ -283,11 +283,25 @@ class ClientHomeScreen extends ConsumerWidget {
               ),
             ],
           ),
+          // Two actions (docs/39 live-feedback): save a private draft or
+          // save-and-deliver to the therapist in one go.
+          actionsOverflowDirection: VerticalDirection.down,
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dctx).pop(false),
+              onPressed: () => Navigator.of(dctx).pop(null),
               child: const Text('✕',
                   style: TextStyle(color: ClientColors.muted)),
+            ),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ClientColors.accent,
+                side: const BorderSide(color: ClientColors.accent),
+              ),
+              onPressed: () async {
+                await _submitNote(context, dctx, ref, targetPf,
+                    titleCtrl.text, textCtrl.text, false, l10n);
+              },
+              child: Text(l10n.client_note_save),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -295,40 +309,56 @@ class ClientHomeScreen extends ConsumerWidget {
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
-                if (titleCtrl.text.trim().isEmpty &&
-                    textCtrl.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(l10n.client_note_empty_error)));
-                  return;
-                }
-                try {
-                  final clinical = ref.read(grpcClientsProvider).clinical;
-                  await clinical.clientCreateNote(
-                    clinical_pb.ClientCreateNoteRequest(
-                      patientFileId: targetPf,
-                      title: titleCtrl.text.trim(),
-                      text: textCtrl.text.trim(),
-                    ),
-                  );
-                  if (dctx.mounted) Navigator.of(dctx).pop(true);
-                } catch (e) {
-                  if (dctx.mounted) {
-                    ScaffoldMessenger.of(dctx)
-                        .showSnackBar(SnackBar(content: Text(e.toString())));
-                  }
-                }
+                await _submitNote(context, dctx, ref, targetPf,
+                    titleCtrl.text, textCtrl.text, true, l10n);
               },
-              child: Text(l10n.client_note_send),
+              child: Text(l10n.client_note_save_and_send),
             ),
           ],
         ),
       ),
     );
 
-    if (sent == true && context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.client_note_sent)));
+    if (sent != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(sent
+              ? l10n.client_note_sent
+              : l10n.client_note_saved_draft)));
       ref.invalidate(clientHomeProvider);
+    }
+  }
+
+  Future<void> _submitNote(
+    BuildContext outerCtx,
+    BuildContext dctx,
+    WidgetRef ref,
+    String targetPf,
+    String title,
+    String text,
+    bool send,
+    AppLocalizations l10n,
+  ) async {
+    if (title.trim().isEmpty && text.trim().isEmpty) {
+      ScaffoldMessenger.of(dctx)
+          .showSnackBar(SnackBar(content: Text(l10n.client_note_empty_error)));
+      return;
+    }
+    try {
+      final clinical = ref.read(grpcClientsProvider).clinical;
+      await clinical.clientCreateNote(
+        clinical_pb.ClientCreateNoteRequest(
+          patientFileId: targetPf,
+          title: title.trim(),
+          text: text.trim(),
+          sendToTherapist: send,
+        ),
+      );
+      if (dctx.mounted) Navigator.of(dctx).pop(send);
+    } catch (e) {
+      if (dctx.mounted) {
+        ScaffoldMessenger.of(dctx)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 }
@@ -358,7 +388,12 @@ class _SessionCard extends StatelessWidget {
 
     return _CardShell(
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ClientSessionScreen(session: s)),
+        MaterialPageRoute(
+          builder: (_) => ClientSessionScreen(
+            session: s,
+            patientFileId: item.kartoteka.patientFileId,
+          ),
+        ),
       ),
       leading: Container(
         width: 44,
@@ -403,6 +438,8 @@ class _NoteCard extends ConsumerWidget {
     final n = item.note!;
     final mine = n.authorRole == 'PATIENT';
     final unread = !mine && !n.read;
+    // A client note not yet delivered to the therapist (000068 draft).
+    final isDraft = mine && !n.hasSentToTherapistAt();
     final created =
         n.hasCreatedAt() ? n.createdAt.toDateTime().toLocal() : null;
     final dateStr = created != null
@@ -411,14 +448,16 @@ class _NoteCard extends ConsumerWidget {
             .format(created)
         : '';
     final meta = [
-      mine ? l10n.client_note_mine : l10n.client_note_from_therapist,
+      mine
+          ? (isDraft ? l10n.client_note_mine_draft : l10n.client_note_mine_sent)
+          : l10n.client_note_from_therapist,
       dateStr,
       if (showTherapist && !mine) item.kartoteka.therapistName,
     ].where((s) => s.isNotEmpty).join('  ·  ');
 
     return _CardShell(
-      highlighted: unread,
-      onTap: () => _openNote(context, ref, l10n, unread),
+      highlighted: unread || isDraft,
+      onTap: () => _openNote(context, ref, l10n, unread, isDraft),
       leading: Container(
         width: 44,
         height: 44,
@@ -435,14 +474,19 @@ class _NoteCard extends ConsumerWidget {
               text: l10n.client_new_badge,
               fg: Colors.white,
               bg: ClientColors.accent)
-          : null,
+          : isDraft
+              ? _Chip(
+                  text: l10n.client_note_draft_badge,
+                  fg: ClientColors.accent,
+                  bg: ClientColors.accentSoft)
+              : null,
       subtitle: meta,
       snippet: n.text,
     );
   }
 
   Future<void> _openNote(BuildContext context, WidgetRef ref,
-      AppLocalizations l10n, bool unread) async {
+      AppLocalizations l10n, bool unread, bool isDraft) async {
     final n = item.note!;
     if (unread) {
       final clinical = ref.read(grpcClientsProvider).clinical;
@@ -452,7 +496,7 @@ class _NoteCard extends ConsumerWidget {
           .then((_) => ref.invalidate(clientHomeProvider))
           .catchError((_) {});
     }
-    await showDialog<void>(
+    final send = await showDialog<bool>(
       context: context,
       builder: (dctx) => AlertDialog(
         backgroundColor: ClientColors.card,
@@ -477,13 +521,41 @@ class _NoteCard extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dctx).pop(),
-            child: const Text('OK',
-                style: TextStyle(color: ClientColors.accent)),
+            onPressed: () => Navigator.of(dctx).pop(false),
+            child: Text(l10n.client_note_close,
+                style: const TextStyle(color: ClientColors.muted)),
           ),
+          // "Wyślij do terapeuty" — only on the client's own drafts.
+          if (isDraft)
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: ClientColors.accent,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dctx).pop(true),
+              child: Text(l10n.client_note_send),
+            ),
         ],
       ),
     );
+
+    if (send == true && context.mounted) {
+      try {
+        final clinical = ref.read(grpcClientsProvider).clinical;
+        await clinical
+            .clientSendNote(clinical_pb.ClientSendNoteRequest(noteId: n.id));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(l10n.client_note_sent)));
+        }
+        ref.invalidate(clientHomeProvider);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(e.toString())));
+        }
+      }
+    }
   }
 }
 

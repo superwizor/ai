@@ -1015,6 +1015,7 @@ type PatientNote struct {
 	AuthorRole        UserRole           `json:"author_role"`
 	ReadByTherapistAt pgtype.Timestamptz `json:"read_by_therapist_at"`
 	ReadByClientAt    pgtype.Timestamptz `json:"read_by_client_at"`
+	SentToTherapistAt pgtype.Timestamptz `json:"sent_to_therapist_at"`
 }
 
 type PaymentEvent struct {

@@ -1358,5 +1358,13 @@
         "type": "String"
       }
     }
-  }
+  },
+  "client_note_save": "Zapisz",
+  "client_note_save_and_send": "Zapisz i wyślij do terapeuty",
+  "client_note_saved_draft": "Notatka zapisana w panelu.",
+  "client_note_mine_draft": "Szkic (tylko dla Ciebie)",
+  "client_note_mine_sent": "Wysłana do terapeuty",
+  "client_note_draft_badge": "SZKIC",
+  "client_note_close": "Zamknij",
+  "client_session_add_note": "Dodaj notatkę do sesji"
 }

@@ -222,16 +222,54 @@ func (s *Server) ClientCreateNote(ctx context.Context, req *clinicalv1.ClientCre
 		TitleEncryptedDek: titleDEK,
 		TextCiphertext:    textCT,
 		TextEncryptedDek:  textDEK,
+		Column7:           req.SendToTherapist,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "create note: %v", err)
 	}
 	// PR9: tell the therapist a client note arrived — PHI-free (no
-	// client identity, no content; the badge in the app carries context).
-	if row, terr := s.queries.GetUserEmailForNotify(ctx, pf.TherapistID); terr == nil && row.Email != nil {
-		s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "CLIENT_NOTE_RECEIVED", "")
+	// client identity, no content). Drafts (000068) stay private: the
+	// signal fires only on delivery.
+	if req.SendToTherapist {
+		if row, terr := s.queries.GetUserEmailForNotify(ctx, pf.TherapistID); terr == nil && row.Email != nil {
+			s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "CLIENT_NOTE_RECEIVED", "")
+		}
 	}
 	return s.toClientNote(ctx, note)
+}
+
+// ClientSendNote delivers a previously saved draft (000068) to the
+// therapist. Idempotent: a delivered note keeps its first timestamp
+// and does not re-notify.
+func (s *Server) ClientSendNote(ctx context.Context, req *clinicalv1.ClientSendNoteRequest) (*clinicalv1.ClientNote, error) {
+	noteID, err := uuid.Parse(req.NoteId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid note_id")
+	}
+	note, err := s.queries.GetPatientNote(ctx, noteID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "not found")
+	}
+	pf, _, err := s.requireClientFileAccess(ctx, note.PatientFileID)
+	if err != nil {
+		return nil, err
+	}
+	if note.Kind != "CLIENT_NOTE" {
+		// Therapist notes aren't the client's to send — same
+		// no-enumeration contract as everywhere else in this family.
+		return nil, status.Error(codes.NotFound, "not found")
+	}
+	wasDraft := !note.SentToTherapistAt.Valid
+	sent, err := s.queries.MarkClientNoteSentToTherapist(ctx, noteID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "send note: %v", err)
+	}
+	if wasDraft {
+		if row, terr := s.queries.GetUserEmailForNotify(ctx, pf.TherapistID); terr == nil && row.Email != nil {
+			s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "CLIENT_NOTE_RECEIVED", "")
+		}
+	}
+	return s.toClientNote(ctx, sent)
 }
 
 func (s *Server) ClientMarkNoteRead(ctx context.Context, req *clinicalv1.ClientMarkNoteReadRequest) (*emptypb.Empty, error) {
@@ -273,6 +311,9 @@ func (s *Server) toClientNote(ctx context.Context, n db.PatientNote) (*clinicalv
 	}
 	if n.SharedWithClientAt.Valid {
 		out.SharedAt = timestamppb.New(n.SharedWithClientAt.Time)
+	}
+	if n.SentToTherapistAt.Valid {
+		out.SentToTherapistAt = timestamppb.New(n.SentToTherapistAt.Time)
 	}
 	return out, nil
 }

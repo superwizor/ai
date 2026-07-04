@@ -3040,4 +3040,28 @@ class AppLocalizationsPl extends AppLocalizations {
   String account_not_found_body(String email) {
     return 'Zalogowano jako $email, ale to konto nie jest zarejestrowane w Superwizor AI. Jeśli otrzymałeś zaproszenie (terapeuta, manager lub klient), otwórz link z wiadomości e-mail. Konto terapeuty założysz na superwizor.ai.';
   }
+
+  @override
+  String get client_note_save => 'Zapisz';
+
+  @override
+  String get client_note_save_and_send => 'Zapisz i wyślij do terapeuty';
+
+  @override
+  String get client_note_saved_draft => 'Notatka zapisana w panelu.';
+
+  @override
+  String get client_note_mine_draft => 'Szkic (tylko dla Ciebie)';
+
+  @override
+  String get client_note_mine_sent => 'Wysłana do terapeuty';
+
+  @override
+  String get client_note_draft_badge => 'SZKIC';
+
+  @override
+  String get client_note_close => 'Zamknij';
+
+  @override
+  String get client_session_add_note => 'Dodaj notatkę do sesji';
 }

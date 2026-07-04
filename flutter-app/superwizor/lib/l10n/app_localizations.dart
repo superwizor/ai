@@ -5410,6 +5410,54 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Zalogowano jako {email}, ale to konto nie jest zarejestrowane w Superwizor AI. Jeśli otrzymałeś zaproszenie (terapeuta, manager lub klient), otwórz link z wiadomości e-mail. Konto terapeuty założysz na superwizor.ai.'**
   String account_not_found_body(String email);
+
+  /// No description provided for @client_note_save.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisz'**
+  String get client_note_save;
+
+  /// No description provided for @client_note_save_and_send.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zapisz i wyślij do terapeuty'**
+  String get client_note_save_and_send;
+
+  /// No description provided for @client_note_saved_draft.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka zapisana w panelu.'**
+  String get client_note_saved_draft;
+
+  /// No description provided for @client_note_mine_draft.
+  ///
+  /// In pl, this message translates to:
+  /// **'Szkic (tylko dla Ciebie)'**
+  String get client_note_mine_draft;
+
+  /// No description provided for @client_note_mine_sent.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wysłana do terapeuty'**
+  String get client_note_mine_sent;
+
+  /// No description provided for @client_note_draft_badge.
+  ///
+  /// In pl, this message translates to:
+  /// **'SZKIC'**
+  String get client_note_draft_badge;
+
+  /// No description provided for @client_note_close.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zamknij'**
+  String get client_note_close;
+
+  /// No description provided for @client_session_add_note.
+  ///
+  /// In pl, this message translates to:
+  /// **'Dodaj notatkę do sesji'**
+  String get client_session_add_note;
 }
 
 class _AppLocalizationsDelegate

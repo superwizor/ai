@@ -1357,5 +1357,13 @@
         "type": "String"
       }
     }
-  }
+  },
+  "client_note_save": "Save",
+  "client_note_save_and_send": "Save and send to therapist",
+  "client_note_saved_draft": "Note saved in your panel.",
+  "client_note_mine_draft": "Draft (only you)",
+  "client_note_mine_sent": "Sent to therapist",
+  "client_note_draft_badge": "DRAFT",
+  "client_note_close": "Close",
+  "client_session_add_note": "Add a note to this session"
 }

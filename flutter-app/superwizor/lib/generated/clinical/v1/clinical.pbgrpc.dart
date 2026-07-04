@@ -412,6 +412,13 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$clientCreateNote, request, options: options);
   }
 
+  $grpc.ResponseFuture<$0.ClientNote> clientSendNote(
+    $0.ClientSendNoteRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$clientSendNote, request, options: options);
+  }
+
   $grpc.ResponseFuture<$1.Empty> clientMarkNoteRead(
     $0.ClientMarkNoteReadRequest request, {
     $grpc.CallOptions? options,
@@ -663,6 +670,11 @@ class ClinicalServiceClient extends $grpc.Client {
       $grpc.ClientMethod<$0.ClientCreateNoteRequest, $0.ClientNote>(
           '/clinical.v1.ClinicalService/ClientCreateNote',
           ($0.ClientCreateNoteRequest value) => value.writeToBuffer(),
+          $0.ClientNote.fromBuffer);
+  static final _$clientSendNote =
+      $grpc.ClientMethod<$0.ClientSendNoteRequest, $0.ClientNote>(
+          '/clinical.v1.ClinicalService/ClientSendNote',
+          ($0.ClientSendNoteRequest value) => value.writeToBuffer(),
           $0.ClientNote.fromBuffer);
   static final _$clientMarkNoteRead =
       $grpc.ClientMethod<$0.ClientMarkNoteReadRequest, $1.Empty>(
@@ -1038,6 +1050,14 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) =>
             $0.ClientCreateNoteRequest.fromBuffer(value),
+        ($0.ClientNote value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClientSendNoteRequest, $0.ClientNote>(
+        'ClientSendNote',
+        clientSendNote_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ClientSendNoteRequest.fromBuffer(value),
         ($0.ClientNote value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.ClientMarkNoteReadRequest, $1.Empty>(
         'ClientMarkNoteRead',
@@ -1430,6 +1450,14 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$0.ClientNote> clientCreateNote(
       $grpc.ServiceCall call, $0.ClientCreateNoteRequest request);
+
+  $async.Future<$0.ClientNote> clientSendNote_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ClientSendNoteRequest> $request) async {
+    return clientSendNote($call, await $request);
+  }
+
+  $async.Future<$0.ClientNote> clientSendNote(
+      $grpc.ServiceCall call, $0.ClientSendNoteRequest request);
 
   $async.Future<$1.Empty> clientMarkNoteRead_Pre($grpc.ServiceCall $call,
       $async.Future<$0.ClientMarkNoteReadRequest> $request) async {
