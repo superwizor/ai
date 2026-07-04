@@ -119,3 +119,25 @@ SET status = 'CANCELED',
 WHERE organization_id = $1
   AND status IN ('ACTIVE', 'TRIALING', 'PAST_DUE')
   AND (provider_subscription_id IS NULL OR provider_subscription_id <> $2);
+
+-- name: GetLatestSubscriptionByOrg :one
+-- Newest subscription regardless of status. AdminResetTokens uses it to
+-- find the CANCELED/expired MANUAL sub of a test org and reactivate it
+-- (live-fix 2026-07-04: "Zresetuj tokeny" died with
+-- SUBSCRIPTION_INACTIVE on every non-Stripe org after its first period).
+SELECT * FROM subscriptions
+WHERE organization_id = $1
+ORDER BY created_at DESC
+LIMIT 1;
+
+-- name: ReactivateManualSubscription :one
+-- Support/test path only — the handler guards provider='MANUAL' (Stripe
+-- subs are Stripe's source of truth). Rolls the billing period to start
+-- now so a fresh counter can be minted for it.
+UPDATE subscriptions
+SET status = 'ACTIVE',
+    current_period_start = now(),
+    current_period_end   = now() + interval '1 month',
+    updated_at = now()
+WHERE id = $1 AND provider = 'MANUAL'
+RETURNING *;

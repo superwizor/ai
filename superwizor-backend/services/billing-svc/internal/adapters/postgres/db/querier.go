@@ -119,6 +119,11 @@ type Querier interface {
 	// Dzięki temu reserve/quota zawsze patrzy na plan, za który klient
 	// faktycznie płaci, nawet jeśli inwariant zostanie kiedyś naruszony.
 	GetActiveSubscriptionByOrg(ctx context.Context, organizationID uuid.UUID) (GetActiveSubscriptionByOrgRow, error)
+	// Newest subscription regardless of status. AdminResetTokens uses it to
+	// find the CANCELED/expired MANUAL sub of a test org and reactivate it
+	// (live-fix 2026-07-04: "Zresetuj tokeny" died with
+	// SUBSCRIPTION_INACTIVE on every non-Stripe org after its first period).
+	GetLatestSubscriptionByOrg(ctx context.Context, organizationID uuid.UUID) (Subscription, error)
 	GetPlanByID(ctx context.Context, id uuid.UUID) (GetPlanByIDRow, error)
 	// Lookup planu po stripe_price_id — używane przy checkout.session.completed
 	// żeby wiedzieć ile tokenów przypisać i jaki tier.
@@ -176,6 +181,10 @@ type Querier interface {
 	// offline) auto-renew their MANUAL subscription; other MANUAL subs are
 	// canceled at period end (2026-07 incident policy).
 	OrgHasSeatAllocations(ctx context.Context, organizationID uuid.UUID) (bool, error)
+	// Support/test path only — the handler guards provider='MANUAL' (Stripe
+	// subs are Stripe's source of truth). Rolls the billing period to start
+	// now so a fresh counter can be minted for it.
+	ReactivateManualSubscription(ctx context.Context, id uuid.UUID) (Subscription, error)
 	// Dekrementuje tokens_reserved (clamp do 0). Wywoływane przy ReleaseCredit
 	// i przy CommitUsage (transfer rezerwacja → used).
 	ReleaseReservedTokens(ctx context.Context, arg ReleaseReservedTokensParams) error
