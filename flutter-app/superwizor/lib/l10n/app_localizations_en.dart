@@ -3012,4 +3012,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get account_deleted_body =>
       'This therapist account has been blocked by the Superwizor AI administrator. Contact support if you believe this is a mistake.';
+
+  @override
+  String get account_not_found_title => 'Account not found';
+
+  @override
+  String account_not_found_body(String email) {
+    return 'Signed in as $email, but this account is not registered with Superwizor AI. If you received an invitation (therapist, manager or client), open the link from the e-mail. A therapist account can be created at superwizor.ai.';
+  }
 }

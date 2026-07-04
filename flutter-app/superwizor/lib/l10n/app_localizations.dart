@@ -5398,6 +5398,18 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'To konto terapeuty zostało zablokowane przez administratora Superwizor AI. Skontaktuj się z pomocą, jeśli uważasz, że to pomyłka.'**
   String get account_deleted_body;
+
+  /// No description provided for @account_not_found_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie znaleziono konta'**
+  String get account_not_found_title;
+
+  /// No description provided for @account_not_found_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zalogowano jako {email}, ale to konto nie jest zarejestrowane w Superwizor AI. Jeśli otrzymałeś zaproszenie (terapeuta, manager lub klient), otwórz link z wiadomości e-mail. Konto terapeuty założysz na superwizor.ai.'**
+  String account_not_found_body(String email);
 }
 
 class _AppLocalizationsDelegate

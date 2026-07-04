@@ -3032,4 +3032,12 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get account_deleted_body =>
       'To konto terapeuty zostało zablokowane przez administratora Superwizor AI. Skontaktuj się z pomocą, jeśli uważasz, że to pomyłka.';
+
+  @override
+  String get account_not_found_title => 'Nie znaleziono konta';
+
+  @override
+  String account_not_found_body(String email) {
+    return 'Zalogowano jako $email, ale to konto nie jest zarejestrowane w Superwizor AI. Jeśli otrzymałeś zaproszenie (terapeuta, manager lub klient), otwórz link z wiadomości e-mail. Konto terapeuty założysz na superwizor.ai.';
+  }
 }
