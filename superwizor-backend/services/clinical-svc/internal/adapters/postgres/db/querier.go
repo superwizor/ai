@@ -201,6 +201,8 @@ type Querier interface {
 	// docs/39 PR9: the client-panel account e-mail for a kartoteka. Only an
 	// attached, ACTIVE patient user with an e-mail can receive the PHI-free
 	// "new item in your panel" signal — pseudonymous kartoteki skip it.
+	// PR12 also returns the client's users.id so the ITEM_SHARED event can
+	// address the recipient's Firestore inbox for live web-panel refresh.
 	GetPatientUserEmailForFile(ctx context.Context, id uuid.UUID) (GetPatientUserEmailForFileRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetPlanDistribution(ctx context.Context) ([]GetPlanDistributionRow, error)

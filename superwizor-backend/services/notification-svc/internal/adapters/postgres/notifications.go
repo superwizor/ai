@@ -62,6 +62,28 @@ func (s *Store) LookupUserByFirebaseUID(ctx context.Context, fbUID string) (*Use
 	return &u, nil
 }
 
+// LookupFirebaseUIDByUserID resolves users.id → firebase_uid. Used by
+// SendClientPanelEvent (docs/39 PR12) to address the recipient's Firestore
+// inbox, which is keyed by Firebase UID (not the PG UUID). Returns
+// pgx.ErrNoRows if the user is gone or has no Firebase account yet, and an
+// empty string if firebase_uid is NULL — the caller treats both as
+// "no inbox to write" and falls through to the e-mail-only path.
+func (s *Store) LookupFirebaseUIDByUserID(ctx context.Context, userID uuid.UUID) (string, error) {
+	var fbUID *string
+	err := s.Pool.QueryRow(ctx, `
+		SELECT firebase_uid
+		FROM users
+		WHERE id = $1 AND deleted_at IS NULL`,
+		userID).Scan(&fbUID)
+	if err != nil {
+		return "", err
+	}
+	if fbUID == nil {
+		return "", nil
+	}
+	return *fbUID, nil
+}
+
 // ---------- sessions (worker side) ----------
 
 type SessionForNotification struct {

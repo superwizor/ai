@@ -366,9 +366,12 @@ func (s *Server) notifyKartotekaClient(ctx context.Context, patientFileID uuid.U
 		// No attached/active panel account — nothing to signal.
 		return
 	}
-	// ITEM_SHARED targets the web client panel (no FCM push) — no
-	// recipient user / kartoteka id needed here.
-	s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "ITEM_SHARED", itemKind, "", "")
+	// ITEM_SHARED targets the web client panel. PR12: pass the client's
+	// user id + kartoteka id so notification-svc mirrors the event into
+	// the client's Firestore inbox — the panel subscribes to it and
+	// refreshes the timeline live (no web-push needed).
+	s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "ITEM_SHARED", itemKind,
+		row.PatientID.String(), patientFileID.String())
 }
 
 // ── Therapist-side sharing toggles ──────────────────────────────────

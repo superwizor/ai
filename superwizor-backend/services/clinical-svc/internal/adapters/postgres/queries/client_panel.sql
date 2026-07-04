@@ -119,7 +119,9 @@ WHERE patient_file_id = $1 AND kind = 'CLIENT_NOTE'
 -- docs/39 PR9: the client-panel account e-mail for a kartoteka. Only an
 -- attached, ACTIVE patient user with an e-mail can receive the PHI-free
 -- "new item in your panel" signal — pseudonymous kartoteki skip it.
-SELECT u.email, u.ui_language
+-- PR12 also returns the client's users.id so the ITEM_SHARED event can
+-- address the recipient's Firestore inbox for live web-panel refresh.
+SELECT u.id AS patient_id, u.email, u.ui_language
 FROM patient_files pf
 JOIN users u ON u.id = pf.patient_id
 WHERE pf.id = $1 AND u.is_active AND u.email IS NOT NULL;

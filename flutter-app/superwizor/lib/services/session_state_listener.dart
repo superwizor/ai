@@ -56,6 +56,10 @@ class InboxNotification {
   final String title;
   final String body;
   final String sessionId;
+  // docs/39 PR12: the kartoteka a client-panel event (client_note_received /
+  // item_shared) refers to, so the root inbox listener refreshes exactly
+  // that notes/timeline list. Empty for session-pipeline notifications.
+  final String patientFileId;
   final DateTime? createdAt;
   final DateTime? readAt;
 
@@ -65,6 +69,7 @@ class InboxNotification {
     required this.title,
     required this.body,
     required this.sessionId,
+    this.patientFileId = '',
     this.createdAt,
     this.readAt,
   });
@@ -79,6 +84,7 @@ class InboxNotification {
       title: (data['title'] ?? '').toString(),
       body: (data['body'] ?? '').toString(),
       sessionId: (data['sessionId'] ?? '').toString(),
+      patientFileId: (data['patientFileId'] ?? '').toString(),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       readAt: (data['readAt'] as Timestamp?)?.toDate(),
     );

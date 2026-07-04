@@ -287,24 +287,27 @@ func (q *Queries) CreateClientNote(ctx context.Context, arg CreateClientNotePara
 }
 
 const getPatientUserEmailForFile = `-- name: GetPatientUserEmailForFile :one
-SELECT u.email, u.ui_language
+SELECT u.id AS patient_id, u.email, u.ui_language
 FROM patient_files pf
 JOIN users u ON u.id = pf.patient_id
 WHERE pf.id = $1 AND u.is_active AND u.email IS NOT NULL
 `
 
 type GetPatientUserEmailForFileRow struct {
-	Email      *string `json:"email"`
-	UiLanguage string  `json:"ui_language"`
+	PatientID  uuid.UUID `json:"patient_id"`
+	Email      *string   `json:"email"`
+	UiLanguage string    `json:"ui_language"`
 }
 
 // docs/39 PR9: the client-panel account e-mail for a kartoteka. Only an
 // attached, ACTIVE patient user with an e-mail can receive the PHI-free
 // "new item in your panel" signal — pseudonymous kartoteki skip it.
+// PR12 also returns the client's users.id so the ITEM_SHARED event can
+// address the recipient's Firestore inbox for live web-panel refresh.
 func (q *Queries) GetPatientUserEmailForFile(ctx context.Context, id uuid.UUID) (GetPatientUserEmailForFileRow, error) {
 	row := q.db.QueryRow(ctx, getPatientUserEmailForFile, id)
 	var i GetPatientUserEmailForFileRow
-	err := row.Scan(&i.Email, &i.UiLanguage)
+	err := row.Scan(&i.PatientID, &i.Email, &i.UiLanguage)
 	return i, err
 }
 

@@ -28,17 +28,19 @@ import (
 
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	"github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/fcm"
+	fswriter "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/firestore"
 	pgstore "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/postgres"
 	"github.com/superwizor-ai/backend/services/notification-svc/internal/email"
 )
 
 type Server struct {
 	notificationv1.UnimplementedNotificationServiceServer
-	store   *pgstore.Store
-	auth    *fbauth.Client
-	emailer email.Sender // nil-safe; nil falls through to NoopSender at call site
-	fcm     *fcm.Sender  // nil = no FCM push (client_note_received email still sends)
-	version string
+	store    *pgstore.Store
+	auth     *fbauth.Client
+	emailer  email.Sender     // nil-safe; nil falls through to NoopSender at call site
+	fcm      *fcm.Sender      // nil = no FCM push (client_note_received email still sends)
+	fsWriter *fswriter.Writer // nil = no Firestore inbox write (email/FCM still send)
+	version  string
 }
 
 func NewServer(store *pgstore.Store, auth *fbauth.Client, version string) *Server {
@@ -49,6 +51,15 @@ func NewServer(store *pgstore.Store, auth *fbauth.Client, version string) *Serve
 // (docs/39 PR11). Same post-construction-option pattern as WithEmailer;
 // unset leaves the server e-mail-only.
 func (s *Server) WithFCM(sender *fcm.Sender) *Server { s.fcm = sender; return s }
+
+// WithFirestore wires the Firestore writer used by SendClientPanelEvent to
+// mirror client-panel events into the recipient's user_notifications inbox
+// (docs/39 PR12). Same post-construction option as WithFCM; unset leaves
+// the server on the e-mail/FCM-only path. The notification-worker is the
+// architectural "only backend writer to Firestore" (§6.3) — the gRPC
+// server writing here is a deliberate, scoped extension for the two
+// client-panel signals, which have no Pub/Sub pipeline of their own.
+func (s *Server) WithFirestore(w *fswriter.Writer) *Server { s.fsWriter = w; return s }
 
 // WithEmailer overrides the email Sender. Production wiring (cmd/server/
 // main.go) calls this with a ResendSender; tests use a MockSender;

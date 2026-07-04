@@ -12,6 +12,7 @@ import (
 
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	"github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/fcm"
+	fswriter "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/firestore"
 	"github.com/superwizor-ai/backend/services/notification-svc/internal/email"
 	"github.com/superwizor-ai/backend/services/notification-svc/internal/i18n"
 )
@@ -68,7 +69,69 @@ func (s *Server) SendClientPanelEvent(ctx context.Context, req *notificationv1.S
 	if req.GetEvent() == "CLIENT_NOTE_RECEIVED" && s.fcm != nil && req.GetRecipientUserId() != "" {
 		s.pushClientNoteReceived(ctx, req)
 	}
+
+	// docs/39 PR12: mirror the event into the recipient's Firestore inbox
+	// (user_notifications/{firebaseUid}/inbox). The therapist iOS app and
+	// the web client panel already subscribe to that collection, so this
+	// write is what makes a sent note / newly shared item appear LIVE —
+	// no dependence on iOS foreground-push quirks or web-push setup. The
+	// e-mail (and, for notes, the FCM push) remain the closed-app channel.
+	if s.fsWriter != nil && req.GetRecipientUserId() != "" {
+		s.writeClientPanelInbox(ctx, req)
+	}
 	return &emptypb.Empty{}, nil
+}
+
+// writeClientPanelInbox mirrors a client-panel event into the recipient's
+// Firestore inbox. Best-effort + PHI-free (no client identity, no content):
+// carries only a localized signal + the patient_file_id the app uses to
+// refresh the right kartoteka. Failures are logged and dropped — the item
+// is already durable in Postgres and the e-mail already went out.
+func (s *Server) writeClientPanelInbox(ctx context.Context, req *notificationv1.SendClientPanelEventRequest) {
+	uid, err := uuid.Parse(req.GetRecipientUserId())
+	if err != nil {
+		return
+	}
+	fbUID, err := s.store.LookupFirebaseUIDByUserID(ctx, uid)
+	if err != nil || fbUID == "" {
+		// No Firebase account (pseudonymous kartoteka client, deleted
+		// user, or NULL uid) — nothing to address. E-mail/FCM already ran.
+		return
+	}
+
+	var notifType, title, body string
+	switch req.GetEvent() {
+	case "CLIENT_NOTE_RECEIVED":
+		notifType = "client_note_received"
+		title, body = localizeClientNoteReceived(req.GetLocale())
+	case "ITEM_SHARED":
+		notifType = "item_shared"
+		title, body = localizeItemShared(req.GetLocale(), req.GetItemKind())
+	default:
+		return
+	}
+
+	if err := s.fsWriter.WriteInboxNotification(ctx, fswriter.InboxNotification{
+		NotificationID:   uuid.NewString(),
+		FirebaseUID:      fbUID,
+		NotificationType: notifType,
+		Title:            title,
+		Body:             body,
+		PatientFileID:    req.GetPatientFileId(),
+	}); err != nil {
+		slog.WarnContext(ctx, "client-panel inbox write failed",
+			"event", req.GetEvent(), "recipient_user_id", uid, "error", err)
+	}
+}
+
+// localizeItemShared — PHI-free inbox copy for the client's web panel when
+// the therapist shares a session/note. Reuses itemLabel for the accusative
+// item phrase. pl default.
+func localizeItemShared(locale, kind string) (title, body string) {
+	if strings.HasPrefix(strings.ToLower(locale), "en") {
+		return "New in your panel", "Your therapist shared " + itemLabel(locale, kind) + " with you."
+	}
+	return "Nowość w Twoim panelu", "Terapeuta udostępnił Ci " + itemLabel(locale, kind) + "."
 }
 
 // pushClientNoteReceived fans a PHI-free FCM data push out to the
