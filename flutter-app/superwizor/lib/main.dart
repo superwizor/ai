@@ -18,6 +18,7 @@ import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'client/client_home_screen.dart';
 import 'generated/identity/v1/identity.pbenum.dart' as identity_enum;
+import 'screens/account_not_found_screen.dart';
 import 'screens/deactivated_account_screen.dart';
 import 'utils/account_status.dart';
 import 'screens/home_screen.dart';
@@ -149,6 +150,15 @@ class _AuthGate extends ConsumerWidget {
           orElse: () => false,
         );
 
+    // Firebase session without an identity row (never registered, or
+    // hard-deleted by an admin): explicit dead-end screen — the app
+    // must NOT mint an account (the removed auto-register used to
+    // create ghost THERAPIST rows for any unknown Google sign-in).
+    final notRegistered = ref.watch(currentUserProvider).maybeWhen(
+          error: (e, _) => e is AccountNotRegisteredException,
+          orElse: () => false,
+        );
+
     // Client panel routing (docs/39): PATIENT accounts get the
     // client-only surface — no recording, kartoteki, or billing.
     final isClient = ref.watch(currentUserProvider).whenOrNull(
@@ -167,6 +177,7 @@ class _AuthGate extends ConsumerWidget {
           );
         }
         if (!snapshot.hasData) return const LoginScreen();
+        if (notRegistered) return const AccountNotFoundScreen();
         if (deactivated) return DeactivatedAccountScreen(deleted: deleted);
         if (isClient) return const ClientHomeScreen();
         return const _LockGate();

@@ -41,44 +41,21 @@ final currentUserProvider = FutureProvider<identity_pb.User?>((ref) async {
       identity_pb.GetUserByFirebaseUIDRequest(firebaseUid: firebaseUser.uid),
     );
   } on grpc.GrpcError catch (e) {
-    // Self-heal for orphan users: Firebase Auth has them, but the
-    // identity-svc PG row is missing. This happens if a previous
-    // CreateUser silently failed (network, auth, etc.) — login still
-    // appeared to succeed at the time but no PG row was written.
-    // We auto-register here so subsequent calls just work.
+    // Firebase session without an identity-svc row. The old "self-heal"
+    // silently auto-registered a THERAPIST here — which minted GHOST
+    // therapist accounts (trial org included!) for ANYONE who signed
+    // into the app with an unknown Google/Apple identity: would-be
+    // managers and clients then couldn't accept their real invitations
+    // (unique e-mail/uid already taken — live-tested 2026-07-04,
+    // d.piotrak@lisa.care). Registration belongs to the explicit flows
+    // (superwizor.ai wizard, invitation accept pages); the app now
+    // surfaces a clear "account not found" state instead of creating
+    // anything.
     if (e.code == grpc.StatusCode.notFound) {
       debugPrint(
-          'currentUserProvider: user ${firebaseUser.uid} not found in '
-          'identity-svc, attempting auto-register');
-      // Split Firebase displayName into first/last so identity-svc's
-      // auto-org-provisioning gets a real "First Last Org" instead of
-      // the email-local fallback ("dar Org"). Falls back to empty if
-      // Firebase has no displayName (email/password signup w/o a name).
-      final displayName = (firebaseUser.displayName ?? '').trim();
-      String firstName = '';
-      String lastName = '';
-      if (displayName.isNotEmpty) {
-        final parts = displayName.split(RegExp(r'\s+'));
-        firstName = parts.first;
-        if (parts.length > 1) {
-          lastName = parts.sublist(1).join(' ');
-        }
-      }
-      try {
-        return await identityClient.createUser(identity_pb.CreateUserRequest(
-          firebaseUid: firebaseUser.uid,
-          email: firebaseUser.email ?? '',
-          role: identity_pb.UserRole.USER_ROLE_THERAPIST,
-          firstName: firstName,
-          lastName: lastName,
-          uiLanguage: 'pl',
-          timezone: 'Europe/Warsaw',
-          hasAcceptedTos: true,
-        ));
-      } catch (regErr) {
-        debugPrint('currentUserProvider: auto-register failed: $regErr');
-        rethrow;
-      }
+          'currentUserProvider: user ${firebaseUser.uid} has no '
+          'identity-svc row — NOT auto-registering (docs/39 live-fix)');
+      throw const AccountNotRegisteredException();
     }
     debugPrint('currentUserProvider failed: $e');
     rethrow;
@@ -87,6 +64,16 @@ final currentUserProvider = FutureProvider<identity_pb.User?>((ref) async {
     rethrow;
   }
 });
+
+/// A Firebase session exists but identity-svc has no users row for it —
+/// the person signed into the app without ever registering (or their
+/// account was hard-deleted). _AuthGate maps this to the
+/// AccountNotFoundScreen instead of letting RPCs fail one by one.
+class AccountNotRegisteredException implements Exception {
+  const AccountNotRegisteredException();
+  @override
+  String toString() => 'ACCOUNT_NOT_REGISTERED';
+}
 
 /// Convenience: just the therapist UUID (users.id) as a String, or null
 /// if not logged in / not yet resolved. UI code reads this to populate

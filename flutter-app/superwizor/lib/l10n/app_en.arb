@@ -1348,5 +1348,14 @@
   "client_new_badge": "NEW",
   "client_session_transcript_chip": "Transcript",
   "account_deleted_title": "Account blocked",
-  "account_deleted_body": "This therapist account has been blocked by the Superwizor AI administrator. Contact support if you believe this is a mistake."
+  "account_deleted_body": "This therapist account has been blocked by the Superwizor AI administrator. Contact support if you believe this is a mistake.",
+  "account_not_found_title": "Account not found",
+  "account_not_found_body": "Signed in as {email}, but this account is not registered with Superwizor AI. If you received an invitation (therapist, manager or client), open the link from the e-mail. A therapist account can be created at superwizor.ai.",
+  "@account_not_found_body": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  }
 }

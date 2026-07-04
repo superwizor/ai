@@ -1349,5 +1349,14 @@
   "client_new_badge": "NOWA",
   "client_session_transcript_chip": "Transkrypcja",
   "account_deleted_title": "Konto zablokowane",
-  "account_deleted_body": "To konto terapeuty zostało zablokowane przez administratora Superwizor AI. Skontaktuj się z pomocą, jeśli uważasz, że to pomyłka."
+  "account_deleted_body": "To konto terapeuty zostało zablokowane przez administratora Superwizor AI. Skontaktuj się z pomocą, jeśli uważasz, że to pomyłka.",
+  "account_not_found_title": "Nie znaleziono konta",
+  "account_not_found_body": "Zalogowano jako {email}, ale to konto nie jest zarejestrowane w Superwizor AI. Jeśli otrzymałeś zaproszenie (terapeuta, manager lub klient), otwórz link z wiadomości e-mail. Konto terapeuty założysz na superwizor.ai.",
+  "@account_not_found_body": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  }
 }
