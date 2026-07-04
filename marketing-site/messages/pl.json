@@ -1135,7 +1135,9 @@
     "resetNeedEmail": "Najpierw wpisz swój adres email.",
     "signInWithGoogle": "Kontynuuj z Google",
     "signInWithApple": "Kontynuuj z Apple",
-    "orUseEmail": "Albo użyj adresu e-mail"
+    "orUseEmail": "Albo użyj adresu e-mail",
+    "option1Title": "Opcja 1 · Szybkie logowanie (Google / Apple)",
+    "option2Title": "Opcja 2 · E-mail i hasło"
   },
   "account": {
     "metaTitle": "Moje konto · Superwizor AI",

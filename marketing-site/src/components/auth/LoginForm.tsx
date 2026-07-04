@@ -283,8 +283,13 @@ export function LoginForm() {
         </a>
       </div>
 
-      {/* ── Social sign-in ───────────────────────────────────── */}
-      <div className="grid gap-3">
+      {/* ── Option 1: social sign-in (mirrors the client-invite
+             layout — two clearly labeled sections, live-feedback
+             2026-07-04) ───────────────────────────────────────── */}
+      <section className="rounded-button border border-frost/15 bg-frost/[0.03] p-5 grid gap-3">
+        <h2 className="font-display text-frost text-sm font-semibold">
+          {t("option1Title")}
+        </h2>
         {/* Google */}
         <button
           type="button"
@@ -313,7 +318,7 @@ export function LoginForm() {
           </svg>
           {t("signInWithApple")}
         </button>
-      </div>
+      </section>
 
       {/* ── "Or use email" divider ───────────────────────────── */}
       <div className="relative">
@@ -327,8 +332,15 @@ export function LoginForm() {
         </div>
       </div>
 
-      {/* ── Email / password form ────────────────────────────── */}
-      <form onSubmit={onSubmit} className="grid gap-5" noValidate>
+      {/* ── Option 2: e-mail / password form ─────────────────── */}
+      <form
+        onSubmit={onSubmit}
+        className="rounded-button border border-frost/15 bg-frost/[0.03] p-5 grid gap-5"
+        noValidate
+      >
+        <h2 className="font-display text-frost text-sm font-semibold">
+          {t("option2Title")}
+        </h2>
         <label className="grid gap-2">
           <span className="font-sans text-[10px] font-semibold uppercase tracking-[var(--tracking-label)] text-mist">
             {t("emailLabel")}
