@@ -1244,7 +1244,7 @@
   "deactivated_title": "Account inactive",
   "deactivated_body": "Your account has been deactivated by your organization's administrator. Contact them to restore access.",
   "deactivated_logout": "Sign out",
-  "client_home_title": "Your therapy",
+  "client_home_title": "Your sessions",
   "client_home_subtitle": "Materials shared by your therapist and your notes.",
   "client_home_empty": "Your therapist hasn't shared any materials yet.",
   "client_home_error": "Failed to load: {error}",

@@ -1245,7 +1245,7 @@
   "deactivated_title": "Konto nieaktywne",
   "deactivated_body": "Twoje konto zostało dezaktywowane przez administratora organizacji. Skontaktuj się z nim, aby przywrócić dostęp.",
   "deactivated_logout": "Wyloguj się",
-  "client_home_title": "Twoja terapia",
+  "client_home_title": "Twoje sesje",
   "client_home_subtitle": "Materiały udostępnione przez terapeutę i Twoje notatki.",
   "client_home_empty": "Twój terapeuta nie udostępnił jeszcze żadnych materiałów.",
   "client_home_error": "Nie udało się załadować danych: {error}",

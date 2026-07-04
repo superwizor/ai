@@ -2859,7 +2859,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get deactivated_logout => 'Wyloguj się';
 
   @override
-  String get client_home_title => 'Twoja terapia';
+  String get client_home_title => 'Twoje sesje';
 
   @override
   String get client_home_subtitle =>

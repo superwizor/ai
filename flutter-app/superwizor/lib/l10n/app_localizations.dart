@@ -5102,7 +5102,7 @@ abstract class AppLocalizations {
   /// No description provided for @client_home_title.
   ///
   /// In pl, this message translates to:
-  /// **'Twoja terapia'**
+  /// **'Twoje sesje'**
   String get client_home_title;
 
   /// No description provided for @client_home_subtitle.

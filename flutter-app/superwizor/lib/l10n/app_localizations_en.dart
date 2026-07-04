@@ -2839,7 +2839,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deactivated_logout => 'Sign out';
 
   @override
-  String get client_home_title => 'Your therapy';
+  String get client_home_title => 'Your sessions';
 
   @override
   String get client_home_subtitle =>
