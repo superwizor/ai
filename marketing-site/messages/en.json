@@ -1548,7 +1548,8 @@
       "mLastSession": "Last session",
       "mTotals": "Total",
       "analyticsEmpty": "No data in the selected period.",
-      "analyticsPrivacyNote": "Metadata aggregates only — no session content, reports, or patient identity."
+      "analyticsPrivacyNote": "Metadata aggregates only — no session content, reports, or patient identity.",
+      "resendCta": "Resend"
     },
     "analytics": {
       "loading": "Loading analytics…",

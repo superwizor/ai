@@ -106,12 +106,46 @@ func (s *Server) InviteTherapist(ctx context.Context, req *identityv1.InviteTher
 		if alloc.OrganizationID != *caller.organizationID {
 			return nil, status.Error(codes.NotFound, "seat allocation not found")
 		}
-		if err := checkSeatAvailable(ctx, qtx, alloc); err != nil {
-			return nil, err
-		}
-		inv, err = qtx.CreateInvitation(ctx, createParams)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "create invitation: %v", err)
+		// Re-invite (live-feedback 2026-07-04): a PENDING invitation for
+		// this e-mail refreshes in place — new token/expiry AND possibly
+		// a NEW seat allocation (the manager can move the invitee to a
+		// different plan before activation). The old row's reservation
+		// dissolves with the same UPDATE, so exclude it from the
+		// availability count.
+		existing, lookupErr := qtx.GetInvitationByOrgEmail(ctx, db.GetInvitationByOrgEmailParams{
+			OrganizationID: *caller.organizationID,
+			Email:          email,
+		})
+		switch {
+		case lookupErr == nil:
+			if err := checkSeatAvailableExcluding(ctx, qtx, alloc, existing.ID); err != nil {
+				return nil, err
+			}
+			if _, err := tx.Exec(ctx,
+				`UPDATE invitations
+				    SET token_hash = $2, expires_at = $3, invited_by_user = $4,
+				        allocation_id = $5, invited_first_name = $6,
+				        invited_last_name = $7, created_at = now()
+				  WHERE id = $1`,
+				existing.ID, tokenHash, expiresAt, caller.userID,
+				allocationID, createParams.InvitedFirstName, createParams.InvitedLastName,
+			); err != nil {
+				return nil, status.Errorf(codes.Internal, "refresh invitation: %v", err)
+			}
+			inv = existing
+			inv.TokenHash = tokenHash
+			inv.ExpiresAt = expiresAt
+			inv.AllocationID = allocationID
+		case errors.Is(lookupErr, pgx.ErrNoRows):
+			if err := checkSeatAvailable(ctx, qtx, alloc); err != nil {
+				return nil, err
+			}
+			inv, err = qtx.CreateInvitation(ctx, createParams)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "create invitation: %v", err)
+			}
+		default:
+			return nil, status.Errorf(codes.Internal, "invitation lookup: %v", lookupErr)
 		}
 		if err := tx.Commit(ctx); err != nil {
 			return nil, status.Errorf(codes.Internal, "commit: %v", err)

@@ -132,3 +132,28 @@ func checkSeatAvailable(ctx context.Context, q db.Querier, alloc db.OrgSeatAlloc
 	}
 	return nil
 }
+
+// checkSeatAvailableExcluding — same as checkSeatAvailable, but ignores
+// one specific PENDING invitation. Used by the re-invite path: the
+// refreshed row's old reservation dissolves in the same UPDATE, so it
+// must not count against the target allocation (which may be the very
+// allocation it currently holds).
+func checkSeatAvailableExcluding(ctx context.Context, q db.Querier, alloc db.OrgSeatAllocation, excludeInvitationID uuid.UUID) error {
+	assigned, err := q.CountActiveSeatAssignments(ctx, alloc.ID)
+	if err != nil {
+		return status.Errorf(codes.Internal, "count seat assignments: %v", err)
+	}
+	pending, err := q.CountPendingInvitationsForAllocationExcluding(ctx, db.CountPendingInvitationsForAllocationExcludingParams{
+		AllocationID: pgtype.UUID{Bytes: alloc.ID, Valid: true},
+		ID:           excludeInvitationID,
+	})
+	if err != nil {
+		return status.Errorf(codes.Internal, "count pending invitations: %v", err)
+	}
+	if assigned+pending >= int64(alloc.Seats) {
+		return status.Errorf(codes.FailedPrecondition,
+			"SEATS_EXHAUSTED: %d/%d seats in use (including pending invitations)",
+			assigned+pending, alloc.Seats)
+	}
+	return nil
+}
