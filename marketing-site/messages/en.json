@@ -917,7 +917,8 @@
       "missingToken": "Invitation token is missing. Please open the link from your email.",
       "alreadyAccepted": "This invitation has already been used. Please sign in normally.",
       "expired": "This invitation has expired. Ask your administrator to resend it.",
-      "invalidToken": "Invalid token. Make sure you are using the latest link."
+      "invalidToken": "Invalid token. Make sure you are using the latest link.",
+      "emailAlreadyRegistered": "This e-mail (or the signed-in Google/Apple account) already has a Superwizor AI account — one account can hold only one role. To accept this invitation, ask for it to be sent to a different e-mail address."
     },
     "verifyEmail": {
       "metaTitle": "Verify your email",

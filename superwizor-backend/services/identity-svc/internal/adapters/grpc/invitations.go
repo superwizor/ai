@@ -274,6 +274,15 @@ func (s *Server) AcceptInvitation(ctx context.Context, req *identityv1.AcceptInv
 		HasAcceptedTos: req.HasAcceptedTos,
 	})
 	if err != nil {
+		// Single-role MVP: the invited e-mail (or the accepting Firebase
+		// identity) already owns an account, so a second role can't be
+		// minted. Stable code instead of a raw 500 — live-tested
+		// 2026-07-04: an existing THERAPIST accepting their own
+		// ORG_ADMIN invite got "Coś poszło nie tak".
+		if isUniqueViolationErr(err) {
+			return nil, status.Errorf(codes.FailedPrecondition,
+				"EMAIL_ALREADY_REGISTERED: this e-mail (or signed-in account) already has a Superwizor account — a %s invitation needs a different e-mail address", string(role))
+		}
 		return nil, status.Errorf(codes.Internal, "create user: %v", err)
 	}
 	if err := qtx.LinkUserToOrganization(ctx, db.LinkUserToOrganizationParams{
