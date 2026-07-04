@@ -1343,5 +1343,6 @@
   "share_toggled_off": "Sharing removed.",
   "share_toggle_error": "Could not change sharing.",
   "note_from_client": "From client",
-  "note_from_client_new": "NEW"
+  "note_from_client_new": "NEW",
+  "home_menu_invite_client_desc": "Send an e-mail with client panel access"
 }

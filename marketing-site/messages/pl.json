@@ -846,7 +846,8 @@
       "phoneRequired": "Numer telefonu jest wymagany.",
       "phoneInvalid": "Wprowadź poprawny numer telefonu (np. 9 cyfr dla Polski). Sekwencje lub powtórzone cyfry są niedozwolone.",
       "networkError": "Brak połączenia z serwerem. Spróbuj ponownie.",
-      "unknown": "Coś poszło nie tak. Spróbuj ponownie."
+      "unknown": "Coś poszło nie tak. Spróbuj ponownie.",
+      "existingAccountWrongPassword": "To konto już istnieje, ale hasło się nie zgadza. Podaj hasło istniejącego konta lub zresetuj je na stronie logowania."
     },
     "therapist": {
       "metaTitle": "Rejestracja terapeuty",

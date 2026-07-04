@@ -118,7 +118,30 @@ export function AcceptInviteForm({ token }: { token: string }) {
       return;
     }
     try {
-      const user = await auth.signUpWithEmail(data.email, data.password);
+      // Create the Firebase account; when the e-mail already has one
+      // (returning client accepting a second kartoteka, or a client
+      // re-clicking the link after signup — docs/39 D4), the magic-link
+      // accept degrades to a LOGIN with the same form: the backend's
+      // AcceptInvitation re-points the kartoteka at the existing
+      // PATIENT account instead of creating a duplicate.
+      let user;
+      try {
+        user = await auth.signUpWithEmail(data.email, data.password);
+      } catch (e) {
+        if (
+          e instanceof FirebaseError &&
+          e.code === "auth/email-already-in-use"
+        ) {
+          try {
+            user = await auth.signInWithEmail(data.email, data.password);
+          } catch {
+            setServerError(tErr("existingAccountWrongPassword"));
+            return;
+          }
+        } else {
+          throw e;
+        }
+      }
 
       const tz =
         Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Warsaw";
