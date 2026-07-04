@@ -1135,7 +1135,9 @@
     "resetNeedEmail": "Please enter your email first.",
     "signInWithGoogle": "Continue with Google",
     "signInWithApple": "Continue with Apple",
-    "orUseEmail": "Or use your email"
+    "orUseEmail": "Or use your email",
+    "option1Title": "Option 1 · Quick sign-in (Google / Apple)",
+    "option2Title": "Option 2 · E-mail and password"
   },
   "account": {
     "metaTitle": "My account · Superwizor AI",
