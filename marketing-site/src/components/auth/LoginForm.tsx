@@ -47,11 +47,12 @@ import { useAuth } from "@/lib/firebase/auth-provider";
 import { identityClient } from "@/lib/connect/clients";
 import { UserRole, CheckEmailExistsRequestSchema } from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { getFirebaseAuth } from "@/lib/firebase/init";
+import { openAppWithSso } from "@/lib/auth/open-app-sso";
 
-// APP_URL kept as a comment for grep — the post-login Flutter-app
-// bounce moved to the /account page's "Otwórz kartoteki" CTA, so
-// LoginForm itself no longer redirects across origins.
-// const APP_URL = "https://superwizor-app.web.app/";
+// Therapists stay on this origin post-login (the app bounce lives on
+// /account's "Otwórz kartoteki" CTA), but CLIENTS have no surface here
+// at all — their panel lives on the app origin, so PATIENT logins hand
+// off via openAppWithSso (same SSO path as accept-invite).
 
 type Phase = "idle" | "submitting" | "redirect_admin" | "redirect_app";
 
@@ -104,13 +105,26 @@ export function LoginForm() {
       throw err;
     }
 
-    const isAdmin =
-      (me.role as unknown) === UserRole.SUPERWIZOR_ADMIN ||
-      (me.role as unknown) === "USER_ROLE_SUPERWIZOR_ADMIN";
+    // Role-based routing (live-fix 2026-07-04: a CLIENT signing in from
+    // the marketing login landed on the THERAPIST onboarding because the
+    // only branches were admin / no-modality / dashboard).
+    //   SUPERWIZOR_ADMIN → /admin/
+    //   PATIENT          → client panel on the app origin (SSO handoff)
+    //   ORG_ADMIN        → /org/
+    //   THERAPIST        → /onboarding/ (no modality yet) or /dashboard/
+    const role = me.role as unknown;
+    const is = (enumVal: UserRole, name: string) =>
+      role === enumVal || role === name;
 
-    if (isAdmin) {
+    if (is(UserRole.SUPERWIZOR_ADMIN, "USER_ROLE_SUPERWIZOR_ADMIN")) {
       setPhase("redirect_admin");
       router.push(`${adminPrefix}/admin/`);
+    } else if (is(UserRole.PATIENT, "USER_ROLE_PATIENT")) {
+      setPhase("redirect_app");
+      await openAppWithSso(me.email);
+    } else if (is(UserRole.ORG_ADMIN, "USER_ROLE_ORG_ADMIN")) {
+      setPhase("redirect_app");
+      router.push(`${adminPrefix}/org/`);
     } else if (!me.defaultModalityId) {
       setPhase("redirect_app");
       router.push(`${adminPrefix}/onboarding/`);
