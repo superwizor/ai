@@ -94,6 +94,12 @@ export function OrgDetail({ orgId }: { orgId: string }) {
     addressFromProto(null),
   );
   const [editOriginalPrimaryAdmin, setEditOriginalPrimaryAdmin] = useState("");
+  // Manager-invite dialog input. MUST live up here with the other
+  // hooks: it used to sit below the loading/error early returns, so
+  // the first post-load render called one more hook than the loading
+  // render — React #310, surfaced as Next's "This page couldn't load"
+  // right after admin sign-in (live-testing, 2026-07-04).
+  const [managerEmail, setManagerEmail] = useState("");
 
   const reload = useCallback(async () => {
     setState("loading");
@@ -279,8 +285,6 @@ export function OrgDetail({ orgId }: { orgId: string }) {
       return { error: translateError(e, tErrors) };
     }
   };
-
-  const [managerEmail, setManagerEmail] = useState("");
 
   const onInviteManager = async (reason: string): Promise<ActionResult> => {
     if (!managerEmail.includes("@")) {
