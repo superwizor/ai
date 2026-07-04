@@ -1344,5 +1344,6 @@
   "share_toggled_off": "Cofnięto udostępnienie.",
   "share_toggle_error": "Nie udało się zmienić udostępniania.",
   "note_from_client": "Od klienta",
-  "note_from_client_new": "NOWA"
+  "note_from_client_new": "NOWA",
+  "home_menu_invite_client_desc": "Wyślij e-mail z dostępem do panelu klienta"
 }

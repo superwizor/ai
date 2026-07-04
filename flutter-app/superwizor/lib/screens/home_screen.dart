@@ -10,6 +10,7 @@ import '../analytics/analytics_collector.dart';
 import '../providers/sort_filter_provider.dart';
 import '../widgets/debug_test_overlay.dart';
 import '../widgets/sort_filter_sheet.dart';
+import '../widgets/client_invite_sheet.dart';
 
 
 import '../models/session.dart';
@@ -1395,6 +1396,22 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
     );
   }
 
+  /// docs/39: opens the client-panel invite sheet for this kartoteka.
+  /// The sheet reads GetClientInviteStatus and sends InviteClient — the
+  /// magic-link e-mail goes to the kartoteka's address (prefilled,
+  /// editable when none is on file yet).
+  void _openClientInvite() {
+    Patient? patient;
+    final patients = ref.read(patientsProvider).value ?? [];
+    try {
+      patient = patients.firstWhere((p) => p.id == widget.patientId);
+    } catch (_) {}
+    if (patient == null) return;
+    final resolved = patient;
+    Navigator.pop(context); // close options (same pattern as _deleteWarning)
+    showClientInviteSheet(context, patient: resolved);
+  }
+
   Future<void> _onSave() async {
     final firstName = _firstNameCtrl.text.trim();
     final lastName = _lastNameCtrl.text.trim();
@@ -1690,6 +1707,68 @@ class _PatientOptionsMenuState extends ConsumerState<_PatientOptionsMenu> {
                       const SizedBox(height: 2),
                       Text(
                         t.home_menu_edit_data_desc,
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 12,
+                          color: EuphireColors.mist.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: EuphireColors.mist,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // ── Invite to the client panel (docs/39) ──
+        InkWell(
+          onTap: _openClientInvite,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: EuphireColors.ember.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.person_add_alt_1_rounded,
+                    color: EuphireColors.ember,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        t.invite_client_title,
+                        style: const TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: EuphireColors.frostWhite,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        t.home_menu_invite_client_desc,
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 12,

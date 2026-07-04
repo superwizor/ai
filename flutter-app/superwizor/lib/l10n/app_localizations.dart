@@ -5368,6 +5368,12 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'NOWA'**
   String get note_from_client_new;
+
+  /// No description provided for @home_menu_invite_client_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij e-mail z dostępem do panelu klienta'**
+  String get home_menu_invite_client_desc;
 }
 
 class _AppLocalizationsDelegate

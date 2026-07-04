@@ -2995,4 +2995,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get note_from_client_new => 'NEW';
+
+  @override
+  String get home_menu_invite_client_desc =>
+      'Send an e-mail with client panel access';
 }

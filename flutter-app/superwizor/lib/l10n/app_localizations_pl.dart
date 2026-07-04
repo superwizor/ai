@@ -3015,4 +3015,8 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get note_from_client_new => 'NOWA';
+
+  @override
+  String get home_menu_invite_client_desc =>
+      'Wyślij e-mail z dostępem do panelu klienta';
 }
