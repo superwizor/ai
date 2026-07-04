@@ -28,7 +28,13 @@ import { FirebaseError } from "firebase/app";
 import { acceptInviteSchema, type AcceptInviteForm } from "@/lib/register/schema";
 import { useAuth } from "@/lib/firebase/auth-provider";
 import { identityClient } from "@/lib/connect/clients";
-import { AcceptInvitationRequestSchema, UserRole } from "@superwizor/proto-ts/identity/v1/identity_pb";
+import {
+  AcceptInvitationRequestSchema,
+  GetInvitationPreviewRequestSchema,
+  UserRole,
+  type InvitationPreview,
+} from "@superwizor/proto-ts/identity/v1/identity_pb";
+import { openAppWithSso } from "@/lib/auth/open-app-sso";
 import { Checkbox, FieldShell, RadioGroup, Select, TextInput } from "@/components/forms/Field";
 import {
   getModalityCatalog,
@@ -52,6 +58,34 @@ export function AcceptInviteForm({ token }: { token: string }) {
       cancelled = true;
     };
   }, []);
+
+  // Invitation preview (docs/39): adapts the form BEFORE signup —
+  // PATIENT invites hide the therapist-only modality field, prefill
+  // the e-mail/names, and route to the client panel after acceptance.
+  const [preview, setPreview] = useState<InvitationPreview | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    identityClient
+      .getInvitationPreview(create(GetInvitationPreviewRequestSchema, { token }))
+      .then((p) => {
+        if (cancelled) return;
+        setPreview(p);
+        if (p.email) setValue("email", p.email);
+        if (p.firstName) setValue("firstName", p.firstName);
+        if (p.lastName) setValue("lastName", p.lastName);
+      })
+      .catch(() => {
+        // Unknown/expired token — the submit path surfaces the error.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  const isPatientInvite =
+    (preview?.invitedRole as unknown) === UserRole.PATIENT ||
+    (preview?.invitedRole as unknown) === "USER_ROLE_PATIENT";
 
   const t = useTranslations("register.fields");
   const tCommon = useTranslations("register.common");
@@ -79,6 +113,10 @@ export function AcceptInviteForm({ token }: { token: string }) {
 
   const onSubmit = handleSubmit(async (data) => {
     setServerError(null);
+    if (!isPatientInvite && !data.modalityId) {
+      setServerError(tErr("modalityRequired"));
+      return;
+    }
     try {
       const user = await auth.signUpWithEmail(data.email, data.password);
 
@@ -97,11 +135,18 @@ export function AcceptInviteForm({ token }: { token: string }) {
       });
       const accepted = await identityClient.acceptInvitation(req);
 
+      // Clients (docs/39: invited_role=PATIENT) land in the client
+      // panel on the app origin — signed in via the SSO handoff.
+      const role = accepted.user?.role as unknown;
+      if (role === UserRole.PATIENT || role === "USER_ROLE_PATIENT") {
+        await openAppWithSso(data.email);
+        return;
+      }
+
       // Org managers (docs/38: invitations.invited_role=ORG_ADMIN,
       // minted by AdminCreateOrganization) land straight in their
       // panel — they're already signed in to Firebase on this origin
       // and /org gates on the resolved role, not e-mail verification.
-      const role = accepted.user?.role as unknown;
       if (role === UserRole.ORG_ADMIN || role === "USER_ROLE_ORG_ADMIN") {
         window.location.href = `${prefix}/org`;
         return;
@@ -190,6 +235,7 @@ export function AcceptInviteForm({ token }: { token: string }) {
           </FieldShell>
         </div>
 
+        {!isPatientInvite && (
         <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityId && tErr("modalityRequired")}>
           <Select id="modality" {...register("modalityId")} defaultValue="">
             <option value="" disabled>—</option>
@@ -200,6 +246,7 @@ export function AcceptInviteForm({ token }: { token: string }) {
             ))}
           </Select>
         </FieldShell>
+        )}
 
         <FieldShell id="uiLanguage" label={t("uiLanguage")} required>
           <RadioGroup

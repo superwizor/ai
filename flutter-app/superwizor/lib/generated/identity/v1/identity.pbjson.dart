@@ -131,6 +131,14 @@ const User$json = {
       '10': 'hasMarketingConsent'
     },
     {'1': 'is_active', '3': 21, '4': 1, '5': 8, '10': 'isActive'},
+    {
+      '1': 'organization_type',
+      '3': 22,
+      '4': 1,
+      '5': 14,
+      '6': '.identity.v1.OrganizationType',
+      '10': 'organizationType'
+    },
   ],
 };
 
@@ -150,7 +158,8 @@ final $typed_data.Uint8List userDescriptor = $convert.base64Decode(
     'F2YXRhclVybBIuChNkZWZhdWx0X21vZGFsaXR5X2lkGBIgASgJUhFkZWZhdWx0TW9kYWxpdHlJ'
     'ZBIsChJiaWxsaW5nX2FkZHJlc3NfaWQYEyABKAlSEGJpbGxpbmdBZGRyZXNzSWQSMgoVaGFzX2'
     '1hcmtldGluZ19jb25zZW50GBQgASgIUhNoYXNNYXJrZXRpbmdDb25zZW50EhsKCWlzX2FjdGl2'
-    'ZRgVIAEoCFIIaXNBY3RpdmU=');
+    'ZRgVIAEoCFIIaXNBY3RpdmUSSgoRb3JnYW5pemF0aW9uX3R5cGUYFiABKA4yHS5pZGVudGl0eS'
+    '52MS5Pcmdhbml6YXRpb25UeXBlUhBvcmdhbml6YXRpb25UeXBl');
 
 @$core.Deprecated('Use userContextDescriptor instead')
 const UserContext$json = {
@@ -812,6 +821,57 @@ final $typed_data.Uint8List inviteTherapistRequestDescriptor = $convert.base64De
     '5jeV9rZXkYBSABKAlSDmlkZW1wb3RlbmN5S2V5EiMKDWFsbG9jYXRpb25faWQYBiABKAlSDGFs'
     'bG9jYXRpb25JZA==');
 
+@$core.Deprecated('Use inviteClientRequestDescriptor instead')
+const InviteClientRequest$json = {
+  '1': 'InviteClientRequest',
+  '2': [
+    {'1': 'patient_file_id', '3': 1, '4': 1, '5': 9, '10': 'patientFileId'},
+    {'1': 'email', '3': 2, '4': 1, '5': 9, '10': 'email'},
+  ],
+};
+
+/// Descriptor for `InviteClientRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List inviteClientRequestDescriptor = $convert.base64Decode(
+    'ChNJbnZpdGVDbGllbnRSZXF1ZXN0EiYKD3BhdGllbnRfZmlsZV9pZBgBIAEoCVINcGF0aWVudE'
+    'ZpbGVJZBIUCgVlbWFpbBgCIAEoCVIFZW1haWw=');
+
+@$core.Deprecated('Use getClientInviteStatusRequestDescriptor instead')
+const GetClientInviteStatusRequest$json = {
+  '1': 'GetClientInviteStatusRequest',
+  '2': [
+    {'1': 'patient_file_id', '3': 1, '4': 1, '5': 9, '10': 'patientFileId'},
+  ],
+};
+
+/// Descriptor for `GetClientInviteStatusRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getClientInviteStatusRequestDescriptor =
+    $convert.base64Decode(
+        'ChxHZXRDbGllbnRJbnZpdGVTdGF0dXNSZXF1ZXN0EiYKD3BhdGllbnRfZmlsZV9pZBgBIAEoCV'
+        'INcGF0aWVudEZpbGVJZA==');
+
+@$core.Deprecated('Use clientInviteStatusDescriptor instead')
+const ClientInviteStatus$json = {
+  '1': 'ClientInviteStatus',
+  '2': [
+    {'1': 'status', '3': 1, '4': 1, '5': 9, '10': 'status'},
+    {'1': 'email', '3': 2, '4': 1, '5': 9, '10': 'email'},
+    {
+      '1': 'expires_at',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'expiresAt'
+    },
+  ],
+};
+
+/// Descriptor for `ClientInviteStatus`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clientInviteStatusDescriptor = $convert.base64Decode(
+    'ChJDbGllbnRJbnZpdGVTdGF0dXMSFgoGc3RhdHVzGAEgASgJUgZzdGF0dXMSFAoFZW1haWwYAi'
+    'ABKAlSBWVtYWlsEjkKCmV4cGlyZXNfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0'
+    'YW1wUglleHBpcmVzQXQ=');
+
 @$core.Deprecated('Use setTherapistStatusRequestDescriptor instead')
 const SetTherapistStatusRequest$json = {
   '1': 'SetTherapistStatusRequest',
@@ -865,6 +925,59 @@ final $typed_data.Uint8List acceptInvitationRequestDescriptor = $convert.base64D
     'ZRIaCgh0aW1lem9uZRgHIAEoCVIIdGltZXpvbmUSKAoQaGFzX2FjY2VwdGVkX3RvcxgIIAEoCF'
     'IOaGFzQWNjZXB0ZWRUb3MSMgoVaGFzX21hcmtldGluZ19jb25zZW50GAkgASgIUhNoYXNNYXJr'
     'ZXRpbmdDb25zZW50');
+
+@$core.Deprecated('Use getInvitationPreviewRequestDescriptor instead')
+const GetInvitationPreviewRequest$json = {
+  '1': 'GetInvitationPreviewRequest',
+  '2': [
+    {'1': 'token', '3': 1, '4': 1, '5': 9, '10': 'token'},
+  ],
+};
+
+/// Descriptor for `GetInvitationPreviewRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getInvitationPreviewRequestDescriptor =
+    $convert.base64Decode(
+        'ChtHZXRJbnZpdGF0aW9uUHJldmlld1JlcXVlc3QSFAoFdG9rZW4YASABKAlSBXRva2Vu');
+
+@$core.Deprecated('Use invitationPreviewDescriptor instead')
+const InvitationPreview$json = {
+  '1': 'InvitationPreview',
+  '2': [
+    {
+      '1': 'invited_role',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.identity.v1.UserRole',
+      '10': 'invitedRole'
+    },
+    {'1': 'email', '3': 2, '4': 1, '5': 9, '10': 'email'},
+    {'1': 'first_name', '3': 3, '4': 1, '5': 9, '10': 'firstName'},
+    {'1': 'last_name', '3': 4, '4': 1, '5': 9, '10': 'lastName'},
+    {
+      '1': 'organization_name',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '10': 'organizationName'
+    },
+    {
+      '1': 'inviter_first_name',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'inviterFirstName'
+    },
+  ],
+};
+
+/// Descriptor for `InvitationPreview`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List invitationPreviewDescriptor = $convert.base64Decode(
+    'ChFJbnZpdGF0aW9uUHJldmlldxI4CgxpbnZpdGVkX3JvbGUYASABKA4yFS5pZGVudGl0eS52MS'
+    '5Vc2VyUm9sZVILaW52aXRlZFJvbGUSFAoFZW1haWwYAiABKAlSBWVtYWlsEh0KCmZpcnN0X25h'
+    'bWUYAyABKAlSCWZpcnN0TmFtZRIbCglsYXN0X25hbWUYBCABKAlSCGxhc3ROYW1lEisKEW9yZ2'
+    'FuaXphdGlvbl9uYW1lGAUgASgJUhBvcmdhbml6YXRpb25OYW1lEiwKEmludml0ZXJfZmlyc3Rf'
+    'bmFtZRgGIAEoCVIQaW52aXRlckZpcnN0TmFtZQ==');
 
 @$core.Deprecated('Use acceptInvitationResponseDescriptor instead')
 const AcceptInvitationResponse$json = {
@@ -998,6 +1111,23 @@ final $typed_data.Uint8List adminCreateOrganizationRequestDescriptor = $convert.
     'ZRIlCg5tYW5hZ2VyX2VtYWlscxgGIAMoCVINbWFuYWdlckVtYWlscxIWCgZyZWFzb24YDyABKA'
     'lSBnJlYXNvbhInCg9pZGVtcG90ZW5jeV9rZXkYECABKAlSDmlkZW1wb3RlbmN5S2V5');
 
+@$core.Deprecated('Use adminInviteOrgManagerRequestDescriptor instead')
+const AdminInviteOrgManagerRequest$json = {
+  '1': 'AdminInviteOrgManagerRequest',
+  '2': [
+    {'1': 'organization_id', '3': 1, '4': 1, '5': 9, '10': 'organizationId'},
+    {'1': 'email', '3': 2, '4': 1, '5': 9, '10': 'email'},
+    {'1': 'reason', '3': 15, '4': 1, '5': 9, '10': 'reason'},
+  ],
+};
+
+/// Descriptor for `AdminInviteOrgManagerRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List adminInviteOrgManagerRequestDescriptor =
+    $convert.base64Decode(
+        'ChxBZG1pbkludml0ZU9yZ01hbmFnZXJSZXF1ZXN0EicKD29yZ2FuaXphdGlvbl9pZBgBIAEoCV'
+        'IOb3JnYW5pemF0aW9uSWQSFAoFZW1haWwYAiABKAlSBWVtYWlsEhYKBnJlYXNvbhgPIAEoCVIG'
+        'cmVhc29u');
+
 @$core.Deprecated('Use adminCreateOrganizationResponseDescriptor instead')
 const AdminCreateOrganizationResponse$json = {
   '1': 'AdminCreateOrganizationResponse',
@@ -1036,15 +1166,23 @@ const AdminListOrganizationsRequest$json = {
     {'1': 'page_size', '3': 1, '4': 1, '5': 5, '10': 'pageSize'},
     {'1': 'page_token', '3': 2, '4': 1, '5': 9, '10': 'pageToken'},
     {'1': 'search', '3': 3, '4': 1, '5': 9, '10': 'search'},
+    {
+      '1': 'type',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.identity.v1.OrganizationType',
+      '10': 'type'
+    },
   ],
 };
 
 /// Descriptor for `AdminListOrganizationsRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List adminListOrganizationsRequestDescriptor =
-    $convert.base64Decode(
-        'Ch1BZG1pbkxpc3RPcmdhbml6YXRpb25zUmVxdWVzdBIbCglwYWdlX3NpemUYASABKAVSCHBhZ2'
-        'VTaXplEh0KCnBhZ2VfdG9rZW4YAiABKAlSCXBhZ2VUb2tlbhIWCgZzZWFyY2gYAyABKAlSBnNl'
-        'YXJjaA==');
+final $typed_data.Uint8List adminListOrganizationsRequestDescriptor = $convert.base64Decode(
+    'Ch1BZG1pbkxpc3RPcmdhbml6YXRpb25zUmVxdWVzdBIbCglwYWdlX3NpemUYASABKAVSCHBhZ2'
+    'VTaXplEh0KCnBhZ2VfdG9rZW4YAiABKAlSCXBhZ2VUb2tlbhIWCgZzZWFyY2gYAyABKAlSBnNl'
+    'YXJjaBIxCgR0eXBlGAQgASgOMh0uaWRlbnRpdHkudjEuT3JnYW5pemF0aW9uVHlwZVIEdHlwZQ'
+    '==');
 
 @$core.Deprecated('Use organizationSummaryDescriptor instead')
 const OrganizationSummary$json = {
@@ -1142,6 +1280,14 @@ const OrganizationDetails$json = {
       '6': '.identity.v1.AuditEntry',
       '10': 'recentAudit'
     },
+    {
+      '1': 'managers',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.identity.v1.User',
+      '10': 'managers'
+    },
   ],
 };
 
@@ -1150,7 +1296,8 @@ final $typed_data.Uint8List organizationDetailsDescriptor = $convert.base64Decod
     'ChNPcmdhbml6YXRpb25EZXRhaWxzEj0KDG9yZ2FuaXphdGlvbhgBIAEoCzIZLmlkZW50aXR5Ln'
     'YxLk9yZ2FuaXphdGlvblIMb3JnYW5pemF0aW9uEjEKCnRoZXJhcGlzdHMYAiADKAsyES5pZGVu'
     'dGl0eS52MS5Vc2VyUgp0aGVyYXBpc3RzEjoKDHJlY2VudF9hdWRpdBgDIAMoCzIXLmlkZW50aX'
-    'R5LnYxLkF1ZGl0RW50cnlSC3JlY2VudEF1ZGl0');
+    'R5LnYxLkF1ZGl0RW50cnlSC3JlY2VudEF1ZGl0Ei0KCG1hbmFnZXJzGAQgAygLMhEuaWRlbnRp'
+    'dHkudjEuVXNlclIIbWFuYWdlcnM=');
 
 @$core.Deprecated('Use auditEntryDescriptor instead')
 const AuditEntry$json = {

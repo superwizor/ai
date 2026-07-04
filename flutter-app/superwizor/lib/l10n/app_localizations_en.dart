@@ -2837,4 +2837,162 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deactivated_logout => 'Sign out';
+
+  @override
+  String get client_home_title => 'Your therapy';
+
+  @override
+  String get client_home_subtitle =>
+      'Materials shared by your therapist and your notes.';
+
+  @override
+  String get client_home_empty =>
+      'Your therapist hasn\'t shared any materials yet.';
+
+  @override
+  String client_home_error(String error) {
+    return 'Failed to load: $error';
+  }
+
+  @override
+  String client_kartoteka_therapist(String name) {
+    return 'Therapist: $name';
+  }
+
+  @override
+  String client_kartoteka_counts(int sessions, int notes) {
+    return '$sessions sessions · $notes notes';
+  }
+
+  @override
+  String client_unread_badge(int count) {
+    return '$count new';
+  }
+
+  @override
+  String get client_tab_sessions => 'Sessions';
+
+  @override
+  String get client_tab_notes => 'Notes';
+
+  @override
+  String get client_sessions_empty => 'No shared sessions yet.';
+
+  @override
+  String client_session_title(int number) {
+    return 'Session $number';
+  }
+
+  @override
+  String get client_session_no_transcript =>
+      'The transcript is not available yet.';
+
+  @override
+  String get client_notes_empty =>
+      'No notes yet. Create one and send it to your therapist.';
+
+  @override
+  String get client_note_from_therapist => 'From your therapist';
+
+  @override
+  String get client_note_mine => 'My note';
+
+  @override
+  String get client_note_new => 'New note';
+
+  @override
+  String get client_note_title_hint => 'Title';
+
+  @override
+  String get client_note_text_hint => 'Your thoughts…';
+
+  @override
+  String get client_note_send => 'Send to therapist';
+
+  @override
+  String get client_note_sent => 'Note sent to your therapist.';
+
+  @override
+  String get client_note_empty_error => 'The note cannot be empty.';
+
+  @override
+  String get client_logout => 'Sign out';
+
+  @override
+  String get invite_client_title => 'Invite client';
+
+  @override
+  String get invite_client_desc =>
+      'The client will receive an e-mail with a link to a secure panel where they can see shared sessions and notes and write notes back to you.';
+
+  @override
+  String get invite_client_email_label => 'Client e-mail';
+
+  @override
+  String get invite_client_send => 'Send invitation';
+
+  @override
+  String get invite_client_resend => 'Send again';
+
+  @override
+  String get invite_client_sent => 'Invitation sent.';
+
+  @override
+  String invite_client_status_pending(String email, String date) {
+    return 'Invitation pending — sent to $email, valid until $date.';
+  }
+
+  @override
+  String get invite_client_status_active => 'Client panel is active.';
+
+  @override
+  String get invite_client_status_inactive =>
+      'The client account is deactivated.';
+
+  @override
+  String get invite_client_email_taken =>
+      'This e-mail is already linked to another account.';
+
+  @override
+  String get invite_client_email_missing => 'Enter a valid client e-mail.';
+
+  @override
+  String get invite_client_error =>
+      'Failed to send the invitation. Please try again.';
+
+  @override
+  String get share_with_client => 'Share in the client panel';
+
+  @override
+  String get unshare_with_client => 'Unshare';
+
+  @override
+  String get share_with_client_desc =>
+      'The client will see this item in their panel';
+
+  @override
+  String share_note_shared_at(String date) {
+    return 'Shared $date';
+  }
+
+  @override
+  String get share_shared_badge => 'Shared';
+
+  @override
+  String get share_session_label => 'Share with client';
+
+  @override
+  String get share_toggled_on => 'Shared in the client panel.';
+
+  @override
+  String get share_toggled_off => 'Sharing removed.';
+
+  @override
+  String get share_toggle_error => 'Could not change sharing.';
+
+  @override
+  String get note_from_client => 'From client';
+
+  @override
+  String get note_from_client_new => 'NEW';
 }

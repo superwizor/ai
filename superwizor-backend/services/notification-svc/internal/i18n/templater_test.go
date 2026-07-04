@@ -27,6 +27,30 @@ func TestLoad_AllTemplates_BothLocales(t *testing.T) {
 			},
 		},
 		{
+			// docs/39: client-panel onboarding (InviteClient).
+			name: "patient_invite",
+			vars: map[string]string{
+				"inviter_first_name": "Tomasz",
+				"accept_url":         "https://example.com/accept/abc",
+				"expires_at":         "2026-07-10",
+			},
+		},
+		{
+			// docs/39 PR9: PHI-free "new item in your panel" to the client.
+			name: "client_panel_new_item",
+			vars: map[string]string{
+				"item_label": "nową sesję",
+				"panel_url":  "https://superwizor-app.web.app/",
+			},
+		},
+		{
+			// docs/39 PR9: PHI-free "client wrote a note" to the therapist.
+			name: "client_note_received",
+			vars: map[string]string{
+				"panel_url": "https://superwizor-app.web.app/",
+			},
+		},
+		{
 			// docs/38: org-manager onboarding (AdminCreateOrganization).
 			name: "org_manager_invite",
 			vars: map[string]string{

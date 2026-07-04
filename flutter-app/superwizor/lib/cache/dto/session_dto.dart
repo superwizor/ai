@@ -25,6 +25,9 @@ class SessionDto {
   /// When the therapist first opened the report. null = unviewed.
   final DateTime? reportViewedAt;
   final int fileSizeBytes;
+  /// docs/39: when the session was shared to the client panel. null =
+  /// not shared — drives the "udostępnij klientowi" toggle.
+  final DateTime? sharedWithClientAt;
 
   const SessionDto({
     required this.id,
@@ -39,6 +42,7 @@ class SessionDto {
     required this.speakerLabelMapping,
     this.reportViewedAt,
     this.fileSizeBytes = 0,
+    this.sharedWithClientAt,
   });
 
   Map<String, dynamic> toJson() => {
@@ -55,6 +59,8 @@ class SessionDto {
         if (reportViewedAt != null)
           'reportViewedAt': reportViewedAt!.toUtc().toIso8601String(),
         'fileSizeBytes': fileSizeBytes,
+        if (sharedWithClientAt != null)
+          'sharedWithClientAt': sharedWithClientAt!.toUtc().toIso8601String(),
       };
 
   factory SessionDto.fromJson(Map<String, dynamic> j) => SessionDto(
@@ -74,6 +80,9 @@ class SessionDto {
             ? DateTime.parse(j['reportViewedAt'] as String).toUtc()
             : null,
         fileSizeBytes: (j['fileSizeBytes'] as num?)?.toInt() ?? 0,
+        sharedWithClientAt: j['sharedWithClientAt'] != null
+            ? DateTime.parse(j['sharedWithClientAt'] as String).toUtc()
+            : null,
       );
 
   factory SessionDto.fromProto(clinical_pb.Session s) => SessionDto(
@@ -91,6 +100,9 @@ class SessionDto {
             ? s.reportViewedAt.toDateTime().toUtc()
             : null,
         fileSizeBytes: s.fileSizeBytes.toInt(),
+        sharedWithClientAt: s.hasSharedWithClientAt()
+            ? s.sharedWithClientAt.toDateTime().toUtc()
+            : null,
       );
 
   // UI-facing Session model. Mirrors the mapping in
@@ -118,5 +130,6 @@ class SessionDto {
                     : SessionStatus.inProgress,
         reportViewedAt: reportViewedAt?.toLocal(),
         fileSizeBytes: fileSizeBytes,
+        sharedWithClientAt: sharedWithClientAt?.toLocal(),
       );
 }

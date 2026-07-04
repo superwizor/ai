@@ -2857,4 +2857,162 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get deactivated_logout => 'Wyloguj się';
+
+  @override
+  String get client_home_title => 'Twoja terapia';
+
+  @override
+  String get client_home_subtitle =>
+      'Materiały udostępnione przez terapeutę i Twoje notatki.';
+
+  @override
+  String get client_home_empty =>
+      'Twój terapeuta nie udostępnił jeszcze żadnych materiałów.';
+
+  @override
+  String client_home_error(String error) {
+    return 'Nie udało się załadować danych: $error';
+  }
+
+  @override
+  String client_kartoteka_therapist(String name) {
+    return 'Terapeuta: $name';
+  }
+
+  @override
+  String client_kartoteka_counts(int sessions, int notes) {
+    return '$sessions sesji · $notes notatek';
+  }
+
+  @override
+  String client_unread_badge(int count) {
+    return '$count nowe';
+  }
+
+  @override
+  String get client_tab_sessions => 'Sesje';
+
+  @override
+  String get client_tab_notes => 'Notatki';
+
+  @override
+  String get client_sessions_empty => 'Brak udostępnionych sesji.';
+
+  @override
+  String client_session_title(int number) {
+    return 'Sesja $number';
+  }
+
+  @override
+  String get client_session_no_transcript =>
+      'Transkrypcja nie jest jeszcze dostępna.';
+
+  @override
+  String get client_notes_empty =>
+      'Brak notatek. Utwórz pierwszą i wyślij ją terapeucie.';
+
+  @override
+  String get client_note_from_therapist => 'Od terapeuty';
+
+  @override
+  String get client_note_mine => 'Moja notatka';
+
+  @override
+  String get client_note_new => 'Nowa notatka';
+
+  @override
+  String get client_note_title_hint => 'Tytuł';
+
+  @override
+  String get client_note_text_hint => 'Twoje przemyślenia…';
+
+  @override
+  String get client_note_send => 'Wyślij do terapeuty';
+
+  @override
+  String get client_note_sent => 'Notatka wysłana do terapeuty.';
+
+  @override
+  String get client_note_empty_error => 'Notatka nie może być pusta.';
+
+  @override
+  String get client_logout => 'Wyloguj się';
+
+  @override
+  String get invite_client_title => 'Zaproś klienta';
+
+  @override
+  String get invite_client_desc =>
+      'Klient otrzyma e-mail z linkiem do bezpiecznego panelu, w którym zobaczy udostępnione sesje i notatki oraz będzie mógł pisać do Ciebie notatki.';
+
+  @override
+  String get invite_client_email_label => 'E-mail klienta';
+
+  @override
+  String get invite_client_send => 'Wyślij zaproszenie';
+
+  @override
+  String get invite_client_resend => 'Wyślij ponownie';
+
+  @override
+  String get invite_client_sent => 'Zaproszenie wysłane.';
+
+  @override
+  String invite_client_status_pending(String email, String date) {
+    return 'Zaproszenie oczekuje — wysłane na $email, ważne do $date.';
+  }
+
+  @override
+  String get invite_client_status_active => 'Panel klienta jest aktywny.';
+
+  @override
+  String get invite_client_status_inactive =>
+      'Konto klienta jest dezaktywowane.';
+
+  @override
+  String get invite_client_email_taken =>
+      'Ten e-mail jest już powiązany z innym kontem.';
+
+  @override
+  String get invite_client_email_missing => 'Podaj poprawny e-mail klienta.';
+
+  @override
+  String get invite_client_error =>
+      'Nie udało się wysłać zaproszenia. Spróbuj ponownie.';
+
+  @override
+  String get share_with_client => 'Udostępnij w panelu klienta';
+
+  @override
+  String get unshare_with_client => 'Cofnij udostępnienie';
+
+  @override
+  String get share_with_client_desc =>
+      'Klient zobaczy tę pozycję w swoim panelu';
+
+  @override
+  String share_note_shared_at(String date) {
+    return 'Udostępniono $date';
+  }
+
+  @override
+  String get share_shared_badge => 'Udostępniono';
+
+  @override
+  String get share_session_label => 'Udostępnij klientowi';
+
+  @override
+  String get share_toggled_on => 'Udostępniono w panelu klienta.';
+
+  @override
+  String get share_toggled_off => 'Cofnięto udostępnienie.';
+
+  @override
+  String get share_toggle_error => 'Nie udało się zmienić udostępniania.';
+
+  @override
+  String get note_from_client => 'Od klienta';
+
+  @override
+  String get note_from_client_new => 'NOWA';
 }

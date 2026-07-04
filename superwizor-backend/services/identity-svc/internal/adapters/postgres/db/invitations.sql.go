@@ -30,9 +30,10 @@ func (q *Queries) CountPendingInvitationsForAllocation(ctx context.Context, allo
 const createInvitation = `-- name: CreateInvitation :one
 INSERT INTO invitations (
     organization_id, invited_by_user, email, token_hash, expires_at,
-    invited_role, allocation_id, invited_first_name, invited_last_name
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name
+    invited_role, allocation_id, invited_first_name, invited_last_name,
+    patient_file_id
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id
 `
 
 type CreateInvitationParams struct {
@@ -45,6 +46,7 @@ type CreateInvitationParams struct {
 	AllocationID     pgtype.UUID `json:"allocation_id"`
 	InvitedFirstName *string     `json:"invited_first_name"`
 	InvitedLastName  *string     `json:"invited_last_name"`
+	PatientFileID    pgtype.UUID `json:"patient_file_id"`
 }
 
 // Idempotent on (organization_id, email). The unique constraint
@@ -66,6 +68,7 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 		arg.AllocationID,
 		arg.InvitedFirstName,
 		arg.InvitedLastName,
+		arg.PatientFileID,
 	)
 	var i Invitation
 	err := row.Scan(
@@ -82,12 +85,13 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 		&i.AllocationID,
 		&i.InvitedFirstName,
 		&i.InvitedLastName,
+		&i.PatientFileID,
 	)
 	return i, err
 }
 
 const getInvitationByOrgEmail = `-- name: GetInvitationByOrgEmail :one
-SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name FROM invitations
+SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id FROM invitations
 WHERE organization_id = $1 AND email = $2 AND accepted_at IS NULL
 `
 
@@ -113,12 +117,13 @@ func (q *Queries) GetInvitationByOrgEmail(ctx context.Context, arg GetInvitation
 		&i.AllocationID,
 		&i.InvitedFirstName,
 		&i.InvitedLastName,
+		&i.PatientFileID,
 	)
 	return i, err
 }
 
 const getUnacceptedInvitationByTokenHash = `-- name: GetUnacceptedInvitationByTokenHash :one
-SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name FROM invitations
+SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id FROM invitations
 WHERE token_hash = $1 AND accepted_at IS NULL AND expires_at > now()
 `
 
@@ -141,12 +146,13 @@ func (q *Queries) GetUnacceptedInvitationByTokenHash(ctx context.Context, tokenH
 		&i.AllocationID,
 		&i.InvitedFirstName,
 		&i.InvitedLastName,
+		&i.PatientFileID,
 	)
 	return i, err
 }
 
 const listPendingInvitationsByOrg = `-- name: ListPendingInvitationsByOrg :many
-SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name FROM invitations
+SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id FROM invitations
 WHERE organization_id = $1 AND accepted_at IS NULL
 ORDER BY created_at DESC
 `
@@ -174,6 +180,7 @@ func (q *Queries) ListPendingInvitationsByOrg(ctx context.Context, organizationI
 			&i.AllocationID,
 			&i.InvitedFirstName,
 			&i.InvitedLastName,
+			&i.PatientFileID,
 		); err != nil {
 			return nil, err
 		}

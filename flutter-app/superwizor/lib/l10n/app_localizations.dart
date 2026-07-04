@@ -5098,6 +5098,276 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Wyloguj się'**
   String get deactivated_logout;
+
+  /// No description provided for @client_home_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twoja terapia'**
+  String get client_home_title;
+
+  /// No description provided for @client_home_subtitle.
+  ///
+  /// In pl, this message translates to:
+  /// **'Materiały udostępnione przez terapeutę i Twoje notatki.'**
+  String get client_home_subtitle;
+
+  /// No description provided for @client_home_empty.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twój terapeuta nie udostępnił jeszcze żadnych materiałów.'**
+  String get client_home_empty;
+
+  /// No description provided for @client_home_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się załadować danych: {error}'**
+  String client_home_error(String error);
+
+  /// No description provided for @client_kartoteka_therapist.
+  ///
+  /// In pl, this message translates to:
+  /// **'Terapeuta: {name}'**
+  String client_kartoteka_therapist(String name);
+
+  /// No description provided for @client_kartoteka_counts.
+  ///
+  /// In pl, this message translates to:
+  /// **'{sessions} sesji · {notes} notatek'**
+  String client_kartoteka_counts(int sessions, int notes);
+
+  /// No description provided for @client_unread_badge.
+  ///
+  /// In pl, this message translates to:
+  /// **'{count} nowe'**
+  String client_unread_badge(int count);
+
+  /// No description provided for @client_tab_sessions.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesje'**
+  String get client_tab_sessions;
+
+  /// No description provided for @client_tab_notes.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatki'**
+  String get client_tab_notes;
+
+  /// No description provided for @client_sessions_empty.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak udostępnionych sesji.'**
+  String get client_sessions_empty;
+
+  /// No description provided for @client_session_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesja {number}'**
+  String client_session_title(int number);
+
+  /// No description provided for @client_session_no_transcript.
+  ///
+  /// In pl, this message translates to:
+  /// **'Transkrypcja nie jest jeszcze dostępna.'**
+  String get client_session_no_transcript;
+
+  /// No description provided for @client_notes_empty.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak notatek. Utwórz pierwszą i wyślij ją terapeucie.'**
+  String get client_notes_empty;
+
+  /// No description provided for @client_note_from_therapist.
+  ///
+  /// In pl, this message translates to:
+  /// **'Od terapeuty'**
+  String get client_note_from_therapist;
+
+  /// No description provided for @client_note_mine.
+  ///
+  /// In pl, this message translates to:
+  /// **'Moja notatka'**
+  String get client_note_mine;
+
+  /// No description provided for @client_note_new.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nowa notatka'**
+  String get client_note_new;
+
+  /// No description provided for @client_note_title_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tytuł'**
+  String get client_note_title_hint;
+
+  /// No description provided for @client_note_text_hint.
+  ///
+  /// In pl, this message translates to:
+  /// **'Twoje przemyślenia…'**
+  String get client_note_text_hint;
+
+  /// No description provided for @client_note_send.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij do terapeuty'**
+  String get client_note_send;
+
+  /// No description provided for @client_note_sent.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka wysłana do terapeuty.'**
+  String get client_note_sent;
+
+  /// No description provided for @client_note_empty_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka nie może być pusta.'**
+  String get client_note_empty_error;
+
+  /// No description provided for @client_logout.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyloguj się'**
+  String get client_logout;
+
+  /// No description provided for @invite_client_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaproś klienta'**
+  String get invite_client_title;
+
+  /// No description provided for @invite_client_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Klient otrzyma e-mail z linkiem do bezpiecznego panelu, w którym zobaczy udostępnione sesje i notatki oraz będzie mógł pisać do Ciebie notatki.'**
+  String get invite_client_desc;
+
+  /// No description provided for @invite_client_email_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'E-mail klienta'**
+  String get invite_client_email_label;
+
+  /// No description provided for @invite_client_send.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij zaproszenie'**
+  String get invite_client_send;
+
+  /// No description provided for @invite_client_resend.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wyślij ponownie'**
+  String get invite_client_resend;
+
+  /// No description provided for @invite_client_sent.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaproszenie wysłane.'**
+  String get invite_client_sent;
+
+  /// No description provided for @invite_client_status_pending.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zaproszenie oczekuje — wysłane na {email}, ważne do {date}.'**
+  String invite_client_status_pending(String email, String date);
+
+  /// No description provided for @invite_client_status_active.
+  ///
+  /// In pl, this message translates to:
+  /// **'Panel klienta jest aktywny.'**
+  String get invite_client_status_active;
+
+  /// No description provided for @invite_client_status_inactive.
+  ///
+  /// In pl, this message translates to:
+  /// **'Konto klienta jest dezaktywowane.'**
+  String get invite_client_status_inactive;
+
+  /// No description provided for @invite_client_email_taken.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ten e-mail jest już powiązany z innym kontem.'**
+  String get invite_client_email_taken;
+
+  /// No description provided for @invite_client_email_missing.
+  ///
+  /// In pl, this message translates to:
+  /// **'Podaj poprawny e-mail klienta.'**
+  String get invite_client_email_missing;
+
+  /// No description provided for @invite_client_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się wysłać zaproszenia. Spróbuj ponownie.'**
+  String get invite_client_error;
+
+  /// No description provided for @share_with_client.
+  ///
+  /// In pl, this message translates to:
+  /// **'Udostępnij w panelu klienta'**
+  String get share_with_client;
+
+  /// No description provided for @unshare_with_client.
+  ///
+  /// In pl, this message translates to:
+  /// **'Cofnij udostępnienie'**
+  String get unshare_with_client;
+
+  /// No description provided for @share_with_client_desc.
+  ///
+  /// In pl, this message translates to:
+  /// **'Klient zobaczy tę pozycję w swoim panelu'**
+  String get share_with_client_desc;
+
+  /// No description provided for @share_note_shared_at.
+  ///
+  /// In pl, this message translates to:
+  /// **'Udostępniono {date}'**
+  String share_note_shared_at(String date);
+
+  /// No description provided for @share_shared_badge.
+  ///
+  /// In pl, this message translates to:
+  /// **'Udostępniono'**
+  String get share_shared_badge;
+
+  /// No description provided for @share_session_label.
+  ///
+  /// In pl, this message translates to:
+  /// **'Udostępnij klientowi'**
+  String get share_session_label;
+
+  /// No description provided for @share_toggled_on.
+  ///
+  /// In pl, this message translates to:
+  /// **'Udostępniono w panelu klienta.'**
+  String get share_toggled_on;
+
+  /// No description provided for @share_toggled_off.
+  ///
+  /// In pl, this message translates to:
+  /// **'Cofnięto udostępnienie.'**
+  String get share_toggled_off;
+
+  /// No description provided for @share_toggle_error.
+  ///
+  /// In pl, this message translates to:
+  /// **'Nie udało się zmienić udostępniania.'**
+  String get share_toggle_error;
+
+  /// No description provided for @note_from_client.
+  ///
+  /// In pl, this message translates to:
+  /// **'Od klienta'**
+  String get note_from_client;
+
+  /// No description provided for @note_from_client_new.
+  ///
+  /// In pl, this message translates to:
+  /// **'NOWA'**
+  String get note_from_client_new;
 }
 
 class _AppLocalizationsDelegate

@@ -54,6 +54,16 @@ service IdentityService {
   rpc ListTherapistsInMyOrg(google.protobuf.Empty) returns (ListTherapistsResponse);
   rpc RemoveTherapist(RemoveTherapistRequest) returns (google.protobuf.Empty);
 
+  // ─── Client (patient) panel — docs/39 ──────────────────────
+  //
+  // InviteClient: the kartoteka's "Zaproś klienta". Same magic-link
+  // machinery as manager/therapist invites (7-day token, refresh on
+  // re-invite) with invited_role=PATIENT bound to the kartoteka.
+  // Caller must own the kartoteka (or be a same-org ORG_ADMIN).
+  rpc InviteClient(InviteClientRequest) returns (Invitation);
+  // Invite/activation state for the kartoteka header (docs/39 PR6).
+  rpc GetClientInviteStatus(GetClientInviteStatusRequest) returns (ClientInviteStatus);
+
   // Reversible activation toggle (docs/38 §4). Deactivation frees the
   // therapist's seat and blocks their sign-in (ValidateToken returns
   // PermissionDenied "ACCOUNT_DEACTIVATED"); clinical data stays
@@ -68,6 +78,11 @@ service IdentityService {
   // createUserWithEmailAndPassword succeeds. Creates the THERAPIST
   // User row and attaches it to the inviting org.
   rpc AcceptInvitation(AcceptInvitationRequest) returns (AcceptInvitationResponse);
+  // Public (token = capability): lets the accept-invite page adapt its
+  // form to the invitation BEFORE signup — PATIENT invites skip the
+  // therapist-only fields (modality) and route to the client panel
+  // (docs/39). Returns NotFound for unknown/expired/consumed tokens.
+  rpc GetInvitationPreview(GetInvitationPreviewRequest) returns (InvitationPreview);
 
   // SUPERWIZOR_ADMIN scope ─ internal team. Every mutation writes
   // audit_events with actor_type=SUPERWIZOR_ADMIN + required reason
@@ -432,6 +447,27 @@ message InviteTherapistRequest {
   string allocation_id = 6;
 }
 
+message InviteClientRequest {
+  string patient_file_id = 1;
+  // Optional override; when empty the kartoteka's patient_email is
+  // used (FailedPrecondition if neither exists). A provided value is
+  // persisted back onto patient_files.patient_email.
+  string email = 2;
+}
+
+message GetClientInviteStatusRequest {
+  string patient_file_id = 1;
+}
+
+message ClientInviteStatus {
+  // NONE — never invited; PENDING — invitation outstanding;
+  // ACTIVE — client activated (firebase_uid attached, is_active);
+  // INACTIVE — activated but deactivated (users.is_active=false).
+  string status = 1;
+  string email = 2;                          // masked not needed — therapist already knows it
+  google.protobuf.Timestamp expires_at = 3;  // PENDING only
+}
+
 message SetTherapistStatusRequest {
   string user_id = 1;    // must be a THERAPIST in the caller's org
   bool is_active = 2;
@@ -454,6 +490,19 @@ message AcceptInvitationRequest {
   string timezone = 7;
   bool has_accepted_tos = 8;
   bool has_marketing_consent = 9;
+}
+
+message GetInvitationPreviewRequest {
+  string token = 1;
+}
+
+message InvitationPreview {
+  UserRole invited_role = 1;
+  string email = 2;               // prefill
+  string first_name = 3;          // prefill (therapist-typed)
+  string last_name = 4;
+  string organization_name = 5;   // welcome copy
+  string inviter_first_name = 6;  // therapist name for PATIENT invites
 }
 
 message AcceptInvitationResponse {

@@ -148,6 +148,27 @@ class IdentityServiceClient extends $grpc.Client {
     return $createUnaryCall(_$removeTherapist, request, options: options);
   }
 
+  /// ─── Client (patient) panel — docs/39 ──────────────────────
+  ///
+  /// InviteClient: the kartoteka's "Zaproś klienta". Same magic-link
+  /// machinery as manager/therapist invites (7-day token, refresh on
+  /// re-invite) with invited_role=PATIENT bound to the kartoteka.
+  /// Caller must own the kartoteka (or be a same-org ORG_ADMIN).
+  $grpc.ResponseFuture<$0.Invitation> inviteClient(
+    $0.InviteClientRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$inviteClient, request, options: options);
+  }
+
+  /// Invite/activation state for the kartoteka header (docs/39 PR6).
+  $grpc.ResponseFuture<$0.ClientInviteStatus> getClientInviteStatus(
+    $0.GetClientInviteStatusRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getClientInviteStatus, request, options: options);
+  }
+
   /// Reversible activation toggle (docs/38 §4). Deactivation frees the
   /// therapist's seat and blocks their sign-in (ValidateToken returns
   /// PermissionDenied "ACCOUNT_DEACTIVATED"); clinical data stays
@@ -173,6 +194,17 @@ class IdentityServiceClient extends $grpc.Client {
     return $createUnaryCall(_$acceptInvitation, request, options: options);
   }
 
+  /// Public (token = capability): lets the accept-invite page adapt its
+  /// form to the invitation BEFORE signup — PATIENT invites skip the
+  /// therapist-only fields (modality) and route to the client panel
+  /// (docs/39). Returns NotFound for unknown/expired/consumed tokens.
+  $grpc.ResponseFuture<$0.InvitationPreview> getInvitationPreview(
+    $0.GetInvitationPreviewRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getInvitationPreview, request, options: options);
+  }
+
   /// SUPERWIZOR_ADMIN scope ─ internal team. Every mutation writes
   /// audit_events with actor_type=SUPERWIZOR_ADMIN + required reason
   /// (>=10 chars enforced at handler level).
@@ -189,6 +221,17 @@ class IdentityServiceClient extends $grpc.Client {
   }) {
     return $createUnaryCall(_$adminCreateOrganization, request,
         options: options);
+  }
+
+  /// Adds an ORG_ADMIN magic-link invitation to an EXISTING organization
+  /// (docs/38) — the post-creation counterpart of the manager e-mails in
+  /// AdminCreateOrganization. Same 7-day token + org_manager_invite
+  /// e-mail; reason >= 10 chars → audit_events.
+  $grpc.ResponseFuture<$0.Invitation> adminInviteOrgManager(
+    $0.AdminInviteOrgManagerRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$adminInviteOrgManager, request, options: options);
   }
 
   $grpc.ResponseFuture<$0.AdminListOrganizationsResponse>
@@ -393,6 +436,16 @@ class IdentityServiceClient extends $grpc.Client {
           '/identity.v1.IdentityService/RemoveTherapist',
           ($0.RemoveTherapistRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
+  static final _$inviteClient =
+      $grpc.ClientMethod<$0.InviteClientRequest, $0.Invitation>(
+          '/identity.v1.IdentityService/InviteClient',
+          ($0.InviteClientRequest value) => value.writeToBuffer(),
+          $0.Invitation.fromBuffer);
+  static final _$getClientInviteStatus = $grpc.ClientMethod<
+          $0.GetClientInviteStatusRequest, $0.ClientInviteStatus>(
+      '/identity.v1.IdentityService/GetClientInviteStatus',
+      ($0.GetClientInviteStatusRequest value) => value.writeToBuffer(),
+      $0.ClientInviteStatus.fromBuffer);
   static final _$setTherapistStatus =
       $grpc.ClientMethod<$0.SetTherapistStatusRequest, $0.User>(
           '/identity.v1.IdentityService/SetTherapistStatus',
@@ -403,12 +456,22 @@ class IdentityServiceClient extends $grpc.Client {
       '/identity.v1.IdentityService/AcceptInvitation',
       ($0.AcceptInvitationRequest value) => value.writeToBuffer(),
       $0.AcceptInvitationResponse.fromBuffer);
+  static final _$getInvitationPreview =
+      $grpc.ClientMethod<$0.GetInvitationPreviewRequest, $0.InvitationPreview>(
+          '/identity.v1.IdentityService/GetInvitationPreview',
+          ($0.GetInvitationPreviewRequest value) => value.writeToBuffer(),
+          $0.InvitationPreview.fromBuffer);
   static final _$adminCreateOrganization = $grpc.ClientMethod<
           $0.AdminCreateOrganizationRequest,
           $0.AdminCreateOrganizationResponse>(
       '/identity.v1.IdentityService/AdminCreateOrganization',
       ($0.AdminCreateOrganizationRequest value) => value.writeToBuffer(),
       $0.AdminCreateOrganizationResponse.fromBuffer);
+  static final _$adminInviteOrgManager =
+      $grpc.ClientMethod<$0.AdminInviteOrgManagerRequest, $0.Invitation>(
+          '/identity.v1.IdentityService/AdminInviteOrgManager',
+          ($0.AdminInviteOrgManagerRequest value) => value.writeToBuffer(),
+          $0.Invitation.fromBuffer);
   static final _$adminListOrganizations = $grpc.ClientMethod<
           $0.AdminListOrganizationsRequest, $0.AdminListOrganizationsResponse>(
       '/identity.v1.IdentityService/AdminListOrganizations',
@@ -593,6 +656,23 @@ abstract class IdentityServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.RemoveTherapistRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.InviteClientRequest, $0.Invitation>(
+        'InviteClient',
+        inviteClient_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.InviteClientRequest.fromBuffer(value),
+        ($0.Invitation value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetClientInviteStatusRequest,
+            $0.ClientInviteStatus>(
+        'GetClientInviteStatus',
+        getClientInviteStatus_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetClientInviteStatusRequest.fromBuffer(value),
+        ($0.ClientInviteStatus value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.SetTherapistStatusRequest, $0.User>(
         'SetTherapistStatus',
         setTherapistStatus_Pre,
@@ -610,6 +690,15 @@ abstract class IdentityServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.AcceptInvitationRequest.fromBuffer(value),
         ($0.AcceptInvitationResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetInvitationPreviewRequest,
+            $0.InvitationPreview>(
+        'GetInvitationPreview',
+        getInvitationPreview_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetInvitationPreviewRequest.fromBuffer(value),
+        ($0.InvitationPreview value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.AdminCreateOrganizationRequest,
             $0.AdminCreateOrganizationResponse>(
         'AdminCreateOrganization',
@@ -619,6 +708,15 @@ abstract class IdentityServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.AdminCreateOrganizationRequest.fromBuffer(value),
         ($0.AdminCreateOrganizationResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.AdminInviteOrgManagerRequest, $0.Invitation>(
+            'AdminInviteOrgManager',
+            adminInviteOrgManager_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.AdminInviteOrgManagerRequest.fromBuffer(value),
+            ($0.Invitation value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.AdminListOrganizationsRequest,
             $0.AdminListOrganizationsResponse>(
         'AdminListOrganizations',
@@ -855,6 +953,23 @@ abstract class IdentityServiceBase extends $grpc.Service {
   $async.Future<$1.Empty> removeTherapist(
       $grpc.ServiceCall call, $0.RemoveTherapistRequest request);
 
+  $async.Future<$0.Invitation> inviteClient_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.InviteClientRequest> $request) async {
+    return inviteClient($call, await $request);
+  }
+
+  $async.Future<$0.Invitation> inviteClient(
+      $grpc.ServiceCall call, $0.InviteClientRequest request);
+
+  $async.Future<$0.ClientInviteStatus> getClientInviteStatus_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetClientInviteStatusRequest> $request) async {
+    return getClientInviteStatus($call, await $request);
+  }
+
+  $async.Future<$0.ClientInviteStatus> getClientInviteStatus(
+      $grpc.ServiceCall call, $0.GetClientInviteStatusRequest request);
+
   $async.Future<$0.User> setTherapistStatus_Pre($grpc.ServiceCall $call,
       $async.Future<$0.SetTherapistStatusRequest> $request) async {
     return setTherapistStatus($call, await $request);
@@ -872,6 +987,15 @@ abstract class IdentityServiceBase extends $grpc.Service {
   $async.Future<$0.AcceptInvitationResponse> acceptInvitation(
       $grpc.ServiceCall call, $0.AcceptInvitationRequest request);
 
+  $async.Future<$0.InvitationPreview> getInvitationPreview_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetInvitationPreviewRequest> $request) async {
+    return getInvitationPreview($call, await $request);
+  }
+
+  $async.Future<$0.InvitationPreview> getInvitationPreview(
+      $grpc.ServiceCall call, $0.GetInvitationPreviewRequest request);
+
   $async.Future<$0.AdminCreateOrganizationResponse> adminCreateOrganization_Pre(
       $grpc.ServiceCall $call,
       $async.Future<$0.AdminCreateOrganizationRequest> $request) async {
@@ -880,6 +1004,15 @@ abstract class IdentityServiceBase extends $grpc.Service {
 
   $async.Future<$0.AdminCreateOrganizationResponse> adminCreateOrganization(
       $grpc.ServiceCall call, $0.AdminCreateOrganizationRequest request);
+
+  $async.Future<$0.Invitation> adminInviteOrgManager_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.AdminInviteOrgManagerRequest> $request) async {
+    return adminInviteOrgManager($call, await $request);
+  }
+
+  $async.Future<$0.Invitation> adminInviteOrgManager(
+      $grpc.ServiceCall call, $0.AdminInviteOrgManagerRequest request);
 
   $async.Future<$0.AdminListOrganizationsResponse> adminListOrganizations_Pre(
       $grpc.ServiceCall $call,

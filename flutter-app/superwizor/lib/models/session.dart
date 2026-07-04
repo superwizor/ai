@@ -27,6 +27,9 @@ class Session {
   /// via ClinicalService.MarkReportViewed (migration 000059).
   final DateTime? reportViewedAt;
   final int fileSizeBytes;
+  /// docs/39: when the session was shared to the client panel. null =
+  /// not shared. Toggled via ClinicalService.ShareSessionWithClient.
+  final DateTime? sharedWithClientAt;
 
   Session({
     required this.id,
@@ -39,7 +42,10 @@ class Session {
     this.sessionNumber = 0,
     this.reportViewedAt,
     this.fileSizeBytes = 0,
+    this.sharedWithClientAt,
   });
+
+  bool get sharedWithClient => sharedWithClientAt != null;
 
   Session copyWith({
     String? id,
@@ -52,6 +58,7 @@ class Session {
     int? sessionNumber,
     DateTime? reportViewedAt,
     int? fileSizeBytes,
+    DateTime? sharedWithClientAt,
   }) {
     return Session(
       id: id ?? this.id,
@@ -64,6 +71,7 @@ class Session {
       sessionNumber: sessionNumber ?? this.sessionNumber,
       reportViewedAt: reportViewedAt ?? this.reportViewedAt,
       fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
+      sharedWithClientAt: sharedWithClientAt ?? this.sharedWithClientAt,
     );
   }
 }

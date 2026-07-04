@@ -248,7 +248,8 @@ func main() {
 		slog.Info("clinical-svc: NOTIFICATION_SVC_URL unset — SavePatientNote send path returns EMAIL_NOT_CONFIGURED")
 	}
 
-	srv := grpcadapter.NewServer(pool, queries, identityClient, billingClient, notificationClient, crypto, sessionEvents, version, analyticsCollector)
+	srv := grpcadapter.NewServer(pool, queries, identityClient, billingClient, notificationClient, crypto, sessionEvents, version, analyticsCollector).
+		WithPanelURL(os.Getenv("PANEL_URL_BASE")) // docs/39 PR9; empty keeps the default app URL
 
 	tp := initTracer()
 	defer func() { _ = tp.Shutdown(ctx) }()

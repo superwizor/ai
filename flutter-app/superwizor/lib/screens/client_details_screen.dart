@@ -21,12 +21,14 @@ import '../providers/grpc_provider.dart';
 import '../providers/patient_notes_provider.dart';
 import '../providers/patient_contact_provider.dart';
 import '../providers/viewed_reports_provider.dart';
+import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../repositories/clinical_notes_repository.dart';
 import '../l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import '../uploads/cancel_upload_action.dart';
 import '../uploads/pending_upload.dart';
 import '../uploads/upload_queue_provider.dart';
+import '../widgets/client_invite_sheet.dart';
 import '../widgets/edit_patient_modal.dart';
 import '../widgets/pending_quota_sessions_widget.dart';
 import 'new_session_screen.dart';
@@ -350,14 +352,27 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
               if (patient.firstName.isEmpty) return const SizedBox.shrink();
               return Padding(
                 padding: const EdgeInsets.only(right: 4, top: 2),
-                child: IconButton(
-                  icon: const Icon(Icons.edit, color: EuphireColors.mist),
-                  onPressed: () {
-                    showEuphireBottomSheet(
-                      context: context,
-                      builder: (_) => EditPatientModal(patient: patient),
-                    );
-                  },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // docs/39: invite the client to their panel.
+                    IconButton(
+                      tooltip: AppLocalizations.of(context).invite_client_title,
+                      icon: const Icon(Icons.person_add_alt_1_rounded,
+                          color: EuphireColors.mist),
+                      onPressed: () =>
+                          showClientInviteSheet(context, patient: patient),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: EuphireColors.mist),
+                      onPressed: () {
+                        showEuphireBottomSheet(
+                          context: context,
+                          builder: (_) => EditPatientModal(patient: patient),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               );
             },
@@ -1838,11 +1853,45 @@ class _SessionOptionsSheet extends ConsumerStatefulWidget {
 class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
   late TextEditingController _titleCtrl;
   bool _saving = false;
+  // docs/39: local mirror of sessions.shared_with_client_at so the
+  // toggle flips instantly; the server refresh confirms it.
+  late bool _shared;
+  bool _sharing = false;
 
   @override
   void initState() {
     super.initState();
     _titleCtrl = TextEditingController(text: widget.currentTitle);
+    _shared = widget.session.sharedWithClient;
+  }
+
+  Future<void> _toggleShare(bool value) async {
+    final l = AppLocalizations.of(context);
+    setState(() {
+      _sharing = true;
+      _shared = value;
+    });
+    try {
+      await ref.read(grpcClientsProvider).clinical.shareSessionWithClient(
+            clinical_pb.ShareSessionWithClientRequest(
+              sessionId: widget.session.id,
+              shared: value,
+            ),
+          );
+      // Pull the authoritative shared_with_client_at into the list.
+      await ref
+          .read(sessionsProvider.notifier)
+          .fetchSessions(widget.patientId);
+      if (mounted) setState(() => _sharing = false);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _sharing = false;
+          _shared = !value; // roll back
+        });
+        EuphireToast.error(context, message: l.share_toggle_error);
+      }
+    }
   }
 
   @override
@@ -2206,6 +2255,45 @@ class _SessionOptionsSheetState extends ConsumerState<_SessionOptionsSheet> {
                 ),
                 const SizedBox(height: 20),
 
+                // ── Share with client (docs/39) ──
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _shared,
+                    onChanged: _sharing ? null : _toggleShare,
+                    activeThumbColor: EuphireColors.ember,
+                    title: Text(
+                      l.share_session_label,
+                      style: const TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: EuphireColors.frostWhite,
+                      ),
+                    ),
+                    subtitle: Text(
+                      l.share_with_client_desc,
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 12,
+                        color: EuphireColors.mist.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 // ── Delete option ──
                 InkWell(
                   onTap: _deleteWarning,
@@ -2352,7 +2440,8 @@ class _NoteCard extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,
-              child: const Text('📝', style: TextStyle(fontSize: 18)),
+              child: Text(note.isClientNote ? '💬' : '📝',
+                  style: const TextStyle(fontSize: 18)),
             ),
             const SizedBox(width: 14),
             // ── Title + preview + meta ──
@@ -2360,16 +2449,51 @@ class _NoteCard extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    displayTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: EuphireColors.frostWhite,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          displayTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: EuphireColors.frostWhite,
+                          ),
+                        ),
+                      ),
+                      // docs/39: a note the client sent from their panel.
+                      if (note.isClientNote) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: note.isNewClientNote
+                                ? EuphireColors.ember.withValues(alpha: 0.9)
+                                : EuphireColors.aurora
+                                    .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            note.isNewClientNote
+                                ? l.note_from_client_new
+                                : l.note_from_client,
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.4,
+                              color: note.isNewClientNote
+                                  ? EuphireColors.obsidianBlack
+                                  : EuphireColors.aurora,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   if (note.text.isNotEmpty) ...[
                     const SizedBox(height: 4),
@@ -2507,25 +2631,26 @@ class _NoteCard extends ConsumerWidget {
                 Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
                 const SizedBox(height: 8),
 
-                // ── Action: Edit ──
-                _NoteOptionTile(
-                  icon: Icons.edit_rounded,
-                  iconColor: EuphireColors.ember,
-                  title: l.note_edit_label,
-                  subtitle: l.clientDetails_edit_note_subtitle,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => NoteEditorScreen(
-                          patientId: patientId,
-                          existingNote: note,
+                // ── Action: Edit (client notes are read-only) ──
+                if (!note.isClientNote)
+                  _NoteOptionTile(
+                    icon: Icons.edit_rounded,
+                    iconColor: EuphireColors.ember,
+                    title: l.note_edit_label,
+                    subtitle: l.clientDetails_edit_note_subtitle,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => NoteEditorScreen(
+                            patientId: patientId,
+                            existingNote: note,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
 
                 // ── Action: Copy ──
                 _NoteOptionTile(
@@ -2549,46 +2674,91 @@ class _NoteCard extends ConsumerWidget {
                   },
                 ),
 
-                // ── Action: Send to client ──
-                _NoteOptionTile(
-                  icon: note.sentToPatient
-                      ? Icons.mark_email_read_outlined
-                      : Icons.outgoing_mail,
-                  iconColor: EuphireColors.ember,
-                  title: l.note_send_to_client,
-                  subtitle: note.sentToPatient
-                      ? l.clientDetails_note_sent_at(
-                          _formatSentDate(note.sentToPatientAt!, context),
-                        )
-                      : l.clientDetails_send_note_desc,
-                  trailing: note.sentToPatient
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF2E7D32,
-                            ).withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            l.clientDetails_note_sent_badge,
-                            style: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF81C784),
+                // ── Action: Share in the client panel (docs/39) ──
+                if (!note.isClientNote)
+                  _NoteOptionTile(
+                    icon: note.sharedWithClient
+                        ? Icons.link_off_rounded
+                        : Icons.ios_share_rounded,
+                    iconColor: EuphireColors.ember,
+                    title: note.sharedWithClient
+                        ? l.unshare_with_client
+                        : l.share_with_client,
+                    subtitle: note.sharedWithClient
+                        ? l.share_note_shared_at(
+                            _formatSentDate(note.sharedWithClientAt!, context),
+                          )
+                        : l.share_with_client_desc,
+                    trailing: note.sharedWithClient
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
                             ),
-                          ),
-                        )
-                      : null,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _sendNoteToClient(context, ref, l, patientId, note);
-                  },
-                ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF2E7D32,
+                              ).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              l.share_shared_badge,
+                              style: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF81C784),
+                              ),
+                            ),
+                          )
+                        : null,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _toggleNoteShare(context, ref, l, patientId, note);
+                    },
+                  ),
+
+                // ── Action: Send to client (e-mail fallback, D6) ──
+                if (!note.isClientNote)
+                  _NoteOptionTile(
+                    icon: note.sentToPatient
+                        ? Icons.mark_email_read_outlined
+                        : Icons.outgoing_mail,
+                    iconColor: EuphireColors.ember,
+                    title: l.note_send_to_client,
+                    subtitle: note.sentToPatient
+                        ? l.clientDetails_note_sent_at(
+                            _formatSentDate(note.sentToPatientAt!, context),
+                          )
+                        : l.clientDetails_send_note_desc,
+                    trailing: note.sentToPatient
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF2E7D32,
+                              ).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              l.clientDetails_note_sent_badge,
+                              style: const TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF81C784),
+                              ),
+                            ),
+                          )
+                        : null,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _sendNoteToClient(context, ref, l, patientId, note);
+                    },
+                  ),
 
                 const SizedBox(height: 4),
                 Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
@@ -2621,6 +2791,40 @@ class _NoteCard extends ConsumerWidget {
       'd MMM yyyy',
       Localizations.localeOf(context).languageCode,
     ).format(dt);
+  }
+
+  /// docs/39: toggles ShareNoteWithClient, then refreshes the notes so
+  /// the sheet state (shared badge) reflects the server truth.
+  Future<void> _toggleNoteShare(
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l,
+    String patientId,
+    PatientNote note,
+  ) async {
+    final clinical = ref.read(grpcClientsProvider).clinical;
+    final notifier = ref.read(patientNotesMapProvider.notifier);
+    try {
+      await clinical.shareNoteWithClient(
+        clinical_pb.ShareNoteWithClientRequest(
+          noteId: note.id,
+          shared: !note.sharedWithClient,
+        ),
+      );
+      await notifier.refreshNotes(patientId);
+      if (context.mounted) {
+        EuphireToast.success(
+          context,
+          message: note.sharedWithClient
+              ? l.share_toggled_off
+              : l.share_toggled_on,
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        EuphireToast.error(context, message: l.share_toggle_error);
+      }
+    }
   }
 
   void _showDeleteConfirmation(
@@ -3828,24 +4032,26 @@ class _NoteViewScreen extends ConsumerWidget {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.edit_rounded,
-              color: EuphireColors.ember,
-              size: 22,
-            ),
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => NoteEditorScreen(
-                    patientId: patientId,
-                    existingNote: note,
+          // Client notes are read-only for the therapist (docs/39).
+          if (!note.isClientNote)
+            IconButton(
+              icon: const Icon(
+                Icons.edit_rounded,
+                color: EuphireColors.ember,
+                size: 22,
+              ),
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => NoteEditorScreen(
+                      patientId: patientId,
+                      existingNote: note,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
         ],
       ),
       body: SafeArea(

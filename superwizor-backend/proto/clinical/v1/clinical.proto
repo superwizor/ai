@@ -136,6 +136,23 @@ service ClinicalService {
     // boundary: aggregates only.
     rpc GetOrgAnalytics(GetOrgAnalyticsRequest) returns (GetOrgAnalyticsResponse);
 
+    // ─── Client panel (docs/39) — role PATIENT, self-access ───
+    // Separate read-only family gated by requireClientFileAccess
+    // (caller is the kartoteka's patient). Default-deny: only rows the
+    // therapist explicitly shared are visible (D2). No reports, no
+    // therapist-private notes — ever.
+    rpc ClientGetMyOverview(google.protobuf.Empty) returns (ClientOverview);
+    rpc ClientListSessions(ClientListSessionsRequest) returns (ClientListSessionsResponse);
+    rpc ClientGetTranscript(ClientGetTranscriptRequest) returns (ClientGetTranscriptResponse);
+    rpc ClientListNotes(ClientListNotesRequest) returns (ClientListNotesResponse);
+    rpc ClientCreateNote(ClientCreateNoteRequest) returns (ClientNote);
+    rpc ClientMarkNoteRead(ClientMarkNoteReadRequest) returns (google.protobuf.Empty);
+
+    // Therapist-side sharing toggles (docs/39 D2/D6) — gated by
+    // requireTherapistDataAccess like every kartoteka mutation.
+    rpc ShareSessionWithClient(ShareSessionWithClientRequest) returns (google.protobuf.Empty);
+    rpc ShareNoteWithClient(ShareNoteWithClientRequest) returns (google.protobuf.Empty);
+
     // ─── RODO/GDPR DSAR endpoints ───
     // Export all clinical and personal data related to a patient file,
     // decrypting all PHI columns using KMS before returning.
@@ -294,6 +311,20 @@ message PatientNote {
     string sent_to_email = 8;
     google.protobuf.Timestamp created_at = 9;
     google.protobuf.Timestamp updated_at = 10;
+    // docs/39 client panel. THERAPIST (default) or PATIENT (CLIENT_NOTE
+    // written by the client — read-only for the therapist).
+    string author_role = 11;
+    // When the therapist shared this note with the client panel
+    // (ShareNoteWithClient). Unset = not shared. Always unset for
+    // CLIENT_NOTE (those are visible to the client by construction).
+    google.protobuf.Timestamp shared_with_client_at = 12;
+    // When the client opened a shared therapist note. Unset = unread.
+    google.protobuf.Timestamp read_by_client_at = 13;
+    // When the therapist first listed this CLIENT_NOTE. ListPatientNotes
+    // returns the pre-mark state, so a fresh client note arrives with
+    // this unset exactly once — the UI renders its "new" badge off that
+    // edge. Unset for therapist-authored notes too (never marked).
+    google.protobuf.Timestamp read_by_therapist_at = 14;
 }
 
 message CreatePatientNoteRequest {
@@ -411,6 +442,9 @@ message Session {
   // badge. Set via MarkReportViewed RPC. Migration 000059.
   google.protobuf.Timestamp report_viewed_at = 13;
   int64 file_size_bytes = 14;
+  // docs/39: when the therapist shared this session with the client
+  // panel (ShareSessionWithClient). Unset = not shared.
+  google.protobuf.Timestamp shared_with_client_at = 15;
 }
 
 message ListSessionsRequest {
@@ -1038,6 +1072,86 @@ message PlatformFixedCost {
 }
 
 
+
+// ─── Client panel messages (docs/39) ──────────────────────────────
+
+message ClientKartoteka {
+  string patient_file_id = 1;
+  string therapist_name  = 2;
+  string organization_name = 3;
+  int32 shared_sessions  = 4;
+  int32 shared_notes     = 5;   // therapist notes visible to the client
+  int32 unread_notes     = 6;   // shared notes without read_by_client_at
+}
+
+message ClientOverview {
+  repeated ClientKartoteka kartoteki = 1;
+}
+
+message ClientListSessionsRequest {
+  string patient_file_id = 1;
+}
+
+message ClientSessionInfo {
+  string session_id = 1;
+  string session_date = 2;      // ISO date
+  int32 session_number = 3;
+  int32 duration_seconds = 4;
+  google.protobuf.Timestamp shared_at = 5;
+  bool has_transcript = 6;
+}
+
+message ClientListSessionsResponse {
+  repeated ClientSessionInfo sessions = 1;
+}
+
+message ClientGetTranscriptRequest {
+  string session_id = 1;
+}
+
+message ClientGetTranscriptResponse {
+  ClientSessionInfo session = 1;
+  Transcript transcript = 2;    // same segments/turns shape as the therapist app
+}
+
+message ClientListNotesRequest {
+  string patient_file_id = 1;
+}
+
+message ClientNote {
+  string id = 1;
+  string kind = 2;              // FREE_NOTE | ACTION_PLAN | CLIENT_NOTE
+  string title = 3;
+  string text = 4;
+  string author_role = 5;       // THERAPIST | PATIENT
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp shared_at = 7;
+  bool read = 8;                // read_by_client_at set (client view)
+}
+
+message ClientListNotesResponse {
+  repeated ClientNote notes = 1;
+}
+
+message ClientCreateNoteRequest {
+  string patient_file_id = 1;
+  string title = 2;
+  string text = 3;
+}
+
+message ClientMarkNoteReadRequest {
+  string note_id = 1;
+}
+
+message ShareSessionWithClientRequest {
+  string session_id = 1;
+  bool shared = 2;              // false = unshare
+}
+
+message ShareNoteWithClientRequest {
+  string note_id = 1;
+  bool shared = 2;
+}
 
 // ─── Org analytics messages (docs/38 §7) ──────────────────────────
 

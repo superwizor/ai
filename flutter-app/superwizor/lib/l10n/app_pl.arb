@@ -1244,5 +1244,105 @@
   "settings_recording_reminder_sound_hint": "Gdy przypomnienie jest włączone, odtworzy się też dźwięk (nagrywany również w sesji).",
   "deactivated_title": "Konto nieaktywne",
   "deactivated_body": "Twoje konto zostało dezaktywowane przez administratora organizacji. Skontaktuj się z nim, aby przywrócić dostęp.",
-  "deactivated_logout": "Wyloguj się"
+  "deactivated_logout": "Wyloguj się",
+  "client_home_title": "Twoja terapia",
+  "client_home_subtitle": "Materiały udostępnione przez terapeutę i Twoje notatki.",
+  "client_home_empty": "Twój terapeuta nie udostępnił jeszcze żadnych materiałów.",
+  "client_home_error": "Nie udało się załadować danych: {error}",
+  "@client_home_error": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "client_kartoteka_therapist": "Terapeuta: {name}",
+  "@client_kartoteka_therapist": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "client_kartoteka_counts": "{sessions} sesji · {notes} notatek",
+  "@client_kartoteka_counts": {
+    "placeholders": {
+      "sessions": {
+        "type": "int"
+      },
+      "notes": {
+        "type": "int"
+      }
+    }
+  },
+  "client_unread_badge": "{count} nowe",
+  "@client_unread_badge": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "client_tab_sessions": "Sesje",
+  "client_tab_notes": "Notatki",
+  "client_sessions_empty": "Brak udostępnionych sesji.",
+  "client_session_title": "Sesja {number}",
+  "@client_session_title": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "client_session_no_transcript": "Transkrypcja nie jest jeszcze dostępna.",
+  "client_notes_empty": "Brak notatek. Utwórz pierwszą i wyślij ją terapeucie.",
+  "client_note_from_therapist": "Od terapeuty",
+  "client_note_mine": "Moja notatka",
+  "client_note_new": "Nowa notatka",
+  "client_note_title_hint": "Tytuł",
+  "client_note_text_hint": "Twoje przemyślenia…",
+  "client_note_send": "Wyślij do terapeuty",
+  "client_note_sent": "Notatka wysłana do terapeuty.",
+  "client_note_empty_error": "Notatka nie może być pusta.",
+  "client_logout": "Wyloguj się",
+  "invite_client_title": "Zaproś klienta",
+  "invite_client_desc": "Klient otrzyma e-mail z linkiem do bezpiecznego panelu, w którym zobaczy udostępnione sesje i notatki oraz będzie mógł pisać do Ciebie notatki.",
+  "invite_client_email_label": "E-mail klienta",
+  "invite_client_send": "Wyślij zaproszenie",
+  "invite_client_resend": "Wyślij ponownie",
+  "invite_client_sent": "Zaproszenie wysłane.",
+  "invite_client_status_pending": "Zaproszenie oczekuje — wysłane na {email}, ważne do {date}.",
+  "@invite_client_status_pending": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "invite_client_status_active": "Panel klienta jest aktywny.",
+  "invite_client_status_inactive": "Konto klienta jest dezaktywowane.",
+  "invite_client_email_taken": "Ten e-mail jest już powiązany z innym kontem.",
+  "invite_client_email_missing": "Podaj poprawny e-mail klienta.",
+  "invite_client_error": "Nie udało się wysłać zaproszenia. Spróbuj ponownie.",
+  "share_with_client": "Udostępnij w panelu klienta",
+  "unshare_with_client": "Cofnij udostępnienie",
+  "share_with_client_desc": "Klient zobaczy tę pozycję w swoim panelu",
+  "share_note_shared_at": "Udostępniono {date}",
+  "@share_note_shared_at": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "share_shared_badge": "Udostępniono",
+  "share_session_label": "Udostępnij klientowi",
+  "share_toggled_on": "Udostępniono w panelu klienta.",
+  "share_toggled_off": "Cofnięto udostępnienie.",
+  "share_toggle_error": "Nie udało się zmienić udostępniania.",
+  "note_from_client": "Od klienta",
+  "note_from_client_new": "NOWA"
 }

@@ -1243,5 +1243,105 @@
   "settings_recording_reminder_sound_hint": "When a reminder is on, it also plays a sound (which is captured in the session too).",
   "deactivated_title": "Account inactive",
   "deactivated_body": "Your account has been deactivated by your organization's administrator. Contact them to restore access.",
-  "deactivated_logout": "Sign out"
+  "deactivated_logout": "Sign out",
+  "client_home_title": "Your therapy",
+  "client_home_subtitle": "Materials shared by your therapist and your notes.",
+  "client_home_empty": "Your therapist hasn't shared any materials yet.",
+  "client_home_error": "Failed to load: {error}",
+  "@client_home_error": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "client_kartoteka_therapist": "Therapist: {name}",
+  "@client_kartoteka_therapist": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "client_kartoteka_counts": "{sessions} sessions · {notes} notes",
+  "@client_kartoteka_counts": {
+    "placeholders": {
+      "sessions": {
+        "type": "int"
+      },
+      "notes": {
+        "type": "int"
+      }
+    }
+  },
+  "client_unread_badge": "{count} new",
+  "@client_unread_badge": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "client_tab_sessions": "Sessions",
+  "client_tab_notes": "Notes",
+  "client_sessions_empty": "No shared sessions yet.",
+  "client_session_title": "Session {number}",
+  "@client_session_title": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "client_session_no_transcript": "The transcript is not available yet.",
+  "client_notes_empty": "No notes yet. Create one and send it to your therapist.",
+  "client_note_from_therapist": "From your therapist",
+  "client_note_mine": "My note",
+  "client_note_new": "New note",
+  "client_note_title_hint": "Title",
+  "client_note_text_hint": "Your thoughts…",
+  "client_note_send": "Send to therapist",
+  "client_note_sent": "Note sent to your therapist.",
+  "client_note_empty_error": "The note cannot be empty.",
+  "client_logout": "Sign out",
+  "invite_client_title": "Invite client",
+  "invite_client_desc": "The client will receive an e-mail with a link to a secure panel where they can see shared sessions and notes and write notes back to you.",
+  "invite_client_email_label": "Client e-mail",
+  "invite_client_send": "Send invitation",
+  "invite_client_resend": "Send again",
+  "invite_client_sent": "Invitation sent.",
+  "invite_client_status_pending": "Invitation pending — sent to {email}, valid until {date}.",
+  "@invite_client_status_pending": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "invite_client_status_active": "Client panel is active.",
+  "invite_client_status_inactive": "The client account is deactivated.",
+  "invite_client_email_taken": "This e-mail is already linked to another account.",
+  "invite_client_email_missing": "Enter a valid client e-mail.",
+  "invite_client_error": "Failed to send the invitation. Please try again.",
+  "share_with_client": "Share in the client panel",
+  "unshare_with_client": "Unshare",
+  "share_with_client_desc": "The client will see this item in their panel",
+  "share_note_shared_at": "Shared {date}",
+  "@share_note_shared_at": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "share_shared_badge": "Shared",
+  "share_session_label": "Share with client",
+  "share_toggled_on": "Shared in the client panel.",
+  "share_toggled_off": "Sharing removed.",
+  "share_toggle_error": "Could not change sharing.",
+  "note_from_client": "From client",
+  "note_from_client_new": "NEW"
 }
