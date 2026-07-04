@@ -232,7 +232,8 @@ func (s *Server) ClientCreateNote(ctx context.Context, req *clinicalv1.ClientCre
 	// signal fires only on delivery.
 	if req.SendToTherapist {
 		if row, terr := s.queries.GetUserEmailForNotify(ctx, pf.TherapistID); terr == nil && row.Email != nil {
-			s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "CLIENT_NOTE_RECEIVED", "")
+			s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "CLIENT_NOTE_RECEIVED", "",
+				pf.TherapistID.String(), pfID.String())
 		}
 	}
 	return s.toClientNote(ctx, note)
@@ -266,7 +267,8 @@ func (s *Server) ClientSendNote(ctx context.Context, req *clinicalv1.ClientSendN
 	}
 	if wasDraft {
 		if row, terr := s.queries.GetUserEmailForNotify(ctx, pf.TherapistID); terr == nil && row.Email != nil {
-			s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "CLIENT_NOTE_RECEIVED", "")
+			s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "CLIENT_NOTE_RECEIVED", "",
+				pf.TherapistID.String(), note.PatientFileID.String())
 		}
 	}
 	return s.toClientNote(ctx, sent)
@@ -325,7 +327,10 @@ func (s *Server) toClientNote(ctx context.Context, n db.PatientNote) (*clinicalv
 // short-circuits.
 //
 // event: ITEM_SHARED | CLIENT_NOTE_RECEIVED; itemKind: SESSION | NOTE.
-func (s *Server) notifyClientPanelEvent(ctx context.Context, email, locale, event, itemKind string) {
+// recipientUserID + patientFileID are used only by CLIENT_NOTE_RECEIVED
+// (PR11) to fan a live FCM refresh push out to the therapist; empty for
+// ITEM_SHARED (the client panel is web and pulls on focus).
+func (s *Server) notifyClientPanelEvent(ctx context.Context, email, locale, event, itemKind, recipientUserID, patientFileID string) {
 	if s.notification == nil || email == "" {
 		return
 	}
@@ -339,11 +344,13 @@ func (s *Server) notifyClientPanelEvent(ctx context.Context, email, locale, even
 		sendCtx, cancel := context.WithTimeout(base, 15*time.Second)
 		defer cancel()
 		if _, err := s.notification.SendClientPanelEvent(sendCtx, &notificationv1.SendClientPanelEventRequest{
-			RecipientEmail: email,
-			Event:          event,
-			ItemKind:       itemKind,
-			Locale:         locale,
-			PanelUrl:       s.panelURL,
+			RecipientEmail:  email,
+			Event:           event,
+			ItemKind:        itemKind,
+			Locale:          locale,
+			PanelUrl:        s.panelURL,
+			RecipientUserId: recipientUserID,
+			PatientFileId:   patientFileID,
 		}); err != nil {
 			slog.Warn("client panel event notification failed",
 				"event", event, "item_kind", itemKind, "error", err)
@@ -359,7 +366,9 @@ func (s *Server) notifyKartotekaClient(ctx context.Context, patientFileID uuid.U
 		// No attached/active panel account — nothing to signal.
 		return
 	}
-	s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "ITEM_SHARED", itemKind)
+	// ITEM_SHARED targets the web client panel (no FCM push) — no
+	// recipient user / kartoteka id needed here.
+	s.notifyClientPanelEvent(ctx, *row.Email, row.UiLanguage, "ITEM_SHARED", itemKind, "", "")
 }
 
 // ── Therapist-side sharing toggles ──────────────────────────────────

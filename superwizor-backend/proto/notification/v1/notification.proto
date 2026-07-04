@@ -72,6 +72,13 @@ message SendClientPanelEventRequest {
   string item_kind = 3;
   string locale = 4;     // 'pl' | 'en'; falls back to 'pl'
   string panel_url = 5;  // login deep link into the app
+  // CLIENT_NOTE_RECEIVED only: the therapist's users.id and the
+  // kartoteka id. Present → notification-svc ALSO fires a PHI-free FCM
+  // data push (notification_type=client_note_received, patient_file_id
+  // in data) so the therapist app refreshes the notes list live. Empty
+  // → e-mail only (backward compatible).
+  string recipient_user_id = 6;
+  string patient_file_id = 7;
 }
 
 message SendContactEmailRequest {

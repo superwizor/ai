@@ -27,6 +27,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
+	"github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/fcm"
 	pgstore "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/postgres"
 	"github.com/superwizor-ai/backend/services/notification-svc/internal/email"
 )
@@ -36,12 +37,18 @@ type Server struct {
 	store   *pgstore.Store
 	auth    *fbauth.Client
 	emailer email.Sender // nil-safe; nil falls through to NoopSender at call site
+	fcm     *fcm.Sender  // nil = no FCM push (client_note_received email still sends)
 	version string
 }
 
 func NewServer(store *pgstore.Store, auth *fbauth.Client, version string) *Server {
 	return &Server{store: store, auth: auth, version: version, emailer: email.NewMockSender()}
 }
+
+// WithFCM wires the FCM sender used by the client_note_received push
+// (docs/39 PR11). Same post-construction-option pattern as WithEmailer;
+// unset leaves the server e-mail-only.
+func (s *Server) WithFCM(sender *fcm.Sender) *Server { s.fcm = sender; return s }
 
 // WithEmailer overrides the email Sender. Production wiring (cmd/server/
 // main.go) calls this with a ResendSender; tests use a MockSender;

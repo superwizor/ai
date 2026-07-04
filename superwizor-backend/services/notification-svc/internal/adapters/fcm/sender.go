@@ -29,7 +29,11 @@ type Push struct {
 	Title            string
 	Body             string
 	SessionID        string
-	NotificationType string // "report_ready" | "session_uploaded" | ...
+	NotificationType string // "report_ready" | "session_uploaded" | "client_note_received"
+	// Optional extra data-dict entry (docs/39 PR11): the kartoteka a
+	// client note was delivered to, so the therapist app can refresh
+	// exactly that notes list. Empty = omitted.
+	PatientFileID string
 }
 
 // PerTokenResult mirrors fbmessaging.SendResponse one-to-one. We surface it
@@ -69,10 +73,16 @@ func (s *Sender) Send(ctx context.Context, p Push) ([]PerTokenResult, error) {
 			Title: p.Title,
 			Body:  p.Body,
 		},
-		Data: map[string]string{
-			"session_id":        p.SessionID,
-			"notification_type": p.NotificationType,
-		},
+		Data: func() map[string]string {
+			d := map[string]string{
+				"session_id":        p.SessionID,
+				"notification_type": p.NotificationType,
+			}
+			if p.PatientFileID != "" {
+				d["patient_file_id"] = p.PatientFileID
+			}
+			return d
+		}(),
 		// APNS sound + badge for iOS foreground/background presentation.
 		APNS: &fbmessaging.APNSConfig{
 			Payload: &fbmessaging.APNSPayload{

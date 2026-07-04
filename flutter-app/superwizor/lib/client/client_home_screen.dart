@@ -19,17 +19,21 @@ import '../providers/current_user_provider.dart';
 import '../providers/grpc_provider.dart';
 import 'client_session_screen.dart';
 
-// ── Light palette (this surface only — the therapist app stays dark) ─
+// ── Light palette (this surface only — the therapist app stays dark).
+// Restyled 2026-07-04 to the calm, editorial Medito look: near-white
+// canvas, crisp white cards, near-black ink for headings, muted slate
+// for metadata, a single warm accent. Cards lean on soft shadow +
+// hairline rather than heavy borders. ─
 class ClientColors {
-  static const bg = Color(0xFFF7F5F0); // warm off-white
+  static const bg = Color(0xFFF4F3EF); // soft paper white
   static const card = Colors.white;
-  static const border = Color(0xFFE6E2D8);
-  static const ink = Color(0xFF11302F); // deep teal ink
-  static const muted = Color(0xFF6E7F7D);
-  static const accent = Color(0xFFE8930C); // ember on light
+  static const border = Color(0xFFEDEBE4); // hairline
+  static const ink = Color(0xFF1B1C1E); // near-black heading
+  static const muted = Color(0xFF8A8D91); // slate metadata
+  static const accent = Color(0xFFE8930C); // warm ember
   static const accentSoft = Color(0xFFFBEDD3);
-  static const green = Color(0xFF1D7A46);
-  static const greenSoft = Color(0xFFE2F2E7);
+  static const green = Color(0xFF2E7D57);
+  static const greenSoft = Color(0xFFE8F1EC);
 }
 
 /// One row of the merged timeline: exactly one of [session] / [note].
@@ -135,19 +139,20 @@ class ClientHomeScreen extends ConsumerWidget {
                         displayName.isEmpty ? l10n.client_home_title : displayName,
                         style: const TextStyle(
                           fontFamily: 'Merriweather',
-                          fontStyle: FontStyle.italic,
                           fontWeight: FontWeight.w700,
                           fontSize: 34,
-                          height: 1.1,
-                          color: ClientColors.accent,
+                          height: 1.08,
+                          letterSpacing: -0.5,
+                          color: ClientColors.ink,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
-                        l10n.client_home_title, // "Twoja terapia"
+                        l10n.client_home_title, // "Twoje sesje"
                         style: const TextStyle(
                           fontFamily: 'Montserrat',
-                          fontSize: 18,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
                           color: ClientColors.muted,
                         ),
                       ),
@@ -586,17 +591,31 @@ class _CardShell extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
         color: ClientColors.card,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
+        borderRadius: BorderRadius.circular(18),
+        elevation: 0,
+        shadowColor: Colors.black.withValues(alpha: 0.04),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.035),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color:
-                    highlighted ? ClientColors.accent : ClientColors.border,
+                color: highlighted
+                    ? ClientColors.accent.withValues(alpha: 0.55)
+                    : ClientColors.border,
                 width: highlighted ? 1.4 : 1,
               ),
             ),
@@ -658,6 +677,7 @@ class _CardShell extends StatelessWidget {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ),
