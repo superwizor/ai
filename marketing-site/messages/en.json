@@ -911,7 +911,7 @@
       "metaTitle": "Accept invitation",
       "overline": "Invitation",
       "title": "Join your organisation",
-      "subhead": "Set a password and complete a short profile to activate your therapist account.",
+      "subhead": "Set a password and fill in a short profile to activate your account.",
       "submit": "Accept invitation",
       "submitting": "Accepting invitation…",
       "missingToken": "Invitation token is missing. Please open the link from your email.",

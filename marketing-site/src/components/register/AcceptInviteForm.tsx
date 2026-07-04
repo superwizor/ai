@@ -96,6 +96,14 @@ export function AcceptInviteForm({ token }: { token: string }) {
   const isPatientInvite =
     (preview?.invitedRole as unknown) === UserRole.PATIENT ||
     (preview?.invitedRole as unknown) === "USER_ROLE_PATIENT";
+  // Org managers don't practice under a modality — the field is a
+  // therapist-only concept and showing it (required!) on the manager
+  // accept made the screen read like therapist onboarding
+  // (live-tested 2026-07-04).
+  const isOrgAdminInvite =
+    (preview?.invitedRole as unknown) === UserRole.ORG_ADMIN ||
+    (preview?.invitedRole as unknown) === "USER_ROLE_ORG_ADMIN";
+  const needsModality = !isPatientInvite && !isOrgAdminInvite;
 
   const t = useTranslations("register.fields");
   const tCommon = useTranslations("register.common");
@@ -123,7 +131,7 @@ export function AcceptInviteForm({ token }: { token: string }) {
 
   const onSubmit = handleSubmit(async (data) => {
     setServerError(null);
-    if (!isPatientInvite && !data.modalityId) {
+    if (needsModality && !data.modalityId) {
       setServerError(tErr("modalityRequired"));
       return;
     }
@@ -268,7 +276,7 @@ export function AcceptInviteForm({ token }: { token: string }) {
           </FieldShell>
         </div>
 
-        {!isPatientInvite && (
+        {needsModality && (
         <FieldShell id="modality" label={t("defaultModality")} required error={errors.modalityId && tErr("modalityRequired")}>
           <Select id="modality" {...register("modalityId")} defaultValue="">
             <option value="" disabled>—</option>
