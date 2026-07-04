@@ -142,6 +142,24 @@ export function OrgPanel() {
     }
   };
 
+  // Re-invite (live-feedback 2026-07-04): reopen the invite dialog
+  // prefilled from a PENDING invitation — sending refreshes its token
+  // and can move the invitee to a different plan (the backend excludes
+  // the refreshed row from the seat-occupancy check).
+  const openReinvite = (inv: {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    allocationId?: string;
+  }) => {
+    setInvEmail(inv.email ?? "");
+    setInvFirst(inv.firstName ?? "");
+    setInvLast(inv.lastName ?? "");
+    setInvAllocation(inv.allocationId ?? "");
+    setInvError(null);
+    setInviteOpen(true);
+  };
+
   const toggleStatus = async (userId: string, isActive: boolean) => {
     setError(null);
     try {
@@ -315,8 +333,16 @@ export function OrgPanel() {
                           {t("statusPending")}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right font-serif text-mist text-xs">
-                        {expires ? t("expires", { date: fmtDate(expires) }) : ""}
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-serif text-mist text-xs mr-3">
+                          {expires ? t("expires", { date: fmtDate(expires) }) : ""}
+                        </span>
+                        <button
+                          onClick={() => openReinvite(inv)}
+                          className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-ember hover:underline"
+                        >
+                          {t("resendCta")}
+                        </button>
                       </td>
                     </tr>
                   );

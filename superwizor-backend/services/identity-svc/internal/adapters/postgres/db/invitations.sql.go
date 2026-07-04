@@ -27,6 +27,27 @@ func (q *Queries) CountPendingInvitationsForAllocation(ctx context.Context, allo
 	return count, err
 }
 
+const countPendingInvitationsForAllocationExcluding = `-- name: CountPendingInvitationsForAllocationExcluding :one
+SELECT COUNT(*) FROM invitations
+WHERE allocation_id = $1 AND accepted_at IS NULL AND expires_at > now()
+  AND id <> $2
+`
+
+type CountPendingInvitationsForAllocationExcludingParams struct {
+	AllocationID pgtype.UUID `json:"allocation_id"`
+	ID           uuid.UUID   `json:"id"`
+}
+
+// Re-invite variant of the occupancy count: the invitation being
+// refreshed releases its old reservation in the same UPDATE, so it
+// must not be counted against the target allocation.
+func (q *Queries) CountPendingInvitationsForAllocationExcluding(ctx context.Context, arg CountPendingInvitationsForAllocationExcludingParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingInvitationsForAllocationExcluding, arg.AllocationID, arg.ID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createInvitation = `-- name: CreateInvitation :one
 INSERT INTO invitations (
     organization_id, invited_by_user, email, token_hash, expires_at,

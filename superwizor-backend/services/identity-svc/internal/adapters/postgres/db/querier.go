@@ -38,6 +38,10 @@ type Querier interface {
 	// Seat-reservation half of the occupancy formula (docs/38 §3):
 	// occupancy = active seat_assignments + pending unexpired invitations.
 	CountPendingInvitationsForAllocation(ctx context.Context, allocationID pgtype.UUID) (int64, error)
+	// Re-invite variant of the occupancy count: the invitation being
+	// refreshed releases its old reservation in the same UPDATE, so it
+	// must not be counted against the target allocation.
+	CountPendingInvitationsForAllocationExcluding(ctx context.Context, arg CountPendingInvitationsForAllocationExcludingParams) (int64, error)
 	CountTherapistsInOrg(ctx context.Context, organizationID pgtype.UUID) (int32, error)
 	CreateAddress(ctx context.Context, arg CreateAddressParams) (Address, error)
 	// Used by every SUPERWIZOR_ADMIN mutation. reason is REQUIRED here at the

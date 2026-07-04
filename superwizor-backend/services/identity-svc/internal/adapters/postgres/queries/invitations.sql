@@ -48,3 +48,11 @@ ORDER BY created_at DESC;
 SELECT * FROM users
 WHERE organization_id = $1 AND role = 'THERAPIST' AND deleted_at IS NULL
 ORDER BY created_at ASC;
+
+-- name: CountPendingInvitationsForAllocationExcluding :one
+-- Re-invite variant of the occupancy count: the invitation being
+-- refreshed releases its old reservation in the same UPDATE, so it
+-- must not be counted against the target allocation.
+SELECT COUNT(*) FROM invitations
+WHERE allocation_id = $1 AND accepted_at IS NULL AND expires_at > now()
+  AND id <> $2;

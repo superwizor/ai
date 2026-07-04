@@ -1548,7 +1548,8 @@
       "mLastSession": "Ostatnia sesja",
       "mTotals": "Razem",
       "analyticsEmpty": "Brak danych w wybranym okresie.",
-      "analyticsPrivacyNote": "Wyłącznie agregaty metadanych — bez treści sesji, raportów i tożsamości pacjentów."
+      "analyticsPrivacyNote": "Wyłącznie agregaty metadanych — bez treści sesji, raportów i tożsamości pacjentów.",
+      "resendCta": "Wyślij ponownie"
     },
     "analytics": {
       "loading": "Ładowanie analityki…",
