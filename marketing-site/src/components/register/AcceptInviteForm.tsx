@@ -129,6 +129,40 @@ export function AcceptInviteForm({ token }: { token: string }) {
 
   const [serverError, setServerError] = useState<string | null>(null);
 
+  // Social auth for manager invites (live-feedback 2026-07-04): after
+  // Google/Apple the SAME form finishes the profile — the password
+  // fields disappear and submit accepts with the social identity.
+  const [socialUid, setSocialUid] = useState<string | null>(null);
+  const [socialEmail, setSocialEmail] = useState("");
+  const tOnb = useTranslations("register.clientOnboarding");
+
+  const onSocial = async (kind: "google" | "apple") => {
+    setServerError(null);
+    try {
+      const user =
+        kind === "google"
+          ? await auth.signInWithGoogle()
+          : await auth.signInWithApple();
+      const dn = (user.displayName ?? "").trim();
+      const [dnFirst = "", ...dnRest] = dn.split(/\s+/);
+      if (dnFirst && !watch("firstName")) setValue("firstName", dnFirst);
+      if (dnRest.length && !watch("lastName")) {
+        setValue("lastName", dnRest.join(" "));
+      }
+      setSocialUid(user.uid);
+      setSocialEmail(user.email ?? "");
+      // The password never leaves the browser on this path — satisfy the
+      // schema so handleSubmit validates the visible fields only.
+      setValue("password", "social-authenticated-1", { shouldValidate: true });
+    } catch (e) {
+      if (e instanceof FirebaseError && e.code === "auth/popup-closed-by-user") {
+        return;
+      }
+      console.error("[accept-invite] social sign-in failed", e);
+      setServerError(tErr("unknown"));
+    }
+  };
+
   const onSubmit = handleSubmit(async (data) => {
     setServerError(null);
     if (needsModality && !data.modalityId) {
@@ -143,21 +177,27 @@ export function AcceptInviteForm({ token }: { token: string }) {
       // AcceptInvitation re-points the kartoteka at the existing
       // PATIENT account instead of creating a duplicate.
       let user;
-      try {
-        user = await auth.signUpWithEmail(data.email, data.password);
-      } catch (e) {
-        if (
-          e instanceof FirebaseError &&
-          e.code === "auth/email-already-in-use"
-        ) {
-          try {
-            user = await auth.signInWithEmail(data.email, data.password);
-          } catch {
-            setServerError(tErr("existingAccountWrongPassword"));
-            return;
+      if (socialUid) {
+        // Already authenticated via Google/Apple — accept with that
+        // identity, no password account created.
+        user = { uid: socialUid };
+      } else {
+        try {
+          user = await auth.signUpWithEmail(data.email, data.password);
+        } catch (e) {
+          if (
+            e instanceof FirebaseError &&
+            e.code === "auth/email-already-in-use"
+          ) {
+            try {
+              user = await auth.signInWithEmail(data.email, data.password);
+            } catch {
+              setServerError(tErr("existingAccountWrongPassword"));
+              return;
+            }
+          } else {
+            throw e;
           }
-        } else {
-          throw e;
         }
       }
 
@@ -240,32 +280,94 @@ export function AcceptInviteForm({ token }: { token: string }) {
 
   return (
     <form onSubmit={onSubmit} className="grid gap-5" noValidate>
-      <div className="grid gap-4">
-        <FieldShell id="email" label={t("email")} required error={errors.email && tErr("emailInvalid")}>
-          <TextInput
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder={t("email")}
-            {...register("email")}
-          />
-        </FieldShell>
+      {/* ── Manager invites: social first, two labeled options (same
+             pattern as /register/client and /login) ── */}
+      {isOrgAdminInvite && !socialUid && (
+        <>
+          <section className="rounded-button border border-frost/15 bg-frost/[0.03] p-5 grid gap-3">
+            <h2 className="font-display text-frost text-sm font-semibold">
+              {tOnb("option1Title")}
+            </h2>
+            <button
+              type="button"
+              onClick={() => onSocial("google")}
+              className="inline-flex items-center justify-center gap-3 rounded-button border border-frost/20 bg-frost/5 hover:bg-frost/10 text-frost font-display text-sm px-4 py-3 transition"
+            >
+              <svg aria-hidden width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+                <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.08-1.79 2.72v2.26h2.9c1.7-1.56 2.69-3.87 2.69-6.62z" opacity=".9" />
+                <path d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.9-2.26c-.81.54-1.84.86-3.06.86-2.36 0-4.36-1.59-5.07-3.74H.96v2.34A9 9 0 0 0 9 18z" opacity=".7" />
+                <path d="M3.93 10.71A5.4 5.4 0 0 1 3.64 9c0-.6.1-1.18.29-1.71V4.96H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.04l2.97-2.33z" opacity=".55" />
+                <path d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58A9 9 0 0 0 9 0 9 9 0 0 0 .96 4.96l2.97 2.33C4.64 5.17 6.64 3.58 9 3.58z" opacity=".85" />
+              </svg>
+              {tCommon("google")}
+            </button>
+            <button
+              type="button"
+              onClick={() => onSocial("apple")}
+              className="inline-flex items-center justify-center gap-3 rounded-button border border-frost/20 bg-frost/5 hover:bg-frost/10 text-frost font-display text-sm px-4 py-3 transition"
+            >
+              <svg aria-hidden width="17" height="20" viewBox="0 0 814 1000" fill="currentColor">
+                <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105.3-57.8-155.5-127.4C46 790.9 0 663.1 0 541.8c0-207.6 135.4-317.3 268.9-317.3 71.6 0 131 46.5 175.4 46.5 42.8 0 109.6-49.5 190.5-49.5 30.8 0 108.2 2.6 164.4 100.5zm-234.4-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z"/>
+              </svg>
+              {tCommon("apple")}
+            </button>
+          </section>
+          <div className="relative" aria-hidden>
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-frost/10"></span>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-evergreen px-3 font-sans text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/60">
+                {tCommon("or")}
+              </span>
+            </div>
+          </div>
+          <h2 className="font-display text-frost text-sm font-semibold">
+            {tOnb("option2Title")}
+          </h2>
+        </>
+      )}
+      {isOrgAdminInvite && socialUid && (
+        <div className="rounded-button border border-aurora/30 bg-aurora/5 px-4 py-3">
+          <p className="font-sans text-sm text-frost font-semibold">
+            {tOnb("socialConnectedTitle")}
+          </p>
+          <p className="font-sans text-xs text-mist mt-1">
+            {tOnb("socialConnectedBody", { email: socialEmail })}
+          </p>
+        </div>
+      )}
 
-        <FieldShell
-          id="password"
-          label={t("password")}
-          hint={t("passwordHint")}
-          required
-          error={
-            errors.password?.message === "password-no-digit"
-              ? tErr("passwordNoNumber")
-              : errors.password
-              ? tErr("passwordTooShort")
-              : undefined
-          }
-        >
-          <TextInput id="password" type="password" autoComplete="new-password" {...register("password")} />
-        </FieldShell>
+      <div className="grid gap-4">
+        {!socialUid && (
+          <FieldShell id="email" label={t("email")} required error={errors.email && tErr("emailInvalid")}>
+            <TextInput
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder={t("email")}
+              {...register("email")}
+            />
+          </FieldShell>
+        )}
+
+        {!socialUid && (
+          <FieldShell
+            id="password"
+            label={t("password")}
+            hint={t("passwordHint")}
+            required
+            error={
+              errors.password?.message === "password-no-digit"
+                ? tErr("passwordNoNumber")
+                : errors.password
+                ? tErr("passwordTooShort")
+                : undefined
+            }
+          >
+            <TextInput id="password" type="password" autoComplete="new-password" {...register("password")} />
+          </FieldShell>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <FieldShell id="firstName" label={t("firstName")} required error={errors.firstName && tErr("firstNameRequired")}>
