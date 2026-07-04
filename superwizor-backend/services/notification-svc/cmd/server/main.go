@@ -20,6 +20,7 @@ import (
 	"os"
 	"time"
 
+	fs "cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
@@ -30,6 +31,7 @@ import (
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	grpcadapter "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/grpc"
 	"github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/fcm"
+	fswriter "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/firestore"
 	pgstore "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/postgres"
 	emailpkg "github.com/superwizor-ai/backend/services/notification-svc/internal/email"
 )
@@ -98,6 +100,16 @@ func main() {
 		} else {
 			srv = srv.WithFCM(fcm.NewSender(mc))
 			slog.Info("notification-svc: FCM sender wired for client-note pushes")
+		}
+
+		// Firestore writer for the client-panel inbox mirror (docs/39
+		// PR12). ADC-authenticated with the same project; best-effort —
+		// a client failure leaves the server on the e-mail/FCM path.
+		if fc, fErr := fs.NewClient(ctx, projectID); fErr != nil {
+			slog.Warn("firestore client unavailable — client-panel inbox mirror disabled", "error", fErr)
+		} else {
+			srv = srv.WithFirestore(fswriter.NewWriter(fc))
+			slog.Info("notification-svc: Firestore writer wired for client-panel inbox")
 		}
 	}
 

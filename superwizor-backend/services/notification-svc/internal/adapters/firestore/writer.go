@@ -230,13 +230,17 @@ func (w *Writer) DeleteInboxNotificationsBySession(ctx context.Context, sessionI
 // to this collection for the in-app notification tray and may set readAt
 // (only) — see firestore.rules.
 type InboxNotification struct {
-	NotificationID    string
-	FirebaseUID       string
-	NotificationType  string // "report_ready" | "session_uploaded" | ...
-	Title             string
-	Body              string
-	SessionID         string
-	CreatedAt         time.Time
+	NotificationID   string
+	FirebaseUID      string
+	NotificationType string // "report_ready" | "session_uploaded" | "client_note_received" | "item_shared"
+	Title            string
+	Body             string
+	SessionID        string
+	// PatientFileID scopes a client-panel event (docs/39 PR12) to the
+	// exact kartoteka the Flutter listener should refresh. Empty for the
+	// session-pipeline notifications, which carry SessionID instead.
+	PatientFileID string
+	CreatedAt     time.Time
 }
 
 // WriteInboxNotification creates a new doc under
@@ -249,7 +253,7 @@ func (w *Writer) WriteInboxNotification(ctx context.Context, n InboxNotification
 		return nil
 	}
 	path := fmt.Sprintf("user_notifications/%s/inbox/%s", n.FirebaseUID, n.NotificationID)
-	_, err := w.client.Doc(path).Set(ctx, map[string]any{
+	doc := map[string]any{
 		"notificationId":   n.NotificationID,
 		"notificationType": n.NotificationType,
 		"title":            n.Title,
@@ -258,7 +262,11 @@ func (w *Writer) WriteInboxNotification(ctx context.Context, n InboxNotification
 		"createdAt":        fs.ServerTimestamp,
 		// readAt intentionally omitted — Flutter sets it; rules permit
 		// only that field to be modified by the user.
-	})
+	}
+	if n.PatientFileID != "" {
+		doc["patientFileId"] = n.PatientFileID
+	}
+	_, err := w.client.Doc(path).Set(ctx, doc)
 	if err != nil {
 		slog.Warn("firestore inbox notification write failed",
 			"firebase_uid", n.FirebaseUID, "notif_id", n.NotificationID, "error", err)

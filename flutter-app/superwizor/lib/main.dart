@@ -25,6 +25,7 @@ import 'utils/account_status.dart';
 import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
 import 'screens/login_screen.dart';
+import 'services/inbox_refresh_listener.dart';
 import 'theme/euphire_theme.dart';
 import 'uploads/upload_queue_provider.dart';
 import 'widgets/debug_test_overlay.dart';
@@ -119,6 +120,11 @@ void main() async {
       }
     }
   });
+
+  // docs/39 PR12: live client-panel refresh over the existing Firestore
+  // inbox — works foreground on iOS AND web, where FCM does not. Follows
+  // the signed-in user via authStateChanges; harmless before login.
+  InboxRefreshListener(container).start();
 
   runApp(UncontrolledProviderScope(
     container: container,
