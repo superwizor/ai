@@ -23,6 +23,9 @@ package e2e_test
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"strings"
@@ -346,4 +349,161 @@ func cleanupClientPanel(t *testing.T, pool *pgxpool.Pool, therapistID uuid.UUID)
 		}
 	}
 	fmt.Println("client-panel e2e cleanup done for therapist", therapistID)
+}
+
+// TestClientPanel_AcceptInvitation_MagicLink exercises the REAL
+// magic-link accept path (docs/39): InviteClient issues a live
+// invitation, we swap ONLY its token_hash for a locally generated
+// cleartext (the raw token exists nowhere but the e-mail — this is the
+// minimal test seam), then call the real AcceptInvitation RPC as a
+// fresh Firebase user.
+//
+// Verifies the user's two contract points:
+//  1. First accept CREATES a users row role=PATIENT with the invited
+//     e-mail and attaches the kartoteka.
+//  2. A returning client (same Firebase account, second kartoteka)
+//     does NOT get a duplicate — the existing account is re-linked
+//     (web form signs the user in; backend branch 1 re-points).
+func TestClientPanel_AcceptInvitation_MagicLink(t *testing.T) {
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		t.Skip("DATABASE_URL not set — magic-link E2E needs the token-hash seam")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+
+	cfg := loadConfig(t)
+	pool, err := pgxpool.New(ctx, dbURL)
+	require.NoError(t, err, "connect staging DB")
+	t.Cleanup(pool.Close)
+
+	suffix := strings.ToLower(uuid.NewString()[:8])
+
+	// Therapist + kartoteka through the real sign-up path.
+	thSession, err := mintFirebaseSession(ctx, cfg.projectID, cfg.firebaseAPIKey,
+		"e2e-ml-th-"+suffix, "e2e-ml-th-"+suffix+"@superwizor.test")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = thSession.cleanup() })
+
+	thIdentityConn := dial(t, cfg.identityURL, thSession.IDToken)
+	defer thIdentityConn.Close()
+	thIdentity := identityv1.NewIdentityServiceClient(thIdentityConn)
+	thClinicalConn := dial(t, cfg.clinicalURL, thSession.IDToken)
+	defer thClinicalConn.Close()
+	thClinical := clinicalv1.NewClinicalServiceClient(thClinicalConn)
+
+	therapist, err := thIdentity.CreateUser(ctx, &identityv1.CreateUserRequest{
+		FirebaseUid: thSession.UID, Email: thSession.Email,
+		Role:      identityv1.UserRole_USER_ROLE_THERAPIST,
+		FirstName: "MagicLink", LastName: "Therapist",
+		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
+	})
+	require.NoError(t, err)
+	therapistID := uuid.MustParse(therapist.Id)
+	t.Cleanup(func() { cleanupClientPanel(t, pool, therapistID) })
+
+	newKartoteka := func(tag string) uuid.UUID {
+		pf, err := thClinical.CreatePatientFile(ctx, &clinicalv1.CreatePatientFileRequest{
+			TherapistId: therapist.Id, ModalityCode: "CBT",
+			WorkingAlias:        "MagicLink E2E " + tag + " " + suffix,
+			ProcessType:         clinicalv1.ProcessType_PROCESS_TYPE_INDIVIDUAL,
+			HasRecordingConsent: true,
+			IdempotencyKey:      "e2e-ml-" + tag + "-" + suffix,
+			PatientFirstName:    "Klient", PatientLastName: "MagicLink",
+		})
+		require.NoError(t, err, "CreatePatientFile %s", tag)
+		return uuid.MustParse(pf.Id)
+	}
+
+	clientEmail := "e2e-ml-client-" + suffix + "@superwizor.test"
+
+	// swapToken issues the invite via the REAL RPC, then replaces the
+	// stored hash with sha256 of a token we know.
+	swapToken := func(pfID uuid.UUID) string {
+		_, err := thIdentity.InviteClient(ctx, &identityv1.InviteClientRequest{
+			PatientFileId: pfID.String(), Email: clientEmail,
+		})
+		require.NoError(t, err, "InviteClient for %s", pfID)
+		raw := make([]byte, 32)
+		_, err = rand.Read(raw)
+		require.NoError(t, err)
+		token := base64.RawURLEncoding.EncodeToString(raw)
+		sum := sha256.Sum256([]byte(token))
+		tag, err := pool.Exec(ctx, `
+			UPDATE invitations SET token_hash = $2
+			WHERE patient_file_id = $1 AND accepted_at IS NULL`,
+			pfID, sum[:])
+		require.NoError(t, err)
+		require.EqualValues(t, 1, tag.RowsAffected(), "one pending invitation to swap")
+		return token
+	}
+
+	pf1 := newKartoteka("k1")
+	token1 := swapToken(pf1)
+
+	// Fresh client Firebase account "clicks the link".
+	clSession, err := mintFirebaseSession(ctx, cfg.projectID, cfg.firebaseAPIKey,
+		"e2e-ml-cl-"+suffix, clientEmail)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = clSession.cleanup() })
+	clIdentityConn := dial(t, cfg.identityURL, clSession.IDToken)
+	defer clIdentityConn.Close()
+	clIdentity := identityv1.NewIdentityServiceClient(clIdentityConn)
+
+	accepted, err := clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
+		Token: token1, FirebaseUid: clSession.UID,
+		FirstName: "Klient", LastName: "MagicLink",
+		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
+	})
+	require.NoError(t, err, "AcceptInvitation (first click)")
+	require.Equal(t, identityv1.UserRole_USER_ROLE_PATIENT, accepted.User.Role,
+		"accept must mint a PATIENT account")
+	require.Equal(t, clientEmail, accepted.User.Email)
+
+	// Contract 1: users row role=PATIENT with the e-mail + kartoteka link.
+	var userCount int
+	var linkedPatient uuid.UUID
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT count(*) FROM users WHERE email = $1 AND role = 'PATIENT'`,
+		clientEmail).Scan(&userCount))
+	require.Equal(t, 1, userCount, "exactly one PATIENT user for the e-mail")
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT patient_id FROM patient_files WHERE id = $1`, pf1).Scan(&linkedPatient))
+	require.Equal(t, accepted.User.Id, linkedPatient.String(), "kartoteka attached")
+
+	st, err := thIdentity.GetClientInviteStatus(ctx, &identityv1.GetClientInviteStatusRequest{
+		PatientFileId: pf1.String(),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "ACTIVE", st.Status)
+	t.Logf("✓ first click minted PATIENT %s and activated kartoteka %s", accepted.User.Id, pf1)
+
+	// Contract 2: returning client — second kartoteka, same account.
+	pf2 := newKartoteka("k2")
+	token2 := swapToken(pf2)
+	accepted2, err := clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
+		Token: token2, FirebaseUid: clSession.UID,
+		FirstName: "Klient", LastName: "MagicLink",
+		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
+	})
+	require.NoError(t, err, "AcceptInvitation (returning client)")
+	require.Equal(t, accepted.User.Id, accepted2.User.Id,
+		"returning client re-uses the SAME account (login, not signup)")
+
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT count(*) FROM users WHERE email = $1 AND role = 'PATIENT'`,
+		clientEmail).Scan(&userCount))
+	require.Equal(t, 1, userCount, "no duplicate PATIENT rows after second accept")
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT patient_id FROM patient_files WHERE id = $1`, pf2).Scan(&linkedPatient))
+	require.Equal(t, accepted.User.Id, linkedPatient.String(), "second kartoteka re-linked")
+
+	// Replay guard: a consumed token is dead.
+	_, err = clIdentity.AcceptInvitation(ctx, &identityv1.AcceptInvitationRequest{
+		Token: token1, FirebaseUid: clSession.UID,
+		FirstName: "Klient", LastName: "MagicLink",
+		UiLanguage: "pl", Timezone: "Europe/Warsaw", HasAcceptedTos: true,
+	})
+	require.Error(t, err, "replaying a consumed token must fail")
+	t.Logf("✓ returning client re-linked kartoteka %s without a duplicate; replay rejected", pf2)
 }

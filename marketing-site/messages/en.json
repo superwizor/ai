@@ -846,7 +846,8 @@
       "phoneRequired": "Phone number is required.",
       "phoneInvalid": "Please enter a valid phone number (e.g. 9 digits for Poland). Sequential or repeating digits are not allowed.",
       "networkError": "Could not reach the server. Please try again.",
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "existingAccountWrongPassword": "This account already exists, but the password doesn't match. Enter the existing account's password or reset it on the sign-in page."
     },
     "therapist": {
       "metaTitle": "Therapist sign-up",

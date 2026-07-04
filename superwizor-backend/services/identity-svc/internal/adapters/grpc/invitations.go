@@ -232,6 +232,18 @@ func (s *Server) AcceptInvitation(ctx context.Context, req *identityv1.AcceptInv
 		return nil, status.Errorf(codes.Internal, "lookup invitation: %v", err)
 	}
 
+	// Client-panel invites (docs/39) take a dedicated path: acceptance
+	// ATTACHES the auth identity to the kartoteka's existing
+	// users(role=PATIENT) row — no user/org/seat creation.
+	//
+	// MUST dispatch BEFORE the pool.Begin below: acceptClientInvitation
+	// opens its own transaction, and with MaxConns=1 an already-open
+	// outer tx starves it — the request then hangs until the Cloud Run
+	// 300s timeout (caught live by the magic-link e2e).
+	if inv.InvitedRole == "PATIENT" {
+		return s.acceptClientInvitation(ctx, inv, req, verifiedUID)
+	}
+
 	// Tx: create User, link to org, mark invitation accepted.
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -239,13 +251,6 @@ func (s *Server) AcceptInvitation(ctx context.Context, req *identityv1.AcceptInv
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := db.New(tx)
-
-	// Client-panel invites (docs/39) take a dedicated path: acceptance
-	// ATTACHES the auth identity to the kartoteka's existing
-	// users(role=PATIENT) row — no user/org/seat creation.
-	if inv.InvitedRole == "PATIENT" {
-		return s.acceptClientInvitation(ctx, inv, req, verifiedUID)
-	}
 
 	// Role comes from the invitation (docs/38): THERAPIST for team
 	// invites, ORG_ADMIN for manager invites minted by
