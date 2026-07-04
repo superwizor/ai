@@ -103,7 +103,14 @@ export function AcceptInviteForm({ token }: { token: string }) {
   const isOrgAdminInvite =
     (preview?.invitedRole as unknown) === UserRole.ORG_ADMIN ||
     (preview?.invitedRole as unknown) === "USER_ROLE_ORG_ADMIN";
+  const isTherapistInvite =
+    (preview?.invitedRole as unknown) === UserRole.THERAPIST ||
+    (preview?.invitedRole as unknown) === "USER_ROLE_THERAPIST";
   const needsModality = !isPatientInvite && !isOrgAdminInvite;
+  // Social auth applies to manager AND therapist invites (live-feedback
+  // 2026-07-04). Requires a loaded preview — legacy tokens without a
+  // resolvable role keep the classic password form.
+  const socialCapable = isOrgAdminInvite || isTherapistInvite;
 
   const t = useTranslations("register.fields");
   const tCommon = useTranslations("register.common");
@@ -290,7 +297,7 @@ export function AcceptInviteForm({ token }: { token: string }) {
     <form onSubmit={onSubmit} className="grid gap-5" noValidate>
       {/* ── Manager invites: social first, two labeled options (same
              pattern as /register/client and /login) ── */}
-      {isOrgAdminInvite && !socialUid && (
+      {socialCapable && !socialUid && (
         <>
           <section className="rounded-button border border-frost/15 bg-frost/[0.03] p-5 grid gap-3">
             <h2 className="font-display text-frost text-sm font-semibold">
@@ -335,7 +342,7 @@ export function AcceptInviteForm({ token }: { token: string }) {
           </h2>
         </>
       )}
-      {isOrgAdminInvite && socialUid && (
+      {socialCapable && socialUid && (
         <div className="rounded-button border border-aurora/30 bg-aurora/5 px-4 py-3">
           <p className="font-sans text-sm text-frost font-semibold">
             {tOnb("socialConnectedTitle")}
