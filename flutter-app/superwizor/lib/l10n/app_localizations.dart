@@ -5102,7 +5102,7 @@ abstract class AppLocalizations {
   /// No description provided for @client_home_title.
   ///
   /// In pl, this message translates to:
-  /// **'Twoja terapia'**
+  /// **'Twoje sesje'**
   String get client_home_title;
 
   /// No description provided for @client_home_subtitle.
@@ -5374,6 +5374,18 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Wyślij e-mail z dostępem do panelu klienta'**
   String get home_menu_invite_client_desc;
+
+  /// No description provided for @client_new_badge.
+  ///
+  /// In pl, this message translates to:
+  /// **'NOWA'**
+  String get client_new_badge;
+
+  /// No description provided for @client_session_transcript_chip.
+  ///
+  /// In pl, this message translates to:
+  /// **'Transkrypcja'**
+  String get client_session_transcript_chip;
 }
 
 class _AppLocalizationsDelegate

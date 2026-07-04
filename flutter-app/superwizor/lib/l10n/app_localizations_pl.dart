@@ -2859,7 +2859,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get deactivated_logout => 'Wyloguj się';
 
   @override
-  String get client_home_title => 'Twoja terapia';
+  String get client_home_title => 'Twoje sesje';
 
   @override
   String get client_home_subtitle =>
@@ -3019,4 +3019,10 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get home_menu_invite_client_desc =>
       'Wyślij e-mail z dostępem do panelu klienta';
+
+  @override
+  String get client_new_badge => 'NOWA';
+
+  @override
+  String get client_session_transcript_chip => 'Transkrypcja';
 }

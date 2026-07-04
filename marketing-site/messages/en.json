@@ -962,12 +962,14 @@
       "socialConnectedTitle": "Account connected ✓",
       "socialConnectedBody": "Signed in as {email}. Confirm how we should address you and continue to your panel.",
       "enterPanel": "Go to my panel",
-      "submit": "Create account and go to my panel",
+      "submit": "Continue",
       "haveAccountHint": "Already have an account? Just enter its password.",
       "forgotPassword": "Forgot your password?",
       "resetSent": "We've sent a password-reset link to your e-mail.",
       "existingAccountWrongPassword": "This account already exists, but the password doesn't match. Enter the existing account's password or use the link below.",
-      "tosNote": "By continuing you accept the Superwizor AI Terms of Service and Privacy Policy."
+      "tosNote": "By continuing you accept the Superwizor AI Terms of Service and Privacy Policy.",
+      "option1Title": "Option 1 · Quick sign-in (Google / Apple)",
+      "option2Title": "Option 2 · E-mail and password"
     }
   },
   "legal": {

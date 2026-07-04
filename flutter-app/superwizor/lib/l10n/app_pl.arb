@@ -1245,7 +1245,7 @@
   "deactivated_title": "Konto nieaktywne",
   "deactivated_body": "Twoje konto zostało dezaktywowane przez administratora organizacji. Skontaktuj się z nim, aby przywrócić dostęp.",
   "deactivated_logout": "Wyloguj się",
-  "client_home_title": "Twoja terapia",
+  "client_home_title": "Twoje sesje",
   "client_home_subtitle": "Materiały udostępnione przez terapeutę i Twoje notatki.",
   "client_home_empty": "Twój terapeuta nie udostępnił jeszcze żadnych materiałów.",
   "client_home_error": "Nie udało się załadować danych: {error}",
@@ -1345,5 +1345,7 @@
   "share_toggle_error": "Nie udało się zmienić udostępniania.",
   "note_from_client": "Od klienta",
   "note_from_client_new": "NOWA",
-  "home_menu_invite_client_desc": "Wyślij e-mail z dostępem do panelu klienta"
+  "home_menu_invite_client_desc": "Wyślij e-mail z dostępem do panelu klienta",
+  "client_new_badge": "NOWA",
+  "client_session_transcript_chip": "Transkrypcja"
 }
