@@ -1345,5 +1345,7 @@
   "share_toggle_error": "Nie udało się zmienić udostępniania.",
   "note_from_client": "Od klienta",
   "note_from_client_new": "NOWA",
-  "home_menu_invite_client_desc": "Wyślij e-mail z dostępem do panelu klienta"
+  "home_menu_invite_client_desc": "Wyślij e-mail z dostępem do panelu klienta",
+  "client_new_badge": "NOWA",
+  "client_session_transcript_chip": "Transkrypcja"
 }

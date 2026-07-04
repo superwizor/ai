@@ -2999,4 +2999,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get home_menu_invite_client_desc =>
       'Send an e-mail with client panel access';
+
+  @override
+  String get client_new_badge => 'NEW';
+
+  @override
+  String get client_session_transcript_chip => 'Transcript';
 }

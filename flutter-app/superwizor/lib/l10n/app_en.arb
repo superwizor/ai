@@ -1344,5 +1344,7 @@
   "share_toggle_error": "Could not change sharing.",
   "note_from_client": "From client",
   "note_from_client_new": "NEW",
-  "home_menu_invite_client_desc": "Send an e-mail with client panel access"
+  "home_menu_invite_client_desc": "Send an e-mail with client panel access",
+  "client_new_badge": "NEW",
+  "client_session_transcript_chip": "Transcript"
 }

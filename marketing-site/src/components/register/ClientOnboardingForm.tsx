@@ -37,7 +37,10 @@ import {
 import { openAppWithSso } from "@/lib/auth/open-app-sso";
 import { FieldShell, TextInput } from "@/components/forms/Field";
 
-type Step = "auth" | "social-name";
+// "auth" collects credentials only (social OR e-mail+password — two
+// clearly separated options); "name" confirms first/last name and is
+// shared by BOTH paths, then AcceptInvitation fires.
+type Step = "auth" | "name";
 
 export function ClientOnboardingForm({ token }: { token: string }) {
   const t = useTranslations("register.clientOnboarding");
@@ -85,9 +88,10 @@ export function ClientOnboardingForm({ token }: { token: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  // Firebase user from the social path, carried into the name step.
-  const [socialUid, setSocialUid] = useState<string | null>(null);
-  const [socialEmail, setSocialEmail] = useState<string>("");
+  // Authenticated Firebase user (either path), carried into the
+  // name-confirmation step — names live on the NEXT screen, not here.
+  const [authUid, setAuthUid] = useState<string | null>(null);
+  const [authEmail, setAuthEmail] = useState<string>("");
 
   // Shared tail: exchange the token for the PATIENT account and hand
   // off to the client panel (app origin) via SSO.
@@ -145,9 +149,9 @@ export function ClientOnboardingForm({ token }: { token: string }) {
       const [dnFirst = "", ...dnRest] = dn.split(" ");
       setFirstName((v) => v || dnFirst);
       setLastName((v) => v || dnRest.join(" "));
-      setSocialUid(user.uid);
-      setSocialEmail(user.email ?? invitedEmail);
-      setStep("social-name");
+      setAuthUid(user.uid);
+      setAuthEmail(user.email ?? invitedEmail);
+      setStep("name");
     } catch (e) {
       if (e instanceof FirebaseError && e.code === "auth/popup-closed-by-user") {
         return;
@@ -159,24 +163,25 @@ export function ClientOnboardingForm({ token }: { token: string }) {
     }
   };
 
-  const onSocialFinish = async () => {
-    if (!socialUid || !requireNames()) return;
+  // Shared finish for BOTH paths: names confirmed on this (second)
+  // screen, then the token is exchanged.
+  const onNameFinish = async () => {
+    if (!authUid || !requireNames()) return;
     setBusy(true);
     setError(null);
     try {
-      await acceptAndEnter(socialUid, socialEmail || invitedEmail);
+      await acceptAndEnter(authUid, authEmail || invitedEmail);
     } catch (e) {
-      console.error("[client-onboarding] accept (social) failed", e);
+      console.error("[client-onboarding] accept failed", e);
       setError(mapAcceptError(e));
       setBusy(false);
     }
   };
 
-  // ── Password path ──────────────────────────────────────────────
+  // ── Password path: credentials only — names come on the next step ──
   const onPasswordSubmit = async () => {
     setError(null);
     setInfo(null);
-    if (!requireNames()) return;
     if (password.length < 8 || !/\d/.test(password)) {
       setError(tFields("passwordHint"));
       return;
@@ -210,9 +215,12 @@ export function ClientOnboardingForm({ token }: { token: string }) {
           throw e;
         }
       }
-      await acceptAndEnter(user.uid, invitedEmail);
+      setAuthUid(user.uid);
+      setAuthEmail(invitedEmail);
+      setStep("name");
+      setBusy(false);
     } catch (e) {
-      console.error("[client-onboarding] accept (password) failed", e);
+      console.error("[client-onboarding] password sign-in failed", e);
       setError(mapAcceptError(e));
       setBusy(false);
     }
@@ -280,13 +288,16 @@ export function ClientOnboardingForm({ token }: { token: string }) {
     </>
   );
 
-  if (step === "social-name") {
+  if (step === "name") {
+    // Shared second screen (both auth paths): confirm names, enter panel.
     return (
       <div className="grid gap-5">
         <div className="rounded-button border border-aurora/30 bg-aurora/5 px-4 py-3">
-          <p className="font-sans text-sm text-frost">{t("socialConnectedTitle")}</p>
+          <p className="font-sans text-sm text-frost font-semibold">
+            {t("socialConnectedTitle")}
+          </p>
           <p className="font-sans text-xs text-mist mt-1">
-            {t("socialConnectedBody", { email: socialEmail || invitedEmail })}
+            {t("socialConnectedBody", { email: authEmail || invitedEmail })}
           </p>
         </div>
         <FieldShell id="cl-first" label={tFields("firstName")} required>
@@ -309,7 +320,7 @@ export function ClientOnboardingForm({ token }: { token: string }) {
         <button
           type="button"
           disabled={busy}
-          onClick={onSocialFinish}
+          onClick={onNameFinish}
           className="rounded-button bg-ember text-evergreen font-display text-sm font-semibold px-4 py-3 hover:brightness-110 transition disabled:opacity-50"
         >
           {busy ? tCommon("submitting") : t("enterPanel")}
@@ -322,9 +333,13 @@ export function ClientOnboardingForm({ token }: { token: string }) {
   }
 
   return (
-    <div className="grid gap-3">
-      {/* Social — the simplest path first. */}
-      <button
+    <div className="grid gap-6">
+      {/* ── Option 1: social login — the simplest path ── */}
+      <section className="rounded-button border border-frost/15 bg-frost/[0.03] p-5 grid gap-3">
+        <h2 className="font-display text-frost text-sm font-semibold">
+          {t("option1Title")}
+        </h2>
+        <button
         type="button"
         onClick={() => onSocial("google")}
         disabled={busy}
@@ -349,9 +364,11 @@ export function ClientOnboardingForm({ token }: { token: string }) {
         </svg>
         {tCommon("apple")}
       </button>
+      </section>
 
-      <div className="relative my-2">
-        <div className="absolute inset-0 flex items-center" aria-hidden>
+      {/* ── Divider between the two options ── */}
+      <div className="relative" aria-hidden>
+        <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t border-frost/10"></span>
         </div>
         <div className="relative flex justify-center">
@@ -361,64 +378,51 @@ export function ClientOnboardingForm({ token }: { token: string }) {
         </div>
       </div>
 
-      {/* Password path — like the therapist registration. */}
-      <FieldShell id="cl-email" label={tFields("email")}>
-        <TextInput id="cl-email" value={invitedEmail} readOnly disabled />
-      </FieldShell>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <FieldShell id="cl-first-p" label={tFields("firstName")} required>
-          <TextInput
-            id="cl-first-p"
-            value={firstName}
-            autoComplete="given-name"
-            onChange={(e) => setFirstName(e.target.value)}
-          />
+      {/* ── Option 2: e-mail + password (credentials only — the name
+             is confirmed on the next screen, same as social) ── */}
+      <section className="rounded-button border border-frost/15 bg-frost/[0.03] p-5 grid gap-3">
+        <h2 className="font-display text-frost text-sm font-semibold">
+          {t("option2Title")}
+        </h2>
+        <FieldShell id="cl-email" label={tFields("email")}>
+          <TextInput id="cl-email" value={invitedEmail} readOnly disabled />
         </FieldShell>
-        <FieldShell id="cl-last-p" label={tFields("lastName")} required>
-          <TextInput
-            id="cl-last-p"
-            value={lastName}
-            autoComplete="family-name"
-            onChange={(e) => setLastName(e.target.value)}
-          />
-        </FieldShell>
-      </div>
-      <FieldShell
-        id="cl-password"
-        label={tFields("password")}
-        hint={tFields("passwordHint")}
-        required
-      >
-        <TextInput
+        <FieldShell
           id="cl-password"
-          type="password"
-          value={password}
-          autoComplete="new-password"
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </FieldShell>
+          label={tFields("password")}
+          hint={tFields("passwordHint")}
+          required
+        >
+          <TextInput
+            id="cl-password"
+            type="password"
+            value={password}
+            autoComplete="new-password"
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </FieldShell>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onPasswordSubmit}
+          className="rounded-button bg-ember text-evergreen font-display text-sm font-semibold px-4 py-3 hover:brightness-110 transition disabled:opacity-50"
+        >
+          {busy ? tCommon("submitting") : t("submit")}
+        </button>
+        <p className="font-sans text-xs text-mist text-center">
+          {t("haveAccountHint")}{" "}
+          <button
+            type="button"
+            onClick={onResetPassword}
+            className="text-ember underline"
+          >
+            {t("forgotPassword")}
+          </button>
+        </p>
+      </section>
 
       {alertBox}
 
-      <button
-        type="button"
-        disabled={busy}
-        onClick={onPasswordSubmit}
-        className="rounded-button bg-ember text-evergreen font-display text-sm font-semibold px-4 py-3 hover:brightness-110 transition disabled:opacity-50"
-      >
-        {busy ? tCommon("submitting") : t("submit")}
-      </button>
-
-      <p className="font-sans text-xs text-mist text-center">
-        {t("haveAccountHint")}{" "}
-        <button
-          type="button"
-          onClick={onResetPassword}
-          className="text-ember underline"
-        >
-          {t("forgotPassword")}
-        </button>
-      </p>
       <p className="font-sans text-[11px] text-mist/70 text-center">
         {t("tosNote")}
       </p>

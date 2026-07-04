@@ -3019,4 +3019,10 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get home_menu_invite_client_desc =>
       'Wyślij e-mail z dostępem do panelu klienta';
+
+  @override
+  String get client_new_badge => 'NOWA';
+
+  @override
+  String get client_session_transcript_chip => 'Transkrypcja';
 }

@@ -962,12 +962,14 @@
       "socialConnectedTitle": "Konto połączone ✓",
       "socialConnectedBody": "Zalogowano jako {email}. Potwierdź, jak mamy się do Ciebie zwracać, i przejdź do panelu.",
       "enterPanel": "Przejdź do panelu",
-      "submit": "Utwórz konto i przejdź do panelu",
+      "submit": "Dalej",
       "haveAccountHint": "Masz już konto? Po prostu podaj jego hasło.",
       "forgotPassword": "Nie pamiętasz hasła?",
       "resetSent": "Wysłaliśmy link do zmiany hasła na Twój adres e-mail.",
       "existingAccountWrongPassword": "To konto już istnieje, ale hasło się nie zgadza. Podaj hasło istniejącego konta lub skorzystaj z linku poniżej.",
-      "tosNote": "Kontynuując, akceptujesz Regulamin i Politykę prywatności Superwizor AI."
+      "tosNote": "Kontynuując, akceptujesz Regulamin i Politykę prywatności Superwizor AI.",
+      "option1Title": "Opcja 1 · Szybkie logowanie (Google / Apple)",
+      "option2Title": "Opcja 2 · E-mail i hasło"
     }
   },
   "legal": {
