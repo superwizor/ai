@@ -146,6 +146,7 @@ service ClinicalService {
     rpc ClientGetTranscript(ClientGetTranscriptRequest) returns (ClientGetTranscriptResponse);
     rpc ClientListNotes(ClientListNotesRequest) returns (ClientListNotesResponse);
     rpc ClientCreateNote(ClientCreateNoteRequest) returns (ClientNote);
+    rpc ClientSendNote(ClientSendNoteRequest) returns (ClientNote);
     rpc ClientMarkNoteRead(ClientMarkNoteReadRequest) returns (google.protobuf.Empty);
 
     // Therapist-side sharing toggles (docs/39 D2/D6) — gated by
@@ -1127,6 +1128,10 @@ message ClientNote {
   google.protobuf.Timestamp created_at = 6;
   google.protobuf.Timestamp shared_at = 7;
   bool read = 8;                // read_by_client_at set (client view)
+  // Drafts (migration 000068): a CLIENT_NOTE with this unset is a
+  // PRIVATE draft — saved in the panel, invisible to the therapist —
+  // until ClientSendNote (or create with send_to_therapist) stamps it.
+  google.protobuf.Timestamp sent_to_therapist_at = 9;
 }
 
 message ClientListNotesResponse {
@@ -1137,6 +1142,15 @@ message ClientCreateNoteRequest {
   string patient_file_id = 1;
   string title = 2;
   string text = 3;
+  // false = save as a private draft ("Zapisz"); true = deliver to the
+  // therapist immediately ("Zapisz i wyślij do terapeuty").
+  bool send_to_therapist = 4;
+}
+
+// ClientSendNote — deliver a previously saved draft to the therapist.
+// Idempotent (a delivered note keeps its first sent_to_therapist_at).
+message ClientSendNoteRequest {
+  string note_id = 1;
 }
 
 message ClientMarkNoteReadRequest {

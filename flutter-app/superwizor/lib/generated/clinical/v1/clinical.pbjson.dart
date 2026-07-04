@@ -2666,6 +2666,14 @@ const ClientNote$json = {
       '10': 'sharedAt'
     },
     {'1': 'read', '3': 8, '4': 1, '5': 8, '10': 'read'},
+    {
+      '1': 'sent_to_therapist_at',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'sentToTherapistAt'
+    },
   ],
 };
 
@@ -2675,7 +2683,9 @@ final $typed_data.Uint8List clientNoteDescriptor = $convert.base64Decode(
     'xlGAMgASgJUgV0aXRsZRISCgR0ZXh0GAQgASgJUgR0ZXh0Eh8KC2F1dGhvcl9yb2xlGAUgASgJ'
     'UgphdXRob3JSb2xlEjkKCmNyZWF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZX'
     'N0YW1wUgljcmVhdGVkQXQSNwoJc2hhcmVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRp'
-    'bWVzdGFtcFIIc2hhcmVkQXQSEgoEcmVhZBgIIAEoCFIEcmVhZA==');
+    'bWVzdGFtcFIIc2hhcmVkQXQSEgoEcmVhZBgIIAEoCFIEcmVhZBJLChRzZW50X3RvX3RoZXJhcG'
+    'lzdF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSEXNlbnRUb1RoZXJhcGlz'
+    'dEF0');
 
 @$core.Deprecated('Use clientListNotesResponseDescriptor instead')
 const ClientListNotesResponse$json = {
@@ -2705,13 +2715,28 @@ const ClientCreateNoteRequest$json = {
     {'1': 'patient_file_id', '3': 1, '4': 1, '5': 9, '10': 'patientFileId'},
     {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
     {'1': 'text', '3': 3, '4': 1, '5': 9, '10': 'text'},
+    {'1': 'send_to_therapist', '3': 4, '4': 1, '5': 8, '10': 'sendToTherapist'},
   ],
 };
 
 /// Descriptor for `ClientCreateNoteRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List clientCreateNoteRequestDescriptor = $convert.base64Decode(
     'ChdDbGllbnRDcmVhdGVOb3RlUmVxdWVzdBImCg9wYXRpZW50X2ZpbGVfaWQYASABKAlSDXBhdG'
-    'llbnRGaWxlSWQSFAoFdGl0bGUYAiABKAlSBXRpdGxlEhIKBHRleHQYAyABKAlSBHRleHQ=');
+    'llbnRGaWxlSWQSFAoFdGl0bGUYAiABKAlSBXRpdGxlEhIKBHRleHQYAyABKAlSBHRleHQSKgoR'
+    'c2VuZF90b190aGVyYXBpc3QYBCABKAhSD3NlbmRUb1RoZXJhcGlzdA==');
+
+@$core.Deprecated('Use clientSendNoteRequestDescriptor instead')
+const ClientSendNoteRequest$json = {
+  '1': 'ClientSendNoteRequest',
+  '2': [
+    {'1': 'note_id', '3': 1, '4': 1, '5': 9, '10': 'noteId'},
+  ],
+};
+
+/// Descriptor for `ClientSendNoteRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clientSendNoteRequestDescriptor =
+    $convert.base64Decode(
+        'ChVDbGllbnRTZW5kTm90ZVJlcXVlc3QSFwoHbm90ZV9pZBgBIAEoCVIGbm90ZUlk');
 
 @$core.Deprecated('Use clientMarkNoteReadRequestDescriptor instead')
 const ClientMarkNoteReadRequest$json = {

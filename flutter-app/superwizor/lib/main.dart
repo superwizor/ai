@@ -1,5 +1,6 @@
 import 'analytics/analytics_collector.dart';
 import 'providers/current_user_provider.dart';
+import 'providers/patient_notes_provider.dart';
 import 'providers/locale_provider.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart' as cf;
@@ -76,12 +77,28 @@ void main() async {
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Foreground push: just log for MVP — toast UI hooks added later.
+  // A single root container shared by the widget tree AND the
+  // background FCM handlers, so a push can invalidate providers even
+  // though it fires outside any widget's `ref` (docs/39 PR11).
+  final container = ProviderContainer();
+
+  // Foreground push. docs/39 PR11: a client_note_received push refreshes
+  // the therapist's cached notes for that kartoteka so a sent note shows
+  // up live instead of only after a manual reopen.
   FirebaseMessaging.onMessage.listen((msg) {
     debugPrint('FCM foreground: ${msg.notification?.title}');
+    if (msg.data['notification_type'] == 'client_note_received') {
+      final pfId = msg.data['patient_file_id'];
+      if (pfId is String && pfId.isNotEmpty) {
+        container
+            .read(patientNotesMapProvider.notifier)
+            .refreshNotes(pfId)
+            .catchError((_) {});
+      }
+    }
   });
 
-  // Tap-from-background routing to session details.
+  // Tap-from-background routing.
   FirebaseMessaging.onMessageOpenedApp.listen((msg) {
     final type = msg.data['notification_type'];
     final sessionId = msg.data['session_id'];
@@ -89,10 +106,24 @@ void main() async {
       // Routes via the global navigator; SessionStatusScreen will
       // pick up `done` immediately and run the cascade.
       navigatorKey.currentState?.pushNamed('/session', arguments: sessionId);
+    } else if (type == 'client_note_received') {
+      // No named client route in this app; refreshing the cached notes
+      // is enough — the note is there when the therapist opens the
+      // kartoteka.
+      final pfId = msg.data['patient_file_id'];
+      if (pfId is String && pfId.isNotEmpty) {
+        container
+            .read(patientNotesMapProvider.notifier)
+            .refreshNotes(pfId)
+            .catchError((_) {});
+      }
     }
   });
 
-  runApp(const ProviderScope(child: SuperWizorApp()));
+  runApp(UncontrolledProviderScope(
+    container: container,
+    child: const SuperWizorApp(),
+  ));
 }
 
 class SuperWizorApp extends ConsumerWidget {

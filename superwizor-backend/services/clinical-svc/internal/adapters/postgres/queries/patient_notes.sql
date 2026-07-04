@@ -28,8 +28,11 @@ WHERE id = $1 AND deleted_at IS NULL;
 -- name: ListPatientNotesByFile :many
 -- All live notes for a kartoteka, newest first. Matches the partial
 -- index idx_patient_notes_file (patient_file_id, created_at DESC).
+-- Client DRAFTS (000068: CLIENT_NOTE without sent_to_therapist_at) are
+-- private to the client — the therapist never sees them.
 SELECT * FROM patient_notes
 WHERE patient_file_id = $1 AND deleted_at IS NULL
+  AND NOT (kind = 'CLIENT_NOTE' AND sent_to_therapist_at IS NULL)
 ORDER BY created_at DESC;
 
 -- name: UpdatePatientNote :one

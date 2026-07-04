@@ -29,6 +29,7 @@ import (
 
 	notificationv1 "github.com/superwizor-ai/backend/gen/go/notification/v1"
 	grpcadapter "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/grpc"
+	"github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/fcm"
 	pgstore "github.com/superwizor-ai/backend/services/notification-svc/internal/adapters/postgres"
 	emailpkg "github.com/superwizor-ai/backend/services/notification-svc/internal/email"
 )
@@ -88,6 +89,16 @@ func main() {
 			os.Exit(1)
 		}
 		srv = grpcadapter.NewServer(store, auth, version)
+
+		// FCM sender for the client_note_received push (docs/39 PR11).
+		// Same firebase app as auth; best-effort — a messaging-client
+		// failure leaves the server e-mail-only rather than crashing.
+		if mc, mErr := app.Messaging(ctx); mErr != nil {
+			slog.Warn("firebase messaging client unavailable — client-note FCM push disabled", "error", mErr)
+		} else {
+			srv = srv.WithFCM(fcm.NewSender(mc))
+			slog.Info("notification-svc: FCM sender wired for client-note pushes")
+		}
 	}
 
 	// Resend-backed email sender (per docs/18 D1). Falls back to the

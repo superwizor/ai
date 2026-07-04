@@ -9137,6 +9137,7 @@ class ClientNote extends $pb.GeneratedMessage {
     $3.Timestamp? createdAt,
     $3.Timestamp? sharedAt,
     $core.bool? read,
+    $3.Timestamp? sentToTherapistAt,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -9147,6 +9148,7 @@ class ClientNote extends $pb.GeneratedMessage {
     if (createdAt != null) result.createdAt = createdAt;
     if (sharedAt != null) result.sharedAt = sharedAt;
     if (read != null) result.read = read;
+    if (sentToTherapistAt != null) result.sentToTherapistAt = sentToTherapistAt;
     return result;
   }
 
@@ -9173,6 +9175,8 @@ class ClientNote extends $pb.GeneratedMessage {
     ..aOM<$3.Timestamp>(7, _omitFieldNames ? '' : 'sharedAt',
         subBuilder: $3.Timestamp.create)
     ..aOB(8, _omitFieldNames ? '' : 'read')
+    ..aOM<$3.Timestamp>(9, _omitFieldNames ? '' : 'sentToTherapistAt',
+        subBuilder: $3.Timestamp.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9268,6 +9272,20 @@ class ClientNote extends $pb.GeneratedMessage {
   $core.bool hasRead() => $_has(7);
   @$pb.TagNumber(8)
   void clearRead() => $_clearField(8);
+
+  /// Drafts (migration 000068): a CLIENT_NOTE with this unset is a
+  /// PRIVATE draft — saved in the panel, invisible to the therapist —
+  /// until ClientSendNote (or create with send_to_therapist) stamps it.
+  @$pb.TagNumber(9)
+  $3.Timestamp get sentToTherapistAt => $_getN(8);
+  @$pb.TagNumber(9)
+  set sentToTherapistAt($3.Timestamp value) => $_setField(9, value);
+  @$pb.TagNumber(9)
+  $core.bool hasSentToTherapistAt() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearSentToTherapistAt() => $_clearField(9);
+  @$pb.TagNumber(9)
+  $3.Timestamp ensureSentToTherapistAt() => $_ensure(8);
 }
 
 class ClientListNotesResponse extends $pb.GeneratedMessage {
@@ -9325,11 +9343,13 @@ class ClientCreateNoteRequest extends $pb.GeneratedMessage {
     $core.String? patientFileId,
     $core.String? title,
     $core.String? text,
+    $core.bool? sendToTherapist,
   }) {
     final result = create();
     if (patientFileId != null) result.patientFileId = patientFileId;
     if (title != null) result.title = title;
     if (text != null) result.text = text;
+    if (sendToTherapist != null) result.sendToTherapist = sendToTherapist;
     return result;
   }
 
@@ -9349,6 +9369,7 @@ class ClientCreateNoteRequest extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'patientFileId')
     ..aOS(2, _omitFieldNames ? '' : 'title')
     ..aOS(3, _omitFieldNames ? '' : 'text')
+    ..aOB(4, _omitFieldNames ? '' : 'sendToTherapist')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9397,6 +9418,74 @@ class ClientCreateNoteRequest extends $pb.GeneratedMessage {
   $core.bool hasText() => $_has(2);
   @$pb.TagNumber(3)
   void clearText() => $_clearField(3);
+
+  /// false = save as a private draft ("Zapisz"); true = deliver to the
+  /// therapist immediately ("Zapisz i wyślij do terapeuty").
+  @$pb.TagNumber(4)
+  $core.bool get sendToTherapist => $_getBF(3);
+  @$pb.TagNumber(4)
+  set sendToTherapist($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSendToTherapist() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSendToTherapist() => $_clearField(4);
+}
+
+/// ClientSendNote — deliver a previously saved draft to the therapist.
+/// Idempotent (a delivered note keeps its first sent_to_therapist_at).
+class ClientSendNoteRequest extends $pb.GeneratedMessage {
+  factory ClientSendNoteRequest({
+    $core.String? noteId,
+  }) {
+    final result = create();
+    if (noteId != null) result.noteId = noteId;
+    return result;
+  }
+
+  ClientSendNoteRequest._();
+
+  factory ClientSendNoteRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ClientSendNoteRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClientSendNoteRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'noteId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientSendNoteRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientSendNoteRequest copyWith(
+          void Function(ClientSendNoteRequest) updates) =>
+      super.copyWith((message) => updates(message as ClientSendNoteRequest))
+          as ClientSendNoteRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ClientSendNoteRequest create() => ClientSendNoteRequest._();
+  @$core.override
+  ClientSendNoteRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ClientSendNoteRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClientSendNoteRequest>(create);
+  static ClientSendNoteRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get noteId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set noteId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNoteId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNoteId() => $_clearField(1);
 }
 
 class ClientMarkNoteReadRequest extends $pb.GeneratedMessage {

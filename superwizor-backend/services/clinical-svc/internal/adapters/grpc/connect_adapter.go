@@ -313,6 +313,14 @@ func (a *ConnectAdapter) ClientCreateNote(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) ClientSendNote(ctx context.Context, req *connect.Request[clinicalv1.ClientSendNoteRequest]) (*connect.Response[clinicalv1.ClientNote], error) {
+	resp, err := a.s.ClientSendNote(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) ClientMarkNoteRead(ctx context.Context, req *connect.Request[clinicalv1.ClientMarkNoteReadRequest]) (*connect.Response[emptypb.Empty], error) {
 	resp, err := a.s.ClientMarkNoteRead(ctx, req.Msg)
 	if err != nil {

@@ -67,8 +67,9 @@ type Querier interface {
 	CountUnreadClientNotesForKartoteka(ctx context.Context, patientFileID uuid.UUID) (int32, error)
 	CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) error
 	// kind=CLIENT_NOTE, author_role=PATIENT (chk_patient_notes_author).
-	// therapist_id is the counterparty (kartoteka owner). Creation ==
-	// delivery: client notes are therapist-visible from the start.
+	// therapist_id is the counterparty (kartoteka owner). $7=true stamps
+	// sent_to_therapist_at (deliver on create); false saves a PRIVATE
+	// draft the therapist can't see (000068).
 	CreateClientNote(ctx context.Context, arg CreateClientNoteParams) (PatientNote, error)
 	// patient_id is the FK to the paired users row (role='PATIENT'),
 	// created by clinical-svc.CreatePatientFile handler immediately
@@ -293,6 +294,8 @@ type Querier interface {
 	ListPatientFilesByTherapistWithUser(ctx context.Context, arg ListPatientFilesByTherapistWithUserParams) ([]ListPatientFilesByTherapistWithUserRow, error)
 	// All live notes for a kartoteka, newest first. Matches the partial
 	// index idx_patient_notes_file (patient_file_id, created_at DESC).
+	// Client DRAFTS (000068: CLIENT_NOTE without sent_to_therapist_at) are
+	// private to the client — the therapist never sees them.
 	ListPatientNotesByFile(ctx context.Context, patientFileID uuid.UUID) ([]PatientNote, error)
 	// Pulls the last N negative ratings for a therapist. The
 	// suggestion-engine Go code aggregates by chip category. We cap at
@@ -322,6 +325,9 @@ type Querier interface {
 	ListSessionsByPatient(ctx context.Context, patientFileID uuid.UUID) ([]Session, error)
 	ListSupportedModalities(ctx context.Context) ([]ListSupportedModalitiesRow, error)
 	ListTranscriptSegments(ctx context.Context, transcriptID uuid.UUID) ([]TranscriptSegment, error)
+	// Deliver a saved draft. Idempotent — a delivered note keeps its
+	// first timestamp.
+	MarkClientNoteSentToTherapist(ctx context.Context, id uuid.UUID) (PatientNote, error)
 	// Auto-mark when the therapist opens the kartoteka notes list — the
 	// badge is edge-triggered, not an inbox.
 	MarkKartotekaClientNotesReadByTherapist(ctx context.Context, patientFileID uuid.UUID) error
