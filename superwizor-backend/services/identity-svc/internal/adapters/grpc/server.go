@@ -260,6 +260,16 @@ func (s *Server) CreateUser(ctx context.Context, req *identityv1.CreateUserReque
 		HasAcceptedTos: req.HasAcceptedTos,
 	})
 	if err != nil {
+		// Unique collision on firebase_uid/e-mail = a row (possibly
+		// soft-deleted) still owns this identity. Surface a stable
+		// marker instead of the raw SQL: the Flutter login self-heal
+		// auto-registers on NotFound and used to splash
+		// `users_firebase_uid_key (SQLSTATE 23505)` on the home screen
+		// (live-tested 2026-07-04).
+		if isUniqueViolationErr(err) {
+			return nil, status.Error(codes.FailedPrecondition,
+				"ACCOUNT_DELETED: this account has been removed by the administrator")
+		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

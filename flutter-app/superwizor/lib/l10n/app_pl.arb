@@ -1347,5 +1347,7 @@
   "note_from_client_new": "NOWA",
   "home_menu_invite_client_desc": "Wyślij e-mail z dostępem do panelu klienta",
   "client_new_badge": "NOWA",
-  "client_session_transcript_chip": "Transkrypcja"
+  "client_session_transcript_chip": "Transkrypcja",
+  "account_deleted_title": "Konto zablokowane",
+  "account_deleted_body": "To konto terapeuty zostało zablokowane przez administratora Superwizor AI. Skontaktuj się z pomocą, jeśli uważasz, że to pomyłka."
 }

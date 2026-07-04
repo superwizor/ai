@@ -3025,4 +3025,11 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get client_session_transcript_chip => 'Transkrypcja';
+
+  @override
+  String get account_deleted_title => 'Konto zablokowane';
+
+  @override
+  String get account_deleted_body =>
+      'To konto terapeuty zostało zablokowane przez administratora Superwizor AI. Skontaktuj się z pomocą, jeśli uważasz, że to pomyłka.';
 }

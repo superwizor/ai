@@ -580,7 +580,9 @@
       "invitationAccepted": "This invitation has already been used.",
       "quotaExceeded": "Token quota exhausted for the current billing period.",
       "subscriptionPastDue": "Organisation subscription needs a payment update.",
-      "alreadyExists": "An entry like this already exists (for example the email is already registered)."
+      "alreadyExists": "An entry like this already exists (for example the email is already registered).",
+      "userHasSessions": "Cannot delete: this user has recorded sessions. Deactivate the account instead.",
+      "userHasData": "Cannot delete: the user still owns related data. Deactivate the account instead."
     }
   },
   "nav": {

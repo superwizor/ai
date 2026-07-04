@@ -37,6 +37,15 @@ func NewAuthClient(ctx context.Context, projectID string) (*AuthClient, error) {
 	return &AuthClient{client: authClient}, nil
 }
 
+// DeleteFirebaseUser removes the Firebase Auth account entirely. Used
+// by the admin hard-delete path (AdminDeleteUser) so the freed e-mail
+// can sign up or be invited again — leaving the Firebase account behind
+// is what produced the users_firebase_uid_key crash loop on login
+// (soft-deleted PG row + live Firebase account + auto-provisioning).
+func (a *AuthClient) DeleteFirebaseUser(ctx context.Context, uid string) error {
+	return a.client.DeleteUser(ctx, uid)
+}
+
 // VerifyToken validates Firebase ID token and returns Firebase UID + claims.
 func (a *AuthClient) VerifyToken(ctx context.Context, idToken string) (string, map[string]any, error) {
 	token, err := a.client.VerifyIDToken(ctx, idToken)

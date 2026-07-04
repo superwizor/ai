@@ -580,7 +580,9 @@
       "invitationAccepted": "Zaproszenie zostało już wykorzystane.",
       "quotaExceeded": "Limit tokenów został wyczerpany dla bieżącego okresu rozliczeniowego.",
       "subscriptionPastDue": "Subskrypcja organizacji wymaga aktualizacji płatności.",
-      "alreadyExists": "Taki wpis już istnieje (np. e-mail jest już zarejestrowany)."
+      "alreadyExists": "Taki wpis już istnieje (np. e-mail jest już zarejestrowany).",
+      "userHasSessions": "Nie można usunąć: ten użytkownik ma nagrane sesje. Zamiast tego dezaktywuj konto.",
+      "userHasData": "Nie można usunąć: użytkownik ma powiązane dane. Zamiast tego dezaktywuj konto."
     }
   },
   "nav": {
