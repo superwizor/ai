@@ -124,6 +124,40 @@ func (q *Queries) GetActiveSubscriptionByOrg(ctx context.Context, organizationID
 	return i, err
 }
 
+const getLatestSubscriptionByOrg = `-- name: GetLatestSubscriptionByOrg :one
+SELECT id, organization_id, plan_id, provider, provider_subscription_id, provider_customer_id_ciphertext, provider_customer_id_encrypted_dek, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, trial_end_at, created_at, updated_at FROM subscriptions
+WHERE organization_id = $1
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+// Newest subscription regardless of status. AdminResetTokens uses it to
+// find the CANCELED/expired MANUAL sub of a test org and reactivate it
+// (live-fix 2026-07-04: "Zresetuj tokeny" died with
+// SUBSCRIPTION_INACTIVE on every non-Stripe org after its first period).
+func (q *Queries) GetLatestSubscriptionByOrg(ctx context.Context, organizationID uuid.UUID) (Subscription, error) {
+	row := q.db.QueryRow(ctx, getLatestSubscriptionByOrg, organizationID)
+	var i Subscription
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.PlanID,
+		&i.Provider,
+		&i.ProviderSubscriptionID,
+		&i.ProviderCustomerIDCiphertext,
+		&i.ProviderCustomerIDEncryptedDek,
+		&i.Status,
+		&i.CurrentPeriodStart,
+		&i.CurrentPeriodEnd,
+		&i.CancelAtPeriodEnd,
+		&i.CanceledAt,
+		&i.TrialEndAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getPlanByStripePriceID = `-- name: GetPlanByStripePriceID :one
 SELECT id, tier, cycle, tokens_per_period, licenses_limit, has_b2b_dashboard,
        price_gross, currency_code
@@ -217,6 +251,42 @@ func (q *Queries) GetSubscriptionByStripeID(ctx context.Context, providerSubscri
 		&i.PlanTokensPerPeriod,
 		&i.PlanTier,
 		&i.PlanCycle,
+	)
+	return i, err
+}
+
+const reactivateManualSubscription = `-- name: ReactivateManualSubscription :one
+UPDATE subscriptions
+SET status = 'ACTIVE',
+    current_period_start = now(),
+    current_period_end   = now() + interval '1 month',
+    updated_at = now()
+WHERE id = $1 AND provider = 'MANUAL'
+RETURNING id, organization_id, plan_id, provider, provider_subscription_id, provider_customer_id_ciphertext, provider_customer_id_encrypted_dek, status, current_period_start, current_period_end, cancel_at_period_end, canceled_at, trial_end_at, created_at, updated_at
+`
+
+// Support/test path only — the handler guards provider='MANUAL' (Stripe
+// subs are Stripe's source of truth). Rolls the billing period to start
+// now so a fresh counter can be minted for it.
+func (q *Queries) ReactivateManualSubscription(ctx context.Context, id uuid.UUID) (Subscription, error) {
+	row := q.db.QueryRow(ctx, reactivateManualSubscription, id)
+	var i Subscription
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.PlanID,
+		&i.Provider,
+		&i.ProviderSubscriptionID,
+		&i.ProviderCustomerIDCiphertext,
+		&i.ProviderCustomerIDEncryptedDek,
+		&i.Status,
+		&i.CurrentPeriodStart,
+		&i.CurrentPeriodEnd,
+		&i.CancelAtPeriodEnd,
+		&i.CanceledAt,
+		&i.TrialEndAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

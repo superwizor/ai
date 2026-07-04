@@ -889,6 +889,8 @@ type Invitation struct {
 	AllocationID     pgtype.UUID        `json:"allocation_id"`
 	InvitedFirstName *string            `json:"invited_first_name"`
 	InvitedLastName  *string            `json:"invited_last_name"`
+	// Kartoteka a PATIENT invite belongs to (docs/39). NULL for THERAPIST/ORG_ADMIN invites.
+	PatientFileID pgtype.UUID `json:"patient_file_id"`
 }
 
 type Invoice struct {
@@ -994,20 +996,25 @@ type PatientFile struct {
 }
 
 type PatientNote struct {
-	ID                uuid.UUID          `json:"id"`
-	PatientFileID     uuid.UUID          `json:"patient_file_id"`
-	TherapistID       uuid.UUID          `json:"therapist_id"`
-	Kind              string             `json:"kind"`
-	SourceSessionID   pgtype.UUID        `json:"source_session_id"`
-	TitleCiphertext   []byte             `json:"title_ciphertext"`
-	TitleEncryptedDek []byte             `json:"title_encrypted_dek"`
-	TextCiphertext    []byte             `json:"text_ciphertext"`
-	TextEncryptedDek  []byte             `json:"text_encrypted_dek"`
-	SentToPatientAt   pgtype.Timestamptz `json:"sent_to_patient_at"`
-	SentToEmail       *string            `json:"sent_to_email"`
-	CreatedAt         time.Time          `json:"created_at"`
-	UpdatedAt         time.Time          `json:"updated_at"`
-	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
+	ID                 uuid.UUID          `json:"id"`
+	PatientFileID      uuid.UUID          `json:"patient_file_id"`
+	TherapistID        uuid.UUID          `json:"therapist_id"`
+	Kind               string             `json:"kind"`
+	SourceSessionID    pgtype.UUID        `json:"source_session_id"`
+	TitleCiphertext    []byte             `json:"title_ciphertext"`
+	TitleEncryptedDek  []byte             `json:"title_encrypted_dek"`
+	TextCiphertext     []byte             `json:"text_ciphertext"`
+	TextEncryptedDek   []byte             `json:"text_encrypted_dek"`
+	SentToPatientAt    pgtype.Timestamptz `json:"sent_to_patient_at"`
+	SentToEmail        *string            `json:"sent_to_email"`
+	CreatedAt          time.Time          `json:"created_at"`
+	UpdatedAt          time.Time          `json:"updated_at"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+	SharedWithClientAt pgtype.Timestamptz `json:"shared_with_client_at"`
+	// THERAPIST for FREE_NOTE/ACTION_PLAN; PATIENT for CLIENT_NOTE (docs/39). therapist_id stays NOT NULL as the counterparty.
+	AuthorRole        UserRole           `json:"author_role"`
+	ReadByTherapistAt pgtype.Timestamptz `json:"read_by_therapist_at"`
+	ReadByClientAt    pgtype.Timestamptz `json:"read_by_client_at"`
 }
 
 type PaymentEvent struct {
@@ -1143,6 +1150,8 @@ type Session struct {
 	ReportLanguage        string             `json:"report_language"`
 	Name                  *string            `json:"name"`
 	ReportViewedAt        pgtype.Timestamptz `json:"report_viewed_at"`
+	// Set when the therapist shares this session (incl. transcript) with the client panel (docs/39 D2). NULL = not visible to the client. Unshare = back to NULL.
+	SharedWithClientAt pgtype.Timestamptz `json:"shared_with_client_at"`
 }
 
 type SttOperation struct {

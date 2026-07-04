@@ -103,6 +103,29 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 	q := tx.Queries()
 
 	sub, err := q.GetActiveSubscriptionByOrg(ctx, orgID)
+	reactivated := false
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Live-fix 2026-07-04 (wariant A): test orgs run MANUAL subs the
+		// Stripe-only renewal policy cancels after every period, which
+		// made this support tool die with SUBSCRIPTION_INACTIVE on any
+		// non-Stripe org. For MANUAL — and ONLY MANUAL, Stripe stays the
+		// source of truth for its own subs — reactivate on the spot with
+		// a fresh month, then proceed as normal (the counter is minted
+		// below). The whole thing is audited with a `reactivated` flag.
+		latest, lerr := q.GetLatestSubscriptionByOrg(ctx, orgID)
+		switch {
+		case lerr == nil && latest.Provider == "MANUAL":
+			if _, rerr := q.ReactivateManualSubscription(ctx, latest.ID); rerr != nil {
+				return nil, status.Errorf(codes.Internal, "reactivate manual sub: %v", rerr)
+			}
+			reactivated = true
+			sub, err = q.GetActiveSubscriptionByOrg(ctx, orgID)
+		case lerr == nil, errors.Is(lerr, pgx.ErrNoRows):
+			return nil, status.Error(codes.FailedPrecondition, "SUBSCRIPTION_INACTIVE")
+		default:
+			return nil, status.Errorf(codes.Internal, "latest subscription: %v", lerr)
+		}
+	}
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, status.Error(codes.FailedPrecondition, "SUBSCRIPTION_INACTIVE")
@@ -149,6 +172,36 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 			return nil, status.Errorf(codes.Internal, "update counter: %v", err)
 		}
 	case errors.Is(err, pgx.ErrNoRows):
+		// MANUAL subs (incl. the just-reactivated one) get a fresh
+		// org-level counter minted right here: limit from the plan
+		// unless the request overrides it, usage from the request.
+		if sub.Provider == "MANUAL" {
+			limit := sub.PlanTokensPerPeriod
+			if req.TokensLimit != -1 {
+				limit = req.TokensLimit
+			}
+			minted, merr := q.CreateUsageCounter(ctx, db.CreateUsageCounterParams{
+				SubscriptionID: sub.ID,
+				PeriodStart:    sub.CurrentPeriodStart,
+				PeriodEnd:      sub.CurrentPeriodEnd,
+				TokensLimit:    limit,
+			})
+			if merr != nil {
+				return nil, status.Errorf(codes.Internal, "mint counter: %v", merr)
+			}
+			updated = minted
+			if req.TokensUsed > 0 {
+				v := req.TokensUsed
+				updated, merr = q.AdminUpdateCounter(ctx, db.AdminUpdateCounterParams{
+					ID: minted.ID, TokensUsed: &v,
+				})
+				if merr != nil {
+					return nil, status.Errorf(codes.Internal, "seed counter usage: %v", merr)
+				}
+			}
+			counter = updated
+			break
+		}
 		orgCounterFound = false
 		if therapistRows == 0 {
 			return nil, status.Error(codes.FailedPrecondition, "QUOTA_COUNTER_MISSING")
@@ -159,6 +212,7 @@ func (s *Server) AdminResetTokens(ctx context.Context, req *billingv1.AdminReset
 	meta := map[string]any{
 		"therapist_counters_reset": therapistRows,
 		"idempotency_key":          req.IdempotencyKey,
+		"subscription_reactivated": reactivated,
 	}
 	if orgCounterFound {
 		meta["tokens_used_before"] = counter.TokensUsed
