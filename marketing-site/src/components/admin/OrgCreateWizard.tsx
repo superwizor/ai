@@ -62,6 +62,53 @@ export function OrgCreateWizard() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // GUS/CEIDG autofill by NIP — same /api/nip-lookup endpoint (rewritten
+  // to identity-svc's HTTP handler) the therapist's account/org edit
+  // uses (AccountSections.handleNipLookup). Live-feedback 2026-07-04.
+  const [loadingNip, setLoadingNip] = useState(false);
+  const [nipError, setNipError] = useState<string | null>(null);
+
+  async function handleNipLookup() {
+    const clean = taxId.replace(/[\s\-]/g, "");
+    if (!clean || clean.length !== 10) {
+      setNipError(
+        locale === "pl"
+          ? "Wpisz poprawny 10-cyfrowy NIP"
+          : "Enter a valid 10-digit NIP",
+      );
+      return;
+    }
+    setLoadingNip(true);
+    setNipError(null);
+    try {
+      const res = await fetch(`/api/nip-lookup?nip=${clean}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "lookup failed");
+      }
+      const d = await res.json();
+      if (d.legalName) setLegalName(d.legalName);
+      if (d.vatIdEu) setVatIdEu(d.vatIdEu);
+      setAddress((prev) => ({
+        ...prev,
+        streetLine: d.streetLine || prev.streetLine,
+        buildingNumber: d.buildingNumber || prev.buildingNumber,
+        unitNumber: d.unitNumber || prev.unitNumber,
+        postalCode: d.postalCode || prev.postalCode,
+        city: d.city || prev.city,
+      }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setNipError(
+        (locale === "pl"
+          ? "Wyszukiwanie NIP nie powiodło się: "
+          : "NIP lookup failed: ") + msg,
+      );
+    } finally {
+      setLoadingNip(false);
+    }
+  }
+
   useEffect(() => {
     billingClient
       .adminListPlans({})
@@ -213,7 +260,30 @@ export function OrgCreateWizard() {
               <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
                 {t("taxId")}
               </span>
-              <input className={inputCls} value={taxId} onChange={(e) => setTaxId(e.target.value)} />
+              <div className="flex gap-2">
+                <input
+                  className={`${inputCls} flex-1`}
+                  value={taxId}
+                  onChange={(e) => setTaxId(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={handleNipLookup}
+                  disabled={loadingNip}
+                  className="shrink-0 rounded-button border border-ember/50 text-ember font-mono text-[10px] uppercase tracking-[var(--tracking-label)] px-3 hover:bg-ember/10 transition disabled:opacity-50"
+                >
+                  {loadingNip
+                    ? "…"
+                    : locale === "pl"
+                    ? "Uzupełnij z bazy GUS"
+                    : "Autofill from registry"}
+                </button>
+              </div>
+              {nipError && (
+                <span role="alert" className="font-sans text-xs text-magma">
+                  {nipError}
+                </span>
+              )}
             </label>
             <label className="grid gap-1.5">
               <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
