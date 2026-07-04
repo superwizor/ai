@@ -357,6 +357,26 @@
       ],
       "headers": [
         {
+          "//": "Next 16 RSC payloads must always revalidate SITEWIDE: they hard-reference the build's chunk URLs, and chunks are immutable + purged on every deploy. A payload cached for even an hour keeps steering browsers at dead (or worse, stale-code) chunks right after a deploy — the 2026-07-04 'This page couldn't load' incident. ETags make revalidation a 304.",
+          "source": "**/@(__next.*.txt|index.txt)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, must-revalidate"
+            }
+          ]
+        },
+        {
+          "//": "Admin org-detail traffic (HTML + Next 16 RSC payloads) must NEVER be cached: these URLs are served via rewrites, so a pre-fix (or future mis-routed) response cached for max-age=3600 poisons the router for an hour — exactly what live-testing hit on 2026-07-04. no-cache + the existing ETags = cheap revalidation, no staleness.",
+          "source": "/@(pl|en)/admin/orgs/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, must-revalidate"
+            }
+          ]
+        },
+        {
           "//": "Security headers — all responses",
           "source": "**",
           "headers": [
