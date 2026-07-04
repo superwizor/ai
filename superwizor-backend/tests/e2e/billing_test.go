@@ -126,11 +126,17 @@ func loadBillingEnv(t *testing.T) *billingTestEnv {
 	if orgRaw := os.Getenv("BILLING_ORG_ID"); orgRaw != "" {
 		env.orgID = uuid.MustParse(orgRaw)
 	} else {
+		// Skip B2B seat-allocation orgs (docs/38): those debit
+		// per-therapist counters and QUOTA_COUNTER_MISSING any therapist
+		// without a seat — this suite exercises the org-level model.
 		err := pool.QueryRow(ctx, `
 			SELECT s.organization_id
 			FROM subscriptions s
 			WHERE s.provider = 'MANUAL'
 			  AND s.status = 'ACTIVE'
+			  AND NOT EXISTS (
+			    SELECT 1 FROM org_seat_allocations a
+			    WHERE a.organization_id = s.organization_id)
 			ORDER BY s.created_at DESC
 			LIMIT 1`).Scan(&env.orgID)
 		require.NoError(t, err, "discover staging org (run migration 000030 first)")
@@ -688,8 +694,12 @@ func TestBilling_ConcurrentReserve_LastToken(t *testing.T) {
 // Admin HTTP endpoints (cron)
 // ============================================================================
 
-// TestBilling_ReservationExpiry_Cron — manual call /admin/reservation-expiry
-// po sztucznie zestarzonej rezerwacji powinien zwolnić tokeny.
+// TestBilling_ReservationExpiry_Cron — wyzwolenie crona
+// billing-reservation-expiry po sztucznie zestarzonej rezerwacji
+// powinno zwolnić tokeny. Od docs/38 endpointy /admin/* przyjmują
+// WYŁĄCZNIE SA cloud-scheduler-billing@ (bezpośredni POST = 403 by
+// design), więc test odpala prawdziwy job Cloud Scheduler i czeka na
+// jego efekt w DB.
 func TestBilling_ReservationExpiry_Cron(t *testing.T) {
 	env := loadBillingEnv(t)
 	env.resetCounter(t)
@@ -720,19 +730,34 @@ func TestBilling_ReservationExpiry_Cron(t *testing.T) {
 		WHERE session_id = $1`, sessionID)
 	require.NoError(t, err)
 
-	// Wywołaj cron endpoint
-	postAdmin(t, env, "/admin/reservation-expiry")
+	// Wyzwól crona przez Cloud Scheduler (jedyna autoryzowana droga).
+	runSchedulerJob(t, "billing-reservation-expiry")
 
-	// Po cronie status powinien być EXPIRED.
+	// Po cronie status powinien być EXPIRED — poll na WŁASNYM
+	// kontekście: `ctx` ma 15s budżetu i bywa już zużyty przez czas
+	// atrybucji joba (pierwotna flaka tego testu).
+	pollCtx, pollCancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer pollCancel()
 	var resStatus string
-	err = env.dbPool.QueryRow(ctx, `
-		SELECT status FROM pending_reservations WHERE session_id = $1`,
-		sessionID).Scan(&resStatus)
-	require.NoError(t, err)
+	for {
+		err = env.dbPool.QueryRow(pollCtx, `
+			SELECT status FROM pending_reservations WHERE session_id = $1`,
+			sessionID).Scan(&resStatus)
+		require.NoError(t, err)
+		if resStatus == "EXPIRED" {
+			break
+		}
+		select {
+		case <-pollCtx.Done():
+			t.Fatalf("reservation still %s after 60s", resStatus)
+		case <-time.After(3 * time.Second):
+		}
+	}
 	assert.Equal(t, "EXPIRED", resStatus)
 
-	// I tokens_reserved counter powinien być 0.
-	chk, err := c.CheckQuota(ctx, &billingv1.CheckQuotaRequest{OrganizationId: env.orgID.String()})
+	// I tokens_reserved counter powinien być 0. (pollCtx, nie ctx —
+	// tego samego wyścigu co wyżej.)
+	chk, err := c.CheckQuota(pollCtx, &billingv1.CheckQuotaRequest{OrganizationId: env.orgID.String()})
 	require.NoError(t, err)
 	assert.Equal(t, chk.Limit, chk.Remaining, "reservation tokens released")
 }
@@ -742,12 +767,49 @@ func TestBilling_SafetyCheck_Cron(t *testing.T) {
 	conn, _ := env.dialBilling(t)
 	defer conn.Close()
 
-	// Safety check tylko powinien się powodzieć — nawet jeśli wszystkie subs
-	// mają countery, endpoint zwraca 200 OK z healed_count=0.
-	body := postAdmin(t, env, "/admin/safety-check")
-	var resp map[string]any
-	require.NoError(t, json.Unmarshal(body, &resp))
-	assert.Equal(t, "ok", resp["message"])
+	// Safety check tylko powinien się powodzieć — nawet jeśli wszystkie
+	// subs mają countery (healed_count=0). Od docs/38 bezpośredni POST
+	// to 403 by design, więc weryfikujemy przez atrybucję prawdziwego
+	// joba Cloud Scheduler (status.code pusty = ostatnia próba 200).
+	_ = env // env sanity-checked in loadBillingEnv; job effect is global
+	runSchedulerJob(t, "billing-safety-check")
+}
+
+// runSchedulerJob force-runs a Cloud Scheduler job and waits until the
+// attempt lands with a 2xx. The /admin/* cron endpoints allowlist ONLY
+// the cloud-scheduler-billing@ SA (docs/38 hardening), and the local
+// user has no tokenCreator on it — so the real job is both the only
+// path and the more faithful one.
+func runSchedulerJob(t *testing.T, job string) {
+	t.Helper()
+	project := envOr("GCP_PROJECT_ID", "superwizor-ai-25ecd")
+	region := envOr("GCP_REGION", "europe-central2")
+
+	describe := func(field string) string {
+		out, err := exec.Command("gcloud", "scheduler", "jobs", "describe", job,
+			"--location="+region, "--project="+project,
+			"--format=value("+field+")").Output()
+		require.NoErrorf(t, err, "gcloud scheduler jobs describe %s", job)
+		return strings.TrimSpace(string(out))
+	}
+
+	before := describe("lastAttemptTime")
+	out, err := exec.Command("gcloud", "scheduler", "jobs", "run", job,
+		"--location="+region, "--project="+project).CombinedOutput()
+	require.NoErrorf(t, err, "gcloud scheduler jobs run %s: %s", job, out)
+
+	deadline := time.Now().Add(90 * time.Second)
+	for time.Now().Before(deadline) {
+		if att := describe("lastAttemptTime"); att != "" && att != before {
+			code := describe("status.code")
+			require.Equalf(t, "", code,
+				"scheduler job %s: last attempt failed (status.code=%s)", job, code)
+			t.Logf("✓ scheduler job %s attempt landed at %s", job, att)
+			return
+		}
+		time.Sleep(3 * time.Second)
+	}
+	t.Fatalf("scheduler job %s: attempt did not land within 90s", job)
 }
 
 // postAdmin — POST do admin HTTP endpointu z OIDC tokenem.

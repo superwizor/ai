@@ -52,7 +52,10 @@ func TestClientPanel_FullFlow(t *testing.T) {
 	cfg := loadConfig(t)
 	pool, err := pgxpool.New(ctx, dbURL)
 	require.NoError(t, err, "connect staging DB")
-	defer pool.Close()
+	// t.Cleanup, not defer: cleanups run LIFO after the test returns, so
+	// registering the close FIRST keeps the pool alive for the row
+	// cleanup registered later.
+	t.Cleanup(pool.Close)
 
 	suffix := strings.ToLower(uuid.NewString()[:8])
 
@@ -142,9 +145,10 @@ func TestClientPanel_FullFlow(t *testing.T) {
 		"seed accepted client user")
 	_, err = pool.Exec(ctx, `UPDATE patient_files SET patient_id = $2 WHERE id = $1`, pfID, clientID)
 	require.NoError(t, err, "attach client to kartoteka")
+	// chk_invitations_accept_consistency: accepted_at ⇔ accepted_user_id.
 	_, err = pool.Exec(ctx, `
-		UPDATE invitations SET accepted_at = now()
-		WHERE patient_file_id = $1 AND accepted_at IS NULL`, pfID)
+		UPDATE invitations SET accepted_at = now(), accepted_user_id = $2
+		WHERE patient_file_id = $1 AND accepted_at IS NULL`, pfID, clientID)
 	require.NoError(t, err, "mark invitation accepted")
 
 	st, err = thIdentity.GetClientInviteStatus(ctx, &identityv1.GetClientInviteStatusRequest{
