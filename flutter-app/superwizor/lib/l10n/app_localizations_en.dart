@@ -3005,4 +3005,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get client_session_transcript_chip => 'Transcript';
+
+  @override
+  String get account_deleted_title => 'Account blocked';
+
+  @override
+  String get account_deleted_body =>
+      'This therapist account has been blocked by the Superwizor AI administrator. Contact support if you believe this is a mistake.';
 }

@@ -45,6 +45,10 @@ const BACKEND_PATTERNS: Array<{ contains: string; key: string }> = [
   // billing-svc — quota gates.
   { contains: "quota exceeded", key: "backend.quotaExceeded" },
   { contains: "subscription past_due", key: "backend.subscriptionPastDue" },
+  // identity-svc AdminDeleteUser — hard delete is gated on the user
+  // owning no clinical data; the admin's remedy is deactivation.
+  { contains: "user_has_sessions", key: "backend.userHasSessions" },
+  { contains: "user_has_data", key: "backend.userHasData" },
   // identity-svc — duplicate detection.
   { contains: "already exists", key: "backend.alreadyExists" },
   { contains: "duplicate key", key: "backend.alreadyExists" },

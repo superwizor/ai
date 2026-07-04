@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -563,22 +566,92 @@ func (s *Server) AdminDeleteUser(ctx context.Context, req *identityv1.AdminDelet
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "user not found")
 	}
-	if err := s.queries.SoftDeleteUser(ctx, uid); err != nil {
-		return nil, status.Errorf(codes.Internal, "soft delete: %v", err)
+
+	// Live-fix 2026-07-04: deletion is HARD and only allowed when the
+	// user owns no sessions. The previous soft delete held the unique
+	// email/firebase_uid hostage: the freed e-mail couldn't be invited
+	// as a client, and a Firebase login crashed the auto-provisioning
+	// with users_firebase_uid_key. Users WITH sessions must be
+	// deactivated (SetTherapistStatus), not deleted — clinical data
+	// retention is a RODO decision, not an admin-list click.
+	var sessionCount int
+	if err := s.pool.QueryRow(ctx,
+		`SELECT count(*) FROM sessions WHERE therapist_id = $1`, uid).Scan(&sessionCount); err != nil {
+		return nil, status.Errorf(codes.Internal, "session check: %v", err)
 	}
+	if sessionCount > 0 {
+		return nil, status.Errorf(codes.FailedPrecondition,
+			"USER_HAS_SESSIONS: user owns %d session(s) — deletion is blocked, deactivate the account instead", sessionCount)
+	}
+
 	var orgID *uuid.UUID
 	if target.OrganizationID.Valid {
 		o := uuid.UUID(target.OrganizationID.Bytes)
 		orgID = &o
 	}
+	// Audit BEFORE the row disappears (resource_id is a plain UUID
+	// column, actor/organization FKs are unaffected by the delete).
 	if err := s.writeAuditEvent(ctx, caller,
 		"user.admin_delete", "user",
 		&uid, orgID, req.Reason,
-		map[string]any{"email": derefString(target.Email), "role": string(target.Role)},
+		map[string]any{"email": derefString(target.Email), "role": string(target.Role), "hard": true},
 	); err != nil {
 		return nil, status.Errorf(codes.Internal, "audit: %v", err)
 	}
+
+	// Hard delete, child-first for the RESTRICT/NO ACTION FKs; the
+	// CASCADE/SET NULL ones (seat_assignments, usage_counters, consent,
+	// CRM, activation events, inbox, report customization…) ride along
+	// with the final DELETE.
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "tx begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	for _, q := range []string{
+		`DELETE FROM notification_deliveries WHERE user_id = $1`,
+		`DELETE FROM patient_notes WHERE therapist_id = $1`,
+		`DELETE FROM therapist_patient_relations WHERE therapist_id = $1 OR patient_id = $1`,
+		`DELETE FROM audio_uploads WHERE therapist_id = $1`,
+		`DELETE FROM patient_files WHERE therapist_id = $1`,
+		`DELETE FROM invitations WHERE invited_by_user = $1`,
+		`UPDATE organizations SET primary_admin_user_id = NULL WHERE primary_admin_user_id = $1`,
+		`DELETE FROM users WHERE id = $1`,
+	} {
+		if _, err := tx.Exec(ctx, q, uid); err != nil {
+			// Anything still referencing the row (23503) means the user
+			// owns data we don't auto-purge — same remedy as sessions.
+			if isForeignKeyViolationErr(err) {
+				return nil, status.Error(codes.FailedPrecondition,
+					"USER_HAS_DATA: user still owns data that blocks deletion — deactivate the account instead")
+			}
+			return nil, status.Errorf(codes.Internal, "hard delete: %v", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, status.Errorf(codes.Internal, "commit: %v", err)
+	}
+
+	// Free the Firebase account too (best effort — the PG row is gone
+	// either way; without this the e-mail can't re-register cleanly).
+	if target.FirebaseUid != nil && *target.FirebaseUid != "" {
+		if deleter, ok := s.auth.(interface {
+			DeleteFirebaseUser(ctx context.Context, uid string) error
+		}); ok {
+			if err := deleter.DeleteFirebaseUser(ctx, *target.FirebaseUid); err != nil {
+				slog.WarnContext(ctx, "AdminDeleteUser: firebase account not deleted",
+					"user_id", uid, "firebase_uid", *target.FirebaseUid, "error", err)
+			}
+		}
+	}
 	return &emptypb.Empty{}, nil
+}
+
+// isForeignKeyViolationErr — 23503 detection, mirroring
+// isUniqueViolationErr in client_invites.go.
+func isForeignKeyViolationErr(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation
 }
 
 // ─── Helpers ───────────────────────────────────────────────────

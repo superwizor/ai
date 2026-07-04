@@ -1346,5 +1346,7 @@
   "note_from_client_new": "NEW",
   "home_menu_invite_client_desc": "Send an e-mail with client panel access",
   "client_new_badge": "NEW",
-  "client_session_transcript_chip": "Transcript"
+  "client_session_transcript_chip": "Transcript",
+  "account_deleted_title": "Account blocked",
+  "account_deleted_body": "This therapist account has been blocked by the Superwizor AI administrator. Contact support if you believe this is a mistake."
 }

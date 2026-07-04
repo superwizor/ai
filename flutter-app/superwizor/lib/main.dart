@@ -138,7 +138,14 @@ class _AuthGate extends ConsumerWidget {
           // Mid-session deactivation: the cached profile predates the
           // toggle, but any refetch (or any gated RPC) now fails with
           // the ACCOUNT_DEACTIVATED marker — treat that the same.
-          error: (e, _) => isAccountDeactivatedError(e),
+          // ACCOUNT_DELETED (admin removed the users row) gets the
+          // same full-screen block instead of a raw gRPC dump.
+          error: (e, _) => isAccountBlockedError(e),
+          orElse: () => false,
+        );
+    // Deleted-vs-deactivated only differ in the block screen's copy.
+    final deleted = ref.watch(currentUserProvider).maybeWhen(
+          error: (e, _) => isAccountDeletedError(e),
           orElse: () => false,
         );
 
@@ -160,7 +167,7 @@ class _AuthGate extends ConsumerWidget {
           );
         }
         if (!snapshot.hasData) return const LoginScreen();
-        if (deactivated) return const DeactivatedAccountScreen();
+        if (deactivated) return DeactivatedAccountScreen(deleted: deleted);
         if (isClient) return const ClientHomeScreen();
         return const _LockGate();
       },

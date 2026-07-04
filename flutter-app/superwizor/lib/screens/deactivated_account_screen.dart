@@ -15,7 +15,12 @@ import '../l10n/app_localizations.dart';
 import '../theme/euphire_theme.dart';
 
 class DeactivatedAccountScreen extends StatelessWidget {
-  const DeactivatedAccountScreen({super.key});
+  const DeactivatedAccountScreen({super.key, this.deleted = false});
+
+  /// true = the account was REMOVED by a Superwizor admin
+  /// (ACCOUNT_DELETED), not reversibly deactivated by the org manager —
+  /// different copy, same full-screen block.
+  final bool deleted;
 
   @override
   Widget build(BuildContext context) {
@@ -36,13 +41,13 @@ class DeactivatedAccountScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  l10n.deactivated_title,
+                  deleted ? l10n.account_deleted_title : l10n.deactivated_title,
                   style: Theme.of(context).textTheme.headlineSmall,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  l10n.deactivated_body,
+                  deleted ? l10n.account_deleted_body : l10n.deactivated_body,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: EuphireColors.mist,
                       ),

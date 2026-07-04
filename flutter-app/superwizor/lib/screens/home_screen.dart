@@ -177,7 +177,7 @@ class HomeScreen extends ConsumerWidget {
                                 ),
                               ),
                               error: (err, stack) {
-                                if (isAccountDeactivatedError(err)) {
+                                if (isAccountBlockedError(err)) {
                                   // Deactivated mid-session: refresh the
                                   // cached profile so _AuthGate swaps to
                                   // DeactivatedAccountScreen; meanwhile

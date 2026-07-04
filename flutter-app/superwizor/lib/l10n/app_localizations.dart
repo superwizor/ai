@@ -5386,6 +5386,18 @@ abstract class AppLocalizations {
   /// In pl, this message translates to:
   /// **'Transkrypcja'**
   String get client_session_transcript_chip;
+
+  /// No description provided for @account_deleted_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Konto zablokowane'**
+  String get account_deleted_title;
+
+  /// No description provided for @account_deleted_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'To konto terapeuty zostało zablokowane przez administratora Superwizor AI. Skontaktuj się z pomocą, jeśli uważasz, że to pomyłka.'**
+  String get account_deleted_body;
 }
 
 class _AppLocalizationsDelegate
