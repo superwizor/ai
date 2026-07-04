@@ -945,6 +945,29 @@
       "signedOutHeading": "Sesja wygasła lub brak logowania",
       "signedOutBody": "Weryfikacja e-mail wymaga aktywnej sesji. Zaloguj się na swoje konto, aby wysłać link ponownie lub zmienić e-mail.",
       "logIn": "Zaloguj się"
+    },
+    "clientOnboarding": {
+      "metaTitle": "Panel klienta — aktywacja konta",
+      "overline": "Zaproszenie",
+      "title": "Twój panel klienta",
+      "subhead": "Twój terapeuta zaprasza Cię do bezpiecznego panelu, w którym znajdziesz udostępnione sesje i notatki oraz napiszesz własne.",
+      "missingToken": "Brakuje tokenu zaproszenia. Otwórz link z wiadomości e-mail jeszcze raz.",
+      "loading": "Sprawdzamy zaproszenie…",
+      "invalidToken": "To zaproszenie jest nieprawidłowe lub zostało już wykorzystane. Poproś terapeutę o nowe.",
+      "expired": "To zaproszenie wygasło. Poproś terapeutę o ponowne wysłanie.",
+      "alreadyAccepted": "To zaproszenie zostało już zaakceptowane. Zaloguj się w aplikacji.",
+      "emailTaken": "Ten adres e-mail jest powiązany z innym typem konta. Skontaktuj się z terapeutą.",
+      "notClientInvite": "To zaproszenie nie dotyczy panelu klienta — przejdź do właściwej strony aktywacji.",
+      "namesRequired": "Podaj imię i nazwisko.",
+      "socialConnectedTitle": "Konto połączone ✓",
+      "socialConnectedBody": "Zalogowano jako {email}. Potwierdź, jak mamy się do Ciebie zwracać, i przejdź do panelu.",
+      "enterPanel": "Przejdź do panelu",
+      "submit": "Utwórz konto i przejdź do panelu",
+      "haveAccountHint": "Masz już konto? Po prostu podaj jego hasło.",
+      "forgotPassword": "Nie pamiętasz hasła?",
+      "resetSent": "Wysłaliśmy link do zmiany hasła na Twój adres e-mail.",
+      "existingAccountWrongPassword": "To konto już istnieje, ale hasło się nie zgadza. Podaj hasło istniejącego konta lub skorzystaj z linku poniżej.",
+      "tosNote": "Kontynuując, akceptujesz Regulamin i Politykę prywatności Superwizor AI."
     }
   },
   "legal": {

@@ -143,7 +143,11 @@ func (s *Server) InviteClient(ctx context.Context, req *identityv1.InviteClientR
 	if u, err := s.queries.GetUserByID(ctx, pf.TherapistID); err == nil {
 		therapistName = u.FirstName
 	}
-	acceptURL := fmt.Sprintf("%s/accept-invite?token=%s",
+	// Clients get the dedicated onboarding page (docs/39 C-PR10):
+	// social login or password, then straight into the client panel —
+	// NOT the org-flavoured /accept-invite used by therapist/manager
+	// invitations.
+	acceptURL := fmt.Sprintf("%s/register/client?token=%s",
 		strings.TrimRight(s.acceptURLBase, "/"),
 		url.QueryEscape(token),
 	)

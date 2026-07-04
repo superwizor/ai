@@ -945,6 +945,29 @@
       "signedOutHeading": "Session expired or not logged in",
       "signedOutBody": "Email verification requires an active session. Please log in to resend the verification link or update your email.",
       "logIn": "Log in"
+    },
+    "clientOnboarding": {
+      "metaTitle": "Client panel — account activation",
+      "overline": "Invitation",
+      "title": "Your client panel",
+      "subhead": "Your therapist invites you to a secure panel where you'll find shared sessions and notes, and can write your own.",
+      "missingToken": "The invitation token is missing. Please open the link from your e-mail again.",
+      "loading": "Checking your invitation…",
+      "invalidToken": "This invitation is invalid or has already been used. Ask your therapist for a new one.",
+      "expired": "This invitation has expired. Ask your therapist to send it again.",
+      "alreadyAccepted": "This invitation has already been accepted. Sign in to the app.",
+      "emailTaken": "This e-mail is linked to a different account type. Please contact your therapist.",
+      "notClientInvite": "This invitation is not for the client panel — go to the correct activation page.",
+      "namesRequired": "Please enter your first and last name.",
+      "socialConnectedTitle": "Account connected ✓",
+      "socialConnectedBody": "Signed in as {email}. Confirm how we should address you and continue to your panel.",
+      "enterPanel": "Go to my panel",
+      "submit": "Create account and go to my panel",
+      "haveAccountHint": "Already have an account? Just enter its password.",
+      "forgotPassword": "Forgot your password?",
+      "resetSent": "We've sent a password-reset link to your e-mail.",
+      "existingAccountWrongPassword": "This account already exists, but the password doesn't match. Enter the existing account's password or use the link below.",
+      "tosNote": "By continuing you accept the Superwizor AI Terms of Service and Privacy Policy."
     }
   },
   "legal": {

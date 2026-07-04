@@ -69,6 +69,16 @@ export function AcceptInviteForm({ token }: { token: string }) {
       .getInvitationPreview(create(GetInvitationPreviewRequestSchema, { token }))
       .then((p) => {
         if (cancelled) return;
+        // Client invitations have their own onboarding page (docs/39
+        // C-PR10). Already-sent e-mails still point here — bounce them.
+        const role = p.invitedRole as unknown;
+        if (role === UserRole.PATIENT || role === "USER_ROLE_PATIENT") {
+          const prefix = locale === "en" ? "/en" : "";
+          window.location.replace(
+            `${prefix}/register/client?token=${encodeURIComponent(token)}`,
+          );
+          return;
+        }
         setPreview(p);
         if (p.email) setValue("email", p.email);
         if (p.firstName) setValue("firstName", p.firstName);
