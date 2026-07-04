@@ -121,11 +121,19 @@ func (s *Server) InviteTherapist(ctx context.Context, req *identityv1.InviteTher
 			if err := checkSeatAvailableExcluding(ctx, qtx, alloc, existing.ID); err != nil {
 				return nil, err
 			}
+			// invited_role='THERAPIST' is REQUIRED: the (org,email)
+			// pending row might be an ORG_ADMIN invitation (one non-PATIENT
+			// invite per (org,email) since 000067). Stamping an allocation
+			// onto an ORG_ADMIN row violates chk_invitations_allocation_by_role
+			// (allocation ⇒ THERAPIST) — the live "Błąd serwera" on resend
+			// (2026-07-04). Inviting-as-therapist converts the pending
+			// invite to a therapist one, which is the intended effect.
 			if _, err := tx.Exec(ctx,
 				`UPDATE invitations
 				    SET token_hash = $2, expires_at = $3, invited_by_user = $4,
-				        allocation_id = $5, invited_first_name = $6,
-				        invited_last_name = $7, created_at = now()
+				        invited_role = 'THERAPIST', allocation_id = $5,
+				        invited_first_name = $6, invited_last_name = $7,
+				        created_at = now()
 				  WHERE id = $1`,
 				existing.ID, tokenHash, expiresAt, caller.userID,
 				allocationID, createParams.InvitedFirstName, createParams.InvitedLastName,
@@ -136,6 +144,7 @@ func (s *Server) InviteTherapist(ctx context.Context, req *identityv1.InviteTher
 			inv.TokenHash = tokenHash
 			inv.ExpiresAt = expiresAt
 			inv.AllocationID = allocationID
+			inv.InvitedRole = "THERAPIST"
 		case errors.Is(lookupErr, pgx.ErrNoRows):
 			if err := checkSeatAvailable(ctx, qtx, alloc); err != nil {
 				return nil, err
@@ -166,10 +175,15 @@ func (s *Server) InviteTherapist(ctx context.Context, req *identityv1.InviteTher
 			if lookupErr != nil {
 				return nil, status.Errorf(codes.Internal, "create invitation: %v", err)
 			}
-			// Direct UPDATE (no sqlc method for this niche path).
+			// Allocation-less therapist invite (org without seat
+			// allocations). Convert any stale same-email row to THERAPIST
+			// with no allocation — THERAPIST+NULL satisfies the CHECK
+			// whether the prior role was ORG_ADMIN or THERAPIST.
 			if _, err := s.pool.Exec(ctx,
 				`UPDATE invitations
-				    SET token_hash = $2, expires_at = $3, invited_by_user = $4, created_at = now()
+				    SET token_hash = $2, expires_at = $3, invited_by_user = $4,
+				        invited_role = 'THERAPIST', allocation_id = NULL,
+				        created_at = now()
 				  WHERE id = $1`,
 				existing.ID, tokenHash, expiresAt, caller.userID,
 			); err != nil {
@@ -178,6 +192,8 @@ func (s *Server) InviteTherapist(ctx context.Context, req *identityv1.InviteTher
 			inv = existing
 			inv.TokenHash = tokenHash
 			inv.ExpiresAt = expiresAt
+			inv.InvitedRole = "THERAPIST"
+			inv.AllocationID = pgtype.UUID{}
 		}
 	}
 
