@@ -8,6 +8,15 @@ on:
     branches:
       - main
 
+# Serialize deploy runs on main so two PRs merged close together don't race
+# on the Cloud Run deploy steps (which spuriously red-X'd otherwise). Grouped
+# per-ref so PRs stay independent. cancel-in-progress is FALSE for main pushes
+# — a live deploy must never be cancelled; later main runs queue and then run.
+# For PR checks it's TRUE so a new commit cancels the stale check.
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: europe-central2
