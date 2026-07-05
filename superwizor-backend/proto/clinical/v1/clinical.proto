@@ -716,6 +716,11 @@ message AdminListSessionsRequest {
   // Optional filter to a single organization (organizations.id). Empty =
   // all organizations. Matched against the therapist's organization_id.
   string organization_id = 8;
+
+  // Case-insensitive substring filter on the organization's legal_name.
+  // Empty = no filter. The admin UI uses this as a free-text search box
+  // (same UX as therapist_filter).
+  string organization_search = 9;
 }
 
 message AdminListSessionsResponse {

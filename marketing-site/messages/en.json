@@ -161,7 +161,8 @@
         "therapist": "Therapist",
         "therapistPlaceholder": "First or last name, or email",
         "organization": "Organization",
-        "organizationAll": "All organizations"
+        "organizationAll": "All organizations",
+        "organizationPlaceholder": "Organization name"
       },
       "table": {
         "createdAt": "Uploaded",
