@@ -177,15 +177,24 @@ final clientDarkProvider =
     NotifierProvider<ClientDarkNotifier, bool>(ClientDarkNotifier.new);
 
 // ── Timeline filter ──────────────────────────────────────────────────
+// Multi-select (live feedback 2026-07-05): each category chip toggles
+// independently; the active set is a union. An EMPTY set means "show
+// everything" — so there's no separate "Wszystko" chip.
 
-enum ClientFilter { all, sessions, therapist, own }
+enum ClientFilter { sessions, therapist, own }
 
-class ClientFilterNotifier extends Notifier<ClientFilter> {
+class ClientFiltersNotifier extends Notifier<Set<ClientFilter>> {
   @override
-  ClientFilter build() => ClientFilter.all;
-  void select(ClientFilter f) => state = f;
+  Set<ClientFilter> build() => <ClientFilter>{};
+
+  /// Toggle a category in/out of the active set.
+  void toggle(ClientFilter f) {
+    final next = Set<ClientFilter>.from(state);
+    if (!next.add(f)) next.remove(f);
+    state = next;
+  }
 }
 
-final clientFilterProvider =
-    NotifierProvider<ClientFilterNotifier, ClientFilter>(
-        ClientFilterNotifier.new);
+final clientFiltersProvider =
+    NotifierProvider<ClientFiltersNotifier, Set<ClientFilter>>(
+        ClientFiltersNotifier.new);

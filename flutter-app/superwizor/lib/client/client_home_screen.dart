@@ -74,17 +74,14 @@ final clientHomeProvider =
 });
 
 List<ClientTimelineItem> _applyFilter(
-    List<ClientTimelineItem> items, ClientFilter f) {
-  switch (f) {
-    case ClientFilter.all:
-      return items;
-    case ClientFilter.sessions:
-      return items.where((i) => i.session != null).toList();
-    case ClientFilter.therapist:
-      return items.where((i) => i.isTherapistNote).toList();
-    case ClientFilter.own:
-      return items.where((i) => i.isOwnNote).toList();
-  }
+    List<ClientTimelineItem> items, Set<ClientFilter> active) {
+  if (active.isEmpty) return items; // nothing selected = show everything
+  return items.where((i) {
+    if (i.session != null) return active.contains(ClientFilter.sessions);
+    if (i.isTherapistNote) return active.contains(ClientFilter.therapist);
+    if (i.isOwnNote) return active.contains(ClientFilter.own);
+    return false;
+  }).toList();
 }
 
 class ClientHomeScreen extends ConsumerWidget {
@@ -111,7 +108,7 @@ class _ClientHomeBody extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final p = context.cp;
     final home = ref.watch(clientHomeProvider);
-    final filter = ref.watch(clientFilterProvider);
+    final filter = ref.watch(clientFiltersProvider);
     final user = ref.watch(currentUserProvider).value;
     final displayName =
         [user?.firstName ?? '', user?.lastName ?? ''].join(' ').trim();
@@ -402,13 +399,12 @@ class _ClientHomeBody extends ConsumerWidget {
 
 class _FilterBar extends ConsumerWidget {
   const _FilterBar({required this.selected});
-  final ClientFilter selected;
+  final Set<ClientFilter> selected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final labels = {
-      ClientFilter.all: l10n.client_filter_all,
       ClientFilter.sessions: l10n.client_filter_sessions,
       ClientFilter.therapist: l10n.client_filter_therapist,
       ClientFilter.own: l10n.client_filter_own,
@@ -421,9 +417,9 @@ class _FilterBar extends ConsumerWidget {
           for (final f in ClientFilter.values) ...[
             _FilterChip(
               label: labels[f]!,
-              active: selected == f,
+              active: selected.contains(f),
               onTap: () =>
-                  ref.read(clientFilterProvider.notifier).select(f),
+                  ref.read(clientFiltersProvider.notifier).toggle(f),
             ),
             const SizedBox(width: 8),
           ],
