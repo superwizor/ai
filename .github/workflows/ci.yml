@@ -343,6 +343,15 @@ jobs:
           # Accessor on it (granted in service-accounts.tf in a follow-up).
           # If the secret doesn't exist yet the deploy fails — wire the
           # secret BEFORE merging this commit to main.
+          # SECURITY #3 — internal-OIDC gate on the Send* email relay.
+          # INTERNAL_OIDC_AUDIENCE = notification-svc's own stable URL (the
+          # aud internal callers already mint). Cloud Run URLs are stable
+          # across revisions, so describing the existing service returns the
+          # URL the new revision will keep. INTERNAL_ALLOWED_SAS lists the
+          # backend caller SAs. It contains commas, so we switch --set-env-vars
+          # to the ^|^ custom delimiter (default is comma).
+          NOTIF_URL=$(gcloud run services describe notification-svc --region ${{ env.REGION }} --format 'value(status.url)' || echo "")
+          ALLOWED_SAS="identity-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com,clinical-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com,billing-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
           gcloud run deploy notification-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
@@ -352,7 +361,7 @@ jobs:
             --service-account=notification-svc@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --vpc-connector swvpc-connector \
             --set-secrets="DATABASE_URL=postgres-database-url:latest,RESEND_API_KEY=resend-api-key:latest" \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},VERSION=${{ github.sha }},RESEND_FROM=Superwizor <noreply@client.superwizor.ai>"
+            --set-env-vars="^|^GCP_PROJECT_ID=${{ env.PROJECT_ID }}|VERSION=${{ github.sha }}|RESEND_FROM=Superwizor <noreply@client.superwizor.ai>|INTERNAL_OIDC_AUDIENCE=${NOTIF_URL}|INTERNAL_ALLOWED_SAS=${ALLOWED_SAS}"
           gcloud run services add-iam-policy-binding notification-svc \
             --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} \
             --member=allUsers --role=roles/run.invoker

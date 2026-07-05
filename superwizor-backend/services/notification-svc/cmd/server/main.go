@@ -125,13 +125,30 @@ func main() {
 		slog.Warn("RESEND_API_KEY unset — using MockSender (no real emails sent)")
 	}
 
+	// SECURITY #3: internal-OIDC gate on the Send* email relay.
+	// notification-svc is an allUsers Cloud Run service; without this the
+	// Send* RPCs were an open phishing relay + Resend cost-bomb. Callers
+	// (identity/clinical/billing) already mint an OIDC token with
+	// aud = this service's URL, so no caller change is needed. When the
+	// env vars are unset the gate no-ops (transition-safe); ci.yml sets
+	// them so prod enforces immediately.
+	internalAud := os.Getenv("INTERNAL_OIDC_AUDIENCE")
+	allowedSAs := grpcadapter.ParseAllowedSAs(os.Getenv("INTERNAL_ALLOWED_SAS"))
+	if internalAud == "" || len(allowedSAs) == 0 {
+		slog.Warn("notification-svc: INTERNAL_OIDC_AUDIENCE / INTERNAL_ALLOWED_SAS unset — Send* relay runs WITHOUT OIDC caller checks")
+	} else {
+		slog.Info("notification-svc: Send* OIDC gate enabled", "audience", internalAud, "allowed_sas", len(allowedSAs))
+	}
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
 		slog.Error("listen", "error", err)
 		os.Exit(1)
 	}
 
-	gs := grpc.NewServer()
+	gs := grpc.NewServer(
+		grpc.UnaryInterceptor(grpcadapter.InternalOIDCInterceptor(internalAud, allowedSAs, nil)),
+	)
 	notificationv1.RegisterNotificationServiceServer(gs, srv)
 
 	hs := health.NewServer()
