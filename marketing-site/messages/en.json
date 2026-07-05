@@ -1490,7 +1490,8 @@
       "signinCta": "Sign in",
       "forbiddenTitle": "Access denied",
       "forbiddenBody": "The organization panel is available to organization managers (ORG_ADMIN) only.",
-      "panelName": "Organization panel"
+      "panelName": "Organization panel",
+      "signOut": "Sign out"
     },
     "panel": {
       "title": "Your organization",
@@ -1561,8 +1562,8 @@
       "kpiAvgDuration": "Avg session time",
       "kpiAvgDurationInfo": "Average duration of completed sessions over the last 90 days.",
       "kpiTimeSaved": "Time saved (month)",
-      "kpiTimeSavedYear": "This year: {hours} h ({sessions} sessions × 20 min)",
-      "kpiTimeSavedInfo": "Estimate: 20 minutes of report work saved per session across the organization's therapists.",
+      "kpiTimeSavedYear": "This year: {hours} h ({sessions} sessions × 30 min)",
+      "kpiTimeSavedInfo": "Estimate: 30 minutes of report work saved per session across the organization's therapists.",
       "chartSessionsTrend": "Session frequency (trend)",
       "chartSessionsTrendDesc": "Total sessions per week",
       "chartDurationTrend": "Session length (trend)",

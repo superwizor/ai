@@ -18,6 +18,8 @@ interface KpiCardProps {
   info?: string;
   /** Secondary value line (e.g. converted currency) */
   secondaryLabel?: string;
+  /** Denser padding + smaller value — for compact KPI strips (docs/38). */
+  compact?: boolean;
 }
 
 export function KpiCard({
@@ -30,6 +32,7 @@ export function KpiCard({
   sparklineData,
   info,
   secondaryLabel,
+  compact = false,
 }: KpiCardProps) {
   const isPositive = delta !== undefined && delta >= 0;
   const [showInfo, setShowInfo] = useState(false);
@@ -38,7 +41,7 @@ export function KpiCard({
   const chartData = sparklineData?.map((val, idx) => ({ name: String(idx), value: val }));
 
   return (
-    <div className="rounded-card border border-frost/10 bg-surfaceTeal/30 backdrop-blur-md p-6 flex flex-col justify-between hover:border-ember/30 transition shadow-lg">
+    <div className={`rounded-card border border-frost/10 bg-surfaceTeal/30 backdrop-blur-md ${compact ? "p-4" : "p-6"} flex flex-col justify-between hover:border-ember/30 transition shadow-lg`}>
       <div>
         <div className="flex items-start gap-1.5">
           <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/60 flex-1">
@@ -67,7 +70,7 @@ export function KpiCard({
           )}
         </div>
         <div className="flex items-baseline gap-2 mt-2">
-          <span className="font-display text-4xl font-bold text-frost">
+          <span className={`font-display ${compact ? "text-2xl" : "text-4xl"} font-bold text-frost`}>
             {prefix}
             <CountUp end={value} decimals={decimals} duration={1.5} separator=" " />
             {suffix}

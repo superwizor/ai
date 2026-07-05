@@ -1490,7 +1490,8 @@
       "signinCta": "Zaloguj się",
       "forbiddenTitle": "Brak dostępu",
       "forbiddenBody": "Panel organizacji jest dostępny wyłącznie dla menedżerów organizacji (ORG_ADMIN).",
-      "panelName": "Panel organizacji"
+      "panelName": "Panel organizacji",
+      "signOut": "Wyloguj"
     },
     "panel": {
       "title": "Twoja organizacja",
@@ -1561,8 +1562,8 @@
       "kpiAvgDuration": "Średni czas sesji",
       "kpiAvgDurationInfo": "Średnia długość ukończonych sesji z ostatnich 90 dni.",
       "kpiTimeSaved": "Czas zaoszczędzony (miesiąc)",
-      "kpiTimeSavedYear": "W tym roku: {hours} h ({sessions} sesji × 20 min)",
-      "kpiTimeSavedInfo": "Szacunek: 20 minut pracy nad raportem zaoszczędzone na każdej sesji terapeutów organizacji.",
+      "kpiTimeSavedYear": "W tym roku: {hours} h ({sessions} sesji × 30 min)",
+      "kpiTimeSavedInfo": "Szacunek: 30 minut pracy nad raportem zaoszczędzone na każdej sesji terapeutów organizacji.",
       "chartSessionsTrend": "Częstotliwość sesji (trend)",
       "chartSessionsTrendDesc": "Łączna liczba sesji na tydzień",
       "chartDurationTrend": "Długość sesji (trend)",

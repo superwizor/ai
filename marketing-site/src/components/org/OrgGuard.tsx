@@ -23,7 +23,12 @@ export function OrgGuardAndShell({ children }: { children: ReactNode }) {
   const t = useTranslations("org.guard");
   const locale = useLocale();
   const prefix = locale === "en" ? "/en" : "";
-  const { status: authStatus, user: fbUser } = useAuth();
+  const { status: authStatus, user: fbUser, signOut } = useAuth();
+
+  const onSignOut = async () => {
+    await signOut();
+    window.location.href = `${prefix}/`;
+  };
 
   const [status, setStatus] = useState<Status>("loading");
   const [user, setUser] = useState<User | null>(null);
@@ -103,9 +108,18 @@ export function OrgGuardAndShell({ children }: { children: ReactNode }) {
         <span className="font-display text-frost font-semibold tracking-[var(--tracking-display)]">
           Superwizor AI · {t("panelName")}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist">
-          {user?.email}
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist hidden sm:inline">
+            {user?.email}
+          </span>
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="rounded-button border border-frost/20 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost hover:border-frost/40 transition cursor-pointer"
+          >
+            {t("signOut")}
+          </button>
+        </div>
       </header>
       {children}
     </div>
