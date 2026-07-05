@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { create } from "@bufbuild/protobuf";
 import {
@@ -29,25 +29,9 @@ import { KpiCard } from "@/components/admin/analytics/KpiCard";
 import { ChartCard } from "@/components/admin/analytics/ChartCard";
 import { chartTheme } from "@/lib/charts/theme";
 
-const MINUTES_SAVED_PER_SESSION = 20;
+const MINUTES_SAVED_PER_SESSION = 30;
 
-const getContrastColor = (cell: { color?: string; value?: number | null }) => {
-  const color = cell.color;
-  if (color && color.startsWith("rgb")) {
-    const match = color.match(/\d+/g);
-    if (match) {
-      const yiq =
-        (parseInt(match[0], 10) * 299 +
-          parseInt(match[1], 10) * 587 +
-          parseInt(match[2], 10) * 114) /
-        1000;
-      return yiq >= 128 ? "#002b2c" : "#ffffff";
-    }
-  }
-  return (cell.value ?? 0) > 60 ? "#ffffff" : "#002b2c";
-};
-
-export function OrgAnalyticsWidgets() {
+export function OrgAnalyticsWidgets({ afterKpis }: { afterKpis?: ReactNode }) {
   const t = useTranslations("org.analytics");
   const locale = useLocale();
   const [data, setData] = useState<GetOrgAnalyticsResponse | null>(null);
@@ -90,9 +74,6 @@ export function OrgAnalyticsWidgets() {
     label: p.label,
     value: Number(p.value.toFixed(1)),
   }));
-  const wauSpark = data.wauTrend.map((p) => p.value);
-  const sessionsSpark = data.sessionsTrend.map((p) => p.value);
-
   // ── hourly heatmap (nivo) — same mapping as /admin/analytics ──
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(2023, 0, i + 1); // 2023-01-01 is a Sunday
@@ -116,24 +97,6 @@ export function OrgAnalyticsWidgets() {
   }));
   const hasHourly = data.hourlyHeatmap.length > 0;
 
-  // ── per-therapist utilization heatmap — same graph as the admin
-  //    per-org one, rows are therapists ──
-  const thMap: Record<string, Record<string, number>> = {};
-  const weeksSet = new Set<string>();
-  const thMax: Record<string, number> = {};
-  data.therapistUtilization.forEach((item) => {
-    if (!thMap[item.orgName]) thMap[item.orgName] = {};
-    thMap[item.orgName][item.week] = item.value;
-    weeksSet.add(item.week);
-    thMax[item.orgName] = Math.max(thMax[item.orgName] || 0, item.value);
-  });
-  const sortedWeeks = Array.from(weeksSet).sort();
-  const activeTherapists = Object.keys(thMap).filter((n) => thMax[n] > 0);
-  const utilizationData = activeTherapists.map((name) => ({
-    id: name,
-    data: sortedWeeks.map((w) => ({ x: w, y: thMap[name][w] || 0 })),
-  }));
-
   const lineTheme = {
     tooltip: {
       container: { background: chartTheme.surfaceTeal, color: chartTheme.frost },
@@ -143,21 +106,23 @@ export function OrgAnalyticsWidgets() {
 
   return (
     <div className="grid gap-6">
-      {/* KPI strip */}
+      {/* KPI strip — compact; the two count widgets drop their single-point
+          sparkline "dot" (live feedback 2026-07-05). */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
+          compact
           title={t("kpiWau")}
           value={Number(data.kpiWau)}
-          sparklineData={wauSpark}
           info={t("kpiWauInfo")}
         />
         <KpiCard
+          compact
           title={t("kpiSessionsWeek")}
           value={Number(data.kpiSessionsThisWeek)}
-          sparklineData={sessionsSpark}
           info={t("kpiSessionsWeekInfo")}
         />
         <KpiCard
+          compact
           title={t("kpiAvgDuration")}
           value={data.kpiAvgSessionDuration}
           decimals={1}
@@ -165,6 +130,7 @@ export function OrgAnalyticsWidgets() {
           info={t("kpiAvgDurationInfo")}
         />
         <KpiCard
+          compact
           title={t("kpiTimeSaved")}
           value={savedMonthH}
           decimals={1}
@@ -176,6 +142,10 @@ export function OrgAnalyticsWidgets() {
           info={t("kpiTimeSavedInfo")}
         />
       </div>
+
+      {/* Slot rendered directly under the KPI strip (docs/38 live feedback:
+          the per-therapist table sits here, above the trend charts). */}
+      {afterKpis}
 
       {/* Trends */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -237,26 +207,6 @@ export function OrgAnalyticsWidgets() {
           </ResponsiveContainer>
         </ChartCard>
       </div>
-
-      {/* Per-therapist token utilization — same graph as admin, rows = therapists */}
-      <ChartCard
-        title={t("chartUtilization")}
-        description={t("chartUtilizationDesc")}
-        info={t("chartUtilizationInfo")}
-        isEmpty={utilizationData.length === 0}
-        emptyLabel={t("empty")}
-      >
-        <ResponsiveHeatMap
-          data={utilizationData}
-          margin={{ top: 30, right: 30, bottom: 30, left: 180 }}
-          colors={{ type: "sequential", scheme: "magma" }}
-          emptyColor="#555"
-          enableLabels={true}
-          label={(cell) => (cell.value === 0 || cell.value == null ? "" : `${Number(cell.value).toFixed(0)}%`)}
-          labelTextColor={getContrastColor}
-          theme={lineTheme}
-        />
-      </ChartCard>
 
       {/* Day × hour heatmap */}
       {hasHourly && (

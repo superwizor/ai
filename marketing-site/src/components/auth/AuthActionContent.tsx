@@ -381,7 +381,7 @@ function InnerContent() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
-                    className="rounded-xl bg-frost/5 border border-frost/15 px-3.5 py-3 font-sans text-base text-frost focus:outline-none focus:border-ember placeholder:text-mist/30 transition"
+                    className="rounded-xl bg-frost/10 border border-frost/20 px-3.5 py-3 font-sans text-base text-frost focus:outline-none focus:border-ember focus:bg-frost/15 placeholder:text-mist/50 transition"
                   />
                   <span className="font-sans text-[10px] text-mist/50">
                     {t("passwordHint")}
@@ -397,7 +397,7 @@ function InnerContent() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    className="rounded-xl bg-frost/5 border border-frost/15 px-3.5 py-3 font-sans text-base text-frost focus:outline-none focus:border-ember placeholder:text-mist/30 transition"
+                    className="rounded-xl bg-frost/10 border border-frost/20 px-3.5 py-3 font-sans text-base text-frost focus:outline-none focus:border-ember focus:bg-frost/15 placeholder:text-mist/50 transition"
                   />
                 </label>
 

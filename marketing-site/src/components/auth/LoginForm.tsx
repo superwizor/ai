@@ -352,7 +352,7 @@ export function LoginForm() {
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={disabled}
-            className="rounded-button bg-frost/5 border border-frost/15 px-3.5 py-2.5 font-sans text-base text-frost focus:outline-none focus:border-ember disabled:opacity-60 placeholder:text-mist/40 transition"
+            className="rounded-button bg-frost/10 border border-frost/20 px-3.5 py-2.5 font-sans text-base text-frost focus:outline-none focus:border-ember focus:bg-frost/15 disabled:opacity-60 placeholder:text-mist/50 transition"
           />
         </label>
 
@@ -367,7 +367,7 @@ export function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             disabled={disabled}
-            className="rounded-button bg-frost/5 border border-frost/15 px-3.5 py-2.5 font-sans text-base text-frost focus:outline-none focus:border-ember disabled:opacity-60 placeholder:text-mist/40 transition"
+            className="rounded-button bg-frost/10 border border-frost/20 px-3.5 py-2.5 font-sans text-base text-frost focus:outline-none focus:border-ember focus:bg-frost/15 disabled:opacity-60 placeholder:text-mist/50 transition"
           />
         </label>
 

@@ -34,7 +34,7 @@ import { OrgAnalyticsWidgets } from "./OrgAnalyticsWidgets";
 type Tab = "team" | "analytics" | "organization" | "billing";
 
 const inputCls =
-  "rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] placeholder:text-mist/40 transition w-full";
+  "rounded-button bg-frost/10 border border-frost/20 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember focus:bg-frost/15 placeholder:text-mist/50 transition w-full";
 const btnPrimary =
   "rounded-button bg-ember text-abyss px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/90 transition disabled:opacity-40 disabled:cursor-not-allowed";
 const btnGhost =
@@ -362,8 +362,10 @@ export function OrgPanel() {
 
       {!loading && tab === "analytics" && (
         <section className="mt-6 grid gap-6">
-          <OrgAnalyticsWidgets />
-          <div className="flex items-center gap-2">
+          <OrgAnalyticsWidgets
+            afterKpis={
+              <div className="grid gap-6">
+                <div className="flex items-center gap-2">
             {[7, 30, 90].map((d) => (
               <button
                 key={d}
@@ -461,6 +463,9 @@ export function OrgPanel() {
               </table>
             </div>
           )}
+              </div>
+            }
+          />
           <p className="font-serif text-mist text-xs">{t("analyticsPrivacyNote")}</p>
         </section>
       )}
