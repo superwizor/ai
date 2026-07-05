@@ -2687,6 +2687,33 @@ final $typed_data.Uint8List clientNoteDescriptor = $convert.base64Decode(
     'lzdF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSEXNlbnRUb1RoZXJhcGlz'
     'dEF0');
 
+@$core.Deprecated('Use clientDeleteNoteRequestDescriptor instead')
+const ClientDeleteNoteRequest$json = {
+  '1': 'ClientDeleteNoteRequest',
+  '2': [
+    {'1': 'note_id', '3': 1, '4': 1, '5': 9, '10': 'noteId'},
+  ],
+};
+
+/// Descriptor for `ClientDeleteNoteRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clientDeleteNoteRequestDescriptor =
+    $convert.base64Decode(
+        'ChdDbGllbnREZWxldGVOb3RlUmVxdWVzdBIXCgdub3RlX2lkGAEgASgJUgZub3RlSWQ=');
+
+@$core.Deprecated('Use clientHideItemRequestDescriptor instead')
+const ClientHideItemRequest$json = {
+  '1': 'ClientHideItemRequest',
+  '2': [
+    {'1': 'item_kind', '3': 1, '4': 1, '5': 9, '10': 'itemKind'},
+    {'1': 'item_id', '3': 2, '4': 1, '5': 9, '10': 'itemId'},
+  ],
+};
+
+/// Descriptor for `ClientHideItemRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clientHideItemRequestDescriptor = $convert.base64Decode(
+    'ChVDbGllbnRIaWRlSXRlbVJlcXVlc3QSGwoJaXRlbV9raW5kGAEgASgJUghpdGVtS2luZBIXCg'
+    'dpdGVtX2lkGAIgASgJUgZpdGVtSWQ=');
+
 @$core.Deprecated('Use clientListNotesResponseDescriptor instead')
 const ClientListNotesResponse$json = {
   '1': 'ClientListNotesResponse',

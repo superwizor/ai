@@ -148,6 +148,13 @@ service ClinicalService {
     rpc ClientCreateNote(ClientCreateNoteRequest) returns (ClientNote);
     rpc ClientSendNote(ClientSendNoteRequest) returns (ClientNote);
     rpc ClientMarkNoteRead(ClientMarkNoteReadRequest) returns (google.protobuf.Empty);
+    // docs/39 PR13 — panel management.
+    //   ClientDeleteNote: HARD-delete the client's OWN note (CLIENT_NOTE)
+    //     everywhere, including from the therapist if it was already sent.
+    //   ClientHideItem: dismiss a therapist-shared session/note from the
+    //     client's panel only (client_hidden_at) — therapist keeps it.
+    rpc ClientDeleteNote(ClientDeleteNoteRequest) returns (google.protobuf.Empty);
+    rpc ClientHideItem(ClientHideItemRequest) returns (google.protobuf.Empty);
 
     // Therapist-side sharing toggles (docs/39 D2/D6) — gated by
     // requireTherapistDataAccess like every kartoteka mutation.
@@ -1132,6 +1139,16 @@ message ClientNote {
   // PRIVATE draft — saved in the panel, invisible to the therapist —
   // until ClientSendNote (or create with send_to_therapist) stamps it.
   google.protobuf.Timestamp sent_to_therapist_at = 9;
+}
+
+// docs/39 PR13.
+message ClientDeleteNoteRequest {
+  string note_id = 1;   // must be the caller's own CLIENT_NOTE
+}
+
+message ClientHideItemRequest {
+  string item_kind = 1; // SESSION | NOTE (a therapist-shared item)
+  string item_id = 2;
 }
 
 message ClientListNotesResponse {

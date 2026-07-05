@@ -1016,6 +1016,7 @@ type PatientNote struct {
 	ReadByTherapistAt pgtype.Timestamptz `json:"read_by_therapist_at"`
 	ReadByClientAt    pgtype.Timestamptz `json:"read_by_client_at"`
 	SentToTherapistAt pgtype.Timestamptz `json:"sent_to_therapist_at"`
+	ClientHiddenAt    pgtype.Timestamptz `json:"client_hidden_at"`
 }
 
 type PaymentEvent struct {
@@ -1153,6 +1154,7 @@ type Session struct {
 	ReportViewedAt        pgtype.Timestamptz `json:"report_viewed_at"`
 	// Set when the therapist shares this session (incl. transcript) with the client panel (docs/39 D2). NULL = not visible to the client. Unshare = back to NULL.
 	SharedWithClientAt pgtype.Timestamptz `json:"shared_with_client_at"`
+	ClientHiddenAt     pgtype.Timestamptz `json:"client_hidden_at"`
 }
 
 type SttOperation struct {

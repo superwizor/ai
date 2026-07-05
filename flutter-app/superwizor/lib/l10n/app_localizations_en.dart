@@ -2846,6 +2846,59 @@ class AppLocalizationsEn extends AppLocalizations {
       'Materials shared by your therapist and your notes.';
 
   @override
+  String get client_theme_tooltip => 'Switch theme (light/dark)';
+
+  @override
+  String get client_filter_all => 'All';
+
+  @override
+  String get client_filter_sessions => 'Sessions';
+
+  @override
+  String get client_filter_therapist => 'Therapist tasks & notes';
+
+  @override
+  String get client_filter_own => 'My notes';
+
+  @override
+  String get client_filter_empty => 'Nothing under this filter.';
+
+  @override
+  String get client_action_delete => 'Delete note';
+
+  @override
+  String get client_action_hide => 'Hide from panel';
+
+  @override
+  String get client_delete_confirm_title => 'Delete note?';
+
+  @override
+  String get client_delete_confirm_body =>
+      'This note can\'t be restored. If it was sent to your therapist, it will disappear for them too.';
+
+  @override
+  String get client_hide_confirm_title => 'Hide from panel?';
+
+  @override
+  String get client_hide_confirm_body =>
+      'The item leaves your panel. Your therapist keeps it.';
+
+  @override
+  String get client_deleted_toast => 'Note deleted';
+
+  @override
+  String get client_hidden_toast => 'Hidden from panel';
+
+  @override
+  String get client_confirm_cancel => 'Cancel';
+
+  @override
+  String get client_confirm_delete => 'Delete';
+
+  @override
+  String get client_confirm_hide => 'Hide';
+
+  @override
   String get client_home_empty =>
       'Your therapist hasn\'t shared any materials yet.';
 

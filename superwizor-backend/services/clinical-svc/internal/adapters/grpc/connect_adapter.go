@@ -329,6 +329,22 @@ func (a *ConnectAdapter) ClientMarkNoteRead(ctx context.Context, req *connect.Re
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) ClientDeleteNote(ctx context.Context, req *connect.Request[clinicalv1.ClientDeleteNoteRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.ClientDeleteNote(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) ClientHideItem(ctx context.Context, req *connect.Request[clinicalv1.ClientHideItemRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.ClientHideItem(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) ShareSessionWithClient(ctx context.Context, req *connect.Request[clinicalv1.ShareSessionWithClientRequest]) (*connect.Response[emptypb.Empty], error) {
 	resp, err := a.s.ShareSessionWithClient(ctx, req.Msg)
 	if err != nil {

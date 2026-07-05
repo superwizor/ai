@@ -12,7 +12,7 @@ import (
 )
 
 const getPatientNotesForExport = `-- name: GetPatientNotesForExport :many
-SELECT id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at FROM patient_notes
+SELECT id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at, client_hidden_at FROM patient_notes
 WHERE patient_file_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 `
@@ -46,6 +46,7 @@ func (q *Queries) GetPatientNotesForExport(ctx context.Context, patientFileID uu
 			&i.ReadByTherapistAt,
 			&i.ReadByClientAt,
 			&i.SentToTherapistAt,
+			&i.ClientHiddenAt,
 		); err != nil {
 			return nil, err
 		}
@@ -58,7 +59,7 @@ func (q *Queries) GetPatientNotesForExport(ctx context.Context, patientFileID uu
 }
 
 const getSessionsForExport = `-- name: GetSessionsForExport :many
-SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name, report_viewed_at, shared_with_client_at FROM sessions
+SELECT id, therapist_id, patient_file_id, audio_upload_id, session_date, session_number, duration_seconds, contact_form, speaker_label_mapping, language_code, therapist_observations, is_consent_confirmed, status, status_updated_at, error_message, created_at, updated_at, deleted_at, report_language, name, report_viewed_at, shared_with_client_at, client_hidden_at FROM sessions
 WHERE patient_file_id = $1 AND deleted_at IS NULL
 ORDER BY session_number ASC
 `
@@ -95,6 +96,7 @@ func (q *Queries) GetSessionsForExport(ctx context.Context, patientFileID uuid.U
 			&i.Name,
 			&i.ReportViewedAt,
 			&i.SharedWithClientAt,
+			&i.ClientHiddenAt,
 		); err != nil {
 			return nil, err
 		}

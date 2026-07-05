@@ -1,10 +1,10 @@
-// ClientHomeScreen — the client (patient) panel, v2 (docs/39 + live
-// feedback 2026-07-04): a SINGLE light-themed screen modeled on the
-// therapist's kartoteka view. Header = client's name, subtitle "Twoja
-// terapia", then one merged timeline of shared sessions and notes
-// (both directions), newest first. The FAB only composes a note to the
-// therapist. Deliberately NO navigation, NO settings — the only exits
-// are the logout icon and tapping a session to read its transcript.
+// ClientHomeScreen — the client (patient) panel (docs/39, redesign PR13).
+// One merged timeline of shared sessions + notes (both directions), newest
+// first, now in the Superwizor design language (Montserrat, Ember accent)
+// with a light/dark toggle (dark = the therapist app's Evergreen green).
+// Filters narrow the timeline (all / sessions / therapist tasks+notes /
+// own notes). Cards carry a management menu: own notes hard-delete, shared
+// items hide from the panel only. The FAB composes a note to the therapist.
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -18,23 +18,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/grpc_provider.dart';
 import 'client_session_screen.dart';
-
-// ── Light palette (this surface only — the therapist app stays dark).
-// Restyled 2026-07-04 to the calm, editorial Medito look: near-white
-// canvas, crisp white cards, near-black ink for headings, muted slate
-// for metadata, a single warm accent. Cards lean on soft shadow +
-// hairline rather than heavy borders. ─
-class ClientColors {
-  static const bg = Color(0xFFF4F3EF); // soft paper white
-  static const card = Colors.white;
-  static const border = Color(0xFFEDEBE4); // hairline
-  static const ink = Color(0xFF1B1C1E); // near-black heading
-  static const muted = Color(0xFF8A8D91); // slate metadata
-  static const accent = Color(0xFFE8930C); // warm ember
-  static const accentSoft = Color(0xFFFBEDD3);
-  static const green = Color(0xFF2E7D57);
-  static const greenSoft = Color(0xFFE8F1EC);
-}
+import 'client_theme.dart';
 
 /// One row of the merged timeline: exactly one of [session] / [note].
 class ClientTimelineItem {
@@ -53,6 +37,9 @@ class ClientTimelineItem {
     }
     return DateTime(2000);
   }
+
+  bool get isTherapistNote => note != null && note!.authorRole == 'THERAPIST';
+  bool get isOwnNote => note != null && note!.authorRole == 'PATIENT';
 }
 
 class ClientHome {
@@ -86,40 +73,75 @@ final clientHomeProvider =
   return ClientHome(overview, items);
 });
 
+List<ClientTimelineItem> _applyFilter(
+    List<ClientTimelineItem> items, ClientFilter f) {
+  switch (f) {
+    case ClientFilter.all:
+      return items;
+    case ClientFilter.sessions:
+      return items.where((i) => i.session != null).toList();
+    case ClientFilter.therapist:
+      return items.where((i) => i.isTherapistNote).toList();
+    case ClientFilter.own:
+      return items.where((i) => i.isOwnNote).toList();
+  }
+}
+
 class ClientHomeScreen extends ConsumerWidget {
   const ClientHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final dark = ref.watch(clientDarkProvider);
+    // The client surface runs on its own ThemeData so dialogs/fields/
+    // snackbars pick up the palette too.
+    return Theme(
+      data: clientThemeData(dark),
+      child: Builder(builder: (context) => _ClientHomeBody(dark: dark)),
+    );
+  }
+}
+
+class _ClientHomeBody extends ConsumerWidget {
+  const _ClientHomeBody({required this.dark});
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final p = context.cp;
     final home = ref.watch(clientHomeProvider);
+    final filter = ref.watch(clientFilterProvider);
     final user = ref.watch(currentUserProvider).value;
     final displayName =
         [user?.firstName ?? '', user?.lastName ?? ''].join(' ').trim();
 
     return Scaffold(
-      backgroundColor: ClientColors.bg,
+      backgroundColor: p.bg,
       floatingActionButton: home.maybeWhen(
         data: (d) => d.overview.kartoteki.isEmpty
             ? null
-            : FloatingActionButton(
-                backgroundColor: ClientColors.accent,
-                foregroundColor: Colors.white,
-                shape: const CircleBorder(),
+            : FloatingActionButton.extended(
+                backgroundColor: p.accent,
+                foregroundColor: p.onAccent,
                 onPressed: () => _openNoteComposer(context, ref, d.overview),
-                child: const Icon(Icons.add, size: 30),
+                icon: const Icon(Icons.edit_note),
+                label: Text(l10n.client_note_new,
+                    style: const TextStyle(
+                        fontFamily: 'Montserrat', fontWeight: FontWeight.w700)),
               ),
         orElse: () => null,
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          color: ClientColors.accent,
+          color: p.accent,
+          backgroundColor: p.card,
           onRefresh: () async => ref.refresh(clientHomeProvider.future),
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
                 sliver: SliverToBoxAdapter(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,45 +150,55 @@ class ClientHomeScreen extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           IconButton(
+                            tooltip: l10n.client_theme_tooltip,
+                            icon: Icon(
+                                dark
+                                    ? Icons.light_mode_outlined
+                                    : Icons.dark_mode_outlined,
+                                color: p.muted,
+                                size: 22),
+                            onPressed: () =>
+                                ref.read(clientDarkProvider.notifier).toggle(),
+                          ),
+                          IconButton(
                             tooltip: l10n.client_logout,
-                            icon: const Icon(Icons.logout,
-                                color: ClientColors.muted, size: 22),
+                            icon: Icon(Icons.logout, color: p.muted, size: 22),
                             onPressed: () => FirebaseAuth.instance.signOut(),
                           ),
                         ],
                       ),
                       Text(
                         displayName.isEmpty ? l10n.client_home_title : displayName,
-                        style: const TextStyle(
-                          fontFamily: 'Merriweather',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 34,
-                          height: 1.08,
-                          letterSpacing: -0.5,
-                          color: ClientColors.ink,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        l10n.client_home_title, // "Twoje sesje"
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Montserrat',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: ClientColors.muted,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 30,
+                          height: 1.1,
+                          letterSpacing: -0.4,
+                          color: p.ink,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.client_home_title,
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: p.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _FilterBar(selected: filter),
+                      const SizedBox(height: 8),
                     ],
                   ),
                 ),
               ),
               home.when(
-                loading: () => const SliverFillRemaining(
+                loading: () => SliverFillRemaining(
                   child: Center(
-                    child:
-                        CircularProgressIndicator(color: ClientColors.accent),
-                  ),
+                      child: CircularProgressIndicator(color: p.accent)),
                 ),
                 error: (err, _) => SliverFillRemaining(
                   child: Center(
@@ -175,26 +207,29 @@ class ClientHomeScreen extends ConsumerWidget {
                       child: Text(
                         l10n.client_home_error(err.toString()),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            fontFamily: 'Montserrat',
-                            color: ClientColors.muted),
+                        style: TextStyle(
+                            fontFamily: 'Montserrat', color: p.muted),
                       ),
                     ),
                   ),
                 ),
                 data: (d) {
-                  if (d.items.isEmpty) {
+                  final items = _applyFilter(d.items, filter);
+                  if (items.isEmpty) {
                     return SliverFillRemaining(
+                      hasScrollBody: false,
                       child: Center(
                         child: Padding(
                           padding: const EdgeInsets.all(32),
                           child: Text(
-                            l10n.client_home_empty,
+                            d.items.isEmpty
+                                ? l10n.client_home_empty
+                                : l10n.client_filter_empty,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontSize: 15,
-                                color: ClientColors.muted),
+                                color: p.muted),
                           ),
                         ),
                       ),
@@ -202,11 +237,11 @@ class ClientHomeScreen extends ConsumerWidget {
                   }
                   final manyTherapists = d.overview.kartoteki.length > 1;
                   return SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 96),
+                    padding: const EdgeInsets.fromLTRB(24, 4, 24, 96),
                     sliver: SliverList.builder(
-                      itemCount: d.items.length,
+                      itemCount: items.length,
                       itemBuilder: (ctx, i) {
-                        final item = d.items[i];
+                        final item = items[i];
                         return item.session != null
                             ? _SessionCard(
                                 item: item, showTherapist: manyTherapists)
@@ -230,6 +265,7 @@ class ClientHomeScreen extends ConsumerWidget {
     clinical_pb.ClientOverview overview,
   ) async {
     final l10n = AppLocalizations.of(context);
+    final p = context.cp;
     final titleCtrl = TextEditingController();
     final textCtrl = TextEditingController();
     var targetPf = overview.kartoteki.first.patientFileId;
@@ -238,69 +274,64 @@ class ClientHomeScreen extends ConsumerWidget {
       context: context,
       builder: (dctx) => StatefulBuilder(
         builder: (dctx, setState) => AlertDialog(
-          backgroundColor: ClientColors.card,
+          backgroundColor: p.card,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(l10n.client_note_new,
-              style: const TextStyle(
+              style: TextStyle(
                   fontFamily: 'Montserrat',
                   fontWeight: FontWeight.w700,
                   fontSize: 18,
-                  color: ClientColors.ink)),
+                  color: p.ink)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (overview.kartoteki.length > 1)
                 DropdownButtonFormField<String>(
                   initialValue: targetPf,
+                  dropdownColor: p.card,
                   items: overview.kartoteki
                       .map((k) => DropdownMenuItem(
                             value: k.patientFileId,
                             child: Text(k.therapistName,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontFamily: 'Montserrat',
                                     fontSize: 14,
-                                    color: ClientColors.ink)),
+                                    color: p.ink)),
                           ))
                       .toList(),
-                  onChanged: (v) =>
-                      setState(() => targetPf = v ?? targetPf),
+                  onChanged: (v) => setState(() => targetPf = v ?? targetPf),
                 ),
               TextField(
                 controller: titleCtrl,
-                style: const TextStyle(
-                    fontFamily: 'Montserrat', color: ClientColors.ink),
+                style: TextStyle(fontFamily: 'Montserrat', color: p.ink),
                 decoration: InputDecoration(
                   hintText: l10n.client_note_title_hint,
-                  hintStyle: const TextStyle(color: ClientColors.muted),
+                  hintStyle: TextStyle(color: p.muted),
                 ),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: textCtrl,
                 maxLines: 6,
-                style: const TextStyle(
-                    fontFamily: 'Montserrat', color: ClientColors.ink),
+                style: TextStyle(fontFamily: 'Montserrat', color: p.ink),
                 decoration: InputDecoration(
                   hintText: l10n.client_note_text_hint,
-                  hintStyle: const TextStyle(color: ClientColors.muted),
+                  hintStyle: TextStyle(color: p.muted),
                 ),
               ),
             ],
           ),
-          // Two actions (docs/39 live-feedback): save a private draft or
-          // save-and-deliver to the therapist in one go.
           actionsOverflowDirection: VerticalDirection.down,
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dctx).pop(null),
-              child: const Text('✕',
-                  style: TextStyle(color: ClientColors.muted)),
+              child: Text('✕', style: TextStyle(color: p.muted)),
             ),
             OutlinedButton(
               style: OutlinedButton.styleFrom(
-                foregroundColor: ClientColors.accent,
-                side: const BorderSide(color: ClientColors.accent),
+                foregroundColor: p.accent,
+                side: BorderSide(color: p.accent),
               ),
               onPressed: () async {
                 await _submitNote(context, dctx, ref, targetPf,
@@ -310,8 +341,8 @@ class ClientHomeScreen extends ConsumerWidget {
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: ClientColors.accent,
-                foregroundColor: Colors.white,
+                backgroundColor: p.accent,
+                foregroundColor: p.onAccent,
               ),
               onPressed: () async {
                 await _submitNote(context, dctx, ref, targetPf,
@@ -326,9 +357,8 @@ class ClientHomeScreen extends ConsumerWidget {
 
     if (sent != null && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(sent
-              ? l10n.client_note_sent
-              : l10n.client_note_saved_draft)));
+          content: Text(
+              sent ? l10n.client_note_sent : l10n.client_note_saved_draft)));
       ref.invalidate(clientHomeProvider);
     }
   }
@@ -368,16 +398,91 @@ class ClientHomeScreen extends ConsumerWidget {
   }
 }
 
-// ── Session card (mirrors the therapist timeline card, light) ───────
+// ── Filter bar ───────────────────────────────────────────────────────
 
-class _SessionCard extends StatelessWidget {
+class _FilterBar extends ConsumerWidget {
+  const _FilterBar({required this.selected});
+  final ClientFilter selected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final labels = {
+      ClientFilter.all: l10n.client_filter_all,
+      ClientFilter.sessions: l10n.client_filter_sessions,
+      ClientFilter.therapist: l10n.client_filter_therapist,
+      ClientFilter.own: l10n.client_filter_own,
+    };
+    return SizedBox(
+      height: 36,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final f in ClientFilter.values) ...[
+            _FilterChip(
+              label: labels[f]!,
+              active: selected == f,
+              onTap: () =>
+                  ref.read(clientFilterProvider.notifier).select(f),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip(
+      {required this.label, required this.active, required this.onTap});
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.cp;
+    return Material(
+      color: active ? p.accent : p.card,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+                color: active ? p.accent : p.border, width: 1),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: active ? p.onAccent : p.muted,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Session card ─────────────────────────────────────────────────────
+
+class _SessionCard extends ConsumerWidget {
   const _SessionCard({required this.item, required this.showTherapist});
   final ClientTimelineItem item;
   final bool showTherapist;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final p = context.cp;
     final s = item.session!;
     final minutes = (s.durationSeconds / 60).round();
     final date = DateTime.tryParse(s.sessionDate);
@@ -400,32 +505,28 @@ class _SessionCard extends StatelessWidget {
           ),
         ),
       ),
-      leading: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: ClientColors.greenSoft,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          '#${s.sessionNumber}',
-          style: const TextStyle(
-            fontFamily: 'Montserrat',
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
-            color: ClientColors.green,
-          ),
-        ),
+      leading: _LeadingTile(
+        bg: p.greenSoft,
+        child: Text('#${s.sessionNumber}',
+            style: TextStyle(
+                fontFamily: 'Montserrat',
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: p.green)),
       ),
       title: l10n.client_session_title(s.sessionNumber),
       titleTrailing: s.hasTranscript
           ? _Chip(
               text: l10n.client_session_transcript_chip,
-              fg: ClientColors.green,
-              bg: ClientColors.greenSoft)
+              fg: p.green,
+              bg: p.greenSoft)
           : null,
       subtitle: meta,
+      // Shared item → hide from panel only.
+      onManage: () => _hideItem(context, ref, l10n, p,
+          kind: 'SESSION', id: s.sessionId),
+      manageLabel: l10n.client_action_hide,
+      manageIcon: Icons.visibility_off_outlined,
     );
   }
 }
@@ -440,10 +541,10 @@ class _NoteCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final p = context.cp;
     final n = item.note!;
     final mine = n.authorRole == 'PATIENT';
     final unread = !mine && !n.read;
-    // A client note not yet delivered to the therapist (000068 draft).
     final isDraft = mine && !n.hasSentToTherapistAt();
     final created =
         n.hasCreatedAt() ? n.createdAt.toDateTime().toLocal() : null;
@@ -462,36 +563,36 @@ class _NoteCard extends ConsumerWidget {
 
     return _CardShell(
       highlighted: unread || isDraft,
-      onTap: () => _openNote(context, ref, l10n, unread, isDraft),
-      leading: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: ClientColors.accentSoft,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        alignment: Alignment.center,
+      onTap: () => _openNote(context, ref, l10n, p, unread, isDraft),
+      leading: _LeadingTile(
+        bg: mine ? p.accentSoft : p.greenSoft,
         child: Text(mine ? '💬' : '📝', style: const TextStyle(fontSize: 20)),
       ),
       title: n.title.isEmpty ? l10n.client_note_from_therapist : n.title,
       titleTrailing: unread
-          ? _Chip(
-              text: l10n.client_new_badge,
-              fg: Colors.white,
-              bg: ClientColors.accent)
+          ? _Chip(text: l10n.client_new_badge, fg: p.onAccent, bg: p.accent)
           : isDraft
               ? _Chip(
                   text: l10n.client_note_draft_badge,
-                  fg: ClientColors.accent,
-                  bg: ClientColors.accentSoft)
+                  fg: p.accent,
+                  bg: p.accentSoft)
               : null,
       subtitle: meta,
       snippet: n.text,
+      // Own note → hard delete; therapist note → hide from panel.
+      onManage: mine
+          ? () => _deleteOwnNote(context, ref, l10n, p, n)
+          : () => _hideItem(context, ref, l10n, p, kind: 'NOTE', id: n.id),
+      manageLabel:
+          mine ? l10n.client_action_delete : l10n.client_action_hide,
+      manageIcon:
+          mine ? Icons.delete_outline : Icons.visibility_off_outlined,
+      manageDestructive: mine,
     );
   }
 
   Future<void> _openNote(BuildContext context, WidgetRef ref,
-      AppLocalizations l10n, bool unread, bool isDraft) async {
+      AppLocalizations l10n, ClientPalette p, bool unread, bool isDraft) async {
     final n = item.note!;
     if (unread) {
       final clinical = ref.read(grpcClientsProvider).clinical;
@@ -504,38 +605,37 @@ class _NoteCard extends ConsumerWidget {
     final send = await showDialog<bool>(
       context: context,
       builder: (dctx) => AlertDialog(
-        backgroundColor: ClientColors.card,
+        backgroundColor: p.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           n.title.isEmpty ? l10n.client_note_from_therapist : n.title,
-          style: const TextStyle(
+          style: TextStyle(
               fontFamily: 'Montserrat',
               fontWeight: FontWeight.w700,
               fontSize: 18,
-              color: ClientColors.ink),
+              color: p.ink),
         ),
         content: SingleChildScrollView(
           child: SelectableText(
             n.text,
-            style: const TextStyle(
+            style: TextStyle(
                 fontFamily: 'Montserrat',
                 fontSize: 15,
                 height: 1.55,
-                color: ClientColors.ink),
+                color: p.ink),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dctx).pop(false),
             child: Text(l10n.client_note_close,
-                style: const TextStyle(color: ClientColors.muted)),
+                style: TextStyle(color: p.muted)),
           ),
-          // "Wyślij do terapeuty" — only on the client's own drafts.
           if (isDraft)
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: ClientColors.accent,
-                foregroundColor: Colors.white,
+                backgroundColor: p.accent,
+                foregroundColor: p.onAccent,
               ),
               onPressed: () => Navigator.of(dctx).pop(true),
               child: Text(l10n.client_note_send),
@@ -564,7 +664,115 @@ class _NoteCard extends ConsumerWidget {
   }
 }
 
+// ── Delete / hide actions (shared by both card types) ────────────────
+
+Future<void> _deleteOwnNote(BuildContext context, WidgetRef ref,
+    AppLocalizations l10n, ClientPalette p, clinical_pb.ClientNote n) async {
+  final ok = await _confirm(context, p,
+      title: l10n.client_delete_confirm_title,
+      body: l10n.client_delete_confirm_body,
+      confirmLabel: l10n.client_confirm_delete,
+      cancelLabel: l10n.client_confirm_cancel,
+      destructive: true);
+  if (ok != true || !context.mounted) return;
+  try {
+    await ref
+        .read(grpcClientsProvider)
+        .clinical
+        .clientDeleteNote(clinical_pb.ClientDeleteNoteRequest(noteId: n.id));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.client_deleted_toast)));
+    }
+    ref.invalidate(clientHomeProvider);
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+}
+
+Future<void> _hideItem(BuildContext context, WidgetRef ref,
+    AppLocalizations l10n, ClientPalette p,
+    {required String kind, required String id}) async {
+  final ok = await _confirm(context, p,
+      title: l10n.client_hide_confirm_title,
+      body: l10n.client_hide_confirm_body,
+      confirmLabel: l10n.client_confirm_hide,
+      cancelLabel: l10n.client_confirm_cancel,
+      destructive: false);
+  if (ok != true || !context.mounted) return;
+  try {
+    await ref.read(grpcClientsProvider).clinical.clientHideItem(
+        clinical_pb.ClientHideItemRequest(itemKind: kind, itemId: id));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.client_hidden_toast)));
+    }
+    ref.invalidate(clientHomeProvider);
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+}
+
+Future<bool?> _confirm(BuildContext context, ClientPalette p,
+    {required String title,
+    required String body,
+    required String confirmLabel,
+    required String cancelLabel,
+    required bool destructive}) {
+  return showDialog<bool>(
+    context: context,
+    builder: (dctx) => AlertDialog(
+      backgroundColor: p.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(title,
+          style: TextStyle(
+              fontFamily: 'Montserrat',
+              fontWeight: FontWeight.w700,
+              fontSize: 17,
+              color: p.ink)),
+      content: Text(body,
+          style: TextStyle(
+              fontFamily: 'Montserrat', fontSize: 14, height: 1.5, color: p.muted)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dctx).pop(false),
+          child: Text(cancelLabel, style: TextStyle(color: p.muted)),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: destructive ? const Color(0xFFD84515) : p.accent,
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () => Navigator.of(dctx).pop(true),
+          child: Text(confirmLabel),
+        ),
+      ],
+    ),
+  );
+}
+
 // ── Shared card chrome ───────────────────────────────────────────────
+
+class _LeadingTile extends StatelessWidget {
+  const _LeadingTile({required this.bg, required this.child});
+  final Color bg;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 44,
+        height: 44,
+        decoration:
+            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+        alignment: Alignment.center,
+        child: child,
+      );
+}
 
 class _CardShell extends StatelessWidget {
   const _CardShell({
@@ -575,6 +783,10 @@ class _CardShell extends StatelessWidget {
     this.snippet,
     this.onTap,
     this.highlighted = false,
+    this.onManage,
+    this.manageLabel,
+    this.manageIcon,
+    this.manageDestructive = false,
   });
 
   final Widget leading;
@@ -584,38 +796,31 @@ class _CardShell extends StatelessWidget {
   final String? snippet;
   final VoidCallback? onTap;
   final bool highlighted;
+  final VoidCallback? onManage;
+  final String? manageLabel;
+  final IconData? manageIcon;
+  final bool manageDestructive;
 
   @override
   Widget build(BuildContext context) {
+    final p = context.cp;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
-        color: ClientColors.card,
+        color: p.card,
         borderRadius: BorderRadius.circular(18),
         elevation: 0,
-        shadowColor: Colors.black.withValues(alpha: 0.04),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.035),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(18),
-            child: Container(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: highlighted
-                    ? ClientColors.accent.withValues(alpha: 0.55)
-                    : ClientColors.border,
+                    ? p.accent.withValues(alpha: 0.55)
+                    : p.border,
                 width: highlighted ? 1.4 : 1,
               ),
             ),
@@ -635,11 +840,11 @@ class _CardShell extends StatelessWidget {
                               title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontWeight: FontWeight.w700,
                                 fontSize: 16,
-                                color: ClientColors.ink,
+                                color: p.ink,
                               ),
                             ),
                           ),
@@ -655,32 +860,81 @@ class _CardShell extends StatelessWidget {
                           snippet!,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Montserrat',
                             fontSize: 13,
                             height: 1.4,
-                            color: ClientColors.muted,
+                            color: p.muted,
                           ),
                         ),
                       ],
                       const SizedBox(height: 6),
                       Text(
                         subtitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 12,
-                          color: ClientColors.muted,
+                          color: p.muted,
                         ),
                       ),
                     ],
                   ),
                 ),
+                if (onManage != null)
+                  _ManageButton(
+                    onManage: onManage!,
+                    label: manageLabel ?? '',
+                    icon: manageIcon ?? Icons.more_horiz,
+                    destructive: manageDestructive,
+                  ),
               ],
             ),
           ),
-          ),
         ),
       ),
+    );
+  }
+}
+
+class _ManageButton extends StatelessWidget {
+  const _ManageButton({
+    required this.onManage,
+    required this.label,
+    required this.icon,
+    required this.destructive,
+  });
+  final VoidCallback onManage;
+  final String label;
+  final IconData icon;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.cp;
+    return PopupMenuButton<int>(
+      icon: Icon(Icons.more_vert, color: p.muted, size: 20),
+      color: p.card,
+      tooltip: '',
+      onSelected: (_) => onManage(),
+      itemBuilder: (ctx) => [
+        PopupMenuItem<int>(
+          value: 0,
+          child: Row(
+            children: [
+              Icon(icon,
+                  size: 18,
+                  color: destructive ? const Color(0xFFD84515) : p.ink),
+              const SizedBox(width: 10),
+              Text(label,
+                  style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 14,
+                      color:
+                          destructive ? const Color(0xFFD84515) : p.ink)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

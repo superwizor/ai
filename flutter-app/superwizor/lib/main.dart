@@ -60,6 +60,9 @@ void main() async {
   // Hive — used by ConsentService (D9), the cache repositories
   // (lib/cache/), and the offline upload queue (lib/uploads/).
   await Hive.initFlutter();
+  // Client-panel prefs (docs/39 PR13: light/dark choice). Opened here so
+  // the ClientDarkNotifier can read it synchronously.
+  await Hive.openBox('client_prefs');
 
   // App-lifecycle observer that nudges the upload queue runner when
   // the app returns to the foreground. The runner itself is created

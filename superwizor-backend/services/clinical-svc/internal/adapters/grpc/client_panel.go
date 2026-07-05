@@ -292,6 +292,87 @@ func (s *Server) ClientMarkNoteRead(ctx context.Context, req *clinicalv1.ClientM
 	return &emptypb.Empty{}, nil
 }
 
+// ClientDeleteNote hard-deletes the client's OWN note (docs/39 PR13).
+// A CLIENT_NOTE is authored by the client, so removing it here removes it
+// everywhere — including from the therapist if it had been sent. The
+// query is guarded to kind='CLIENT_NOTE'; the handler additionally
+// verifies the note lives in one of the caller's kartoteki, so a client
+// can never destroy a therapist note or another client's note.
+func (s *Server) ClientDeleteNote(ctx context.Context, req *clinicalv1.ClientDeleteNoteRequest) (*emptypb.Empty, error) {
+	noteID, err := uuid.Parse(req.NoteId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid note_id")
+	}
+	note, err := s.queries.GetClientNoteForDelete(ctx, noteID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "not found")
+	}
+	if _, _, err := s.requireClientFileAccess(ctx, note.PatientFileID); err != nil {
+		return nil, err
+	}
+	if note.Kind != "CLIENT_NOTE" {
+		// Not the client's to delete — no enumeration (same as read).
+		return nil, status.Error(codes.NotFound, "not found")
+	}
+	n, err := s.queries.HardDeleteClientNote(ctx, noteID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "delete note: %v", err)
+	}
+	if n == 0 {
+		return nil, status.Error(codes.NotFound, "not found")
+	}
+	return &emptypb.Empty{}, nil
+}
+
+// ClientHideItem dismisses a therapist-shared session or note from the
+// client's panel only (docs/39 PR13) — stamps client_hidden_at, which the
+// Client* read queries filter on. The therapist's data is untouched. A
+// client's own CLIENT_NOTE cannot be hidden (they hard-delete instead):
+// HideNoteFromClient guards kind<>'CLIENT_NOTE'.
+func (s *Server) ClientHideItem(ctx context.Context, req *clinicalv1.ClientHideItemRequest) (*emptypb.Empty, error) {
+	itemID, err := uuid.Parse(req.ItemId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid item_id")
+	}
+	switch req.ItemKind {
+	case "SESSION":
+		sess, err := s.queries.ClientGetSharedSession(ctx, itemID)
+		if err != nil {
+			return nil, status.Error(codes.NotFound, "not found")
+		}
+		if _, _, err := s.requireClientFileAccess(ctx, sess.PatientFileID); err != nil {
+			return nil, err
+		}
+		n, err := s.queries.HideSessionFromClient(ctx, itemID)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "hide session: %v", err)
+		}
+		if n == 0 {
+			return nil, status.Error(codes.NotFound, "not found")
+		}
+	case "NOTE":
+		note, err := s.queries.GetPatientNote(ctx, itemID)
+		if err != nil {
+			return nil, status.Error(codes.NotFound, "not found")
+		}
+		if _, _, err := s.requireClientFileAccess(ctx, note.PatientFileID); err != nil {
+			return nil, err
+		}
+		n, err := s.queries.HideNoteFromClient(ctx, itemID)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "hide note: %v", err)
+		}
+		if n == 0 {
+			// Either already hidden, not shared, or a CLIENT_NOTE — all
+			// "nothing to hide" from the client's perspective.
+			return nil, status.Error(codes.NotFound, "not found")
+		}
+	default:
+		return nil, status.Error(codes.InvalidArgument, "item_kind must be SESSION or NOTE")
+	}
+	return &emptypb.Empty{}, nil
+}
+
 // toClientNote decrypts and maps a row to the client-facing shape.
 func (s *Server) toClientNote(ctx context.Context, n db.PatientNote) (*clinicalv1.ClientNote, error) {
 	titleBytes, err := s.crypto.Decrypt(ctx, n.TitleCiphertext, n.TitleEncryptedDek)

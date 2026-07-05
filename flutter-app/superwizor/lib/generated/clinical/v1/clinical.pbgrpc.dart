@@ -426,6 +426,25 @@ class ClinicalServiceClient extends $grpc.Client {
     return $createUnaryCall(_$clientMarkNoteRead, request, options: options);
   }
 
+  /// docs/39 PR13 — panel management.
+  ///   ClientDeleteNote: HARD-delete the client's OWN note (CLIENT_NOTE)
+  ///     everywhere, including from the therapist if it was already sent.
+  ///   ClientHideItem: dismiss a therapist-shared session/note from the
+  ///     client's panel only (client_hidden_at) — therapist keeps it.
+  $grpc.ResponseFuture<$1.Empty> clientDeleteNote(
+    $0.ClientDeleteNoteRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$clientDeleteNote, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$1.Empty> clientHideItem(
+    $0.ClientHideItemRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$clientHideItem, request, options: options);
+  }
+
   /// Therapist-side sharing toggles (docs/39 D2/D6) — gated by
   /// requireTherapistDataAccess like every kartoteka mutation.
   $grpc.ResponseFuture<$1.Empty> shareSessionWithClient(
@@ -680,6 +699,16 @@ class ClinicalServiceClient extends $grpc.Client {
       $grpc.ClientMethod<$0.ClientMarkNoteReadRequest, $1.Empty>(
           '/clinical.v1.ClinicalService/ClientMarkNoteRead',
           ($0.ClientMarkNoteReadRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$clientDeleteNote =
+      $grpc.ClientMethod<$0.ClientDeleteNoteRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/ClientDeleteNote',
+          ($0.ClientDeleteNoteRequest value) => value.writeToBuffer(),
+          $1.Empty.fromBuffer);
+  static final _$clientHideItem =
+      $grpc.ClientMethod<$0.ClientHideItemRequest, $1.Empty>(
+          '/clinical.v1.ClinicalService/ClientHideItem',
+          ($0.ClientHideItemRequest value) => value.writeToBuffer(),
           $1.Empty.fromBuffer);
   static final _$shareSessionWithClient =
       $grpc.ClientMethod<$0.ShareSessionWithClientRequest, $1.Empty>(
@@ -1066,6 +1095,22 @@ abstract class ClinicalServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) =>
             $0.ClientMarkNoteReadRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClientDeleteNoteRequest, $1.Empty>(
+        'ClientDeleteNote',
+        clientDeleteNote_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ClientDeleteNoteRequest.fromBuffer(value),
+        ($1.Empty value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClientHideItemRequest, $1.Empty>(
+        'ClientHideItem',
+        clientHideItem_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ClientHideItemRequest.fromBuffer(value),
         ($1.Empty value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.ShareSessionWithClientRequest, $1.Empty>(
         'ShareSessionWithClient',
@@ -1466,6 +1511,22 @@ abstract class ClinicalServiceBase extends $grpc.Service {
 
   $async.Future<$1.Empty> clientMarkNoteRead(
       $grpc.ServiceCall call, $0.ClientMarkNoteReadRequest request);
+
+  $async.Future<$1.Empty> clientDeleteNote_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ClientDeleteNoteRequest> $request) async {
+    return clientDeleteNote($call, await $request);
+  }
+
+  $async.Future<$1.Empty> clientDeleteNote(
+      $grpc.ServiceCall call, $0.ClientDeleteNoteRequest request);
+
+  $async.Future<$1.Empty> clientHideItem_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ClientHideItemRequest> $request) async {
+    return clientHideItem($call, await $request);
+  }
+
+  $async.Future<$1.Empty> clientHideItem(
+      $grpc.ServiceCall call, $0.ClientHideItemRequest request);
 
   $async.Future<$1.Empty> shareSessionWithClient_Pre($grpc.ServiceCall $call,
       $async.Future<$0.ShareSessionWithClientRequest> $request) async {

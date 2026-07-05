@@ -1,7 +1,7 @@
-// ClientSessionScreen — read-only transcript viewer for a shared
-// session (docs/39). Light palette matching ClientHomeScreen v2.
-// Renders speaker turns exactly as the backend grouped them; no
-// editing, no reports, no pipeline internals.
+// ClientSessionScreen — read-only transcript viewer for a shared session
+// (docs/39). Matches the client panel theme (light/dark, Montserrat).
+// Renders speaker turns exactly as the backend grouped them; no editing,
+// no reports, no pipeline internals.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../generated/clinical/v1/clinical.pb.dart' as clinical_pb;
 import '../l10n/app_localizations.dart';
 import '../providers/grpc_provider.dart';
-import 'client_home_screen.dart' show ClientColors, clientHomeProvider;
+import 'client_home_screen.dart' show clientHomeProvider;
+import 'client_theme.dart';
 
 final clientTranscriptProvider = FutureProvider.autoDispose
     .family<clinical_pb.ClientGetTranscriptResponse, String>((ref, sessionID) async {
@@ -29,41 +30,50 @@ class ClientSessionScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Pushed as its own route → needs its own client Theme wrapper.
+    final dark = ref.watch(clientDarkProvider);
+    return Theme(
+      data: clientThemeData(dark),
+      child: Builder(builder: (context) => _body(context, ref)),
+    );
+  }
+
+  Widget _body(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final p = context.cp;
     final transcript = ref.watch(clientTranscriptProvider(session.sessionId));
 
     return Scaffold(
-      backgroundColor: ClientColors.bg,
+      backgroundColor: p.bg,
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: ClientColors.accent,
-        foregroundColor: Colors.white,
+        backgroundColor: p.accent,
+        foregroundColor: p.onAccent,
         icon: const Icon(Icons.edit_note),
         label: Text(l10n.client_session_add_note),
-        onPressed: () => _addSessionNote(context, ref, l10n),
+        onPressed: () => _addSessionNote(context, ref, l10n, p),
       ),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: ClientColors.ink),
+        iconTheme: IconThemeData(color: p.ink),
         title: Text(
           '${l10n.client_session_title(session.sessionNumber)} · ${session.sessionDate}',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Montserrat',
             fontWeight: FontWeight.w700,
             fontSize: 17,
-            color: ClientColors.ink,
+            color: p.ink,
           ),
         ),
       ),
       body: transcript.when(
-        loading: () => const Center(
-            child: CircularProgressIndicator(color: ClientColors.accent)),
+        loading: () =>
+            Center(child: CircularProgressIndicator(color: p.accent)),
         error: (err, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(l10n.client_home_error(err.toString()),
-                style: const TextStyle(
-                    fontFamily: 'Montserrat', color: ClientColors.muted)),
+                style: TextStyle(fontFamily: 'Montserrat', color: p.muted)),
           ),
         ),
         data: (data) {
@@ -71,8 +81,7 @@ class ClientSessionScreen extends ConsumerWidget {
           if (!data.hasTranscript() || turns.isEmpty) {
             return Center(
               child: Text(l10n.client_session_no_transcript,
-                  style: const TextStyle(
-                      fontFamily: 'Montserrat', color: ClientColors.muted)),
+                  style: TextStyle(fontFamily: 'Montserrat', color: p.muted)),
             );
           }
           return ListView.builder(
@@ -92,9 +101,7 @@ class ClientSessionScreen extends ConsumerWidget {
                       turn.speakerLabel,
                       style: TextStyle(
                         fontFamily: 'Montserrat',
-                        color: isTherapist
-                            ? ClientColors.accent
-                            : ClientColors.green,
+                        color: isTherapist ? p.accent : p.green,
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
@@ -103,9 +110,9 @@ class ClientSessionScreen extends ConsumerWidget {
                     const SizedBox(height: 4),
                     SelectableText(
                       turn.text,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Montserrat',
-                        color: ClientColors.ink,
+                        color: p.ink,
                         fontSize: 15,
                         height: 1.55,
                       ),
@@ -120,12 +127,11 @@ class ClientSessionScreen extends ConsumerWidget {
     );
   }
 
-  // Compose a note from the session view. Same two-button contract as
-  // the home composer: save a private draft or save-and-send. The note
-  // is a plain CLIENT_NOTE on this kartoteka (the panel timeline shows
-  // it); its title defaults to the session label for context.
-  Future<void> _addSessionNote(
-    BuildContext context, WidgetRef ref, AppLocalizations l10n) async {
+  // Compose a note from the session view. Same two-button contract as the
+  // home composer: save a private draft or save-and-send. Title defaults
+  // to the session label for context.
+  Future<void> _addSessionNote(BuildContext context, WidgetRef ref,
+      AppLocalizations l10n, ClientPalette p) async {
     final titleCtrl = TextEditingController(
         text:
             '${l10n.client_session_title(session.sessionNumber)} · ${session.sessionDate}');
@@ -157,24 +163,23 @@ class ClientSessionScreen extends ConsumerWidget {
     final sent = await showDialog<bool>(
       context: context,
       builder: (dctx) => AlertDialog(
-        backgroundColor: ClientColors.card,
+        backgroundColor: p.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(l10n.client_session_add_note,
-            style: const TextStyle(
+            style: TextStyle(
                 fontFamily: 'Montserrat',
                 fontWeight: FontWeight.w700,
                 fontSize: 18,
-                color: ClientColors.ink)),
+                color: p.ink)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: titleCtrl,
-              style: const TextStyle(
-                  fontFamily: 'Montserrat', color: ClientColors.ink),
+              style: TextStyle(fontFamily: 'Montserrat', color: p.ink),
               decoration: InputDecoration(
                 hintText: l10n.client_note_title_hint,
-                hintStyle: const TextStyle(color: ClientColors.muted),
+                hintStyle: TextStyle(color: p.muted),
               ),
             ),
             const SizedBox(height: 8),
@@ -182,11 +187,10 @@ class ClientSessionScreen extends ConsumerWidget {
               controller: textCtrl,
               maxLines: 6,
               autofocus: true,
-              style: const TextStyle(
-                  fontFamily: 'Montserrat', color: ClientColors.ink),
+              style: TextStyle(fontFamily: 'Montserrat', color: p.ink),
               decoration: InputDecoration(
                 hintText: l10n.client_note_text_hint,
-                hintStyle: const TextStyle(color: ClientColors.muted),
+                hintStyle: TextStyle(color: p.muted),
               ),
             ),
           ],
@@ -194,21 +198,21 @@ class ClientSessionScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dctx).pop(null),
-            child: Text(l10n.client_note_close,
-                style: const TextStyle(color: ClientColors.muted)),
+            child:
+                Text(l10n.client_note_close, style: TextStyle(color: p.muted)),
           ),
           OutlinedButton(
             style: OutlinedButton.styleFrom(
-              foregroundColor: ClientColors.accent,
-              side: const BorderSide(color: ClientColors.accent),
+              foregroundColor: p.accent,
+              side: BorderSide(color: p.accent),
             ),
             onPressed: () => submit(dctx, false),
             child: Text(l10n.client_note_save),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: ClientColors.accent,
-              foregroundColor: Colors.white,
+              backgroundColor: p.accent,
+              foregroundColor: p.onAccent,
             ),
             onPressed: () => submit(dctx, true),
             child: Text(l10n.client_note_save_and_send),
