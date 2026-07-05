@@ -9288,6 +9288,129 @@ class ClientNote extends $pb.GeneratedMessage {
   $3.Timestamp ensureSentToTherapistAt() => $_ensure(8);
 }
 
+/// docs/39 PR13.
+class ClientDeleteNoteRequest extends $pb.GeneratedMessage {
+  factory ClientDeleteNoteRequest({
+    $core.String? noteId,
+  }) {
+    final result = create();
+    if (noteId != null) result.noteId = noteId;
+    return result;
+  }
+
+  ClientDeleteNoteRequest._();
+
+  factory ClientDeleteNoteRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ClientDeleteNoteRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClientDeleteNoteRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'noteId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientDeleteNoteRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientDeleteNoteRequest copyWith(
+          void Function(ClientDeleteNoteRequest) updates) =>
+      super.copyWith((message) => updates(message as ClientDeleteNoteRequest))
+          as ClientDeleteNoteRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ClientDeleteNoteRequest create() => ClientDeleteNoteRequest._();
+  @$core.override
+  ClientDeleteNoteRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ClientDeleteNoteRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClientDeleteNoteRequest>(create);
+  static ClientDeleteNoteRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get noteId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set noteId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNoteId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNoteId() => $_clearField(1);
+}
+
+class ClientHideItemRequest extends $pb.GeneratedMessage {
+  factory ClientHideItemRequest({
+    $core.String? itemKind,
+    $core.String? itemId,
+  }) {
+    final result = create();
+    if (itemKind != null) result.itemKind = itemKind;
+    if (itemId != null) result.itemId = itemId;
+    return result;
+  }
+
+  ClientHideItemRequest._();
+
+  factory ClientHideItemRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ClientHideItemRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClientHideItemRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'clinical.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'itemKind')
+    ..aOS(2, _omitFieldNames ? '' : 'itemId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientHideItemRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientHideItemRequest copyWith(
+          void Function(ClientHideItemRequest) updates) =>
+      super.copyWith((message) => updates(message as ClientHideItemRequest))
+          as ClientHideItemRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ClientHideItemRequest create() => ClientHideItemRequest._();
+  @$core.override
+  ClientHideItemRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ClientHideItemRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClientHideItemRequest>(create);
+  static ClientHideItemRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get itemKind => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set itemKind($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasItemKind() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearItemKind() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get itemId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set itemId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasItemId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearItemId() => $_clearField(2);
+}
+
 class ClientListNotesResponse extends $pb.GeneratedMessage {
   factory ClientListNotesResponse({
     $core.Iterable<ClientNote>? notes,

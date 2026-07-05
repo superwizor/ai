@@ -58,15 +58,18 @@ SELECT
     COALESCE(o.legal_name, '')::text AS organization_name,
     (SELECT COUNT(*) FROM sessions s
       WHERE s.patient_file_id = pf.id AND s.deleted_at IS NULL
-        AND s.shared_with_client_at IS NOT NULL)::int AS shared_sessions,
-    (SELECT COUNT(*) FROM patient_notes n
-      WHERE n.patient_file_id = pf.id AND n.deleted_at IS NULL
-        AND n.kind <> 'CLIENT_NOTE'
-        AND n.shared_with_client_at IS NOT NULL)::int AS shared_notes,
+        AND s.shared_with_client_at IS NOT NULL
+        AND s.client_hidden_at IS NULL)::int AS shared_sessions,
     (SELECT COUNT(*) FROM patient_notes n
       WHERE n.patient_file_id = pf.id AND n.deleted_at IS NULL
         AND n.kind <> 'CLIENT_NOTE'
         AND n.shared_with_client_at IS NOT NULL
+        AND n.client_hidden_at IS NULL)::int AS shared_notes,
+    (SELECT COUNT(*) FROM patient_notes n
+      WHERE n.patient_file_id = pf.id AND n.deleted_at IS NULL
+        AND n.kind <> 'CLIENT_NOTE'
+        AND n.shared_with_client_at IS NOT NULL
+        AND n.client_hidden_at IS NULL
         AND n.read_by_client_at IS NULL)::int AS unread_notes
 FROM patient_files pf
 JOIN users t ON t.id = pf.therapist_id
@@ -124,6 +127,7 @@ FROM sessions s
 WHERE s.patient_file_id = $1
   AND s.deleted_at IS NULL
   AND s.shared_with_client_at IS NOT NULL
+  AND s.client_hidden_at IS NULL
 ORDER BY s.session_date DESC, s.session_number DESC
 `
 
@@ -164,14 +168,17 @@ func (q *Queries) ClientListSharedSessions(ctx context.Context, patientFileID uu
 }
 
 const clientListVisibleNotes = `-- name: ClientListVisibleNotes :many
-SELECT id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at FROM patient_notes
+SELECT id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at, client_hidden_at FROM patient_notes
 WHERE patient_file_id = $1
   AND deleted_at IS NULL
+  AND client_hidden_at IS NULL
   AND (shared_with_client_at IS NOT NULL OR kind = 'CLIENT_NOTE')
 ORDER BY created_at DESC
 `
 
 // Therapist notes shared with the client + the client's own notes.
+// Excludes items the client dismissed from their panel (client_hidden_at);
+// a client's own CLIENT_NOTE is never hidden (they hard-delete instead).
 func (q *Queries) ClientListVisibleNotes(ctx context.Context, patientFileID uuid.UUID) ([]PatientNote, error) {
 	rows, err := q.db.Query(ctx, clientListVisibleNotes, patientFileID)
 	if err != nil {
@@ -201,6 +208,7 @@ func (q *Queries) ClientListVisibleNotes(ctx context.Context, patientFileID uuid
 			&i.ReadByTherapistAt,
 			&i.ReadByClientAt,
 			&i.SentToTherapistAt,
+			&i.ClientHiddenAt,
 		); err != nil {
 			return nil, err
 		}
@@ -234,7 +242,7 @@ INSERT INTO patient_notes (
     sent_to_therapist_at
 ) VALUES ($1, $2, 'CLIENT_NOTE', 'PATIENT', $3, $4, $5, $6,
     CASE WHEN $7::bool THEN now() ELSE NULL END)
-RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at
+RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at, client_hidden_at
 `
 
 type CreateClientNoteParams struct {
@@ -282,6 +290,34 @@ func (q *Queries) CreateClientNote(ctx context.Context, arg CreateClientNotePara
 		&i.ReadByTherapistAt,
 		&i.ReadByClientAt,
 		&i.SentToTherapistAt,
+		&i.ClientHiddenAt,
+	)
+	return i, err
+}
+
+const getClientNoteForDelete = `-- name: GetClientNoteForDelete :one
+SELECT id, patient_file_id, kind, author_role
+FROM patient_notes
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+type GetClientNoteForDeleteRow struct {
+	ID            uuid.UUID `json:"id"`
+	PatientFileID uuid.UUID `json:"patient_file_id"`
+	Kind          string    `json:"kind"`
+	AuthorRole    UserRole  `json:"author_role"`
+}
+
+// docs/39 PR13: fetch a note for the hard-delete authz check. Handler
+// verifies patient_file_id belongs to the caller and kind = CLIENT_NOTE.
+func (q *Queries) GetClientNoteForDelete(ctx context.Context, id uuid.UUID) (GetClientNoteForDeleteRow, error) {
+	row := q.db.QueryRow(ctx, getClientNoteForDelete, id)
+	var i GetClientNoteForDeleteRow
+	err := row.Scan(
+		&i.ID,
+		&i.PatientFileID,
+		&i.Kind,
+		&i.AuthorRole,
 	)
 	return i, err
 }
@@ -329,12 +365,66 @@ func (q *Queries) GetUserEmailForNotify(ctx context.Context, id uuid.UUID) (GetU
 	return i, err
 }
 
+const hardDeleteClientNote = `-- name: HardDeleteClientNote :execrows
+DELETE FROM patient_notes
+WHERE id = $1 AND kind = 'CLIENT_NOTE'
+`
+
+// docs/39 PR13: the client removes their OWN note everywhere (including
+// from the therapist if it was sent). Guarded to CLIENT_NOTE so a therapist
+// note can never be destroyed through this path. Returns rows affected so
+// the handler can 404 on a no-op.
+func (q *Queries) HardDeleteClientNote(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, hardDeleteClientNote, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const hideNoteFromClient = `-- name: HideNoteFromClient :execrows
+UPDATE patient_notes
+SET client_hidden_at = now(), updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+  AND kind <> 'CLIENT_NOTE'
+  AND shared_with_client_at IS NOT NULL
+  AND client_hidden_at IS NULL
+`
+
+// docs/39 PR13: dismiss a shared THERAPIST note from the client's panel
+// only. kind <> CLIENT_NOTE so a client's own note can't be hidden (they
+// hard-delete instead).
+func (q *Queries) HideNoteFromClient(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, hideNoteFromClient, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const hideSessionFromClient = `-- name: HideSessionFromClient :execrows
+UPDATE sessions
+SET client_hidden_at = now(), updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+  AND shared_with_client_at IS NOT NULL
+  AND client_hidden_at IS NULL
+`
+
+// docs/39 PR13: dismiss a shared session from the client's panel only.
+func (q *Queries) HideSessionFromClient(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, hideSessionFromClient, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const markClientNoteSentToTherapist = `-- name: MarkClientNoteSentToTherapist :one
 UPDATE patient_notes
 SET sent_to_therapist_at = COALESCE(sent_to_therapist_at, now()),
     updated_at = now()
 WHERE id = $1 AND kind = 'CLIENT_NOTE' AND deleted_at IS NULL
-RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at
+RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at, client_hidden_at
 `
 
 // Deliver a saved draft. Idempotent — a delivered note keeps its
@@ -362,6 +452,7 @@ func (q *Queries) MarkClientNoteSentToTherapist(ctx context.Context, id uuid.UUI
 		&i.ReadByTherapistAt,
 		&i.ReadByClientAt,
 		&i.SentToTherapistAt,
+		&i.ClientHiddenAt,
 	)
 	return i, err
 }

@@ -11,15 +11,18 @@ SELECT
     COALESCE(o.legal_name, '')::text AS organization_name,
     (SELECT COUNT(*) FROM sessions s
       WHERE s.patient_file_id = pf.id AND s.deleted_at IS NULL
-        AND s.shared_with_client_at IS NOT NULL)::int AS shared_sessions,
-    (SELECT COUNT(*) FROM patient_notes n
-      WHERE n.patient_file_id = pf.id AND n.deleted_at IS NULL
-        AND n.kind <> 'CLIENT_NOTE'
-        AND n.shared_with_client_at IS NOT NULL)::int AS shared_notes,
+        AND s.shared_with_client_at IS NOT NULL
+        AND s.client_hidden_at IS NULL)::int AS shared_sessions,
     (SELECT COUNT(*) FROM patient_notes n
       WHERE n.patient_file_id = pf.id AND n.deleted_at IS NULL
         AND n.kind <> 'CLIENT_NOTE'
         AND n.shared_with_client_at IS NOT NULL
+        AND n.client_hidden_at IS NULL)::int AS shared_notes,
+    (SELECT COUNT(*) FROM patient_notes n
+      WHERE n.patient_file_id = pf.id AND n.deleted_at IS NULL
+        AND n.kind <> 'CLIENT_NOTE'
+        AND n.shared_with_client_at IS NOT NULL
+        AND n.client_hidden_at IS NULL
         AND n.read_by_client_at IS NULL)::int AS unread_notes
 FROM patient_files pf
 JOIN users t ON t.id = pf.therapist_id
@@ -35,6 +38,7 @@ FROM sessions s
 WHERE s.patient_file_id = $1
   AND s.deleted_at IS NULL
   AND s.shared_with_client_at IS NOT NULL
+  AND s.client_hidden_at IS NULL
 ORDER BY s.session_date DESC, s.session_number DESC;
 
 -- name: ClientGetSharedSession :one
@@ -49,9 +53,12 @@ WHERE s.id = $1 AND s.deleted_at IS NULL;
 
 -- name: ClientListVisibleNotes :many
 -- Therapist notes shared with the client + the client's own notes.
+-- Excludes items the client dismissed from their panel (client_hidden_at);
+-- a client's own CLIENT_NOTE is never hidden (they hard-delete instead).
 SELECT * FROM patient_notes
 WHERE patient_file_id = $1
   AND deleted_at IS NULL
+  AND client_hidden_at IS NULL
   AND (shared_with_client_at IS NOT NULL OR kind = 'CLIENT_NOTE')
 ORDER BY created_at DESC;
 
@@ -130,3 +137,37 @@ WHERE pf.id = $1 AND u.is_active AND u.email IS NOT NULL;
 -- docs/39 PR9: therapist recipient for client_note_received.
 SELECT email, ui_language FROM users
 WHERE id = $1 AND is_active AND email IS NOT NULL;
+
+-- name: GetClientNoteForDelete :one
+-- docs/39 PR13: fetch a note for the hard-delete authz check. Handler
+-- verifies patient_file_id belongs to the caller and kind = CLIENT_NOTE.
+SELECT id, patient_file_id, kind, author_role
+FROM patient_notes
+WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: HardDeleteClientNote :execrows
+-- docs/39 PR13: the client removes their OWN note everywhere (including
+-- from the therapist if it was sent). Guarded to CLIENT_NOTE so a therapist
+-- note can never be destroyed through this path. Returns rows affected so
+-- the handler can 404 on a no-op.
+DELETE FROM patient_notes
+WHERE id = $1 AND kind = 'CLIENT_NOTE';
+
+-- name: HideSessionFromClient :execrows
+-- docs/39 PR13: dismiss a shared session from the client's panel only.
+UPDATE sessions
+SET client_hidden_at = now(), updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+  AND shared_with_client_at IS NOT NULL
+  AND client_hidden_at IS NULL;
+
+-- name: HideNoteFromClient :execrows
+-- docs/39 PR13: dismiss a shared THERAPIST note from the client's panel
+-- only. kind <> CLIENT_NOTE so a client's own note can't be hidden (they
+-- hard-delete instead).
+UPDATE patient_notes
+SET client_hidden_at = now(), updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+  AND kind <> 'CLIENT_NOTE'
+  AND shared_with_client_at IS NOT NULL
+  AND client_hidden_at IS NULL;

@@ -2866,6 +2866,59 @@ class AppLocalizationsPl extends AppLocalizations {
       'Materiały udostępnione przez terapeutę i Twoje notatki.';
 
   @override
+  String get client_theme_tooltip => 'Zmień motyw (jasny/ciemny)';
+
+  @override
+  String get client_filter_all => 'Wszystko';
+
+  @override
+  String get client_filter_sessions => 'Sesje';
+
+  @override
+  String get client_filter_therapist => 'Zadania i notatki terapeuty';
+
+  @override
+  String get client_filter_own => 'Notatki własne';
+
+  @override
+  String get client_filter_empty => 'Brak pozycji w tym filtrze.';
+
+  @override
+  String get client_action_delete => 'Usuń notatkę';
+
+  @override
+  String get client_action_hide => 'Ukryj z panelu';
+
+  @override
+  String get client_delete_confirm_title => 'Usunąć notatkę?';
+
+  @override
+  String get client_delete_confirm_body =>
+      'Tej notatki nie można przywrócić. Jeśli była wysłana do terapeuty, zniknie także u niego.';
+
+  @override
+  String get client_hide_confirm_title => 'Ukryć z panelu?';
+
+  @override
+  String get client_hide_confirm_body =>
+      'Pozycja zniknie z Twojego panelu. Terapeuta zachowa ją u siebie.';
+
+  @override
+  String get client_deleted_toast => 'Notatka usunięta';
+
+  @override
+  String get client_hidden_toast => 'Ukryto z panelu';
+
+  @override
+  String get client_confirm_cancel => 'Anuluj';
+
+  @override
+  String get client_confirm_delete => 'Usuń';
+
+  @override
+  String get client_confirm_hide => 'Ukryj';
+
+  @override
   String get client_home_empty =>
       'Twój terapeuta nie udostępnił jeszcze żadnych materiałów.';
 

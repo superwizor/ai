@@ -61,6 +61,8 @@ type Querier interface {
 	ClientListKartoteki(ctx context.Context, patientID pgtype.UUID) ([]ClientListKartotekiRow, error)
 	ClientListSharedSessions(ctx context.Context, patientFileID uuid.UUID) ([]ClientListSharedSessionsRow, error)
 	// Therapist notes shared with the client + the client's own notes.
+	// Excludes items the client dismissed from their panel (client_hidden_at);
+	// a client's own CLIENT_NOTE is never hidden (they hard-delete instead).
 	ClientListVisibleNotes(ctx context.Context, patientFileID uuid.UUID) ([]PatientNote, error)
 	CountPatientFilesByTherapist(ctx context.Context, therapistID uuid.UUID) (int64, error)
 	// Therapist-side badge.
@@ -126,6 +128,9 @@ type Querier interface {
 	GetAvgSessionDuration(ctx context.Context) (float64, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetAvgTokenUtilization(ctx context.Context) (float64, error)
+	// docs/39 PR13: fetch a note for the hard-delete authz check. Handler
+	// verifies patient_file_id belongs to the caller and kind = CLIENT_NOTE.
+	GetClientNoteForDelete(ctx context.Context, id uuid.UUID) (GetClientNoteForDeleteRow, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetCohortRetention(ctx context.Context) ([]GetCohortRetentionRow, error)
 	// CROSS-SERVICE READ: analytics-only
@@ -266,6 +271,11 @@ type Querier interface {
 	GetWAU(ctx context.Context) (int64, error)
 	// CROSS-SERVICE READ: analytics-only
 	GetWauTrend(ctx context.Context, dollar_1 time.Time) ([]GetWauTrendRow, error)
+	// docs/39 PR13: the client removes their OWN note everywhere (including
+	// from the therapist if it was sent). Guarded to CLIENT_NOTE so a therapist
+	// note can never be destroyed through this path. Returns rows affected so
+	// the handler can 404 on a no-op.
+	HardDeleteClientNote(ctx context.Context, id uuid.UUID) (int64, error)
 	// Permanent removal. Migration 000012 added ON DELETE CASCADE on
 	// sessions.patient_file_id and audio_uploads.patient_file_id, so all
 	// child sessions (and their transcripts/reports/hitop rows via the
@@ -282,6 +292,12 @@ type Querier interface {
 	// Returns affected rows so the handler can distinguish "not found /
 	// not yours" (0 rows) from successful delete (1 row).
 	HardDeleteSession(ctx context.Context, arg HardDeleteSessionParams) (int64, error)
+	// docs/39 PR13: dismiss a shared THERAPIST note from the client's panel
+	// only. kind <> CLIENT_NOTE so a client's own note can't be hidden (they
+	// hard-delete instead).
+	HideNoteFromClient(ctx context.Context, id uuid.UUID) (int64, error)
+	// docs/39 PR13: dismiss a shared session from the client's panel only.
+	HideSessionFromClient(ctx context.Context, id uuid.UUID) (int64, error)
 	InsertModalityPromptVersion(ctx context.Context, arg InsertModalityPromptVersionParams) (InsertModalityPromptVersionRow, error)
 	// ─── preference_suggestions_log ─────────────────────────────
 	// Telemetry-only. Three action values: 'shown' | 'applied' |

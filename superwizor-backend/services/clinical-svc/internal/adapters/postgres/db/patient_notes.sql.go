@@ -23,7 +23,7 @@ INSERT INTO patient_notes (
   $5, $6,
   $7, $8
 )
-RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at
+RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at, client_hidden_at
 `
 
 type CreatePatientNoteParams struct {
@@ -77,12 +77,13 @@ func (q *Queries) CreatePatientNote(ctx context.Context, arg CreatePatientNotePa
 		&i.ReadByTherapistAt,
 		&i.ReadByClientAt,
 		&i.SentToTherapistAt,
+		&i.ClientHiddenAt,
 	)
 	return i, err
 }
 
 const getPatientNote = `-- name: GetPatientNote :one
-SELECT id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at FROM patient_notes
+SELECT id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at, client_hidden_at FROM patient_notes
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -111,12 +112,13 @@ func (q *Queries) GetPatientNote(ctx context.Context, id uuid.UUID) (PatientNote
 		&i.ReadByTherapistAt,
 		&i.ReadByClientAt,
 		&i.SentToTherapistAt,
+		&i.ClientHiddenAt,
 	)
 	return i, err
 }
 
 const listPatientNotesByFile = `-- name: ListPatientNotesByFile :many
-SELECT id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at FROM patient_notes
+SELECT id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at, client_hidden_at FROM patient_notes
 WHERE patient_file_id = $1 AND deleted_at IS NULL
   AND NOT (kind = 'CLIENT_NOTE' AND sent_to_therapist_at IS NULL)
 ORDER BY created_at DESC
@@ -155,6 +157,7 @@ func (q *Queries) ListPatientNotesByFile(ctx context.Context, patientFileID uuid
 			&i.ReadByTherapistAt,
 			&i.ReadByClientAt,
 			&i.SentToTherapistAt,
+			&i.ClientHiddenAt,
 		); err != nil {
 			return nil, err
 		}
@@ -172,7 +175,7 @@ UPDATE patient_notes SET
   sent_to_email      = $2,
   updated_at         = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at
+RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at, client_hidden_at
 `
 
 type MarkPatientNoteSentParams struct {
@@ -206,6 +209,7 @@ func (q *Queries) MarkPatientNoteSent(ctx context.Context, arg MarkPatientNoteSe
 		&i.ReadByTherapistAt,
 		&i.ReadByClientAt,
 		&i.SentToTherapistAt,
+		&i.ClientHiddenAt,
 	)
 	return i, err
 }
@@ -230,7 +234,7 @@ UPDATE patient_notes SET
   text_encrypted_dek  = $5,
   updated_at          = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at
+RETURNING id, patient_file_id, therapist_id, kind, source_session_id, title_ciphertext, title_encrypted_dek, text_ciphertext, text_encrypted_dek, sent_to_patient_at, sent_to_email, created_at, updated_at, deleted_at, shared_with_client_at, author_role, read_by_therapist_at, read_by_client_at, sent_to_therapist_at, client_hidden_at
 `
 
 type UpdatePatientNoteParams struct {
@@ -272,6 +276,7 @@ func (q *Queries) UpdatePatientNote(ctx context.Context, arg UpdatePatientNotePa
 		&i.ReadByTherapistAt,
 		&i.ReadByClientAt,
 		&i.SentToTherapistAt,
+		&i.ClientHiddenAt,
 	)
 	return i, err
 }

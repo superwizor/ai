@@ -5111,6 +5111,108 @@ abstract class AppLocalizations {
   /// **'Materiały udostępnione przez terapeutę i Twoje notatki.'**
   String get client_home_subtitle;
 
+  /// No description provided for @client_theme_tooltip.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zmień motyw (jasny/ciemny)'**
+  String get client_theme_tooltip;
+
+  /// No description provided for @client_filter_all.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wszystko'**
+  String get client_filter_all;
+
+  /// No description provided for @client_filter_sessions.
+  ///
+  /// In pl, this message translates to:
+  /// **'Sesje'**
+  String get client_filter_sessions;
+
+  /// No description provided for @client_filter_therapist.
+  ///
+  /// In pl, this message translates to:
+  /// **'Zadania i notatki terapeuty'**
+  String get client_filter_therapist;
+
+  /// No description provided for @client_filter_own.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatki własne'**
+  String get client_filter_own;
+
+  /// No description provided for @client_filter_empty.
+  ///
+  /// In pl, this message translates to:
+  /// **'Brak pozycji w tym filtrze.'**
+  String get client_filter_empty;
+
+  /// No description provided for @client_action_delete.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń notatkę'**
+  String get client_action_delete;
+
+  /// No description provided for @client_action_hide.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ukryj z panelu'**
+  String get client_action_hide;
+
+  /// No description provided for @client_delete_confirm_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usunąć notatkę?'**
+  String get client_delete_confirm_title;
+
+  /// No description provided for @client_delete_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Tej notatki nie można przywrócić. Jeśli była wysłana do terapeuty, zniknie także u niego.'**
+  String get client_delete_confirm_body;
+
+  /// No description provided for @client_hide_confirm_title.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ukryć z panelu?'**
+  String get client_hide_confirm_title;
+
+  /// No description provided for @client_hide_confirm_body.
+  ///
+  /// In pl, this message translates to:
+  /// **'Pozycja zniknie z Twojego panelu. Terapeuta zachowa ją u siebie.'**
+  String get client_hide_confirm_body;
+
+  /// No description provided for @client_deleted_toast.
+  ///
+  /// In pl, this message translates to:
+  /// **'Notatka usunięta'**
+  String get client_deleted_toast;
+
+  /// No description provided for @client_hidden_toast.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ukryto z panelu'**
+  String get client_hidden_toast;
+
+  /// No description provided for @client_confirm_cancel.
+  ///
+  /// In pl, this message translates to:
+  /// **'Anuluj'**
+  String get client_confirm_cancel;
+
+  /// No description provided for @client_confirm_delete.
+  ///
+  /// In pl, this message translates to:
+  /// **'Usuń'**
+  String get client_confirm_delete;
+
+  /// No description provided for @client_confirm_hide.
+  ///
+  /// In pl, this message translates to:
+  /// **'Ukryj'**
+  String get client_confirm_hide;
+
   /// No description provided for @client_home_empty.
   ///
   /// In pl, this message translates to:
