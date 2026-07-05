@@ -49,6 +49,10 @@ const BACKEND_PATTERNS: Array<{ contains: string; key: string }> = [
   // owning no clinical data; the admin's remedy is deactivation.
   { contains: "user_has_sessions", key: "backend.userHasSessions" },
   { contains: "user_has_data", key: "backend.userHasData" },
+  // identity-svc AdminCreateOrganization — NIP already used by another
+  // active org. MUST precede the generic "already exists" rule so the
+  // admin sees a NIP-specific message, not the misleading e-mail one.
+  { contains: "tax_id", key: "backend.taxIdConflict" },
   // identity-svc — duplicate detection.
   { contains: "already exists", key: "backend.alreadyExists" },
   { contains: "duplicate key", key: "backend.alreadyExists" },
