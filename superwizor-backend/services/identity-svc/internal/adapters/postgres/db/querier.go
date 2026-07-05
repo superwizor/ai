@@ -108,6 +108,8 @@ type Querier interface {
 	// first page; for subsequent pages pass the last row's (created_at, id).
 	ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]Organization, error)
 	ListPendingInvitationsByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invitation, error)
+	// docs/38 PR14: pending ORG_ADMIN (manager) invites for the org panel.
+	ListPendingManagerInvitationsByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invitation, error)
 	ListTherapistsByOrganization(ctx context.Context, organizationID pgtype.UUID) ([]User, error)
 	// Returns both active (deleted_at IS NULL) THERAPISTs in the org AND
 	// pending invites. The handler joins/merges them into a single
@@ -116,6 +118,10 @@ type Querier interface {
 	ListTherapistsInOrgAll(ctx context.Context, organizationID pgtype.UUID) ([]User, error)
 	MarkInvitationAccepted(ctx context.Context, arg MarkInvitationAcceptedParams) error
 	RecordConsent(ctx context.Context, arg RecordConsentParams) (ConsentRecord, error)
+	// docs/38 PR14: hard-delete a PENDING ORG_ADMIN invite in the org.
+	// Guarded to accepted_at IS NULL + invited_role = 'ORG_ADMIN' so a
+	// therapist/client invite or an accepted row can't be removed here.
+	RevokeManagerInvitation(ctx context.Context, arg RevokeManagerInvitationParams) (int64, error)
 	SetOrganizationPrimaryAdmin(ctx context.Context, arg SetOrganizationPrimaryAdminParams) error
 	SetPatientFileEmail(ctx context.Context, arg SetPatientFileEmailParams) error
 	SetPatientFilePatientID(ctx context.Context, arg SetPatientFilePatientIDParams) error

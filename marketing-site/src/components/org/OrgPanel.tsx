@@ -30,6 +30,7 @@ import {
 import { translateError } from "@/lib/errors/translate";
 import { usePlanName } from "@/lib/plans";
 import { OrgAnalyticsWidgets } from "./OrgAnalyticsWidgets";
+import { OrgOrganizationTab } from "./OrgOrganizationTab";
 
 type Tab = "team" | "analytics" | "organization" | "billing";
 
@@ -471,21 +472,7 @@ export function OrgPanel() {
       )}
 
       {!loading && tab === "organization" && (
-        <section className="mt-6 rounded-card border border-frost/10 bg-frost/[0.03] p-6 grid gap-3 max-w-lg">
-          {[
-            [t("orgLegalName"), org?.legalName],
-            [t("orgTaxId"), org?.taxId],
-            [t("orgVatIdEu"), org?.vatIdEu],
-          ].map(([label, value]) => (
-            <div key={label as string} className="grid grid-cols-[10rem_1fr] gap-3">
-              <span className="font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist pt-0.5">
-                {label}
-              </span>
-              <span className="font-display text-frost text-sm">{value || "—"}</span>
-            </div>
-          ))}
-          <p className="font-serif text-mist text-xs mt-2">{t("orgEditHint")}</p>
-        </section>
+        <OrgOrganizationTab org={org} onOrgUpdated={setOrg} />
       )}
 
       {!loading && tab === "billing" && (

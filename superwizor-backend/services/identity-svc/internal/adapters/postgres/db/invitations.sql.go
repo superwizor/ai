@@ -213,6 +213,48 @@ func (q *Queries) ListPendingInvitationsByOrg(ctx context.Context, organizationI
 	return items, nil
 }
 
+const listPendingManagerInvitationsByOrg = `-- name: ListPendingManagerInvitationsByOrg :many
+SELECT id, organization_id, invited_by_user, email, token_hash, expires_at, accepted_at, accepted_user_id, created_at, invited_role, allocation_id, invited_first_name, invited_last_name, patient_file_id FROM invitations
+WHERE organization_id = $1 AND accepted_at IS NULL AND invited_role = 'ORG_ADMIN'
+ORDER BY created_at DESC
+`
+
+// docs/38 PR14: pending ORG_ADMIN (manager) invites for the org panel.
+func (q *Queries) ListPendingManagerInvitationsByOrg(ctx context.Context, organizationID uuid.UUID) ([]Invitation, error) {
+	rows, err := q.db.Query(ctx, listPendingManagerInvitationsByOrg, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Invitation
+	for rows.Next() {
+		var i Invitation
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.InvitedByUser,
+			&i.Email,
+			&i.TokenHash,
+			&i.ExpiresAt,
+			&i.AcceptedAt,
+			&i.AcceptedUserID,
+			&i.CreatedAt,
+			&i.InvitedRole,
+			&i.AllocationID,
+			&i.InvitedFirstName,
+			&i.InvitedLastName,
+			&i.PatientFileID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTherapistsInOrgAll = `-- name: ListTherapistsInOrgAll :many
 SELECT id, role, organization_id, default_modality_id, billing_address_id, firebase_uid, email, phone_number, is_email_verified, first_name, last_name, professional_title, credentials_number, biography, avatar_url, ui_language, timezone, has_accepted_tos, has_marketing_consent, created_at, deleted_at, report_preferences, is_active, deactivated_at FROM users
 WHERE organization_id = $1 AND role = 'THERAPIST' AND deleted_at IS NULL
@@ -282,4 +324,26 @@ type MarkInvitationAcceptedParams struct {
 func (q *Queries) MarkInvitationAccepted(ctx context.Context, arg MarkInvitationAcceptedParams) error {
 	_, err := q.db.Exec(ctx, markInvitationAccepted, arg.ID, arg.AcceptedUserID)
 	return err
+}
+
+const revokeManagerInvitation = `-- name: RevokeManagerInvitation :execrows
+DELETE FROM invitations
+WHERE id = $1 AND organization_id = $2
+  AND accepted_at IS NULL AND invited_role = 'ORG_ADMIN'
+`
+
+type RevokeManagerInvitationParams struct {
+	ID             uuid.UUID `json:"id"`
+	OrganizationID uuid.UUID `json:"organization_id"`
+}
+
+// docs/38 PR14: hard-delete a PENDING ORG_ADMIN invite in the org.
+// Guarded to accepted_at IS NULL + invited_role = 'ORG_ADMIN' so a
+// therapist/client invite or an accepted row can't be removed here.
+func (q *Queries) RevokeManagerInvitation(ctx context.Context, arg RevokeManagerInvitationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeManagerInvitation, arg.ID, arg.OrganizationID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
