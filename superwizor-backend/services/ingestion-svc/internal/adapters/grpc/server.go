@@ -114,6 +114,18 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 	// if > 19 min, flip status, publish audio.uploaded). Flutter
 	// terminates at phase=completed the moment its HTTP PUT returns 2xx.
 	fmt.Printf("Received CreateAudioUpload request\n")
+
+	// SECURITY #1: derive the therapist from the validated Firebase
+	// token, never from the client-supplied field. Before this a caller
+	// could pass any therapist_id + patient_file_id and mint a signed
+	// upload URL against another therapist's patient (IDOR → PHI write).
+	// callerID == "" only in local INSECURE mode (auth interceptor not
+	// wired) — there we fall back to the request field for dev ergonomics.
+	callerID := userIDFromContext(ctx)
+	if callerID != "" {
+		req.TherapistId = callerID
+	}
+
 	therapistID, err := uuid.Parse(req.TherapistId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid therapist_id")
@@ -129,6 +141,25 @@ func (s *Server) CreateAudioUpload(ctx context.Context, req *ingestionv1.CreateA
 
 	therapistIDPg := pgtype.UUID{Bytes: therapistID, Valid: true}
 	patientFileIDPg := pgtype.UUID{Bytes: patientFileID, Valid: true}
+
+	// SECURITY #1: ownership guard. An authenticated caller may only
+	// create uploads against a patient file they own. Enforced only when
+	// authenticated (callerID != "") — local INSECURE dev mode has no
+	// caller and keeps the legacy behaviour. NotFound (not
+	// PermissionDenied) on a missing file so the endpoint can't be used
+	// to probe which patient_file_ids exist.
+	if callerID != "" {
+		ownerID, oerr := s.queries.GetPatientFileTherapist(ctx, patientFileIDPg)
+		if oerr != nil {
+			if errors.Is(oerr, pgx.ErrNoRows) {
+				return nil, status.Error(codes.NotFound, "patient file not found")
+			}
+			return nil, status.Error(codes.Internal, oerr.Error())
+		}
+		if uuid.UUID(ownerID.Bytes) != therapistID {
+			return nil, status.Error(codes.PermissionDenied, "patient file not owned by caller")
+		}
+	}
 
 	// Idempotency pre-check (migration 000018 added the right scope).
 	// On hit: short-circuit and return the cached row with a fresh
@@ -491,6 +522,16 @@ func (s *Server) GetAudioUploadStatus(ctx context.Context, req *ingestionv1.GetA
 			return nil, status.Error(codes.NotFound, "upload not found")
 		}
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// SECURITY #1: scope the status read to the caller. Return NotFound
+	// (not PermissionDenied) on a mismatch so the endpoint can't be used
+	// as an existence oracle for another therapist's upload ids. Skipped
+	// in local INSECURE mode (callerID == "").
+	if callerID := userIDFromContext(ctx); callerID != "" {
+		if uuid.UUID(upload.TherapistID.Bytes).String() != callerID {
+			return nil, status.Error(codes.NotFound, "upload not found")
+		}
 	}
 
 	var createdTime, expiresTime time.Time

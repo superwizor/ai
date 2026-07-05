@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	billingv1 "github.com/superwizor-ai/backend/gen/go/billing/v1"
+	identityv1 "github.com/superwizor-ai/backend/gen/go/identity/v1"
 	ingestionv1 "github.com/superwizor-ai/backend/gen/go/ingestion/v1"
 	"github.com/superwizor-ai/backend/pkg/analytics"
 	grpcadapter "github.com/superwizor-ai/backend/services/ingestion-svc/internal/adapters/grpc"
@@ -134,13 +135,41 @@ func main() {
 		slog.Info("ingestion-svc: GCS_FINALIZE_SUB_ID unset, skipping background subscriber")
 	}
 
+	// SECURITY #1: Firebase-token auth interceptor. ingestion-svc RPCs
+	// carry patient_file_id (PHI-adjacent) and previously trusted the
+	// client-supplied therapist_id with no validation — any caller could
+	// mint a signed upload URL against another therapist's patient. We
+	// now validate the token via identity-svc and derive the therapist
+	// from it. Fail-closed: without IDENTITY_SVC_URL the server refuses
+	// to start unless INGESTION_ALLOW_INSECURE=1 is set (local dev only).
+	var authInterceptor grpc.UnaryServerInterceptor
+	if identityURL := os.Getenv("IDENTITY_SVC_URL"); identityURL != "" {
+		identityClient, ierr := newIdentityClient(ctx, identityURL)
+		if ierr != nil {
+			slog.Error("identity client init failed", "url", identityURL, "error", ierr)
+			os.Exit(1)
+		}
+		authInterceptor = grpcadapter.UnaryAuthInterceptor(identityClient)
+		slog.Info("ingestion-svc: identity-svc auth interceptor wired", "url", identityURL)
+	} else if os.Getenv("INGESTION_ALLOW_INSECURE") == "1" {
+		slog.Warn("ingestion-svc: INGESTION_ALLOW_INSECURE=1 — RUNNING WITHOUT AUTH (dev only)")
+	} else {
+		slog.Error("ingestion-svc: IDENTITY_SVC_URL required for auth (set INGESTION_ALLOW_INSECURE=1 to bypass for local dev)")
+		os.Exit(1)
+	}
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
 		slog.Error("listen", "error", err)
 		os.Exit(1)
 	}
 
-	gs := grpc.NewServer()
+	var gs *grpc.Server
+	if authInterceptor != nil {
+		gs = grpc.NewServer(grpc.UnaryInterceptor(authInterceptor))
+	} else {
+		gs = grpc.NewServer()
+	}
 	ingestionv1.RegisterIngestionServiceServer(gs, srv)
 
 	hs := health.NewServer()
@@ -203,4 +232,47 @@ func newBillingClient(ctx context.Context, serviceURL string) (billingv1.Billing
 		return nil, err
 	}
 	return billingv1.NewBillingServiceClient(conn), nil
+}
+
+// newIdentityClient dials identity-svc for the auth interceptor's
+// ValidateToken calls. Same Cloud Run service-to-service auth as
+// newBillingClient: idtoken for https://… (audience = service URL),
+// insecure for http:// local dev.
+func newIdentityClient(ctx context.Context, serviceURL string) (identityv1.IdentityServiceClient, error) {
+	if len(serviceURL) >= 5 && serviceURL[:5] == "https" {
+		tokenSource, err := idtoken.NewTokenSource(ctx, serviceURL)
+		if err != nil {
+			return nil, fmt.Errorf("idtoken: %w", err)
+		}
+		u, err := url.Parse(serviceURL)
+		if err != nil {
+			return nil, fmt.Errorf("parse url: %w", err)
+		}
+		target := u.Host
+		if u.Port() == "" {
+			target = u.Host + ":443"
+		}
+		conn, err := grpc.NewClient(target,
+			grpc.WithTransportCredentials(credentials.NewTLS(nil)),
+			grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: tokenSource}),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("dial: %w", err)
+		}
+		return identityv1.NewIdentityServiceClient(conn), nil
+	}
+	// Plaintext fallback for local dev (IDENTITY_SVC_URL=localhost:8080 etc.)
+	u, err := url.Parse(serviceURL)
+	if err != nil {
+		return nil, err
+	}
+	target := u.Host
+	if target == "" {
+		target = serviceURL
+	}
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	return identityv1.NewIdentityServiceClient(conn), nil
 }

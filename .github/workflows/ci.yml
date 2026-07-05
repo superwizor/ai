@@ -297,6 +297,11 @@ jobs:
           # gcloud after each CI run; adding here so --set-env-vars
           # (which REPLACES the env block) preserves it.
           BILLING_SVC_URL="https://billing-svc-e3f32b232q-lm.a.run.app"
+          # IDENTITY_SVC_URL — read by ingestion-svc's UnaryAuthInterceptor
+          # (SECURITY #1). The server is fail-closed: without this env var
+          # it refuses to start (unless INGESTION_ALLOW_INSECURE=1). identity-svc
+          # is deployed earlier in this job, so describe resolves its URL.
+          IDENTITY_URL=$(gcloud run services describe identity-svc --region ${{ env.REGION }} --format 'value(status.url)' || echo "")
           gcloud run deploy ingestion-svc \
             --image $IMAGE_PATH:${{ github.sha }} \
             --region ${{ env.REGION }} \
@@ -312,7 +317,7 @@ jobs:
             --memory 1Gi \
             --no-cpu-throttling \
             --set-secrets="DATABASE_URL=postgres-database-url:latest" \
-            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},AUDIO_BUCKET_NAME=${{ env.PROJECT_ID }}-audio-uploads,VERSION=${{ github.sha }},GCS_FINALIZE_SUB_ID=audio.objectFinalized.sub,BILLING_SVC_URL=${BILLING_SVC_URL}"
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},AUDIO_BUCKET_NAME=${{ env.PROJECT_ID }}-audio-uploads,VERSION=${{ github.sha }},GCS_FINALIZE_SUB_ID=audio.objectFinalized.sub,BILLING_SVC_URL=${BILLING_SVC_URL},IDENTITY_SVC_URL=${IDENTITY_URL}"
           # CPU/memory + --no-cpu-throttling are required for Option F
           # (feat/refactor-stt-architecture, 2026-05-25): the in-process
           # Pub/Sub pull subscriber goroutine runs ffprobe + ffmpeg
