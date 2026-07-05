@@ -59,8 +59,14 @@ type Querier interface {
 	CreateBillingAuditEvent(ctx context.Context, arg CreateBillingAuditEventParams) (AuditEvent, error)
 	CreateInvoice(ctx context.Context, arg CreateInvoiceParams) (Invoice, error)
 	// Admin-provisioned B2B subscription (docs/38 §4). provider_subscription_id
-	// is deterministic ("b2b-<org>") so a wizard retry collides on the
-	// UNIQUE(provider, provider_subscription_id) instead of double-creating.
+	// is deterministic ("b2b-<org>") so a wizard retry — or an edit after the
+	// renewal cron CANCELED a MANUAL sub (which GetActiveSubscriptionByOrg then
+	// skips, sending us down this create path) — collides on
+	// UNIQUE(provider, provider_subscription_id). ON CONFLICT REACTIVATES that
+	// row instead of erroring ("Błąd serwera" on seat-allocation edit,
+	// 2026-07-05). Safe: we only reach this branch when the org has no
+	// ACTIVE/TRIALING/PAST_DUE sub, so flipping the b2b row back to ACTIVE
+	// can't violate idx_subscriptions_one_active_per_org.
 	CreateManualSubscription(ctx context.Context, arg CreateManualSubscriptionParams) (CreateManualSubscriptionRow, error)
 	// Idempotent insert zdarzenia płatności (ADR-BL-002).
 	// UNIQUE(provider, provider_event_id) zapewnia że to samo zdarzenie

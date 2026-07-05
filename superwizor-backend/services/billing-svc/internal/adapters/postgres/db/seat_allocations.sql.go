@@ -20,6 +20,12 @@ INSERT INTO subscriptions (
 ) VALUES (
     $1, $2, 'MANUAL', $3, 'ACTIVE', $4, $5
 )
+ON CONFLICT (provider, provider_subscription_id) DO UPDATE
+SET status = 'ACTIVE',
+    plan_id = EXCLUDED.plan_id,
+    current_period_start = EXCLUDED.current_period_start,
+    current_period_end = EXCLUDED.current_period_end,
+    updated_at = now()
 RETURNING id, organization_id, plan_id, current_period_start, current_period_end
 `
 
@@ -40,8 +46,14 @@ type CreateManualSubscriptionRow struct {
 }
 
 // Admin-provisioned B2B subscription (docs/38 §4). provider_subscription_id
-// is deterministic ("b2b-<org>") so a wizard retry collides on the
-// UNIQUE(provider, provider_subscription_id) instead of double-creating.
+// is deterministic ("b2b-<org>") so a wizard retry — or an edit after the
+// renewal cron CANCELED a MANUAL sub (which GetActiveSubscriptionByOrg then
+// skips, sending us down this create path) — collides on
+// UNIQUE(provider, provider_subscription_id). ON CONFLICT REACTIVATES that
+// row instead of erroring ("Błąd serwera" on seat-allocation edit,
+// 2026-07-05). Safe: we only reach this branch when the org has no
+// ACTIVE/TRIALING/PAST_DUE sub, so flipping the b2b row back to ACTIVE
+// can't violate idx_subscriptions_one_active_per_org.
 func (q *Queries) CreateManualSubscription(ctx context.Context, arg CreateManualSubscriptionParams) (CreateManualSubscriptionRow, error) {
 	row := q.db.QueryRow(ctx, createManualSubscription,
 		arg.OrganizationID,
