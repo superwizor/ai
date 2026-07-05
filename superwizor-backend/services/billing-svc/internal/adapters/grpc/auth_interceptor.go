@@ -78,6 +78,20 @@ func ConnectAuthInterceptor(identityClient identityv1.IdentityServiceClient) con
 	}
 }
 
+// FailClosedConnectInterceptor rejects every Connect call with
+// Unauthenticated. It is installed in place of ConnectAuthInterceptor when
+// identity-svc is not wired (#8): without a way to validate the Firebase
+// token, the safe behavior is to deny — not to fall through and trust
+// upstream x-superwizor-role metadata a client can set.
+func FailClosedConnectInterceptor() connect.UnaryInterceptorFunc {
+	return func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			return nil, connect.NewError(connect.CodeUnauthenticated,
+				status.Error(codes.Unauthenticated, "auth not configured"))
+		}
+	}
+}
+
 // protoRoleName converts the proto UserRole enum into the bare-string
 // form the billing-svc handlers compare against ("SUPERWIZOR_ADMIN",
 // "ORG_ADMIN", "THERAPIST", "PATIENT"). The proto enum's String()
