@@ -57,8 +57,13 @@ func (s *Server) AdminCreateOrganization(ctx context.Context, req *identityv1.Ad
 	if req.TaxId != "" {
 		if existing, err := s.findOrgByTaxID(ctx, req.TaxId); err == nil {
 			if existing.LegalName != req.LegalName {
+				// The NIP is already taken by a DIFFERENT active org — not a
+				// retry of this exact create. Block with a specific message
+				// (the frontend keys off "tax_id" to show a NIP-specific,
+				// non-e-mail error) and name the existing org for context.
 				return nil, status.Errorf(codes.AlreadyExists,
-					"an organization with tax_id %s already exists under a different name", req.TaxId)
+					"tax_id %s already belongs to organization %q (id %s)",
+					req.TaxId, existing.LegalName, existing.ID)
 			}
 			return s.assembleAdminCreateReplay(ctx, existing)
 		}

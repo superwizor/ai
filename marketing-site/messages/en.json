@@ -581,6 +581,7 @@
       "quotaExceeded": "Token quota exhausted for the current billing period.",
       "subscriptionPastDue": "Organisation subscription needs a payment update.",
       "alreadyExists": "An entry like this already exists (for example the email is already registered).",
+      "taxIdConflict": "This tax ID (NIP) already belongs to another organization. Use a different NIP or open the existing one from the \"Organizations\" list.",
       "userHasSessions": "Cannot delete: this user has recorded sessions. Deactivate the account instead.",
       "userHasData": "Cannot delete: the user still owns related data. Deactivate the account instead."
     }
