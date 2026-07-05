@@ -190,7 +190,7 @@ export function UsersList() {
             onChange={(e) =>
               setRoleFilter(e.target.value as typeof roleFilter)
             }
-            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember transition cursor-pointer"
+            className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember transition cursor-pointer"
           >
             <option value="">{t("roleFilterAll")}</option>
             {ROLE_KEYS.filter((k) => k !== "USER_ROLE_UNSPECIFIED").map((k) => (
@@ -204,7 +204,7 @@ export function UsersList() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("searchPlaceholder")}
-            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] placeholder:text-mist/40 transition w-full sm:w-72"
+            className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember placeholder:text-mist/60 transition w-full sm:w-72"
           />
         </div>
       </header>
@@ -513,7 +513,7 @@ function UserEditDialog({
               setDraft((d) => ({ ...d, biography: e.target.value }))
             }
             rows={3}
-            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-serif text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition resize-y"
+            className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-serif text-sm focus:outline-none focus:border-ember transition resize-y"
           />
         </div>
 
@@ -544,7 +544,7 @@ function UserEditDialog({
               setDraft((d) => ({ ...d, organizationId: e.target.value.trim() }))
             }
             placeholder="00000000-0000-0000-0000-000000000000"
-            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-mono text-xs focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition placeholder:text-mist/40"
+            className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-mono text-xs focus:outline-none focus:border-ember transition placeholder:text-mist/60"
           />
           <p className="font-mono text-[10px] text-mist/60 mt-1.5">
             {t("organizationIdHint")}
@@ -569,7 +569,7 @@ function UserEditDialog({
               }))
             }
             placeholder="00000000-0000-0000-0000-000000000000"
-            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-mono text-xs focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition placeholder:text-mist/40"
+            className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-mono text-xs focus:outline-none focus:border-ember transition placeholder:text-mist/60"
           />
           <p className="font-mono text-[10px] text-mist/60 mt-1.5">
             {t("defaultModalityIdHint")}
@@ -655,7 +655,7 @@ function SimpleInput({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition"
+        className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember transition"
       />
     </div>
   );
@@ -686,7 +686,7 @@ function SimpleSelect({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition appearance-none cursor-pointer"
+        className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember transition appearance-none cursor-pointer"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

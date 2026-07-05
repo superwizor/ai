@@ -134,7 +134,7 @@ export function OrgsList() {
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
             aria-label={tCol("type")}
-            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3 py-2 font-display text-sm focus:outline-none focus:border-ember transition appearance-none cursor-pointer"
+            className="rounded-button bg-obsidian border border-frost/25 text-frost px-3 py-2 font-display text-sm focus:outline-none focus:border-ember transition appearance-none cursor-pointer"
           >
             <option value="CLINIC">{tType("CLINIC")}</option>
             <option value="SOLO">{tType("SOLO")}</option>
@@ -146,7 +146,7 @@ export function OrgsList() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("searchPlaceholder")}
-            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] placeholder:text-mist/40 transition w-full sm:w-72"
+            className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember placeholder:text-mist/60 transition w-full sm:w-72"
           />
           <a
             href={`${prefix}/admin/orgs/new`}

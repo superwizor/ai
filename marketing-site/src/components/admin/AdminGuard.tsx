@@ -207,7 +207,7 @@ function AdminSignInForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="rounded-button bg-frost/5 border border-frost/15 px-3 py-2 font-sans text-sm text-frost focus:outline-none focus:border-ember"
+            className="rounded-button bg-obsidian border border-frost/25 px-3 py-2 font-sans text-sm text-frost focus:outline-none focus:border-ember"
           />
         </label>
 
@@ -221,7 +221,7 @@ function AdminSignInForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="rounded-button bg-frost/5 border border-frost/15 px-3 py-2 font-sans text-sm text-frost focus:outline-none focus:border-ember"
+            className="rounded-button bg-obsidian border border-frost/25 px-3 py-2 font-sans text-sm text-frost focus:outline-none focus:border-ember"
           />
         </label>
 

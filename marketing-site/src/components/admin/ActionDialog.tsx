@@ -103,7 +103,7 @@ export function ActionDialog({
             onChange={(e) => setReason(e.target.value)}
             placeholder={t("reasonPlaceholder")}
             rows={3}
-            className="w-full rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-serif text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] placeholder:text-mist/40 transition resize-vertical"
+            className="w-full rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-serif text-sm focus:outline-none focus:border-ember placeholder:text-mist/60 transition resize-vertical"
           />
         </div>
 
