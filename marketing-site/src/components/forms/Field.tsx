@@ -46,7 +46,7 @@ export function FieldShell({ id, label, hint, error, required, children }: Field
   );
 }
 const inputClasses =
-  "rounded-button bg-frost/10 border border-frost/20 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/15 placeholder:text-mist/50 transition";
+  "rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember placeholder:text-mist/60 transition";
 
 export const TextInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function TextInput(props, ref) {
