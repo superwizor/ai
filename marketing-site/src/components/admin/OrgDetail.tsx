@@ -620,7 +620,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
               onChange={(e) =>
                 setEditDraft((d) => ({ ...d, legalName: e.target.value }))
               }
-              className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition"
+              className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember transition"
             />
           </div>
           <SelectField
@@ -652,7 +652,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
                 onChange={(e) =>
                   setEditDraft((d) => ({ ...d, taxId: e.target.value }))
                 }
-                className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition"
+                className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember transition"
               />
             </div>
             <div className="flex flex-col">
@@ -669,7 +669,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
                 onChange={(e) =>
                   setEditDraft((d) => ({ ...d, vatIdEu: e.target.value }))
                 }
-                className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition"
+                className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember transition"
               />
             </div>
           </div>
@@ -694,7 +694,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
                   primaryAdminUserId: e.target.value,
                 }))
               }
-              className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition appearance-none cursor-pointer"
+              className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember transition appearance-none cursor-pointer"
             >
               <option value="">{tEdit("primaryAdminUnchanged")}</option>
               {details.managers.map((u) => (
@@ -740,7 +740,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
             value={managerEmail}
             onChange={(e) => setManagerEmail(e.target.value)}
             placeholder="manager@klinika.pl"
-            className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition"
+            className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember transition"
           />
           <p className="font-mono text-[10px] text-mist/60 mt-1.5">{tMgr("hint")}</p>
         </div>
@@ -762,7 +762,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
                     rs.map((row, idx) => (idx === i ? { ...row, planId: e.target.value } : row)),
                   )
                 }
-                className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3 py-2 font-display text-sm focus:outline-none focus:border-ember transition appearance-none cursor-pointer"
+                className="rounded-button bg-obsidian border border-frost/25 text-frost px-3 py-2 font-display text-sm focus:outline-none focus:border-ember transition appearance-none cursor-pointer"
               >
                 <option value="">{tSeats("pickPlan")}</option>
                 {plans.map((p) => (
@@ -782,7 +782,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
                     ),
                   )
                 }
-                className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3 py-2 font-mono text-sm focus:outline-none focus:border-ember transition"
+                className="rounded-button bg-obsidian border border-frost/25 text-frost px-3 py-2 font-mono text-sm focus:outline-none focus:border-ember transition"
               />
               <input
                 aria-label={tSeats("priceLabel")}
@@ -795,7 +795,7 @@ export function OrgDetail({ orgId }: { orgId: string }) {
                     ),
                   )
                 }
-                className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3 py-2 font-mono text-sm focus:outline-none focus:border-ember transition"
+                className="rounded-button bg-obsidian border border-frost/25 text-frost px-3 py-2 font-mono text-sm focus:outline-none focus:border-ember transition"
               />
               {seatRows.length > 1 ? (
                 <button
@@ -907,7 +907,7 @@ function NumberField({
         inputMode="numeric"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition"
+        className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember transition"
       />
     </div>
   );
@@ -938,7 +938,7 @@ function SelectField({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition appearance-none cursor-pointer"
+        className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember transition appearance-none cursor-pointer"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

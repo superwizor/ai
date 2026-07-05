@@ -199,7 +199,7 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         maxLength={maxLength}
-        className="rounded-button bg-frost/10 border border-frost/20 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember focus:bg-frost/15 transition placeholder:text-mist/50"
+        className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2.5 font-display text-base focus:outline-none focus:border-ember transition placeholder:text-mist/60"
       />
     </div>
   );

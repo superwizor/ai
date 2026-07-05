@@ -222,7 +222,7 @@ export function OrgCreateWizard() {
   );
 
   const inputCls =
-    "rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] placeholder:text-mist/40 transition w-full";
+    "rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember placeholder:text-mist/60 transition w-full";
   const btnPrimary =
     "rounded-button bg-ember text-abyss px-5 py-2.5 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/90 transition disabled:opacity-40 disabled:cursor-not-allowed";
   const btnGhost =

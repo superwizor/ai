@@ -299,7 +299,7 @@ function FilterInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] placeholder:text-mist/40 transition"
+        className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember placeholder:text-mist/60 transition"
       />
     </div>
   );
@@ -330,7 +330,7 @@ function FilterSelect({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-button bg-frost/5 border border-frost/15 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember focus:bg-frost/[0.07] transition appearance-none cursor-pointer"
+        className="rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember transition appearance-none cursor-pointer"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

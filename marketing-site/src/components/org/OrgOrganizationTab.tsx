@@ -25,7 +25,7 @@ import {
 import { translateError } from "@/lib/errors/translate";
 
 const inputCls =
-  "rounded-button bg-frost/10 border border-frost/20 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember focus:bg-frost/15 placeholder:text-mist/50 transition w-full";
+  "rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember placeholder:text-mist/60 transition w-full";
 const btnPrimary =
   "rounded-button bg-ember text-abyss px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/90 transition disabled:opacity-40 disabled:cursor-not-allowed";
 const thCls =
