@@ -83,6 +83,11 @@ WHERE s.deleted_at IS NULL
         OR LOWER(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')) LIKE '%' || LOWER(@therapist_filter::text) || '%'
         OR LOWER(COALESCE(u.email,'')) LIKE '%' || LOWER(@therapist_filter::text) || '%'
       )
+  -- Optional single-organization filter. Empty string = all orgs.
+  AND (
+        @organization_filter::text = ''
+        OR u.organization_id::text = @organization_filter::text
+      )
 ORDER BY
     CASE WHEN @sort_order::text = 'asc' AND @sort_by::text = 'created_at'        THEN s.created_at         END ASC NULLS LAST,
     CASE WHEN @sort_order::text = 'asc' AND @sort_by::text = 'session_date'      THEN s.session_date       END ASC NULLS LAST,

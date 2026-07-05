@@ -712,6 +712,10 @@ message AdminListSessionsRequest {
 
   // "asc" | "desc". Anything else defaults to "desc".
   string sort_order = 7;
+
+  // Optional filter to a single organization (organizations.id). Empty =
+  // all organizations. Matched against the therapist's organization_id.
+  string organization_id = 8;
 }
 
 message AdminListSessionsResponse {

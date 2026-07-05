@@ -159,7 +159,9 @@
         "since": "Od dnia",
         "until": "Do dnia",
         "therapist": "Terapeuta",
-        "therapistPlaceholder": "Imię, nazwisko lub e-mail"
+        "therapistPlaceholder": "Imię, nazwisko lub e-mail",
+        "organization": "Organizacja",
+        "organizationAll": "Wszystkie organizacje"
       },
       "table": {
         "createdAt": "Wgrane",

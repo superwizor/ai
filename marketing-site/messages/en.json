@@ -159,7 +159,9 @@
         "since": "From",
         "until": "Until",
         "therapist": "Therapist",
-        "therapistPlaceholder": "First or last name, or email"
+        "therapistPlaceholder": "First or last name, or email",
+        "organization": "Organization",
+        "organizationAll": "All organizations"
       },
       "table": {
         "createdAt": "Uploaded",

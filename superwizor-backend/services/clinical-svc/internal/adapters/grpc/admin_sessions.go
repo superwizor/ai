@@ -100,13 +100,14 @@ func (s *Server) AdminListSessions(ctx context.Context, req *clinicalv1.AdminLis
 	}
 
 	rows, err := s.queries.AdminListRecentSessions(ctx, db.AdminListRecentSessionsParams{
-		StartTime:       start,
-		EndTime:         end,
-		TherapistFilter: req.GetTherapistFilter(),
-		SortBy:          sortBy,
-		SortOrder:       sortOrder,
-		PageOffset:      page * pageSize,
-		PageLimit:       pageSize + 1, // read one extra to compute has_more
+		StartTime:          start,
+		EndTime:            end,
+		TherapistFilter:    req.GetTherapistFilter(),
+		OrganizationFilter: req.GetOrganizationId(),
+		SortBy:             sortBy,
+		SortOrder:          sortOrder,
+		PageOffset:         page * pageSize,
+		PageLimit:          pageSize + 1, // read one extra to compute has_more
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "AdminListSessions: query failed",

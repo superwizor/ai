@@ -16,11 +16,15 @@ import { useTranslations } from "next-intl";
 import { create } from "@bufbuild/protobuf";
 import { timestampDate, timestampFromDate } from "@bufbuild/protobuf/wkt";
 
-import { clinicalClient } from "@/lib/connect/clients";
+import { clinicalClient, identityClient } from "@/lib/connect/clients";
 import {
   AdminListSessionsRequestSchema,
   type AdminSessionRow,
 } from "@superwizor/proto-ts/clinical/v1/clinical_pb";
+import {
+  AdminListOrganizationsRequestSchema,
+  type OrganizationSummary,
+} from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { TableSkeleton } from "./TableSkeleton";
 
 const PAGE_SIZE = 50;
@@ -59,6 +63,27 @@ export function SessionsActivityList() {
   const [therapistFilter, setTherapistFilter] = useState("");
   const [therapistFilterDebounced, setTherapistFilterDebounced] = useState("");
 
+  // Organization filter — "" = all orgs. Options loaded once on mount.
+  const [orgFilter, setOrgFilter] = useState("");
+  const [orgs, setOrgs] = useState<OrganizationSummary[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    identityClient
+      .adminListOrganizations(
+        create(AdminListOrganizationsRequestSchema, { pageSize: 200 }),
+      )
+      .then((resp) => {
+        if (!cancelled) setOrgs(resp.organizations);
+      })
+      .catch(() => {
+        /* dropdown just stays empty — the filter is optional */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [rows, setRows] = useState<AdminSessionRow[]>([]);
   const [state, setState] = useState<LoadState>("idle");
   const [exportState, setExportState] = useState<ExportState>("idle");
@@ -78,7 +103,7 @@ export function SessionsActivityList() {
   // Reset to page 0 whenever filters OR sort changes.
   useEffect(() => {
     setPage(0);
-  }, [therapistFilterDebounced, since, until, sortBy, sortOrder]);
+  }, [therapistFilterDebounced, orgFilter, since, until, sortBy, sortOrder]);
 
   // Click on a column header: same column flips order asc↔desc; new
   // column starts at desc (the convention used elsewhere in /admin).
@@ -100,6 +125,7 @@ export function SessionsActivityList() {
         pageSize,
         page: pageIdx,
         therapistFilter: therapistFilterDebounced,
+        organizationId: orgFilter,
         sortBy,
         sortOrder,
       });
@@ -117,7 +143,7 @@ export function SessionsActivityList() {
       }
       return req;
     },
-    [since, until, therapistFilterDebounced, sortBy, sortOrder],
+    [since, until, therapistFilterDebounced, orgFilter, sortBy, sortOrder],
   );
 
   const fetchPage = useCallback(async () => {
@@ -243,7 +269,23 @@ export function SessionsActivityList() {
       </header>
 
       {/* Filters */}
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Field label={t("filters.organization")}>
+          <select
+            value={orgFilter}
+            onChange={(e) => setOrgFilter(e.target.value)}
+            className="w-full bg-evergreen/40 border border-frost/15 rounded-button px-3 py-2 font-serif text-sm text-frost focus:outline-none focus:border-ember"
+          >
+            <option value="">{t("filters.organizationAll")}</option>
+            {orgs
+              .filter((o) => o.organization)
+              .map((o) => (
+                <option key={o.organization!.id} value={o.organization!.id}>
+                  {o.organization!.legalName}
+                </option>
+              ))}
+          </select>
+        </Field>
         <Field label={t("filters.since")}>
           <input
             type="date"
