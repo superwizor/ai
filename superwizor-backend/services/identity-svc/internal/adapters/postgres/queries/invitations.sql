@@ -40,6 +40,20 @@ SELECT * FROM invitations
 WHERE organization_id = $1 AND accepted_at IS NULL
 ORDER BY created_at DESC;
 
+-- name: ListPendingManagerInvitationsByOrg :many
+-- docs/38 PR14: pending ORG_ADMIN (manager) invites for the org panel.
+SELECT * FROM invitations
+WHERE organization_id = $1 AND accepted_at IS NULL AND invited_role = 'ORG_ADMIN'
+ORDER BY created_at DESC;
+
+-- name: RevokeManagerInvitation :execrows
+-- docs/38 PR14: hard-delete a PENDING ORG_ADMIN invite in the org.
+-- Guarded to accepted_at IS NULL + invited_role = 'ORG_ADMIN' so a
+-- therapist/client invite or an accepted row can't be removed here.
+DELETE FROM invitations
+WHERE id = $1 AND organization_id = $2
+  AND accepted_at IS NULL AND invited_role = 'ORG_ADMIN';
+
 -- name: ListTherapistsInOrgAll :many
 -- Returns both active (deleted_at IS NULL) THERAPISTs in the org AND
 -- pending invites. The handler joins/merges them into a single

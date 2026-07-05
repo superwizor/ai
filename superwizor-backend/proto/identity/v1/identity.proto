@@ -54,6 +54,15 @@ service IdentityService {
   rpc ListTherapistsInMyOrg(google.protobuf.Empty) returns (ListTherapistsResponse);
   rpc RemoveTherapist(RemoveTherapistRequest) returns (google.protobuf.Empty);
 
+  // Manager (ORG_ADMIN) self-management (docs/38 PR14). An ORG_ADMIN can
+  // list, invite, and deactivate/reactivate OTHER managers in their own
+  // org — never their own account (SetMyOrgManagerStatus rejects self).
+  // "Remove" is reversible deactivation; pending invites are revoked.
+  rpc ListMyOrgManagers(google.protobuf.Empty) returns (ListManagersResponse);
+  rpc InviteMyOrgManager(InviteMyOrgManagerRequest) returns (Invitation);
+  rpc SetMyOrgManagerStatus(SetMyOrgManagerStatusRequest) returns (User);
+  rpc RevokeMyOrgManagerInvite(RevokeMyOrgManagerInviteRequest) returns (google.protobuf.Empty);
+
   // ─── Client (patient) panel — docs/39 ──────────────────────
   //
   // InviteClient: the kartoteka's "Zaproś klienta". Same magic-link
@@ -525,6 +534,34 @@ message ListTherapistsResponse {
 message RemoveTherapistRequest {
   string user_id = 1;             // must be in the caller's org
   string reason = 2;              // optional; audit only
+}
+
+// ── Manager (ORG_ADMIN) self-management — docs/38 PR14 ──
+message ManagerEntry {
+  // Same shape as TherapistEntry: an active manager sets `user`; a
+  // pending ORG_ADMIN invitation sets `pending_invitation`.
+  User user = 1;
+  Invitation pending_invitation = 2;
+}
+
+message ListManagersResponse {
+  repeated ManagerEntry managers = 1;
+}
+
+message InviteMyOrgManagerRequest {
+  string email = 1;
+  string first_name = 2;          // optional
+  string last_name = 3;           // optional
+}
+
+message SetMyOrgManagerStatusRequest {
+  string user_id = 1;             // an ORG_ADMIN in the caller's org, not self
+  bool is_active = 2;
+  string reason = 3;              // optional; audit only
+}
+
+message RevokeMyOrgManagerInviteRequest {
+  string invitation_id = 1;       // a pending ORG_ADMIN invite in the caller's org
 }
 
 // ──────────────────────────────────────────────────────────────────

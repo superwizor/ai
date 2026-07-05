@@ -171,6 +171,38 @@ func (a *ConnectAdapter) SetTherapistStatus(ctx context.Context, req *connect.Re
 	return connect.NewResponse(resp), nil
 }
 
+func (a *ConnectAdapter) ListMyOrgManagers(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[identityv1.ListManagersResponse], error) {
+	resp, err := a.s.ListMyOrgManagers(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) InviteMyOrgManager(ctx context.Context, req *connect.Request[identityv1.InviteMyOrgManagerRequest]) (*connect.Response[identityv1.Invitation], error) {
+	resp, err := a.s.InviteMyOrgManager(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) SetMyOrgManagerStatus(ctx context.Context, req *connect.Request[identityv1.SetMyOrgManagerStatusRequest]) (*connect.Response[identityv1.User], error) {
+	resp, err := a.s.SetMyOrgManagerStatus(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (a *ConnectAdapter) RevokeMyOrgManagerInvite(ctx context.Context, req *connect.Request[identityv1.RevokeMyOrgManagerInviteRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := a.s.RevokeMyOrgManagerInvite(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (a *ConnectAdapter) AdminCreateOrganization(ctx context.Context, req *connect.Request[identityv1.AdminCreateOrganizationRequest]) (*connect.Response[identityv1.AdminCreateOrganizationResponse], error) {
 	resp, err := a.s.AdminCreateOrganization(ctx, req.Msg)
 	if err != nil {
