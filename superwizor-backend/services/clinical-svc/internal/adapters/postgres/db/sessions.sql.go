@@ -77,27 +77,32 @@ WHERE s.deleted_at IS NULL
         $4::text = ''
         OR u.organization_id::text = $4::text
       )
+  -- Optional org-name substring search (free-text box in the admin UI).
+  AND (
+        $5::text = ''
+        OR LOWER(COALESCE(o.legal_name,'')) LIKE '%' || LOWER($5::text) || '%'
+      )
 ORDER BY
-    CASE WHEN $5::text = 'asc' AND $6::text = 'created_at'        THEN s.created_at         END ASC NULLS LAST,
-    CASE WHEN $5::text = 'asc' AND $6::text = 'session_date'      THEN s.session_date       END ASC NULLS LAST,
-    CASE WHEN $5::text = 'asc' AND $6::text = 'duration_seconds'  THEN s.duration_seconds   END ASC NULLS LAST,
-    CASE WHEN $5::text = 'asc' AND $6::text = 'status'            THEN s.status::text       END ASC NULLS LAST,
-    CASE WHEN $5::text = 'asc' AND $6::text = 'therapist'         THEN LOWER(COALESCE(u.last_name,'') || ' ' || COALESCE(u.first_name,'')) END ASC NULLS LAST,
-    CASE WHEN $5::text = 'asc' AND $6::text = 'organization'      THEN LOWER(COALESCE(o.legal_name,''))   END ASC NULLS LAST,
-    CASE WHEN $5::text = 'asc' AND $6::text = 'plan_name'         THEN LOWER(COALESCE(p.display_name,'')) END ASC NULLS LAST,
-    CASE WHEN $5::text = 'asc' AND $6::text = 'period_end'        THEN sub.current_period_end             END ASC NULLS LAST,
-    CASE WHEN $5::text = 'asc' AND $6::text = 'tokens_used'       THEN uc.tokens_used                     END ASC NULLS LAST,
-    CASE WHEN $5::text = 'desc' AND $6::text = 'created_at'       THEN s.created_at         END DESC NULLS LAST,
-    CASE WHEN $5::text = 'desc' AND $6::text = 'session_date'     THEN s.session_date       END DESC NULLS LAST,
-    CASE WHEN $5::text = 'desc' AND $6::text = 'duration_seconds' THEN s.duration_seconds   END DESC NULLS LAST,
-    CASE WHEN $5::text = 'desc' AND $6::text = 'status'           THEN s.status::text       END DESC NULLS LAST,
-    CASE WHEN $5::text = 'desc' AND $6::text = 'therapist'        THEN LOWER(COALESCE(u.last_name,'') || ' ' || COALESCE(u.first_name,'')) END DESC NULLS LAST,
-    CASE WHEN $5::text = 'desc' AND $6::text = 'organization'     THEN LOWER(COALESCE(o.legal_name,''))   END DESC NULLS LAST,
-    CASE WHEN $5::text = 'desc' AND $6::text = 'plan_name'        THEN LOWER(COALESCE(p.display_name,'')) END DESC NULLS LAST,
-    CASE WHEN $5::text = 'desc' AND $6::text = 'period_end'       THEN sub.current_period_end             END DESC NULLS LAST,
-    CASE WHEN $5::text = 'desc' AND $6::text = 'tokens_used'      THEN uc.tokens_used                     END DESC NULLS LAST,
+    CASE WHEN $6::text = 'asc' AND $7::text = 'created_at'        THEN s.created_at         END ASC NULLS LAST,
+    CASE WHEN $6::text = 'asc' AND $7::text = 'session_date'      THEN s.session_date       END ASC NULLS LAST,
+    CASE WHEN $6::text = 'asc' AND $7::text = 'duration_seconds'  THEN s.duration_seconds   END ASC NULLS LAST,
+    CASE WHEN $6::text = 'asc' AND $7::text = 'status'            THEN s.status::text       END ASC NULLS LAST,
+    CASE WHEN $6::text = 'asc' AND $7::text = 'therapist'         THEN LOWER(COALESCE(u.last_name,'') || ' ' || COALESCE(u.first_name,'')) END ASC NULLS LAST,
+    CASE WHEN $6::text = 'asc' AND $7::text = 'organization'      THEN LOWER(COALESCE(o.legal_name,''))   END ASC NULLS LAST,
+    CASE WHEN $6::text = 'asc' AND $7::text = 'plan_name'         THEN LOWER(COALESCE(p.display_name,'')) END ASC NULLS LAST,
+    CASE WHEN $6::text = 'asc' AND $7::text = 'period_end'        THEN sub.current_period_end             END ASC NULLS LAST,
+    CASE WHEN $6::text = 'asc' AND $7::text = 'tokens_used'       THEN uc.tokens_used                     END ASC NULLS LAST,
+    CASE WHEN $6::text = 'desc' AND $7::text = 'created_at'       THEN s.created_at         END DESC NULLS LAST,
+    CASE WHEN $6::text = 'desc' AND $7::text = 'session_date'     THEN s.session_date       END DESC NULLS LAST,
+    CASE WHEN $6::text = 'desc' AND $7::text = 'duration_seconds' THEN s.duration_seconds   END DESC NULLS LAST,
+    CASE WHEN $6::text = 'desc' AND $7::text = 'status'           THEN s.status::text       END DESC NULLS LAST,
+    CASE WHEN $6::text = 'desc' AND $7::text = 'therapist'        THEN LOWER(COALESCE(u.last_name,'') || ' ' || COALESCE(u.first_name,'')) END DESC NULLS LAST,
+    CASE WHEN $6::text = 'desc' AND $7::text = 'organization'     THEN LOWER(COALESCE(o.legal_name,''))   END DESC NULLS LAST,
+    CASE WHEN $6::text = 'desc' AND $7::text = 'plan_name'        THEN LOWER(COALESCE(p.display_name,'')) END DESC NULLS LAST,
+    CASE WHEN $6::text = 'desc' AND $7::text = 'period_end'       THEN sub.current_period_end             END DESC NULLS LAST,
+    CASE WHEN $6::text = 'desc' AND $7::text = 'tokens_used'      THEN uc.tokens_used                     END DESC NULLS LAST,
     s.created_at DESC  -- final tiebreaker for stable ordering
-LIMIT $8::int OFFSET $7::int
+LIMIT $9::int OFFSET $8::int
 `
 
 type AdminListRecentSessionsParams struct {
@@ -105,6 +110,7 @@ type AdminListRecentSessionsParams struct {
 	EndTime            time.Time `json:"end_time"`
 	TherapistFilter    string    `json:"therapist_filter"`
 	OrganizationFilter string    `json:"organization_filter"`
+	OrganizationSearch string    `json:"organization_search"`
 	SortOrder          string    `json:"sort_order"`
 	SortBy             string    `json:"sort_by"`
 	PageOffset         int32     `json:"page_offset"`
@@ -160,6 +166,7 @@ func (q *Queries) AdminListRecentSessions(ctx context.Context, arg AdminListRece
 		arg.EndTime,
 		arg.TherapistFilter,
 		arg.OrganizationFilter,
+		arg.OrganizationSearch,
 		arg.SortOrder,
 		arg.SortBy,
 		arg.PageOffset,

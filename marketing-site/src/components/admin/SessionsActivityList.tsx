@@ -16,15 +16,11 @@ import { useTranslations } from "next-intl";
 import { create } from "@bufbuild/protobuf";
 import { timestampDate, timestampFromDate } from "@bufbuild/protobuf/wkt";
 
-import { clinicalClient, identityClient } from "@/lib/connect/clients";
+import { clinicalClient } from "@/lib/connect/clients";
 import {
   AdminListSessionsRequestSchema,
   type AdminSessionRow,
 } from "@superwizor/proto-ts/clinical/v1/clinical_pb";
-import {
-  AdminListOrganizationsRequestSchema,
-  type OrganizationSummary,
-} from "@superwizor/proto-ts/identity/v1/identity_pb";
 import { TableSkeleton } from "./TableSkeleton";
 
 const PAGE_SIZE = 50;
@@ -63,26 +59,15 @@ export function SessionsActivityList() {
   const [therapistFilter, setTherapistFilter] = useState("");
   const [therapistFilterDebounced, setTherapistFilterDebounced] = useState("");
 
-  // Organization filter — "" = all orgs. Options loaded once on mount.
-  const [orgFilter, setOrgFilter] = useState("");
-  const [orgs, setOrgs] = useState<OrganizationSummary[]>([]);
+  // Organization search — substring on legal_name, server-side
+  // case-insensitive. Debounced like the therapist box (same UX).
+  const [orgSearch, setOrgSearch] = useState("");
+  const [orgSearchDebounced, setOrgSearchDebounced] = useState("");
 
   useEffect(() => {
-    let cancelled = false;
-    identityClient
-      .adminListOrganizations(
-        create(AdminListOrganizationsRequestSchema, { pageSize: 200 }),
-      )
-      .then((resp) => {
-        if (!cancelled) setOrgs(resp.organizations);
-      })
-      .catch(() => {
-        /* dropdown just stays empty — the filter is optional */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    const handle = setTimeout(() => setOrgSearchDebounced(orgSearch.trim()), 300);
+    return () => clearTimeout(handle);
+  }, [orgSearch]);
 
   const [rows, setRows] = useState<AdminSessionRow[]>([]);
   const [state, setState] = useState<LoadState>("idle");
@@ -103,7 +88,7 @@ export function SessionsActivityList() {
   // Reset to page 0 whenever filters OR sort changes.
   useEffect(() => {
     setPage(0);
-  }, [therapistFilterDebounced, orgFilter, since, until, sortBy, sortOrder]);
+  }, [therapistFilterDebounced, orgSearchDebounced, since, until, sortBy, sortOrder]);
 
   // Click on a column header: same column flips order asc↔desc; new
   // column starts at desc (the convention used elsewhere in /admin).
@@ -125,7 +110,7 @@ export function SessionsActivityList() {
         pageSize,
         page: pageIdx,
         therapistFilter: therapistFilterDebounced,
-        organizationId: orgFilter,
+        organizationSearch: orgSearchDebounced,
         sortBy,
         sortOrder,
       });
@@ -143,7 +128,7 @@ export function SessionsActivityList() {
       }
       return req;
     },
-    [since, until, therapistFilterDebounced, orgFilter, sortBy, sortOrder],
+    [since, until, therapistFilterDebounced, orgSearchDebounced, sortBy, sortOrder],
   );
 
   const fetchPage = useCallback(async () => {
@@ -271,20 +256,13 @@ export function SessionsActivityList() {
       {/* Filters */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Field label={t("filters.organization")}>
-          <select
-            value={orgFilter}
-            onChange={(e) => setOrgFilter(e.target.value)}
-            className="w-full bg-evergreen/40 border border-frost/15 rounded-button px-3 py-2 font-serif text-sm text-frost focus:outline-none focus:border-ember"
-          >
-            <option value="">{t("filters.organizationAll")}</option>
-            {orgs
-              .filter((o) => o.organization)
-              .map((o) => (
-                <option key={o.organization!.id} value={o.organization!.id}>
-                  {o.organization!.legalName}
-                </option>
-              ))}
-          </select>
+          <input
+            type="search"
+            placeholder={t("filters.organizationPlaceholder")}
+            value={orgSearch}
+            onChange={(e) => setOrgSearch(e.target.value)}
+            className="w-full bg-evergreen/40 border border-frost/15 rounded-button px-3 py-2 font-serif text-sm text-frost placeholder:text-mist/50 focus:outline-none focus:border-ember"
+          />
         </Field>
         <Field label={t("filters.since")}>
           <input

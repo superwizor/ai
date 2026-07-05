@@ -88,6 +88,11 @@ WHERE s.deleted_at IS NULL
         @organization_filter::text = ''
         OR u.organization_id::text = @organization_filter::text
       )
+  -- Optional org-name substring search (free-text box in the admin UI).
+  AND (
+        @organization_search::text = ''
+        OR LOWER(COALESCE(o.legal_name,'')) LIKE '%' || LOWER(@organization_search::text) || '%'
+      )
 ORDER BY
     CASE WHEN @sort_order::text = 'asc' AND @sort_by::text = 'created_at'        THEN s.created_at         END ASC NULLS LAST,
     CASE WHEN @sort_order::text = 'asc' AND @sort_by::text = 'session_date'      THEN s.session_date       END ASC NULLS LAST,

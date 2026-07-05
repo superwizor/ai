@@ -104,6 +104,7 @@ func (s *Server) AdminListSessions(ctx context.Context, req *clinicalv1.AdminLis
 		EndTime:            end,
 		TherapistFilter:    req.GetTherapistFilter(),
 		OrganizationFilter: req.GetOrganizationId(),
+		OrganizationSearch: req.GetOrganizationSearch(),
 		SortBy:             sortBy,
 		SortOrder:          sortOrder,
 		PageOffset:         page * pageSize,
