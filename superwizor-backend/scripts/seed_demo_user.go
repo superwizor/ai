@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -74,17 +75,15 @@ func main() {
 		}
 	}
 
-	// 2. Connect to local PostgreSQL
+	// 2. Connect to PostgreSQL — DSN from env, never hardcoded (security #4).
 	fmt.Println("🔄 Connecting to database...")
-	url := "postgres://superwizor_app:Zjee%21ZoYyd78%25%26lCk-%7D47N74J-9OE%21M%21@127.0.0.1:5432/superwizor?sslmode=disable"
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		log.Fatal("set DATABASE_URL to run this tool")
+	}
 	conn, err := pgx.Connect(ctx, url)
 	if err != nil {
-		fmt.Printf("Retrying on 5433... ")
-		url = "postgres://superwizor_app:Zjee%21ZoYyd78%25%26lCk-%7D47N74J-9OE%21M%21@127.0.0.1:5433/superwizor?sslmode=disable"
-		conn, err = pgx.Connect(ctx, url)
-		if err != nil {
-			log.Fatalf("connect error: %v", err)
-		}
+		log.Fatalf("connect error: %v", err)
 	}
 	defer conn.Close(ctx)
 

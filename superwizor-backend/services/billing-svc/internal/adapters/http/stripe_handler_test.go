@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"os"
 	"testing"
 	"time"
 
@@ -11,21 +12,20 @@ import (
 )
 
 func TestStripeSubscriptionUnmarshal(t *testing.T) {
-	// This is a diagnostic test that connects to a real database.
-	// Skip in CI where no database is available.
+	// Diagnostic test that connects to a real database. Skip in CI (short
+	// mode) or when DATABASE_URL is not set — never hardcode creds (#4).
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		t.Skip("set DATABASE_URL to run this integration test")
+	}
 
 	ctx := context.Background()
-	url := "postgres://superwizor_app:Zjee%21ZoYyd78%25%26lCk-%7D47N74J-9OE%21M%21@127.0.0.1:5432/superwizor?sslmode=disable"
 	conn, err := pgx.Connect(ctx, url)
 	if err != nil {
-		url = "postgres://superwizor_app:Zjee%21ZoYyd78%25%26lCk-%7D47N74J-9OE%21M%21@127.0.0.1:5433/superwizor?sslmode=disable"
-		conn, err = pgx.Connect(ctx, url)
-		if err != nil {
-			t.Fatalf("connect error: %v", err)
-		}
+		t.Fatalf("connect error: %v", err)
 	}
 	defer func() { _ = conn.Close(ctx) }()
 

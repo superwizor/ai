@@ -24,9 +24,13 @@ coverage.html
 # Go module cache
 vendor/
 
-# Terraform
+# Terraform (routinely contains plaintext secrets)
 *.tfstate
 *.tfstate.backup
+# epoch-suffixed backups (e.g. terraform.tfstate.1777855217.backup) — the bare
+# *.tfstate.backup glob above does NOT match these; these globs do.
+*.tfstate.*
+terraform.tfstate.*.backup
 *.tfvars
 .terraform/
 .terragrunt-cache/
