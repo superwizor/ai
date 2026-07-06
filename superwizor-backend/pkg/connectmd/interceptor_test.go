@@ -39,6 +39,32 @@ func TestInjectMetadata_CopiesHeadersLowerCased(t *testing.T) {
 	}
 }
 
+// SECURITY #9: a client-supplied x-superwizor-* header must NEVER survive
+// into trusted gRPC metadata — only a token-validating interceptor may set it.
+func TestInjectMetadata_DropsReservedIdentityHeaders(t *testing.T) {
+	in := connectHeader{
+		"Authorization":                 {"Bearer abc"},
+		"X-Superwizor-Role":             {"SUPERWIZOR_ADMIN"},
+		"x-superwizor-user-id":          {"attacker"},
+		"X-Superwizor-Organization-Id":  {"victim-org"},
+		"X-Superwizor-Future-Key":       {"nope"},
+	}
+	ctx := injectMetadata(context.Background(), in)
+	md, _ := metadata.FromIncomingContext(ctx)
+
+	if got := md.Get("authorization"); len(got) != 1 || got[0] != "Bearer abc" {
+		t.Errorf("authorization = %v, want [Bearer abc]", got)
+	}
+	for _, k := range []string{
+		"x-superwizor-role", "x-superwizor-user-id",
+		"x-superwizor-organization-id", "x-superwizor-future-key",
+	} {
+		if got := md.Get(k); len(got) != 0 {
+			t.Errorf("reserved header %q leaked into metadata: %v", k, got)
+		}
+	}
+}
+
 func TestInjectMetadata_DropsPseudoHeaders(t *testing.T) {
 	in := connectHeader{
 		":authority":    {"identity-svc.run.app"},

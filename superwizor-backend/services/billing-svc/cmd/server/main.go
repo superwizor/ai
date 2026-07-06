@@ -128,8 +128,19 @@ func main() {
 
 	billingServer := grpcadapter.NewServer(pool, version, analyticsCollector)
 
+	// Native-gRPC auth (security #2/#9). The native path serves only S2S
+	// callers (quota ledger + GetSubscription); Admin* RPCs are rejected
+	// here since no backend service calls them over gRPC. When the OIDC
+	// env vars are set the quota RPCs also require an allow-listed caller.
+	internalAud := os.Getenv("INTERNAL_OIDC_AUDIENCE")
+	allowedSAs := grpcadapter.ParseAllowedSAs(os.Getenv("INTERNAL_ALLOWED_SAS"))
+	if internalAud == "" || len(allowedSAs) == 0 {
+		slog.Warn("billing-svc: INTERNAL_OIDC_AUDIENCE / INTERNAL_ALLOWED_SAS unset — native quota RPCs run without OIDC caller checks (Admin* still rejected on native)")
+	}
+
 	// gRPC server (in-process — handler reused via ServeHTTP).
-	gs := grpc.NewServer()
+	gs := grpc.NewServer(grpc.UnaryInterceptor(
+		grpcadapter.NativeAuthInterceptor(internalAud, allowedSAs, nil)))
 	billingv1.RegisterBillingServiceServer(gs, billingServer)
 	hs := health.NewServer()
 	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
@@ -186,8 +197,16 @@ func main() {
 	interceptors := []connect.Interceptor{connectmd.HeadersToGRPCMetadata()}
 	if identityClient != nil {
 		interceptors = append(interceptors, grpcadapter.ConnectAuthInterceptor(identityClient))
+	} else if os.Getenv("BILLING_ALLOW_INSECURE") == "1" {
+		// Explicit local-dev / contract-test escape hatch — NEVER set in
+		// staging/prod terraform.
+		slog.Warn("billing-svc: IDENTITY_SVC_URL unset and BILLING_ALLOW_INSECURE=1 — Connect RPCs are UNAUTHENTICATED (dev only)")
 	} else {
-		slog.Warn("billing-svc: IDENTITY_SVC_URL unset — admin Connect RPCs require upstream x-superwizor-role metadata")
+		// Fail closed (#8): without identity-svc we cannot validate the
+		// Firebase token, so reject every Connect call rather than trust
+		// upstream x-superwizor-role metadata a client can forge.
+		slog.Error("billing-svc: IDENTITY_SVC_URL unset — Connect RPCs fail closed. Set IDENTITY_SVC_URL (or BILLING_ALLOW_INSECURE=1 for local dev).")
+		interceptors = append(interceptors, grpcadapter.FailClosedConnectInterceptor())
 	}
 	interceptors = append(interceptors, grpcadapter.ConnectErrorInterceptor())
 	connectPath, connectHandler := billingv1connect.NewBillingServiceHandler(

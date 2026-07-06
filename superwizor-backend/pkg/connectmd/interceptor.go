@@ -114,10 +114,19 @@ func TranslateGRPCError() connect.UnaryInterceptorFunc {
 func injectMetadata(ctx context.Context, header connectHeader) context.Context {
 	md := metadata.New(nil)
 	for k, vv := range header {
-		if strings.HasPrefix(k, ":") {
+		lk := strings.ToLower(k)
+		if strings.HasPrefix(lk, ":") {
 			continue
 		}
-		md.Set(strings.ToLower(k), vv...)
+		// SECURITY (#9): drop the reserved trusted-identity keys from inbound
+		// headers. They must ONLY be set by a token-validating interceptor,
+		// never by a client — this neutralizes the metadata-spoofing escalation
+		// primitive behind #2/#5/#8. No client legitimately sends these (every
+		// client sends only a Firebase Bearer token).
+		if strings.HasPrefix(lk, "x-superwizor-") {
+			continue
+		}
+		md.Set(lk, vv...)
 	}
 	if md.Len() == 0 {
 		return ctx
