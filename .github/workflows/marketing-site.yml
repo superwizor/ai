@@ -31,6 +31,28 @@ permissions:
   # perms) is provisioned via terraform — see infra/staging.
   id-token: write
 
+# Public build-time client config for `next build`. These are all
+# NEXT_PUBLIC_* values — by definition they are compiled into the browser
+# bundle and are NOT secrets (publishable Stripe key, public Firebase web
+# config, public Cloud Run URLs, reCAPTCHA site key). They previously lived
+# in a committed marketing-site/.env.production, which the security pass
+# (#4) removed alongside the real DB-password secret. Without them `next
+# build` falls back to the localhost defaults in src/lib/connect/transport.ts
+# and production login breaks (identity RPCs hit http://localhost:8080). A
+# top-level env block feeds every `pnpm build` in this workflow (build /
+# deploy-preview / deploy-production). The genuine secret (STRIPE_SECRET_KEY)
+# stays in billing-svc via GCP Secret Manager.
+env:
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_51TREGgE5jzWcAIgeQMblLii1r6vCXqalB3DjPrJ0mKUvQcmLADV3G2jn4Rf73uG4X4j9QWA6CzagOnDaB7LBzFck00jH7yjjAW
+  NEXT_PUBLIC_FIREBASE_API_KEY: AIzaSyAggOO0mf-HDhQBI8boIgUSlipjmha2p5w
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: superwizor-ai-25ecd.firebaseapp.com
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: superwizor-ai-25ecd
+  NEXT_PUBLIC_FIREBASE_APP_ID: "1:344724821207:web:3e2ca4d5fcfdc640a98c92"
+  NEXT_PUBLIC_IDENTITY_URL: https://identity-svc-344724821207.europe-central2.run.app
+  NEXT_PUBLIC_BILLING_URL: https://billing-svc-344724821207.europe-central2.run.app
+  NEXT_PUBLIC_CLINICAL_URL: https://clinical-svc-344724821207.europe-central2.run.app
+  NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_KEY: 6Lc7pxstAAAAANhbK7gIedSlbY5cWwrI7zXc_3BQ
+
 jobs:
   build:
     name: build + smoke
