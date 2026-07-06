@@ -37,3 +37,14 @@ scripts/node_modules/
 scratch/
 proxy.log
 
+# Secrets & credentials — NEVER commit (security #4/#18)
+sa-key.json
+**/sa-key.json
+*-sa-key.json
+.env.production
+**/.env.production
+# Terraform state (routinely contains plaintext secrets) incl. epoch backups
+*.tfstate
+*.tfstate.*
+**/*.tfstate*
+

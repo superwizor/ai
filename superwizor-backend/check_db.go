@@ -18,19 +18,19 @@ type FixedCost struct {
 
 func main() {
 	ctx := context.Background()
-	
-	// Try port 5432 first (active cloud-sql-proxy)
-	url := "postgres://superwizor_app:Zjee%21ZoYyd78%25%26lCk-%7D47N74J-9OE%21M%21@127.0.0.1:5432/superwizor?sslmode=disable"
-	fmt.Printf("Connecting to database on port 5432...\n")
+
+	// DSN from the environment — never hardcode credentials (security #4).
+	// e.g. postgres://superwizor_app:<pw>@127.0.0.1:5432/superwizor?sslmode=disable
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		fmt.Println("set DATABASE_URL to run this tool")
+		os.Exit(1)
+	}
+	fmt.Println("Connecting to database...")
 	conn, err := pgx.Connect(ctx, url)
 	if err != nil {
-		fmt.Printf("Failed to connect on port 5432: %v. Retrying on port 5433...\n", err)
-		url = "postgres://superwizor_app:Zjee%21ZoYyd78%25%26lCk-%7D47N74J-9OE%21M%21@127.0.0.1:5433/superwizor?sslmode=disable"
-		conn, err = pgx.Connect(ctx, url)
-		if err != nil {
-			fmt.Printf("Connect error: %v\n", err)
-			os.Exit(1)
-		}
+		fmt.Printf("Connect error: %v\n", err)
+		os.Exit(1)
 	}
 	defer conn.Close(ctx)
 
