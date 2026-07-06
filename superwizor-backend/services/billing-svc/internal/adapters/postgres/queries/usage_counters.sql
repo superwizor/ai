@@ -66,14 +66,29 @@ WHERE subscription_id = $1
 
 -- name: CreateTherapistUsageCounter :one
 -- Per-seat counter, minted by AdminSetSeatAllocations for already-seated
--- therapists and lazily by the debit path for later joiners. UNIQUE
--- (subscription_id, therapist_id, period_start) absorbs races.
+-- therapists and lazily by the debit path for later joiners.
+--
+-- ON CONFLICT DO NOTHING is load-bearing, not just tidy: without it a
+-- duplicate insert raises 23505, which ABORTS the enclosing pgx
+-- transaction. Both callers "tolerate" the unique violation and keep
+-- going, but the next statement on the poisoned tx fails with 25P02
+-- ("current transaction is aborted") → codes.Internal → the caller 500s.
+-- This is the AdminSetSeatAllocations 500 on EDIT: an org whose seated
+-- therapists already have counters violates on the first insert and
+-- poisons the tx. DO NOTHING makes the insert a no-op on conflict — no
+-- error raised, tx stays healthy. On conflict RETURNING yields no row,
+-- so callers get pgx.ErrNoRows (meaning "already exists"); on a fresh
+-- insert they get the new row. The partial-index predicate is repeated
+-- so ON CONFLICT targets uq_usage_counters_therapist_period.
 INSERT INTO usage_counters (
     subscription_id, therapist_id, period_start, period_end,
     tokens_used, tokens_reserved, tokens_limit
 ) VALUES (
     $1, $2, $3, $4, 0, 0, $5
 )
+ON CONFLICT (subscription_id, therapist_id, period_start)
+    WHERE therapist_id IS NOT NULL
+    DO NOTHING
 RETURNING id, subscription_id, period_start, period_end,
        tokens_used, tokens_reserved, tokens_limit, updated_at, therapist_id;
 

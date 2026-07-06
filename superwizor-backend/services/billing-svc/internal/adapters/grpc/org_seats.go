@@ -169,7 +169,12 @@ func (s *Server) AdminSetSeatAllocations(ctx context.Context, req *billingv1.Adm
 			PeriodEnd:      periodEnd,
 			TokensLimit:    t.TokensPerPeriod,
 		})
-		if err != nil && !isUniqueViolation(err) {
+		// The counter already existing is the normal case on an EDIT.
+		// The query is ON CONFLICT DO NOTHING, so a hit returns no row →
+		// pgx.ErrNoRows; that's fine and, crucially, does NOT abort the
+		// transaction (a raw 23505 would, poisoning the audit + commit
+		// below → the 500 this fixes).
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return nil, status.Errorf(codes.Internal, "create counter for %s: %v", t.TherapistID, err)
 		}
 	}
