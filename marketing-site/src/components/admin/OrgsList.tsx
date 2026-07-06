@@ -150,7 +150,7 @@ export function OrgsList() {
           />
           <a
             href={`${prefix}/admin/orgs/new`}
-            className="whitespace-nowrap rounded-button bg-ember text-abyss px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/90 transition"
+            className="whitespace-nowrap rounded-button bg-ember text-obsidian px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/90 transition"
           >
             {t("createCta")}
           </a>

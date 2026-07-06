@@ -65,7 +65,7 @@ export function OrgGuardAndShell({ children }: { children: ReactNode }) {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-abyss flex items-center justify-center">
+      <div className="min-h-screen bg-evergreen flex items-center justify-center">
         <p className="font-mono text-[10px] uppercase tracking-[var(--tracking-overline)] text-mist/70">
           {t("loading")}
         </p>
@@ -75,12 +75,12 @@ export function OrgGuardAndShell({ children }: { children: ReactNode }) {
 
   if (status === "signed-out") {
     return (
-      <div className="min-h-screen bg-abyss flex items-center justify-center px-4">
+      <div className="min-h-screen bg-evergreen flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <p className="font-serif text-frost">{t("signinRequired")}</p>
           <a
             href={`${prefix}/login?next=${encodeURIComponent(`${prefix}/org`)}`}
-            className="mt-4 inline-flex rounded-button bg-ember text-abyss px-5 py-2.5 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/90 transition"
+            className="mt-4 inline-flex rounded-button bg-ember text-obsidian px-5 py-2.5 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/90 transition"
           >
             {t("signinCta")}
           </a>
@@ -91,7 +91,7 @@ export function OrgGuardAndShell({ children }: { children: ReactNode }) {
 
   if (status === "forbidden") {
     return (
-      <div className="min-h-screen bg-abyss flex items-center justify-center px-4">
+      <div className="min-h-screen bg-evergreen flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <h1 className="font-display text-frost text-xl font-semibold">
             {t("forbiddenTitle")}
@@ -103,7 +103,7 @@ export function OrgGuardAndShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-abyss">
+    <div className="min-h-screen bg-evergreen">
       <header className="border-b border-frost/10 px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
         <span className="font-display text-frost font-semibold tracking-[var(--tracking-display)]">
           Superwizor AI · {t("panelName")}

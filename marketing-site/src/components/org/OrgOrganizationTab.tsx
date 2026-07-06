@@ -27,7 +27,7 @@ import { translateError } from "@/lib/errors/translate";
 const inputCls =
   "rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember placeholder:text-mist/60 transition w-full";
 const btnPrimary =
-  "rounded-button bg-ember text-abyss px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/90 transition disabled:opacity-40 disabled:cursor-not-allowed";
+  "rounded-button bg-ember text-obsidian px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/90 transition disabled:opacity-40 disabled:cursor-not-allowed";
 const thCls =
   "text-left px-4 py-3 font-mono text-[10px] uppercase tracking-[var(--tracking-label)] text-mist";
 
