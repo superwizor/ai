@@ -77,8 +77,11 @@ func lockDebitCounter(
 			if cerr == nil {
 				return c, therapistID, nil
 			}
-			if isUniqueViolation(cerr) {
-				// Race with a concurrent mint — re-lock the winner's row.
+			// CreateTherapistUsageCounter is ON CONFLICT DO NOTHING, so a
+			// concurrent mint that already inserted the row returns no row
+			// → pgx.ErrNoRows (NOT a 23505, which would have aborted this
+			// tx and broken the re-lock below). Re-lock the winner's row.
+			if errors.Is(cerr, pgx.ErrNoRows) {
 				c2, e2 := q.LockActiveCounterForTherapist(ctx, db.LockActiveCounterForTherapistParams{
 					SubscriptionID: sub.ID,
 					TherapistID:    therapistID,

@@ -125,7 +125,10 @@ func TestLockDebitCounter_MintRace_RelocksWinner(t *testing.T) {
 			return db.GetSeatPlanForTherapistRow{OrganizationID: org, TokensPerPeriod: 120}, nil
 		},
 		createTherapistCounterFn: func(_ context.Context, _ db.CreateTherapistUsageCounterParams) (db.UsageCounter, error) {
-			return db.UsageCounter{}, uniqueViolationErr() // concurrent mint won
+			// ON CONFLICT DO NOTHING: a concurrent mint that already
+			// inserted the row makes our insert a no-op → no row →
+			// pgx.ErrNoRows (previously this surfaced as a raw 23505).
+			return db.UsageCounter{}, pgx.ErrNoRows
 		},
 	}
 
