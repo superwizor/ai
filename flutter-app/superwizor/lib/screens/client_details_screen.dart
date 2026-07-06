@@ -3127,33 +3127,18 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     }
   }
 
-  /// The patient e-mail to send to (for masking in the confirm sheet), or
-  /// null if none is on file. Comes from the server-backed patient file.
-  String? get _patientEmail {
-    final passed = widget.patientEmail?.trim();
-    return (passed != null && passed.isNotEmpty) ? passed : null;
-  }
-
-  bool get _patientHasEmail =>
-      widget.patientHasEmail ?? (_patientEmail?.isNotEmpty ?? false);
-
-  /// Action-plan mode: confirm, then save + send via the real
-  /// SavePatientNote RPC (send_to_patient=true). On PATIENT_EMAIL_MISSING
-  /// the note is still saved server-side; we surface the no-email warning.
+  /// Action-plan "Zapisz i wyślij": persist the note, then POST it to the
+  /// client's panel via ShareNoteWithClient (docs/39). This REPLACED the
+  /// old e-mail delivery (SavePatientNote send_to_patient=true → action-
+  /// plan e-mail): action plans now land in the client panel, no e-mail.
   Future<void> _saveAndSend() async {
     if (_saving) return;
     final l = AppLocalizations.of(context);
-    // "Wyślij" is gated on a patient e-mail, so this runs only when one is
-    // on file. Use the masked address in the confirm sheet.
-    final email = _patientEmail ?? '';
-    final confirmed = await _showSendConfirmSheet(l, email);
-    if (confirmed != true || !mounted) return;
-
     setState(() => _saving = true);
     try {
-      final repo = ClinicalNotesRepository(
-        ref.read(grpcClientsProvider).clinical,
-      );
+      final clinical = ref.read(grpcClientsProvider).clinical;
+      final repo = ClinicalNotesRepository(clinical);
+      // Persist first (no e-mail). The returned id is what we share.
       final resp = await repo.savePatientNote(
         widget.patientId,
         noteId: _noteId,
@@ -3161,154 +3146,32 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
         text: _bodyCtrl.text.trim(),
         kind: widget.actionPlanMode ? NoteKind.actionPlan : NoteKind.freeNote,
         sourceSessionId: widget.sourceSessionId ?? '',
-        sendToPatient: true,
+        sendToPatient: false,
       );
-      // The server ALWAYS persists the note first — a send failure never
-      // means the save failed. Remember the id so a retry updates this
-      // same note instead of creating a duplicate.
       _saved = true;
       if (resp.note.id.isNotEmpty) _noteId = resp.note.id;
+      // Post it to the client panel. Idempotent (shared=true); the client
+      // sees it live via the Firestore inbox mirror (docs/39).
+      await clinical.shareNoteWithClient(
+        clinical_pb.ShareNoteWithClientRequest(
+          noteId: _noteId,
+          shared: true,
+        ),
+      );
       if (mounted) {
         await ref
             .read(patientNotesMapProvider.notifier)
             .refreshNotes(widget.patientId);
       }
       if (!mounted) return;
-      if (resp.sent) {
-        AppHapticFeedback.mediumImpact();
-        EuphireToast.success(context, message: l.action_plan_sent_toast);
-        Navigator.pop(context);
-      } else if (resp.sendError == 'PATIENT_EMAIL_MISSING') {
-        // Saved, but no e-mail on file — prompt to add one and retry.
-        _showNoEmailSheet(l);
-      } else {
-        // Saved, but delivery failed (provider not configured / domain not
-        // verified). Keep the editor open so the send can be retried; the
-        // note itself is safe.
-        EuphireToast.error(context, message: l.action_plan_saved_not_sent);
-      }
-    } on PatientEmailMissingException {
-      // Backward-compat with an older backend that returned
-      // FAILED_PRECONDITION. The note was still saved server-side.
-      _saved = true;
-      if (mounted) {
-        await ref
-            .read(patientNotesMapProvider.notifier)
-            .refreshNotes(widget.patientId);
-      }
-      if (mounted) _showNoEmailSheet(l);
+      AppHapticFeedback.mediumImpact();
+      EuphireToast.success(context, message: l.share_toggled_on);
+      Navigator.pop(context);
     } catch (e) {
       if (mounted) EuphireToast.error(context, message: l.note_save_error);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-  }
-
-  /// Shown when a send is attempted but the patient has no e-mail on file.
-  void _showNoEmailSheet(AppLocalizations l) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _EuphireSheet(
-        title: l.action_plan_no_email_title,
-        body: l.action_plan_fill_email_hint,
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: EuphireColors.ember,
-                foregroundColor: EuphireColors.nocturne,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                l.common_understand,
-                style: const TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Masks an e-mail address: keep the first char of the local part, then
-  /// `***`, then the domain. e.g. `klient@example.com` -> `k***@example.com`.
-  String _maskEmail(String email) {
-    final at = email.indexOf('@');
-    if (at <= 0) return email;
-    final domain = email.substring(at);
-    return '${email[0]}***$domain';
-  }
-
-  Future<bool?> _showSendConfirmSheet(AppLocalizations l, String email) {
-    return showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _EuphireSheet(
-        title: l.action_plan_send_confirm_title,
-        body: l.action_plan_send_confirm_body(_maskEmail(email)),
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.1),
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    l.action_plan_send_cancel,
-                    style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: EuphireColors.mist,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: EuphireColors.ember,
-                    foregroundColor: EuphireColors.nocturne,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    l.action_plan_send_confirm_action,
-                    style: const TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
   }
 
   Future<bool> _onWillPop() async {
@@ -3604,7 +3467,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   /// Action-plan bottom bar: "Zapisz" (save only) + "Zapisz i wyślij"
   /// (primary, ember). Sits below the editor text fields.
   Widget _buildActionPlanBar(AppLocalizations l) {
-    final canSend = _patientHasEmail && !_saving;
+    // "Zapisz i wyślij" posts the plan to the client panel (docs/39), so
+    // it no longer needs a patient e-mail — enabled whenever not saving.
+    final canSend = !_saving;
     return SafeArea(
       top: false,
       child: Padding(
@@ -3612,32 +3477,6 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // No patient e-mail → "Wyślij" is disabled; tell the therapist
-            // why and what to do.
-            if (!canSend) ...[
-              Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    size: 16,
-                    color: EuphireColors.ember,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      l.action_plan_fill_email_hint,
-                      style: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 12.5,
-                        height: 1.4,
-                        color: EuphireColors.mist.withValues(alpha: 0.85),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-            ],
             Row(
               children: [
                 Expanded(
@@ -3693,76 +3532,6 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Euphire-styled bottom sheet matching the note discard sheet visual:
-/// grab handle, centered title + body, then the caller-supplied action
-/// [children].
-class _EuphireSheet extends StatelessWidget {
-  final String title;
-  final String body;
-  final List<Widget> children;
-
-  const _EuphireSheet({
-    required this.title,
-    required this.body,
-    required this.children,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF0A2326),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        border: Border(top: BorderSide(color: Colors.white10)),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: EuphireColors.frostWhite,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                body,
-                style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 14,
-                  color: EuphireColors.mist.withValues(alpha: 0.7),
-                  height: 1.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              ...children,
-            ],
-          ),
         ),
       ),
     );
