@@ -37,7 +37,7 @@ type Tab = "team" | "analytics" | "organization" | "billing";
 const inputCls =
   "rounded-button bg-obsidian border border-frost/25 text-frost px-3.5 py-2 font-display text-sm focus:outline-none focus:border-ember placeholder:text-mist/60 transition w-full";
 const btnPrimary =
-  "rounded-button bg-ember text-abyss px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/90 transition disabled:opacity-40 disabled:cursor-not-allowed";
+  "rounded-button bg-ember text-obsidian px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] hover:bg-ember/90 transition disabled:opacity-40 disabled:cursor-not-allowed";
 const btnGhost =
   "rounded-button border border-frost/15 px-4 py-2 font-mono text-xs uppercase tracking-[var(--tracking-label)] text-mist hover:text-frost hover:border-frost/30 transition disabled:opacity-40";
 const thCls =
@@ -540,8 +540,8 @@ export function OrgPanel() {
       )}
 
       {inviteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/80 px-4">
-          <div className="w-full max-w-md rounded-card border border-frost/15 bg-abyss p-6 grid gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="w-full max-w-md rounded-card border border-frost/15 bg-evergreen p-6 grid gap-4 shadow-[var(--shadow-large)]">
             <h2 className="font-display text-frost text-lg font-semibold">{t("inviteTitle")}</h2>
             <input
               className={inputCls}
