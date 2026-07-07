@@ -377,6 +377,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get minimized_recording_paused => 'Recording paused';
 
   @override
+  String get minimized_recording_interrupted => 'Interrupted (phone call)';
+
+  @override
   String get minimized_recording_active => 'Recording session...';
 
   @override
@@ -968,7 +971,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get report_rating_notes_label => 'Additional note (optional)';
 
   @override
-  String get report_rating_notes_hint => 'Short comment, max 200 chars…';
+  String get report_rating_notes_hint => 'Short comment, max 4000 chars…';
 
   @override
   String get report_rating_submit => 'Submit rating';

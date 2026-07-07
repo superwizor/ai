@@ -223,12 +223,26 @@ class _ReportRatingWidgetState extends ConsumerState<ReportRatingWidget> {
   }
 
   Future<void> _openNegativeSheet() async {
-    final result = await showModalBottomSheet<_NegativeFormResult>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => const _NegativeRatingSheet(),
-    );
+    final isDesktop = MediaQuery.of(context).size.width > 600;
+    final _NegativeFormResult? result;
+    if (isDesktop) {
+      result = await showDialog<_NegativeFormResult>(
+        context: context,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+          child: const _NegativeRatingSheet(isDialog: true),
+        ),
+      );
+    } else {
+      result = await showModalBottomSheet<_NegativeFormResult>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (_) => const _NegativeRatingSheet(isDialog: false),
+      );
+    }
     if (result != null && result.issues.isNotEmpty) {
       await _submitNegative(issues: result.issues, notes: result.notes);
     }
@@ -279,7 +293,8 @@ class _NegativeFormResult {
 }
 
 class _NegativeRatingSheet extends StatefulWidget {
-  const _NegativeRatingSheet();
+  final bool isDialog;
+  const _NegativeRatingSheet({required this.isDialog});
 
   @override
   State<_NegativeRatingSheet> createState() => _NegativeRatingSheetState();
@@ -288,7 +303,7 @@ class _NegativeRatingSheet extends StatefulWidget {
 class _NegativeRatingSheetState extends State<_NegativeRatingSheet> {
   final Set<String> _selected = {};
   final _notesController = TextEditingController();
-  static const _notesMaxLen = 200;
+  static const _notesMaxLen = 4000;
 
   @override
   void dispose() {
@@ -302,191 +317,213 @@ class _NegativeRatingSheetState extends State<_NegativeRatingSheet> {
     final theme = Theme.of(context);
     final mediaInsets = MediaQuery.of(context).viewInsets;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: mediaInsets.bottom),
-      child: Container(
-        // Cap to ~90% of screen so the sheet can't push above the
-        // status bar when the keyboard is open.
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.9,
-        ),
-        decoration: const BoxDecoration(
-          color: EuphireColors.evergreen,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-        child: SafeArea(
-          top: false,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => FocusScope.of(context).unfocus(),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              // Drag handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              // Icon + title header
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: EuphireColors.magma.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.feedback_outlined,
-                      color: EuphireColors.magma.withValues(alpha: 0.9),
-                      size: 22,
+    final container = Container(
+      // Cap to ~90% of screen so the sheet can't push above the
+      // status bar when the keyboard is open.
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.9,
+        maxWidth: widget.isDialog ? 550 : double.infinity,
+      ),
+      decoration: BoxDecoration(
+        color: EuphireColors.evergreen,
+        borderRadius: widget.isDialog
+            ? BorderRadius.circular(24)
+            : const BorderRadius.vertical(top: Radius.circular(24)),
+        border: widget.isDialog
+            ? Border.all(color: Colors.white.withValues(alpha: 0.08), width: 1)
+            : null,
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+      child: SafeArea(
+        top: false,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!widget.isDialog) ...[
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          t.report_rating_modal_title,
-                          style: theme.textTheme.headlineMedium,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          t.report_rating_modal_subtitle,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: EuphireColors.mist,
-                            fontStyle: FontStyle.italic,
-                            fontSize: 12,
+                ],
+                // Icon + title header
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: EuphireColors.magma.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.feedback_outlined,
+                        color: EuphireColors.magma.withValues(alpha: 0.9),
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            t.report_rating_modal_title,
+                            style: theme.textTheme.headlineMedium,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            t.report_rating_modal_subtitle,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: EuphireColors.mist,
+                              fontStyle: FontStyle.italic,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _kCanonicalIssues.map((id) {
-                  final selected = _selected.contains(id);
-                  return FilterChip(
-                    label: Text(_chipLabel(t, id)),
-                    selected: selected,
-                    onSelected: (v) {
-                      AppHapticFeedback.selectionClick();
-                      setState(() {
-                        if (v) {
-                          _selected.add(id);
-                        } else {
-                          _selected.remove(id);
-                        }
-                      });
-                    },
-                    backgroundColor: Colors.white.withValues(alpha: 0.06),
-                    selectedColor: EuphireColors.magma.withValues(alpha: 0.30),
-                    checkmarkColor: EuphireColors.frostWhite,
-                    labelStyle: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 13,
-                      color: selected
-                          ? EuphireColors.frostWhite
-                          : EuphireColors.frostWhite,
-                      fontWeight:
-                          selected ? FontWeight.w700 : FontWeight.w400,
-                    ),
-                    side: BorderSide(
-                      color: selected
-                          ? EuphireColors.magma
-                          : Colors.white.withValues(alpha: 0.12),
-                      width: selected ? 1.5 : 1,
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                t.report_rating_notes_label,
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(color: EuphireColors.frostWhite),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _notesController,
-                maxLength: _notesMaxLen,
-                maxLines: 3,
-                style: theme.textTheme.bodyMedium,
-                decoration: InputDecoration(
-                  hintText: t.report_rating_notes_hint,
-                  hintStyle:
-                      theme.textTheme.bodyMedium?.copyWith(color: EuphireColors.mist),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.05),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: EuphireColors.ember,
-                    ),
-                  ),
+                    if (widget.isDialog) ...[
+                      const SizedBox(width: 12),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: EuphireColors.mist),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ]
+                  ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: EuphireColors.ember,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _kCanonicalIssues.map((id) {
+                    final selected = _selected.contains(id);
+                    return FilterChip(
+                      label: Text(_chipLabel(t, id)),
+                      selected: selected,
+                      onSelected: (v) {
+                        AppHapticFeedback.selectionClick();
+                        setState(() {
+                          if (v) {
+                            _selected.add(id);
+                          } else {
+                            _selected.remove(id);
+                          }
+                        });
+                      },
+                      backgroundColor: Colors.white.withValues(alpha: 0.06),
+                      selectedColor: EuphireColors.magma.withValues(alpha: 0.30),
+                      checkmarkColor: EuphireColors.frostWhite,
+                      labelStyle: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 13,
+                        color: selected
+                            ? EuphireColors.frostWhite
+                            : EuphireColors.frostWhite,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w400,
+                      ),
+                      side: BorderSide(
+                        color: selected
+                            ? EuphireColors.magma
+                            : Colors.white.withValues(alpha: 0.12),
+                        width: selected ? 1.5 : 1,
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  t.report_rating_notes_label,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(color: EuphireColors.frostWhite),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _notesController,
+                  maxLength: _notesMaxLen,
+                  minLines: 3,
+                  maxLines: 6,
+                  style: theme.textTheme.bodyMedium,
+                  decoration: InputDecoration(
+                    hintText: t.report_rating_notes_hint,
+                    hintStyle:
+                        theme.textTheme.bodyMedium?.copyWith(color: EuphireColors.mist),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
                     ),
-                  ),
-                  onPressed: _selected.isEmpty
-                      ? null
-                      : () => Navigator.of(context).pop(_NegativeFormResult(
-                            _selected.toList(),
-                            _notesController.text.trim(),
-                          )),
-                  child: Text(
-                    t.report_rating_submit,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: EuphireColors.ember,
+                      ),
                     ),
                   ),
                 ),
-              ),
-                ],
-              ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: EuphireColors.ember,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: _selected.isEmpty
+                        ? null
+                        : () => Navigator.of(context).pop(_NegativeFormResult(
+                              _selected.toList(),
+                              _notesController.text.trim(),
+                            )),
+                    child: Text(
+                      t.report_rating_submit,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
+
+    if (widget.isDialog) {
+      return container;
+    } else {
+      return Padding(
+        padding: EdgeInsets.only(bottom: mediaInsets.bottom),
+        child: container,
+      );
+    }
   }
 }

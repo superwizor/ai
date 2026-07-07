@@ -57,7 +57,7 @@ var allowedAction = map[string]bool{
 // Note text cap. Free-form, sanitized like
 // identity-svc.preferences.go::freeTextMaxLen but smaller because the
 // rating modal is meant for a quick comment, not an essay.
-const ratingNotesMaxLen = 200
+const ratingNotesMaxLen = 4000
 
 // injectionPatterns mirrors identity-svc.preferences.go. Duplicated
 // rather than imported to avoid a cross-service Go dep (clinical-svc

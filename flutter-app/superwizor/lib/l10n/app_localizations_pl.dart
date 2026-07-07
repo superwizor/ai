@@ -384,6 +384,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get minimized_recording_paused => 'Pauza nagrywania';
 
   @override
+  String get minimized_recording_interrupted => 'Wstrzymane (połączenie)';
+
+  @override
   String get minimized_recording_active => 'Trwa nagrywanie sesji';
 
   @override
@@ -971,7 +974,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get report_rating_notes_label => 'Dodatkowy komentarz (opcjonalnie)';
 
   @override
-  String get report_rating_notes_hint => 'Krótka notatka, max. 200 znaków…';
+  String get report_rating_notes_hint => 'Krótka notatka, max. 4000 znaków…';
 
   @override
   String get report_rating_submit => 'Wyślij ocenę';

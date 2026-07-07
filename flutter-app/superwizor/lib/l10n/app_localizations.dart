@@ -770,6 +770,12 @@ abstract class AppLocalizations {
   /// **'Pauza nagrywania'**
   String get minimized_recording_paused;
 
+  /// No description provided for @minimized_recording_interrupted.
+  ///
+  /// In pl, this message translates to:
+  /// **'Wstrzymane (połączenie)'**
+  String get minimized_recording_interrupted;
+
   /// No description provided for @minimized_recording_active.
   ///
   /// In pl, this message translates to:
@@ -1847,7 +1853,7 @@ abstract class AppLocalizations {
   /// No description provided for @report_rating_notes_hint.
   ///
   /// In pl, this message translates to:
-  /// **'Krótka notatka, max. 200 znaków…'**
+  /// **'Krótka notatka, max. 4000 znaków…'**
   String get report_rating_notes_hint;
 
   /// No description provided for @report_rating_submit.

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper do rejestrowania stażystów w Firebase i bazie danych
+exec "$(dirname "$0")/9_zarejestruj_stazystow.sh" "$@"
